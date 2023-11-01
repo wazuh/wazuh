@@ -12,7 +12,7 @@ import configparser
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 import aws_s3
-import aws_tools
+from aws_tools import ALL_REGIONS
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
@@ -35,7 +35,7 @@ import aws_utils as utils
     (['main', '--subscriber', 'security_lake', '--iam_role_arn', utils.TEST_IAM_ROLE_ARN,
       '--external_id', utils.TEST_EXTERNAL_ID, '--queue', utils.TEST_SQS_NAME], 'subscribers.sqs_queue.AWSSQSQueue')
 ])
-@patch('aws_tools.get_script_arguments', side_effect=aws_tools.get_script_arguments)
+@patch('aws_s3.get_script_arguments', side_effect=aws_s3.get_script_arguments)
 def test_main(mock_arguments, args: list[str], class_):
     """Test 'main' function makes the expected calls when processing buckets or services.
 
@@ -58,8 +58,8 @@ def test_main(mock_arguments, args: list[str], class_):
         instance.check_bucket.assert_called_once()
         instance.iter_bucket.assert_called_once()
     elif 'service' in args[1]:
-        assert mocked_class.call_count == len(aws_tools.ALL_REGIONS)
-        assert instance.get_alerts.call_count == len(aws_tools.ALL_REGIONS)
+        assert mocked_class.call_count == len(ALL_REGIONS)
+        assert instance.get_alerts.call_count == len(ALL_REGIONS)
     elif 'subscriber' in args[1]:
         mocked_class.assert_called_once()
         instance.sync_events.assert_called_once()
@@ -70,7 +70,7 @@ def test_main(mock_arguments, args: list[str], class_):
     ['main', '--service', 'invalid'],
     ['main', '--subscriber', 'invalid']
 ])
-@patch('aws_tools.get_script_arguments', side_effect=aws_tools.get_script_arguments)
+@patch('aws_s3.get_script_arguments', side_effect=aws_s3.get_script_arguments)
 def test_main_type_ko(mock_arguments, args: list[str]):
     """Test 'main' function handles exceptions when receiving invalid buckets or services.
 
@@ -85,7 +85,7 @@ def test_main_type_ko(mock_arguments, args: list[str]):
     assert e.value.code == utils.INVALID_TYPE_ERROR_CODE
 
 
-@patch('aws_tools.get_script_arguments', side_effect=aws_tools.get_script_arguments)
+@patch('aws_s3.get_script_arguments', side_effect=aws_s3.get_script_arguments)
 def test_main_invalid_region_ko(mock_arguments):
     """Test 'main' function handles exceptions when receiving invalid region.
 

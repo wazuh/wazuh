@@ -73,7 +73,7 @@ def test_aws_cloudwatchlogs_initializes_properly(mock_aws_service, mock_sts_clie
 @patch('cloudwatchlogs.AWSCloudWatchLogs.get_log_streams', return_value=[TEST_LOG_STREAM])
 @patch('cloudwatchlogs.AWSCloudWatchLogs.remove_aws_log_stream')
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-@patch('cloudwatchlogs.aws_tools.debug')
+@patch('aws_tools.aws_logger.debug')
 def test_aws_cloudwatchlogs_get_alerts(mock_debug, mock_sts_client, mock_remove_aws_log_stream, mock_get_log_streams,
                                        mock_get_alerts_within_range, mock_get_data_from_db,
                                        mock_update_values, mock_purge, mock_close, mock_init,
@@ -105,7 +105,7 @@ def test_aws_cloudwatchlogs_get_alerts(mock_debug, mock_sts_client, mock_remove_
     instance.get_alerts()
 
     if reparse:
-        mock_debug.assert_any_call('Reparse mode ON', 1)
+        mock_debug.assert_any_call('Reparse mode ON')
 
     mock_init.assert_called_once()
 
@@ -120,7 +120,7 @@ def test_aws_cloudwatchlogs_get_alerts(mock_debug, mock_sts_client, mock_remove_
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-@patch('cloudwatchlogs.aws_tools.debug')
+@patch('aws_tools.aws_logger.debug')
 def test_aws_cloudwatchlogs_remove_aws_log_stream(mock_debug, mock_sts_client):
     """Test 'remove_aws_log_stream' method makes the necessary calls in order to remove the specified log stream
     from AWS Cloudwatch Logs."""
@@ -131,13 +131,13 @@ def test_aws_cloudwatchlogs_remove_aws_log_stream(mock_debug, mock_sts_client):
 
     instance.remove_aws_log_stream(TEST_LOG_GROUP, TEST_LOG_STREAM)
     mock_debug.assert_any_call(
-        'Removing log stream "{}" from log group "{}"'.format(TEST_LOG_GROUP, TEST_LOG_STREAM), 1)
+        'Removing log stream "{}" from log group "{}"'.format(TEST_LOG_GROUP, TEST_LOG_STREAM))
     mock_delete_log_stream.assert_called_once_with(logGroupName=TEST_LOG_GROUP, logStreamName=TEST_LOG_STREAM)
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-@patch('cloudwatchlogs.aws_tools.debug')
-def test_aws_cloudwatchlogs_remove_aws_log_stream_handles_exceptions(mock_debug, mock_sts_client):
+@patch('aws_tools.aws_logger.error')
+def test_aws_cloudwatchlogs_remove_aws_log_stream_handles_exceptions(mock_error, mock_sts_client):
     """Test 'remove_aws_log_stream' method handles exceptions raised when trying
     to remove a log stream from a log group.
     This could be due to a botocore ClientError or another type of Exception.
@@ -150,8 +150,8 @@ def test_aws_cloudwatchlogs_remove_aws_log_stream_handles_exceptions(mock_debug,
     mock_delete_log_stream.side_effect = Exception
     instance.remove_aws_log_stream(TEST_LOG_GROUP, TEST_LOG_STREAM)
 
-    mock_debug.assert_any_call(
-        'Error trying to remove "{}" log stream from "{}" log group.'.format(TEST_LOG_STREAM, TEST_LOG_GROUP), 0)
+    mock_error.assert_any_call(
+        'Error trying to remove "{}" log stream from "{}" log group.'.format(TEST_LOG_STREAM, TEST_LOG_GROUP))
 
     mock_delete_log_stream.side_effect = botocore.exceptions.ClientError(
         {'Error': {'Code': utils.THROTTLING_ERROR_CODE}}, "name")
@@ -166,8 +166,8 @@ def test_aws_cloudwatchlogs_remove_aws_log_stream_handles_exceptions(mock_debug,
 @pytest.mark.parametrize('token', [None, TEST_TOKEN])
 @patch('wazuh_integration.WazuhIntegration.send_msg')
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-@patch('cloudwatchlogs.aws_tools.debug')
-def test_aws_cloudwatchlogs_get_alerts_within_range(mock_debug, mock_sts_client, mock_send_msg,
+@patch('aws_tools.aws_logger.warning')
+def test_aws_cloudwatchlogs_get_alerts_within_range(mock_warning, mock_sts_client, mock_send_msg,
                                                     token: str or None, timestamp: int,
                                                     start_time: int or None, end_time: int or None):
     """Test 'get_alerts_within_range' method makes the necessary calls in order
@@ -229,8 +229,8 @@ def test_aws_cloudwatchlogs_get_alerts_within_range(mock_debug, mock_sts_client,
                                                                end_time)
 
     mock_send_msg.assert_any_call(expected_response_with_events['events'][0]['message'], dump_json=False)
-    mock_debug.assert_any_call(f'WARNING: The "get_log_events" request was denied because the endpoint URL was not '
-                               f'available. Attempting again.', 1)
+    mock_warning.assert_any_call(f'The "get_log_events" request was denied because the endpoint URL was not '
+                               f'available. Attempting again.')
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
@@ -328,7 +328,7 @@ def test_aws_cloudwatchlogs_update_values(mock_sts_client, result_before: dict o
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-@patch('cloudwatchlogs.aws_tools.debug')
+@patch('aws_tools.aws_logger.debug')
 def test_aws_cloudwatchlogs_save_data_db(mock_debug, mock_sts_client, custom_database):
     """Test 'save_data_db' method inserts token, start_time and end_time values into the DB and updates them if
     already exist.
@@ -358,7 +358,7 @@ def test_aws_cloudwatchlogs_save_data_db(mock_debug, mock_sts_client, custom_dat
                                             'aws_log_group': TEST_LOG_GROUP,
                                             'aws_log_stream': TEST_LOG_STREAM})[2] == TEST_END_TIME + 1
 
-    mock_debug.assert_any_call("Some data already exists on DB for that key. Updating their values...", 2)
+    mock_debug.assert_any_call("Some data already exists on DB for that key. Updating their values...")
 
 
 @pytest.mark.parametrize('describe_log_streams_response, expected_result_list',
@@ -381,7 +381,7 @@ def test_aws_cloudwatchlogs_save_data_db(mock_debug, mock_sts_client, custom_dat
                              }], [])
                          ])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-@patch('cloudwatchlogs.aws_tools.debug')
+@patch('aws_tools.aws_logger.debug')
 def test_aws_cloudwatchlogs_get_log_streams(mock_debug, mock_sts_client,
                                             describe_log_streams_response, expected_result_list: list[str]):
     """Test 'get_log_streams' method retrieves the log streams from
@@ -404,13 +404,13 @@ def test_aws_cloudwatchlogs_get_log_streams(mock_debug, mock_sts_client,
     result_list = instance.get_log_streams(TEST_LOG_GROUP)
 
     if not result_list:
-        mock_debug.assert_any_call('No log streams were found for log group "{}"'.format(TEST_LOG_GROUP), 1)
+        mock_debug.assert_any_call('No log streams were found for log group "{}"'.format(TEST_LOG_GROUP))
 
     assert expected_result_list == result_list
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-@patch('cloudwatchlogs.aws_tools.debug')
+@patch('aws_tools.aws_logger.debug')
 def test_aws_cloudwatchlogs_get_log_streams_handles_exceptions(mock_debug, mock_sts_client):
     """Test 'get_log_streams' method handles exceptions raised when trying to fetch the log streams
     from the specified log group.
@@ -425,7 +425,7 @@ def test_aws_cloudwatchlogs_get_log_streams_handles_exceptions(mock_debug, mock_
     instance.get_log_streams(TEST_LOG_GROUP)
     mock_debug.assert_any_call(
         '++++ The specified "{}" log group does not exist or insufficient privileges to access it.'.format(
-            TEST_LOG_GROUP), 0)
+            TEST_LOG_GROUP))
 
     mock_describe_log_streams.side_effect = botocore.exceptions.ClientError(
         {'Error': {'Code': utils.THROTTLING_ERROR_CODE}}, "name")

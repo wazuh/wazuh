@@ -282,10 +282,11 @@ def test_aws_vpc_flow_bucket_mark_complete(custom_database):
 
     instance.reparse = True
     with patch('vpcflow.AWSVPCFlowBucket.already_processed', return_value=True), \
-            patch('aws_bucket.aws_tools.debug') as mock_debug:
+            patch('aws_tools.aws_logger.error') as mock_error:
         instance.mark_complete(aws_account_id=utils.TEST_ACCOUNT_ID, aws_region=utils.TEST_REGION,
                                log_file={'Key': TEST_LOG_KEY}, flow_log_id=TEST_FLOW_LOG_ID)
-        mock_debug.assert_called_once_with(f'+++ File already marked complete, but reparse flag set: {TEST_LOG_KEY}', 2)
+        mock_error.assert_called_once_with(f'+++ File already marked complete, '
+                                           f'but reparse flag set: {TEST_LOG_KEY}')
 
     instance.reparse = False
 
@@ -313,11 +314,10 @@ def test_aws_vpc_flow_bucket_mark_complete(custom_database):
     assert row[5] == instance.get_creation_date(log_file)
 
 
-@patch('aws_bucket.aws_tools.debug')
-def test_aws_vpc_flow_bucket_mark_complete_handles_exceptions_on_query_error(mock_debug, custom_database):
+@patch('aws_tools.aws_logger.error')
+def test_aws_vpc_flow_bucket_mark_complete_handles_exceptions_on_query_error(mock_error, custom_database):
     """Test 'mark_complete' handles exceptions raised when trying to execute a query to the DB."""
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket, reparse=False)
-
     instance.db_connector = custom_database
     mocked_cursor = MagicMock()
     mocked_cursor.execute.side_effect = Exception
@@ -326,4 +326,4 @@ def test_aws_vpc_flow_bucket_mark_complete_handles_exceptions_on_query_error(moc
     instance.mark_complete(aws_account_id=utils.TEST_ACCOUNT_ID, aws_region=utils.TEST_REGION,
                            log_file={'Key': TEST_LOG_KEY}, flow_log_id=TEST_FLOW_LOG_ID)
 
-    mock_debug.assert_any_call(f"+++ Error marking log {TEST_LOG_KEY} as completed: ", 2)
+    mock_error.assert_any_call(f"Error marking log {TEST_LOG_KEY} as completed: ")

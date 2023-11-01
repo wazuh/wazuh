@@ -66,9 +66,8 @@ def test_aws_inspector_send_describe_findings(mock_sts_client):
 @patch('wazuh_integration.WazuhAWSDatabase.init_db')
 @patch('wazuh_integration.WazuhAWSDatabase.close_db')
 @patch('inspector.AWSInspector.send_describe_findings')
-@patch('inspector.aws_tools.debug')
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
-def test_aws_inspector_get_alerts(mock_sts_client, mock_debug, mock_send_describe_findings, mock_init_db, mock_close_db,
+def test_aws_inspector_get_alerts(mock_sts_client, mock_send_describe_findings, mock_init_db, mock_close_db,
                                   only_logs_after, reparse, custom_database):
     """Test 'get_alerts' method sends the collected events and updates the DB accordingly.
 
@@ -104,5 +103,5 @@ def test_aws_inspector_get_alerts(mock_sts_client, mock_debug, mock_send_describ
                                                       'aws_region': instance.region}
                                                   )
 
-    assert datetime.strptime(last_scan_date.split(' ')[0], "%Y-%m-%d").strftime("%Y%m%d") == datetime.utcnow().strftime(
-        "%Y%m%d")
+    assert (datetime.strptime(last_scan_date.split(' ')[0], "%Y-%m-%d").strftime("%Y%m%d") ==
+            datetime.utcnow().strftime("%Y%m%d"))

@@ -41,6 +41,7 @@ aws_logger = WazuhCloudLogger(
     logger_name=':aws_wodle:'
 )
 
+
 # Methods
 def set_profile_dict_config(boto_config: dict, profile: str, profile_config: dict):
     """Create a botocore.config.Config object with the specified profile and profile_config.

@@ -90,7 +90,7 @@ def test_aws_alb_bucket_load_information_from_file(mock_sts_client):
 
     with patch('aws_bucket.AWSBucket.decompress_file'), \
             patch('csv.DictReader') as mock_reader, \
-            patch('aws_bucket.aws_tools.debug') as mock_debug:
+            patch('aws_tools.aws_logger.debug') as mock_debug:
         tsv_reader = [{
             'type': 'http', 'time': '2025-11-23T23:57:06.780380Z', 'elb': 'app/ALB/example',
             'client_port': '0.0.0.0:48888', 'target_port': '0.0.0.0:80', 'request_processing_time': '0.001',

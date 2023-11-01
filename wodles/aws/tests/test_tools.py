@@ -16,18 +16,6 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
 
 
-@pytest.mark.parametrize('msg_level', range(3))
-@patch('builtins.print')
-def test_debug(mock_print, msg_level):
-    """Test 'debug' function only prints messages with a level equal or greater than the debug level."""
-    msg = "test message"
-    aws_tools.debug(msg, msg_level)
-    if aws_tools.debug_level >= msg_level:
-        mock_print.assert_called_with(f"DEBUG: {msg}")
-    else:
-        mock_print.assert_not_called()
-
-
 def test_arg_valid_date():
     """Test 'arg_valid_date' function returns a string with the expected format."""
     parsed_date = aws_tools.arg_valid_date("2022-JAN-01")

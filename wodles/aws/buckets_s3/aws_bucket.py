@@ -554,7 +554,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                 **self.build_s3_filter_args(aws_account_id, aws_region, **kwargs)
             )
             if self.reparse:
-                aws_logger.debug('++ Reparse mode enabled', 2)
+                aws_logger.debug('++ Reparse mode enabled')
 
             while True:
                 if 'Contents' not in bucket_files:

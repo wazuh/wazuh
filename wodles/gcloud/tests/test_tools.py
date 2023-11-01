@@ -15,6 +15,7 @@ sys.path.append(join(dirname(realpath(__file__)), '..'))  # noqa: E501 # noqa: E
 from gcloud import get_script_arguments
 from tools import arg_valid_date
 
+
 def test_get_script_arguments(capsys):
     """Test get_script_arguments shows no messages when the required parameters were provided."""
     with patch("sys.argv", ['main', '--integration_type', 'any', '--credentials_file', 'any']):

@@ -3,9 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import copy
-import gzip
 import os
-import sqlite3
 import sys
 import zipfile
 import re
@@ -15,13 +13,14 @@ from unittest.mock import MagicMock, patch, mock_open
 
 import botocore
 import pytest
-import zlib
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 import wazuh_integration
+import aws_tools
+import aws_s3
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'buckets_s3'))
 import aws_bucket
@@ -162,8 +161,8 @@ def test_aws_bucket_mark_complete(custom_database):
     assert row[4] == utils.TEST_CREATION_DATE
 
 
-@patch('aws_bucket.aws_tools.debug')
-def test_aws_bucket_mark_complete_handles_exceptions_when_db_query_fails(mock_debug, custom_database):
+@patch('aws_tools.aws_logger.error')
+def test_aws_bucket_mark_complete_handles_exceptions_when_db_query_fails(mock_error_log, custom_database):
     """Test 'mark_complete' handles exceptions raised when trying to execute a query to the DB."""
     bucket = utils.get_mocked_aws_bucket()
 
@@ -175,7 +174,7 @@ def test_aws_bucket_mark_complete_handles_exceptions_when_db_query_fails(mock_de
     bucket.mark_complete(aws_account_id=utils.TEST_ACCOUNT_ID, aws_region=utils.TEST_REGION,
                          log_file={'Key': utils.TEST_LOG_FULL_PATH_CLOUDTRAIL_1})
 
-    mock_debug.assert_called_with(f'+++ Error marking log {utils.TEST_LOG_FULL_PATH_CLOUDTRAIL_1} as completed: ', 2)
+    mock_error_log.assert_called_with(f'Error marking log {utils.TEST_LOG_FULL_PATH_CLOUDTRAIL_1} as completed: ')
 
 
 @pytest.mark.parametrize('region', [utils.TEST_REGION, "invalid_region"])
@@ -211,8 +210,8 @@ def test_aws_bucket_db_maintenance(custom_database, expected_db_count):
         table_name=bucket.db_table_name)) == expected_db_count
 
 
-@patch('builtins.print')
-def test_aws_bucket_db_maintenance_handles_exceptions_when_db_fails(mock_print, custom_database):
+@patch('aws_tools.aws_logger.error')
+def test_aws_bucket_db_maintenance_handles_exceptions_when_db_fails(mock_logger, custom_database):
     """Test 'db_maintenance' method handles exceptions raised when fails to make the DB maintenance."""
     bucket = utils.get_mocked_aws_bucket()
 
@@ -222,7 +221,7 @@ def test_aws_bucket_db_maintenance_handles_exceptions_when_db_fails(mock_print, 
 
     bucket.db_maintenance(aws_account_id=utils.TEST_ACCOUNT_ID, aws_region=utils.TEST_REGION)
 
-    mock_print.assert_called_once()
+    mock_logger.assert_called_once()
 
 
 def test_aws_bucket_marker_custom_date():
@@ -325,8 +324,9 @@ def test_aws_bucket_find_account_ids_handles_exceptions_on_client_error(mock_pre
 
 
 @patch('aws_bucket.AWSBucket.get_base_prefix', return_value=utils.TEST_PREFIX)
-@patch('aws_bucket.aws_tools.get_script_arguments')
-def test_aws_bucket_find_account_ids_handles_exceptions_on_key_error(mock_prefix, mock_script_arguments):
+@patch('aws_tools.get_script_arguments')
+@patch('aws_tools.aws_logger.error')
+def test_aws_bucket_find_account_ids_handles_exceptions_on_key_error(mock_error, mock_script_arguments, mock_prefix):
     """Test 'find_account_ids' method handles KeyError as expected."""
     bucket = utils.get_mocked_aws_bucket(bucket=utils.TEST_BUCKET, prefix=utils.TEST_PREFIX)
     bucket.client = MagicMock()
@@ -335,6 +335,7 @@ def test_aws_bucket_find_account_ids_handles_exceptions_on_key_error(mock_prefix
     with pytest.raises(SystemExit) as e:
         bucket.find_account_ids()
     assert e.value.code == utils.INVALID_PREFIX_ERROR_CODE
+    mock_error.assert_called_once()
 
 
 @pytest.mark.parametrize('object_list', [utils.LIST_OBJECT_V2, utils.LIST_OBJECT_V2_NO_PREFIXES])
@@ -513,18 +514,19 @@ def test_aws_bucket_get_log_file_handles_exceptions_when_information_cannot_be_l
     mock_load_from_file.side_effect = exception
     if bucket.skip_on_error:
         with patch('aws_bucket.AWSBucket.send_msg') as mock_send_msg, \
-                patch('aws_bucket.aws_tools.debug') as mock_debug, \
+                patch('aws_tools.aws_logger.debug') as mock_debug, \
                 patch('aws_bucket.AWSBucket.get_alert_msg', return_value='error_msg') as mock_get_alert_msg:
             debug_message_example = "++ {}; skipping...".format(error_message)
 
             bucket.get_log_file(utils.TEST_ACCOUNT_ID, utils.TEST_LOG_KEY)
-            mock_debug.assert_called_with(debug_message_example, 1)
+            mock_debug.assert_called_with(debug_message_example)
             mock_get_alert_msg.assert_called_once_with(utils.TEST_ACCOUNT_ID, utils.TEST_LOG_KEY, None, error_message)
             mock_send_msg.assert_called_once_with(mock_get_alert_msg())
 
-            mock_send_msg.side_effect = Exception
-            bucket.get_log_file(utils.TEST_ACCOUNT_ID, utils.TEST_LOG_KEY)
-            mock_debug.assert_called_with("++ Failed to send message to Wazuh", 1)
+            with patch('aws_tools.aws_logger.error') as mock_error:
+                mock_send_msg.side_effect = Exception
+                bucket.get_log_file(utils.TEST_ACCOUNT_ID, utils.TEST_LOG_KEY)
+                mock_error.assert_called_with("++ Failed to send message to Wazuh")
 
     else:
         with pytest.raises(SystemExit) as e:
@@ -589,7 +591,7 @@ def test_aws_bucket_send_event(mock_reformat, mock_send):
 @pytest.mark.parametrize('discard_regex', [None, '^ver.ion$'])
 @patch('aws_bucket.AWSBucket.get_alert_msg')
 @patch('aws_bucket.AWSBucket.send_event')
-@patch('aws_bucket.aws_tools.debug')
+@patch('aws_tools.aws_logger.debug')
 def test_aws_bucket_iter_events(mock_debug, mock_send_event, mock_get_alert,
                                 discard_regex: str or None, discard_field: str or None):
     """Test 'iter_events' method process a list of events and discards them in case they contain the discard values.
@@ -611,7 +613,7 @@ def test_aws_bucket_iter_events(mock_debug, mock_send_event, mock_get_alert,
         if bucket.discard_field and discard_regex:
             mock_debug.assert_any_call(
                 f'+++ The "{bucket.discard_regex.pattern}" regex found a match in the "{bucket.discard_field}" '
-                f'field. The event will be skipped.', 2)
+                f'field. The event will be skipped.')
             continue
         mock_get_alert.assert_called_with(utils.TEST_ACCOUNT_ID, utils.TEST_LOG_KEY, event)
         mock_send_event.assert_called()
@@ -622,7 +624,7 @@ def test_aws_bucket_iter_events(mock_debug, mock_send_event, mock_get_alert,
 @pytest.mark.parametrize('reparse', [True, False])
 @pytest.mark.parametrize('check_prefix', [True, False])
 @pytest.mark.parametrize('delete_file', [True, False])
-@patch('aws_bucket.aws_tools.debug')
+@patch('aws_tools.aws_logger.debug')
 @patch('aws_bucket.AWSBucket.build_s3_filter_args')
 def test_aws_bucket_iter_files_in_bucket(mock_build_filter, mock_debug,
                                          delete_file: bool, check_prefix: bool, reparse: bool, object_list: dict):
@@ -667,14 +669,13 @@ def test_aws_bucket_iter_files_in_bucket(mock_build_filter, mock_debug,
         bucket.iter_files_in_bucket(aws_account_id, aws_region)
 
         if bucket.reparse:
-            mock_debug.assert_any_call('++ Reparse mode enabled', 2)
+            mock_debug.assert_any_call('++ Reparse mode enabled')
 
         mock_build_filter.assert_any_call(aws_account_id, aws_region)
         bucket.client.list_objects_v2.assert_called_with(**mock_build_filter(aws_account_id, aws_region))
 
         if 'Contents' not in object_list:
-            mock_debug.assert_any_call(f"+++ No logs to process in bucket: {aws_account_id}/{aws_region}",
-                                       1)
+            mock_debug.assert_any_call(f"+++ No logs to process in bucket: {aws_account_id}/{aws_region}")
         else:
             for bucket_file in object_list['Contents']:
                 if not bucket_file['Key']:
@@ -688,24 +689,23 @@ def test_aws_bucket_iter_files_in_bucket(mock_build_filter, mock_debug,
                     match_start = date_match.span()[0] if date_match else None
 
                     if not bucket._same_prefix(match_start, aws_account_id, aws_region):
-                        mock_debug.assert_any_call(f"++ Skipping file with another prefix: {bucket_file['Key']}", 3)
+                        mock_debug.assert_any_call(f"++ Skipping file with another prefix: {bucket_file['Key']}")
                         continue
 
                 mock_already_processed.assert_called_with(bucket_file['Key'], aws_account_id, aws_region)
                 if bucket.reparse:
                     mock_debug.assert_any_call(
-                        f"++ File previously processed, but reparse flag set: {bucket_file['Key']}",
-                        1)
+                        f"++ File previously processed, but reparse flag set: {bucket_file['Key']}")
                 else:
-                    mock_debug.assert_any_call(f"++ Skipping previously processed file: {bucket_file['Key']}", 1)
+                    mock_debug.assert_any_call(f"++ Skipping previously processed file: {bucket_file['Key']}")
                     continue
 
-                mock_debug.assert_any_call(f"++ Found new log: {bucket_file['Key']}", 2)
+                mock_debug.assert_any_call(f"++ Found new log: {bucket_file['Key']}")
                 mock_get_log_file.assert_called_with(aws_account_id, bucket_file['Key'])
                 mock_iter_events.assert_called()
 
                 if bucket.delete_file:
-                    mock_debug.assert_any_call(f"+++ Remove file from S3 Bucket:{bucket_file['Key']}", 2)
+                    mock_debug.assert_any_call(f"+++ Remove file from S3 Bucket:{bucket_file['Key']}")
 
                 mock_mark_complete.assert_called_with(aws_account_id, aws_region, bucket_file)
 
@@ -1191,10 +1191,10 @@ def test_aws_custom_bucket_db_maintenance(mock_wazuh_aws_database, mock_sts, aws
         table_name=instance.db_table_name)) == expected_db_count
 
 
-@patch('builtins.print')
+@patch('aws_tools.aws_logger.error')
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhAWSDatabase.__init__')
-def test_aws_custom_bucket_db_maintenance_handles_exceptions(mock_wazuh_aws_database, mock_sts, mock_print,
+def test_aws_custom_bucket_db_maintenance_handles_exceptions(mock_wazuh_aws_database, mock_sts, mock_log_error,
                                                              custom_database):
     """Test 'db_maintenance' handles exceptions raised when trying to execute a query to the DB."""
     instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket)
@@ -1205,4 +1205,4 @@ def test_aws_custom_bucket_db_maintenance_handles_exceptions(mock_wazuh_aws_data
 
     instance.db_maintenance(aws_account_id=utils.TEST_ACCOUNT_ID)
 
-    mock_print.assert_called_once()
+    mock_log_error.assert_called_once()
