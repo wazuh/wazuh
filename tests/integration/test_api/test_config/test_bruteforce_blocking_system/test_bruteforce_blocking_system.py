@@ -158,12 +158,14 @@ def test_bruteforce_blocking_system(test_configuration, test_metadata, add_confi
     expected_error = test_metadata['expected_error']
 
     # Provoke a block from an unknown IP (N attempts (N=max_login_attempts) with incorrect credentials).
-    with pytest.raises(RuntimeError):
-        login(user='wrong', password='wrong', login_attempts=max_login_attempts)
+    for _ in range(max_login_attempts):
+        with pytest.raises(RuntimeError):
+            # Using login_attempts=0 to use a different session on each request
+            login(user='wrong', password='wrong', login_attempts=0, backoff_factor=0)
 
     # Verify that the IP address is still blocked even when using the correct credentials within the "block time"
     with pytest.raises(RuntimeError) as login_exception:
-        login()
+        login(login_attempts=0, backoff_factor=0)
 
     # Get values from exception information to verify them later
     exception_message = login_exception.value.args[0]
