@@ -17,6 +17,8 @@
 #include "skipStep.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
+#include <filesystem>
+#include <map>
 #include <memory>
 #include <string>
 
@@ -28,6 +30,26 @@
  */
 class FactoryDecompressor final
 {
+private:
+    /**
+     * @brief Deduces and returns the compression type given an input file extension.
+     *
+     * @param inputFile Input file whose compression type will be deduced.
+     * @return std::string Compression type.
+     */
+    static std::string deduceCompressionType(const std::string& inputFile)
+    {
+        const std::map<std::string, std::string> COMPRESSED_EXTENSIONS {{".gz", "gzip"}, {".xz", "xz"}};
+        const auto& fileExtension {std::filesystem::path(inputFile).extension()};
+
+        if (const auto& it {COMPRESSED_EXTENSIONS.find(fileExtension)}; it != COMPRESSED_EXTENSIONS.end())
+        {
+            return it->second;
+        }
+
+        return "raw";
+    }
+
 public:
     /**
      * @brief Creates a content decompressor based on the compressorType value.
@@ -35,9 +57,15 @@ public:
      * @param config Configurations.
      * @return std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>>
      */
-    static std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> create(const nlohmann::json& config)
+    static std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> create(nlohmann::json& config)
     {
-        auto const decompressorType {config.at("compressionType").get<std::string>()};
+        auto& decompressorType {config.at("compressionType").get_ref<std::string&>()};
+
+        if ("offline" == config.at("contentSource").get_ref<const std::string&>())
+        {
+            // When using an offline downloader, the compression type is automatically deduced.
+            decompressorType = deduceCompressionType(config.at("url").get_ref<const std::string&>());
+        }
 
         std::cout << "Creating '" << decompressorType << "' content decompressor" << std::endl;
 

@@ -20,9 +20,7 @@
 #include "offlineDownloader.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
-#include <filesystem>
 #include <iostream>
-#include <map>
 #include <memory>
 #include <string>
 
@@ -34,26 +32,6 @@
  */
 class FactoryDownloader final
 {
-private:
-    /**
-     * @brief Deduces and returns the compression type given an input file extension.
-     *
-     * @param inputFile Input file whose compression type will be deduced.
-     * @return std::string Compression type.
-     */
-    static std::string deduceCompressionType(const std::string& inputFile)
-    {
-        const std::map<std::string, std::string> COMPRESSED_EXTENSIONS {{".gz", "gzip"}, {".xz", "xz"}};
-        const auto& fileExtension {std::filesystem::path(inputFile).extension()};
-
-        if (const auto& it {COMPRESSED_EXTENSIONS.find(fileExtension)}; it != COMPRESSED_EXTENSIONS.end())
-        {
-            return it->second;
-        }
-
-        return "raw";
-    }
-
 public:
     /**
      * @brief Create the content downloader based on the contentSource value.
@@ -61,7 +39,7 @@ public:
      * @param config Configurations.
      * @return std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>>
      */
-    static std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> create(nlohmann::json& config)
+    static std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> create(const nlohmann::json& config)
     {
         auto const downloaderType {config.at("contentSource").get<std::string>()};
         std::cout << "Creating '" << downloaderType << "' downloader" << std::endl;
@@ -80,8 +58,6 @@ public:
         }
         if ("offline" == downloaderType)
         {
-            // When using an offline downloader, the compression type is automatically deduced.
-            config["compressionType"] = deduceCompressionType(config.at("url").get_ref<const std::string&>());
             return std::make_shared<OfflineDownloader>();
         }
         else
