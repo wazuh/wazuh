@@ -284,11 +284,19 @@ int wdb_parse(char * input, char * output, int peer) {
             wdb_leave(wdb_global);
         }
 
+        w_inc_agent_open();
+        gettimeofday(&begin, 0);
         if (wdb = wdb_open_agent2(agent_id), !wdb) {
             merror("Couldn't open DB for agent '%s'", sagent_id);
             snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB for agent %d", agent_id);
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_agent_open_time(diff);
             return OS_INVALID;
         }
+        gettimeofday(&end, 0);
+        timersub(&end, &begin, &diff);
+        w_inc_agent_open_time(diff);
         // Add the current peer to wdb structure
         wdb->peer = peer;
 
@@ -594,7 +602,7 @@ int wdb_parse(char * input, char * output, int peer) {
             wdb_leave(wdb);
             snprintf(output, OS_MAXSTR + 1, "ok");
 
-            w_mutex_lock(&pool_mutex);
+            rwlock_lock_write(&pool_mutex);
 
             gettimeofday(&begin, 0);
             if (wdb_close(wdb, FALSE) < 0) {
@@ -610,7 +618,7 @@ int wdb_parse(char * input, char * output, int peer) {
             timersub(&end, &begin, &diff);
             w_inc_agent_remove_time(diff);
 
-            w_mutex_unlock(&pool_mutex);
+            rwlock_unlock(&pool_mutex);
             return result;
         } else if (strcmp(query, "begin") == 0) {
             w_inc_agent_begin();
@@ -643,7 +651,7 @@ int wdb_parse(char * input, char * output, int peer) {
             wdb_leave(wdb);
             snprintf(output, OS_MAXSTR + 1, "ok");
 
-            w_mutex_lock(&pool_mutex);
+            rwlock_lock_write(&pool_mutex);
 
             gettimeofday(&begin, 0);
             if (wdb_close(wdb, TRUE) < 0) {
@@ -655,7 +663,7 @@ int wdb_parse(char * input, char * output, int peer) {
             timersub(&end, &begin, &diff);
             w_inc_agent_close_time(diff);
 
-            w_mutex_unlock(&pool_mutex);
+            rwlock_unlock(&pool_mutex);
             return result;
         } else if (strncmp(query, "syscollector_", 7) == 0) {
             if (!next) {
@@ -848,16 +856,27 @@ int wdb_parse(char * input, char * output, int peer) {
 
         mdebug2("Global query: %s", query);
 
+        w_inc_global_open();
+        gettimeofday(&begin, 0);
         if (wdb = wdb_open_global(), !wdb) {
             mdebug2("Couldn't open DB global: %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
             snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB global");
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_global_open_time(diff);
             return OS_INVALID;
         } else if (!wdb->enabled) {
             mdebug2("Database disabled: %s/%s.db.", WDB2_DIR, WDB_GLOB_NAME);
             snprintf(output, OS_MAXSTR + 1, "err DB global disabled.");
             wdb_leave(wdb);
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_global_open_time(diff);
             return OS_INVALID;
         }
+        gettimeofday(&end, 0);
+        timersub(&end, &begin, &diff);
+        w_inc_global_open_time(diff);
         // Add the current peer to wdb structure
         wdb->peer = peer;
 
@@ -6204,9 +6223,9 @@ int wdb_parse_global_backup(wdb_t** wdb, char* input, char* output) {
     }
     else if (strcmp(next, "restore") == 0) {
         // During a restore, the global wdb_t pointer may change. The mutex prevents anyone else from accesing it
-        w_mutex_lock(&pool_mutex);
+        rwlock_lock_write(&pool_mutex);
         result = wdb_parse_global_restore_backup(wdb, tail, output);
-        w_mutex_unlock(&pool_mutex);
+        rwlock_unlock(&pool_mutex);
     }
     else {
         snprintf(output, OS_MAXSTR + 1, "err Invalid backup action: %s", next);
