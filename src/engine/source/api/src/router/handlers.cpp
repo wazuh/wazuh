@@ -143,7 +143,7 @@ api::Handler routePost(std::shared_ptr<::router::Router> router)
         }
 
         const auto& eEntry = eRequest.route();
-        auto error = router->addRoute(eEntry.name(), eEntry.priority(), eEntry.filter(), eEntry.policy());
+        auto error = router->addRoute(eEntry.name(), eEntry.priority(), std::make_pair(eEntry.filter(), std::nullopt), eEntry.policy());
 
         // Build the response
         ResponseType eResponse;

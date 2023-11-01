@@ -10,8 +10,9 @@
 #include <unordered_map>
 
 #include <baseTypes.hpp>
+#include <logging/logging.hpp>
 #include <parseEvent.hpp>
-#include <queue/concurrentQueue.hpp>
+#include <queue/iBlockingConcurrentQueue.hpp>
 #include <store/istore.hpp>
 
 #include "policyManager.hpp"
@@ -19,12 +20,14 @@
 
 namespace router
 {
+constexpr auto API_SESSIONS_TABLE_NAME = "internal/api_sessions/0";   ///< Name of the sessions table in the store
 constexpr auto ROUTES_TABLE_NAME = "internal/router_table/0"; ///< Name of the routes table in the store
 constexpr auto JSON_PATH_NAME = "/name";                      ///< Json path for the name of the route
 constexpr auto JSON_PATH_FILTER = "/filter";                  ///< Json path for the filter of the route
 constexpr auto JSON_PATH_PRIORITY = "/priority";              ///< Json path for the priority of the route
 constexpr auto JSON_PATH_TARGET = "/target";                  ///< Json path for the target of the route
-
+constexpr auto FILTER_CONTENT_FORMAT =
+    R"({{"name": "{}", "check":[{{"TestSessionID":{}}}]}})";        ///< Filter content format
 constexpr auto JSON_PATH_EVENT = "/event";                    ///< Json path for the event for enqueue
 
 /**
@@ -40,7 +43,7 @@ class Router
 {
 
 private:
-    using concurrentQueue = base::queue::ConcurrentQueue<base::Event>; ///< Alias for the queue type
+    using concurrentQueue = base::queue::iBlockingConcurrentQueue<base::Event>; ///< Alias for the queue type
 
     /* Status */
     /**
@@ -102,6 +105,23 @@ public:
      */
     std::vector<Entry> getRouteTable();
 
+    inline std::variant<builder::Asset, base::Error>
+    createFilter(const std::string& filterName, const uint32_t sessionID)
+    {
+        const auto filterContent = fmt::format(FILTER_CONTENT_FORMAT, filterName, sessionID);
+        json::Json filterJson;
+        try
+        {
+            filterJson = json::Json {filterContent.c_str()};
+        }
+        catch (const std::exception& e)
+        {
+            return base::Error {e.what()};
+        }
+
+        return builder::Asset {filterJson, builder::Asset::Type::FILTER, m_builder->getRegistry()};
+    }
+
     /**
      * @brief Get the Entry of a route by name
      *
@@ -131,7 +151,7 @@ public:
      * // TODO: FIX ALL DOC --
      */
     std::optional<base::Error>
-    addRoute(const std::string& routeName, int priority, const std::string& filterName, const std::string& envName);
+    addRoute(const std::string& routeName, int priority, const std::pair<std::string, std::optional<base::Expression>>& filter, const std::string& envName);
 
     /**
      * @brief Push an event to the queue of the router
@@ -139,7 +159,7 @@ public:
      * @param event event to push to the queue
      * @return std::optional<base::Error> A error with description if the event can't be pushed
      */
-    std::optional<base::Error> enqueueEvent(base::Event&& event);
+    std::optional<base::Error> enqueueEvent(base::Event&& event, bool priority = false);
 
     /**
      * @brief Push an event to the queue of the router
