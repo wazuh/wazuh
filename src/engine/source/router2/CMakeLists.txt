@@ -3,15 +3,15 @@ set(IFACE_DIR ${CMAKE_CURRENT_LIST_DIR}/interface)
 set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
 set(INC_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
 
-# # Interface
+# Interface
 add_library(router2_irouter INTERFACE)
 target_include_directories(router2_irouter INTERFACE ${IFACE_DIR})
-target_link_libraries(router2_irouter INTERFACE base) # Base for expression
+target_link_libraries(router2_irouter INTERFACE base)
 add_library(router2::irouter ALIAS router2_irouter)
 
-# # Implementation
+# Implementation
 add_library(router2_router STATIC
-   ${SRC_DIR}/router.cpp
+   ${SRC_DIR}/environment.cpp
 )
 
 target_include_directories(router2_router
@@ -21,7 +21,15 @@ target_include_directories(router2_router
     PRIVATE
     ${SRC_DIR}
 )
-target_link_libraries(router2_router PUBLIC router2::irouter)
+target_link_libraries(router2_router
+    PUBLIC
+    router2::irouter
+    bk::ibk
+
+    PRIVATE
+    base
+
+)
 add_library(router2::router ALIAS router2_router)
 
 # Tests
@@ -44,12 +52,12 @@ if(ENGINE_BUILD_TEST)
     # target_link_libraries(router_ctest gtest_main router2::irouter router2::router)
     # gtest_discover_tests(router2_ctest)
 
-    # # Router unit test
-    # add_executable(router_utest
-    #     ${UNIT_SRC_DIR}/router_test.cpp
-    # )
-    # target_include_directories(router_utest PRIVATE ${SRC_DIR}) # For unit test internal methods/includes
-    # target_link_libraries(router_utest gtest_main router2::irouter router2::router)
-    # gtest_discover_tests(router2_utest)
+    # Router unit test
+    add_executable(router_utest
+        ${UNIT_SRC_DIR}/environment_test.cpp
+    )
+    target_include_directories(router_utest PRIVATE ${SRC_DIR})
+    target_link_libraries(router_utest gtest_main router2::irouter router2::router)
+    gtest_discover_tests(router_utest)
 
 endif(ENGINE_BUILD_TEST)
