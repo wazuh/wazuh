@@ -55,7 +55,7 @@ public:
      * @param priority Priority of the route
      * @throw std::runtime_error if the priority is out of range
      */
-    Route(const std::string& name, base::Expression& assetRoute, const std::string& target, int priority);
+    Route(const std::string& name, const std::string& filterName, base::Expression filterExpression, const std::string& target, int priority);
 
     /**
      * @brief Get the Name of the route

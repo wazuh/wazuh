@@ -109,7 +109,7 @@ TEST_F(RouterTest, add_list_remove_routes)
     // Add a route
     expectBuildPolicy("policy/pol_1/0");
     expectBuild("filter/e_wazuh_queue/0");
-    auto error = router.addRoute("e_wazuh_queue", 2, "filter/e_wazuh_queue/0", "policy/pol_1/0");
+    auto error = router.addRoute("e_wazuh_queue", 2, std::make_pair(std::string("filter/e_wazuh_queue/0"), std::nullopt), "policy/pol_1/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     // List routes
@@ -119,7 +119,7 @@ TEST_F(RouterTest, add_list_remove_routes)
     // Add a route
     expectBuildPolicy("policy/pol_2/0");
     expectBuild("filter/allow_all/0");
-    error = router.addRoute("allow_all", 1, "filter/allow_all/0", "policy/pol_2/0");
+    error = router.addRoute("allow_all", 1, std::make_pair(std::string("filter/allow_all/0"), std::nullopt), "policy/pol_2/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     // List routes
@@ -168,7 +168,7 @@ TEST_F(RouterTest, priorityChanges)
     // Add a route
     expectBuildPolicy("policy/pol_1/0");
     expectBuild("filter/e_wazuh_queue/0");
-    auto error = router.addRoute("e_wazuh_queue", 2, "filter/e_wazuh_queue/0", "policy/pol_1/0");
+    auto error = router.addRoute("e_wazuh_queue", 2, std::make_pair(std::string("filter/e_wazuh_queue/0"), std::nullopt), "policy/pol_1/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     // List routes
@@ -178,7 +178,7 @@ TEST_F(RouterTest, priorityChanges)
     // Add a route
     expectBuildPolicy("policy/pol_2/0");
     expectBuild("filter/allow_all/0");
-    error = router.addRoute("allow_all", 1, "filter/allow_all/0", "policy/pol_2/0");
+    error = router.addRoute("allow_all", 1, std::make_pair(std::string("filter/allow_all/0"), std::nullopt), "policy/pol_2/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     // List routes
@@ -296,7 +296,7 @@ TEST_F(RouterTest, checkRouting)
     // Add a route
     expectBuildPolicy("policy/pol_A1/0");
     expectBuild("filter/allow_all_A1/0");
-    auto error = router.addRoute("allow_all_A1", 101, "filter/allow_all_A1/0", "policy/pol_A1/0");
+    auto error = router.addRoute("allow_all_A1", 101, std::make_pair(std::string("filter/allow_all_A1/0"), std::nullopt), "policy/pol_A1/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     // Push the message && and check
@@ -315,7 +315,7 @@ TEST_F(RouterTest, checkRouting)
 
     expectBuildPolicy("policy/pol_B2/0");
     expectBuild("filter/allow_all_B2/0");
-    error = router.addRoute("allow_all_B2", 102, "filter/allow_all_B2/0", "policy/pol_B2/0");
+    error = router.addRoute("allow_all_B2", 102, std::make_pair(std::string("filter/allow_all_B2/0"), std::nullopt), "policy/pol_B2/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     // Push the message && and check
@@ -334,7 +334,7 @@ TEST_F(RouterTest, checkRouting)
 
     expectBuildPolicy("policy/pol_C3/0");
     expectBuild("filter/allow_all_C3/0");
-    error = router.addRoute("allow_all_C3", 103, "filter/allow_all_C3/0", "policy/pol_C3/0");
+    error = router.addRoute("allow_all_C3", 103, std::make_pair(std::string("filter/allow_all_C3/0"), std::nullopt), "policy/pol_C3/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     // Push the message && and check
@@ -356,19 +356,19 @@ TEST_F(RouterTest, checkRouting)
     /* Add route 1 */
     expectBuildPolicy("policy/pol_A1/0");
     expectBuild("filter/allow_all_A1/0");
-    error = router.addRoute("allow_all_A1", 101, "filter/allow_all_A1/0", "policy/pol_A1/0");
+    error = router.addRoute("allow_all_A1", 101, std::make_pair(std::string("filter/allow_all_A1/0"), std::nullopt), "policy/pol_A1/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     /* Add route 2 */
     expectBuildPolicy("policy/pol_B2/0");
     expectBuild("filter/allow_all_B2/0");
-    error = router.addRoute("allow_all_B2", 102, "filter/allow_all_B2/0", "policy/pol_B2/0");
+    error = router.addRoute("allow_all_B2", 102, std::make_pair(std::string("filter/allow_all_B2/0"), std::nullopt), "policy/pol_B2/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     /* Add route 3 */
     expectBuildPolicy("policy/pol_C3/0");
     expectBuild("filter/allow_all_C3/0");
-    error = router.addRoute("allow_all_C3", 103, "filter/allow_all_C3/0", "policy/pol_C3/0");
+    error = router.addRoute("allow_all_C3", 103, std::make_pair(std::string("filter/allow_all_C3/0"), std::nullopt), "policy/pol_C3/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     list = router.getRouteTable();
@@ -463,7 +463,7 @@ TEST_F(RouterTest, checkRouting)
     // Add route 3 in first position
     expectBuildPolicy("policy/pol_C3/0");
     expectBuild("filter/allow_all_C3/0");
-    error = router.addRoute("allow_all_C3", 1, "filter/allow_all_C3/0", "policy/pol_C3/0");
+    error = router.addRoute("allow_all_C3", 1, std::make_pair(std::string("filter/allow_all_C3/0"), std::nullopt), "policy/pol_C3/0");
     ASSERT_FALSE(error.has_value()) << error.value().message;
 
     list = router.getRouteTable();

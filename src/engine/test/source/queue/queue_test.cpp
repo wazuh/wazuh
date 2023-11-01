@@ -24,6 +24,7 @@ public:
     std::string str() const { return "Dummy: " + std::to_string(value); }
 };
 
+
 class ConcurrentQueueTest : public ::testing::Test
 {
 protected:
@@ -85,14 +86,19 @@ TEST_F(ConcurrentQueueTest, CanPushAndPop)
     ConcurrentQueue<std::shared_ptr<Dummy>> cq(
         2, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
     ASSERT_TRUE(cq.empty());
-    cq.push(std::make_shared<Dummy>(1));
-    ASSERT_FALSE(cq.empty());
-    ASSERT_EQ(cq.size(), 1);
-    auto d = std::make_shared<Dummy>(0);
+    cq.push(std::make_shared<Dummy>(1), true);
+    ASSERT_FALSE(cq.empty(true));
+    ASSERT_EQ(cq.size(true), 1);
+    std::shared_ptr<Dummy> d;
     ASSERT_TRUE(cq.waitPop(d));
     ASSERT_EQ(d->value, 1);
     ASSERT_TRUE(cq.empty());
-    ASSERT_EQ(cq.size(), 0);
+    cq.push(std::make_shared<Dummy>(1));
+    ASSERT_TRUE(cq.waitPop(d));
+    cq.push(std::make_shared<Dummy>(1), true);
+    ASSERT_TRUE(cq.waitPop(d));
+    ASSERT_TRUE(cq.size(true) == 0);
+    ASSERT_TRUE(cq.size() != 0);
 }
 
 TEST_F(ConcurrentQueueTest, FloodsWhenFull)
@@ -107,10 +113,8 @@ TEST_F(ConcurrentQueueTest, FloodsWhenFull)
     {
         cq.push(std::make_shared<Dummy>(i));
     }
-
     ASSERT_FALSE(cq.empty());
     ASSERT_EQ(cq.size(), 32);
-
     std::ifstream floodfile(flood_file);
     int num_flooded = 0;
     std::string line;
@@ -131,4 +135,42 @@ TEST_F(ConcurrentQueueTest, Timeout)
     auto d = std::make_shared<Dummy>(0);
     ASSERT_FALSE(cq.waitPop(d, 0));
     ASSERT_EQ(d->value, 0);
+}
+
+// Función para simular eventos de alta prioridad
+void highPriorityEvents(ConcurrentQueue<std::shared_ptr<Dummy>>& cq)
+{
+    for (int i = 0; i < 10; ++i)
+    {
+        cq.push(std::make_shared<Dummy>(i*2), true);
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    }
+}
+
+// Función para simular eventos de baja prioridad
+void lowPriorityEvents(ConcurrentQueue<std::shared_ptr<Dummy>>& cq)
+{
+    for (int i = 0; i < 10; ++i)
+    {
+        cq.push(std::make_shared<Dummy>(i), false);
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
+}
+
+TEST_F(ConcurrentQueueTest, ChangeQueue)
+{
+    ConcurrentQueue<std::shared_ptr<Dummy>> cq(
+        100, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
+
+    for (int i = 0; i < 10; ++i)
+    {
+        cq.push(std::make_shared<Dummy>(i), true);
+    }
+
+    ASSERT_TRUE(cq.size() == 0);
+
+    for (int i = 0; i < 10; ++i)
+    {
+        cq.push(std::make_shared<Dummy>(i));
+    }
 }
