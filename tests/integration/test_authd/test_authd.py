@@ -75,24 +75,25 @@ monitored_sockets_params = [('wazuh-modulesd', None, True), ('wazuh-db', None, T
 
 receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 
-daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
-
 
 # Tests
 
-@pytest.fixture(scope="function", params=test_metadata)
-def set_up_groups(request):
+@pytest.fixture(scope="function")
+def set_up_groups(test_metadata, request):
     groups = test_metadata['groups']
     for group in groups:
-        subprocess.call(['/var/ossec/bin/agent_groups', '-a', '-g', f'{group}', '-q'])
-    yield request.param
+        if(group):
+            subprocess.call(['/var/ossec/bin/agent_groups', '-a', '-g', f'{group}', '-q'])
+    yield
     for group in groups:
-        subprocess.call(['/var/ossec/bin/agent_groups', '-r', '-g', f'{group}', '-q'])
+        if(group):
+            subprocess.call(['/var/ossec/bin/agent_groups', '-r', '-g', f'{group}', '-q'])
 
 
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_ossec_auth_messages(test_configuration, test_metadata, set_wazuh_configuration, set_up_groups, configure_sockets_environment,
-                             clean_client_keys_file_module, wait_for_authd_startup_module, connect_to_sockets_module, daemons_handler):
+                             clean_client_keys_file_module, restart_wazuh_daemon, wait_for_authd_startup_module,
+                             connect_to_sockets_module):
     '''
     description:
         Checks if when the `wazuh-authd` daemon receives different types of enrollment requests,

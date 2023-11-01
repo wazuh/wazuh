@@ -277,6 +277,15 @@ def daemons_handler_module(request: pytest.FixtureRequest) -> None:
     yield from daemons_handler_implementation(request)
 
 
+@pytest.fixture(scope='module')
+def restart_wazuh_daemon(daemon=None):
+    """
+    Restart a Wazuh daemon
+    """
+    file.truncate_file(WAZUH_LOG_PATH)
+    services.control_service("restart", daemon=daemon)
+
+
 @pytest.fixture(scope='function')
 def restart_wazuh_daemon_function(daemon=None):
     """

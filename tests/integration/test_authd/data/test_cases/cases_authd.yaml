@@ -6,6 +6,8 @@
     -
       input: "OSSEC A:'user1'"
       output: "OSSEC K:'"
+    groups:
+      -
 
 - name: "Single Group - Valid group"
   description: "Check single group enrollment"
@@ -28,6 +30,8 @@
       input: "OSSEC A:'user_' G:'GroupA'"
       output: "ERROR: Invalid group: GroupA"
       stage: "Invalid group enrollment"
+    groups:
+      -
 
 - name: "Single Group - Name too long"
   description: "Check group does not exist"
