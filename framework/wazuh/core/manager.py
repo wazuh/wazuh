@@ -282,7 +282,7 @@ def _get_connector() -> aiohttp.TCPConnector:
 
 def get_update_information_template(
         update_check: bool,
-        current_version: str = wazuh.__version__,
+        current_version: str = f"v{wazuh.__version__}",
         last_check_date: Optional[datetime] = None
 ) -> dict:
     """Build and return a template for the update_information dict.

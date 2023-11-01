@@ -247,7 +247,7 @@ def test_get_update_information_template(last_check_date, update_check):
     assert 'update_check' in template
     assert template['update_check'] == update_check
     assert 'current_version' in template
-    assert template['current_version'] == wazuh.__version__
+    assert template['current_version'] == f"v{wazuh.__version__}"
     assert 'last_available_major' in template
     assert 'last_available_minor' in template
     assert 'last_available_patch' in template
