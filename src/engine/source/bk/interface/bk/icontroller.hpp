@@ -4,6 +4,7 @@
 #include <functional>
 #include <memory>
 #include <string_view>
+#include <unordered_set>
 
 #include <baseTypes.hpp>
 #include <error.hpp>
