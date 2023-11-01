@@ -119,7 +119,8 @@ namespace Utils
             }
 
             // Iterate all compressed files within the .zip file.
-            std::vector<std::string> decompressedFiles(globalInfo.number_entry);
+            std::vector<std::string> decompressedFiles;
+            decompressedFiles.reserve(globalInfo.number_entry);
             for (uLong currentFileIndex {0}; currentFileIndex < globalInfo.number_entry; ++currentFileIndex)
             {
                 unz_file_info fileInfo;
@@ -148,30 +149,39 @@ namespace Utils
                 }
 
                 // Close current file.
-                unzCloseCurrentFile(unzFile);
+                if (unzCloseCurrentFile(unzFile) != UNZ_OK)
+                {
+                    throw std::runtime_error {"Unable to close current file: " + std::string(filename)};
+                }
 
                 // Store current file in output directory.
                 const auto outputFilepath {outputDir / std::string(filename)};
                 std::ofstream outFile {outputFilepath, std::ios::binary};
                 if (!outFile.good())
                 {
-                    throw std::runtime_error("Unable to create destination file: " + outputFilepath.string());
+                    throw std::runtime_error {"Unable to create destination file: " + outputFilepath.string()};
                 }
                 outFile.write(buffer.data(), buffer.size());
                 outFile.close();
 
-                // Set filename in output vector.
-                decompressedFiles[currentFileIndex] = outputFilepath.string();
+                // Push filename into the output vector.
+                decompressedFiles.push_back(outputFilepath.string());
 
                 // Go to next file within the .zip file.
                 if (currentFileIndex + 1 < globalInfo.number_entry)
                 {
-                    unzGoToNextFile(unzFile);
+                    if (unzGoToNextFile(unzFile) != UNZ_OK)
+                    {
+                        throw std::runtime_error {"Unable to get next file of: " + zipFilePath.string()};
+                    }
                 }
             }
 
             // Close .zip file.
-            unzClose(unzFile);
+            if (unzClose(unzFile) != UNZ_OK)
+            {
+                throw std::runtime_error {"Unable to close file: " + zipFilePath.string()};
+            }
 
             return decompressedFiles;
         }
