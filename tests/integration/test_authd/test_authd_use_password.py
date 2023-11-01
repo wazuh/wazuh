@@ -38,37 +38,26 @@ tags:
     - enrollment
 '''
 import os
-import ssl
 import time
 import pytest
+from pathlib import Path
+import re
 
-from wazuh_testing.tools import WAZUH_PATH
-from wazuh_testing.tools.configuration import load_wazuh_configurations
-from wazuh_testing.tools.file import read_yaml
+from wazuh_testing.constants.paths.configurations import DEFAULT_AUTHD_PASS_PATH
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.utils.configuration import load_configuration_template, get_test_cases_data
+
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 # Marks
 
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
 # Configurations
-
-parameters = [
-    {'USE_PASSWORD': 'yes'},
-    {'USE_PASSWORD': 'no'}
-]
-
-metadata = [
-    {'use_password': 'yes'},
-    {'use_password': 'no'}
-]
-
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-configurations_path = os.path.join(test_data_path, 'wazuh_authd_configuration.yaml')
-client_keys_path = os.path.join(WAZUH_PATH, 'etc', 'client.keys')
-test_authd_use_password_tests = read_yaml(os.path.join(test_data_path, 'test_authd_use_password.yaml'))
-configuration_ids = [f"Use_password_{x['USE_PASSWORD']}" for x in parameters]
-configurations = load_wazuh_configurations(configurations_path, __name__, params=parameters, metadata=metadata)
-authd_default_password_path = os.path.join(WAZUH_PATH, 'etc', 'authd.pass')
+test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'config_authd_use_password.yaml')
+test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_authd_use_password.yaml')
+test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
+test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 
 # Variables
 DEFAULT_TEST_PASSWORD = 'TopSecret'
@@ -78,10 +67,9 @@ INVALID_REQUEST_MESSAGE = 'ERROR: Invalid request for new agent'
 INVALID_PASSWORD_MESSAGE = 'ERROR: Invalid password'
 SUCCESS_MESSAGE = "OSSEC K:'001 {} any "
 
-log_monitor_paths = []
 receiver_sockets_params = [(("localhost", 1515), 'AF_INET', 'SSL_TLSv1_2')]
 monitored_sockets_params = [('wazuh-modulesd', None, True), ('wazuh-db', None, True), ('wazuh-authd', None, True)]
-receiver_sockets, monitored_sockets, log_monitors = None, None, None  # Set in the fixtures
+receiver_sockets, monitored_sockets = None, None
 
 
 # Functions
@@ -90,10 +78,9 @@ def read_random_pass():
     """
     Search for the random password creation in Wazuh logs
     """
-    osseclog_path = os.path.join(WAZUH_PATH, 'logs', 'ossec.log')
     passw = None
     try:
-        with open(osseclog_path, 'r') as log_file:
+        with open(WAZUH_LOG_PATH, 'r') as log_file:
             lines = log_file.readlines()
             for line in lines:
                 if "Random password" in line:
@@ -107,16 +94,15 @@ def read_random_pass():
 
 
 @pytest.fixture(scope='function')
-def reset_password(test_case, get_configuration):
+def reset_password(test_metadata):
     """
     Write the password file.
     """
-    metadata = get_configuration['metadata']
     set_password = None
     try:
-        if metadata['use_password'] == 'yes':
+        if test_metadata['use_password'] == 'yes':
             set_password = 'defined'
-            if test_case['random_pass'] == 'yes':
+            if test_metadata['random_pass'] == 'yes':
                 set_password = 'random'
         else:
             set_password = 'undefined'
@@ -126,7 +112,7 @@ def reset_password(test_case, get_configuration):
     # in case of random pass, remove /etc/authd.pass
     if set_password == 'random' or set_password == 'undefined':
         try:
-            os.remove(authd_default_password_path)
+            os.remove(DEFAULT_AUTHD_PASS_PATH)
         except FileNotFoundError:
             pass
         except IOError:
@@ -135,29 +121,18 @@ def reset_password(test_case, get_configuration):
     elif set_password == 'defined':
         # Write authd.pass
         try:
-            with open(authd_default_password_path, 'w') as pass_file:
+            with open(DEFAULT_AUTHD_PASS_PATH, 'w') as pass_file:
                 pass_file.write(DEFAULT_TEST_PASSWORD)
                 pass_file.close()
         except IOError as exception:
             raise
 
 
-@pytest.fixture(scope='module', params=configurations, ids=configuration_ids)
-def get_configuration(request):
-    """
-    Get configurations from the module
-    """
-    return request.param
-
-
 # Test
-
-@pytest.mark.parametrize('test_case', [case for case in test_authd_use_password_tests],
-                         ids=[test_case['name'] for test_case in test_authd_use_password_tests])
-def test_authd_force_options(get_configuration, configure_environment, configure_sockets_environment,
+@pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
+def test_authd_force_options(test_configuration, test_metadata, set_wazuh_configuration, configure_sockets_environment,
                              clean_client_keys_file_function, reset_password, restart_wazuh_daemon_function,
-                             wait_for_authd_startup_function, connect_to_sockets_function,
-                             test_case, tear_down):
+                             wait_for_authd_startup_function, connect_to_sockets_function, tear_down):
     '''
     description:
         Checks that every input message in authd port generates the adequate output.
@@ -211,41 +186,39 @@ def test_authd_force_options(get_configuration, configure_environment, configure
     expected_output:
         - Registration request responses on 'authd' socket.
     '''
-    metadata = get_configuration['metadata']
 
-    for stage in test_case['test_case']:
-        # Reopen socket (socket is closed by manager after sending message with client key)
-        receiver_sockets[0].open()
+    # Reopen socket (socket is closed by manager after sending message with client key)
+    receiver_sockets[0].open()
 
-        # Creating input message
-        if 'insert_random_pass_in_query' in stage and stage['insert_random_pass_in_query'] == 'yes':
-            message = AGENT_INPUT_WITH_PASS.format(read_random_pass(), stage['user'])
-        elif 'pass' in stage:
-            message = AGENT_INPUT_WITH_PASS.format(stage['pass'], stage['user'])
+    # Creating input message
+    if test_metadata['insert_random_pass_in_query'] == 'yes':
+        message = AGENT_INPUT_WITH_PASS.format(read_random_pass(), test_metadata['user'])
+    elif test_metadata['pass'] != None:
+        message = AGENT_INPUT_WITH_PASS.format(test_metadata['pass'], test_metadata['user'])
+    else:
+        message = AGENT_INPUT.format(test_metadata['user'])
+
+    receiver_sockets[0].send(message, size=False)
+    timeout = time.time() + 10
+    response = ''
+    while response == '':
+        response = receiver_sockets[0].receive().decode()
+        if time.time() > timeout:
+            raise ConnectionResetError('Manager did not respond to sent message!')
+
+    # Creating output message
+    if test_metadata['use_password'] == 'yes':
+        if test_metadata['random_pass'] != None and test_metadata['insert_random_pass_in_query'] != None:
+            expected = SUCCESS_MESSAGE.format(test_metadata['user'])
+        elif test_metadata['pass'] == DEFAULT_TEST_PASSWORD:
+            expected = SUCCESS_MESSAGE.format(test_metadata['user'])
         else:
-            message = AGENT_INPUT.format(stage['user'])
-
-        receiver_sockets[0].send(message, size=False)
-        timeout = time.time() + 10
-        response = ''
-        while response == '':
-            response = receiver_sockets[0].receive().decode()
-            if time.time() > timeout:
-                raise ConnectionResetError('Manager did not respond to sent message!')
-
-        # Creating output message
-        if metadata['use_password'] == 'yes':
-            if 'random_pass' in test_case and 'insert_random_pass_in_query' in stage:
-                expected = SUCCESS_MESSAGE.format(stage['user'])
-            elif 'pass' in stage and stage['pass'] == DEFAULT_TEST_PASSWORD:
-                expected = SUCCESS_MESSAGE.format(stage['user'])
-            else:
-                expected = INVALID_PASSWORD_MESSAGE
-        # use_password = 'no'
+            expected = INVALID_PASSWORD_MESSAGE
+    # use_password = 'no'
+    else:
+        if test_metadata['pass'] != None or test_metadata['insert_random_pass_in_query'] != None:
+            expected = INVALID_REQUEST_MESSAGE
         else:
-            if 'pass' in stage or 'insert_random_pass_in_query' in stage:
-                expected = INVALID_REQUEST_MESSAGE
-            else:
-                expected = SUCCESS_MESSAGE.format(stage['user'])
+            expected = SUCCESS_MESSAGE.format(test_metadata['user'])
 
-        assert response[:len(expected)] == expected, 'Failed: Response is different from expected'
+    assert response[:len(expected)] == expected, 'Failed: Response is different from expected'
