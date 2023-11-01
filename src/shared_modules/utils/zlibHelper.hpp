@@ -139,9 +139,33 @@ namespace Utils
                     throw std::runtime_error {"Unable to open current file: " + std::string(filename)};
                 }
 
+                // Create outputfile.
+                const auto outputFilepath {outputDir / std::string(filename)};
+                std::ofstream outFile {outputFilepath, std::ios::binary};
+                if (!outFile.good())
+                {
+                    throw std::runtime_error {"Unable to create destination file: " + outputFilepath.string()};
+                }
+
                 // Read current file content.
-                std::vector<char> buffer(fileInfo.uncompressed_size);
-                if (unzReadCurrentFile(unzFile, buffer.data(), buffer.size()) < 0)
+                unsigned long bytesRead, totalBytesRead {0};
+                do
+                {
+                    // Read compressed data by BUFFER_SIZE chunks.
+                    constexpr auto BUFFER_SIZE {(100) << 20}; // 100 MB.
+                    std::vector<char> buffer(BUFFER_SIZE);
+                    bytesRead = unzReadCurrentFile(unzFile, buffer.data(), buffer.size());
+                    totalBytesRead += bytesRead;
+
+                    // Store current chunk into output file.
+                    outFile.write(buffer.data(), buffer.size());
+                } while (bytesRead > 0);
+
+                // Close output file.
+                outFile.close();
+
+                // Check total amount of bytes read.
+                if (totalBytesRead != fileInfo.uncompressed_size)
                 {
                     unzCloseCurrentFile(unzFile);
                     unzClose(unzFile);
@@ -153,16 +177,6 @@ namespace Utils
                 {
                     throw std::runtime_error {"Unable to close current file: " + std::string(filename)};
                 }
-
-                // Store current file in output directory.
-                const auto outputFilepath {outputDir / std::string(filename)};
-                std::ofstream outFile {outputFilepath, std::ios::binary};
-                if (!outFile.good())
-                {
-                    throw std::runtime_error {"Unable to create destination file: " + outputFilepath.string()};
-                }
-                outFile.write(buffer.data(), buffer.size());
-                outFile.close();
 
                 // Push filename into the output vector.
                 decompressedFiles.push_back(outputFilepath.string());
