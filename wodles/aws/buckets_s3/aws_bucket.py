@@ -15,7 +15,9 @@ from datetime import datetime
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import wazuh_integration
-from aws_tools import aws_logger, get_script_arguments
+import aws_tools
+
+aws_logger = aws_tools.aws_logger
 
 # Constants
 MAX_RECORD_RETENTION = 500
@@ -365,7 +367,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
         except KeyError:
             aws_logger.error(f"No logs found in '{self.get_base_prefix()}'. "
                              f"Check the provided prefix and the location of "
-                             f"the logs for the bucket type '{get_script_arguments().type.lower()}'")
+                             f"the logs for the bucket type '{aws_tools.get_script_arguments().type.lower()}'")
             sys.exit(18)
 
     def find_regions(self, account_id):
