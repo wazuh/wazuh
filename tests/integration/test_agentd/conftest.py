@@ -6,7 +6,6 @@ import os
 import pytest
 
 from wazuh_testing.constants.paths.variables import AGENTD_STATE
-from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH
 
 @pytest.fixture()
 def remove_state_file() -> None:
