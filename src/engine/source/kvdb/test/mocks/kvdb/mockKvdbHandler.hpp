@@ -12,9 +12,19 @@ namespace kvdb::mocks
 // Helper functions to mock method responses
 /******************************************************************************/
 
+inline base::OptError kvdbSetOk()
+{
+    return std::nullopt;
+}
+
 inline base::RespOrError<bool> kvdbContainsOk()
 {
     return true;
+}
+
+inline base::RespOrError<bool> kvdbContainsNOk()
+{
+    return false;
 }
 
 inline base::RespOrError<bool> kvdbContainsError()
@@ -25,6 +35,16 @@ inline base::RespOrError<bool> kvdbContainsError()
 inline base::RespOrError<std::string> kvdbGetOk()
 {
     return R"("value")";
+}
+
+inline base::RespOrError<std::string> kvdbGetOk(const std::string& result)
+{
+    return result;
+}
+
+inline base::RespOrError<std::string> kvdbOk(const std::string& result)
+{
+    return result;
 }
 
 inline base::RespOrError<std::string> kvdbGetError(const std::string& error)

@@ -1,4 +1,5 @@
 #include <any>
+#include <filesystem>
 #include <memory>
 #include <vector>
 
@@ -7,12 +8,11 @@
 
 #include <baseTypes.hpp>
 #include <defs/mocks/failDef.hpp>
-#include <kvdb/ikvdbmanager.hpp>
-#include <kvdb/kvdbManager.hpp>
+#include <kvdb/mockKvdbHandler.hpp>
+#include <kvdb/mockKvdbManager.hpp>
+#include <mocks/fakeMetric.hpp>
 #include <opBuilderKVDB.hpp>
 #include <testsCommon.hpp>
-
-#include <mocks/fakeMetric.hpp>
 
 constexpr auto DB_NAME_1 = "TEST_DB";
 constexpr auto DB_DIR = "/tmp/kvdbTestSuitePath/";
@@ -30,7 +30,7 @@ class KVDBMatchHelper : public ::testing::TestWithParam<T>
 
 protected:
     std::shared_ptr<IMetricsManager> m_manager;
-    std::shared_ptr<kvdbManager::IKVDBManager> m_kvdbManager;
+    std::shared_ptr<kvdb::mocks::MockKVDBManager> m_kvdbManager;
     std::shared_ptr<defs::mocks::FailDef> m_failDef;
     builder::internals::HelperBuilder m_builder;
     std::string kvdbPath;
@@ -48,31 +48,14 @@ protected:
         }
 
         m_manager = std::make_shared<FakeMetricManager>();
-        kvdbManager::KVDBManagerOptions kvdbManagerOptions {kvdbPath, DB_NAME};
-        m_kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, m_manager);
-
-        m_kvdbManager->initialize();
-
-        auto err = m_kvdbManager->createDB(DB_NAME_1);
-        ASSERT_FALSE(err);
-        auto result = m_kvdbManager->getKVDBHandler(DB_NAME_1, "builder_test");
-        ASSERT_FALSE(std::holds_alternative<base::Error>(result));
+        m_kvdbManager = std::make_shared<kvdb::mocks::MockKVDBManager>();
+        m_failDef = std::make_shared<defs::mocks::FailDef>();
 
         m_builder = getOpBuilderKVDBMatch(m_kvdbManager, "builder_test");
-        m_failDef = std::make_shared<defs::mocks::FailDef>();
     }
 
     void TearDown() override
     {
-        try
-        {
-            m_kvdbManager->finalize();
-        }
-        catch (std::exception& e)
-        {
-            FAIL() << "Exception: " << e.what();
-        }
-
         if (std::filesystem::exists(kvdbPath))
         {
             std::filesystem::remove_all(kvdbPath);
@@ -93,15 +76,17 @@ TEST_P(MatchParams, builds)
     const std::string targetField = "/field";
     const std::string rawName = "kvdb_match";
 
-    auto [parameters, shouldPass] = GetParam();
+    auto [params, shouldPass] = GetParam();
 
     if (shouldPass)
     {
-        ASSERT_NO_THROW(m_builder(targetField, rawName, parameters, m_failDef));
+        auto kvdbHandler = std::make_shared<kvdb::mocks::MockKVDBHandler>();
+        EXPECT_CALL(*m_kvdbManager, getKVDBHandler(params[0], "builder_test")).WillOnce(testing::Return(kvdbHandler));
+        ASSERT_NO_THROW(m_builder(targetField, rawName, params, m_failDef));
     }
     else
     {
-        ASSERT_THROW(m_builder(targetField, rawName, parameters, m_failDef), std::runtime_error);
+        ASSERT_THROW(m_builder(targetField, rawName, params, m_failDef), std::runtime_error);
     }
 }
 
@@ -114,24 +99,35 @@ INSTANTIATE_TEST_SUITE_P(KVDBMatch,
                              MatchParamsT({DB_NAME_1, "test"}, false),
                              MatchParamsT({DB_NAME_1, "test", "test2"}, false),
                              MatchParamsT({DB_NAME_1, "test", "$test2"}, false),
+                             // bad params,
                              MatchParamsT({}, false)));
 
-using MatchKeyT = std::tuple<std::string, std::vector<std::string>, bool, std::string>;
-class MatchKey : public KVDBMatchHelper<MatchKeyT>
+using MatchBadParamsT = std::tuple<std::vector<std::string>>;
+class MatchBadParams : public KVDBMatchHelper<MatchBadParamsT>
 {
-protected:
-    void SetUp() override
-    {
-        KVDBMatchHelper<MatchKeyT>::SetUp();
+};
 
-        // Insert initial state to DB
-        auto handler = base::getResponse<std::shared_ptr<kvdbManager::IKVDBHandler>>(
-            m_kvdbManager->getKVDBHandler(DB_NAME_1, "test"));
+// Test of bad params
+TEST_P(MatchBadParams, builds)
+{
+    const std::string targetField = "/field";
+    const std::string rawName = "kvdb_match";
 
-        ASSERT_FALSE(handler->set("key1", "value"));
-        ASSERT_FALSE(handler->set("key_founded", "value"));
-        ASSERT_FALSE(handler->set("key2", "value"));
-    }
+    auto [params] = GetParam();
+
+    EXPECT_CALL(*m_kvdbManager, getKVDBHandler(params[0], "builder_test"))
+        .WillOnce(testing::Return(kvdb::mocks::kvdbGetKVDBHandlerError("")));
+    ASSERT_THROW(m_builder(targetField, rawName, params, m_failDef), std::runtime_error);
+}
+
+INSTANTIATE_TEST_SUITE_P(KVDBMatch,
+                         MatchBadParams,
+                         ::testing::Values(
+                             // bad params
+                             MatchBadParamsT({"unknow_database"})));
+
+class MatchKey : public KVDBMatchHelper<MatchParamsT>
+{
 };
 
 // Test of match function
@@ -139,23 +135,27 @@ TEST_P(MatchKey, matching)
 {
     const std::string targetField = "/field";
     const std::string rawName = "kvdb_match";
+    const std::string field = "key_founded";
 
-    auto [raw_event, parameters, shouldPass, expected] = GetParam();
-    auto event = std::make_shared<json::Json>(raw_event.c_str());
+    auto [params, shouldPass] = GetParam();
+    auto event = std::make_shared<json::Json>(R"({"field": "key_founded"})");
 
-    auto op = m_builder(targetField, rawName, parameters, m_failDef)->getPtr<base::Term<base::EngineOp>>()->getFn();
+    auto kvdbHandler = std::make_shared<kvdb::mocks::MockKVDBHandler>();
+    EXPECT_CALL(*m_kvdbManager, getKVDBHandler(params[0], "builder_test")).WillOnce(testing::Return(kvdbHandler));
+    auto op = m_builder(targetField, rawName, params, m_failDef)->getPtr<base::Term<base::EngineOp>>()->getFn();
 
     result::Result<Event> resultEvent;
-    ASSERT_NO_THROW(resultEvent = op(event));
 
     if (shouldPass)
     {
+        EXPECT_CALL(*kvdbHandler, contains(field)).WillOnce(testing::Return(kvdb::mocks::kvdbContainsOk()));
+        ASSERT_NO_THROW(resultEvent = op(event));
         ASSERT_TRUE(resultEvent.success());
-        auto value = resultEvent.payload()->getString("/field").value();
-        ASSERT_EQ(value, expected);
     }
     else
     {
+        EXPECT_CALL(*kvdbHandler, contains(field)).WillOnce(testing::Return(kvdb::mocks::kvdbContainsNOk()));
+        ASSERT_NO_THROW(resultEvent = op(event));
         ASSERT_TRUE(resultEvent.failure());
     }
 }
@@ -164,10 +164,6 @@ INSTANTIATE_TEST_SUITE_P(KVDBMatch,
                          MatchKey,
                          ::testing::Values(
                              // OK
-                             MatchKeyT(R"({"field": "key_founded"})", {DB_NAME_1}, true, "key_founded"),
+                             MatchParamsT({DB_NAME_1}, true),
                              // NOK
-                             MatchKeyT(R"({"field": "key_found"})", {DB_NAME_1}, false, ""),
-                             MatchKeyT(R"({"field": "key"})", {DB_NAME_1}, false, ""),
-                             MatchKeyT(R"({"field": "key_"})", {DB_NAME_1}, false, ""),
-                             MatchKeyT(R"({"field": "not_found"})", {DB_NAME_1}, false, ""),
-                             MatchKeyT(R"({"field": ""})", {DB_NAME_1}, false, "")));
+                             MatchParamsT({DB_NAME_1}, false)));
