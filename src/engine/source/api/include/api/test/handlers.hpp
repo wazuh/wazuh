@@ -6,14 +6,11 @@
 
 
 #include <api/api.hpp>
-#include <api/catalog/catalog.hpp>
 #include <api/test/sessionManager.hpp>
 #include <api/policy/ipolicy.hpp>
 
 namespace api::test::handlers
 {
-
-constexpr auto API_SESSIONS_TABLE_NAME = "internal/api_sessions/0";   ///< Name of the sessions table in the store
 
 constexpr auto DEFAULT_POLICY_FULL_NAME = "policy/wazuh/0";           ///< Default policy full name
 
@@ -44,7 +41,7 @@ struct Config
 {
     std::shared_ptr<api::sessionManager::SessionManager> sessionManager;
     std::shared_ptr<::router::Router> router;
-    std::shared_ptr<catalog::Catalog> catalog;
+    std::shared_ptr<builder::internals::Registry<builder::internals::Builder>> registry;
     std::shared_ptr<store::IStore> store;
     std::weak_ptr<policy::IPolicy> policyManager;
 };
@@ -61,7 +58,6 @@ struct Config
  */
 std::optional<base::Error>
 loadSessionsFromJson(const std::shared_ptr<api::sessionManager::SessionManager>& sessionManager,
-                     const std::shared_ptr<catalog::Catalog>& catalog,
                      const std::shared_ptr<::router::Router>& router,
                      const json::Json& jsonSessions);
 
@@ -103,33 +99,7 @@ saveSessionsToStore(const std::shared_ptr<api::sessionManager::SessionManager>& 
  */
 int32_t getMaximumAvailablePriority(const std::shared_ptr<::router::Router>& router);
 
-/**
- * @brief Add an asset to the catalog.
- *
- * @param catalog Catalog instance.
- * @param assetType Asset type string.
- * @param assetContent Asset content as a string.
- *
- * @todo Consider moving this method to the catalog scope.
- *
- * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
- */
-std::optional<base::Error> addAssetToCatalog(const std::shared_ptr<catalog::Catalog>& catalog,
-                                             const std::string& assetType,
-                                             const std::string& assetContent);
 
-/**
- * @brief Add the test's filter to the catalog.
- *
- * @param catalog Catalog instance.
- * @param sessionName Session name.
- * @param filterName Filter name.
- *
- * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
- */
-std::optional<base::Error> addTestFilterToCatalog(const std::shared_ptr<catalog::Catalog>& catalog,
-                                                  const std::string& sessionName,
-                                                  const std::string& filterName);
 
 /**
  * @brief Add the test's policy to the catalog.
@@ -155,16 +125,6 @@ std::optional<base::Error> addTestPolicy(const std::weak_ptr<policy::IPolicy>& p
 std::optional<base::Error> deleteRouteFromRouter(const std::shared_ptr<::router::Router>& router,
                                                  const std::string& routeName);
 
-/**
- * @brief Delete an asset from the catalog.
- *
- * @param catalog Catalog instance.
- * @param assetName Asset name.
- *
- * @return std::optional<base::Error> If an error occurs, returns the error. Otherwise, returns std::nullopt.
- */
-std::optional<base::Error> deleteAssetFromCatalog(const std::shared_ptr<catalog::Catalog>& catalog,
-                                                  const std::string& assetName);
 
 /**
  * @brief Delete a session and the resources created along with it.
@@ -178,7 +138,6 @@ std::optional<base::Error> deleteAssetFromCatalog(const std::shared_ptr<catalog:
  */
 std::optional<base::Error> deleteSession(const std::shared_ptr<api::sessionManager::SessionManager>& sessionManager,
                                          const std::shared_ptr<::router::Router>& router,
-                                         const std::shared_ptr<catalog::Catalog>& catalog,
                                          const std::weak_ptr<policy::IPolicy>& policy,
                                          const std::string& sessionName);
 
@@ -202,7 +161,6 @@ api::Handler sessionGet(const std::shared_ptr<api::sessionManager::SessionManage
  * @return api::Handler
  */
 api::Handler sessionPost(const std::shared_ptr<api::sessionManager::SessionManager>& sessionManager,
-                         const std::shared_ptr<catalog::Catalog>& catalog,
                          const std::shared_ptr<::router::Router>& router,
                          const std::shared_ptr<store::IStore>& store,
                          const std::weak_ptr<policy::IPolicy>& policy);
@@ -218,7 +176,6 @@ api::Handler sessionPost(const std::shared_ptr<api::sessionManager::SessionManag
  * @return api::Handler
  */
 api::Handler sessionsDelete(const std::shared_ptr<api::sessionManager::SessionManager>& sessionManager,
-                            const std::shared_ptr<catalog::Catalog>& catalog,
                             const std::shared_ptr<::router::Router>& router,
                             const std::shared_ptr<store::IStore>& store,
                             const std::weak_ptr<policy::IPolicy>& policy);

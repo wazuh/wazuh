@@ -39,6 +39,11 @@ public:
     {
     }
 
+    std::shared_ptr<internals::Registry<internals::Builder>> getRegistry() const
+    {
+        return m_registry;
+    }
+
     Policy buildPolicy(const base::Name& name) const
     {
         auto policyDoc = m_storeRead->readInternalDoc(name);

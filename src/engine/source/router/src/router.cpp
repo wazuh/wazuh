@@ -66,7 +66,7 @@ Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store:
                 throw std::runtime_error("Router: Cannot get routes table from store. Invalid table format");
             }
 
-            const auto err = addRoute(name.value(), priority.value(), filter.value(), target.value());
+            const auto err = addRoute(name.value(), priority.value(), std::make_pair(filter.value(), std::nullopt), target.value());
             if (err.has_value())
             {
                 LOG_WARNING("Router: Route '{}' could not be added to the router: {}.", name.value(), err.value().message);
@@ -83,7 +83,7 @@ Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store:
 
 std::optional<base::Error> Router::addRoute(const std::string& routeName,
                                             int priority,
-                                            const std::string& filterName,
+                                            const std::pair<std::string, std::optional<base::Expression>>& filter,
                                             const std::string& policyName)
 {
     // Validate route name
@@ -92,7 +92,7 @@ std::optional<base::Error> Router::addRoute(const std::string& routeName,
         return base::Error {"Route name cannot be empty"};
     }
     // Validate Filter name
-    if (filterName.empty())
+    if (filter.first.empty())
     {
         return base::Error {"Filter name cannot be empty"};
     }
@@ -108,8 +108,34 @@ std::optional<base::Error> Router::addRoute(const std::string& routeName,
         routeInstances.reserve(m_numThreads);
         for (std::size_t i = 0; i < m_numThreads; ++i)
         {
-            auto filter = m_builder->buildFilter(filterName);
-            routeInstances.emplace_back(Route {routeName, filter, policyName, priority});
+            if (!filter.second.has_value())
+            {
+                try
+                {
+                    auto asset = m_builder->buildFilter(filter.first);
+                    routeInstances.emplace_back(Route {routeName, filter.first, asset.getExpression(), policyName, priority});
+                }
+                catch(const std::exception& e)
+                {
+                    auto sessionsTable = m_store->readInternalDoc(API_SESSIONS_TABLE_NAME);
+                    auto sessionsJson = std::get<json::Json>(sessionsTable);
+                    if (sessionsJson.isArray())
+                    {
+                        auto arr = sessionsJson.getArray().value();
+                        for (size_t i = 0; i < arr.size(); i++)
+                        {
+                            auto id = arr[i].getInt("/id").value();
+                            auto filterName = arr[i].getString("/filtername").value();
+                            auto filter = createFilter(filterName, id);
+                            routeInstances.emplace_back(Route {routeName, filterName, std::get<builder::Asset>(filter).getExpression(), policyName, priority});
+                        }
+                    }
+                }
+            }
+            else
+            {
+                routeInstances.emplace_back(Route {routeName, filter.first, filter.second.value(), policyName, priority});
+            }
         }
 
         // Add the policy
@@ -140,7 +166,7 @@ std::optional<base::Error> Router::addRoute(const std::string& routeName,
                 m_policyManager->deletePolicy(policyName);
                 return err;
             }
-            m_namePriorityFilter.insert(std::make_pair(routeName, std::make_tuple(priority, filterName)));
+            m_namePriorityFilter.insert(std::make_pair(routeName, std::make_tuple(priority, filter.first)));
             m_priorityRoute.insert(std::make_pair(priority, std::move(routeInstances)));
         }
     }
@@ -280,13 +306,13 @@ std::optional<base::Error> Router::changeRoutePriority(const std::string& name, 
     return std::nullopt;
 }
 
-std::optional<base::Error> Router::enqueueEvent(base::Event&& event)
+std::optional<base::Error> Router::enqueueEvent(base::Event&& event, bool priority)
 {
     if (!m_isRunning.load() || !m_queue)
     {
         return base::Error {"The router queue is not initialized"};
     }
-    m_queue->push(std::move(event));
+    m_queue->push(std::move(event), priority);
     return std::nullopt;
 }
 

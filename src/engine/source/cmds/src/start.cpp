@@ -31,6 +31,7 @@
 #include <logpar/registerParsers.hpp>
 #include <metrics/metricsManager.hpp>
 #include <parseEvent.hpp> // Event
+#include <queue/concurrentQueue.hpp> // Queue
 #include <rbac/rbac.hpp>
 #include <router/router.hpp>
 #include <schemf/schema.hpp>
@@ -194,6 +195,7 @@ void runStart(ConfHandler confManager)
     std::shared_ptr<api::Api> api;
     std::shared_ptr<engineserver::EngineServer> server;
     std::shared_ptr<store::Store> store;
+    std::shared_ptr<builder::internals::Registry<builder::internals::Builder>> registry;
     std::shared_ptr<builder::Builder> builder;
     std::shared_ptr<api::catalog::Catalog> catalog;
     std::shared_ptr<router::Router> router;
@@ -287,7 +289,7 @@ void runStart(ConfHandler confManager)
 
         // Builder and registry
         {
-            auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
+            registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
             builder::internals::dependencies deps;
             deps.logparDebugLvl = 0;
             deps.logpar = logpar;
@@ -327,12 +329,12 @@ void runStart(ConfHandler confManager)
             // If the router table is empty or the force flag is passed, load from the command line
             if (router->getRouteTable().empty())
             {
-                router->addRoute(routeName, routePriority, routeFilter, routePolicy);
+                router->addRoute(routeName, routePriority, std::make_pair(routeFilter, std::nullopt), routePolicy);
             }
             else if (forceRouterArg)
             {
                 router->clear();
-                router->addRoute(routeName, routePriority, routeFilter, routePolicy);
+                router->addRoute(routeName, routePriority, std::make_pair(routeFilter, std::nullopt), routePolicy);
             }
         }
 
@@ -341,16 +343,16 @@ void runStart(ConfHandler confManager)
             sessionManager = std::make_shared<api::sessionManager::SessionManager>();
 
             // Try to load the sessions from the store
-            const auto strJsonSessions = store->readInternalDoc(api::test::handlers::API_SESSIONS_TABLE_NAME);
+            const auto strJsonSessions = store->readInternalDoc(router::API_SESSIONS_TABLE_NAME);
             if (std::holds_alternative<base::Error>(strJsonSessions))
             {
                 LOG_WARNING("Could not retreive configuration file [{}] needed by the 'Test' module: {}",
-                            api::test::handlers::API_SESSIONS_TABLE_NAME,
+                            router::API_SESSIONS_TABLE_NAME,
                             std::get<base::Error>(strJsonSessions).message);
 
                 // Create the sessions table
                 const auto storeSetSessionsTable =
-                    store->createInternalDoc(api::test::handlers::API_SESSIONS_TABLE_NAME, json::Json("[]"));
+                    store->createInternalDoc(router::API_SESSIONS_TABLE_NAME, json::Json("[]"));
                 if (storeSetSessionsTable.has_value())
                 {
                     LOG_ERROR("API sessions table could not be created: {}", storeSetSessionsTable.value().message);
@@ -361,7 +363,7 @@ void runStart(ConfHandler confManager)
             else
             {
                 const auto loadError = api::test::handlers::loadSessionsFromJson(
-                    sessionManager, catalog, router, std::get<json::Json>(strJsonSessions));
+                    sessionManager, router, std::get<json::Json>(strJsonSessions));
                 if (loadError.has_value())
                 {
                     LOG_ERROR("API sessions loading could not be completed: {}", loadError.value().message);
@@ -407,7 +409,7 @@ void runStart(ConfHandler confManager)
 
             // Test
             {
-                api::test::handlers::Config testConfig {sessionManager, router, catalog, store, policyManager};
+                api::test::handlers::Config testConfig {sessionManager, router, registry, store, policyManager};
                 api::test::handlers::registerHandlers(testConfig, api);
                 LOG_DEBUG("Test API registered.");
             }
