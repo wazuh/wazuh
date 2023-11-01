@@ -39,56 +39,34 @@ tags:
     - enrollment
     - authd
 '''
-import os
+import re
 import pytest
-from wazuh_testing.tools import LOG_FILE_PATH
-from wazuh_testing.tools.configuration import load_wazuh_configurations
-from wazuh_testing.tools.file import read_yaml, truncate_file
-from wazuh_testing.authd import DAEMON_NAME, validate_authd_logs
-from wazuh_testing.tools.services import control_service
+from pathlib import Path
 
+from wazuh_testing.utils.file import truncate_file
+from wazuh_testing.utils.services import control_service
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.utils.configuration import load_configuration_template, get_test_cases_data
+from wazuh_testing.constants.daemons import AUTHD_DAEMON
+from wazuh_testing.tools.monitors.file_monitor import FileMonitor
+from wazuh_testing.utils import callbacks
+from wazuh_testing.modules.authd import PREFIX
 
-# Data paths
-data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-configurations_path = os.path.join(data_path, 'template_configuration.yaml')
-tests_path = os.path.join(data_path, 'test_cases', 'invalid_config')
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
+
 
 # Configurations
-configurations = load_wazuh_configurations(configurations_path, __name__)
+test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'config_authd_force_options.yaml')
+test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_authd_force_options_invalid_config.yaml')
+test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
+test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
+
 local_internal_options = {'authd.debug': '2'}
 
 # Tests
-tests = []
-test_case_ids = []
-for file in os.listdir(tests_path):
-    group_name = file.split('.')[0]
-    file_tests = read_yaml(os.path.join(tests_path, file))
-    tests = tests + file_tests
-    test_case_ids = test_case_ids + [f"{group_name} {test_case['name']}" for test_case in file_tests]
-
-
-# Fixtures
-
-@pytest.fixture(scope='module')
-def get_configuration(request):
-    """
-    Get configurations from the module
-    """
-    return request.param
-
-
-@pytest.fixture(scope='function', params=tests, ids=test_case_ids)
-def get_current_test_case(request):
-    """
-    Get current test case from the module
-    """
-    return request.param
-
-
-# Tests
-
-def test_authd_force_options_invalid_config(get_current_test_case, configure_local_internal_options_module,
-                                            override_authd_force_conf, file_monitoring, tear_down):
+@pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
+def test_authd_force_options_invalid_config(test_configuration, test_metadata, set_wazuh_configuration,
+                                            configure_local_internal_options, tear_down):
     '''
     description:
         Checks that every input with a wrong configuration option value
@@ -128,11 +106,17 @@ def test_authd_force_options_invalid_config(get_current_test_case, configure_loc
         - Invalid configuration values error.
     '''
 
-    truncate_file(LOG_FILE_PATH)
+    truncate_file(WAZUH_LOG_PATH)
     try:
-        control_service('restart', daemon=DAEMON_NAME)
+        control_service('restart', daemon=AUTHD_DAEMON)
     except Exception:
         pass
     else:
         raise Exception('Authd started when it was expected to fail')
-    validate_authd_logs(get_current_test_case.get('log', []))
+
+
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    log = re.escape(test_metadata['log'])
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(fr'{PREFIX}{log}'), timeout=10)
+    print(wazuh_log_monitor.callback_result)
+    assert wazuh_log_monitor.callback_result, f'Error event not detected'

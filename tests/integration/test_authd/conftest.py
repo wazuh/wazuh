@@ -138,23 +138,6 @@ def format_configuration(get_current_test_case, request):
     return test_config
 
 
-@pytest.fixture(scope='function')
-def override_authd_force_conf(format_configuration):
-    """
-    Re-writes Wazuh configuration file with new configurations from the test case.
-    """
-    # Save current configuration
-    backup_config = get_wazuh_conf()
-
-    # Set new configuration
-    write_wazuh_conf(format_configuration)
-
-    yield
-
-    # Restore previous configuration
-    write_wazuh_conf(backup_config)
-
-
 @pytest.fixture(scope='module')
 def restart_api_module():
     # Stop Wazuh and Wazuh API
