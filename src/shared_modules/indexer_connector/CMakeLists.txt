@@ -4,6 +4,9 @@ project(indexer_connector)
 
 enable_testing()
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 add_definitions(-DPROMISE_TYPE=PromiseType::NORMAL)
 
 if (NOT SRC_FOLDER)
