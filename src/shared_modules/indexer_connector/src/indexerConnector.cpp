@@ -59,11 +59,13 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const std::stri
             [&](const std::string& response) {},
             [&](const std::string& error, const long statusCode)
             { throw std::runtime_error("Status:" + std::to_string(statusCode) + " - Error: " + error); },
+            "",
+            DEFAULT_HEADERS,
             secureCommunication);
     }
 
     QUEUE_MAP[this] = std::make_unique<ThreadDispatchQueue>(
-        [selector, indexName](std::queue<std::string>& dataQueue)
+        [selector, indexName, secureCommunication](std::queue<std::string>& dataQueue)
         {
             try
             {
@@ -98,6 +100,8 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const std::stri
                     [&](const std::string& response) {},
                     [&](const std::string& error, const long statusCode)
                     { std::cout << "Status:" << statusCode << " - Error: " << error << std::endl; },
+                    "",
+                    DEFAULT_HEADERS,
                     secureCommunication);
             }
             catch (const std::exception& e)
