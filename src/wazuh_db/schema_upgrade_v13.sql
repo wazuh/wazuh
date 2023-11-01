@@ -13,7 +13,7 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS _sys_programs (
     scan_id INTEGER,
     scan_time TEXT,
-    format TEXT NOT NULL CHECK (format IN ('pacman', 'deb', 'rpm', 'win', 'pkg', 'apk', 'snap')),
+    format TEXT NOT NULL CHECK (format IN ('pacman', 'deb', 'rpm', 'win', 'pkg', 'apk', 'snap', 'macports', 'pypi', 'npm')),
     name TEXT,
     priority TEXT,
     section TEXT,
