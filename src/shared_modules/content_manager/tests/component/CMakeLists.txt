@@ -19,6 +19,7 @@ target_link_libraries(${PROJECT_NAME}
     urlrequest
     router
     rocksdb
+    pthread
 )
 
 target_link_libraries(${PROJECT_NAME} content_manager)
