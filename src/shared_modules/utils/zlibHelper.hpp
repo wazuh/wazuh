@@ -14,6 +14,7 @@
 
 #include "customDeleter.hpp"
 #include "minizip/unzip.h"
+#include "stringHelper.h"
 #include <filesystem>
 #include <fstream>
 #include <memory>
@@ -139,37 +140,46 @@ namespace Utils
                     throw std::runtime_error {"Unable to open current file: " + std::string(filename)};
                 }
 
-                // Create outputfile.
                 const auto outputFilepath {outputDir / std::string(filename)};
-                std::ofstream outFile {outputFilepath, std::ios::binary};
-                if (!outFile.good())
+                const auto isDir {Utils::endsWith(outputFilepath.string(), "/")};
+                if (isDir)
                 {
-                    throw std::runtime_error {"Unable to create destination file: " + outputFilepath.string()};
+                    // Create output directory.
+                    std::filesystem::create_directory(outputFilepath);
                 }
-
-                // Read current file content.
-                unsigned long bytesRead, totalBytesRead {0};
-                do
+                else
                 {
-                    // Read compressed data by BUFFER_SIZE chunks.
-                    constexpr auto BUFFER_SIZE {(100) << 20}; // 100 MB.
-                    std::vector<char> buffer(BUFFER_SIZE);
-                    bytesRead = unzReadCurrentFile(unzFile, buffer.data(), buffer.size());
-                    totalBytesRead += bytesRead;
+                    // Create outputfile.
+                    std::ofstream outFile {outputFilepath, std::ios::binary};
+                    if (!outFile.good())
+                    {
+                        throw std::runtime_error {"Unable to create destination file: " + outputFilepath.string()};
+                    }
 
-                    // Store current chunk into output file.
-                    outFile.write(buffer.data(), buffer.size());
-                } while (bytesRead > 0);
+                    // Read current file content.
+                    unsigned long bytesRead, totalBytesRead {0};
+                    do
+                    {
+                        // Read compressed data by BUFFER_SIZE chunks.
+                        constexpr auto BUFFER_SIZE {(100) << 20}; // 100 MB.
+                        std::vector<char> buffer(BUFFER_SIZE);
+                        bytesRead = unzReadCurrentFile(unzFile, buffer.data(), buffer.size());
+                        totalBytesRead += bytesRead;
 
-                // Close output file.
-                outFile.close();
+                        // Store current chunk into output file.
+                        outFile.write(buffer.data(), bytesRead);
+                    } while (bytesRead > 0);
 
-                // Check total amount of bytes read.
-                if (totalBytesRead != fileInfo.uncompressed_size)
-                {
-                    unzCloseCurrentFile(unzFile);
-                    unzClose(unzFile);
-                    throw std::runtime_error {"Unable to read content of current file: " + std::string(filename)};
+                    // Close output file.
+                    outFile.close();
+
+                    // Check total amount of bytes read.
+                    if (totalBytesRead != fileInfo.uncompressed_size)
+                    {
+                        unzCloseCurrentFile(unzFile);
+                        unzClose(unzFile);
+                        throw std::runtime_error {"Unable to read content of current file: " + std::string(filename)};
+                    }
                 }
 
                 // Close current file.
@@ -178,8 +188,11 @@ namespace Utils
                     throw std::runtime_error {"Unable to close current file: " + std::string(filename)};
                 }
 
-                // Push filename into the output vector.
-                decompressedFiles.push_back(outputFilepath.string());
+                if (!isDir)
+                {
+                    // Push filename into the output vector.
+                    decompressedFiles.push_back(outputFilepath.string());
+                }
 
                 // Go to next file within the .zip file.
                 if (currentFileIndex + 1 < globalInfo.number_entry)

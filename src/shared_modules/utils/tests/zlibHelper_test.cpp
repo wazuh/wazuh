@@ -14,6 +14,7 @@
 #include "stringHelper.h"
 #include "zlibHelper.hpp"
 #include "gtest/gtest.h"
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <map>
@@ -33,14 +34,40 @@ const auto ZIP_FILE {INPUT_FILES_DIR / "sample.zip"};
 const auto JSON_FILE {OUTPUT_DIR / "sample.json"};
 const auto SHA1_EXPECTED {"98bf22d47ff4a9279ab98a2b224d9333f4272618"};
 
-// ZIP file contaning the XML_DECOMPRESSED files.
-const auto ZIP_FILE_MULTIPLE {INPUT_FILES_DIR / "multiple_files.zip"};
+// ZIP file contaning the following files:
+// file_a.xml
+// file_b.xml
+// file_c.xml
+const auto ZIP_MULTIPLE_FILES {INPUT_FILES_DIR / "multiple_files.zip"};
+
+// ZIP file contaning the following files:
+// xml_files
+// ├── file_a.xml
+// ├── file_b.xml
+// └── file_c.xml
+const auto ZIP_FOLDER {INPUT_FILES_DIR / "xml_files.zip"};
+
+// ZIP file contaning the following files:
+// root_folder
+// ├── sample.json
+// └── xml_files
+//     ├── file_a.xml
+//     ├── file_b.xml
+//     └── file_c.xml
+const auto ZIP_NESTED_FOLDER {INPUT_FILES_DIR / "nested.zip"};
 
 // XML files with their respective SHA1 hashes.
 const std::map<std::filesystem::path, std::string> XML_DECOMPRESSED {
-    {OUTPUT_DIR / "file_a.xml", "96e78ae9399e8a96dfab08b9afaa0ffba6952f52"},
-    {OUTPUT_DIR / "file_b.xml", "2d3db885dbb2851fe2f7ff268b79779e938a0180"},
-    {OUTPUT_DIR / "file_c.xml", "7c27115c9f9bf0249b4d69bf01b631ef494c23d3"}};
+    {"file_a.xml", "96e78ae9399e8a96dfab08b9afaa0ffba6952f52"},
+    {"file_b.xml", "2d3db885dbb2851fe2f7ff268b79779e938a0180"},
+    {"file_c.xml", "7c27115c9f9bf0249b4d69bf01b631ef494c23d3"}};
+
+// Folder names used for tests.
+const auto XML_FOLDER {"xml_files"};
+const auto ROOT_FOLDER {"root_folder"};
+
+// TXT filename used for tests.
+const auto TXT_FILE {"supermarket_list.txt"};
 
 std::string ZlibHelperTest::getFileHash(const std::filesystem::path& filepath) const
 {
@@ -137,16 +164,16 @@ TEST_F(ZlibHelperTest, ZipDecompressMultipleFiles)
     std::vector<std::string> expectedDecompressedFiles;
     for (const auto& entry : XML_DECOMPRESSED)
     {
-        expectedDecompressedFiles.push_back(entry.first.string());
+        expectedDecompressedFiles.push_back(OUTPUT_DIR / entry.first.string());
     }
 
     // Decompress and compare output files.
-    ASSERT_EQ(expectedDecompressedFiles, Utils::ZlibHelper::zipDecompress(ZIP_FILE_MULTIPLE, OUTPUT_DIR));
+    ASSERT_EQ(expectedDecompressedFiles, Utils::ZlibHelper::zipDecompress(ZIP_MULTIPLE_FILES, OUTPUT_DIR));
 
     // Check the expected hashes.
     for (const auto& filepath : expectedDecompressedFiles)
     {
-        EXPECT_EQ(XML_DECOMPRESSED.at(filepath), getFileHash(filepath));
+        EXPECT_EQ(XML_DECOMPRESSED.at(std::filesystem::path(filepath).filename()), getFileHash(filepath));
     }
 }
 
@@ -157,4 +184,55 @@ TEST_F(ZlibHelperTest, ZipDecompressMultipleFiles)
 TEST_F(ZlibHelperTest, ZipDecompressNotCompressedFile)
 {
     EXPECT_THROW(Utils::ZlibHelper::zipDecompress(RAW_FILE, OUTPUT_DIR), std::runtime_error);
+}
+
+/**
+ * @brief Tests the correct ZIP decompression of a compressed folder.
+ *
+ */
+TEST_F(ZlibHelperTest, ZipDecompressFolder)
+{
+    // Set expected output files.
+    std::vector<std::string> expectedDecompressedFiles;
+    for (const auto& entry : XML_DECOMPRESSED)
+    {
+        expectedDecompressedFiles.push_back(OUTPUT_DIR / XML_FOLDER / entry.first.string());
+    }
+
+    // Decompress.
+    std::vector<std::string> decompressedFiles;
+    ASSERT_NO_THROW({ decompressedFiles = Utils::ZlibHelper::zipDecompress(ZIP_FOLDER, OUTPUT_DIR); });
+
+    // Sort decompressed files to properly compare them.
+    std::sort(decompressedFiles.begin(), decompressedFiles.end());
+    EXPECT_EQ(expectedDecompressedFiles, decompressedFiles);
+
+    // Check the expected hashes.
+    for (const auto& filepath : expectedDecompressedFiles)
+    {
+        EXPECT_EQ(XML_DECOMPRESSED.at(std::filesystem::path(filepath).filename()), getFileHash(filepath));
+    }
+}
+
+/**
+ * @brief Tests the correct ZIP decompression of a nested compressed folder.
+ *
+ */
+TEST_F(ZlibHelperTest, ZipDecompressNestedFolder)
+{
+    // Set expected output files.
+    std::vector<std::string> expectedDecompressedFiles;
+    expectedDecompressedFiles.push_back(OUTPUT_DIR / ROOT_FOLDER / TXT_FILE);
+    for (const auto& entry : XML_DECOMPRESSED)
+    {
+        expectedDecompressedFiles.push_back(OUTPUT_DIR / ROOT_FOLDER / XML_FOLDER / entry.first.string());
+    }
+
+    // Decompress.
+    std::vector<std::string> decompressedFiles;
+    ASSERT_NO_THROW({ decompressedFiles = Utils::ZlibHelper::zipDecompress(ZIP_NESTED_FOLDER, OUTPUT_DIR); });
+
+    // Sort decompressed files to properly compare them.
+    std::sort(decompressedFiles.begin(), decompressedFiles.end());
+    EXPECT_EQ(expectedDecompressedFiles, decompressedFiles);
 }
