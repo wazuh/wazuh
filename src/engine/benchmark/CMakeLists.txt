@@ -34,3 +34,4 @@ add_subdirectory(logicExpression)
 add_subdirectory(base)
 # add_subdirectory(helperFunctions) TODO Implment after refactoring
 add_subdirectory(json)
+add_subdirectory(queue)
