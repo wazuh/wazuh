@@ -48,12 +48,15 @@ tags:
 '''
 import os
 
+from pathlib import Path
+
 import pytest
-from wazuh_testing.cluster import FERNET_KEY, CLUSTER_DATA_HEADER_SIZE, cluster_msg_build
-from wazuh_testing.tools import WAZUH_PATH, CLUSTER_LOGS_PATH
-from wazuh_testing.tools.configuration import load_wazuh_configurations
-from wazuh_testing.tools.monitoring import ManInTheMiddle
-from wazuh_testing.tools.file import read_yaml
+from wazuh_testing.modules.authd.utils import CLUSTER_DATA_HEADER_SIZE, cluster_msg_build
+from wazuh_testing.constants.paths.sockets import MODULESD_C_INTERNAL_SOCKET_PATH, MODULESD_KREQUEST_SOCKET_PATH
+from wazuh_testing.tools import mitm
+from wazuh_testing.utils.configuration import load_configuration_template, get_test_cases_data
+
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 # Marks
 
@@ -62,7 +65,7 @@ pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
 # Configurations
 
-class WorkerMID(ManInTheMiddle):
+class WorkerMID(mitm.ManInTheMiddle):
 
     def __init__(self, address, family='AF_UNIX', connection_protocol='TCP', func: callable = None):
         self.cluster_input = None
@@ -92,46 +95,27 @@ class WorkerMID(ManInTheMiddle):
         self.event.clear()
 
 
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-message_tests = read_yaml(os.path.join(test_data_path, 'key_request_worker_messages.yaml'))
-configurations_path = os.path.join(test_data_path, 'wazuh_authd_configuration.yaml')
-params = [{'FERNET_KEY': FERNET_KEY}]
-metadata = [{'fernet_key': FERNET_KEY}]
-configurations = load_wazuh_configurations(configurations_path, __name__, params=params, metadata=metadata)
+# Configurations
+test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'config_authd_key_request_worker.yaml')
+test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_authd_key_request_worker.yaml')
+test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
+test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
+
 script_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'files')
 script_filename = 'fetch_keys.py'
 
 # Variables
-log_monitor_paths = [CLUSTER_LOGS_PATH]
-cluster_socket_path = os.path.join(os.path.join(WAZUH_PATH, 'queue', 'cluster', 'c-internal.sock'))
-kreq_sock_path = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'krequest')
-receiver_sockets_params = [(kreq_sock_path, 'AF_UNIX', 'UDP')]
-test_case_ids = [f"{test_case['name'].lower().replace(' ', '-')}" for test_case in message_tests]
-
-mitm_master = WorkerMID(address=cluster_socket_path, family='AF_UNIX', connection_protocol='TCP')
-
+receiver_sockets_params = [(MODULESD_KREQUEST_SOCKET_PATH, 'AF_UNIX', 'UDP')]
+mitm_master = WorkerMID(address=MODULESD_C_INTERNAL_SOCKET_PATH, family='AF_UNIX', connection_protocol='TCP')
 monitored_sockets_params = [('wazuh-clusterd', mitm_master, True), ('wazuh-authd', None, True)]
-receiver_sockets, monitored_sockets, log_monitors = None, None, None  # Set in the fixtures
-
-
-# Fixtures
-
-
-@pytest.fixture(scope='module', params=configurations, ids=['Worker'])
-def get_configuration(request):
-    """Get configurations from the module"""
-    yield request.param
-
-
-@pytest.fixture(scope='function', params=message_tests, ids=test_case_ids)
-def get_current_test_case(request):
-    """Get current test case from the module"""
-    return request.param
+receiver_sockets, monitored_sockets = None, None
 
 
 # Tests
-def test_authd_key_request_worker(configure_environment, configure_sockets_environment, copy_tmp_script,
-                                  connect_to_sockets_module, get_current_test_case):
+@pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
+def test_authd_key_request_worker(test_configuration, test_metadata, set_wazuh_configuration,
+                                  configure_sockets_environment, copy_tmp_script,
+                                  connect_to_sockets_module):
     '''
     description:
         Checks that every message from the worker is correctly formatted for master,
@@ -174,15 +158,14 @@ def test_authd_key_request_worker(configure_environment, configure_sockets_envir
     key_request_sock = receiver_sockets[0]
     clusterd_queue = monitored_sockets[0]
 
-    for stage in get_current_test_case['test_case']:
-        # Push expected info to mitm queue
-        mitm_master.set_cluster_messages(stage['cluster_input'], stage['cluster_output'])
-        mitm_master.restart()
-        message = stage['request_input']
-        key_request_sock.send(message, size=False)
-        # callback lambda function takes out tcp header and decodes binary to string
-        results = clusterd_queue.get_results(callback=(lambda y: [x[CLUSTER_DATA_HEADER_SIZE:].decode() for x in y]),
-                                             timeout=1, accum_results=1)
-        # Assert monitored sockets
-        assert results[0] == stage['cluster_input'], 'Expected clusterd input message does not match'
-        assert results[1] == stage['cluster_output'], 'Expected clusterd output message does not match'
+    # Push expected info to mitm queue
+    mitm_master.set_cluster_messages(test_metadata['cluster_input'], test_metadata['cluster_output'])
+    mitm_master.restart()
+    message = test_metadata['request_input']
+    key_request_sock.send(message, size=False)
+    # callback lambda function takes out tcp header and decodes binary to string
+    results = clusterd_queue.get_results(callback=(lambda y: [x[CLUSTER_DATA_HEADER_SIZE:].decode() for x in y]),
+                                            timeout=1, accum_results=1)
+    # Assert monitored sockets
+    assert results[0] == test_metadata['cluster_input'], 'Expected clusterd input message does not match'
+    assert results[1] == test_metadata['cluster_output'], 'Expected clusterd output message does not match'
