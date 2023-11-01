@@ -61,15 +61,6 @@ protected:
 
     void TearDown() override
     {
-        try
-        {
-            m_kvdbManager->finalize();
-        }
-        catch (const std::exception& e)
-        {
-            FAIL() << "Exception: " << e.what();
-        }
-
         if (std::filesystem::exists(kvdbPath))
         {
             std::filesystem::remove_all(kvdbPath);
@@ -134,7 +125,7 @@ TEST_P(DeleteKey, deleting)
     result::Result<Event> resultEvent;
 
     auto kvdbHandler = std::make_shared<kvdb::mocks::MockKVDBHandler>();
-    EXPECT_CALL(*kvdbHandler, get(params[1])).WillRepeatedly(testing::Return(rawEvent));
+    EXPECT_CALL(*kvdbHandler, remove(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
     if (shouldPass)
     {

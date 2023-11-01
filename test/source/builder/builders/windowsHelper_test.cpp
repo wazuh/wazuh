@@ -5,16 +5,14 @@
 #include <gtest/gtest.h>
 
 #include <baseTypes.hpp>
-#include <json/json.hpp>
-#include <logging/logging.hpp>
-
 #include <defs/mocks/failDef.hpp>
-#include <schemf/mockSchema.hpp>
-
-#include <kvdb/kvdbManager.hpp>
-#include <windowsHelper.hpp>
-
+#include <json/json.hpp>
+#include <kvdb/mockKvdbHandler.hpp>
+#include <kvdb/mockKvdbManager.hpp>
+#include <logging/logging.hpp>
 #include <metrics/metricsManager.hpp>
+#include <schemf/mockSchema.hpp>
+#include <windowsHelper.hpp>
 
 using namespace metricsManager;
 
@@ -23,18 +21,7 @@ namespace
 using namespace base;
 using namespace builder::internals::builders;
 
-constexpr auto DB_DIR = "/tmp/kvdbTestSuitePath/";
-constexpr auto DB_NAME = "kvdb";
 constexpr auto DB_NAME_1 = "test_db";
-
-std::filesystem::path uniquePath()
-{
-    auto pid = getpid();
-    auto tid = std::this_thread::get_id();
-    std::stringstream ss;
-    ss << pid << "_" << tid; // Unique path per thread and process
-    return std::filesystem::path("/tmp") / (ss.str() + "_kvdbTestSuitePath/");
-}
 
 template<typename T>
 class WindowsHelper : public ::testing::TestWithParam<T>
@@ -42,53 +29,26 @@ class WindowsHelper : public ::testing::TestWithParam<T>
 
 protected:
     std::shared_ptr<IMetricsManager> m_manager;
-    std::shared_ptr<kvdbManager::KVDBManager> m_kvdbManager;
+    std::shared_ptr<kvdb::mocks::MockKVDBManager> m_kvdbManager;
     std::shared_ptr<schemf::mocks::MockSchema> m_schema;
     std::shared_ptr<defs::mocks::FailDef> m_failDef;
-    std::string kvdbPath;
     builder::internals::HelperBuilder m_builder;
 
     void SetUp() override
     {
         logging::testInit();
 
-        // cleaning directory in order to start without garbage.
-        kvdbPath = uniquePath().string();
-        if (std::filesystem::exists(kvdbPath))
-        {
-            std::filesystem::remove_all(kvdbPath);
-        }
         m_manager = std::make_shared<MetricsManager>();
-
-        kvdbManager::KVDBManagerOptions kvdbManagerOptions {kvdbPath, DB_NAME};
-        m_kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, m_manager);
-        m_kvdbManager->initialize();
-        ASSERT_FALSE(m_kvdbManager->createDB(DB_NAME_1));
-
+        m_kvdbManager = std::make_shared<kvdb::mocks::MockKVDBManager>();
         m_schema = std::make_shared<schemf::mocks::MockSchema>();
         EXPECT_CALL(*m_schema, hasField(testing::_)).WillRepeatedly(testing::Return(false));
 
         m_failDef = std::make_shared<defs::mocks::FailDef>();
 
-        m_builder = getWindowsSidListDescHelperBuilder(m_kvdbManager, "test_scope", m_schema);
+        m_builder = getWindowsSidListDescHelperBuilder(m_kvdbManager, "builder_test", m_schema);
     }
 
-    void TearDown() override
-    {
-        try
-        {
-            m_kvdbManager->finalize();
-        }
-        catch (const std::exception& e)
-        {
-            FAIL() << "Exception: " << e.what();
-        }
-
-        if (std::filesystem::exists(kvdbPath))
-        {
-            std::filesystem::remove_all(kvdbPath);
-        }
-    }
+    void TearDown() override {}
 };
 } // namespace
 
@@ -140,30 +100,17 @@ TEST_P(WindowsBuildMaps, builds)
     const std::string srcFild = "$sidList";
 
     auto [initialState, shouldPass] = GetParam();
-
-    // Insert initial state to DB
-    auto dbHandler = base::getResponse<std::shared_ptr<kvdbManager::IKVDBHandler>>(
-        m_kvdbManager->getKVDBHandler(DB_NAME_1, "test_scope"));
-
-    {
-        auto listOpt = initialState.getObject();
-        if (listOpt)
-        {
-            auto list = listOpt.value();
-            for (const auto& [key, value] : list)
-            {
-                auto res = dbHandler->set(key, value);
-                ASSERT_FALSE(isError(res));
-            }
-        }
-    }
-
+    auto kvdbHandler = std::make_shared<kvdb::mocks::MockKVDBHandler>();
+    EXPECT_CALL(*m_kvdbManager, getKVDBHandler(DB_NAME_1, "builder_test")).WillOnce(testing::Return(kvdbHandler));
+    
     if (shouldPass)
     {
+        EXPECT_CALL(*kvdbHandler, get(srcFild)).WillOnce(testing::Return(kvdb::mocks::kvdbGetOk()));
         ASSERT_NO_THROW(m_builder(dstFild, "name", {DB_NAME_1, srcFild}, m_failDef));
     }
     else
     {
+        EXPECT_CALL(*kvdbHandler, get(srcFild)).WillOnce(testing::Return(kvdb::mocks::kvdbGetError("")));
         ASSERT_THROW(m_builder(dstFild, "name", {DB_NAME_1, srcFild}, m_failDef), std::runtime_error);
     }
 }
@@ -215,26 +162,6 @@ INSTANTIATE_TEST_SUITE_P(
 using WindowsBuildParamsT = std::tuple<std::vector<std::string>, bool>;
 class WindowsBuildParams : public WindowsHelper<WindowsBuildParamsT>
 {
-
-protected:
-    void SetUp() override
-    {
-        WindowsHelper<WindowsBuildParamsT>::SetUp(); // Call parent setup
-
-        // Insert initial state to DB
-        auto dbHandler = base::getResponse<std::shared_ptr<kvdbManager::IKVDBHandler>>(
-            m_kvdbManager->getKVDBHandler(DB_NAME_1, "test_scope"));
-
-        auto validDBstate = json::Json(MakeInitialState().setASD(VALID_ASD).setDSS(VALID_DSS));
-        auto dumpOpt = validDBstate.getObject();
-        ASSERT_TRUE(dumpOpt.has_value()) << "Error parsing the initial state from DB: Expected object";
-
-        for (auto [key, value] : dumpOpt.value())
-        {
-            auto res = dbHandler->set(key, value);
-            ASSERT_FALSE(isError(res));
-        }
-    }
 };
 
 TEST_P(WindowsBuildParams, build)
@@ -246,6 +173,9 @@ TEST_P(WindowsBuildParams, build)
 
     if (shouldPass)
     {
+        auto kvdbHandler = std::make_shared<kvdb::mocks::MockKVDBHandler>();
+        EXPECT_CALL(*m_kvdbManager, getKVDBHandler(params[0], "builder_test")).WillOnce(testing::Return(kvdbHandler));
+        EXPECT_CALL(*kvdbHandler, get(params[1])).WillOnce(testing::Return(kvdb::mocks::kvdbGetOk()));
         ASSERT_NO_THROW(m_builder(dstFieldPath, "name", params, m_failDef));
     }
     else
@@ -275,26 +205,6 @@ INSTANTIATE_TEST_SUITE_P(WindowsSidDesc,
 using WindowsSidDescExecT = std::tuple<std::string, std::vector<std::string>>;
 class WindowsSidDescExec : public WindowsHelper<WindowsSidDescExecT>
 {
-
-protected:
-    void SetUp() override
-    {
-        WindowsHelper<WindowsSidDescExecT>::SetUp(); // Call parent setup
-
-        // Insert initial state to DB
-        auto dbHandler = base::getResponse<std::shared_ptr<kvdbManager::IKVDBHandler>>(
-            m_kvdbManager->getKVDBHandler(DB_NAME_1, "test_scope"));
-
-        auto validDBstate = json::Json(MakeInitialState().setASD(VALID_ASD).setDSS(VALID_DSS));
-        auto dumpOpt = validDBstate.getObject();
-        ASSERT_TRUE(dumpOpt.has_value()) << "Error parsing the initial state from DB: Expected object";
-
-        for (auto [key, value] : dumpOpt.value())
-        {
-            auto res = dbHandler->set(key, value);
-            ASSERT_FALSE(isError(res));
-        }
-    }
 };
 
 TEST_P(WindowsSidDescExec, exec)
@@ -314,6 +224,9 @@ TEST_P(WindowsSidDescExec, exec)
     const std::string srcListRef = "$winList";
     const bool shouldPass = !expectedArray.empty();
 
+    auto kvdbHandler = std::make_shared<kvdb::mocks::MockKVDBHandler>();
+    EXPECT_CALL(*m_kvdbManager, getKVDBHandler(DB_NAME_1, "builder_test")).WillOnce(testing::Return(kvdbHandler));
+    EXPECT_CALL(*kvdbHandler, get(srcListRef)).WillOnce(testing::Return(kvdb::mocks::kvdbGetOk()));
     auto op = m_builder(dstFieldPath, "name", {DB_NAME_1, srcListRef}, m_failDef)
                   ->getPtr<base::Term<base::EngineOp>>()
                   ->getFn();
@@ -322,7 +235,7 @@ TEST_P(WindowsSidDescExec, exec)
     auto event = std::make_shared<json::Json>(R"({})");
     if (!listStrValue.empty())
     {
-        event->set(srcListPath, json::Json{listStrValue.c_str()});
+        event->set(srcListPath, json::Json {listStrValue.c_str()});
     }
 
     result::Result<Event> res;
@@ -358,7 +271,8 @@ INSTANTIATE_TEST_SUITE_P(
         // https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/understand-security-identifiers#sids-added-by-windows-server-2012-and-later-versions
         WindowsSidDescExecT(R"( "%{S-1-5-21-1004336348-1177238915-682003330-512}" )", {"Domain Admins"}),
         // Match 5-11-21 and end with numbers (not valid)
-        WindowsSidDescExecT(R"( "%{S-1-5-21-1004336348-1177238915-682003330-4000}" )", {"S-1-5-21-1004336348-1177238915-682003330-4000"}),
+        WindowsSidDescExecT(R"( "%{S-1-5-21-1004336348-1177238915-682003330-4000}" )",
+                            {"S-1-5-21-1004336348-1177238915-682003330-4000"}),
         // TODO Check multiple sids
         WindowsSidDescExecT(R"( "%{S-1-5-32-544} %{S-1-5-32-123-54-65}" )", {"Administrators", "S-1-5-32-123-54-65"}),
         // Unexpected values

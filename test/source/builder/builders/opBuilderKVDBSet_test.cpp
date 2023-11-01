@@ -7,12 +7,11 @@
 
 #include <baseTypes.hpp>
 #include <defs/mocks/failDef.hpp>
-#include <kvdb/ikvdbmanager.hpp>
-#include <kvdb/kvdbManager.hpp>
+#include <kvdb/mockKvdbHandler.hpp>
+#include <kvdb/mockKvdbManager.hpp>
+#include <mocks/fakeMetric.hpp>
 #include <opBuilderKVDB.hpp>
 #include <testsCommon.hpp>
-
-#include <mocks/fakeMetric.hpp>
 
 namespace
 {
@@ -25,59 +24,28 @@ using std::string;
 using std::vector;
 
 static constexpr auto DB_NAME_1 = "test_db";
-static constexpr auto DB_DIR = "/tmp/kvdbTestSuitePath/";
-static constexpr auto DB_NAME = "kvdb";
 
 template<typename T>
 class KVDBSetHelper : public ::testing::TestWithParam<T>
 {
 protected:
     std::shared_ptr<IMetricsManager> m_manager;
-    std::shared_ptr<kvdbManager::IKVDBManager> m_kvdbManager;
+    std::shared_ptr<kvdb::mocks::MockKVDBManager> m_kvdbManager;
     builder::internals::HelperBuilder m_builder;
     std::shared_ptr<defs::mocks::FailDef> m_failDef;
-    std::string kvdbPath;
 
     void SetUp() override
     {
         logging::testInit();
 
-        // cleaning directory in order to start without garbage.
-        kvdbPath = generateRandomStringWithPrefix(6, DB_DIR) + "/";
-
-        if (std::filesystem::exists(kvdbPath))
-        {
-            std::filesystem::remove_all(kvdbPath);
-        }
-
         m_manager = std::make_shared<FakeMetricManager>();
-        kvdbManager::KVDBManagerOptions kvdbManagerOptions {kvdbPath, DB_NAME};
-        m_kvdbManager = std::make_shared<kvdbManager::KVDBManager>(kvdbManagerOptions, m_manager);
-
-        m_kvdbManager->initialize();
-
-        ASSERT_FALSE(m_kvdbManager->createDB("test_db"));
+        m_kvdbManager = std::make_shared<kvdb::mocks::MockKVDBManager>();
+        m_failDef = std::make_shared<defs::mocks::FailDef>();
 
         m_builder = getOpBuilderKVDBSet(m_kvdbManager, "builder_test");
-        m_failDef = std::make_shared<defs::mocks::FailDef>();
     }
 
-    void TearDown() override
-    {
-        try
-        {
-            m_kvdbManager->finalize();
-        }
-        catch (const std::exception& e)
-        {
-            FAIL() << "Exception: " << e.what();
-        }
-
-        if (std::filesystem::exists(kvdbPath))
-        {
-            std::filesystem::remove_all(kvdbPath);
-        }
-    }
+    void TearDown() override {}
 };
 } // namespace
 
@@ -92,15 +60,18 @@ TEST_P(SetParams, builds)
     const std::string targetField = "/field";
     const std::string rawName = "kvdb_set";
 
-    auto [parameters, shouldPass] = GetParam();
+    auto [params, shouldPass] = GetParam();
 
     if (shouldPass)
     {
-        ASSERT_NO_THROW(m_builder(targetField, rawName, parameters, m_failDef));
+        auto kvdbHandler = std::make_shared<kvdb::mocks::MockKVDBHandler>();
+        EXPECT_CALL(*m_kvdbManager, getKVDBHandler(params[0], "builder_test"))
+            .WillOnce(testing::Return(kvdbHandler));
+        ASSERT_NO_THROW(m_builder(targetField, rawName, params, m_failDef));
     }
     else
     {
-        ASSERT_THROW(m_builder(targetField, rawName, parameters, m_failDef), std::runtime_error);
+        ASSERT_THROW(m_builder(targetField, rawName, params, m_failDef), std::runtime_error);
     }
 }
 
@@ -118,11 +89,33 @@ INSTANTIATE_TEST_SUITE_P(KVDBSet,
                              SetParamsT({DB_NAME_1, "$key"}, false),
                              SetParamsT({}, false)));
 
-using SetKeyT = std::tuple<std::vector<std::string>, bool, std::string>;
+using SetBadParamsT = std::tuple<std::vector<std::string>>;
+class SetBadParams : public KVDBSetHelper<SetBadParamsT>
+{
+};
+
+// Test of bad params
+TEST_P(SetBadParams, builds)
+{
+    const std::string targetField = "/field";
+    const std::string rawName = "kvdb_match";
+    auto [params] = GetParam();
+
+    auto kvdbHandler = std::make_shared<kvdb::mocks::MockKVDBHandler>();
+    EXPECT_CALL(*m_kvdbManager, getKVDBHandler(params[0], "builder_test"))
+        .WillOnce(testing::Return(kvdb::mocks::kvdbGetKVDBHandlerError("")));
+    ASSERT_THROW(m_builder(targetField, rawName, params, m_failDef), std::runtime_error);
+}
+
+INSTANTIATE_TEST_SUITE_P(KVDBSet,
+                         SetBadParams,
+                         ::testing::Values(
+                             // bad params
+                             SetBadParamsT({"unknow_database", "key", "value"})));
+
+using SetKeyT = std::tuple<std::vector<std::string>, std::string, std::string>;
 class SetKey : public KVDBSetHelper<SetKeyT>
 {
-protected:
-    void SetUp() override { KVDBSetHelper<SetKeyT>::SetUp(); }
 };
 
 // Test of set function
@@ -131,30 +124,23 @@ TEST_P(SetKey, setting)
     const std::string targetField = "/field";
     const std::string rawName = "kvdb_set";
 
-    auto [parameters, shouldPass, rawEvent] = GetParam();
+    auto [params, rawEvent, key] = GetParam();
     auto event = std::make_shared<json::Json>(rawEvent.c_str());
     result::Result<Event> resultEvent;
-
-    if (shouldPass)
-    {
-        auto op = m_builder(targetField, rawName, parameters, m_failDef)->getPtr<base::Term<base::EngineOp>>()->getFn();
-        ASSERT_NO_THROW(resultEvent = op(event));
-        ASSERT_TRUE(resultEvent.success());
-        auto value = resultEvent.payload()->getString("/result").value();
-    }
-    else
-    {
-        ASSERT_THROW (auto op = m_builder(targetField, rawName, parameters, m_failDef)->getPtr<base::Term<base::EngineOp>>()->getFn(), std::runtime_error);
-    }
+    auto kvdbHandler = std::make_shared<kvdb::mocks::MockKVDBHandler>();
+    EXPECT_CALL(*m_kvdbManager, getKVDBHandler(params[0], "builder_test"))
+        .WillOnce(testing::Return(kvdbHandler));
+    EXPECT_CALL(*kvdbHandler, set(key, params[2])).WillOnce(testing::Return(kvdb::mocks::kvdbSetOk()));
+    auto op = m_builder(targetField, rawName, params, m_failDef)->getPtr<base::Term<base::EngineOp>>()->getFn();
+    ASSERT_NO_THROW(resultEvent = op(event));
+    ASSERT_TRUE(resultEvent.success());
 }
 
 INSTANTIATE_TEST_SUITE_P(KVDBSet,
                          SetKey,
                          ::testing::Values(
                              // OK
-                             SetKeyT({DB_NAME_1, "key", "value"}, true, R"({"result": ""})"),
-                             SetKeyT({DB_NAME_1, "KEY2", ""}, true, R"({"result": ""})"),
-                             SetKeyT({DB_NAME_1, "", "value"}, true, R"({"result": ""})"),
-                             SetKeyT({DB_NAME_1, "$key", "value"}, true, R"({"result": "", "key": "key3"})"),
-                             // NOK
-                             SetKeyT({"unknow_database", "key", "value"}, false, R"({"result": ""})")));
+                             SetKeyT({DB_NAME_1, "key", "value"}, R"({"result": ""})", "key"),
+                             SetKeyT({DB_NAME_1, "KEY2", ""}, R"({"result": ""})", "KEY2"),
+                             SetKeyT({DB_NAME_1, "", "value"}, R"({"result": ""})", ""),
+                             SetKeyT({DB_NAME_1, "$key", "value"}, R"({"result": "", "key": "key3"})", "key3")));
