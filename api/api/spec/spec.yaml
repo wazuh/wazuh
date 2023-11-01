@@ -4818,6 +4818,7 @@ components:
             - win
             - pkg
             - apk
+            - snap
             - macports
             - pypi
             - npm
