@@ -8,7 +8,7 @@
 # Foundation
 #
 # Based on:
-# CIS Microsoft Windows 10 Enterprise (Release 21H2) Benchmark v2.0.0 - 03-07-2022
+# CIS Microsoft Windows 10 Enterprise (Release 21H2) Benchmark v2.0.0 - 03-07-2023
 
 policy:
   id: "cis_win10_enterprise"
@@ -27,6 +27,26 @@ requirements:
 
 checks:
 
+  # 1.1.1 (L1) Ensure 'Enforce password history' is set to '24 or more password(s)' (Automated)
+   - id: 26000
+     title: "Ensure 'Enforce password history' is set to '24 or more password(s)'."
+     description: "This policy setting determines the number of renewed, unique passwords that have to be associated with a user account before you can reuse an old password. The value for this policy setting must be between 0 and 24 passwords. The default value for stand-alone systems is 0 passwords, but the default setting when joined to a domain is 24 passwords. To maintain the effectiveness of this policy setting, use the Minimum password age setting to prevent users from repeatedly changing their password. The recommended state for this setting is: 24 or more password(s). Note: Password Policy settings (section 1.1) and Account Lockout Policy settings (section 1.2) must be applied via the Default Domain Policy GPO in order to be globally in effect on domain user accounts as their default behavior. If these settings are configured in another GPO, they will only affect local user accounts on the computers that receive the GPO. However, custom exceptions to the default password policy and account lockout policy rules for specific domain users and/or groups can be defined using Password Settings Objects (PSOs), which are completely separate from Group Policy and most easily configured using Active Directory Administrative Center. Note #2: As of the publication of this benchmark, Microsoft currently has a maximum limit of 24 saved passwords. For more information, please visit Enforce password history (Windows 10) - Windows security | Microsoft Docs."
+     rationale: "The longer a user uses the same password, the greater the chance that an attacker can determine the password through brute force attacks. Also, any accounts that may have been compromised will remain exploitable for as long as the password is left unchanged. If password changes are required but password reuse is not prevented, or if users continually reuse a small number of passwords, the effectiveness of a good password policy is greatly reduced. If you specify a low number for this policy setting, users will be able to use the same small number of passwords repeatedly. If you do not also configure the Minimum password age setting, users might repeatedly change their passwords until they can reuse their original password."
+     impact: "The major impact of this configuration is that users must create a new password every time they are required to change their old one. If users are required to change their passwords to new unique values, there is an increased risk of users who write their passwords somewhere so that they do not forget them. Another risk is that users may create passwords that change incrementally (for example, password01, password02, and so on) to facilitate memorization but make them easier to guess. Also, an excessively low value for the Minimum password age setting will likely increase administrative overhead, because users who forget their passwords might ask the help desk to reset them frequently."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to 24 or more password(s): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Enforce password history."
+     references:
+      - "https://www.cisecurity.org/white-papers/cis-password-policy-guide/"
+      - "https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/password-policy"
+     compliance:
+      - cis: ["1.1.2"]
+      - cis_csc_v8: ["5.2"]
+      - cis_csc_v7: ["16.10"]
+      - cmmc_v2.0: ["IA.L2-3.5.7"]
+      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - soc_2: ["CC6.1"]
+     condition: all
+     rules:
+      - 'c:net.exe accounts -> n:Length of password history maintained:\s+(\d+) compare >= 24'
 
   # 1.1.2 (L1) Ensure 'Maximum password age' is set to '365 or fewer days, but not 0'. (Automated)
    - id: 18500
@@ -885,20 +905,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters -> SMBServerNameHardeningLevel'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters -> SMBServerNameHardeningLevel -> n:^(\d+) compare >= 1'
 
-  # 2.3.10.1 (L1) Ensure 'Network access: Allow anonymous SID/Name translation' is set to 'Disabled'. (Automated)
-   - id: 18580
-     title: "L1 Ensure 'Network access: Allow anonymous SID/Name translation' is set to 'Disabled'."
-     description: "This policy setting determines whether an anonymous user can request security identifier (SID) attributes for another user, or use a SID to obtain its corresponding user name. The recommended state for this setting is: Disabled."
-     rationale: "If this policy setting is enabled, a user with local access could use the well-known Administrator's SID to learn the real name of the built-in Administrator account, even if it has been renamed. That person could then use the account name to initiate a password guessing attack."
-     impact: "None - this is the default behavior."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Allow anonymous SID/Name translation."
-     references:
-       - 'https://docs.microsoft.com/en-us/windows/security/threat-protection/security-'
-     compliance:
-       - cis: ["2.3.10.1"]
-     condition: all
-     rules:
-      - 'c:powershell "$null = secedit /export /cfg $env:temp/secexport.cfg; $(gc $env:temp/secexport.cfg | Select-String \"LSAAnonymousNameLookup\").ToString().Split(\"=\")[1].Trim()" -> r:0'
+  # 2.3.10.1 (L1) Ensure 'Network access: Allow anonymous SID/Name translation' is set to 'Disabled'. (Automated) - Not Implemented
 
   # 2.3.10.2 (L1) Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts' is set to 'Enabled'. (Automated)
    - id: 18581
