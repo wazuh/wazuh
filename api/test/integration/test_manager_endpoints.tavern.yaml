@@ -61,7 +61,7 @@ stages:
               max_agents: !anystr
               openssl_support: !anystr
               path: !anystr
-              type: !anystr
+              type: !anything
               tz_name: !anystr
               tz_offset: !anystr
               version: !anystr
@@ -1567,6 +1567,18 @@ marks:
   - xfail
 
 stages:
+  - name: Get wazuh version
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      save:
+        json:
+          wazuh_version: data.api_version
 
   - name: Get available updates
     request:
@@ -1581,35 +1593,10 @@ stages:
         error: 0
         data:
           last_check_date: !anystr
-          current_version: v4.8.0
+          current_version: "v{wazuh_version:s}"
           update_check: true
-          last_available_major:
-            tag: v5.0.0
-            description: ""
-            title: Wazuh 5.0.0
-            published_date: '2023-10-05T12:48:00Z'
-            semver:
-              major: 5
-              minor: 0
-              patch: 0
-          last_available_minor:
-            tag: v4.9.1
-            description: ""
-            title: Wazuh 4.9.1
-            published_date: '2023-10-05T12:47:00Z'
-            semver:
-              major: 4
-              minor: 9
-              patch: 1
-          last_available_patch:
-            tag: v4.8.2
-            description: ""
-            title: Wazuh 4.8.2
-            published_date: '2023-10-05T12:46:00Z'
-            semver:
-              major: 4
-              minor: 8
-              patch: 2
+      verify_response_with:
+        - function: tavern_utils:validate_update_check_response
 
   - name: Get available updates with force option
     request:
@@ -1626,35 +1613,11 @@ stages:
         error: 0
         data:
           last_check_date: !anystr
-          current_version: v4.8.0
+          current_version: "v{wazuh_version:s}"
           update_check: true
-          last_available_major:
-            tag: v5.0.0
-            description: ""
-            title: Wazuh 5.0.0
-            published_date: '2023-10-05T12:48:00Z'
-            semver:
-              major: 5
-              minor: 0
-              patch: 0
-          last_available_minor:
-            tag: v4.9.1
-            description: ""
-            title: Wazuh 4.9.1
-            published_date: '2023-10-05T12:47:00Z'
-            semver:
-              major: 4
-              minor: 9
-              patch: 1
-          last_available_patch:
-            tag: v4.8.2
-            description: ""
-            title: Wazuh 4.8.2
-            published_date: '2023-10-05T12:46:00Z'
-            semver:
-              major: 4
-              minor: 8
-              patch: 2
+      verify_response_with:
+        - function: tavern_utils:validate_update_check_response
+
 
 ---
 test_name: GET /manager/version/check with update_check disabled
@@ -1664,6 +1627,58 @@ marks:
 
 stages:
 
+  - name: Get wazuh version
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      save:
+        json:
+          wazuh_version: data.api_version
+
+  - name: Disable the update check
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      method: PUT
+      data: "{valid_ossec_conf_with_update_check_disabled:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - 'manager'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        error: 0
+
+  - name: Restart manager to apply the configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+    delay_after: 20
+
   - name: Get available updates
     request:
       verify: false
@@ -1676,12 +1691,11 @@ stages:
       json:
         error: 0
         data:
-          last_check_date: !anystr
-          current_version: v4.8.0
+          last_check_date: ''
+          current_version: "v{wazuh_version:s}"
           update_check: false
-          last_available_major: {}
-          last_available_minor: {}
-          last_available_patch: {}
+      verify_response_with:
+        - function: tavern_utils:validate_update_check_response
 
   - name: Get available updates with force option
     request:
@@ -1697,17 +1711,94 @@ stages:
       json:
         error: 0
         data:
-          last_check_date: !anystr
-          current_version: v4.8.0
+          last_check_date: ''
+          current_version: "v{wazuh_version:s}"
           update_check: false
-          last_available_major: {}
-          last_available_minor: {}
-          last_available_patch: {}
+      verify_response_with:
+        - function: tavern_utils:validate_update_check_response
+
+  - name: Enable the update check
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      method: PUT
+      data: "{valid_ossec_conf:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - 'manager'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        error: 0
+
+  - name: Restart manager to apply the configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+    delay_after: 20
 
 ---
 test_name: GET /manager/version/check with update check service error
 
 stages:
+
+  - name: Set an invalid CTI url
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      method: PUT
+      data: "{ossec_conf_with_invalid_cti_url:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - 'manager'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        error: 0
+
+  - name: Restart manager to apply the configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+    delay_after: 20
 
   - name: Get available updates
     request:
