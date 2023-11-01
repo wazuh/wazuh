@@ -62,7 +62,7 @@ private:
         if (std::ifstream inputFile(filepath, std::fstream::in); inputFile)
         {
             constexpr int BUFFER_SIZE {4096};
-            std::array<char, BUFFER_SIZE> buffer;
+            std::array<char, BUFFER_SIZE> buffer {};
 
             Utils::HashData hash;
             while (inputFile.read(buffer.data(), buffer.size()))
