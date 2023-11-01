@@ -43,50 +43,50 @@ tags:
 import pytest
 
 import os
+from pathlib import Path
+import re
 
-from wazuh_testing.modules.authd import event_monitor as evm
-from wazuh_testing import DEFAULT_AUTHD_PASS_PATH
-from wazuh_testing.tools.file import write_file, delete_file
-from wazuh_testing.tools.configuration import get_test_cases_data, load_configuration_template
-from wazuh_testing.tools.services import control_service
+from wazuh_testing.constants.paths.configurations import DEFAULT_AUTHD_PASS_PATH
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.utils.file import write_file, remove_file
+from wazuh_testing.utils.configuration import load_configuration_template, get_test_cases_data
+from wazuh_testing.utils.services import control_service
+from wazuh_testing.tools.monitors.file_monitor import FileMonitor
+from wazuh_testing.utils import callbacks
+from wazuh_testing.modules.authd import PREFIX
 
-
-# Reference paths
-TEST_DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-CONFIGURATIONS_PATH = os.path.join(TEST_DATA_PATH, 'configuration_template')
-TEST_CASES_PATH = os.path.join(TEST_DATA_PATH, 'test_cases')
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 # Marks
 pytestmark = [pytest.mark.server, pytest.mark.tier(level=1)]
 
-# Configuration and cases data
-test_cases_path = os.path.join(TEST_CASES_PATH, 'cases_authd_use_password_invalid.yaml')
-configurations_path = os.path.join(CONFIGURATIONS_PATH, 'config_authd_use_password_invalid.yaml')
+# Configurations
+test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'config_authd_use_password_invalid.yaml')
+test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_authd_use_password_invalid.yaml')
+test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
+test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 
 # Test configurations
-params, metadata, case_ids = get_test_cases_data(test_cases_path)
-configuration = load_configuration_template(configurations_path, params, metadata)
 local_internal_options = {'authd.debug': '2'}
 
 
 # Fixture
 @pytest.fixture()
-def set_authd_pass(metadata: dict):
+def set_authd_pass(test_metadata):
     """Configure the file 'authd.pass' as needed for the test."""
     # Write the content in the authd.pass file.
-    write_file(DEFAULT_AUTHD_PASS_PATH, metadata.get('password'))
+    write_file(DEFAULT_AUTHD_PASS_PATH, test_metadata['password'])
 
     yield
 
     # Delete the file as by default it doesn't exist.
-    delete_file(DEFAULT_AUTHD_PASS_PATH)
+    remove_file(DEFAULT_AUTHD_PASS_PATH)
 
 
-# Test
-@pytest.mark.parametrize('metadata, configuration', zip(metadata, configuration), ids=case_ids)
-def test_authd_use_password_invalid(metadata, configuration, truncate_monitored_files,
-                                    configure_local_internal_options_module, set_authd_pass,
-                                    set_wazuh_configuration, tear_down):
+# Tests
+@pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
+def test_authd_use_password_invalid(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
+                                    configure_local_internal_options, set_authd_pass, tear_down):
     '''
     description:
         Checks the correct errors are raised when an invalid password value
@@ -133,7 +133,8 @@ def test_authd_use_password_invalid(metadata, configuration, truncate_monitored_
         - .*Empty password provided.
         - .*Invalid password provided.
     '''
-    if metadata.get('error') == 'Invalid password provided.':
+    log = test_metadata['error']
+    if log == 'Invalid password provided.':
         pytest.xfail(reason="No password validation in authd.pass - Issue wazuh/wazuh#16282.")
 
     # Verify wazuh-manager fails at restart.
@@ -141,4 +142,9 @@ def test_authd_use_password_invalid(metadata, configuration, truncate_monitored_
         control_service('restart')
 
     # Verify the error log is raised.
-    evm.check_authd_event(callback=metadata.get('error'))
+
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    log = re.escape(log)
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(fr'{PREFIX}{log}'), timeout=10)
+    print(wazuh_log_monitor.callback_result)
+    assert wazuh_log_monitor.callback_result, f'Error event not detected'
