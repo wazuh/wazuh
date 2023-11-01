@@ -53,13 +53,16 @@ protected:
     // cppcheck-suppress unusedFunction
     static void SetUpTestSuite()
     {
+        const std::string host {"localhost"};
+
         if (!m_fakeOpenSearchGreenServer)
         {
-            m_fakeOpenSearchGreenServer = std::make_unique<FakeOpenSearchServer>("localhost", 9201);
+            m_fakeOpenSearchGreenServer = std::make_unique<FakeOpenSearchServer>(host, 9201, "green");
         }
+
         if (!m_fakeOpenSearchRedServer)
         {
-            m_fakeOpenSearchRedServer = std::make_unique<FakeOpenSearchServer>("localhost", 9202, "red");
+            m_fakeOpenSearchRedServer = std::make_unique<FakeOpenSearchServer>(host, 9202, "red");
         }
     }
 
