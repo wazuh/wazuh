@@ -81,7 +81,7 @@ def stop_authd_function():
 def wait_for_authd_startup_module():
     """Wait until authd has begun"""
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-    log_monitor.start(timeout=AUTHD_STARTUP_TIMEOUT,
+    log_monitor.start(timeout=AUTHD_STARTUP_TIMEOUT, encoding="utf-8",
                       callback=generate_callback(rf'{PREFIX}Accepting connections on port 1515'))
 
 
@@ -89,7 +89,7 @@ def wait_for_authd_startup_module():
 def wait_for_authd_startup_function():
     """Wait until authd has begun with function scope"""
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-    log_monitor.start(timeout=AUTHD_STARTUP_TIMEOUT,
+    log_monitor.start(timeout=AUTHD_STARTUP_TIMEOUT, encoding="utf-8",
                       callback=generate_callback(rf'{PREFIX}Accepting connections on port 1515'))
 
 

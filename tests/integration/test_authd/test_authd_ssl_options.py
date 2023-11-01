@@ -44,106 +44,37 @@ references:
 tags:
     - enrollment
 '''
-import os
 import ssl
-import time
+from pathlib import Path
 
 import pytest
-import yaml
-from wazuh_testing.fim import generate_params
-from wazuh_testing.tools import LOG_FILE_PATH
-from wazuh_testing.tools.configuration import load_wazuh_configurations
-from wazuh_testing.tools.configuration import set_section_wazuh_conf, write_wazuh_conf
-from wazuh_testing.tools.file import truncate_file, read_yaml
-from wazuh_testing.tools.monitoring import SocketController, FileMonitor
-from wazuh_testing.tools.services import control_service, check_daemon_status
+
+from wazuh_testing.utils.configuration import load_configuration_template, get_test_cases_data
+from wazuh_testing.tools.socket_controller import SocketController
+
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 # Marks
 
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
-
 # Configurations
-
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-configurations_path = os.path.join(test_data_path, 'wazuh_authd_configuration.yaml')
-ssl_configuration_tests = read_yaml(os.path.join(test_data_path, 'enroll_ssl_options_tests.yaml'))
-
-# Ossec.conf configurations
-DEFAULT_CIPHERS = "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
-DEFAULT_AUTO_NEGOTIATE = 'no'
-conf_params = {'CIPHERS': [], 'SSL_AUTO_NEGOTIATE': []}
-
-for case in ssl_configuration_tests:
-    conf_params['CIPHERS'].append(case.get('CIPHERS', DEFAULT_CIPHERS))
-    conf_params['SSL_AUTO_NEGOTIATE'].append(case.get('SSL_AUTO_NEGOTIATE', DEFAULT_AUTO_NEGOTIATE))
-
-p, m = generate_params(extra_params=conf_params, modes=['scheduled'] * len(ssl_configuration_tests))
-configurations = load_wazuh_configurations(configurations_path, __name__, params=p, metadata=m)
-
-# Certifcates configurations
-
+test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'config_authd_ssl_options.yaml')
+test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_authd_ssl_options.yaml')
+test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
+test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 
 # Variables
-log_monitor_paths = []
-
 receiver_sockets_params = [(("localhost", 1515), 'AF_INET', 'SSL_TLSv1_2')]
-
 monitored_sockets_params = [('wazuh-modulesd', None, True), ('wazuh-db', None, True), ('wazuh-authd', None, True)]
-
-receiver_sockets, monitored_sockets, log_monitors = None, None, None  # Set in the fixtures
-# fixtures
-
-test_index = 0
+receiver_sockets, monitored_sockets = None, None
 
 
-def get_current_test():
-    """
-    Get the current test case.
-    """
-    global test_index
-    current = test_index
-    test_index += 1
-    return current
-
-
-@pytest.fixture(scope="module", params=configurations)
-def get_configuration(request):
-    """Get configurations from the module"""
-    return request.param
-
-
-def override_wazuh_conf(configuration):
-    """
-    Write a particular Wazuh configuration for the test case.
-    """
-    # Stop Wazuh
-    control_service('stop', daemon='wazuh-authd')
-    time.sleep(1)
-    check_daemon_status(running_condition=False, target_daemon='wazuh-authd')
-    truncate_file(LOG_FILE_PATH)
-
-    # Configuration for testing
-    test_config = set_section_wazuh_conf(configuration.get('sections'))
-    # Set new configuration
-    write_wazuh_conf(test_config)
-
-    time.sleep(1)
-    # Start Wazuh
-    control_service('start', daemon='wazuh-authd')
-
-    """Wait until authd has begun"""
-
-    def callback_agentd_startup(line):
-        if 'Accepting connections on port 1515' in line:
-            return line
-        return None
-
-    log_monitor = FileMonitor(LOG_FILE_PATH)
-    log_monitor.start(timeout=30, callback=callback_agentd_startup)
-
-
-def test_ossec_auth_configurations(get_configuration, configure_environment, configure_sockets_environment):
+# Tests
+@pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
+def test_ossec_auth_configurations(test_configuration, test_metadata, set_wazuh_configuration,
+                                   restart_wazuh_daemon_function, wait_for_authd_startup_function,
+                                   configure_sockets_environment):
     '''
     description:
         Checks if the 'SSL' settings of the 'wazuh-authd' daemon work correctly by enrolling agents
@@ -181,16 +112,13 @@ def test_ossec_auth_configurations(get_configuration, configure_environment, con
         - keys
         - ssl
     '''
-    current_test = get_current_test()
-    config = ssl_configuration_tests[current_test]['test_case']
-    ciphers = config['ciphers']
-    protocol = config['protocol']
-    expect = config['expect']
+    ciphers = test_metadata['ciphers']
+    protocol = test_metadata['protocol']
+    expect = test_metadata['expect']
 
     if protocol == 'ssl_tlsv1_1':
         pytest.skip('TLS 1.1 is deprecated and not working on several pyOpenSSL versions.')
 
-    override_wazuh_conf(get_configuration)
 
     address, family, connection_protocol = receiver_sockets_params[0]
     SSL_socket = SocketController(address, family=family, connection_protocol=connection_protocol,
@@ -203,21 +131,21 @@ def test_ossec_auth_configurations(get_configuration, configure_environment, con
     except ssl.SSLError as exception:
         if expect == 'open_error':
             # We expected the error here, check message.
-            assert config['error'] in exception.strerror, 'Expected message does not match!'
+            assert test_metadata['error'] in exception.strerror, 'Expected message does not match!'
             return
         else:
             # We did not expect this error, fail test.
             raise
 
-    SSL_socket.send(config['input'], size=False)
+    SSL_socket.send(test_metadata['input'], size=False)
 
     if expect == 'output':
         # Output is expected
-        expected = config['output']
+        expected = test_metadata['output']
         if expected:
             response = SSL_socket.receive().decode()
-            assert response, 'Failed connection stage: {}'.format(config['stage'])
-            assert response[:len(expected)] == expected, 'Failed test case stage: {}'.format(config['stage'])
+            assert response, 'Failed connection'
+            assert response[:len(expected)] == expected, 'Failed test case'
 
     # Finally close the socket. TODO: This must be handled on a fixture.
     SSL_socket.close()
