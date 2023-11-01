@@ -36,4 +36,4 @@
     - ssl_auto_negotiate:
         value: 'no'
     - ssl_agent_ca:
-        value: SSL_AGENT_CA
+        value: '/var/ossec/etc/test_rootCA.pem'

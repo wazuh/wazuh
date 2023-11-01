@@ -47,29 +47,31 @@ tags:
 import os
 import ssl
 import time
+from pathlib import Path
 
 import pytest
-from wazuh_testing.tools import LOG_FILE_PATH
-from wazuh_testing.tools.configuration import set_section_wazuh_conf, write_wazuh_conf, \
-    load_wazuh_configurations
-from wazuh_testing.tools.file import truncate_file
-from wazuh_testing.tools.monitoring import SocketController, FileMonitor
-from wazuh_testing.tools.security import CertificateController
-from wazuh_testing.tools.services import control_service, check_daemon_status
+
+from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
+from wazuh_testing.tools.socket_controller import SocketController
+from wazuh_testing.tools.certificate_controller import CertificateController
+
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 # Marks
 
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
+# Paths
+test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'config_authd_ssl_certs.yaml')
+test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_authd_ssl_certs.yaml')
+
 # Configurations
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-configurations_path = os.path.join(test_data_path, 'wazuh_authd_configuration.yaml')
+test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
+test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 
 SSL_AGENT_CA = '/var/ossec/etc/test_rootCA.pem'
 SSL_AGENT_CERT = '/tmp/test_sslagent.cert'
 SSL_AGENT_PRIVATE_KEY = '/tmp/test_sslagent.key'
-SSL_VERIFY_HOSTS = ['no', 'yes']
-SIM_OPTIONS = ['NO CERT', 'VALID CERT', 'INCORRECT CERT', 'INCORRECT HOST']
 
 AGENT_ID = 0
 AGENT_NAME = 'test_agent'
@@ -77,14 +79,7 @@ AGENT_IP = '127.0.0.1'
 WRONG_IP = '10.0.0.240'
 INPUT_MESSAGE = "OSSEC A:'{}_{}'"
 OUPUT_MESSAGE = "OSSEC K:'"
-# Ossec.conf configurations
-params = [{
-    'SSL_AGENT_CA': SSL_AGENT_CA,
-    'SSL_VERIFY_HOST': ssl_verify_host,
-} for ssl_verify_host in SSL_VERIFY_HOSTS for option in SIM_OPTIONS]
-metadata = [{'sim_option': option, 'verify_host': ssl_verify_host} for ssl_verify_host in SSL_VERIFY_HOSTS for option in
-            SIM_OPTIONS]
-configurations = load_wazuh_configurations(configurations_path, __name__, params=params, metadata=metadata)
+
 # Simulation options
 # a. Unverified Host:
 # - No certificate
@@ -97,27 +92,20 @@ configurations = load_wazuh_configurations(configurations_path, __name__, params
 # - Incorrect Certificate
 # - Valid certificate, Incorrect Host
 # Variables
-log_monitor_paths = []
 
 receiver_sockets_params = [((AGENT_IP, 1515), 'AF_INET', 'SSL_TLSv1_2')]
 
 monitored_sockets_params = [('wazuh-modulesd', None, True), ('wazuh-db', None, True), ('wazuh-authd', None, True)]
 
-receiver_sockets, monitored_sockets, log_monitors = None, None, None  # Set in the fixtures
+receiver_sockets, monitored_sockets = None, None
 
 
 # fixtures
-@pytest.fixture(scope="module", params=configurations)
-def get_configuration(request):
-    """Get configurations from the module"""
-    return request.param
-
-
 @pytest.fixture(scope="function")
-def generate_ca_certificate(get_configuration):
+def generate_ca_certificate(test_metadata):
     # Generate root key and certificate
     controller = CertificateController()
-    option = get_configuration['metadata']['sim_option']
+    option = test_metadata['sim_option']
     if option not in ['NO_CERT']:
         # Wheter manager will recognize or not this key
         will_sign = True if option in ['VALID CERT', 'INCORRECT HOST'] else False
@@ -127,35 +115,10 @@ def generate_ca_certificate(get_configuration):
 
 
 # Tests
-
-def override_wazuh_conf(configuration):
-    # Stop Wazuh
-    control_service('stop', daemon='wazuh-authd')
-    time.sleep(1)
-    check_daemon_status(running_condition=False, target_daemon='wazuh-authd')
-    truncate_file(LOG_FILE_PATH)
-
-    # Configuration for testing
-    test_config = set_section_wazuh_conf(configuration.get('sections'))
-    # Set new configuration
-    write_wazuh_conf(test_config)
-    # Start Wazuh daemons
-    time.sleep(1)
-    control_service('start', daemon='wazuh-authd')
-
-    """Wait until agentd has begun"""
-
-    def callback_agentd_startup(line):
-        if 'Accepting connections on port 1515' in line:
-            return line
-        return None
-
-    log_monitor = FileMonitor(LOG_FILE_PATH)
-    log_monitor.start(timeout=30, callback=callback_agentd_startup)
-    time.sleep(1)
-
-
-def test_authd_ssl_certs(get_configuration, generate_ca_certificate, tear_down):
+@pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
+def test_authd_ssl_certs(test_configuration, test_metadata, set_wazuh_configuration,
+                         restart_wazuh_daemon_function, wait_for_authd_startup_function,
+                         generate_ca_certificate, tear_down):
     '''
     description:
         Checks if the 'wazuh-authd' daemon can manage 'SSL' connections with agents
@@ -195,9 +158,9 @@ def test_authd_ssl_certs(get_configuration, generate_ca_certificate, tear_down):
         - keys
         - ssl
     '''
-    verify_host = (get_configuration['metadata']['verify_host'] == 'yes')
-    option = get_configuration['metadata']['sim_option']
-    override_wazuh_conf(get_configuration)
+    verify_host = (test_metadata['verify_host'] == 'yes')
+    option = test_metadata['sim_option']
+    print(option)
     address, family, connection_protocol = receiver_sockets_params[0]
     SSL_socket = SocketController(address, family=family, connection_protocol=connection_protocol, open_at_start=False)
     if option != 'NO CERT':
