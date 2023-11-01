@@ -2124,7 +2124,7 @@ void test_wdb_check_fragmentation_get_fragmentation_after_vacuum_error(void **st
 
     will_return(__wrap_time_diff, 2);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Vacuum executed on the '000' database. Time: 2000.000 ms.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Vacuum executed on the '000' database. Time: 2000.000 ms.");
 
     // wdb_get_db_state
     will_return(__wrap_sqlite3_prepare_v2, 1);
@@ -2250,7 +2250,7 @@ void test_wdb_check_fragmentation_update_last_vacuum_data_error(void **state)
 
     will_return(__wrap_time_diff, 2);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Vacuum executed on the '000' database. Time: 2000.000 ms.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Vacuum executed on the '000' database. Time: 2000.000 ms.");
 
     // wdb_get_db_state
     will_return(__wrap_sqlite3_prepare_v2, 1);
@@ -2372,7 +2372,7 @@ void test_wdb_check_fragmentation_success_with_warning(void **state)
 
     will_return(__wrap_time_diff, 2);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Vacuum executed on the '000' database. Time: 2000.000 ms.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Vacuum executed on the '000' database. Time: 2000.000 ms.");
 
     // wdb_get_db_state
     will_return(__wrap_sqlite3_prepare_v2, 1);
@@ -2500,7 +2500,7 @@ void test_wdb_check_fragmentation_success(void **state)
 
     will_return(__wrap_time_diff, 2);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Vacuum executed on the '000' database. Time: 2000.000 ms.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Vacuum executed on the '000' database. Time: 2000.000 ms.");
 
     // wdb_get_db_state
     will_return(__wrap_sqlite3_prepare_v2, 1);
@@ -2888,7 +2888,7 @@ void test_wdb_check_fragmentation_vacuum_first(void **state)
 
     will_return(__wrap_time_diff, 2);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Vacuum executed on the '000' database. Time: 2000.000 ms.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Vacuum executed on the '000' database. Time: 2000.000 ms.");
 
     // wdb_get_db_state
     will_return(__wrap_sqlite3_prepare_v2, 1);
@@ -3042,7 +3042,7 @@ void test_wdb_check_fragmentation_vacuum_current_fragmentation_delta(void **stat
 
     will_return(__wrap_time_diff, 2);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Vacuum executed on the '000' database. Time: 2000.000 ms.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Vacuum executed on the '000' database. Time: 2000.000 ms.");
 
     // wdb_get_db_state
     will_return(__wrap_sqlite3_prepare_v2, 1);
