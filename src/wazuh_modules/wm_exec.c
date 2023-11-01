@@ -16,6 +16,12 @@
 #include <mach/mach.h>
 #endif
 
+#if defined(WAZUH_UNIT_TESTING) && defined(WIN32)
+#include "../../unit_tests/wrappers/windows/processthreadsapi_wrappers.h"
+#include "../../unit_tests/wrappers/windows/handleapi_wrappers.h"
+#include "../../unit_tests/wrappers/windows/libc/kernel32_wrappers.h"
+#endif
+
 static pthread_mutex_t wm_children_mutex;   // Mutex for child process pool
 
 // Data structure to share with the reader thread
