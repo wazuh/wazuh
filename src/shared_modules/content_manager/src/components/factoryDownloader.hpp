@@ -16,6 +16,8 @@
 #include "CtiApiDownloader.hpp"
 #include "HTTPRequest.hpp"
 #include "S3Downloader.hpp"
+#include "json.hpp"
+#include "offlineDownloader.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
 #include <iostream>
@@ -42,22 +44,24 @@ public:
         auto const downloaderType {config.at("contentSource").get<std::string>()};
         std::cout << "Creating '" << downloaderType << "' downloader" << std::endl;
 
-        if (downloaderType.compare("api") == 0)
+        if ("api" == downloaderType)
         {
             return std::make_shared<APIDownloader>(HTTPRequest::instance());
         }
-        if (downloaderType.compare("cti-api") == 0)
+        if ("cti-api" == downloaderType)
         {
             return std::make_shared<CtiApiDownloader>(HTTPRequest::instance());
         }
-        if (downloaderType.compare("s3") == 0)
+        if ("s3" == downloaderType)
         {
             return std::make_shared<S3Downloader>();
         }
-        else
+        if ("offline" == downloaderType)
         {
-            throw std::invalid_argument {"Invalid 'contentSource' type: " + downloaderType};
+            return std::make_shared<OfflineDownloader>();
         }
+
+        throw std::invalid_argument {"Invalid 'contentSource' type: " + downloaderType};
     }
 };
 

@@ -13,6 +13,7 @@
 #include "XZDecompressor.hpp"
 #include "factoryDecompressor.hpp"
 #include "gzipDecompressor.hpp"
+#include "json.hpp"
 #include "skipStep.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
@@ -25,7 +26,7 @@
 TEST_F(FactoryDecompressorTest, CreateXZDecompressor)
 {
     // Create the config
-    nlohmann::json config = {{"compressionType", "xz"}};
+    nlohmann::json config = {{"compressionType", "xz"}, {"contentSource", "api"}};
 
     // Create the decompressor
     std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> spDecompressor {};
@@ -41,7 +42,7 @@ TEST_F(FactoryDecompressorTest, CreateXZDecompressor)
 TEST_F(FactoryDecompressorTest, CreateSkipStep)
 {
     // Create the config
-    nlohmann::json config = {{"compressionType", "raw"}};
+    nlohmann::json config = {{"compressionType", "raw"}, {"contentSource", "api"}};
 
     // Create the decompressor
     std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> spDecompressor {};
@@ -57,7 +58,7 @@ TEST_F(FactoryDecompressorTest, CreateSkipStep)
 TEST_F(FactoryDecompressorTest, InvalidCompressionType)
 {
     // Create the config
-    nlohmann::json config = {{"compressionType", "invalid"}};
+    nlohmann::json config = {{"compressionType", "invalid"}, {"contentSource", "api"}};
 
     // Create the decompressor
     std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> spDecompressor {};
@@ -70,7 +71,7 @@ TEST_F(FactoryDecompressorTest, InvalidCompressionType)
  */
 TEST_F(FactoryDecompressorTest, CreateGzipDecompressor)
 {
-    const auto config = R"({"compressionType": "gzip"})"_json;
+    auto config = R"({"compressionType": "gzip", "contentSource": "api"})"_json;
 
     // Create the decompressor.
     std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> spDecompressor;
@@ -78,4 +79,94 @@ TEST_F(FactoryDecompressorTest, CreateGzipDecompressor)
 
     // Check decompressor type.
     EXPECT_TRUE(std::dynamic_pointer_cast<GzipDecompressor>(spDecompressor));
+}
+
+/**
+ * @brief Check the deduction of the compression type of a raw file.
+ *
+ */
+TEST_F(FactoryDecompressorTest, DeduceCompressionTypeRawFile)
+{
+    auto config = R"(
+        {
+            "contentSource": "offline",
+            "url": "file:///home/user/file.txt",
+            "compressionType": "ignored"
+        }
+    )"_json;
+
+    const auto expectedConfig = R"(
+        {
+            "contentSource": "offline",
+            "url": "file:///home/user/file.txt",
+            "compressionType": "raw"
+        }
+    )"_json;
+
+    // Create the downloader.
+    std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> spDownloader {};
+
+    EXPECT_NO_THROW(spDownloader = FactoryDecompressor::create(config));
+    EXPECT_TRUE(std::dynamic_pointer_cast<SkipStep>(spDownloader));
+    EXPECT_EQ(config, expectedConfig);
+}
+
+/**
+ * @brief Check the deduction of the compression type of a compressed file.
+ *
+ */
+TEST_F(FactoryDecompressorTest, DeduceCompressionTypeCompressedFile)
+{
+    auto config = R"(
+        {
+            "contentSource": "offline",
+            "url": "file:///home/user/file.txt.gz",
+            "compressionType": "ignored"
+        }
+    )"_json;
+
+    const auto expectedConfig = R"(
+        {
+            "contentSource": "offline",
+            "url": "file:///home/user/file.txt.gz",
+            "compressionType": "gzip"
+        }
+    )"_json;
+
+    // Create the downloader.
+    std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> spDownloader {};
+
+    EXPECT_NO_THROW(spDownloader = FactoryDecompressor::create(config));
+    EXPECT_TRUE(std::dynamic_pointer_cast<GzipDecompressor>(spDownloader));
+    EXPECT_EQ(config, expectedConfig);
+}
+
+/**
+ * @brief Check the deduction of the compression type of a file wihout extension.
+ *
+ */
+TEST_F(FactoryDecompressorTest, DeduceCompressionTypeCompressedNoExtensionFile)
+{
+    auto config = R"(
+        {
+            "contentSource": "offline",
+            "url": "file:///home/user/file_without_extension",
+            "compressionType": "ignored"
+        }
+    )"_json;
+
+    const auto expectedConfig = R"(
+        {
+            "contentSource": "offline",
+            "url": "file:///home/user/file_without_extension",
+            "compressionType": "raw"
+        }
+    )"_json;
+
+    // Create the downloader.
+    std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> spDownloader {};
+
+    EXPECT_NO_THROW(spDownloader = FactoryDecompressor::create(config));
+    EXPECT_TRUE(std::dynamic_pointer_cast<SkipStep>(spDownloader));
+    EXPECT_EQ(config, expectedConfig);
 }

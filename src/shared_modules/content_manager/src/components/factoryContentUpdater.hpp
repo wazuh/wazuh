@@ -38,7 +38,7 @@ public:
      * @param config Configurations.
      * @return std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>>
      */
-    static std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> create(const nlohmann::json& config)
+    static std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> create(nlohmann::json& config)
     {
         std::cout << "FactoryContentUpdater - Starting process" << std::endl;
 
