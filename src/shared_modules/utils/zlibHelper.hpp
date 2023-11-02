@@ -23,9 +23,13 @@
 #include <vector>
 #include <zlib.h>
 
+#define KB (1024)
+#define MB (1024 * 1024)
+
 using ZFilePtr = std::unique_ptr<gzFile_s, CustomDeleter<decltype(&gzclose), gzclose>>;
 
-inline constexpr int BUF_LEN {16384};
+inline constexpr int GZ_BUF_LEN {16 * KB};
+inline constexpr int ZIP_BUF_LEN {100 * MB};
 
 namespace Utils
 {
@@ -74,7 +78,7 @@ namespace Utils
             }
 
             int len {};
-            char buf[BUF_LEN] {};
+            char buf[GZ_BUF_LEN] {};
             do
             {
                 len = gzread(gzFile.get(), buf, sizeof(buf));
@@ -160,9 +164,8 @@ namespace Utils
                     unsigned long bytesRead, totalBytesRead {0};
                     do
                     {
-                        // Read compressed data by BUFFER_SIZE chunks.
-                        constexpr auto BUFFER_SIZE {(100) << 20}; // 100 MB.
-                        std::vector<char> buffer(BUFFER_SIZE);
+                        // Read compressed data by ZIP_BUF_LEN chunks.
+                        std::vector<char> buffer(ZIP_BUF_LEN);
                         bytesRead = unzReadCurrentFile(unzFile, buffer.data(), buffer.size());
                         totalBytesRead += bytesRead;
 
