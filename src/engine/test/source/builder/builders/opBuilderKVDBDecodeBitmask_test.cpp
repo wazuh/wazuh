@@ -1,5 +1,4 @@
 #include <any>
-#include <filesystem>
 #include <memory>
 #include <vector>
 
@@ -24,18 +23,7 @@ using namespace base;
 using namespace metricsManager;
 using namespace builder::internals::builders;
 
-constexpr auto DB_DIR = "/tmp/kvdbTestSuitePath/";
-constexpr auto DB_NAME = "kvdb";
 constexpr auto DB_NAME_1 = "test_db";
-
-std::filesystem::path uniquePath()
-{
-    auto pid = getpid();
-    auto tid = std::this_thread::get_id();
-    std::stringstream ss;
-    ss << pid << "_" << tid; // Unique path per thread and process
-    return std::filesystem::path("/tmp") / (ss.str() + "_kvdbTestSuitePath/");
-}
 
 template<typename T>
 class OpBuilderKVDBDecodeBitmask : public ::testing::TestWithParam<T>
@@ -46,37 +34,22 @@ protected:
     std::shared_ptr<kvdb::mocks::MockKVDBManager> m_kvdbManager;
     std::shared_ptr<schemf::mocks::MockSchema> m_schema;
     std::shared_ptr<defs::mocks::FailDef> m_failDef;
-    std::string kvdbPath;
     builder::internals::HelperBuilder m_builder;
 
     void SetUp() override
     {
         logging::testInit();
-
-        // cleaning directory in order to start without garbage.
-        kvdbPath = uniquePath().string();
-        if (std::filesystem::exists(kvdbPath))
-        {
-            std::filesystem::remove_all(kvdbPath);
-        }
         m_manager = std::make_shared<FakeMetricManager>();
 
         m_schema = std::make_shared<schemf::mocks::MockSchema>();
-        EXPECT_CALL(*m_schema, hasField(testing::_)).WillRepeatedly(testing::Return(false));
-
         m_failDef = std::make_shared<defs::mocks::FailDef>();
         m_kvdbManager = std::make_shared<kvdb::mocks::MockKVDBManager>();
 
+        EXPECT_CALL(*m_schema, hasField(testing::_)).WillRepeatedly(testing::Return(false));
         m_builder = getOpBuilderHelperKVDBDecodeBitmask(m_kvdbManager, "test_scope", m_schema);
     }
 
-    void TearDown() override
-    {
-        if (std::filesystem::exists(kvdbPath))
-        {
-            std::filesystem::remove_all(kvdbPath);
-        }
-    }
+    void TearDown() override {}
 };
 } // namespace
 
@@ -95,9 +68,9 @@ TEST_P(MapBuild, builds)
     auto [initialState, shouldPass] = GetParam();
 
     auto kvdbHandler = std::make_shared<kvdb::mocks::MockKVDBHandler>();
-    EXPECT_CALL(*kvdbHandler, get(keyMap)).WillRepeatedly(testing::Return(initialState.str()));
+    EXPECT_CALL(*kvdbHandler, get(keyMap)).WillOnce(testing::Return(initialState.str()));
 
-    EXPECT_CALL(*m_kvdbManager, getKVDBHandler(DB_NAME_1, "test_scope")).WillRepeatedly(testing::Return(kvdbHandler));
+    EXPECT_CALL(*m_kvdbManager, getKVDBHandler(DB_NAME_1, "test_scope")).WillOnce(testing::Return(kvdbHandler));
 
     if (shouldPass)
     {
@@ -185,9 +158,9 @@ TEST_P(DecodeMask, decoding)
     }
 
     auto kvdbHandler = std::make_shared<kvdb::mocks::MockKVDBHandler>();
-    EXPECT_CALL(*kvdbHandler, get(m_keyMap)).WillRepeatedly(testing::Return(map.str()));
+    EXPECT_CALL(*kvdbHandler, get(m_keyMap)).WillOnce(testing::Return(map.str()));
 
-    EXPECT_CALL(*m_kvdbManager, getKVDBHandler(DB_NAME_1, "test_scope")).WillRepeatedly(testing::Return(kvdbHandler));
+    EXPECT_CALL(*m_kvdbManager, getKVDBHandler(DB_NAME_1, "test_scope")).WillOnce(testing::Return(kvdbHandler));
     auto op = m_builder(dstFieldPath, "name", {DB_NAME_1, m_keyMap, maskField}, m_failDef)
                   ->getPtr<base::Term<base::EngineOp>>()
                   ->getFn();
@@ -281,11 +254,11 @@ TEST_P(BuildParams, build)
 
     auto [params, shouldPass] = GetParam();
     auto kvdbHandler = std::make_shared<kvdb::mocks::MockKVDBHandler>();
-    EXPECT_CALL(*kvdbHandler, get(params[1])).WillRepeatedly(testing::Return(m_map.str()));
-    EXPECT_CALL(*m_kvdbManager, getKVDBHandler(params[0], "test_scope")).WillRepeatedly(testing::Return(kvdbHandler));
 
     if (shouldPass)
     {
+        EXPECT_CALL(*m_kvdbManager, getKVDBHandler(params[0], "test_scope")).WillOnce(testing::Return(kvdbHandler));
+        EXPECT_CALL(*kvdbHandler, get(params[1])).WillOnce(testing::Return(m_map.str()));
         ASSERT_NO_THROW(m_builder(dstFieldPath, "name", params, m_failDef));
     }
     else
@@ -313,11 +286,6 @@ INSTANTIATE_TEST_SUITE_P(KVDBDecodeBitmask,
 using ValidateParamsT = std::tuple<std::vector<std::string>, bool>;
 class ValidateParams : public OpBuilderKVDBDecodeBitmask<ValidateParamsT>
 {
-protected:
-    void SetUp() override
-    {
-        OpBuilderKVDBDecodeBitmask<ValidateParamsT>::SetUp(); // Call parent setup
-    }
 };
 
 TEST_P(ValidateParams, params)
@@ -328,7 +296,7 @@ TEST_P(ValidateParams, params)
     auto [params, shouldPass] = GetParam();
     auto kvdbHandler = std::make_shared<kvdb::mocks::MockKVDBHandler>();
     EXPECT_CALL(*m_kvdbManager, getKVDBHandler(params[0], "test_scope"))
-        .WillRepeatedly(testing::Return(kvdb::mocks::kvdbGetKVDBHandlerError("")));
+        .WillOnce(testing::Return(kvdb::mocks::kvdbGetKVDBHandlerError("")));
 
     if (shouldPass)
     {

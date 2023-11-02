@@ -1,5 +1,4 @@
 #include <any>
-#include <filesystem>
 #include <memory>
 #include <vector>
 
@@ -21,55 +20,29 @@ using namespace base;
 using namespace metricsManager;
 using namespace builder::internals::builders;
 
-std::filesystem::path uniquePath()
-{
-    auto pid = getpid();
-    auto tid = std::this_thread::get_id();
-    std::stringstream ss;
-    ss << pid << "_" << tid; // Unique path per thread and process
-    return std::filesystem::path("/tmp") / (ss.str() + "_kvdbTestSuitePath/");
-}
+static constexpr auto DB_NAME_1 = "test_db";
 
 class KVDBGetArray : public ::testing::Test
 {
-
 protected:
-    static constexpr auto DB_NAME_1 = "test_db";
-    static constexpr auto DB_DIR = "/tmp/kvdbTestSuitePath/";
-    static constexpr auto DB_NAME = "kvdb";
-
     std::shared_ptr<IMetricsManager> m_manager;
     std::shared_ptr<kvdb::mocks::MockKVDBManager> m_kvdbManager;
-    std::shared_ptr<schemf::ISchema> schema;
+    std::shared_ptr<schemf::mocks::MockSchema> m_schema;
     builder::internals::HelperBuilder builder;
-    std::string kvdbPath;
 
     void SetUp() override
     {
         logging::testInit();
 
-        // cleaning directory in order to start without garbage.
-        kvdbPath = uniquePath().string();
-
-        if (std::filesystem::exists(kvdbPath))
-        {
-            std::filesystem::remove_all(kvdbPath);
-        }
-
         m_kvdbManager = std::make_shared<kvdb::mocks::MockKVDBManager>();
         m_manager = std::make_shared<FakeMetricManager>();
-        schema = std::make_shared<schemf::mocks::MockSchema>();
+        m_schema = std::make_shared<schemf::mocks::MockSchema>();
 
-        builder = getOpBuilderKVDBGetArray(m_kvdbManager, "builder_test", schema);
+        EXPECT_CALL(*m_schema, hasField(testing::_)).WillRepeatedly(testing::Return(false));
+        builder = getOpBuilderKVDBGetArray(m_kvdbManager, "builder_test", m_schema);
     }
 
-    void TearDown() override
-    {
-        if (std::filesystem::exists(kvdbPath))
-        {
-            std::filesystem::remove_all(kvdbPath);
-        }
-    }
+    void TearDown() override {}
 };
 
 template<typename T>
@@ -77,49 +50,31 @@ class GetArrayTest : public ::testing::TestWithParam<T>
 {
 
 protected:
-    static constexpr auto DB_NAME_1 = "test_db";
-    static constexpr auto DB_DIR = "/tmp/kvdbTestSuitePath/";
-    static constexpr auto DB_NAME = "kvdb";
-
     std::shared_ptr<IMetricsManager> m_manager;
     std::shared_ptr<kvdb::mocks::MockKVDBManager> m_kvdbManager;
-    std::shared_ptr<schemf::ISchema> schema;
+    std::shared_ptr<schemf::mocks::MockSchema> m_schema;
     builder::internals::HelperBuilder builder;
-    std::string kvdbPath;
 
     void SetUp() override
     {
         logging::testInit();
 
-        // cleaning directory in order to start without garbage.
-        kvdbPath = uniquePath().string();
-
-        if (std::filesystem::exists(kvdbPath))
-        {
-            std::filesystem::remove_all(kvdbPath);
-        }
-
         m_kvdbManager = std::make_shared<kvdb::mocks::MockKVDBManager>();
         m_manager = std::make_shared<FakeMetricManager>();
-        schema = std::make_shared<schemf::mocks::MockSchema>();
+        m_schema = std::make_shared<schemf::mocks::MockSchema>();
 
-        builder = getOpBuilderKVDBGetArray(m_kvdbManager, "builder_test", schema);
+        EXPECT_CALL(*m_schema, hasField(testing::_)).WillRepeatedly(testing::Return(false));
+        builder = getOpBuilderKVDBGetArray(m_kvdbManager, "builder_test", m_schema);
     }
 
-    void TearDown() override
-    {
-        if (std::filesystem::exists(kvdbPath))
-        {
-            std::filesystem::remove_all(kvdbPath);
-        }
-    }
+    void TearDown() override {}
 };
 } // namespace
 
 // Build ok
 TEST_F(KVDBGetArray, builder)
 {
-    ASSERT_NO_THROW(getOpBuilderKVDBGetArray(m_kvdbManager, "builder_test", schema));
+    ASSERT_NO_THROW(getOpBuilderKVDBGetArray(m_kvdbManager, "builder_test", m_schema));
 }
 
 // Database not exists
@@ -160,55 +115,153 @@ INSTANTIATE_TEST_SUITE_P(KVDBGetArray,
                                          BuildsT(false, "field", "name", {"test_db"}),
                                          BuildsT(false, "field", "name", {"test_db", "$ref", "extra"})));
 
-using OperatesT = std::tuple<bool, std::string, std::string>;
+// Default expected function
+template<typename Ret = base::OptError>
+using ExpectedFn =
+    std::function<Ret(std::shared_ptr<kvdb::mocks::MockKVDBManager>, std::shared_ptr<kvdb::mocks::MockKVDBHandler>)>;
+using Behaviour =
+    std::function<void(std::shared_ptr<kvdb::mocks::MockKVDBManager>, std::shared_ptr<kvdb::mocks::MockKVDBHandler>)>;
+
+ExpectedFn<> success(Behaviour behaviour = nullptr)
+{
+    return [behaviour](auto manager, auto handler)
+    {
+        if (behaviour)
+        {
+            behaviour(manager, handler);
+        }
+        return base::noError();
+    };
+}
+ExpectedFn<> failure(Behaviour behaviour = nullptr)
+{
+    return [behaviour](auto manager, auto handler)
+    {
+        if (behaviour)
+        {
+            behaviour(manager, handler);
+        }
+        return base::Error {};
+    };
+}
+
+template<typename Ret>
+using BehaviourRet = std::function<base::RespOrError<Ret>(std::shared_ptr<kvdb::mocks::MockKVDBManager>,
+                                                          std::shared_ptr<kvdb::mocks::MockKVDBHandler>)>;
+
+template<typename Ret>
+ExpectedFn<base::RespOrError<Ret>> success(BehaviourRet<Ret> behaviour = nullptr)
+{
+    return [behaviour](auto store, auto validator) -> base::RespOrError<Ret>
+    {
+        if (behaviour)
+        {
+            return behaviour(store, validator);
+        }
+
+        return Ret {};
+    };
+}
+
+template<typename Ret>
+ExpectedFn<base::RespOrError<Ret>> failure(Behaviour behaviour = nullptr)
+{
+    return [behaviour](auto store, auto validator)
+    {
+        if (behaviour)
+        {
+            behaviour(store, validator);
+        }
+        return base::Error {};
+    };
+}
+
+using OperatesT = std::tuple<std::string, ExpectedFn<base::RespOrError<std::string>>>;
 using Operates = GetArrayTest<OperatesT>;
 
 TEST_P(Operates, params)
 {
-    auto [shouldPass, event, expected] = GetParam();
+    auto [rawEvent, expectedFn] = GetParam();
     auto defs = std::make_shared<defs::mocks::FailDef>();
     auto kvdbHandler = std::make_shared<kvdb::mocks::MockKVDBHandler>();
-    EXPECT_CALL(*m_kvdbManager, getKVDBHandler("test_db", "builder_test")).WillOnce(testing::Return(kvdbHandler));
+    auto expected = expectedFn(m_kvdbManager, kvdbHandler);
+
     auto op = builder("/field", "name", {"test_db", "$ref"}, defs)->getPtr<base::Term<base::EngineOp>>()->getFn();
 
-    json::Json rawIEvent(event.c_str());
-    json::Json oEvent(expected.c_str());
+    json::Json event(rawEvent.c_str());
 
-    auto iEvent = std::make_shared<json::Json>(rawIEvent);
+    auto iEvent = std::make_shared<json::Json>(event);
 
     base::result::Result<Event> res;
-    EXPECT_CALL(*kvdbHandler, get(testing::_)).WillOnce(testing::Return(kvdb::mocks::kvdbGetOk()));
     ASSERT_NO_THROW(res = op(iEvent));
 
-    if (shouldPass)
-    {
-        ASSERT_TRUE(res.success()) << res.trace();
-    }
-    else
+    if (base::isError(expected))
     {
         ASSERT_TRUE(res.failure());
     }
-
-    ASSERT_EQ(*(res.payload()), oEvent);
+    else
+    {
+        json::Json expectedEvent(base::getResponse<std::string>(expected).c_str());
+        ASSERT_TRUE(res.success()) << res.trace();
+        ASSERT_EQ(*(res.payload()), expectedEvent);
+    }
 }
-
-// TODO: implement lambda
 
 INSTANTIATE_TEST_SUITE_P(
     KVDBGetArray,
     Operates,
-    testing::Values(OperatesT(true, R"({"ref": ["key"]})", R"({"ref": ["key"], "field":["value"]})")));
-
-/*INSTANTIATE_TEST_SUITE_P(
-    KVDBGetArray,
-    Operates,
-    testing::Values(OperatesT(true, R"({"ref": ["key"]})", R"({"ref": ["key"], "field":["value"]})"),
-                    OperatesT(true, R"({"ref": ["key1", "key2"]})", R"({"ref": ["key1", "key2"], "field":[1, 2]})"),
-                    OperatesT(true, R"({"ref": ["key1", "key2", "key3"]})", R"({"ref": ["key1", "key2", "key3"]})"),
-                    OperatesT(false, "{}", "{}"),
-                    OperatesT(false, R"({"ref": [1]})", R"({"ref": [1]})"),
-                    OperatesT(false, R"({"ref": []})", R"({"ref": []})"),
-                    OperatesT(false, R"({"ref": ["key"]})", R"({"ref": ["key"]})"),
-                    OperatesT(false, R"({"ref": ["key1", "key2"]})", R"({"ref": ["key1", "key2"]})"),
-                    OperatesT(false, R"({"other": ["key1", "key2"]})", R"({"other": ["key1", "key2"]})")));
-*/
+    testing::Values(
+        OperatesT(
+            R"({"ref": ["key"]})",
+            success<std::string>(
+                [](auto manager, auto handler)
+                {
+                    EXPECT_CALL(*manager, getKVDBHandler("test_db", "builder_test")).WillOnce(testing::Return(handler));
+                    EXPECT_CALL(*handler, get("key")).WillOnce(testing::Return(kvdb::mocks::kvdbGetOk(R"("value")")));
+                    return R"({"ref": ["key"], "field":["value"]})";
+                })),
+        OperatesT(R"({"ref": ["key1", "key2"]})",
+                  success<std::string>(
+                      [](auto manager, auto handler)
+                      {
+                          EXPECT_CALL(*manager, getKVDBHandler("test_db", "builder_test"))
+                              .WillOnce(testing::Return(handler));
+                          EXPECT_CALL(*handler, get("key1")).WillOnce(testing::Return(kvdb::mocks::kvdbGetOk(R"(1)")));
+                          EXPECT_CALL(*handler, get("key2")).WillOnce(testing::Return(kvdb::mocks::kvdbGetOk(R"(2)")));
+                          return R"({"ref": ["key1", "key2"], "field":[1, 2]})";
+                      })),
+        OperatesT(R"({"ref": ["key1", "key2", "key3"]})",
+                  success<std::string>(
+                      [](auto manager, auto handler)
+                      {
+                          EXPECT_CALL(*manager, getKVDBHandler("test_db", "builder_test"))
+                              .WillOnce(testing::Return(handler));
+                          EXPECT_CALL(*handler, get("key1")).WillOnce(testing::Return(kvdb::mocks::kvdbGetOk(R"("")")));
+                          EXPECT_CALL(*handler, get("key2")).WillOnce(testing::Return(kvdb::mocks::kvdbGetOk(R"("")")));
+                          EXPECT_CALL(*handler, get("key3")).WillOnce(testing::Return(kvdb::mocks::kvdbGetOk(R"("")")));
+                          return R"({"ref": ["key1", "key2", "key3"],"field":["","",""]})";
+                      })),
+        OperatesT(R"({})",
+                  failure<std::string>(
+                      [](auto manager, auto handler) {
+                          EXPECT_CALL(*manager, getKVDBHandler("test_db", "builder_test"))
+                              .WillOnce(testing::Return(handler));
+                      })),
+        OperatesT(R"({"ref": [1]})",
+                  failure<std::string>(
+                      [](auto manager, auto handler) {
+                          EXPECT_CALL(*manager, getKVDBHandler("test_db", "builder_test"))
+                              .WillOnce(testing::Return(handler));
+                      })),
+        OperatesT(R"({"ref": []})",
+                  failure<std::string>(
+                      [](auto manager, auto handler) {
+                          EXPECT_CALL(*manager, getKVDBHandler("test_db", "builder_test"))
+                              .WillOnce(testing::Return(handler));
+                      })),
+        OperatesT(R"({"other": ["key1", "key2"]})",
+                  failure<std::string>(
+                      [](auto manager, auto handler) {
+                          EXPECT_CALL(*manager, getKVDBHandler("test_db", "builder_test"))
+                              .WillOnce(testing::Return(handler));
+                      }))));

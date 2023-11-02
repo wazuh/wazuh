@@ -1,5 +1,4 @@
 #include <any>
-#include <filesystem>
 #include <memory>
 #include <vector>
 
@@ -15,8 +14,6 @@
 #include <testsCommon.hpp>
 
 constexpr auto DB_NAME_1 = "TEST_DB";
-constexpr auto DB_DIR = "/tmp/kvdbTestSuitePath/";
-constexpr auto DB_NAME = "kvdb";
 
 namespace
 {
@@ -33,33 +30,19 @@ protected:
     std::shared_ptr<kvdb::mocks::MockKVDBManager> m_kvdbManager;
     std::shared_ptr<defs::mocks::FailDef> m_failDef;
     builder::internals::HelperBuilder m_builder;
-    std::string kvdbPath;
 
     void SetUp() override
     {
         logging::testInit();
 
-        // cleaning directory in order to start without garbage.
-        kvdbPath = generateRandomStringWithPrefix(6, DB_DIR) + "/";
-
-        if (std::filesystem::exists(kvdbPath))
-        {
-            std::filesystem::remove_all(kvdbPath);
-        }
-
         m_manager = std::make_shared<FakeMetricManager>();
         m_kvdbManager = std::make_shared<kvdb::mocks::MockKVDBManager>();
         m_failDef = std::make_shared<defs::mocks::FailDef>();
+
         m_builder = getOpBuilderKVDBNotMatch(m_kvdbManager, "builder_test");
     }
 
-    void TearDown() override
-    {
-        if (std::filesystem::exists(kvdbPath))
-        {
-            std::filesystem::remove_all(kvdbPath);
-        }
-    }
+    void TearDown() override {}
 };
 
 } // namespace
@@ -99,7 +82,7 @@ INSTANTIATE_TEST_SUITE_P(KVDBNotMatch,
                              NotMatchParamsT({DB_NAME_1, "test", "test2"}, false),
                              NotMatchParamsT({DB_NAME_1, "test", "$test2"}, false),
                              // bad params
-                             NotMatchParamsT({}, false)));
+                             NotMatchParamsT(std::vector<std::string>(), false)));
 
 using NotMatchBadParamsT = std::tuple<std::vector<std::string>>;
 class NotMatchBadParams : public KVDBNotMatchHelper<NotMatchBadParamsT>

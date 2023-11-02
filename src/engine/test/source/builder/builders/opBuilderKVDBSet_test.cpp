@@ -87,7 +87,7 @@ INSTANTIATE_TEST_SUITE_P(KVDBSet,
                              SetParamsT({DB_NAME_1}, false),
                              SetParamsT({DB_NAME_1, "key"}, false),
                              SetParamsT({DB_NAME_1, "$key"}, false),
-                             SetParamsT({}, false)));
+                             SetParamsT(std::vector<std::string>(), false)));
 
 using SetBadParamsT = std::tuple<std::vector<std::string>>;
 class SetBadParams : public KVDBSetHelper<SetBadParamsT>
