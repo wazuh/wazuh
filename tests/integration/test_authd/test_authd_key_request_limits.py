@@ -149,5 +149,4 @@ def test_key_request_limits(test_configuration, test_metadata, set_wazuh_configu
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     log = re.escape(log)
     wazuh_log_monitor.start(callback=callbacks.generate_callback(fr'{PREFIX}{log}'), timeout=10)
-    print(wazuh_log_monitor.callback_result)
     assert wazuh_log_monitor.callback_result, f'Error event not detected'

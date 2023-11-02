@@ -76,12 +76,10 @@ receiver_sockets_params = [(("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), '
 
 monitored_sockets_params = [('wazuh-modulesd', None, True), ('wazuh-db', None, True), ('wazuh-authd', None, True)]
 
-receiver_sockets, monitored_sockets, log_monitors = None, None, None  # Set in the fixtures
+receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 
 cluster_socket_address = ('localhost', 1516)
 remote_enrollment_address = ('localhost', 1515)
-
-daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
 
 AGENT_ID = 0
 AGENT_NAME = 'test_agent'
@@ -118,7 +116,7 @@ def not_raises(exception):
         raise pytest.fail("DID RAISE {0}".format(exception))
 
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_remote_enrollment(test_configuration, test_metadata, set_wazuh_configuration, daemons_handler, tear_down):
+def test_remote_enrollment(test_configuration, test_metadata, set_wazuh_configuration, restart_wazuh_daemon_function, tear_down):
     '''
     description:
         Checks if the 'wazuh-authd' daemon remote enrollment is enabled/disabled according

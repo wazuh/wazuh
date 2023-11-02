@@ -118,5 +118,4 @@ def test_authd_force_options_invalid_config(test_configuration, test_metadata, s
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     log = re.escape(test_metadata['log'])
     wazuh_log_monitor.start(callback=callbacks.generate_callback(fr'{PREFIX}{log}'), timeout=10)
-    print(wazuh_log_monitor.callback_result)
     assert wazuh_log_monitor.callback_result, f'Error event not detected'
