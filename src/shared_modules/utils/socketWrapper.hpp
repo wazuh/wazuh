@@ -32,8 +32,8 @@ constexpr auto INVALID_SOCKET {-1};
 constexpr auto SOCKET_ERROR {-1};
 using PACKET_FIELD_TYPE = uint32_t;
 using HEADER_FIELD_TYPE = uint32_t;
-constexpr ssize_t PACKET_FIELD_SIZE {sizeof(PACKET_FIELD_TYPE)};
-constexpr ssize_t HEADER_FIELD_SIZE {sizeof(HEADER_FIELD_TYPE)};
+constexpr auto PACKET_FIELD_SIZE {sizeof(PACKET_FIELD_TYPE)};
+constexpr auto HEADER_FIELD_SIZE {sizeof(HEADER_FIELD_TYPE)};
 constexpr auto BUFFER_MAX_SIZE {8192 * 8};
 
 enum class SocketType
@@ -140,9 +140,9 @@ public:
                             uint32_t sizeHeader = 0)
     {
 
-        if (sizeof(Header::packetSize) + sizeof(Header::headerSize) + sizeHeader + sizeBody > BUFFER_MAX_SIZE)
+        if (sizeof(Header) + sizeHeader + sizeBody > BUFFER_MAX_SIZE)
         {
-            buffer.resize(sizeof(Header::packetSize) + sizeof(Header::headerSize) + sizeHeader + sizeBody + 1);
+            buffer.resize(sizeof(Header) + sizeHeader + sizeBody + 1);
         }
 
         // Write packet and header size to the buffer.
@@ -152,16 +152,12 @@ public:
 
         if (sizeHeader > 0)
         {
-            std::copy(dataHeader,
-                      dataHeader + sizeHeader,
-                      std::begin(buffer) + sizeof(Header::packetSize) + sizeof(Header::headerSize));
+            std::copy(dataHeader, dataHeader + sizeHeader, std::begin(buffer) + sizeof(Header));
         }
 
-        std::copy(dataBody,
-                  dataBody + sizeBody,
-                  std::begin(buffer) + sizeof(Header::packetSize) + sizeof(Header::headerSize) + sizeHeader);
+        std::copy(dataBody, dataBody + sizeBody, std::begin(buffer) + sizeof(Header) + sizeHeader);
 
-        bufferSize = sizeof(Header::packetSize) + sizeof(Header::headerSize) + sizeHeader + sizeBody;
+        bufferSize = sizeof(Header) + sizeHeader + sizeBody;
     }
 
     /**
@@ -200,7 +196,7 @@ public:
      * @brief Structure used to write the header and packet size to the buffer.
      *
      */
-    struct Header
+    struct __attribute__((__packed__)) Header
     {
         PACKET_FIELD_TYPE packetSize;
         HEADER_FIELD_TYPE headerSize;
@@ -232,18 +228,18 @@ public:
                             const char* dataHeader = nullptr,
                             uint32_t sizeHeader = 0)
     {
-        if (sizeof(Header::packetSize) + sizeBody > BUFFER_MAX_SIZE)
+        if (sizeof(Header) + sizeBody > BUFFER_MAX_SIZE)
         {
-            buffer.resize(sizeof(Header::packetSize) + sizeBody + 1);
+            buffer.resize(sizeof(Header) + sizeBody + 1);
         }
 
         // Write packet size to the buffer.
         struct Header* pHeader = reinterpret_cast<struct Header*>(buffer.data());
         pHeader->packetSize = sizeBody;
 
-        std::copy(dataBody, dataBody + sizeBody, std::begin(buffer) + sizeof(Header::packetSize));
+        std::copy(dataBody, dataBody + sizeBody, std::begin(buffer) + sizeof(Header));
 
-        bufferSize = sizeof(Header::packetSize) + sizeBody;
+        bufferSize = sizeof(Header) + sizeBody;
     }
 
     /**
@@ -282,7 +278,7 @@ public:
      * @brief Structure used to write the packet size to the buffer.
      *
      */
-    struct Header
+    struct __attribute__((__packed__)) Header
     {
         PACKET_FIELD_TYPE packetSize;
     };
