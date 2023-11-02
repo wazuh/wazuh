@@ -39,51 +39,46 @@ load_integrations_policies() {
     # Add filter for route
     "$engine_src_dir/build/main" catalog --api_socket $environment_dir/queue/sockets/engine-api -n system create filter < $engine_src_dir/ruleset/filters/allow-all.yml
 
-    # Define source and destination directories
-    source_dir="$engine_src_dir/ruleset/wazuh-core"
-    destination_dir="$engine_src_dir/ruleset/wazuh-core-test"
+    wazuh_core_dir="$engine_src_dir/ruleset/wazuh-core"
+    manifest_file="$wazuh_core_dir/manifest.yml"
 
-    # Create the destination folder if it doesn't exist
-    mkdir -p "$destination_dir"
+    # Check if the directory exists
+    if [ -d "$wazuh_core_dir" ]; then
+        # Change to the directory
+        cd "$wazuh_core_dir" || exit 1
 
-    # Copy the contents of the wazuh-core folder to the destination
-    cp -r "$source_dir"/* "$destination_dir"
-
-    # Delete the "output" subfolder in wazuh-core-test
-    rm -r "$destination_dir/outputs"
-
-    cd $destination_dir
-    engine-integration generate-manifest
-
-    echo 'name: policy/wazuh/1
-integrations:
-    - integration/apache-http/0
-    - integration/suricata/0
-    - integration/syslog/0
-    - integration/system/0
-    - integration/wazuh-core-test/0
-    - integration/windows/0' > "$engine_src_dir/ruleset/policy.yml"
+        # Check if the file exists
+        if [ -f "$manifest_file" ]; then
+            # Remove the "outputs" node from the manifest.yml file
+            sed -i '/^outputs:/,/^$/d' "$manifest_file"
+            echo "The 'outputs' node has been removed from the $manifest_file file."
+        else
+            echo "The file $manifest_file does not exist in the directory $wazuh_core_dir."
+        fi
+    else
+        echo "The directory $wazuh_core_dir does not exist."
+    fi
 
     cd ..
 
-    engine-integration add --api-sock $environment_dir/queue/sockets/engine-api -n system wazuh-core-test/
+    engine-integration add --api-sock $environment_dir/queue/sockets/engine-api -n system wazuh-core/
     engine-integration add --api-sock $environment_dir/queue/sockets/engine-api -n wazuh integrations/syslog/
     engine-integration add --api-sock $environment_dir/queue/sockets/engine-api -n wazuh integrations/system/
     engine-integration add --api-sock $environment_dir/queue/sockets/engine-api -n wazuh integrations/windows/
     engine-integration add --api-sock $environment_dir/queue/sockets/engine-api -n wazuh integrations/apache-http/
     engine-integration add --api-sock $environment_dir/queue/sockets/engine-api -n wazuh integrations/suricata/
 
-    "$engine_src_dir/build/main" policy --api_socket $environment_dir/queue/sockets/engine-api add -p policy/wazuh/1 -f
-    "$engine_src_dir/build/main" policy --api_socket $environment_dir/queue/sockets/engine-api parent-set -p policy/wazuh/1 decoder/integrations/0
-    "$engine_src_dir/build/main" policy --api_socket $environment_dir/queue/sockets/engine-api parent-set -p policy/wazuh/1 -n wazuh decoder/integrations/0
-    "$engine_src_dir/build/main" policy --api_socket $environment_dir/queue/sockets/engine-api asset-add -p policy/wazuh/1 -n system integration/wazuh-core-test/0
-    "$engine_src_dir/build/main" policy --api_socket $environment_dir/queue/sockets/engine-api asset-add -p policy/wazuh/1 -n wazuh integration/syslog/0
-    "$engine_src_dir/build/main" policy --api_socket $environment_dir/queue/sockets/engine-api asset-add -p policy/wazuh/1 -n wazuh integration/system/0
-    "$engine_src_dir/build/main" policy --api_socket $environment_dir/queue/sockets/engine-api asset-add -p policy/wazuh/1 -n wazuh integration/windows/0
-    "$engine_src_dir/build/main" policy --api_socket $environment_dir/queue/sockets/engine-api asset-add -p policy/wazuh/1 -n wazuh integration/apache-http/0
-    "$engine_src_dir/build/main" policy --api_socket $environment_dir/queue/sockets/engine-api asset-add -p policy/wazuh/1 -n wazuh integration/suricata/0
+    "$engine_src_dir/build/main" policy --api_socket $environment_dir/queue/sockets/engine-api add -p policy/wazuh/0 -f
+    "$engine_src_dir/build/main" policy --api_socket $environment_dir/queue/sockets/engine-api parent-set decoder/integrations/0
+    "$engine_src_dir/build/main" policy --api_socket $environment_dir/queue/sockets/engine-api parent-set -n wazuh decoder/integrations/0
+    "$engine_src_dir/build/main" policy --api_socket $environment_dir/queue/sockets/engine-api asset-add -n system integration/wazuh-core/0
+    "$engine_src_dir/build/main" policy --api_socket $environment_dir/queue/sockets/engine-api asset-add -n wazuh integration/syslog/0
+    "$engine_src_dir/build/main" policy --api_socket $environment_dir/queue/sockets/engine-api asset-add -n wazuh integration/system/0
+    "$engine_src_dir/build/main" policy --api_socket $environment_dir/queue/sockets/engine-api asset-add -n wazuh integration/windows/0
+    "$engine_src_dir/build/main" policy --api_socket $environment_dir/queue/sockets/engine-api asset-add -n wazuh integration/apache-http/0
+    "$engine_src_dir/build/main" policy --api_socket $environment_dir/queue/sockets/engine-api asset-add -n wazuh integration/suricata/0
 
-    "$engine_src_dir/build/main" router --api_socket $environment_dir/queue/sockets/engine-api add default filter/allow-all/0 255 policy/wazuh/1
+    "$engine_src_dir/build/main" router --api_socket $environment_dir/queue/sockets/engine-api add default filter/allow-all/0 255 policy/wazuh/0
 
     echo "Creating integrations of engine-test..."
      # TODO: think about a better way to do this, maybe save the default information in kvdb
@@ -95,9 +90,7 @@ integrations:
     engine-test -c $engine_dir/etc/engine-test.conf add -i remote-syslog -f remote-syslog -o 127.0.0.1
     engine-test -c $engine_dir/etc/engine-test.conf add -i suricata -f json
     engine-test -c $engine_dir/etc/engine-test.conf add -i system -f syslog
-
-    rm -r "$destination_dir"
-    rm -r "$engine_src_dir/ruleset/policy.yml"
+    engine-test -c $engine_dir/etc/engine-test.conf add -i apache-http -f syslog
 
     kill $binary_pid
 }
