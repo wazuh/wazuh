@@ -73,7 +73,7 @@ receiver_sockets, monitored_sockets = None, None
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_ossec_auth_configurations(test_configuration, test_metadata, set_wazuh_configuration,
-                                   restart_wazuh_daemon_function, wait_for_authd_startup_function,
+                                   restart_authd_function, wait_for_authd_startup_function,
                                    configure_sockets_environment):
     '''
     description:
@@ -144,6 +144,8 @@ def test_ossec_auth_configurations(test_configuration, test_metadata, set_wazuh_
         expected = test_metadata['output']
         if expected:
             response = SSL_socket.receive().decode()
+            print(expected)
+            print(response)
             assert response, 'Failed connection'
             assert response[:len(expected)] == expected, 'Failed test case'
 
