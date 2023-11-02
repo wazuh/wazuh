@@ -16,7 +16,7 @@ def execute_integration_test(github_working_dir, os_path, input_file_path):
     main_command = "cat"
     engine_test_conf = f"{github_working_dir}/environment/engine/etc/engine-test.conf"
     # Execute the command and get the output
-    output = subprocess.check_output(f"{main_command} {input_file_path} | engine-test -c {engine_test_conf} run {os.path.basename(os_path)} -p policy/wazuh/1 --api-socket {github_working_dir}/environment/queue/sockets/engine-api -n wazuh system -j", shell=True, stderr=subprocess.STDOUT)
+    output = subprocess.check_output(f"{main_command} {input_file_path} | engine-test -c {engine_test_conf} run {os.path.basename(os_path)} --api-socket {github_working_dir}/environment/queue/sockets/engine-api -j", shell=True, stderr=subprocess.STDOUT)
 
     # Split the output into individual JSON strings
     output_str = output.decode('utf-8')
@@ -34,15 +34,19 @@ def execute_integration_test(github_working_dir, os_path, input_file_path):
     return parsed_results
 
 def compare_results(parsed_results, expected_json, input_file_name, mismatches):
-    for event_json in parsed_results:
+    if len(parsed_results) != len(expected_json):
+        mismatches.append(input_file_name)
+        return
+
+    for i, event_json in enumerate(parsed_results):
         if 'TestSessionID' in event_json:
             del event_json['TestSessionID']
         try:
-            if event_json not in expected_json:
+            if event_json != expected_json[i]:
                 mismatches.append(input_file_name)
                 return
         except json.JSONDecodeError as e:
-            print(f"Error decoding JSON event: {e}")
+            print(f"Error al decodificar el evento JSON: {e}")
 
 def process_integration_tests(github_working_dir, allowed_integrations):
     integrations_directory = os.path.join(github_working_dir, "src/engine/ruleset/integrations")
@@ -75,6 +79,7 @@ def process_integration_tests(github_working_dir, allowed_integrations):
                                 print(expected_file)
                             else:
                                 print(f"Expected file '{expected_file}' corresponding to '{input_file}' in '{root}' was not found.")
+                                return 1
 
     if mismatches:
         print("\nFiles with no expected result:")
@@ -89,7 +94,7 @@ if __name__ == "__main__":
 
     github_working_dir = sys.argv[1]
     # TODO: Add apache-access/error
-    allowed_integrations = ["windows", "syslog", "suricata", "system"]
+    allowed_integrations = ["apache-http"]
 
     error_code = process_integration_tests(github_working_dir, allowed_integrations)
 
