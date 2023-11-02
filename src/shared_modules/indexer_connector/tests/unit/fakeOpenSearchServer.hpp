@@ -55,10 +55,7 @@ public:
     ~FakeOpenSearchServer()
     {
         m_server.stop();
-        if (m_thread.joinable())
-        {
-            m_thread.join();
-        }
+        m_thread.join();
     }
 
     /**
