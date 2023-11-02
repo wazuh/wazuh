@@ -13,6 +13,7 @@
 #define _ACTION_TEST_HPP
 
 #include "fakes/fakeServer.hpp"
+#include "routerProvider.hpp"
 #include "gtest/gtest.h"
 #include <external/nlohmann/json.hpp>
 #include <filesystem>
@@ -31,6 +32,8 @@ protected:
     nlohmann::json m_parameters; ///< Parameters used to create the Action
 
     inline static std::unique_ptr<FakeServer> m_spFakeServer; ///< Pointer to FakeServer class
+
+    std::shared_ptr<RouterProvider> m_spRouterProvider; ///< Router provider used on tests.
 
     /**
      * @brief Sets initial conditions for each test case.
@@ -57,6 +60,11 @@ protected:
                 }
             }
         )"_json;
+
+        // Init router provider.
+        const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
+        m_spRouterProvider = std::make_shared<RouterProvider>(topicName);
+        m_spRouterProvider->start();
     }
 
     /**
@@ -73,6 +81,9 @@ protected:
             // Delete the output folder.
             std::filesystem::remove_all(outputFolder);
         }
+
+        // Stop router provider.
+        m_spRouterProvider->stop();
     }
 
     /**
