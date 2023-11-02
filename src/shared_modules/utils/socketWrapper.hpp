@@ -30,9 +30,11 @@
 
 constexpr auto INVALID_SOCKET {-1};
 constexpr auto SOCKET_ERROR {-1};
-constexpr ssize_t PACKET_SIZE {sizeof(uint32_t)};
-constexpr ssize_t HEADER_SIZE {sizeof(uint32_t)};
-constexpr auto BUFFER_SIZE {8192 * 8};
+using PACKET_FIELD_TYPE = uint32_t;
+using HEADER_FIELD_TYPE = uint32_t;
+constexpr ssize_t PACKET_FIELD_SIZE {sizeof(PACKET_FIELD_TYPE)};
+constexpr ssize_t HEADER_FIELD_SIZE {sizeof(HEADER_FIELD_TYPE)};
+constexpr auto BUFFER_MAX_SIZE {8192 * 8};
 
 enum class SocketType
 {
@@ -137,28 +139,29 @@ public:
                             const char* dataHeader = nullptr,
                             uint32_t sizeHeader = 0)
     {
-        if (PACKET_SIZE + HEADER_SIZE + sizeHeader + sizeBody > BUFFER_SIZE)
+
+        if (sizeof(Header::packetSize) + sizeof(Header::headerSize) + sizeHeader + sizeBody > BUFFER_MAX_SIZE)
         {
-            buffer.resize(PACKET_SIZE + HEADER_SIZE + sizeHeader + sizeBody + 1);
+            buffer.resize(sizeof(Header::packetSize) + sizeof(Header::headerSize) + sizeHeader + sizeBody + 1);
         }
 
-        // Write packet size to the buffer.
-        uint32_t* uip;
-        uip = (uint32_t*)buffer.data();
-        *uip = sizeBody + HEADER_SIZE + sizeHeader;
-
-        // Write header size to the buffer.
-        uip = (uint32_t*)(buffer.data() + PACKET_SIZE);
-        *uip = sizeHeader;
+        // Write packet and header size to the buffer.
+        struct Header* pHeader = reinterpret_cast<struct Header*>(buffer.data());
+        pHeader->packetSize = sizeBody + sizeof(Header::headerSize) + sizeHeader;
+        pHeader->headerSize = sizeHeader;
 
         if (sizeHeader > 0)
         {
-            std::copy(dataHeader, dataHeader + sizeHeader, std::begin(buffer) + PACKET_SIZE + HEADER_SIZE);
+            std::copy(dataHeader,
+                      dataHeader + sizeHeader,
+                      std::begin(buffer) + sizeof(Header::packetSize) + sizeof(Header::headerSize));
         }
 
-        std::copy(dataBody, dataBody + sizeBody, std::begin(buffer) + PACKET_SIZE + HEADER_SIZE + sizeHeader);
+        std::copy(dataBody,
+                  dataBody + sizeBody,
+                  std::begin(buffer) + sizeof(Header::packetSize) + sizeof(Header::headerSize) + sizeHeader);
 
-        bufferSize = PACKET_SIZE + HEADER_SIZE + sizeHeader + sizeBody;
+        bufferSize = sizeof(Header::packetSize) + sizeof(Header::headerSize) + sizeHeader + sizeBody;
     }
 
     /**
@@ -180,7 +183,7 @@ public:
      */
     auto static getDataOffset(uint32_t headerSize)
     {
-        return HEADER_SIZE + headerSize;
+        return sizeof(Header::packetSize) + headerSize;
     }
 
     /**
@@ -190,8 +193,18 @@ public:
      */
     auto static getHeaderOffset()
     {
-        return HEADER_SIZE;
+        return sizeof(Header::packetSize);
     }
+
+    /**
+     * @brief Structure used to write the header and packet size to the buffer.
+     *
+     */
+    struct Header
+    {
+        PACKET_FIELD_TYPE packetSize;
+        HEADER_FIELD_TYPE headerSize;
+    };
 };
 
 /**
@@ -219,19 +232,18 @@ public:
                             const char* dataHeader = nullptr,
                             uint32_t sizeHeader = 0)
     {
-        if (PACKET_SIZE + sizeBody > BUFFER_SIZE)
+        if (sizeof(Header::packetSize) + sizeBody > BUFFER_MAX_SIZE)
         {
-            buffer.resize(PACKET_SIZE + sizeBody + 1);
+            buffer.resize(sizeof(Header::packetSize) + sizeBody + 1);
         }
 
         // Write packet size to the buffer.
-        uint32_t* uip;
-        uip = (uint32_t*)buffer.data();
-        *uip = sizeBody;
+        struct Header* pHeader = reinterpret_cast<struct Header*>(buffer.data());
+        pHeader->packetSize = sizeBody;
 
-        std::copy(dataBody, dataBody + sizeBody, std::begin(buffer) + PACKET_SIZE);
+        std::copy(dataBody, dataBody + sizeBody, std::begin(buffer) + sizeof(Header::packetSize));
 
-        bufferSize = PACKET_SIZE + sizeBody;
+        bufferSize = sizeof(Header::packetSize) + sizeBody;
     }
 
     /**
@@ -265,6 +277,15 @@ public:
     {
         return 0;
     }
+
+    /**
+     * @brief Structure used to write the packet size to the buffer.
+     *
+     */
+    struct Header
+    {
+        PACKET_FIELD_TYPE packetSize;
+    };
 };
 
 enum class SocketStatus
@@ -303,14 +324,14 @@ public:
         : m_sock {sock}
         , m_status {SocketStatus::HEADER}
         , m_readPosition {0}
-        , m_readSize {PACKET_SIZE}
+        , m_readSize {PACKET_FIELD_SIZE}
         , m_totalReadSize {0}
         , m_recvDataBuffer {}
         , m_sendDataBuffer {}
         , m_unsentPacketList {}
     {
-        m_recvDataBuffer.resize(BUFFER_SIZE);
-        m_sendDataBuffer.resize(BUFFER_SIZE);
+        m_recvDataBuffer.resize(BUFFER_MAX_SIZE);
+        m_sendDataBuffer.resize(BUFFER_MAX_SIZE);
     }
 
     virtual ~Socket()
@@ -360,7 +381,7 @@ public:
                 }
             }
 
-            constexpr uint32_t UI_OPT {BUFFER_SIZE};
+            constexpr uint32_t UI_OPT {BUFFER_MAX_SIZE};
             T::setsockopt(m_sock, SOL_SOCKET, SO_RCVBUFFORCE, (const char*)&UI_OPT, sizeof(UI_OPT));
             T::setsockopt(m_sock, SOL_SOCKET, SO_SNDBUFFORCE, (const char*)&UI_OPT, sizeof(UI_OPT));
         }
@@ -417,7 +438,7 @@ public:
                             uip = (uint32_t*)m_recvDataBuffer.data();
                             m_totalReadSize = *uip;
 
-                            if (m_totalReadSize > BUFFER_SIZE)
+                            if (m_totalReadSize > BUFFER_MAX_SIZE)
                             {
                                 m_recvDataBuffer.resize(m_totalReadSize + 1);
                             }
@@ -462,7 +483,7 @@ public:
                         else
                         {
                             m_readPosition = 0;
-                            m_readSize = PACKET_SIZE;
+                            m_readSize = PACKET_FIELD_SIZE;
                             m_status = SocketStatus::HEADER;
 
                             auto headerDataSize = TCommunicationProtocol::getHeaderSize(m_recvDataBuffer);
@@ -475,9 +496,9 @@ public:
                                      m_recvDataBuffer.data() + headerOffset,
                                      headerDataSize);
 
-                            if (m_totalReadSize > BUFFER_SIZE)
+                            if (m_totalReadSize > BUFFER_MAX_SIZE)
                             {
-                                m_recvDataBuffer.resize(BUFFER_SIZE);
+                                m_recvDataBuffer.resize(BUFFER_MAX_SIZE);
                             }
                         }
                     }
@@ -501,7 +522,7 @@ public:
             throw std::runtime_error {"Failed to accept socket" + std::to_string(errno)};
         }
 
-        const uint32_t uiOpt {BUFFER_SIZE};
+        const uint32_t uiOpt {BUFFER_MAX_SIZE};
         T::setsockopt(sock, SOL_SOCKET, SO_RCVBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt));
         T::setsockopt(sock, SOL_SOCKET, SO_SNDBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt));
 
@@ -649,7 +670,7 @@ public:
                 throw std::runtime_error {"Failed to listen socket " + std::to_string(errno)};
             }
 
-            const uint32_t uiOpt {BUFFER_SIZE};
+            const uint32_t uiOpt {BUFFER_MAX_SIZE};
             T::setsockopt(m_sock, SOL_SOCKET, SO_RCVBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt));
             T::setsockopt(m_sock, SOL_SOCKET, SO_SNDBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt));
         }

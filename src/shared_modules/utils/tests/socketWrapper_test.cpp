@@ -101,8 +101,8 @@ TEST_F(SocketWrapperTest, DISABLED_ReadSuccess)
 
     // Set up the test data.
     const int sock = 123;
-    const ssize_t metaDataSize = PACKET_SIZE;
-    const std::vector<char> header(HEADER_SIZE, 0);
+    const ssize_t metaDataSize = PACKET_FIELD_SIZE;
+    const std::vector<char> header(HEADER_FIELD_SIZE, 0);
     std::vector<char> data(10, 0);
     for (size_t i = 0; i < data.size(); i++)
     {
@@ -124,7 +124,7 @@ TEST_F(SocketWrapperTest, DISABLED_ReadSuccess)
                             [&data, &header](int, void* buffer, size_t size, int)
                             {
                                 std::copy(header.begin(), header.end(), (char*)buffer);
-                                std::copy(data.begin(), data.end(), (char*)buffer + HEADER_SIZE);
+                                std::copy(data.begin(), data.end(), (char*)buffer + HEADER_FIELD_SIZE);
                                 return size;
                             }),
                         Return(packetSize)));
@@ -164,8 +164,8 @@ TEST_F(SocketWrapperTest, DISABLED_ReadPartialHeader)
 
     // Set up the test data.
     const int sock = 123;
-    const ssize_t metaDataSize = PACKET_SIZE;
-    const std::vector<char> header(HEADER_SIZE, 0);
+    const ssize_t metaDataSize = PACKET_FIELD_SIZE;
+    const std::vector<char> header(HEADER_FIELD_SIZE, 0);
     std::vector<char> data(10, 0);
     for (size_t i = 0; i < data.size(); i++)
     {
@@ -187,7 +187,7 @@ TEST_F(SocketWrapperTest, DISABLED_ReadPartialHeader)
                             [&data, &header](int, void* buffer, size_t, int)
                             {
                                 std::copy(header.begin(), header.end(), (char*)buffer);
-                                std::copy(data.begin(), data.end(), (char*)buffer + HEADER_SIZE);
+                                std::copy(data.begin(), data.end(), (char*)buffer + HEADER_FIELD_SIZE);
                             }),
                         Return(packetSize)));
 
@@ -229,8 +229,8 @@ TEST_F(SocketWrapperTest, DISABLED_ReadPartialBody)
 
     // Set up the test data.
     const int sock = 123;
-    const ssize_t metaDataSize = PACKET_SIZE;
-    const std::vector<char> header(HEADER_SIZE, 0);
+    const ssize_t metaDataSize = PACKET_FIELD_SIZE;
+    const std::vector<char> header(HEADER_FIELD_SIZE, 0);
     std::vector<char> data(10, 0);
     for (size_t i = 0; i < data.size(); i++)
     {
@@ -248,14 +248,14 @@ TEST_F(SocketWrapperTest, DISABLED_ReadPartialBody)
                             [&data, &header](int, void* buffer, size_t, int)
                             {
                                 std::copy(header.begin(), header.end(), (char*)buffer);
-                                std::copy(data.begin(), data.begin() + data.size() / 2, (char*)buffer + HEADER_SIZE);
+                                std::copy(data.begin(), data.begin() + data.size() / 2, (char*)buffer + HEADER_FIELD_SIZE);
                             }),
                         Return(packetSize)))
         .WillOnce(DoAll(Invoke(
                             [&data, &header](int, void* buffer, size_t, int) {
                                 std::copy(data.begin() + data.size() / 2,
                                           data.end(),
-                                          (char*)buffer + HEADER_SIZE + data.size() / 2);
+                                          (char*)buffer + HEADER_FIELD_SIZE + data.size() / 2);
                             }),
                         Return(packetSize)));
 
@@ -297,11 +297,11 @@ TEST_F(SocketWrapperTest, DISABLED_ReadSuccessBufferIncrement)
 
     // Set up the test data.
     const int sock = 123;
-    const ssize_t metaDataSize = PACKET_SIZE;
-    const std::vector<char> header(HEADER_SIZE, 0);
+    const ssize_t metaDataSize = PACKET_FIELD_SIZE;
+    const std::vector<char> header(HEADER_FIELD_SIZE, 0);
     const size_t initialRecvBufferSize = socketWrapper.recvBufferSize();
     const size_t targetSize = socketWrapper.recvBufferSize() * 2;
-    std::vector<char> data(targetSize - HEADER_SIZE, 0);
+    std::vector<char> data(targetSize - HEADER_FIELD_SIZE, 0);
     for (size_t i = 0; i < data.size(); i++)
     {
         data[i] = i + '0';
@@ -322,7 +322,7 @@ TEST_F(SocketWrapperTest, DISABLED_ReadSuccessBufferIncrement)
                             [&data, &header](int, void* buffer, size_t size, int)
                             {
                                 std::copy(header.begin(), header.end(), (char*)buffer);
-                                std::copy(data.begin(), data.end(), (char*)buffer + HEADER_SIZE);
+                                std::copy(data.begin(), data.end(), (char*)buffer + HEADER_FIELD_SIZE);
                                 return size;
                             }),
                         Return(packetSize)));
