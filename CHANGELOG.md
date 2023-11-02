@@ -22,6 +22,8 @@ All notable changes to this project will be documented in this file.
 
 - Fixed an unexpected error by the Cluster when a worker gets restarted. ([#16683](https://github.com/wazuh/wazuh/pull/16683))
 - Fixed an issue that let the manager validate wrong XML configurations. ([#16681](https://github.com/wazuh/wazuh/pull/16681))
+- Fixed syscollector packages multiarch values ([#19722](https://github.com/wazuh/wazuh/issues/19722))
+- Fieed wazuh-agent crash randomly when RPCRT4.dll is loaded ([#18591](https://github.com/wazuh/wazuh/issues/18591))
 
 #### Deleted
 
