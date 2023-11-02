@@ -45,7 +45,7 @@ private:
     {
         const auto& databasePath {context.configData.at("databasePath").get_ref<const std::string&>()};
 
-        // Initialize RocksDB driver instance. If the database doesn't exists, this will throw.
+        // Initialize RocksDB driver instance.
         context.spRocksDB = std::make_unique<Utils::RocksDBWrapper>(databasePath, false);
     }
 
@@ -100,7 +100,7 @@ public:
      */
     std::shared_ptr<UpdaterBaseContext> handleRequest(std::shared_ptr<UpdaterBaseContext> context) override
     {
-        // Open database if the database folder was given.
+        // Open database if the database folder is given.
         if (context->configData.contains("databasePath") &&
             !context->configData.at("databasePath").get_ref<const std::string&>().empty())
         {
