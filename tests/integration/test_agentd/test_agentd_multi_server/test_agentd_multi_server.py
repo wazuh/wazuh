@@ -7,10 +7,9 @@ copyright: Copyright (C) 2015-2022, Wazuh Inc.
 
 type: integration
 
-brief: The 'wazuh-agentd' program is the client-side daemon that communicates with the server.
-       The objective is to check how the 'wazuh-agentd' daemon behaves when there are delays
-       between connection attempts to the 'wazuh-remoted' daemon using TCP and UDP protocols.
-       The 'wazuh-remoted' program is the server side daemon that communicates with the agents.
+brief: A Wazuh cluster is a group of Wazuh managers that work together to enhance the availability
+       and scalability of the service. These tests will check the agent enrollment in a multi-server
+       environment and how the agent manages the connections to the servers depending on their status.
 
 components:
     - agentd
@@ -27,27 +26,17 @@ os_platform:
     - linux
     - windows
 
+
 os_version:
     - Arch Linux
     - Amazon Linux 2
     - Amazon Linux 1
     - CentOS 8
     - CentOS 7
-    - CentOS 6
+    - Debian Buster
+    - Red Hat 8
     - Ubuntu Focal
     - Ubuntu Bionic
-    - Ubuntu Xenial
-    - Ubuntu Trusty
-    - Debian Buster
-    - Debian Stretch
-    - Debian Jessie
-    - Debian Wheezy
-    - Red Hat 8
-    - Red Hat 7
-    - Red Hat 6
-    - Windows 10
-    - Windows Server 2019
-    - Windows Server 2016
 
 references:
     - https://documentation.wazuh.com/current/user-manual/registering/index.html
@@ -93,107 +82,205 @@ daemons_handler_configuration = {'all_daemons': True}
 
 # Tests
 """
-This test covers different options of delays between server connection attempts:
--Different values of max_retries parameter
--Different values of retry_interval parameter
--UDP/TCP connection
--Enrollment between retries
-"""
+How does this test work:
 
-@pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_agentd_parametrized_reconnections(test_metadata, set_wazuh_configuration, configure_local_internal_options,
-                             truncate_monitored_files, daemons_handler):
+    - PROTOCOL: tcp/udp
+    - CLEAN_KEYS: whatever start with an empty client.keys file or not
+    - SIMULATOR_NUMBERS: Number of simulator to be instantiated, this should match wazuh_conf.yaml
+    - SIMULATOR MODES: for each number of simulator will define a list of "stages"
+    that defines the state that remoted simulator should have in that state
+    Length of the stages should be the same for all simulators.
+    Authd simulator will only accept one enrollment for stage
+    - LOG_MONITOR_STR: (list of lists) Expected string to be monitored in all stages
+"""
+# fixtures
+@pytest.fixture(scope="module", params=configurations, ids=case_ids)
+def get_configuration(request):
+    """Get configurations from the module"""
+    return request.param
+
+
+@pytest.fixture(scope="module")
+def add_hostnames(request):
+    """Add to OS hosts file, names and IP's of test servers."""
+    HOSTFILE_PATH = os.path.join(os.environ['SystemRoot'], 'system32', 'drivers', 'etc', 'hosts') \
+        if os.sys.platform == 'win32' else '/etc/hosts'
+    hostfile = None
+    with open(HOSTFILE_PATH, "r") as f:
+        hostfile = f.read()
+    for server in SERVER_HOSTS:
+        if server not in hostfile:
+            with open(HOSTFILE_PATH, "a") as f:
+                f.write(f'{SERVER_ADDRESS}  {server}\n')
+    yield
+
+    with open(HOSTFILE_PATH, "w") as f:
+        f.write(hostfile)
+
+
+@pytest.fixture(scope="module")
+def configure_authd_server(request, get_configuration):
+    """Initialize multiple simulated remoted connections.
+
+    Args:
+        get_configuration (fixture): Get configurations from the module.
+    """
+    global monitored_sockets
+    monitored_sockets = QueueMonitor(authd_server.queue)
+    authd_server.start()
+    authd_server.set_mode('REJECT')
+    global remoted_servers
+    for i in range(0, get_configuration['metadata']['SIMULATOR_NUMBER']):
+        remoted_servers.append(RemotedSimulator(server_address=SERVER_ADDRESS, remoted_port=REMOTED_PORTS[i],
+                                                protocol=get_configuration['metadata']['PROTOCOL'],
+                                                mode='CONTROLLED_ACK', client_keys=CLIENT_KEYS_PATH))
+        # Set simulator mode for that stage
+        if get_configuration['metadata']['SIMULATOR_MODES'][i][0] != 'CLOSE':
+            remoted_servers[i].set_mode(get_configuration['metadata']['SIMULATOR_MODES'][i][0])
+
+    yield
+    # hearing on enrollment server
+    for i in range(0, get_configuration['metadata']['SIMULATOR_NUMBER']):
+        remoted_servers[i].stop()
+    remoted_servers = []
+    authd_server.shutdown()
+
+
+@pytest.fixture(scope="function")
+def set_authd_id(request):
+    """Set agent id to 101 in the authd simulated connection."""
+    authd_server.agent_id = 101
+
+
+@pytest.fixture(scope="function")
+def clean_keys(request, get_configuration):
+    """Clear the client.key file used by the simulated remoted connections.
+
+    Args:
+        get_configuration (fixture): Get configurations from the module.
+    """
+    if get_configuration['metadata'].get('CLEAN_KEYS', True):
+        truncate_file(CLIENT_KEYS_PATH)
+        sleep(1)
+    else:
+        with open(CLIENT_KEYS_PATH, 'w') as f:
+            f.write("100 ubuntu-agent any TopSecret")
+        sleep(1)
+
+
+def restart_agentd():
+    """Restart agentd daemon with debug mode active."""
+    control_service('stop', daemon="wazuh-agentd")
+    truncate_file(LOG_FILE_PATH)
+    control_service('start', daemon="wazuh-agentd", debug_mode=True)
+
+
+# Tests
+def wait_until(x, log_str):
+    """Callback function to wait for a message in a log file.
+
+    Args:
+        x (str): String containing message.
+        log_str (str): Log file string.
+    """
+    return x if log_str in x else None
+
+
+# @pytest.mark.parametrize('test_case', [case for case in tests])
+@pytest.mark.skip(reason='https://github.com/wazuh/wazuh-qa/issues/3536')
+def test_agentd_multi_server(add_hostnames, configure_authd_server, set_authd_id, clean_keys, configure_environment,
+                             get_configuration):
     '''
-    description: Check how the agent behaves when there are delays between connection
-                 attempts to the server. For this purpose, different values for
-                 'max_retries' and 'retry_interval' parameters are tested.
+    description: Check the agent's enrollment and connection to a manager in a multi-server environment.
+                 Initialize an environment with multiple simulated servers in which the agent is forced to enroll
+                 under different test conditions, verifying the agent's behavior through its log files.
 
     wazuh_min_version: 4.2.0
 
     tier: 0
 
     parameters:
-        - test_metadata:
-            type: data
-            brief: Configuration cases.
-        - set_wazuh_configuration:
+        - add_hostnames:
+            type: fixture
+            brief: Adds to the 'hosts' file the names and the IP addresses of the testing servers.
+        - configure_authd_server:
+            type: fixture
+            brief: Initializes a simulated 'wazuh-authd' connection.
+        - set_authd_id:
+            type: fixture
+            brief: Sets the agent id to '101' in the 'wazuh-authd' simulated connection.
+        - clean_keys:
+            type: fixture
+            brief: Clears the 'client.keys' file used by the simulated remote connections.
+        - configure_environment:
             type: fixture
             brief: Configure a custom environment for testing.
-        - configure_local_internal_options:
+        - get_configuration:
             type: fixture
-            brief: Set internal configuration for testing.
-        - truncate_monitored_files:
-            type: fixture
-            brief: Reset the 'ossec.log' file and start a new monitor.
-        - daemons_handler:
-            type: fixture
-            brief: Handler of Wazuh daemons.
+            brief: Get configurations from the module.
 
     assertions:
-        - Verify that when the 'wazuh-agentd' daemon initializes, it connects to
-          the 'wazuh-remoted' daemon of the manager before reaching the maximum number of attempts.
-        - Verify the successful enrollment of the agent if the auto-enrollment option is enabled.
-        - Verify that the rollback feature of the server works correctly.
+        - Agent without keys. Verify that all servers will refuse the connection to the 'wazuh-remoted' daemon
+          but will accept enrollment. The agent should try to connect and enroll each of them.
+        - Agent without keys. Verify that the first server only has enrollment available, and the third server
+          only has the 'wazuh-remoted' daemon available. The agent should enroll in the first server and
+          connect to the third one.
+        - Agent without keys. Verify that the agent should enroll and connect to the first server, and then
+          the first server will disconnect. The agent should connect to the second server with the same key.
+        - Agent without keys. Verify that the agent should enroll and connect to the first server, and then
+          the first server will disconnect. The agent should try to enroll in the first server again,
+          and then after failure, move to the second server and connect.
+        - Agent with keys. Verify that the agent should enroll and connect to the last server.
+        - Agent with keys. Verify that the first server is available, but it disconnects, and the second and
+          third servers are not responding. The agent on disconnection should try the second and third servers
+          and go back finally to the first server.
 
     input_description: An external YAML file (wazuh_conf.yaml) includes configuration settings for the agent.
-                       Different test cases are found in the test module and include parameters
-                       for the environment setup using the TCP and UDP protocols.
+                       Different test cases are found in the test module and include parameters for
+                       the environment setup, the requests to be made, and the expected result.
 
     expected_output:
+        - r'Requesting a key from server'
+        - r'Valid key received'
         - r'Trying to connect to server'
-        - r'Unable to connect to any server'
+        - r'Connected to enrollment service'
+        - r'Received message'
+        - r'Server responded. Releasing lock.'
+        - r'Unable to connect to enrollment service at'
 
     tags:
         - simulator
         - ssl
         - keys
     '''
-    DELTA = 1
+    log_monitor = FileMonitor(LOG_FILE_PATH)
 
-    # 1 Check for unsuccessful connection retries in Agentd initialization
-    interval = test_metadata['RETRY_INTERVAL']
+    for stage in range(0, len(get_configuration['metadata']['LOG_MONITOR_STR'])):
 
-    # Get first connection try log timestamp
-    matched_line = check_connection_try()
-    log_timestamp = parse_time_from_log_line(matched_line)
+        authd_server.set_mode(get_configuration['metadata']['SIMULATOR_MODES']['AUTHD'][stage])
+        authd_server.clear()
 
-    for _ in range(1,test_metadata['MAX_RETRIES']):
-        # Get second connection try log timestamp
-        matched_line = check_connection_try()
-        actual_retry = parse_time_from_log_line(matched_line)
-        
-        # Compute elapsed time
-        delta_retry = actual_retry - log_timestamp
+        for i in range(0, get_configuration['metadata']['SIMULATOR_NUMBER']):
+            # Set simulator mode for that stage
+            if get_configuration['metadata']['SIMULATOR_MODES'][i][stage] != 'CLOSE':
+                remoted_servers[i].set_mode(get_configuration['metadata']['SIMULATOR_MODES'][i][stage])
+            else:
+                remoted_servers[i].stop()
 
-        # Check elapsed time is the spected
-        assert delta_retry >= timedelta(seconds=interval - DELTA), "Retries to quick"
-        assert delta_retry <= timedelta(seconds=interval + DELTA), "Retries to slow"
-        
-        # Second log becomes the first for next cycle
-        log_timestamp = actual_retry
-        
-    # 3 If auto enrollment is enabled, retry check enrollment
-    if test_metadata['ENROLL'] == 'yes':
-        # Add dummy key in order to communicate with RemotedSimulator
-        add_custom_key()
-        
-        # Start RemotedSimulator for successfully enrollment 
-        remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
-        remoted_server.start()
-        wait_connect()
+        if stage == 0:
+            # Restart at beginning of test
+            restart_agentd()
 
-        # Shutdown RemotedSimulator
-        kill_server(remoted_server)
+        for index, log_str in enumerate(get_configuration['metadata']['LOG_MONITOR_STR'][stage]):
+            try:
+                log_monitor.start(timeout=tcase_timeout, callback=lambda x: wait_until(x, log_str))
+            except TimeoutError:
+                assert False, f"Expected message '{log_str}' never arrived! Stage: {stage+1}, message number: {index+1}"
 
-    # 4 Wait for server rollback
-    wait_server_rollback()
+        for i in range(0, get_configuration['metadata']['SIMULATOR_NUMBER']):
+            # Clean after every stage
+            if get_configuration['metadata']['SIMULATOR_MODES'][i][stage] == 'CLOSE':
+                remoted_servers[i].start()
 
-    #Check number of retries messages is the expected
-    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(accumulations = test_metadata['MAX_RETRIES'], callback=callbacks.generate_callback(AGENTD_TRYING_CONNECT))
-    assert (wazuh_log_monitor.callback_result != None), f'Trying to connect to server message not found expected times'
-
-    #Check number of connected message is the expected
-    if test_metadata['ENROLL'] == 'yes':
-        wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_CONNECTED_TO_SERVER))
-        assert (wazuh_log_monitor.callback_result != None), f'Connected to the server message not found'
+        authd_server.clear()
+    return
