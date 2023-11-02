@@ -28,7 +28,7 @@
     NODE_TYPE: 'master'
   metadata:
     remote_enrollment: 'no'
-    node_type: 'no'
+    node_type: 'master'
     id: 'no_remote_enrollment_cluster_master'
 
 - name: Yes remote enrollment cluster master
@@ -39,7 +39,7 @@
     NODE_TYPE: 'master'
   metadata:
     remote_enrollment: 'yes'
-    node_type: 'no'
+    node_type: 'master'
     id: 'yes_remote_enrollment_cluster_master'
 
 - name: No remote enrollment cluster worker
@@ -50,7 +50,7 @@
     NODE_TYPE: 'worker'
   metadata:
     remote_enrollment: 'no'
-    node_type: 'no'
+    node_type: 'worker'
     id: 'no_remote_enrollment_cluster_worker'
 
 - name: Yes remote enrollment cluster worker
@@ -61,5 +61,5 @@
     NODE_TYPE: 'worker'
   metadata:
     remote_enrollment: 'yes'
-    node_type: 'no'
+    node_type: 'worker'
     id: 'yes_remote_enrollment_cluster_worker'
