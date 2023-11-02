@@ -14,7 +14,7 @@ policy:
   id: "cis_win10_enterprise"
   file: "cis_win10_enterprise.yml"
   name: "CIS Microsoft Windows 10 Enterprise Benchmark v2.0.0"
-  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft Windows 10 Enterprise."
+  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft Windows 10 Enterprise. Please note that the rules provide accurate results for Windows 11 Operating Systems with the System language set to English. The SCA policy will work with other languages but the results will be less accurate due to some of the rules that depend on the System language."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
 
