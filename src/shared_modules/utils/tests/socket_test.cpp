@@ -15,11 +15,9 @@
 #include <chrono>
 #include <future>
 
-void SocketTest::SetUp() {}
+TYPED_TEST_SUITE_P(SocketTest);
 
-void SocketTest::TearDown() {}
-
-TEST_F(SocketTest, SingleDelayedServerStart)
+TYPED_TEST_P(SocketTest, SingleDelayedServerStart)
 {
     constexpr size_t MESSAGE_QUANTITY {1000000};
     std::string socketPath {"/tmp/echo_sock"};
@@ -30,7 +28,7 @@ TEST_F(SocketTest, SingleDelayedServerStart)
         [&]()
         {
             std::this_thread::sleep_for(std::chrono::seconds(2));
-            SocketServer<Socket<OSPrimitives>, EpollWrapper> server {socketPath};
+            SocketServer<Socket<OSPrimitives, TypeParam>, EpollWrapper> server {socketPath};
             server.listen(
                 [&](const int fd, const char* data, uint32_t size, const char* dataHeader, uint32_t sizeHeader)
                 {
@@ -51,7 +49,7 @@ TEST_F(SocketTest, SingleDelayedServerStart)
             promise.get_future().wait_for(std::chrono::seconds(10));
         });
 
-    SocketClient<Socket<OSPrimitives>, EpollWrapper> client {socketPath};
+    SocketClient<Socket<OSPrimitives, TypeParam>, EpollWrapper> client {socketPath};
     client.connect(
         [](const char* data, uint32_t size, const char* dataHeader, uint32_t sizeHeader)
         {
@@ -70,13 +68,13 @@ TEST_F(SocketTest, SingleDelayedServerStart)
     EXPECT_EQ(counter, MESSAGE_QUANTITY);
 }
 
-TEST_F(SocketTest, SingleDelayedClient)
+TYPED_TEST_P(SocketTest, SingleDelayedClient)
 {
     constexpr size_t MESSAGE_QUANTITY {1000000};
     std::string socketPath {"/tmp/echo_sock"};
     std::promise<void> promise;
 
-    SocketServer<Socket<OSPrimitives>, EpollWrapper> server {socketPath};
+    SocketServer<Socket<OSPrimitives, TypeParam>, EpollWrapper> server {socketPath};
     std::atomic<size_t> counter {0};
     server.listen(
         [&](const int fd, const char* data, uint32_t size, const char* dataHeader, uint32_t sizeHeader)
@@ -94,7 +92,7 @@ TEST_F(SocketTest, SingleDelayedClient)
             }
         });
 
-    SocketClient<Socket<OSPrimitives>, EpollWrapper> client {socketPath};
+    SocketClient<Socket<OSPrimitives, TypeParam>, EpollWrapper> client {socketPath};
     client.connect(
         [](const char* data, uint32_t size, const char* dataHeader, uint32_t sizeHeader)
         {
@@ -115,14 +113,14 @@ TEST_F(SocketTest, SingleDelayedClient)
     EXPECT_EQ(counter, MESSAGE_QUANTITY);
 }
 
-TEST_F(SocketTest, MultipleClients)
+TYPED_TEST_P(SocketTest, MultipleClients)
 {
     constexpr size_t MESSAGE_QUANTITY {10000};
     std::string socketPath {"/tmp/echo_sock"};
     std::promise<void> promise;
     constexpr size_t CLIENTS {10};
 
-    SocketServer<Socket<OSPrimitives>, EpollWrapper> server {socketPath};
+    SocketServer<Socket<OSPrimitives, TypeParam>, EpollWrapper> server {socketPath};
     std::atomic<size_t> counter {0};
     server.listen(
         [&](const int fd, const char* data, uint32_t size, const char* dataHeader, uint32_t sizeHeader)
@@ -145,7 +143,7 @@ TEST_F(SocketTest, MultipleClients)
         threads.emplace_back(
             [&]()
             {
-                SocketClient<Socket<OSPrimitives>, EpollWrapper> client {socketPath};
+                SocketClient<Socket<OSPrimitives, TypeParam>, EpollWrapper> client {socketPath};
                 client.connect(
                     [](const char* data, uint32_t size, const char* dataHeader, uint32_t sizeHeader)
                     {
@@ -175,13 +173,13 @@ TEST_F(SocketTest, MultipleClients)
     EXPECT_EQ(counter, MESSAGE_QUANTITY);
 }
 
-TEST_F(SocketTest, SingleDelayedClientWithReconnectionSendMessageOffline)
+TYPED_TEST_P(SocketTest, SingleDelayedClientWithReconnectionSendMessageOffline)
 {
     constexpr size_t MESSAGE_QUANTITY {100};
     std::string socketPath {"/tmp/echo_sock"};
     std::promise<void> promise;
 
-    SocketServer<Socket<OSPrimitives>, EpollWrapper> server {socketPath};
+    SocketServer<Socket<OSPrimitives, TypeParam>, EpollWrapper> server {socketPath};
     std::atomic<size_t> counter {0};
     server.listen(
         [&](const int fd, const char* data, uint32_t size, const char* dataHeader, uint32_t sizeHeader)
@@ -199,7 +197,7 @@ TEST_F(SocketTest, SingleDelayedClientWithReconnectionSendMessageOffline)
             }
         });
 
-    SocketClient<Socket<OSPrimitives>, EpollWrapper> client {socketPath};
+    SocketClient<Socket<OSPrimitives, TypeParam>, EpollWrapper> client {socketPath};
     client.connect(
         [](const char* data, uint32_t size, const char* dataHeader, uint32_t sizeHeader)
         {
@@ -248,13 +246,13 @@ TEST_F(SocketTest, SingleDelayedClientWithReconnectionSendMessageOffline)
     EXPECT_EQ(counter, MESSAGE_QUANTITY);
 }
 
-TEST_F(SocketTest, SingleDelayedClientWithReconnectionOnline)
+TYPED_TEST_P(SocketTest, SingleDelayedClientWithReconnectionOnline)
 {
     constexpr size_t MESSAGE_QUANTITY {100};
     std::string socketPath {"/tmp/echo_sock"};
     std::promise<void> promise;
 
-    SocketServer<Socket<OSPrimitives>, EpollWrapper> server {socketPath};
+    SocketServer<Socket<OSPrimitives, TypeParam>, EpollWrapper> server {socketPath};
     std::atomic<size_t> counter {0};
     server.listen(
         [&](const int fd, const char* data, uint32_t size, const char* dataHeader, uint32_t sizeHeader)
@@ -272,7 +270,7 @@ TEST_F(SocketTest, SingleDelayedClientWithReconnectionOnline)
             }
         });
 
-    SocketClient<Socket<OSPrimitives>, EpollWrapper> client {socketPath};
+    SocketClient<Socket<OSPrimitives, TypeParam>, EpollWrapper> client {socketPath};
     client.connect(
         [](const char* data, uint32_t size, const char* dataHeader, uint32_t sizeHeader)
         {
@@ -321,13 +319,13 @@ TEST_F(SocketTest, SingleDelayedClientWithReconnectionOnline)
     EXPECT_EQ(counter, MESSAGE_QUANTITY);
 }
 
-TEST_F(SocketTest, SingleDelayedClientWithReconnectionServerReset)
+TYPED_TEST_P(SocketTest, SingleDelayedClientWithReconnectionServerReset)
 {
     constexpr size_t MESSAGE_QUANTITY {100};
     std::string socketPath {"/tmp/echo_sock"};
     std::promise<void> promise;
 
-    auto server = std::make_unique<SocketServer<Socket<OSPrimitives>, EpollWrapper>>(socketPath);
+    auto server = std::make_unique<SocketServer<Socket<OSPrimitives, TypeParam>, EpollWrapper>>(socketPath);
     std::atomic<size_t> counter {0};
     server->listen(
         [&](const int fd, const char* data, uint32_t size, const char* dataHeader, uint32_t sizeHeader)
@@ -345,7 +343,7 @@ TEST_F(SocketTest, SingleDelayedClientWithReconnectionServerReset)
             }
         });
 
-    SocketClient<Socket<OSPrimitives>, EpollWrapper> client {socketPath};
+    SocketClient<Socket<OSPrimitives, TypeParam>, EpollWrapper> client {socketPath};
     client.connect(
         [](const char* data, uint32_t size, const char* dataHeader, uint32_t sizeHeader)
         {
@@ -374,7 +372,7 @@ TEST_F(SocketTest, SingleDelayedClientWithReconnectionServerReset)
 
     std::promise<void> promise2;
     counter = 0;
-    server = std::make_unique<SocketServer<Socket<OSPrimitives>, EpollWrapper>>(socketPath);
+    server = std::make_unique<SocketServer<Socket<OSPrimitives, TypeParam>, EpollWrapper>>(socketPath);
 
     server->listen(
         [&](const int fd, const char* data, uint32_t size, const char* dataHeader, uint32_t sizeHeader)
@@ -395,3 +393,17 @@ TEST_F(SocketTest, SingleDelayedClientWithReconnectionServerReset)
 
     EXPECT_EQ(counter, MESSAGE_QUANTITY);
 }
+
+// All tests must be registered
+
+REGISTER_TYPED_TEST_SUITE_P(SocketTest,
+                            SingleDelayedServerStart,
+                            SingleDelayedClient,
+                            MultipleClients,
+                            SingleDelayedClientWithReconnectionSendMessageOffline,
+                            SingleDelayedClientWithReconnectionOnline,
+                            SingleDelayedClientWithReconnectionServerReset);
+
+// Configuring typed-tests
+using protocolTypes = ::testing::Types<appendHeaderProtocol, sizeHeaderProtocol>;
+INSTANTIATE_TYPED_TEST_SUITE_P(TypedSocketTests, SocketTest, protocolTypes);
