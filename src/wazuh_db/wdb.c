@@ -1158,7 +1158,7 @@ void wdb_check_fragmentation() {
                         continue;
                     }
                     gettime(&ts_end);
-                    mdebug2("Vacuum executed on the '%s' database. Time: %.3f ms.", node->id, time_diff(&ts_start, &ts_end) * 1e3);
+                    mdebug1("Vacuum executed on the '%s' database. Time: %.3f ms.", node->id, time_diff(&ts_start, &ts_end) * 1e3);
 
                     // save fragmentation after vacuum
                     if (fragmentation_after_vacuum = wdb_get_db_state(node), fragmentation_after_vacuum == OS_INVALID) {
