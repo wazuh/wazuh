@@ -322,6 +322,25 @@ namespace Utils
         return ret;
     }
 
+    /**
+     * @brief Checks that the string is alphanumeric and contains all of the special characters passed as argument.
+     *
+     * @param str Original string.
+     * @param specialCharacters Special characters string.
+     * @return true
+     * @return false
+     */
+    static bool isAlphaNumericWithSpecialCharacters(const std::string& str, const std::string& specialCharacters)
+    {
+        return str.compare("") != 0 ? std::all_of(std::begin(str),
+                                                  std::end(str),
+                                                  [&specialCharacters](const auto& character) {
+                                                      return std::isalnum(character) ||
+                                                             specialCharacters.find(character) != std::string::npos;
+                                                  })
+                                    : false;
+    }
+
     static bool isNumber(const std::string& str)
     {
         std::string::const_iterator it = str.begin();
