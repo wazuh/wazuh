@@ -14,6 +14,7 @@
 #include "offlineDownloader.hpp"
 #include "gtest/gtest.h"
 #include <filesystem>
+#include <fstream>
 #include <memory>
 
 const auto OK_STATUS = R"({"stage":"OfflineDownloader","status":"ok"})"_json;
@@ -117,4 +118,41 @@ TEST_F(OfflineDownloaderTest, SkipFileProcessing)
 
     ASSERT_NO_THROW(OfflineDownloader().handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+}
+
+/**
+ * @brief Tests two downloads one after the other. The file from the second download is different from the prior so the
+ * output file gets overrided.
+ *
+ */
+TEST_F(OfflineDownloaderTest, TwoFileDownloadsOverrideOutput)
+{
+    m_spUpdaterBaseContext->configData["url"] = m_inputFilePathRaw.string();
+    m_spUpdaterBaseContext->configData["compressionType"] = "raw";
+
+    // Set expected data.
+    nlohmann::json expectedData;
+    expectedData["paths"].push_back(m_spUpdaterBaseContext->contentsFolder.string() + "/" +
+                                    m_inputFilePathRaw.filename().string());
+    expectedData["stageStatus"] = nlohmann::json::array();
+    expectedData["stageStatus"].push_back(OK_STATUS);
+
+    // Trigger first download.
+    ASSERT_NO_THROW(OfflineDownloader().handleRequest(m_spUpdaterContext));
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+    EXPECT_TRUE(std::filesystem::exists(m_spUpdaterBaseContext->contentsFolder / m_inputFilePathRaw.filename()));
+
+    // Change input file content.
+    std::ofstream testFileStream {m_inputFilePathRaw};
+    testFileStream << "I'm a test file with a .txt extension and I will override the output file." << std::endl;
+    testFileStream.close();
+
+    // Clear first execution data.
+    m_spUpdaterContext->data.at("stageStatus").clear();
+    m_spUpdaterContext->data.at("paths").clear();
+
+    // Trigger second download.
+    ASSERT_NO_THROW(OfflineDownloader().handleRequest(m_spUpdaterContext));
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+    EXPECT_TRUE(std::filesystem::exists(m_spUpdaterBaseContext->contentsFolder / m_inputFilePathRaw.filename()));
 }

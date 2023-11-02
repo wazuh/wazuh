@@ -111,8 +111,8 @@ private:
                                             : context.spUpdaterBaseContext->contentsFolder};
             outputFilePath = outputFilePath / inputFilePath.filename();
 
-            // Copy files.
-            std::filesystem::copy(inputFilePath, outputFilePath);
+            // Copy file, overriding the output one if necessary.
+            std::filesystem::copy(inputFilePath, outputFilePath, std::filesystem::copy_options::overwrite_existing);
 
             // Store new hash.
             context.spUpdaterBaseContext->downloadedFileHash = std::move(inputFileHash);
