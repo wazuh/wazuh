@@ -39,7 +39,7 @@ runs:
           if [[ "${{ inputs.asan }}" != "false" ]]; then
             # Compile for ASAN
             echo "Compiling for ASAN"
-            export COMPILATION_FLAGS="-g -fno-omit-frame-pointer -fsanitize=address -fsanitize=undefined -fsanitize=leak"
+            export COMPILATION_FLAGS="-g -fno-omit-frame-pointer -fsanitize=thread"
           else
             # Compile for valgrind and coverage
             echo "Compiling for valgrind and coverage"
