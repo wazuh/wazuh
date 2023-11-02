@@ -9126,96 +9126,8 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Dsh -> AllowNewsAndInterests'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Dsh -> AllowNewsAndInterests -> 0'
 
-  # 18.10.76.1.1 (L1) Ensure 'Notify Malicious' is set to 'Enabled'. (Automated)
-  - id: 15935
-    title: "Ensure 'Notify Malicious' is set to 'Enabled'."
-    description: "This policy setting determines whether Enhanced Phishing Protection in Microsoft Defender SmartScreen warns users if they type their work or school password into one of the following malicious scenarios: into a reported phishing site, into a Microsoft login URL with an invalid certificate, or into an application connecting to either a reported phishing site or a Microsoft login URL with an invalid certificate. The recommended state for this setting is: Enabled. Note: This setting only applies to Microsoft Accounts (computer or browser login) while using Microsoft Windows 11 and not on prem domain-joined accounts."
-    rationale: "Users will receive a pop-up notification if they try to access a website that is being blocked by Windows Defender SmartScreen. This assists users in making informed decisions about why the website is being blocked and whether to continue to it."
-    impact: "In some cases, Windows Defender SmartScreen may block legitimate websites, that have been incorrectly flagged by Microsoft."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender SmartScreen\\Enhanced Phishing Protection\\Notify Malicious Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WebThreatDefense.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates (or newer)."
-    references:
-      - "https://learn.microsoft.com/en-us/windows/security/threat-protection/microsoft-defender-smartscreen/phishing-protection-microsoft-defender-smartscreen?tabs=intune"
-    compliance:
-      - cis: ["18.10.76.1.1"]
-      - cis_csc_v8: ["10.5"]
-      - cis_csc_v7: ["8.3"]
-      - nist_sp_800-53: ["SI-16"]
-      - pci_dss_v3.2.1: ["1.4"]
-      - soc_2: ["CC6.8"]
-    condition: all
-    rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WTDS\Components'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WTDS\Components -> NotifyMalicious'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> NotifyMalicious -> 1'
-
-  # 18.10.76.1.2 (L1) Ensure 'Notify Password Reuse' is set to 'Enabled'. (Automated)
-  - id: 15936
-    title: "Ensure 'Notify Password Reuse' is set to 'Enabled'."
-    description: "This policy setting determines whether Enhanced Phishing Protection in Microsoft Defender SmartScreen warns users if they reuse their work or school password. The recommended state for this setting is: Enabled. Note: This setting only applies to Microsoft Accounts (computer or browser login) while using Microsoft Windows 11 and not on prem domain-joined accounts."
-    rationale: "Users will be alerted if they try to use a password that has been exposed in a known data breach. This can help reduce the risk of password-related security incidents, such as unauthorized access to online accounts, and can encourage users to choose strong and unique passwords."
-    impact: "Password reuse may be detected as a false positive by Microsoft."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender SmartScreen\\Enhanced Phishing Protection\\Notify Password Reuse Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WebThreatDefense.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates (or newer)."
-    references:
-      - "https://learn.microsoft.com/en-us/windows/security/threat-protection/microsoft-defender-smartscreen/phishing-protection-microsoft-defender-smartscreen?tabs=gpo"
-    compliance:
-      - cis: ["18.10.76.1.2"]
-      - cis_csc_v8: ["10.5"]
-      - cis_csc_v7: ["8.3"]
-      - nist_sp_800-53: ["SI-16"]
-      - pci_dss_v3.2.1: ["1.4"]
-      - soc_2: ["CC6.8"]
-    condition: all
-    rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WTDS\Components'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WTDS\Components -> NotifyPasswordReuse'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> NotifyPasswordReuse -> 1'
-
-  # 18.10.76.1.3 (L1) Ensure 'Notify Unsafe App' is set to 'Enabled'. (Automated)
-  - id: 15937
-    title: "Ensure 'Notify Unsafe App' is set to 'Enabled'."
-    description: "This policy setting determines whether Enhanced Phishing Protection in Microsoft Defender SmartScreen warns users if they type their work or school passwords in Notepad, WordPad, or M365 Office apps like OneNote, Word, Excel, etc. The recommended state for this setting is: Enabled. Note: This setting only applies to Microsoft Accounts (computer or browser login) while using Microsoft Windows 11 and not on prem domain-joined accounts."
-    rationale: "Users will be warned if they store their password in Notepad or Microsoft 365 Office Apps. This can help reduce the risk of security incidents, such as data theft or data loss. Storing credentials in plain text allows for anyone who has authorized or unauthorized access to the system to obtain them."
-    impact: "Saved passwords may be detected as false positives by Microsoft."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender SmartScreen\\Enhanced Phishing Protection\\Notify Unsafe App Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WebThreatDefense.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates (or newer)."
-    references:
-      - "https://docs.microsoft.com/en-us/windows/security/threat-protection/microsoft-defender-smartscreen/microsoft-defender-smartscreen-overview"
-    compliance:
-      - cis: ["18.10.76.1.3"]
-      - cis_csc_v8: ["10.5"]
-      - cis_csc_v7: ["8.3"]
-      - nist_sp_800-53: ["SI-16"]
-      - pci_dss_v3.2.1: ["1.4"]
-      - soc_2: ["CC6.8"]
-    condition: all
-    rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WTDS\Components'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WTDS\Components -> NotifyUnsafeApp'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> NotifyUnsafeApp -> 1'
-
-  # 18.10.76.1.4 (L1) Ensure 'Service Enabled' is set to 'Enabled'. (Automated)
-  - id: 15938
-    title: "Ensure 'Service Enabled' is set to 'Enabled'."
-    description: "This policy setting determines whether Enhanced Phishing Protection is in audit mode. This allows notifications to be sent to users regarding unsafe password events. Additionally, Enhanced Phishing Protection captures unsafe password entry events and sends diagnostic data through Microsoft Defender. The recommended state for this setting is: Enabled. Note: This setting only applies to Microsoft accounts (computer or browser login) while using Microsoft Windows 11 and not on-prem domain-joined accounts."
-    rationale: "Allowing Enhanced Phishing Protection the ability to warn users about unsafe password use could prevent phishing attempts and (credential) data loss. In addition, the Microsoft 365 Defender Portal provides valuable phishing sensor data found in the environment."
-    impact: "None - this is default behavior."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender SmartScreen\\Enhanced Phishing Protection\\Service Enabled Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WebThreatDefense.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates (or newer)."
-    references:
-      - "https://learn.microsoft.com/en-us/windows/security/threat-protection/microsoft-defender-smartscreen/phishing-protection-microsoft-defender-smartscreen?tabs=gpo"
-    compliance:
-      - cis: ["18.10.76.1.4"]
-      - cis_csc_v8: ["10.5"]
-      - cis_csc_v7: ["8.3"]
-      - nist_sp_800-53: ["SI-16"]
-      - pci_dss_v3.2.1: ["1.4"]
-      - soc_2: ["CC6.8"]
-    condition: all
-    rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WTDS\Components'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WTDS\Components -> ServiceEnabled'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> ServiceEnabled -> 1'
-
   # 18.10.76.2.1 (L1) Ensure 'Configure Windows Defender SmartScreen' is set to 'Enabled: Warn and prevent bypass'. (Automated)
-  - id: 15939
+  - id: 15935
     title: "Ensure 'Configure Windows Defender SmartScreen' is set to 'Enabled: Warn and prevent bypass'."
     description: "This policy setting allows you to manage the behavior of Windows Defender SmartScreen. Windows Defender SmartScreen helps keep PCs safer by warning users before running unrecognized programs downloaded from the Internet. Some information is sent to Microsoft about files and programs run on PCs with this feature enabled. The recommended state for this setting is: Enabled: Warn and prevent bypass."
     rationale: "Windows Defender SmartScreen helps keep PCs safer by warning users before running unrecognized programs downloaded from the Internet. However, due to the fact that some information is sent to Microsoft about files and programs run on PCs some organizations may prefer to disable it."
@@ -9239,7 +9151,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> ShellSmartScreenLevel -> Block'
 
   # 18.10.76.3.1 (L1) Ensure 'Configure Windows Defender SmartScreen' is set to 'Enabled'. (Automated)
-  - id: 15940
+  - id: 15936
     title: "Ensure 'Configure Windows Defender SmartScreen' is set to 'Enabled'."
     description: "This setting lets you decide whether to turn on SmartScreen Filter. SmartScreen Filter provides warning messages to help protect your employees from potential phishing scams and malicious software. The recommended state for this setting is: Enabled."
     rationale: "SmartScreen serves an important purpose as it helps to warn users of possible malicious sites and files. Allowing users to turn off this setting can make the browser become more vulnerable to compromise."
@@ -9262,7 +9174,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter -> EnabledV9 -> 1'
 
   # 18.10.76.3.2 (L1) Ensure 'Prevent bypassing Windows Defender SmartScreen prompts for sites' is set to 'Enabled'. (Automated)
-  - id: 15941
+  - id: 15937
     title: "Ensure 'Prevent bypassing Windows Defender SmartScreen prompts for sites' is set to 'Enabled'."
     description: "This setting lets you decide whether employees can override the SmartScreen Filter warnings about potentially malicious websites. The recommended state for this setting is: Enabled."
     rationale: "SmartScreen will warn an employee if a website is potentially malicious. Enabling this setting prevents these warnings from being bypassed."
@@ -9285,7 +9197,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter -> PreventOverride -> 1'
 
   # 18.10.78.1 (L1) Ensure 'Enables or disables Windows Game Recording and Broadcasting' is set to 'Disabled'. (Automated)
-  - id: 15942
+  - id: 15938
     title: "Ensure 'Enables or disables Windows Game Recording and Broadcasting' is set to 'Disabled'."
     description: "This setting enables or disables the Windows Game Recording and Broadcasting features. The recommended state for this setting is: Disabled."
     rationale: "If this setting is allowed, users could record and broadcast session info to external sites, which is both a risk of accidentally exposing sensitive company data (on-screen) outside the company as well as a privacy concern."
@@ -9307,7 +9219,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\GameDVR -> AllowGameDVR -> 0'
 
   # 18.10.79.1 (L1) Ensure 'Enable ESS with Supported Peripherals' is set to 'Enabled: 1'. (Automated)
-  - id: 15943
+  - id: 15939
     title: "Ensure 'Enable ESS with Supported Peripherals' is set to 'Enabled: 1'."
     description: "Enhanced Sign-in Security isolates Windows Hello biometric (face and fingerprint) template data and matching operations to trusted hardware or specified memory regions. The recommended state for this setting is: Enabled: 1. (Enhanced Sign-in Security Enabled)."
     rationale: "Because the channel of communication between the sensors and the algorithm is secured, it is impossible for malware to inject or replay data in order to simulate a user signing in or to lock a user out of their machine."
@@ -9330,7 +9242,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\GameDVR -> EnableESSwithSupportedPeripherals -> 1'
 
   # 18.10.80.1 (L2) Ensure 'Allow suggested apps in Windows Ink Workspace' is set to 'Disabled'. (Automated)
-  - id: 15944
+  - id: 15940
     title: "Ensure 'Allow suggested apps in Windows Ink Workspace' is set to 'Disabled'."
     description: "This policy setting determines whether suggested apps in Windows Ink Workspace are allowed. The recommended state for this setting is: Disabled."
     rationale: "This Microsoft feature is designed to collect data and suggest apps based on that data collected. Disabling this setting will help ensure your data is not shared with any third party."
@@ -9347,7 +9259,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace -> AllowSuggestedAppsInWindowsInkWorkspace -> 0'
 
   # 18.10.80.2 (L1) Ensure 'Allow Windows Ink Workspace' is set to 'Enabled: On, but disallow access above lock' OR 'Enabled: Disabled'. (Automated)
-  - id: 15945
+  - id: 15941
     title: "Ensure 'Allow Windows Ink Workspace' is set to 'Enabled: On, but disallow access above lock' OR 'Enabled: Disabled'."
     description: "This policy setting determines whether Windows Ink items are allowed above the lock screen. The recommended state for this setting is: Enabled: On, but disallow access above lock OR Enabled: Disabled."
     rationale: "Allowing any apps to be accessed while system is locked is not recommended. If this feature is permitted, it should only be accessible once a user authenticates with the proper credentials."
@@ -9364,7 +9276,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace -> AllowWindowsInkWorkspace -> r:^0$|^1$'
 
   # 18.10.81.1 (L1) Ensure 'Allow user control over installs' is set to 'Disabled'. (Automated)
-  - id: 15946
+  - id: 15942
     title: "Ensure 'Allow user control over installs' is set to 'Disabled'."
     description: "This setting controls whether users are permitted to change installation options that typically are available only to system administrators. The security features of Windows Installer normally prevent users from changing installation options that are typically reserved for system administrators, such as specifying the directory to which files are installed. If Windows Installer detects that an installation package has permitted the user to change a protected option, it stops the installation and displays a message. These security features operate only when the installation program is running in a privileged security context in which it has access to directories denied to the user. The recommended state for this setting is: Disabled."
     rationale: "In an enterprise managed environment, only IT staff with administrative rights should be installing or changing software on a system. Allowing users the ability to have any control over installs can risk unapproved software from being installed or removed from a system, which could cause the system to become vulnerable to compromise."
@@ -9381,7 +9293,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> EnableUserControl -> 0'
 
   # 18.10.81.2 (L1) Ensure 'Always install with elevated privileges' is set to 'Disabled'. (Automated)
-  - id: 15947
+  - id: 15943
     title: "Ensure 'Always install with elevated privileges' is set to 'Disabled'."
     description: "This setting controls whether or not Windows Installer should use system permissions when it installs any program on the system. Note: This setting appears both in the Computer Configuration and User Configuration folders. To make this setting effective, you must enable the setting in both folders. Caution: If enabled, skilled users can take advantage of the permissions this setting grants to change their privileges and gain permanent access to restricted files and folders. Note that the User Configuration version of this setting is not guaranteed to be secure. The recommended state for this setting is: Disabled."
     rationale: "Users with limited privileges can exploit this feature by creating a Windows Installer installation package that creates a new local account that belongs to the local built-in Administrators group, adds their current account to the local built-in Administrators group, installs malicious software, or performs other unauthorized activities."
@@ -9400,7 +9312,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> AlwaysInstallElevated -> 0'
 
   # 18.10.81.3 (L2) Ensure 'Prevent Internet Explorer security prompt for Windows Installer scripts' is set to 'Disabled'. (Automated)
-  - id: 15948
+  - id: 15944
     title: "Ensure 'Prevent Internet Explorer security prompt for Windows Installer scripts' is set to 'Disabled'."
     description: "This policy setting controls whether Web-based programs are allowed to install software on the computer without notifying the user. The recommended state for this setting is: Disabled."
     rationale: "Suppressing the system warning can pose a security risk and increase the attack surface on the system."
@@ -9420,7 +9332,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> SafeForScripting -> 0'
 
   # 18.10.82.1 (L1) Ensure 'Enable MPR notifications for the system' is set to 'Disabled'. (Automated)
-  - id: 15949
+  - id: 15945
     title: "Ensure 'Enable MPR notifications for the system' is set to 'Disabled'."
     description: "This policy setting controls whether winlogon sends Multiple Provider Router (MPR) notifications. MPR handles communication between the Windows operating system and the installed network providers. MPR checks the registry to determine which providers are installed on the system and the order they are cycled through. The recommended state for this setting is: Disabled."
     rationale: "MPR is a legacy utility that provides notifications to registered credential managers or network providers when there is a logon event or a password change event. Although this functionality can be used by legitimate applications, it can also be abused by attackers to harvest logon information."
@@ -9445,7 +9357,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> EnableMPR -> 1'
 
   # 18.10.82.2 (L1) Ensure 'Sign-in and lock last interactive user automatically after a restart' is set to 'Disabled'. (Automated)
-  - id: 15950
+  - id: 15946
     title: "Ensure 'Sign-in and lock last interactive user automatically after a restart' is set to 'Disabled'."
     description: "This policy setting controls whether a device will automatically sign-in the last interactive user after Windows Update restarts the system. The recommended state for this setting is: Disabled."
     rationale: "Disabling this feature will prevent the caching of user's credentials and unauthorized use of the device, and also ensure the user is aware of the restart."
@@ -9464,7 +9376,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> DisableAutomaticRestartSignOn -> 1'
 
   # 18.10.87.1 (L1) Ensure 'Turn on PowerShell Script Block Logging' is set to 'Enabled'. (Automated)
-  - id: 15951
+  - id: 15947
     title: "Ensure 'Turn on PowerShell Script Block Logging' is set to 'Enabled'."
     description: "This policy setting enables logging of all PowerShell script input to the Applications and Services Logs\\Microsoft\\Windows\\PowerShell\\Operational Event Log channel. The recommended state for this setting is: Enabled. Note: If logging of Script Block Invocation Start/Stop Events is enabled (option box checked), PowerShell will log additional events when invocation of a command, script block, function, or script starts or stops. Enabling this option generates a high volume of event logs. CIS has intentionally chosen not to make a recommendation for this option, since it generates a large volume of events. If an organization chooses to enable the optional setting (checked), this also conforms to the benchmark."
     rationale: "Logs of PowerShell script input can be very valuable when performing forensic investigations of PowerShell attack incidents to determine what occurred."
@@ -9485,7 +9397,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging -> EnableScriptBlockLogging -> 1'
 
   # 18.10.87.2 (L1) Ensure 'Turn on PowerShell Transcription' is set to 'Enabled'. (Automated)
-  - id: 15952
+  - id: 15948
     title: "Ensure 'Turn on PowerShell Transcription' is set to 'Enabled'."
     description: "This Policy setting lets you capture the input and output of Windows PowerShell commands into text-based transcripts. The recommended state for this setting is: Enabled."
     rationale: "PowerShell transcript input can be very valuable when performing forensic investigations of PowerShell attack incidents to determine what occurred."
@@ -9506,7 +9418,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Transcription -> EnableTranscripting -> 0'
 
   # 18.10.89.1.1 (L1) Ensure 'Allow Basic authentication' is set to 'Disabled'. (Automated)
-  - id: 15953
+  - id: 15949
     title: "Ensure 'Allow Basic authentication' is set to 'Disabled'."
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) client uses Basic authentication. The recommended state for this setting is: Disabled. Note: Clients that use Microsoft's Exchange Online service (Office 365) will require an exception to this recommendation, to instead have this setting set to Enabled. Exchange Online uses Basic authentication over HTTPS, and so the Exchange Online authentication traffic will still be safely encrypted."
     rationale: "Basic authentication is less robust than other authentication methods available in WinRM because credentials including passwords are transmitted in plain text. An attacker who is able to capture packets on the network where WinRM is running may be able to determine the credentials used for accessing remote hosts via WinRM."
@@ -9531,7 +9443,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowBasic -> 0'
 
   # 18.10.89.1.2 (L1) Ensure 'Allow unencrypted traffic' is set to 'Disabled'. (Automated)
-  - id: 15954
+  - id: 15950
     title: "Ensure 'Allow unencrypted traffic' is set to 'Disabled'."
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) client sends and receives unencrypted messages over the network. The recommended state for this setting is: Disabled."
     rationale: "Encrypting WinRM network traffic reduces the risk of an attacker viewing or modifying WinRM messages as they transit the network."
@@ -9556,7 +9468,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowUnencryptedTraffic -> 0'
 
   # 18.10.89.1.3 (L1) Ensure 'Disallow Digest authentication' is set to 'Enabled'. (Automated)
-  - id: 15955
+  - id: 15951
     title: "Ensure 'Disallow Digest authentication' is set to 'Enabled'."
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) client will not use Digest authentication. The recommended state for this setting is: Enabled."
     rationale: "Digest authentication is less robust than other authentication methods available in WinRM, an attacker who is able to capture packets on the network where WinRM is running may be able to determine the credentials used for accessing remote hosts via WinRM."
@@ -9581,7 +9493,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowDigest -> 0'
 
   # 18.10.89.2.1 (L1) Ensure 'Allow Basic authentication' is set to 'Disabled'. (Automated)
-  - id: 15956
+  - id: 15952
     title: "Ensure 'Allow Basic authentication' is set to 'Disabled'."
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service accepts Basic authentication from a remote client. The recommended state for this setting is: Disabled."
     rationale: "Basic authentication is less robust than other authentication methods available in WinRM because credentials including passwords are transmitted in plain text. An attacker who is able to capture packets on the network where WinRM is running may be able to determine the credentials used for accessing remote hosts via WinRM."
@@ -9606,7 +9518,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowBasic -> 0'
 
   # 18.10.89.2.2 (L2) Ensure 'Allow remote server management through WinRM' is set to 'Disabled'. (Automated)
-  - id: 15957
+  - id: 15953
     title: "Ensure 'Allow remote server management through WinRM' is set to 'Disabled'."
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service automatically listens on the network for requests on the HTTP transport over the default HTTP port. The recommended state for this setting is: Disabled."
     rationale: "Any feature is a potential avenue of attack, those that enable inbound network connections are particularly risky. Only enable the use of the Windows Remote Management (WinRM) service on trusted networks and when feasible employ additional controls such as IPsec."
@@ -9630,7 +9542,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowAutoConfig -> 0'
 
   # 18.10.89.2.3 (L1) Ensure 'Allow unencrypted traffic' is set to 'Disabled'. (Automated)
-  - id: 15958
+  - id: 15954
     title: "Ensure 'Allow unencrypted traffic' is set to 'Disabled'."
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service sends and receives unencrypted messages over the network. The recommended state for this setting is: Disabled."
     rationale: "Encrypting WinRM network traffic reduces the risk of an attacker viewing or modifying WinRM messages as they transit the network."
@@ -9655,7 +9567,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowUnencryptedTraffic -> 0'
 
   # 18.10.89.2.4 (L1) Ensure 'Disallow WinRM from storing RunAs credentials' is set to 'Enabled'. (Automated)
-  - id: 15959
+  - id: 15955
     title: "Ensure 'Disallow WinRM from storing RunAs credentials' is set to 'Enabled'."
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service will allow RunAs credentials to be stored for any plug-ins. The recommended state for this setting is: Enabled. Note: If you enable and then disable this policy setting, any values that were previously configured for RunAsPassword will need to be reset."
     rationale: "Although the ability to store RunAs credentials is a convenient feature it increases the risk of account compromise slightly. For example, if you forget to lock your desktop before leaving it unattended for a few minutes another person could access not only the desktop of your computer but also any hosts you manage via WinRM with cached RunAs credentials."
@@ -9674,7 +9586,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> DisableRunAs -> 1'
 
   # 18.10.90.1 (L2) Ensure 'Allow Remote Shell Access' is set to 'Disabled'. (Automated)
-  - id: 15960
+  - id: 15956
     title: "Ensure 'Allow Remote Shell Access' is set to 'Disabled'."
     description: "This policy setting allows you to manage configuration of remote access to all supported shells to execute scripts and commands. The recommended state for this setting is: Disabled. Note: The GPME help text for this setting is incorrectly worded, implying that configuring it to Enabled will reject new Remote Shell connections, and setting it to Disabled will allow Remote Shell connections. The opposite is true (and is consistent with the title of the setting). This is a wording mistake by Microsoft in the Administrative Template."
     rationale: "Any feature is a potential avenue of attack, those that enable inbound network connections are particularly risky. Only enable the use of the Windows Remote Shell on trusted networks and when feasible employ additional controls such as IPsec."
@@ -9696,7 +9608,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service\WinRS -> AllowRemoteShellAccess -> 0'
 
   # 18.10.91.1 (L1) Ensure 'Allow clipboard sharing with Windows Sandbox' is set to 'Disabled'. (Automated)
-  - id: 15961
+  - id: 15957
     title: "Ensure 'Allow clipboard sharing with Windows Sandbox' is set to 'Disabled'."
     description: 'This policy setting enables or disables clipboard sharing with the Windows Sandbox. The recommended state for this setting is: Disabled. Note: The Windows Sandbox feature was first introduced in Windows 10 R1903, and allows a temporary "clean install" virtual instance of Windows to be run inside the host, for the ostensible purpose of testing applications without making changes to the host.'
     rationale: "Disabling copy and paste decreases the attack surface exposed by the Windows Sandbox and possible exposure of untrusted applications to the internal network."
@@ -9718,7 +9630,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Sandbox -> AllowClipboardRedirection -> 0'
 
   # 18.10.91.2 (L1) Ensure 'Allow networking in Windows Sandbox' is set to 'Disabled'. (Automated)
-  - id: 15962
+  - id: 15958
     title: "Ensure 'Allow networking in Windows Sandbox' is set to 'Disabled'."
     description: 'This policy setting enables or disables networking in the Windows Sandbox. Networking is achieved by creating a virtual switch on the host, and connecting the Windows Sandbox to it via a virtual Network Interface Card (NIC). The recommended state for this setting is: Disabled. Note: The Windows Sandbox feature was first introduced in Windows 10 R1903, and allows a temporary "clean install" virtual instance of Windows to be run inside the host, for the ostensible purpose of testing applications without making changes to the host.'
     rationale: "Disabling network access decreases the attack surface exposed by the Windows Sandbox and exposure of untrusted applications to the internal network. Note: Per Microsoft, enabling networking in the Windows Sandbox can expose untrusted applications to the internal network."
@@ -9740,7 +9652,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Sandbox -> AllowNetworking -> 0'
 
   # 18.10.92.2.1 (L1) Ensure 'Prevent users from modifying settings' is set to 'Enabled'. (Automated)
-  - id: 15963
+  - id: 15959
     title: "Ensure 'Prevent users from modifying settings' is set to 'Enabled'."
     description: "This policy setting prevent users from making changes to the Exploit protection settings area in the Windows Security settings. The recommended state for this setting is: Enabled."
     rationale: "Only authorized IT staff should be able to make changes to the exploit protection settings in order to ensure the organizations specific configuration is not modified."
@@ -9760,7 +9672,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\App and Browser protection -> DisallowExploitProtectionOverride -> 1'
 
   # 18.10.93.1.1 (L1) Ensure 'No auto-restart with logged on users for scheduled automatic updates installations' is set to 'Disabled'. (Automated)
-  - id: 15964
+  - id: 15960
     title: "Ensure 'No auto-restart with logged on users for scheduled automatic updates installations' is set to 'Disabled'."
     description: "This policy setting specifies that Automatic Updates will wait for computers to be restarted by the users who are logged on to them to complete a scheduled installation. The recommended state for this setting is: Disabled. Note: This setting applies only when you configure Automatic Updates to perform scheduled update installations. If you configure the Configure Automatic Updates setting to Disabled, this setting has no effect."
     rationale: "Some security updates require that the computer be restarted to complete an installation. If the computer cannot restart automatically, then the most recent update will not completely install and no new updates will download to the computer until it is restarted. Without the auto-restart functionality, users who are not security-conscious may choose to indefinitely delay the restart, therefore keeping the computer in a less secure state."
@@ -9781,7 +9693,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoRebootWithLoggedOnUsers -> 0'
 
   # 18.10.93.2.1 (L1) Ensure 'Configure Automatic Updates' is set to 'Enabled'. (Automated)
-  - id: 15965
+  - id: 15961
     title: "Ensure 'Configure Automatic Updates' is set to 'Enabled'."
     description: 'This policy setting specifies whether computers in your environment will receive security updates from Windows Update or WSUS. If you configure this policy setting to Enabled, the operating system will recognize when a network connection is available and then use the network connection to search Windows Update or your designated intranet site for updates that apply to them. After you configure this policy setting to Enabled, select one of the following three options in the Configure Automatic Updates Properties dialog box to specify how the service will work: - 2 - Notify for download and auto install (Notify before downloading any updates) - 3 - Auto download and notify for install (Download the updates automatically and notify when they are ready to be installed.) (Default setting) - 4 - Auto download and schedule the install (Automatically download updates and install them on the schedule specified below.)) - 5 - Allow local admin to choose setting (Leave decision on above choices up to the local Administrators (Not Recommended)) The recommended state for this setting is: Enabled. Note: The sub-setting "Configure automatic updating:" has 4 possible values - all of them are valid depending on specific organizational needs, however if feasible we suggest using a value of 4 - Auto download and schedule the install. This suggestion is not a scored requirement. Note #2: Organizations that utilize a third--party solution for patching may choose to exempt themselves from this recommendation, and instead configure it to Disabled so that the native Windows Update mechanism does not interfere with the third--party patching process.'
     rationale: "Although each version of Windows is thoroughly tested before release, it is possible that problems will be discovered after the products are shipped. The Configure Automatic Updates setting can help you ensure that the computers in your environment will always have the most recent critical operating system updates and service packs installed."
@@ -9802,7 +9714,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoUpdate -> 0'
 
   # 18.10.93.2.2 (L1) Ensure 'Configure Automatic Updates: Scheduled install day' is set to '0 - Every day'. (Automated)
-  - id: 15966
+  - id: 15962
     title: "Ensure 'Configure Automatic Updates: Scheduled install day' is set to '0 - Every day'."
     description: "This policy setting specifies when computers in your environment will receive security updates from Windows Update or WSUS. The recommended state for this setting is: 0 - Every day. Note: This setting is only applicable if 4 - Auto download and schedule the install is selected in the recommendation 'Configure Automatic Updates'. It will have no impact if any other option is selected."
     rationale: "Although each version of Windows is thoroughly tested before release, it is possible that problems will be discovered after the products are shipped. The Configure Automatic Updates setting can help you ensure that the computers in your environment will always have the most recent critical operating system updates and service packs installed."
@@ -9822,7 +9734,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> ScheduledInstallDay -> 0'
 
   # 18.10.93.2.3 (L1) Ensure 'Remove access to "Pause updates" feature' is set to 'Enabled'. (Automated)
-  - id: 15967
+  - id: 15963
     title: 'Ensure ''Remove access to "Pause updates" feature'' is set to ''Enabled''.'
     description: 'This policy removes access to "Pause updates" feature. The recommended state for this setting is: Enabled.'
     rationale: "In order to ensure security and system updates are applied, system administrators should control when updates are applied to systems."
@@ -9843,7 +9755,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> SetDisablePauseUXAccess -> 1'
 
   # 18.10.93.4.1 (L1) Ensure 'Manage preview builds' is set to 'Disabled'. (Automated)
-  - id: 15968
+  - id: 15964
     title: "Ensure 'Manage preview builds' is set to 'Disabled'."
     description: "This policy setting manage which updates that are receive prior to the update being released. Dev Channel: Ideal for highly technical users. Insiders in the Dev Channel will receive builds from our active development branch that is earliest in a development cycle. These builds are not matched to a specific Windows 10 release. Beta Channel: Ideal for feature explorers who want to see upcoming Windows 10 features. Your feedback will be especially important here as it will help our engineers ensure key issues are fixed before a major release. Release Preview Channel (default): Insiders in the Release Preview Channel will have access to the upcoming release of Windows 10 prior to it being released to the world. These builds are supported by Microsoft. The Release Preview Channel is where we recommend companies preview and validate upcoming Windows 10 releases before broad deployment within their organization. The recommended state for this setting is: Disabled. Note: Preview Build enrollment requires a telemetry level setting of 2 or higher and your domain registered on insider.windows.com. For additional information on Preview Builds, see: https://aka.ms/wipforbiz."
     rationale: "It can be risky for experimental features to be allowed in an enterprise managed environment because this can introduce bugs and security holes into systems, making it easier for an attacker to gain access. It is generally preferred to only use production-ready builds."
@@ -9867,7 +9779,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> ManagePreviewBuildsPolicyValue -> 1'
 
   # 18.10.93.4.2 (L1) Ensure 'Select when Preview Builds and Feature Updates are received' is set to 'Enabled: 180 or more days'. (Automated)
-  - id: 15969
+  - id: 15965
     title: "Ensure 'Select when Preview Builds and Feature Updates are received' is set to 'Enabled: 180 or more days'."
     description: 'This policy setting determines when Preview Build or Feature Updates are received. Defer Updates This enables devices to defer taking the next Feature Update available to your channel for up to 14 days for all the pre-release channels and up to 365 days for the Semi-Annual Channel. Or, if the device is updating from the Semi-Annual Channel, a version for the device to move to and/or stay on until the policy is updated or the device reaches end of service can be specified. Note: If you set both policies, the version specified will take precedence and the deferrals will not be in effect. Please see the Windows Release Information page for OS version information. Pause Updates To prevent Feature Updates from being received on their scheduled time, you can temporarily pause Feature Updates. The pause will remain in effect for 35 days from the specified start date or until the field is cleared (Quality Updates will still be offered). Note: If the "Allow Diagnostic Data" (formerly "Allow Telemetry") policy is set to 0, this policy will have no effect. Note #2: Starting with Windows 10 R1607, Microsoft introduced a new Windows Update (WU) client behavior called Dual Scan, with an eye to cloud-based update management. In some cases, this Dual Scan feature can interfere with Windows Updates from Windows Server Update Services (WSUS) and/or manual WU updates. If you are using WSUS in your environment, you may need to set the above setting to Not Configured or configure the setting Do not allow update deferral policies to cause scans against Windows Update (added in the Windows 10 Release 1709 Administrative Templates) in order to prevent the Dual Scan feature from interfering. More information on Dual Scan is available at these links: - Demystifying \"Dual Scan\" - WSUS Product Team Blog - Improving Dual Scan on 1607 - WSUS Product Team Blog Note #3: Prior to Windows 10 R1703, values above 180 days are not recognized by the OS. Starting with Windows 10 R1703, the maximum number of days you can defer is 365 days.'
     rationale: "In a production environment, it is preferred to only use software and features that are publicly available, after they have gone through rigorous testing in beta."
@@ -9891,7 +9803,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferFeatureUpdatesPeriodInDays -> n:^(\d+) compare >= 180'
 
   # 18.10.93.4.3 (L1) Ensure 'Select when Quality Updates are received' is set to 'Enabled: 0 days'. (Automated)
-  - id: 15970
+  - id: 15966
     title: "Ensure 'Select when Quality Updates are received' is set to 'Enabled: 0 days'."
     description: 'This settings controls when Quality Updates are received. The recommended state for this setting is: Enabled: 0 days. Note: If the "Allow Diagnostic Data" (formerly "Allow Telemetry") policy is set to 0, this policy will have no effect. Note #2: Starting with Windows 10 R1607, Microsoft introduced a new Windows Update (WU) client behavior called Dual Scan, with an eye to cloud-based update management. In some cases, this Dual Scan feature can interfere with Windows Updates from Windows Server Update Services (WSUS) and/or manual WU updates. If you are using WSUS in your environment, you may need to set the above setting to Not Configured or configure the setting Do not allow update deferral policies to cause scans against Windows Update (added in the Windows 10 Release 1709 Administrative Templates) in order to prevent the Dual Scan feature from interfering. More information on Dual Scan is available at these links: - Demystifying \"Dual Scan\" - WSUS Product Team Blog - Improving Dual Scan on 1607 - WSUS Product Team Blog.'
     rationale: "Quality Updates can contain important bug fixes and/or security patches, and should be installed as soon as possible."
