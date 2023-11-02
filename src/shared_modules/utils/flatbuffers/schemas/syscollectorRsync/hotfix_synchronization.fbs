@@ -1,6 +1,0 @@
-table syscollector_hotfixes
-{
-  checksum:string;
-  hotfix:string;
-  scan_time:string;
-}

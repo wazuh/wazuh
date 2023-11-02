@@ -816,7 +816,7 @@ void router_message_forward(char* msg, const char* agent_id) {
         }
         router_handle = router_syscollector_handle;
         message_header_size = SYSCOLLECTOR_HEADER_SIZE;
-        parser = Syscollector_Delta_parse_json_table;
+        parser = SyscollectorDeltas_Delta_parse_json_table;
         w_mutex_unlock(&router_syscollector_mutex);
     } else if(strncmp(msg, DBSYNC_SYSCOLLECTOR_HEADER, DBSYNC_SYSCOLLECTOR_HEADER_SIZE) == 0) {
         w_mutex_lock(&router_rsync_mutex);
@@ -829,7 +829,7 @@ void router_message_forward(char* msg, const char* agent_id) {
         }
         router_handle = router_rsync_handle;
         message_header_size = DBSYNC_SYSCOLLECTOR_HEADER_SIZE;
-        parser = Syscollector_SyncMsg_parse_json_table;
+        parser = SyscollectorSynchronization_SyncMsg_parse_json_table;
         w_mutex_unlock(&router_rsync_mutex);
     }
 
@@ -860,9 +860,9 @@ void router_message_forward(char* msg, const char* agent_id) {
         cJSON_AddItemToObject(j_msg_to_send, "data_type", cJSON_DetachItemFromObject(j_msg, "type"));
         cJSON_AddItemToObject(j_msg_to_send, "data", cJSON_DetachItemFromObject(j_msg, "data"));
 
-        if (parser == Syscollector_Delta_parse_json_table) {
+        if (parser == SyscollectorDeltas_Delta_parse_json_table) {
             cJSON_AddItemToObject(j_msg_to_send, "operation", cJSON_DetachItemFromObject(j_msg, "operation"));
-        } else if (parser == Syscollector_SyncMsg_parse_json_table) {
+        } else if (parser == SyscollectorSynchronization_SyncMsg_parse_json_table) {
             cJSON_AddItemToObject(cJSON_GetObjectItem(j_msg_to_send, "data"), "attributes_type", cJSON_DetachItemFromObject(j_msg, "component"));
         }
 
