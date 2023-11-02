@@ -4677,7 +4677,7 @@ checks:
     impact: "Warning: Many existing print configurations may be using the older named pipes protocol and therefore will cease to function."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Default: Computer Configuration\\Policies\\Administrative Templates\\Printers\\Configure RPC connection settings: Use authentication for outgoing RPC connections Note: This Group Policy path is provided by the Group Policy template Printing.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates (and newer)."
     references:
-      - "https://learn.microsoft.com/en-us/troubleshoot/windows-client/printing/windows-"
+      - "https://learn.microsoft.com/en-us/troubleshoot/windows-client/printing/windows-11-rpc-connection-updates-for-print#allow-rpc-over-tcp-communication"
     compliance:
       - cis: ["18.7.4"]
     condition: all
@@ -4738,8 +4738,8 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled. Computer Configuration\\Policies\\Administrative Templates\\MS Security Guide\\Limits print driver installation to Administrators Note: This Group Policy path does not exist by default. An additional Group Policy template SecGuide.admx/adml is required - it is available from Microsoft at this link."
     references:
-      - "https://support.microsoft.com/en-us/topic/kb5005010-restricting-installation-of-"
-      - "https://support.microsoft.com/en-gb/topic/kb5005652-manage-new-point-and-"
+      - "https://support.microsoft.com/en-us/topic/kb5005010-restricting-installation-of-new-printer-drivers-after-applying-the-july-6-2021-updates-31b91c02-05bc-4ada-a7ea-183b129578a7"
+      - "https://support.microsoft.com/en-gb/topic/kb5005652-manage-new-point-and-print-default-driver-installation-behavior-cve-2021-34481-873642bf-2634-49c5-a23b-6d8e9a302872"
     compliance:
       - cis: ["18.7.8"]
     condition: any
@@ -7747,7 +7747,7 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\File Explorer\\Turn off Data Execution Prevention for Explorer Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Explorer.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
     references:
-      - "https://docs.microsoft.com/en-us/windows/win32/memory/data-execution-"
+      - "https://docs.microsoft.com/en-us/windows/win32/memory/data-execution-prevention"
     compliance:
       - cis: ["18.10.29.2"]
       - cis_csc_v8: ["10.5"]
@@ -7893,7 +7893,7 @@ checks:
     impact: "All applications and services on the device will be prevented from new authentications using consumer Microsoft accounts via the Windows OnlineID and WebAccountManager APIs. Authentications performed directly by the user in web browsers or in apps that use OAuth will remain unaffected."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft accounts\\Block all consumer Microsoft account user authentication Note: This Group Policy path may not exist by default. It is provided by the Group Policy template MSAPolicy.admx/adml that is included with the Microsoft Windows 10 Release 1703 Administrative Templates (or newer)."
     references:
-      - "https://docs.microsoft.com/en-us/windows/security/identity-protection/access-"
+      - "https://docs.microsoft.com/en-us/windows/security/identity-protection/access-control/microsoft-accounts#bkmk-restrictuse"
     compliance:
       - cis: ["18.10.42.1"]
       - cis_csc_v8: ["5.6"]
@@ -8095,7 +8095,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Real-Time Protection\\Turn off real-time protection Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
     references:
       - "https://docs.microsoft.com/en-us/windows/security/threat-protection/microsoft-defender-antivirus/configure-real-time-protection-microsoft-defender-antivirus"
-      - "https://docs.microsoft.com/en-us/microsoft-365/security/defender-"
+      - "https://docs.microsoft.com/en-us/microsoft-365/security/defender-endpoint/configure-protection-features-microsoft-defender-antivirus?view=o365-worldwide"
     compliance:
       - cis: ["18.10.43.10.2"]
       - cis_csc_v8: ["10.1"]
@@ -9178,7 +9178,7 @@ checks:
     impact: "Saved passwords may be detected as false positives by Microsoft."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender SmartScreen\\Enhanced Phishing Protection\\Notify Unsafe App Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WebThreatDefense.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates (or newer)."
     references:
-      - "https://learn.microsoft.com/en-us/windows/security/threat-protection/microsoft-"
+      - "https://docs.microsoft.com/en-us/windows/security/threat-protection/microsoft-defender-smartscreen/microsoft-defender-smartscreen-overview"
     compliance:
       - cis: ["18.10.76.1.3"]
       - cis_csc_v8: ["10.5"]
