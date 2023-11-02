@@ -1,5 +1,4 @@
 #include <any>
-#include <filesystem>
 #include <memory>
 #include <vector>
 
@@ -26,8 +25,6 @@ using std::string;
 using std::vector;
 
 static constexpr auto DB_NAME_1 = "TEST_DB_1";
-static constexpr auto DB_DIR = "/tmp/kvdbTestSuitePath/";
-static constexpr auto DB_NAME = "kvdb";
 
 template<typename T>
 class KVDBDeleteHelper : public ::testing::TestWithParam<T>
@@ -38,19 +35,10 @@ protected:
     std::shared_ptr<kvdb::mocks::MockKVDBManager> m_kvdbManager;
     std::shared_ptr<defs::mocks::FailDef> m_failDef;
     builder::internals::HelperBuilder m_builder;
-    std::string kvdbPath;
 
     void SetUp() override
     {
         logging::testInit();
-
-        // cleaning directory in order to start without garbage.
-        kvdbPath = generateRandomStringWithPrefix(6, DB_DIR) + "/";
-
-        if (std::filesystem::exists(kvdbPath))
-        {
-            std::filesystem::remove_all(kvdbPath);
-        }
 
         m_failDef = std::make_shared<defs::mocks::FailDef>();
         m_manager = std::make_shared<FakeMetricManager>();
@@ -59,13 +47,7 @@ protected:
         m_builder = getOpBuilderKVDBDelete(m_kvdbManager, "builder_test");
     }
 
-    void TearDown() override
-    {
-        if (std::filesystem::exists(kvdbPath))
-        {
-            std::filesystem::remove_all(kvdbPath);
-        }
-    }
+    void TearDown() override {}
 };
 } // namespace
 
@@ -104,13 +86,11 @@ INSTANTIATE_TEST_SUITE_P(KVDBDelete,
                              DeleteParamsT({DB_NAME_1, "test", "test2"}, false),
                              DeleteParamsT({DB_NAME_1, "test", "$test2"}, false),
                              DeleteParamsT({DB_NAME_1}, false),
-                             DeleteParamsT({}, false)));
+                             DeleteParamsT(std::vector<std::string>(), false)));
 
 using DeleteKeyT = std::tuple<std::vector<std::string>, bool, std::string>;
 class DeleteKey : public KVDBDeleteHelper<DeleteKeyT>
 {
-protected:
-    void SetUp() override { KVDBDeleteHelper<DeleteKeyT>::SetUp(); }
 };
 
 // Test of delete function

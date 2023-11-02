@@ -1,5 +1,4 @@
 #include <any>
-#include <filesystem>
 #include <memory>
 #include <vector>
 
@@ -21,8 +20,6 @@ using namespace metricsManager;
 using namespace builder::internals::builders;
 
 static constexpr auto DB_NAME_1 = "TEST_DB_1";
-static constexpr auto DB_DIR = "/tmp/kvdbTestSuitePath/";
-static constexpr auto DB_NAME = "kvdb";
 
 template<typename T>
 class KVDBGetHelper : public ::testing::TestWithParam<T>
@@ -32,19 +29,10 @@ protected:
     std::shared_ptr<kvdb::mocks::MockKVDBManager> m_kvdbManager;
     std::shared_ptr<defs::mocks::FailDef> m_failDef;
     builder::internals::HelperBuilder m_builder;
-    std::string kvdbPath;
 
     void SetUp() override
     {
         logging::testInit();
-
-        // cleaning directory in order to start without garbage.
-        kvdbPath = generateRandomStringWithPrefix(6, DB_DIR) + "/";
-
-        if (std::filesystem::exists(kvdbPath))
-        {
-            std::filesystem::remove_all(kvdbPath);
-        }
 
         m_manager = std::make_shared<FakeMetricManager>();
         m_kvdbManager = std::make_shared<kvdb::mocks::MockKVDBManager>();
@@ -55,10 +43,7 @@ protected:
 
     void TearDown() override
     {
-        if (std::filesystem::exists(kvdbPath))
-        {
-            std::filesystem::remove_all(kvdbPath);
-        }
+
     }
 };
 } // namespace
@@ -68,11 +53,7 @@ using GetKeyT = std::tuple<std::vector<std::string>, bool, std::string, std::str
 
 class GetMergeParams : public KVDBGetHelper<GetParamsT>
 {
-    void SetUp() override
-    {
-        KVDBGetHelper<GetParamsT>::SetUp();
-        m_builder = getOpBuilderKVDBGetMerge(m_kvdbManager, "builder_test");
-    }
+
 };
 
 // Test of build params
@@ -105,12 +86,10 @@ INSTANTIATE_TEST_SUITE_P(KVDBGetMerge,
                              GetParamsT({DB_NAME_1, "test", "test2"}, false),
                              GetParamsT({DB_NAME_1, "test", "$test2"}, false),
                              GetParamsT({DB_NAME_1}, false),
-                             GetParamsT({}, false)));
+                             GetParamsT(std::vector<std::string>(), false)));
 
 class GetMergeKey : public KVDBGetHelper<GetKeyT>
 {
-protected:
-    void SetUp() override { KVDBGetHelper<GetKeyT>::SetUp(); }
 };
 
 // Test of get function
