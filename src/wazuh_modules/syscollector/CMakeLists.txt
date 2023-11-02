@@ -78,16 +78,7 @@ link_directories(${SRC_FOLDER}/external/flatbuffers/build/)
 if (NOT ${TARGET} STREQUAL "")
   if(${TARGET} STREQUAL "server")
     list(APPEND Schemas
-              common_agentInfo
-              hotfix_synchronization
-              hwinfo_synchronization
-              networkAddress_synchronization
-              networkIface_synchronization
-              osinfo_synchronization
-              package_synchronization
-              ports_synchronization
-              processes_synchronization
-              syscollector_synchronization
+                syscollector_synchronization
     )
     message("Compile schemas")
     message("${SRC_FOLDER}/external/flatbuffers/build/flatc")
@@ -104,6 +95,15 @@ if (NOT ${TARGET} STREQUAL "")
           COMMENT "Building C++ header for ${schema} schema."
           DEPENDS ${FILE}
           WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
+      add_custom_command(
+          TARGET compile_schemas
+          COMMAND bash -c "echo -e '// This file was generated from ${FILE} , do not modify \\n#ifndef ${schema}_HEADER\\n#define ${schema}_HEADER\\nauto constexpr ${schema}_SCHEMA = R\"('`cat ${FILE}`')\" ;\\n#endif // ${schema}_HEADER\\n ' > ${FLATBUFFERS_FOLDER}/../include/${schema}_schema.h"
+          COMMENT "Creating header from schema file: '${schema}'"
+          DEPENDS ${FILE}
+          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+          VERBATIM)
+
     endforeach()
   endif()
 endif()
@@ -147,29 +147,24 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 if (NOT ${TARGET} STREQUAL "")
   if(${TARGET} STREQUAL "server")
     list(APPEND DeltaSchemas
-                          netiface_data
-                          netproto_data
-                          netaddr_data
-                          osinfo_data
-                          hwinfo_data
-                          ports_data
-                          programs_data
-                          hotfixes_data
-                          processes_data
-                          syscollector_deltas
-                          common_agentInfo
+                syscollector_deltas
     )
 
     foreach(schema IN LISTS DeltaSchemas)
-      if (${schema} STREQUAL "common_agentInfo")
-        set(FBS_FILE "${FLATBUFFERS_FOLDER}/common/${schema}.fbs")
-      else()
-        set(FBS_FILE "${FLATBUFFERS_FOLDER}/syscollectorDeltas/${schema}.fbs")
-      endif()
+      set(FBS_FILE "${FLATBUFFERS_FOLDER}/syscollectorDeltas/${schema}.fbs")
       add_custom_target(${schema}_target
         COMMAND ${FLATC_PATH}/flatc -c -o ${FLATBUFFERS_FOLDER}/../include/ --no-warnings ${FBS_FILE}
         COMMENT "Executing flatc to generate ${schema} header file."
       )
+
+      add_custom_command(
+          TARGET compile_schemas
+          COMMAND bash -c "echo -e '// This file was generated from ${FBS_FILE} , do not modify \\n#ifndef ${schema}_HEADER\\n#define ${schema}_HEADER\\nauto constexpr ${schema}_SCHEMA = R\"('`cat ${FBS_FILE}`')\" ;\\n#endif // ${schema}_HEADER\\n ' > ${FLATBUFFERS_FOLDER}/../include/${schema}_schema.h"
+          COMMENT "Creating header from schema file: '${schema}'"
+          DEPENDS ${FBS_FILE}
+          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+          VERBATIM)
+
       add_dependencies(${PROJECT_NAME} ${schema}_target)
     endforeach()
   endif()
