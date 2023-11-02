@@ -65,6 +65,30 @@ TEST_F(WazuhDBQueryBuilderTest, WhereOrTest)
     EXPECT_EQ(message, "agent 0 sql SELECT * FROM sys_programs WHERE name = 'bash' OR version = '1' ");
 }
 
+TEST_F(WazuhDBQueryBuilderTest, WhereIsNullTest)
+{
+    std::string message = WazuhDBQueryBuilder::builder()
+                              .agent("0")
+                              .selectAll()
+                              .fromTable("sys_programs")
+                              .whereColumn("name")
+                              .isNull()
+                              .build();
+    EXPECT_EQ(message, "agent 0 sql SELECT * FROM sys_programs WHERE name IS NULL ");
+}
+
+TEST_F(WazuhDBQueryBuilderTest, WhereIsNotNullTest)
+{
+    std::string message = WazuhDBQueryBuilder::builder()
+                              .agent("0")
+                              .selectAll()
+                              .fromTable("sys_programs")
+                              .whereColumn("name")
+                              .isNotNull()
+                              .build();
+    EXPECT_EQ(message, "agent 0 sql SELECT * FROM sys_programs WHERE name IS NOT NULL ");
+}
+
 TEST_F(WazuhDBQueryBuilderTest, InvalidValue)
 {
     EXPECT_THROW(WazuhDBQueryBuilder::builder()

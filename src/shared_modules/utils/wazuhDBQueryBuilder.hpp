@@ -67,6 +67,18 @@ public:
         return *this;
     }
 
+    WazuhDBQueryBuilder& isNull()
+    {
+        m_query += "IS NULL ";
+        return *this;
+    }
+
+    WazuhDBQueryBuilder& isNotNull()
+    {
+        m_query += "IS NOT NULL ";
+        return *this;
+    }
+
     WazuhDBQueryBuilder& equalsTo(const std::string& value)
     {
         if (!Utils::isAlphaNumericWithSpecialCharacters(value, WAZUH_DB_ALLOWED_CHARS))
