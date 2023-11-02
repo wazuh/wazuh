@@ -25,6 +25,8 @@ file(GLOB UTIL_CXX_UNITTEST_COMMON_SRC
     "filterMsgDispatcher_test.cpp"
     "loggerHelper_test.cpp"
     "globHelper_test.cpp"
+    "socketDBWrapper_test.cpp"
+    "wazuhDBQueryBuilder_test.cpp"
     "main.cpp"
 )
 
@@ -102,5 +104,3 @@ endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
 add_test(NAME utils_unit_test
          COMMAND utils_unit_test)
-
-
