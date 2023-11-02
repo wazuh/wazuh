@@ -128,13 +128,15 @@ namespace Utils
             decompressedFiles.reserve(globalInfo.number_entry);
             for (uLong currentFileIndex {0}; currentFileIndex < globalInfo.number_entry; ++currentFileIndex)
             {
+                constexpr auto MAX_FILENAME_LEN {4096};
                 unz_file_info fileInfo;
-                char filename[256];
+                char filename[MAX_FILENAME_LEN];
                 if (unzGetCurrentFileInfo(unzFile, &fileInfo, filename, sizeof(filename), nullptr, 0, nullptr, 0) !=
                     UNZ_OK)
                 {
                     unzClose(unzFile);
-                    throw std::runtime_error {"Unable to get current file information"};
+                    throw std::runtime_error {"Unable to get current file information from zip file: " +
+                                              zipFilePath.string()};
                 }
 
                 // Open current file within the .zip file.
