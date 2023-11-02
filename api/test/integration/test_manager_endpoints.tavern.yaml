@@ -1622,9 +1622,6 @@ stages:
 ---
 test_name: GET /manager/version/check with update_check disabled
 
-marks:
-  - xfail
-
 stages:
 
   - name: Get wazuh version
