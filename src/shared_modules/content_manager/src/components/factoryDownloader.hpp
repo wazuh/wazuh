@@ -44,15 +44,15 @@ public:
         auto const downloaderType {config.at("contentSource").get<std::string>()};
         std::cout << "Creating '" << downloaderType << "' downloader" << std::endl;
 
-        if (downloaderType.compare("api") == 0)
+        if ("api" == downloaderType)
         {
             return std::make_shared<APIDownloader>(HTTPRequest::instance());
         }
-        if (downloaderType.compare("cti-api") == 0)
+        if ("cti-api" == downloaderType)
         {
             return std::make_shared<CtiApiDownloader>(HTTPRequest::instance());
         }
-        if (downloaderType.compare("s3") == 0)
+        if ("s3" == downloaderType)
         {
             return std::make_shared<S3Downloader>();
         }
@@ -60,10 +60,8 @@ public:
         {
             return std::make_shared<OfflineDownloader>();
         }
-        else
-        {
-            throw std::invalid_argument {"Invalid 'contentSource' type: " + downloaderType};
-        }
+
+        throw std::invalid_argument {"Invalid 'contentSource' type: " + downloaderType};
     }
 };
 
