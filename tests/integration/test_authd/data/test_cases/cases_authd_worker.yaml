@@ -13,6 +13,8 @@
   description: 'Check single group enrollment'
   configuration_parameters:
     FERNET_KEY: x1b1y3fwf7tywwhqzzasom2czwk7zuj0
+  metadata:
+    fernet_key: x1b1y3fwf7tywwhqzzasom2czwk7zuj0
     port_input: "OSSEC A:'user2' G:'Group1'"
     cluster_input: '{"daemon_name":"authd","message":{"arguments":{"name":"user2","ip":"any","groups":"Group1"},"function":"add"}}'
     cluster_output: '{"error":0,"data":{"id":"002","name":"user2","ip":"any","key":"675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c915"}}'
@@ -73,8 +75,8 @@
     cluster_output: '{"error":9007,"message":"Duplicate IP"}'
     port_output: 'ERROR: Duplicate IP'
 
-- # Testing messages with agent's key hash
-  name: 'Agent message with key hash 1'
+# Testing messages with agent's key hash
+- name: 'Agent message with key hash 1'
   description: 'Simple request with key hash'
   configuration_parameters:
     FERNET_KEY: x1b1y3fwf7tywwhqzzasom2czwk7zuj0

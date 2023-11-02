@@ -79,7 +79,7 @@ class WorkerMID(mitm.ManInTheMiddle):
     def verify_message(self, data: bytes):
         if len(data) > CLUSTER_DATA_HEADER_SIZE:
             message = data[CLUSTER_DATA_HEADER_SIZE:]
-            response = cluster_msg_build(command=b'send_sync', counter=2, payload=bytes(self.cluster_output.encode()),
+            response = cluster_msg_build(cmd=b'send_sync', counter=2, payload=bytes(self.cluster_output.encode()),
                                          encrypt=False)[0]
             print(f'Received message from wazuh-authd: {message}')
             print(f'Response to send: {self.cluster_output}')
@@ -114,8 +114,8 @@ receiver_sockets, monitored_sockets = None, None
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_authd_key_request_worker(test_configuration, test_metadata, set_wazuh_configuration,
-                                  configure_sockets_environment, copy_tmp_script,
-                                  connect_to_sockets_module):
+                                  configure_sockets_environment_function, copy_tmp_script,
+                                  connect_to_sockets_function):
     '''
     description:
         Checks that every message from the worker is correctly formatted for master,
@@ -164,8 +164,9 @@ def test_authd_key_request_worker(test_configuration, test_metadata, set_wazuh_c
     message = test_metadata['request_input']
     key_request_sock.send(message, size=False)
     # callback lambda function takes out tcp header and decodes binary to string
-    results = clusterd_queue.get_results(callback=(lambda y: [x[CLUSTER_DATA_HEADER_SIZE:].decode() for x in y]),
-                                            timeout=1, accum_results=1)
+    clusterd_queue.start(callback=(lambda y: [x[CLUSTER_DATA_HEADER_SIZE:] for x in y]),
+                                            timeout=1, accumulations=1)
+    results = clusterd_queue.callback_result
     # Assert monitored sockets
     assert results[0] == test_metadata['cluster_input'], 'Expected clusterd input message does not match'
     assert results[1] == test_metadata['cluster_output'], 'Expected clusterd output message does not match'
