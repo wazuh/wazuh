@@ -44,10 +44,10 @@ if [ "$target" = "cpp" ]; then
 
 elif [ "$target" = "py" ]; then
   echo "Generating Python code"
-  PYTHON_DIR="${SCRIPT_DIR}/../../test/integration_tests/api-communication/src/api_communication/"
+  PYTHON_DIR="${SCRIPT_DIR}/../../test/integration_tests/api-communication/src/api_communication/proto"
 
   cd "${SRC_PROTO_DIR}"
-  protoc --proto_path=$PROTO_DEPS_SRC_DIR --proto_path="${SRC_PROTO_DIR}" --python_out=$PYTHON_DIR *.proto
+  protoc --proto_path=$PROTO_DEPS_SRC_DIR --proto_path="${SRC_PROTO_DIR}" --python_out=$PYTHON_DIR --pyi_out=$PYTHON_DIR *.proto 
 
   # Go back
   cd $OLD_PWD
