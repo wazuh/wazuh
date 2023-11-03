@@ -14,7 +14,7 @@ policy:
   id: "cis_sles15_linux"
   file: "cis_sles15_linux.yml"
   name: "CIS SUSE Linux Enterprise 15 Benchmark v1.1.1"
-  description: "This document provides prescriptive guidance for establishing a secure configuration posture for SUSE Linux Enterprise 12 systems running on x86 and x64 platforms. This document was tested against SUSE Linux Enterprise Server 15 SP1."
+  description: "This document provides prescriptive guidance for establishing a secure configuration posture for SUSE Linux Enterprise 15 systems running on x86 and x64 platforms. This document was tested against SUSE Linux Enterprise Server 15 SP1."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
 
