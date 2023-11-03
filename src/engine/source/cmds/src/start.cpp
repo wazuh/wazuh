@@ -21,6 +21,7 @@
 #include <api/router/handlers.hpp>
 #include <api/test/handlers.hpp>
 #include <api/test/sessionManager.hpp>
+#include <bk/rx/controller.hpp>
 #include <builder/builder.hpp>
 #include <builder/register.hpp>
 #include <cmds/details/stackExecutor.hpp>
@@ -32,7 +33,6 @@
 #include <parseEvent.hpp> // Event
 #include <rbac/rbac.hpp>
 #include <router/router.hpp>
-#include <bk/rx/controller.hpp>
 #include <schemf/schema.hpp>
 #include <server/endpoints/unixDatagram.hpp> // Event
 #include <server/endpoints/unixStream.hpp>   //API
@@ -396,7 +396,6 @@ void runStart(ConfHandler confManager)
             // Catalog
             api::catalog::handlers::registerHandlers(catalog, api);
             LOG_DEBUG("Catalog API registered.");
-
 
             // Policy
             {
