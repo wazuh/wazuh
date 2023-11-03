@@ -134,8 +134,8 @@ class APIClient:
 
         client_socket.close()
         
-        if 'status' in response and response['status'] == "ERROR":
-            return f'Protocol Error', {}
+        if 'code' in response and response['code'] != 0:
+            return f'Protocol Error {response["code"]}', {}
 
         # Obtain the response message
         return None, response['data']
