@@ -1674,7 +1674,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-    delay_after: 20
+    delay_after: 50
 
   - name: Get available updates
     request:
@@ -1751,7 +1751,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-    delay_after: 20
+    delay_after: 50
 
 ---
 test_name: GET /manager/version/check with update check service error
@@ -1795,7 +1795,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-    delay_after: 20
+    delay_after: 50
 
   - name: Get available updates
     request:
