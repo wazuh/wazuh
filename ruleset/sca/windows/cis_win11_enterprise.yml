@@ -37,7 +37,7 @@ checks:
       - "https://www.cisecurity.org/white-papers/cis-password-policy-guide/"
       - "https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/password-policy"
     compliance:
-      - cis: ["1.1.2"]
+      - cis: ["1.1.1"]
       - cis_csc_v8: ["5.2"]
       - cis_csc_v7: ["16.10"]
       - cmmc_v2.0: ["IA.L2-3.5.7"]
@@ -4709,7 +4709,7 @@ checks:
     impact: "Warning: Many existing print configurations may be using the older named pipes protocol and therefore will cease to function."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Negotiate or higher: Computer Configuration\\Policies\\Administrative Templates\\Printers\\Configure RPC listener settings: Configure protocol options for incoming RPC connections Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Printing.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates (and newer)."
     compliance:
-      - cis: ["18.7.5"]
+      - cis: ["18.7.6"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers'
