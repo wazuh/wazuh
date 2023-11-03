@@ -13,10 +13,7 @@ from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.modules.authd.patterns import PREFIX
 from wazuh_testing.constants.daemons import AUTHD_DAEMON
-from wazuh_testing.utils.configuration import write_wazuh_conf, get_wazuh_conf, set_section_wazuh_conf,\
-                                              load_wazuh_configurations
 from wazuh_testing.utils.services import control_service
-from wazuh_testing.tools.wazuh_manager import remove_agents
 from wazuh_testing.constants.api import WAZUH_API_PORT
 from wazuh_testing.modules.api.patterns import API_STARTED_MSG
 

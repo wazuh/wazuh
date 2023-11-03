@@ -86,7 +86,8 @@ receiver_sockets, monitored_sockets = None, None
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_key_request_func(test_configuration, test_metadata, set_wazuh_configuration, connect_to_sockets_function,
-                          tear_down, copy_tmp_script, restart_authd_function, wait_for_authd_startup_function):
+                          configure_sockets_environment_function,
+                          tear_down, copy_tmp_script, wait_for_authd_startup_function):
     '''
     description:
         Checks that every input message on the key request port generates the appropiate response to the manager.
@@ -135,5 +136,5 @@ def test_key_request_func(test_configuration, test_metadata, set_wazuh_configura
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     for log in expected_logs:
         log = re.escape(log)
-        wazuh_log_monitor.start(callback=callbacks.generate_callback(fr'{PREFIX}{log}'), timeout=10)
+        wazuh_log_monitor.start(callback=callbacks.generate_callback(fr'{PREFIX}{log}'), timeout=10, encoding='utf-8')
         assert wazuh_log_monitor.callback_result, f'Error event not detected'
