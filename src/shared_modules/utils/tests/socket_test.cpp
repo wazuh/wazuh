@@ -405,5 +405,5 @@ REGISTER_TYPED_TEST_SUITE_P(SocketTest,
                             SingleDelayedClientWithReconnectionServerReset);
 
 // Configuring typed-tests
-using protocolTypes = ::testing::Types<appendHeaderProtocol, sizeHeaderProtocol>;
-INSTANTIATE_TYPED_TEST_SUITE_P(TypedSocketTests, SocketTest, protocolTypes);
+using ProtocolTypes = ::testing::Types<AppendHeaderProtocol, SizeHeaderProtocol>;
+INSTANTIATE_TYPED_TEST_SUITE_P(TypedSocketTests, SocketTest, ProtocolTypes);

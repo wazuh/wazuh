@@ -14,21 +14,22 @@
 
 #include "socketServer.hpp"
 #include "gtest/gtest.h"
-#include <thread>
 #include <chrono>
+#include <thread>
 
-auto constexpr TEST_SOCKET {"/temp/temp_sock"};
+auto constexpr TEST_SOCKET {"tmp/temp_sock"};
 
 class SocketDBWrapperTest : public ::testing::Test
 {
 protected:
-    SocketDBWrapperTest(): m_sleepTime {0} {};
+    SocketDBWrapperTest()
+        : m_sleepTime {0} {};
     virtual ~SocketDBWrapperTest() = default;
 
     void SetUp() override
     {
         m_socketServer =
-            std::make_shared<SocketServer<Socket<OSPrimitives, sizeHeaderProtocol>, EpollWrapper>>(TEST_SOCKET);
+            std::make_shared<SocketServer<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>>(TEST_SOCKET);
 
         m_socketServer->listen(
             [&](const int fd, const char* data, uint32_t size, const char* dataHeader, uint32_t sizeHeader)
@@ -53,7 +54,7 @@ protected:
         m_sleepTime = 0;
     };
 
-    std::shared_ptr<SocketServer<Socket<OSPrimitives, sizeHeaderProtocol>, EpollWrapper>> m_socketServer;
+    std::shared_ptr<SocketServer<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>> m_socketServer;
     std::string m_query;
     std::string m_response;
     int m_sleepTime;

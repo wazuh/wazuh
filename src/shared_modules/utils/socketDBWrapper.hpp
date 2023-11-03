@@ -29,7 +29,7 @@ auto constexpr DB_WRAPPER_DUE {"due"};
 class SocketDBWrapper final
 {
 private:
-    std::shared_ptr<SocketClient<Socket<OSPrimitives, sizeHeaderProtocol>, EpollWrapper>> m_dbSocket;
+    std::shared_ptr<SocketClient<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>> m_dbSocket;
     std::string m_response;
     std::mutex m_mutex;
     std::condition_variable m_conditionVariable;
@@ -37,7 +37,7 @@ private:
 public:
     explicit SocketDBWrapper(const std::string& socketPath)
         : m_dbSocket {
-              std::make_shared<SocketClient<Socket<OSPrimitives, sizeHeaderProtocol>, EpollWrapper>>(socketPath)}
+              std::make_shared<SocketClient<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>>(socketPath)}
     {
         m_dbSocket->connect(
             [&](const char* body, uint32_t bodySize, const char* header, uint32_t headerSize)

@@ -30,10 +30,10 @@
 
 constexpr auto INVALID_SOCKET {-1};
 constexpr auto SOCKET_ERROR {-1};
-using PACKET_FIELD_TYPE = uint32_t;
-using HEADER_FIELD_TYPE = uint32_t;
-constexpr auto PACKET_FIELD_SIZE {sizeof(PACKET_FIELD_TYPE)};
-constexpr auto HEADER_FIELD_SIZE {sizeof(HEADER_FIELD_TYPE)};
+using PacketFieldType = uint32_t;
+using HeaderFieldType = uint32_t;
+constexpr auto PACKET_FIELD_SIZE {sizeof(PacketFieldType)};
+constexpr auto HEADER_FIELD_SIZE {sizeof(HeaderFieldType)};
 constexpr auto BUFFER_MAX_SIZE {8192 * 8};
 
 enum class SocketType
@@ -119,7 +119,7 @@ public:
  *          - N bytes: header. Optional header.
  *          - M bytes: body. Mandatory data to send.
  */
-class appendHeaderProtocol final
+class AppendHeaderProtocol final
 {
 public:
     /**
@@ -146,7 +146,7 @@ public:
         }
 
         // Write packet and header size to the buffer.
-        struct Header* pHeader = reinterpret_cast<struct Header*>(buffer.data());
+        auto* pHeader = reinterpret_cast<struct Header*>(buffer.data());
         pHeader->packetSize = sizeBody + sizeof(Header::headerSize) + sizeHeader;
         pHeader->headerSize = sizeHeader;
 
@@ -198,8 +198,8 @@ public:
      */
     struct __attribute__((__packed__)) Header
     {
-        PACKET_FIELD_TYPE packetSize;
-        HEADER_FIELD_TYPE headerSize;
+        PacketFieldType packetSize;
+        HeaderFieldType headerSize;
     };
 };
 
@@ -208,7 +208,7 @@ public:
  *          - 4 bytes: header size. Mandatory size of the data to send.
  *          - M bytes: body. Mandatory data to send.
  */
-class sizeHeaderProtocol final
+class SizeHeaderProtocol final
 {
 public:
     /**
@@ -234,7 +234,7 @@ public:
         }
 
         // Write packet size to the buffer.
-        struct Header* pHeader = reinterpret_cast<struct Header*>(buffer.data());
+        auto* pHeader = reinterpret_cast<struct Header*>(buffer.data());
         pHeader->packetSize = sizeBody;
 
         std::copy(dataBody, dataBody + sizeBody, std::begin(buffer) + sizeof(Header));
@@ -280,7 +280,7 @@ public:
      */
     struct __attribute__((__packed__)) Header
     {
-        PACKET_FIELD_TYPE packetSize;
+        PacketFieldType packetSize;
     };
 };
 
@@ -301,7 +301,7 @@ enum SocketError
     ERROR_READ_ONLY_HEADER = -6,
 };
 
-template<typename T, class TCommunicationProtocol = appendHeaderProtocol>
+template<typename T, class TCommunicationProtocol = AppendHeaderProtocol>
 class Socket final : public T
 {
 private:
@@ -641,13 +641,15 @@ public:
 
             if (connectInfo.type == SocketType::UNIX)
             {
-                if (T::fchmod(m_sock, 0666 ) != 0) {
+                if (T::fchmod(m_sock, 0666) != 0)
+                {
                     closeSocket();
                     throw std::runtime_error {"Failed to fchmod socket " + std::to_string(errno)};
                 }
             }
 
-            if (T::bind(m_sock, connectInfo.addr, connectInfo.addrSize) != 0) {
+            if (T::bind(m_sock, connectInfo.addr, connectInfo.addrSize) != 0)
+            {
                 closeSocket();
                 throw std::runtime_error {"Failed to bind socket " + std::to_string(errno)};
             }
@@ -655,14 +657,16 @@ public:
             if (connectInfo.type == SocketType::UNIX)
             {
                 auto sunAddr = reinterpret_cast<const sockaddr_un*>(connectInfo.addr);
-                if (T::chmod(sunAddr->sun_path, 0666 ) != 0) {
+                if (T::chmod(sunAddr->sun_path, 0666) != 0)
+                {
                     closeSocket();
                     throw std::runtime_error {"Failed to chmod socket " + std::to_string(errno)};
                 }
             }
 
-            if (T::listen(m_sock, SOMAXCONN) != 0) {
-                 closeSocket();
+            if (T::listen(m_sock, SOMAXCONN) != 0)
+            {
+                closeSocket();
                 throw std::runtime_error {"Failed to listen socket " + std::to_string(errno)};
             }
 
