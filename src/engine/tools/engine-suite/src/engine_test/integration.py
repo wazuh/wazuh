@@ -21,6 +21,8 @@ from engine_test.crud_integration import CrudIntegration
 
 from engine_test.api_connector import ApiConnector
 
+from api_communication.proto import test_pb2 as api_test
+
 class EngineDumper(BaseDumper):
     def represent_scalar(self, tag, value, style=None):
         # If the value contains a single quote, force double quotes
@@ -79,14 +81,14 @@ class Integration(CrudIntegration):
                             response = self.process_event(event, self.format)
                             events_parsed.append(response)
                 except KeyboardInterrupt as ex:
-                    break;
+                    break
 
                 if not sys.stdin.isatty():
-                    break;
+                    break
 
         except Exception as ex:
             print("An error occurred while trying to process the events of the integration. Error: {}".format(ex))
-            ex.with_traceback()
+            ex.with_traceback(None)
 
         finally:
             self.write_output_file(events_parsed)
@@ -95,10 +97,10 @@ class Integration(CrudIntegration):
     def process_event(self, event, format):
 
         # Get the values to send
-        result = self.api_client.test_run(event)
-        hasTrace : bool = len(result["data"]["run"]["asset_traces"]) > 0
-        rawOutput = result["data"]["run"]["output"]
-        rawTraces = result["data"]["run"]["asset_traces"] if hasTrace else []
+        result : api_test.RunPost_Response = self.api_client.test_run(event)
+        hasTrace : bool = len(result.run.asset_traces) > 0
+        rawOutput = result.run.output
+        rawTraces = result.run.asset_traces if hasTrace else []
 
         # TODO: Move to centralize integration configuration
         # Get the conditions to print the output
