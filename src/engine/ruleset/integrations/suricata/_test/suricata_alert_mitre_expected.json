@@ -95,8 +95,8 @@
         "suricata",
         "suricata-alert"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/test.json",
-      "origin": "/test/test.json",
+      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
+      "origin": "/test/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"

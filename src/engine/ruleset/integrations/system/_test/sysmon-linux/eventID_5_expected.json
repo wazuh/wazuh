@@ -6,10 +6,10 @@
                 "syslog",
                 "sysmon-linux"
             ],
-            "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
+            "location": "[001] (wazuh-agent-1) any->/test/kern.log",
             "queue": 49,
             "registered_ip": "any",
-            "origin": "/test/syslog.log"
+            "origin": "/test/kern.log"
         },
         "ecs": {
             "version": "8.8"
@@ -110,9 +110,9 @@
                 "sysmon-linux"
             ],
             "registered_ip": "any",
-            "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
+            "location": "[001] (wazuh-agent-1) any->/test/kern.log",
             "queue": 49,
-            "origin": "/test/syslog.log"
+            "origin": "/test/kern.log"
         }
     },
     {
@@ -156,8 +156,8 @@
         },
         "message": "<Event><System><Provider Name=\"Linux-Sysmon\" Guid=\"{ff032593-a8d3-4f13-b0d6-01fc615a0f97}\"/><EventID>5</EventID><Version>3</Version><Level>4</Level><Task>5</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime=\"2023-06-06T21:05:33.820665000Z\"/><EventRecordID>15722</EventRecordID><Correlation/><Execution ProcessID=\"1178\" ThreadID=\"1178\"/><Channel>Linux-Sysmon/Operational</Channel><Computer>202-u20-dev-agent</Computer><Security UserId=\"0\"/></System><EventData><Data Name=\"RuleName\">-</Data><Data Name=\"UtcTime\">2023-06-06 21:05:32.024</Data><Data Name=\"ProcessGuid\">{924935dc-9f9c-647f-615e-16b5af550000}</Data><Data Name=\"ProcessId\">5770</Data><Data Name=\"Image\">/usr/bin/git</Data><Data Name=\"User\">-</Data></EventData></Event>",
         "wazuh": {
-            "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
-            "origin": "/test/syslog.log",
+            "location": "[001] (wazuh-agent-1) any->/test/kern.log",
+            "origin": "/test/kern.log",
             "source": "logcollector",
             "registered_ip": "any",
             "decoders": [

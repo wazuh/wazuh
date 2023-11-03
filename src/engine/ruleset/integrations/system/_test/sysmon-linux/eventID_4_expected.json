@@ -42,9 +42,9 @@
                 "syslog",
                 "sysmon-linux"
             ],
-            "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
+            "location": "[001] (wazuh-agent-1) any->/test/kern.log",
             "queue": 49,
-            "origin": "/test/syslog.log",
+            "origin": "/test/kern.log",
             "source": "logcollector",
             "registered_ip": "any"
         },
@@ -97,8 +97,8 @@
                 "sysmon-linux"
             ],
             "source": "logcollector",
-            "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
-            "origin": "/test/syslog.log"
+            "location": "[001] (wazuh-agent-1) any->/test/kern.log",
+            "origin": "/test/kern.log"
         },
         "service": {
             "state": "Stopped",

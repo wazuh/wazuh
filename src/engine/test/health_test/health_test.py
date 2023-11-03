@@ -12,11 +12,28 @@ def run_command(command):
         print(f"Error executing command: {e}")
         return None
 
-def execute_integration_test(github_working_dir, os_path, input_file_path):
+def execute_integration_test(github_working_dir, os_path, input_file_path, containing_folder, isOneExecution = False):
     main_command = "cat"
-    engine_test_conf = f"{github_working_dir}/environment/engine/etc/engine-test.conf"
+    integration = ""
+
+    if not isOneExecution:
+        integration = os.path.basename(os_path)
+    else:
+        integration = os.path.basename(os.path.dirname(os_path))
+        if integration == "_test":
+            integration = os.path.basename(os.path.dirname(os.path.dirname(os_path)))
+
+    engine_test_conf = f"{github_working_dir}/src/engine/ruleset/integrations/{integration}/_test/engine-test.conf"
+
+    if containing_folder != "_test":
+        integration += "-" + containing_folder
+
     # Execute the command and get the output
-    output = subprocess.check_output(f"{main_command} {input_file_path} | engine-test -c {engine_test_conf} run {os.path.basename(os_path)} --api-socket {github_working_dir}/environment/queue/sockets/engine-api -j", shell=True, stderr=subprocess.STDOUT)
+    try:
+        output = subprocess.check_output(f"{main_command} {input_file_path} | engine-test -c {engine_test_conf} run {integration} --api-socket {github_working_dir}/environment/queue/sockets/engine-api -j", shell=True, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        print("Subprocess Error:")
+        print(f"Standard  Output: {e.output.decode()}")
 
     # Split the output into individual JSON strings
     output_str = output.decode('utf-8')
@@ -48,22 +65,42 @@ def compare_results(parsed_results, expected_json, input_file_name, mismatches):
         except json.JSONDecodeError as e:
             print(f"Error al decodificar el evento JSON: {e}")
 
-def process_integration_tests(github_working_dir, allowed_integrations):
+def process_integration_tests(github_working_dir, input_file_path=None):
     integrations_directory = os.path.join(github_working_dir, "src/engine/ruleset/integrations")
 
     mismatches = []
 
-    for os_dir in os.listdir(integrations_directory):
-        os_path = os.path.join(integrations_directory, os_dir)
+    if input_file_path:  # If an input file is given as an argument
+        os_path = os.path.dirname(input_file_path)
+        print(os_path)
+        containing_folder = os.path.basename(os_path)
 
-        if os.path.isdir(os_path) and os.path.basename(os_path) in allowed_integrations:
-            test_directory = os.path.join(os_path, "test")
+        expected_file = re.sub(r'_input\..*$', "_expected.json", os.path.basename(input_file_path))
+        expected_file_path = os.path.join(os_path, expected_file)
+
+        if os.path.isfile(expected_file_path):
+            expected_json = {}
+            with open(expected_file_path, 'r') as file:
+                expected_json = json.load(file)
+
+            parsed_results = execute_integration_test(github_working_dir, os_path, input_file_path, containing_folder, True)
+            compare_results(parsed_results, expected_json, input_file_path, mismatches)
+            print(expected_file_path)
+        else:
+            print(f"Expected file '{expected_file}' corresponding to '{os.path.basename(input_file_path)}' in '{os_path}' was not found.")
+            return 1
+    else:  # Original behavior of looping through folders
+        for os_dir in os.listdir(integrations_directory):
+            os_path = os.path.join(integrations_directory, os_dir)
+
+            test_directory = os.path.join(os_path, "_test")
             if os.path.isdir(test_directory):
                 for root, dirs, files in os.walk(test_directory):
                     for input_file in files:
                         match = re.search(r'_input\..*$', input_file)
                         if match:
-                            print(input_file)
+                            containing_folder = os.path.basename(root)
+
                             input_file_path = os.path.join(root, input_file)
                             new_extension = "_expected.json"
                             expected_file = re.sub(r'_input\..*$', new_extension, input_file)
@@ -74,7 +111,7 @@ def process_integration_tests(github_working_dir, allowed_integrations):
                                 with open(expected_file_path, 'r') as file:
                                     expected_json = json.load(file)
 
-                                parsed_results = execute_integration_test(github_working_dir, os_path, input_file_path)
+                                parsed_results = execute_integration_test(github_working_dir, os_path, input_file_path, containing_folder)
                                 compare_results(parsed_results, expected_json, input_file, mismatches)
                                 print(expected_file)
                             else:
@@ -89,14 +126,15 @@ def process_integration_tests(github_working_dir, allowed_integrations):
     return 0 if not mismatches else 1
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
+    if len(sys.argv) < 2:
+        print("Usage: python script.py <github_working_dir> [input_file]")
         sys.exit(1)
 
     github_working_dir = sys.argv[1]
-    # TODO: Add apache-access/error
-    allowed_integrations = ["apache-http"]
+    input_file_path = sys.argv[2] if len(sys.argv) == 3 else None
 
-    error_code = process_integration_tests(github_working_dir, allowed_integrations)
+    error_code = process_integration_tests(github_working_dir, input_file_path)
 
     print("Process completed.")
-    sys.exit(error_code)  # Set the error code at the end of the script
+
+    sys.exit(error_code)

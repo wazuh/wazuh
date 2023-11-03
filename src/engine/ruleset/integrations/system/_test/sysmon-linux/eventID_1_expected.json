@@ -27,9 +27,9 @@
                 "sysmon-linux"
             ],
             "queue": 49,
-            "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
+            "location": "[001] (wazuh-agent-1) any->/test/kern.log",
             "source": "logcollector",
-            "origin": "/test/syslog.log",
+            "origin": "/test/kern.log",
             "registered_ip": "any"
         },
         "log": {
@@ -79,8 +79,8 @@
             "source": "logcollector",
             "registered_ip": "any",
             "queue": 49,
-            "origin": "/test/syslog.log",
-            "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
+            "origin": "/test/kern.log",
+            "location": "[001] (wazuh-agent-1) any->/test/kern.log",
             "decoders": [
                 "syslog",
                 "sysmon-linux"
@@ -191,14 +191,14 @@
         },
         "wazuh": {
             "queue": 49,
-            "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
+            "location": "[001] (wazuh-agent-1) any->/test/kern.log",
             "registered_ip": "any",
             "decoders": [
                 "syslog",
                 "sysmon-linux"
             ],
             "source": "logcollector",
-            "origin": "/test/syslog.log"
+            "origin": "/test/kern.log"
         },
         "host": {
             "id": "001",

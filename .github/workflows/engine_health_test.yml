@@ -22,7 +22,6 @@ concurrency:
 env:
   BUILD_TYPE: Release
   ENGINE_DIR: ${{github.workspace}}/src/engine
-  TEST_TYPE: health_test
 
 jobs:
   build:
@@ -51,7 +50,6 @@ jobs:
       # Install behave
       run: |
         pip install ${{env.ENGINE_DIR}}/test/integration_tests/api-communication/
-        pip install ${{env.ENGINE_DIR}}/test/integration_tests/cli-communication/
         pip install ${{env.ENGINE_DIR}}/tools/engine-suite/
 
     - name: Configure CMake
@@ -62,10 +60,13 @@ jobs:
       # Build the specified target using CMake
       run: cmake --build ${{env.ENGINE_DIR}}/build --config ${{env.BUILD_TYPE}} --target all -j2
 
-    - name: Set Server Configuration
-      # Set Server Configuration
-      run: bash ${{env.ENGINE_DIR}}/test/integration_tests/buildEnvironment.sh ${{github.workspace}} ${{env.TEST_TYPE}}
+    - name: Setup environment
+      # Set Engine Configuration
+      run: bash ${{env.ENGINE_DIR}}/test/setupEnvironment.sh ${{github.workspace}}
+
+    - name: Build environment
+      run: bash ${{env.ENGINE_DIR}}/test/health_test/buildEnvironment.sh ${{github.workspace}}
 
     - name: Health Test
       # Run integration tests using behave
-      run: bash ${{env.ENGINE_DIR}}/test/integration_tests/run.sh ${{github.workspace}} ${{env.TEST_TYPE}}
+      run: bash ${{env.ENGINE_DIR}}/test/health_test/run.sh ${{github.workspace}}
