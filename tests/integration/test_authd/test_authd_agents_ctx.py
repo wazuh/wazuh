@@ -52,7 +52,7 @@ from pathlib import Path
 import pytest
 from wazuh_testing.constants.paths.logs import WAZUH_PATH, WAZUH_LOG_PATH
 from wazuh_testing.constants.paths.sockets import AUTHD_SOCKET_PATH
-from wazuh_testing.constants.platforms import WAZUH_CLIENT_KEYS_PATH
+from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH
 from wazuh_testing.utils.file import truncate_file, remove_file, recursive_directory_creation
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils.services import control_service, check_daemon_status
