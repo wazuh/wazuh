@@ -181,7 +181,7 @@ add_executable(opBuilderHelperKVDB_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/windowsHelper_test.cpp
 )
 
-target_link_libraries(opBuilderHelperKVDB_test kvdb_mocks test_mocks)
+target_link_libraries(opBuilderHelperKVDB_test kvdb::mocks test_mocks)
 
 gtest_discover_tests(opBuilderHelperKVDB_test)
 
