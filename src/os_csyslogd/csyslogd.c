@@ -54,6 +54,7 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
         if (tries == OS_CSYSLOGD_MAX_TRIES) {
             merror("Could not open queue after %d tries.", tries);
             sources.alert_log = 0;
+            os_free(fileq);
         } else {
             mdebug1("File queue connected.");
         }
@@ -76,7 +77,11 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
 
     if (!(sources.alert_log || sources.alert_json)) {
         merror("No configurations available. Exiting.");
-        exit(EXIT_FAILURE);
+        #ifdef WAZUH_UNIT_TESTING
+            return;
+        #else
+            exit(EXIT_FAILURE);
+        #endif
     }
 
     /* Connect to syslog */
@@ -96,7 +101,7 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
     }
 
     /* Infinite loop reading the alerts and inserting them */
-    while (1) {
+    while (FOREVER()) {
         tm = time(NULL);
         localtime_r(&tm, &tm_result);
 
@@ -137,6 +142,10 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
                 cJSON_Delete(json_data);
             }
         }
+    }
+
+    if (sources.alert_log) {
+        os_free(fileq);
     }
 }
 

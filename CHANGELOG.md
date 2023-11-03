@@ -44,7 +44,7 @@ All notable changes to this project will be documented in this file.
 
 #### Added
 
-- Introduced native Maltiverse integration. ([#18026](https://github.com/wazuh/wazuh/pull/18026))
+- Introduced native Maltiverse integration. Thanks to David Gil (@dgilm). ([#18026](https://github.com/wazuh/wazuh/pull/18026))
 - Added a file detailing the dependencies for the Wazuh RESTful API and wodles tests. ([#16513](https://github.com/wazuh/wazuh/pull/16513))
 - Added unit tests for the Syscollector legacy decoder. ([#15985](https://github.com/wazuh/wazuh/pull/15985))
 - Added unit tests for the manage_agents tool. ([#15999](https://github.com/wazuh/wazuh/pull/15999))
@@ -59,6 +59,8 @@ All notable changes to this project will be documented in this file.
 
 - Fixed an unexpected error by the Cluster when a worker gets restarted. ([#16683](https://github.com/wazuh/wazuh/pull/16683))
 - Fixed an issue that let the manager validate wrong XML configurations. ([#16681](https://github.com/wazuh/wazuh/pull/16681))
+- Fixed syscollector packages multiarch values ([#19722](https://github.com/wazuh/wazuh/issues/19722))
+- Fieed wazuh-agent crash randomly when RPCRT4.dll is loaded ([#18591](https://github.com/wazuh/wazuh/issues/18591))
 
 #### Deleted
 
@@ -69,7 +71,7 @@ All notable changes to this project will be documented in this file.
 #### Added
 
 - Added support for Custom Logs in Buckets via AWS SQS. ([#17951](https://github.com/wazuh/wazuh/pull/17951))
-- Added geolocation for `aws.data.client_ip` field. Thanks to @rh0dy. ([16198](https://github.com/wazuh/wazuh/pull/16198))
+- Added geolocation for `aws.data.client_ip` field. Thanks to @rh0dy. ([#16198](https://github.com/wazuh/wazuh/pull/16198))
 - Added package inventory support for Alpine Linux in Syscollector. ([#15699](https://github.com/wazuh/wazuh/pull/15699))
 - Added package inventory support for MacPorts in Syscollector. ([#15877](https://github.com/wazuh/wazuh/pull/15877))
 - Added package inventory support for PYPI and node in Syscollector. ([#17982](https://github.com/wazuh/wazuh/pull/17982))
@@ -87,6 +89,9 @@ All notable changes to this project will be documented in this file.
 - Fixed detection of osquery 5.4.0+ running outside the integration. ([#17006](https://github.com/wazuh/wazuh/pull/17006))
 
 ### RESTful API
+
+### Added
+- Added new `status_code` field to `GET /agents` response. ([#19726](https://github.com/wazuh/wazuh/pull/19726))
 
 #### Fixed
 
@@ -128,6 +133,7 @@ All notable changes to this project will be documented in this file.
 - Changed schema constraints for sys_hwinfo table. ([#16065](https://github.com/wazuh/wazuh/pull/16065))
 - Auth process not start when registration password is empty. ([#15709](https://github.com/wazuh/wazuh/pull/15709))
 - Changed error messages about corrupt GetSecurityInfo messages from FIM to debug logs. ([#19400](https://github.com/wazuh/wazuh/pull/19400))
+- Changed the default settings for wazuh-db to perform database auto-vacuum more often. ([#19956](https://github.com/wazuh/wazuh/pull/19956))
 
 #### Fixed
 
@@ -163,14 +169,14 @@ All notable changes to this project will be documented in this file.
 - Added new unit tests for GCloud integration and increased coverage to 99%. ([#13573](https://github.com/wazuh/wazuh/pull/13573))
 - Added new unit tests for Azure Storage integration and increased coverage to 99%. ([#14104](https://github.com/wazuh/wazuh/pull/14104))
 - Added new unit tests for Docker Listener integration. ([#14177](https://github.com/wazuh/wazuh/pull/14177))
-- Added support for Microsoft Graph security API. ([#18116](https://github.com/wazuh/wazuh/pull/18116))
+- Added support for Microsoft Graph security API. Thanks to Bryce Shurts (@S-Bryce). ([#18116](https://github.com/wazuh/wazuh/pull/18116))
 - Added wildcard support in FIM Windows registers. ([#15852](https://github.com/wazuh/wazuh/pull/15852))
 - Added wildcards support for folders in the localfile configuration on Windows. ([#15973](https://github.com/wazuh/wazuh/pull/15973))
 - Added new settings `ignore` and `restrict` to logcollector. ([#14782](https://github.com/wazuh/wazuh/pull/14782))
 - Added RSync and DBSync to FIM. ([#12745](https://github.com/wazuh/wazuh/pull/12745))
 - Added PCRE2 regex for SCA policies. ([#17124](https://github.com/wazuh/wazuh/pull/17124))
 - Added mechanism to detect policy changes. ([#14763](https://github.com/wazuh/wazuh/pull/14763))
-- Added support for Office365 MS/Azure Government Community Cloud (GCC) and Government Community Cloud High (GCCH) API. ([#16547](https://github.com/wazuh/wazuh/pull/16547))
+- Added support for Office365 MS/Azure Government Community Cloud (GCC) and Government Community Cloud High (GCCH) API. Thanks to Bryce Shurts (@S-Bryce). ([#16547](https://github.com/wazuh/wazuh/pull/16547))
 
 #### Changed
 
