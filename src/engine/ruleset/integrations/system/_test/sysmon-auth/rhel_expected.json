@@ -34,14 +34,14 @@
       "name": "root"
     },
     "wazuh": {
-      "origin": "/test/syslog.log",
+      "origin": "/test/auth.log",
       "queue": 49,
       "decoders": [
         "syslog",
         "system-auth"
       ],
       "source": "logcollector",
-      "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
       "registered_ip": "any"
     },
     "ecs": {
@@ -105,12 +105,12 @@
       "queue": 49,
       "source": "logcollector",
       "registered_ip": "any",
-      "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
       "decoders": [
         "syslog",
         "system-auth"
       ],
-      "origin": "/test/syslog.log"
+      "origin": "/test/auth.log"
     },
     "process": {
       "pid": 2738,
@@ -127,8 +127,8 @@
         "syslog",
         "system-auth"
       ],
-      "origin": "/test/syslog.log",
-      "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
+      "origin": "/test/auth.log",
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
       "queue": 49,
       "source": "logcollector",
       "registered_ip": "any"
@@ -236,8 +236,8 @@
     "wazuh": {
       "queue": 49,
       "registered_ip": "any",
-      "origin": "/test/syslog.log",
-      "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
+      "origin": "/test/auth.log",
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
       "decoders": [
         "syslog",
         "system-auth"
@@ -260,14 +260,14 @@
       "name": "wazuh-agent-1"
     },
     "wazuh": {
-      "origin": "/test/syslog.log",
+      "origin": "/test/auth.log",
       "source": "logcollector",
       "registered_ip": "any",
       "decoders": [
         "syslog",
         "system-auth"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
       "queue": 49
     },
     "ecs": {
@@ -358,10 +358,10 @@
         "system-auth"
       ],
       "source": "logcollector",
-      "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
       "queue": 49,
       "registered_ip": "any",
-      "origin": "/test/syslog.log"
+      "origin": "/test/auth.log"
     },
     "agent": {
       "name": "wazuh-agent-1",
@@ -385,9 +385,9 @@
     },
     "wazuh": {
       "registered_ip": "any",
-      "origin": "/test/syslog.log",
+      "origin": "/test/auth.log",
       "source": "logcollector",
-      "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
       "queue": 49,
       "decoders": [
         "syslog",
@@ -475,13 +475,13 @@
     "wazuh": {
       "registered_ip": "any",
       "source": "logcollector",
-      "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
       "queue": 49,
       "decoders": [
         "syslog",
         "system-auth"
       ],
-      "origin": "/test/syslog.log"
+      "origin": "/test/auth.log"
     }
   }
 ]

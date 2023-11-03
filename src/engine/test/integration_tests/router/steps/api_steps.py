@@ -13,7 +13,7 @@ import subprocess
 ENGINE_DIR = os.environ.get("ENGINE_DIR", "")
 ENV_DIR = os.environ.get("ENV_DIR", "")
 SOCKET_PATH = ENV_DIR + "/environment/queue/sockets/engine-api"
-RULESET_DIR = ENGINE_DIR + "/ruleset"
+RULESET_DIR = ENV_DIR + "/environment/engine/wazuh-core-test/"
 
 api_client = APIClient(SOCKET_PATH)
 
@@ -23,24 +23,15 @@ api_client = APIClient(SOCKET_PATH)
 
 @given('I am authenticated with the router API "{name}"')
 def step_impl(context, name: str):
-    # Check if the policy exists, if not, create it
-    request = api_policy.PoliciesGet_Request()
-    err, response = api_client.send_recv(request)
-    if err:
-        context.result = err
-        print(err)
-        assert False
+    policy_request = policy_pb2.PoliciesGet_Request()
 
-    policy_resp = ParseDict(response, api_policy.PoliciesGet_Response())
-    if policy_resp.status == "ERROR" or len(policy_resp.data) == 0:
-        request = api_kvdb.managerDelete_Request()
-        request.name = "agents_host_data"
-        err, response = api_client.send_recv(request)
-        if err:
-            context.result = err
-            print(err)
-            assert False
-        command = f"engine-integration add -a {SOCKET_PATH} -n system {RULESET_DIR}/wazuh-core-test/"
+    context.result = API_POLICY.send_command("policies", "get", policy_request)
+    if len(context.result['data']['data']) == 0 or context.result['data']['status'] == "ERROR":
+        delete = kvdb_pb2.managerDelete_Request()
+        delete.name = "agents_host_data"
+        context.result = API_KVDB.send_command(
+            "manager", "delete", delete)
+        command = f"engine-integration add -a {SOCKET_PATH} -n system {RULESET_DIR}"
         result = subprocess.run(
             command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         assert result.returncode == 0, f"{result.stderr}"
