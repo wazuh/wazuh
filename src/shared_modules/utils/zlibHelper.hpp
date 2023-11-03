@@ -149,7 +149,14 @@ namespace Utils
                     // Close current file when going out of scope.
                     DEFER([&spUnzFile]() { unzCloseCurrentFile(spUnzFile.get()); });
 
-                    const auto outputFilepath {outputDir / std::string(filename)};
+                    const auto outputFilepath {(outputDir / std::string(filename)).lexically_normal()};
+
+                    // Check for possible Zip Slip Vulnerability.
+                    if (!Utils::startsWith(outputFilepath.string(), outputDir.string()))
+                    {
+                        throw std::runtime_error {"A potentially insecure path was found: " + outputFilepath.string()};
+                    }
+
                     const auto isDir {Utils::endsWith(outputFilepath.string(), "/")};
                     if (isDir)
                     {
