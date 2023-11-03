@@ -14,13 +14,14 @@
 
 #include "gtest/gtest.h"
 
+template <typename T>
 class SocketTest : public ::testing::Test
 {
 protected:
     SocketTest() = default;
     virtual ~SocketTest() = default;
 
-    void SetUp();
-    void TearDown();
+    void SetUp() {};
+    void TearDown() {};
 };
 #endif // _SOCKET_TEST_HPP

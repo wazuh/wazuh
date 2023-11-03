@@ -525,3 +525,26 @@ TEST_F(StringUtilsTest,parseStrToTimeOneSarasa)
 {
   EXPECT_EQ(Utils::parseStrToTime("1invalid"),-1);
 }
+
+/*
+ * isAlphaNumericWithSpecialCharacters() tests
+ */
+
+/**
+ * @brief Validates the string is alphanumeric and contains all of the special characters passed as argument.
+ *
+ */
+TEST_F(StringUtilsTest, IsAlphaNumericWithSpecialCharacters)
+{
+    const std::string stringBase1 {"random_string"};
+    const std::string stringBase2 {"r4nd0mS7r1n6"};
+    const std::string stringBase3 {"random-_-string"};
+    const std::string stringBase4 {"random*string"};
+    const std::string stringBase5 {""};
+    EXPECT_TRUE(Utils::isAlphaNumericWithSpecialCharacters(stringBase1, "_"));
+    EXPECT_TRUE(Utils::isAlphaNumericWithSpecialCharacters(stringBase1, "__"));
+    EXPECT_TRUE(Utils::isAlphaNumericWithSpecialCharacters(stringBase2, ""));
+    EXPECT_TRUE(Utils::isAlphaNumericWithSpecialCharacters(stringBase3, "-_"));
+    EXPECT_TRUE(Utils::isAlphaNumericWithSpecialCharacters(stringBase4, "*"));
+    EXPECT_FALSE(Utils::isAlphaNumericWithSpecialCharacters(stringBase5, "-_*"));
+}

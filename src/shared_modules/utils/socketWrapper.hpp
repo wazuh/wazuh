@@ -30,9 +30,11 @@
 
 constexpr auto INVALID_SOCKET {-1};
 constexpr auto SOCKET_ERROR {-1};
-constexpr ssize_t PACKET_SIZE {sizeof(uint32_t)};
-constexpr ssize_t HEADER_SIZE {sizeof(uint32_t)};
-constexpr auto BUFFER_SIZE {8192 * 8};
+using PacketFieldType = uint32_t;
+using HeaderFieldType = uint32_t;
+constexpr auto PACKET_FIELD_SIZE {sizeof(PacketFieldType)};
+constexpr auto HEADER_FIELD_SIZE {sizeof(HeaderFieldType)};
+constexpr auto BUFFER_MAX_SIZE {8192 * 8};
 
 enum class SocketType
 {
@@ -110,6 +112,178 @@ public:
     }
 };
 
+/**
+ * @brief This class is used for the following format:
+ *          - 4 bytes: packet size. Mandatory size of the whole packet (body, optional header and header size)
+ *          - 4 bytes: header size. Mandatory size of the optional header. It can be 0.
+ *          - N bytes: header. Optional header.
+ *          - M bytes: body. Mandatory data to send.
+ */
+class AppendHeaderProtocol final
+{
+public:
+    /**
+     * @brief Create the buffer to send according to this protocol.
+     *
+     * @param buffer        Output buffer to write.
+     * @param bufferSize    Size of the output buffer.
+     * @param dataBody      Data to send.
+     * @param sizeBody      Size of the data to send.
+     * @param dataHeader    Optional header to send.
+     * @param sizeHeader    Size of the optional header.
+     */
+    void static buildBuffer(std::vector<char>& buffer,
+                            uint32_t& bufferSize,
+                            const char* dataBody,
+                            uint32_t sizeBody,
+                            const char* dataHeader = nullptr,
+                            uint32_t sizeHeader = 0)
+    {
+
+        if (sizeof(Header) + sizeHeader + sizeBody > BUFFER_MAX_SIZE)
+        {
+            buffer.resize(sizeof(Header) + sizeHeader + sizeBody + 1);
+        }
+
+        // Write packet and header size to the buffer.
+        auto* pHeader = reinterpret_cast<struct Header*>(buffer.data());
+        pHeader->packetSize = sizeBody + sizeof(Header::headerSize) + sizeHeader;
+        pHeader->headerSize = sizeHeader;
+
+        if (sizeHeader > 0)
+        {
+            std::copy(dataHeader, dataHeader + sizeHeader, std::begin(buffer) + sizeof(Header));
+        }
+
+        std::copy(dataBody, dataBody + sizeBody, std::begin(buffer) + sizeof(Header) + sizeHeader);
+
+        bufferSize = sizeof(Header) + sizeHeader + sizeBody;
+    }
+
+    /**
+     * @brief Get the size of the header according to this protocol.
+     *
+     * @param buffer Buffer to obtain the header size from.
+     * @return auto Header size.
+     */
+    auto static getHeaderSize(const std::vector<char>& buffer)
+    {
+        return *reinterpret_cast<const uint32_t*>(buffer.data());
+    }
+
+    /**
+     * @brief Get the data offset according to this protocol.
+     *
+     * @param headerSize The size of the header.
+     * @return auto Data offset.
+     */
+    auto static getDataOffset(uint32_t headerSize)
+    {
+        return sizeof(Header::packetSize) + headerSize;
+    }
+
+    /**
+     * @brief Get the header offset according to this protocol.
+     *
+     * @return auto Header offset.
+     */
+    auto static getHeaderOffset()
+    {
+        return sizeof(Header::packetSize);
+    }
+
+    /**
+     * @brief Structure used to write the header and packet size to the buffer.
+     *
+     */
+    struct __attribute__((__packed__)) Header
+    {
+        PacketFieldType packetSize;
+        HeaderFieldType headerSize;
+    };
+};
+
+/**
+ * @brief This class is used for the following format:
+ *          - 4 bytes: header size. Mandatory size of the data to send.
+ *          - M bytes: body. Mandatory data to send.
+ */
+class SizeHeaderProtocol final
+{
+public:
+    /**
+     * @brief Create the buffer to send according to this protocol.
+     *
+     * @param buffer        Output buffer to write.
+     * @param bufferSize    Size of the output buffer.
+     * @param dataBody      Data to send.
+     * @param sizeBody      Size of the data to send.
+     * @param dataHeader    Optional header to send.
+     * @param sizeHeader    Size of the optional header.
+     */
+    void static buildBuffer(std::vector<char>& buffer,
+                            uint32_t& bufferSize,
+                            const char* dataBody,
+                            uint32_t sizeBody,
+                            const char* dataHeader = nullptr,
+                            uint32_t sizeHeader = 0)
+    {
+        if (sizeof(Header) + sizeBody > BUFFER_MAX_SIZE)
+        {
+            buffer.resize(sizeof(Header) + sizeBody + 1);
+        }
+
+        // Write packet size to the buffer.
+        auto* pHeader = reinterpret_cast<struct Header*>(buffer.data());
+        pHeader->packetSize = sizeBody;
+
+        std::copy(dataBody, dataBody + sizeBody, std::begin(buffer) + sizeof(Header));
+
+        bufferSize = sizeof(Header) + sizeBody;
+    }
+
+    /**
+     * @brief Get the size of the header according to this protocol.
+     *
+     * @param buffer Buffer to obtain the header size from.
+     * @return auto Header size.
+     */
+    auto static getHeaderSize(const std::vector<char>& buffer)
+    {
+        return 0;
+    }
+
+    /**
+     * @brief Get the data offset according to this protocol.
+     *
+     * @param headerSize The size of the header.
+     * @return auto Data offset.
+     */
+    auto static getDataOffset(uint32_t headerSize)
+    {
+        return 0;
+    }
+
+    /**
+     * @brief Get the header offset according to this protocol.
+     *
+     * @return auto Header offset.
+     */
+    auto static getHeaderOffset()
+    {
+        return 0;
+    }
+
+    /**
+     * @brief Structure used to write the packet size to the buffer.
+     *
+     */
+    struct __attribute__((__packed__)) Header
+    {
+        PacketFieldType packetSize;
+    };
+};
+
 enum class SocketStatus
 {
     HEADER,
@@ -127,7 +301,7 @@ enum SocketError
     ERROR_READ_ONLY_HEADER = -6,
 };
 
-template<typename T>
+template<typename T, class TCommunicationProtocol = AppendHeaderProtocol>
 class Socket final : public T
 {
 private:
@@ -146,14 +320,14 @@ public:
         : m_sock {sock}
         , m_status {SocketStatus::HEADER}
         , m_readPosition {0}
-        , m_readSize {PACKET_SIZE}
+        , m_readSize {PACKET_FIELD_SIZE}
         , m_totalReadSize {0}
         , m_recvDataBuffer {}
         , m_sendDataBuffer {}
         , m_unsentPacketList {}
     {
-        m_recvDataBuffer.resize(BUFFER_SIZE);
-        m_sendDataBuffer.resize(BUFFER_SIZE);
+        m_recvDataBuffer.resize(BUFFER_MAX_SIZE);
+        m_sendDataBuffer.resize(BUFFER_MAX_SIZE);
     }
 
     virtual ~Socket()
@@ -203,7 +377,7 @@ public:
                 }
             }
 
-            constexpr uint32_t UI_OPT {BUFFER_SIZE};
+            constexpr uint32_t UI_OPT {BUFFER_MAX_SIZE};
             T::setsockopt(m_sock, SOL_SOCKET, SO_RCVBUFFORCE, (const char*)&UI_OPT, sizeof(UI_OPT));
             T::setsockopt(m_sock, SOL_SOCKET, SO_SNDBUFFORCE, (const char*)&UI_OPT, sizeof(UI_OPT));
         }
@@ -260,7 +434,7 @@ public:
                             uip = (uint32_t*)m_recvDataBuffer.data();
                             m_totalReadSize = *uip;
 
-                            if (m_totalReadSize > BUFFER_SIZE)
+                            if (m_totalReadSize > BUFFER_MAX_SIZE)
                             {
                                 m_recvDataBuffer.resize(m_totalReadSize + 1);
                             }
@@ -305,21 +479,22 @@ public:
                         else
                         {
                             m_readPosition = 0;
-                            m_readSize = PACKET_SIZE;
+                            m_readSize = PACKET_FIELD_SIZE;
                             m_status = SocketStatus::HEADER;
 
-                            auto headerDataSize = *reinterpret_cast<const uint32_t*>(m_recvDataBuffer.data());
-                            auto offset = HEADER_SIZE + headerDataSize;
+                            auto headerDataSize = TCommunicationProtocol::getHeaderSize(m_recvDataBuffer);
+                            auto dataOffset = TCommunicationProtocol::getDataOffset(headerDataSize);
+                            auto headerOffset = TCommunicationProtocol::getHeaderOffset();
 
                             callback(m_sock,
-                                     m_recvDataBuffer.data() + offset,
-                                     m_totalReadSize - offset,
-                                     m_recvDataBuffer.data() + HEADER_SIZE,
+                                     m_recvDataBuffer.data() + dataOffset,
+                                     m_totalReadSize - dataOffset,
+                                     m_recvDataBuffer.data() + headerOffset,
                                      headerDataSize);
 
-                            if (m_totalReadSize > BUFFER_SIZE)
+                            if (m_totalReadSize > BUFFER_MAX_SIZE)
                             {
-                                m_recvDataBuffer.resize(BUFFER_SIZE);
+                                m_recvDataBuffer.resize(BUFFER_MAX_SIZE);
                             }
                         }
                     }
@@ -343,7 +518,7 @@ public:
             throw std::runtime_error {"Failed to accept socket" + std::to_string(errno)};
         }
 
-        const uint32_t uiOpt {BUFFER_SIZE};
+        const uint32_t uiOpt {BUFFER_MAX_SIZE};
         T::setsockopt(sock, SOL_SOCKET, SO_RCVBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt));
         T::setsockopt(sock, SOL_SOCKET, SO_SNDBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt));
 
@@ -399,50 +574,28 @@ public:
 
     void send(const char* dataBody, uint32_t sizeBody, const char* dataHeader = nullptr, uint32_t sizeHeader = 0)
     {
-        uint32_t* uip;
+        uint32_t bufferSize {0};
         ssize_t amountSent {0};
         std::lock_guard<std::mutex> lock {m_mutex};
 
-        if (PACKET_SIZE + HEADER_SIZE + sizeHeader + sizeBody > BUFFER_SIZE)
-        {
-            m_sendDataBuffer.resize(PACKET_SIZE + HEADER_SIZE + sizeHeader + sizeBody + 1);
-        }
+        TCommunicationProtocol::buildBuffer(m_sendDataBuffer, bufferSize, dataBody, sizeBody, dataHeader, sizeHeader);
 
-        // Add size to the header of the buffer.
-        uip = (uint32_t*)m_sendDataBuffer.data();
-        *uip = sizeBody + HEADER_SIZE + sizeHeader;
-
-        // Add size to the header of the buffer.
-        uip = (uint32_t*)(m_sendDataBuffer.data() + PACKET_SIZE);
-        *uip = sizeHeader;
-
-        if (sizeHeader > 0)
-        {
-            // Copy to vector using iterators.
-            std::copy(dataHeader, dataHeader + sizeHeader, std::begin(m_sendDataBuffer) + PACKET_SIZE + HEADER_SIZE);
-        }
-
-        // Copy to vector using iterators.
-        std::copy(dataBody, dataBody + sizeBody, std::begin(m_sendDataBuffer) + PACKET_SIZE + HEADER_SIZE + sizeHeader);
-
-        // Add the header size to the total size.
-        sizeBody += PACKET_SIZE + HEADER_SIZE + sizeHeader;
         // If there is data in the unsent queue, add it to the queue.
         if (!m_unsentPacketList.empty())
         {
-            m_unsentPacketList.emplace(m_sendDataBuffer.data(), sizeBody);
+            m_unsentPacketList.emplace(m_sendDataBuffer.data(), bufferSize);
         }
         else
         {
             // Send the data.
-            while (sizeBody != amountSent)
+            while (bufferSize != amountSent)
             {
                 const auto ret =
-                    T::send(m_sock, m_sendDataBuffer.data() + amountSent, sizeBody - amountSent, MSG_NOSIGNAL);
+                    T::send(m_sock, m_sendDataBuffer.data() + amountSent, bufferSize - amountSent, MSG_NOSIGNAL);
 
                 if (ret <= 0)
                 {
-                    m_unsentPacketList.emplace(m_sendDataBuffer.data() + amountSent, sizeBody - amountSent);
+                    m_unsentPacketList.emplace(m_sendDataBuffer.data() + amountSent, bufferSize - amountSent);
                     throw std::runtime_error {"Error sending data to socket: " + std::to_string(errno) + " " +
                                               std::string(strerror(errno))};
                 }
@@ -488,13 +641,15 @@ public:
 
             if (connectInfo.type == SocketType::UNIX)
             {
-                if (T::fchmod(m_sock, 0666 ) != 0) {
+                if (T::fchmod(m_sock, 0666) != 0)
+                {
                     closeSocket();
                     throw std::runtime_error {"Failed to fchmod socket " + std::to_string(errno)};
                 }
             }
 
-            if (T::bind(m_sock, connectInfo.addr, connectInfo.addrSize) != 0) {
+            if (T::bind(m_sock, connectInfo.addr, connectInfo.addrSize) != 0)
+            {
                 closeSocket();
                 throw std::runtime_error {"Failed to bind socket " + std::to_string(errno)};
             }
@@ -502,18 +657,20 @@ public:
             if (connectInfo.type == SocketType::UNIX)
             {
                 auto sunAddr = reinterpret_cast<const sockaddr_un*>(connectInfo.addr);
-                if (T::chmod(sunAddr->sun_path, 0666 ) != 0) {
+                if (T::chmod(sunAddr->sun_path, 0666) != 0)
+                {
                     closeSocket();
                     throw std::runtime_error {"Failed to chmod socket " + std::to_string(errno)};
                 }
             }
 
-            if (T::listen(m_sock, SOMAXCONN) != 0) {
-                 closeSocket();
+            if (T::listen(m_sock, SOMAXCONN) != 0)
+            {
+                closeSocket();
                 throw std::runtime_error {"Failed to listen socket " + std::to_string(errno)};
             }
 
-            const uint32_t uiOpt {BUFFER_SIZE};
+            const uint32_t uiOpt {BUFFER_MAX_SIZE};
             T::setsockopt(m_sock, SOL_SOCKET, SO_RCVBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt));
             T::setsockopt(m_sock, SOL_SOCKET, SO_SNDBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt));
         }
