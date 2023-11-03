@@ -31,7 +31,7 @@ using ZFilePtr = std::unique_ptr<gzFile_s, CustomDeleter<decltype(&gzclose), gzc
 using UnzFilePtr = std::unique_ptr<void, CustomDeleter<decltype(&unzClose), unzClose>>;
 
 inline constexpr int GZ_BUF_LEN {16 * KB};
-inline constexpr int ZIP_BUF_LEN {100 * MB};
+inline constexpr int ZIP_BUF_LEN {64 * KB};
 
 namespace Utils
 {
