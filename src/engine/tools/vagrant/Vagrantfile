@@ -65,7 +65,7 @@ Vagrant.configure("2") do |config|
         pip3 install --system $ENGINE_SRC_DIR/tools/engine-suite
 
         # Install api and cli communication libs for python script
-        pip3 install --system $ENGINE_SRC_DIR/test/integration_tests/api-communication
+        pip3 install --system $ENGINE_SRC_DIR/tools/api-communication
         pip3 install --system $ENGINE_SRC_DIR/test/integration_tests/cli-communication
 
         # Install Internal tools
