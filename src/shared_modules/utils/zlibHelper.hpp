@@ -178,8 +178,12 @@ namespace Utils
                             outFile.write(buffer.data(), bytesRead);
                         } while (bytesRead > 0);
 
-                        // Close output file.
+                        // Close output file to flush the stream and check for error flags.
                         outFile.close();
+                        if (!outFile.good())
+                        {
+                            throw std::runtime_error {"Error while writing output file: " + outputFilepath.string()};
+                        }
 
                         // Check total amount of bytes read.
                         if (totalBytesRead != fileInfo.uncompressed_size)
