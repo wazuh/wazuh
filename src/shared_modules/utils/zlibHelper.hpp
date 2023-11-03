@@ -27,6 +27,7 @@
 #define MB (1024 * 1024)
 
 using ZFilePtr = std::unique_ptr<gzFile_s, CustomDeleter<decltype(&gzclose), gzclose>>;
+using UnzFilePtr = std::unique_ptr<void, CustomDeleter<decltype(&unzClose), unzClose>>;
 
 inline constexpr int GZ_BUF_LEN {16 * KB};
 inline constexpr int ZIP_BUF_LEN {100 * MB};
@@ -109,17 +110,16 @@ namespace Utils
                                                       const std::filesystem::path& outputDir)
         {
             // Open .zip file.
-            auto unzFile {unzOpen(zipFilePath.c_str())};
-            if (!unzFile)
+            UnzFilePtr spUnzFile {unzOpen(zipFilePath.c_str())};
+            if (!spUnzFile)
             {
                 throw std::runtime_error {"Unable to open compressed file: " + zipFilePath.string()};
             }
 
             // Get .zip file information (amount of files, i.e.).
             unz_global_info globalInfo;
-            if (unzGetGlobalInfo(unzFile, &globalInfo) != UNZ_OK)
+            if (unzGetGlobalInfo(spUnzFile.get(), &globalInfo) != UNZ_OK)
             {
-                unzClose(unzFile);
                 throw std::runtime_error {"Unable to get global information of file: " + zipFilePath.string()};
             }
 
@@ -131,18 +131,16 @@ namespace Utils
                 constexpr auto MAX_FILENAME_LEN {4096};
                 unz_file_info fileInfo;
                 char filename[MAX_FILENAME_LEN];
-                if (unzGetCurrentFileInfo(unzFile, &fileInfo, filename, sizeof(filename), nullptr, 0, nullptr, 0) !=
-                    UNZ_OK)
+                if (unzGetCurrentFileInfo(
+                        spUnzFile.get(), &fileInfo, filename, sizeof(filename), nullptr, 0, nullptr, 0) != UNZ_OK)
                 {
-                    unzClose(unzFile);
                     throw std::runtime_error {"Unable to get current file information from zip file: " +
                                               zipFilePath.string()};
                 }
 
                 // Open current file within the .zip file.
-                if (unzOpenCurrentFile(unzFile) != UNZ_OK)
+                if (unzOpenCurrentFile(spUnzFile.get()) != UNZ_OK)
                 {
-                    unzClose(unzFile);
                     throw std::runtime_error {"Unable to open current file: " + std::string(filename)};
                 }
 
@@ -168,7 +166,7 @@ namespace Utils
                     {
                         // Read compressed data by ZIP_BUF_LEN chunks.
                         std::vector<char> buffer(ZIP_BUF_LEN);
-                        bytesRead = unzReadCurrentFile(unzFile, buffer.data(), buffer.size());
+                        bytesRead = unzReadCurrentFile(spUnzFile.get(), buffer.data(), buffer.size());
                         totalBytesRead += bytesRead;
 
                         // Store current chunk into output file.
@@ -181,14 +179,13 @@ namespace Utils
                     // Check total amount of bytes read.
                     if (totalBytesRead != fileInfo.uncompressed_size)
                     {
-                        unzCloseCurrentFile(unzFile);
-                        unzClose(unzFile);
+                        unzCloseCurrentFile(spUnzFile.get());
                         throw std::runtime_error {"Unable to read content of current file: " + std::string(filename)};
                     }
                 }
 
                 // Close current file.
-                if (unzCloseCurrentFile(unzFile) != UNZ_OK)
+                if (unzCloseCurrentFile(spUnzFile.get()) != UNZ_OK)
                 {
                     throw std::runtime_error {"Unable to close current file: " + std::string(filename)};
                 }
@@ -202,17 +199,11 @@ namespace Utils
                 // Go to next file within the .zip file.
                 if (currentFileIndex + 1 < globalInfo.number_entry)
                 {
-                    if (unzGoToNextFile(unzFile) != UNZ_OK)
+                    if (unzGoToNextFile(spUnzFile.get()) != UNZ_OK)
                     {
                         throw std::runtime_error {"Unable to get next file of: " + zipFilePath.string()};
                     }
                 }
-            }
-
-            // Close .zip file.
-            if (unzClose(unzFile) != UNZ_OK)
-            {
-                throw std::runtime_error {"Unable to close file: " + zipFilePath.string()};
             }
 
             return decompressedFiles;
