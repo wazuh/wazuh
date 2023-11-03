@@ -151,7 +151,7 @@ def test_jwt_token_exp_timeout(test_configuration, test_metadata, add_configurat
     url = get_base_url() + MANAGER_INFORMATION_ROUTE
 
     # Get token
-    authenticator_headers, _ = login(sleep_time=session_parameters.default_timeout, login_attempts=2)
+    authenticator_headers, _ = login(backoff_factor=session_parameters.default_timeout/2, login_attempts=2)
 
     # Request before the token expires
     response = requests.get(url, headers=authenticator_headers, verify=False)
