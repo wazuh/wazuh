@@ -105,47 +105,6 @@ def tear_down():
     control_service('start')
 
 
-def create_force_config_block(param, config_path):
-    """
-    Creates a temporal config file.
-    """
-    temp = os.path.join(os.path.dirname(config_path), 'temp.yaml')
-
-    with open(config_path, 'r') as conf_file:
-        temp_conf_file = yaml.safe_load(conf_file)
-        for elem in param:
-            temp_conf_file[0]['sections'][0]['elements'].append(elem)
-    with open(temp, 'w') as temp_file:
-        yaml.safe_dump(temp_conf_file, temp_file)
-    return temp
-
-
-@pytest.fixture(scope='function')
-def format_configuration(get_current_test_case, request):
-    """
-    Get configuration block from current test case
-    """
-    test_name = request.node.originalname
-    configuration = get_current_test_case.get('configuration', {})
-
-    # Configuration for testing
-    temp = create_force_config_block(configuration, request.module.configurations_path)
-    conf = load_wazuh_configurations(temp, test_name)
-    os.remove(temp)
-
-    test_config = set_section_wazuh_conf(conf[0]['sections'])
-
-    return test_config
-
-
-@pytest.fixture(scope='module')
-def restart_api_module():
-    # Stop Wazuh and Wazuh API
-    control_service('stop')
-    file.truncate_file(WAZUH_API_LOG_FILE_PATH)
-    control_service('start')
-
-
 @pytest.fixture(scope='module')
 def wait_for_start_module():
     """Monitor the API log file to detect whether it has been started or not.
@@ -230,11 +189,3 @@ def copy_tmp_script(request):
         raise script_path_not_set
 
     shutil.copy(os.path.join(script_path, script_filename), os.path.join("/tmp", script_filename))
-
-
-@pytest.fixture(scope='function')
-def delete_agents():
-
-    yield
-
-    remove_agents('all', 'api')
