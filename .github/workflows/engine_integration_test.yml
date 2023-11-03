@@ -49,7 +49,7 @@ jobs:
     - name: Install dependencies
       # Install behave
       run: |
-        pip install ${{env.ENGINE_DIR}}/test/integration_tests/api-communication/
+        pip install ${{env.ENGINE_DIR}}/tools/api-communication/
         pip install ${{env.ENGINE_DIR}}/test/integration_tests/cli-communication/
         pip install ${{env.ENGINE_DIR}}/tools/engine-suite/
         pip install behave
