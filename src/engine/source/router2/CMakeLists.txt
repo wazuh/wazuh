@@ -12,6 +12,7 @@ add_library(router2::irouter ALIAS router2_irouter)
 # Implementation
 add_library(router2_router STATIC
    ${SRC_DIR}/environment.cpp
+   ${SRC_DIR}/worker.cpp
 )
 
 target_include_directories(router2_router
