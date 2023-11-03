@@ -1,9 +1,10 @@
 from datetime import datetime
 from enum import Enum
-from api_communication import communication
-from api_communication import test_pb2
-from api_communication import engine_pb2
-import google.protobuf.json_format
+from api_communication.client import APIClient
+from api_communication.proto import test_pb2 as api_test
+from api_communication.proto import engine_pb2 as api_engine
+from google.protobuf.json_format import ParseDict
+
 
 class ApiConfig(Enum):
     OriginName = "engine-test"
@@ -13,10 +14,11 @@ class ApiConfig(Enum):
     Lifespan = 0
     Description = ""
 
+
 class ApiConnector:
     def __init__(self, config):
         try:
-            self.api_client = communication.APIClient(config['api-socket'], ApiConfig.Component.value)
+            self.api_client = APIClient(config['api-socket'])
             self.session_name = ApiConfig.SessionName.value
         except Exception as ex:
             print('Could not establish communication with the API. Error: {}'.format(ex))
@@ -27,7 +29,7 @@ class ApiConnector:
     def test_run(self, event):
         try:
             # Create test request
-            request = test_pb2.RunPost_Request()
+            request = api_test.RunPost_Request()
             request.name = self.session_name
             request.protocol_queue = chr(self.config['queue'])
             request.protocol_location = self.config['full_location']
@@ -44,7 +46,10 @@ class ApiConnector:
             if self.config['assets']:
                 request.asset_trace.extend(self.config['assets'])
 
-            response = self.api_client.send_command("run", "post", request)
+            err, response = self.api_client.send_recv(request)
+            if err:
+                print(err)
+                exit(1)
             return response
         except Exception as ex:
             print('Could not send event to TEST api. Error: {}'.format(ex))
@@ -55,27 +60,35 @@ class ApiConnector:
             if self.config['session_name']:
                 # Connect to TEST with an existing session
                 self.session_name = self.config['session_name']
-                request_get = test_pb2.SessionGet_Request()
+                request_get = api_test.SessionGet_Request()
                 request_get.name = self.session_name
-                response = self.api_client.send_command("session", "get", request_get)
-                response_get = google.protobuf.json_format.ParseDict(response['data'], test_pb2.SessionGet_Response)
+                err, response = self.api_client.send_recv(request_get)
+                if err:
+                    print(err)
+                    exit(1)
+                response_get = ParseDict(
+                    response, api_test.SessionGet_Response())
 
-                if response_get.status != engine_pb2.ReturnStatus.OK:
+                if response_get.status != api_engine.OK:
                     print("Session error: {}".format(response_get.error))
                     exit(1)
 
             else:
                 # Connect to TEST with a temporal session with parametrized policy
-                request_post = test_pb2.SessionPost_Request()
+                request_post = api_test.SessionPost_Request()
                 self.session_name = self.get_session_name()
                 request_post.name = self.session_name
                 request_post.policy = self.config['policy']
                 request_post.lifespan = ApiConfig.Lifespan.value
                 request_post.description = ApiConfig.Description.value
-                response = self.api_client.send_command("session", "post", request_post)
-                response_post = google.protobuf.json_format.ParseDict(response['data'], engine_pb2.GenericStatus_Response)
+                err, response = self.api_client.send_recv(request_post)
+                if err:
+                    print(err)
+                    exit(1)
+                response_post = ParseDict(
+                    response, api_engine.GenericStatus_Response())
 
-                if response_post.status != engine_pb2.ReturnStatus.OK:
+                if response_post.status != api_engine.OK:
                     print("Session error: {}".format(response_post.error))
                     exit(1)
         except Exception as ex:
@@ -84,11 +97,15 @@ class ApiConnector:
 
     def delete_session(self):
         if not self.config['session_name']:
-            request_delete = test_pb2.SessionsDelete_Request()
+            request_delete = api_test.SessionsDelete_Request()
             request_delete.name = self.session_name
-            response = self.api_client.send_command("sessions", "delete", request_delete)
-            response_delete = google.protobuf.json_format.ParseDict(response['data'], engine_pb2.GenericStatus_Response)
-            if response_delete.status != engine_pb2.ReturnStatus.OK:
+            err, response = self.api_client.send_recv(request_delete)
+            if err:
+                print(err)
+                exit(1)
+            response_delete = ParseDict(
+                response, api_engine.GenericStatus_Response())
+            if response_delete.status != api_engine.OK:
                 print("Session error: {}".format(response_delete.error))
                 exit(1)
 
