@@ -110,7 +110,7 @@ protected:
         m_filter; ///< Filter of the environment (Empty if it's a dynamic filter based on id [testing mode])
 
     // Router parameters
-    std::size_t m_prior = 0;      ///< Priority of the environment (0 is the lowest priority available)
+    std::size_t m_priority = 0;      ///< Priority of the environment (0 is the lowest priority available)
     std::uint64_t m_lifetime = 0; ///< Lifetime of the environment (in seconds from the last use)
 
     // Metadata
@@ -133,10 +133,10 @@ protected:
         {
             return base::Error {"Name cannot be empty"};
         }
-        else if (Priority::validate(m_prior, _isTesting()))
+        else if (Priority::validate(m_priority, _isTesting()))
         {
             return base::Error {fmt::format("Invalid priority: {}, its out of range [{} - {}]",
-                                            m_prior,
+                                            m_priority,
                                             _isTesting() ? static_cast<std::size_t>(Priority::Limits::MaxTest)
                                                          : static_cast<std::size_t>(Priority::Limits::MaxProd),
                                             _isTesting() ? static_cast<std::size_t>(Priority::Limits::MinTest)
@@ -158,7 +158,7 @@ protected:
         : m_name {name}
         , m_policy {policy}
         , m_filter {filter}
-        , m_prior {priority}
+        , m_priority {priority}
     {
         validate();
     }
@@ -183,7 +183,7 @@ public:
     // Getters
     const std::string& name() const { return m_name; }
     const base::Name& policy() const { return m_policy; }
-    std::size_t priority() const { return m_prior; }
+    std::size_t priority() const { return m_priority; }
     std::uint64_t lifetime() const { return m_lifetime; }
     const std::optional<base::Name>& filter() const { return m_filter; }
     const std::optional<std::string>& description() const { return m_description; }
