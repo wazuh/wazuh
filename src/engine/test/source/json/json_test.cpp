@@ -1070,7 +1070,12 @@ TEST_P(IntAsInt64, IntAsInt64)
 
 INSTANTIATE_TEST_SUITE_P(Json,
                          IntAsInt64,
-                         ::testing::Values(0, 1, 2, 3, static_cast<int64_t>(std::numeric_limits<int32_t>::max()) + 10));
+                         ::testing::Values(0,
+                                           1,
+                                           2,
+                                           3,
+                                           static_cast<int64_t>(std::numeric_limits<int32_t>::max()) + 10,
+                                           static_cast<int64_t>(std::numeric_limits<int32_t>::min()) - 10));
 
 TEST_F(JsonGettersTest, GetFloat)
 {
