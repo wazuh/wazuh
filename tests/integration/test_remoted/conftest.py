@@ -1,3 +1,9 @@
+"""
+ Copyright (C) 2015-2021, Wazuh Inc.
+ Created by Wazuh, Inc. <info@wazuh.com>.
+ This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+"""
+
 import pytest
 
 from wazuh_testing.utils import services
@@ -9,7 +15,7 @@ def restart_wazuh_expect_error() -> None:
     try:
         sleep(1)
         if any(v == True for _, v in check_all_daemon_status().items()) :
-           services.control_service('restart')
+            services.control_service('restart')
         else:
             services.control_service('start')
     except:
@@ -21,8 +27,8 @@ def restart_wazuh_expect_error() -> None:
 
 
 '''
-    description: elements from section config and convert  list to dict
-    return  real config list
+    description: gets 'elements' configuration parameters  from 'sections' field and converts it from list to list dict
+    return  configuration parameters
 '''
 @pytest.fixture
 def get_real_configuration(test_configuration):
