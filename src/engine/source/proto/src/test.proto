@@ -92,7 +92,7 @@ message SessionsGet_Response
 /***************************************************
  * Delete a session
  *
- * command: test.session/delete
+ * command: test.sessions/delete
  **************************************************/
 message SessionsDelete_Request
 {
