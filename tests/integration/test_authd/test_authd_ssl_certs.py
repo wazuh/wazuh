@@ -117,7 +117,7 @@ def generate_ca_certificate(test_metadata):
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_authd_ssl_certs(test_configuration, test_metadata, set_wazuh_configuration,
-                         restart_wazuh_daemon_function, wait_for_authd_startup_function,
+                         restart_authd_function, wait_for_authd_startup_function,
                          generate_ca_certificate, tear_down):
     '''
     description:
