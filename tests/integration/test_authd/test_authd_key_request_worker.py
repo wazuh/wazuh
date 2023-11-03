@@ -80,7 +80,7 @@ class WorkerMID(mitm.ManInTheMiddle):
         if len(data) > CLUSTER_DATA_HEADER_SIZE:
             message = data[CLUSTER_DATA_HEADER_SIZE:]
             response = cluster_msg_build(cmd=b'send_sync', counter=2, payload=bytes(self.cluster_output.encode()),
-                                         encrypt=False)[0]
+                                         encrypt=False)
             print(f'Received message from wazuh-authd: {message}')
             print(f'Response to send: {self.cluster_output}')
             self.pause()
@@ -164,9 +164,8 @@ def test_authd_key_request_worker(test_configuration, test_metadata, set_wazuh_c
     message = test_metadata['request_input']
     key_request_sock.send(message, size=False)
     # callback lambda function takes out tcp header and decodes binary to string
-    clusterd_queue.start(callback=(lambda y: [x[CLUSTER_DATA_HEADER_SIZE:] for x in y]),
-                                            timeout=1, accumulations=1)
+    clusterd_queue.start(callback=(lambda y: y), timeout=10, accumulations=2)
     results = clusterd_queue.callback_result
     # Assert monitored sockets
-    assert results[0] == test_metadata['cluster_input'], 'Expected clusterd input message does not match'
-    assert results[1] == test_metadata['cluster_output'], 'Expected clusterd output message does not match'
+    assert results[0][CLUSTER_DATA_HEADER_SIZE:] == test_metadata['cluster_input'], 'Expected clusterd input message does not match'
+    assert results[1][CLUSTER_DATA_HEADER_SIZE:] == test_metadata['cluster_output'], 'Expected clusterd output message does not match'
