@@ -4,7 +4,6 @@
 #include <gtest/gtest.h>
 
 #include <api/kvdb/handlers.hpp>
-#include <kvdb/ikvdbhandler.hpp>
 #include <kvdb/mockKvdbHandler.hpp>
 #include <kvdb/mockKvdbManager.hpp>
 #include <metrics/metricsManager.hpp>
