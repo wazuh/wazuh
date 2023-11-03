@@ -36,9 +36,9 @@
         },
         "wazuh": {
             "registered_ip": "any",
-            "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
+            "location": "[001] (wazuh-agent-1) any->/test/apache2/error.log",
             "queue": 49,
-            "origin": "/test/syslog.log",
+            "origin": "/test/apache2/error.log",
             "decoders": [
                 "apache-error"
             ],
@@ -83,10 +83,10 @@
             ]
         },
         "wazuh": {
-            "origin": "/test/syslog.log",
+            "origin": "/test/apache2/error.log",
             "registered_ip": "any",
             "source": "logcollector",
-            "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
+            "location": "[001] (wazuh-agent-1) any->/test/apache2/error.log",
             "decoders": [
                 "apache-error"
             ],

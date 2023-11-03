@@ -28,9 +28,9 @@
         "suricata-alert"
       ],
       "queue": 49,
-      "origin": "/test/test.json",
+      "origin": "/test/eve.json",
       "registered_ip": "any",
-      "location": "[001] (wazuh-agent-1) any->/test/test.json",
+      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
       "source": "logcollector"
     },
     "network": {
@@ -87,8 +87,8 @@
   {
     "wazuh": {
       "queue": 49,
-      "origin": "/test/test.json",
-      "location": "[001] (wazuh-agent-1) any->/test/test.json",
+      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
       "registered_ip": "any",
       "decoders": [
         "suricata",

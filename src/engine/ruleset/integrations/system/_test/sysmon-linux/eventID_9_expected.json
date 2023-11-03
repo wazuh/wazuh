@@ -52,9 +52,9 @@
         },
         "wazuh": {
             "source": "logcollector",
-            "origin": "/test/syslog.log",
+            "origin": "/test/kern.log",
             "registered_ip": "any",
-            "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
+            "location": "[001] (wazuh-agent-1) any->/test/kern.log",
             "decoders": [
                 "syslog",
                 "sysmon-linux"

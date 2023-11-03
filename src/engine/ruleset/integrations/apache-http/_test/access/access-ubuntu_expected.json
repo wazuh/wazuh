@@ -37,9 +37,9 @@
         },
         "wazuh": {
             "source": "logcollector",
-            "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
+            "location": "[001] (wazuh-agent-1) any->/test/apache2/access.log",
             "registered_ip": "any",
-            "origin": "/test/syslog.log",
+            "origin": "/test/apache2/access.log",
             "queue": 49,
             "decoders": [
                 "apache-access"
@@ -112,13 +112,13 @@
             ]
         },
         "wazuh": {
-            "origin": "/test/syslog.log",
+            "origin": "/test/apache2/access.log",
             "source": "logcollector",
             "queue": 49,
             "decoders": [
                 "apache-access"
             ],
-            "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
+            "location": "[001] (wazuh-agent-1) any->/test/apache2/access.log",
             "registered_ip": "any"
         },
         "user": {

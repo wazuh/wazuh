@@ -1,7 +1,8 @@
 #!/bin/bash
+
 check_arguments() {
     if [ $# -lt 1 ]; then
-        echo "Usage: $0 <github_working_directory> [<engine_source_dir>] [<configuration_file]"
+        echo "Usage: $0 <github_working_directory> [<engine_source_dir>] [<configuration_file] [<input_file_path]"
         exit 1
     fi
 }
@@ -14,27 +15,21 @@ check_config_file() {
     fi
 }
 
-run_behave_tests() {
-    local integration_tests_dir="$1"
-    local exit_code=0
-    for features_dir in $(find "$integration_tests_dir" -type d -name "features"); do
-        local steps_dir=$(dirname "$features_dir")/steps
-        if [ -d "$steps_dir" ]; then
-            echo "Running Behave in $features_dir"
-            behave "$features_dir" || exit_code=1
-        fi
-    done
-    echo "Exit code $exit_code"
-    return $exit_code
+run_test_health() {
+    local command="python3 $health_test_dir/health_test.py $github_working_dir $input_file_path"
+    echo "Running test_health command: $command"
+    $command
 }
 
 main() {
     check_arguments "$@"
     local github_working_dir="$1"
-    local engine_src_dir="${2:-$github_working_dir/src/engine}"
-    local conf_file="${3:-general.conf}"
-    local integration_tests_dir="$engine_src_dir/test/integration_tests"
+    local input_file_path="$2"
+    local engine_src_dir="${3:-$github_working_dir/src/engine}"
+    local conf_file="${4:-general.conf}"
+    local health_test_dir="$engine_src_dir/test/health_test"
     local serv_conf_file="$github_working_dir/environment/engine/$conf_file"
+
     check_config_file "$serv_conf_file"
 
     # Execute the binary with the argument "server start"
@@ -44,7 +39,7 @@ main() {
     # Wait for the server to start
     sleep 2
 
-    ENGINE_DIR=$engine_src_dir ENV_DIR=$github_working_dir run_behave_tests "$integration_tests_dir"
+    run_test_health "$health_test_dir"
     exit_code=$?
     echo "Exit code $exit_code"
 

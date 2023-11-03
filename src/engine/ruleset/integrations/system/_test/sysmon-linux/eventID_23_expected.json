@@ -18,10 +18,10 @@
             "action": "file_deleted"
         },
         "wazuh": {
-            "origin": "/test/syslog.log",
+            "origin": "/test/kern.log",
             "registered_ip": "any",
             "queue": 49,
-            "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
+            "location": "[001] (wazuh-agent-1) any->/test/kern.log",
             "source": "logcollector",
             "decoders": [
                 "syslog",
@@ -72,8 +72,8 @@
             "name": "wazuh-agent-1"
         },
         "wazuh": {
-            "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
-            "origin": "/test/syslog.log",
+            "location": "[001] (wazuh-agent-1) any->/test/kern.log",
+            "origin": "/test/kern.log",
             "queue": 49,
             "registered_ip": "any",
             "decoders": [
@@ -147,9 +147,9 @@
         "wazuh": {
             "source": "logcollector",
             "registered_ip": "any",
-            "origin": "/test/syslog.log",
+            "origin": "/test/kern.log",
             "queue": 49,
-            "location": "[001] (wazuh-agent-1) any->/test/syslog.log",
+            "location": "[001] (wazuh-agent-1) any->/test/kern.log",
             "decoders": [
                 "syslog",
                 "sysmon-linux"

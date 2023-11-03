@@ -22,7 +22,7 @@ concurrency:
 env:
   BUILD_TYPE: Release
   ENGINE_DIR: ${{github.workspace}}/src/engine
-  TEST_TYPE: integration_test
+
 jobs:
   build:
     name: Engine Integration Test
@@ -62,10 +62,13 @@ jobs:
       # Build the specified target using CMake
       run: cmake --build ${{env.ENGINE_DIR}}/build --config ${{env.BUILD_TYPE}} --target all -j2
 
-    - name: Set Server Configuration
-      # Set Server Configuration
-      run: bash ${{env.ENGINE_DIR}}/test/integration_tests/buildEnvironment.sh ${{github.workspace}} ${{env.TEST_TYPE}}
+    - name: Setup environment
+      # Set Engine Configuration
+      run: bash ${{env.ENGINE_DIR}}/test/setupEnvironment.sh ${{github.workspace}}
+
+    - name: Build environment
+      run: bash ${{env.ENGINE_DIR}}/test/integration_tests/buildEnvironment.sh ${{github.workspace}}
 
     - name: Integration Test
       # Run integration tests using behave
-      run: bash ${{env.ENGINE_DIR}}/test/integration_tests/run.sh ${{github.workspace}} ${{env.TEST_TYPE}}
+      run: bash ${{env.ENGINE_DIR}}/test/integration_tests/run.sh ${{github.workspace}}
