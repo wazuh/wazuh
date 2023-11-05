@@ -60,15 +60,15 @@ jobs:
 
     - name: Build
       # Build the specified target using CMake
-      run: cmake --build ${{env.ENGINE_DIR}}/build --config ${{env.BUILD_TYPE}} --target all -j2
+      run: cmake --build ${{env.ENGINE_DIR}}/build --config ${{env.BUILD_TYPE}} --target main -j2
 
     - name: Setup environment
       # Set Engine Configuration
-      run: bash ${{env.ENGINE_DIR}}/test/setupEnvironment.sh ${{github.workspace}}
+      run: bash ${{env.ENGINE_DIR}}/test/setupEnvironment.sh -d ${{github.workspace}}
 
-    - name: Build environment
-      run: bash ${{env.ENGINE_DIR}}/test/integration_tests/buildEnvironment.sh ${{github.workspace}}
+    - name: Initial state
+      run: bash ${{env.ENGINE_DIR}}/test/integration_tests/initialState.sh -d ${{github.workspace}}
 
     - name: Integration Test
       # Run integration tests using behave
-      run: bash ${{env.ENGINE_DIR}}/test/integration_tests/run.sh ${{github.workspace}}
+      run: bash ${{env.ENGINE_DIR}}/test/integration_tests/run.sh -d ${{github.workspace}}

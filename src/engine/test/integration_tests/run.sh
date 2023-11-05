@@ -1,15 +1,39 @@
 #!/bin/bash
+
+github_working_dir=""
+environment_build_dir=""
+
+while getopts ":d:e:i:" opt; do
+    case $opt in
+        d) github_working_dir="$OPTARG" ;;
+        e) environment_build_dir="$OPTARG/environment" ;;
+        \?) echo "Invalid option: -$OPTARG" >&2
+            exit 1
+            ;;
+        :) echo "Option -$OPTARG requires an argument." >&2
+            exit 1
+            ;;
+    esac
+done
+
 check_arguments() {
-    if [ $# -lt 1 ]; then
-        echo "Usage: $0 <github_working_directory> [<engine_source_dir>] [<configuration_file]"
+    if [ -z "$github_working_dir" ]; then
+        echo "GitHub working directory is mandatory. Usage: $0 -d <github_working_directory> [-e <environment_build_dir>] [-i <input_file_path>]"
         exit 1
     fi
 }
 
 check_config_file() {
-    local conf_file="$1"
-    if [ ! -f "$conf_file" ]; then
-        echo "Error: Configuration file $conf_file not found."
+    if [ -z "$environment_build_dir" ]; then
+        environment_build_dir="$github_working_dir/environment"
+        serv_conf_file="$environment_build_dir/engine/general.conf"
+    else
+        environment_build_dir=$(echo "$environment_build_dir" | sed 's|//|/|g')
+        serv_conf_file="$(realpath -m "$environment_build_dir/engine/general.conf")"
+    fi
+
+    if [ ! -f "$serv_conf_file" ]; then
+        echo "Error: Configuration file $serv_conf_file not found."
         exit 1
     fi
 }
@@ -29,13 +53,11 @@ run_behave_tests() {
 }
 
 main() {
-    check_arguments "$@"
-    local github_working_dir="$1"
-    local engine_src_dir="${2:-$github_working_dir/src/engine}"
-    local conf_file="${3:-general.conf}"
+    check_arguments
+    check_config_file
+
+    local engine_src_dir="$github_working_dir/src/engine"
     local integration_tests_dir="$engine_src_dir/test/integration_tests"
-    local serv_conf_file="$github_working_dir/environment/engine/$conf_file"
-    check_config_file "$serv_conf_file"
 
     # Execute the binary with the argument "server start"
     "$engine_src_dir/build/main" --config "$serv_conf_file" server -l error --api_timeout 100000 start &
@@ -44,7 +66,8 @@ main() {
     # Wait for the server to start
     sleep 2
 
-    ENGINE_DIR=$engine_src_dir ENV_DIR=$github_working_dir run_behave_tests "$integration_tests_dir"
+    echo $environment_build_dir
+    ENGINE_DIR=$engine_src_dir ENV_DIR=$environment_build_dir run_behave_tests "$integration_tests_dir"
     exit_code=$?
     echo "Exit code $exit_code"
 

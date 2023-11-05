@@ -1,0 +1,102 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "ecs": {
+      "version": "8.8"
+    },
+    "event": {
+      "category": [
+        "web"
+      ],
+      "created": "2023-03-14T10:50:33.260Z",
+      "dataset": "apache-error",
+      "kind": "event",
+      "module": "apache-http",
+      "original": "[Tue Mar 14 10:50:33.260617 2023] [mpm_event:notice] [pid 3651:tid 139732022373440] AH00489: Apache/2.4.41 (Ubuntu) configured -- resuming normal operations",
+      "type": [
+        "info"
+      ]
+    },
+    "host": {
+      "id": "001"
+    },
+    "log": {
+      "level": "notice",
+      "logger": "mpm_event"
+    },
+    "message": "AH00489: Apache/2.4.41 (Ubuntu) configured -- resuming normal operations",
+    "process": {
+      "pid": 3651,
+      "thread": {
+        "id": 139732022373440
+      }
+    },
+    "service": {
+      "type": "apache"
+    },
+    "wazuh": {
+      "decoders": [
+        "apache-error"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/apache2/error.log",
+      "origin": "/test/apache2/error.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "ecs": {
+      "version": "8.8"
+    },
+    "event": {
+      "category": [
+        "web"
+      ],
+      "created": "2023-03-14T10:50:33.261Z",
+      "dataset": "apache-error",
+      "kind": "event",
+      "module": "apache-http",
+      "original": "[Tue Mar 14 10:50:33.261185 2023] [core:notice] [pid 3651:tid 139732022373440] AH00094: Command line: '/usr/sbin/apache2'",
+      "type": [
+        "info"
+      ]
+    },
+    "host": {
+      "id": "001"
+    },
+    "log": {
+      "level": "notice",
+      "logger": "core"
+    },
+    "message": "AH00094: Command line: '/usr/sbin/apache2'",
+    "process": {
+      "pid": 3651,
+      "thread": {
+        "id": 139732022373440
+      }
+    },
+    "service": {
+      "type": "apache"
+    },
+    "wazuh": {
+      "decoders": [
+        "apache-error"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/apache2/error.log",
+      "origin": "/test/apache2/error.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  }
+]
