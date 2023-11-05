@@ -12,8 +12,8 @@ import subprocess
 
 ENGINE_DIR = os.environ.get("ENGINE_DIR", "")
 ENV_DIR = os.environ.get("ENV_DIR", "")
-SOCKET_PATH = ENV_DIR + "/environment/queue/sockets/engine-api"
-RULESET_DIR = ENV_DIR + "/environment/engine/wazuh-core-test/"
+SOCKET_PATH = ENV_DIR + "/queue/sockets/engine-api"
+RULESET_DIR = ENV_DIR + "/engine/wazuh-core-test/"
 
 api_client = APIClient(SOCKET_PATH)
 
