@@ -1,0 +1,119 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "ecs": {
+      "version": "8.8"
+    },
+    "event": {
+      "category": [
+        "file"
+      ],
+      "code": "2",
+      "dataset": "sysmon",
+      "id": "2",
+      "kind": "event",
+      "module": "windows",
+      "original": "<Event xmlns=\"http://schemas.microsoft.com/win/2004/08/events/event\">\n    <System>\n      <Provider Name=\"Microsoft-Windows-Sysmon\" Guid=\"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}\" />\n      <EventID>2</EventID>\n      <Version>5</Version>\n      <Level>4</Level>\n      <Task>2</Task>\n      <Opcode>0</Opcode>\n      <Keywords>0x8000000000000000</Keywords>\n      <TimeCreated SystemTime=\"2023-09-21T02:08:36.3387598Z\" />\n      <EventRecordID>13473</EventRecordID>\n      <Correlation />\n      <Execution ProcessID=\"4360\" ThreadID=\"5336\" />\n      <Channel>Microsoft-Windows-Sysmon/Operational</Channel>\n      <Computer>DESKTOP-22QKO5D</Computer>\n      <Security UserID=\"S-1-5-18\" />\n    </System>\n    <EventData>\n      <Data Name=\"RuleName\">T1099</Data>\n      <Data Name=\"UtcTime\">2023-09-21 02:08:36.328</Data>\n      <Data Name=\"ProcessGuid\">{23b237de-6cd1-650b-0006-000000002000}</Data>\n      <Data Name=\"ProcessId\">7008</Data>\n      <Data Name=\"Image\">C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe</Data>\n      <Data Name=\"TargetFilename\">C:\\Users\\prueba.exe</Data>\n      <Data Name=\"CreationUtcTime\">1997-01-06 22:00:00.000</Data>\n      <Data Name=\"PreviousCreationUtcTime\">2023-09-21 02:07:09.460</Data>\n      <Data Name=\"User\">DESKTOP-22QKO5D\\Positivo BGH</Data>\n    </EventData>\n  </Event>\n",
+      "provider": "Microsoft-Windows-Sysmon",
+      "risk_score": 47,
+      "start": "2023-09-21T02:08:36.3387598Z",
+      "type": [
+        "change"
+      ]
+    },
+    "file": {
+      "directory": "C:\\Users",
+      "extension": "exe",
+      "name": "prueba.exe",
+      "path": "C:\\Users\\prueba.exe"
+    },
+    "host": {
+      "id": "001",
+      "name": "DESKTOP-22QKO5D"
+    },
+    "log": {
+      "level": "Information"
+    },
+    "message": [
+      "File creation time"
+    ],
+    "process": {
+      "entity_id": "{23b237de-6cd1-650b-0006-000000002000}",
+      "executable": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "name": "powershell.exe",
+      "parent": {
+        "name": "powershell.exe"
+      },
+      "pid": "7008"
+    },
+    "related": {
+      "user": [
+        "Positivo BGH"
+      ]
+    },
+    "rule": {
+      "description": "Identifies modification of a file creation time. Adversaries may modify file time attributes to blend malicious content with existing files. Timestomping is a technique that modifies the timestamps of a file often to mimic files that are in trusted directories.",
+      "license": "Wazuh Inc.",
+      "name": "File Creation Time Changed"
+    },
+    "threat": {
+      "framework": "MITRE ATT&CK",
+      "tactic": {
+        "id": [
+          "TA0005"
+        ],
+        "name": [
+          "Defense Evasion"
+        ],
+        "reference": [
+          "https://attack.mitre.org/tactics/TA0005/"
+        ]
+      },
+      "technique": {
+        "id": [
+          "T1070"
+        ],
+        "name": [
+          "Indicator Removal"
+        ],
+        "reference": [
+          "https://attack.mitre.org/techniques/T1070/"
+        ],
+        "subtechnique": {
+          "id": [
+            "T1070.006"
+          ],
+          "name": [
+            "Timestomp"
+          ],
+          "reference": [
+            "https://attack.mitre.org/techniques/T1070/006/"
+          ]
+        }
+      }
+    },
+    "user": {
+      "domain": "DESKTOP-22QKO5D",
+      "id": "S-1-5-18",
+      "name": "Positivo BGH"
+    },
+    "vulnerability": {
+      "severity": "medium"
+    },
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-sysmon"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  }
+]

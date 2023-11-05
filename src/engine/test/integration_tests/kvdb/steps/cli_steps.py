@@ -5,7 +5,7 @@ import json
 
 ENGINE_DIR = os.environ.get("ENGINE_DIR", "")
 ENV_DIR = os.environ.get("ENV_DIR", "")
-SOCKET_PATH = ENV_DIR + "/environment/queue/sockets/engine-api"
+SOCKET_PATH = ENV_DIR + "/queue/sockets/engine-api"
 RULESET_DIR = ENGINE_DIR + "/ruleset"
 EXEC_PATH = ENGINE_DIR + "/build/main"
 
