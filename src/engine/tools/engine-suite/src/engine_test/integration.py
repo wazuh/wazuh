@@ -115,7 +115,7 @@ class Integration(CrudIntegration):
             if showTrace:
                 response = json.dumps({keyOutput: rawOutput, keyTraces: rawTraces}, separators=(',',':'))
             else:
-                response = json.dumps(rawOutput, separators=(',',':'))
+                response = json.dumps(rawOutput, separators=(',',':'), sort_keys=True)
 
         else:
             response += "---\n"
