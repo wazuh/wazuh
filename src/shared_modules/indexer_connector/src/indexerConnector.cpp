@@ -11,6 +11,7 @@
 
 #include "indexerConnector.hpp"
 #include "HTTPRequest.hpp"
+#include "secureCommunication.hpp"
 #include "shared_modules/indexer_connector/src/serverSelector.hpp"
 #include <fstream>
 
@@ -28,26 +29,65 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const std::stri
     // Get index name.
     auto indexName {config.at("name").get_ref<const std::string&>()};
 
-    {
-        // Read template file.
-        std::ifstream templateFile(templatePath);
-        if (!templateFile.is_open())
-        {
-            throw std::runtime_error("Could not open template file.");
-        }
-        nlohmann::json templateData = nlohmann::json::parse(templateFile);
+    std::string caRootCertificate;
+    std::string sslCertificate;
+    std::string sslKey;
+    std::string username;
+    std::string password;
 
-        // Initialize template.
-        HTTPRequest::instance().put(
-            HttpURL(selector->getNext() + "/_index_template/" + indexName + "_template"),
-            templateData,
-            [&](const std::string& response) {},
-            [&](const std::string& error, const long statusCode)
-            { throw std::runtime_error("Status:" + std::to_string(statusCode) + " - Error: " + error); });
+    auto secureCommunication = SecureCommunication::builder();
+
+    if (config.contains("ssl"))
+    {
+        if (config.at("ssl").contains("certificate_authorities") &&
+            !config.at("ssl").at("certificate_authorities").empty())
+        {
+            caRootCertificate = config.at("ssl").at("certificate_authorities").front().get_ref<const std::string&>();
+        }
+
+        if (config.at("ssl").contains("certificate"))
+        {
+            sslCertificate = config.at("ssl").at("certificate").get_ref<const std::string&>();
+        }
+
+        if (config.at("ssl").contains("key"))
+        {
+            sslKey = config.at("ssl").at("key").get_ref<const std::string&>();
+        }
     }
 
+    if (config.contains("username") && config.contains("password"))
+    {
+        username = config.at("username").get_ref<const std::string&>();
+        password = config.at("password").get_ref<const std::string&>();
+    }
+
+    secureCommunication.basicAuth(username + ":" + password)
+        .sslCertificate(sslCertificate)
+        .sslKey(sslKey)
+        .caRootCertificate(caRootCertificate);
+
+    // Read template file.
+    std::ifstream templateFile(templatePath);
+    if (!templateFile.is_open())
+    {
+        throw std::runtime_error("Could not open template file.");
+    }
+    nlohmann::json templateData = nlohmann::json::parse(templateFile);
+
+    // Initialize template.
+    HTTPRequest::instance().put(
+        HttpURL(selector->getNext() + "/_index_template/" + indexName + "_template"),
+        templateData,
+        [&](const std::string& response) {},
+        [&](const std::string& error, const long statusCode)
+        { throw std::runtime_error("Status:" + std::to_string(statusCode) + " - Error: " + error); },
+        "",
+        DEFAULT_HEADERS,
+        secureCommunication);
+
     QUEUE_MAP[this] = std::make_unique<ThreadDispatchQueue>(
-        [selector, indexName](std::queue<std::string>& dataQueue)
+        [selector, indexName, secureCommunication](std::queue<std::string>& dataQueue)
         {
             try
             {
@@ -81,7 +121,10 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const std::stri
                     bulkData,
                     [&](const std::string& response) {},
                     [&](const std::string& error, const long statusCode)
-                    { std::cout << "Status:" << statusCode << " - Error: " << error << std::endl; });
+                    { std::cout << "Status:" << statusCode << " - Error: " << error << std::endl; },
+                    "",
+                    DEFAULT_HEADERS,
+                    secureCommunication);
             }
             catch (const std::exception& e)
             {
