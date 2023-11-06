@@ -153,8 +153,9 @@ public:
         }
         else
         {
-            std::cerr << "Action: Ondemand request - another action in progress for " << m_topicName
-                      << std::endl; // LCOV_EXCL_LINE
+            // LCOV_EXCL_START
+            std::cerr << "Action: Ondemand request - another action in progress for " << m_topicName << std::endl;
+            // LCOV_EXCL_STOP
         }
     }
 
