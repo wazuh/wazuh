@@ -48,9 +48,7 @@ target_link_libraries(api
     eMessages
     fmt
     json
-    kvdb
     kvdb::ikvdb
-    kvdb::mocks
     metrics
     router
     store::fileDriver
@@ -89,6 +87,6 @@ add_executable(api_utest
   ${TEST_SRC_UNIT_DIR}/registry_test.cpp
 )
 
-target_link_libraries(api_utest gtest_main base api schemf::mocks test_mocks store::mocks rbac::mocks api::mocks builder::mocks)
+target_link_libraries(api_utest gtest_main base api schemf::mocks test_mocks store::mocks rbac::mocks api::mocks builder::mocks kvdb::mocks)
 gtest_discover_tests(api_utest)
 endif(ENGINE_BUILD_TEST)

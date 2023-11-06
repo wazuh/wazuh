@@ -23,6 +23,7 @@ target_link_libraries(cmds
     store
     api
     uv_a
+    kvdb
     conf::cliconf
     conf::iconf
     eMessages

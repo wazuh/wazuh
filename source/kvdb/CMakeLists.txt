@@ -70,7 +70,7 @@ add_library(kvdb::mocks ALIAS kvdb_mocks)
 add_executable(kvdb_utest
     ${UNIT_SRC_DIR}/kvdb_test.cpp
 )
-target_link_libraries(kvdb_utest gtest_main kvdb)
+target_link_libraries(kvdb_utest gtest_main kvdb kvdb::mocks)
 gtest_discover_tests(kvdb_utest)
 
 # Component test
