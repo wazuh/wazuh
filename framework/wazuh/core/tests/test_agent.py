@@ -77,7 +77,7 @@ class InitAgent:
             self.cur.executescript(f.read())
 
         self.never_connected_fields = {'status', 'name', 'ip', 'registerIP', 'node_name', 'dateAdd', 'id',
-                                       'group_config_status'}
+                                       'group_config_status', 'status_code'}
         self.pending_fields = self.never_connected_fields | {'manager', 'lastKeepAlive'}
         self.manager_fields = self.pending_fields | {'version', 'os', 'group'}
         self.active_fields = self.manager_fields | {'group', 'mergedSum', 'configSum'}
