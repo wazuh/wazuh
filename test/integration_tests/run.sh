@@ -1,35 +1,39 @@
 #!/bin/bash
 
-github_working_dir=""
-environment_build_dir=""
+environment_directory=""
 
-while getopts ":d:e:i:" opt; do
+SCRIPT_DIR=$(dirname $(readlink -f $0))
+WAZUH_DIR=$(realpath -s "$SCRIPT_DIR/../../../..")
+
+while getopts "e:" opt; do
     case $opt in
-        d) github_working_dir="$OPTARG" ;;
-        e) environment_build_dir="$OPTARG/environment" ;;
-        \?) echo "Invalid option: -$OPTARG" >&2
+        e)
+            environment_directory="$OPTARG/environment"
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG" >&2
             exit 1
             ;;
-        :) echo "Option -$OPTARG requires an argument." >&2
+        :)
+            echo "Option -$OPTARG requires an argument." >&2
             exit 1
             ;;
     esac
 done
 
 check_arguments() {
-    if [ -z "$github_working_dir" ]; then
-        echo "GitHub working directory is mandatory. Usage: $0 -d <github_working_directory> [-e <environment_build_dir>] [-i <input_file_path>]"
-        exit 1
+    if [ -z "$environment_directory" ]; then
+        echo "environment_directory is optional. For default is wazuh directory. Usage: $0 -e <environment_directory>"
     fi
 }
 
 check_config_file() {
-    if [ -z "$environment_build_dir" ]; then
-        environment_build_dir="$github_working_dir/environment"
-        serv_conf_file="$environment_build_dir/engine/general.conf"
+    if [ -z "$environment_directory" ]; then
+        environment_directory="$WAZUH_DIR/environment"
+        serv_conf_file="$environment_directory/engine/general.conf"
     else
-        environment_build_dir=$(echo "$environment_build_dir" | sed 's|//|/|g')
-        serv_conf_file="$(realpath -m "$environment_build_dir/engine/general.conf")"
+        environment_directory=$(echo "$environment_directory" | sed 's|//|/|g')
+        serv_conf_file="$(realpath -m "$environment_directory/engine/general.conf")"
     fi
 
     if [ ! -f "$serv_conf_file" ]; then
@@ -56,7 +60,7 @@ main() {
     check_arguments
     check_config_file
 
-    local engine_src_dir="$github_working_dir/src/engine"
+    local engine_src_dir="$WAZUH_DIR/src/engine"
     local integration_tests_dir="$engine_src_dir/test/integration_tests"
 
     # Execute the binary with the argument "server start"
@@ -66,8 +70,7 @@ main() {
     # Wait for the server to start
     sleep 2
 
-    echo $environment_build_dir
-    ENGINE_DIR=$engine_src_dir ENV_DIR=$environment_build_dir run_behave_tests "$integration_tests_dir"
+    ENGINE_DIR=$engine_src_dir ENV_DIR=$environment_directory run_behave_tests "$integration_tests_dir"
     exit_code=$?
     echo "Exit code $exit_code"
 
