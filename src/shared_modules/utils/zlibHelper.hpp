@@ -127,7 +127,8 @@ namespace Utils
             // Iterate all compressed files within the .zip file.
             std::vector<std::string> decompressedFiles;
             decompressedFiles.reserve(globalInfo.number_entry);
-            for (uLong currentFileIndex {0}; currentFileIndex < globalInfo.number_entry; ++currentFileIndex)
+
+            do
             {
                 constexpr auto MAX_FILENAME_LEN {4096};
                 unz_file_info fileInfo;
@@ -198,16 +199,7 @@ namespace Utils
                     // Push filename into the output vector.
                     decompressedFiles.push_back(outputFilepath);
                 }
-
-                // Go to next file within the .zip file.
-                if (currentFileIndex + 1 < globalInfo.number_entry)
-                {
-                    if (unzGoToNextFile(spUnzFile.get()) != UNZ_OK)
-                    {
-                        throw std::runtime_error {"Unable to get next file of: " + zipFilePath.string()};
-                    }
-                }
-            }
+            } while (unzGoToNextFile(spUnzFile.get()) == UNZ_OK);
 
             return decompressedFiles;
         }
