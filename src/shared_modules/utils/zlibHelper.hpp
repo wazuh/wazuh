@@ -144,67 +144,65 @@ namespace Utils
                 {
                     throw std::runtime_error {"Unable to open current file: " + std::string(filename)};
                 }
+
+                // Close current file when going out of scope.
+                DEFER([&spUnzFile]() { unzCloseCurrentFile(spUnzFile.get()); });
+
+                const auto outputFilepath {(outputDir / std::string(filename)).lexically_normal()};
+
+                // Check for possible Zip Slip Vulnerability.
+                if (!Utils::startsWith(outputFilepath.string(), outputDir.string()))
+                {
+                    throw std::runtime_error {"A potentially insecure path was found: " + outputFilepath.string()};
+                }
+
+                const auto isDir {Utils::endsWith(outputFilepath.string(), "/")};
+                if (isDir)
+                {
+                    // Create output directory.
+                    std::filesystem::create_directory(outputFilepath);
+                }
                 else
                 {
-                    // Close current file when going out of scope.
-                    DEFER([&spUnzFile]() { unzCloseCurrentFile(spUnzFile.get()); });
-
-                    const auto outputFilepath {(outputDir / std::string(filename)).lexically_normal()};
-
-                    // Check for possible Zip Slip Vulnerability.
-                    if (!Utils::startsWith(outputFilepath.string(), outputDir.string()))
+                    // Create outputfile.
+                    std::ofstream outFile {outputFilepath, std::ios::binary};
+                    if (!outFile.good())
                     {
-                        throw std::runtime_error {"A potentially insecure path was found: " + outputFilepath.string()};
+                        throw std::runtime_error {"Unable to create destination file: " + outputFilepath.string()};
                     }
 
-                    const auto isDir {Utils::endsWith(outputFilepath.string(), "/")};
-                    if (isDir)
+                    // Read current file content.
+                    unsigned long bytesRead, totalBytesRead {0};
+                    do
                     {
-                        // Create output directory.
-                        std::filesystem::create_directory(outputFilepath);
-                    }
-                    else
+                        // Read compressed data by ZIP_BUF_LEN chunks.
+                        std::vector<char> buffer(ZIP_BUF_LEN);
+                        bytesRead = unzReadCurrentFile(spUnzFile.get(), buffer.data(), buffer.size());
+                        totalBytesRead += bytesRead;
+
+                        // Store current chunk into output file.
+                        outFile.write(buffer.data(), bytesRead);
+                    } while (bytesRead > 0);
+
+                    // Close output file to flush the stream and check for error flags.
+                    outFile.close();
+                    if (!outFile.good())
                     {
-                        // Create outputfile.
-                        std::ofstream outFile {outputFilepath, std::ios::binary};
-                        if (!outFile.good())
-                        {
-                            throw std::runtime_error {"Unable to create destination file: " + outputFilepath.string()};
-                        }
-
-                        // Read current file content.
-                        unsigned long bytesRead, totalBytesRead {0};
-                        do
-                        {
-                            // Read compressed data by ZIP_BUF_LEN chunks.
-                            std::vector<char> buffer(ZIP_BUF_LEN);
-                            bytesRead = unzReadCurrentFile(spUnzFile.get(), buffer.data(), buffer.size());
-                            totalBytesRead += bytesRead;
-
-                            // Store current chunk into output file.
-                            outFile.write(buffer.data(), bytesRead);
-                        } while (bytesRead > 0);
-
-                        // Close output file to flush the stream and check for error flags.
-                        outFile.close();
-                        if (!outFile.good())
-                        {
-                            throw std::runtime_error {"Error while writing output file: " + outputFilepath.string()};
-                        }
-
-                        // Check total amount of bytes read.
-                        if (totalBytesRead != fileInfo.uncompressed_size)
-                        {
-                            throw std::runtime_error {"Unable to read content of current file: " +
-                                                      std::string(filename)};
-                        }
+                        throw std::runtime_error {"Error while writing output file: " + outputFilepath.string()};
                     }
 
-                    if (!isDir)
+                    // Check total amount of bytes read.
+                    if (totalBytesRead != fileInfo.uncompressed_size)
                     {
-                        // Push filename into the output vector.
-                        decompressedFiles.push_back(outputFilepath.string());
+                        throw std::runtime_error {"Unable to read content of current file: " +
+                                                    std::string(filename)};
                     }
+                }
+
+                if (!isDir)
+                {
+                    // Push filename into the output vector.
+                    decompressedFiles.push_back(outputFilepath.string());
                 }
 
                 // Go to next file within the .zip file.
