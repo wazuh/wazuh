@@ -3996,7 +3996,7 @@ checks:
     impact: "If additional LSA protection is enabled, Administrators will not be able to debug a custom LSA plugin. A debugger cannot be attached to LSASS when it's a protected process. In general, there's no supported way to debug a running protected process."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\MS Security Guide\\LSA Protection Note: This Group Policy path does not exist by default. An additional Group Policy template (SecGuide.admx/adml) is required - it is available from Microsoft at this link."
     references:
-     - 'https://learn.microsoft.com/en-us/windows-server/security/credentials-protection-'
+     - 'https://learn.microsoft.com/en-us/windows-server/security/credentials-protection-and-management/configuring-additional-lsa-protection'
     compliance:
       - cis: ["18.4.6"]
     condition: all
@@ -4005,27 +4005,46 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> RunAsPPL'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> RunAsPPL -> 1'
 
-  # 18.4.7 (L1) Ensure 'WDigest Authentication' is set to 'Disabled'. (Automated)
-  - id: 15684
-    title: "Ensure 'WDigest Authentication' is set to 'Disabled'."
-    description: 'When WDigest authentication is enabled, Lsass.exe retains a copy of the user''s plaintext password in memory, where it can be at risk of theft. If this setting is not configured, WDigest authentication is disabled in Windows 8.1 and in Windows Server 2012 R2; it is enabled by default in earlier versions of Windows and Windows Server. For more information about local accounts and credential theft, review the "Mitigating Pass-the-Hash (PtH) Attacks and Other Credential Theft Techniques" documents. For more information about UseLogonCredential, see Microsoft Knowledge Base article 2871997: Microsoft Security Advisory Update to improve credentials protection and management May 13, 2014. The recommended state for this setting is: Disabled.'
+  # 18.4.7 (L1) Ensure 'NetBT NodeType configuration' is set to 'Enabled: P-node (recommended)'. (Automated)
+  - id: 18722
+    title: "L1 Ensure 'NetBT NodeType configuration' is set to 'Enabled: P-node (recommended)'."
+    description: "This setting determines which method NetBIOS over TCP/IP (NetBT) uses to register and resolve names. The available methods are: - The B-node (broadcast) method only uses broadcasts. - The P-node (point-to-point) method only uses name queries to a name server (WINS). - The M-node (mixed) method broadcasts first, then queries a name server (WINS) if broadcast failed. - The H-node (hybrid) method queries a name server (WINS) first, then broadcasts if the query failed. The recommended state for this setting is: Enabled: P-node (recommended) (point-to-point). Note: Resolution through LMHOSTS or DNS follows these methods. If the NodeType registry value is present, it overrides any DhcpNodeType registry value. If neither NodeType nor DhcpNodeType is present, the computer uses B-node (broadcast) if there are no WINS servers configured for the network, or H-node (hybrid) if there is at least one WINS server configured."
+    rationale: "In order to help mitigate the risk of NetBIOS Name Service (NBT-NS) poisoning attacks, setting the node type to P-node (point-to-point) will prevent the system from sending out NetBIOS broadcasts."
+    impact: "NetBIOS name resolution queries will require a defined and available WINS server for external NetBIOS name resolution. If a WINS server is not defined or not reachable, and the desired hostname is not defined in the local cache, local LMHOSTS or HOSTS files, NetBIOS name resolution will fail."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: P-node (recommended): Computer Configuration\\Policies\\Administrative Templates\\MS Security Guide\\NetBT NodeType configuration Note: This change does not take effect until the computer has been restarted. Note #2: This Group Policy path does not exist by default. An additional Group Policy template (SecGuide.admx/adml) is required - it is available from Microsoft at this link. Please note that this setting is only available in the Security baseline (FINAL) for Windows 10 v1903 and Windows Server v1903 (or newer) release of SecGuide.admx/adml, so if you previously downloaded this template, you may need to update it from a newer Microsoft baseline to get this new NetBT NodeType configuration setting."
+    references:
+     - 'https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-cifs/45170055-a0cd-4910-9228-801d5bf7ac84'
+    compliance:
+       - cis: ["18.4.7"]
+       - cis_csc_v7: ["9.2"]
+       - iso_27001-2013: ["A.13.1.3"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NetBT\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NetBT\Parameters -> NodeType'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NetBT\Parameters -> NodeType -> 1'
+
+  # 18.4.8 (L1) Ensure 'WDigest Authentication' is set to 'Disabled'. (Automated)
+  - id: 18723
+    title: "L1 Ensure 'WDigest Authentication' is set to 'Disabled'."
+    description: "When WDigest authentication is enabled, Lsass.exe retains a copy of the user's plaintext password in memory, where it can be at risk of theft. If this setting is not configured, WDigest authentication is disabled in Windows 8.1 and in Windows Server 2012 R2; it is enabled by default in earlier versions of Windows and Windows Server. For more information about local accounts and credential theft, review the \"Mitigating Pass-the-Hash (PtH) Attacks and Other Credential Theft Techniques\" documents. For more information about UseLogonCredential, see Microsoft Knowledge Base article 2871997: Microsoft Security Advisory Update to improve credentials protection and management May 13, 2014. The recommended state for this setting is: Disabled."
     rationale: "Preventing the plaintext storage of credentials in memory may reduce opportunity for credential theft."
     impact: "None - this is also the default configuration for Windows 8.1 or newer."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\MS Security Guide\\WDigest Authentication (disabling may require KB2871997) Note: This Group Policy path does not exist by default. An additional Group Policy template (SecGuide.admx/adml) is required - it is available from Microsoft at this link."
     references:
-      - "https://www.microsoft.com/en-us/download/details.aspx?id=36036"
-      - "https://support.microsoft.com/en-us/topic/microsoft-security-advisory-update-to-improve-credentials-protection-and-management-may-13-2014-93434251-04ac-b7f3-52aa-9f951c14b649"
+      - 'https://www.microsoft.com/en-us/download/details.aspx?id=36036'
+      - 'https://support.microsoft.com/en-us/topic/microsoft-security-advisory-update-to-improve-credentials-protection-and-management-may-13-2014-93434251-04ac-b7f3-52aa-9f951c14b649'
     compliance:
-      - cis: ["18.4.7"]
-      - cis_csc_v8: ["3.11"]
-      - cis_csc_v7: ["16.4"]
-      - cmmc_v2.0: ["AC.L2-3.1.19", "IA.L2-3.5.10", "MP.L2-3.8.1", "SC.L2-3.13.11", "SC.L2-3.13.16"]
-      - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(2)(ii)"]
-      - iso_27001-2013: ["A.10.1.1"]
-      - nist_sp_800-53: ["SC-28", "SC-28(1)"]
-      - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
-      - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
-      - soc_2: ["CC6.1"]
+       - cis: ["18.4.8"]
+       - cis_csc_v8: ["3.11"]
+       - cis_csc_v7: ["16.4"]
+       - cmmc_v2.0: ["AC.L2-3.1.19", "IA.L2-3.5.10", "MP.L2-3.8.1", "SC.L2-3.13.11", "SC.L2-3.13.16"]
+       - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(2)(ii)"]
+       - iso_27001-2013: ["A.10.1.1"]
+       - nist_sp_800-53: ["SC-28", "SC-28(1)"]
+       - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
+       - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
+       - soc_2: ["CC6.1"]
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest'
