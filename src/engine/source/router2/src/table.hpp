@@ -57,34 +57,27 @@ template<typename T>
 class Table
 {
 private:
-    /// Function to compare objects by priority.
-    struct CompareByPriority
-    {
-        bool operator()(const T& lhs, const T& rhs) const { return lhs.priority() < rhs.priority(); }
+    // Struct to hold the object along with its name and priority
+    struct Item {
+        std::string name;
+        std::size_t priority;
+        T object;
+
+        Item(std::string n, std::size_t p, T obj) : name(std::move(n)), priority(p), object(std::move(obj)) {}
     };
 
-    /// Set to store the objects, sorted by priority.
-    std::set<T, CompareByPriority> priorSet;
+    // Function to compare items by priority.
+    struct CompareByPriority {
+        bool operator()(const Item& lhs, const Item& rhs) const { return lhs.priority < rhs.priority; }
+    };
 
-    /// Hash map to index the objects by name.
-    std::unordered_map<std::string, typename std::set<T>::iterator> nameIndex;
+    // Set to store the items, sorted by priority.
+    std::set<Item, CompareByPriority> itemSet;
+
+    // Hash map to index the items by name.
+    std::unordered_map<std::string, typename std::set<Item>::iterator> nameIndex;
 
 public:
-    // Check if T has a priority method that returns a std::size_t
-    static_assert(std::is_same<decltype(std::declval<T>().priority()), std::size_t>::value,
-                  "Type T must have a std::size_t priority() method");
-
-    // Check if T has a priority method that accepts a std::size_t
-    static_assert(std::is_same<decltype(std::declval<T>().priority(std::declval<std::size_t>())), void>::value,
-                  "Type T must have a void priority(std::size_t) method");
-
-    // Check if T has a name method that returns a const std::string&
-    static_assert(std::is_same<decltype(std::declval<const T>().name()), const std::string&>::value,
-                  "Type T must have a const std::string& name() const method");
-
-    // Check if T has a name method that accepts a const std::string&
-    static_assert(std::is_same<decltype(std::declval<T>().name(std::declval<const std::string&>())), void>::value,
-                  "Type T must have a void name(const std::string&) method");
 
     /**
      * @brief Check if a priority is already used.
@@ -107,24 +100,28 @@ public:
     bool nameExists(const std::string& name) const { return nameIndex.find(name) != nameIndex.end(); }
 
     /**
-     * @brief Insert a new object.
+     * @brief Insert a new object with name and priority.
      *
-     * @param entry The object to insert.
+     * @param name The name of the object.
+     * @param priority The priority of the object.
+     * @param object The object to insert.
      * @return true if the object was inserted, false if the name or priority is already used.
      */
-    bool insert(T&& entry)
-    {
-        if (nameExists(entry.name()) || priorityExists(entry.priority()))
-        {
+    bool insert(std::string name, std::size_t priority, T object) {
+        // Check if name or priority already exists
+        if (nameIndex.count(name) > 0 || 
+            std::any_of(itemSet.begin(), itemSet.end(), [priority](const Item& item) { return item.priority == priority; })) {
             return false;
         }
 
-        auto [it, inserted] = priorSet.insert(std::move(entry));
-        if (!inserted)
-        {
+        // Create the item and insert it into the set
+        auto result = itemSet.emplace(std::move(name), priority, std::move(object));
+        if (!result.second) {
             return false;
         }
-        nameIndex[it->name()] = it;
+
+        // Add the iterator to the name index
+        nameIndex[result.first->name] = result.first;
         return true;
     }
 
