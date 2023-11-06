@@ -183,7 +183,14 @@ private:
 
     void runAction(const ActionID id)
     {
-        m_orchestration->run();
+        try
+        {
+            m_orchestration->run();
+        }
+        catch (const std::exception& e)
+        {
+            std::cout << "Action failed: " << e.what() << std::endl;
+        }
 
         m_actionInProgress = false;
     }

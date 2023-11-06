@@ -11,7 +11,7 @@
 
 #include "action_test.hpp"
 #include "action.hpp"
-#include "routerProvider.hpp"
+#include "gtest/gtest.h"
 #include <chrono>
 #include <filesystem>
 #include <memory>
@@ -262,4 +262,57 @@ TEST_F(ActionTest, ActionOnStartExecution)
     // Check that the download has been correctly made.
     const auto contentFilePath {outputFolder + "/" + CONTENTS_FOLDER + "/3-" + fileName};
     EXPECT_TRUE(std::filesystem::exists(contentFilePath));
+}
+
+/**
+ * @brief Tests the correct catch of the exceptions thrown in the orchestration execution when the action is triggered
+ * on demand.
+ *
+ */
+TEST_F(ActionTest, OnDemandActionCatchException)
+{
+    // Set invalid URL, forcing the orchestration to fail in the download stage.
+    m_parameters.at("configData").at("url") = "http://localhost:4444/invalid_url";
+
+    // Init action.
+    const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
+    auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters)};
+
+    // Trigger action. No exceptions are expected despite the error.
+    ASSERT_NO_THROW(action->runActionOnDemand());
+
+    // Check that no output files have been created.
+    const std::filesystem::path outputFolder {
+        m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
+    EXPECT_TRUE(std::filesystem::is_empty(outputFolder / DOWNLOAD_FOLDER));
+    EXPECT_TRUE(std::filesystem::is_empty(outputFolder / CONTENTS_FOLDER));
+}
+
+/**
+ * @brief Tests the correct catch of the exceptions thrown in the orchestration execution when the action is triggered
+ * by the scheduler.
+ *
+ */
+TEST_F(ActionTest, ScheduledActionCatchException)
+{
+    // Set invalid URL, forcing the orchestration to fail in the download stage.
+    m_parameters.at("configData").at("url") = "http://localhost:4444/invalid_url";
+
+    // Init action.
+    const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
+    auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters)};
+
+    // Start scheduling. First action execution.
+    const auto& interval {m_parameters.at("interval").get_ref<size_t&>()};
+    EXPECT_NO_THROW(action->startActionScheduler(interval));
+
+    // Wait for second action execution.
+    std::this_thread::sleep_for(std::chrono::seconds(interval + 1));
+    EXPECT_NO_THROW(action->stopActionScheduler());
+
+    // Check that no output files have been created.
+    const std::filesystem::path outputFolder {
+        m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
+    EXPECT_TRUE(std::filesystem::is_empty(outputFolder / DOWNLOAD_FOLDER));
+    EXPECT_TRUE(std::filesystem::is_empty(outputFolder / CONTENTS_FOLDER));
 }
