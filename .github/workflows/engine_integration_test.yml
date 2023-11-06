@@ -64,11 +64,11 @@ jobs:
 
     - name: Setup environment
       # Set Engine Configuration
-      run: bash ${{env.ENGINE_DIR}}/test/setupEnvironment.sh -d ${{github.workspace}}
+      run: bash ${{env.ENGINE_DIR}}/test/setupEnvironment.sh
 
     - name: Initial state
-      run: bash ${{env.ENGINE_DIR}}/test/integration_tests/initialState.sh -d ${{github.workspace}}
+      run: bash ${{env.ENGINE_DIR}}/test/integration_tests/initialState.sh
 
     - name: Integration Test
       # Run integration tests using behave
-      run: bash ${{env.ENGINE_DIR}}/test/integration_tests/run.sh -d ${{github.workspace}}
+      run: bash ${{env.ENGINE_DIR}}/test/integration_tests/run.sh

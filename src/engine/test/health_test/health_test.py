@@ -53,7 +53,7 @@ def execute_integration_test(github_working_dir, env_dir, os_path, input_file_pa
 
 def compare_results(parsed_results, expected_json, input_file_name, mismatches):
     if len(parsed_results) != len(expected_json):
-        mismatches.append(input_file_name)
+        mismatches.append((input_file_name, 0))
         return
 
     for i, event_json in enumerate(parsed_results):

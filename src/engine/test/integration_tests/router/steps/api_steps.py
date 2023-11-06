@@ -13,7 +13,7 @@ import subprocess
 ENGINE_DIR = os.environ.get("ENGINE_DIR", "")
 ENV_DIR = os.environ.get("ENV_DIR", "")
 SOCKET_PATH = ENV_DIR + "/queue/sockets/engine-api"
-RULESET_DIR = ENV_DIR + "/engine/wazuh-core-test/"
+RULESET_DIR = ENV_DIR + "/engine"
 
 api_client = APIClient(SOCKET_PATH)
 
@@ -23,23 +23,30 @@ api_client = APIClient(SOCKET_PATH)
 
 @given('I am authenticated with the router API "{name}"')
 def step_impl(context, name: str):
-    policy_request = policy_pb2.PoliciesGet_Request()
+    # Check if the policy exists, if not, create it
+    request = api_policy.PoliciesGet_Request()
+    err, response = api_client.send_recv(request)
+    if err:
+        context.result = err
+        print(err)
+        assert False
 
-    context.result = API_POLICY.send_command("policies", "get", policy_request)
-    if len(context.result['data']['data']) == 0 or context.result['data']['status'] == "ERROR":
-        delete = kvdb_pb2.managerDelete_Request()
-        delete.name = "agents_host_data"
-        context.result = API_KVDB.send_command(
-            "manager", "delete", delete)
-        command = f"engine-integration add -a {SOCKET_PATH} -n system {RULESET_DIR}"
+    policy_resp = ParseDict(response, api_policy.PoliciesGet_Response())
+    if policy_resp.status == api_engine.ERROR or len(policy_resp.data) == 0:
+        request = api_kvdb.managerDelete_Request()
+        request.name = "agents_host_data"
+        err, response = api_client.send_recv(request)
+        if err:
+            context.result = err
+            print(err)
+            assert False
+        command = f"engine-integration add -a {SOCKET_PATH} -n system {RULESET_DIR}/wazuh-core-test/"
         result = subprocess.run(
             command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         assert result.returncode == 0, f"{result.stderr}"
 
         request = api_policy.StorePost_Request()
         request.policy = "policy/wazuh/0"
-        policy_request = api_policy.StorePost_Request()
-        policy_request.policy = "policy/wazuh/0"
         err, response = api_client.send_recv(request)
         if err:
             context.result = err
@@ -68,12 +75,12 @@ def step_impl(context, name: str):
         assert False
 
     filter_resp = ParseDict(response, api_catalog.ResourceGet_Response())
-    if filter_resp.status == "ERROR" or len(filter_resp.content) == 0:
+    if filter_resp.status == api_engine.ERROR or len(filter_resp.content) == 0:
         request = api_catalog.ResourcePost_Request()
         request.type = "filter"
         request.format = "yaml"
         # Load content from file
-        with open(f"{RULESET_DIR}/filters/allow-all.yml", "r") as f:
+        with open(f"{RULESET_DIR}/wazuh-core-test/filters/allow-all.yml", "r") as f:
             request.content = f.read()
         request.namespaceid = "system"
         err, response = api_client.send_recv(request)
@@ -92,7 +99,7 @@ def step_impl(context, name: str):
         assert False
 
     route_resp = ParseDict(response, api_router.RouteGet_Response())
-    if route_resp.status != "OK":
+    if route_resp.status != api_engine.OK:
         request = api_router.RoutePost_Request()
         request.route.name = "default"
         request.route.filter = "filter/allow-all/0"
