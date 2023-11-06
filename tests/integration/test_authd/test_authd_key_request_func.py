@@ -67,6 +67,8 @@ from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
+# Test configurations
+local_internal_options = {'authd.debug': '2'}
 
 # Configurations
 test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'config_authd_key_request_func.yaml')
@@ -86,8 +88,8 @@ receiver_sockets, monitored_sockets = None, None
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_key_request_func(test_configuration, test_metadata, set_wazuh_configuration, connect_to_sockets_function,
-                          configure_sockets_environment_function,
-                          tear_down, copy_tmp_script, wait_for_authd_startup_function):
+                          configure_sockets_environment_function, configure_local_internal_options, tear_down,
+                          copy_tmp_script, wait_for_authd_startup_function):
     '''
     description:
         Checks that every input message on the key request port generates the appropiate response to the manager.
