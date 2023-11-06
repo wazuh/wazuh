@@ -1890,7 +1890,7 @@ void test_wm_ms_graph_get_access_token_success(void **state) {
 
     assert_string_equal(module_data->auth_config[0]->access_token, "token_value");
 #ifdef WIN32
-    assert_int_equal(module_data->auth_config.token_expiration_time, 123);
+    assert_int_equal(module_data->auth_config[0]->token_expiration_time, 123);
 #else
     assert_int_equal(module_data->auth_config[0]->token_expiration_time, 223);
 #endif
