@@ -156,15 +156,14 @@ namespace Utils
                     throw std::runtime_error {"A potentially insecure path was found: " + outputFilepath.string()};
                 }
 
-                const auto isDir {Utils::endsWith(outputFilepath.string(), "/")};
-                if (isDir)
+                if (Utils::endsWith(outputFilepath.string(), "/"))
                 {
-                    // Create output directory.
+                    // The file is a directory. Create it.
                     std::filesystem::create_directory(outputFilepath);
                 }
                 else
                 {
-                    // Create outputfile.
+                    // Create output file.
                     std::ofstream outFile {outputFilepath, std::ios::binary};
                     if (!outFile.good())
                     {
@@ -194,13 +193,9 @@ namespace Utils
                     // Check total amount of bytes read.
                     if (totalBytesRead != fileInfo.uncompressed_size)
                     {
-                        throw std::runtime_error {"Unable to read content of current file: " +
-                                                    std::string(filename)};
+                        throw std::runtime_error {"Unable to read content of current file: " + std::string(filename)};
                     }
-                }
 
-                if (!isDir)
-                {
                     // Push filename into the output vector.
                     decompressedFiles.push_back(outputFilepath.string());
                 }
