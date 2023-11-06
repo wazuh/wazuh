@@ -24,14 +24,13 @@
 #include <vector>
 #include <zlib.h>
 
-#define KB (1024)
-#define MB (1024 * 1024)
-
 using ZFilePtr = std::unique_ptr<gzFile_s, CustomDeleter<decltype(&gzclose), gzclose>>;
 using UnzFilePtr = std::unique_ptr<void, CustomDeleter<decltype(&unzClose), unzClose>>;
 
-inline constexpr int GZ_BUF_LEN {16 * KB};
-inline constexpr int ZIP_BUF_LEN {64 * KB};
+inline constexpr auto KB {1024};
+
+inline constexpr auto GZ_BUF_LEN {16 * KB};
+inline constexpr auto ZIP_BUF_LEN {64 * KB};
 
 namespace Utils
 {
@@ -148,9 +147,8 @@ namespace Utils
                 // Close current file when going out of scope.
                 DEFER([&spUnzFile]() { unzCloseCurrentFile(spUnzFile.get()); });
 
+                // Check for possible Zip Slip vulnerability.
                 const auto outputFilepath {(outputDir / std::string(filename)).lexically_normal()};
-
-                // Check for possible Zip Slip Vulnerability.
                 if (!Utils::startsWith(outputFilepath, outputDir))
                 {
                     throw std::runtime_error {"A potentially insecure path was found: " + outputFilepath.string()};
