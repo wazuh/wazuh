@@ -4458,6 +4458,10 @@ components:
     SyscheckDatabase:
       type: object
       properties:
+        changes:
+          type: integer
+          format: int32
+          description: "Number of changes applied"
         sha1:
           type: string
           format: hash_or_empty
