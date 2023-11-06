@@ -37,9 +37,9 @@ checks:
       - "https://www.cisecurity.org/white-papers/cis-password-policy-guide/"
       - "https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/password-policy"
     compliance:
-      - cis: ["1.1.2"]
+      - cis: ["1.1.1"]
       - cis_csc_v8: ["5.2"]
-      - cis_csc_v7: ["16.10"]
+      - cis_csc_v7: ["16.2"]
       - cmmc_v2.0: ["IA.L2-3.5.7"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
