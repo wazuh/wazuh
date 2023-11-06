@@ -127,7 +127,6 @@ namespace Utils
             // Iterate all compressed files within the .zip file.
             std::vector<std::string> decompressedFiles;
             decompressedFiles.reserve(globalInfo.number_entry);
-
             do
             {
                 constexpr auto MAX_FILENAME_LEN {4096};
