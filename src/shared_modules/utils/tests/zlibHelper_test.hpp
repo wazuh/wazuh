@@ -16,7 +16,7 @@
 #include <filesystem>
 #include <string>
 
-const auto OUTPUT_FILE {std::filesystem::temp_directory_path() / "sample.json"};
+const auto OUTPUT_DIR {std::filesystem::temp_directory_path() / "zlibHelper"};
 
 /**
  * @brief Tests for ZlibHelper class.
@@ -29,13 +29,23 @@ protected:
     ~ZlibHelperTest() override = default;
 
     /**
+     * @brief Set up routine for tests. Create the output folder.
+     *
+     */
+    // cppcheck-suppress unusedFunction
+    void SetUp() override
+    {
+        std::filesystem::create_directory(OUTPUT_DIR);
+    }
+
+    /**
      * @brief Tear down routine for tests. Removes the decompressed files.
      *
      */
     // cppcheck-suppress unusedFunction
     void TearDown() override
     {
-        std::filesystem::remove(OUTPUT_FILE);
+        std::filesystem::remove_all(OUTPUT_DIR);
     }
 
     /**

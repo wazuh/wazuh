@@ -896,6 +896,7 @@ win32/libwinpthreadpatched.a: ${WIN_PTHREAD_STATIC_LIB}
 ####################
 
 ZLIB_LIB    = $(EXTERNAL_ZLIB)/libz.a
+MINIZIP_LIB = $(EXTERNAL_ZLIB)/contrib/minizip/libminizip.a
 OPENSSL_LIB = $(EXTERNAL_OPENSSL)libssl.a
 CRYPTO_LIB 	= $(EXTERNAL_OPENSSL)libcrypto.a
 LIBPLIST_LIB = $(EXTERNAL_LIBPLIST)/bin/lib/libplist-2.0.a
@@ -931,10 +932,10 @@ else ifeq (${uname_S},Darwin)
 	EXTERNAL_LIBS += $(LIBCURL_LIB)
 endif
 
-# Adding rocksdb only for server
+# Adding libraries only for server
 ifeq (${TARGET},server)
 	EXTERNAL_LIBS_NO_WHOLE += $(ROCKSDB_LIB) $(FLATBUFFERS_LIB) $(FLATCCRT_LIB)
-	EXTERNAL_LIBS += $(LZMA_LIB)
+	EXTERNAL_LIBS += $(LZMA_LIB) $(MINIZIP_LIB)
 endif
 
 ifneq (${TARGET},winagent)
@@ -1071,6 +1072,11 @@ os_zlib_o := $(os_zlib_c:.c=.o)
 
 os_zlib/%.o: os_zlib/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $< -o $@
+
+#### minizip ##########
+
+$(MINIZIP_LIB): $(ZLIB_LIB)
+	cd ${EXTERNAL_ZLIB}/contrib/minizip && ${OSSEC_CC} -fPIC -c unzip.c ioapi.c -I../../ && ar rcs libminizip.a unzip.o ioapi.o
 
 #### bzip2 ##########
 
