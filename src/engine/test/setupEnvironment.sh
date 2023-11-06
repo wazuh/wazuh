@@ -1,23 +1,27 @@
 #!/bin/bash
 
-github_working_directory=""
 environment_directory=""
 
-while getopts ":d:e:" opt; do
+SCRIPT_DIR=$(dirname $(readlink -f $0))
+WAZUH_DIR=$(realpath -s "$SCRIPT_DIR/../../../")
+
+while getopts "e:" opt; do
     case $opt in
-        d) github_working_directory="$OPTARG" ;;
-        e) environment_directory="$OPTARG/environment" ;;
-        \?) echo "Invalid option: -$OPTARG" >&2
+        e)
+            environment_directory="$OPTARG/environment"
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG" >&2
             exit 1
             ;;
-        :) echo "Option -$OPTARG requires an argument." >&2
+        :)
+            echo "Option -$OPTARG requires an argument." >&2
             exit 1
             ;;
     esac
 done
 
 setup_engine() {
-    echo "--- Setting up the engine ---"
     mkdir -p "$ENGINE_DIR/store/schema" "$ENGINE_DIR/etc/kvdb"
     local schemas=("wazuh-logpar-types" "wazuh-asset" "wazuh-policy" "engine-schema")
     for schema in "${schemas[@]}"; do
@@ -29,13 +33,12 @@ setup_engine() {
 }
 
 main() {
-    if [ -z "$github_working_directory" ]; then
-        echo "GitHub working directory is mandatory. Usage: $0 -d <github_working_directory> [-e <environment_directory>]"
-        exit 1
+    if [ -z "$environment_directory" ]; then
+        echo "environment_directory is optional. For default is wazuh directory. Usage: $0 -e <environment_directory>"
     fi
 
-    ENGINE_SRC_DIR="$github_working_directory/src/engine"
-    ENVIRONMENT_DIR="${environment_directory:-$github_working_directory/environment}"
+    ENGINE_SRC_DIR="$SCRIPT_DIR/../"
+    ENVIRONMENT_DIR="${environment_directory:-$WAZUH_DIR/environment}"
     ENGINE_DIR="$ENVIRONMENT_DIR/engine"
 
     setup_engine
