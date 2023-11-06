@@ -61,7 +61,7 @@ stages:
               max_agents: !anystr
               openssl_support: !anystr
               path: !anystr
-              type: !anything
+              type: !anystr
               tz_name: !anystr
               tz_offset: !anystr
               version: !anystr
@@ -1595,6 +1595,7 @@ stages:
           last_check_date: !anystr
           current_version: "v{wazuh_version:s}"
           update_check: true
+          uuid: !anystr
       verify_response_with:
         - function: tavern_utils:validate_update_check_response
 
@@ -1615,6 +1616,7 @@ stages:
           last_check_date: !anystr
           current_version: "v{wazuh_version:s}"
           update_check: true
+          uuid: !anystr
       verify_response_with:
         - function: tavern_utils:validate_update_check_response
 

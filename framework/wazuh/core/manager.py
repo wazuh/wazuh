@@ -333,6 +333,8 @@ async def query_update_check_service(installation_uid: str) -> dict:
         last_check_date=get_utc_now()
     )
 
+    update_information['uuid'] = installation_uid
+
     async with aiohttp.ClientSession(connector=_get_connector()) as session:
         try:
             async with session.get(RELEASE_UPDATES_URL, headers=headers) as response:

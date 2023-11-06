@@ -327,6 +327,7 @@ async def test_query_update_check_service_returns_correct_data_when_status_200(
     client_session_get_mock.assert_called()
 
     assert update_information['status_code'] == status
+    assert update_information['uuid'] == installation_uid
 
     if len(major):
         assert (
