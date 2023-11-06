@@ -20,149 +20,134 @@
 #include <thread>
 #include <unordered_map>
 #include "commonDefs.h"
+#include "singleton.hpp"
 
 // We can't use std::source_location until C++20
-#define LogEndl Log::sourceFile {__FILE__, __LINE__, __func__}
+#define LogEndl Log::SourceFile {__FILE__, __LINE__, __func__}
+#define logInfo(X, Y) Log::loggingObject.info(X, Y, LogEndl)
+#define logWarn(X, Y) Log::loggingObject.warning(X, Y, LogEndl)
+#define logDebug1(X, Y) Log::loggingObject.debug(X, Y, LogEndl)
+#define logDebug2(X, Y) Log::loggingObject.debugVerbose(X, Y, LogEndl)
+#define logError(X, Y) Log::loggingObject.error(X, Y, LogEndl)
 
 namespace Log
 {
+    enum LOG_LEVEL
+    {
+        INFO = 0,
+        WARNING = 1,
+        DEBUG = 2,
+        DEBUG_VERBOSE = 3,
+        ERROR = 4
+    };
+
     static std::mutex logMutex;
-    struct sourceFile
+    struct SourceFile
     {
         const char* file;
         int line;
         const char* func;
     };
 
-    class Logger
+    class Logger final : public Singleton<Logger>
     {
         private:
-            full_log_fnc_t m_logFunction;
-            std::unordered_map<std::thread::id, std::string> m_threadsBuffers;
-            std::string m_tag;
-
-        protected:
-            Logger()
-            {
-                m_logFunction = nullptr;
-            }
+            std::unordered_map<LOG_LEVEL, full_log_fnc_t> m_logFunctions;
 
         public:
-            ~Logger() = default;
-            Logger& operator=(const Logger& other) = delete;
-            Logger(const Logger& other) = delete;
-
-            Logger& assignLogFunction(full_log_fnc_t logFunction, const std::string& tag)
+            void info(const std::string& tag, const std::string& msg, SourceFile sourceFile)
             {
-                if (!m_logFunction && logFunction)
+                std::lock_guard<std::mutex> lockGuard(logMutex);
+                try
                 {
-                    m_logFunction = logFunction;
-                    m_tag = tag;
+                    auto info = m_logFunctions.at(LOG_LEVEL::INFO);
+                    if (info) {
+                        info(tag.c_str(), sourceFile.file, sourceFile.line, sourceFile.func, msg.c_str());
+                    }
+                }
+                catch (...) {}
+            }
+
+            void warning(const std::string& tag, const std::string& msg, SourceFile sourceFile)
+            {
+                std::lock_guard<std::mutex> lockGuard(logMutex);
+                try {
+                    auto warning = m_logFunctions.at(LOG_LEVEL::WARNING);
+                    if (warning) {
+                        warning(tag.c_str(), sourceFile.file, sourceFile.line, sourceFile.func, msg.c_str());
+                    }
+                }
+                catch (...) {}
+            }
+
+            void debug(const std::string& tag, const std::string& msg, SourceFile sourceFile)
+            {
+                std::lock_guard<std::mutex> lockGuard(logMutex);
+                try {
+                    auto debug = m_logFunctions.at(LOG_LEVEL::DEBUG);
+                    if (debug) {
+                        m_logFunctions.at(LOG_LEVEL::DEBUG)(tag.c_str(), sourceFile.file, sourceFile.line, sourceFile.func, msg.c_str());
+                    }
+                }
+                catch (...) {}
+            }
+
+            void debugVerbose(const std::string& tag, const std::string& msg, SourceFile sourceFile)
+            {
+                std::lock_guard<std::mutex> lockGuard(logMutex);
+                try {
+                    auto debugVerbose = m_logFunctions.at(LOG_LEVEL::INFO);
+                    if (debugVerbose) {
+                        debugVerbose(tag.c_str(), sourceFile.file, sourceFile.line, sourceFile.func, msg.c_str());
+                    }
+                }
+                catch (...) {}
+            }
+
+            void error(const std::string& tag, const std::string& msg, SourceFile sourceFile)
+            {
+                std::lock_guard<std::mutex> lockGuard(logMutex);
+                try {
+                    auto error = m_logFunctions.at(LOG_LEVEL::ERROR);
+                    if (error) {
+                        error(tag.c_str(), sourceFile.file, sourceFile.line, sourceFile.func, msg.c_str());
+                    }
+                }
+                catch (...) {}
+            }
+
+            Logger& assignLogFunction(full_log_fnc_t infoLogFunction, full_log_fnc_t warningLogFunction, full_log_fnc_t debugLogFunction, full_log_fnc_t debugVerboseLogFunction, full_log_fnc_t errorLogFunction)
+            {
+                if (infoLogFunction)
+                {
+                    m_logFunctions.emplace(LOG_LEVEL::INFO, infoLogFunction);
+                }
+
+                if (warningLogFunction)
+                {
+                    m_logFunctions.emplace(LOG_LEVEL::WARNING, warningLogFunction);
+                }
+
+                if (debugLogFunction)
+                {
+                    m_logFunctions.emplace(LOG_LEVEL::DEBUG, debugLogFunction);
+                }
+
+                if (debugVerboseLogFunction)
+                {
+                    m_logFunctions.emplace(LOG_LEVEL::DEBUG_VERBOSE, debugVerboseLogFunction);;
+                }
+
+                if (errorLogFunction)
+                {
+                    m_logFunctions.emplace(LOG_LEVEL::ERROR, errorLogFunction);
                 }
 
                 return *this;
             }
-
-            // The << operator is overloaded to append data in the buffer for the current thread
-            // but the message isn't logged until std::endl or LogEndl are found.
-            friend Logger& operator<<(Logger& logObject, const std::string& msg)
-            {
-                if (!msg.empty())
-                {
-                    std::lock_guard<std::mutex> lockGuard(logMutex);
-                    logObject.m_threadsBuffers[std::this_thread::get_id()] += msg;
-                }
-
-                return logObject;
-            }
-
-            // This << overload is used when std::endl is found. But the file, line and function always point here.
-            friend Logger& operator<<(Logger& logObject,
-                                      std::ostream & (*)(std::ostream&))
-            {
-                if (logObject.m_logFunction)
-                {
-                    std::lock_guard<std::mutex> lockGuard(logMutex);
-                    auto threadId = std::this_thread::get_id();
-                    logObject.m_logFunction(logObject.m_tag.c_str(), __FILE__, __LINE__, __func__, logObject.m_threadsBuffers[threadId].c_str());
-                    logObject.m_threadsBuffers.erase(threadId);
-                }
-
-                return logObject;
-            }
-
-            // This << overload is used when LogEndl is found. The file, line and function are taken from the sourceFile structure that
-            // contains the required data.
-            friend Logger& operator<<(Logger& logObject,
-                                      sourceFile sourceLocation)
-            {
-                if (logObject.m_logFunction)
-                {
-                    std::lock_guard<std::mutex> lockGuard(logMutex);
-                    auto threadId = std::this_thread::get_id();
-                    logObject.m_logFunction(logObject.m_tag.c_str(), sourceLocation.file, sourceLocation.line, sourceLocation.func, logObject.m_threadsBuffers[threadId].c_str());
-                    logObject.m_threadsBuffers.erase(threadId);
-                }
-
-                return logObject;
-            }
     };
 
-    class DebugVerbose : public Logger
-    {
-        public:
-            static DebugVerbose& instance()
-            {
-                static DebugVerbose logInstance;
-                return logInstance;
-            }
-    };
-
-    class Debug : public Logger
-    {
-        public:
-            static Debug& instance()
-            {
-                static Debug logInstance;
-                return logInstance;
-            }
-    };
-
-    class Info : public Logger
-    {
-        public:
-            static Info& instance()
-            {
-                static Info logInstance;
-                return logInstance;
-            }
-    };
-
-    class Warning : public Logger
-    {
-        public:
-            static Warning& instance()
-            {
-                static Warning logInstance;
-                return logInstance;
-            }
-    };
-
-    class Error : public Logger
-    {
-        public:
-            static Error& instance()
-            {
-                static Error logInstance;
-                return logInstance;
-            }
-    };
-
-    static DebugVerbose& debugVerbose = DebugVerbose::instance();
-    static Debug& debug = Debug::instance();
-    static Info& info = Info::instance();
-    static Warning& warning = Warning::instance();
-    static Error& error = Error::instance();
+    static Logger& loggingObject = Logger::instance();
 
 } // namespace Log
 #endif // LOGGER_HELPER_H
