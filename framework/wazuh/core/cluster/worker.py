@@ -230,7 +230,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             Response message.
         """
         logger = self.task_loggers['Agent-info sync']
-        start_time = self.agent_info_sync_status['date_start']
+        start_time = datetime.utcfromtimestamp(self.agent_info_sync_status['date_start'])
         return c_common.end_sending_agent_information(logger, start_time, data.decode())
 
     def _cmd_syn_m_a_err(self, data: bytes) -> Union[bytes, Tuple[bytes, bytes]]:

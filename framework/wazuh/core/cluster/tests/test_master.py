@@ -350,7 +350,8 @@ def test_master_handler_to_dict():
 
 @patch.object(logging.getLogger("wazuh"), "debug")
 def test_master_handler_process_request(logger_mock):
-    """Test if all the available commands that can be received from the worker are properly defined."""
+    """Test if all the available commands that can be received from the worker
+    are properly defined."""
 
     master_handler = get_master_handler()
 
@@ -382,7 +383,8 @@ def test_master_handler_process_request(logger_mock):
             self.clients = {b"dapi_client".decode(): DapiMock()}
 
     # Test first condition
-    with patch("wazuh.core.cluster.master.MasterHandler.get_permission", return_value=b"ok") as get_permission_mock:
+    with patch("wazuh.core.cluster.master.MasterHandler.get_permission", 
+               return_value=b"ok") as get_permission_mock:
         assert master_handler.process_request(command=b'syn_i_w_m_p', data=b"data") == b"ok"
         assert master_handler.process_request(command=b'syn_a_w_m_p', data=b"data") == b"ok"
         get_permission_mock.assert_has_calls([call(b'syn_i_w_m_p'), call(b'syn_a_w_m_p')])
@@ -417,33 +419,38 @@ def test_master_handler_process_request(logger_mock):
 
         assert master_handler.process_request(command=b'syn_w_g_e', data=b"data") == b"ok"
         end_sending_agent_information_mock.assert_called_once_with(
-            logging.getLogger('Agent-groups send'), 
-            datetime.strptime(master_handler.send_agent_groups_status['date_start'], DECIMALS_DATE_FORMAT), "data")
+            logging.getLogger('Agent-groups send'),
+            datetime.strptime(master_handler.send_agent_groups_status['date_start'],
+                              DECIMALS_DATE_FORMAT), "data")
 
     # Test the sixth condition
     with patch("wazuh.core.cluster.common.end_sending_agent_information",
                return_value=b'ok') as end_sending_agent_information_mock:
-        master_handler.task_loggers['Agent-groups send full'] = logging.getLogger('Agent-groups send full')
+        master_handler.task_loggers['Agent-groups send full'] = \
+            logging.getLogger('Agent-groups send full')
         master_handler.send_full_agent_groups_status['date_start'] = '1970-01-01T00:00:00.0Z'
 
         assert master_handler.process_request(command=b'syn_wgc_e', data=b"data") == b"ok"
         end_sending_agent_information_mock.assert_called_once_with(
             logging.getLogger('Agent-groups send full'),
-            datetime.strptime(master_handler.send_full_agent_groups_status['date_start'], DECIMALS_DATE_FORMAT), "data")
+            datetime.strptime(master_handler.send_full_agent_groups_status['date_start'],
+                              DECIMALS_DATE_FORMAT), "data")
 
     # Test the seventh condition
     with patch("wazuh.core.cluster.common.error_receiving_agent_information",
                return_value=b'ok') as error_receiving_agent_information_mock:
         assert master_handler.process_request(command=b'syn_w_g_err', data=b"data") == b"ok"
-        error_receiving_agent_information_mock.assert_called_once_with(logging.getLogger('Agent-groups send'),
-                                                                       "data", info_type='agent-groups')
+        error_receiving_agent_information_mock.assert_called_once_with(
+            logging.getLogger('Agent-groups send'),
+            "data", info_type='agent-groups')
 
     # Test the eighth condition
     with patch("wazuh.core.cluster.common.error_receiving_agent_information",
                return_value=b'ok') as error_receiving_agent_information_mock:
         assert master_handler.process_request(command=b'syn_wgc_err', data=b"data") == b"ok"
-        error_receiving_agent_information_mock.assert_called_once_with(logging.getLogger('Agent-groups send full'),
-                                                                       "data", info_type='agent-groups')
+        error_receiving_agent_information_mock.assert_called_once_with(
+            logging.getLogger('Agent-groups send full'),
+            "data", info_type='agent-groups')
 
     # Test the ninth condition
     master_handler.server.dapi = DapiMock()
@@ -451,38 +458,42 @@ def test_master_handler_process_request(logger_mock):
     with patch.object(DapiMock, "add_request") as add_request_mock:
         master_handler.name = "Master"
         assert master_handler.process_request(command=b'dapi',
-                                              data=b"data") == (b"ok", b"Added request to API requests queue")
+                data=b"data") == (b"ok", b"Added request to API requests queue")
         add_request_mock.assert_called_once_with(master_handler.name.encode() + b"*" + b"data")
 
     # Test the tenth condition
-    with patch("wazuh.core.cluster.master.MasterHandler.process_dapi_res", return_value=b"ok") as process_dapi_res_mock:
+    with patch("wazuh.core.cluster.master.MasterHandler.process_dapi_res",
+               return_value=b"ok") as process_dapi_res_mock:
         assert master_handler.process_request(command=b'dapi_res', data=b"data") == b"ok"
         process_dapi_res_mock.assert_called_once_with(b"data")
 
     # Test the eleventh condition
-    with patch("wazuh.core.cluster.master.MasterHandler.get_nodes", return_value=(["cmd", "res"])) as get_nodes_mock:
-        with patch("json.loads", return_value=b"ok") as json_loads_mock:
-            with patch("json.dumps", return_value="ok") as json_dumps_mock:
-                assert master_handler.process_request(command=b'get_nodes', data=b"data") == ("cmd", b"ok")
-                json_loads_mock.assert_called_once_with(b"data")
-                get_nodes_mock.assert_called_once_with(b"ok")
-                json_dumps_mock.assert_called_once_with("res")
+    with patch("wazuh.core.cluster.master.MasterHandler.get_nodes",
+               return_value=(["cmd", "res"])) as get_nodes_mock, \
+        patch("json.loads", return_value=b"ok") as json_loads_mock, \
+        patch("json.dumps", return_value="ok") as json_dumps_mock:
+        assert master_handler.process_request(command=b'get_nodes', data=b"data") == ("cmd", b"ok")
+        json_loads_mock.assert_called_once_with(b"data")
+        get_nodes_mock.assert_called_once_with(b"ok")
+        json_dumps_mock.assert_called_once_with("res")
 
     master_handler.server = Server()
     # Test the twelfth condition
-    with patch("wazuh.core.cluster.master.MasterHandler.get_health", return_value=(["cmd", "res"])) as get_health_mock:
-        with patch("json.loads", return_value=b"ok") as json_loads_mock:
-            with patch("json.dumps", return_value="ok") as json_dumps_mock:
-                assert master_handler.process_request(command=b'get_health', data=b"data") == ("cmd", b"ok")
-                json_loads_mock.assert_called_once_with(b"data")
-                get_health_mock.assert_called_once_with(b"ok")
-                json_dumps_mock.assert_called_once()
+    with patch("wazuh.core.cluster.master.MasterHandler.get_health",
+               return_value=(["cmd", "res"])) as get_health_mock, \
+        patch("json.loads", return_value=b"ok") as json_loads_mock, \
+        patch("json.dumps", return_value="ok") as json_dumps_mock:
+        assert master_handler.process_request(command=b'get_health', data=b"data") == ("cmd", b"ok")
+        json_loads_mock.assert_called_once_with(b"data")
+        get_health_mock.assert_called_once_with(b"ok")
+        json_dumps_mock.assert_called_once()
 
     # Test the thirteenth condition
     with patch.object(DapiMock, "add_request") as add_request_mock:
-        assert master_handler.process_request(command=b'sendsync', data=b"data") == (b'ok',
-                                                                                     b'Added request to SendSync '
-                                                                                     b'requests queue')
+        assert master_handler.process_request(command=b'sendsync', 
+                                              data=b"data") == (b'ok',
+                                                                b'Added request to SendSync '
+                                                                b'requests queue')
         add_request_mock.assert_called_once_with(master_handler.name.encode() + b"*" + b"data")
 
     # Test the not found command
@@ -490,15 +501,23 @@ def test_master_handler_process_request(logger_mock):
         master_handler.process_request(command=b'not_found_command', data=b"data")
         mock_process_unknown_cmd.assert_called_once_with(b'not_found_command')
 
-    logger_mock.assert_has_calls([call("Command received: b'syn_i_w_m_p'"), call("Command received: b'syn_a_w_m_p'"),
-                                  call("Command received: b'syn_i_w_m'"), call("Command received: b'syn_e_w_m'"),
-                                  call("Command received: b'syn_a_w_m'"), call("Command received: b'syn_i_w_m_e'"),
-                                  call("Command received: b'syn_e_w_m_e'"), call("Command received: b'syn_i_w_m_r'"),
-                                  call("Command received: b'syn_w_g_e'"), call("Command received: b'syn_wgc_e'"),
-                                  call("Command received: b'syn_w_g_err'"), call("Command received: b'syn_wgc_err'"),
-                                  call("Command received: b'dapi'"), call("Command received: b'dapi_res'"),
+    logger_mock.assert_has_calls([call("Command received: b'syn_i_w_m_p'"),
+                                  call("Command received: b'syn_a_w_m_p'"),
+                                  call("Command received: b'syn_i_w_m'"),
+                                  call("Command received: b'syn_e_w_m'"),
+                                  call("Command received: b'syn_a_w_m'"),
+                                  call("Command received: b'syn_i_w_m_e'"),
+                                  call("Command received: b'syn_e_w_m_e'"),
+                                  call("Command received: b'syn_i_w_m_r'"),
+                                  call("Command received: b'syn_w_g_e'"),
+                                  call("Command received: b'syn_wgc_e'"),
+                                  call("Command received: b'syn_w_g_err'"),
+                                  call("Command received: b'syn_wgc_err'"),
+                                  call("Command received: b'dapi'"),
+                                  call("Command received: b'dapi_res'"),
                                   call("Command received: b'get_nodes'"),
-                                  call("Command received: b'get_health'"), call("Command received: b'sendsync'"),
+                                  call("Command received: b'get_health'"),
+                                  call("Command received: b'sendsync'"),
                                   call("Command received: b'not_found_command'")])
 
 

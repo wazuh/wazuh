@@ -277,10 +277,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             Response message.
         """
         logger = self.task_loggers['Agent-groups send']
-        start_time = self.send_agent_groups_status['date_start']
-        if isinstance(start_time, str):
-            start_time = datetime.strptime(start_time, DECIMALS_DATE_FORMAT)
-        start_time = start_time.timestamp()
+        start_time = datetime.strptime(self.send_agent_groups_status['date_start'], 
+                                       DECIMALS_DATE_FORMAT)
         return c_common.end_sending_agent_information(logger, start_time, data.decode())
 
     def _cmd_syn_wgc_e(self, data: bytes):
@@ -299,10 +297,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             Response message.
         """
         logger = self.task_loggers['Agent-groups send full']
-        start_time = self.send_full_agent_groups_status['date_start']
-        if isinstance(start_time, str):
-            start_time = datetime.strptime(start_time, DECIMALS_DATE_FORMAT)
-        start_time = start_time.timestamp()
+        start_time = datetime.strptime(self.send_full_agent_groups_status['date_start'],
+                                       DECIMALS_DATE_FORMAT)
         return c_common.end_sending_agent_information(logger, start_time, data.decode())
 
     def _cmd_syn_w_g_err(self, data: bytes):

@@ -377,16 +377,19 @@ def test_worker_handler_process_request_ok(logger_mock):
                    return_value=b"ok") as sync_mock:
             assert worker_handler.process_request(
                 command=b"syn_m_a_e", data=b'{"updated_chunks": 4, "error_messages": []}') == b"ok"
-            sync_mock.assert_called_once_with(setup_task_logger_mock,
-                                              datetime.datetime(1970, 1, 1, 0, 0),
-                                              b'{"updated_chunks": 4, "error_messages": []}'.decode())
+            sync_mock.assert_called_once_with(
+                setup_task_logger_mock,
+                datetime.datetime(1970, 1, 1, 0, 0),
+                b'{"updated_chunks": 4, "error_messages": []}'.decode())
             logger_mock.assert_called_with("Command received: 'b'syn_m_a_e''")
     # Test the seventh condition
     with patch("wazuh.core.cluster.worker.c_common.error_receiving_agent_information",
                return_value=b"ok") as error_mock:
         assert worker_handler.process_request(command=b"syn_m_a_err", data=b"data") == b"ok"
         error_mock.assert_called_once_with(
-            worker_handler.task_loggers['Agent-info sync'], b"data".decode(), info_type='agent-info')
+            worker_handler.task_loggers['Agent-info sync'],
+            b"data".decode(),
+            info_type='agent-info')
         logger_mock.assert_called_with("Command received: 'b'syn_m_a_err''")
     # Test the eighth condition
     with patch("asyncio.create_task", return_value=b"ok") as create_task_mock:
@@ -407,20 +410,23 @@ def test_worker_handler_process_request_ok(logger_mock):
         # Test the tenth condition
         worker_handler.server = ManagerMock()
         with patch.object(ClientsMock, "send_request") as send_request_mock:
-            assert worker_handler.process_request(command=b"dapi_err",
-                                                  data=b"data 2") == (b'ok', b'DAPI error forwarded to worker')
+            assert worker_handler.process_request(
+                command=b"dapi_err",
+                data=b"data 2") == (b'ok', b'DAPI error forwarded to worker')
             send_request_mock.assert_called_once_with(b"dapi_err", b"2")
             logger_mock.assert_called_with("Command received: 'b'dapi_err''")
         # Test the eleventh condition
         with patch.object(ClientsMock, "send_request") as send_request_mock:
-            assert worker_handler.process_request(command=b"sendsyn_err",
-                                                  data=b"data 2") == (b'ok', b'SendSync error forwarded to worker')
+            assert worker_handler.process_request(
+                        command=b"sendsyn_err",
+                        data=b"data 2") == (b'ok', b'SendSync error forwarded to worker')
             send_request_mock.assert_called_once_with(b"err", b"2")
             logger_mock.assert_called_with("Command received: 'b'sendsyn_err''")
     # Test the twelfth condition
     with patch.object(LocalServerDapiMock, "add_request") as add_request_mock:
-        assert worker_handler.process_request(command=b"dapi",
-                                              data=b"data") == (b'ok', b'Added request to API requests queue')
+        assert worker_handler.process_request(
+                        command=b"dapi",
+                        data=b"data") == (b'ok', b'Added request to API requests queue')
         add_request_mock.assert_called_once_with(b"master*data")
         logger_mock.assert_called_with("Command received: 'b'dapi''")
     # Test command not found
@@ -434,7 +440,8 @@ def test_worker_handler_process_request_ok(logger_mock):
 @patch("wazuh.core.cluster.worker.client.AbstractClient.connection_lost")
 @patch("wazuh.core.cluster.worker.cluster.clean_up") 
 def test_worker_handler_connection_lost(clean_up_mock, connection_lost_mock, logger_mock):
-    """Check if all the pending tasks are closed when the connection between workers and master is lost."""
+    """Check if all the pending tasks are closed when the connection
+    between workers and master is lost."""
 
     worker_handler = get_worker_handler()
     worker_handler.logger = logging.getLogger("wazuh")
@@ -461,7 +468,7 @@ def test_worker_handler_connection_lost(clean_up_mock, connection_lost_mock, log
     connection_lost_mock.assert_called_once()
     clean_up_mock.assert_called_once_with(node_name=worker_handler.name)
 
-    
+
 @patch.object(logging.getLogger("wazuh"), "debug")
 @patch("asyncio.create_task", side_effect=exception.WazuhClusterError(1001))
 def test_worker_handler_process_request_ko(create_task_mock, logger_mock):
