@@ -37,9 +37,9 @@ checks:
       - "https://www.cisecurity.org/white-papers/cis-password-policy-guide/"
       - "https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/password-policy"
     compliance:
-      - cis: ["1.1.1"]
+      - cis: ["1.1.2"]
       - cis_csc_v8: ["5.2"]
-      - cis_csc_v7: ["16.2"]
+      - cis_csc_v7: ["16.10"]
       - cmmc_v2.0: ["IA.L2-3.5.7"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
@@ -396,7 +396,7 @@ checks:
     title: "Ensure 'Devices: Allowed to format and eject removable media' is set to 'Administrators and Interactive Users'."
     description: "This policy setting determines who is allowed to format and eject removable NTFS media. You can use this policy setting to prevent unauthorized users from removing data on one computer to access it on another computer on which they have local administrator privileges. The recommended state for this setting is: Administrators and Interactive Users."
     rationale: "Users may be able to move data on removable disks to a different computer where they have administrative privileges. The user could then take ownership of any file, grant themselves full control, and view or modify any file. The fact that most removable storage devices will eject media by pressing a mechanical button diminishes the advantage of this policy setting."
-    impact: "None - the default value is Administrators only. Administrators and Interactive Users will be able to format and eject removable NTFS media."
+    impact: "None - the default value is Administrators only.  Administrators and Interactive Users will be able to format and eject removable NTFS media."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators and Interactive Users: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Devices: Allowed to format and eject removable media."
     references:
       - "https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/devices-allowed-to-format-and-eject-removable-media"
