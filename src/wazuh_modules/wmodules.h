@@ -68,7 +68,6 @@ typedef enum crypto_type {
 #include "wm_command.h"
 #include "wm_ciscat.h"
 #include "wm_aws.h"
-#include "vulnerability_detector/wm_vuln_detector.h"
 #include "wm_osquery_monitor.h"
 #include "wm_download.h"
 #include "wm_azure.h"
