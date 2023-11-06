@@ -15,7 +15,7 @@ namespace router
 {
 
 // Table here
-namespace interal
+namespace internal
 {
 class RouteEntry : public Entry
 {
@@ -291,6 +291,33 @@ public:
      * @return A const iterator to the end of the set.
      */
     const_iterator end() const { return const_iterator(priorSet.cend()); }
+
+    /**
+     * @brief Get a const iterator to the beginning of the set.
+     *
+     * @return A const iterator to the beginning of the set.
+     */
+    const_iterator cbegin() const { return const_iterator(priorSet.cbegin()); }
+
+    /**
+     * @brief Get a const iterator to the end of the set.
+     *
+     * @return A const iterator to the end of the set.
+     */
+    const_iterator cend() const { return const_iterator(priorSet.cend()); }
+
+    /**
+     * @brief Size of the set.
+     *
+     */
+    std::size_t size() const { return priorSet.size(); }
+
+    /**
+     * @brief Check if the set is empty.
+     *
+     */
+    bool empty() const { return priorSet.empty(); }
+
 };
 } // namespace interal
 
