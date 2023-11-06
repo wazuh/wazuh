@@ -188,7 +188,7 @@ def clean_up_env(test_filename: list, failed: bool):
     test_filename : list
         Test filename splitted in a list of strings.
     failed: bool
-            True if some test have failed.
+        True if some test have failed.
     """
     module, rbac_mode = get_module_and_rbac_mode(test_filename)
     clean_tmp_folder()
