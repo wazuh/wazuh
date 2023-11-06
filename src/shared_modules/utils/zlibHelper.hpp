@@ -151,12 +151,12 @@ namespace Utils
                 const auto outputFilepath {(outputDir / std::string(filename)).lexically_normal()};
 
                 // Check for possible Zip Slip Vulnerability.
-                if (!Utils::startsWith(outputFilepath.string(), outputDir.string()))
+                if (!Utils::startsWith(outputFilepath, outputDir))
                 {
                     throw std::runtime_error {"A potentially insecure path was found: " + outputFilepath.string()};
                 }
 
-                if (Utils::endsWith(outputFilepath.string(), "/"))
+                if (Utils::endsWith(outputFilepath, "/"))
                 {
                     // The file is a directory. Create it.
                     std::filesystem::create_directory(outputFilepath);
@@ -197,7 +197,7 @@ namespace Utils
                     }
 
                     // Push filename into the output vector.
-                    decompressedFiles.push_back(outputFilepath.string());
+                    decompressedFiles.push_back(outputFilepath);
                 }
 
                 // Go to next file within the .zip file.
