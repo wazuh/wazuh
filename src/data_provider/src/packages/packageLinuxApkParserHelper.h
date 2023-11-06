@@ -42,8 +42,8 @@ namespace PackageLinuxHelper
         packageInfo["location"] = UNKNOWN_VALUE;
         packageInfo["groups"] = UNKNOWN_VALUE;
         packageInfo["priority"] = UNKNOWN_VALUE;
-        packageInfo["multiarch"] = UNKNOWN_VALUE;
         packageInfo["source"] = UNKNOWN_VALUE;
+        // The multiarch field won't have a default value
 
         // Lambda to check if a string is empty and assign default value.
         const auto loadData = [&packageInfo](const std::pair<std::type_index, std::string>& key,

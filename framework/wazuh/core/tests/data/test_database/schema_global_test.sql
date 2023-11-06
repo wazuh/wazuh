@@ -32,7 +32,10 @@ CREATE TABLE IF NOT EXISTS agent (
     connection_status TEXT NOT NULL CHECK (connection_status IN ('active', 'pending', 'disconnected', 'never_connected')) DEFAULT 'never_connected',
     fim_offset INTEGER NOT NULL DEFAULT 0,
     reg_offset INTEGER NOT NULL DEFAULT 0,
-    `group` TEXT DEFAULT 'default'
+    `group` TEXT DEFAULT 'default',
+    disconnection_time INTEGER DEFAULT 0,
+    group_config_status TEXT NOT NULL CHECK (group_config_status IN ('synced', 'not synced')) DEFAULT 'not synced',
+    status_code INTEGER DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS agent_name ON agent (name);

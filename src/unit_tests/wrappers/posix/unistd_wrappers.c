@@ -102,15 +102,3 @@ int __wrap__access (const char *__name, int __type) {
     return mock();
 }
 #endif
-
-int __wrap_chdir(const char *__path)
-{
-    check_expected(__path);
-    return mock();
-}
-
-void __wrap_exit(int __status)
-{
-    check_expected(__status);
-    mock_assert(0, __FUNCTION__, __FILE__, __LINE__);
-}
