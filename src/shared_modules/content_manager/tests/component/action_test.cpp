@@ -26,15 +26,9 @@ TEST_F(ActionTest, TestInstantiation)
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
     const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
 
-    auto routerProvider {std::make_shared<RouterProvider>(topicName)};
-
-    EXPECT_NO_THROW(routerProvider->start());
-
-    EXPECT_NO_THROW(std::make_shared<Action>(routerProvider, topicName, m_parameters));
+    EXPECT_NO_THROW(std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
-
-    EXPECT_NO_THROW(routerProvider->stop());
 }
 
 /*
@@ -47,15 +41,9 @@ TEST_F(ActionTest, TestInstantiationWhitoutConfigData)
 
     const auto& topicName {parameters.at("topicName").get_ref<const std::string&>()};
 
-    auto routerProvider {std::make_shared<RouterProvider>(topicName)};
-
-    EXPECT_NO_THROW(routerProvider->start());
-
     parameters.erase("configData");
 
-    EXPECT_THROW(std::make_shared<Action>(routerProvider, topicName, parameters), std::invalid_argument);
-
-    EXPECT_NO_THROW(routerProvider->stop());
+    EXPECT_THROW(std::make_shared<Action>(m_spRouterProvider, topicName, parameters), std::invalid_argument);
 }
 
 /*
@@ -70,11 +58,7 @@ TEST_F(ActionTest, TestInstantiationAndStartActionSchedulerForRawData)
     const auto contentPath {outputFolder + "/" + CONTENTS_FOLDER + "/3-" + fileName};
     const auto downloadPath {outputFolder + "/" + DOWNLOAD_FOLDER + "/3-" + fileName};
 
-    auto routerProvider {std::make_shared<RouterProvider>(topicName)};
-
-    EXPECT_NO_THROW(routerProvider->start());
-
-    auto action {std::make_shared<Action>(routerProvider, topicName, m_parameters)};
+    auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters)};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -90,8 +74,6 @@ TEST_F(ActionTest, TestInstantiationAndStartActionSchedulerForRawData)
     EXPECT_TRUE(std::filesystem::exists(contentPath));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
-
-    EXPECT_NO_THROW(routerProvider->stop());
 }
 
 /*
@@ -111,11 +93,7 @@ TEST_F(ActionTest, TestInstantiationAndStartActionSchedulerForRawDataWithDeleteD
     const auto contentPath {outputFolder + "/" + CONTENTS_FOLDER + "/3-" + fileName};
     const auto downloadPath {outputFolder + "/" + DOWNLOAD_FOLDER + "/3-" + fileName};
 
-    auto routerProvider {std::make_shared<RouterProvider>(topicName)};
-
-    EXPECT_NO_THROW(routerProvider->start());
-
-    auto action {std::make_shared<Action>(routerProvider, topicName, m_parameters)};
+    auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters)};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -131,8 +109,6 @@ TEST_F(ActionTest, TestInstantiationAndStartActionSchedulerForRawDataWithDeleteD
     EXPECT_TRUE(std::filesystem::exists(contentPath));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
-
-    EXPECT_NO_THROW(routerProvider->stop());
 }
 
 /*
@@ -151,11 +127,7 @@ TEST_F(ActionTest, TestInstantiationAndStartActionSchedulerForCompressedData)
     const auto contentPath {outputFolder + "/" + CONTENTS_FOLDER + "/3-" + fileName};
     const auto downloadPath {outputFolder + "/" + DOWNLOAD_FOLDER + "/3-" + fileName};
 
-    auto routerProvider {std::make_shared<RouterProvider>(topicName)};
-
-    EXPECT_NO_THROW(routerProvider->start());
-
-    auto action {std::make_shared<Action>(routerProvider, topicName, m_parameters)};
+    auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters)};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -171,8 +143,6 @@ TEST_F(ActionTest, TestInstantiationAndStartActionSchedulerForCompressedData)
     EXPECT_TRUE(std::filesystem::exists(contentPath));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
-
-    EXPECT_NO_THROW(routerProvider->stop());
 }
 
 /*
@@ -183,13 +153,9 @@ TEST_F(ActionTest, TestInstantiationAndRegisterActionOnDemandForRawData)
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
     const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
 
-    auto routerProvider {std::make_shared<RouterProvider>(topicName)};
-
-    EXPECT_NO_THROW(routerProvider->start());
-
     m_parameters["ondemand"] = true;
 
-    auto action {std::make_shared<Action>(routerProvider, topicName, m_parameters)};
+    auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters)};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -198,8 +164,6 @@ TEST_F(ActionTest, TestInstantiationAndRegisterActionOnDemandForRawData)
     EXPECT_NO_THROW(action->unregisterActionOnDemand());
 
     EXPECT_NO_THROW(action->clearEndpoints());
-
-    EXPECT_NO_THROW(routerProvider->stop());
 }
 
 /*
@@ -214,14 +178,10 @@ TEST_F(ActionTest, TestInstantiationOfTwoActionsWithTheSameTopicName)
     auto parametersWithoutDatabasePath = m_parameters;
     parametersWithoutDatabasePath.at("configData").erase("databasePath");
 
-    auto routerProvider {std::make_shared<RouterProvider>(topicName)};
-
-    EXPECT_NO_THROW(routerProvider->start());
-
     m_parameters["ondemand"] = true;
 
-    auto action1 {std::make_shared<Action>(routerProvider, topicName, m_parameters)};
-    auto action2 {std::make_shared<Action>(routerProvider, topicName, parametersWithoutDatabasePath)};
+    auto action1 {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters)};
+    auto action2 {std::make_shared<Action>(m_spRouterProvider, topicName, parametersWithoutDatabasePath)};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -231,8 +191,6 @@ TEST_F(ActionTest, TestInstantiationOfTwoActionsWithTheSameTopicName)
     EXPECT_NO_THROW(action1->unregisterActionOnDemand());
 
     EXPECT_NO_THROW(action1->clearEndpoints());
-
-    EXPECT_NO_THROW(routerProvider->stop());
 }
 
 /*
@@ -248,11 +206,7 @@ TEST_F(ActionTest, TestInstantiationAndRunActionOnDemand)
     const auto contentPath {outputFolder + "/" + CONTENTS_FOLDER + "/3-" + fileName};
     const auto downloadPath {outputFolder + "/" + DOWNLOAD_FOLDER + "/3-" + fileName};
 
-    auto routerProvider {std::make_shared<RouterProvider>(topicName)};
-
-    EXPECT_NO_THROW(routerProvider->start());
-
-    auto action {std::make_shared<Action>(routerProvider, topicName, m_parameters)};
+    auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters)};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -271,6 +225,41 @@ TEST_F(ActionTest, TestInstantiationAndRunActionOnDemand)
     EXPECT_TRUE(std::filesystem::exists(contentPath));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
+}
 
-    EXPECT_NO_THROW(routerProvider->stop());
+/**
+ * @brief Tests the on-start execution of the action.
+ *
+ */
+TEST_F(ActionTest, ActionOnStartExecution)
+{
+    constexpr auto ACTION_INTERVAL {100};
+    constexpr auto WAIT_TIME {1};
+
+    const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
+    const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
+    const auto& fileName {m_parameters.at("configData").at("contentFileName").get_ref<const std::string&>()};
+
+    // Make the interval big enough to be sure the action is not triggered a second time.
+    auto& interval {m_parameters.at("interval").get_ref<size_t&>()};
+    interval = ACTION_INTERVAL;
+
+    // Init action.
+    auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters)};
+
+    // Check output folder existence.
+    EXPECT_TRUE(std::filesystem::exists(outputFolder));
+
+    // Start scheduling.
+    EXPECT_NO_THROW(action->startActionScheduler(interval));
+
+    // Wait just for a little time.
+    std::this_thread::sleep_for(std::chrono::seconds(WAIT_TIME));
+
+    // Stop scheduling.
+    EXPECT_NO_THROW(action->stopActionScheduler());
+
+    // Check that the download has been correctly made.
+    const auto contentFilePath {outputFolder + "/" + CONTENTS_FOLDER + "/3-" + fileName};
+    EXPECT_TRUE(std::filesystem::exists(contentFilePath));
 }

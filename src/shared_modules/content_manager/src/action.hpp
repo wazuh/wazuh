@@ -68,6 +68,10 @@ public:
             {
                 // Use while with condition variable to avoid spurious wakeups.
                 std::unique_lock<std::mutex> lock(m_mutex);
+
+                // Run action on start, independently of the interval time.
+                runAction(ActionID::SCHEDULED);
+
                 while (m_schedulerRunning)
                 {
                     m_cv.wait_for(lock, std::chrono::seconds(this->m_interval));
