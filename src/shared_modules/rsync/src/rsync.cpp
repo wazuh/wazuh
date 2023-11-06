@@ -47,6 +47,7 @@ EXPORTED void rsync_initialize_full_log_function(full_log_fnc_t debugVerboseFunc
                                                  full_log_fnc_t errorFunction)
 {
     RemoteSync::initializeFullLogFunction(debugVerboseFunction, debugFunction, infoFunction, warningFunction, errorFunction);
+    Log::info << "I am in rsync" << LogEndl;
 }
 
 EXPORTED void rsync_teardown(void)
