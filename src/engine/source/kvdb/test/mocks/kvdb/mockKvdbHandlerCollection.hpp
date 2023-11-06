@@ -4,7 +4,7 @@
 #include <gmock/gmock.h>
 
 #include <kvdb/ikvdbhandler.hpp>
-#include <kvdb/ikvdbhandlercollection>
+#include <kvdb/ikvdbhandlercollection.hpp>
 
 namespace kvdb::mocks
 {
