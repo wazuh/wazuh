@@ -1247,6 +1247,7 @@ CURL := curl -so
 DEPS_VERSION = 22
 RESOURCES_URL_BASE := https://packages.wazuh.com/deps/
 RESOURCES_URL := $(RESOURCES_URL_BASE)$(DEPS_VERSION)
+
 CPYTHON := cpython
 PYTHON_SOURCE := no
 
