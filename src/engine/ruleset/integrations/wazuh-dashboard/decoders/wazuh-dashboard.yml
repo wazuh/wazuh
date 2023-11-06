@@ -20,20 +20,18 @@ parents:
 
 check:
   - process.name: opensearch-dashboards
-  - message: +starts_with/{
   # TODO: Once the events arrive tagged, uncommnet the following two lines
   # - event.module: wazuh-dashboard
 
-parse:
-  logpar:
-    - message: "<json_event/json>"
+parse|message:
+  - <json_event/json>
 
 normalize:
   - map:
       - event.module: wazuh-dashboard
-      - wazuh.decoders: +array_append/wazuh-dashboard
-      - event.category: +array_append/web
-      - event.type: +array_append/$json_event.type
+      - wazuh.decoders: array_append(wazuh-dashboard)
+      - event.category: array_append(web)
+      - event.type: array_append($json_event.type)
       - '@timestamp': $json_event.@timestamp
       - tags: $json_event.tags
       - message: $json_event.message
@@ -49,8 +47,8 @@ normalize:
 
   - check:
       - json_event.type: response
-    logpar:
-      - json_event.req.url: <url.path>(?\?<url.query>)
+    parse|json_event.req.url:
+      - <url.path>(?\?<url.query>)
     map:
       - http.request.method: $json_event.req.method
       - destination.address: $json_event.req.headers.host
@@ -60,13 +58,11 @@ normalize:
       - http.request.body.bytes: $json_event.req.headers.content-length
       - http.response.status_code: $json_event.res.statusCode
 
-  - check:
-      - http.response.status_code: +int_less/400
+  - check: $http.response.status_code < 400
     map:
       - event.outcome: success
 
-  - check:
-      - http.response.status_code: +int_greater_or_equal/400
+  - check: $http.response.status_code >= 400
     map:
       - event.outcome: failure
 

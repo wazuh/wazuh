@@ -1,0 +1,588 @@
+[
+    {
+        "@timestamp": "2023-07-03T17:18:25.439Z",
+        "agent": {
+            "id": "001",
+            "name": "wazuh-agent-1",
+            "type": "wazuh-agent"
+        },
+        "cluster": {
+            "name": "wazuh-cluster"
+        },
+        "ecs": {
+            "version": "8.8"
+        },
+        "event": {
+            "category": [
+                "database"
+            ],
+            "dataset": "wazuh-indexer-server",
+            "kind": "event",
+            "module": "wazuh-indexer",
+            "original": "{\"type\":\"server\",\"timestamp\":\"2023-07-03T17:18:25,439Z\",\"level\":\"INFO\",\"component\":\"o.o.n.Node\",\"cluster.name\":\"wazuh-cluster\",\"node.name\":\"node-1\",\"message\":\"JVM home [/usr/share/wazuh-indexer/jdk], using bundled JDK [true]\"}",
+            "type": [
+                "info"
+            ]
+        },
+        "host": {
+            "id": "001",
+            "name": "node-1"
+        },
+        "json_event": {
+            "cluster.name": "wazuh-cluster",
+            "component": "o.o.n.Node",
+            "level": "INFO",
+            "message": "JVM home [/usr/share/wazuh-indexer/jdk], using bundled JDK [true]",
+            "node.name": "node-1",
+            "timestamp": "2023-07-03T17:18:25,439Z",
+            "type": "server"
+        },
+        "log": {
+            "level": "INFO",
+            "logger": "o.o.n.Node"
+        },
+        "message": "JVM home [/usr/share/wazuh-indexer/jdk], using bundled JDK [true]",
+        "node": {
+            "name": "node-1"
+        },
+        "wazuh": {
+            "decoders": [
+                "wazuh-indexer-server"
+            ],
+            "location": "[001] (wazuh-agent-1) any->/var/log/wazuh-indexer/wazuh-cluster_server.json",
+            "origin": "/var/log/wazuh-indexer/wazuh-cluster_server.json",
+            "queue": 49,
+            "registered_ip": "any",
+            "source": "logcollector"
+        }
+    },
+    {
+        "@timestamp": "2023-07-03T17:18:26.252Z",
+        "agent": {
+            "id": "001",
+            "name": "wazuh-agent-1",
+            "type": "wazuh-agent"
+        },
+        "cluster": {
+            "name": "wazuh-cluster"
+        },
+        "ecs": {
+            "version": "8.8"
+        },
+        "event": {
+            "category": [
+                "database"
+            ],
+            "dataset": "wazuh-indexer-server",
+            "kind": "event",
+            "module": "wazuh-indexer",
+            "original": "{\"type\":\"server\",\"timestamp\":\"2023-07-03T17:18:26,252Z\",\"level\":\"INFO\",\"component\":\"o.o.s.OpenSearchSecurityPlugin\",\"cluster.name\":\"wazuh-cluster\",\"node.name\":\"node-1\",\"message\":\"OpenSearch Config path is /etc/wazuh-indexer\"}",
+            "type": [
+                "info"
+            ]
+        },
+        "host": {
+            "id": "001",
+            "name": "node-1"
+        },
+        "json_event": {
+            "cluster.name": "wazuh-cluster",
+            "component": "o.o.s.OpenSearchSecurityPlugin",
+            "level": "INFO",
+            "message": "OpenSearch Config path is /etc/wazuh-indexer",
+            "node.name": "node-1",
+            "timestamp": "2023-07-03T17:18:26,252Z",
+            "type": "server"
+        },
+        "log": {
+            "level": "INFO",
+            "logger": "o.o.s.OpenSearchSecurityPlugin"
+        },
+        "message": "OpenSearch Config path is /etc/wazuh-indexer",
+        "node": {
+            "name": "node-1"
+        },
+        "wazuh": {
+            "decoders": [
+                "wazuh-indexer-server"
+            ],
+            "location": "[001] (wazuh-agent-1) any->/var/log/wazuh-indexer/wazuh-cluster_server.json",
+            "origin": "/var/log/wazuh-indexer/wazuh-cluster_server.json",
+            "queue": 49,
+            "registered_ip": "any",
+            "source": "logcollector"
+        }
+    },
+    {
+        "@timestamp": "2023-07-03T17:18:27.948Z",
+        "agent": {
+            "id": "001",
+            "name": "wazuh-agent-1",
+            "type": "wazuh-agent"
+        },
+        "cluster": {
+            "name": "wazuh-cluster"
+        },
+        "ecs": {
+            "version": "8.8"
+        },
+        "event": {
+            "category": [
+                "database"
+            ],
+            "dataset": "wazuh-indexer-server",
+            "kind": "event",
+            "module": "wazuh-indexer",
+            "original": "{\"type\":\"server\",\"timestamp\":\"2023-07-03T17:18:27,948Z\",\"level\":\"INFO\",\"component\":\"o.o.p.PluginsService\",\"cluster.name\":\"wazuh-cluster\",\"node.name\":\"node-1\",\"message\":\"loaded module [geo]\"}",
+            "type": [
+                "info"
+            ]
+        },
+        "host": {
+            "id": "001",
+            "name": "node-1"
+        },
+        "json_event": {
+            "cluster.name": "wazuh-cluster",
+            "component": "o.o.p.PluginsService",
+            "level": "INFO",
+            "message": "loaded module [geo]",
+            "node.name": "node-1",
+            "timestamp": "2023-07-03T17:18:27,948Z",
+            "type": "server"
+        },
+        "log": {
+            "level": "INFO",
+            "logger": "o.o.p.PluginsService"
+        },
+        "message": "loaded module [geo]",
+        "node": {
+            "name": "node-1"
+        },
+        "wazuh": {
+            "decoders": [
+                "wazuh-indexer-server"
+            ],
+            "location": "[001] (wazuh-agent-1) any->/var/log/wazuh-indexer/wazuh-cluster_server.json",
+            "origin": "/var/log/wazuh-indexer/wazuh-cluster_server.json",
+            "queue": 49,
+            "registered_ip": "any",
+            "source": "logcollector"
+        }
+    },
+    {
+        "@timestamp": "2023-07-03T19:00:00.652Z",
+        "agent": {
+            "id": "001",
+            "name": "wazuh-agent-1",
+            "type": "wazuh-agent"
+        },
+        "cluster": {
+            "name": "wazuh-cluster",
+            "uuid": "eOXG1FbXQB2KVUJrjJeSQQ"
+        },
+        "ecs": {
+            "version": "8.8"
+        },
+        "event": {
+            "category": [
+                "database"
+            ],
+            "dataset": "wazuh-indexer-server",
+            "kind": "event",
+            "module": "wazuh-indexer",
+            "original": "{\"type\":\"server\",\"timestamp\":\"2023-07-03T19:00:00,652Z\",\"level\":\"INFO\",\"component\":\"o.o.c.m.MetadataUpdateSettingsService\",\"cluster.name\":\"wazuh-cluster\",\"node.name\":\"node-1\",\"message\":\"updating number_of_replicas to [0] for indices [wazuh-monitoring-2023.27w]\",\"cluster.uuid\":\"eOXG1FbXQB2KVUJrjJeSQQ\",\"node.id\":\"Cu8rIDeyTeiZVDWOoyubFQ\"}",
+            "type": [
+                "info"
+            ]
+        },
+        "host": {
+            "id": "Cu8rIDeyTeiZVDWOoyubFQ",
+            "name": "node-1"
+        },
+        "json_event": {
+            "cluster.name": "wazuh-cluster",
+            "cluster.uuid": "eOXG1FbXQB2KVUJrjJeSQQ",
+            "component": "o.o.c.m.MetadataUpdateSettingsService",
+            "level": "INFO",
+            "message": "updating number_of_replicas to [0] for indices [wazuh-monitoring-2023.27w]",
+            "node.id": "Cu8rIDeyTeiZVDWOoyubFQ",
+            "node.name": "node-1",
+            "timestamp": "2023-07-03T19:00:00,652Z",
+            "type": "server"
+        },
+        "log": {
+            "level": "INFO",
+            "logger": "o.o.c.m.MetadataUpdateSettingsService"
+        },
+        "message": "updating number_of_replicas to [0] for indices [wazuh-monitoring-2023.27w]",
+        "node": {
+            "id": "Cu8rIDeyTeiZVDWOoyubFQ",
+            "name": "node-1"
+        },
+        "wazuh": {
+            "decoders": [
+                "wazuh-indexer-server"
+            ],
+            "location": "[001] (wazuh-agent-1) any->/var/log/wazuh-indexer/wazuh-cluster_server.json",
+            "origin": "/var/log/wazuh-indexer/wazuh-cluster_server.json",
+            "queue": 49,
+            "registered_ip": "any",
+            "source": "logcollector"
+        }
+    },
+    {
+        "@timestamp": "2023-07-03T17:18:30.074Z",
+        "agent": {
+            "id": "001",
+            "name": "wazuh-agent-1",
+            "type": "wazuh-agent"
+        },
+        "cluster": {
+            "name": "wazuh-cluster"
+        },
+        "ecs": {
+            "version": "8.8"
+        },
+        "event": {
+            "category": [
+                "database"
+            ],
+            "dataset": "wazuh-indexer-server",
+            "kind": "event",
+            "module": "wazuh-indexer",
+            "original": "{\"type\":\"server\",\"timestamp\":\"2023-07-03T17:18:30,074Z\",\"level\":\"WARN\",\"component\":\"o.o.s.c.Salt\",\"cluster.name\":\"wazuh-cluster\",\"node.name\":\"node-1\",\"message\":\"If you plan to use field masking pls configure compliance salt e1ukloTsQlOgPquJ to be a random string of 16 chars length identical on all nodes\"}",
+            "type": [
+                "info"
+            ]
+        },
+        "host": {
+            "id": "001",
+            "name": "node-1"
+        },
+        "json_event": {
+            "cluster.name": "wazuh-cluster",
+            "component": "o.o.s.c.Salt",
+            "level": "WARN",
+            "message": "If you plan to use field masking pls configure compliance salt e1ukloTsQlOgPquJ to be a random string of 16 chars length identical on all nodes",
+            "node.name": "node-1",
+            "timestamp": "2023-07-03T17:18:30,074Z",
+            "type": "server"
+        },
+        "log": {
+            "level": "WARN",
+            "logger": "o.o.s.c.Salt"
+        },
+        "message": "If you plan to use field masking pls configure compliance salt e1ukloTsQlOgPquJ to be a random string of 16 chars length identical on all nodes",
+        "node": {
+            "name": "node-1"
+        },
+        "wazuh": {
+            "decoders": [
+                "wazuh-indexer-server"
+            ],
+            "location": "[001] (wazuh-agent-1) any->/var/log/wazuh-indexer/wazuh-cluster_server.json",
+            "origin": "/var/log/wazuh-indexer/wazuh-cluster_server.json",
+            "queue": 49,
+            "registered_ip": "any",
+            "source": "logcollector"
+        }
+    },
+    {
+        "@timestamp": "2023-07-03T17:18:32.818Z",
+        "agent": {
+            "id": "001",
+            "name": "wazuh-agent-1",
+            "type": "wazuh-agent"
+        },
+        "cluster": {
+            "name": "wazuh-cluster",
+            "uuid": "eOXG1FbXQB2KVUJrjJeSQQ"
+        },
+        "ecs": {
+            "version": "8.8"
+        },
+        "event": {
+            "category": [
+                "database"
+            ],
+            "dataset": "wazuh-indexer-server",
+            "kind": "event",
+            "module": "wazuh-indexer",
+            "original": "{\"type\":\"server\",\"timestamp\":\"2023-07-03T17:18:32,818Z\",\"level\":\"WARN\",\"component\":\"o.o.o.i.ObservabilityIndex\",\"cluster.name\":\"wazuh-cluster\",\"node.name\":\"node-1\",\"message\":\"message: index [.opensearch-observability/71zzJpNtRFOYFip7K_jSCw] already exists\",\"cluster.uuid\":\"eOXG1FbXQB2KVUJrjJeSQQ\",\"node.id\":\"Cu8rIDeyTeiZVDWOoyubFQ\"}",
+            "type": [
+                "info"
+            ]
+        },
+        "host": {
+            "id": "Cu8rIDeyTeiZVDWOoyubFQ",
+            "name": "node-1"
+        },
+        "json_event": {
+            "cluster.name": "wazuh-cluster",
+            "cluster.uuid": "eOXG1FbXQB2KVUJrjJeSQQ",
+            "component": "o.o.o.i.ObservabilityIndex",
+            "level": "WARN",
+            "message": "message: index [.opensearch-observability/71zzJpNtRFOYFip7K_jSCw] already exists",
+            "node.id": "Cu8rIDeyTeiZVDWOoyubFQ",
+            "node.name": "node-1",
+            "timestamp": "2023-07-03T17:18:32,818Z",
+            "type": "server"
+        },
+        "log": {
+            "level": "WARN",
+            "logger": "o.o.o.i.ObservabilityIndex"
+        },
+        "message": "message: index [.opensearch-observability/71zzJpNtRFOYFip7K_jSCw] already exists",
+        "node": {
+            "id": "Cu8rIDeyTeiZVDWOoyubFQ",
+            "name": "node-1"
+        },
+        "wazuh": {
+            "decoders": [
+                "wazuh-indexer-server"
+            ],
+            "location": "[001] (wazuh-agent-1) any->/var/log/wazuh-indexer/wazuh-cluster_server.json",
+            "origin": "/var/log/wazuh-indexer/wazuh-cluster_server.json",
+            "queue": 49,
+            "registered_ip": "any",
+            "source": "logcollector"
+        }
+    },
+    {
+        "@timestamp": "2023-07-03T17:18:30.098Z",
+        "agent": {
+            "id": "001",
+            "name": "wazuh-agent-1",
+            "type": "wazuh-agent"
+        },
+        "cluster": {
+            "name": "wazuh-cluster"
+        },
+        "ecs": {
+            "version": "8.8"
+        },
+        "event": {
+            "category": [
+                "database"
+            ],
+            "dataset": "wazuh-indexer-server",
+            "kind": "event",
+            "module": "wazuh-indexer",
+            "original": "{\"type\":\"server\",\"timestamp\":\"2023-07-03T17:18:30,098Z\",\"level\":\"WARN\",\"component\":\"o.o.s.a.r.AuditMessageRouter\",\"cluster.name\":\"wazuh-cluster\",\"node.name\":\"node-1\",\"message\":\"No default storage available, audit log may not work properly. Please check configuration.\"}",
+            "type": [
+                "info"
+            ]
+        },
+        "host": {
+            "id": "001",
+            "name": "node-1"
+        },
+        "json_event": {
+            "cluster.name": "wazuh-cluster",
+            "component": "o.o.s.a.r.AuditMessageRouter",
+            "level": "WARN",
+            "message": "No default storage available, audit log may not work properly. Please check configuration.",
+            "node.name": "node-1",
+            "timestamp": "2023-07-03T17:18:30,098Z",
+            "type": "server"
+        },
+        "log": {
+            "level": "WARN",
+            "logger": "o.o.s.a.r.AuditMessageRouter"
+        },
+        "message": "No default storage available, audit log may not work properly. Please check configuration.",
+        "node": {
+            "name": "node-1"
+        },
+        "wazuh": {
+            "decoders": [
+                "wazuh-indexer-server"
+            ],
+            "location": "[001] (wazuh-agent-1) any->/var/log/wazuh-indexer/wazuh-cluster_server.json",
+            "origin": "/var/log/wazuh-indexer/wazuh-cluster_server.json",
+            "queue": 49,
+            "registered_ip": "any",
+            "source": "logcollector"
+        }
+    },
+    {
+        "@timestamp": "2023-07-03T17:18:30.097Z",
+        "agent": {
+            "id": "001",
+            "name": "wazuh-agent-1",
+            "type": "wazuh-agent"
+        },
+        "cluster": {
+            "name": "wazuh-cluster"
+        },
+        "ecs": {
+            "version": "8.8"
+        },
+        "event": {
+            "category": [
+                "database"
+            ],
+            "dataset": "wazuh-indexer-server",
+            "kind": "event",
+            "module": "wazuh-indexer",
+            "original": "{\"type\":\"server\",\"timestamp\":\"2023-07-03T17:18:30,097Z\",\"level\":\"ERROR\",\"component\":\"o.o.s.a.s.SinkProvider\",\"cluster.name\":\"wazuh-cluster\",\"node.name\":\"node-1\",\"message\":\"Default endpoint could not be created, auditlog will not work properly.\"}",
+            "type": [
+                "error"
+            ]
+        },
+        "host": {
+            "id": "001",
+            "name": "node-1"
+        },
+        "json_event": {
+            "cluster.name": "wazuh-cluster",
+            "component": "o.o.s.a.s.SinkProvider",
+            "level": "ERROR",
+            "message": "Default endpoint could not be created, auditlog will not work properly.",
+            "node.name": "node-1",
+            "timestamp": "2023-07-03T17:18:30,097Z",
+            "type": "server"
+        },
+        "log": {
+            "level": "ERROR",
+            "logger": "o.o.s.a.s.SinkProvider"
+        },
+        "message": "Default endpoint could not be created, auditlog will not work properly.",
+        "node": {
+            "name": "node-1"
+        },
+        "wazuh": {
+            "decoders": [
+                "wazuh-indexer-server"
+            ],
+            "location": "[001] (wazuh-agent-1) any->/var/log/wazuh-indexer/wazuh-cluster_server.json",
+            "origin": "/var/log/wazuh-indexer/wazuh-cluster_server.json",
+            "queue": 49,
+            "registered_ip": "any",
+            "source": "logcollector"
+        }
+    },
+    {
+        "@timestamp": "2023-07-06T18:51:19.018Z",
+        "agent": {
+            "id": "001",
+            "name": "wazuh-agent-1",
+            "type": "wazuh-agent"
+        },
+        "cluster": {
+            "name": "wazuh-cluster",
+            "uuid": "jxetIsP6RpCuyH0CP5RWgw"
+        },
+        "ecs": {
+            "version": "8.8"
+        },
+        "event": {
+            "category": [
+                "database"
+            ],
+            "dataset": "wazuh-indexer-server",
+            "kind": "event",
+            "module": "wazuh-indexer",
+            "original": "{\"type\":\"server\",\"timestamp\":\"2023-07-06T18:51:19,018Z\",\"level\":\"ERROR\",\"component\":\"o.o.a.a.AlertIndices\",\"cluster.name\":\"wazuh-cluster\",\"node.name\":\"node-1\",\"message\":\"info deleteOldIndices\",\"cluster.uuid\":\"jxetIsP6RpCuyH0CP5RWgw\",\"node.id\":\"D_qEUaEIRDu1bjHOmintVQ\"}",
+            "type": [
+                "error"
+            ]
+        },
+        "host": {
+            "id": "D_qEUaEIRDu1bjHOmintVQ",
+            "name": "node-1"
+        },
+        "json_event": {
+            "cluster.name": "wazuh-cluster",
+            "cluster.uuid": "jxetIsP6RpCuyH0CP5RWgw",
+            "component": "o.o.a.a.AlertIndices",
+            "level": "ERROR",
+            "message": "info deleteOldIndices",
+            "node.id": "D_qEUaEIRDu1bjHOmintVQ",
+            "node.name": "node-1",
+            "timestamp": "2023-07-06T18:51:19,018Z",
+            "type": "server"
+        },
+        "log": {
+            "level": "ERROR",
+            "logger": "o.o.a.a.AlertIndices"
+        },
+        "message": "info deleteOldIndices",
+        "node": {
+            "id": "D_qEUaEIRDu1bjHOmintVQ",
+            "name": "node-1"
+        },
+        "wazuh": {
+            "decoders": [
+                "wazuh-indexer-server"
+            ],
+            "location": "[001] (wazuh-agent-1) any->/var/log/wazuh-indexer/wazuh-cluster_server.json",
+            "origin": "/var/log/wazuh-indexer/wazuh-cluster_server.json",
+            "queue": 49,
+            "registered_ip": "any",
+            "source": "logcollector"
+        }
+    },
+    {
+        "@timestamp": "2023-07-03T17:18:34.886Z",
+        "agent": {
+            "id": "001",
+            "name": "wazuh-agent-1",
+            "type": "wazuh-agent"
+        },
+        "cluster": {
+            "name": "wazuh-cluster",
+            "uuid": "eOXG1FbXQB2KVUJrjJeSQQ"
+        },
+        "ecs": {
+            "version": "8.8"
+        },
+        "event": {
+            "category": [
+                "database"
+            ],
+            "dataset": "wazuh-indexer-server",
+            "kind": "event",
+            "module": "wazuh-indexer",
+            "original": "{\"type\":\"server\",\"timestamp\":\"2023-07-03T17:18:34,886Z\",\"level\":\"ERROR\",\"component\":\"o.o.s.a.BackendRegistry\",\"cluster.name\":\"wazuh-cluster\",\"node.name\":\"node-1\",\"message\":\"Not yet initialized (you may need to run securityadmin)\",\"cluster.uuid\":\"eOXG1FbXQB2KVUJrjJeSQQ\",\"node.id\":\"Cu8rIDeyTeiZVDWOoyubFQ\"}",
+            "type": [
+                "error"
+            ]
+        },
+        "host": {
+            "id": "Cu8rIDeyTeiZVDWOoyubFQ",
+            "name": "node-1"
+        },
+        "json_event": {
+            "cluster.name": "wazuh-cluster",
+            "cluster.uuid": "eOXG1FbXQB2KVUJrjJeSQQ",
+            "component": "o.o.s.a.BackendRegistry",
+            "level": "ERROR",
+            "message": "Not yet initialized (you may need to run securityadmin)",
+            "node.id": "Cu8rIDeyTeiZVDWOoyubFQ",
+            "node.name": "node-1",
+            "timestamp": "2023-07-03T17:18:34,886Z",
+            "type": "server"
+        },
+        "log": {
+            "level": "ERROR",
+            "logger": "o.o.s.a.BackendRegistry"
+        },
+        "message": "Not yet initialized (you may need to run securityadmin)",
+        "node": {
+            "id": "Cu8rIDeyTeiZVDWOoyubFQ",
+            "name": "node-1"
+        },
+        "wazuh": {
+            "decoders": [
+                "wazuh-indexer-server"
+            ],
+            "location": "[001] (wazuh-agent-1) any->/var/log/wazuh-indexer/wazuh-cluster_server.json",
+            "origin": "/var/log/wazuh-indexer/wazuh-cluster_server.json",
+            "queue": 49,
+            "registered_ip": "any",
+            "source": "logcollector"
+        }
+    }
+]

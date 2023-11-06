@@ -97,9 +97,10 @@ class Integration(CrudIntegration):
     def process_event(self, event, format):
 
         # Get the values to send
-        result : api_test.RunPost_Response = self.api_client.test_run(event)
+        result : api_test.RunPost_Response
+        result, rawOutput = self.api_client.test_run(event)
+
         hasTrace : bool = len(result.run.asset_traces) > 0
-        rawOutput = self.api_client.message_to_json(result.run.output) if result.run.output else ""
         rawTraces = result.run.asset_traces if hasTrace else []
 
         # TODO: Move to centralize integration configuration
