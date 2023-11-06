@@ -113,6 +113,7 @@ namespace Utils
             UnzFilePtr spUnzFile {unzOpen(zipFilePath.c_str())};
             if (!spUnzFile)
             {
+                // File doesn't exist or is invalid (e.g. empty ZIP).
                 throw std::runtime_error {"Unable to open compressed file: " + zipFilePath.string()};
             }
 

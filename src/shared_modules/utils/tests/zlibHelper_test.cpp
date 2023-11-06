@@ -56,6 +56,9 @@ const auto ZIP_FOLDER {INPUT_FILES_DIR / "xml_files.zip"};
 //     └── file_c.xml
 const auto ZIP_NESTED_FOLDER {INPUT_FILES_DIR / "nested.zip"};
 
+// Empty ZIP file.
+const auto ZIP_EMPTY {INPUT_FILES_DIR / "empty.zip"};
+
 // XML files with their respective SHA1 hashes.
 const std::map<std::filesystem::path, std::string> XML_DECOMPRESSED {
     {"file_a.xml", "96e78ae9399e8a96dfab08b9afaa0ffba6952f52"},
@@ -235,4 +238,14 @@ TEST_F(ZlibHelperTest, ZipDecompressNestedFolder)
     // Sort decompressed files to properly compare them.
     std::sort(decompressedFiles.begin(), decompressedFiles.end());
     EXPECT_EQ(expectedDecompressedFiles, decompressedFiles);
+}
+
+/**
+ * @brief Tests the decompression of an empty ZIP file.
+ *
+ */
+TEST_F(ZlibHelperTest, ZipDecompressEmptyZip)
+{
+    // Decompress.
+    EXPECT_THROW(Utils::ZlibHelper::zipDecompress(ZIP_EMPTY, OUTPUT_DIR), std::runtime_error);
 }
