@@ -200,3 +200,83 @@ INSTANTIATE_TEST_SUITE_P(Table,
                              EasyIt().add("a", 5).add("b", 44).add("c", 33).add("d", 55).add("e", 110).add("f", 90)
                              // end
                              ));
+
+
+/************************************************
+ *      Test Set/Get priority by name.
+ ************************************************/
+
+std::vector<EntryTest> g_initStatePrior = {
+    {"a", 1},
+    {"b", 2},
+    {"c", 3},
+    {"d", 4},
+    {"e", 5},
+    {"f", 6},
+};
+
+/**
+ * @brief Check if the priority is the same as the expected.
+ * std::string name, std::size_t newPriority, bool expected result
+ */
+using PriorityT = std::tuple<std::string, std::size_t, bool>;
+using PriorityTest = ::testing::TestWithParam<PriorityT>;
+
+class EasySet
+{
+private:
+    PriorityT m_priority;
+
+public:
+    EasySet(std::string name, std::size_t newPriority, bool expected)
+    {
+        m_priority = std::make_tuple(std::move(name), newPriority, expected);
+    }
+
+    // Cast EasySet to PriorityT
+    operator PriorityT() const { return m_priority; }
+};
+
+TEST_P(PriorityTest, Priority)
+{
+    auto& [name, newPriority, expected] = GetParam();
+    ri::Table<EntryTest> table;
+    // Insert all entries (And check if the insert is ok)
+    for (auto& entry : g_initStatePrior)
+    {
+        ASSERT_TRUE(table.insert(EntryTest(entry)));
+        checkEntryTable(table, entry, true);
+    }
+
+    ASSERT_TRUE(table.size() == g_initStatePrior.size());
+    ASSERT_FALSE(table.empty());
+
+    // Check if the priority is the same as the expected
+    EXPECT_EQ(table.setPriority(name, newPriority), expected);
+    if (expected)
+    {
+        // Check if the name and priority exists
+        EXPECT_TRUE(table.nameExists(name));
+        EXPECT_TRUE(table.priorityExists(newPriority));
+
+        // Check if the name and the priority is the same entry
+        //const auto& entryTable = table.get(name);
+        //EXPECT_EQ(entryTable.name(), name);
+        //EXPECT_EQ(entryTable.priority(), newPriority);
+    }
+    else
+    {
+        // Check if the name and priority exists
+        EXPECT_FALSE(table.nameExists(name));
+        EXPECT_FALSE(table.priorityExists(newPriority));
+    }
+}
+
+INSTANTIATE_TEST_SUITE_P(Table,
+                         PriorityTest,
+                         ::testing::Values(
+                             // Test to insert by name
+                             EasySet("a", 1, true)
+                             // end
+                             ));
+
