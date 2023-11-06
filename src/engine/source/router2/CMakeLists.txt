@@ -56,6 +56,7 @@ if(ENGINE_BUILD_TEST)
     # Router unit test
     add_executable(router_utest
         ${UNIT_SRC_DIR}/environment_test.cpp
+        ${UNIT_SRC_DIR}/table_test.cpp
     )
     target_include_directories(router_utest PRIVATE ${SRC_DIR})
     target_link_libraries(router_utest gtest_main router2::irouter router2::router)
