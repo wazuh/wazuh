@@ -3895,9 +3895,9 @@ checks:
       - iso_27001-2013: ["A.9.2.3"]
     condition: any
     rules:
-      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
-      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> LocalAccountTokenFilterPolicy'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> LocalAccountTokenFilterPolicy -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> LocalAccountTokenFilterPolicy'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> LocalAccountTokenFilterPolicy -> 1'
 
   # 18.4.2 (L1) Ensure 'Configure RPC packet level privacy setting for incoming connections' is set to 'Enabled'. (Automated)
   - id: 15679
@@ -3913,8 +3913,8 @@ checks:
       - cis: ["18.4.2"]
     condition: any
     rules:
-      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Print'
-      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Print -> RpcAuthnLevelPrivacyEnabled'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Print'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Print -> RpcAuthnLevelPrivacyEnabled'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Print -> RpcAuthnLevelPrivacyEnabled -> 1'
 
   # 18.4.3 (L1) Ensure 'Configure SMB v1 client driver' is set to 'Enabled: Disable driver (recommended)'. (Automated)
@@ -3986,26 +3986,24 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\kernel'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\kernel -> DisableExceptionChainValidation'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\kernel -> DisableExceptionChainValidation -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\kernel -> DisableExceptionChainValidation -> 1'
 
-  # 18.4.6 (L1) Ensure 'NetBT NodeType configuration' is set to 'Enabled: P-node (recommended)'. (Automated)
+  # 18.4.6 (L1) Ensure 'LSA Protection' is set to 'Enabled'. (Automated)
   - id: 15683
-    title: "Ensure 'NetBT NodeType configuration' is set to 'Enabled: P-node (recommended)'."
-    description: "This setting determines which method NetBIOS over TCP/IP (NetBT) uses to register and resolve names. The available methods are: - The B-node (broadcast) method only uses broadcasts. - The P-node (point-to-point) method only uses name queries to a name server (WINS). - The M-node (mixed) method broadcasts first, then queries a name server (WINS) if broadcast failed. - The H-node (hybrid) method queries a name server (WINS) first, then broadcasts if the query failed. The recommended state for this setting is: Enabled: P-node (recommended) (point-to-point). Note: Resolution through LMHOSTS or DNS follows these methods. If the NodeType registry value is present, it overrides any DhcpNodeType registry value. If neither NodeType nor DhcpNodeType is present, the computer uses B-node (broadcast) if there are no WINS servers configured for the network, or H-node (hybrid) if there is at least one WINS server configured."
-    rationale: "In order to help mitigate the risk of NetBIOS Name Service (NBT-NS) poisoning attacks, setting the node type to P-node (point-to-point) will prevent the system from sending out NetBIOS broadcasts."
-    impact: "NetBIOS name resolution queries will require a defined and available WINS server for external NetBIOS name resolution. If a WINS server is not defined or not reachable, and the desired hostname is not defined in the local cache, local LMHOSTS or HOSTS files, NetBIOS name resolution will fail."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: P-node (recommended): Computer Configuration\\Policies\\Administrative Templates\\MS Security Guide\\NetBT NodeType configuration Note: This change does not take effect until the computer has been restarted. Note #2: This Group Policy path does not exist by default. An additional Group Policy template (SecGuide.admx/adml) is required - it is available from Microsoft at this link. Please note that this setting is only available in the Security baseline (FINAL) for Windows 10 v1903 and Windows Server v1903 (or newer) release of SecGuide.admx/adml, so if you previously downloaded this template, you may need to update it from a newer Microsoft baseline to get this new NetBT NodeType configuration setting."
+    title: "L1 Ensure 'LSA Protection' is set to 'Enabled'."
+    description: "This policy setting controls whether the Local Security Authority Server Service (LSASS) process runs protected. The Local Security Authority (LSA), which includes the Local Security Authority Server Service (LSASS) process, validates users for local and remote sign-ins and enforces local security policies. The recommended state for this setting is: Enabled. Note: This setting only applies to Windows 8.1 (and newer) except for Windows 11 (and newer). See policy setting Configure LSASS to run as a protected process."
+    rationale: "The Windows 8.1 operating system (and newer) provides additional protection for the LSA to prevent reading memory and code injection by non-protected processes. Enabling this setting provides added security for the credentials that LSA stores and manages."
+    impact: "If additional LSA protection is enabled, Administrators will not be able to debug a custom LSA plugin. A debugger cannot be attached to LSASS when it's a protected process. In general, there's no supported way to debug a running protected process."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\MS Security Guide\\LSA Protection Note: This Group Policy path does not exist by default. An additional Group Policy template (SecGuide.admx/adml) is required - it is available from Microsoft at this link."
     references:
-      - "https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-cifs/45170055-a0cd-4910-9228-801d5bf7ac84"
+     - 'https://learn.microsoft.com/en-us/windows-server/security/credentials-protection-'
     compliance:
       - cis: ["18.4.6"]
-      - cis_csc_v7: ["9.2"]
-      - iso_27001-2013: ["A.13.1.3"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NetBT\Parameters'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NetBT\Parameters -> NodeType'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NetBT\Parameters -> NodeType -> 2'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> RunAsPPL'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> RunAsPPL -> 1'
 
   # 18.4.7 (L1) Ensure 'WDigest Authentication' is set to 'Disabled'. (Automated)
   - id: 15684
