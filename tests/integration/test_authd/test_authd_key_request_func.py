@@ -82,13 +82,13 @@ script_filename = 'fetch_keys.py'
 kreq_sock_path = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'krequest')
 receiver_sockets_params = [(kreq_sock_path, 'AF_UNIX', 'UDP')]
 
-monitored_sockets_params = [('wazuh-authd', None, True)]
+daemons_handler_configuration = {'all_daemons': True}
 receiver_sockets, monitored_sockets = None, None
 
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_key_request_func(test_configuration, test_metadata, set_wazuh_configuration, connect_to_sockets_function,
-                          configure_sockets_environment_function, configure_local_internal_options, tear_down,
+                          daemons_handler, configure_local_internal_options, tear_down,
                           copy_tmp_script, wait_for_authd_startup_function):
     '''
     description:
