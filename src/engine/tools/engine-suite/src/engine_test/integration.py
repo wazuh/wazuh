@@ -99,7 +99,7 @@ class Integration(CrudIntegration):
         # Get the values to send
         result : api_test.RunPost_Response = self.api_client.test_run(event)
         hasTrace : bool = len(result.run.asset_traces) > 0
-        rawOutput = result.run.output
+        rawOutput = self.api_client.message_to_json(result.run.output) if result.run.output else ""
         rawTraces = result.run.asset_traces if hasTrace else []
 
         # TODO: Move to centralize integration configuration
@@ -127,11 +127,11 @@ class Integration(CrudIntegration):
                 else:
                     response += "\n"
                     for traceObjt in rawTraces:
-                        t : str = "[🟢] " if traceObjt['success'] else "[🔴] "
-                        t += traceObjt['asset']
-                        t += " -> success" if traceObjt['success'] else " -> failed"
+                        t : str = "[🟢] " if traceObjt.success else "[🔴] "
+                        t += traceObjt.asset
+                        t += " -> success" if traceObjt.success else " -> failed"
                         t += "\n"
-                        for trace in traceObjt['traces']:
+                        for trace in traceObjt.traces:
                             t += "  ↳ " + trace + "\n"
                         response += t
                     response += "\n"
