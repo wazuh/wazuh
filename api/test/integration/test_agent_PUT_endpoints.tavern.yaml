@@ -287,7 +287,7 @@ stages:
     response:
       status_code: 400
       json:
-        error: 2007
+        error: 1112
 
     # PUT /groups/group1/configuration
   - name: Try to update configuration using an invalid configuration file

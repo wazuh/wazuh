@@ -13,6 +13,7 @@ import yaml
 from sqlalchemy import create_engine, Column, String
 from sqlalchemy import orm as sqlalchemy_orm
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.sql import text
 
 from wazuh.core.utils import get_utc_now
 from wazuh.rbac.tests.utils import init_db
@@ -62,9 +63,8 @@ def test_database_init(db_setup):
     with db_setup.RolesManager() as rm:
         assert rm.get_role('wazuh') != db_setup.SecurityError.ROLE_NOT_EXIST
 
-
-def test_add_token(db_setup):
-    """Check token rule is added to database"""
+def add_token(db_setup):
+    """Store a new token rule in the database"""
     with db_setup.TokenManager() as tm:
         users = {'newUser', 'newUser1'}
         roles = {'test', 'test1', 'test2'}
@@ -88,7 +88,7 @@ def test_add_token(db_setup):
 
 def test_get_all_token_rules(db_setup):
     """Check that rules are correctly created"""
-    users, roles = test_add_token(db_setup)
+    users, roles = add_token(db_setup)
     with db_setup.TokenManager() as tm:
         user_rules, role_rules, run_as_rules = tm.get_all_rules()
         for user in user_rules.keys():
@@ -101,7 +101,7 @@ def test_get_all_token_rules(db_setup):
 def test_nbf_invalid(db_setup):
     """Check if a user's token is valid by comparing the values with those stored in the database"""
     current_timestamp = int(get_utc_now().timestamp())
-    users, roles = test_add_token(db_setup)
+    users, roles = add_token(db_setup)
     with db_setup.TokenManager() as tm:
         for user in users:
             assert not tm.is_token_valid(user_id=user, token_nbf_time=current_timestamp)
@@ -111,7 +111,7 @@ def test_nbf_invalid(db_setup):
 
 def test_delete_all_rules(db_setup):
     """Check that rules are correctly deleted"""
-    test_add_token(db_setup)
+    add_token(db_setup)
     with db_setup.TokenManager() as tm:
         assert tm.delete_all_rules()
 
@@ -119,7 +119,7 @@ def test_delete_all_rules(db_setup):
 def test_delete_all_expired_rules(db_setup):
     """Check that rules are correctly deleted"""
     with patch('wazuh.rbac.orm.time', return_value=0):
-        test_add_token(db_setup)
+        add_token(db_setup)
     with db_setup.TokenManager() as tm:
         assert tm.delete_all_expired_rules()
 
@@ -392,7 +392,7 @@ def test_update_policy(db_setup):
         assert pm.get_policy(name='updatedName')['name'] == 'updatedName'
 
 
-def test_add_policy_role(db_setup):
+def add_policy_role(db_setup):
     """Check role-policy relation is added to database"""
     with db_setup.RolesPoliciesManager() as rpm:
         with db_setup.PoliciesManager() as pm:
@@ -434,8 +434,8 @@ def test_add_policy_role(db_setup):
                 assert rpm.exist_policy_role(role_id=role, policy_id=policy)
 
 
-def test_add_user_roles(db_setup):
-    """Check user-roles relation is added to database"""
+def add_user_roles(db_setup):
+    """Store a new user-roles relation in the database"""
     with db_setup.RolesManager() as rm:
         pass
     with db_setup.UserRolesManager() as urm:
@@ -474,8 +474,8 @@ def test_add_user_roles(db_setup):
         return user_list, roles_ids
 
 
-def test_add_role_rule(db_setup):
-    """Check roles-rules relation is added to database"""
+def add_role_rule(db_setup):
+    """Store a new roles-rules relation in the database"""
     with db_setup.RolesRulesManager() as rrum:
         with db_setup.RulesManager() as rum:
             rum.delete_all_rules()
@@ -505,9 +505,8 @@ def test_add_role_rule(db_setup):
 
         return role_ids, rule_ids
 
-
-def test_add_role_policy(db_setup):
-    """Check role-policy relation is added to database"""
+def add_role_policy(db_setup):
+    """Store a new role-policy relation in the database"""
     with db_setup.RolesPoliciesManager() as rpm:
         with db_setup.PoliciesManager() as pm:
             assert pm.delete_all_policies()
@@ -647,7 +646,7 @@ def test_add_role_policy_level(db_setup):
 def test_exist_user_role(db_setup):
     """Check user-role relation exist in the database"""
     with db_setup.UserRolesManager() as urm:
-        user_ids, roles_ids = test_add_user_roles(db_setup)
+        user_ids, roles_ids = add_user_roles(db_setup)
         for role in roles_ids:
             for user_id in user_ids:
                 with db_setup.AuthenticationManager() as am:
@@ -661,7 +660,7 @@ def test_exist_user_role(db_setup):
 def test_exist_role_rule(db_setup):
     """Check role-rule relation exist in the database"""
     with db_setup.RolesRulesManager() as rrum:
-        role_ids, rule_ids = test_add_role_rule(db_setup)
+        role_ids, rule_ids = add_role_rule(db_setup)
         for role in role_ids:
             for rule in rule_ids:
                 assert rrum.exist_role_rule(rule_id=rule, role_id=role)
@@ -674,7 +673,7 @@ def test_exist_role_rule(db_setup):
 def test_exist_policy_role(db_setup):
     """Check role-policy relation exist in the database"""
     with db_setup.RolesPoliciesManager() as rpm:
-        policies_ids, roles_ids = test_add_role_policy(db_setup)
+        policies_ids, roles_ids = add_role_policy(db_setup)
         for policy in policies_ids:
             for role in roles_ids:
                 assert rpm.exist_policy_role(policy_id=policy, role_id=role)
@@ -685,7 +684,7 @@ def test_exist_role_policy(db_setup):
     Check role-policy relation exist in the database
     """
     with db_setup.RolesPoliciesManager() as rpm:
-        policies_ids, roles_ids = test_add_role_policy(db_setup)
+        policies_ids, roles_ids = add_role_policy(db_setup)
         for policy in policies_ids:
             for role in roles_ids:
                 assert rpm.exist_role_policy(policy_id=policy, role_id=role)
@@ -697,7 +696,7 @@ def test_exist_role_policy(db_setup):
 def test_get_all_roles_from_user(db_setup):
     """Check all roles in one user in the database"""
     with db_setup.UserRolesManager() as urm:
-        user_ids, roles_ids = test_add_user_roles(db_setup)
+        user_ids, roles_ids = add_user_roles(db_setup)
         for user_id in user_ids:
             roles = urm.get_all_roles_from_user(user_id=user_id)
             for role in roles:
@@ -707,7 +706,7 @@ def test_get_all_roles_from_user(db_setup):
 def test_get_all_rules_from_role(db_setup):
     """Check all rules in one role in the database"""
     with db_setup.RolesRulesManager() as rrum:
-        role_ids, rule_ids = test_add_role_rule(db_setup)
+        role_ids, rule_ids = add_role_rule(db_setup)
         for rule in rule_ids:
             roles = rrum.get_all_roles_from_rule(rule_id=rule)
             for role in roles:
@@ -717,7 +716,7 @@ def test_get_all_rules_from_role(db_setup):
 def test_get_all_roles_from_rule(db_setup):
     """Check all roles in one rule in the database"""
     with db_setup.RolesRulesManager() as rrum:
-        role_ids, rule_ids = test_add_role_rule(db_setup)
+        role_ids, rule_ids = add_role_rule(db_setup)
         for role in role_ids:
             rules = rrum.get_all_rules_from_role(role_id=role)
             for rule in rules:
@@ -727,7 +726,7 @@ def test_get_all_roles_from_rule(db_setup):
 def test_get_all_users_from_role(db_setup):
     """Check all roles in one user in the database"""
     with db_setup.UserRolesManager() as urm:
-        user_id, roles_ids = test_add_user_roles(db_setup)
+        user_id, roles_ids = add_user_roles(db_setup)
         for role in roles_ids:
             users = urm.get_all_users_from_role(role_id=role)
             for user in users:
@@ -737,7 +736,7 @@ def test_get_all_users_from_role(db_setup):
 def test_get_all_policy_from_role(db_setup):
     """Check all policies in one role in the database"""
     with db_setup.RolesPoliciesManager() as rpm:
-        policies_ids, roles_ids = test_add_role_policy(db_setup)
+        policies_ids, roles_ids = add_role_policy(db_setup)
         for role in roles_ids:
             policies = rpm.get_all_policies_from_role(role_id=role)
             for index, policy in enumerate(policies):
@@ -747,7 +746,7 @@ def test_get_all_policy_from_role(db_setup):
 def test_get_all_role_from_policy(db_setup):
     """Check all policies in one role in the database"""
     with db_setup.RolesPoliciesManager() as rpm:
-        policies_ids, roles_ids = test_add_role_policy(db_setup)
+        policies_ids, roles_ids = add_role_policy(db_setup)
         for policy in policies_ids:
             roles = [role.id for role in rpm.get_all_roles_from_policy(policy_id=policy)]
             for role_id in roles_ids:
@@ -757,7 +756,7 @@ def test_get_all_role_from_policy(db_setup):
 def test_remove_all_roles_from_user(db_setup):
     """Remove all roles in one user in the database"""
     with db_setup.UserRolesManager() as urm:
-        user_ids, roles_ids = test_add_user_roles(db_setup)
+        user_ids, roles_ids = add_user_roles(db_setup)
         for user in user_ids:
             urm.remove_all_roles_in_user(user_id=user)
             for index, role in enumerate(roles_ids):
@@ -767,7 +766,7 @@ def test_remove_all_roles_from_user(db_setup):
 def test_remove_all_users_from_role(db_setup):
     """Remove all roles in one user in the database"""
     with db_setup.UserRolesManager() as urm:
-        user_ids, roles_ids = test_add_user_roles(db_setup)
+        user_ids, roles_ids = add_user_roles(db_setup)
         for role in roles_ids:
             urm.remove_all_users_in_role(role_id=role)
             for index, user in enumerate(user_ids):
@@ -777,7 +776,7 @@ def test_remove_all_users_from_role(db_setup):
 def test_remove_all_rules_from_role(db_setup):
     """Remove all rules in one role in the database"""
     with db_setup.RolesRulesManager() as rrum:
-        role_ids, rule_ids = test_add_role_rule(db_setup)
+        role_ids, rule_ids = add_role_rule(db_setup)
         for role in role_ids:
             rrum.remove_all_rules_in_role(role_id=role)
         for index, role in enumerate(role_ids):
@@ -787,7 +786,7 @@ def test_remove_all_rules_from_role(db_setup):
 def test_remove_all_roles_from_rule(db_setup):
     """Remove all roles in one rule in the database"""
     with db_setup.RolesRulesManager() as rrum:
-        role_ids, rule_ids = test_add_role_rule(db_setup)
+        role_ids, rule_ids = add_role_rule(db_setup)
         no_admin_rules = list()
         for rule in rule_ids:
             if rrum.remove_all_roles_in_rule(rule_id=rule) is True:
@@ -799,7 +798,7 @@ def test_remove_all_roles_from_rule(db_setup):
 def test_remove_all_policies_from_role(db_setup):
     """Remove all policies in one role in the database"""
     with db_setup.RolesPoliciesManager() as rpm:
-        policies_ids, roles_ids = test_add_role_policy(db_setup)
+        policies_ids, roles_ids = add_role_policy(db_setup)
         for role in roles_ids:
             rpm.remove_all_policies_in_role(role_id=role)
         for index, role in enumerate(roles_ids):
@@ -809,7 +808,7 @@ def test_remove_all_policies_from_role(db_setup):
 def test_remove_all_roles_from_policy(db_setup):
     """Remove all policies in one role in the database"""
     with db_setup.RolesPoliciesManager() as rpm:
-        policies_ids, roles_ids = test_add_role_policy(db_setup)
+        policies_ids, roles_ids = add_role_policy(db_setup)
         for policy in policies_ids:
             rpm.remove_all_roles_in_policy(policy_id=policy)
         for index, policy in enumerate(policies_ids):
@@ -819,7 +818,7 @@ def test_remove_all_roles_from_policy(db_setup):
 def test_remove_role_from_user(db_setup):
     """Remove specified role in user in the database"""
     with db_setup.UserRolesManager() as urm:
-        user_ids, roles_ids = test_add_user_roles(db_setup)
+        user_ids, roles_ids = add_user_roles(db_setup)
         for role in roles_ids:
             urm.remove_role_in_user(role_id=role, user_id=user_ids[0])
             assert not urm.exist_user_role(role_id=role, user_id=user_ids[0])
@@ -828,7 +827,7 @@ def test_remove_role_from_user(db_setup):
 def test_remove_policy_from_role(db_setup):
     """Remove specified policy in role in the database"""
     with db_setup.RolesPoliciesManager() as rpm:
-        policies_ids, roles_ids = test_add_role_policy(db_setup)
+        policies_ids, roles_ids = add_role_policy(db_setup)
         for policy in policies_ids:
             rpm.remove_policy_in_role(role_id=roles_ids[0], policy_id=policy)
         for policy in policies_ids:
@@ -838,7 +837,7 @@ def test_remove_policy_from_role(db_setup):
 def test_remove_role_from_policy(db_setup):
     """Remove specified role in policy in the database"""
     with db_setup.RolesPoliciesManager() as rpm:
-        policies_ids, roles_ids = test_add_role_policy(db_setup)
+        policies_ids, roles_ids = add_role_policy(db_setup)
         for policy in policies_ids:
             rpm.remove_policy_in_role(role_id=roles_ids[0], policy_id=policy)
         for policy in policies_ids:
@@ -848,7 +847,7 @@ def test_remove_role_from_policy(db_setup):
 def test_update_role_from_user(db_setup):
     """Replace specified role in user in the database"""
     with db_setup.UserRolesManager() as urm:
-        user_ids, roles_ids = test_add_user_roles(db_setup)
+        user_ids, roles_ids = add_user_roles(db_setup)
         urm.remove_role_in_user(user_id=user_ids[0], role_id=roles_ids[-1])
         assert urm.replace_user_role(user_id=user_ids[0], actual_role_id=roles_ids[0],
                                      new_role_id=roles_ids[-1]) is True
@@ -860,7 +859,7 @@ def test_update_role_from_user(db_setup):
 def test_update_policy_from_role(db_setup):
     """Replace specified policy in role in the database"""
     with db_setup.RolesPoliciesManager() as rpm:
-        policies_ids, roles_ids = test_add_role_policy(db_setup)
+        policies_ids, roles_ids = add_role_policy(db_setup)
         rpm.remove_policy_in_role(role_id=roles_ids[0], policy_id=policies_ids[-1])
         assert rpm.replace_role_policy(role_id=roles_ids[0], current_policy_id=policies_ids[0],
                                        new_policy_id=policies_ids[-1]) is True
@@ -1004,7 +1003,7 @@ def test_databasemanager_rollback(fresh_in_memory_db):
 def test_databasemanager_set_database_version(fresh_in_memory_db):
     """Test `set_database_version` method for class `DatabaseManager`."""
     fresh_in_memory_db.db_manager.set_database_version(in_memory_db_path, 555)
-    assert fresh_in_memory_db.db_manager.sessions[in_memory_db_path].execute("pragma user_version").first()[0] == 555
+    assert fresh_in_memory_db.db_manager.sessions[in_memory_db_path].execute(text("pragma user_version")).first()[0] == 555
 
 
 @patch("wazuh.rbac.orm.safe_move")

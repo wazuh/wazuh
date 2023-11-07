@@ -1290,7 +1290,7 @@ async def get_group_config(request, group_id: str, pretty: bool = False, wait_fo
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_group_config(request, body: dict, group_id: str, pretty: bool = False,
+async def put_group_config(request, body: bytes, group_id: str, pretty: bool = False,
                            wait_for_complete: bool = False) -> web.Response:
     """Update group configuration.
 
@@ -1300,8 +1300,8 @@ async def put_group_config(request, body: dict, group_id: str, pretty: bool = Fa
     Parameters
     ----------
     request : connexion.request
-    body : dict
-        Dictionary with the new group configuration.
+    body : bytes
+        Bytes object with the new group configuration.
         The body is obtained from the XML file and decoded in this function.
     group_id : str
         Group ID.
@@ -1317,7 +1317,7 @@ async def put_group_config(request, body: dict, group_id: str, pretty: bool = Fa
     """
     # Parse body to utf-8
     Body.validate_content_type(request, expected_content_type='application/xml')
-    parsed_body = Body.decode_body(body, unicode_error=2006, attribute_error=2007)
+    parsed_body = Body.decode_body(body, unicode_error=1911, attribute_error=1912)
 
     f_kwargs = {'group_list': [group_id],
                 'file_data': parsed_body}
