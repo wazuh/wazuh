@@ -125,24 +125,24 @@ def test_authd_key_request_worker(test_configuration, test_metadata, set_wazuh_c
         4.4.0
 
     parameters:
-        - get_configuration:
+        - test_configuration:
+            type: dict
+            brief: Configuration loaded from `configuration_templates`.
+        - test_metadata:
+            type: dict
+            brief: Test case metadata.
+        - set_wazuh_configuration:
             type: fixture
-            brief: Get the configuration of the test.
-        - configure_environment:
-            type: fixture
-            brief: Configure a custom environment for testing.
-        - configure_sockets_environment:
+            brief: Load basic wazuh configuration.
+        - configure_sockets_environment_function:
             type: fixture
             brief: Configure the socket listener to receive and send messages on the sockets.
         - copy_tmp_script:
             type: fixture
             brief: Copy the script to a temporary folder for testing.
-        - connect_to_sockets_module:
+        - connect_to_sockets_function:
             type: fixture
             brief: Bind to the configured sockets at module scope.
-        - get_current_test_case:
-            type: fixture
-            brief: gets the current test case from the tests' list
 
     assertions:
         - The 'request_input' from agent is formatted to 'cluster_input' for master

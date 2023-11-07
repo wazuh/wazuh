@@ -117,24 +117,24 @@ def test_ossec_auth_messages(test_configuration, test_metadata, set_wazuh_config
     tier: 0
 
     parameters:
-        - get_configuration:
+        - test_configuration:
+            type: dict
+            brief: Configuration loaded from `configuration_templates`.
+        - test_metadata:
+            type: dict
+            brief: Test case metadata.
+        - set_wazuh_configuration:
             type: fixture
-            brief: Get the configuration of the test.
-        - configure_environment:
-            type: fixture
-            brief: Configure a custom environment for testing.
-        - configure_sockets_environment:
+            brief: Load basic wazuh configuration.
+        - configure_sockets_environment_function:
             type: fixture
             brief: Configure the socket listener to receive and send messages on the sockets.
-        - connect_to_sockets_module:
+        - connect_to_sockets_function:
             type: fixture
             brief: Bind to the configured sockets at module scope.
         - wait_for_authd_startup_module:
             type: fixture
             brief: Waits until Authd is accepting connections.
-        - get_current_test_case:
-            type: fixture
-            brief: gets the current test case from the tests' list
 
     assertions:
         - The 'port_input' from agent is formatted to 'cluster_input' for master

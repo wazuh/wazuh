@@ -82,12 +82,15 @@ def test_authd_valid_name_ip(test_configuration, test_metadata, set_wazuh_config
     tier: 0
 
     parameters:
-        - get_configuration:
+        - test_configuration:
+            type: dict
+            brief: Configuration loaded from `configuration_templates`.
+        - test_metadata:
+            type: dict
+            brief: Test case metadata.
+        - set_wazuh_configuration:
             type: fixture
-            brief: Get the configuration of the test.
-        - configure_environment:
-            type: fixture
-            brief: Configure a custom environment for testing.
+            brief: Load basic wazuh configuration.
         - configure_sockets_environment:
             type: fixture
             brief: Configure the socket listener to receive and send messages on the sockets.
@@ -103,9 +106,6 @@ def test_authd_valid_name_ip(test_configuration, test_metadata, set_wazuh_config
         - connect_to_sockets_module:
             type: fixture
             brief: Bind to the configured sockets at module scope.
-        - test_case:
-            type: list
-            brief: List all the test cases for the test.
         - tear_down:
             type: fixture
             brief: Roll back the daemon and client.keys state after the test ends.

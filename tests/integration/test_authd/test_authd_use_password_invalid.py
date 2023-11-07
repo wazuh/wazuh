@@ -99,19 +99,19 @@ def test_authd_use_password_invalid(test_configuration, test_metadata, set_wazuh
     tier: 1
 
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
-            brief: Configuration loaded from `configuration_template`.
-        - metadata:
+            brief: Configuration loaded from `configuration_templates`.
+        - test_metadata:
             type: dict
             brief: Test case metadata.
         - set_wazuh_configuration:
             type: fixture
-            brief: Set wazuh configuration.
+            brief: Load basic wazuh configuration.
         - truncate_monitored_files:
             type: fixture
             brief: Truncate all the log files and json alerts files before and after the test execution.
-        - configure_local_internal_options_module:
+        - configure_local_internal_options:
             type: fixture
             brief: Configure the local internal options file.
         - set_authd_pass:

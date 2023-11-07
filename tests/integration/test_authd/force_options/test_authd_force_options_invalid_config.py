@@ -79,16 +79,16 @@ def test_authd_force_options_invalid_config(test_configuration, test_metadata, s
     tier: 0
 
     parameters:
-        - get_current_test_case:
+        - test_configuration:
+            type: dict
+            brief: Configuration loaded from `configuration_templates`.
+        - test_metadata:
+            type: dict
+            brief: Test case metadata.
+        - set_wazuh_configuration:
             type: fixture
-            brief: gets the current test case from the tests' list
-        - configure_local_internal_options_module:
-            type: fixture
-            brief: Configure the local internal options file.
-        - override_authd_force_conf:
-            type: fixture
-            brief: Modified the authd configuration options.
-        - file_monitoring:
+            brief: Load basic wazuh configuration.
+        - configure_local_internal_options:
             type: fixture
             brief: Handle the monitoring of a specified file.
         - tear_down:

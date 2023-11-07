@@ -97,24 +97,33 @@ def test_key_request_func(test_configuration, test_metadata, set_wazuh_configura
     wazuh_min_version: 4.4.0
 
     parameters:
-        - get_configuration:
+        - test_configuration:
+            type: dict
+            brief: Configuration loaded from `configuration_templates`.
+        - test_metadata:
+            type: dict
+            brief: Test case metadata.
+        - set_wazuh_configuration:
             type: fixture
-            brief: Get the configuration of the test.
-        - configure_environment:
-            type: fixture
-            brief: Configure a custom environment for testing.
+            brief: Load basic wazuh configuration.
         - connect_to_sockets_function:
             type: fixture
             brief: Bind to the configured sockets at function scope.
-        - get_current_test_case:
+        - daemons_handler:
             type: fixture
-            brief: Gets the current test case from the tests' list.
+            brief: Handler of Wazuh daemons.
+        - configure_local_internal_options:
+            type: fixture
+            brief: Handle the monitoring of a specified file.
         - tear_down:
             type: fixture
             brief: Cleans the client.keys file.
         - copy_tmp_script:
             type: fixture
             brief: Copy the script to a temporary folder for testing.
+        - wait_for_authd_startup_function:
+            type: fixture
+            brief: Waits until Authd is accepting connections.
 
     assertions:
         - The exec_path must be configured correctly

@@ -106,24 +106,27 @@ def test_ossec_auth_messages(test_configuration, test_metadata, set_wazuh_config
     tier: 0
 
     parameters:
-        - get_configuration:
+        - test_configuration:
+            type: dict
+            brief: Configuration loaded from `configuration_templates`.
+        - test_metadata:
+            type: dict
+            brief: Test case metadata.
+        - set_wazuh_configuration:
             type: fixture
-            brief: Get configurations from the module.
+            brief: Load basic wazuh configuration.
         - set_up_groups:
             type: fixture
             brief: Create a testing group for agents and provide the test case list.
-        - configure_environment:
-            type: fixture
-            brief: Configure a custom environment for testing.
         - configure_sockets_environment:
             type: fixture
             brief: Configure environment for sockets and MITM.
         - clean_client_keys_file_module:
             type: fixture
             brief: Stops Wazuh and cleans any previous key in client.keys file at module scope.
-        - restart_authd:
+        - restart_wazuh_daemon_function:
             type: fixture
-            brief: Restart the 'wazuh-authd' daemon, clear the 'ossec.log' file and start a new file monitor.
+            brief: Restarts wazuh or a specific daemon passed.
         - wait_for_authd_startup_module:
             type: fixture
             brief: Waits until Authd is accepting connections.

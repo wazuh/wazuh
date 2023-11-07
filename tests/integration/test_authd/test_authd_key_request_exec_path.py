@@ -100,15 +100,15 @@ def test_key_request_exec_path( test_configuration, test_metadata, set_wazuh_con
     wazuh_min_version: 4.4.0
 
     parameters:
-        - get_configuration:
+        - test_configuration:
+            type: dict
+            brief: Configuration loaded from `configuration_templates`.
+        - test_metadata:
+            type: dict
+            brief: Test case metadata.
+        - set_wazuh_configuration:
             type: fixture
-            brief: Get the configuration of the test.
-        - configure_environment:
-            type: fixture
-            brief: Configure a custom environment for testing.
-        - get_current_test_case:
-            type: fixture
-            brief: Gets the current test case from the tests' list.
+            brief: Load basic wazuh configuration.
         - copy_tmp_script:
             type: fixture
             brief: Copy the script to a temporary folder for testing.

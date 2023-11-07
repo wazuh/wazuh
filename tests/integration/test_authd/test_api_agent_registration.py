@@ -161,15 +161,9 @@ def test_agentd_server_configuration(test_metadata, truncate_api_log, clean_regi
         4.4.0
 
     parameters:
-        - api_registration_parameters:
-            type: list
-            brief: List of agent registration tcases.
-        - get_configuration:
-            type: fixture
-            brief: Get configurations from the module.
-        - configure_environment:
-            type: fixture
-            brief: Configure a custom environment for testing.
+        - test_metadata:
+            type: dict
+            brief: Test case metadata.
         - truncate_api_log:
             type: fixture
             brief: Truncate API logs.

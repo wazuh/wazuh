@@ -104,9 +104,15 @@ def test_authd_local_messages(test_configuration, test_metadata, set_wazuh_confi
     tier: 0
 
     parameters:
-        - configure_environment:
+        - test_configuration:
+            type: dict
+            brief: Configuration loaded from `configuration_templates`.
+        - test_metadata:
+            type: dict
+            brief: Test case metadata.
+        - set_wazuh_configuration:
             type: fixture
-            brief: Configure a custom environment for testing.
+            brief: Load basic wazuh configuration.
         - configure_sockets_environment:
             type: fixture
             brief: Configure the socket listener to receive and send messages on the sockets at function scope.
@@ -119,9 +125,9 @@ def test_authd_local_messages(test_configuration, test_metadata, set_wazuh_confi
         - insert_pre_existent_agents:
             type: fixture
             brief: adds the required agents to the client.keys and global.db
-        - restart_authd_function:
+        - restart_wazuh_daemon_function:
             type: fixture
-            brief: stops the wazuh-authd daemon
+            brief: Restarts wazuh or a specific daemon passed.
         - wait_for_authd_startup_function:
             type: fixture
             brief: Waits until Authd is accepting connections.

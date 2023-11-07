@@ -130,15 +130,18 @@ def test_remote_enrollment(test_configuration, test_metadata, set_wazuh_configur
     tier: 0
 
     parameters:
-        - get_configuration:
+        - test_configuration:
+            type: dict
+            brief: Configuration loaded from `configuration_templates`.
+        - test_metadata:
+            type: dict
+            brief: Test case metadata.
+        - set_wazuh_configuration:
             type: fixture
-            brief: Get configurations from the module.
-        - configure_environment:
+            brief: Load basic wazuh configuration.
+        - restart_wazuh_daemon_function:
             type: fixture
-            brief: Configure a custom environment for testing.
-        - restart_authd:
-            type: fixture
-            brief: Restart the 'wazuh-authd' daemon, clear the 'ossec.log' file and start a new file monitor.
+            brief: Restarts wazuh or a specific daemon passed.
         - tear_down:
             type: fixture
             brief: cleans the client.keys file

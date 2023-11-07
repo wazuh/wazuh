@@ -376,10 +376,18 @@ def test_ossec_authd_agents_ctx(test_configuration, test_metadata, daemons_handl
     tier: 0
 
     parameters:
-        - get_configuration:
-        - configure_sockets_environment:
+        - test_configuration:
+            type: dict
+            brief: Configuration loaded from `configuration_templates`.
+        - test_metadata:
+            type: dict
+            brief: Test case metadata.
+        - set_wazuh_configuration:
             type: fixture
-            brief: Configure environment for sockets and MITM.
+            brief: Load basic wazuh configuration.
+        - daemons_handler_module:
+            type: fixture
+            brief: Handler of Wazuh daemons.
         - connect_to_sockets_module:
             type: fixture
             brief: Module scope version of 'connect_to_sockets' fixture.

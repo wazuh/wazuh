@@ -92,7 +92,7 @@ def set_up_groups(test_metadata, request):
 def test_ossec_auth_messages_with_key_hash(test_configuration, test_metadata, set_wazuh_configuration,
                                            configure_sockets_environment, connect_to_sockets_module,
                                            set_up_groups, insert_pre_existent_agents, restart_wazuh_daemon_function,
-                                           wait_for_authd_startup_function):
+                                           wait_for_authd_startup_function, tear_down):
     '''
     description:
         Checks that every input message in authd port generates the adequate output.
@@ -103,13 +103,19 @@ def test_ossec_auth_messages_with_key_hash(test_configuration, test_metadata, se
     tier: 0
 
     parameters:
-        - configure_environment:
+        - test_configuration:
+            type: dict
+            brief: Configuration loaded from `configuration_templates`.
+        - test_metadata:
+            type: dict
+            brief: Test case metadata.
+        - set_wazuh_configuration:
             type: fixture
-            brief: Configure a custom environment for testing.
+            brief: Load basic wazuh configuration.
         - configure_sockets_environment:
             type: fixture
             brief: Configure the socket listener to receive and send messages on the sockets.
-        - connect_to_sockets_function:
+        - connect_to_sockets_module:
             type: fixture
             brief: Bind to the configured sockets at function scope.
         - set_up_groups:

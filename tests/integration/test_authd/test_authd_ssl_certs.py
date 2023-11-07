@@ -151,9 +151,15 @@ def test_authd_ssl_certs(test_configuration, test_metadata, set_wazuh_configurat
     tier: 0
 
     parameters:
-        - get_configuration:
+        - test_configuration:
+            type: dict
+            brief: Configuration loaded from `configuration_templates`.
+        - test_metadata:
+            type: dict
+            brief: Test case metadata.
+        - set_wazuh_configuration:
             type: fixture
-            brief: Get configurations from the module.
+            brief: Load basic wazuh configuration.
         - generate_ca_certificate:
             type: fixture
             brief: Build the 'CA' (Certificate of Authority) and sign the certificate used by the testing agent.

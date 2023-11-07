@@ -132,21 +132,21 @@ def test_authd_force_options(test_configuration, test_metadata, set_wazuh_config
     tier: 0
 
     parameters:
-        - get_current_test_case:
+        - test_configuration:
+            type: dict
+            brief: Configuration loaded from `configuration_templates`.
+        - test_metadata:
+            type: dict
+            brief: Test case metadata.
+        - set_wazuh_configuration:
             type: fixture
-            brief: gets the current test case from the tests' list
-        - configure_local_internal_options_module:
+            brief: Load basic wazuh configuration.
+        - configure_local_internal_options:
             type: fixture
             brief: Configure the local internal options file.
-        - override_authd_force_conf:
-            type: fixture
-            brief: Modified the authd configuration options.
         - insert_pre_existent_agents:
             type: fixture
             brief: adds the required agents to the client.keys and global.db
-        - file_monitoring:
-            type: fixture
-            brief: Handle the monitoring of a specified file.
         - restart_authd_function:
             type: fixture
             brief: stops the wazuh-authd daemon.
@@ -190,21 +190,21 @@ def test_authd_force_insert(test_configuration, test_metadata, set_wazuh_configu
     tier: 0
 
     parameters:
-        - get_current_test_case:
+        - test_configuration:
+            type: dict
+            brief: Configuration loaded from `configuration_templates`.
+        - test_metadata:
+            type: dict
+            brief: Test case metadata.
+        - set_wazuh_configuration:
             type: fixture
-            brief: gets the current test case from the tests' list
-        - configure_local_internal_options_module:
+            brief: Load basic wazuh configuration.
+        - configure_local_internal_options:
             type: fixture
             brief: Configure the local internal options file.
-        - override_authd_force_conf:
-            type: fixture
-            brief: Modified the authd configuration options.
         - insert_pre_existent_agents:
             type: fixture
             brief: adds the required agents to the client.keys and global.db
-        - file_monitoring:
-            type: fixture
-            brief: Handle the monitoring of a specified file.
         - restart_authd_function:
             type: fixture
             brief: stops the wazuh-authd daemon.
@@ -217,6 +217,7 @@ def test_authd_force_insert(test_configuration, test_metadata, set_wazuh_configu
         - tear_down:
             type: fixture
             brief: Roll back the daemon and client.keys state after the test ends.
+
 
     assertions:
         - The received output must match with expected.
@@ -255,21 +256,21 @@ def test_authd_force_insert_only(test_configuration, test_metadata, set_wazuh_co
     tier: 0
 
     parameters:
-        - get_current_test_case:
+        - test_configuration:
+            type: dict
+            brief: Configuration loaded from `configuration_templates`.
+        - test_metadata:
+            type: dict
+            brief: Test case metadata.
+        - set_wazuh_configuration:
             type: fixture
-            brief: gets the current test case from the tests' list
-        - configure_local_internal_options_module:
+            brief: Load basic wazuh configuration.
+        - configure_local_internal_options:
             type: fixture
             brief: Configure the local internal options file.
-        - override_authd_force_conf:
-            type: fixture
-            brief: Modified the authd configuration options.
         - insert_pre_existent_agents:
             type: fixture
             brief: adds the required agents to the client.keys and global.db
-        - file_monitoring:
-            type: fixture
-            brief: Handle the monitoring of a specified file.
         - restart_authd_function:
             type: fixture
             brief: stops the wazuh-authd daemon.
@@ -282,6 +283,7 @@ def test_authd_force_insert_only(test_configuration, test_metadata, set_wazuh_co
         - tear_down:
             type: fixture
             brief: Roll back the daemon and client.keys state after the test ends.
+
 
     assertions:
         - The received output must match with expected.
