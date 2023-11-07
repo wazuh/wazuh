@@ -190,7 +190,7 @@ private:
         }
         catch (const std::exception& e)
         {
-            std::cout << "Action failed: " << e.what() << std::endl;
+            std::cout << "Action for '" << m_topicName << "' failed: " << e.what() << std::endl;
         }
 
         m_actionInProgress = false;
