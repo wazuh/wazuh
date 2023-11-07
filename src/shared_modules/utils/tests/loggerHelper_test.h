@@ -11,8 +11,10 @@
 
 #ifndef LOGGER_HELPER_TEST_H
 #define LOGGER_HELPER_TEST_H
+
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
+#include "loggerHelper.h"
 
 void debugVerboseTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, ...);
 void debugTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, ...);
@@ -29,11 +31,7 @@ class LoggerHelperTest : public ::testing::Test
 
         static void SetUpTestSuite()
         {
-            Log::debugVerbose.assignLogFunction(debugVerboseTestFunction, "Tag");
-            Log::debug.assignLogFunction(debugTestFunction, "Tag");
-            Log::info.assignLogFunction(infoTestFunction, "Tag");
-            Log::warning.assignLogFunction(warningTestFunction, "Tag");
-            Log::error.assignLogFunction(errorTestFunction, "Tag");
+            Log::assignLogFunction(infoTestFunction, warningTestFunction, debugTestFunction, debugVerboseTestFunction, errorTestFunction);
         }
 
         virtual void SetUp()

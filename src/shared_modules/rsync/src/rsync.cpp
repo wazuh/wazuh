@@ -227,7 +227,7 @@ void RemoteSync::initialize(std::function<void(const std::string&)> logFunction)
 void RemoteSync::initializeFullLogFunction(full_log_fnc_t debugVerboseFunction, full_log_fnc_t debugFunction,
                                            full_log_fnc_t infoFunction, full_log_fnc_t warningFunction, full_log_fnc_t errorFunction )
 {
-    Log::loggingObject.assignLogFunction(infoFunction, warningFunction, debugFunction, debugVerboseFunction, errorFunction);
+    Log::assignLogFunction(infoFunction, warningFunction, debugFunction, debugVerboseFunction, errorFunction);
 }
 
 void RemoteSync::teardown()
