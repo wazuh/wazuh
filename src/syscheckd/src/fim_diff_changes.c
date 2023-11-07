@@ -336,6 +336,7 @@ int fim_diff_registry_tmp(const char *value_data,
 
     char *aux_data = NULL;
     int ret = 0;
+    FILE *fp;
 
     mkdir_ex(diff->tmp_folder);
 
