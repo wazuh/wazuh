@@ -37,9 +37,8 @@ Vagrant.configure("2") do |config|
         echo "Installing dependencies to build the engine"
 
         #Dependencies
-        add-apt-repository ppa:rmescandon/yq -y
         apt-get update
-        apt-get install build-essential dkms linux-headers-$(uname -r) gcc g++ make libc6-dev automake autoconf gnupg apt-transport-https libtool libssl-dev jq yq tig linux-tools-common linux-tools-generic linux-tools-`uname -r` bpfcc-tools sysstat python3-pip -y
+        apt-get install build-essential dkms linux-headers-$(uname -r) gcc g++ make libc6-dev automake autoconf gnupg apt-transport-https libtool libssl-dev jq tig linux-tools-common linux-tools-generic linux-tools-`uname -r` bpfcc-tools sysstat python3-pip -y
 
         #Delta installation, required for engine-diff
         wget https://github.com/dandavison/delta/releases/download/0.16.5/git-delta-musl_0.16.5_amd64.deb
@@ -51,7 +50,6 @@ Vagrant.configure("2") do |config|
         export PATH=$PATH:/usr/local/bin
 
         echo "--- Downlading the engine from github ---"
-        apt-get update
         su vagrant -c "mkdir engine"
         cd engine
         su vagrant -c "git clone --branch 11334-dev-new-wazuh-engine  https://github.com/wazuh/wazuh.git"
@@ -76,8 +74,6 @@ Vagrant.configure("2") do |config|
         echo -e '#!/bin/bash\nsudo '$SCRIPT_CHECKEVENT_SRC' "$@"' | tee "$SCRIPT_CHECKEVENT_TARGET" > /dev/null
         chmod +x "$SCRIPT_CHECKEVENT_TARGET"
 
-
-
         # Add autocompletion to profile
         echo "source $ENGINE_SRC_DIR/tools/vagrant/autocompletion.sh" >> /etc/profile
 
@@ -92,16 +88,23 @@ Vagrant.configure("2") do |config|
             exit -1
         fi
 
-        # Get IP Address
-        ip="127.0.0.1"
-        echo "--- Setting up Wazuh in $ip ---"
+        # Configure and install manager
+        echo "--- Setting up Wazuh in 127.0.0.1 ---"
         WAZUH_INSTALL=/home/vagrant/wazuh-install
         mkdir -p  $WAZUH_INSTALL && cd $WAZUH_INSTALL
         curl -sO https://packages.wazuh.com/4.6/wazuh-install.sh
+        if [ $? -ne 0 ]; then
+            echo "Failed to download wazuh-install.sh"
+            exit 1
+        fi
         curl -sO https://packages.wazuh.com/4.6/config.yml
-        sed -E -i "s/ ip: <indexer-node-ip>/ ip: $ip/gm" config.yml
-        sed -E -i "s/ ip: <wazuh-manager-ip>/ ip: $ip/gm" config.yml
-        sed -E -i "s/ ip: <dashboard-node-ip>/ ip: $ip/gm" config.yml
+        if [ $? -ne 0 ]; then
+            echo "Failed to download config.yml"
+            exit 1
+        fi
+        sed -i 's/ip: "<indexer-node-ip>"/ip: "127.0.0.1"/' config.yml
+        sed -i 's/ip: "<wazuh-manager-ip>"/ip: "127.0.0.1"/' config.yml
+        sed -i 's/ip: "<dashboard-node-ip>"/ip: "127.0.0.1"/' config.yml
         bash wazuh-install.sh --generate-config-files
         bash wazuh-install.sh -a
 
@@ -118,6 +121,12 @@ Vagrant.configure("2") do |config|
         curl -s --cacert /etc/filebeat/certs/root-ca.pem -u 'admin:wazuhEngine5+' -X POST "https://127.0.0.1/api/saved_objects/index-pattern/wazuh-alerts-5x-*" -H 'osd-xsrf: true' -H 'Content-Type: application/json' -d   '{"attributes": {"title": "wazuh-alerts-5.x-*", "timeFieldName": "@timestamp" }}'
 
         systemctl restart filebeat.service
+
+        # Install opensearch security plugin
+        echo "--- Setting up opensearch security analytics plugin ---"
+        # /usr/share/wazuh-indexer/bin/opensearch-plugin install org.opensearch.plugin:opensearch-security-analytics:2.8.0.0
+        sudo -u wazuh-dashboard /usr/share/wazuh-dashboard/bin/opensearch-dashboards-plugin install securityAnalyticsDashboards
+        systemctl restart wazuh-indexer.service wazuh-dashboard.service
 
         WAZUH_DIR=/var/ossec
         ENGINE_DIR=$WAZUH_DIR/engine
