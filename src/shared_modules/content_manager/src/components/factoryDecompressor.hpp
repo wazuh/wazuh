@@ -17,6 +17,7 @@
 #include "skipStep.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
+#include "zipDecompressor.hpp"
 #include <filesystem>
 #include <map>
 #include <memory>
@@ -39,7 +40,8 @@ private:
      */
     static std::string deduceCompressionType(const std::string& inputFile)
     {
-        const std::map<std::string, std::string> COMPRESSED_EXTENSIONS {{".gz", "gzip"}, {".xz", "xz"}};
+        const std::map<std::string, std::string> COMPRESSED_EXTENSIONS {
+            {".gz", "gzip"}, {".xz", "xz"}, {".zip", "zip"}};
         const auto& fileExtension {std::filesystem::path(inputFile).extension()};
 
         if (const auto& it {COMPRESSED_EXTENSIONS.find(fileExtension)}; it != COMPRESSED_EXTENSIONS.end())
@@ -69,17 +71,22 @@ public:
 
         std::cout << "Creating '" << decompressorType << "' content decompressor" << std::endl;
 
-        if (decompressorType.compare("xz") == 0)
+        if ("xz" == decompressorType)
         {
             return std::make_shared<XZDecompressor>();
         }
 
-        if (decompressorType.compare("gzip") == 0)
+        if ("gzip" == decompressorType)
         {
             return std::make_shared<GzipDecompressor>();
         }
 
-        if (decompressorType.compare("raw") == 0)
+        if ("zip" == decompressorType)
+        {
+            return std::make_shared<ZipDecompressor>();
+        }
+
+        if ("raw" == decompressorType)
         {
             return std::make_shared<SkipStep>();
         }
