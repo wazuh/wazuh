@@ -1,9 +1,11 @@
 from datetime import datetime
 from enum import Enum
+import json
 from api_communication.client import APIClient
 from api_communication.proto import test_pb2 as api_test
 from api_communication.proto import engine_pb2 as api_engine
-from google.protobuf.json_format import ParseDict
+from google.protobuf.json_format import ParseDict 
+from google.protobuf.json_format import MessageToJson
 
 
 class ApiConfig(Enum):
@@ -50,9 +52,21 @@ class ApiConnector:
             if err:
                 print(err)
                 exit(1)
-            return response
+            response_post = ParseDict(response, api_test.RunPost_Response())
+            if response_post.status != api_engine.OK:
+                print("Run error: {}".format(response_post.error))
+                exit(1)
+
+            return response_post
         except Exception as ex:
             print('Could not send event to TEST api. Error: {}'.format(ex))
+            exit(1)
+
+    def message_to_json(self, value):
+        try:
+            return json.loads(MessageToJson(value))
+        except Exception as ex:
+            print('Could not convert value to json. Error: {}'.format(ex))
             exit(1)
 
     def create_session(self):
