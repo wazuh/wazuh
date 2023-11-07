@@ -15,6 +15,7 @@
 #include "gtest/gtest.h"
 #include <filesystem>
 #include <memory>
+#include <vector>
 
 // Folder containing all the input files.
 const auto INPUT_FILES_DIR {std::filesystem::current_path() / "input_files" / "zipDecompressor"};
