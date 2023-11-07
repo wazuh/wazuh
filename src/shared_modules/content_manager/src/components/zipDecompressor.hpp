@@ -68,10 +68,7 @@ private:
         }
 
         // Decompression finished: Update paths.
-        context.data["paths"].clear();
-        std::for_each(newPaths.begin(),
-                      newPaths.end(),
-                      [&context](std::string& path) { context.data["paths"].push_back(std::move(path)); });
+        context.data["paths"] = std::move(newPaths);
     }
 
 public:
