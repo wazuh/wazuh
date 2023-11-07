@@ -42,11 +42,9 @@ EXPORTED void rsync_initialize(log_fnc_t log_function)
     });
 }
 
-EXPORTED void rsync_initialize_full_log_function(full_log_fnc_t debugVerboseFunction, full_log_fnc_t debugFunction,
-                                                 full_log_fnc_t infoFunction, full_log_fnc_t warningFunction,
-                                                 full_log_fnc_t errorFunction)
+EXPORTED void rsync_initialize_full_log_function(log_functions_t logFuncs)
 {
-    RemoteSync::initializeFullLogFunction(debugVerboseFunction, debugFunction, infoFunction, warningFunction, errorFunction);
+    RemoteSync::initializeFullLogFunction(logFuncs);
 }
 
 EXPORTED void rsync_teardown(void)
@@ -224,10 +222,10 @@ void RemoteSync::initialize(std::function<void(const std::string&)> logFunction)
     }
 }
 
-void RemoteSync::initializeFullLogFunction(full_log_fnc_t debugVerboseFunction, full_log_fnc_t debugFunction,
-                                           full_log_fnc_t infoFunction, full_log_fnc_t warningFunction, full_log_fnc_t errorFunction )
+void RemoteSync::initializeFullLogFunction(log_functions_t logFuncs)
 {
-    Log::assignLogFunction(infoFunction, warningFunction, debugFunction, debugVerboseFunction, errorFunction);
+    Log::assignLogFunction(logFuncs);
+    logInfo(RSYNC_LOG_TAG, "THIS IS A TEST FROM RSYNC");
 }
 
 void RemoteSync::teardown()

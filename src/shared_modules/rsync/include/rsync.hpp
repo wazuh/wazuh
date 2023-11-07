@@ -30,8 +30,11 @@
 #include "json.hpp"
 #include "commonDefs.h"
 #include "builder.hpp"
+#include "../../../headers/logging_helper.h"
 
 using SyncCallbackData = const std::function<void(const std::string&)>;
+
+typedef full_log_fnc_t (*log_functions_t) (modules_log_level_t level);
 
 constexpr auto RSYNC_LOG_TAG { "rsync" };
 
@@ -54,9 +57,7 @@ class EXPORTED RemoteSync
          * @param warningFunction Function pointer to the warning function.
          * @param errorFunction Function pointer to the error function.
          */
-        static void initializeFullLogFunction(full_log_fnc_t debugVerboseFunction, full_log_fnc_t debugFunction,
-                                              full_log_fnc_t infoFunction, full_log_fnc_t warningFunction,
-                                              full_log_fnc_t errorFunction);
+        static void initializeFullLogFunction(log_functions_t logFuncs);
 
         /**
          * @brief Remote sync initializes the instance.

@@ -117,7 +117,7 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
         // checksumCtx.rightCtx will have the needed (final) information
         messageCreator->send(callbackWrapper, startConfiguration, checksumCtx.rightCtx);
 
-        logDebug2(RSYNC_LOG_TAG, "Remote sync started: " + RSync::IntegrityCommands[checksumCtx.rightCtx.type]);
+        //logDebug2(RSYNC_LOG_TAG, "Remote sync started: " + RSync::IntegrityCommands[checksumCtx.rightCtx.type]);
     }
     else
     {
