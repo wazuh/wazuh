@@ -54,6 +54,11 @@ import pytest
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 from wazuh_testing.tools.socket_controller import SocketController
 from wazuh_testing.tools.certificate_controller import CertificateController
+from wazuh_testing.utils import services
+from wazuh_testing.tools.monitors import file_monitor
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.utils.callbacks import generate_callback
+from wazuh_testing.modules.authd.patterns import PREFIX
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
@@ -100,6 +105,21 @@ monitored_sockets_params = [('wazuh-modulesd', None, True), ('wazuh-db', None, T
 receiver_sockets, monitored_sockets = None, None
 
 
+def restart_wazuh_authd():
+    # Stop Wazuh
+    services.control_service('stop', daemon='wazuh-authd')
+    time.sleep(1)
+    services.check_daemon_status(running_condition=False, target_daemon='wazuh-authd')
+    # Start Wazuh daemons
+    time.sleep(1)
+    services.control_service('start', daemon='wazuh-authd')
+    """Wait until agentd has begun"""
+
+    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
+    log_monitor.start(timeout=30, encoding="utf-8",
+                      callback=generate_callback(rf'{PREFIX}Accepting connections on port 1515'))
+    time.sleep(1)
+
 # fixtures
 @pytest.fixture(scope="function")
 def generate_ca_certificate(test_metadata):
@@ -117,7 +137,6 @@ def generate_ca_certificate(test_metadata):
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_authd_ssl_certs(test_configuration, test_metadata, set_wazuh_configuration,
-                         restart_authd_function, wait_for_authd_startup_function,
                          generate_ca_certificate, tear_down):
     '''
     description:
@@ -160,7 +179,7 @@ def test_authd_ssl_certs(test_configuration, test_metadata, set_wazuh_configurat
     '''
     verify_host = (test_metadata['verify_host'] == 'yes')
     option = test_metadata['sim_option']
-    print(option)
+    restart_wazuh_authd()
     address, family, connection_protocol = receiver_sockets_params[0]
     SSL_socket = SocketController(address, family=family, connection_protocol=connection_protocol, open_at_start=False)
     if option != 'NO CERT':
