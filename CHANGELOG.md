@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file.
 - Improved wazuh-db detection of deleted database files. ([#18476](https://github.com/wazuh/wazuh/pull/18476))
 - Added timeout and retry parameters to the VirusTotal integration. ([#16893](https://github.com/wazuh/wazuh/pull/16893))
 - Extended wazuh-analysisd EPS metrics with events dropped by overload and remaining credits in the previous cycle. ([#18988](https://github.com/wazuh/wazuh/pull/18988))
+- Replaced Filebeat's date index name processor. ([#19819](https://github.com/wazuh/wazuh/pull/19819))
 
 ### Agent
 
@@ -30,7 +31,6 @@ All notable changes to this project will be documented in this file.
 - Fixed process path retrieval in Syscollector on Windows XP. ([#16839](https://github.com/wazuh/wazuh/pull/16839))
 - Fixed detection of the OS version on Alpine Linux. ([#16056](https://github.com/wazuh/wazuh/pull/16056))
 - Fixed Solaris 10 name not showing in the Dashboard. ([#18642](https://github.com/wazuh/wazuh/pull/18642))
-
 
 ## [v4.7.1]
 
