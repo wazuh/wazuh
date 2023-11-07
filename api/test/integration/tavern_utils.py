@@ -508,3 +508,27 @@ def healthcheck_agent_restart(response, agents_list):
     time.sleep(20)
     # Wait for active agent status (up to 25 seconds)
     check_agent_active_status(agents_list)
+
+
+def validate_update_check_response(response):
+    """Check if the last_available_* dicts have the correct keys and values.
+
+    Parameters
+    ----------
+    response : Request response
+    """
+    available_update_keys = ["last_available_major", "last_available_minor", "last_available_patch"]
+    keys_to_check = [
+        ("tag", str), ("description", (str, type(None))), ("title", str), ("published_date", str), ("semver", dict)
+    ]
+
+    data = response.json()['data']
+
+    for available_update in available_update_keys:
+        available_update_data = data[available_update]
+
+        assert isinstance(available_update_data, dict)
+
+        if available_update_data != {}:
+            for key, value_type in keys_to_check:
+                assert isinstance(available_update_data[key], value_type)

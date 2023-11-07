@@ -247,7 +247,7 @@ def test_get_update_information_template(last_check_date, update_check):
     assert 'update_check' in template
     assert template['update_check'] == update_check
     assert 'current_version' in template
-    assert template['current_version'] == wazuh.__version__
+    assert template['current_version'] == f"v{wazuh.__version__}"
     assert 'last_available_major' in template
     assert 'last_available_minor' in template
     assert 'last_available_patch' in template
@@ -327,6 +327,7 @@ async def test_query_update_check_service_returns_correct_data_when_status_200(
     client_session_get_mock.assert_called()
 
     assert update_information['status_code'] == status
+    assert update_information['uuid'] == installation_uid
 
     if len(major):
         assert (

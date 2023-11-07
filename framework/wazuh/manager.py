@@ -412,11 +412,14 @@ def get_update_information(update_information: dict) -> WazuhResult:
     if not update_information:
         # Return an empty response because the update_check is disabled
         return WazuhResult({'data': get_update_information_template(update_check=False)})
+    status_code = update_information.pop('status_code')
+    uuid = update_information.get('uuid')
+    tag = update_information.get('current_version')
 
-    if update_information['status_code'] != 200:
-        raise WazuhInternalError(2100, extra_message=update_information['message'])
+    if status_code != 200:
+        extra_message = f"{uuid}, {tag}" if status_code == 401 else update_information['message']
+        raise WazuhInternalError(2100, extra_message=extra_message)
 
-    update_information.pop('status_code')
     update_information.pop('message', None)
 
     return WazuhResult({'data': update_information})
