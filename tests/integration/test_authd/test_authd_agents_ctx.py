@@ -75,7 +75,7 @@ test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cas
 test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 
 # Variables
-daemons_handler_configuration = {'daemons': ['wazuh-modulesd', 'wazuh-db', 'wazuh-authd']}
+daemons_handler_configuration = {'all_daemons': True}
 
 receiver_sockets_params = [(("localhost", 1515), 'AF_INET', 'SSL_TLSv1_2'), (AUTHD_SOCKET_PATH, 'AF_UNIX', 'TCP')]
 
@@ -361,7 +361,7 @@ def duplicate_name_agent_delete_test(server):
     assert check_diff('userB', False), 'Agent diff folder was not removed'
 
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_ossec_authd_agents_ctx(test_configuration, test_metadata, daemons_handler,
+def test_ossec_authd_agents_ctx(test_configuration, test_metadata, daemons_handler_module,
                                 set_wazuh_configuration, connect_to_sockets_module):
     '''
     description:
