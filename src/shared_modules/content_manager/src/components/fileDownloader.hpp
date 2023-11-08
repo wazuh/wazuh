@@ -86,14 +86,16 @@ private:
         const auto& url {context.spUpdaterBaseContext->configData.at("url").get_ref<const std::string&>()};
 
         // Check if file is compressed.
-        const auto compressed {
+        const auto& compressed {
             "raw" != context.spUpdaterBaseContext->configData.at("compressionType").get_ref<const std::string&>()};
 
         // Generate output file path. If the input file is compressed, the output file will be in the downloads
         // folder and if it's not compressed, in the contents folder.
-        auto outputFilePath {compressed ? context.spUpdaterBaseContext->downloadsFolder
-                                        : context.spUpdaterBaseContext->contentsFolder};
-        outputFilePath = outputFilePath / std::filesystem::path(url).filename();
+        const auto& contentFileName {
+            context.spUpdaterBaseContext->configData.at("contentFileName").get_ref<const std::string&>()};
+        const auto outputFilePath {(compressed ? context.spUpdaterBaseContext->downloadsFolder
+                                               : context.spUpdaterBaseContext->contentsFolder) /
+                                   contentFileName};
 
         // Lambda used on error case.
         const auto onError {[](const std::string& errorMessage, const long& errorCode)
@@ -104,10 +106,8 @@ private:
         // Download and store file.
         HTTPRequest::instance().download(HttpURL(url), outputFilePath, onError);
 
-        // Process input file hash.
-        auto inputFileHash {hashFile(outputFilePath)};
-
         // Just process the new file if the hash is different from the last one.
+        auto inputFileHash {hashFile(outputFilePath)};
         if (context.spUpdaterBaseContext->downloadedFileHash == inputFileHash)
         {
             std::cout << "Content file didn't change from last download" << std::endl;

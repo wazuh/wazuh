@@ -18,7 +18,7 @@
  * @url: URL where the content is located.
  * @outputFolder: if defined, the content will be downloaded to this folder.
  * @dataFormat: Format of the content downloaded or after decompression.
- * @fileName: Name of the file to download or file name in case of raw content.
+ * @contentFileName: Name for the downloaded file (except if using the offline contentSource).
  * @offset (integer): Api offset used to override (if greater) the one set on the database.
  */
 static const nlohmann::json CONFIG_PARAMETERS =
@@ -37,7 +37,6 @@ static const nlohmann::json CONFIG_PARAMETERS =
                 "outputFolder": "/tmp/testProvider",
                 "dataFormat": "json",
                 "contentFileName": "example.json",
-                "s3FileName": "content.filtered_little.1.xz",
                 "databasePath": "/tmp/content_updater/rocksdb",
                 "offset": 0
             }

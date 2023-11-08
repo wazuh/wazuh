@@ -22,6 +22,7 @@
 const auto OK_STATUS = R"({"stage":"FileDownloader","status":"ok"})"_json;
 const auto FAIL_STATUS = R"({"stage":"FileDownloader","status":"fail"})"_json;
 const auto BASE_URL = "localhost:4444/";
+const auto CONTENT_FILE_NAME = "content.xyz";
 
 void FileDownloaderTest::SetUpTestSuite()
 {
@@ -42,6 +43,7 @@ void FileDownloaderTest::SetUp()
     m_spUpdaterBaseContext->downloadsFolder = (m_outputFolder / "downloads").string();
     m_spUpdaterBaseContext->contentsFolder = (m_outputFolder / "contents").string();
     m_spUpdaterBaseContext->configData["url"] = BASE_URL;
+    m_spUpdaterBaseContext->configData["contentFileName"] = CONTENT_FILE_NAME;
 
     m_spUpdaterContext = std::make_shared<UpdaterContext>();
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
@@ -96,7 +98,7 @@ TEST_F(FileDownloaderTest, DownloadBadURL)
 TEST_F(FileDownloaderTest, DownloadRawFile)
 {
     // Given that the file is not compressed, the download should be made into de 'contentsFolder'.
-    const auto expectedFilepath {m_spUpdaterBaseContext->contentsFolder / "raw"};
+    const auto expectedFilepath {m_spUpdaterBaseContext->contentsFolder / CONTENT_FILE_NAME};
 
     // Set up expected data.
     nlohmann::json expectedData;
@@ -125,7 +127,7 @@ TEST_F(FileDownloaderTest, DownloadRawFile)
 TEST_F(FileDownloaderTest, DownloadCompressedFile)
 {
     // Given that the file is compressed, the download should be made into de 'downloadsFolder'.
-    const auto expectedFilepath {m_spUpdaterBaseContext->downloadsFolder / "xz"};
+    const auto expectedFilepath {m_spUpdaterBaseContext->downloadsFolder / CONTENT_FILE_NAME};
 
     // Set up expected data.
     nlohmann::json expectedData;
@@ -155,7 +157,7 @@ TEST_F(FileDownloaderTest, DownloadCompressedFile)
 TEST_F(FileDownloaderTest, DownloadSameFileTwice)
 {
     // Given that the file is compressed, the download should be made into de 'downloadsFolder'.
-    const auto expectedFilepath {m_spUpdaterBaseContext->downloadsFolder / "xz"};
+    const auto expectedFilepath {m_spUpdaterBaseContext->downloadsFolder / CONTENT_FILE_NAME};
 
     // Set up expected data.
     nlohmann::json expectedData;
@@ -192,7 +194,7 @@ TEST_F(FileDownloaderTest, DownloadSameFileTwice)
 TEST_F(FileDownloaderTest, DownloadSameFileTwiceAndThenADifferentOne)
 {
     // Given that the file is compressed, the download should be made into de 'downloadsFolder'.
-    const auto compressedExpectedFilepath {m_spUpdaterBaseContext->downloadsFolder / "xz"};
+    const auto compressedExpectedFilepath {m_spUpdaterBaseContext->downloadsFolder / CONTENT_FILE_NAME};
 
     // Set up expected data.
     nlohmann::json expectedData;
@@ -225,7 +227,7 @@ TEST_F(FileDownloaderTest, DownloadSameFileTwiceAndThenADifferentOne)
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
 
     // Set expected paths. Given that the file is raw, the download should be made into de 'contentsFolder'.
-    const auto rawExpectedFilepath {m_spUpdaterBaseContext->contentsFolder / "raw"};
+    const auto rawExpectedFilepath {m_spUpdaterBaseContext->contentsFolder / CONTENT_FILE_NAME};
     expectedData["paths"].push_back(rawExpectedFilepath.string());
 
     // Set config data. This will make the downloader to download from 'localhost:4444/raw'.
