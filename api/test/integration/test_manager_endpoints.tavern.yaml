@@ -1799,7 +1799,7 @@ stages:
           total_failed_items: 0
     delay_after: 50
 
-  - name: Get available updates
+  - name: Try to get available updates
     request:
       verify: false
       url: "{protocol:s}://{host:s}:{port:d}/manager/version/check"
@@ -1811,7 +1811,7 @@ stages:
       json:
         error: 2100
 
-  - name: Get available updates with force option
+  - name: Try to get available updates with force option
     request:
       verify: false
       url: "{protocol:s}://{host:s}:{port:d}/manager/version/check"

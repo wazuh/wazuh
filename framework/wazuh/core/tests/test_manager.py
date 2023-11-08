@@ -382,7 +382,7 @@ async def test_query_update_check_service_request(
     """Test that query_update_check_service function make request to the URL with the correct headers."""
 
     version = '4.8.0'
-    with patch('api.signals.wazuh.__version__', version):
+    with patch('framework.wazuh.core.manager.wazuh.__version__', version):
         await query_update_check_service(installation_uid)
 
         client_session_get_mock.assert_called()

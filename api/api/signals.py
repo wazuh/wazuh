@@ -4,16 +4,12 @@
 import asyncio
 import logging
 import os
-import ssl
 import uuid
 from functools import wraps
 from typing import AsyncGenerator, Callable
 
-import aiohttp
-import certifi
 from aiohttp import web
 
-import wazuh
 from api.constants import INSTALLATION_UID_KEY, INSTALLATION_UID_PATH, UPDATE_INFORMATION_KEY
 from wazuh.core import common
 from wazuh.core.cluster.utils import running_in_master_node
@@ -47,29 +43,6 @@ def cancel_signal_handler(func: Callable) -> Callable:
         except asyncio.CancelledError:
             pass
     return wrapper
-
-
-def _get_connector() -> aiohttp.TCPConnector:
-    """Return a TCPConnector with default ssl context.
-
-    Returns
-    -------
-    aiohttp.TCPConnector
-        Instance with default ssl connector.
-    """
-    ssl_context = ssl.create_default_context(cafile=certifi.where())
-    return aiohttp.TCPConnector(ssl=ssl_context)
-
-
-def _get_current_version() -> str:
-    """Return the version of running Wazuh instance.
-
-    Returns
-    -------
-    str
-        Wazuh version in X.Y.Z format.
-    """
-    return wazuh.__version__
 
 
 async def modify_response_headers(request, response):
