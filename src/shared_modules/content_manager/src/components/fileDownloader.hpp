@@ -89,7 +89,7 @@ private:
         const auto& compressed {
             "raw" != context.spUpdaterBaseContext->configData.at("compressionType").get_ref<const std::string&>()};
 
-        // Generate output file path. If the input file is compressed, the output file will be in the downloads
+        // Generate output file path. If the downloaded file is compressed, the output file will be in the downloads
         // folder and if it's not compressed, in the contents folder.
         const auto& contentFileName {
             context.spUpdaterBaseContext->configData.at("contentFileName").get_ref<const std::string&>()};
@@ -107,15 +107,15 @@ private:
         HTTPRequest::instance().download(HttpURL(url), outputFilePath, onError);
 
         // Just process the new file if the hash is different from the last one.
-        auto inputFileHash {hashFile(outputFilePath)};
-        if (context.spUpdaterBaseContext->downloadedFileHash == inputFileHash)
+        auto downloadFileHash {hashFile(outputFilePath)};
+        if (context.spUpdaterBaseContext->downloadedFileHash == downloadFileHash)
         {
             std::cout << "Content file didn't change from last download" << std::endl;
             return;
         }
 
         // Store new hash.
-        context.spUpdaterBaseContext->downloadedFileHash = std::move(inputFileHash);
+        context.spUpdaterBaseContext->downloadedFileHash = std::move(downloadFileHash);
 
         // Download finished: Update context paths.
         context.data.at("paths").push_back(outputFilePath);
