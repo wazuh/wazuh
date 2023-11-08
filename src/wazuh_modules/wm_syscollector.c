@@ -139,8 +139,7 @@ void* wm_sys_main(wm_sys_t *sys) {
         if(rsync_module = so_check_module_loaded("rsync"), rsync_module) {
             rsync_initialize_full_log_func rsync_initialize_log_function_ptr = so_get_function_sym(rsync_module, "rsync_initialize_full_log_function");
             if(rsync_initialize_log_function_ptr) {
-                //rsync_initialize_log_function_ptr(loggingFunctionWrapper);
-                rsync_initialize_log_function_ptr(NULL);
+                rsync_initialize_log_function_ptr(mtLoggingFunctionsWrapper);
             }
             // Even when the RTLD_NOLOAD flag was used for dlopen(), we need a matching call to dlclose()
 #ifndef WIN32

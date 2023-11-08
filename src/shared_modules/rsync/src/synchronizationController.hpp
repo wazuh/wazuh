@@ -69,7 +69,7 @@ namespace RSync
 
                         if (value > itTable->second)
                         {
-                            //logDebug2(RSYNC_LOG_TAG, "Sync id: " + std::to_string(value) + " is not the current id: " + std::to_string(itTable->second) + " for table: " + table);
+                            logDebug2(RSYNC_LOG_TAG, "Sync id: " + std::to_string(value) + " is not the current id: " + std::to_string(itTable->second) + " for table: " + table);
                             throw std::runtime_error { "Sync id is not the current id" };
                         }
                     }

@@ -28,14 +28,10 @@
 #endif
 
 #include "commonDefs.h"
-#include "../../../headers/logging_helper.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-typedef void ((*full_log_fnc_t)(const char* tag, const char* file, int line, const char* func, const char* msg, ...));
-typedef full_log_fnc_t (*log_functions_t) (modules_log_level_t level);
 
 /**
  * @brief Initializes the shared library.
@@ -45,16 +41,11 @@ typedef full_log_fnc_t (*log_functions_t) (modules_log_level_t level);
 EXPORTED void rsync_initialize(log_fnc_t log_function);
 
 /**
- * @brief Initializes the shared library with a full log function, it is, a function
- * that can handle a tag, the file name, the line number and the function name.
+ * @brief Initialize the shared library with a full log function.
  *
- * @param debugVerboseFunction Function pointer to the debug verbose log function.
- * @param debugFunction Function pointer to the debug log function.
- * @param infoFunction Function pointer to the info log function.
- * @param warningFunction Function pointer to the warning function.
- * @param errorFunction Function pointer to the error function.
+ * @param logFunc Pointer to full log function to be used by the rsync.
  */
-EXPORTED void rsync_initialize_full_log_function(log_functions_t logFuncs);
+EXPORTED void rsync_initialize_full_log_function(full_log_fnc_t logFunc);
 
 /**
  * @brief Turns off the services provided by the shared library.

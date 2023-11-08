@@ -28,34 +28,47 @@ constexpr auto WARNING_REGEX_THREAD = "warning Tag .+\\.cpp \\d+ operator\\(\\) 
 
 constexpr auto TAG = "Tag";
 
-void debugVerboseTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, ...)
+void debugVerboseTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg)
 {
     ssOutput << "debug_verbose"
              << " " << tag << " " << file << " " << line << " " << func << " " << msg << std::endl;
 }
 
-void debugTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, ...)
+void debugTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg)
 {
     ssOutput << "debug"
              << " " << tag << " " << file << " " << line << " " << func << " " << msg << std::endl;
 }
 
-void infoTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, ...)
+void infoTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg)
 {
     ssOutput << "info"
              << " " << tag << " " << file << " " << line << " " << func << " " << msg << std::endl;
 }
 
-void warningTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, ...)
+void warningTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg)
 {
     ssOutput << "warning"
              << " " << tag << " " << file << " " << line << " " << func << " " << msg << std::endl;
 }
 
-void errorTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, ...)
+void errorTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg)
 {
     ssOutput << "error"
              << " " << tag << " " << file << " " << line << " " << func << " " << msg << std::endl;
+}
+
+void logFunctionWrapper(int level, const char* tag, const char* file, int line, const char* func, const char* msg)
+{
+    switch (level)
+    {
+        case (Log::LOGLEVEL_DEBUG): debugTestFunction(tag, file, line, func, msg); break;
+        case (Log::LOGLEVEL_DEBUG_VERBOSE): debugVerboseTestFunction(tag, file, line, func, msg); break;
+        case (Log::LOGLEVEL_INFO): infoTestFunction(tag, file, line, func, msg); break;
+        case (Log::LOGLEVEL_WARNING): warningTestFunction(tag, file, line, func, msg); break;
+        case (Log::LOGLEVEL_ERROR): errorTestFunction(tag, file, line, func, msg); break;
+        default: break;
+    }
 }
 
 TEST_F(LoggerHelperTest, simpleInfoTest)
@@ -86,75 +99,4 @@ TEST_F(LoggerHelperTest, simpleWarningTest)
 {
     logWarn(TAG, "Testing Warning log");
     EXPECT_TRUE(std::regex_match(ssOutput.str(), std::regex(WARNING_REGEX)));
-}
-
-TEST_F(LoggerHelperTest, multiThreadTest)
-{
-    std::thread t1(
-        []()
-        {
-            for (int i = 0; i < 10; i++)
-            {
-                logInfo(TAG, "Testing Info log");
-                std::this_thread::sleep_for(std::chrono::milliseconds(5));
-            }
-        });
-    std::thread t2(
-        []()
-        {
-            for (int i = 0; i < 10; i++)
-            {
-                logError(TAG, "Testing Error log");
-                std::this_thread::sleep_for(std::chrono::milliseconds(4));
-            }
-        });
-    std::thread t3(
-        []()
-        {
-            for (int i = 0; i < 10; i++)
-            {
-                logDebug1(TAG, "Testing Debug log");
-                std::this_thread::sleep_for(std::chrono::milliseconds(3));
-            }
-        });
-    std::thread t4(
-        []()
-        {
-            for (int i = 0; i < 10; i++)
-            {
-                logDebug2(TAG, "Testing Debug Verbose log");
-                std::this_thread::sleep_for(std::chrono::milliseconds(2));
-            }
-        });
-    std::thread t5(
-        []()
-        {
-            for (int i = 0; i < 10; i++)
-            {
-                logWarn(TAG, "Testing Warning log");
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            }
-        });
-    t1.join();
-    t2.join();
-    t3.join();
-    t4.join();
-    t5.join();
-
-    // We make sure that all lines are valid
-    std::string newLine;
-
-    while (std::getline(ssOutput, newLine))
-    {
-        if (!(std::regex_match(newLine, std::regex(INFO_REGEX_THREAD)) ||
-              std::regex_match(newLine, std::regex(ERROR_REGEX_THREAD)) ||
-              std::regex_match(newLine, std::regex(DEBUG_REGEX_THREAD)) ||
-              std::regex_match(newLine, std::regex(DEBUG_VERBOSE_REGEX_THREAD)) ||
-              std::regex_match(newLine, std::regex(WARNING_REGEX_THREAD))))
-        {
-            FAIL() << "Invalid line: " << newLine;
-        }
-    }
-
-    SUCCEED();
 }

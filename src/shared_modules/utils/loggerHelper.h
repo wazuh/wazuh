@@ -20,7 +20,6 @@
 #include <thread>
 #include <unordered_map>
 #include "commonDefs.h"
-#include "../../headers/logging_helper.h"
 
 // We can't use std::source_location until C++20
 #define LogEndl Log::SourceFile {__FILE__, __LINE__, __func__}
@@ -30,13 +29,15 @@
 #define logDebug2(X, Y) Log::Logger::debugVerbose(X, Y, LogEndl)
 #define logError(X, Y) Log::Logger::error(X, Y, LogEndl)
 
-#define VS_WM_NAME         "vulnerability-scanner"
-#define WM_VULNSCAN_LOGTAG "wazuh-modulesd:" VS_WM_NAME
-
-typedef full_log_fnc_t (*log_functions_t) (modules_log_level_t level);
-
 namespace Log
 {
+    auto constexpr LOGLEVEL_DEBUG_VERBOSE {5};
+    auto constexpr LOGLEVEL_CRITICAL {4};
+    auto constexpr LOGLEVEL_ERROR {3};
+    auto constexpr LOGLEVEL_WARNING {2};
+    auto constexpr LOGLEVEL_INFO {1};
+    auto constexpr LOGLEVEL_DEBUG {0};
+
     struct SourceFile
     {
         const char* file;
@@ -44,15 +45,14 @@ namespace Log
         const char* func;
     };
 
-    //static std::unordered_map<LOG_LEVEL, full_log_fnc_t> m_logFunctions = {};
-    static log_functions_t globalLogFunctions = {};
+    static full_log_fnc_t globalLogFunction;
 
     #pragma GCC diagnostic push
     #pragma GCC diagnostic ignored "-Wunused-function"
 
-    static void assignLogFunction(log_functions_t logFunctions)
+    static void assignLogFunction(full_log_fnc_t logFunction)
     {
-        globalLogFunctions = logFunctions;
+        globalLogFunction = logFunction;
     }
 
     #pragma GCC diagnostic pop
@@ -73,10 +73,9 @@ namespace Log
              */
             static void info(const std::string& tag, const std::string& msg, SourceFile sourceFile)
             {
-                full_log_fnc_t info = globalLogFunctions(modules_log_level_t::LOG_INFO);
-                if (info)
+                if (globalLogFunction)
                 {
-                    info(tag.c_str(), sourceFile.file, sourceFile.line, sourceFile.func, msg.c_str());
+                    globalLogFunction(LOGLEVEL_INFO, tag.c_str(), sourceFile.file, sourceFile.line, sourceFile.func, msg.c_str());
                 }
             }
 
@@ -89,10 +88,9 @@ namespace Log
              */
             static void warning(const std::string& tag, const std::string& msg, SourceFile sourceFile)
             {
-                full_log_fnc_t warn = globalLogFunctions(modules_log_level_t::LOG_WARNING);
-                if (warn)
+                if (globalLogFunction)
                 {
-                    warn(tag.c_str(), sourceFile.file, sourceFile.line, sourceFile.func, msg.c_str());
+                    globalLogFunction(LOGLEVEL_WARNING, tag.c_str(), sourceFile.file, sourceFile.line, sourceFile.func, msg.c_str());
                 }
             }
 
@@ -105,10 +103,9 @@ namespace Log
              */
             static void debug(const std::string& tag, const std::string& msg, SourceFile sourceFile)
             {
-                full_log_fnc_t debug = globalLogFunctions(modules_log_level_t::LOG_DEBUG);
-                if (debug)
+                if (globalLogFunction)
                 {
-                    debug(tag.c_str(), sourceFile.file, sourceFile.line, sourceFile.func, msg.c_str());
+                    globalLogFunction(LOGLEVEL_DEBUG, tag.c_str(), sourceFile.file, sourceFile.line, sourceFile.func, msg.c_str());
                 }
             }
 
@@ -121,10 +118,9 @@ namespace Log
              */
             static void debugVerbose(const std::string& tag, const std::string& msg, SourceFile sourceFile)
             {
-                full_log_fnc_t debug = globalLogFunctions(modules_log_level_t::LOG_DEBUG_VERBOSE);
-                if (debug)
+                if (globalLogFunction)
                 {
-                    debug(tag.c_str(), sourceFile.file, sourceFile.line, sourceFile.func, msg.c_str());
+                    globalLogFunction(LOGLEVEL_DEBUG_VERBOSE, tag.c_str(), sourceFile.file, sourceFile.line, sourceFile.func, msg.c_str());
                 }
             }
 
@@ -137,10 +133,9 @@ namespace Log
              */
             static void error(const std::string& tag, const std::string& msg, SourceFile sourceFile)
             {
-                full_log_fnc_t error = globalLogFunctions(modules_log_level_t::LOG_ERROR);
-                if (error)
+                if (globalLogFunction)
                 {
-                    error(tag.c_str(), sourceFile.file, sourceFile.line, sourceFile.func, msg.c_str());
+                    globalLogFunction(LOGLEVEL_ERROR, tag.c_str(), sourceFile.file, sourceFile.line, sourceFile.func, msg.c_str());
                 }
             }
     };

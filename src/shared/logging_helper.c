@@ -67,20 +67,3 @@ void loggingFunction(modules_log_level_t level, const char* log) {
         default:;
     }
 }
-
-full_log_fnc_t loggingFunctionWrapper(modules_log_level_t level) {
-    switch(level) {
-        case LOG_ERROR:
-            return _mterror;
-        case LOG_INFO:
-            return _mtinfo;
-        case LOG_WARNING:
-            return _mtwarn;
-        case LOG_DEBUG:
-            return _mtdebug1;
-        case LOG_DEBUG_VERBOSE:
-            return _mtdebug2;
-        default:
-            return NULL;
-    }
-}

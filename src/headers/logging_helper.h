@@ -45,14 +45,5 @@ void loggingFunction(modules_log_level_t level, const char* log);
 * @param log Message to send into the log as error
 */
 void loggingErrorFunction(const char* log);
-typedef void ((*full_log_fnc_t)(const char* tag, const char* file, int line, const char* func, const char* msg, ...));
-
-/**
- * @brief Global function to send log message respecting location.
- *
- * @param level Represent the log mode: ERROR, ERROR_EXIT, INFO, WARNING, DEBUG and DEBUG_VERBOSE
- * @return full_log_fnc_t Log function pointer.
- */
-full_log_fnc_t loggingFunctionWrapper(modules_log_level_t level);
 
 #endif //_LOGGINGHELPER_H

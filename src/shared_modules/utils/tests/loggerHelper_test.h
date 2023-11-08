@@ -16,11 +16,12 @@
 #include "gmock/gmock.h"
 #include "loggerHelper.h"
 
-void debugVerboseTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, ...);
-void debugTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, ...);
-void infoTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, ...);
-void warningTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, ...);
-void errorTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, ...);
+void debugVerboseTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg);
+void debugTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg);
+void infoTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg);
+void warningTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg);
+void errorTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg);
+void logFunctionWrapper(int level, const char* tag, const char* file, int line, const char* func, const char* msg);
 std::stringstream ssOutput;
 
 class LoggerHelperTest : public ::testing::Test
@@ -31,7 +32,7 @@ class LoggerHelperTest : public ::testing::Test
 
         static void SetUpTestSuite()
         {
-            Log::assignLogFunction(infoTestFunction, warningTestFunction, debugTestFunction, debugVerboseTestFunction, errorTestFunction);
+            Log::assignLogFunction(logFunctionWrapper);
         }
 
         virtual void SetUp()

@@ -42,9 +42,9 @@ EXPORTED void rsync_initialize(log_fnc_t log_function)
     });
 }
 
-EXPORTED void rsync_initialize_full_log_function(log_functions_t logFuncs)
+EXPORTED void rsync_initialize_full_log_function(full_log_fnc_t logFunc)
 {
-    RemoteSync::initializeFullLogFunction(logFuncs);
+    RemoteSync::initializeFullLogFunction(logFunc);
 }
 
 EXPORTED void rsync_teardown(void)
@@ -222,10 +222,9 @@ void RemoteSync::initialize(std::function<void(const std::string&)> logFunction)
     }
 }
 
-void RemoteSync::initializeFullLogFunction(log_functions_t logFuncs)
+void RemoteSync::initializeFullLogFunction(full_log_fnc_t logFunc)
 {
-    Log::assignLogFunction(logFuncs);
-    logInfo(RSYNC_LOG_TAG, "THIS IS A TEST FROM RSYNC");
+    Log::assignLogFunction(logFunc);
 }
 
 void RemoteSync::teardown()
