@@ -90,6 +90,53 @@ def test_metadata_version_services(mocked_db, class_):
         assert(metadata_version == ins.wazuh_version)
 
 
+@patch('os.path.exists', return_value=False)
+@patch('aws_s3.botocore.config.Config')
+@patch('aws_s3.debug')
+def test_default_config_no_aws_config(mock_debug, mock_config, mock_exists):
+    """
+    Test the default configuration generation when no AWS config file is present.
+    
+    Parameters:
+        mock_debug (MagicMock): Mock object for the 'aws_s3.debug' function.
+        mock_config (MagicMock): Mock object for the 'aws_s3.botocore.config.Config' class.
+        mock_exists (MagicMock): Mock object for the 'os.path.exists' function.
+    """
+    expected_args = {
+        'config': aws_s3.botocore.config.Config(
+            retries={'max_attempts': 10, 'mode': 'standard'}
+        )
+    }
+
+    mock_config.return_value = expected_args['config']
+
+    result = aws_s3.WazuhIntegration.default_config()
+
+    mock_exists.assert_called_once_with(os.path.join(os.path.expanduser('~'), '.aws', 'config'))
+    mock_config.assert_called_with(retries={'max_attempts': 10, 'mode': 'standard'})
+    assert result == expected_args
+    assert mock_config.call_count == 2 
+    mock_debug.assert_called_once_with(f"Generating default configuration for retries: mode {expected_args['config'].retries['mode']} - max_attempts {expected_args['config'].retries['max_attempts']}", 2)
+
+@patch('os.path.exists', return_value=True)
+@patch('aws_s3.debug')
+def test_default_config_with_aws_config(mock_debug, mock_exists):
+    """
+    Test the default configuration generation when an AWS config file is present.
+    
+    Parameters:
+        mock_debug (MagicMock): Mock object for the 'aws_s3.debug' function.
+        mock_exists (MagicMock): Mock object for the 'os.path.exists' function.
+    """
+    expected_args = {}
+
+    result = aws_s3.WazuhIntegration.default_config()
+
+    mock_exists.assert_called_once_with(os.path.join(os.path.expanduser('~'), '.aws', 'config'))
+    mock_debug.assert_called_once_with(f'Found configuration for connection retries in {os.path.join(os.path.expanduser("~"), ".aws", "config")}', 2)
+    assert result == expected_args
+
+
 @pytest.mark.parametrize('class_, sql_file, db_name', [
     (aws_s3.AWSCloudTrailBucket, 'schema_cloudtrail_test.sql', 'cloudtrail'),
     (aws_s3.AWSConfigBucket, 'schema_config_test.sql', 'config'),
