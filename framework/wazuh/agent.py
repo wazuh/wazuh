@@ -1348,10 +1348,7 @@ def get_agent_config(agent_list: list = None, component: str = None, config: str
                   post_proc_kwargs={'exclude_codes': [1701, 1703]})
 def get_agents_sync_group(agent_list: list = None) -> AffectedItemsWazuhResult:
     """Get agents configuration sync status.
-
-    Notes
-    -----
-    To be deprecated in v5.0.
+    Used by script agent_groups --show-sync option
 
     Parameters
     ----------

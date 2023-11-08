@@ -126,21 +126,6 @@ stages:
         error: 1308 # stats file does not exist
 
 ---
-test_name: GET /manager/stats/analysisd
-
-stages:
-
-  - name: Request manager analysisd stats (Allow)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/analysisd"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-
----
 test_name: GET /manager/stats/hourly
 
 stages:
@@ -149,21 +134,6 @@ stages:
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/stats/hourly"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-
----
-test_name: GET /manager/stats/remoted
-
-stages:
-
-  - name: Request manager remoted stats (Allow)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/remoted"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"

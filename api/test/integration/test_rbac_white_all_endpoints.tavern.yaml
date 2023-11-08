@@ -226,20 +226,6 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: GET /agents/{agent_id}/group/is_sync
-
-stages:
-  - name: Try to get agent sync
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/is_sync"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
 test_name: DELETE /agents/{agent_id}/group/{group_id}
 
 stages:
@@ -864,34 +850,6 @@ stages:
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/stats/weekly"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
-test_name: GET /cluster/{node_id}/stats/analysisd
-
-stages:
-  - name: Try to get analysisd stats (worker1)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/stats/analysisd"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
-test_name: GET /cluster/{node_id}/stats/remoted
-
-stages:
-  - name: Try to get remoted stats (worker1)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/stats/remoted"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1825,34 +1783,6 @@ stages:
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/stats/weekly"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
-test_name: GET /manager/stats/analysisd
-
-stages:
-  - name: Try to get manager analysisd stats
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/analysisd"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
-test_name: GET /manager/stats/remoted
-
-stages:
-  - name: Try to get manager remoted stats
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/remoted"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
