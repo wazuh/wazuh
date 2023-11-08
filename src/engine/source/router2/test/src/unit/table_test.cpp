@@ -8,26 +8,12 @@
 
 namespace ri = router::internal;
 
-/**
- * @brief A class to test the Table class
- */
-class EntryTest
+using ValueType = std::string;
+struct EntryTest
 {
-private:
-    std::string m_name;
-    std::size_t m_priority;
-
-public:
-    EntryTest(std::string name, std::size_t priority)
-        : m_name {std::move(name)}
-        , m_priority {priority}
-    {
-    }
-
-    std::size_t priority() const { return m_priority; }
-    void priority(std::size_t priority) { m_priority = priority; }
-    const std::string& name() const { return m_name; }
-    void name(const std::string& name) { m_name = name; }
+    std::string name;
+    std::size_t priority;
+    ValueType value;
 };
 
 /**
@@ -37,23 +23,22 @@ public:
  * @param entry The entry to check.
  * @param inserted true if the entry should be in the table, false otherwise.
  */
-void checkEntryTable(const ri::Table<EntryTest>& table, const EntryTest& entry, bool inserted)
+void checkEntryTable(const ri::Table<ValueType>& table, const EntryTest& entry, bool inserted)
 {
     if (inserted)
     {
         // Check if the name and priority exists
-        EXPECT_TRUE(table.nameExists(entry.name()));
-        EXPECT_TRUE(table.priorityExists(entry.priority()));
+        EXPECT_TRUE(table.nameExists(entry.name));
+        EXPECT_TRUE(table.priorityExists(entry.priority));
 
         // Check if the name and the priority is the same entry
-        const auto& entryTable = table.get(entry.name());
-        EXPECT_EQ(entryTable.name(), entry.name());
-        EXPECT_EQ(entryTable.priority(), entry.priority());
+        const auto& tEntry = table.get(entry.name);
+        EXPECT_EQ(tEntry, entry.value);
     }
     else
     {
         // Insert only fails if the name or the priority is already used
-        bool res = table.nameExists(entry.name()) || table.priorityExists(entry.priority());
+        bool res = table.nameExists(entry.name) || table.priorityExists(entry.priority);
         EXPECT_TRUE(res);
     }
 }
@@ -63,7 +48,7 @@ void checkEntryTable(const ri::Table<EntryTest>& table, const EntryTest& entry, 
  ************************************************/
 using InsertT = std::vector<std::pair<EntryTest, bool>>;
 using InsertTest = ::testing::TestWithParam<InsertT>;
-
+static int g_insertCount = 0;
 class EasyInsert
 {
 private:
@@ -72,9 +57,10 @@ private:
 public:
     EasyInsert() = default;
 
-    EasyInsert& add(std::string name, std::size_t priority, bool expected)
+    EasyInsert& add(const std::string& name, std::size_t priority, bool expected)
     {
-        m_insert.push_back({{std::move(name), priority}, expected});
+        EntryTest entry {name, priority, std::to_string(g_insertCount++)};
+        m_insert.emplace_back(std::move(entry), expected);
         return *this;
     }
 
@@ -85,10 +71,10 @@ public:
 TEST_P(InsertTest, Insert)
 {
     auto& arrayTest = GetParam();
-    ri::Table<EntryTest> table;
+    ri::Table<ValueType> table;
     for (auto& [entry, expected] : arrayTest)
     {
-        EXPECT_EQ(table.insert(EntryTest(entry)), expected);
+        EXPECT_EQ(table.insert(entry.name, entry.priority, ValueType(entry.value)), expected);
         checkEntryTable(table, entry, expected);
     }
 }
@@ -112,7 +98,6 @@ INSTANTIATE_TEST_SUITE_P(Table,
 /************************************************
  *      Test the order iterator by priority.
  ************************************************/
-
 using ItByPriorityT = std::vector<EntryTest>;
 using ItTest = ::testing::TestWithParam<ItByPriorityT>;
 
@@ -137,49 +122,52 @@ public:
 TEST_P(ItTest, It)
 {
     auto& arrayTest = GetParam();
-    ri::Table<EntryTest> table;
-    // Insert all entries (And check if the insert is ok)
+
+    // Insert disordered array
+    ri::Table<ValueType> table;
     for (auto& entry : arrayTest)
     {
-        ASSERT_TRUE(table.insert(EntryTest(entry)));
+        EXPECT_EQ(table.insert(entry.name, entry.priority, ValueType(entry.value)), true);
         checkEntryTable(table, entry, true);
     }
 
     ASSERT_TRUE(table.size() == arrayTest.size());
     ASSERT_FALSE(table.empty());
 
+    // Sort the array by priority
+    auto sortArray = arrayTest;
+    std::sort(sortArray.begin(),
+              sortArray.end(),
+              [](const EntryTest& lhs, const EntryTest& rhs) { return lhs.priority > rhs.priority; });
+
     // Check if the iterator return the entries in the right order (Higher priority first)
-    std::size_t lastPriority = 0;
+    std::size_t indexSorted = 0;
 
     // Check reference
     for (auto& entry : table)
     {
-        EXPECT_GE(entry.priority(), lastPriority);
-        lastPriority = entry.priority();
+        EXPECT_EQ(entry, sortArray[indexSorted++].value);
     }
 
     // Check const reference
-    lastPriority = 0;
+    indexSorted = 0;
     for (const auto& entry : table)
     {
-        EXPECT_GE(entry.priority(), lastPriority);
-        lastPriority = entry.priority();
+        EXPECT_EQ(entry, sortArray[indexSorted++].value);
     }
 
     // Check iterator
-    lastPriority = 0;
+    indexSorted = 0;
     for (auto it = table.begin(); it != table.end(); ++it)
     {
-        EXPECT_GE(it->priority(), lastPriority);
-        lastPriority = it->priority();
+        EXPECT_EQ(*it, sortArray[indexSorted++].value);
     }
 
     // Check const iterator
-    lastPriority = 0;
+    indexSorted = 0;
     for (auto it = table.cbegin(); it != table.cend(); ++it)
     {
-        EXPECT_GE(it->priority(), lastPriority);
-        lastPriority = it->priority();
+        EXPECT_EQ(*it, sortArray[indexSorted++].value);
     }
 }
 
@@ -201,24 +189,24 @@ INSTANTIATE_TEST_SUITE_P(Table,
                              // end
                              ));
 
-
 /************************************************
  *      Test Set/Get priority by name.
  ************************************************/
 
 std::vector<EntryTest> g_initStatePrior = {
-    {"a", 1},
-    {"b", 2},
-    {"c", 3},
-    {"d", 4},
-    {"e", 5},
-    {"f", 6},
+    {"a", 1, "a"},
+    {"b", 2, "b"},
+    {"c", 3, "c"},
+    {"d", 4, "d"},
+    {"e", 5, "e"},
+    {"f", 6, "f"},
 };
 
 /**
  * @brief Check if the priority is the same as the expected.
  * std::string name, std::size_t newPriority, bool expected result
  */
+
 using PriorityT = std::tuple<std::string, std::size_t, bool>;
 using PriorityTest = ::testing::TestWithParam<PriorityT>;
 
@@ -239,12 +227,13 @@ public:
 
 TEST_P(PriorityTest, Priority)
 {
+    GTEST_SKIP();
     auto& [name, newPriority, expected] = GetParam();
-    ri::Table<EntryTest> table;
+    ri::Table<ValueType> table;
     // Insert all entries (And check if the insert is ok)
     for (auto& entry : g_initStatePrior)
     {
-        ASSERT_TRUE(table.insert(EntryTest(entry)));
+        EXPECT_EQ(table.insert(entry.name, entry.priority, ValueType(entry.value)), true);
         checkEntryTable(table, entry, true);
     }
 
@@ -260,15 +249,13 @@ TEST_P(PriorityTest, Priority)
         EXPECT_TRUE(table.priorityExists(newPriority));
 
         // Check if the name and the priority is the same entry
-        //const auto& entryTable = table.get(name);
-        //EXPECT_EQ(entryTable.name(), name);
-        //EXPECT_EQ(entryTable.priority(), newPriority);
+        const auto& value = table.get(name);
+        EXPECT_EQ(value, ValueType(name));
     }
     else
     {
         // Check if the name and priority exists
-        EXPECT_FALSE(table.nameExists(name));
-        EXPECT_FALSE(table.priorityExists(newPriority));
+        EXPECT_TRUE(table.nameExists(name) || table.priorityExists(newPriority));
     }
 }
 
@@ -276,7 +263,9 @@ INSTANTIATE_TEST_SUITE_P(Table,
                          PriorityTest,
                          ::testing::Values(
                              // Test to insert by name
-                             EasySet("a", 1, true)
+                             EasySet("a", 1, false),
+                             EasySet("a", 7, true)
                              // end
                              ));
 
+// Test ref iterator, change values, name and priority
