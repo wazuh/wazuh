@@ -9,8 +9,8 @@
  * Foundation.
  */
 
-#ifndef _S3_DOWNLOADER_TEST_HPP
-#define _S3_DOWNLOADER_TEST_HPP
+#ifndef _FILE_DOWNLOADER_TEST_HPP
+#define _FILE_DOWNLOADER_TEST_HPP
 
 #include "fakes/fakeServer.hpp"
 #include "updaterContext.hpp"
@@ -19,19 +19,20 @@
 #include <memory>
 
 /**
- * @brief Runs unit tests for S3Downloader
+ * @brief Runs unit tests for FileDownloader
  *
  */
-class S3DownloaderTest : public ::testing::Test
+class FileDownloaderTest : public ::testing::Test
 {
 protected:
-    S3DownloaderTest() = default;
-    ~S3DownloaderTest() override = default;
+    FileDownloaderTest() = default;
+    ~FileDownloaderTest() override = default;
 
-    std::shared_ptr<UpdaterContext> m_spUpdaterContext; ///< Context used in tests.
+    std::shared_ptr<UpdaterContext> m_spUpdaterContext;         ///< Context used in tests.
+    std::shared_ptr<UpdaterBaseContext> m_spUpdaterBaseContext; ///< Base context used in tests.
     const std::filesystem::path m_outputFolder {std::filesystem::temp_directory_path() /
-                                                "s3DownloaderTest"}; ///< Output folder for tests.
-    inline static std::unique_ptr<FakeServer> m_spFakeServer;        ///< Fake HTTP server used in tests.
+                                                "FileDownloaderTest"}; ///< Output folder for tests.
+    inline static std::unique_ptr<FakeServer> m_spFakeServer;          ///< Fake HTTP server used in tests.
 
     /**
      * @brief Setup routine for the test suite.
@@ -58,4 +59,4 @@ protected:
     void TearDown() override;
 };
 
-#endif //_S3_DOWNLOADER_TEST_HPP
+#endif //_FILE_DOWNLOADER_TEST_HPP
