@@ -24,9 +24,9 @@ Paths before stage execution:
 Paths after stage execution:
 ```json
 "paths": [
-    "/tmp/outputFolder/file_a.json",
-    "/tmp/outputFolder/data/file_b.xml",
-    "/tmp/outputFolder/data/file_c.xml"
+    "/tmp/outputFolder/contents/file_a.json",
+    "/tmp/outputFolder/contents/file_b.xml",
+    "/tmp/outputFolder/contents/file_c.xml"
 ]
 ```
 
