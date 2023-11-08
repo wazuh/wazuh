@@ -2,7 +2,7 @@
 #define _ROUTER2_TABLE_HPP
 
 #include <memory>
-#include <set>
+#include <list>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -58,27 +58,34 @@ class Table
 {
 private:
     // Struct to hold the object along with its name and priority
-    struct Item {
+    struct Item
+    {
         std::string name;
         std::size_t priority;
         T object;
 
-        Item(std::string n, std::size_t p, T obj) : name(std::move(n)), priority(p), object(std::move(obj)) {}
+        Item(std::string n, std::size_t p, T obj)
+            : name(std::move(n))
+            , priority(p)
+            , object(std::move(obj))
+        {
+        }
     };
 
-    // Function to compare items by priority.
-    struct CompareByPriority {
-        bool operator()(const Item& lhs, const Item& rhs) const { return lhs.priority < rhs.priority; }
-    };
-
-    // Set to store the items, sorted by priority.
-    std::set<Item, CompareByPriority> itemSet;
+    // List to store the items, sorted by priority if needed.
+    std::list<Item> itemList;
 
     // Hash map to index the items by name.
-    std::unordered_map<std::string, typename std::set<Item>::iterator> nameIndex;
+    std::unordered_map<std::string, typename std::list<Item>::iterator> nameIndex;
+
+    // Function to find the insertion point based on priority.
+    typename std::list<Item>::iterator findInsertionPoint(std::size_t priority)
+    {
+        return std::find_if(itemList.begin(), itemList.end(),
+                            [priority](const Item& item) { return item.priority >= priority; });
+    }
 
 public:
-
     /**
      * @brief Check if a priority is already used.
      *
@@ -88,7 +95,7 @@ public:
     bool priorityExists(std::size_t priority) const
     {
         return std::any_of(
-            priorSet.begin(), priorSet.end(), [priority](const T& item) { return item.priority() == priority; });
+            itemList.begin(), itemList.end(), [priority](const Item& item) { return item.priority == priority; });
     }
 
     /**
@@ -107,21 +114,41 @@ public:
      * @param object The object to insert.
      * @return true if the object was inserted, false if the name or priority is already used.
      */
-    bool insert(std::string name, std::size_t priority, T object) {
+    bool insert(const std::string& name, std::size_t priority, T&& object)
+    {
         // Check if name or priority already exists
-        if (nameIndex.count(name) > 0 || 
-            std::any_of(itemSet.begin(), itemSet.end(), [priority](const Item& item) { return item.priority == priority; })) {
+        if (nameExists(name) || priorityExists(priority))
+        {
             return false;
         }
 
-        // Create the item and insert it into the set
-        auto result = itemSet.emplace(std::move(name), priority, std::move(object));
-        if (!result.second) {
+        auto it = findInsertionPoint(priority);
+        auto emplacedItem = itemList.emplace(it, Item(name, priority, std::move(object)));
+        nameIndex[name] = emplacedItem;
+        return true;
+    }
+
+    /**
+     * @brief Delete an object by name.
+     * @param name The name of the object.
+     * @return true if the object was deleted, false if the name does not exist.
+     */
+    bool erase(const std::string& name)
+    {
+        // Search for the item by name
+        auto name_it = nameIndex.find(name);
+        if (name_it == nameIndex.end())
+        {
             return false;
         }
 
-        // Add the iterator to the name index
-        nameIndex[result.first->name] = result.first;
+        // Safely erase the item, while ensuring the set and map stay in sync
+        auto node_handler = itemList.extract(name_it->second);
+        if (node_handler.empty())
+        {
+            return false;
+        }
+        nameIndex.erase(name_it);
         return true;
     }
 
@@ -134,26 +161,22 @@ public:
      */
     bool setPriority(const std::string& name, std::size_t newPriority)
     {
+        // Search for the item by name
         auto name_it = nameIndex.find(name);
         if (name_it == nameIndex.end())
         {
             return false;
         }
 
-        auto node_handler = priorSet.extract(name_it->second);
-        if (node_handler.empty())
+        // Check if the new priority is already used
+        if (priorityExists(newPriority))
         {
             return false;
         }
 
-        // Safely update the priority, while ensuring the set and map stay in sync
-        node_handler.value().priority(newPriority); // Update priority
-        auto insert_result = priorSet.insert(std::move(node_handler));
-        if (!insert_result.inserted)
-        {
-            return false;
-        }
-        nameIndex[name] = insert_result.position;
+        auto newPos = findInsertionPoint(newPriority);
+        itemList.splice(newPos, itemList, name_it->second);
+        nameIndex[name] = newPos;
         return true;
     }
 
@@ -171,7 +194,8 @@ public:
         {
             throw std::out_of_range("No element with the given name.");
         }
-        return *(it->second);
+        // Return a reference to the object of type T within the Item struct.
+        return it->second->object;
     }
 
     /**
@@ -188,38 +212,34 @@ public:
         {
             throw std::out_of_range("No element with the given name.");
         }
-        return *(it->second);
+        // Return a reference to the object of type T within the Item struct.
+        return it->second->object;
     }
 
     class iterator
     {
-    private:
-        typename std::set<T>::iterator it;
+        typename std::list<Item>::iterator it;
 
     public:
-        iterator() = default; // Default constructor
-
-        explicit iterator(typename std::set<T>::iterator it)
+        iterator(typename std::list<Item>::iterator it)
             : it(it)
         {
         }
 
-        const T& operator*() const { return *it; }
-        const T* operator->() const { return &(*it); } // Support pointer-like access
+        T& operator*() { return it->object; }
+        T* operator->() { return &(it->object); }
 
-        // Prefix increment
         iterator& operator++()
         {
             ++it;
             return *this;
         }
 
-        // Postfix increment
         iterator operator++(int)
         {
-            iterator temp = *this;
+            iterator tmp = *this;
             ++(*this);
-            return temp;
+            return tmp;
         }
 
         bool operator==(const iterator& other) const { return it == other.it; }
@@ -229,32 +249,30 @@ public:
     class const_iterator
     {
     private:
-        typename std::set<T>::const_iterator it;
+        typename std::list<Item>::const_iterator it;
 
     public:
-        const_iterator() = default; // Default constructor
+        const_iterator() = default;
 
-        explicit const_iterator(typename std::set<T>::const_iterator it)
+        explicit const_iterator(typename std::list<Item>::const_iterator it)
             : it(it)
         {
         }
 
-        const T& operator*() const { return *it; }
-        const T* operator->() const { return &(*it); } // Support pointer-like access
+        const T& operator*() const { return it->object; }
+        const T* operator->() const { return &(it->object); }
 
-        // Prefix increment
         const_iterator& operator++()
         {
             ++it;
             return *this;
         }
 
-        // Postfix increment
         const_iterator operator++(int)
         {
-            const_iterator temp = *this;
+            const_iterator tmp = *this;
             ++(*this);
-            return temp;
+            return tmp;
         }
 
         bool operator==(const const_iterator& other) const { return it == other.it; }
@@ -266,57 +284,56 @@ public:
      *
      * @return An iterator to the beginning of the set.
      */
-    iterator begin() { return iterator(priorSet.begin()); }
+    iterator begin() { return iterator(itemList.begin()); }
 
     /**
      * @brief Get an iterator to the end of the set.
      *
      * @return An iterator to the end of the set.
      */
-    iterator end() { return iterator(priorSet.end()); }
+    iterator end() { return iterator(itemList.end()); }
 
     /**
      * @brief Get a const iterator to the beginning of the set.
      *
      * @return A const iterator to the beginning of the set.
      */
-    const_iterator begin() const { return const_iterator(priorSet.cbegin()); }
+    const_iterator begin() const { return const_iterator(itemList.cbegin()); }
 
     /**
      * @brief Get a const iterator to the end of the set.
      *
      * @return A const iterator to the end of the set.
      */
-    const_iterator end() const { return const_iterator(priorSet.cend()); }
+    const_iterator end() const { return const_iterator(itemList.cend()); }
 
     /**
      * @brief Get a const iterator to the beginning of the set.
      *
      * @return A const iterator to the beginning of the set.
      */
-    const_iterator cbegin() const { return const_iterator(priorSet.cbegin()); }
+    const_iterator cbegin() const { return const_iterator(itemList.cbegin()); }
 
     /**
      * @brief Get a const iterator to the end of the set.
      *
      * @return A const iterator to the end of the set.
      */
-    const_iterator cend() const { return const_iterator(priorSet.cend()); }
+    const_iterator cend() const { return const_iterator(itemList.cend()); }
 
     /**
      * @brief Size of the set.
      *
      */
-    std::size_t size() const { return priorSet.size(); }
+    std::size_t size() const { return itemList.size(); }
 
     /**
      * @brief Check if the set is empty.
      *
      */
-    bool empty() const { return priorSet.empty(); }
-
+    bool empty() const { return itemList.empty(); }
 };
-} // namespace interal
+} // namespace internal
 
 } // namespace router
 
