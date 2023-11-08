@@ -39,11 +39,11 @@ private:
      * @param contextData Reference to the context data.
      * @param status Status to be pushed.
      */
-    void pushStageStatus(nlohmann::json& contextData, std::string status) const
+    void pushStageStatus(nlohmann::json& contextData, const std::string& status) const
     {
         auto statusObject = nlohmann::json::object();
         statusObject["stage"] = "ZipDecompressor";
-        statusObject["status"] = std::move(status);
+        statusObject["status"] = status;
 
         contextData.at("stageStatus").push_back(std::move(statusObject));
     }
