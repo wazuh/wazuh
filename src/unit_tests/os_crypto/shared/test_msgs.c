@@ -271,6 +271,9 @@ void test_encrypt_by_method_blowfish(void **state){
     char buffer1[buffersize];
     char buffer2[buffersize];
 
+    memset(buffer1, 0, sizeof(buffer1));
+    memset(buffer2, 0, sizeof(buffer2));
+
     assert_int_equal(doEncryptByMethod(string, buffer1, key, strlen(string), OS_ENCRYPT ,W_METH_BLOWFISH), 1);
     assert_int_equal(doEncryptByMethod(buffer1, buffer2, key, strlen(buffer1), OS_DECRYPT ,W_METH_BLOWFISH), 1);
 
@@ -284,6 +287,9 @@ void test_encrypt_by_method_aes(void **state){
     char buffer1[buffersize];
     char buffer2[buffersize];
 
+    memset(buffer1, 0, sizeof(buffer1));
+    memset(buffer2, 0, sizeof(buffer2));
+
     assert_int_equal(doEncryptByMethod(string, buffer1, key, strlen(string), OS_ENCRYPT ,W_METH_AES), 16);
     assert_int_equal(doEncryptByMethod(buffer1, buffer2, key, strlen(buffer1), OS_DECRYPT ,W_METH_AES), 11);
 
@@ -295,7 +301,8 @@ void test_encrypt_by_method_default(void **state){
     const char *string = "test string";
     const int buffersize = 1024;
     char buffer1[buffersize];
-    char buffer2[buffersize];
+
+    memset(buffer1, 0, sizeof(buffer1));
 
     assert_int_equal(doEncryptByMethod(string, buffer1, key, strlen(string), OS_ENCRYPT ,2), OS_INVALID);
 }
