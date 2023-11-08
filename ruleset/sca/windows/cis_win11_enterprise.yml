@@ -9326,8 +9326,8 @@ checks:
       - soc_2: ["CC6.8"]
     condition: any
     rules:
-      - 'not r:KEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Policies\PassportForWork\Biometrics'
-      - 'not r:KEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Policies\PassportForWork\Biometrics -> EnableESSwithSupportedPeripherals'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Policies\PassportForWork\Biometrics'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Policies\PassportForWork\Biometrics -> EnableESSwithSupportedPeripherals'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\GameDVR -> EnableESSwithSupportedPeripherals -> 1'
 
   # 18.10.80.1 (L2) Ensure 'Allow suggested apps in Windows Ink Workspace' is set to 'Disabled'. (Automated)
