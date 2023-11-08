@@ -284,7 +284,6 @@ int wdb_parse(char * input, char * output, int peer) {
             wdb_leave(wdb_global);
         }
 
-        w_inc_agent_open();
         gettimeofday(&begin, 0);
         if (wdb = wdb_open_agent2(agent_id), !wdb) {
             merror("Couldn't open DB for agent '%s'", sagent_id);
@@ -856,7 +855,6 @@ int wdb_parse(char * input, char * output, int peer) {
 
         mdebug2("Global query: %s", query);
 
-        w_inc_global_open();
         gettimeofday(&begin, 0);
         if (wdb = wdb_open_global(), !wdb) {
             mdebug2("Couldn't open DB global: %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);

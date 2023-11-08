@@ -67,12 +67,6 @@ void w_inc_agent() {
     w_mutex_unlock(&db_state_t_mutex);
 }
 
-void w_inc_agent_open() {
-    w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.agent_breakdown.open_calls++;
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
 void w_inc_agent_open_time(struct timeval time) {
     w_mutex_lock(&db_state_t_mutex);
     timeradd(&wdb_state.queries_breakdown.agent_breakdown.open_calls_time, &time, &wdb_state.queries_breakdown.agent_breakdown.open_calls_time);
@@ -487,12 +481,6 @@ void w_inc_agent_syscollector_deprecated_osinfo_time(struct timeval time) {
 void w_inc_global() {
     w_mutex_lock(&db_state_t_mutex);
     wdb_state.queries_breakdown.global_queries++;
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
-void w_inc_global_open() {
-    w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.global_breakdown.open_calls++;
     w_mutex_unlock(&db_state_t_mutex);
 }
 
@@ -1052,7 +1040,6 @@ cJSON* wdb_create_state_json() {
     cJSON *_agent_db = cJSON_CreateObject();
     cJSON_AddItemToObject(_agent_breakdown, "db", _agent_db);
 
-    cJSON_AddNumberToObject(_agent_db, "open", wdb_state_cpy.queries_breakdown.agent_breakdown.open_calls);
     cJSON_AddNumberToObject(_agent_db, "begin", wdb_state_cpy.queries_breakdown.agent_breakdown.begin_queries);
     cJSON_AddNumberToObject(_agent_db, "close", wdb_state_cpy.queries_breakdown.agent_breakdown.close_queries);
     cJSON_AddNumberToObject(_agent_db, "commit", wdb_state_cpy.queries_breakdown.agent_breakdown.commit_queries);
@@ -1132,7 +1119,6 @@ cJSON* wdb_create_state_json() {
     cJSON *_global_db = cJSON_CreateObject();
     cJSON_AddItemToObject(_global_breakdown, "db", _global_db);
 
-    cJSON_AddNumberToObject(_global_db, "open", wdb_state_cpy.queries_breakdown.global_breakdown.open_calls);
     cJSON_AddNumberToObject(_global_db, "backup", wdb_state_cpy.queries_breakdown.global_breakdown.backup_queries);
     cJSON_AddNumberToObject(_global_db, "sql", wdb_state_cpy.queries_breakdown.global_breakdown.sql_queries);
     cJSON_AddNumberToObject(_global_db, "vacuum", wdb_state_cpy.queries_breakdown.global_breakdown.vacuum_queries);
