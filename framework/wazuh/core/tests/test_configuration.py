@@ -89,16 +89,28 @@ def test_read_option():
         assert configuration._read_option('open-scap', data)[0] == 'synchronization'
         assert configuration._read_option('syscheck', data)[0] == 'synchronization'
 
-    with open(os.path.join(parent_directory, tmp_path, 'configuration/default/vulnerability_detector.conf')) as f:
+    with open(os.path.join(parent_directory, tmp_path, 'configuration/default/vulnerability_detection.conf')) as f:
         data = fromstring(f.read())
         EXPECTED_VALUES = MappingProxyType(
-            {'enabled': 'no', 'interval': '5m',
-             'provider': {'enabled': 'no', 'name': 'canonical', 'os': ['trusty', 'xenial', 'bionic', 'focal', 'jammy'],
-                          'update_interval': '1h'}})
+            {'enabled': 'no', 'feed-update-interval': '60m', 'index-status': 'yes'}
+        )
         for section in data:
-            assert configuration._read_option('vulnerability-detector', section) == (section.tag,
+            assert configuration._read_option('vulnerability-detection', section) == (section.tag,
                                                                                      EXPECTED_VALUES[section.tag])
 
+    with open(os.path.join(parent_directory, tmp_path, 'configuration/default/indexer.conf')) as f:
+        data = fromstring(f.read())
+        EXPECTED_VALUES = MappingProxyType(
+            {
+                'enabled': 'yes',
+                'hosts': ['http://127.0.0.1:9200', 'http://127.0.0.2:9200'],
+                'username': 'admin',
+                'password': 'admin',
+            }
+        )
+        for section in data:
+            assert configuration._read_option('indexer', section) == (section.tag,
+                                                                    EXPECTED_VALUES[section.tag])
 
 def test_agentconf2json():
     xml_conf = configuration.load_wazuh_xml(

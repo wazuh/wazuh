@@ -111,7 +111,7 @@ CONF_SECTIONS = MappingProxyType({
     },
     'indexer': {
         'type': 'last',
-        'list_options': []
+        'list_options': ['hosts']
     }
 })
 
@@ -232,7 +232,8 @@ def _read_option(section_name: str, opt: str) -> tuple:
             child_section, child_config = _read_option(child.tag.lower(), child)
             opt_value[child_section] = child_config.split(',') if child_config.find(',') > 0 else child_config
     elif (section_name == 'cluster' and opt_name == 'nodes') or \
-            (section_name == 'sca' and opt_name == 'policies'):
+            (section_name == 'sca' and opt_name == 'policies') or \
+            (section_name == 'indexer' and opt_name == 'hosts')    :
         opt_value = [child.text for child in opt]
     elif section_name == 'labels' and opt_name == 'label':
         opt_value = {'value': opt.text}
@@ -255,13 +256,10 @@ def _read_option(section_name: str, opt: str) -> tuple:
             if list(opt):
                 for child in opt:
                     child_section, child_config = _read_option(child.tag.lower(), child)
-                    if (section_name, opt_name, child_section) != ('vulnerability-detector', 'provider', 'os'):
-                        opt_value[child_section] = child_config
-                    else:
-                        try:
-                            opt_value[child_section].append(child_config)
-                        except KeyError:
-                            opt_value[child_section] = [child_config]
+                    try:
+                        opt_value[child_section].append(child_config)
+                    except KeyError:
+                        opt_value[child_section] = [child_config]
 
             else:
                 opt_value['item'] = opt.text
