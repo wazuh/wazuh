@@ -7055,8 +7055,6 @@ tags:
     description: "Syscollector information"
   - name: Tasks
     description: "Tasks information"
-  - name: Vulnerability
-    description: "Vulnerabilities information"
   - name: Events
     description: "Ingestion endpoints"
 

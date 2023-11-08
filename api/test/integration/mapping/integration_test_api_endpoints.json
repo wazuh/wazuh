@@ -3076,22 +3076,6 @@
         ]
     },
     {
-        "path": "api/test/integration/env/configurations/vulnerability/manager/healthcheck",
-        "files": [
-            {
-                "name": "healthcheck.py",
-                "tag": "healthcheck",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml",
-                    "test_cluster_endpoints.tavern.yaml"
-                ]
-            }
-        ]
-    },
-    {
         "path": "api/test/integration/env/tools",
         "files": [
             {
