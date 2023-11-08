@@ -73,17 +73,17 @@ namespace Log
              * @param msg Message to be logged.
              * @param sourceFile Log location.
              */
-            static void info(const std::string& tag, SourceFile sourceFile, const std::string& msg, ...)
+            static void info(const char* tag, SourceFile sourceFile, const char* msg, ...)
             {
                 if (globalLogFunction)
                 {
                     std::va_list args;
-                    va_start(args, msg.c_str());
+                    va_start(args, msg);
                     char formatted_str[MAXLEN];
-                    vsnprintf(formatted_str, MAXLEN, msg.c_str(), args);
+                    vsnprintf(formatted_str, MAXLEN, msg, args);
                     va_end(args);
 
-                    globalLogFunction(LOGLEVEL_INFO, tag.c_str(), sourceFile.file, sourceFile.line, sourceFile.func, formatted_str);
+                    globalLogFunction(LOGLEVEL_INFO, tag, sourceFile.file, sourceFile.line, sourceFile.func, formatted_str);
                 }
             }
 
@@ -94,17 +94,17 @@ namespace Log
              * @param msg Message to be logged.
              * @param sourceFile Log location.
              */
-            static void warning(const std::string& tag, SourceFile sourceFile, const std::string& msg, ...)
+            static void warning(const char* tag, SourceFile sourceFile, const char* msg, ...)
             {
                 if (globalLogFunction)
                 {
                     std::va_list args;
-                    va_start(args, msg.c_str());
+                    va_start(args, msg);
                     char formatted_str[MAXLEN];
-                    vsnprintf(formatted_str, MAXLEN, msg.c_str(), args);
+                    vsnprintf(formatted_str, MAXLEN, msg, args);
                     va_end(args);
 
-                    globalLogFunction(LOGLEVEL_WARNING, tag.c_str(), sourceFile.file, sourceFile.line, sourceFile.func, formatted_str);
+                    globalLogFunction(LOGLEVEL_WARNING, tag, sourceFile.file, sourceFile.line, sourceFile.func, formatted_str);
                 }
             }
 
@@ -115,17 +115,17 @@ namespace Log
              * @param msg Message to be logged.
              * @param sourceFile Log location.
              */
-            static void debug(const std::string& tag, SourceFile sourceFile, const std::string& msg, ...)
+            static void debug(const char* tag, SourceFile sourceFile, const char* msg, ...)
             {
                 if (globalLogFunction)
                 {
                     std::va_list args;
-                    va_start(args, msg.c_str());
+                    va_start(args, msg);
                     char formatted_str[MAXLEN];
-                    vsnprintf(formatted_str, MAXLEN, msg.c_str(), args);
+                    vsnprintf(formatted_str, MAXLEN, msg, args);
                     va_end(args);
 
-                    globalLogFunction(LOGLEVEL_DEBUG, tag.c_str(), sourceFile.file, sourceFile.line, sourceFile.func, formatted_str);
+                    globalLogFunction(LOGLEVEL_DEBUG, tag, sourceFile.file, sourceFile.line, sourceFile.func, formatted_str);
                 }
             }
 
@@ -136,17 +136,17 @@ namespace Log
              * @param msg Message to be logged.
              * @param sourceFile Log location.
              */
-            static void debugVerbose(const std::string& tag, SourceFile sourceFile, const std::string& msg, ...)
+            static void debugVerbose(const char* tag, SourceFile sourceFile, const char* msg, ...)
             {
                 if (globalLogFunction)
                 {
                     std::va_list args;
-                    va_start(args, msg.c_str());
+                    va_start(args, msg);
                     char formatted_str[MAXLEN];
-                    vsnprintf(formatted_str, MAXLEN, msg.c_str(), args);
+                    vsnprintf(formatted_str, MAXLEN, msg, args);
                     va_end(args);
 
-                    globalLogFunction(LOGLEVEL_DEBUG_VERBOSE, tag.c_str(), sourceFile.file, sourceFile.line, sourceFile.func, formatted_str);
+                    globalLogFunction(LOGLEVEL_DEBUG_VERBOSE, tag, sourceFile.file, sourceFile.line, sourceFile.func, formatted_str);
                 }
             }
 
@@ -157,17 +157,17 @@ namespace Log
              * @param msg Message to be logged.
              * @param sourceFile Log location.
              */
-            static void error(const std::string& tag, SourceFile sourceFile, const std::string& msg, ...)
+            static void error(const char* tag, SourceFile sourceFile, const char* msg, ...)
             {
                 if (globalLogFunction)
                 {
                     std::va_list args;
-                    va_start(args, msg.c_str());
+                    va_start(args, msg);
                     char formatted_str[MAXLEN];
-                    vsnprintf(formatted_str, MAXLEN, msg.c_str(), args);
+                    vsnprintf(formatted_str, MAXLEN, msg, args);
                     va_end(args);
 
-                    globalLogFunction(LOGLEVEL_ERROR, tag.c_str(), sourceFile.file, sourceFile.line, sourceFile.func, formatted_str);
+                    globalLogFunction(LOGLEVEL_ERROR, tag, sourceFile.file, sourceFile.line, sourceFile.func, formatted_str);
                 }
             }
     };
