@@ -710,7 +710,7 @@ void mtLoggingFunctionsWrapper(int level, const char* tag, const char* file, int
             _mterror(tag, file, line, func, msg);
             break;
         case(LOGLEVEL_CRITICAL):
-            _merror_exit(tag, file, line, func, msg);
+            _mterror_exit(tag, file, line, func, msg);
             break;
         default:
             break;

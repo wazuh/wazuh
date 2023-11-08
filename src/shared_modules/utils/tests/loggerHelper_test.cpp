@@ -97,6 +97,36 @@ TEST_F(LoggerHelperTest, simpleDebugVerboseTest)
 
 TEST_F(LoggerHelperTest, simpleWarningTest)
 {
-    logWarn(TAG, "Testing Warning log");
+    logWarn(TAG, "%s", "Testing Warning log");
+    EXPECT_TRUE(std::regex_match(ssOutput.str(), std::regex(WARNING_REGEX)));
+}
+
+TEST_F(LoggerHelperTest, simpleInfoFormattedTest)
+{
+    logInfo(TAG, "%s", "Testing Info log");
+    EXPECT_TRUE(std::regex_match(ssOutput.str(), std::regex(INFO_REGEX)));
+}
+
+TEST_F(LoggerHelperTest, simpleErrorFormattedTest)
+{
+    logError(TAG, "%s", "Testing Error log");
+    EXPECT_TRUE(std::regex_match(ssOutput.str(), std::regex(ERROR_REGEX)));
+}
+
+TEST_F(LoggerHelperTest, simpleDebugFormattedTest)
+{
+    logDebug1(TAG, "%s", "Testing Debug log");
+    EXPECT_TRUE(std::regex_match(ssOutput.str(), std::regex(DEBUG_REGEX)));
+}
+
+TEST_F(LoggerHelperTest, simpleDebugVerboseFormattedTest)
+{
+    logDebug2(TAG, "%s", "Testing Debug Verbose log");
+    EXPECT_TRUE(std::regex_match(ssOutput.str(), std::regex(DEBUG_VERBOSE_REGEX)));
+}
+
+TEST_F(LoggerHelperTest, simpleWarningFormattedTest)
+{
+    logWarn(TAG, "%s", "Testing Warning log");
     EXPECT_TRUE(std::regex_match(ssOutput.str(), std::regex(WARNING_REGEX)));
 }
