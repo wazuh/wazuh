@@ -344,6 +344,21 @@ public:
      *
      */
     bool empty() const { return m_itemList.empty(); }
+
+    /**
+     * @brief Get list of all names and priorities.
+     *
+     */
+    std::vector<std::pair<std::string, std::size_t>> list() const
+    {
+        std::vector<std::pair<std::string, std::size_t>> result;
+        result.reserve(m_itemList.size());
+        for (const auto& item : m_itemList)
+        {
+            result.emplace_back(item.name, item.priority);
+        }
+        return result;
+    }
 };
 } // namespace internal
 
