@@ -43,6 +43,7 @@ typedef struct __Config {
     u_int8_t mailbylevel;
     u_int8_t logbylevel;
     u_int8_t logfw;
+    u_int8_t update_check;
     int decoder_order_size;
 
     /* Agent's disconnection global parameters */

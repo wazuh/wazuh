@@ -21,6 +21,7 @@ class WazuhException(Exception):
         900: 'One of the API child processes terminated abruptly. The API process pool is not usable anymore. '
              'Please restart the Wazuh API',
         901: 'API executor subprocess broke. A service restart may be needed',
+        902: 'API Endpoint only available on master node',
 
         # Wazuh: 0999 - 1099
         999: 'Incompatible version of Python',
@@ -158,13 +159,13 @@ class WazuhException(Exception):
         1209: {'message': 'Invalid relative directory. A \'rule_dir\' tag must '
                           'be declared in ossec.conf ruleset section.',
                'remediation': f'Please, visit the official documentation '
-                              f'(https://documentation.wazuh.com/' 
+                              f'(https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
                               ' to get more information about the rules'
         },
         1210: {'message': 'Uploading, updating or deleting default rules is not allowed.',
                'remediation': f'Please, visit the official documentation '
-                              f'(https://documentation.wazuh.com/' 
+                              f'(https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/ruleset/index.html)'
                               ' to get more information about the rules'
         },
@@ -429,6 +430,9 @@ class WazuhException(Exception):
                'remediation': 'Restart the Wazuh service to restore the RBAC database to default'},
         2009: {'message': 'Pagination error. Response from wazuh-db was over the maximum socket buffer size'},
         2010: {'message': 'The requested read operation did not complete fully'},
+
+        # External services
+        2100: {'message': 'Error in CTI service request'},
 
         # Cluster
         3000: 'Cluster',

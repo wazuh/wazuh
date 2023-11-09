@@ -6941,6 +6941,13 @@ components:
       schema:
         type: boolean
         default: false
+    force_query:
+      in: query
+      name: force_query
+      description: "Force query to CTI service"
+      schema:
+        type: boolean
+        default: false
     file_path:
       in: query
       name: file_path
@@ -13074,6 +13081,67 @@ paths:
           $ref: '#/components/responses/UnauthorizedResponse'
         '403':
           $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /manager/version/check:
+    get:
+      tags:
+      - Manager
+      summary: "Check available updates"
+      description: "Return if there is any available update"
+      operationId: api.controllers.manager_controller.check_available_version
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/force_query'
+      responses:
+        '200':
+          description: "Information about available new versions"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  last_check_date: '2023-10-09T15:39:57.616301+00:00'
+                  current_version: v4.8.0
+                  update_check: true
+                  last_available_major:
+                    tag: v5.0.0
+                    description: ""
+                    title: Wazuh 5.0.0
+                    published_date: '2023-10-05T12:48:00Z'
+                    semver:
+                      major: 5
+                      minor: 0
+                      patch: 0
+                  last_available_minor:
+                    tag: v4.9.1
+                    description: ""
+                    title: Wazuh 4.9.1
+                    published_date: '2023-10-05T12:47:00Z'
+                    semver:
+                      major: 4
+                      minor: 9
+                      patch: 1
+                  last_available_patch:
+                    tag: v4.8.2
+                    description: ""
+                    title: Wazuh 4.8.2
+                    published_date: '2023-10-05T12:46:00Z'
+                    semver:
+                      major: 4
+                      minor: 8
+                      patch: 2
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
