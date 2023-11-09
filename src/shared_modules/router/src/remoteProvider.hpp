@@ -63,7 +63,14 @@ public:
     ~RemoteProvider()
     {
         nlohmann::json jsonMsg {{"EndpointName", m_endpointName}, {"MessageType", "RemoveProvider"}};
-        RemoteStateHelper::sendRegistrationMessage(jsonMsg);
+        try
+        {
+            RemoteStateHelper::sendRegistrationMessage(jsonMsg, true);
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << "Unable to send RemoveProvider message: " << e.what() << std::endl;
+        }
     }
 };
 

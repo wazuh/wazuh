@@ -36,12 +36,12 @@ public:
      *
      * @param jsonMsg Message to be sent.
      */
-    static void sendRegistrationMessage(const nlohmann::json& jsonMsg)
+    static void sendRegistrationMessage(const nlohmann::json& jsonMsg, bool stopIfSocketRemoved = false)
     {
         std::promise<void> promiseObj;
         auto futureObj = promiseObj.get_future();
-        auto socketClient =
-            std::make_shared<SocketClient<Socket<OSPrimitives>, EpollWrapper>>(REMOTE_SUBSCRIPTION_ENDPOINT);
+        auto socketClient = std::make_shared<SocketClient<Socket<OSPrimitives>, EpollWrapper>>(
+            REMOTE_SUBSCRIPTION_ENDPOINT, stopIfSocketRemoved);
         socketClient->connect(
             [&](const char* body, uint32_t bodySize, const char*, uint32_t)
             {
