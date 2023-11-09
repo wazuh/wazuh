@@ -14,6 +14,7 @@ public:
     MOCK_METHOD(base::Name, name, (), (const, override));
     MOCK_METHOD(std::unordered_set<base::Name>, assets, (), (const, override));
     MOCK_METHOD(base::Expression, expression, (), (const, override));
+    MOCK_CONST_METHOD0(hash, const std::string&());
     MOCK_METHOD(std::string, getGraphivzStr, (), (const, override));
 };
 
