@@ -26,21 +26,34 @@ private:
     tf::Executor m_executor; ///< Executor
 
     base::Event m_event; ///< Shared event between the tasks
+    bool m_isBuilt;      ///< True if the backend is built
 
 public:
-    Controller() = delete;
     Controller(const Controller&) = delete;
 
     ~Controller() = default;
 
     /**
-     * @brief Construct a new Controller from an expression and a set of traceables
-     *
-     * @param expression expression to build
-     * @param traceables traceables expressions
-     * @param endCallback callback to call when the expression is finished
+     * @brief Construct a new Controller
      */
-    Controller(base::Expression expression, std::unordered_set<std::string> traceables, std::function<void()> endCallback = nullptr);
+    Controller()
+        : m_isBuilt {false}
+        , m_executor {1} {};
+
+    /**
+     * @copydoc bk::IController::build
+     */
+    void build(base::Expression expression,
+               std::unordered_set<std::string> traceables,
+               std::function<void()> endCallback) override;
+
+    /**
+     * @copydoc bk::IController::build
+     */
+    void build(base::Expression expression, std::unordered_set<std::string> traceables) override
+    {
+        build(std::move(expression), std::move(traceables), nullptr);
+    };
 
     /**
      * @copydoc bk::IController::ingest
@@ -73,7 +86,7 @@ public:
     /**
      * @copydoc bk::IController::isAviable
      */
-    inline bool isAviable() const override { return true; }
+    inline bool isAviable() const override { return m_isBuilt; }
 
     /**
      * @copydoc bk::IController::printGraph

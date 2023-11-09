@@ -10,6 +10,8 @@ namespace bk::mocks
 class MockController : public IController
 {
 public:
+    MOCK_METHOD(void, build, (base::Expression, std::unordered_set<std::string>, std::function<void()>), (override));
+    MOCK_METHOD(void, build, (base::Expression, std::unordered_set<std::string>), (override));
     MOCK_METHOD(void, ingest, (base::Event&&), (override));
     MOCK_METHOD(base::Event, ingestGet, (base::Event&&), (override));
     MOCK_METHOD(bool, isAviable, (), (const, override));

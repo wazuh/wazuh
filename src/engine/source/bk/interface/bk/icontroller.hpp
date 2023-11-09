@@ -27,6 +27,27 @@ public:
     virtual ~IController() = default;
 
     /**
+     * @brief Build the backend from an expression and a set of traceables.
+     *
+     * @param expression Expression to build
+     * @param traceables Traceables of the expression
+     * @param endCallback Callback to call when the expression is finished
+     * @throw std::runtime_error if the backend is already built.
+     */
+    virtual void build(base::Expression expression,
+                       std::unordered_set<std::string> traceables,
+                       std::function<void()> endCallback) = 0;
+
+    /**
+     * @brief Build the backend from an expression and a set of traceables.
+     *
+     * @param expression Expression to build
+     * @param traceables Traceables of the expression
+     * @throw std::runtime_error if the backend is already built.
+     */
+    virtual void build(base::Expression expression, std::unordered_set<std::string> traceables) = 0;
+
+    /**
      * @brief Ingest the data into the backend.
      *
      * @param data The data to ingest.

@@ -34,7 +34,8 @@ std::optional<base::Error> RuntimePolicy::build(std::shared_ptr<builder::Builder
                        std::inserter(assetNames, assetNames.begin()),
                        [](const auto& name) { return name.toStr(); });
 
-        m_controller = std::make_shared<bk::rx::Controller>(policy.expression(), assetNames);
+        m_controller = std::make_shared<bk::rx::Controller>();
+        m_controller->build(policy.expression(), assetNames, {});
         m_hash = policy.hash();
     }
     catch (std::exception& e)
