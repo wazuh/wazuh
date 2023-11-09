@@ -1,7 +1,8 @@
-#ifndef _MOCK_BUILDER_HPP
-#define _MOCK_BUILDER_HPP
+#ifndef _ROUTER2_MOCK_BUILDER_HPP
+#define _ROUTER2_MOCK_BUILDER_HPP
 
 #include <gmock/gmock.h>
+
 #include "ibuilder.hpp"
 
 namespace router
@@ -14,4 +15,4 @@ public:
 };
 }
 
-#endif // _MOCK_BUILDER_HPP
+#endif // _ROUTER2_MOCK_BUILDER_HPP

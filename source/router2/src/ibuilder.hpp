@@ -1,16 +1,16 @@
-#ifndef _IBUILDER_HPP
-#define _IBUILDER_HPP
+#ifndef _ROUTER2_IBUILDER_HPP
+#define _ROUTER2_IBUILDER_HPP
 
 #include <memory>
 
+#include <builder/asset.hpp>
 #include <builder/ipolicy.hpp>
-#include <store/utils.hpp>
-#include "registry.hpp"
-#include "policy.hpp"
-#include "asset.hpp"
+#include <builder/policy.hpp>
+#include <builder/registry.hpp>
 #include <error.hpp>
 #include <expression.hpp>
 #include <name.hpp>
+#include <store/utils.hpp>
 
 namespace router
 {
@@ -42,6 +42,10 @@ public:
  */
 class ConcreteBuilder : public IBuilder
 {
+private:
+    std::shared_ptr<store::IStore> m_storeRead; /**< The store to retrieve internal documents. */
+    std::shared_ptr<builder::internals::Registry<builder::internals::Builder>> m_registry; /**< The registry for builder internals. */
+
 public:
 
     /**
@@ -84,12 +88,8 @@ public:
         builder::Asset asset(base::getResponse<store::Doc>(routeJson), builder::Asset::Type::FILTER, m_registry);
         return asset.getExpression();
     }
-
-private:
-    std::shared_ptr<store::IStore> m_storeRead; /**< The store to retrieve internal documents. */
-    std::shared_ptr<builder::internals::Registry<builder::internals::Builder>> m_registry; /**< The registry for builder internals. */
 };
 
 } // namespace router
 
-#endif //_IBUILDER_HPP
+#endif //_ROUTER2_IBUILDER_HPP
