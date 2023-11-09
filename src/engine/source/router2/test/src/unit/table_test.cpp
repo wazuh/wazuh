@@ -206,7 +206,6 @@ std::vector<EntryTest> g_initStatePrior = {
  * @brief Check if the priority is the same as the expected.
  * std::string name, std::size_t newPriority, bool expected result
  */
-
 using PriorityT = std::tuple<std::string, std::size_t, bool>;
 using PriorityTest = ::testing::TestWithParam<PriorityT>;
 
@@ -227,7 +226,6 @@ public:
 
 TEST_P(PriorityTest, Priority)
 {
-    GTEST_SKIP();
     auto& [name, newPriority, expected] = GetParam();
     ri::Table<ValueType> table;
     // Insert all entries (And check if the insert is ok)
@@ -254,8 +252,8 @@ TEST_P(PriorityTest, Priority)
     }
     else
     {
-        // Check if the name and priority exists
-        EXPECT_TRUE(table.nameExists(name) || table.priorityExists(newPriority));
+        // Check if the name doesn't exists or the priority is already used
+        EXPECT_TRUE(!table.nameExists(name) || table.priorityExists(newPriority));
     }
 }
 
@@ -263,8 +261,14 @@ INSTANTIATE_TEST_SUITE_P(Table,
                          PriorityTest,
                          ::testing::Values(
                              // Test to insert by name
-                             EasySet("a", 1, false),
-                             EasySet("a", 7, true)
+                             EasySet("a", 1, true),
+                             EasySet("a", 2, false),
+                             EasySet("a", 3, false),
+                             EasySet("a", 7, true),
+                             EasySet("z", 1, false),
+                             EasySet("z", 2, false),
+                             EasySet("z", 3, false),
+                             EasySet("z", 7, false)
                              // end
                              ));
 
