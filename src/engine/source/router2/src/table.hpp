@@ -1,8 +1,8 @@
 #ifndef _ROUTER2_TABLE_HPP
 #define _ROUTER2_TABLE_HPP
 
-#include <memory>
 #include <list>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -44,16 +44,11 @@ public:
 /**
  * @brief A template class to store and manage objects with unique names and priorities.
  *
- * @tparam T The type of object to be stored. T must have the following methods:
- * - std::size_t priority() const
- * - void priority(std::size_t)
- * - const std::string& name() const
- * - void name(const std::string&)
+ * @tparam T The type of object to be stored. Must be move constructible.
  *
  * The objects are stored in a set sorted by priority, and can be accessed by name
  * using a hash map for fast lookup.
- */
-template<typename T>
+ */template<typename T>
 class Table
 {
 private:
@@ -73,19 +68,24 @@ private:
     };
 
     // List to store the items, sorted by priority if needed.
-    std::list<Item> itemList;
+    std::list<Item> m_itemList;
 
     // Hash map to index the items by name.
-    std::unordered_map<std::string, typename std::list<Item>::iterator> nameIndex;
+    std::unordered_map<std::string, typename std::list<Item>::iterator> m_nameIndex;
 
     // Function to find the insertion point based on priority.
     typename std::list<Item>::iterator findInsertionPoint(std::size_t priority)
     {
-        return std::find_if(itemList.begin(), itemList.end(),
-                            [priority](const Item& item) { return item.priority >= priority; });
+        return std::find_if(
+            m_itemList.begin(), m_itemList.end(), [priority](const Item& item) { return item.priority >= priority; });
     }
 
 public:
+    /**
+     * @brief Default constructor.
+     */
+    Table() = default;
+
     /**
      * @brief Check if a priority is already used.
      *
@@ -94,8 +94,14 @@ public:
      */
     bool priorityExists(std::size_t priority) const
     {
-        return std::any_of(
-            itemList.begin(), itemList.end(), [priority](const Item& item) { return item.priority == priority; });
+        for (const auto& item : m_itemList)
+        {
+            if (item.priority == priority)
+                return true;
+            if (item.priority > priority)
+                break;
+        }
+        return false;
     }
 
     /**
@@ -104,7 +110,7 @@ public:
      * @param name The name to check.
      * @return true if the name is used, false otherwise.
      */
-    bool nameExists(const std::string& name) const { return nameIndex.find(name) != nameIndex.end(); }
+    bool nameExists(const std::string& name) const { return m_nameIndex.find(name) != m_nameIndex.end(); }
 
     /**
      * @brief Insert a new object with name and priority.
@@ -123,8 +129,8 @@ public:
         }
 
         auto it = findInsertionPoint(priority);
-        auto emplacedItem = itemList.emplace(it, Item(name, priority, std::move(object)));
-        nameIndex[name] = emplacedItem;
+        auto emplacedItem = m_itemList.emplace(it, Item(name, priority, std::move(object)));
+        m_nameIndex[name] = emplacedItem;
         return true;
     }
 
@@ -135,21 +141,14 @@ public:
      */
     bool erase(const std::string& name)
     {
-        // Search for the item by name
-        auto name_it = nameIndex.find(name);
-        if (name_it == nameIndex.end())
+        auto it = m_nameIndex.find(name);
+        if (it != m_nameIndex.end())
         {
-            return false;
+            m_itemList.erase(it->second);
+            m_nameIndex.erase(it);
+            return true;
         }
-
-        // Safely erase the item, while ensuring the set and map stay in sync
-        auto node_handler = itemList.extract(name_it->second);
-        if (node_handler.empty())
-        {
-            return false;
-        }
-        nameIndex.erase(name_it);
-        return true;
+        return false;
     }
 
     /**
@@ -157,26 +156,39 @@ public:
      *
      * @param name The name of the object.
      * @param newPriority The new priority.
-     * @return true if the priority was updated, false if the name or priority is already used.
+     * @return true if the priority was updated or the priority is the same, false if the name does not exist or the new
+     * priority is already used.
      */
     bool setPriority(const std::string& name, std::size_t newPriority)
     {
-        // Search for the item by name
-        auto name_it = nameIndex.find(name);
-        if (name_it == nameIndex.end())
+        auto name_it = m_nameIndex.find(name);
+        if (name_it == m_nameIndex.end())
         {
-            return false;
+            return false; // Name does not exist
         }
 
-        // Check if the new priority is already used
+        if (name_it->second->priority == newPriority)
+        {
+            return true; // New priority is the same
+        }
         if (priorityExists(newPriority))
         {
-            return false;
+            return false; // New priority is already used
         }
 
-        auto newPos = findInsertionPoint(newPriority);
-        itemList.splice(newPos, itemList, name_it->second);
-        nameIndex[name] = newPos;
+        // Create a new Item object with the new priority
+        auto item_it = name_it->second;
+        Item newItem(item_it->name, newPriority, std::move(item_it->object));
+
+        // Erase the old item and update the index
+        m_itemList.erase(item_it);
+        m_nameIndex.erase(name_it);
+
+        // Insert the new item and update the index
+        auto new_it = findInsertionPoint(newPriority);
+        auto emplacedItem = m_itemList.emplace(new_it, std::move(newItem));
+        m_nameIndex[name] = emplacedItem;
+
         return true;
     }
 
@@ -189,8 +201,8 @@ public:
      */
     T& get(const std::string& name)
     {
-        auto it = nameIndex.find(name);
-        if (it == nameIndex.end())
+        auto it = m_nameIndex.find(name);
+        if (it == m_nameIndex.end())
         {
             throw std::out_of_range("No element with the given name.");
         }
@@ -207,8 +219,8 @@ public:
      */
     const T& get(const std::string& name) const
     {
-        auto it = nameIndex.find(name);
-        if (it == nameIndex.end())
+        auto it = m_nameIndex.find(name);
+        if (it == m_nameIndex.end())
         {
             throw std::out_of_range("No element with the given name.");
         }
@@ -284,54 +296,54 @@ public:
      *
      * @return An iterator to the beginning of the set.
      */
-    iterator begin() { return iterator(itemList.begin()); }
+    iterator begin() { return iterator(m_itemList.begin()); }
 
     /**
      * @brief Get an iterator to the end of the set.
      *
      * @return An iterator to the end of the set.
      */
-    iterator end() { return iterator(itemList.end()); }
+    iterator end() { return iterator(m_itemList.end()); }
 
     /**
      * @brief Get a const iterator to the beginning of the set.
      *
      * @return A const iterator to the beginning of the set.
      */
-    const_iterator begin() const { return const_iterator(itemList.cbegin()); }
+    const_iterator begin() const { return const_iterator(m_itemList.cbegin()); }
 
     /**
      * @brief Get a const iterator to the end of the set.
      *
      * @return A const iterator to the end of the set.
      */
-    const_iterator end() const { return const_iterator(itemList.cend()); }
+    const_iterator end() const { return const_iterator(m_itemList.cend()); }
 
     /**
      * @brief Get a const iterator to the beginning of the set.
      *
      * @return A const iterator to the beginning of the set.
      */
-    const_iterator cbegin() const { return const_iterator(itemList.cbegin()); }
+    const_iterator cbegin() const { return const_iterator(m_itemList.cbegin()); }
 
     /**
      * @brief Get a const iterator to the end of the set.
      *
      * @return A const iterator to the end of the set.
      */
-    const_iterator cend() const { return const_iterator(itemList.cend()); }
+    const_iterator cend() const { return const_iterator(m_itemList.cend()); }
 
     /**
      * @brief Size of the set.
      *
      */
-    std::size_t size() const { return itemList.size(); }
+    std::size_t size() const { return m_itemList.size(); }
 
     /**
      * @brief Check if the set is empty.
      *
      */
-    bool empty() const { return itemList.empty(); }
+    bool empty() const { return m_itemList.empty(); }
 };
 } // namespace internal
 
