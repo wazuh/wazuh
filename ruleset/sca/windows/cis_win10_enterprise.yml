@@ -7783,22 +7783,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoDataExecutionPrevention'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoDataExecutionPrevention -> 0'
 
-  # 18.10.29.3 (L2) Ensure 'Turn off files from Office.com in Quick access view' is set to 'Enabled'. (Automated)
-  - id: 15874
-    title: "Ensure 'Turn off files from Office.com in Quick access view' is set to 'Enabled'."
-    description: "This policy setting controls whether or not File Explorer will request files from the cloud and display them in Quick access view. The recommended state for this setting is: Enabled."
-    rationale: "In a high security environment, data should never be sent or received from any third-party since this data could contain sensitive information."
-    impact: "File Explorer will not be able to request recent cloud file metadata from Office.com and display it in the Quick access view."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\File Explorer\\Turn off files from Office.com in Quick access view Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Explorer.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates (or newer)."
-    compliance:
-      - cis: ["18.10.29.3"]
-    condition: all
-    rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> DisableGraphRecentItems'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> DisableGraphRecentItems -> 1'
-
-  # 18.10.29.4 (L1) Ensure 'Turn off heap termination on corruption' is set to 'Disabled'. (Automated)
+  # 18.10.29.3 (L1) Ensure 'Turn off heap termination on corruption' is set to 'Disabled'. (Automated)
   - id: 15875
     title: "Ensure 'Turn off heap termination on corruption' is set to 'Disabled'."
     description: "Without heap termination on corruption, legacy plug-in applications may continue to function when a File Explorer session has become corrupt. Ensuring that heap termination on corruption is active will prevent this. The recommended state for this setting is: Disabled."
@@ -7806,7 +7791,7 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\File Explorer\\Turn off heap termination on corruption Note: This Group Policy path is provided by the Group Policy template Explorer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
-      - cis: ["18.10.29.4"]
+      - cis: ["18.10.29.3"]
       - cis_csc_v8: ["4.8"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
@@ -7818,7 +7803,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoHeapTerminationOnCorruption'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoHeapTerminationOnCorruption -> 0'
 
-  # 18.10.29.5 (L1) Ensure 'Turn off shell protocol protected mode' is set to 'Disabled'. (Automated)
+  # 18.10.29.4 (L1) Ensure 'Turn off shell protocol protected mode' is set to 'Disabled'. (Automated)
   - id: 15876
     title: "Ensure 'Turn off shell protocol protected mode' is set to 'Disabled'."
     description: "This policy setting allows you to configure the amount of functionality that the shell protocol can have. When using the full functionality of this protocol, applications can open folders and launch files. The protected mode reduces the functionality of this protocol allowing applications to only open a limited set of folders. Applications are not able to open files with this protocol when it is in the protected mode. It is recommended to leave this protocol in the protected mode to increase the security of Windows. The recommended state for this setting is: Disabled."
@@ -7826,7 +7811,7 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\File Explorer\\Turn off shell protocol protected mode Note: This Group Policy path is provided by the Group Policy template WindowsExplorer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
-      - cis: ["18.10.29.5"]
+      - cis: ["18.10.29.4"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["8.3"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -7862,6 +7847,31 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\HomeGroup'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\HomeGroup -> DisableHomeGroup'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\HomeGroup -> DisableHomeGroup -> 1'
+
+  # 18.10.35.1 (L1) 'Disable Internet Explorer 11 as a standalone browser' is set to 'Enabled: Always' (Automated)
+
+  - id: 15874
+    title: "Disable Internet Explorer 11 as a standalone browser is set to Enabled: Always."
+    description: "This policy setting restricts the launching of Internet Explorer as a standalone browser. This setting preforms the following actions when enabled: Prevents Internet Explorer 11 from launching as a standalone browser, Restricts Internet Explorer's usage to Microsoft Edge's native Internet Explorer mode, Redirects all attempts at launching Internet Explorer 11 to Microsoft Edge Stable Channel browser, Overrides any other policies that redirect to Internet Explorer 11. The recommended state for this setting is: Enabled: Always."
+    rationale: "Official support for Internet Explorer (IE) 11 desktop applications (workstation) ended on June 22, 2022. Unsupported software could contain vulnerabilities that are left unpatched. Unpatched vulnerabilities can lead to application weaknesses that could allow attackers to leverage the security vulnerability by running malicious code."
+    impact: "Users will no longer be able to launch IE 11 and will be redirected to Microsoft Edge. Note: IE 11 is still supported on Windows 10 LTSC and Windows Server versions. Note #2: On February 14, 2023, a Microsoft Edge update disabled IE 11 on Windows 10 (except those mentioned above)."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Always: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Internet Explorer\\Disable Internet Explorer 11 as a standalone browser Note: This Group Policy path may not exist by default. It is provided by the Group Policy template InetRes.admx/adml that is included with the Microsoft Windows 10 Release 21H1 Administrative Templates (or newer)."
+    references:
+      - "https://techcommunity.microsoft.com/t5/windows-it-pro-blog/internet-explorer-11-desktop-app-retirement-faq/ba-p/2366549"
+    compliance:
+      - cis: ["18.10.35.1"]
+      - cis_csc_v8: ["9.1"]
+      - cis_csc_v7: ["7.1"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Internet Explorer\Main'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Internet Explorer\Main -> NotifyDisableIEOptions'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Internet Explorer\Main -> NotifyDisableIEOptions -> 1'
 
   # 18.10.37.2 (L2) Ensure 'Turn off location' is set to 'Enabled'. (Automated)
   - id: 15878
@@ -8291,7 +8301,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender -> DisableAntiSpyware'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender -> DisableAntiSpyware -> 0'
 
-  # 18.10.44.1 (L1) Ensure 'Allow auditing events in Microsoft Defender Application Guard' is set to 'Enabled'. (Automated)
+  # 18.10.44.1 (NG) Ensure 'Allow auditing events in Microsoft Defender Application Guard' is set to 'Enabled'. (Automated)
   - id: 15896
     title: "Ensure 'Allow auditing events in Microsoft Defender Application Guard' is set to 'Enabled'."
     description: "This policy setting allows you to decide whether auditing events can be collected from Microsoft Defender Application Guard. The recommended state for this setting is: Enabled. Note: Microsoft Defender Application Guard requires a 64-bit version of Windows and a CPU supporting hardware-assisted CPU virtualization (Intel VT-x or AMD-V). This feature is not officially supported on virtual hardware, although it can work on VMs (especially for testing) provided that the hardware-assisted CPU virtualization feature is exposed by the host to the guest VM. More information on system requirements for this feature can be found at System requirements for Microsoft Defender Application Guard (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs."
@@ -8314,7 +8324,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\AppHVSI -> AuditApplicationGuard'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\AppHVSI -> AuditApplicationGuard -> 1'
 
-  # 18.10.44.2 (L1) Ensure 'Allow camera and microphone access in Microsoft Defender Application Guard' is set to 'Disabled'. (Automated)
+  # 18.10.44.2 (NG) Ensure 'Allow camera and microphone access in Microsoft Defender Application Guard' is set to 'Disabled'. (Automated)
   - id: 15897
     title: "Ensure 'Allow camera and microphone access in Microsoft Defender Application Guard' is set to 'Disabled'."
     description: "The policy allows you to determine whether applications inside Microsoft Defender Application Guard can access the device's camera and microphone. The recommended state for this setting is: Disabled. Note: Microsoft Defender Application Guard requires a 64-bit version of Windows and a CPU supporting hardware-assisted CPU virtualization (Intel VT-x or AMD-V). This feature is not officially supported on virtual hardware, although it can work on VMs (especially for testing) provided that the hardware-assisted CPU virtualization feature is exposed by the host to the guest VM. More information on system requirements for this feature can be found at System requirements for Microsoft Defender Application Guard (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs."
@@ -8336,7 +8346,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\AppHVSI -> AllowCameraMicrophoneRedirection'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\AppHVSI -> AllowCameraMicrophoneRedirection -> 0'
 
-  # 18.10.44.3 (L1) Ensure 'Allow data persistence for Microsoft Defender Application Guard' is set to 'Disabled'. (Automated)
+  # 18.10.44.3 (NG) Ensure 'Allow data persistence for Microsoft Defender Application Guard' is set to 'Disabled'. (Automated)
   - id: 15898
     title: "Ensure 'Allow data persistence for Microsoft Defender Application Guard' is set to 'Disabled'."
     description: "This policy setting allows you to decide whether data should persist across different sessions in Microsoft Defender Application Guard. The recommended state for this setting is: Disabled. Note: Microsoft Defender Application Guard requires a 64-bit version of Windows and a CPU supporting hardware-assisted CPU virtualization (Intel VT-x or AMD-V). This feature is not officially supported on virtual hardware, although it can work on VMs (especially for testing) provided that the hardware-assisted CPU virtualization feature is exposed by the host to the guest VM. More information on system requirements for this feature can be found at System requirements for Microsoft Defender Application Guard (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs."
@@ -8378,7 +8388,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\AppHVSI -> SaveFilesToHost'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\AppHVSI -> SaveFilesToHost -> 0'
 
-  # 18.10.44.5 (L1) Ensure 'Configure Microsoft Defender Application Guard clipboard settings: Clipboard behavior setting' is set to 'Enabled: Enable clipboard operation from an isolated session to the host' (Automated)
+  # 18.10.44.5 (NG) Ensure 'Configure Microsoft Defender Application Guard clipboard settings: Clipboard behavior setting' is set to 'Enabled: Enable clipboard operation from an isolated session to the host' (Automated)
   - id: 15900
     title: "Ensure 'Configure Microsoft Defender Application Guard clipboard settings: Clipboard behavior setting' is set to 'Enabled: Enable clipboard operation from an isolated session to the host'."
     description: "This policy setting allows you to decide how the clipboard behaves while in Microsoft Defender Application Guard. The recommended state for this setting is: Enabled: Enable clipboard operation from an isolated session to the host. Note: Microsoft Defender Application Guard requires a 64-bit version of Windows and a CPU supporting hardware-assisted CPU virtualization (Intel VT-x or AMD-V). This feature is not officially supported on virtual hardware, although it can work on VMs (especially for testing) provided that the hardware-assisted CPU virtualization feature is exposed by the host to the guest VM. More information on system requirements for this feature can be found at System requirements for Microsoft Defender Application Guard (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs."
@@ -8399,7 +8409,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\AppHVSI -> AppHVSIClipboardSettings'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\AppHVSI -> AppHVSIClipboardSettings -> 1'
 
-  # 18.10.44.6 (L1) Ensure 'Turn on Microsoft Defender Application Guard in Managed Mode' is set to 'Enabled: 1'. (Automated)
+  # 18.10.44.6 (NG) Ensure 'Turn on Microsoft Defender Application Guard in Managed Mode' is set to 'Enabled: 1'. (Automated)
   - id: 15901
     title: "Ensure 'Turn on Microsoft Defender Application Guard in Managed Mode' is set to 'Enabled: 1'."
     description: "This policy setting enables application isolation through Microsoft Defender Application Guard (Application Guard). There are 4 options available: - 0. Disable Microsoft Defender Application Guard - 1. Enable Microsoft Defender Application Guard for Microsoft Edge ONLY - 2. Enable Microsoft Defender Application Guard for Microsoft Office ONLY - 3. Enable Microsoft Defender Application Guard for Microsoft Edge AND Microsoft Office The recommended state for this setting is: Enabled: 1 (Enable Microsoft Defender Application Guard for Microsoft Edge ONLY). Note: Microsoft Defender Application Guard requires a 64-bit version of Windows and a CPU supporting hardware-assisted CPU virtualization (Intel VT-x or AMD-V). This feature is not officially supported on virtual hardware, although it can work on VMs (especially for testing) provided that the hardware-assisted CPU virtualization feature is exposed by the host to the guest VM. More information on system requirements for this feature can be found at System requirements for Microsoft Defender Application Guard (Windows 10) | Microsoft Docs Note #2: At time of publication, Microsoft Defender Application Guard in all currently released versions of Windows 10 does not yet support protection for Microsoft Office, only for Microsoft Edge. Therefore the additional available options of 2 and 3 in this setting are not yet valid. Note #3: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs."
@@ -8487,29 +8497,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\PushToInstall -> DisablePushToInstall'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\PushToInstall -> DisablePushToInstall -> 1'
 
-  # 18.10.57.2.2 (L2) Ensure 'Disable Cloud Clipboard integration for server-to-client data transfer' is set to 'Enabled'. (Automated)
-  - id: 15905
-    title: "Ensure 'Disable Cloud Clipboard integration for server-to-client data transfer' is set to 'Enabled'."
-    description: "This policy setting controls whether data transferred from the remote session to the client using clipboard redirection is added to the client-side cloud clipboard. The recommended state for this setting is: Enabled."
-    rationale: "In high security environments, clipboard data should stay local to the system and not synced to the cloud as it may contain sensitive information that should be contained locally."
-    impact: "None - this is the default behavior."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Connection Client\\Disable Cloud Clipboard integration for server-to-client data transfer Note: This Group Policy path may not exist by default. It is provided by the Group Policy template TerminalServer.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates (or newer)."
-    compliance:
-      - cis: ["18.10.57.2.2"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition: any
-    rules:
-      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services\Client'
-      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services\Client -> DisableCloudClipboardIntegration'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services\Client -> DisableCloudClipboardIntegration -> 1'
-
-  # 18.10.57.2.3 (L1) Ensure 'Do not allow passwords to be saved' is set to 'Enabled'. (Automated)
+  # 18.10.57.2.2 (L1) Ensure 'Do not allow passwords to be saved' is set to 'Enabled'. (Automated)
   - id: 15906
     title: "Ensure 'Do not allow passwords to be saved' is set to 'Enabled'."
     description: "This policy setting helps prevent Remote Desktop clients from saving passwords on a computer. The recommended state for this setting is: Enabled. Note: If this policy setting was previously configured as Disabled or Not configured, any previously saved passwords will be deleted the first time a Remote Desktop client disconnects from any server."
@@ -8517,7 +8505,7 @@ checks:
     impact: "The password saving checkbox will be disabled for Remote Desktop clients and users will not be able to save passwords."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Connection Client\\Do not allow passwords to be saved Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
-      - cis: ["18.10.57.2.3"]
+      - cis: ["18.10.57.2.2"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
@@ -9239,29 +9227,6 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\GameDVR'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\GameDVR -> AllowGameDVR'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\GameDVR -> AllowGameDVR -> 0'
-
-  # 18.10.79.1 (L1) Ensure 'Enable ESS with Supported Peripherals' is set to 'Enabled: 1'. (Automated)
-  - id: 15941
-    title: "Ensure 'Enable ESS with Supported Peripherals' is set to 'Enabled: 1'."
-    description: "Enhanced Sign-in Security isolates Windows Hello biometric (face and fingerprint) template data and matching operations to trusted hardware or specified memory regions. The recommended state for this setting is: Enabled: 1. (Enhanced Sign-in Security Enabled)."
-    rationale: "Because the channel of communication between the sensors and the algorithm is secured, it is impossible for malware to inject or replay data in order to simulate a user signing in or to lock a user out of their machine."
-    impact: "None - this is the default behavior."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 1 (Enhanced Sign-in Security Enabled): Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Hello for Business\\Enable ESS with Supported Peripherals Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Passport.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates (or newer)."
-    references:
-      - "https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/restore-scpc-config-for-admins"
-      - "https://learn.microsoft.com/en-us/windows/security/identity-protection/hello-for-business/hello-faq"
-    compliance:
-      - cis: ["18.10.79.1"]
-      - cis_csc_v8: ["10.5"]
-      - cis_csc_v7: ["8.3"]
-      - nist_sp_800-53: ["SI-16"]
-      - pci_dss_v3.2.1: ["1.4"]
-      - soc_2: ["CC6.8"]
-    condition: any
-    rules:
-      - 'not r:KEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Policies\PassportForWork\Biometrics'
-      - 'not r:KEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Policies\PassportForWork\Biometrics -> EnableESSwithSupportedPeripherals'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\GameDVR -> EnableESSwithSupportedPeripherals -> 1'
 
   # 18.10.80.1 (L2) Ensure 'Allow suggested apps in Windows Ink Workspace' is set to 'Disabled'. (Automated)
   - id: 15942
