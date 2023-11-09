@@ -9,13 +9,16 @@ class Controller::TracerImpl final : public detail::Tracer
 {
 };
 
-Controller::Controller(base::Expression expression, std::unordered_set<std::string> traceables, std::function<void()> endCallback)
-    : m_tf()
-    , m_executor(1)
-    , m_event()
-    , m_traceables(std::move(traceables))
-    , m_expression(std::move(expression))
+void Controller::build(base::Expression expression,
+                       std::unordered_set<std::string> traceables,
+                       std::function<void()> endCallback)
 {
+    if (m_isBuilt)
+    {
+        throw std::runtime_error {"The backend is already built"};
+    }
+    m_traceables = std::move(traceables);
+    m_expression = std::move(expression);
     detail::ExprBuilder builder;
     std::unordered_map<std::string, std::shared_ptr<detail::Tracer>> traces;
     builder.build(m_expression, m_tf, &m_event, traces, m_traceables, endCallback);
@@ -23,6 +26,7 @@ Controller::Controller(base::Expression expression, std::unordered_set<std::stri
     {
         m_traces.emplace(name, std::static_pointer_cast<TracerImpl>(trace));
     }
+    m_isBuilt = true;
 }
 
 base::RespOrError<Subscription> Controller::subscribe(const std::string& traceable, const Subscriber& subscriber)
