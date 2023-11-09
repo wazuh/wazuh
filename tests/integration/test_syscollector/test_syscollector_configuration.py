@@ -43,6 +43,7 @@ references:
 '''
 import os
 import sys
+from pathlib import Path
 
 import pytest
 from wazuh_testing.constants.daemons import ANALYSISD_DAEMON, WAZUH_DB_DAEMON, MODULES_DAEMON
@@ -52,16 +53,12 @@ from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils import callbacks, configuration, file
 from wazuh_testing.modules.syscollector import patterns
 from wazuh_testing.modules.modulesd.configuration import MODULESD_DEBUG
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 
 # Marks
 pytestmark = [pytest.mark.tier(level=0), pytest.mark.server, pytest.mark.agent,
               pytest.mark.linux, pytest.mark.darwin, pytest.mark.win32]
-
-# Reference paths
-TEST_DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-CONFIGURATIONS_PATH = os.path.join(TEST_DATA_PATH, 'configuration')
-TEST_CASES_PATH = os.path.join(TEST_DATA_PATH, 'test_cases')
 
 # Variables
 local_internal_options = {MODULESD_DEBUG: '2'}
@@ -75,35 +72,32 @@ else:
     daemons_handler_configuration = {'daemons': [MODULES_DAEMON], 'ignore_errors': True}
 
 # T1 Parameters: Check that Syscollector is disabled.
-t1_config_path = os.path.join(CONFIGURATIONS_PATH, 'configuration_syscollector.yaml')
-t1_cases_path = os.path.join(TEST_CASES_PATH, 'case_test_syscollector_deactivation.yaml')
+t1_3_5_config_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_syscollector.yaml')
+t1_cases_path = Path(TEST_CASES_FOLDER_PATH, 'case_test_syscollector_deactivation.yaml')
 t1_config_parameters, t1_config_metadata, t1_case_ids = configuration.get_test_cases_data(t1_cases_path)
-t1_configurations = configuration.load_configuration_template(t1_config_path, t1_config_parameters, t1_config_metadata)
+t1_configurations = configuration.load_configuration_template(t1_3_5_config_path, t1_config_parameters, t1_config_metadata)
 
 # T2 Parameters: Check that each scan is disabled.
-t2_config_path = os.path.join(CONFIGURATIONS_PATH, 'configuration_syscollector_scans_disabled.yaml')
-t2_cases_path = os.path.join(TEST_CASES_PATH, 'case_test_all_scans_disabled.yaml')
+t2_config_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_syscollector_scans_disabled.yaml')
+t2_cases_path = Path(TEST_CASES_FOLDER_PATH, 'case_test_all_scans_disabled.yaml')
 t2_config_parameters, t2_config_metadata, t2_case_ids = configuration.get_test_cases_data(t2_cases_path)
 t2_configurations = configuration.load_configuration_template(t2_config_path, t2_config_parameters, t2_config_metadata)
 
 # T3 Parameters: Check the behavior of Syscollector while setting invalid configurations.
-t3_config_path = os.path.join(CONFIGURATIONS_PATH, 'configuration_syscollector.yaml')
-t3_cases_path = os.path.join(TEST_CASES_PATH, 'case_test_invalid_configurations.yaml')
+t3_cases_path = Path(TEST_CASES_FOLDER_PATH, 'case_test_invalid_configurations.yaml')
 t3_config_parameters, t3_config_metadata, t3_case_ids = configuration.get_test_cases_data(t3_cases_path)
-t3_configurations = configuration.load_configuration_template(t3_config_path, t3_config_parameters, t3_config_metadata)
+t3_configurations = configuration.load_configuration_template(t1_3_5_config_path, t3_config_parameters, t3_config_metadata)
 
 # T4 Parameters: Check that Syscollector sets the default values when the configuration block is empty.
-t4_config_path = os.path.join(CONFIGURATIONS_PATH, 'configuration_syscollector_no_tags.yaml')
-t4_cases_path = os.path.join(TEST_CASES_PATH, 'case_test_default_values.yaml')
+t4_config_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_syscollector_no_tags.yaml')
+t4_cases_path = Path(TEST_CASES_FOLDER_PATH, 'case_test_default_values.yaml')
 t4_config_parameters, t4_config_metadata, t4_case_ids = configuration.get_test_cases_data(t4_cases_path)
 t4_configurations = configuration.load_configuration_template(t4_config_path, t4_config_parameters, t4_config_metadata)
 
 # T5 Parameters: Check that the scan is completed when all scans are enabled.
-t5_config_path = os.path.join(CONFIGURATIONS_PATH, 'configuration_syscollector.yaml')
-t5_cases_path = os.path.join(TEST_CASES_PATH, 'case_test_scanning.yaml')
+t5_cases_path = Path(TEST_CASES_FOLDER_PATH, 'case_test_scanning.yaml')
 t5_config_parameters, t5_config_metadata, t5_case_ids = configuration.get_test_cases_data(t5_cases_path)
-t5_config_metadata = t5_config_parameters
-t5_configurations = configuration.load_configuration_template(t5_config_path, t5_config_parameters, t5_config_metadata)
+t5_configurations = configuration.load_configuration_template(t1_3_5_config_path, t5_config_parameters, t5_config_metadata)
 
 
 # Tests
