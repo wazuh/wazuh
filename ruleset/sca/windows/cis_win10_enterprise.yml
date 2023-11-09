@@ -3881,7 +3881,7 @@ checks:
 
   # 18.4.1 (L1) Ensure 'Apply UAC restrictions to local accounts on network logons' is set to 'Enabled'. (Automated)
   - id: 15678
-    title: "L1 Ensure 'Apply UAC restrictions to local accounts on network logons' is set to 'Enabled'."
+    title: "Ensure 'Apply UAC restrictions to local accounts on network logons' is set to 'Enabled'."
     description: 'This setting controls whether local accounts can be used for remote administration via network logon (e.g., NET USE, connecting to C$, etc.). Local accounts are at high risk for credential theft when the same account and password is configured on multiple systems. Enabling this policy significantly reduces that risk. Enabled: Applies UAC token-filtering to local accounts on network logons. Membership in powerful group such as Administrators is disabled and powerful privileges are removed from the resulting access token. This configures the LocalAccountTokenFilterPolicy registry value to 0. This is the default behavior for Windows. Disabled: Allows local accounts to have full administrative rights when authenticating via network logon, by configuring the LocalAccountTokenFilterPolicy registry value to 1. For more information about local accounts and credential theft, review the "Mitigating Pass-the-Hash (PtH) Attacks and Other Credential Theft Techniques" documents. For more information about LocalAccountTokenFilterPolicy, see Microsoft Knowledge Base article 951016: Description of User Account Control and remote restrictions in Windows Vista. The recommended state for this setting is: Enabled.'
     rationale: "Local accounts are at high risk for credential theft when the same account and password is configured on multiple systems. Ensuring this policy is Enabled significantly reduces that risk."
     impact: "None - this is the default behavior."
@@ -3990,7 +3990,7 @@ checks:
 
   # 18.4.6 (L1) Ensure 'LSA Protection' is set to 'Enabled'. (Automated)
   - id: 15683
-    title: "L1 Ensure 'LSA Protection' is set to 'Enabled'."
+    title: "Ensure 'LSA Protection' is set to 'Enabled'."
     description: "This policy setting controls whether the Local Security Authority Server Service (LSASS) process runs protected. The Local Security Authority (LSA), which includes the Local Security Authority Server Service (LSASS) process, validates users for local and remote sign-ins and enforces local security policies. The recommended state for this setting is: Enabled. Note: This setting only applies to Windows 8.1 (and newer) except for Windows 11 (and newer). See policy setting Configure LSASS to run as a protected process."
     rationale: "The Windows 8.1 operating system (and newer) provides additional protection for the LSA to prevent reading memory and code injection by non-protected processes. Enabling this setting provides added security for the credentials that LSA stores and manages."
     impact: "If additional LSA protection is enabled, Administrators will not be able to debug a custom LSA plugin. A debugger cannot be attached to LSASS when it's a protected process. In general, there's no supported way to debug a running protected process."
@@ -4007,7 +4007,7 @@ checks:
 
   # 18.4.7 (L1) Ensure 'NetBT NodeType configuration' is set to 'Enabled: P-node (recommended)'. (Automated)
   - id: 15684
-    title: "L1 Ensure 'NetBT NodeType configuration' is set to 'Enabled: P-node (recommended)'."
+    title: "Ensure 'NetBT NodeType configuration' is set to 'Enabled: P-node (recommended)'."
     description: "This setting determines which method NetBIOS over TCP/IP (NetBT) uses to register and resolve names. The available methods are: - The B-node (broadcast) method only uses broadcasts. - The P-node (point-to-point) method only uses name queries to a name server (WINS). - The M-node (mixed) method broadcasts first, then queries a name server (WINS) if broadcast failed. - The H-node (hybrid) method queries a name server (WINS) first, then broadcasts if the query failed. The recommended state for this setting is: Enabled: P-node (recommended) (point-to-point). Note: Resolution through LMHOSTS or DNS follows these methods. If the NodeType registry value is present, it overrides any DhcpNodeType registry value. If neither NodeType nor DhcpNodeType is present, the computer uses B-node (broadcast) if there are no WINS servers configured for the network, or H-node (hybrid) if there is at least one WINS server configured."
     rationale: "In order to help mitigate the risk of NetBIOS Name Service (NBT-NS) poisoning attacks, setting the node type to P-node (point-to-point) will prevent the system from sending out NetBIOS broadcasts."
     impact: "NetBIOS name resolution queries will require a defined and available WINS server for external NetBIOS name resolution. If a WINS server is not defined or not reachable, and the desired hostname is not defined in the local cache, local LMHOSTS or HOSTS files, NetBIOS name resolution will fail."
@@ -4026,7 +4026,7 @@ checks:
 
   # 18.4.8 (L1) Ensure 'WDigest Authentication' is set to 'Disabled'. (Automated)
   - id: 15685
-    title: "L1 Ensure 'WDigest Authentication' is set to 'Disabled'."
+    title: "Ensure 'WDigest Authentication' is set to 'Disabled'."
     description: 'When WDigest authentication is enabled, Lsass.exe retains a copy of the user''s plaintext password in memory, where it can be at risk of theft. If this setting is not configured, WDigest authentication is disabled in Windows 8.1 and in Windows Server 2012 R2; it is enabled by default in earlier versions of Windows and Windows Server. For more information about local accounts and credential theft, review the "Mitigating Pass-the-Hash (PtH) Attacks and Other Credential Theft Techniques" documents. For more information about UseLogonCredential, see Microsoft Knowledge Base article 2871997: Microsoft Security Advisory Update to improve credentials protection and management May 13, 2014. The recommended state for this setting is: Disabled.'
     rationale: "Preventing the plaintext storage of credentials in memory may reduce opportunity for credential theft."
     impact: "None - this is also the default configuration for Windows 8.1 or newer."
@@ -4080,7 +4080,7 @@ checks:
 
   # 18.5.2 (L1) Ensure 'MSS: (DisableIPSourceRouting IPv6) IP source routing protection level (protects against packet spoofing)' is set to 'Enabled: Highest protection, source routing is completely disabled' (Automated)
   - id: 15687
-    title: "L1 Ensure 'MSS: (DisableIPSourceRouting IPv6) IP source routing protection level (protects against packet spoofing)' is set to 'Enabled: Highest protection, source routing is completely disabled'."
+    title: "Ensure 'MSS: (DisableIPSourceRouting IPv6) IP source routing protection level (protects against packet spoofing)' is set to 'Enabled: Highest protection, source routing is completely disabled'."
     description: "IP source routing is a mechanism that allows the sender to determine the IP route that a datagram should follow through the network. The recommended state for this setting is: Enabled: Highest protection, source routing is completely disabled."
     rationale: "An attacker could use source routed packets to obscure their identity and location. Source routing allows a computer that sends a packet to specify the route that the packet takes."
     impact: "All incoming source routed packets will be dropped."
@@ -4096,7 +4096,7 @@ checks:
 
   # 18.5.3 (L1) Ensure 'MSS: (DisableIPSourceRouting) IP source routing protection level (protects against packet spoofing)' is set to 'Enabled: Highest protection, source routing is completely disabled' (Automated)
   - id: 15688
-    title: "L1 Ensure 'MSS: (DisableIPSourceRouting) IP source routing protection level (protects against packet spoofing)' is set to 'Enabled: Highest protection, source routing is completely disabled'."
+    title: "Ensure 'MSS: (DisableIPSourceRouting) IP source routing protection level (protects against packet spoofing)' is set to 'Enabled: Highest protection, source routing is completely disabled'."
     description: "IP source routing is a mechanism that allows the sender to determine the IP route that a datagram should follow through the network. The recommended state for this setting is: Enabled: Highest protection, source routing is completely disabled."
     rationale: "An attacker could use source routed packets to obscure their identity and location. Source routing allows a computer that sends a packet to specify the route that the packet takes."
     impact: "All incoming source routed packets will be dropped."
@@ -4294,7 +4294,7 @@ checks:
 
   # 18.5.13 (L1) Ensure 'MSS: (WarningLevel) Percentage threshold for the security event log at which the system will generate a warning' is set to 'Enabled: 90% or less' (Automated)
   - id: 15698
-    title: "L1 Ensure 'MSS: (WarningLevel) Percentage threshold for the security event log at which the system will generate a warning' is set to 'Enabled: 90% or less'."
+    title: "Ensure 'MSS: (WarningLevel) Percentage threshold for the security event log at which the system will generate a warning' is set to 'Enabled: 90% or less'."
     description: "This setting can generate a security audit in the Security event log when the log reaches a user-defined threshold. The recommended state for this setting is: Enabled: 90% or less. Note: If log settings are configured to Overwrite events as needed or Overwrite events older than x days, this event will not be generated."
     rationale: "A malicious user could exhaust a target computer's resources if it never sent any acknowledgment messages for data that was transmitted by the target computer."
     impact: "An audit event will be generated when the Security log reaches the 90% percent full threshold (or whatever lower value may be set) unless the log is configured to overwrite events as needed."
@@ -4511,7 +4511,7 @@ checks:
 
   #  18.6.14.1 (L1) Ensure 'Hardened UNC Paths' is set to 'Enabled, with "Require Mutual Authentication" and "Require Integrity" set for all NETLOGON and SYSVOL shares' (Automated)
   - id: 15709
-    title: 'Ensure ''Hardened UNC Paths'' is set to ''Enabled, with "Require Mutual Authentication" and "Require Integrity" set for all NETLOGON and SYSVOL shares''.'
+    title: "Ensure 'Hardened UNC Paths' is set to Enabled, with 'Require Mutual Authentication' and 'Require Integrity' set for all NETLOGON and SYSVOL shares."
     description: 'This policy setting configures secure access to UNC paths. The recommended state for this setting is: Enabled, with Require Mutual Authentication and Require Integrity set for all NETLOGON and SYSVOL shares. Note: If the environment exclusively contains Windows 8.0 / Server 2012 (non-R2) or newer systems, then the "Privacy" setting may (optionally) also be set to enable SMB encryption. However, using SMB encryption will render the targeted share paths completely inaccessible by older OSes, so only use this additional option with caution and thorough testing.'
     rationale: "In February 2015, Microsoft released a new control mechanism to mitigate a security risk in Group Policy as part of the MS15-011 / MSKB 3000483 security update. This mechanism requires both the installation of the new security update and also the deployment of specific group policy settings to all computers on the domain from Windows Vista / Server 2008 (non-R2) or newer (the associated security patch to enable this feature was not released for Server 2003). A new group policy template (NetworkProvider.admx/adml) was also provided with the security update. Once the new GPO template is in place, the following are the minimum requirements to remediate the Group Policy security risk: \\\\*\\NETLOGON RequireMutualAuthentication=1, RequireIntegrity=1 \\\\*\\SYSVOL RequireMutualAuthentication=1, RequireIntegrity=1 Note: A reboot may be required after the setting is applied to a client machine to access the above paths."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled with the following paths configured, at a minimum: \\\\*\\NETLOGON RequireMutualAuthentication=1, RequireIntegrity=1 \\\\*\\SYSVOL RequireMutualAuthentication=1, RequireIntegrity=1 Computer Configuration\\Policies\\Administrative Templates\\Network\\Network Provider\\Hardened UNC Paths. Note: This Group Policy path does not exist by default. An additional Group Policy template (NetworkProvider.admx/adml) is required."
@@ -5487,7 +5487,7 @@ checks:
 
   # 18.9.20.1.10 (L2) Ensure 'Turn off the "Order Prints" picture task' is set to 'Enabled'. (Automated)
   - id: 15758
-    title: 'Ensure ''Turn off the "Order Prints" picture task'' is set to ''Enabled''.'
+    title: "Ensure 'Turn off the 'Order Prints' picture task' is set to 'Enabled'."
     description: 'This policy setting specifies whether the "Order Prints Online" task is available from Picture Tasks in Windows folders. The Order Prints Online Wizard is used to download a list of providers and allow users to order prints online. The recommended state for this setting is: Enabled.'
     rationale: "In an enterprise managed environment we want to lower the risk of a user unknowingly exposing sensitive data."
     impact: 'The task "Order Prints Online" is removed from Picture Tasks in File Explorer folders.'
@@ -5509,7 +5509,7 @@ checks:
 
   # 18.9.20.1.11 (L2) Ensure 'Turn off the "Publish to Web" task for files and folders' is set to 'Enabled'. (Automated)
   - id: 15759
-    title: 'Ensure ''Turn off the "Publish to Web" task for files and folders'' is set to ''Enabled''.'
+    title: "Ensure ''Turn off the 'Publish to Web' task for files and folders'' is set to 'Enabled'."
     description: "This policy setting specifies whether the tasks Publish this file to the Web, Publish this folder to the Web, and Publish the selected items to the Web are available from File and Folder Tasks in Windows folders. The Web Publishing wizard is used to download a list of providers and allow users to publish content to the Web. The recommended state for this setting is: Enabled."
     rationale: "Users may publish confidential or sensitive information to a public service outside of the control of the organization."
     impact: 'The "Publish to Web" task is removed from File and Folder tasks in Windows folders.'
@@ -7784,7 +7784,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoDataExecutionPrevention -> 0'
 
   # 18.10.29.3 (L1) Ensure 'Turn off heap termination on corruption' is set to 'Disabled'. (Automated)
-  - id: 15875
+  - id: 15874
     title: "Ensure 'Turn off heap termination on corruption' is set to 'Disabled'."
     description: "Without heap termination on corruption, legacy plug-in applications may continue to function when a File Explorer session has become corrupt. Ensuring that heap termination on corruption is active will prevent this. The recommended state for this setting is: Disabled."
     rationale: "Allowing an application to function after its session has become corrupt increases the risk posture to the system."
@@ -7804,7 +7804,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoHeapTerminationOnCorruption -> 0'
 
   # 18.10.29.4 (L1) Ensure 'Turn off shell protocol protected mode' is set to 'Disabled'. (Automated)
-  - id: 15876
+  - id: 15875
     title: "Ensure 'Turn off shell protocol protected mode' is set to 'Disabled'."
     description: "This policy setting allows you to configure the amount of functionality that the shell protocol can have. When using the full functionality of this protocol, applications can open folders and launch files. The protected mode reduces the functionality of this protocol allowing applications to only open a limited set of folders. Applications are not able to open files with this protocol when it is in the protected mode. It is recommended to leave this protocol in the protected mode to increase the security of Windows. The recommended state for this setting is: Disabled."
     rationale: "Limiting the opening of files and folders to a limited set reduces the attack surface of the system."
@@ -7825,7 +7825,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> PreXPSP2ShellProtocolBehavior -> 0'
 
   # 18.10.33.1 (L1) Ensure 'Prevent the computer from joining a homegroup' is set to 'Enabled'. (Automated)
-  - id: 15877
+  - id: 15876
     title: "Ensure 'Prevent the computer from joining a homegroup' is set to 'Enabled'."
     description: "By default, users can add their computer to a HomeGroup on a home network. The recommended state for this setting is: Enabled. Note: The HomeGroup feature is available in all workstation releases of Windows from Windows 7 through Windows 10 Release 1709. Microsoft removed the feature completely starting with Windows 10 Release 1803. However, if your environment still contains any Windows 10 Release 1709 (or older) workstations, then this setting remains important to disable HomeGroup on those systems."
     rationale: "While resources on a domain-joined computer cannot be shared with a HomeGroup, information from the domain-joined computer can be leaked to other computers in the HomeGroup."
@@ -7850,7 +7850,7 @@ checks:
 
   # 18.10.35.1 (L1) 'Disable Internet Explorer 11 as a standalone browser' is set to 'Enabled: Always' (Automated)
 
-  - id: 15874
+  - id: 15877
     title: "Disable Internet Explorer 11 as a standalone browser is set to Enabled: Always."
     description: "This policy setting restricts the launching of Internet Explorer as a standalone browser. This setting preforms the following actions when enabled: Prevents Internet Explorer 11 from launching as a standalone browser, Restricts Internet Explorer's usage to Microsoft Edge's native Internet Explorer mode, Redirects all attempts at launching Internet Explorer 11 to Microsoft Edge Stable Channel browser, Overrides any other policies that redirect to Internet Explorer 11. The recommended state for this setting is: Enabled: Always."
     rationale: "Official support for Internet Explorer (IE) 11 desktop applications (workstation) ended on June 22, 2022. Unsupported software could contain vulnerabilities that are left unpatched. Unpatched vulnerabilities can lead to application weaknesses that could allow attackers to leverage the security vulnerability by running malicious code."
@@ -8498,7 +8498,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\PushToInstall -> DisablePushToInstall -> 1'
 
   # 18.10.57.2.2 (L1) Ensure 'Do not allow passwords to be saved' is set to 'Enabled'. (Automated)
-  - id: 15906
+  - id: 15905
     title: "Ensure 'Do not allow passwords to be saved' is set to 'Enabled'."
     description: "This policy setting helps prevent Remote Desktop clients from saving passwords on a computer. The recommended state for this setting is: Enabled. Note: If this policy setting was previously configured as Disabled or Not configured, any previously saved passwords will be deleted the first time a Remote Desktop client disconnects from any server."
     rationale: "An attacker with physical access to the computer may be able to break the protection guarding saved passwords. An attacker who compromises a user's account and connects to their computer could use saved passwords to gain access to additional hosts."
@@ -8513,7 +8513,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> DisablePasswordSaving -> 1'
 
   # 18.10.57.3.2.1 (L2) Ensure 'Allow users to connect remotely by using Remote Desktop Services' is set to 'Disabled'. (Automated)
-  - id: 15907
+  - id: 15906
     title: "Ensure 'Allow users to connect remotely by using Remote Desktop Services' is set to 'Disabled'."
     description: "This policy setting allows you to configure remote access to computers by using Remote Desktop Services. The recommended state for this setting is: Disabled."
     rationale: "Any account with the Allow log on through Remote Desktop Services user right can log on to the remote console of the computer. If you do not restrict access to legitimate users who need to log on to the console of the computer, unauthorized users could download and execute malicious code to elevate their privileges."
@@ -8535,7 +8535,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDenyTSConnections -> 1'
 
   # 18.10.57.3.3.1 (L2) Ensure 'Allow UI Automation redirection' is set to 'Disabled'. (Automated)
-  - id: 15908
+  - id: 15907
     title: "Ensure 'Allow UI Automation redirection' is set to 'Disabled'."
     description: "This policy setting determines whether User Interface (UI) Automation client applications running on the local computer can access UI elements on the server. UI Automation gives programs access to most UI elements, which allows use of assistive technology products like Magnifier and Narrator that need to interact with the UI in order to work properly. UI information also allows automated test scripts to interact with the UI. For example, the local computer's Narrator and Magnifier clients can be used to interact with UI on a web page opened in a remote session. The recommended state for this setting is: Disabled. Note: Remote Desktop sessions don't currently support UI Automation redirection."
     rationale: "In a more security-sensitive environment, it is desirable to reduce the possible attack surface. The need for UI Automation redirection within a Remote Desktop session is rare, and not supported at this time, but it makes sense to reduce the number of unexpected avenues for malicious activity to occur."
@@ -8557,7 +8557,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> EnableUiaRedirection -> 0'
 
   # 18.10.57.3.3.2 (L2) Ensure 'Do not allow COM port redirection' is set to 'Enabled'. (Automated)
-  - id: 15909
+  - id: 15908
     title: "Ensure 'Do not allow COM port redirection' is set to 'Enabled'."
     description: "This policy setting specifies whether to prevent the redirection of data to client COM ports from the remote computer in a Remote Desktop Services session. The recommended state for this setting is: Enabled."
     rationale: "In a more security-sensitive environment, it is desirable to reduce the possible attack surface. The need for COM port redirection within a Remote Desktop session is very rare, so makes sense to reduce the number of unexpected avenues for data exfiltration and/or malicious code transfer."
@@ -8579,7 +8579,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableCcm -> 1'
 
   # 18.10.57.3.3.3 (L1) Ensure 'Do not allow drive redirection' is set to 'Enabled'. (Automated)
-  - id: 15910
+  - id: 15909
     title: "Ensure 'Do not allow drive redirection' is set to 'Enabled'."
     description: "This policy setting prevents users from sharing the local drives on their client computers to Remote Desktop Servers that they access. Mapped drives appear in the session folder tree in Windows Explorer in the following format: \\\\TSClient\\<driveletter>$ If local drives are shared they are left vulnerable to intruders who want to exploit the data that is stored on them. The recommended state for this setting is: Enabled."
     rationale: "Data could be forwarded from the user's Remote Desktop Services session to the user's local computer without any direct user interaction. Malicious software already present on a compromised server would have direct and stealthy disk access to the user's local computer during the Remote Desktop session."
@@ -8601,7 +8601,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableCdm -> 1'
 
   # 18.10.57.3.3.4 (L2) Ensure 'Do not allow location redirection' is set to 'Enabled'. (Automated)
-  - id: 15911
+  - id: 15910
     title: "Ensure 'Do not allow location redirection' is set to 'Enabled'."
     description: "This policy setting controls the redirection of location data to the remote computer in a Remote Desktop Services session. The recommended state for this setting is: Enabled."
     rationale: "In a more security-sensitive environment, it is desirable to reduce the possible attack surface. The need for location data redirection within a Remote Desktop session is rare, so it makes sense to reduce the number of unexpected avenues for malicious activity to occur."
@@ -8621,7 +8621,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableLocationRedir -> 1'
 
   # 18.10.57.3.3.5 (L2) Ensure 'Do not allow LPT port redirection' is set to 'Enabled'. (Automated)
-  - id: 15912
+  - id: 15911
     title: "Ensure 'Do not allow LPT port redirection' is set to 'Enabled'."
     description: "This policy setting specifies whether to prevent the redirection of data to client LPT ports during a Remote Desktop Services session. The recommended state for this setting is: Enabled."
     rationale: "In a more security-sensitive environment, it is desirable to reduce the possible attack surface. The need for LPT port redirection within a Remote Desktop session is very rare, so makes sense to reduce the number of unexpected avenues for data exfiltration and/or malicious code transfer."
@@ -8643,7 +8643,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableLPT -> 1'
 
   # 18.10.57.3.3.6 (L2) Ensure 'Do not allow supported Plug and Play device redirection' is set to 'Enabled'. (Automated)
-  - id: 15913
+  - id: 15912
     title: "Ensure 'Do not allow supported Plug and Play device redirection' is set to 'Enabled'."
     description: "This policy setting allows you to control the redirection of supported Plug and Play devices, such as Windows Portable Devices, to the remote computer in a Remote Desktop Services session. The recommended state for this setting is: Enabled."
     rationale: "In a more security-sensitive environment, it is desirable to reduce the possible attack surface. The need for Plug and Play device redirection within a Remote Desktop session is very rare, so makes sense to reduce the number of unexpected avenues for data exfiltration and/or malicious code transfer."
@@ -8663,7 +8663,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisablePNPRedir -> 1'
 
   # 18.10.57.3.3.7 (L2) Ensure 'Do not allow WebAuthn redirection' is set to 'Enabled'. (Automated)
-  - id: 15914
+  - id: 15913
     title: "Ensure 'Do not allow WebAuthn redirection' is set to 'Enabled'."
     description: "This policy setting controls the redirection of web authentication (WebAuthn) requests from a Remote Desktop session to the local device. This redirection enables users to authenticate to resources inside the Remote Desktop session using their local authenticator (e.g. Windows Hello for Business, security key, or other). The recommended state for this setting is: Enabled."
     rationale: "In a more security-sensitive environment, it is desirable to reduce the possible attack surface. To reduce this, resources inside the Remote Desktop session should not be allowed to use the local authenticator."
@@ -8685,7 +8685,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableWebAuthn -> 1'
 
   # 18.10.57.3.9.1 (L1) Ensure 'Always prompt for password upon connection' is set to 'Enabled'. (Automated)
-  - id: 15915
+  - id: 15914
     title: "Ensure 'Always prompt for password upon connection' is set to 'Enabled'."
     description: "This policy setting specifies whether Remote Desktop Services always prompts the client computer for a password upon connection. You can use this policy setting to enforce a password prompt for users who log on to Remote Desktop Services, even if they already provided the password in the Remote Desktop Connection client. The recommended state for this setting is: Enabled."
     rationale: "Users have the option to store both their username and password when they create a new Remote Desktop Connection shortcut. If the server that runs Remote Desktop Services allows users who have used this feature to log on to the server but not enter their password, then it is possible that an attacker who has gained physical access to the user's computer could connect to a Remote Desktop Server through the Remote Desktop Connection shortcut, even though they may not know the user's password."
@@ -8702,7 +8702,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fPromptForPassword -> 1'
 
   # 18.10.57.3.9.2 (L1) Ensure 'Require secure RPC communication' is set to 'Enabled'. (Automated)
-  - id: 15916
+  - id: 15915
     title: "Ensure 'Require secure RPC communication' is set to 'Enabled'."
     description: "This policy setting allows you to specify whether Remote Desktop Services requires secure Remote Procedure Call (RPC) communication with all clients or allows unsecured communication. You can use this policy setting to strengthen the security of RPC communication with clients by allowing only authenticated and encrypted requests. The recommended state for this setting is: Enabled."
     rationale: "Allowing unsecure RPC communication can exposes the server to man in the middle attacks and data disclosure attacks."
@@ -8725,7 +8725,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fEncryptRPCTraffic -> 1'
 
   # 18.10.57.3.9.3 (L1) Ensure 'Require use of specific security layer for remote (RDP) connections' is set to 'Enabled: SSL'. (Automated)
-  - id: 15917
+  - id: 15916
     title: "Ensure 'Require use of specific security layer for remote (RDP) connections' is set to 'Enabled: SSL'."
     description: "This policy setting specifies whether to require the use of a specific security layer to secure communications between clients and RD Session Host servers during Remote Desktop Protocol (RDP) connections. The recommended state for this setting is: Enabled: SSL. Note: In spite of this setting being labeled SSL, it is actually enforcing Transport Layer Security (TLS) version 1.0, not the older (and less secure) SSL protocol."
     rationale: "The native Remote Desktop Protocol (RDP) encryption is now considered a weak protocol, so enforcing the use of stronger Transport Layer Security (TLS) encryption for all RDP communications between clients and RD Session Host servers is preferred."
@@ -8748,7 +8748,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> SecurityLayer -> 2'
 
   # 18.10.57.3.9.4 (L1) Ensure 'Require user authentication for remote connections by using Network Level Authentication' is set to 'Enabled'. (Automated)
-  - id: 15918
+  - id: 15917
     title: "Ensure 'Require user authentication for remote connections by using Network Level Authentication' is set to 'Enabled'."
     description: "This policy setting allows you to specify whether to require user authentication for remote connections to the RD Session Host server by using Network Level Authentication. The recommended state for this setting is: Enabled."
     rationale: "Requiring that user authentication occur earlier in the remote connection process enhances security."
@@ -8773,7 +8773,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> UserAuthentication -> 1'
 
   # 18.10.57.3.9.5 (L1) Ensure 'Set client connection encryption level' is set to 'Enabled: High Level'. (Automated)
-  - id: 15919
+  - id: 15918
     title: "Ensure 'Set client connection encryption level' is set to 'Enabled: High Level'."
     description: "This policy setting specifies whether to require the use of a specific encryption level to secure communications between client computers and RD Session Host servers during Remote Desktop Protocol (RDP) connections. This policy only applies when you are using native RDP encryption. However, native RDP encryption (as opposed to SSL encryption) is not recommended. This policy does not apply to SSL encryption. The recommended state for this setting is: Enabled: High Level."
     rationale: "If Remote Desktop client connections that use low level encryption are allowed, it is more likely that an attacker will be able to decrypt any captured Remote Desktop Services network traffic."
@@ -8798,7 +8798,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MinEncryptionLevel -> 3'
 
   # 18.10.57.3.10.1 (L2) Ensure 'Set time limit for active but idle Remote Desktop Services sessions' is set to 'Enabled: 15 minutes or less, but not Never (0)'. (Automated)
-  - id: 15920
+  - id: 15919
     title: "Ensure 'Set time limit for active but idle Remote Desktop Services sessions' is set to 'Enabled: 15 minutes or less, but not Never (0)'."
     description: "This policy setting allows you to specify the maximum amount of time that an active Remote Desktop Services session can be idle (without user input) before it is automatically disconnected. The recommended state for this setting is: Enabled: 15 minutes or less, but not Never (0)."
     rationale: "This setting helps to prevent active Remote Desktop sessions from tying up the computer for long periods of time while not in use, preventing computing resources from being consumed by large numbers of inactive sessions. In addition, old, forgotten Remote Desktop sessions that are still active can cause password lockouts if the user's password has changed but the old session is still running. For systems that limit the number of connected users (e.g. servers in the default Administrative mode - 2 sessions only), other users' old but still active sessions can prevent another user from connecting, resulting in an effective denial of service. In addition, session timeouts that are misconfigured or set for a long period of time can leave the system open to an attacker hijacking the session."
@@ -8816,7 +8816,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> n:^(\d+) compare != 0'
 
   # 18.10.57.3.10.2 (L2) Ensure 'Set time limit for disconnected sessions' is set to 'Enabled: 1 minute'. (Automated)
-  - id: 15921
+  - id: 15920
     title: "Ensure 'Set time limit for disconnected sessions' is set to 'Enabled: 1 minute'."
     description: "This policy setting allows you to configure a time limit for disconnected Remote Desktop Services sessions. The recommended state for this setting is: Enabled: 1 minute."
     rationale: "This setting helps to prevent active Remote Desktop sessions from tying up the computer for long periods of time while not in use, preventing computing resources from being consumed by large numbers of disconnected but still active sessions. In addition, old, forgotten Remote Desktop sessions that are still active can cause password lockouts if the user's password has changed but the old session is still running. For systems that limit the number of connected users (e.g. servers in the default Administrative mode - 2 sessions only), other users' old but still active sessions can prevent another user from connecting, resulting in an effective denial of service. This setting is important to ensure a disconnected session is properly terminated. In addition, session timeouts that are misconfigured or set for a long period of time can leave the system open to an attacker hijacking the session."
@@ -8833,7 +8833,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxDisconnectionTime -> 60000'
 
   # 18.10.57.3.11.1 (L1) Ensure 'Do not delete temp folders upon exit' is set to 'Disabled'. (Automated)
-  - id: 15922
+  - id: 15921
     title: "Ensure 'Do not delete temp folders upon exit' is set to 'Disabled'."
     description: "This policy setting specifies whether Remote Desktop Services retains a user's per-session temporary folders at logoff. The recommended state for this setting is: Disabled."
     rationale: "Sensitive information could be contained inside the temporary folders and visible to other administrators that log into the system."
@@ -8852,7 +8852,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> DeleteTempDirsOnExit -> 1'
 
   # 18.10.58.1 (L1) Ensure 'Prevent downloading of enclosures' is set to 'Enabled'. (Automated)
-  - id: 15923
+  - id: 15922
     title: "Ensure 'Prevent downloading of enclosures' is set to 'Enabled'."
     description: "This policy setting prevents the user from having enclosures (file attachments) downloaded from an RSS feed to the user's computer. The recommended state for this setting is: Enabled."
     rationale: "Allowing attachments to be downloaded through the RSS feed can introduce files that could have malicious intent."
@@ -8873,7 +8873,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Internet Explorer\Feeds -> DisableEnclosureDownload -> 1'
 
   # 18.10.59.2 (L2) Ensure 'Allow Cloud Search' is set to 'Enabled: Disable Cloud Search'. (Automated)
-  - id: 15924
+  - id: 15923
     title: "Ensure 'Allow Cloud Search' is set to 'Enabled: Disable Cloud Search'."
     description: "This policy setting allows search and Cortana to search cloud sources like OneDrive and SharePoint. The recommended state for this setting is: Enabled: Disable Cloud Search."
     rationale: "Due to privacy concerns, data should never be sent to any third-party since this data could contain sensitive information."
@@ -8890,7 +8890,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowCloudSearch -> 0'
 
   # 18.10.59.3 (L1) Ensure 'Allow Cortana' is set to 'Disabled'. (Automated)
-  - id: 15925
+  - id: 15924
     title: "Ensure 'Allow Cortana' is set to 'Disabled'."
     description: "This policy setting specifies whether Cortana is allowed on the device. The recommended state for this setting is: Disabled."
     rationale: "If Cortana is enabled, sensitive information could be contained in search history and sent out to Microsoft."
@@ -8912,7 +8912,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowCortana -> 0'
 
   # 18.10.59.4 (L1) Ensure 'Allow Cortana above lock screen' is set to 'Disabled'. (Automated)
-  - id: 15926
+  - id: 15925
     title: "Ensure 'Allow Cortana above lock screen' is set to 'Disabled'."
     description: "This policy setting determines whether or not the user can interact with Cortana using speech while the system is locked. The recommended state for this setting is: Disabled."
     rationale: "Access to any computer resource should not be allowed when the device is locked."
@@ -8934,7 +8934,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowCortanaAboveLock -> 0'
 
   # 18.10.59.5 (L1) Ensure 'Allow indexing of encrypted files' is set to 'Disabled'. (Automated)
-  - id: 15927
+  - id: 15926
     title: "Ensure 'Allow indexing of encrypted files' is set to 'Disabled'."
     description: "This policy setting controls whether encrypted items are allowed to be indexed. When this setting is changed, the index is rebuilt completely. Full volume encryption (such as BitLocker Drive Encryption or a non-Microsoft solution) must be used for the location of the index to maintain security for encrypted files. The recommended state for this setting is: Disabled."
     rationale: "Indexing and allowing users to search encrypted files could potentially reveal confidential data stored within the encrypted files."
@@ -8956,7 +8956,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowIndexingEncryptedStoresOrItems -> 0'
 
   # 18.10.59.6 (L1) Ensure 'Allow search and Cortana to use location' is set to 'Disabled'. (Automated)
-  - id: 15928
+  - id: 15927
     title: "Ensure 'Allow search and Cortana to use location' is set to 'Disabled'."
     description: "This policy setting specifies whether search and Cortana can provide location aware search and Cortana results. The recommended state for this setting is: Disabled."
     rationale: "In an enterprise managed environment, allowing Cortana and Search to have access to location data is unnecessary. Organizations likely do not want this information shared out."
@@ -8978,7 +8978,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowSearchToUseLocation -> 0'
 
   # 18.10.59.7 (L2) Ensure 'Allow search highlights' is set to 'Disabled'. (Automated)
-  - id: 15929
+  - id: 15928
     title: "Ensure 'Allow search highlights' is set to 'Disabled'."
     description: "This policy setting controls search highlights in the start menu search box and in search home. The recommended state for this setting is: Disabled."
     rationale: "In a high security environment, data should never be sent to or received by any third-party since this data could contain sensitive information."
@@ -8993,7 +8993,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> EnableDynamicContentInWSB -> 0'
 
   # 18.10.63.1 (L2) Ensure 'Turn off KMS Client Online AVS Validation' is set to 'Enabled'. (Automated)
-  - id: 15930
+  - id: 15929
     title: "Ensure 'Turn off KMS Client Online AVS Validation' is set to 'Enabled'."
     description: "The Key Management Service (KMS) is a Microsoft license activation method that entails setting up a local server to store the software licenses. The KMS server itself needs to connect to Microsoft to activate the KMS service, but subsequent on-network clients can activate Microsoft Windows OS and/or their Microsoft Office via the KMS server instead of connecting directly to Microsoft. This policy setting lets you opt-out of sending KMS client activation data to Microsoft automatically. The recommended state for this setting is: Enabled."
     rationale: "Even though the KMS licensing method does not require KMS clients to connect to Microsoft, they still send KMS client activation state data to Microsoft automatically. Preventing this information from being sent can help reduce privacy concerns in high security environments."
@@ -9010,7 +9010,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform -> NoGenTicket -> 1'
 
   # 18.10.66.1 (L2) Ensure 'Disable all apps from Microsoft Store' is set to 'Disabled'. (Automated)
-  - id: 15931
+  - id: 15930
     title: "Ensure 'Disable all apps from Microsoft Store' is set to 'Disabled'."
     description: "This setting configures the launch of all apps from the Microsoft Store that came pre-installed or were downloaded. The recommended state for this setting is: Disabled. Note: This policy setting only applies to Windows 10 Enterprise and Windows 10 Education editions. Note #2: The name of this setting and the Enabled/Disabled values are incorrectly worded - logically, the title implies that configuring it to Enabled will disable all apps from the Microsoft Store, and configuring it to Disabled will enable all apps from the Microsoft Store. The opposite is true (and is consistent with the GPME help text). This is a logical wording mistake by Microsoft in the Administrative Template."
     rationale: "The Store service is a retail outlet built into Windows, primarily for consumer use. In an enterprise managed environment the IT department should be managing the installation of all applications to reduce the risk of the installation of vulnerable software."
@@ -9032,7 +9032,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> DisableStoreApps -> 1'
 
   # 18.10.66.2 (L1) Ensure 'Only display the private store within the Microsoft Store' is set to 'Enabled'. (Automated)
-  - id: 15932
+  - id: 15931
     title: "Ensure 'Only display the private store within the Microsoft Store' is set to 'Enabled'."
     description: "This policy setting denies access to the retail catalog in the Microsoft Store, but displays the private store. The recommended state for this setting is: Enabled."
     rationale: "Allowing the private store will allow an organization to control the apps that users have access to add to a system. This will help ensure that unapproved malicious apps are not running on a system."
@@ -9056,7 +9056,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> RequirePrivateStoreOnly -> 1'
 
   # 18.10.66.3 (L1) Ensure 'Turn off Automatic Download and Install of updates' is set to 'Disabled'. (Automated)
-  - id: 15933
+  - id: 15932
     title: "Ensure 'Turn off Automatic Download and Install of updates' is set to 'Disabled'."
     description: "This setting enables or disables the automatic download and installation of Microsoft Store app updates. The recommended state for this setting is: Disabled."
     rationale: "Keeping your system properly patched can help protect against 0 day vulnerabilities."
@@ -9078,7 +9078,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> AutoDownload -> 4'
 
   # 18.10.66.4 (L1) Ensure 'Turn off the offer to update to the latest version of Windows' is set to 'Enabled'. (Automated)
-  - id: 15934
+  - id: 15933
     title: "Ensure 'Turn off the offer to update to the latest version of Windows' is set to 'Enabled'."
     description: "Enables or disables the Microsoft Store offer to update to the latest version of Windows. The recommended state for this setting is: Enabled."
     rationale: "Unplanned OS upgrades can lead to more preventable support calls. The IT department should be managing and approving all upgrades and updates."
@@ -9095,7 +9095,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> DisableOSUpgrade -> 1'
 
   # 18.10.66.5 (L2) Ensure 'Turn off the Store application' is set to 'Enabled'. (Automated)
-  - id: 15935
+  - id: 15934
     title: "Ensure 'Turn off the Store application' is set to 'Enabled'."
     description: "This setting denies or allows access to the Store application. The recommended state for this setting is: Enabled. Note: Per Microsoft TechNet and MSKB 3135657, this policy setting does not apply to any Windows 10 editions other than Enterprise and Education."
     rationale: "Only applications approved by an IT department should be installed. Allowing users to install third-party applications can lead to missed patches and potential zero day vulnerabilities."
@@ -9117,7 +9117,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> RemoveWindowsStore -> 1'
 
   # 18.10.72.1 (L1) Ensure 'Allow widgets' is set to 'Disabled'. (Automated)
-  - id: 15936
+  - id: 15935
     title: "Ensure 'Allow widgets' is set to 'Disabled'."
     description: "This policy setting specifies whether the Widgets feature is allowed on the device. The Widgets feature provides information such as, weather, news, sports, stocks, traffic, and entertainment (not an inclusive list). The recommended state for this setting is: Disabled."
     rationale: "Due to privacy concerns, apps and features such as Widgets on the Windows taskbar should be treated as a possible security risk due to the potential of data being sent back to third-parties, such as Microsoft."
@@ -9137,7 +9137,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Dsh -> AllowNewsAndInterests -> 0'
 
   # 18.10.76.2.1 (L1) Ensure 'Configure Windows Defender SmartScreen' is set to 'Enabled: Warn and prevent bypass'. (Automated)
-  - id: 15937
+  - id: 15936
     title: "Ensure 'Configure Windows Defender SmartScreen' is set to 'Enabled: Warn and prevent bypass'."
     description: "This policy setting allows you to manage the behavior of Windows Defender SmartScreen. Windows Defender SmartScreen helps keep PCs safer by warning users before running unrecognized programs downloaded from the Internet. Some information is sent to Microsoft about files and programs run on PCs with this feature enabled. The recommended state for this setting is: Enabled: Warn and prevent bypass."
     rationale: "Windows Defender SmartScreen helps keep PCs safer by warning users before running unrecognized programs downloaded from the Internet. However, due to the fact that some information is sent to Microsoft about files and programs run on PCs some organizations may prefer to disable it."
@@ -9161,7 +9161,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> ShellSmartScreenLevel -> Block'
 
   # 18.10.76.3.1 (L1) Ensure 'Configure Windows Defender SmartScreen' is set to 'Enabled'. (Automated)
-  - id: 15938
+  - id: 15937
     title: "Ensure 'Configure Windows Defender SmartScreen' is set to 'Enabled'."
     description: "This setting lets you decide whether to turn on SmartScreen Filter. SmartScreen Filter provides warning messages to help protect your employees from potential phishing scams and malicious software. The recommended state for this setting is: Enabled."
     rationale: "SmartScreen serves an important purpose as it helps to warn users of possible malicious sites and files. Allowing users to turn off this setting can make the browser become more vulnerable to compromise."
@@ -9184,7 +9184,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter -> EnabledV9 -> 1'
 
   # 18.10.76.3.2 (L1) Ensure 'Prevent bypassing Windows Defender SmartScreen prompts for sites' is set to 'Enabled'. (Automated)
-  - id: 15939
+  - id: 15938
     title: "Ensure 'Prevent bypassing Windows Defender SmartScreen prompts for sites' is set to 'Enabled'."
     description: "This setting lets you decide whether employees can override the SmartScreen Filter warnings about potentially malicious websites. The recommended state for this setting is: Enabled."
     rationale: "SmartScreen will warn an employee if a website is potentially malicious. Enabling this setting prevents these warnings from being bypassed."
@@ -9207,7 +9207,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter -> PreventOverride -> 1'
 
   # 18.10.78.1 (L1) Ensure 'Enables or disables Windows Game Recording and Broadcasting' is set to 'Disabled'. (Automated)
-  - id: 15940
+  - id: 15939
     title: "Ensure 'Enables or disables Windows Game Recording and Broadcasting' is set to 'Disabled'."
     description: "This setting enables or disables the Windows Game Recording and Broadcasting features. The recommended state for this setting is: Disabled."
     rationale: "If this setting is allowed, users could record and broadcast session info to external sites, which is both a risk of accidentally exposing sensitive company data (on-screen) outside the company as well as a privacy concern."
@@ -9229,7 +9229,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\GameDVR -> AllowGameDVR -> 0'
 
   # 18.10.80.1 (L2) Ensure 'Allow suggested apps in Windows Ink Workspace' is set to 'Disabled'. (Automated)
-  - id: 15942
+  - id: 15940
     title: "Ensure 'Allow suggested apps in Windows Ink Workspace' is set to 'Disabled'."
     description: "This policy setting determines whether suggested apps in Windows Ink Workspace are allowed. The recommended state for this setting is: Disabled."
     rationale: "This Microsoft feature is designed to collect data and suggest apps based on that data collected. Disabling this setting will help ensure your data is not shared with any third party."
@@ -9246,7 +9246,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace -> AllowSuggestedAppsInWindowsInkWorkspace -> 0'
 
   # 18.10.80.2 (L1) Ensure 'Allow Windows Ink Workspace' is set to 'Enabled: On, but disallow access above lock' OR 'Enabled: Disabled'. (Automated)
-  - id: 15943
+  - id: 15941
     title: "Ensure 'Allow Windows Ink Workspace' is set to 'Enabled: On, but disallow access above lock' OR 'Enabled: Disabled'."
     description: "This policy setting determines whether Windows Ink items are allowed above the lock screen. The recommended state for this setting is: Enabled: On, but disallow access above lock OR Enabled: Disabled."
     rationale: "Allowing any apps to be accessed while system is locked is not recommended. If this feature is permitted, it should only be accessible once a user authenticates with the proper credentials."
@@ -9263,7 +9263,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace -> AllowWindowsInkWorkspace -> r:^0$|^1$'
 
   # 18.10.81.1 (L1) Ensure 'Allow user control over installs' is set to 'Disabled'. (Automated)
-  - id: 15944
+  - id: 15942
     title: "Ensure 'Allow user control over installs' is set to 'Disabled'."
     description: "This setting controls whether users are permitted to change installation options that typically are available only to system administrators. The security features of Windows Installer normally prevent users from changing installation options that are typically reserved for system administrators, such as specifying the directory to which files are installed. If Windows Installer detects that an installation package has permitted the user to change a protected option, it stops the installation and displays a message. These security features operate only when the installation program is running in a privileged security context in which it has access to directories denied to the user. The recommended state for this setting is: Disabled."
     rationale: "In an enterprise managed environment, only IT staff with administrative rights should be installing or changing software on a system. Allowing users the ability to have any control over installs can risk unapproved software from being installed or removed from a system, which could cause the system to become vulnerable to compromise."
@@ -9280,7 +9280,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> EnableUserControl -> 0'
 
   # 18.10.81.2 (L1) Ensure 'Always install with elevated privileges' is set to 'Disabled'. (Automated)
-  - id: 15945
+  - id: 15943
     title: "Ensure 'Always install with elevated privileges' is set to 'Disabled'."
     description: "This setting controls whether or not Windows Installer should use system permissions when it installs any program on the system. Note: This setting appears both in the Computer Configuration and User Configuration folders. To make this setting effective, you must enable the setting in both folders. Caution: If enabled, skilled users can take advantage of the permissions this setting grants to change their privileges and gain permanent access to restricted files and folders. Note that the User Configuration version of this setting is not guaranteed to be secure. The recommended state for this setting is: Disabled."
     rationale: "Users with limited privileges can exploit this feature by creating a Windows Installer installation package that creates a new local account that belongs to the local built-in Administrators group, adds their current account to the local built-in Administrators group, installs malicious software, or performs other unauthorized activities."
@@ -9299,7 +9299,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> AlwaysInstallElevated -> 0'
 
   # 18.10.81.3 (L2) Ensure 'Prevent Internet Explorer security prompt for Windows Installer scripts' is set to 'Disabled'. (Automated)
-  - id: 15946
+  - id: 15944
     title: "Ensure 'Prevent Internet Explorer security prompt for Windows Installer scripts' is set to 'Disabled'."
     description: "This policy setting controls whether Web-based programs are allowed to install software on the computer without notifying the user. The recommended state for this setting is: Disabled."
     rationale: "Suppressing the system warning can pose a security risk and increase the attack surface on the system."
@@ -9319,7 +9319,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> SafeForScripting -> 0'
 
   # 18.10.82.1 (L1) Ensure 'Enable MPR notifications for the system' is set to 'Disabled'. (Automated)
-  - id: 15947
+  - id: 15945
     title: "Ensure 'Enable MPR notifications for the system' is set to 'Disabled'."
     description: "This policy setting controls whether winlogon sends Multiple Provider Router (MPR) notifications. MPR handles communication between the Windows operating system and the installed network providers. MPR checks the registry to determine which providers are installed on the system and the order they are cycled through. The recommended state for this setting is: Disabled."
     rationale: "MPR is a legacy utility that provides notifications to registered credential managers or network providers when there is a logon event or a password change event. Although this functionality can be used by legitimate applications, it can also be abused by attackers to harvest logon information."
@@ -9344,7 +9344,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> EnableMPR -> 1'
 
   # 18.10.82.2 (L1) Ensure 'Sign-in and lock last interactive user automatically after a restart' is set to 'Disabled'. (Automated)
-  - id: 15948
+  - id: 15946
     title: "Ensure 'Sign-in and lock last interactive user automatically after a restart' is set to 'Disabled'."
     description: "This policy setting controls whether a device will automatically sign-in the last interactive user after Windows Update restarts the system. The recommended state for this setting is: Disabled."
     rationale: "Disabling this feature will prevent the caching of user's credentials and unauthorized use of the device, and also ensure the user is aware of the restart."
@@ -9363,7 +9363,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> DisableAutomaticRestartSignOn -> 1'
 
   # 18.10.87.1 (L1) Ensure 'Turn on PowerShell Script Block Logging' is set to 'Enabled'. (Automated)
-  - id: 15949
+  - id: 15947
     title: "Ensure 'Turn on PowerShell Script Block Logging' is set to 'Enabled'."
     description: "This policy setting enables logging of all PowerShell script input to the Applications and Services Logs\\Microsoft\\Windows\\PowerShell\\Operational Event Log channel. The recommended state for this setting is: Enabled. Note: If logging of Script Block Invocation Start/Stop Events is enabled (option box checked), PowerShell will log additional events when invocation of a command, script block, function, or script starts or stops. Enabling this option generates a high volume of event logs. CIS has intentionally chosen not to make a recommendation for this option, since it generates a large volume of events. If an organization chooses to enable the optional setting (checked), this also conforms to the benchmark."
     rationale: "Logs of PowerShell script input can be very valuable when performing forensic investigations of PowerShell attack incidents to determine what occurred."
@@ -9384,7 +9384,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging -> EnableScriptBlockLogging -> 1'
 
   # 18.10.87.2 (L1) Ensure 'Turn on PowerShell Transcription' is set to 'Enabled'. (Automated)
-  - id: 15950
+  - id: 15948
     title: "Ensure 'Turn on PowerShell Transcription' is set to 'Enabled'."
     description: "This Policy setting lets you capture the input and output of Windows PowerShell commands into text-based transcripts. The recommended state for this setting is: Enabled."
     rationale: "PowerShell transcript input can be very valuable when performing forensic investigations of PowerShell attack incidents to determine what occurred."
@@ -9405,7 +9405,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Transcription -> EnableTranscripting -> 0'
 
   # 18.10.89.1.1 (L1) Ensure 'Allow Basic authentication' is set to 'Disabled'. (Automated)
-  - id: 15951
+  - id: 15949
     title: "Ensure 'Allow Basic authentication' is set to 'Disabled'."
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) client uses Basic authentication. The recommended state for this setting is: Disabled. Note: Clients that use Microsoft's Exchange Online service (Office 365) will require an exception to this recommendation, to instead have this setting set to Enabled. Exchange Online uses Basic authentication over HTTPS, and so the Exchange Online authentication traffic will still be safely encrypted."
     rationale: "Basic authentication is less robust than other authentication methods available in WinRM because credentials including passwords are transmitted in plain text. An attacker who is able to capture packets on the network where WinRM is running may be able to determine the credentials used for accessing remote hosts via WinRM."
@@ -9430,7 +9430,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowBasic -> 0'
 
   # 18.10.89.1.2 (L1) Ensure 'Allow unencrypted traffic' is set to 'Disabled'. (Automated)
-  - id: 15952
+  - id: 15950
     title: "Ensure 'Allow unencrypted traffic' is set to 'Disabled'."
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) client sends and receives unencrypted messages over the network. The recommended state for this setting is: Disabled."
     rationale: "Encrypting WinRM network traffic reduces the risk of an attacker viewing or modifying WinRM messages as they transit the network."
@@ -9455,7 +9455,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowUnencryptedTraffic -> 0'
 
   # 18.10.89.1.3 (L1) Ensure 'Disallow Digest authentication' is set to 'Enabled'. (Automated)
-  - id: 15953
+  - id: 15951
     title: "Ensure 'Disallow Digest authentication' is set to 'Enabled'."
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) client will not use Digest authentication. The recommended state for this setting is: Enabled."
     rationale: "Digest authentication is less robust than other authentication methods available in WinRM, an attacker who is able to capture packets on the network where WinRM is running may be able to determine the credentials used for accessing remote hosts via WinRM."
@@ -9480,7 +9480,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowDigest -> 0'
 
   # 18.10.89.2.1 (L1) Ensure 'Allow Basic authentication' is set to 'Disabled'. (Automated)
-  - id: 15954
+  - id: 15952
     title: "Ensure 'Allow Basic authentication' is set to 'Disabled'."
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service accepts Basic authentication from a remote client. The recommended state for this setting is: Disabled."
     rationale: "Basic authentication is less robust than other authentication methods available in WinRM because credentials including passwords are transmitted in plain text. An attacker who is able to capture packets on the network where WinRM is running may be able to determine the credentials used for accessing remote hosts via WinRM."
@@ -9505,7 +9505,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowBasic -> 0'
 
   # 18.10.89.2.2 (L2) Ensure 'Allow remote server management through WinRM' is set to 'Disabled'. (Automated)
-  - id: 15955
+  - id: 15953
     title: "Ensure 'Allow remote server management through WinRM' is set to 'Disabled'."
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service automatically listens on the network for requests on the HTTP transport over the default HTTP port. The recommended state for this setting is: Disabled."
     rationale: "Any feature is a potential avenue of attack, those that enable inbound network connections are particularly risky. Only enable the use of the Windows Remote Management (WinRM) service on trusted networks and when feasible employ additional controls such as IPsec."
@@ -9529,7 +9529,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowAutoConfig -> 0'
 
   # 18.10.89.2.3 (L1) Ensure 'Allow unencrypted traffic' is set to 'Disabled'. (Automated)
-  - id: 15956
+  - id: 15954
     title: "Ensure 'Allow unencrypted traffic' is set to 'Disabled'."
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service sends and receives unencrypted messages over the network. The recommended state for this setting is: Disabled."
     rationale: "Encrypting WinRM network traffic reduces the risk of an attacker viewing or modifying WinRM messages as they transit the network."
@@ -9554,7 +9554,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowUnencryptedTraffic -> 0'
 
   # 18.10.89.2.4 (L1) Ensure 'Disallow WinRM from storing RunAs credentials' is set to 'Enabled'. (Automated)
-  - id: 15957
+  - id: 15955
     title: "Ensure 'Disallow WinRM from storing RunAs credentials' is set to 'Enabled'."
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service will allow RunAs credentials to be stored for any plug-ins. The recommended state for this setting is: Enabled. Note: If you enable and then disable this policy setting, any values that were previously configured for RunAsPassword will need to be reset."
     rationale: "Although the ability to store RunAs credentials is a convenient feature it increases the risk of account compromise slightly. For example, if you forget to lock your desktop before leaving it unattended for a few minutes another person could access not only the desktop of your computer but also any hosts you manage via WinRM with cached RunAs credentials."
@@ -9573,7 +9573,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> DisableRunAs -> 1'
 
   # 18.10.90.1 (L2) Ensure 'Allow Remote Shell Access' is set to 'Disabled'. (Automated)
-  - id: 15958
+  - id: 15956
     title: "Ensure 'Allow Remote Shell Access' is set to 'Disabled'."
     description: "This policy setting allows you to manage configuration of remote access to all supported shells to execute scripts and commands. The recommended state for this setting is: Disabled. Note: The GPME help text for this setting is incorrectly worded, implying that configuring it to Enabled will reject new Remote Shell connections, and setting it to Disabled will allow Remote Shell connections. The opposite is true (and is consistent with the title of the setting). This is a wording mistake by Microsoft in the Administrative Template."
     rationale: "Any feature is a potential avenue of attack, those that enable inbound network connections are particularly risky. Only enable the use of the Windows Remote Shell on trusted networks and when feasible employ additional controls such as IPsec."
@@ -9595,7 +9595,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service\WinRS -> AllowRemoteShellAccess -> 0'
 
   # 18.10.91.1 (L1) Ensure 'Allow clipboard sharing with Windows Sandbox' is set to 'Disabled'. (Automated)
-  - id: 15959
+  - id: 15957
     title: "Ensure 'Allow clipboard sharing with Windows Sandbox' is set to 'Disabled'."
     description: 'This policy setting enables or disables clipboard sharing with the Windows Sandbox. The recommended state for this setting is: Disabled. Note: The Windows Sandbox feature was first introduced in Windows 10 R1903, and allows a temporary "clean install" virtual instance of Windows to be run inside the host, for the ostensible purpose of testing applications without making changes to the host.'
     rationale: "Disabling copy and paste decreases the attack surface exposed by the Windows Sandbox and possible exposure of untrusted applications to the internal network."
@@ -9617,7 +9617,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Sandbox -> AllowClipboardRedirection -> 0'
 
   # 18.10.91.2 (L1) Ensure 'Allow networking in Windows Sandbox' is set to 'Disabled'. (Automated)
-  - id: 15960
+  - id: 15958
     title: "Ensure 'Allow networking in Windows Sandbox' is set to 'Disabled'."
     description: 'This policy setting enables or disables networking in the Windows Sandbox. Networking is achieved by creating a virtual switch on the host, and connecting the Windows Sandbox to it via a virtual Network Interface Card (NIC). The recommended state for this setting is: Disabled. Note: The Windows Sandbox feature was first introduced in Windows 10 R1903, and allows a temporary "clean install" virtual instance of Windows to be run inside the host, for the ostensible purpose of testing applications without making changes to the host.'
     rationale: "Disabling network access decreases the attack surface exposed by the Windows Sandbox and exposure of untrusted applications to the internal network. Note: Per Microsoft, enabling networking in the Windows Sandbox can expose untrusted applications to the internal network."
@@ -9639,7 +9639,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Sandbox -> AllowNetworking -> 0'
 
   # 18.10.92.2.1 (L1) Ensure 'Prevent users from modifying settings' is set to 'Enabled'. (Automated)
-  - id: 15961
+  - id: 15959
     title: "Ensure 'Prevent users from modifying settings' is set to 'Enabled'."
     description: "This policy setting prevent users from making changes to the Exploit protection settings area in the Windows Security settings. The recommended state for this setting is: Enabled."
     rationale: "Only authorized IT staff should be able to make changes to the exploit protection settings in order to ensure the organizations specific configuration is not modified."
@@ -9659,7 +9659,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\App and Browser protection -> DisallowExploitProtectionOverride -> 1'
 
   # 18.10.93.1.1 (L1) Ensure 'No auto-restart with logged on users for scheduled automatic updates installations' is set to 'Disabled'. (Automated)
-  - id: 15962
+  - id: 15960
     title: "Ensure 'No auto-restart with logged on users for scheduled automatic updates installations' is set to 'Disabled'."
     description: "This policy setting specifies that Automatic Updates will wait for computers to be restarted by the users who are logged on to them to complete a scheduled installation. The recommended state for this setting is: Disabled. Note: This setting applies only when you configure Automatic Updates to perform scheduled update installations. If you configure the Configure Automatic Updates setting to Disabled, this setting has no effect."
     rationale: "Some security updates require that the computer be restarted to complete an installation. If the computer cannot restart automatically, then the most recent update will not completely install and no new updates will download to the computer until it is restarted. Without the auto-restart functionality, users who are not security-conscious may choose to indefinitely delay the restart, therefore keeping the computer in a less secure state."
@@ -9680,7 +9680,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoRebootWithLoggedOnUsers -> 0'
 
   # 18.10.93.2.1 (L1) Ensure 'Configure Automatic Updates' is set to 'Enabled'. (Automated)
-  - id: 15963
+  - id: 15961
     title: "Ensure 'Configure Automatic Updates' is set to 'Enabled'."
     description: 'This policy setting specifies whether computers in your environment will receive security updates from Windows Update or WSUS. If you configure this policy setting to Enabled, the operating system will recognize when a network connection is available and then use the network connection to search Windows Update or your designated intranet site for updates that apply to them. After you configure this policy setting to Enabled, select one of the following three options in the Configure Automatic Updates Properties dialog box to specify how the service will work: - 2 - Notify for download and auto install (Notify before downloading any updates) - 3 - Auto download and notify for install (Download the updates automatically and notify when they are ready to be installed.) (Default setting) - 4 - Auto download and schedule the install (Automatically download updates and install them on the schedule specified below.)) - 5 - Allow local admin to choose setting (Leave decision on above choices up to the local Administrators (Not Recommended)) The recommended state for this setting is: Enabled. Note: The sub-setting "Configure automatic updating:" has 4 possible values - all of them are valid depending on specific organizational needs, however if feasible we suggest using a value of 4 - Auto download and schedule the install. This suggestion is not a scored requirement. Note #2: Organizations that utilize a third--party solution for patching may choose to exempt themselves from this recommendation, and instead configure it to Disabled so that the native Windows Update mechanism does not interfere with the third--party patching process.'
     rationale: "Although each version of Windows is thoroughly tested before release, it is possible that problems will be discovered after the products are shipped. The Configure Automatic Updates setting can help you ensure that the computers in your environment will always have the most recent critical operating system updates and service packs installed."
@@ -9701,7 +9701,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoUpdate -> 0'
 
   # 18.10.93.2.2 (L1) Ensure 'Configure Automatic Updates: Scheduled install day' is set to '0 - Every day'. (Automated)
-  - id: 15964
+  - id: 15962
     title: "Ensure 'Configure Automatic Updates: Scheduled install day' is set to '0 - Every day'."
     description: "This policy setting specifies when computers in your environment will receive security updates from Windows Update or WSUS. The recommended state for this setting is: 0 - Every day. Note: This setting is only applicable if 4 - Auto download and schedule the install is selected in the recommendation 'Configure Automatic Updates'. It will have no impact if any other option is selected."
     rationale: "Although each version of Windows is thoroughly tested before release, it is possible that problems will be discovered after the products are shipped. The Configure Automatic Updates setting can help you ensure that the computers in your environment will always have the most recent critical operating system updates and service packs installed."
@@ -9721,7 +9721,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> ScheduledInstallDay -> 0'
 
   # 18.10.93.2.3 (L1) Ensure 'Remove access to "Pause updates" feature' is set to 'Enabled'. (Automated)
-  - id: 15965
+  - id: 15963
     title: 'Ensure ''Remove access to "Pause updates" feature'' is set to ''Enabled''.'
     description: 'This policy removes access to "Pause updates" feature. The recommended state for this setting is: Enabled.'
     rationale: "In order to ensure security and system updates are applied, system administrators should control when updates are applied to systems."
@@ -9742,7 +9742,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> SetDisablePauseUXAccess -> 1'
 
   # 18.10.93.4.1 (L1) Ensure 'Manage preview builds' is set to 'Disabled'. (Automated)
-  - id: 15966
+  - id: 15964
     title: "Ensure 'Manage preview builds' is set to 'Disabled'."
     description: "This policy setting manage which updates that are receive prior to the update being released. Dev Channel: Ideal for highly technical users. Insiders in the Dev Channel will receive builds from our active development branch that is earliest in a development cycle. These builds are not matched to a specific Windows 10 release. Beta Channel: Ideal for feature explorers who want to see upcoming Windows 10 features. Your feedback will be especially important here as it will help our engineers ensure key issues are fixed before a major release. Release Preview Channel (default): Insiders in the Release Preview Channel will have access to the upcoming release of Windows 10 prior to it being released to the world. These builds are supported by Microsoft. The Release Preview Channel is where we recommend companies preview and validate upcoming Windows 10 releases before broad deployment within their organization. The recommended state for this setting is: Disabled. Note: Preview Build enrollment requires a telemetry level setting of 2 or higher and your domain registered on insider.windows.com. For additional information on Preview Builds, see: https://aka.ms/wipforbiz."
     rationale: "It can be risky for experimental features to be allowed in an enterprise managed environment because this can introduce bugs and security holes into systems, making it easier for an attacker to gain access. It is generally preferred to only use production-ready builds."
@@ -9766,7 +9766,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> ManagePreviewBuildsPolicyValue -> 1'
 
   # 18.10.93.4.2 (L1) Ensure 'Select when Preview Builds and Feature Updates are received' is set to 'Enabled: 180 or more days'. (Automated)
-  - id: 15967
+  - id: 15965
     title: "Ensure 'Select when Preview Builds and Feature Updates are received' is set to 'Enabled: 180 or more days'."
     description: 'This policy setting determines when Preview Build or Feature Updates are received. Defer Updates This enables devices to defer taking the next Feature Update available to your channel for up to 14 days for all the pre-release channels and up to 365 days for the Semi-Annual Channel. Or, if the device is updating from the Semi-Annual Channel, a version for the device to move to and/or stay on until the policy is updated or the device reaches end of service can be specified. Note: If you set both policies, the version specified will take precedence and the deferrals will not be in effect. Please see the Windows Release Information page for OS version information. Pause Updates To prevent Feature Updates from being received on their scheduled time, you can temporarily pause Feature Updates. The pause will remain in effect for 35 days from the specified start date or until the field is cleared (Quality Updates will still be offered). Note: If the "Allow Diagnostic Data" (formerly "Allow Telemetry") policy is set to 0, this policy will have no effect. Note #2: Starting with Windows 10 R1607, Microsoft introduced a new Windows Update (WU) client behavior called Dual Scan, with an eye to cloud-based update management. In some cases, this Dual Scan feature can interfere with Windows Updates from Windows Server Update Services (WSUS) and/or manual WU updates. If you are using WSUS in your environment, you may need to set the above setting to Not Configured or configure the setting Do not allow update deferral policies to cause scans against Windows Update (added in the Windows 10 Release 1709 Administrative Templates) in order to prevent the Dual Scan feature from interfering. More information on Dual Scan is available at these links: - Demystifying \"Dual Scan\" - WSUS Product Team Blog - Improving Dual Scan on 1607 - WSUS Product Team Blog Note #3: Prior to Windows 10 R1703, values above 180 days are not recognized by the OS. Starting with Windows 10 R1703, the maximum number of days you can defer is 365 days.'
     rationale: "In a production environment, it is preferred to only use software and features that are publicly available, after they have gone through rigorous testing in beta."
@@ -9790,7 +9790,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferFeatureUpdatesPeriodInDays -> n:^(\d+) compare >= 180'
 
   # 18.10.93.4.3 (L1) Ensure 'Select when Quality Updates are received' is set to 'Enabled: 0 days'. (Automated)
-  - id: 15968
+  - id: 15966
     title: "Ensure 'Select when Quality Updates are received' is set to 'Enabled: 0 days'."
     description: 'This settings controls when Quality Updates are received. The recommended state for this setting is: Enabled: 0 days. Note: If the "Allow Diagnostic Data" (formerly "Allow Telemetry") policy is set to 0, this policy will have no effect. Note #2: Starting with Windows 10 R1607, Microsoft introduced a new Windows Update (WU) client behavior called Dual Scan, with an eye to cloud-based update management. In some cases, this Dual Scan feature can interfere with Windows Updates from Windows Server Update Services (WSUS) and/or manual WU updates. If you are using WSUS in your environment, you may need to set the above setting to Not Configured or configure the setting Do not allow update deferral policies to cause scans against Windows Update (added in the Windows 10 Release 1709 Administrative Templates) in order to prevent the Dual Scan feature from interfering. More information on Dual Scan is available at these links: - Demystifying \"Dual Scan\" - WSUS Product Team Blog - Improving Dual Scan on 1607 - WSUS Product Team Blog.'
     rationale: "Quality Updates can contain important bug fixes and/or security patches, and should be installed as soon as possible."
