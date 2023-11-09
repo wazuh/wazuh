@@ -38,28 +38,42 @@ private:
     rxcpp::subscriber<RxEvent> m_policyInput;
     rxcpp::observable<RxEvent> m_policyOutput;
 
+    bool m_isBuilt; ///< True if the backend is built
+
 public:
-    Controller() = delete;
     Controller(const Controller&) = delete;
 
+    Controller()
+        : m_policyInput(m_policySubject.get_subscriber())
+        , m_isBuilt(false)
+    {
+    }
     ~Controller() = default;
 
     /**
-     * @brief Construct a new Controller from an expression and a set of traceables
-     *
-     * @param expression expression to build
-     * @param traceables traceables expressions
-     * @param endCallback callback to call when the expression is finished
+     * @copydoc bk::IController::build
      */
-    Controller(base::Expression expression,
+    void build(base::Expression expression,
                std::unordered_set<std::string> traceables,
-               std::function<void()> endCallback = nullptr);
+               std::function<void()> endCallback) override;
+
+    /**
+     * @copydoc bk::IController::build
+     */
+    void build(base::Expression expression, std::unordered_set<std::string> traceables) override
+    {
+        build(std::move(expression), std::move(traceables), nullptr);
+    };
 
     /**
      * @copydoc bk::IController::ingest
      */
     void ingest(base::Event&& event) override
     {
+        if (!m_isBuilt)
+        {
+            throw std::runtime_error {"The backend is not built"};
+        }
         if (m_policyInput.is_subscribed())
         {
             RxEvent rxEvent =
@@ -73,6 +87,10 @@ public:
      */
     base::Event ingestGet(base::Event&& event) override
     {
+        if (!m_isBuilt)
+        {
+            throw std::runtime_error {"The backend is not built"};
+        }
         if (m_policyInput.is_subscribed())
         {
             RxEvent rxEvent =
@@ -94,7 +112,7 @@ public:
      */
     void stop() override
     {
-        if (m_policyInput.is_subscribed())
+        if (m_isBuilt && m_policyInput.is_subscribed())
         {
             m_policyInput.on_completed();
         }
@@ -103,7 +121,7 @@ public:
     /**
      * @copydoc bk::IController::isAviable
      */
-    inline bool isAviable() const override { return true; }
+    inline bool isAviable() const override { return m_isBuilt; }
 
     /**
      * @copydoc bk::IController::printGraph
