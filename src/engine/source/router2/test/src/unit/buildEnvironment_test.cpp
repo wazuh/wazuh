@@ -1,13 +1,15 @@
 #include <gtest/gtest.h>
 
 #include "buildEnvironment.hpp"
-#include <store/mockStore.hpp>
-#include <router/mockBuilder.hpp>
+
+#include <bk/rx/controller.hpp>
 #include <builder/mockPolicy.hpp>
+#include <router/mockBuilder.hpp>
+#include <store/mockStore.hpp>
 
 using namespace router;
 
-class EnvironmentTest : public testing::TestWithParam<std::tuple<int, std::shared_ptr<json::Json>, bool>>
+class EnvironmentFilterTest : public testing::TestWithParam<std::tuple<int, std::shared_ptr<json::Json>, bool>>
 {
 protected:
     std::shared_ptr<router::MockBuilder> mockBuilder;
@@ -20,7 +22,7 @@ protected:
     }
 };
 
-TEST_P(EnvironmentTest, SucessCreate)
+TEST_P(EnvironmentFilterTest, FilterFunctionallity)
 {
     auto [filterID, event, isAccepted] = GetParam();
     std::unordered_set<base::Name> expectedAssets;
@@ -34,18 +36,20 @@ TEST_P(EnvironmentTest, SucessCreate)
     EXPECT_CALL(*mockPolicy, expression()).WillOnce(testing::Return(expresion));
 
     auto policyName = base::Name {"policy/wazuh/0"};
-    auto env_ = BuildEnvironment::create(policyName, filterID, mockBuilder);
+    auto envBuild = std::make_shared<BuildEnvironment<bk::rx::Controller>>(mockBuilder);
 
-    EXPECT_EQ(env_->isAccepted(event), isAccepted);
+    auto env = envBuild->create(policyName, filterID);
+
+    EXPECT_EQ(env.isAccepted(event), isAccepted);
 }
 
-INSTANTIATE_TEST_SUITE_P(TestParams, EnvironmentTest,
+INSTANTIATE_TEST_SUITE_P(TestParams, EnvironmentFilterTest,
     testing::Values(
         std::make_tuple(1, std::make_shared<json::Json>(R"({"TestSessionID": 1})"), true),
         std::make_tuple(1, std::make_shared<json::Json>(R"({"TestSessionID": 2})"), false),
         std::make_tuple(2, std::make_shared<json::Json>(R"({"TestSessionID": 2})"), true),
         std::make_tuple(1, std::make_shared<json::Json>(R"({"TestSessionID": 2})"), false),
         std::make_tuple(3, std::make_shared<json::Json>(R"({"TestSessionID": 2})"), false),
-        std::make_tuple(2, std::make_shared<json::Json>(R"({"IDSession": 2})"), false)
+        std::make_tuple(2, std::make_shared<json::Json>(R"({"AnotherFilter": 2})"), false)
     )
 );
