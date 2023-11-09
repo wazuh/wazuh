@@ -47,14 +47,17 @@ namespace Log
         const char* func;
     };
 
-    static full_log_fnc_t globalLogFunction;
+    static std::function<void(const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>  globalLogFunction;
 
     #pragma GCC diagnostic push
     #pragma GCC diagnostic ignored "-Wunused-function"
 
-    static void assignLogFunction(full_log_fnc_t logFunction)
+    static void assignLogFunction(const std::function<void(const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>& logFunction)
     {
-        globalLogFunction = logFunction;
+        if (!globalLogFunction)
+        {
+            globalLogFunction = logFunction;
+        }
     }
 
     #pragma GCC diagnostic pop

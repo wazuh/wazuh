@@ -48,9 +48,9 @@ class EXPORTED RemoteSync
         /**
          * @brief Method to initialize the shared library with a full log function.
          *
-         * @param logFunc Log function.
+         * @param logFunction Log function.
          */
-        static void initializeFullLogFunction(full_log_fnc_t logFunc);
+        static void initializeFullLogFunction(const std::function<void(const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>& logFunction);
 
         /**
          * @brief Remote sync initializes the instance.

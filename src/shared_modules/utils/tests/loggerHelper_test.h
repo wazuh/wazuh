@@ -12,9 +12,9 @@
 #ifndef LOGGER_HELPER_TEST_H
 #define LOGGER_HELPER_TEST_H
 
-#include "gtest/gtest.h"
-#include "gmock/gmock.h"
 #include "loggerHelper.h"
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
 void debugVerboseTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg);
 void debugTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg);
@@ -26,18 +26,25 @@ std::stringstream ssOutput;
 
 class LoggerHelperTest : public ::testing::Test
 {
-    protected:
-        LoggerHelperTest() = default;
-        virtual ~LoggerHelperTest() = default;
+protected:
+    LoggerHelperTest() = default;
+    virtual ~LoggerHelperTest() = default;
 
-        static void SetUpTestSuite()
-        {
-            Log::assignLogFunction(logFunctionWrapper);
-        }
+    static void SetUpTestSuite()
+    {
+        Log::assignLogFunction(
+            [](const int logLevel,
+               const std::string& tag,
+               const std::string& file,
+               const int line,
+               const std::string& func,
+               const std::string& logMessage)
+            { logFunctionWrapper(logLevel, tag.c_str(), file.c_str(), line, func.c_str(), logMessage.c_str()); });
+    }
 
-        virtual void SetUp()
-        {
-            ssOutput.str("");
-        }
+    virtual void SetUp()
+    {
+        ssOutput.str("");
+    }
 };
-#endif //LOGGER_HELPER_TEST_H
+#endif // LOGGER_HELPER_TEST_H
