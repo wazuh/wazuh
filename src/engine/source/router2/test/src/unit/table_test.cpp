@@ -272,4 +272,53 @@ INSTANTIATE_TEST_SUITE_P(Table,
                              // end
                              ));
 
-// Test ref iterator, change values, name and priority
+
+/************************************************
+ *     Test Erase by name
+ ************************************************/
+TEST(Table, erase) {
+
+    // Insert all entries (And check if the insert is ok)
+    ri::Table<ValueType> table;
+    for (auto& entry : g_initStatePrior)
+    {
+        EXPECT_EQ(table.insert(entry.name, entry.priority, ValueType(entry.value)), true);
+        checkEntryTable(table, entry, true);
+    }
+
+    ASSERT_TRUE(table.size() == g_initStatePrior.size());
+
+    // Erase all entries
+    for (auto& entry : g_initStatePrior)
+    {
+        EXPECT_EQ(table.erase(entry.name), true);
+        ASSERT_FALSE(table.nameExists(entry.name));
+        ASSERT_FALSE(table.priorityExists(entry.priority));
+    }
+
+    ASSERT_TRUE(table.empty());
+}
+
+/************************************************
+ *     Modify the entry by reference
+ ************************************************/
+TEST(Table, modify) {
+
+    // Insert all entries (And check if the insert is ok)
+    ri::Table<ValueType> table;
+    for (auto& entry : g_initStatePrior)
+    {
+        EXPECT_EQ(table.insert(entry.name, entry.priority, ValueType(entry.value)), true);
+        checkEntryTable(table, entry, true);
+    }
+
+    ASSERT_TRUE(table.size() == g_initStatePrior.size());
+
+    // Modify all entries
+    for (auto& entry : g_initStatePrior)
+    {
+        auto& value = table.get(entry.name);
+        value += "modified";
+        EXPECT_EQ(table.get(entry.name), ValueType(entry.value + "modified"));
+    }
+}
