@@ -29,6 +29,9 @@ const auto ZIP_CONTENT_B {INPUT_FILES_DIR / "content_b.zip"};
 const std::vector<std::filesystem::path> ZIP_CONTENT_B_EXPECTED_FILES {{EXPECTED_CONTENTS_FOLDER / "content_a.json"},
                                                                        {EXPECTED_CONTENTS_FOLDER / "content_b.json"}};
 
+// Empty zip file.
+const auto ZIP_EMPTY {INPUT_FILES_DIR / "empty.zip"};
+
 // Expected stage status.
 const auto OK_STATUS = R"({"stage":"ZipDecompressor","status":"ok"})"_json;
 const auto FAIL_STATUS = R"({"stage":"ZipDecompressor","status":"fail"})"_json;
@@ -159,6 +162,28 @@ TEST_F(ZipDecompressorTest, DecompressInexistantFile)
 {
     // Set input invalid file.
     m_spContext->data.at("paths").push_back("inexistant_file.zip");
+
+    // Set up expected data.
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spContext->data.at("paths");
+    expectedData["stageStatus"] = nlohmann::json::array();
+    expectedData["stageStatus"].push_back(FAIL_STATUS);
+
+    // Run decompression.
+    EXPECT_THROW(ZipDecompressor().handleRequest(m_spContext), std::runtime_error);
+
+    // Check expected data.
+    EXPECT_EQ(m_spContext->data, expectedData);
+}
+
+/**
+ * @brief Tests the decompression of an empty zip file.
+ *
+ */
+TEST_F(ZipDecompressorTest, DecompressEmptyZip)
+{
+    // Set input empty zip file.
+    m_spContext->data.at("paths").push_back(ZIP_EMPTY);
 
     // Set up expected data.
     nlohmann::json expectedData;
