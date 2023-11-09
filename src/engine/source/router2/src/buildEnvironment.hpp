@@ -1,9 +1,8 @@
-#ifndef _BUILD_ENVIRONMENT_HPP
-#define _BUILD_ENVIRONMENT_HPP
+#ifndef _ROUTER2_BUILD_ENVIRONMENT_HPP
+#define _ROUTER2_BUILD_ENVIRONMENT_HPP
 
-#include "ibuilder.hpp"
-#include <bk/rx/controller.hpp>
 #include "environment.hpp"
+#include "ibuilder.hpp"
 
 namespace router
 {
@@ -14,9 +13,12 @@ constexpr auto JSON_PATH_SESSION_FILTER {"/TestSessionID"};
  * @brief BuildEnvironment class for creating environments based on policies and filters.
  *
  */
+template <typename T, typename = std::enable_if_t<std::is_base_of<bk::IController, T>::value>>
 class BuildEnvironment
 {
 private:
+    std::shared_ptr<IBuilder> m_builder;
+
     /**
      * @brief Get the Controller object for a given policy.
      *
@@ -24,10 +26,10 @@ private:
      * @param builder The builder used to construct the policy.
      * @return std::shared_ptr<bk::IController> The constructed controller.
      */
-    static std::shared_ptr<bk::IController> getController(base::Name& policyName, std::shared_ptr<IBuilder> builder)
+    std::shared_ptr<T> getController(base::Name& policyName)
     {
         // Build the policy and create the pipeline
-        auto newPolicy = builder->buildPolicy(policyName);
+        auto newPolicy = m_builder->buildPolicy(policyName);
         if (base::isError(newPolicy))
         {
             throw std::runtime_error {base::getError(newPolicy).message};
@@ -46,7 +48,7 @@ private:
                        std::inserter(assetNames, assetNames.begin()),
                        [](const auto& name) { return name.toStr(); });
 
-        auto controller =  std::make_shared<bk::rx::Controller>();
+        auto controller =  std::make_shared<T>();
         controller->build(policy->expression(), assetNames);
         return controller;
     }
@@ -55,18 +57,17 @@ private:
      * @brief Get the Expression object for a given filter.
      *
      * @param filterName The name of the filter.
-     * @param builder The builder used to construct the filter.
      * @return base::Expression The constructed filter expression.
      */
-    static base::Expression getExpression(base::Name& filterName, std::shared_ptr<IBuilder> builder)
+    base::Expression getExpression(base::Name& filterName)
     {
         // TODO: Remove this check when the Builder can identify if it is a filter or not
         if (filterName.parts().size() == 0 || filterName.parts()[0] != "filter")
         {
-            throw std::runtime_error {fmt::format("The asset name is empty or it is not a filter")};
+            throw std::runtime_error {"The asset name is empty or it is not a filter"};
         }
 
-        auto filter = builder->buildAsset(filterName);
+        auto filter = m_builder->buildAsset(filterName);
         if(base::isError(filter))
         {
             throw std::runtime_error {base::getError(filter).message};
@@ -77,19 +78,20 @@ private:
 
 public:
 
+    BuildEnvironment(std::shared_ptr<IBuilder> builder) : m_builder (builder){}
+
     /**
      * @brief Create an environment based on a policy and a filter.
      *
      * @param policyName The name of the policy.
      * @param filterName The name of the filter.
-     * @param builder The builder used to construct the policy and filter.
-     * @return std::shared_ptr<Environment> The created environment.
+     * @return Environment The created environment.
      */
-    static std::shared_ptr<Environment> create(base::Name& policyName, base::Name& filterName, std::shared_ptr<IBuilder> builder)
+    Environment create(base::Name& policyName, base::Name& filterName)
     {
-        auto controller = getController(policyName, builder);
-        auto expression = getExpression(filterName, builder);
-        return std::make_shared<Environment>(std::move(expression), std::move(controller));
+        auto controller = getController(policyName);
+        auto expression = getExpression(filterName);
+        return Environment (std::move(expression), std::move(controller));
     }
 
     /**
@@ -98,11 +100,11 @@ public:
      * @param policyName The name of the policy.
      * @param filterId The filter ID.
      * @param builder The builder used to construct the policy and filter.
-     * @return std::shared_ptr<Environment> The created environment.
+     * @return Environment The created environment.
      */
-    static std::shared_ptr<Environment> create(base::Name& policyName, const uint32_t filterId, std::shared_ptr<IBuilder> builder)
+    Environment create(base::Name& policyName, const uint32_t filterId)
     {
-        auto controller = getController(policyName, builder);
+        auto controller = getController(policyName);
 
         json::Json value {std::to_string(filterId).c_str()};
 
@@ -123,10 +125,10 @@ public:
                                         }
                                     });
 
-        return std::make_shared<Environment>(std::move(expression), std::move(controller));
+        return Environment (std::move(expression), std::move(controller));
     }
 };
 
 }
 
-#endif //_BUILD_ENVIRONMENT_HPP
+#endif //_ROUTER2_BUILD_ENVIRONMENT_HPP

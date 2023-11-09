@@ -25,14 +25,14 @@ target_include_directories(router2_router
 target_link_libraries(router2_router
     PUBLIC
     router2::irouter
-    bk::ibk
-    store::istore
     builder::ibuilder
-    builders
-    bk::rx
+    bk::ibk
 
     PRIVATE
     base
+    store::istore
+    bk::rx # TODO Delete after templatiing router
+    builders # Todo delete after refactoring to builder
 )
 add_library(router2::router ALIAS router2_router)
 
@@ -63,7 +63,17 @@ if(ENGINE_BUILD_TEST)
         ${UNIT_SRC_DIR}/buildEnvironment_test.cpp
     )
     target_include_directories(router_utest PRIVATE ${SRC_DIR})
-    target_link_libraries(router_utest gtest_main builder::mocks router2::irouter store::mocks router2::router router2::mocks)
+    target_link_libraries(router_utest
+        gtest_main
+        base
+        router2::router
+        router2::mocks # Todo delete
+        builders # Todo delete after refactoring to builder
+        builder::mocks
+        store::mocks
+        bk::mocks
+        bk::rx
+    )
     gtest_discover_tests(router_utest)
 
 endif(ENGINE_BUILD_TEST)
