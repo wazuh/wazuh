@@ -46,7 +46,9 @@ private:
                        std::inserter(assetNames, assetNames.begin()),
                        [](const auto& name) { return name.toStr(); });
 
-        return std::make_shared<bk::rx::Controller>(policy->expression(), assetNames);
+        auto controller =  std::make_shared<bk::rx::Controller>();
+        controller->build(policy->expression(), assetNames);
+        return controller;
     }
 
     /**
