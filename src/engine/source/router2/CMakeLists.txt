@@ -26,10 +26,13 @@ target_link_libraries(router2_router
     PUBLIC
     router2::irouter
     bk::ibk
+    store::istore
+    builder::ibuilder
+    builders
+    bk::rx
 
     PRIVATE
     base
-
 )
 add_library(router2::router ALIAS router2_router)
 
@@ -41,10 +44,10 @@ if(ENGINE_BUILD_TEST)
     set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
 
     # # Mocks
-    # add_library(router2_mocks INTERFACE)
-    # target_include_directories(router2_mocks INTERFACE ${TEST_MOCK_DIR})
-    # target_link_libraries(router2_mocks INTERFACE gmock router2::irouter)
-    # add_library(router2::mocks ALIAS router2_mocks)
+    add_library(router2_mocks INTERFACE)
+    target_include_directories(router2_mocks INTERFACE ${TEST_MOCK_DIR})
+    target_link_libraries(router2_mocks INTERFACE gmock router2::irouter)
+    add_library(router2::mocks ALIAS router2_mocks)
 
     # # Router component test
     # add_executable(router_ctest
@@ -57,9 +60,10 @@ if(ENGINE_BUILD_TEST)
     add_executable(router_utest
         ${UNIT_SRC_DIR}/environment_test.cpp
         ${UNIT_SRC_DIR}/table_test.cpp
+        ${UNIT_SRC_DIR}/buildEnvironment_test.cpp
     )
     target_include_directories(router_utest PRIVATE ${SRC_DIR})
-    target_link_libraries(router_utest gtest_main router2::irouter router2::router)
+    target_link_libraries(router_utest gtest_main builder::mocks router2::irouter store::mocks router2::router router2::mocks)
     gtest_discover_tests(router_utest)
 
 endif(ENGINE_BUILD_TEST)
