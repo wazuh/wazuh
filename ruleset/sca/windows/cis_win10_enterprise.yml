@@ -3887,8 +3887,8 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\MS Security Guide\\Apply UAC restrictions to local accounts on network logons Note: This Group Policy path does not exist by default. An additional Group Policy template (SecGuide.admx/adml) is required - it is available from Microsoft at this link."
     references:
-      - "https://docs.microsoft.com/en-us/windows/security/identity-protection/access-"
-      - "https://techcommunity.microsoft.com/t5/microsoft-security-baselines/disabling-"
+      - "https://docs.microsoft.com/en-us/windows/security/identity-protection/access-control/local-accounts"
+      - "https://techcommunity.microsoft.com/t5/microsoft-security-baselines/disabling-smbv1-through-group-policy/ba-p/701069"
     compliance:
       - cis: ["18.4.1"]
       - cis_csc_v7: ["4.3"]
@@ -3911,10 +3911,10 @@ checks:
       - "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-1678"
     compliance:
       - cis: ["18.4.2"]
-    condition: all
+    condition: any
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Print'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Print -> RpcAuthnLevelPrivacyEnabled'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Print'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Print -> RpcAuthnLevelPrivacyEnabled'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Print -> RpcAuthnLevelPrivacyEnabled -> 1'
 
   # 18.4.3 (L1) Ensure 'Configure SMB v1 client driver' is set to 'Enabled: Disable driver (recommended)'. (Automated)
@@ -4321,11 +4321,11 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Disable NetBIOS name resolution on public networks: Computer Configuration\\Policies\\Administrative Templates\\Network\\DNS Client\\Configure NetBIOS settings."
     compliance:
       - cis: ["18.6.4.1"]
-    condition: all
+    condition: any
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient -> EnableNetbios'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient -> EnableNetbios -> 0'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient -> EnableNetbios'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient -> EnableNetbios -> 2'
 
   # 18.6.4.2 (L1) Ensure 'Turn off multicast name resolution' is set to 'Enabled'. (Automated)
   - id: 15700
