@@ -40,12 +40,12 @@ int main(int argc, char* argv[])
 
     // Configure each subcommand
     cmd::server::configure(app);
-    cmd::test::configure(app);
+    // cmd::test::configure(app);
     cmd::graph::configure(app);
     cmd::kvdb::configure(app);
     cmd::catalog::configure(app);
     cmd::config::configure(app);
-    cmd::router::configure(app);
+    // cmd::router::configure(app);
     cmd::metrics::configure(app);
     cmd::integration::configure(app);
     cmd::policy::configure(app);
