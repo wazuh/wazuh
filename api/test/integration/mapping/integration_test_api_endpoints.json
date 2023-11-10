@@ -334,15 +334,6 @@
                 ]
             },
             {
-                "name": "vulnerability_controller.py",
-                "tag": "vulnerability",
-                "tests": [
-                    "test_rbac_black_vulnerability_endpoints.tavern.yaml",
-                    "test_rbac_white_vulnerability_endpoints.tavern.yaml",
-                    "test_vulnerability_endpoints.tavern.yaml"
-                ]
-            },
-            {
                 "name": "event_controller.py",
                 "tag": "webhook",
                 "tests": [
@@ -676,15 +667,6 @@
                 ]
             },
             {
-                "name": "vulnerability.py",
-                "tag": "vulnerability",
-                "tests": [
-                    "test_rbac_black_vulnerability_endpoints.tavern.yaml",
-                    "test_rbac_white_vulnerability_endpoints.tavern.yaml",
-                    "test_vulnerability_endpoints.tavern.yaml"
-                ]
-            },
-            {
                 "name": "event.py",
                 "tag": "webhook",
                 "tests": [
@@ -932,15 +914,6 @@
                 ]
             },
             {
-                "name": "vulnerability.py",
-                "tag": "vulnerability",
-                "tests": [
-                    "test_rbac_black_vulnerability_endpoints.tavern.yaml",
-                    "test_rbac_white_vulnerability_endpoints.tavern.yaml",
-                    "test_vulnerability_endpoints.tavern.yaml"
-                ]
-            },
-            {
                 "name": "wazuh_queue.py",
                 "tag": "wazuh",
                 "tests": [
@@ -1180,22 +1153,6 @@
         "files": [
             {
                 "name": "schema_rootcheck_test.sql",
-                "tag": "schema",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml",
-                    "test_cluster_endpoints.tavern.yaml"
-                ]
-            }
-        ]
-    },
-    {
-        "path": "framework/wazuh/core/tests/data/test_vulnerability",
-        "files": [
-            {
-                "name": "schema_cve_test.sql",
                 "tag": "schema",
                 "tests": [
                     "test_agent_DELETE_endpoints.tavern.yaml",
@@ -1493,7 +1450,6 @@
                     "test_rbac_black_syscheck_endpoints.tavern.yaml",
                     "test_rbac_black_syscollector_endpoints.tavern.yaml",
                     "test_rbac_black_task_endpoints.tavern.yaml",
-                    "test_rbac_black_vulnerability_endpoints.tavern.yaml",
                     "test_rbac_white_active_response_endpoints.tavern.yaml",
                     "test_rbac_white_agent_endpoints.tavern.yaml",
                     "test_rbac_white_all_endpoints.tavern.yaml",
@@ -1513,7 +1469,6 @@
                     "test_rbac_white_syscheck_endpoints.tavern.yaml",
                     "test_rbac_white_syscollector_endpoints.tavern.yaml",
                     "test_rbac_white_task_endpoints.tavern.yaml",
-                    "test_rbac_white_vulnerability_endpoints.tavern.yaml"
                 ]
             },
             {
@@ -1908,13 +1863,6 @@
                 ]
             },
             {
-                "name": "test_rbac_black_vulnerability_endpoints.tavern.yaml",
-                "tag": "test",
-                "tests": [
-                    "test_rbac_black_vulnerability_endpoints.tavern.yaml"
-                ]
-            },
-            {
                 "name": "test_rbac_white_active_response_endpoints.tavern.yaml",
                 "tag": "test",
                 "tests": [
@@ -2048,13 +1996,6 @@
                 ]
             },
             {
-                "name": "test_rbac_white_vulnerability_endpoints.tavern.yaml",
-                "tag": "test",
-                "tests": [
-                    "test_rbac_white_vulnerability_endpoints.tavern.yaml"
-                ]
-            },
-            {
                 "name": "test_rootcheck_endpoints.tavern.yaml",
                 "tag": "test",
                 "tests": [
@@ -2122,13 +2063,6 @@
                 "tag": "test",
                 "tests": [
                     "test_task_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "test_vulnerability_endpoints.tavern.yaml",
-                "tag": "test",
-                "tests": [
-                    "test_vulnerability_endpoints.tavern.yaml"
                 ]
             }
         ]
@@ -2958,33 +2892,6 @@
         ]
     },
     {
-        "path": "api/test/integration/env/configurations/rbac/vulnerability",
-        "files": [
-            {
-                "name": "black_config.yaml",
-                "tag": "black",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml",
-                    "test_cluster_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "white_config.yaml",
-                "tag": "white",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml",
-                    "test_cluster_endpoints.tavern.yaml"
-                ]
-            }
-        ]
-    },
-    {
         "path": "api/test/integration/env/configurations/sca/agent/healthcheck",
         "files": [
             {
@@ -3154,38 +3061,6 @@
     },
     {
         "path": "api/test/integration/env/configurations/syscollector/manager/healthcheck",
-        "files": [
-            {
-                "name": "healthcheck.py",
-                "tag": "healthcheck",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml",
-                    "test_cluster_endpoints.tavern.yaml"
-                ]
-            }
-        ]
-    },
-    {
-        "path": "api/test/integration/env/configurations/vulnerability/manager/configuration_files",
-        "files": [
-            {
-                "name": "nvd_providers.sh",
-                "tag": "nvd",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml",
-                    "test_cluster_endpoints.tavern.yaml"
-                ]
-            }
-        ]
-    },
-    {
-        "path": "api/test/integration/env/configurations/vulnerability/manager/healthcheck",
         "files": [
             {
                 "name": "healthcheck.py",
