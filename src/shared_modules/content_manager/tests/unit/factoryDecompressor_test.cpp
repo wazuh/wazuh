@@ -170,3 +170,49 @@ TEST_F(FactoryDecompressorTest, DeduceCompressionTypeCompressedNoExtensionFile)
     EXPECT_TRUE(std::dynamic_pointer_cast<SkipStep>(spDownloader));
     EXPECT_EQ(config, expectedConfig);
 }
+
+/**
+ * @brief Check the creation of a zip decompressor.
+ *
+ */
+TEST_F(FactoryDecompressorTest, CreateZipDecompressor)
+{
+    auto config = R"({"compressionType": "zip", "contentSource": "api"})"_json;
+
+    // Create the decompressor.
+    std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> spDecompressor;
+    ASSERT_NO_THROW(spDecompressor = FactoryDecompressor::create(config));
+
+    // Check decompressor type.
+    EXPECT_TRUE(std::dynamic_pointer_cast<ZipDecompressor>(spDecompressor));
+}
+
+/**
+ * @brief Check the deduction of the compression type of a zip compressed file.
+ *
+ */
+TEST_F(FactoryDecompressorTest, DeduceZipCompressionType)
+{
+    auto config = R"(
+        {
+            "contentSource": "offline",
+            "url": "file:///home/user/file.zip",
+            "compressionType": "ignored"
+        }
+    )"_json;
+
+    const auto expectedConfig = R"(
+        {
+            "contentSource": "offline",
+            "url": "file:///home/user/file.zip",
+            "compressionType": "zip"
+        }
+    )"_json;
+
+    // Create the downloader.
+    std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> spDownloader {};
+
+    EXPECT_NO_THROW(spDownloader = FactoryDecompressor::create(config));
+    EXPECT_TRUE(std::dynamic_pointer_cast<ZipDecompressor>(spDownloader));
+    EXPECT_EQ(config, expectedConfig);
+}
