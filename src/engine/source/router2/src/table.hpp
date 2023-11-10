@@ -135,6 +135,29 @@ public:
     }
 
     /**
+     * @brief Insert a new object with name and priority.
+     *
+     * @param name The name of the object.
+     * @param priority The priority of the object.
+     * @param object The object to insert.
+     * @return true if the object was inserted, false if the name or priority is already used.
+     */
+    bool insert(const std::string& name, std::size_t priority, const T& object)
+    {
+        // Check if name or priority already exists
+        if (nameExists(name) || priorityExists(priority))
+        {
+            return false;
+        }
+
+        auto it = findInsertionPoint(priority);
+        auto emplacedItem = m_itemList.emplace(it, Item(name, priority, object));
+        m_nameIndex[name] = emplacedItem;
+        return true;
+    }
+
+
+    /**
      * @brief Delete an object by name.
      * @param name The name of the object.
      * @return true if the object was deleted, false if the name does not exist.
@@ -191,6 +214,19 @@ public:
 
         return true;
     }
+
+    /**
+     * @brief Get the lowest free priority in range [minPriority, maxPriority].
+     * 
+     * @param minPriority The minimum priority to check.
+     * @param maxPriority The maximum priority to check.
+     * @return std::size_t The lowest free priority.
+     * @throw std::out_of_range if there is no free priority in the range.
+     */
+    std::size_t getLowestFreePriority(std::size_t minPriority, std::size_t maxPriority) const {
+        // todo
+    }
+
 
     /**
      * @brief Get a reference to an object by name.

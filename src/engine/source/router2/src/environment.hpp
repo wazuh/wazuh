@@ -23,6 +23,9 @@ public:
     using TraceFn = std::function<void(const std::string&, const std::string&, bool)>; ///< Trace subscriber callback
                                                                                        ///< (Asset, Trace, Result)
 
+    Environment() = default;
+
+
     Environment(base::Expression&& filter, std::shared_ptr<bk::IController>&& controller)
         : m_filter {filter}
         , m_controller {controller}
