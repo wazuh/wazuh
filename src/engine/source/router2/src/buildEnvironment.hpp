@@ -8,7 +8,6 @@ namespace router
 {
 
 constexpr auto JSON_PATH_SESSION_FILTER {"/TestSessionID"};
-
 /**
  * @brief BuildEnvironment class for creating environments based on policies and filters.
  *
