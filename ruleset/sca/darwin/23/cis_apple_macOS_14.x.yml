@@ -190,90 +190,10 @@ checks:
      condition:
      rules:
 
-  # 2.1.1.1 Audit iCloud Keychain. (Manual)
-   - id: 18508
-     title: "Audit iCloud Keychain."
-     description: "The iCloud keychain is Apple's password manager that works with macOS and iOS. The capability allows users to store passwords in either iOS or macOS for use in Safari on both platforms and other iOS-integrated applications. The most pervasive use is driven by iOS use rather than macOS. The passwords stored in a macOS keychain on an Enterprise-managed computer could be stored in Apple's cloud and then be available on a personal computer using the same account. The stored passwords could be for organizational as well as for personal accounts. If passwords are no longer being used as organizational tokens, they are not in scope for iCloud keychain storage."
-     rationale: "Ensure that the iCloud keychain is used consistently with organizational requirements."
-     remediation: "Graphical Method: Perform the following steps to set iCloud keychain sync based on your organization's requirements: 1. Open System Settings 2. Select Apple ID 3. Select iCloud 4. Set Keychain to meet your organization's requirements Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.applicationaccess 2. The key to include is allowCloudKeychainSync 3. The key should be set <true/>, to allow iCloud keychain syncing, or <false/>, to disable it, based on your organization's requirements Note: Since the profile method sets a system-wide setting and not a user-level one, the profile method is the preferred method. It is always better to set system-wide than per user."
-     compliance:
-       - cis: ["2.1.1.1"]
-       - cis_csc_v8: ["4.1", "4.8", "15.3"]
-       - cis_csc_v7: ["5.1", "9.2"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.13.1.3", "A.14.2.5", "A.8.1.3"]
-       - nist_sp_800-53: ["AC-20(1)", "AC-20(2)", "CM-7(1)", "CM-9", "SA-10"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "12.8.5", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
-     rules:
-
-  # 2.1.1.2 Audit iCloud Drive. (Manual)
-   - id: 18509
-     title: "Audit iCloud Drive."
-     description: "iCloud Drive is Apple's storage solution for applications on both macOS and iOS to use the same files that are resident in Apple's cloud storage. The iCloud Drive folder is available much like Dropbox, Microsoft OneDrive, or Google Drive. One of the concerns in public cloud storage is that proprietary data may be inappropriately stored in an end user's personal repository. Organizations that need specific controls on information should ensure that this service is turned off or the user knows what information must be stored on services that are approved for storage of controlled information."
-     rationale: "Organizations should review third party storage solutions pertaining to existing data confidentiality and integrity requirements."
-     impact: "Users will not be able to use continuity on macOS to resume the use of newly composed but unsaved files."
-     remediation: "Graphical Method: Perform the following to set iCloud Drive to your organization's requirements: 1. Open System Settings 2. Select Apple ID 3. Select iCloud 4. Set iCloud Drive to meet your organization's requirements Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.applicationaccess 2. The key to include is allowCloudDocumentSync 3. The key should be set <true/>, to allow iCloud Drive, or <false/>, to disable it, based on your organization's requirements Note: Since the profile method sets a system-wide setting and not a user-level one, the profile method is the preferred method. It is always better to set system-wide than per user."
-     references:
-       - 'https://developer.apple.com/documentation/devicemanagement/restrictions'
-     compliance:
-       - cis: ["2.1.1.2"]
-       - cis_csc_v8: ["4.1", "4.8", "15.3"]
-       - cis_csc_v7: ["5.1"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-       - nist_sp_800-53: ["AC-20(1)", "AC-20(2)", "CM-7(1)", "CM-9", "SA-10"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "12.8.5", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
-     rules:
-
-  # 2.1.1.3 Ensure iCloud Drive Document and Desktop Sync Is Disabled. (Automated)
-   - id: 18510
-     title: "Ensure iCloud Drive Document and Desktop Sync Is Disabled."
-     description: "With macOS 10.12, Apple introduced the capability to have a user's Desktop and Documents folders automatically synchronize to the user's iCloud Drive, provided they have enough room purchased through Apple on their iCloud Drive. This capability mirrors what Microsoft is doing with the use of OneDrive and Office 365. There are concerns with using this capability. The storage space that Apple provides for free is used by users with iCloud mail, all of a user's Photo Library created with the ever larger Multi-Pixel iPhone cameras, and all iOS Backups. Adding a synchronization capability for users who have files going back a decade or more, storage may be tight using the free 5GB provided without purchasing much larger storage capacity from Apple. Users with multiple computers running 10.12 and above with unique content on each will have issues as well. Enterprise users may not be allowed to store Enterprise information in a third-party public cloud. In previous implementations, such as iCloud Drive or DropBox, the user selected what files were synchronized even if there were no other controls. The new feature synchronizes all files in a folder widely used to put working files. The automatic synchronization of all files in a user's Desktop and Documents folders should be disabled. https://derflounder.wordpress.com/2016/09/23/icloud-desktop-and-documents-in-macos-sierra-the-good-the-bad-and-the-ugly/."
-     rationale: "Automated Document synchronization should be planned and controlled to approved storage."
-     impact: "Users will not be able to use iCloud for the automatic sync of the Desktop and Documents folders."
-     remediation: "Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.applicationaccess 2. The key to include is allowCloudDesktopAndDocuments 3. The key must be set to <false/>."
-     references:
-       - 'https://developer.apple.com/documentation/devicemanagement/restrictions'
-     compliance:
-       - cis: ["2.1.1.3"]
-       - cis_csc_v8: ["4.1", "4.8", "15.3"]
-       - cis_csc_v7: ["5.1"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-       - nist_sp_800-53: ["AC-20(1)", "AC-20(2)", "CM-7(1)", "CM-9", "SA-10"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "12.8.5", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
-     rules:
-
-  # 2.1.1.4 Audit Security Keys Used With AppleIDs. (Manual)
-   - id: 18511
-     title: "Audit Security Keys Used With AppleIDs."
-     description: "Apple has introduced the capability of using security keys to protect AppleIDs using two-factor authentication in macOS Ventura 13.2 and in iOS 16.3 and iPadOS 16.3. This feature along with the purchase of two hardware tokens (a backup device is required) protects against the compromise of AppleIDs. This feature requires all devices using an enrolled Apple ID to meet the minimum OS standard."
-     rationale: "Users of Apple devices are supported across their devices by using the same Apple ID to support shard data in both iCloud and across devices. Compromising an AppleID has become a very attractive target for attackers to gain unauthorized access to iCloud storage and user devices. Two-factor authentication reduces the risk."
-     impact: "Legacy devices and test machines will be challenging to ensure that they are all running recent Operating Systems that can utilize Security Keys. It is best practice not to use AppleIDs with access to current user data on legacy and test machines. Technical staff that use legacy devices are encouraged to create additional Apple IDs that do not need two-factor protection and can be used for testing on legacy devices when required."
-     remediation: "Graphical Method: Perform the following steps to set Security Keys is set to your organization's requirements: 1. Open System Settings 2. Select Apple ID 3. Select Password & Security 4. Select Add.. to add a security key, or Remove All Security Keys ro remove security keys, to meet your organization's requirements."
-     references:
-       - 'https://support.apple.com/en-us/HT213154'
-       - 'https://9to5mac.com/2023/02/03/ios-16-3-hardware-security-keys-explained-'
-       - 'https://hcsonline.com/images/Security_Key_Apple_ID.pdf'
-     compliance:
-       - cis: ["2.1.1.4"]
-       - cis_csc_v8: ["5.2"]
-       - cis_csc_v7: ["4.4"]
-       - cmmc_v2.0: ["IA.L2-3.5.7"]
-       - iso_27001-2013: ["A.9.4.3"]
-       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
-       - soc_2: ["CC6.1"]
-     condition:
-     rules:
+  # 2.1.1.1 Audit iCloud Keychain. (Manual) - Not Implemented
+  # 2.1.1.2 Audit iCloud Drive. (Manual) - Not Implemented
+  # 2.1.1.3 Ensure iCloud Drive Document and Desktop Sync Is Disabled. (Automated) - Not Implemented
+  # 2.1.1.4 Audit Security Keys Used With AppleIDs. (Manual) - Not Implemented
 
   # 2.1.1.5 Audit Freeform Sync to iCloud. (Manual)
    - id: 18512
@@ -298,24 +218,7 @@ checks:
      condition:
      rules:
 
-  # 2.1.2 Audit App Store Password Settings. (Manual)
-   - id: 18513
-     title: "Audit App Store Password Settings."
-     description: "With OS X 10.11, Apple added settings for password storage for the App Store in macOS. These settings parallel the settings in iOS. As with iOS, the choices are a requirement to provide a password after every purchase or to have a 15-minute grace period, and whether or not to require a password for free purchases. The response to this setting is stored in a cookie and processed by iCloud. There is plenty of risk information on the wisdom of this setting for parents with children buying games on iPhones and iPads. The most relevant information here is the likelihood that users who are not authorized to download software may have physical access to an unlocked computer where someone who is authorized recently made a purchase. If that is a concern, a password should be required at all times for App Store access in the Password Settings controls."
-     rationale: ""
-     remediation: "Graphical Method: Perform the following steps to set App Store Passwords to your organization's requirements: 1. Open System Settings 2. Select Apple ID 3. Select Media & Purchases 4. Set Free Downloads to your organization's requirements 5. Set Purchases and In-App Purchases to your organization's requirements."
-     compliance:
-       - cis: ["2.1.2"]
-       - cis_csc_v8: ["4.1", "4.8"]
-       - cis_csc_v7: ["5.1"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
-     rules:
+  # 2.1.2 Audit App Store Password Settings. (Manual) - Not Implemented
 
   # 2.2.1 Ensure Firewall Is Enabled. (Automated)
    - id: 18514
@@ -338,8 +241,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.4", "10.5.3", "10.6.1", "11.5", "2.2"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "10.7", "10.7.1", "10.7.2", "10.7.3", "11.5", "2.1.1", "2.2.1"]
        - soc_2: ["CC6.6", "CC7.1", "CC7.2", "CC8.1"]
-     condition:
+     condition: any
      rules:
+      - "c:defaults read /Library/Preferences/com.apple.alf globalstate -> r:^1$|^2$"
+      - "c:defaults read /Library/Preferences/com.apple.security.firewall EnableFirewall -> r:^1$|^2$|^true$"
 
   # 2.2.2 Ensure Firewall Stealth Mode Is Enabled. (Automated)
    - id: 18515
@@ -360,53 +265,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.1.6", "1.2.1", "1.4", "11.5", "2.2", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
+     condition: any
      rules:
+      - "c:defaults read /Library/Preferences/com.apple.alf stealthenabled -> r:^1$|^2$"
+      - "c:defaults read /Library/Preferences/com.apple.security.firewall EnableStealthMode -> r:^1$|^2$|^true$"
 
-  # 2.3.1.1 Ensure AirDrop Is Disabled When Not Actively Transferring Files. (Automated)
-   - id: 18516
-     title: "Ensure AirDrop Is Disabled When Not Actively Transferring Files."
-     description: "AirDrop is Apple's built-in, on-demand, ad hoc file exchange system that is compatible with both macOS and iOS. It uses Bluetooth LE for discovery that limits connectivity to Mac or iOS users that are in close proximity. Depending on the setting, it allows everyone or only Contacts to share files when they are near each other. In many ways, this technology is far superior to the alternatives. The file transfer is done over a TLS encrypted session, does not require any open ports that are required for file sharing, does not leave file copies on email servers or within cloud storage, and allows for the service to be mitigated so that only people already trusted and added to contacts can interact with you. While there are positives to AirDrop, there are privacy concerns that could expose personal information. For that reason, AirDrop should be disabled, and should only be enabled when needed and disabled afterwards. The recommendation against enabling the sharing is not based on any known lack of security in the protocol, but for specific user operational concerns. - - If AirDrop is enabled, the Mac is advertising that a Mac is addressable on the local network and open to either unwanted AirDrop upload requests or for a negotiation on whether the remote user is in the user's contacts list. Neither process is desirable. In most known use cases, AirDrop use qualifies as ad hoc networking when it involves Apple device users deciding to exchange a file using the service. AirDrop can thus be enabled on the fly for that exchange. For organizations concerned about any use of AirDrop because of Digital Loss Prevention (DLP) monitoring on other protocols, JAMF has an article on reviewing AirDrop logs. Detecting outbound AirDrop transfers and logging them."
-     rationale: "AirDrop can allow malicious files to be downloaded from unknown sources. Contacts Only limits may expose personal information to devices in the same area."
-     impact: "Disabling AirDrop can limit the ability to move files quickly over the network without using file shares."
-     remediation: "Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.applicationaccess 2. The key to include is allowAirDrop 3. The key must be set to <false/> Note: AirDrop can only be enabled or disabled through configuration profiles. If your organization wants to use AirDrop, it would need to be set through Terminal or the GUI. Please see the."
-     references:
-       - 'https://www.techrepublic.com/article/apple-airdrop-users-reportedly-vulnerable-'
-       - 'https://www.imore.com/how-apple-keeps-your-airdrop-files-private-and-secure'
-       - 'https://en.wikipedia.org/wiki/AirDrop'
-       - 'https://macmost.com/10-reasons-you-should-be-using-airdrop-to-transfer-'
-     compliance:
-       - cis: ["2.3.1.1"]
-       - cis_csc_v8: ["4.1", "4.8", "6.7"]
-       - cis_csc_v7: ["5.1", "15.4"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-       - nist_sp_800-53: ["AC-2(1)", "CM-7(1)", "CM-9", "SA-10"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
-     rules:
-
-  # 2.3.1.2 Ensure AirPlay Receiver Is Disabled. (Automated)
-   - id: 18517
-     title: "Ensure AirPlay Receiver Is Disabled."
-     description: "In macOS Monterey (12.0), Apple has added the capability to share content from another Apple device to the screen of a host Mac. While there are many valuable uses of this capability, such sharing on a standard Mac user workstation should be enabled ad hoc as required rather than allowing a continuous sharing service. The feature can be restricted by Apple ID or network and is configured to use by accepting the connection on the Mac. Part of the concern is frequent connection requests may function as a denial-of-service and access control limits may provide too much information to an attacker. https://macmost.com/how-to-use-a-mac-as-an-airplay-receiver.html https://support.apple.com/guide/mac-pro-rack/use-airplay-apdf1417128d/mac."
-     rationale: "This capability appears very useful for kiosk and shared work spaces. The ability to allow by network could be especially useful on segregated guest networks where visitors could share their screens on computers with bigger monitors, including computers connected to projectors."
-     impact: "Turning off AirPlay sharing by default will not allow users to share without turning the service on. The service should be enable as needed rather than left on."
-     remediation: "Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.applicationaccess 2. The key to include is allowAirPlayIncomingRequests 3. The key must be set to <false/> Note: Since the profile method sets a system-wide setting and not a user-level one, the profile method is the preferred method. It is always better to set system-wide than per user."
-     compliance:
-       - cis: ["2.3.1.2"]
-       - cis_csc_v8: ["4.1", "4.8"]
-       - cis_csc_v7: ["5.1", "9.2"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.13.1.3", "A.14.2.5", "A.8.1.3"]
-       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
-     rules:
+  # 2.3.1.1 Ensure AirDrop Is Disabled When Not Actively Transferring Files. (Automated) - Not Implemented
+  # 2.3.1.2 Ensure AirPlay Receiver Is Disabled. (Automated) - Not Implemented
 
   # 2.3.2.1 Ensure Set Time and Date Automatically Is Enabled. (Automated)
    - id: 18518
@@ -425,8 +290,9 @@ checks:
        - pci_dss_v3.2.1: ["10.4"]
        - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
        - soc_2: ["CC4.1", "CC5.2"]
-     condition:
+     condition: all
      rules:
+      - 'c:/usr/sbin/systemsetup -getusingnetworktime -> r:Network Time:\s*\t*On'
 
   # 2.3.2.2 Ensure Time Is Set Within Appropriate Limits. (Automated)
    - id: 18519
@@ -445,8 +311,9 @@ checks:
        - pci_dss_v3.2.1: ["10.4"]
        - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
        - soc_2: ["CC4.1", "CC5.2"]
-     condition:
+     condition: all
      rules:
+      - "c:systemsetup -getnetworktimeserver -> r:Network Time Server:"
 
   # 2.3.3.1 Ensure DVD or CD Sharing Is Disabled. (Automated)
    - id: 18520
@@ -465,13 +332,14 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:sh -c "launchctl list | grep -c com.apple.ODSAgent" -> r:^0$'
 
   # 2.3.3.2 Ensure Screen Sharing Is Disabled. (Automated)
    - id: 18521
      title: "Ensure Screen Sharing Is Disabled."
-     description: "Screen Sharing allows a computer to connect to another computer on a network and display the computer’s screen. While sharing the computer’s screen, the user can control what happens on that computer, such as opening documents or applications, opening, moving, or closing windows, and even shutting down the computer. While mature administration and management does not use graphical connections for standard maintenance, most help desks have capabilities to assist users in performing their work when they have technical issues and need support. Help desks use graphical remote tools to understand what the user sees and assist them so they can get back to work. For MacOS, some of these remote capabilities can use Apple's OS tools. Control is therefore not meant to prohibit the use of a just-in-time graphical view from authorized personnel with authentication controls. Sharing should not be enabled except in narrow windows when help desk support is required. Screen Sharing on macOS can allow the use of the insecure VNC protocol. VNC is a clear text protocol that should not be used on macOS."
+     description: "Screen Sharing allows a computer to connect to another computer on a network and display the computer's screen. While sharing the computer's screen, the user can control what happens on that computer, such as opening documents or applications, opening, moving, or closing windows, and even shutting down the computer. While mature administration and management does not use graphical connections for standard maintenance, most help desks have capabilities to assist users in performing their work when they have technical issues and need support. Help desks use graphical remote tools to understand what the user sees and assist them so they can get back to work. For MacOS, some of these remote capabilities can use Apple's OS tools. Control is therefore not meant to prohibit the use of a just-in-time graphical view from authorized personnel with authentication controls. Sharing should not be enabled except in narrow windows when help desk support is required. Screen Sharing on macOS can allow the use of the insecure VNC protocol. VNC is a clear text protocol that should not be used on macOS."
      rationale: "Disabling Screen Sharing mitigates the risk of remote connections being made without the user of the console knowing that they are sharing the computer."
      impact: "Help desks may require the periodic use of a graphical connection mechanism to assist users. Any support that relies on native MacOS components will not work unless a scripted solution to enable and disable sharing as neccessary."
      remediation: "Graphical Method: Perform the following steps to disable Screen Sharing: 1. Open System Settings 2. Select General 3. Select Sharing 4. Set Screen Sharing to disabled Terminal Method: Run the following command to turn off Screen Sharing: $ /usr/bin/sudo /bin/launchctl disable system/com.apple.screensharing."
@@ -487,8 +355,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:sh -c "launchctl list | grep -c com.apple.screensharing" -> r:^0$'
 
   # 2.3.3.3 Ensure File Sharing Is Disabled. (Automated)
    - id: 18522
@@ -507,8 +376,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5", "7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.1", "CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:sh -c "launchctl list | grep -c com.apple.smbd" -> r:^0$'
 
   # 2.3.3.4 Ensure Printer Sharing Is Disabled. (Automated)
    - id: 18523
@@ -526,8 +396,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:sh -c "cupsctl | grep _share_printers | cut -d ''='' -f2" -> r:^0$'
 
   # 2.3.3.5 Ensure Remote Login Is Disabled. (Automated)
    - id: 18524
@@ -546,8 +417,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:systemsetup -getremotelogin -> r:Remote Login:\s*\t*Off'
 
   # 2.3.3.6 Ensure Remote Management Is Disabled. (Automated)
    - id: 18525
@@ -566,8 +438,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5", "7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.1", "CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+      - "not p:/System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/MacOS/ARDAgent"
 
   # 2.3.3.7 Ensure Remote Apple Events Is Disabled. (Automated)
    - id: 18526
@@ -586,8 +459,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:systemsetup -getremoteappleevents -> r:Remote Apple Events:\s*\t*Off'
 
   # 2.3.3.8 Ensure Internet Sharing Is Disabled. (Automated)
    - id: 18527
@@ -606,8 +480,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
+     condition: any
      rules:
+      - 'not c:defaults read /Library/Preferences/SystemConfiguration/com.apple.nat -> r:Enabled\s*\t*=\s*\t*1'
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.MCX'').objectForKey(''forceInternetSharingOff'')" -> r:^true$'
 
   # 2.3.3.9 Ensure Content Caching Is Disabled. (Automated)
    - id: 18528
@@ -628,73 +504,14 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: any
      rules:
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.AssetCache'').objectForKey(''Activated'')" -> r:^0$'
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.applicationaccess'').objectForKey(''allowContentCaching'')" -> r:^0$|^true$'
 
-  # 2.3.3.10 Ensure Media Sharing Is Disabled. (Automated)
-   - id: 18529
-     title: "Ensure Media Sharing Is Disabled."
-     description: "Starting with macOS 10.15, Apple has provided a control which permits a user to share Apple downloaded content on all Apple devices that are signed in with the same Apple ID. This allows users to share downloaded Movies, Music, or TV shows with other controlled macOS, iOS and iPadOS devices, as well as photos with Apple TVs. With this capability, guest users can also use media downloaded on the computer. The recommended best practice is not to use the computer as a server, but to utilize Apple's cloud storage in order to download and use content stored there if content stored with Apple is used on multiple devices. https://support.apple.com/guide/mac-help/set-up-media-sharing-on-mac-mchlp13371337/mac."
-     rationale: "Disabling Media Sharing reduces the remote attack surface of the system."
-     impact: "Media Sharing allows for pre-downloaded content on a Mac to be available to other Apple devices on the same network. Leaving this disabled forces device users to stream or download content from each Apple authorized device. This sharing could even allow unauthorized devices on the same network media access."
-     remediation: "Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.preferences.sharing.SharingPrefsExtension 2. The key to include is homeSharingUIStatus 3. The key must be set to <integer>0</integer> 4. The key to also include is legacySharingUIStatus 5. The key must be set to <integer>0</integer> 6. The key to also include is mediaSharingUIStatus 7. The key must be set to <integer>0</integer>."
-     compliance:
-       - cis: ["2.3.3.10"]
-       - cis_csc_v8: ["4.1", "4.8"]
-       - cis_csc_v7: ["5.1", "9.2"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.13.1.3", "A.14.2.5", "A.8.1.3"]
-       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
-     rules:
-
-  # 2.3.3.11 Ensure Bluetooth Sharing Is Disabled. (Automated)
-   - id: 18530
-     title: "Ensure Bluetooth Sharing Is Disabled."
-     description: "Bluetooth Sharing allows files to be exchanged with Bluetooth-enabled devices."
-     rationale: "Disabling Bluetooth Sharing minimizes the risk of an attacker using Bluetooth to remotely attack the system."
-     impact: "Control 2.1.1 discusses disabling Bluetooth if no paired devices exist. There is a general expectation that Bluetooth peripherals will be used by most users in Apple's ecosystem. It is possible that sharing is required and Bluetooth peripherals are not. Bluetooth must be enabled if sharing is an acceptable use case."
-     remediation: "Graphical Method: Perform the following steps to disable Bluetooth Sharing: 1. Open System Settings 2. Select General 3. Select Sharing 4. Set Bluetooth Sharing to disabled Terminal Method: Run the following command to disable Bluetooth Sharing is disabled: $ /usr/bin/sudo -u <username> /usr/bin/defaults -currentHost write com.apple.Bluetooth PrefKeyServicesEnabled -bool false $ /usr/bin/sudo -u firstuser /usr/bin/defaults -currentHost write com.apple.Bluetooth PrefKeyServicesEnabled -bool false."
-     compliance:
-       - cis: ["2.3.3.11"]
-       - cis_csc_v8: ["3.3", "4.1"]
-       - cis_csc_v7: ["4.8", "5.1", "9.2", "14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.12.4.3", "A.13.1.3", "A.14.2.5", "A.8.1.3", "A.9.1.1"]
-       - nist_sp_800-53: ["AC-5", "AC-6", "CM-7(1)", "CM-9", "SA-10"]
-       - pci_dss_v3.2.1: ["11.5", "2.2", "7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.3.1", "1.5.1", "2.1.1", "2.2.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1", "CC7.1", "CC8.1"]
-     condition:
-     rules:
-
-  # 2.3.3.12 Ensure Computer Name Does Not Contain PII or Protected Organizational Information. (Manual)
-   - id: 18531
-     title: "Ensure Computer Name Does Not Contain PII or Protected Organizational Information."
-     description: "If the computer is used in an organization that assigns host names, it is a good idea to change the computer name to the host name. This is more of a best practice than a security measure. If the host name and the computer name are the same, computer support may be able to track problems down more easily. For organizations or for users that self-administer their own computers, it is important to not use sensitive or personal information in computer names. The name of a computer that uses untrusted networks will be exposed at a minimum to the responsible network team of that network. For instance, having your name as your hostname can provide useful knowledge to an attacker monitoring the network you may be connected to. Examples of possibly inappropriate content in computer names include: - User directory account names - Computer directory account names where machine accounts exist - Contact phone numbers - Physical locations of offices or residences - Personal information that can be augmented with Facebook data to assist social engineering attacks Standard naming patterns avoid collisions and mitigate risk for computer users. With mobile devices, using DHCP IP tracking has serious drawbacks; hostname or computer name tracking makes much more sense for those organizations that can implement it. If the computer is using different names for the \"Computer Name\" DNS and Directory environments, it can be difficult to manage Macs in an Enterprise asset inventory."
-     rationale: "Part of IT security is having visibility into all of the devices for which an organization is responsible. Without a complete inventory, it is impossible to ensure all security controls are met on all organizational devices. Default macOS naming deconfliction controls can create issues for appropriate management and tracking as well as privacy exposure. By default, the name of a macOS computer is derived from the first user created. If the user has multiple computers or an image is used without an appropriate name change, there will be multiple computers with names derived from the same user for discovery deconfliction. How many \"Ron Colvin's MacBook Pro\" should there be, and are any missing? Local network auto renaming to avoid collisions also allows for the enumeration of local computer names. Computers should not be named after their users, especially on untrusted networks. For social engineering purposes, the computer name should not provide a full name of the user or an identifiable name that might be used to assist in targeted user attacks. A documented plan to better enable a complete device inventory without exposing user or organizational information is part of mature security."
-     remediation: "Graphical Method: Perform the following steps to set the computer name: 1. Open System Settings 2. Select General 3. Select Sharing 4. Select Edit... 5. Set Hostname to your organization's parameters."
-     references:
-       - 'https://support.apple.com/en-ca/guide/mac-help/mchlp1177/mac'
-       - 'https://uberagent.com/blog/choosing-macos-computer-names-wisely/'
-       - 'https://support.apple.com/en-ca/guide/mac-help/mchlp2322/mac'
-     compliance:
-       - cis: ["2.3.3.12"]
-       - cis_csc_v8: ["1.1"]
-       - cis_csc_v7: ["9.1"]
-       - cmmc_v2.0: ["CA.L2-3.12.4", "CM.L2-3.4.1"]
-       - hipaa: ["164.310(d)(2)(iii)"]
-       - iso_27001-2013: ["A.13.1.2"]
-       - nist_sp_800-53: ["CM-8(1)"]
-       - pci_dss_v3.2.1: ["11.1.1", "2.4", "9.9.1"]
-       - pci_dss_v4.0: ["11.2", "11.2.1", "11.2.2", "12.5", "12.5.1", "9.5.1", "9.5.1.1"]
-       - soc_2: ["CC3.2", "CC6.1"]
-     condition:
-     rules:
+  # 2.3.3.10 Ensure Media Sharing Is Disabled. (Automated) - Not Implemented
+  # 2.3.3.11 Ensure Bluetooth Sharing Is Disabled. (Automated) - Not Implemented
+  # 2.3.3.12 Ensure Computer Name Does Not Contain PII or Protected Organizational Information. (Manual) - Not Implemented
 
   # 2.3.4.1 Ensure Backup Automatically is Enabled If Time Machine Is Enabled. (Automated)
    - id: 18532
@@ -710,8 +527,10 @@ checks:
        - hipaa: ["164.308(a)(7)(ii)(A)"]
        - iso_27001-2013: ["A.12.3.1"]
        - pci_dss_v3.2.1: ["12.10.1"]
-     condition:
+     condition: any
      rules:
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.TimeMachine'').objectForKey(''AutoBackup'')" -> r:^1$'
+      - 'not c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.TimeMachine'').objectForKey(''LastDestinationID'')" -> r:^\.+$'
 
   # 2.3.4.2 Ensure Time Machine Volumes Are Encrypted If Time Machine Is Enabled. (Automated)
    - id: 18533
@@ -730,8 +549,9 @@ checks:
        - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1", "9.5", "9.5.1"]
        - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
        - soc_2: ["A1.2", "CC6.1", "CC6.4", "CC6.7"]
-     condition:
+     condition: all
      rules:
+      - 'c: sh -c "defaults read /Library/Preferences/com.apple.TimeMachine.plist | grep -c NotEncrypted" -> r:^0$'
 
   # 2.4.1 Ensure Show Wi-Fi status in Menu Bar Is Enabled. (Automated)
    - id: 18534
