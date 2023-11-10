@@ -31,7 +31,7 @@ public:
 };
 } // namespace
 
-template<typename T, typename = std::enable_if_t<std::is_base_of<bk::IController, T>::value>>
+template<typename T>
 class Router
 {
 private:
@@ -40,6 +40,7 @@ private:
     std::shared_ptr<BuildEnvironment<T>> m_envBuilder;
 
 public:
+    // Add static asserts
     Router(const std::shared_ptr<BuildEnvironment<T>>& envBuilder)
         : m_envBuilder(envBuilder)
         , m_table() {};
