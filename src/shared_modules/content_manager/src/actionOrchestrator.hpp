@@ -85,6 +85,7 @@ public:
         }
         catch (const std::exception& e)
         {
+            cleanContext();
             throw std::invalid_argument {"Orchestration run failed. " + std::string {e.what()}};
         }
     }
@@ -99,6 +100,15 @@ private:
      * @brief Context used on the content updater orchestration.
      */
     std::shared_ptr<UpdaterBaseContext> m_spBaseContext;
+
+    /**
+     * @brief Clean ContentUpdater persistent data. Useful for cleaning the context when an exception is thrown.
+     *
+     */
+    void cleanContext() const
+    {
+        m_spBaseContext->downloadedFileHash.clear();
+    }
 };
 
 #endif // _ACTION_ORCHESTRATOR_HPP

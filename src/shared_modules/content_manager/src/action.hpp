@@ -153,8 +153,9 @@ public:
         }
         else
         {
-            std::cerr << "Action: Ondemand request - another action in progress for " << m_topicName
-                      << std::endl; // LCOV_EXCL_LINE
+            // LCOV_EXCL_START
+            std::cerr << "Action: Ondemand request - another action in progress for " << m_topicName << std::endl;
+            // LCOV_EXCL_STOP
         }
     }
 
@@ -183,7 +184,14 @@ private:
 
     void runAction(const ActionID id)
     {
-        m_orchestration->run();
+        try
+        {
+            m_orchestration->run();
+        }
+        catch (const std::exception& e)
+        {
+            std::cout << "Action for '" << m_topicName << "' failed: " << e.what() << std::endl;
+        }
 
         m_actionInProgress = false;
     }
