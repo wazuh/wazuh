@@ -590,14 +590,8 @@ class WazuhException(Exception):
         7001: {'message': 'Error trying to read logtest session token',
                'remediation': 'Make sure you introduce the token within the field "token"'},
 
-        # Vulnerability detector
-        8000: {'message': 'Unexpected error trying to request vulnerability detector scan'}
     }
 
-    # Reserve agent upgrade custom errors
-    ERRORS.update({key: {'message': 'Upgrade module\'s reserved exception IDs (1810-1899). '
-                                    'The error message will be the output of upgrade module'}
-                   for key in range(1811, 1900)})
     # Reserve agent upgrade custom errors
     ERRORS.update({key: {'message': 'Vulnerability scan\'s reserved exception IDs (8001-9000). '
                                     'The error message will be the output of vulnerability scan module'}
