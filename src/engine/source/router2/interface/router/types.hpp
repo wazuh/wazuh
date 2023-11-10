@@ -79,6 +79,10 @@ public:
  */
 namespace Priority
 {
+
+/**
+ * @brief Defines the Limits enum class to validate priority based on whether it is for testing or production.
+ */
 enum class Limits : std::size_t
 {
     MaxTest = 0,            // 0 is the highest priority
@@ -87,6 +91,14 @@ enum class Limits : std::size_t
     MinProd = MaxProd + 100 // 151 sessions at most for production
 };
 
+
+/**
+ * @brief Validates the priority based on whether it is for testing or production.
+ * 
+ * @param priority The priority to be validated.
+ * @param isTesting A boolean indicating whether the priority is for testing or not.
+ * @return true if the priority is valid, false otherwise.
+ */
 inline bool validate(std::size_t priority, bool isTesting)
 {
     if (isTesting)
@@ -101,16 +113,19 @@ inline bool validate(std::size_t priority, bool isTesting)
 }
 } // namespace Priority
 
+/**
+ * @brief The EntryPost class is used to create an environment.
+ *
+ */
 class EntryPost
 {
 protected:
     // Environment build parameters
-    base::Name m_policy; ///< Policy of the environment
-    std::optional<base::Name>
-        m_filter; ///< Filter of the environment (Empty if it's a dynamic filter based on id [testing mode])
+    base::Name m_policy;                ///< Policy of the environment
+    std::optional<base::Name> m_filter; ///< Filter of the environment (Empty if it's a dynamic filter)
 
     // Router parameters
-    std::size_t m_priority = 0;      ///< Priority of the environment (0 is the lowest priority available)
+    std::size_t m_priority = 0;   ///< Priority of the environment (0 is the lowest priority available)
     std::uint64_t m_lifetime = 0; ///< Lifetime of the environment (in seconds from the last use)
 
     // Metadata
@@ -119,15 +134,20 @@ protected:
 
     bool _isTesting() const { return !m_filter.has_value(); }
 
+    /**
+     * @brief Validates the environment parameters.
+     * 
+     * @return base::OptError An optional error if the environment parameters are invalid.
+     */
     base::OptError validate() const
     {
-        if (m_policy.parts().size() == 0)
+        if (m_policy.parts().size() == 0 || m_policy.parts()[0] != "policy")
         {
-            return base::Error {"Policy cannot be empty"};
+            return base::Error {"Policy name is empty or it is not a policy"};
         }
-        else if (!_isTesting() && m_filter.value().parts().size() == 0)
+        else if (!_isTesting() && (m_filter.value().parts().size() == 0 || m_filter.value().parts()[0] != "filter"))
         {
-            return base::Error {"Filter cannot be empty"};
+            return base::Error {"Filter name is empty or it is not a filter"};
         }
         else if (m_name.empty())
         {
@@ -164,17 +184,41 @@ protected:
     }
 
 public:
+
+    EntryPost() = delete;
+
+    /**
+     * @brief Create a Entry Post for production environments.
+     * 
+     * @param name Name to identify the environment
+     * @param policy Policy to use in the environment
+     * @param filter Filter to use in the environment
+     * @param priority Priority of the environment
+     * @return EntryPost The created EntryPost
+     */
     static EntryPost
     createEntryPost(const std::string& name, const base::Name& policy, const base::Name& filter, std::size_t priority)
     {
         return EntryPost {name, policy, filter, priority};
     }
 
+    /**
+     * @brief Create a Entry Post for testing environments.
+     * 
+     * @param name Name to identify the environment
+     * @param policy Policy to use in the environment
+     * @param lifetime Lifetime of the environment // TODO: Check description
+     * @return EntryPost The created EntryPost
+     */
     static EntryPost createEntryTestPost(const std::string& name, const base::Name& policy, std::size_t lifetime)
     {
         return EntryPost {name, policy, lifetime};
     }
 
+    /**
+     * @brief Check if the environment is for testing.
+     * @return true if the environment is for testing, false otherwise.
+     */
     bool isTesting() const { return _isTesting(); }
 
     // Setters
@@ -189,26 +233,40 @@ public:
     const std::optional<std::string>& description() const { return m_description; }
 };
 
-// class EntryPut : public EntryPost
+// TODO: class EntryPut : public EntryPost
 
 class Entry : public EntryPost
 {
 protected:
     // Entry
     std::uint64_t m_created;
+    // std::uint64_t m_id;
 
-    // Policy
+    // Runtime configuration
     env::Sync m_policySync; ///< Policy sync status
     env::State m_status;    ///< Status of the environment
 
     // Status
-    std::optional<std::uint64_t> m_lastUsed; ///< Timestamp of the last use of the environment
+    std::optional<std::uint64_t> m_lastUsed; ///< Timestamp of the last use of the environment (only for testing env)
 public:
     Entry(const EntryPost& entryPost)
         : EntryPost {entryPost}
         , m_created {0}
         , m_policySync {env::Sync::UNKNOWN}
         , m_status {env::State::UNKNOWN} {};
+
+    // Setters
+    void setCreated(std::uint64_t created) { m_created = created; }
+    void setPolicySync(env::Sync policySync) { m_policySync = policySync; }
+    void setStatus(env::State status) { m_status = status; }
+    void setLastUsed(std::uint64_t lastUsed) { m_lastUsed = lastUsed; }
+
+    // Getters
+    std::uint64_t getCreated() const { return m_created; }
+    env::Sync getPolicySync() const { return m_policySync; }
+    env::State getStatus() const { return m_status; }
+    const std::optional<std::uint64_t>& getLastUsed() const { return m_lastUsed; }
+
 };
 
 } // namespace router
