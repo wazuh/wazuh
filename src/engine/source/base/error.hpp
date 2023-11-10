@@ -72,7 +72,19 @@ inline bool isError(const RespOrError<T>& respOrError)
  * @throws std::bad_variant_access if response is an error
  */
 template<typename T>
-inline T getResponse(RespOrError<T>&& response)
+inline auto getResponse(const RespOrError<T>& response) -> decltype(std::get<T>(response))
+{
+    return std::get<T>(response);
+}
+
+template<typename T>
+inline auto getResponse(RespOrError<T>& response) -> decltype(std::get<T>(response))
+{
+    return std::get<T>(response);
+}
+
+template<typename T>
+inline auto getResponse(RespOrError<T>&& response) -> decltype(std::get<T>(std::move(response)))
 {
     return std::get<T>(std::move(response));
 }
@@ -89,19 +101,29 @@ inline T getResponse(RespOrError<T>&& response)
  * @throws std::bad_variant_access if response is an error
  */
 template<typename T>
-inline T getResponse(const RespOrError<T>& response)
-{
-    return std::get<T>(response);
-}
-
-template<typename T>
-inline Error getError(const RespOrError<T>& error)
+inline auto getError(const RespOrError<T>& error) -> decltype(std::get<Error>(error))
 {
     return std::get<Error>(error);
 }
 
-inline Error getError(const OptError& error)
+template<typename T>
+inline auto getError(RespOrError<T>& error) -> decltype(std::get<Error>(error))
 {
+    return std::get<Error>(error);
+}
+
+template<typename T>
+inline auto getError(RespOrError<T>&& error) -> decltype(std::get<Error>(std::move(error)))
+{
+    return std::get<Error>(std::move(error));
+}
+
+
+inline Error& getError(OptError& error) {
+    return error.value();
+}
+
+inline const Error& getError(const OptError& error) {
     return error.value();
 }
 
