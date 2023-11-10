@@ -115,6 +115,14 @@ def test_process_jsonl(content, expected):
     assert s3_log_handler.AWSSubscriberBucket._process_jsonl(content) == expected
 
 
+def test_json_event_generator():
+    """Test the _json_event_generator function of AWSSubscriberBucket class."""
+    data = '{"event": "data1"}{"event": "data2"}'
+    generator = s3_log_handler.AWSSubscriberBucket._json_event_generator(data)
+    events = list(generator)
+    assert events == [{"event": "data1"}, {"event": "data2"}]
+
+
 @pytest.mark.parametrize("content, expected", [
     ({'example1': None, 'example2': 'some_value'}, {'example2': 'some_value'}),
     ({'example1': {'a': None, 'b': None}, 'example2': {'a': 1, 'b': None}},
