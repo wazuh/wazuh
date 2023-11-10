@@ -1,11 +1,11 @@
 add_library(cmds STATIC
     src/graph.cpp
     src/start.cpp
-    src/test.cpp
+    # src/test.cpp
     src/kvdb.cpp
     src/catalog.cpp
     src/config.cpp
-    src/router.cpp
+    # src/router.cpp
     src/metrics.cpp
     src/integration.cpp
     src/policy.cpp
@@ -19,7 +19,8 @@ target_link_libraries(cmds
     builders
     bk::rx
     server
-    router
+    #router
+    router2::router
     store
     api
     uv_a

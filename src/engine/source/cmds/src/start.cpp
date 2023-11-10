@@ -18,8 +18,8 @@
 #include <api/metrics/handlers.hpp>
 #include <api/policy/handlers.hpp>
 #include <api/policy/policy.hpp>
-#include <api/router/handlers.hpp>
-#include <api/test/handlers.hpp>
+// #include <api/router/handlers.hpp>
+// #include <api/test/handlers.hpp>
 #include <api/test/sessionManager.hpp>
 #include <bk/rx/controller.hpp>
 #include <builder/builder.hpp>
@@ -33,7 +33,10 @@
 #include <parseEvent.hpp> // Event
 #include <queue/concurrentQueue.hpp> // Queue
 #include <rbac/rbac.hpp>
-#include <router/router.hpp>
+// #include <router/router.hpp>
+#include <router/routerAdmin.hpp>
+#include <bk/rx/controller.hpp>
+
 #include <schemf/schema.hpp>
 #include <server/endpoints/unixDatagram.hpp> // Event
 #include <server/endpoints/unixStream.hpp>   //API
@@ -198,7 +201,7 @@ void runStart(ConfHandler confManager)
     std::shared_ptr<builder::internals::Registry<builder::internals::Builder>> registry;
     std::shared_ptr<builder::Builder> builder;
     std::shared_ptr<api::catalog::Catalog> catalog;
-    std::shared_ptr<router::Router> router;
+    std::shared_ptr<router::RouterAdmin<bk::rx::Controller>> routerAdmin;
     std::shared_ptr<hlp::logpar::Logpar> logpar;
     std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
     std::shared_ptr<metricsManager::MetricsManager> metrics;
@@ -319,26 +322,18 @@ void runStart(ConfHandler confManager)
 
         // Router
         {
+            // builder, store, routerThreads, forceRouterArg
+            router::Config routerConfig {1};
             // Delete router metrics
-            router = std::make_shared<router::Router>(builder, store, routerThreads);
+            routerAdmin = std::make_shared<router::RouterAdmin<bk::rx::Controller>>(routerConfig);
 
-            router->run(eventQueue);
-            exitHandler.add([router]() { router->stop(); });
+            exitHandler.add([routerAdmin]() { routerAdmin->stop(); });
             LOG_INFO("Router initialized.");
 
-            // If the router table is empty or the force flag is passed, load from the command line
-            if (router->getRouteTable().empty())
-            {
-                router->addRoute(routeName, routePriority, std::make_pair(routeFilter, std::nullopt), routePolicy);
-            }
-            else if (forceRouterArg)
-            {
-                router->clear();
-                router->addRoute(routeName, routePriority, std::make_pair(routeFilter, std::nullopt), routePolicy);
-            }
         }
 
         // Test
+        /*
         {
             sessionManager = std::make_shared<api::sessionManager::SessionManager>();
 
@@ -363,13 +358,14 @@ void runStart(ConfHandler confManager)
             else
             {
                 const auto loadError = api::test::handlers::loadSessionsFromJson(
-                    sessionManager, router, std::get<json::Json>(strJsonSessions));
+                    sessionManager, routerAdmin, std::get<json::Json>(strJsonSessions));
                 if (loadError.has_value())
                 {
                     LOG_ERROR("API sessions loading could not be completed: {}", loadError.value().message);
                 }
             }
         }
+        */
 
         // Create and configure the api endpints
         {
@@ -409,13 +405,13 @@ void runStart(ConfHandler confManager)
 
             // Test
             {
-                api::test::handlers::Config testConfig {sessionManager, router, registry, store, policyManager};
-                api::test::handlers::registerHandlers(testConfig, api);
+                //api::test::handlers::Config testConfig {sessionManager, routerAdmin, registry, store, policyManager};
+                //api::test::handlers::registerHandlers(testConfig, api);
                 LOG_DEBUG("Test API registered.");
             }
 
             // Router
-            api::router::handlers::registerHandlers(router, api, policyManager);
+            //api::router::handlers::registerHandlers(routerAdmin, api, policyManager);
             LOG_DEBUG("Router API registered.");
 
             // Graph
@@ -450,13 +446,13 @@ void runStart(ConfHandler confManager)
             server->addEndpoint("API", apiEndpointCfg);
 
             // Event Endpoint
-            auto eventMetricScope = metrics->getMetricsScope("endpointEvent");
-            auto eventMetricScopeDelta = metrics->getMetricsScope("endpointEventRate", true);
-            auto eventHandler = std::bind(&router::Router::fastEnqueueEvent, router, std::placeholders::_1);
-            auto eventEndpointCfg = std::make_shared<endpoint::UnixDatagram>(
-                serverEventSock, eventHandler, eventMetricScope, eventMetricScopeDelta, serverEventQueueSize);
-            server->addEndpoint("EVENT", eventEndpointCfg);
-            LOG_DEBUG("Server configured.");
+            // auto eventMetricScope = metrics->getMetricsScope("endpointEvent");
+            // auto eventMetricScopeDelta = metrics->getMetricsScope("endpointEventRate", true);
+            // auto eventHandler = std::bind(&router::Router::fastEnqueueEvent, routerAdmin, std::placeholders::_1);
+            // auto eventEndpointCfg = std::make_shared<endpoint::UnixDatagram>(
+            //     serverEventSock, eventHandler, eventMetricScope, eventMetricScopeDelta, serverEventQueueSize);
+            // server->addEndpoint("EVENT", eventEndpointCfg);
+            // LOG_DEBUG("Server configured.");
         }
     }
     catch (const std::exception& e)

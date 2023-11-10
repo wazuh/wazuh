@@ -1,6 +1,5 @@
 
 #include "api/graph/handlers.hpp"
-#include "api/router/handlers.hpp"
 
 #include <api/adapter.hpp>
 #include <eMessages/eMessage.h>
@@ -21,7 +20,6 @@ enum class GraphType
 };
 }
 
-using namespace api::router::handlers;
 
 namespace api::graph::handlers
 {
