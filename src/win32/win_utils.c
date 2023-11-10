@@ -203,18 +203,11 @@ int local_start()
     if (agt->buffer){
         buffer_init();
         w_create_thread(NULL,
-                        0,
-                        update_limits_thread,
-                        NULL,
-                        0,
-                        (LPDWORD)&threadID);
-
-        w_create_thread(NULL,
-                        0,
-                        dispatch_buffer,
-                        NULL,
-                        0,
-                        (LPDWORD)&threadID);
+                         0,
+                         dispatch_buffer,
+                         NULL,
+                         0,
+                         (LPDWORD)&threadID);
     }else{
         minfo(DISABLED_BUFFER);
     }
