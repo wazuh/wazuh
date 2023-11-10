@@ -107,17 +107,7 @@ public:
 
     ~RemoteSubscriber()
     {
-        nlohmann::json jsonMsg {
-            {"EndpointName", m_endpointName}, {"MessageType", "RemoveSubscriber"}, {"SubscriberId", m_subscriberId}};
-
-        try
-        {
-            RemoteStateHelper::sendRegistrationMessage(jsonMsg, true);
-        }
-        catch (const std::exception& e)
-        {
-            std::cerr << "Unable to send RemoveSubscriber message: " << e.what() << std::endl;
-        }
+        RemoteStateHelper::sendRemoveSubscriberMessage(m_endpointName, m_subscriberId);
     }
 };
 
