@@ -43,4 +43,28 @@ protected:
      */
     ROUTER_PROVIDER_HANDLE m_routerProviderHandle {};
 };
+
+/**
+ * @brief RouterCInterfaceTest class with no SetUp.
+ *
+ */
+class RouterCInterfaceTestNoSetUp : public ::testing::Test
+{
+protected:
+    RouterCInterfaceTestNoSetUp() = default;
+    ~RouterCInterfaceTestNoSetUp() override = default;
+
+    /**
+     * @brief Test setup routine.
+     *
+     */
+    void SetUp() override {};
+
+    /**
+     * @brief Test teardown routine.
+     *
+     */
+    void TearDown() override;
+};
+
 #endif //_ROUTER_C_INTERFACE_TESTS_HPP

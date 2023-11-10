@@ -72,18 +72,34 @@ private:
     }
 
 public:
+    /**
+     * @brief Creates and sends the init provider message.
+     *
+     * @param endpointName Name of the endpoint.
+     */
     static void sendInitProviderMessage(const std::string& endpointName)
     {
         nlohmann::json jsonMsg {{"EndpointName", endpointName}, {"MessageType", "InitProvider"}};
         sendRouterServerMessage(jsonMsg, false);
     }
 
+    /**
+     * @brief Creates and sends the remove provider message.
+     *
+     * @param endpointName Name of the endpoint.
+     */
     static void sendRemoveProviderMessage(const std::string& endpointName)
     {
         nlohmann::json jsonMsg {{"EndpointName", endpointName}, {"MessageType", "RemoveProvider"}};
         sendRouterServerMessage(jsonMsg, true);
     }
 
+    /**
+     * @brief Creates and sends the remove subscriber message.
+     *
+     * @param endpointName Name of the endpoint.
+     * @param subscriberId Id of the subscriber.
+     */
     static void sendRemoveSubscriberMessage(const std::string& endpointName, const std::string& subscriberId)
     {
         nlohmann::json jsonMsg {
