@@ -1,5 +1,5 @@
-#ifndef _ROUTER2_IROUTER_HPP
-#define _ROUTER2_IROUTER_HPP
+#ifndef _ROUTER2_IAPI_HPP
+#define _ROUTER2_IAPI_HPP
 
 #include <optional>
 #include <string>
