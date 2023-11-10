@@ -178,18 +178,26 @@ public:
 
         while (!m_shouldStop)
         {
-            if (m_stopIfSocketRemoved && !std::filesystem::exists(m_socketPath))
-            {
-                m_shouldStop = true;
-                throw std::runtime_error("Socket doesn't exist.");
-            }
-
             try
             {
                 std::lock_guard<std::shared_mutex> lock(m_socketMutex);
                 m_socket->connect(unixAddress.data());
                 m_epoll->addDescriptor(m_socket->fileDescriptor(), EPOLLIN | EPOLLOUT);
                 break;
+            }
+            catch (const std::system_error& e)
+            {
+                if (m_stopIfSocketRemoved && ENOENT == e.code().value())
+                {
+                    m_shouldStop = true;
+                    throw std::runtime_error("Socket doesn't exist.");
+                }
+                else
+                {
+                    std::cerr << "Failed to connect to socket, system error: " << e.what() << std::endl;
+                    std::this_thread::sleep_for(std::chrono::seconds(delay));
+                    delay = std::min(delay * 2, MAX_DELAY);
+                }
             }
             catch (const std::exception& e)
             {

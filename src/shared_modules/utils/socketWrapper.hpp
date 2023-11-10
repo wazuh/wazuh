@@ -373,7 +373,7 @@ public:
                 // Check if connection have some error.
                 if (errno != EINPROGRESS && errno != EAGAIN)
                 {
-                    throw std::runtime_error {std::string("Error connecting to socket: ") + strerror(errno)};
+                    throw std::system_error(errno, std::generic_category(), "Error connecting to socket");
                 }
             }
 
