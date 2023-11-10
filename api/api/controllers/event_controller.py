@@ -10,7 +10,7 @@ from wazuh.event import send_event_to_analysisd
 
 from api.encoder import dumps, prettify
 from api.models.base_model_ import Body
-from api.models.events_ingest_model import EventsIngestModel
+from api.models.event_ingest_model import EventIngestModel
 from api.util import raise_if_exc, remove_nones_to_dict
 
 logger = logging.getLogger('wazuh-api')
@@ -34,7 +34,7 @@ async def forward_event(request: web.Request, pretty: bool = False, wait_for_com
         API Response.
     """
     Body.validate_content_type(request, expected_content_type='application/json')
-    f_kwargs = await EventsIngestModel.get_kwargs(request)
+    f_kwargs = await EventIngestModel.get_kwargs(request)
 
     dapi = DistributedAPI(f=send_event_to_analysisd,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

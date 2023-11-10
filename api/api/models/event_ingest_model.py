@@ -7,10 +7,10 @@ from api.models.base_model_ import Body
 MAX_EVENTS_PER_REQUEST = 100
 
 
-class EventsIngestModel(Body):
+class EventIngestModel(Body):
 
     def __init__(self, events: Optional[list] = None) -> None:
-        """EventsIngestModel body model.
+        """EventIngestModel body model.
 
         Parameters
         ----------
