@@ -61,6 +61,7 @@ if(ENGINE_BUILD_TEST)
         ${UNIT_SRC_DIR}/environment_test.cpp
         ${UNIT_SRC_DIR}/table_test.cpp
         ${UNIT_SRC_DIR}/buildEnvironment_test.cpp
+        ${UNIT_SRC_DIR}/router_test.cpp
     )
     target_include_directories(router_utest PRIVATE ${SRC_DIR})
     target_link_libraries(router_utest
