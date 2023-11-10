@@ -28,6 +28,7 @@
 #include "os_net/os_net.h"
 #include "active-response.h"
 #include "config.h"
+#include "limits.h"
 #include "rules.h"
 #include "mitre.h"
 #include "stats.h"
@@ -94,9 +95,6 @@ static int execdq = 0;
 
 /* Active response queue */
 static int arq = 0;
-
-/* Analysisd limits struct */
-limits_t *analysisd_limits;
 
 static unsigned int hourly_events;
 static unsigned int hourly_syscheck;
@@ -994,10 +992,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     }
 
     /* Initialize EPS limits */
-    analysisd_limits = init_limits(Config.eps.maximum, Config.eps.timeframe);
-    if (!analysisd_limits->enabled && !Config.eps.maximum_found && analysisd_limits->timeframe > 0) {
-        mwarn("The EPS maximum value is missing in the configuration block.");
-    }
+    load_limits(Config.eps.maximum, Config.eps.timeframe, Config.eps.maximum_found);
 
     /* Create message handler thread */
     w_create_thread(ad_input_main, &m_queue);
@@ -1076,11 +1071,11 @@ void OS_ReadMSG_analysisd(int m_queue)
     while (1) {
         sleep(1);
 
-        if (limit_reached(analysisd_limits, NULL)) {
+        if (limit_reached(NULL)) {
             w_inc_eps_seconds_over_limit();
         }
 
-        update_limits(analysisd_limits);
+        update_limits();
     }
 }
 
@@ -1397,7 +1392,7 @@ void * ad_input_main(void * args) {
 
             if (result == -1) {
                 if (!reported_eps_drop) {
-                    if (limit_reached(analysisd_limits,NULL)) {
+                    if (limit_reached(NULL)) {
                         reported_eps_drop = 1;
                         if (!reported_eps_drop_hourly) {
                             mwarn("Queues are full and no EPS credits, dropping events.");
@@ -1511,7 +1506,7 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
     while(1) {
         /* Receive message from queue */
         if (msg = queue_pop_ex(decode_queue_syscheck_input), msg) {
-            get_eps_credit(analysisd_limits);
+            get_eps_credit();
 
             int res = 0;
             os_calloc(1, sizeof(Eventinfo), lf);
@@ -1561,7 +1556,7 @@ void * w_decode_syscollector_thread(__attribute__((unused)) void * args){
     while(1) {
         /* Receive message from queue */
         if (msg = queue_pop_ex(decode_queue_syscollector_input), msg) {
-            get_eps_credit(analysisd_limits);
+            get_eps_credit();
 
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
@@ -1603,7 +1598,7 @@ void * w_decode_rootcheck_thread(__attribute__((unused)) void * args){
     while(1) {
         /* Receive message from queue */
         if (msg = queue_pop_ex(decode_queue_rootcheck_input), msg) {
-            get_eps_credit(analysisd_limits);
+            get_eps_credit();
 
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
@@ -1646,7 +1641,7 @@ void * w_decode_sca_thread(__attribute__((unused)) void * args){
     while(1) {
         /* Receive message from queue */
         if (msg = queue_pop_ex(decode_queue_sca_input), msg) {
-            get_eps_credit(analysisd_limits);
+            get_eps_credit();
 
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
@@ -1688,7 +1683,7 @@ void * w_decode_hostinfo_thread(__attribute__((unused)) void * args){
     while(1) {
         /* Receive message from queue */
         if (msg = queue_pop_ex(decode_queue_hostinfo_input), msg) {
-            get_eps_credit(analysisd_limits);
+            get_eps_credit();
 
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
@@ -1734,7 +1729,7 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
     while(1) {
         /* Receive message from queue */
         if (msg = queue_pop_ex(decode_queue_event_input), msg) {
-            get_eps_credit(analysisd_limits);
+            get_eps_credit();
 
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
@@ -1785,7 +1780,7 @@ void * w_decode_winevt_thread(__attribute__((unused)) void * args) {
     while(1) {
         /* Receive message from queue */
         if (msg = queue_pop_ex(decode_queue_winevt_input), msg) {
-            get_eps_credit(analysisd_limits);
+            get_eps_credit();
 
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
@@ -1827,7 +1822,7 @@ void * w_dispatch_dbsync_thread(__attribute__((unused)) void * args) {
 
     for (;;) {
         if (msg = queue_pop_ex(dispatch_dbsync_input), msg) {
-            get_eps_credit(analysisd_limits);
+            get_eps_credit();
 
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
@@ -1858,7 +1853,7 @@ void * w_dispatch_upgrade_module_thread(__attribute__((unused)) void * args) {
 
     while (true) {
         if (msg = queue_pop_ex(upgrade_module_input), msg) {
-            get_eps_credit(analysisd_limits);
+            get_eps_credit();
 
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
