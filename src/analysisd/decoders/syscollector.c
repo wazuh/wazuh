@@ -901,7 +901,7 @@ int decode_osinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
     char *response = NULL;
     int retval = -1;
 
-    if (inventory = cJSON_GetObjectItem(logJSON, "inventory"), inventory) {
+    if (inventory = cJSON_GetObjectItem(logJSON, "inventory"), cJSON_IsObject(inventory)) {
         cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
         cJSON * scan_time = cJSON_GetObjectItem(logJSON, "timestamp");
         cJSON * os_name = cJSON_GetObjectItem(inventory, "os_name");
@@ -924,7 +924,7 @@ int decode_osinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
 
         snprintf(msg, OS_SIZE_6144 - 1, "agent %s osinfo set", lf->agent_id);
 
-        if (scan_id) {
+        if (cJSON_IsNumber(scan_id)) {
             char id[OS_SIZE_1024];
             snprintf(id, OS_SIZE_1024 - 1, "%d", scan_id->valueint);
             wm_strcat(&msg, id, ' ');
@@ -932,111 +932,111 @@ int decode_osinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
             wm_strcat(&msg, "NULL", ' ');
         }
 
-        if (scan_time) {
+        if (cJSON_IsString(scan_time)) {
             wm_strcat(&msg, scan_time->valuestring, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (hostname) {
+        if (cJSON_IsString(hostname)) {
             wm_strcat(&msg, hostname->valuestring, '|');
             fillData(lf,"os.hostname",hostname->valuestring);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (architecture) {
+        if (cJSON_IsString(architecture)) {
             wm_strcat(&msg, architecture->valuestring, '|');
             fillData(lf,"os.architecture",architecture->valuestring);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (os_name) {
+        if (cJSON_IsString(os_name)) {
             wm_strcat(&msg, os_name->valuestring, '|');
             fillData(lf,"os.name",os_name->valuestring);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (os_version) {
+        if (cJSON_IsString(os_version)) {
             wm_strcat(&msg, os_version->valuestring, '|');
             fillData(lf,"os.version",os_version->valuestring);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (os_codename) {
+        if (cJSON_IsString(os_codename)) {
             wm_strcat(&msg, os_codename->valuestring, '|');
             fillData(lf,"os.codename",os_codename->valuestring);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (os_major) {
+        if (cJSON_IsString(os_major)) {
             wm_strcat(&msg, os_major->valuestring, '|');
             fillData(lf,"os.major",os_major->valuestring);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (os_minor) {
+        if (cJSON_IsString(os_minor)) {
             wm_strcat(&msg, os_minor->valuestring, '|');
             fillData(lf,"os.minor",os_minor->valuestring);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (os_build) {
+        if (cJSON_IsString(os_build)) {
             wm_strcat(&msg, os_build->valuestring, '|');
             fillData(lf,"os.build",os_build->valuestring);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (os_platform) {
+        if (cJSON_IsString(os_platform)) {
             wm_strcat(&msg, os_platform->valuestring, '|');
             fillData(lf,"os.platform",os_platform->valuestring);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (sysname) {
+        if (cJSON_IsString(sysname)) {
             wm_strcat(&msg, sysname->valuestring, '|');
             fillData(lf,"os.sysname",sysname->valuestring);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (release) {
+        if (cJSON_IsString(release)) {
             wm_strcat(&msg, release->valuestring, '|');
             fillData(lf,"os.release",release->valuestring);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (version) {
+        if (cJSON_IsString(version)) {
             wm_strcat(&msg, version->valuestring, '|');
             fillData(lf,"os.release_version",version->valuestring);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (os_release) {
+        if (cJSON_IsString(os_release)) {
             wm_strcat(&msg, os_release->valuestring, '|');
             fillData(lf,"os.os_release",os_release->valuestring);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (os_patch) {
+        if (cJSON_IsString(os_patch)) {
             wm_strcat(&msg, os_patch->valuestring, '|');
             fillData(lf,"os.patch",os_patch->valuestring);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (os_display_version) {
+        if (cJSON_IsString(os_display_version)) {
             wm_strcat(&msg, os_display_version->valuestring, '|');
             fillData(lf,"os.display_version",os_display_version->valuestring);
         } else {
