@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "buildEnvironment.hpp"
+#include "environmentBuilder.hpp"
 
 #include <bk/rx/controller.hpp>
 #include <builder/mockPolicy.hpp>
@@ -36,7 +36,7 @@ TEST_P(EnvironmentFilterTest, FilterFunctionallity)
     EXPECT_CALL(*mockPolicy, expression()).WillOnce(testing::Return(expresion));
 
     auto policyName = base::Name {"policy/wazuh/0"};
-    auto envBuild = std::make_shared<BuildEnvironment<bk::rx::Controller>>(mockBuilder);
+    auto envBuild = std::make_shared<EnvironmentBuilder<bk::rx::Controller>>(mockBuilder);
 
     auto env = envBuild->create(policyName, filterID);
 
