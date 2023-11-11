@@ -801,7 +801,7 @@
   <rule id="65104" level="10" frequency="6" timeframe="360">
     <if_matched_sid>65103</if_matched_sid>
     <options>no_full_log</options>
-    <description>GCP Login failure - Possible break in attempt (high number of login attempts).</description>
+    <description>GCP Login SamlLoginFailed failure event - Possible break in attempt (high number of login attempts).</description>
     <mitre>
       <id>T1110</id>
     </mitre>
