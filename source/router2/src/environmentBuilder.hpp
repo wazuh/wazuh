@@ -1,5 +1,5 @@
-#ifndef _ROUTER2_BUILD_ENVIRONMENT_HPP
-#define _ROUTER2_BUILD_ENVIRONMENT_HPP
+#ifndef _ROUTER2_ENVIRONMENT_BUILD_HPP
+#define _ROUTER2_ENVIRONMENT_BUILD_HPP
 
 #include "environment.hpp"
 #include "ibuilder.hpp"
@@ -14,7 +14,7 @@ constexpr auto JSON_PATH_SESSION_FILTER {"/TestSessionID"};
  * @typedef T The type of the controller.
  */
 template<typename T, typename = std::enable_if_t<std::is_base_of<bk::IController, T>::value>>
-class BuildEnvironment
+class EnvironmentBuilder
 {
 private:
     std::shared_ptr<IBuilder> m_builder; ///< The builder used to construct the policy and filter.
@@ -87,7 +87,7 @@ public:
      *
      * @param builder The builder used to construct the policy and filter.
      */
-    BuildEnvironment(std::shared_ptr<IBuilder> builder)
+    EnvironmentBuilder(std::shared_ptr<IBuilder> builder)
         : m_builder(builder)
     {
         if (m_builder == nullptr)
@@ -96,7 +96,7 @@ public:
         }
     }
 
-    BuildEnvironment() = delete;
+    EnvironmentBuilder() = delete;
 
     /**
      * @brief Create an environment based on a policy and a filter.
@@ -170,4 +170,4 @@ public:
 
 } // namespace router
 
-#endif //_ROUTER2_BUILD_ENVIRONMENT_HPP
+#endif //_ROUTER2_ENVIRONMENT_BUILD_HPP
