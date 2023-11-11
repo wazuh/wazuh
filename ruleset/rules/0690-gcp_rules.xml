@@ -625,4 +625,1486 @@
     <description>GCP VPC storage event.</description>
   </rule>
 
+  <!-- GCP Workspace Audit Logs-->
+
+  <rule id="65080" level="7">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.login\.LoginService\.2svDisable$</field>
+    <description>GCP 2 StepVerificationDisable Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65081" level="3">
+    <if_sid>65042</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.login\.LoginService\.2svEnroll$</field>
+    <description>GCP 2 StepVerificationEnroll Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65082" level="7">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.login\.LoginService\.accountDisabledPasswordLeak$</field>
+    <description>GCP accountDisabledPasswordLeak Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65083" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.login\.LoginService\.accountDisabledSpammingThroughRelay$</field>
+    <description>GCP accountDisabledSpammingThroughRelay Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65084" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.login\.LoginService\.accountDisabledSpamming$</field>
+    <description>GCP accountDisabledSpamming Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65085" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.login\.LoginService\.accountDisabledHijacked$</field>
+    <description>GCP accountDisabledHijacked Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65086" level="10">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.login\.LoginService\.emailForwardingOutOfDomain$</field>
+    <description>GCP emailForwardingOutOfDomain Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65087" level="10">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.login\.LoginService\.govAttackWarning$</field>
+    <description>GCP govAttackWarning Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65088" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.login\.LoginService\.loginChallenge$</field>
+    <description>GCP loginChallenge Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65089" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.login\.LoginService\.loginFailure$</field>
+    <description>GCP loginFailure Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65090" level="10" frequency="6" timeframe="360">
+    <if_matched_sid>65089</if_matched_sid>
+    <options>no_full_log</options>
+    <description>GCP Login failure - Possible break in attempt (high number of login attempts).</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_failures</group>
+  </rule>
+
+  <rule id="65091" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.login\.LoginService\.loginVerification$</field>
+    <description>GCP loginVerification Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65092" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.login\.LoginService\.logout$</field>
+    <description>GCP logout Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65093" level="3">
+    <if_sid>65042</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.login\.LoginService\.loginSuccess$</field>
+    <description>GCP loginSuccess Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65094" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.login\.LoginService\.passwordEdit$</field>
+    <description>GCP passwordEdit Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65095" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.login\.LoginService\.recoveryEmailEdit$</field>
+    <description>GCP recoveryEmailEdit Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65096" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.login\.LoginService\.recoveryPhoneEdit$</field>
+    <description>GCP recoveryPhoneEdit Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65097" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.login\.LoginService\.recoverySecretQaEdit$</field>
+    <description>GCP recoverySecretQaEdit Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65098" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.login\.LoginService\.riskySensitiveActionAllowed$</field>
+    <description>GCP riskySensitiveActionAllowed Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65099" level="10">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.login\.LoginService\.riskySensitiveActionBlocked$</field>
+    <description>GCP riskySensitiveActionBlocked Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65100" level="10">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.login\.LoginService\.suspiciousLogin$</field>
+    <description>GCP suspiciousLogin Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65101" level="10">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.login\.LoginService\.suspiciousLoginLessSecureApp$</field>
+    <description>GCP suspiciousLoginLessSecureApp Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65102" level="10">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.login\.LoginService\.suspiciousProgrammaticLogin$</field>
+    <description>GCP suspiciousProgrammaticLogin Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65103" level="5">
+    <if_sid>65042</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.apps\.login\.v\d*\.SamlLoginFailed$</field>
+    <description>GCP SamlLoginFailed Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65104" level="10" frequency="6" timeframe="360">
+    <if_matched_sid>65103</if_matched_sid>
+    <options>no_full_log</options>
+    <description>GCP Login failure - Possible break in attempt (high number of login attempts).</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_failures</group>
+  </rule>
+
+  <!-- GCP Admin events-->
+
+  <rule id="65105" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changeApplicationSetting$</field>
+    <description>GCP Admin changeApplicationSetting Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65106" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.deleteApplicationSetting$</field>
+    <description>GCP Admin deleteApplicationSetting Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65107" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.deleteManagedConfiguration$</field>
+    <description>GCP Admin deleteManagedConfiguration Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65108" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changeContactsSetting$</field>
+    <description>GCP Admin changeContactsSetting Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65109" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.assignRole$</field>
+    <description>GCP Admin assignRole Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65110" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.createRole$</field>
+    <description>GCP Admin createRole Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65111" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.deleteRole$</field>
+    <description>GCP Admin deleteRole Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65112" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.addPrivilege$</field>
+    <description>GCP Admin addPrivilege Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65113" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.removePrivilege$</field>
+    <description>GCP Admin removePrivilege Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65114" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.renameRole$</field>
+    <description>GCP Admin renameRole Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65115" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.updateRole$</field>
+    <description>GCP Admin updateRole Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65116" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.unassignRole$</field>
+    <description>GCP Admin unassignRole Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65117" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.deleteDevice$</field>
+    <description>GCP Admin deleteDevice Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65118" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.moveDeviceToOrgUnit$</field>
+    <description>GCP Admin moveDeviceToOrgUnit Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65119" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.transferDocumentOwnership$</field>
+    <description>GCP Admin transferDocumentOwnership Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65120" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.driveDataRestore$</field>
+    <description>GCP Admin driveDataRestore Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65121" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changeDocsSetting$</field>
+    <description>GCP Admin changeDocsSetting Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65122" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changeAccountAutoRenewal$</field>
+    <description>GCP Admin changeAccountAutoRenewal Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65123" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.addApplication$</field>
+    <description>GCP Admin addApplication Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65124" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.addApplicationToWhitelist$</field>
+    <description>GCP Admin addApplicationToWhitelist Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65125" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.deleteAlert$</field>
+    <description>GCP Admin deleteAlert Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65126" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.addDomainAlias$</field>
+    <description>GCP Admin addDomainAlias Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65127" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.verifyDomainAliasMx$</field>
+    <description>GCP Admin verifyDomainAliasMx Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65128" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.verifyDomainAlias$</field>
+    <description>GCP Admin verifyDomainAlias Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65129" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.toggleAllowAdminPasswordReset$</field>
+    <description>GCP Admin toggleAllowAdminPasswordReset Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65130" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.enableApiAccess$</field>
+    <description>GCP Admin enableApiAccess Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65131" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.authorizeApiClientAccess$</field>
+    <description>GCP Admin authorizeApiClientAccess Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65132" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changePrimaryDomain$</field>
+    <description>GCP Admin changePrimaryDomain Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65133" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changeWhitelistSetting$</field>
+    <description>GCP Admin changeWhitelistSetting Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65134" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changeDataProtectionOfficerContactInfo$</field>
+    <description>GCP Admin changeDataProtectionOfficerContactInfo Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65135" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changeDomainName$</field>
+    <description>GCP Admin changeDomainName Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65136" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.addTrustedDomains$</field>
+    <description>GCP Admin addTrustedDomains Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65137" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.removeTrustedDomains$</field>
+    <description>GCP Admin removeTrustedDomains Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <!---->
+  <rule id="65138" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.toggleEnableOauthConsumerKey$</field>
+    <description>GCP Admin toggleEnableOauthConsumerKey Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65139" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.toggleSsoEnabled$</field>
+    <description>GCP Admin toggleSsoEnabled Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65140" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.toggleSsl$</field>
+    <description>GCP Admin toggleSsl Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65141" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changeLoginActivityTrace$</field>
+    <description>GCP Admin changeLoginActivityTrace Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65142" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.mxRecordVerificationClaim$</field>
+    <description>GCP Admin mxRecordVerificationClaim Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65143" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.regenerateOauthConsumerSecret$</field>
+    <description>GCP Admin regenerateOauthConsumerSecret Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65144" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changeOrganizationName$</field>
+    <description>GCP Admin changeOrganizationName Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65145" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.updateDomainPrimaryAdminEmail$</field>
+    <description>GCP Admin updateDomainPrimaryAdminEmail Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65146" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.removeApplicationFromWhitelist$</field>
+    <description>GCP Admin removeApplicationFromWhitelist Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65147" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.createRule$</field>
+    <description>GCP Admin createRule Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65148" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.deleteRule$</field>
+    <description>GCP Admin deleteRule Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65149" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.addSecondaryDomain$</field>
+    <description>GCP Admin addSecondaryDomain Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65150" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.verifySecondaryDomainMx$</field>
+    <description>GCP Admin verifySecondaryDomainMx Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65151" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.verifySecondaryDomain$</field>
+    <description>GCP Admin verifySecondaryDomain Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65152" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changeSsoSettings$</field>
+    <description>GCP Admin changeSsoSettings Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65153" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.generatePin$</field>
+    <description>GCP Admin generatePin Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65154" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.updateRule$</field>
+    <description>GCP Admin updateRule Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65155" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.dropFromQuarantine$</field>
+    <description>GCP Admin dropFromQuarantine Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65156" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.emailLogSearch$</field>
+    <description>GCP Admin emailLogSearch Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65157" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.emailUndelete$</field>
+    <description>GCP Admin emailUndelete Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65158" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changeEmailSetting$</field>
+    <description>GCP Admin changeEmailSetting Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65159" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changeGmailSetting$</field>
+    <description>GCP Admin changeGmailSetting Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65160" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.createGmailSetting$</field>
+    <description>GCP Admin createGmailSetting Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65161" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.deleteGmailSetting$</field>
+    <description>GCP Admin deleteGmailSetting Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65162" level="7">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.rejectFromQuarantine$</field>
+    <description>GCP Admin rejectFromQuarantine Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65163" level="7">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.releaseFromQuarantine$</field>
+    <description>GCP Admin releaseFromQuarantine Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65164" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.createGroup$</field>
+    <description>GCP Admin createGroup Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65165" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.deleteGroup$</field>
+    <description>GCP Admin deleteGroup Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65166" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changeGroupDescription$</field>
+    <description>GCP Admin changeGroupDescription Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65167" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.groupListDownload$</field>
+    <description>GCP Admin groupListDownload Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65168" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.addGroupMember$</field>
+    <description>GCP Admin addGroupMember Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65169" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.removeGroupMember$</field>
+    <description>GCP Admin removeGroupMember Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65170" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.updateGroupMember$</field>
+    <description>GCP Admin updateGroupMember Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65171" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.updateGroupMemberDeliverySettings$</field>
+    <description>GCP Admin updateGroupMemberDeliverySettings Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65172" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.updateGroupMemberDeliverySettingsCanEmailOverride$</field>
+    <description>GCP Admin updateGroupMemberDeliverySettingsCanEmailOverride Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65173" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.groupMemberBulkUpload$</field>
+    <description>GCP Admin groupMemberBulkUpload Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65174" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.groupMembersDownload$</field>
+    <description>GCP Admin groupMembersDownload Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65175" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changeGroupName$</field>
+    <description>GCP Admin changeGroupName Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65176" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.whitelistedGroupsUpdated$</field>
+    <description>GCP Admin whitelistedGroupsUpdated Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65177" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.companyDevicesBulkCreation$</field>
+    <description>GCP Admin companyDevicesBulkCreation Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65178" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.companyOwnedDeviceBlocked$</field>
+    <description>GCP Admin companyOwnedDeviceBlocked Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65179" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.companyDeviceDeletion$</field>
+    <description>GCP Admin companyDeviceDeletion Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65180" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.companyOwnedDeviceUnblocked$</field>
+    <description>GCP Admin companyOwnedDeviceUnblocked Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65181" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.companyOwnedDeviceWiped$</field>
+    <description>GCP Admin companyOwnedDeviceWiped Event</description>
+    <options>no_full_log</options>
+  </rule>
+  
+  <rule id="65182" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.removeMobileApplicationFromWhitelist$</field>
+    <description>GCP Admin removeMobileApplicationFromWhitelist Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65183" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.addMobileApplicationToWhitelist$</field>
+    <description>GCP Admin addMobileApplicationToWhitelist Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65184" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.mobileDeviceApprove$</field>
+    <description>GCP Admin mobileDeviceApprove Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65185" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.mobileDeviceBlock$</field>
+    <description>GCP Admin mobileDeviceBlock Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65186" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.mobileDeviceDelete$</field>
+    <description>GCP Admin mobileDeviceDelete Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65187" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.mobileDeviceWipe$</field>
+    <description>GCP Admin mobileDeviceWipe Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65188" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changeAdminRestrictionsPin$</field>
+    <description>GCP Admin changeAdminRestrictionsPin Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65189" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changeMobileWirelessNetworkPassword$</field>
+    <description>GCP Admin changeMobileWirelessNetworkPassword Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65190" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.enrollForGoogleDeviceManagement$</field>
+    <description>GCP Admin enrollForGoogleDeviceManagement Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65191" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.mobileAccountWipe$</field>
+    <description>GCP Admin mobileAccountWipe Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65192" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.mobileDeviceCancelWipeThenApprove$</field>
+    <description>GCP Admin mobileDeviceCancelWipeThenApprove Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65193" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.mobileDeviceCancelWipeThenBlock$</field>
+    <description>GCP Admin mobileDeviceCancelWipeThenBlock Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65194" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.createOrgUnit$</field>
+    <description>GCP Admin createOrgUnit Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65195" level="7">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.removeOrgUnit$</field>
+    <description>GCP Admin removeOrgUnit Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65196" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.moveOrgUnit$</field>
+    <description>GCP Admin moveOrgUnit Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65197" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.securityInvestigationAction$</field>
+    <description>GCP Admin securityInvestigationAction Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65198" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.securityInvestigationActionCancellation$</field>
+    <description>GCP Admin securityInvestigationActionCancellation Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65199" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.securityInvestigationActionCompletion$</field>
+    <description>GCP Admin securityInvestigationActionCompletion Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65200" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.securityInvestigationActionVerificationConfirmation$</field>
+    <description>GCP Admin securityInvestigationActionVerificationConfirmation Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65201" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService.securityInvestigationActionVerificationRequest$</field>
+    <description>GCP Admin securityInvestigationActionVerificationRequest Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65202" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.securityInvestigationChartCreate$</field>
+    <description>GCP Admin securityInvestigationChartCreate Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65203" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.securityInvestigationContentAccess$</field>
+    <description>GCP Admin securityInvestigationContentAccess Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65204" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.securityInvestigationDownloadAttachment$</field>
+    <description>GCP Admin securityInvestigationDownloadAttachment Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65205" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.securityInvestigationExportActionResults$</field>
+    <description>GCP Admin securityInvestigationExportActionResults Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65206" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.securityInvestigationExportQuery$</field>
+    <description>GCP Admin securityInvestigationExportQuery Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65207" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.securityInvestigationObjectDeleteInvestigation$</field>
+    <description>GCP Admin securityInvestigationObjectDeleteInvestigation Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65208" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.securityInvestigationObjectOwnershipTransfer$</field>
+    <description>GCP Admin securityInvestigationObjectOwnershipTransfer Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65209" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.securityInvestigationObjectSaveInvestigation$</field>
+    <description>GCP Admin securityInvestigationObjectSaveInvestigation Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65210" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.securityInvestigationSettingUpdate$</field>
+    <description>GCP Admin securityInvestigationSettingUpdate Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65211" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.addToTrustedOauth2Apps$</field>
+    <description>GCP Admin addToTrustedOauth2Apps Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65212" level="10">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.allowAspWithout2Sv$</field>
+    <description>GCP Admin allowAspWithout2Sv Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65213" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.allowServiceForOauth2Access$</field>
+    <description>GCP Admin allowServiceForOauth2Access Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65214" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.allowStrongAuthentication$</field>
+    <description>GCP Admin allowStrongAuthentication Event</description>
+    <options>no_full_log</options>
+  </rule>
+  
+  <rule id="65215" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.blockOnDeviceAccess$</field>
+    <description>GCP Admin blockOnDeviceAccess Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65216" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changeAllowedTwoStepVerificationMethods$</field>
+    <description>GCP Admin changeAllowedTwoStepVerificationMethods Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65217" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changeTwoStepVerificationEnrollmentPeriodDuration$</field>
+    <description>GCP Admin changeTwoStepVerificationEnrollmentPeriodDuration Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65218" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changeTwoStepVerificationFrequency$</field>
+    <description>GCP Admin changeTwoStepVerificationFrequency Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65219" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changeTwoStepVerificationGracePeriodDuration$</field>
+    <description>GCP Admin changeTwoStepVerificationGracePeriodDuration Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65220" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.disallowServiceForOauth2Access$</field>
+    <description>GCP Admin disallowServiceForOauth2Access Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65221" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.enableNonAdminUserPasswordRecovery$</field>
+    <description>GCP Admin enableNonAdminUserPasswordRecovery Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65222" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.enforceStrongAuthentication$</field>
+    <description>GCP Admin enforceStrongAuthentication Event</description>
+    <options>no_full_log</options>
+  </rule>
+  
+  <rule id="65223" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.removeFromTrustedOauth2Apps$</field>
+    <description>GCP Admin removeFromTrustedOauth2Apps Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65224" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.trustDomainOwnedOauth2Apps$</field>
+    <description>GCP Admin trustDomainOwnedOauth2Apps Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65225" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.unblockOnDeviceAccess$</field>
+    <description>GCP Admin unblockOnDeviceAccess Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65226" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.untrustDomainOwnedOauth2Apps$</field>
+    <description>GCP Admin untrustDomainOwnedOauth2Apps Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65227" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.weakProgrammaticLoginSettingsChanged$</field>
+    <description>GCP Admin weakProgrammaticLoginSettingsChanged Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65228" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.addWebAddress$</field>
+    <description>GCP Admin addWebAddress Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65229" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.deleteWebAddress$</field>
+    <description>GCP Admin deleteWebAddress Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65230" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changeSitesSetting$</field>
+    <description>GCP Admin changeSitesSetting Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65231" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.delete2SvScratchCodes$</field>
+    <description>GCP Admin delete2SvScratchCodes Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65232" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.generate2SvScratchCodes$</field>
+    <description>GCP Admin generate2SvScratchCodes Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65233" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.revoke3LoDeviceTokens$</field>
+    <description>GCP Admin revoke3LoDeviceTokens Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65234" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.revoke3LoToken$</field>
+    <description>GCP Admin revoke3LoToken Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65235" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.addRecoveryEmail$</field>
+    <description>GCP Admin addRecoveryEmail Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65236" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.addRecoveryPhone$</field>
+    <description>GCP Admin addRecoveryPhone Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65237" level="10">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.grantAdminPrivilege$</field>
+    <description>GCP Admin grantAdminPrivilege Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65238" level="10">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.revokeAdminPrivilege$</field>
+    <description>GCP Admin revokeAdminPrivilege Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65239" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.bulkUpload$</field>
+    <description>GCP Admin bulkUpload Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65240" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.cancelUserInvite$</field>
+    <description>GCP Admin cancelUserInvite Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65241" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.enableUserIpWhitelist$</field>
+    <description>GCP Admin enableUserIpWhitelist Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65242" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changeUserOrganization$</field>
+    <description>GCP Admin changeUserOrganization Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65243" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changeUserPhoneNumber$</field>
+    <description>GCP Admin changeUserPhoneNumber Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65244" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changeRecoveryEmail$</field>
+    <description>GCP Admin changeRecoveryEmail Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65245" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changeRecoveryPhone$</field>
+    <description>GCP Admin changeRecoveryPhone Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65246" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.createDataTransferRequest$</field>
+    <description>GCP Admin createDataTransferRequest Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65247" level="10">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.grantDelegatedAdminPrivileges$</field>
+    <description>GCP Admin grantDelegatedAdminPrivileges Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65248" level="10">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.deleteAccountInfoDump$</field>
+    <description>GCP Admin deleteAccountInfoDump Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65249" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.deleteEmailMonitor$</field>
+    <description>GCP Admin deleteEmailMonitor Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65250" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.deleteMailboxDump$</field>
+    <description>GCP Admin deleteMailboxDump Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65251" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changeFirstName$</field>
+    <description>GCP Admin changeFirstName Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65252" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.gmailResetUser$</field>
+    <description>GCP Admin gmailResetUser Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65253" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changeLastName$</field>
+    <description>GCP Admin changeLastName Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65254" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.mailRoutingDestinationAdded$</field>
+    <description>GCP Admin mailRoutingDestinationAdded Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65255" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.mailRoutingDestinationRemoved$</field>
+    <description>GCP Admin mailRoutingDestinationRemoved Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65256" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changePassword$</field>
+    <description>GCP Admin changePassword Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65257" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.changePasswordOnNextLogin$</field>
+    <description>GCP Admin changePasswordOnNextLogin Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65258" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.removeRecoveryEmail$</field>
+    <description>GCP Admin removeRecoveryEmail Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65259" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.removeRecoveryPhone$</field>
+    <description>GCP Admin removeRecoveryPhone Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65260" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.requestAccountInfo$</field>
+    <description>GCP Admin requestAccountInfo Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65261" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.requestMailboxDump$</field>
+    <description>GCP Admin requestMailboxDump Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65262" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.resendUserInvite$</field>
+    <description>GCP Admin resendUserInvite Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65263" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.resetSigninCookies$</field>
+    <description>GCP Admin resetSigninCookies Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65264" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.securityKeyRegisteredForUser$</field>
+    <description>GCP Admin securityKeyRegisteredForUser Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65265" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.revokeSecurityKey$</field>
+    <description>GCP Admin revokeSecurityKey Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65266" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.userInvite$</field>
+    <description>GCP Admin userInvite Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65267" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.viewTempPassword$</field>
+    <description>GCP Admin viewTempPassword Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65268" level="10">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.turnOff2StepVerification$</field>
+    <description>GCP Admin turnOff2StepVerification Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65269" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.unblockUserSession$</field>
+    <description>GCP Admin unblockUserSession Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65270" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.unenrollUserFromTitanium$</field>
+    <description>GCP Admin unenrollUserFromTitanium Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65271" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.archiveUser$</field>
+    <description>GCP Admin archiveUser Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65272" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.createUser$</field>
+    <description>GCP Admin createUser Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65273" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.deleteUser$</field>
+    <description>GCP Admin deleteUser Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65274" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.downgradeUserFromGplus$</field>
+    <description>GCP Admin downgradeUserFromGplus Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65275" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.userEnrolledInTwoStepVerification$</field>
+    <description>GCP Admin userEnrolledInTwoStepVerification Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65276" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.downloadUserlistCsv$</field>
+    <description>GCP Admin downloadUserlistCsv Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65277" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.moveUserToOrgUnit$</field>
+    <description>GCP Admin moveUserToOrgUnit Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65278" level="7">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.userPutInTwoStepVerificationGracePeriod$</field>
+    <description>GCP Admin userPutInTwoStepVerificationGracePeriod Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65279" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.renameUser$</field>
+    <description>GCP Admin renameUser Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65280" level="10">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.unenrollUserFromStrongAuth$</field>
+    <description>GCP Admin unenrollUserFromStrongAuth Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65281" level="10">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.suspendUser$</field>
+    <description>GCP Admin suspendUser Event</description>
+  </rule>
+
+  <rule id="65282" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.unarchiveUser$</field>
+    <description>GCP Admin unarchiveUser Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65283" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.undeleteUser$</field>
+    <description>GCP Admin undeleteUser Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65284" level="10">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.unsuspendUser$</field>
+    <description>GCP Admin unsuspendUser Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65285" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.upgradeUserToGplus$</field>
+    <description>GCP Admin upgradeUserToGplus Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65286" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.admin\.AdminService\.usersBulkUpload$</field>
+    <description>GCP Admin usersBulkUpload Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65287" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.apps\.cloudidentity\.groups\.v\d*\.GroupsService\.UpdateGroup$</field>
+    <description>GCP Admin Groups Service UpdateGroup Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="65288" level="3">
+    <if_sid>65000</if_sid>
+    <field name="gcp.protoPayload.methodName" type="pcre2">^google\.apps\.cloudidentity\.groups\.v\d*\.MembershipsService\.UpdateMembership$</field>
+    <description>GCP Admin MemberShip Service UpdateMembership Event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <!-- GCP Armor Security Policy Event -->
+
+  <rule id="65289" level="5">
+    <if_sid>65000</if_sid>
+    <field name="gcp.resource.type" type="pcre2">^network_security_policy$</field>
+    <description>GCP Armor Security Policy Event</description>
+    <options>no_full_log</options>
+  </rule>
+
 </group>
