@@ -7,6 +7,7 @@
 -->
 
 <group name="gcp,">
+  <!-- GCP Wodle -->
   <rule id="65000" level="0">
     <decoded_as>json</decoded_as>
     <field name="integration">gcp</field>
