@@ -216,15 +216,33 @@ public:
     }
 
     /**
-     * @brief Get the lowest free priority in range [minPriority, maxPriority].
-     * 
+     * @brief Get the biggest free priority in range [minPriority, maxPriority].
+     *
      * @param minPriority The minimum priority to check.
      * @param maxPriority The maximum priority to check.
      * @return std::size_t The lowest free priority.
      * @throw std::out_of_range if there is no free priority in the range.
      */
-    std::size_t getLowestFreePriority(std::size_t minPriority, std::size_t maxPriority) const {
-        // todo
+    std::size_t getBiggestFreePriority(std::size_t minPriority, std::size_t maxPriority) const
+    {
+        if (minPriority < maxPriority)
+        {
+            throw std::runtime_error {"The lowest priority cannot be lower than the highest priority."};
+        }
+
+        for (std::size_t priority = maxPriority; priority <= minPriority; priority++)
+        {
+            if (priorityExists(priority))
+            {
+                continue;
+            }
+
+            // Return the lowest free priority found
+            return priority;
+        }
+
+        // No free priority found in the specified range
+        throw std::out_of_range("No free priority in the specified range.");
     }
 
 

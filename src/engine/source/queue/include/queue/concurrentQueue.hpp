@@ -89,11 +89,6 @@ public:
     }
 };
 
-struct MyTraits : public moodycamel::ConcurrentQueueDefaultTraits
-{
-	static const size_t BLOCK_SIZE = 32768;
-};
-
 /**
  * @brief A thread-safe queue that can be used to pass messages between threads.
  *
@@ -104,7 +99,9 @@ struct MyTraits : public moodycamel::ConcurrentQueueDefaultTraits
  * and the pathFloodedFile is provided.
  * @tparam T The type of the data to be stored in the queue.
  */
-template<typename T>
+template<typename T,
+         typename D = moodycamel::ConcurrentQueueDefaultTraits,
+         typename = std::enable_if_t<std::is_base_of<moodycamel::ConcurrentQueueDefaultTraits, D>::value>>
 class ConcurrentQueue : public iBlockingConcurrentQueue<T>
 {
 private:
@@ -120,21 +117,18 @@ private:
         std::shared_ptr<metricsManager::iCounter<uint64_t>> m_consumendPerSecond; ///< Counter for the used queue
     };
 
-    moodycamel::BlockingConcurrentQueue<T, MyTraits> m_lowPriorityQueue {};  ///< The queue itself.
-    moodycamel::BlockingConcurrentQueue<T, MyTraits> m_highPriorityQueue {}; ///< The queue itself.
-    moodycamel::BlockingConcurrentQueue<T, MyTraits> m_queue {}; ///< The queue itself.
-    std::shared_ptr<FloodingFile> m_floodingFile;                  ///< The flooding file.
-    std::size_t m_maxAttempts;            ///< The maximum number of attempts to push an element to the queue.
-    std::chrono::microseconds m_waitTime; ///< The time to wait for the queue to be not full.
+    moodycamel::BlockingConcurrentQueue<T> m_lowPriorityQueue {};  ///< The queue itself.
+    moodycamel::BlockingConcurrentQueue<T> m_highPriorityQueue {}; ///< The queue itself.
+
+    std::shared_ptr<FloodingFile> m_floodingFile; ///< The flooding file.
+    std::size_t m_maxAttempts;                    ///< The maximum number of attempts to push an element to the queue.
+    std::chrono::microseconds m_waitTime;         ///< The time to wait for the queue to be not full.
     T m_fictitiousValue;
     std::atomic<bool> m_lastDequeueWasLow {false};
 
     Metrics m_metrics; ///< Metrics for the queue
 
-    bool isFictitious(const T& element) const
-    {
-        return element == m_fictitiousValue;
-    }
+    bool isFictitious(const T& element) const { return element == m_fictitiousValue; }
 
 public:
     /**
@@ -171,9 +165,8 @@ public:
             throw std::runtime_error("The capacity of the queue must be greater than 0");
         }
 
-        m_lowPriorityQueue = moodycamel::BlockingConcurrentQueue<T, MyTraits>(capacity);
-        m_highPriorityQueue = moodycamel::BlockingConcurrentQueue<T, MyTraits>(capacity);
-        m_queue = moodycamel::BlockingConcurrentQueue<T, MyTraits>(capacity);
+        m_lowPriorityQueue = moodycamel::BlockingConcurrentQueue<T, D>(capacity);
+        m_highPriorityQueue = moodycamel::BlockingConcurrentQueue<T, D>(capacity);
 
         // Verify if the pathFloodedFile is provided
         if (!pathFloodedFile.empty())
@@ -320,7 +313,7 @@ public:
         {
             if (!isFictitious(tempElement))
             {
-                element = std::move(tempElement);  // Movemos el valor desde el temporal al argumento de salida
+                element = std::move(tempElement); // Movemos el valor desde el temporal al argumento de salida
                 m_metrics.m_consumed->addValue(1UL);
                 m_metrics.m_used->addValue(-1);
                 m_metrics.m_consumendPerSecond->addValue(1UL);
