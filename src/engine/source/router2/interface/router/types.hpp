@@ -2,6 +2,7 @@
 #define _ROUTER2_TYPES_HPP
 
 #include <functional>
+#include <list>
 #include <optional>
 #include <string>
 
@@ -204,7 +205,7 @@ public:
 
     /**
      * @brief Create a Entry Post for testing environments.
-     * 
+     *
      * @param name Name to identify the environment
      * @param policy Policy to use in the environment
      * @param lifetime Lifetime of the environment // TODO: Check description
@@ -231,6 +232,20 @@ public:
     std::uint64_t lifetime() const { return m_lifetime; }
     const std::optional<base::Name>& filter() const { return m_filter; }
     const std::optional<std::string>& description() const { return m_description; }
+
+    std::list<std::string> getEntryPost() const
+    {
+        std::list<std::string> entries;
+
+        entries.push_back(name());
+        entries.push_back(policy().fullName());
+        entries.push_back(std::to_string(priority()));
+        entries.push_back(std::to_string(lifetime()));
+        entries.push_back(filter().value_or("").fullName());
+        entries.push_back(description().value_or(""));
+
+        return entries;
+    }
 };
 
 // TODO: class EntryPut : public EntryPost
@@ -248,6 +263,33 @@ protected:
 
     // Status
     std::optional<std::uint64_t> m_lastUsed; ///< Timestamp of the last use of the environment (only for testing env)
+
+    // Function to convert State enum to string
+    inline std::string stateToString(env::State state) const
+    {
+        switch (state)
+        {
+        case env::State::UNKNOWN: return "UNKNOWN";
+        case env::State::INACTIVE: return "INACTIVE";
+        case env::State::ACTIVE: return "ACTIVE";
+        default: return "INVALID_STATE";
+        }
+    }
+
+    // Function to convert Sync enum to string
+    inline std::string syncToString(env::Sync sync) const
+    {
+        switch (sync)
+        {
+        case env::Sync::UNKNOWN: return "UNKNOWN";
+        case env::Sync::UPDATED: return "UPDATED";
+        case env::Sync::OUTDATED: return "OUTDATED";
+        case env::Sync::DELETED: return "DELETED";
+        case env::Sync::ERROR: return "ERROR";
+        default: return "INVALID_SYNC";
+        }
+    }
+
 public:
     Entry(const EntryPost& entryPost)
         : EntryPost {entryPost}
@@ -266,6 +308,23 @@ public:
     env::Sync getPolicySync() const { return m_policySync; }
     env::State getStatus() const { return m_status; }
     const std::optional<std::uint64_t>& getLastUsed() const { return m_lastUsed; }
+
+    std::list<std::string> getEntry() const
+    {
+        std::list<std::string> entryList = getEntryPost(); // Get list from base class
+
+        // Add Entry-specific variables to the list
+        entryList.push_back("Created: " + std::to_string(m_created));
+        entryList.push_back("Policy Sync: " + syncToString(m_policySync));
+        entryList.push_back("Status: " + stateToString(m_status));
+
+        if (m_lastUsed.has_value())
+        {
+            entryList.push_back("Last Used: " + std::to_string(m_lastUsed.value()));
+        }
+
+        return entryList;
+    }
 
 };
 
