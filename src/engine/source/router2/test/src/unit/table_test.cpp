@@ -200,6 +200,10 @@ std::vector<EntryTest> g_initStatePrior = {
     {"d", 4, "d"},
     {"e", 5, "e"},
     {"f", 6, "f"},
+    {"h", 10, "h"},
+    {"i", 15, "i"},
+    {"j", 18, "j"},
+    {"k", 20, "k"}
 };
 
 /**
@@ -322,3 +326,57 @@ TEST(Table, modify) {
         EXPECT_EQ(table.get(entry.name), ValueType(entry.value + "modified"));
     }
 }
+
+/************************************************
+ *     Test Get priority by range
+ ************************************************/
+using MaxPriorityT = std::tuple<std::size_t, std::size_t, std::size_t, bool>;
+using MaxPriorityTest = ::testing::TestWithParam<MaxPriorityT>;
+
+class EasyGetMaxPriorityT
+{
+private:
+    MaxPriorityT m_getMaxPriorityT;
+public:
+    EasyGetMaxPriorityT(std::size_t min, std::size_t max, std::size_t priority, bool exception)
+    {
+        m_getMaxPriorityT = std::make_tuple(min, max, priority, exception);
+    }
+
+    operator MaxPriorityT() const {return m_getMaxPriorityT; };
+};
+
+TEST_P(MaxPriorityTest, Functionallity)
+{
+    // Insert all entries (And check if the insert is ok)
+    ri::Table<ValueType> table;
+    for (auto& entry : g_initStatePrior)
+    {
+        EXPECT_EQ(table.insert(entry.name, entry.priority, ValueType(entry.value)), true);
+        checkEntryTable(table, entry, true);
+    }
+
+    auto &[minP, maxP, lowestPriority, exception] = GetParam();
+
+    if (exception)
+    {
+        EXPECT_ANY_THROW(table.getBiggestFreePriority(minP, maxP));
+    }
+    else
+    {
+        EXPECT_EQ(table.getBiggestFreePriority(minP, maxP), lowestPriority);
+    }
+}
+
+INSTANTIATE_TEST_SUITE_P(Table,
+                         MaxPriorityTest,
+                         ::testing::Values(
+                             // Test to insert by name
+                             MaxPriorityT(6, 1, 1, true),
+                             MaxPriorityT(15, 15, 15, true),
+                             MaxPriorityT(15, 20, 15, true),
+                             MaxPriorityT(20, 10, 11, false),
+                             MaxPriorityT(20, 15, 16, false),
+                             MaxPriorityT(20, 1, 7, false)
+                             // end
+                             ));
