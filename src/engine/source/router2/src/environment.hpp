@@ -19,12 +19,23 @@ private:
     base::Expression m_filter;
     std::shared_ptr<bk::IController> m_controller;
 
+    /**
+     * @brief 
+     * 
+     */
+    void stop()
+    {
+        if (m_controller)
+        {
+            m_controller->stop();
+        }
+    }
+
 public:
     using TraceFn = std::function<void(const std::string&, const std::string&, bool)>; ///< Trace subscriber callback
                                                                                        ///< (Asset, Trace, Result)
 
     Environment() = default;
-
 
     Environment(base::Expression&& filter, std::shared_ptr<bk::IController>&& controller)
         : m_filter {filter}
@@ -34,6 +45,11 @@ public:
         {
             throw std::runtime_error {"Invalid controller"};
         }
+    }
+
+    ~Environment()
+    {
+        stop();
     }
 
     /**
@@ -66,6 +82,17 @@ public:
      */
     void setFilter(base::Expression&& filter) { m_filter = std::move(filter); }
 
+    /**
+     * @brief Set the Controller object
+     *
+     */
+    void setController(std::shared_ptr<bk::IController>&& controller)
+    {
+        if (controller)
+        {
+            m_controller = controller;
+        }
+    }
 
     /**
      * @brief Get the list of assets that are traceables
