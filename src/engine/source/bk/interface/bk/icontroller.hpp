@@ -120,6 +120,24 @@ public:
     virtual void unsubscribe(const std::string& traceable, Subscription subscription) = 0;
 };
 
+/**
+ * @brief Interface for the backend factory.
+ * 
+ * @tparam IController The type of the backend.
+ */
+class IControllerMaker
+{
+public:
+    virtual ~IControllerMaker() = default;
+
+    /**
+     * @brief Create a new controller.
+     *
+     * @return std::shared_ptr<IController>
+     */
+    virtual std::shared_ptr<IController> create() = 0;
+};
+
 } // namespace bk
 
 #endif // _BK_ICONTROLLER_HPP
