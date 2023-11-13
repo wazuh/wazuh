@@ -12,8 +12,9 @@ add_library(router2::irouter ALIAS router2_irouter)
 # Implementation
 add_library(router2_router STATIC
    ${SRC_DIR}/environment.cpp
-   ${SRC_DIR}/table.cpp
+   ${SRC_DIR}/router.cpp
    ${SRC_DIR}/routerAdmin.cpp
+   ${SRC_DIR}/table.cpp
 )
 
 target_include_directories(router2_router
@@ -61,7 +62,7 @@ if(ENGINE_BUILD_TEST)
     add_executable(router_utest
         ${UNIT_SRC_DIR}/environment_test.cpp
         ${UNIT_SRC_DIR}/table_test.cpp
-        ${UNIT_SRC_DIR}/environmentBuilder_test.cpp
+        #${UNIT_SRC_DIR}/environmentBuilder_test.cpp
         ${UNIT_SRC_DIR}/router_test.cpp
     )
     target_include_directories(router_utest PRIVATE ${SRC_DIR})

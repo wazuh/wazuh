@@ -32,12 +32,36 @@ enum class Sync
     ERROR     ///< Error, can't get the policy status
 };
 
+inline std::string stateToString(const env::State state)
+{
+    switch (state)
+    {
+        case env::State::UNKNOWN: return "UNKNOWN";
+        case env::State::INACTIVE: return "INACTIVE";
+        case env::State::ACTIVE: return "ACTIVE";
+        default: return "INVALID_STATE";
+    }
+}
+
+// Function to convert Sync enum to string  // TODO move/delete this
+inline std::string syncToString(const env::Sync sync)
+{
+    switch (sync)
+    {
+        case env::Sync::UNKNOWN: return "UNKNOWN";
+        case env::Sync::UPDATED: return "UPDATED";
+        case env::Sync::OUTDATED: return "OUTDATED";
+        case env::Sync::DELETED: return "DELETED";
+        case env::Sync::ERROR: return "ERROR";
+        default: return "INVALID_SYNC";
+    }
+}
+
 } // namespace env
 
 namespace test
 {
 
-//
 enum class TraceLevel : std::uint8_t
 {
     NONE = 0,
@@ -45,10 +69,72 @@ enum class TraceLevel : std::uint8_t
     ALL
 };
 
+class TraceStorage
+{
+public:
+    using TraceList = std::vector<std::string>;
+    struct AssetData
+    {
+        TraceList traces;
+        bool success = false; ///< False if the asset has failed
+    };
+
+    using DataPair = std::pair<std::string, AssetData>;
+    using DataList = std::list<DataPair>;
+
+private:
+    DataList m_dataList;
+    std::unordered_map<std::string, DataList::iterator> m_dataMap;
+
+public:
+    TraceStorage()
+        : m_dataList()
+        , m_dataMap()
+    {
+    }
+
+    void ingest(const std::string& asset, const std::string& traceContent, bool result)
+    {
+        if (traceContent.empty())
+        {
+            return;
+        }
+
+        // Try inserting the asset into the map.
+        auto [it, inserted] = m_dataMap.try_emplace(asset, m_dataList.end());
+
+        // If is new, insert it into the list.
+        if (inserted)
+        {
+            m_dataList.emplace_back(asset, AssetData {});
+            it->second = std::prev(m_dataList.end());
+        }
+
+        auto& data = it->second->second;
+
+        if (traceContent == "SUCCESS")
+        {
+            data.success = true;
+        }
+        else
+        {
+            data.traces.push_back(traceContent);
+        }
+    }
+
+    void clearData()
+    {
+        m_dataList.clear();
+        m_dataMap.clear();
+    }
+
+    const DataList& getDataList() const { return m_dataList; }
+};
+
 struct Output
 {
     base::Event m_event;
-    std::string m_tracingObj;
+    TraceStorage m_tracingObj;
 };
 
 using OutputFn = std::function<void(Output&&)>;
@@ -68,6 +154,11 @@ public:
         , m_envId {std::move(envId)}
     {
         // validate();
+    }
+
+    OutputFn getOutputFn () const
+    {
+        return m_callback;
     }
 };
 
@@ -92,10 +183,9 @@ enum class Limits : std::size_t
     MinProd = MaxProd + 100 // 151 sessions at most for production
 };
 
-
 /**
  * @brief Validates the priority based on whether it is for testing or production.
- * 
+ *
  * @param priority The priority to be validated.
  * @param isTesting A boolean indicating whether the priority is for testing or not.
  * @return true if the priority is valid, false otherwise.
@@ -133,11 +223,12 @@ protected:
     std::string m_name;                       ///< Name of the environment
     std::optional<std::string> m_description; ///< Description of the environment
 
+    // Test
     bool _isTesting() const { return !m_filter.has_value(); }
 
     /**
      * @brief Validates the environment parameters.
-     * 
+     *
      * @return base::OptError An optional error if the environment parameters are invalid.
      */
     base::OptError validate() const
@@ -185,12 +276,11 @@ protected:
     }
 
 public:
-
     EntryPost() = delete;
 
     /**
      * @brief Create a Entry Post for production environments.
-     * 
+     *
      * @param name Name to identify the environment
      * @param policy Policy to use in the environment
      * @param filter Filter to use in the environment
@@ -232,21 +322,6 @@ public:
     std::uint64_t lifetime() const { return m_lifetime; }
     const std::optional<base::Name>& filter() const { return m_filter; }
     const std::optional<std::string>& description() const { return m_description; }
-
-    // TODO Delete this
-    std::list<std::string> getEntryPost() const
-    {
-        std::list<std::string> entries;
-
-        entries.push_back(name());
-        entries.push_back(policy().fullName());
-        entries.push_back(std::to_string(priority()));
-        entries.push_back(std::to_string(lifetime()));
-        entries.push_back(filter().value_or("").fullName());
-        entries.push_back(description().value_or(""));
-
-        return entries;
-    }
 };
 
 // TODO: class EntryPut : public EntryPost
@@ -264,32 +339,6 @@ protected:
 
     // Status
     std::optional<std::uint64_t> m_lastUsed; ///< Timestamp of the last use of the environment (only for testing env)
-
-    // Function to convert State enum to string  // TODO move/delete this
-    inline std::string stateToString(env::State state) const
-    {
-        switch (state)
-        {
-        case env::State::UNKNOWN: return "UNKNOWN";
-        case env::State::INACTIVE: return "INACTIVE";
-        case env::State::ACTIVE: return "ACTIVE";
-        default: return "INVALID_STATE";
-        }
-    }
-
-    // Function to convert Sync enum to string  // TODO move/delete this
-    inline std::string syncToString(env::Sync sync) const
-    {
-        switch (sync)
-        {
-        case env::Sync::UNKNOWN: return "UNKNOWN";
-        case env::Sync::UPDATED: return "UPDATED";
-        case env::Sync::OUTDATED: return "OUTDATED";
-        case env::Sync::DELETED: return "DELETED";
-        case env::Sync::ERROR: return "ERROR";
-        default: return "INVALID_SYNC";
-        }
-    }
 
 public:
     Entry(const EntryPost& entryPost)
@@ -310,25 +359,6 @@ public:
     env::Sync getPolicySync() const { return m_policySync; }
     env::State getStatus() const { return m_status; }
     const std::optional<std::uint64_t>& getLastUsed() const { return m_lastUsed; }
-
-    // TODO Delete this
-    std::list<std::string> getEntry() const
-    {
-        std::list<std::string> entryList = getEntryPost(); // Get list from base class
-
-        // Add Entry-specific variables to the list
-        entryList.push_back("Created: " + std::to_string(m_created));
-        entryList.push_back("Policy Sync: " + syncToString(m_policySync));
-        entryList.push_back("Status: " + stateToString(m_status));
-
-        if (m_lastUsed.has_value())
-        {
-            entryList.push_back("Last Used: " + std::to_string(m_lastUsed.value()));
-        }
-
-        return entryList;
-    }
-
 };
 
 } // namespace router

@@ -3,8 +3,6 @@
 
 #include <memory>
 
-#include <logging/logging.hpp>
-
 #include <router/types.hpp>
 
 #include "environmentBuilder.hpp"
@@ -13,179 +11,102 @@
 namespace router
 {
 
-
-class Router
-{
+/**
+ * @class Router
+ * @brief Manages the routing of events through a dynamic environment configuration.
+ *
+ * The Router class facilitates runtime management of environments using a dynamic table.
+ * Environments are represented by RuntimeEntry objects, which store associated entries and
+ * environment information.
+ */
+class Router {
 private:
-    class RuntimeEntry : public Entry
-    {
-
+    /**
+     * @class RuntimeEntry
+     * @brief Represents a runtime entry with associated environment information.
+     *
+     * Each RuntimeEntry is a child class of the Entry class and contains an Environment object.
+     */
+    class RuntimeEntry : public Entry {
     private:
-        Environment m_env; ///< The environment
+        Environment m_env; ///< The environment associated with the entry.
+
     public:
+        /**
+         * @brief Constructs a RuntimeEntry with the provided entry post information.
+         * @param entry The entry post information.
+         */
         RuntimeEntry(const EntryPost& entry)
             : Entry(entry) {};
 
+        /**
+         * @brief Sets the environment for the RuntimeEntry.
+         * @param env The environment to be set.
+         */
         void setEnvironment(const Environment& env) { m_env = env; }
-        // Environment& environment() { return m_env; }
+
+        /**
+         * @brief Retrieves the environment associated with the RuntimeEntry.
+         * @return A constant reference to the associated environment.
+         */
         const Environment& environment() const { return m_env; }
     };
 
-    internal::Table<RuntimeEntry> m_table;
-    // TODO: User a mutex to protect the table
-    std::shared_ptr<EnvironmentBuilder> m_envBuilder;
+    internal::Table<RuntimeEntry> m_table; ///< Internal table for managing RuntimeEntry objects.
+    // TODO: Use a mutex to protect the table
+    std::shared_ptr<EnvironmentBuilder> m_envBuilder; ///< Shared pointer to the environment builder.
 
 public:
+    /**
+     * @brief Constructs a Router with the specified environment builder.
+     * @param envBuilder The shared pointer to the EnvironmentBuilder.
+     */
     Router(const std::shared_ptr<EnvironmentBuilder>& envBuilder)
         : m_envBuilder(envBuilder)
         , m_table() {};
 
+    /**
+     * @brief Constructs a Router with the specified builder.
+     * @param builder The shared pointer to the IBuilder interface.
+     */
     Router(const std::shared_ptr<IBuilder>& builder)
         : m_envBuilder(std::make_shared<EnvironmentBuilder>(builder))
         , m_table() {};
 
     /**
-     * @copydoc IRouter::addEnvironment
+     * @brief Adds an environment to the router based on the provided entry post information.
+     * @param entryPost The entry post information.
+     * @return An optional error indicating the success or failure of the operation.
      */
-    base::OptError addEnvironment(const EntryPost& entryPost)
-    {
-        // Create the environment
-        auto entry = RuntimeEntry(entryPost);
-
-        if (m_table.nameExists(entry.name()))
-        {
-            return base::Error {"The name is already in use"};
-        }
-
-        if (entry.isTesting())
-        {
-            return base::Error {"TODO The environment is for testing"};
-        }
-        else if (m_table.priorityExists(entry.priority()))
-        {
-            return base::Error {"The priority is already in use"};
-        }
-
-        // Create the environment
-        try {
-            auto env = m_envBuilder->create(entry.policy(), entry.filter().value());
-            entry.setEnvironment(env);
-            entry.setStatus(env::State::ACTIVE);
-        } catch (const std::exception& e) {
-            return base::Error {fmt::format("Failed to create the environment: {}", e.what())};
-        }
-        
-        
-        
-
-        // Add metadata to the environment
-        // entry.setCreated(std::time(nullptr));
-
-        // Add the environment to the table
-        if (!m_table.insert(entry.name(), entry.priority(), entry))
-        {
-            return base::Error {"Failed to insert the environment into the table"};
-        }
-        return {};
-    }
+    base::OptError addEnvironment(const EntryPost& entryPost);
 
     /**
-     * @copydoc IRouter::removeEnvironment
+     * @brief Removes the environment with the specified name from the router.
+     * @param name The name of the environment to be removed.
+     * @return An optional error indicating the success or failure of the operation.
      */
-    base::OptError removeEnvironment(const std::string& name)
-    {
-        if (!m_table.nameExists(name))
-        {
-            return base::Error {"The environment not exist"};
-        }
-        else
-        {
-            if (!m_table.erase(name))
-            {
-                return base::Error {"Failed to delete the environment from the table"};
-            }
-        }
-
-        return std::nullopt;
-    }
+    base::OptError removeEnvironment(const std::string& name);
 
     /**
-     * @copydoc IRouter::disabledEnvironment
-     * TODO Refactor this, search and disable the environment only
-     * Maybe distroy the environment?
-     *
+     * @brief Disables the environment with the specified name in the router.
+     * @param name The name of the environment to be disabled.
+     * @return An optional error indicating the success or failure of the operation.
      */
-    base::OptError disabledEnvironment(const std::string& name)
-    {
-
-        try
-        {
-            auto& entry = m_table.get(name);
-            entry.setStatus(env::State::INACTIVE);
-        }
-        catch (const std::exception& e)
-        {
-            return base::Error {"The environment not exist"};
-        }
-    }
-
-    base::OptError changePriority(const std::string& name, size_t priority)
-    {
-        // Check if the priority is valid
-        if (Priority::validate(priority, false))
-        {
-            return base::Error {fmt::format("The priority '{}' is not in the valid range [{}-{}]",
-                                            priority,
-                                            static_cast<size_t>(Priority::Limits::MinProd),
-                                            static_cast<size_t>(Priority::Limits::MaxProd))};
-        }
-
-        if (!m_table.nameExists(name))
-        {
-            return base::Error {"The environment not exist"};
-        }
-
-        auto& entry = m_table.get(name);
-        if (entry.isTesting())
-        {
-            return base::Error {"Cannot change the priority of a testing environment"};
-        }
-
-        if (!m_table.setPriority(name, priority))
-        {
-            return base::Error {"Failed to change the priority, it is already in use"};
-        }
-        // Sync the priority
-        entry.setPriority(priority);
-
-        return {};
-    }
+    base::OptError disabledEnvironment(const std::string& name);
 
     /**
-     * @brief ingest an event into the router
+     * @brief Changes the priority of the environment with the specified name.
+     * @param name The name of the environment to change the priority for.
+     * @param priority The new priority value.
+     * @return An optional error indicating the success or failure of the operation.
      */
-    void ingest(base::Event event)
-    {
-        bool processed = false; // Remove this when the router is ready
-        for (const auto& entry : m_table)
-        {
-            if (entry.getStatus() != env::State::ACTIVE)
-            {
-                continue;
-            }
-            if (entry.environment().isAccepted(event))
-            {
-                entry.environment().ingest(std::move(event));
-                processed = true;
-                break;
-            }
-        }
+    base::OptError changePriority(const std::string& name, size_t priority);
 
-        if (!processed)
-        {
-            LOG_WARNING("Event not processed: {}", event->str());
-        }
-    }
+    /**
+     * @brief Ingests an event into the router for processing.
+     * @param event The event to be ingested.
+     */
+    void ingest(base::Event event);
 };
 
 } // namespace router
