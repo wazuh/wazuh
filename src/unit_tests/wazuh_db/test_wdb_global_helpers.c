@@ -2120,6 +2120,50 @@ void test_wdb_find_agent_error_json_output(void **state)
     assert_int_equal(OS_INVALID, ret);
 }
 
+void test_wdb_find_agent_error_no_json_object(void **state)
+{
+    int ret = 0;
+    const char *name_str = "agent1";
+    const char *ip_str = "any";
+    cJSON *root = NULL;
+    cJSON *row = NULL;
+
+    const char *json_str = strdup("{\"name\":\"agent1\",\"ip\":\"any\"}");
+
+    root = __real_cJSON_CreateArray();
+    row = __real_cJSON_CreateObject();
+    __real_cJSON_AddNumberToObject(row, "id", 1);
+    __real_cJSON_AddItemToArray(root, row);
+
+    will_return(__wrap_cJSON_CreateObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddStringToObject, name, "name");
+    expect_string(__wrap_cJSON_AddStringToObject, string, name_str);
+    expect_string(__wrap_cJSON_AddStringToObject, name, "ip");
+    expect_string(__wrap_cJSON_AddStringToObject, string, ip_str);
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    will_return(__wrap_wdbc_query_parse_json, 0);
+    will_return(__wrap_wdbc_query_parse_json, root);
+
+    // Getting JSON data
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    ret = wdb_find_agent(name_str, ip_str, NULL);
+
+    assert_int_equal(-2, ret);
+
+    __real_cJSON_Delete(root);
+}
+
 void test_wdb_find_agent_success(void **state)
 {
     int ret = 0;
@@ -4164,6 +4208,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_group_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_agent_group_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_find_agent */
+        cmocka_unit_test_setup_teardown(test_wdb_find_agent_error_no_json_object, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_find_agent_error_invalid_parameters, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_find_agent_error_json_input, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_find_agent_error_json_output, setup_wdb_global_helpers, teardown_wdb_global_helpers),
