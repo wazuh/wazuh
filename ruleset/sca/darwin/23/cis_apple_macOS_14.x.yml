@@ -553,65 +553,9 @@ checks:
      rules:
       - 'c: sh -c "defaults read /Library/Preferences/com.apple.TimeMachine.plist | grep -c NotEncrypted" -> r:^0$'
 
-  # 2.4.1 Ensure Show Wi-Fi status in Menu Bar Is Enabled. (Automated)
-   - id: 18534
-     title: "Ensure Show Wi-Fi status in Menu Bar Is Enabled."
-     description: "The Wi-Fi status in the menu bar indicates if the system's wireless internet capabilities are enabled. If so, the system will scan for available wireless networks in order to connect. At the time of this revision, all computers Apple builds have wireless network capability, which has not always been the case. This control only pertains to systems that have a wireless NIC available. Operating systems running in a virtual environment may not score as expected, either."
-     rationale: "Enabling \"Show Wi-Fi status in menu bar\" is a security awareness method that helps mitigate public area wireless exploits by making the user aware of their wireless connectivity status."
-     impact: "The user of the system should have a quick check on their wireless network status available."
-     remediation: "Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.controlcenter 2. The key to include is WiFi 3. The key must be set to <integer>18</integer>."
-     compliance:
-       - cis: ["2.4.1"]
-       - cis_csc_v8: ["4.8", "12.6"]
-       - cis_csc_v7: ["2", "15.4"]
-       - cmmc_v2.0: ["AC.L2-3.1.13", "AC.L2-3.1.17", "CM.L2-3.4.7", "CM.L2-3.4.8", "IA.L1-3.5.2", "SC.L1-3.13.1", "SC.L2-3.13.15", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.8.1.3"]
-       - nist_sp_800-53: ["SC-23"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.1.1", "2.2.2", "2.2.5", "4.1.1"]
-       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.1", "CC6.3", "CC6.6"]
-     condition:
-     rules:
-
-  # 2.4.2 Ensure Show Bluetooth Status in Menu Bar Is Enabled. (Automated)
-   - id: 18535
-     title: "Ensure Show Bluetooth Status in Menu Bar Is Enabled."
-     description: "By showing the Bluetooth status in the menu bar, a small Bluetooth icon is placed in the menu bar. This icon quickly shows the status of Bluetooth, and can allow the user to quickly turn Bluetooth on or off."
-     rationale: "Enabling \"Show Bluetooth status in menu bar\" is a security awareness method that helps understand the current state of Bluetooth, including whether it is enabled, discoverable, what paired devices exist, and what paired devices are currently active."
-     impact: "Bluetooth is a useful wireless tool that has been widely exploited when configured improperly. The user should have insight into the Bluetooth status."
-     remediation: "Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.controlcenter 2. The key to include is Bluetooth 3. The key must be set to <integer>18</integer>."
-     compliance:
-       - cis: ["2.4.2"]
-       - cis_csc_v8: ["4.8", "13.9"]
-       - cis_csc_v7: ["9.2"]
-       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.13.1.3"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2", "1.2.1", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.2.1", "1.2.5", "1.2.6", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6"]
-     condition:
-     rules:
-
-  # 2.5.1 Audit Siri Settings. (Manual)
-   - id: 18536
-     title: "Audit Siri Settings."
-     description: "With macOS 10.12 Sierra, Apple has introduced Siri from iOS to macOS. While there are data spillage concerns with the use of data-gathering personal assistant software, the risk here does not seem greater in sending queries to Apple through Siri than in sending search terms in a browser to Google or Microsoft. While it is possible that Siri will be used for local actions rather than Internet searches, Siri could, in theory, tell Apple about confidential Programs and Projects that should not be revealed. This appears be a usage edge case. In cases where sensitive or protected data is processed and Siri could expose that information through assisting a user in navigating their machine, it should be disabled. Siri does need to phone home to Apple, so it should not be available from air-gapped networks as part of its requirements. Most of the use case data published has shown that Siri is a tremendous time saver on iOS where multiple screens and menus need to be navigated through. Information like sports scores, weather, movie times, and simple to-do items on existing calendars can be easily found with Siri. None of the standard use cases should be more risky than already approved activity. For information on Apple's privacy policy for Siri, click here."
-     rationale: "Where \"normal\" user activity is already limited, Siri use should be controlled as well."
-     remediation: "Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.applicationaccess 2. The key to include is allowAssistant 3. Set the key to <true/> or <false/> based on your organization's requirements OR 1. The PayloadType string is com.apple.ironwood.support 2. The key to include is Ironwood Allowed 3. Set the key to <true/> or <false/> based on your organization's requirements."
-     references:
-       - 'https://support.apple.com/en-us/HT210657'
-     compliance:
-       - cis: ["2.5.1"]
-       - cis_csc_v8: ["4.1", "4.8"]
-       - cis_csc_v7: ["5.1", "9.2"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.13.1.3", "A.14.2.5", "A.8.1.3"]
-       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
-     rules:
+  # 2.4.1 Ensure Show Wi-Fi status in Menu Bar Is Enabled. (Automated) - Not Implemented
+  # 2.4.2 Ensure Show Bluetooth Status in Menu Bar Is Enabled. (Automated) - Not Implemented
+  # 2.5.1 Audit Siri Settings. (Manual) - Not Implemented
 
   # 2.5.2 Ensure Listen for "Hey Siri" Is Disabled. (Manual)
    - id: 18537
@@ -655,8 +599,10 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:sh -c "launchctl list | grep -c com.apple.locationd" -> r:^1$'
+      - 'c:sudo -u _locationd /usr/bin/osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.locationd'').objectForKey(''LocationServicesEnabled'')" -> r:^1$'
 
   # 2.6.1.2 Ensure Location Services Is in the Menu Bar. (Automated)
    - id: 18539
@@ -675,97 +621,19 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+      - "c:defaults read /Library/Preferences/com.apple.locationmenu.plist ShowSystemServices -> r:^1$|^true$"
 
-  # 2.6.1.3 Audit Location Services Access. (Manual)
-   - id: 18540
-     title: "Audit Location Services Access."
-     description: "macOS uses location information gathered through local Wi-Fi networks to enable applications to supply relevant information to users. While Location Services may be very useful, it may not be desirable to allow all applications that can use Location Services to use your location for Internet queries in order to provide tailored content based on your current location. Ensure applications that can use Location Services are authorized and provide that information where the application interacts with external systems. Apple offers feedback within System Preferences and may be enabled to supply information on the menu bar when Location Services are used. Safari can deny access from websites or prompt for access. Applications that support Location Services can be individually controlled in the Privacy tab in Security & Privacy under System Preferences. Access should be evaluated to ensure that privacy controls are as expected."
-     rationale: "Privacy controls should be monitored for appropriate settings."
-     impact: "Many macOS features rely on Location Services for tailored information. Users expect their time zone and weather to be relevant to where they are without manual intervention. Find my Mac needs to know where your Mac is actually located. Where possible, the tolerance between location privacy and convenience may be best left to the user when the location itself is not sensitive. If facility locations are not public, location information should be tightly controlled."
-     remediation: "Graphical Method: Perform the following steps to disable unnecessary applications from accessing Location Services: 1. Open System Settings 2. Select Privacy & Security 3. Select Location Services 4. Set any applications listed to your organization's requirements Perform the following steps to set websites to ask for permission to access Location Services: 1. Open Safari 2. Select Safari from the menu bar 3. Select Settings 4. Select Websites 5. Select Location 6. Set When visiting other websites to your organization's requirements."
-     compliance:
-       - cis: ["2.6.1.3"]
-       - cis_csc_v8: ["2.3", "4.1"]
-       - cis_csc_v7: ["2.6", "5.1"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.9"]
-       - iso_27001-2013: ["A.12.5.1", "A.12.6.2", "A.14.2.5", "A.8.1.3"]
-       - nist_sp_800-53: ["CM-10", "CM-7(1)", "CM-7(2)", "CM-8(3)", "CM-9", "SA-10"]
-       - pci_dss_v3.2.1: ["11.5", "2.2"]
-       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "12.3.4", "2.1.1", "2.2.1"]
-       - soc_2: ["CC7.1", "CC8.1"]
-     condition:
-     rules:
-
-  # 2.6.2.1 Audit Full Disk Access for Applications. (Manual)
-   - id: 18541
-     title: "Audit Full Disk Access for Applications."
-     description: "Starting with macOS 10.13 Apple enforces GUI access to the entire File System through System Preferences. Only Applications from known developers with mission requirements for Full Disk Access, such as security monitoring tools, should have Full Disk Access. Applications that have Full Disk Access can access restricted files and bypass macOS security controls, any applications with that access should be organizationally authorized."
-     rationale: "Any applications with Full Disk Access can bypass MacOS security controls and must be reviewed as organizationally accepted risk."
-     remediation: "Graphical Method: Perform the following steps to set full disk access for applications that meet your organization's requirements: 1. Open System Settings 2. Select Privacy & Security 3. Select Full Disk Access 4. Set any listed applications to your organization's requirements 5. (Optional) Select the + to add applications to teh list, or - to remove them."
-     references:
-       - 'https://support.apple.com/guide/security/controlling-app-access-to-files-'
-       - 'https://lapcatsoftware.com/articles/FullDiskAccess.html'
-       - 'https://www.techrepublic.com/article/secure-mac-data-full-disk-access/'
-       - 'https://support.intego.com/hc/en-us/articles/360016683471-Enable-Full-Disk-'
-     compliance:
-       - cis: ["2.6.2.1"]
-       - cis_csc_v8: ["4.1", "16.7"]
-       - cis_csc_v7: ["5.1"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-       - pci_dss_v3.2.1: ["11.5", "2.2"]
-       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-       - soc_2: ["CC7.1", "CC8.1"]
-     condition:
-     rules:
-
-  # 2.6.3 Ensure Sending Diagnostic and Usage Data to Apple Is Disabled. (Automated)
-   - id: 18542
-     title: "Ensure Sending Diagnostic and Usage Data to Apple Is Disabled."
-     description: "Apple provides a mechanism to send diagnostic and analytics data back to Apple to help them improve the platform. Information sent to Apple may contain internal organizational information that should be controlled and not available for processing by Apple. Turn off all Analytics and Improvements sharing. Share Mac Analytics (Share with App Developers dependent on Mac Analytic sharing) - Includes diagnostics, usage and location data Share iCloud Analytics - Includes iCloud data and usage information."
-     rationale: "Organizations should have knowledge of what is shared with the vendor and that this setting automatically forwards information to Apple."
-     remediation: "Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.applicationaccess 2. The key to include is allowDiagnosticSubmission 3. The key must be set to <false/> 4. There must also be a second PayloadType string of com.apple.SubmitDiagInfo 5. The key to include is AutoSubmit 6. The key must be set to <false/> 7. There must also be a third PayloadType string of com.apple.assistant.support 8. The key to also include is Siri Data Sharing Opt-In Status 9. The key must be set to <integer>2<integer/>."
-     references:
-       - 'https://support.apple.com/en-ca/guide/mac-help/mh27990/mac'
-     compliance:
-       - cis: ["2.6.3"]
-       - cis_csc_v8: ["4.1", "4.8"]
-       - cis_csc_v7: ["5.1", "9.2"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.13.1.3", "A.14.2.5", "A.8.1.3"]
-       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
-     rules:
-
-  # 2.6.4 Ensure Limit Ad Tracking Is Enabled. (Automated)
-   - id: 18543
-     title: "Ensure Limit Ad Tracking Is Enabled."
-     description: "Apple provides a framework that allows advertisers to target Apple users and end-users with advertisements. While many people prefer to see advertising that is relevant to them and their interests, the detailed information that is collected, correlated, and available to advertisers in repositories via data mining is often disconcerting. This information is valuable to both advertisers and attackers, and has been used with other metadata to reveal users' identities. Organizations should manage advertising settings on computers rather than allow users to configure the settings. Apple Information Ad tracking should be limited on 10.15 and prior."
-     rationale: "Organizations should manage user privacy settings on managed devices to align with organizational policies and user data protection requirements."
-     impact: "Uses will see generic advertising rather than targeted advertising. Apple warns that this will reduce the number of relevant ads."
-     remediation: "Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.applicationaccess 2. The key to include is allowApplePersonalizedAdvertising 3. The key must be set to <false/>."
-     compliance:
-       - cis: ["2.6.4"]
-       - cis_csc_v8: ["4.8"]
-       - cis_csc_v7: ["9.2"]
-       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.13.1.3"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6"]
-     condition:
-     rules:
+  # 2.6.1.3 Audit Location Services Access. (Manual) - Not Implemented
+  # 2.6.2.1 Audit Full Disk Access for Applications. (Manual) - Not Implemented
+  # 2.6.3 Ensure Sending Diagnostic and Usage Data to Apple Is Disabled. (Automated) - Not Implemented
+  # 2.6.4 Ensure Limit Ad Tracking Is Enabled. (Automated) - Not Implemented
 
   # 2.6.5 Ensure Gatekeeper Is Enabled. (Automated)
    - id: 18544
      title: "Ensure Gatekeeper Is Enabled."
-     description: "Gatekeeper is Apple’s application that utilizes allowlisting to restrict downloaded applications from launching. It functions as a control to limit applications from unverified sources from running without authorization. In an update to Gatekeeper in macOS 13 Ventura, Gatekeeper checks every application on every launch, not just quarantined apps."
+     description: "Gatekeeper is Apple's application that utilizes allowlisting to restrict downloaded applications from launching. It functions as a control to limit applications from unverified sources from running without authorization. In an update to Gatekeeper in macOS 13 Ventura, Gatekeeper checks every application on every launch, not just quarantined apps."
      rationale: "Disallowing unsigned software will reduce the risk of unauthorized or malicious applications from running on the system."
      remediation: "Graphical Method: Perform the following steps to enable Gatekeeper: 1. Open System Settings 2. Select Privacy & Security 3. Set 'Allow apps downloaded from' to 'App Store and identified developers' Terminal Method: Run the following command to enable Gatekeeper to allow applications from App Store and identified developers: $ /usr/bin/sudo /usr/sbin/spctl --master-enable Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.systempolicy.control 2. The key to include is AllowIdentifiedDevelopers 3. The key must be set to <true/> 4. The key to also include is EnableAssessment 5. The key must be set to <true/>."
      compliance:
@@ -779,8 +647,9 @@ checks:
        - pci_dss_v3.2.1: ["1.4", "11.4", "5.1", "5.1.1", "5.2"]
        - pci_dss_v4.0: ["5.1.1", "5.2.1", "5.2.2", "5.3.1", "5.3.2"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+      - "c:spctl --status -> r:^assessments enabled"
 
   # 2.6.6 Ensure FileVault Is Enabled. (Automated)
    - id: 18545
@@ -805,33 +674,19 @@ checks:
        - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
        - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - "c:fdesetup status -> r:^FileVault is On"
+      - 'c:osascript -l JavaScript -e "osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.MCX'').objectForKey(''dontAllowFDEDisable'')" -> r:^0$'
 
-  # 2.6.7 Audit Lockdown Mode. (Manual)
-   - id: 18546
-     title: "Audit Lockdown Mode."
-     description: "Apple introduced Lockdown Mode as a security feature in their 2022 OS releases that provides additional security protection Apple describes as extreme. Users and organizations that suspect some users are targets of advanced attacks must consider using this control. When lockdown mode is enabled, specific trusted websites can be excluded from Lockdown protection if necessary."
-     rationale: "Lockdown Mode was designed by Apple as an aggressive approach to commonly attacked OS features where additional controls could reduce the attack surface. IT systems and devices, including their users, are subject to continuous exploit attempts. Most of that activity is not from an advanced attacker and can be considered background noise to a patched, hardened device. Advanced attackers are of more concern and a risk review to understand organizational targets and use Lockdown Mode where appropriate is necessary."
-     impact: "Lockdown Mode must be tested appropriately for real-world impact on users prior to use. As a new feature there is not sufficient technical reporting on user impacts."
-     remediation: "Graphical Method: Perform the following steps to set Lockdown Mode to your organization's requirements: 1. Open System Settings 2. Select Privacy & Security 3. Set Lockdown Mode to your organization's parameters."
-     references:
-       - 'https://support.apple.com/en-us/HT212650'
-       - 'https://www.lifewire.com/use-lockdown-mode-on-mac-6454923'
-     compliance:
-       - cis: ["2.6.7"]
-       - cis_csc_v8: ["4.6"]
-       - cis_csc_v7: ["16.2"]
-       - cmmc_v2.0: ["SC.L2-3.13.15"]
-       - soc_2: ["CC5.2"]
-     condition:
-     rules:
+  # 2.6.7 Audit Lockdown Mode. (Manual) - Not Implemented
 
   # 2.6.8 Ensure an Administrator Password Is Required to Access System-Wide Preferences. (Automated)
    - id: 18547
      title: "Ensure an Administrator Password Is Required to Access System-Wide Preferences."
      description: "System Preferences controls system and user settings on a macOS Computer. System Preferences allows the user to tailor their experience on the computer as well as allowing the System Administrator to configure global security settings. Some of the settings should only be altered by the person responsible for the computer."
      rationale: "By requiring a password to unlock system-wide System Preferences, the risk of a user changing configurations that affect the entire system is mitigated and requires an admin user to re-authenticate to make changes."
+     remediation: "Graphical Method: Perform the following steps to verify that an administrator password is required to access system-wide preferences: 1. Open System Settings 2. Select Privacy & Security 3. Select Advanced 4. Set Require an administrator password to access system-wide settings to enabled. Terminal Method: The authorizationdb settings cannot be written to directly, so the plist must be exported out to temporary file. Changes can be made to the temporary plist, then imported back into the authorizationdb settings. Run the following commands to enable that an administrator password is required to access system-wide preferences: $ /usr/bin/sudo /usr/bin/security authorizationdb read system.preferences > /tmp/system.preferences.plist YES (0) $ /usr/bin/sudo /usr/bin/defaults write /tmp/system.preferences.plist shared -bool false $ /usr/bin/sudo /usr/bin/security authorizationdb write system.preferences < /tmp/system.preferences.plist YES (0)."
      impact: "Users will need to enter their password to unlock some additional preference panes that are unlocked by default like Network, Startup and Printers & Scanners."
      compliance:
        - cis: ["2.6.8"]
@@ -843,94 +698,14 @@ checks:
        - pci_dss_v3.2.1: ["11.5", "2.2"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
        - soc_2: ["CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+      - "c:security authorizationdb read system.preferences | grep -A1 shared -> r:>false<"
 
-  # 2.7.1 Ensure Screen Saver Corners Are Secure. (Automated)
-   - id: 18548
-     title: "Ensure Screen Saver Corners Are Secure."
-     description: "Hot Corners can be configured to disable the screen saver by moving the mouse cursor to a corner of the screen."
-     rationale: "Setting a hot corner to disable the screen saver poses a potential security risk since an unauthorized person could use this to bypass the login screen and gain access to the system."
-     remediation: "Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.dock 2. The key to include is Forced 3. The key must be set to the following: <array> <dict> <key>mcx_preference_settings</key> <dict> <key>wvous-bl-corner</key> <integer><≠6></integer> <key>wvous-br-corner</key> <integer><≠6></integer> <key>wvous-tl-corner</key> <integer><≠6></integer> <key>wvous-tr-corner</key> <integer><≠6></integer> </dict> </dict> </array>."
-     compliance:
-       - cis: ["2.7.1"]
-       - cis_csc_v8: ["4.3"]
-       - cis_csc_v7: ["16.11"]
-       - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
-       - hipaa: ["164.312(a)(2)(iii)"]
-       - iso_27001-2013: ["A.8.1.3"]
-       - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
-       - pci_dss_v3.2.1: ["8.1.8"]
-       - pci_dss_v4.0: ["8.2.8"]
-     condition:
-     rules:
-
-  # 2.8.1 Audit Universal Control Settings. (Manual)
-   - id: 18549
-     title: "Audit Universal Control Settings."
-     description: "Universal Control is an Apple feature that allows Mac users to control multiple other Macs and iPads with the same keyboard, mouse, and trackpad using the same Apple ID. The technology relies on already available iCloud services, particularly Handoff. Universal Control simplifies the use of iCloud connectivity of multiple computers using the same Apple ID. This may simplify data transfer from organizationally-managed and personal devices. The use of the same iCloud account and Handoff is the underlying concern that should be evaluated. The use of the same keyboard or mouse across multiple devices does not by itself decrease organizational security."
-     rationale: "The use of devices together when some are organizational and some are not may complicate device management standards."
-     remediation: "Graphical Method: Perform the following steps to set Universal Control to your organization's requirements: 1. Open System Preferences 2. Select Display 3. Select Advanced... 4. Set the options that meet your organization's requirements Terminal Method: Run the following command to enable or disable Universal Control: $ /usr/bin/sudo -u <user> /usr/bin/defaults -currentHost read com.apple.universalcontrol Disable -bool <true/false> $ /usr/bin/sudo -u <user> /usr/bin/defaults -currentHost read com.apple.universalcontrol DisableMagicEdges -bool <true/false> example: $ /usr/bin/sudo -u firstuser /usr/bin/defaults -currentHost read com.apple.universalcontrol Disable -bool true $ /usr/bin/sudo -u firstuser /usr/bin/defaults -currentHost read com.apple.universalcontrol DisableMagicEdges -bool true $ /usr/bin/sudo -u seconduser /usr/bin/defaults -currentHost read com.apple.universalcontrol Disable -bool false $ /usr/bin/sudo -u seconduser /usr/bin/defaults -currentHost read com.apple.universalcontrol DisableMagicEdges -bool false Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.universalcontrol 2. The key to include is Disable 3. Set the key to <true/> or <false/> based on your organization's requirements Note: Since the profile method sets a system-wide setting and not a user-level one, the profile method is the preferred method. It is always better to set system-wide than per user."
-     compliance:
-       - cis: ["2.8.1"]
-       - cis_csc_v8: ["4.1", "4.8"]
-       - cis_csc_v7: ["5.1", "9.2"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.13.1.3", "A.14.2.5", "A.8.1.3"]
-       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
-     rules:
-
-  # 2.9.1.1 Ensure the OS Is Not Active When Resuming from Standby (Intel). (Automated)
-   - id: 18550
-     title: "Ensure the OS Is Not Active When Resuming from Standby (Intel)."
-     description: "In order to use a computer with Full Disk Encryption (FDE), macOS must keep encryption keys in memory to allow the use of the disk that has been FileVault protected. The storage volume has been unlocked and acts as if it were not encrypted. When the system is not in use, the volume is protected through encryption. When the system is sleeping and available to quickly resume, the encryption keys remain in memory. https://www.helpnetsecurity.com/2018/08/20/laptop-sleep-security/ Mac systems should be set to hibernate after sleeping for a risk-acceptable time period. The default value for \"standbydelay\" is three hours (10800 seconds). This value is likely appropriate for most desktops. If Mac desktops are deployed in unmonitored, less physically secure areas with confidential data, this value might be adjusted. The desktop would have to retain power, however, so that the running OS or physical RAM could be attacked. MacBooks should be set so that the standbydelay is 15 minutes (900 seconds) or less. This setting should allow laptop users in most cases to stay within physically secured areas while going to a conference room, auditorium, or other internal location without having to unlock the encryption. When the user goes home at night, the laptop will auto-hibernate after 15 minutes and require the FileVault password to unlock prior to logging back into the system when it resumes. MacBooks should also be set to a hibernate mode that removes power from the RAM. This will stop the possibility of cold boot attacks on the system. Macs running Apple silicon chips, rather than Intel chips, do not require the same configuration as Intel-based Macs."
-     rationale: "To mitigate the risk of data loss, the system should power down and lock the encrypted drive after a specified time. Laptops should hibernate 15 minutes or less after sleeping."
-     impact: "The laptop will take additional time to resume normal operation if only sleeping rather than hibernating. Setting hibernatemode to 25 will disable the \"always-on\" feature of the Apple Silicon Macs."
-     remediation: "Terminal Method: Run the following command to set the hibernate delays and to ensure the FileVault keys are set to be destroyed on standby: $ /usr/bin/sudo /usr/bin/pmset -a standbydelaylow <value≤900> $ /usr/bin/sudo /usr/bin/pmset -a standbydelayhigh <value≤900> $ /usr/bin/sudo /usr/bin/pmset -a highstandbythreshold <value≥90> $ /usr/bin/sudo /usr/bin/pmset -a destroyfvkeyonstandby 1 $ /usr/bin/sudo /usr/bin/pmset -a hibernatemode 25 example: $ /usr/bin/sudo /usr/bin/pmset -a standbydelaylow 500 $ /usr/bin/sudo /usr/bin/pmset -a standbydelayhigh 500 $ /usr/bin/sudo /usr/bin/pmset -a highstandbythreshold 100 $ /usr/bin/sudo /usr/bin/pmset -a destroyfvkeyonstandby 1 $ /usr/bin/sudo /usr/bin/pmset -a hibernatemode 25."
-     references:
-       - 'https://www.lifewire.com/change-mac-sleep-settings-2260804'
-       - 'https://www.zdziarski.com/blog/?p=6705'
-       - 'https://www.howtogeek.com/260478/how-to-choose-when-your-mac-hibernates-'
-     compliance:
-       - cis: ["2.9.1.1"]
-       - cis_csc_v8: ["4.1"]
-       - cis_csc_v7: ["16.11"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-       - iso_27001-2013: ["A.8.1.3"]
-       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-       - pci_dss_v3.2.1: ["11.5", "2.2"]
-       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-       - soc_2: ["CC7.1", "CC8.1"]
-     condition:
-     rules:
-
-  # 2.9.1.2 Ensure the OS Is Not Active When Resuming from Sleep and Display Sleep (Apple Silicon). (Automated)
-   - id: 18551
-     title: "Ensure the OS Is Not Active When Resuming from Sleep and Display Sleep (Apple Silicon)."
-     description: "In order to use a computer with Full Disk Encryption (FDE), macOS must keep encryption keys in memory to allow the use of the disk that has been FileVault protected. The storage volume has been unlocked and acts as if it were not encrypted. When the system is not in use, the volume is protected through encryption. When the system is sleeping and available to quickly resume, the encryption keys remain in memory. If an unauthorized party has possession of the computer and the computer is only slept, there are known attack vectors that can be attempted against the RAM that has the encryption keys or the running operating system protected by a login screen. Network attacks if network interfaces are on, as well as USB or other open device ports, are possible. Most of these attacks require knowledge of unpatched vulnerabilities or a high level of sophistication if all the other controls function as intended. There is little impact on hibernating the system rather than sleeping after an appropriate time period to remediate the risk of OS level attacks. Hibernation writes the keys to disk and requires FileVault to be unlocked prior to the OS being available. In the case of unauthorized personnel with access to the computer, encryption would have to be broken prior to attacking the operating system in order to recover data from the system. https://www.helpnetsecurity.com/2018/08/20/laptop-sleep-security/ Mac systems should be set to hibernate after sleeping for a risk-acceptable time period. MacBooks should be set so that the sleep is 15 minutes (900 seconds) or less. This setting should allow laptop users in most cases to stay within physically secured areas while going to a conference room, auditorium, or other internal location without having to unlock the encryption. When the user goes home at night, the laptop will auto-hibernate after 15 minutes and require the FileVault password to unlock prior to logging back into the system when it resumes. MacBooks should also be set to a hibernate mode that removes power from the RAM. This will stop the possibility of cold boot attacks on the system. Macs running Apple silicon chips, rather than Intel chips, do not require the same configuration as Intel-based Macs."
-     rationale: "To mitigate the risk of data loss, the system should power down and lock the encrypted drive after a specified time. Laptops should hibernate 15 minutes or less after sleeping."
-     impact: "The laptop will take additional time to resume normal operation if only sleeping rather than hibernating. Touch ID will not be available when waking from hibernate. Setting hibernatemode to 25 will disable the \"always-on\" feature of the Apple Silicon Macs."
-     remediation: "Terminal Method: Run the following command to set the sleep time and hibernate mode: $ /usr/bin/sudo /usr/bin/pmset -a sleep <value≤10> $ /usr/bin/sudo /usr/bin/pmset -a displaysleep <value≤15 & >value of sleep> $ /usr/bin/sudo /usr/bin/pmset -a hibernatemode 25 Note: Setting hibernate mode will require the user to log into the machine after sleep and disable any wake options. hibernatemode must be set to 25 or it will not force the computer into a pre-boot state. example: $ /usr/bin/sudo /usr/bin/pmset -a sleep 10 $ /usr/bin/sudo /usr/bin/pmset -a displaysleep 15 $ /usr/bin/sudo /usr/bin/pmset -a hibernatemode 25."
-     references:
-       - 'https://www.lifewire.com/change-mac-sleep-settings-2260804'
-       - 'https://www.zdziarski.com/blog/?p=6705'
-       - 'https://www.howtogeek.com/260478/how-to-choose-when-your-mac-hibernates-'
-     compliance:
-       - cis: ["2.9.1.2"]
-       - cis_csc_v8: ["4.1"]
-       - cis_csc_v7: ["16.11"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-       - iso_27001-2013: ["A.8.1.3"]
-       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-       - pci_dss_v3.2.1: ["11.5", "2.2"]
-       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-       - soc_2: ["CC7.1", "CC8.1"]
-     condition:
-     rules:
+  # 2.7.1 Ensure Screen Saver Corners Are Secure. (Automated) - Not Implemented
+  # 2.8.1 Audit Universal Control Settings. (Manual) - Not Implemented
+  # 2.9.1.1 Ensure the OS Is Not Active When Resuming from Standby (Intel). (Automated) - Not Implemented
+  # 2.9.1.2 Ensure the OS Is Not Active When Resuming from Sleep and Display Sleep (Apple Silicon). (Automated) - Not Implemented
 
   # 2.9.1.3 Ensure FileVault is Locked on Sleep. (Automated)
    - id: 18552
@@ -949,8 +724,9 @@ checks:
        - pci_dss_v3.2.1: ["11.5", "2.2"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
        - soc_2: ["CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+      - "c:pmset -b -g -> r:^DestroyFVKeyOnStandby 1"
 
   # 2.9.2 Ensure Power Nap Is Disabled for Intel Macs. (Automated)
    - id: 18553
@@ -969,13 +745,14 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+      - 'not c:sh -c "pmset -g custom" -> r:powernap\s*\t*1'
 
   # 2.9.3 Ensure Wake for Network Access Is Disabled. (Automated)
    - id: 18554
      title: "Ensure Wake for Network Access Is Disabled."
-     description: "This feature allows the computer to take action when the user is not present and the computer is in energy saving mode. These tools require FileVault to remain unlocked and fully rejoin known networks. This macOS feature is meant to allow the computer to resume activity as needed regardless of physical security controls. This feature allows other users to be able to access your computer’s shared resources, such as shared printers or Apple Music playlists, even when your computer is in sleep mode. In a closed network when only authorized devices could wake a computer, it could be valuable to wake computers in order to do management push activity. Where mobile workstations and agents exist, the device will more likely check in to receive updates when already awake. Mobile devices should not be listening for signals on any unmanaged network or where untrusted devices exist that could send wake signals."
+     description: "This feature allows the computer to take action when the user is not present and the computer is in energy saving mode. These tools require FileVault to remain unlocked and fully rejoin known networks. This macOS feature is meant to allow the computer to resume activity as needed regardless of physical security controls. This feature allows other users to be able to access your computer's shared resources, such as shared printers or Apple Music playlists, even when your computer is in sleep mode. In a closed network when only authorized devices could wake a computer, it could be valuable to wake computers in order to do management push activity. Where mobile workstations and agents exist, the device will more likely check in to receive updates when already awake. Mobile devices should not be listening for signals on any unmanaged network or where untrusted devices exist that could send wake signals."
      rationale: "Disabling this feature mitigates the risk of an attacker remotely waking the system and gaining access."
      impact: "Management programs like Apple Remote Desktop Administrator use wake-on-LAN to connect with computers. If turned off, such management programs will not be able to wake a computer over the LAN. If the wake-on-LAN feature is needed, do not turn off this feature. The control to prevent computer sleep has been retired for this version of the Benchmark. Forcing the computer to stay on and use energy in case a management push is needed is contrary to most current management processes. Only keep computers unslept if after hours pushes are required on closed LANs."
      remediation: "Graphical Method: Perform the following steps to disable Wake for network access: Desktop Instructions: 1. Open System Settings 2. Select Energy Saver 3. Set Wake for network access to disabled Laptop Instructions: 1. Open System Settings 2. Select Battery 3. Select Options... 4. Set Wake for network access to Never Terminal Method: Run the following command to disable Wake for network access: $ /usr/bin/sudo /usr/bin/pmset -a womp 0 Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.MCX 2. The key to include is com.apple.EnergySaver.desktop.ACPower 3. The key must be set to: <dict> <key>Wake On LAN</key> <integer>0</integer> <key>Wake On Modem Ring</key> <integer>0</integer> </dict> 4. The key to also include is com.apple.EnergySaver.portable.ACPower 5. The key must be set to: <dict> <key>Wake On LAN</key> <integer>0</integer> <key>Wake On Modem Ring</key> <integer>0</integer> </dict> 6. The key to also include is com.apple.EnergySaver.portable.BatteryPower 7. The key must be set to: <dict> <key>Wake On LAN</key> <integer>0</integer> <key>Wake On Modem Ring</key> <integer>0</integer> </dict> Note: Both Wake on LAN and Wake on Modem Ring need to be set. Only setting Wake On LAN will allow the profile to install but not set any settings. This profile will only apply the setting at installation and is not sticky."
@@ -988,28 +765,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: any
      rules:
+      - 'c:sh -c "pmset -g | grep -e womp" -> r:0'
+      - 'not c:sh -c "profiles -P -o stdout | grep ''Wake On LAN''" -> n:=\s*(\d) compare != 0'
+      - 'not c:sh -c "profiles -P -o stdout | grep ''Wake On Modem Ring''" -> n:=\s*(\d) compare != 0'
 
-  # 2.10.1 Ensure an Inactivity Interval of 20 Minutes Or Less for the Screen Saver Is Enabled. (Automated)
-   - id: 18555
-     title: "Ensure an Inactivity Interval of 20 Minutes Or Less for the Screen Saver Is Enabled."
-     description: "A locking screen saver is one of the standard security controls to limit access to a computer and the current user's session when the computer is temporarily unused or unattended. In macOS, the screen saver starts after a value is selected in the drop-down menu. 20 minutes or less is an acceptable value. Any value can be selected through the command line or script, but a number that is not reflected in the GUI can be problematic. 20 minutes is the default for new accounts."
-     rationale: "Setting an inactivity interval for the screen saver prevents unauthorized persons from viewing a system left unattended for an extensive period of time."
-     impact: "If the screen saver is not set, users may leave the computer available for an unauthorized person to access information."
-     remediation: "Profile Method: 1. The PayloadType string is com.apple.screensaver 2. The key to include is idleTime 3. The key must be set to <integer><≤1200></integer> Note: Since the profile method sets a system-wide setting and not a user-level one, the profile method is the preferred method. It is always better to set system-wide than per user."
-     compliance:
-       - cis: ["2.10.1"]
-       - cis_csc_v8: ["4.3"]
-       - cis_csc_v7: ["16.11"]
-       - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
-       - hipaa: ["164.312(a)(2)(iii)"]
-       - iso_27001-2013: ["A.8.1.3"]
-       - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
-       - pci_dss_v3.2.1: ["8.1.8"]
-       - pci_dss_v4.0: ["8.2.8"]
-     condition:
-     rules:
+  # 2.10.1 Ensure an Inactivity Interval of 20 Minutes Or Less for the Screen Saver Is Enabled. (Automated) - Not Implemented
 
   # 2.10.2 Ensure Require Password After Screen Saver Begins or Display Is Turned Off Is Enabled for 5 Seconds or Immediately. (Automated)
    - id: 18556
@@ -1029,8 +791,10 @@ checks:
        - pci_dss_v3.2.1: ["2.1", "2.1.1"]
        - pci_dss_v4.0: ["2.2.2", "2.3.1"]
        - soc_2: ["CC6.3"]
-     condition:
+     condition: all
      rules:
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.screensaver'').objectForKey(''askForPassword'')" -> n:^(\d+)$ compare == 1'
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.screensaver'').objectForKey(''askForPasswordDelay'')" -> n:^(\d+)$ compare <= 5'
 
   # 2.10.3 Ensure a Custom Message for the Login Screen Is Enabled. (Automated)
    - id: 18557
@@ -1049,8 +813,9 @@ checks:
        - pci_dss_v3.2.1: ["11.5", "2.2"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
        - soc_2: ["CC7.1", "CC8.1"]
-     condition:
+     condition: any
      rules:
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''LoginwindowText'')" -> r:^\.+$'
 
   # 2.10.4 Ensure Login Window Displays as Name and Password Is Enabled. (Automated)
    - id: 18558
@@ -1068,8 +833,9 @@ checks:
        - pci_dss_v3.2.1: ["11.5", "2.2"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
        - soc_2: ["CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''SHOWFULLNAME'')" -> r:^1$|^true$'
 
   # 2.10.5 Ensure Show Password Hints Is Disabled. (Automated)
    - id: 18559
@@ -1088,8 +854,10 @@ checks:
        - pci_dss_v3.2.1: ["11.5", "2.2"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
        - soc_2: ["CC7.1", "CC8.1"]
-     condition:
+     condition: any
      rules:
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''RetriesUntilHint'')" -> r:^0$'
+      - 'not c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''RetriesUntilHint'')" -> r:\w+'
 
   # 2.11.1 Ensure Users' Accounts Do Not Have a Password Hint. (Automated)
    - id: 18560
@@ -1105,30 +873,11 @@ checks:
        - iso_27001-2013: ["A.9.4.3"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: none
      rules:
+      - 'not c:dscl . -list /Users hint -> r:^\w*$'
 
-  # 2.11.2 Audit Touch ID. (Manual)
-   - id: 18561
-     title: "Audit Touch ID."
-     description: "Apple has integrated Touch ID with macOS and allows fingerprint use for many common operations. All use of Touch ID requires the presence of a password and the use of that password after every reboot, or when more than 48 hours has elapsed since the device was last unlocked. Touch ID is not a password replacement. The use of Touch ID can, however, make the use of passwords more secure for authorized users with physical access to a Mac. Normal day-to-day work operations can eliminate the use of console password entry unless a reboot is required other than on Monday morning. The infrequency of password screen unlock can enable a more complicated pass phrase that is seldom used. When Touch ID is used it remediates the risk of shoulder surfing (including video surveillance) to capture console credentials. There have been many reported shoulder surfing password captures on iOS devices. Reports have not been widespread on Macs, but shoulder surfing password capture is simpler than the other methods of breaking in to an encrypted Mac. When a SmartCard or YubiKey is provisioned by an organization and is available for Console authentication, that is a much more secure option than the use of Touch ID and is preferred."
-     rationale: "Touch ID allows for an account-enrolled fingerprint to access a key that uses a previously provided password."
-     impact: "Touch ID is more convenient for use with aggressive screen lock controls."
-     remediation: "Graphical Method: Perform the following steps to set Touch ID to your organization's settings: 1. Open System Settings 2. Select Touch ID & Password 3. Set the Touch ID settings to your organization's requirements Terminal Method: For each user, run the following commands to set TouchID to your organizations paramters: Use this command for TouchID to unlock the system. Use 0 to disable unlock or 1 to enable unlock: $ /usr/bin/sudo -u <username> /usr/bin/bioutil -w -u <0,1> Use this command for TouchID to use ApplePay. Use 0 to disable ApplePay or 1 to enable ApplePay: $ /usr/bin/sudo -u <username> /usr/bin/bioutil -w -a <0,1> Use this command to set the timeout at the system level: $ /usr/bin/sudo usr/bin/bioutil -w -s -o <value≤172800> example: $ /usr/bin/sudo -u <username> /usr/bin/bioutil -w -u 1 $ /usr/bin/sudo -u <username> /usr/bin/bioutil -w -a 1 $ /usr/bin/sudo usr/bin/bioutil -w -s -o 86400 Note: The -s notates a system configuration and does not need to be ran for each user."
-     references:
-       - 'https://support.apple.com/guide/mac-help/touch-id-mchl16fbf90a/mac'
-     compliance:
-       - cis: ["2.11.2"]
-       - cis_csc_v8: ["4.1", "5.2"]
-       - cis_csc_v7: ["4.4", "5.1"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "IA.L2-3.5.7"]
-       - iso_27001-2013: ["A.14.2.5", "A.8.1.3", "A.9.4.3"]
-       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-       - pci_dss_v3.2.1: ["11.5", "2.2"]
-       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.2", "8.3.5", "8.3.6", "8.6.3"]
-       - soc_2: ["CC6.1", "CC7.1", "CC8.1"]
-     condition:
-     rules:
+  # 2.11.2 Audit Touch ID. (Manual) - Not Implemented
 
   # 2.12.1 Ensure Guest Account Is Disabled. (Automated)
    - id: 18562
@@ -1148,8 +897,10 @@ checks:
        - pci_dss_v3.2.1: ["8.1.3"]
        - pci_dss_v4.0: ["10.3.1", "2.2.2", "7.1", "7.1.1", "7.2", "7.2.1", "7.2.2", "7.2.4", "7.2.6", "7.3", "7.3.1", "7.3.2", "8.2.4", "8.2.5", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC5.2", "CC6.1", "CC6.2", "CC6.3"]
-     condition:
+     condition: any
      rules:
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.MCX'').objectForKey(''DisableGuestAccount'')" -> r:^1$'
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''GuestEnabled'')" -> r:^0$'
 
   # 2.12.2 Ensure Guest Access to Shared Folders Is Disabled. (Automated)
    - id: 18563
@@ -1169,8 +920,9 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition:
+     condition: all
      rules:
+      - "c:sysadminctl -smbGuestAccess status -> r:SMB guest access disabled"
 
   # 2.12.3 Ensure Automatic Login Is Disabled. (Automated)
    - id: 18564
@@ -1187,101 +939,16 @@ checks:
        - pci_dss_v3.2.1: ["2.1", "2.1.1"]
        - pci_dss_v4.0: ["2.2.2", "2.3.1"]
        - soc_2: ["CC6.3"]
-     condition:
+     condition: any
      rules:
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''com.apple.login.mcx.DisableAutoLoginClient'')" -> r:^1$'
+      - 'not c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''autoLoginUser'')" -> r:^\.+$'
 
-  # 2.13.1 Audit Passwords System Preference Setting. (Manual)
-   - id: 18565
-     title: "Audit Passwords System Preference Setting."
-     description: "Apple has provided a new interface in macOS Monterey for managing passwords that mirrors the interfaced capability already available in iOS. Password management in macOS was previously available in both Safari Preferences and in Keychain Access. Apple is attempting to simplify password management for macOS and make the user experience more similar to iOS. Organizations are justifiably concerned about the risk of password managers, particularly as a possible backdoor to improved credential management regimes and greater use of Multi-Factor-Authentication (MFA). Apple has information posted on this system preference with additional information. Change Passwords preferences on Mac A warning icon is shown next to a website for any of the following reasons: - Easily guessed - Appeared in a data leak - Reused on another website."
-     rationale: "Organizations should remove what passwords can be saved on user computers, thus limiting the ability of attackers to potentially steal organizational credentials. Limits on password storage must be evaluated based on both user risk and Enterprise risk."
-     impact: "Organizations using passwords are constantly reported as having their password databases leaked to the Internet so every password a user has should be unique. Locking down secure password management solutions so that it cannot be used pushes users to password reuse, sticky notes, or always open text files with long lists of credentials."
-     remediation: "Graphical Method: Perform the following steps to set Password system settings to your organization's settings: 1. Open System Settings 2. Select Passwords 3. Enter the user's password 4. Select the Security Recommendations 5. Remove stored passwords that should not be saved."
-     references:
-       - 'https://support.apple.com/guide/security/password-monitoring-'
-     compliance:
-       - cis: ["2.13.1"]
-       - cis_csc_v8: ["5.2", "5.6"]
-       - cis_csc_v7: ["4.4"]
-       - cmmc_v2.0: ["IA.L2-3.5.7"]
-       - iso_27001-2013: ["A.9.4.3"]
-       - nist_sp_800-53: ["AC-2(1)"]
-       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
-       - soc_2: ["CC6.1"]
-     condition:
-     rules:
-
-  # 2.14.1 Audit Game Center Settings. (Manual)
-   - id: 18566
-     title: "Audit Game Center Settings."
-     description: "With macOS 10.13, Apple has introduced a separate section for Game Center in System Settings. It is possible to log in with the Apple ID and use the iCloud-based Game Center services. Game Center is a feature from Apple that allows users to engage in game-related activities with friends when playing multiplayer games online on the Game Center social network. User profile data such as nickname, contact discovery, and also nearby players may be shared through iCloud. Apple collects information here, such as the games users play and when they play them, all scores and achievements, and the challenges users send and receive. This information is used to track users' high scores, achievements, and challenges and to improve Game Center. The automatic sign in to Game Center with AppleID should be disabled if not aligned with organizational rules Personal profile visibility, Finding by Friends, requests from Contacts, Nearby Player detection and Connecting with Friends are all visibility options that should be risk accepted through an organizational policy before use. Users should not sign in to Game Center on organizational managed devices if not covered under acceptable use. For personal devices Game Center should not be signed in if the user is not using Apple's gaming service."
-     rationale: "Ensure Game Center service is used consistently with organizational requirements."
-     impact: "Game Center is designed as a social network to use Apple's gaming service and includes capabilities to discover players in the service as through local network discovery. If the Apple feature is not needed it should not be on, and should not be signed in."
-     remediation: "Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.applicationaccess 2. The key to include is allowGameCenter 3. The key should be set <true/>, to allow Game Center, or <false/>, to disable it, based on your organization's requirements."
-     references:
-       - 'https://support.apple.com/en-us/HT210401'
-       - 'https://developer.apple.com/documentation/devicemanagement/restrictions'
-       - 'https://developer.apple.com/game-center/'
-     compliance:
-       - cis: ["2.14.1"]
-     condition:
-     rules:
-
-  # 2.15.1 Audit Notification & Focus Settings. (Manual)
-   - id: 18567
-     title: "Audit Notification & Focus Settings."
-     description: "Notification capabilities are designed to allow users to receive updates from applications that are not currently in use. These can be background applications or even notices from processes running on a computer that is not currently being actively used. Where the screen of a computer is visible to others other than the logged-in user due to shared working spaces or public spaces, consideration should be given to the exposure of sensitive data in notifications. Applications that use the system-wide application service may be individually managed, and applications that might expose confidential information to unauthorized users should not expose notifications except to the current user, especially on the locked screen when the computer may be unattended."
-     rationale: "Some work environments will handle sensitive or confidential information with applications that can provide notifications to anyone who can see the computer screen. Organizations must review the likelihood that information may be exposed inappropriately and suppress notifications where risk is not organizationally accepted."
-     impact: "Computer users are often juggling too much information through too many applications that want their attention and are often designed to get attention and never let it go. Notifications are a mechanism that can be used to cut through the deluge and allow important issues to be resolved in a timely way. Global controls on limiting user notifications, even for certain applications, could impact productivity and the timely remediation of issues."
-     remediation: "Graphical Method: Perform the following steps to set Notifications to your organization's requirements: 1. Open System Settings 2. Select Notifications 3. Select any applications that are not in compliance with your organization's requirements 4. Turn off or mute notifications that may expose information to unauthorized people that might be able to view screens of organizational computers."
-     compliance:
-       - cis: ["2.15.1"]
-       - cis_csc_v8: ["4.1"]
-       - cis_csc_v7: ["5.1"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-       - pci_dss_v3.2.1: ["11.5", "2.2"]
-       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-       - soc_2: ["CC7.1", "CC8.1"]
-     condition:
-     rules:
-
-  # 2.16.1 Audit Wallet & Apple Pay Settings. (Manual)
-   - id: 18568
-     title: "Audit Wallet & Apple Pay Settings."
-     description: "Touch ID is a prerequisite for using Apple Pay and Wallet on macOS. Apple Pay allows an Apple account holder to enroll their credit cards in Apple Pay and pay enrolled vendors without using the physical card or number. Apple's service eliminates the requirement to send the credit card number itself to the vendor. Apple Pay on a Mac allows the use of credit cards the user has already enrolled and reduces user risk for credit card purchases."
-     rationale: "Some environments may have rules around purchases from organizationally managed computers and may want to discourage shopping from them. It is difficult to block access to websites that allow purchases, and Apple Pay has more controls for user protection than the manual entry of credit card information."
-     remediation: "Graphical Method: Perform the following steps to set Wallet & Apple Pay to your organization's settings: 1. Open System Settings 2. Select Wallet & Apple Pay 3. Set the Wallet & Apple Pay settings to your organization's requirements."
-     references:
-       - 'https://www.apple.com/apple-pay/'
-       - 'https://support.apple.com/guide/mac-help/use-wallet-apple-pay-on-mac-'
-     compliance:
-       - cis: ["2.16.1"]
-     condition:
-     rules:
-
-  # 2.17.1 Audit Internet Accounts for Authorized Use. (Manual)
-   - id: 18569
-     title: "Audit Internet Accounts for Authorized Use."
-     description: "Apple provides a section in System Settings to create and display Internet Accounts. Setting up an Internet Account allows the user to configure access to pre-existing accounts that are Internet Accessible. The Internet Accounts section is not managing network access to firewall rules, it only provides a location to manage credentials and audit external accounts for applications that make use of the \"Internet Accounts\". Some applications, like Thunderbird and Firefox, do not natively use Internet Accounts and store credentials with the application settings. Disabling the Internet Accounts section does not block access if network reachable, it just makes auditing and use more difficult. Depending on the maturity of network controls auditing the providers listed in Internet Accounts is part of managing acceptable use."
-     rationale: "Internet provided services may one restricted in your organization and should be reviewed, even with an advanced application firewall the user may not always be using an internal trusted network subject to the organizational firewall. An audit will document which services a user has configured."
-     impact: "Reputationaly risky services may be identified that are not authorized and will require a recess to work with the user to no longer connect form a managed Mac."
-     remediation: "Graphical Method: Perform the following steps to set accounts in Internet Accounts to your organization's requirements: 1. Open System Settings 2. Select Internet Accounts 3. For each account, select the account 4. Verify that each sync option is set to yout organizations requirements 5. (Optional) Select Delete Account... to remove the account 6. (Optional) Select Add Account... to add an account to the system."
-     references:
-       - 'https://support.apple.com/guide/mac-help/add-your-email-and-other-accounts-'
-     compliance:
-       - cis: ["2.17.1"]
-       - cis_csc_v8: ["4.1", "4.8", "15.3"]
-       - cis_csc_v7: ["5.1", "9.2"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.13.1.3", "A.14.2.5", "A.8.1.3"]
-       - nist_sp_800-53: ["AC-20(1)", "AC-20(2)", "CM-7(1)", "CM-9", "SA-10"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "12.8.5", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
-     rules:
+  # 2.13.1 Audit Passwords System Preference Setting. (Manual) - Not Implemented
+  # 2.14.1 Audit Game Center Settings. (Manual) - Not Implemented
+  # 2.15.1 Audit Notification & Focus Settings. (Manual) - Not Implemented
+  # 2.16.1 Audit Wallet & Apple Pay Settings. (Manual) - Not Implemented
+  # 2.17.1 Audit Internet Accounts for Authorized Use. (Manual) - Not Implemented
 
   # 2.18.1 Ensure On-Device Dictation Is Enabled. (Automated)
    - id: 18570
@@ -1320,8 +987,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - "c:launchctl list -> r:com.apple.auditd"
 
   # 3.2 Ensure Security Auditing Flags For User-Attributable Events Are Configured Per Local Organizational Requirements. (Automated)
    - id: 18572
