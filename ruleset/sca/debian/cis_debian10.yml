@@ -5146,7 +5146,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shells- -> r:0 root 0 root && r:644|640|604|600|400|500'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shells -> r:0 root 0 root && r:644|640|604|600|400|500'
 
   # 6.1.10 Ensure permissions on /etc/opasswd are configured. (Automated)
   - id: 2712
