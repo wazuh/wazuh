@@ -3412,6 +3412,17 @@ void test_wdb_parse_chunk_to_int_err(void **state) {
     memset(test_payload, '\0', OS_MAXSTR);
 }
 
+void test_wdb_parse_chunk_to_int_no_output_err(void **state) {
+    char* payload = NULL;
+    int** array = NULL;
+    int last_item = 0;
+    int last_len = 0;
+
+    wdbc_result status = wdb_parse_chunk_to_int(payload, array, "id", &last_item, &last_len);
+
+    assert_int_equal(WDBC_ERROR, status);
+}
+
 /* Tests wdb_parse_chunk_to_rbtree */
 
 void test_wdb_parse_chunk_to_rbtree_ok(void **state) {
@@ -4293,6 +4304,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_int_ok, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_int_due, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_int_err, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_int_no_output_err, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_parse_chunk_to_rbtree */
         cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_rbtree_ok, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_rbtree_due, setup_wdb_global_helpers, teardown_wdb_global_helpers),
