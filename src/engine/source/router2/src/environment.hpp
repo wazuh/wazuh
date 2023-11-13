@@ -3,11 +3,10 @@
 
 #include <memory>
 
-#include <expression.hpp>
 #include <bk/icontroller.hpp>
+#include <expression.hpp>
 
 #include <router/types.hpp>
-
 
 namespace router
 {
@@ -19,9 +18,11 @@ private:
     base::Expression m_filter;
     std::shared_ptr<bk::IController> m_controller;
 
+    std::vector<std::pair<std::string, bk::Subscription>> m_subscriptions {};
+
     /**
-     * @brief 
-     * 
+     * @brief
+     *
      */
     void stop()
     {
@@ -47,10 +48,7 @@ public:
         }
     }
 
-    ~Environment()
-    {
-        stop();
-    }
+    ~Environment() { stop(); }
 
     /**
      * @brief Check if an event should be accepted by the environment (if the filter is true)
@@ -102,24 +100,62 @@ public:
     const std::unordered_set<std::string>& getAssets() const { return m_controller->getTraceables(); }
 
     /**
-     * @brief Get the trace of an asset
+     * @brief
      *
-     * @param assets Asset to get the trace
-     * @param subscriber Callback to call when a trace is received
-     * @return base::OptError Error if an asset is not traceable
+     * @param callback
+     * @param assets
+     * @return std::optional<base::Error>
      */
-    base::OptError subscribe(const std::unordered_set<std::string>& assets, const TraceFn& subscriber) {
-        // TODO
-        return base::OptError {};
+    std::optional<base::Error> subscribeTrace(const TraceFn& callback, const std::vector<std::string>& assets)
+    {
+        if (!callback)
+        {
+            return base::Error {"No subscription method has been configured"};
+        }
+
+        std::vector<std::pair<std::string, bk::Subscription>> subscriptions {};
+        subscriptions.reserve(assets.size());
+        for (const auto& asset : assets)
+        {
+            bk::Subscriber namedCallback = [callback, asset](const auto& trace, bool success) -> void
+            {
+                callback(asset, trace, success);
+            };
+            auto res = m_controller->subscribe(asset, namedCallback);
+            if (base::isError(res))
+            {
+                std::for_each(subscriptions.begin(),
+                              subscriptions.end(),
+                              [controller = m_controller](const auto& item)
+                              {
+                                  const auto& [asset, subscription] = item;
+                                  controller->unsubscribe(asset, subscription);
+                              });
+                return base::Error {base::getError(res).message};
+            }
+            subscriptions.emplace_back(asset, base::getResponse(res));
+        }
+
+        m_subscriptions.insert(m_subscriptions.end(), subscriptions.begin(), subscriptions.end());
+
+        return std::nullopt;
     }
 
-    void cleanSubscriptions() {
-        //m_controller->cleanSubscriptions();
+    /**
+     * @brief
+     *
+     */
+    void cleanSubscriptions()
+    {
+        for (const auto& [asset, subscription] : m_subscriptions)
+        {
+            m_controller->unsubscribe(asset, subscription);
+        }
+
+        m_subscriptions.clear();
     }
-
-
 };
 
-}
+} // namespace router
 
 #endif // _ROUTER2_ENVIRONMENT_HPP
