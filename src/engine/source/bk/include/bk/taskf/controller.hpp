@@ -109,6 +109,15 @@ public:
     void unsubscribe(const std::string& traceable, Subscription subscription) override;
 };
 
+class ControllerMaker : public IControllerMaker
+{
+public:
+    /**
+     * @copydoc bk::IControllerMaker::create
+     */
+    std::shared_ptr<IController> create() override { return std::make_shared<Controller>(); }
+};
+
 } // namespace bk::taskf
 
 #endif // _BK_TASKF_CONTROLLER_HPP

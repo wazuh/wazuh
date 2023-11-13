@@ -201,7 +201,7 @@ void runStart(ConfHandler confManager)
     std::shared_ptr<builder::internals::Registry<builder::internals::Builder>> registry;
     std::shared_ptr<builder::Builder> builder;
     std::shared_ptr<api::catalog::Catalog> catalog;
-    std::shared_ptr<router::RouterAdmin<bk::rx::Controller>> routerAdmin;
+    std::shared_ptr<router::RouterAdmin> routerAdmin;
     std::shared_ptr<hlp::logpar::Logpar> logpar;
     std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
     std::shared_ptr<metricsManager::MetricsManager> metrics;
@@ -323,9 +323,13 @@ void runStart(ConfHandler confManager)
         // Router
         {
             // builder, store, routerThreads, forceRouterArg
-            router::Config routerConfig {1};
+            router::Config routerConfig {.m_numThreads = 1,
+                                         .m_store = store,
+                                         .m_registry = registry,
+                                         .m_controllerMaker = std::make_shared<bk::rx::ControllerMaker>()
+                                         };
             // Delete router metrics
-            routerAdmin = std::make_shared<router::RouterAdmin<bk::rx::Controller>>(routerConfig);
+            routerAdmin = std::make_shared<router::RouterAdmin>(routerConfig);
 
             exitHandler.add([routerAdmin]() { routerAdmin->stop(); });
             LOG_INFO("Router initialized.");
@@ -337,7 +341,7 @@ void runStart(ConfHandler confManager)
         {
             sessionManager = std::make_shared<api::sessionManager::SessionManager>();
 
-            // Try to load the sessions from the store
+            // Try to load the sessions from the stregistry
             const auto strJsonSessions = store->readInternalDoc(router::API_SESSIONS_TABLE_NAME);
             if (std::holds_alternative<base::Error>(strJsonSessions))
             {
