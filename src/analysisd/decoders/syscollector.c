@@ -1068,7 +1068,7 @@ int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket) {
     int retval = -1;
     cJSON * scan_id;
 
-    if (scan_id = cJSON_GetObjectItem(logJSON, "ID"), !scan_id) {
+    if (scan_id = cJSON_GetObjectItem(logJSON, "ID"), !cJSON_IsNumber(scan_id)) {
         return -1;
     }
 
@@ -1077,7 +1077,7 @@ int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket) {
 
     cJSON * inventory;
 
-    if (inventory = cJSON_GetObjectItem(logJSON, "port"), inventory) {
+    if (inventory = cJSON_GetObjectItem(logJSON, "port"), cJSON_IsObject(inventory)) {
         if (error_port) {
             if (scan_id->valueint == prev_port_id) {
                 retval = 0;
@@ -1105,20 +1105,20 @@ int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket) {
         snprintf(id, OS_SIZE_1024 - 1, "%d", scan_id->valueint);
         wm_strcat(&msg, id, ' ');
 
-        if (scan_time) {
+        if (cJSON_IsString(scan_time)) {
             wm_strcat(&msg, scan_time->valuestring, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (protocol) {
+        if (cJSON_IsString(protocol)) {
             wm_strcat(&msg, protocol->valuestring, '|');
             fillData(lf,"port.protocol",protocol->valuestring);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (local_ip) {
+        if (cJSON_IsString(local_ip)) {
             wm_strcat(&msg, local_ip->valuestring, '|');
             fillData(lf,"port.local_ip",local_ip->valuestring);
         } else {
@@ -1134,14 +1134,14 @@ int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (remote_ip) {
+        if (cJSON_IsString(remote_ip)) {
             wm_strcat(&msg, remote_ip->valuestring, '|');
             fillData(lf,"port.remote_ip",remote_ip->valuestring);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (remote_port) {
+        if (cJSON_IsNumber(remote_port)) {
             char rport[OS_SIZE_128];
             snprintf(rport, OS_SIZE_128 - 1, "%d", remote_port->valueint);
             fillData(lf,"port.remote_port",rport);
@@ -1150,7 +1150,7 @@ int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (tx_queue) {
+        if (cJSON_IsNumber(tx_queue)) {
             char txq[OS_SIZE_512];
             snprintf(txq, OS_SIZE_512 - 1, "%d", tx_queue->valueint);
             fillData(lf,"port.tx_queue",txq);
@@ -1159,7 +1159,7 @@ int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (rx_queue) {
+        if (cJSON_IsNumber(rx_queue)) {
             char rxq[OS_SIZE_512];
             snprintf(rxq, OS_SIZE_512 - 1, "%d", rx_queue->valueint);
             fillData(lf,"port.rx_queue",rxq);
@@ -1168,7 +1168,7 @@ int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (inode) {
+        if (cJSON_IsNumber(inode)) {
             char _inode[OS_SIZE_512];
             snprintf(_inode, OS_SIZE_512 - 1, "%d", inode->valueint);
             fillData(lf,"port.inode",_inode);
@@ -1177,14 +1177,14 @@ int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (state) {
+        if (cJSON_IsString(state)) {
             wm_strcat(&msg, state->valuestring, '|');
             fillData(lf,"port.state",state->valuestring);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (pid) {
+        if (cJSON_IsNumber(pid)) {
             char _pid[OS_SIZE_512];
             snprintf(_pid, OS_SIZE_512 - 1, "%d", pid->valueint);
             fillData(lf,"port.pid",_pid);
@@ -1193,7 +1193,7 @@ int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        if (process) {
+        if (cJSON_IsString(process)) {
             wm_strcat(&msg, process->valuestring, '|');
             fillData(lf,"port.process",process->valuestring);
         } else {
@@ -1216,7 +1216,7 @@ int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket) {
         // Looking for 'end' message.
         char * msg_type = NULL;
 
-        msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
+        msg_type = cJSON_GetStringValue(cJSON_GetObjectItem(logJSON, "type"));
 
         if (!msg_type) {
             merror("Invalid message. Type not found."); // LCOV_EXCL_LINE
