@@ -107,10 +107,7 @@ public:
 
     ~RemoteSubscriber()
     {
-        nlohmann::json jsonMsg {
-            {"EndpointName", m_endpointName}, {"MessageType", "RemoveSubscriber"}, {"SubscriberId", m_subscriberId}};
-
-        RemoteStateHelper::sendRegistrationMessage(jsonMsg);
+        RemoteStateHelper::sendRemoveSubscriberMessage(m_endpointName, m_subscriberId);
     }
 };
 

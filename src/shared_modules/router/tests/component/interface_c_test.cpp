@@ -10,8 +10,10 @@
  */
 
 #include "interface_c_test.hpp"
+#include "remoteStateHelper.hpp"
 #include "router.h"
 #include <chrono>
+#include <filesystem>
 #include <thread>
 
 void RouterCInterfaceTest::SetUp()
@@ -23,6 +25,14 @@ void RouterCInterfaceTest::SetUp()
 };
 
 void RouterCInterfaceTest::TearDown()
+{
+    if (router_stop() != 0)
+    {
+        FAIL() << "Failed to stop router";
+    }
+};
+
+void RouterCInterfaceTestNoSetUp::TearDown()
 {
     if (router_stop() != 0)
     {
@@ -111,4 +121,26 @@ TEST_F(RouterCInterfaceTest, TestTwoProvidersWithTheSameTopicName)
     EXPECT_EQ(handle2, nullptr);
 
     // TODO - Add C interface for subscribers.
+}
+
+/**
+ * @brief We simulate the crash of the broker and check that client doesn't hang.
+ *
+ */
+TEST_F(RouterCInterfaceTestNoSetUp, TestRemoveProviderWithServerDown)
+{
+    router_start();
+
+    ROUTER_PROVIDER_HANDLE provider = router_provider_create("test");
+    if (nullptr == provider)
+    {
+        FAIL() << "The provider wasn't created";
+    }
+
+    // Simulating the broker crash
+    std::filesystem::remove(std::filesystem::path(REMOTE_SUBSCRIPTION_ENDPOINT));
+
+    EXPECT_NO_THROW(router_provider_destroy(provider));
+
+    // It shouldn't hang here
 }

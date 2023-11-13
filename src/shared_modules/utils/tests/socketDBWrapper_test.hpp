@@ -60,4 +60,14 @@ protected:
     int m_sleepTime;
 };
 
+class SocketDBWrapperTestNoSetUp : public ::testing::Test
+{
+protected:
+    SocketDBWrapperTestNoSetUp() = default;
+    ~SocketDBWrapperTestNoSetUp() override = default;
+
+    void SetUp() override {};
+    void TearDown() override {};
+};
+
 #endif // _SOCKET_DB_WRAPPER_TEST_HPP

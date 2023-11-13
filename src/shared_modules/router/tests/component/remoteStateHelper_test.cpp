@@ -13,59 +13,33 @@
 #include "src/remoteStateHelper.hpp"
 #include <external/nlohmann/json.hpp>
 
-/*
- * @brief Tests semd a registration message with invalid MessageType
+/**
+ * @brief Tests sendInitProviderMessage method.
+ *
  */
-TEST_F(RemoteStateHelperTest, TestSendInvalidMessageType)
+TEST_F(RemoteStateHelperTest, sendInitProviderMessageTest)
 {
-    const auto invalidMessage = R"(
-        {
-            "EndpointName": "test-remote",
-            "MessageType": "invalidMessageType"
-        }
-    )"_json;
-
-    // It doesn't throw an exception, because it's already handled in the function
-    EXPECT_NO_THROW(RemoteStateHelper::sendRegistrationMessage(invalidMessage));
+    auto endpointName {"test-remote"};
+    EXPECT_NO_THROW(RemoteStateHelper::sendInitProviderMessage(endpointName));
 }
 
-/*
- * @brief Tests send a registration message without data
+/**
+ * @brief Tests sendRemoveProviderMessage method.
+ *
  */
-TEST_F(RemoteStateHelperTest, TestSendEmptyMessage)
+TEST_F(RemoteStateHelperTest, sendRemoveProviderMessageTest)
 {
-    const auto emptyMessage = R"({})"_json;
-
-    // It doesn't throw an exception, because it's already handled in the function
-    EXPECT_NO_THROW(RemoteStateHelper::sendRegistrationMessage(emptyMessage));
+    auto endpointName {"test-remote"};
+    EXPECT_NO_THROW(RemoteStateHelper::sendRemoveProviderMessage(endpointName));
 }
 
-/*
- * @brief Tests send a registration message with valid MessageType
+/**
+ * @brief Tests sendRemoveSubscriberMessage method.
+ *
  */
-TEST_F(RemoteStateHelperTest, TestSendValidMessageType)
+TEST_F(RemoteStateHelperTest, sendRemoveSubscriberMessageTest)
 {
-    const auto message = R"(
-        {
-            "EndpointName": "test-remote",
-            "MessageType": "InitProvider"
-        }
-    )"_json;
-
-    EXPECT_NO_THROW(RemoteStateHelper::sendRegistrationMessage(message));
-}
-
-/*
- * @brief Tests send a registration message without EndpointName
- */
-TEST_F(RemoteStateHelperTest, TestSendMessageWithoutEndpointName)
-{
-    const auto message = R"(
-        {
-            "MessageType": "InitProvider"
-        }
-    )"_json;
-
-    // It doesn't throw an exception, because it's already handled in the function
-    EXPECT_NO_THROW(RemoteStateHelper::sendRegistrationMessage(message));
+    auto endpointName {"test-remote"};
+    auto subscriberId {"test-subscriber"};
+    EXPECT_NO_THROW(RemoteStateHelper::sendRemoveSubscriberMessage(endpointName, subscriberId));
 }

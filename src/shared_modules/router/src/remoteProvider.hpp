@@ -41,8 +41,7 @@ public:
     explicit RemoteProvider(std::string endpoint, const std::string& socketPath)
         : m_endpointName {std::move(endpoint)}
     {
-        nlohmann::json jsonMsg {{"EndpointName", m_endpointName}, {"MessageType", "InitProvider"}};
-        RemoteStateHelper::sendRegistrationMessage(jsonMsg);
+        RemoteStateHelper::sendInitProviderMessage(m_endpointName);
 
         m_socketClient =
             std::make_shared<SocketClient<Socket<OSPrimitives>, EpollWrapper>>(socketPath + m_endpointName);
@@ -62,8 +61,7 @@ public:
 
     ~RemoteProvider()
     {
-        nlohmann::json jsonMsg {{"EndpointName", m_endpointName}, {"MessageType", "RemoveProvider"}};
-        RemoteStateHelper::sendRegistrationMessage(jsonMsg);
+        RemoteStateHelper::sendRemoveProviderMessage(m_endpointName);
     }
 };
 

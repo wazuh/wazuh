@@ -95,6 +95,8 @@ public:
         stop();
         ::close(m_stopFD[0]);
         ::close(m_stopFD[1]);
+
+        std::filesystem::remove_all(m_socketPath);
     }
 
     void stop()

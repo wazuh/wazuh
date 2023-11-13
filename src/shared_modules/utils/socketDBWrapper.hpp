@@ -37,7 +37,7 @@ private:
 public:
     explicit SocketDBWrapper(const std::string& socketPath)
         : m_dbSocket {
-              std::make_shared<SocketClient<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>>(socketPath)}
+              std::make_shared<SocketClient<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>>(socketPath, true)}
     {
         m_dbSocket->connect(
             [&](const char* body, uint32_t bodySize, const char* header, uint32_t headerSize)

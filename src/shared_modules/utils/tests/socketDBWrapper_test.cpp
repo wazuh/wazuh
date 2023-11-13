@@ -101,3 +101,8 @@ TEST_F(SocketDBWrapperTest, SuccessTest)
 
     ASSERT_EQ(output[0].at("field"), "value");
 }
+
+TEST_F(SocketDBWrapperTestNoSetUp, NoSocketTest)
+{
+    EXPECT_THROW(SocketDBWrapper socketDBWrapper(TEST_SOCKET), std::exception);
+}
