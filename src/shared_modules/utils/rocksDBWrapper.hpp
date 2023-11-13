@@ -31,6 +31,7 @@ namespace Utils
         {
             rocksdb::Options options;
             options.create_if_missing = true;
+            options.compression = rocksdb::kLZ4HCCompression;
             rocksdb::DB* dbRawPtr;
 
             // Create directories recursively if they do not exist
@@ -234,6 +235,26 @@ namespace Utils
         {
             static const RocksDBIterator END_ITERATOR;
             return END_ITERATOR;
+        }
+
+        /**
+         * @brief Compacts the key range in the RocksDB database.
+         *
+         * This function triggers compaction for the entire key range in the RocksDB
+         * database. Compaction helps to reduce the storage space used by the database
+         * and improve its performance by eliminating unnecessary data.
+         *
+         * @note This function uses default compact range options.
+         *
+         * @see rocksdb::CompactRangeOptions
+         */
+        void compactDatabase()
+        {
+            // Create compact range options with default settings
+            rocksdb::CompactRangeOptions compactOptions;
+
+            // Perform compaction for the entire key range
+            m_db->CompactRange(compactOptions, nullptr, nullptr);
         }
 
     private:
