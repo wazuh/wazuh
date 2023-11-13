@@ -2610,6 +2610,14 @@ void test_wdb_remove_group_db_success(void **state)
 
 /* Tests wdb_update_groups */
 
+void test_wdb_update_groups_error_no_directory(void **state) {
+    int ret = 0;
+
+    ret = wdb_update_groups(NULL, NULL);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
 void test_wdb_update_groups_error_json(void **state) {
     int ret = 0;
 
@@ -4237,6 +4245,7 @@ int main()
 
         cmocka_unit_test_setup_teardown(test_wdb_remove_group_db_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_update_groups */
+        cmocka_unit_test_setup_teardown(test_wdb_update_groups_error_no_directory, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_update_groups_error_json, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_update_groups_error_max_path, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_update_groups_removing_group_db, setup_wdb_global_helpers, teardown_wdb_global_helpers),
