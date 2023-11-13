@@ -3706,6 +3706,65 @@ void test_wdb_set_agent_groups_socket_error(void **state) {
     assert_int_equal(OS_INVALID,res);
 }
 
+void test_wdb_set_agent_groups_not_found_socket_error(void **state) {
+    int res;
+
+    test_struct_t *data = (test_struct_t*)* state;
+
+    // filling Json Object
+    will_return(__wrap_cJSON_CreateObject, 1);
+    will_return(__wrap_cJSON_AddStringToObject, 1);
+    expect_string(__wrap_cJSON_AddStringToObject, name, "mode");
+    expect_string(__wrap_cJSON_AddStringToObject, string, data->mode);
+    will_return(__wrap_cJSON_AddStringToObject, 1);
+    expect_string(__wrap_cJSON_AddStringToObject, name, "sync_status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, data->sync_status);
+    expect_string(__wrap_cJSON_AddArrayToObject, name, "data");
+    will_return(__wrap_cJSON_AddArrayToObject, 1);
+    will_return(__wrap_cJSON_CreateObject, 1);
+    expect_function_call(__wrap_cJSON_AddItemToArray);
+    will_return(__wrap_cJSON_AddItemToArray, true);
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "id");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, data->id);
+    will_return_always(__wrap_cJSON_AddNumberToObject, 1);
+    expect_string(__wrap_cJSON_AddArrayToObject, name, "groups");
+    will_return(__wrap_cJSON_AddArrayToObject, 1);
+
+    // Json array items loop
+    expect_string(__wrap_cJSON_CreateString, string, data->groups_array[0]);
+    will_return(__wrap_cJSON_CreateString, 1);
+    expect_function_call(__wrap_cJSON_AddItemToArray);
+    will_return(__wrap_cJSON_AddItemToArray, true);
+    expect_string(__wrap_cJSON_CreateString, string, data->groups_array[1]);
+    will_return(__wrap_cJSON_CreateString, 1);
+    expect_function_call(__wrap_cJSON_AddItemToArray);
+    will_return(__wrap_cJSON_AddItemToArray, true);
+    expect_string(__wrap_cJSON_CreateString, string, data->groups_array[2]);
+    will_return(__wrap_cJSON_CreateString, 1);
+    expect_function_call(__wrap_cJSON_AddItemToArray);
+    will_return(__wrap_cJSON_AddItemToArray, true);
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, data->data_in_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_value(__wrap_wdbc_query_ex, *sock, data->socket);
+    expect_string(__wrap_wdbc_query_ex, query, data->query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, data->response);
+    will_return(__wrap_wdbc_query_ex, OS_NOTFOUND);
+
+    // Debug messages
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global set-agent-groups {\"mode\":\"mode_value\",\"sync_status\":\
+    \"sync_status_value\",\"data\":[{\"id\":0,\"groups\":[\"default\",\"Group1\",\"Group2\"]}]}");
+
+    res = wdb_set_agent_groups(data->id, data->groups_array, data->mode, data->sync_status, &(data->socket));
+
+    assert_int_equal(OS_INVALID,res);
+}
+
 void test_wdb_set_agent_groups_query_error(void **state) {
     int res;
 
@@ -4318,6 +4377,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_groups_query_error, setup_wdb_global_helpers_add_agent, teardown_wdb_global_helpers_add_agent),
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_groups_error_creating_json_data, setup_wdb_global_helpers_add_agent, teardown_wdb_global_helpers_add_agent),
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_groups_socket_error, setup_wdb_global_helpers_add_agent, teardown_wdb_global_helpers_add_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_groups_not_found_socket_error, setup_wdb_global_helpers_add_agent, teardown_wdb_global_helpers_add_agent),
         /* Tests wdb_get_distinct_agent_groups */
         cmocka_unit_test_setup_teardown(test_wdb_get_distinct_agent_groups_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_distinct_agent_groups_error_parse_chunk, setup_wdb_global_helpers, teardown_wdb_global_helpers),
