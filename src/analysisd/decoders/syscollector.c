@@ -1606,7 +1606,7 @@ int decode_hotfix(Eventinfo *lf, cJSON * logJSON, int *socket) {
         // Looking for 'end' message.
         char * msg_type = NULL;
 
-        msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
+        msg_type = cJSON_GetStringValue(cJSON_GetObjectItem(logJSON, "type"));
 
         if (!msg_type) {
             merror("Invalid message. Type not found."); // LCOV_EXCL_LINE
