@@ -1,6 +1,8 @@
 #ifndef _ROUTER2_ENVIRONMENT_BUILD_HPP
 #define _ROUTER2_ENVIRONMENT_BUILD_HPP
 
+#include <bk/icontroller.hpp>
+
 #include "environment.hpp"
 #include "ibuilder.hpp"
 
@@ -11,13 +13,12 @@ constexpr auto JSON_PATH_SESSION_FILTER {"/TestSessionID"};
 /**
  * @brief BuildEnvironment class for creating environments based on policies and filters.
  *
- * @typedef T The type of the controller.
  */
-template<typename T, typename = std::enable_if_t<std::is_base_of<bk::IController, T>::value>>
 class EnvironmentBuilder
 {
 private:
-    std::shared_ptr<IBuilder> m_builder; ///< The builder used to construct the policy and filter.
+    std::shared_ptr<IBuilder> m_builder;                     ///< The builder used to construct the policy and filter.
+    std::shared_ptr<bk::IControllerMaker> m_controllerMaker; ///< The controller maker used to construct the controller.
 
     /**
      * @brief Get the Controller object for a given policy.
@@ -27,7 +28,7 @@ private:
      * @return std::shared_ptr<bk::IController> The constructed controller.
      * @throws std::runtime_error if the policy has no assets or if the backend cannot be built.
      */
-    std::shared_ptr<T> getController(base::Name& policyName)
+    std::shared_ptr<bk::IController> getController(const base::Name& policyName)
     {
         if (policyName.parts().size() == 0 || policyName.parts()[0] != "policy")
         {
@@ -53,7 +54,7 @@ private:
                        std::inserter(assetNames, assetNames.begin()),
                        [](const auto& name) { return name.toStr(); });
 
-        auto controller = std::make_shared<T>();
+        auto controller = m_controllerMaker->create();
         controller->build(policy->expression(), assetNames);
         return controller;
     }
@@ -65,7 +66,7 @@ private:
      * @return base::Expression The constructed filter expression.
      * @throws std::runtime_error if the filter cannot be built.
      */
-    base::Expression getExpression(base::Name& filterName)
+    base::Expression getExpression(const base::Name& filterName)
     {
         // TODO: Remove this check when the Builder can identify if it is a filter or not
         if (filterName.parts().size() == 0 || filterName.parts()[0] != "filter")
@@ -106,7 +107,7 @@ public:
      * @return Environment The created environment.
      * @throws std::runtime_error if failed to create the environment.
      */
-    Environment create(base::Name& policyName, base::Name& filterName)
+    Environment create(const base::Name& policyName, const base::Name& filterName)
     {
         try
         {
@@ -131,14 +132,14 @@ public:
      * @return Environment The created environment.
      * @throw std::runtime_error if failed to create the environment.
      */
-    Environment create(base::Name& policyName, const uint32_t filterId)
+    Environment create(const base::Name& policyName, const uint32_t filterId)
     {
         if (policyName.parts().size() == 0 || policyName.parts()[0] != "policy")
         {
             throw std::runtime_error {"The asset name is empty or it is not a policy"};
         }
 
-        std::shared_ptr<T> controller {};
+        std::shared_ptr<bk::IController> controller {};
         try
         {
             controller = getController(policyName);

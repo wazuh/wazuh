@@ -233,6 +233,7 @@ public:
     const std::optional<base::Name>& filter() const { return m_filter; }
     const std::optional<std::string>& description() const { return m_description; }
 
+    // TODO Delete this
     std::list<std::string> getEntryPost() const
     {
         std::list<std::string> entries;
@@ -264,7 +265,7 @@ protected:
     // Status
     std::optional<std::uint64_t> m_lastUsed; ///< Timestamp of the last use of the environment (only for testing env)
 
-    // Function to convert State enum to string
+    // Function to convert State enum to string  // TODO move/delete this
     inline std::string stateToString(env::State state) const
     {
         switch (state)
@@ -276,7 +277,7 @@ protected:
         }
     }
 
-    // Function to convert Sync enum to string
+    // Function to convert Sync enum to string  // TODO move/delete this
     inline std::string syncToString(env::Sync sync) const
     {
         switch (sync)
@@ -302,6 +303,7 @@ public:
     void setPolicySync(env::Sync policySync) { m_policySync = policySync; }
     void setStatus(env::State status) { m_status = status; }
     void setLastUsed(std::uint64_t lastUsed) { m_lastUsed = lastUsed; }
+    void setPriority(std::size_t priority) { m_priority = priority; }
 
     // Getters
     std::uint64_t getCreated() const { return m_created; }
@@ -309,6 +311,7 @@ public:
     env::State getStatus() const { return m_status; }
     const std::optional<std::uint64_t>& getLastUsed() const { return m_lastUsed; }
 
+    // TODO Delete this
     std::list<std::string> getEntry() const
     {
         std::list<std::string> entryList = getEntryPost(); // Get list from base class
