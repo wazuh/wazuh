@@ -3621,6 +3621,21 @@ void test_wdb_set_agent_groups_error_no_mode(void **state) {
     assert_int_equal(OS_INVALID,res);
 }
 
+void test_wdb_set_agent_groups_error_creating_json_data(void **state) {
+    int res;
+
+    test_struct_t *data = (test_struct_t*)* state;
+
+    // Debug message
+    expect_string(__wrap__mdebug1, formatted_msg, "Error creating data JSON for Wazuh DB.");
+    will_return(__wrap_cJSON_CreateObject, NULL);
+
+    res = wdb_set_agent_groups(data->id, data->groups_array, data->mode, NULL, NULL);
+
+    assert_int_equal(OS_INVALID,res);
+    os_free(data->data_in_str);
+}
+
 void test_wdb_set_agent_groups_socket_error(void **state) {
     int res;
 
@@ -4289,6 +4304,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_groups_success, setup_wdb_global_helpers_add_agent, teardown_wdb_global_helpers_add_agent),
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_groups_error_no_mode, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_groups_query_error, setup_wdb_global_helpers_add_agent, teardown_wdb_global_helpers_add_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_groups_error_creating_json_data, setup_wdb_global_helpers_add_agent, teardown_wdb_global_helpers_add_agent),
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_groups_socket_error, setup_wdb_global_helpers_add_agent, teardown_wdb_global_helpers_add_agent),
         /* Tests wdb_get_distinct_agent_groups */
         cmocka_unit_test_setup_teardown(test_wdb_get_distinct_agent_groups_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
