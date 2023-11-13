@@ -2909,6 +2909,28 @@ void test_get_agent_date_added_error_invalid_date(void **state) {
     assert_int_equal(0, date_add);
 }
 
+
+void test_get_agent_date_added_fgets_returns_null_error(void **state) {
+    time_t date_add = 0;
+    int agent_id = 1;
+
+    // Opening destination database file
+    expect_string(__wrap_fopen, path, "queue/agents-timestamp");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 1);
+
+    // Getting data
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, 0);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, OS_SUCCESS);
+
+    date_add = get_agent_date_added(agent_id);
+
+    assert_int_equal(0, date_add);
+}
+
 void test_get_agent_date_added_success(void **state) {
     time_t date_add = 0;
     int agent_id = 1;
@@ -4339,6 +4361,7 @@ int main()
         /* Tests get_agent_date_added */
         cmocka_unit_test_setup_teardown(test_get_agent_date_added_error_open_file, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_get_agent_date_added_error_no_data, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_get_agent_date_added_fgets_returns_null_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_get_agent_date_added_error_no_date, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_get_agent_date_added_error_invalid_date, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_get_agent_date_added_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
