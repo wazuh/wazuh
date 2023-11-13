@@ -3,7 +3,6 @@
 
 #include <memory>
 
-#include <bk/icontroller.hpp>
 #include <logging/logging.hpp>
 
 #include <router/types.hpp>
@@ -14,42 +13,39 @@
 namespace router
 {
 
-namespace
-{
-class RuntimeEntry : public Entry
-{
 
-private:
-    Environment m_env; ///< The environment
-public:
-    RuntimeEntry(const EntryPost& entry)
-        : Entry(entry) {};
-
-    void setEnvironment(const Environment& env) { m_env = env; }
-    // Environment& environment() { return m_env; }
-    const Environment& environment() const { return m_env; }
-
-};
-} // namespace
-
-template<typename T>
 class Router
 {
 private:
+    class RuntimeEntry : public Entry
+    {
+
+    private:
+        Environment m_env; ///< The environment
+    public:
+        RuntimeEntry(const EntryPost& entry)
+            : Entry(entry) {};
+
+        void setEnvironment(const Environment& env) { m_env = env; }
+        // Environment& environment() { return m_env; }
+        const Environment& environment() const { return m_env; }
+    };
+
     internal::Table<RuntimeEntry> m_table;
     // TODO: User a mutex to protect the table
-    std::shared_ptr<EnvironmentBuilder<T>> m_envBuilder;
+    std::shared_ptr<EnvironmentBuilder> m_envBuilder;
 
 public:
-    Router(const std::shared_ptr<EnvironmentBuilder<T>>& envBuilder)
+    Router(const std::shared_ptr<EnvironmentBuilder>& envBuilder)
         : m_envBuilder(envBuilder)
         , m_table() {};
 
+    Router(const std::shared_ptr<IBuilder>& builder)
+        : m_envBuilder(std::make_shared<EnvironmentBuilder>(builder))
+        , m_table() {};
+
     /**
-     * @brief Add a new environment to the router
-     *
-     * @param environment The environment to add
-     * @return std::size_t The id of the environment
+     * @copydoc IRouter::addEnvironment
      */
     base::OptError addEnvironment(const EntryPost& entryPost)
     {
@@ -71,13 +67,16 @@ public:
         }
 
         // Create the environment
-        auto res = m_envBuilder->create(entry.policy(), entry.filter());
-        if (base::isError(res))
-        {
-            return base::getError(res);
+        try {
+            auto env = m_envBuilder->create(entry.policy(), entry.filter().value());
+            entry.setEnvironment(env);
+            entry.setStatus(env::State::ACTIVE);
+        } catch (const std::exception& e) {
+            return base::Error {fmt::format("Failed to create the environment: {}", e.what())};
         }
-        entry.setEnvironment(getResponse(res));
-        entry.setStatus(env::State::ACTIVE);
+        
+        
+        
 
         // Add metadata to the environment
         // entry.setCreated(std::time(nullptr));
@@ -90,11 +89,14 @@ public:
         return {};
     }
 
+    /**
+     * @copydoc IRouter::removeEnvironment
+     */
     base::OptError removeEnvironment(const std::string& name)
     {
         if (!m_table.nameExists(name))
         {
-            return base::Error {"The name not exist"};
+            return base::Error {"The environment not exist"};
         }
         else
         {
@@ -107,44 +109,56 @@ public:
         return std::nullopt;
     }
 
-    base::OptError disabledEnvironment(const EntryPost& entryPost)
+    /**
+     * @copydoc IRouter::disabledEnvironment
+     * TODO Refactor this, search and disable the environment only
+     * Maybe distroy the environment?
+     *
+     */
+    base::OptError disabledEnvironment(const std::string& name)
     {
-        auto entry = RuntimeEntry(entryPost);
 
-        if (m_table.nameExists(entry.name()))
+        try
         {
-            return base::Error {"The name is already in use"};
+            auto& entry = m_table.get(name);
+            entry.setStatus(env::State::INACTIVE);
         }
-        else if (m_table.priorityExists(entry.priority()))
+        catch (const std::exception& e)
         {
-            return base::Error {"The priority is already in use"};
-        }
-
-        entry.setStatus(env::State::INACTIVE);
-
-        if (!m_table.insert(entry.name(), entry.priority(), entry))
-        {
-            return base::Error {"Failed to insert the environment into the table"};
+            return base::Error {"The environment not exist"};
         }
     }
 
     base::OptError changePriority(const std::string& name, size_t priority)
     {
+        // Check if the priority is valid
+        if (Priority::validate(priority, false))
+        {
+            return base::Error {fmt::format("The priority '{}' is not in the valid range [{}-{}]",
+                                            priority,
+                                            static_cast<size_t>(Priority::Limits::MinProd),
+                                            static_cast<size_t>(Priority::Limits::MaxProd))};
+        }
+
         if (!m_table.nameExists(name))
         {
-            return base::Error {"The name not exist"};
+            return base::Error {"The environment not exist"};
         }
-        else if (!m_table.priorityExists(priority))
+
+        auto& entry = m_table.get(name);
+        if (entry.isTesting())
         {
-            return base::Error {"The priority not exist"};
+            return base::Error {"Cannot change the priority of a testing environment"};
         }
 
         if (!m_table.setPriority(name, priority))
         {
-            return base::Error {"Failure when trying to change priority"};
+            return base::Error {"Failed to change the priority, it is already in use"};
         }
+        // Sync the priority
+        entry.setPriority(priority);
 
-        return std::nullopt;
+        return {};
     }
 
     /**
