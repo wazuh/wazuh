@@ -25,7 +25,6 @@ from wazuh import Wazuh
 from wazuh.core import common, exception
 from wazuh.core import utils
 from wazuh.core.cluster import cluster, utils as cluster_utils
-from wazuh.core.common import DECIMALS_DATE_FORMAT
 from wazuh.core.wdb import WazuhDBConnection
 
 class Response:
@@ -1437,8 +1436,10 @@ class SyncFiles(SyncTask):
 
         self.logger.debug(f"Compressing {'files and ' if files else ''}"
                           f"'files_metadata.json' of {metadata_len} files.")
-        compressed_data = await cluster.run_in_pool(self.server.loop, task_pool, cluster.compress_files,
-                                                    self.server.name, files, files_metadata, zip_limit)
+        compressed_data, logs = await cluster.run_in_pool(self.server.loop, task_pool, cluster.compress_files,
+                                                          self.server.name, files, files_metadata, zip_limit)
+
+        cluster_utils.log_subprocess_execution(self.logger, logs)
 
         try:
             # Start the synchronization process with peer node and get a taskID.
