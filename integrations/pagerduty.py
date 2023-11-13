@@ -8,11 +8,12 @@
 import json
 import os
 import sys
-import time
+import logging
+from logging.handlers import TimedRotatingFileHandler
 
 # Exit error codes
 ERR_NO_REQUEST_MODULE   = 1
-ERR_BAD_ARGUMENTS       = 2
+ERR_INVALID_ARGUMENTS   = 2
 ERR_FILE_NOT_FOUND      = 6
 ERR_INVALID_JSON        = 7
 
@@ -32,68 +33,68 @@ except Exception as e:
 # </integration>
 
 # Global vars
-debug_enabled   = False
 pwd             = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 json_alert      = {}
 json_options    = {}
 
-# Log path
-LOG_FILE        = f'{pwd}/logs/integrations.log'
+# Logger
+LOG_FILE    = f'{pwd}/logs/integrations.log'
+logger      = logging.getLogger("pagerduty")
 
 # Constants
 ALERT_INDEX     = 1
 APIKEY_INDEX    = 2
+WEBHOOK = 'https://events.pagerduty.com/v2/enqueue'
 
 
 def main(args):
-    global debug_enabled
     try:
         # Read arguments
-        bad_arguments: bool = False
+        invalid_arguments: bool = False
         if len(args) >= 4:
             msg = '{0} {1} {2} {3} {4}'.format(
                 args[1],
                 args[2],
                 args[3],
-                args[4] if len(args) > 4 else '',
-                args[5] if len(args) > 5 else ''
+                args[4].upper() if len(args) > 4 else 'INFO',
+                args[5] if len(sys.argv) > 5 else ''
             )
-            debug_enabled = (len(args) > 4 and args[4] == 'debug')
         else:
-            msg = '# ERROR: Wrong arguments'
-            bad_arguments = True
+            print_help_msg()
+            sys.exit(ERR_INVALID_ARGUMENTS)
+        
+        setup_logger(args)
+
+        if not os.path.exists(args[1]):
+            raise FileNotFoundError(f"Alert file specified {args[1]} does not exist")
 
         # Logging the call
-        with open(LOG_FILE, "a") as f:
-            f.write(msg + '\n')
-
-        if bad_arguments:
-            debug("# ERROR: Exiting, bad arguments. Inputted: %s" % args)
-            sys.exit(ERR_BAD_ARGUMENTS)
+        logger.debug(msg)
 
         # Core function
         process_args(args)
 
     except Exception as e:
-        debug(str(e))
+        logger.error(str(e))
         raise
 
 def process_args(args) -> None:
-    """
-        This is the core function, creates a message with all valid fields
-        and overwrite or add with the optional fields
+    """Create a message with all valid fields and overwrite or add the optional fields.
 
-        Parameters
-        ----------
-        args : list[str]
-            The argument list from main call
+    Parameters
+    ----------
+    args : list[str]
+        The argument list from main call.
     """
-    debug("# Running PagerDuty script")
-
     # Read args
-    alert_file_location: str     = args[ALERT_INDEX]
-    apikey: str                  = args[APIKEY_INDEX]
-    options_file_location: str   = ''
+    alert_file_location: str    = args[ALERT_INDEX]
+    apikey: str                 = args[APIKEY_INDEX]
+    json_options: str           = ''
+    options_file_location: str  = ''
+    
+    logger.info("Running PagerDuty script")
+    logger.info("Alerts file location: %s", alert_file_location)
+    logger.debug("API key: %s", apikey)
 
     # Look for options file location
     for idx in range(4, len(args)):
@@ -102,55 +103,35 @@ def process_args(args) -> None:
             break
 
     # Load options. Parse JSON object.
-    json_options = get_json_options(options_file_location)
-    debug(f"# Opening options file at '{options_file_location}' with '{json_options}'")
+    if options_file_location is not '':
+        json_options = get_json_options(options_file_location)
+        logger.debug("Opening options file at '%s' with '%s'", options_file_location, json_options)
 
     # Load alert. Parse JSON object.
     json_alert  = get_json_alert(alert_file_location)
-    debug(f"# Opening alert file at '{alert_file_location}' with '{json_alert}'")
+    logger.info("Processing alert with ID %s", json_alert["id"])
+    logger.debug("Opening alert file at '%s' with '%s'", alert_file_location, json_alert)
 
-    debug("# Generating message")
-    msg: any = generate_msg(json_alert, json_options,apikey)
-
-    if not len(msg):
-        debug("# ERROR: Empty message")
-        raise Exception
-
-    debug(f"# Sending message {msg} to PagerDuty server")
+    msg: any = generate_msg(json_alert, json_options, apikey)
     send_msg(msg)
 
-def debug(msg: str) -> None:
-    """
-        Log the message in the log file with the timestamp, if debug flag
-        is enabled
-
-        Parameters
-        ----------
-        msg : str
-            The message to be logged.
-    """
-    if debug_enabled:
-        print(msg)
-        with open(LOG_FILE, "a") as f:
-            f.write(msg + '\n')
-
-
 def generate_msg(alert: any, options: any, apikey: str) -> str:
-    """
-        Generate the JSON object with the message to be send
+    """Generate the JSON object with the message to be sent.
 
-        Parameters
-        ----------
-        alert : any
-            JSON alert object.
-        options: any
-            JSON options object.
+    Parameters
+    ----------
+    alert : any
+        JSON alert object.
+    options: any
+        JSON options object.
 
-        Returns
-        -------
-        msg: str
-            The JSON message to send
+    Returns
+    -------
+    msg: str
+        The JSON message to send.
     """
+    logger.info("Generating message")
+
     managed_security_url    = 'https://wazuh.com'
     level                   = alert['rule']['level']
 
@@ -179,86 +160,140 @@ def generate_msg(alert: any, options: any, apikey: str) -> str:
         "client_url": managed_security_url
     }
 
-    if(options):
+    if (options):
         msg.update(options)
 
-    return json.dumps(msg)
+    json_msg = json.dumps(msg)
+    logger.debug("Message: %s", json_msg)
+
+    return json_msg
 
 def send_msg(msg: any) -> None:
-    """
-        Send the message to the API
+    """Send the message to the API.
 
-        Parameters
-        ----------
-        msg : str
-            JSON message.
-        url: str
-            URL of the API.
+    Parameters
+    ----------
+    msg : str
+        JSON message.
+    url: str
+        URL of the API.
     """
+    logger.info("Sending message")
 
     headers = {'content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
-    url     = 'https://events.pagerduty.com/v2/enqueue'
-    res     = requests.post(url, data=msg, headers=headers)
-    debug("# Response received: %s" % res.json)
+    res     = requests.post(WEBHOOK, data=msg, headers=headers, timeout=5)
+    if 200 <= res.status_code <= 299:
+        logger.info("Message sent successfully")
+    else:
+        raise requests.HTTPError("Failed sending message", res.reason)
+
+    logger.debug("PagerDuty response: %s", res)
 
 def get_json_alert(file_location: str) -> any:
-    """
-        Read JSON alert object from file
+    """Read JSON alert object from file.
 
-        Parameters
-        ----------
-        file_location : str
-            Path to the JSON file location.
+    Parameters
+    ----------
+    file_location : str
+        Path to the JSON file location.
 
-        Returns
-        -------
-        {}: any
-            The JSON object read it.
+    Returns
+    -------
+    any
+        JSON encoded alert.
 
-        Raises
-        ------
-        FileNotFoundError
-            If no JSON file is found.
-        JSONDecodeError
-            If no valid JSON file are used
+    Raises
+    ------
+    FileNotFoundError
+        If no JSON file is found.
+    JSONDecodeError
+        If no valid JSON file is used.
     """
     try:
-        with open(file_location) as alert_file:
+        with open(file_location, encoding='utf-8') as alert_file:
             return json.load(alert_file)
     except FileNotFoundError:
-        debug("# JSON file for alert %s doesn't exist" % file_location)
+        logger.error("JSON file for alert %s doesn't exist", file_location)
         sys.exit(ERR_FILE_NOT_FOUND)
     except json.decoder.JSONDecodeError as e:
-        debug("Failed getting JSON alert. Error: %s" % e)
+        logger.error("Failed getting JSON alert. Error: %s", e)
         sys.exit(ERR_INVALID_JSON)
 
 def get_json_options(file_location: str) -> any:
-    """
-        Read JSON options object from file
+    """Read JSON options object from file
 
-        Parameters
-        ----------
-        file_location : str
-            Path to the JSON file location.
+    Parameters
+    ----------
+    file_location : str
+        Path to the JSON file location.
 
-        Returns
-        -------
-        {}: any
-            The JSON object read it.
+    Returns
+    -------
+    any
+        The JSON object read it.
 
-        Raises
-        ------
-        JSONDecodeError
-            If no valid JSON file are used
+    Raises
+    ------
+    JSONDecodeError
+        If no valid JSON file is used
     """
     try:
-        with open(file_location) as options_file:
+        with open(file_location, encoding='utf-8') as options_file:
             return json.load(options_file)
     except FileNotFoundError:
-        debug("# JSON file for options %s doesn't exist" % file_location)
+        logger.error("JSON file for options %s doesn't exist", file_location)
     except BaseException as e:
-        debug("Failed getting JSON options. Error: %s" % e)
+        logger.error("Failed getting JSON options. Error: %s", e)
         sys.exit(ERR_INVALID_JSON)
+
+def print_help_msg():
+    """Send the command's help message to the standard output."""
+    help_msg = f'''
+    Exiting: Invalid arguments.
+
+    Usage:
+        pagerduty  <alerts_file> <api_key> [webhook_url] [options_file]
+        
+    Arguments:
+        alerts_file (required)
+            Path to the JSON file containing the alerts.
+        api_key (required)
+            Pagerduty API key.
+        webhook_url (optional)
+            Pagerduty webhook URL where the messages will be sent to. Default is {WEBHOOK}.
+        logging_level (optional)
+            Used to define how much information should be logged. Default is INFO.
+            Levels: NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL.
+        options_file (optional)
+            Path to a file containing custom variables to be used in the integration. It must be JSON-encoded.
+    '''
+    print(help_msg)
+
+def setup_logger(args):
+    """Configure the logger.
+
+    Parameters
+    ----------
+    args: any
+        Command arguments.
+    """
+    # Create log file directories if they do not exist
+    log_file_dir = os.path.dirname(LOG_FILE)
+    if not os.path.exists(log_file_dir):
+        os.makedirs(log_file_dir)
+
+    consoleHandler = logging.StreamHandler()
+    fileHandler = TimedRotatingFileHandler(LOG_FILE, when='midnight', backupCount=31)
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s", "%a %b %d %H:%M:%S %Z %Y")
+    consoleHandler.setFormatter(formatter)
+    fileHandler.setFormatter(formatter)
+    logger.addHandler(consoleHandler)
+    logger.addHandler(fileHandler)
+
+    if len(args) > 4:
+        logger.setLevel(args[4].upper())
+    else:
+        logger.setLevel(logging.INFO)
 
 if __name__ == "__main__":
     main(sys.argv)

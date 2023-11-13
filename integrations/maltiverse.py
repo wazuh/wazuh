@@ -62,18 +62,28 @@ import os
 import socket
 import sys
 import time
+import logging
+from logging.handlers import TimedRotatingFileHandler
 from urllib.parse import urlsplit
+
+# Exit error codes
+ERR_NO_REQUEST_MODULE   = 1
+ERR_INVALID_ARGUMENTS   = 2
+ERR_FILE_NOT_FOUND      = 6
+ERR_INVALID_JSON        = 7
 
 try:
     import requests
 except Exception as e:
     print("No module 'requests' found. Install: pip install requests")
-    sys.exit(1)
+    sys.exit(ERR_NO_REQUEST_MODULE)
 
 # Global vars
 debug_enabled: bool = False
 pwd: str = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 json_alert: dict = {}
+now: str = time.strftime("%a %b %d %H:%M:%S %Z %Y")
+logger = logging.getLogger("maltiverse")
 
 # Set paths
 LOG_FILE: str = os.path.join(pwd, 'logs', 'integrations.log')
@@ -102,8 +112,7 @@ class Maltiverse:
         self.session.headers.update({
             "Accept": "application/json",
             "Authorization": f"Bearer {self.auth_token}",
-        }
-        )
+        })
 
     def ip_get(self, ip_addr: str) -> dict:
         """Request Maltiverse Ipv4 via API.
@@ -228,36 +237,38 @@ def main(args: list):
     args : list
         The command-line arguments passed to the script.
     """
-    global debug_enabled
     try:
         # Read arguments
-        bad_arguments = False
         if len(args) >= 4:
-            msg = "{0} {1} {2} {3} {4}".format(
+            msg = '{0} {1} {2} {3} {4}'.format(
                 args[1],
                 args[2],
                 args[3],
-                args[4] if len(args) > 4 else "",
-                args[5] if len(args) > 5 else ""
+                args[4].upper() if len(args) > 4 else 'INFO',
+                args[5] if len(sys.argv) > 5 else ''
             )
-            debug_enabled = len(args) > 4 and args[4] == "debug"
         else:
-            msg = '# ERROR: Wrong arguments'
-            bad_arguments = True
+            print_help_msg()
+            sys.exit(ERR_INVALID_ARGUMENTS)
+        
+        setup_logger(args)
+
+        # Validate alerts file location
+        if not os.path.exists(args[1]):
+            raise FileNotFoundError(f"Alert file specified {args[1]} does not exist")
+
+        # Valdate webhook
+        if not is_valid_url(args[3]):
+            raise Exception(f"Invalid webhook URL: {args[3]}")
 
         # Logging the call
-        with open(LOG_FILE, "a") as f:
-            f.write(msg + '\n')
-
-        if bad_arguments:
-            debug("# ERROR: Exiting, bad arguments. Inputted: %s" % args)
-            sys.exit(2)
+        logger.debug(msg)
 
         # Main function
         process_args(args)
 
     except Exception as e:
-        debug(str(e))
+        logger.error(str(e))
         raise
 
 
@@ -275,14 +286,14 @@ def load_alert(file_path: str) -> dict:
         The loaded JSON object as a dictionary.
     """
     try:
-        with open(file_path) as alert_file:
+        with open(file_path, encoding='utf-8') as alert_file:
             return json.load(alert_file)
     except FileNotFoundError:
-        debug("# Alert file %s doesn't exist" % file_path)
-        sys.exit(3)
+        logger.error("Alert file %s doesn't exist", file_path)
+        sys.exit(ERR_FILE_NOT_FOUND)
     except json.decoder.JSONDecodeError as e:
-        debug(f"Failed getting json_alert: {e}")
-        sys.exit(4)
+        logger.error("Failed getting json_alert: %s", e)
+        sys.exit(ERR_INVALID_JSON)
 
 
 def process_args(args: list):
@@ -293,43 +304,24 @@ def process_args(args: list):
     args : list
         The command-line arguments passed to the script.
     """
-    debug("# Starting")
-
     alert_file_location = args[1]
     api_key: str = args[2]
     hook_url: str = args[3]
 
-    if not is_valid_url(hook_url):
-        debug(f"# Hook URL argument seems to be invalid: {hook_url}")
-        sys.exit(5)
-
-    json_alert = load_alert(alert_file_location)
-
-    debug(f"# File location: {alert_file_location}")
-    debug(f"# API Key: {api_key}")
-    debug(f"# Hook Url: {hook_url}")
-    debug(f"# Processing alert: {json_alert}")
+    logger.info("Running Maltiverse script")
+    logger.info("Alerts file location: %s", alert_file_location)
+    logger.debug("API Key: %s", api_key)
+    logger.debug("Webhook: %s", hook_url)
 
     maltiverse_api = Maltiverse(endpoint=hook_url, auth_token=api_key)
+
+    json_alert = load_alert(alert_file_location)
+    logger.debug("Processing alert: %s", json_alert)
 
     # Request Maltiverse info and send event to
     # Wazuh Manager in case of positive match
     for msg in request_maltiverse_info(json_alert, maltiverse_api):
         send_event(msg, json_alert["agent"])
-
-
-def debug(msg: str):
-    """Print a debug message.
-
-    Parameters
-    ----------
-    msg : str
-        The debug message to print.
-    """
-    if debug_enabled:
-        print(msg)
-        with open(LOG_FILE, "a") as f:
-            f.write(msg + '\n')
 
 
 def get_ioc_confidence(ioc: dict) -> str:
@@ -370,6 +362,8 @@ def get_mitre_information(ioc: dict) -> dict:
     dict
         The MITRE information as a dictionary.
     """
+    logger.info("Getting MITRE indicators of compromise")
+
     mitre_info = {}
     for indicator in ioc.get("blacklist", []):
         for external_references in indicator.get("external_references", []):
@@ -437,6 +431,7 @@ def maltiverse_alert(
     dict
         The generated alert as a dictionary.
     """
+    logger.info("Generating alert")
     _blacklist = ioc_dict.get("blacklist", [])
     _type = ioc_dict.get("type")
     _ref = ioc_ref if ioc_ref else ioc_name
@@ -475,6 +470,8 @@ def maltiverse_alert(
 
     if not include_full_source:
         alert.pop("maltiverse")
+    
+    logger.debug("Alert: %s", json.dumps(alert))
 
     return alert
 
@@ -494,10 +491,11 @@ def request_maltiverse_info(alert: dict, maltiverse_api: Maltiverse) -> dict:
     dict
         The generated alerts as a dictionary.
     """
+    logger.info("Requesting Maltiverse information")
     results = []
 
     if "syscheck" in alert and "md5_after" in alert["syscheck"]:
-        debug("# Maltiverse: MD5 checksum present in the alert")
+        logger.debug("MD5 checksum present in the alert")
         md5 = alert["syscheck"]["md5_after"]
 
         if md5_ioc := maltiverse_api.sample_get_by_md5(md5):
@@ -510,7 +508,7 @@ def request_maltiverse_info(alert: dict, maltiverse_api: Maltiverse) -> dict:
             )
 
     if "syscheck" in alert and "sha1_after" in alert["syscheck"]:
-        debug("# Maltiverse: SHA1 checksum present in the alert")
+        logger.debug("SHA1 checksum present in the alert")
         sha1 = alert["syscheck"]["sha1_after"]
 
         if sha1_ioc := maltiverse_api.sample_get_by_sha1(sha1):
@@ -523,7 +521,7 @@ def request_maltiverse_info(alert: dict, maltiverse_api: Maltiverse) -> dict:
             )
 
     if "data" in alert and "srcip" in alert["data"]:
-        debug("# Maltiverse: Source IP Address present in the alert")
+        logger.debug("Source IP Address present in the alert")
         ipv4 = alert["data"]["srcip"]
 
         if not ipaddress.IPv4Address(ipv4).is_private:
@@ -537,7 +535,7 @@ def request_maltiverse_info(alert: dict, maltiverse_api: Maltiverse) -> dict:
                 )
 
     if "data" in alert and "hostname" in alert["data"]:
-        debug("# Maltiverse: Hostname present in the alert")
+        logger.debug("Hostname present in the alert")
         hostname = alert["data"]["hostname"]
 
         if hostname_ioc := maltiverse_api.hostname_get(hostname):
@@ -550,7 +548,7 @@ def request_maltiverse_info(alert: dict, maltiverse_api: Maltiverse) -> dict:
             )
 
     if "data" in alert and "url" in alert["data"]:
-        debug("# Maltiverse: URL present in the alert")
+        logger.debug("URL present in the alert")
         url = alert["data"]["url"]
         urlchecksum = hashlib.sha256(url.encode("utf-8")).hexdigest()
 
@@ -577,6 +575,8 @@ def send_event(msg: str, agent: dict = None):
     agent : dict, optional
         The agent information.
     """
+    logger.info("Sending event")
+
     if not agent or agent["id"] == "000":
         event = f"1:maltiverse:{json.dumps(msg)}"
     else:
@@ -588,9 +588,10 @@ def send_event(msg: str, agent: dict = None):
         location = location.replace("|", "||").replace(":", "|:")
         event = f"1:{location}->maltiverse:{json.dumps(msg)}"
 
-    debug(event)
+    logger.debug("Event: %s", event)
+
     if len(event) > MAX_EVENT_SIZE:
-        debug(f"# WARNING: Message size exceeds the maximum allowed limit of {MAX_EVENT_SIZE} bytes.")
+        logger.warning("Message size exceeds the maximum allowed limit of %s bytes.", MAX_EVENT_SIZE)
     try:
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         sock.connect(SOCKET_ADDR)
@@ -598,11 +599,61 @@ def send_event(msg: str, agent: dict = None):
         sock.close()
     except socket.error as e:
         if e.errno == 111:
-            print("ERROR: Wazuh is not running.")
+            logger.error("Wazuh is not running.")
             sys.exit(6)
         elif e.errno == 90:
-            print("ERROR: Message too long to send to Wazuh.")
+            logger.error("Message too long to send to Wazuh.")
             sys.exit(7)
+
+
+def print_help_msg():
+    """Send the command's help message to the standard output."""
+    help_msg = '''
+    Exiting: Invalid arguments.
+
+    Usage:
+        maltiverse <alerts_file> <api_key> <webhook_url> [logging_level] [options_file]
+    Arguments:
+        alerts_file (required)
+            Path to the JSON file containing the alerts.
+        api_key (required)
+            Maltiverse API key.
+        webhook_url (required)
+            Maltiverse webhook URL where the messages will be sent to.
+        logging_level (optional)
+            Used to define how much information should be logged. Default is INFO.
+            Levels: NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL.
+        options_file (optional)
+            Path to a file containing custom variables to be used in the integration. It must be JSON-encoded.
+    '''
+    print(help_msg)
+
+
+def setup_logger(args):
+    """Configure the logger.
+
+    Parameters
+    ----------
+    args: any
+        Command arguments.
+    """
+    # Create log file directories if they do not exist
+    log_file_dir = os.path.dirname(LOG_FILE)
+    if not os.path.exists(log_file_dir):
+        os.makedirs(log_file_dir)
+
+    consoleHandler = logging.StreamHandler()
+    fileHandler = TimedRotatingFileHandler(LOG_FILE, when='midnight', backupCount=31)
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s", "%a %b %d %H:%M:%S %Z %Y")
+    consoleHandler.setFormatter(formatter)
+    fileHandler.setFormatter(formatter)
+    logger.addHandler(consoleHandler)
+    logger.addHandler(fileHandler)
+
+    if len(args) > 4:
+        logger.setLevel(args[4].upper())
+    else:
+        logger.setLevel(logging.INFO)
 
 
 if __name__ == "__main__":

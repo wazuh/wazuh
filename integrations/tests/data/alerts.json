@@ -1,0 +1,22 @@
+{
+    "agent": {
+        "id": "001",
+        "name": "agent"
+    },
+    "timestamp": "year-month-dayThours:minuts:seconds+0000",
+    "rule": {
+        "level": 0, 
+        "description": "alert description",
+        "id": "",
+        "firedtimes": 1,
+        "groups": ["default"]
+    },
+    "id": "alert_id",
+    "full_log": "full log.", "decoder": {"name": "decoder-name"},
+    "location": "wazuh-X",
+    "syscheck":{
+        "path":"/path/to/file",
+        "md5_after":"5d41402abc4b2a76b9719d911017c592",
+        "sha1_after": "sha1_value"
+    }
+}

@@ -11,13 +11,8 @@ import pytest
 import requests
 import pagerduty as pagerduty
 import sys
-from unittest.mock import patch, mock_open
-
-# Exit error codes
-ERR_NO_APIKEY           = 1
-ERR_BAD_ARGUMENTS       = 2
-ERR_FILE_NOT_FOUND      = 6
-ERR_INVALID_JSON        = 7
+import logging
+from unittest.mock import patch, mock_open, MagicMock
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..')) #Necessary to run PyTest
 
@@ -60,14 +55,15 @@ msg_template = {
   "client_url": "https://monitoring.example.com"
 }
 
-sys_args_template = ['/var/ossec/integrations/pagerduty.py', '/tmp/pagerduty-XXXXXX-XXXXXXX.alert', f'{apikey_pagerduty}', '', '>/dev/null 2>&1','/tmp/pagerduty-XXXXXX-XXXXXXX.options']
+alerts_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/alerts.json')
+sys_args_template = ['/var/ossec/integrations/pagerduty.py', alerts_file, apikey_pagerduty, '']
 
 
 def test_main_bad_arguments_exit():
     """Test that main function exits when wrong number of arguments are passed."""
     with patch("pagerduty.open", mock_open()), pytest.raises(SystemExit) as pytest_wrapped_e:
         pagerduty.main(sys_args_template[0:2])
-    assert pytest_wrapped_e.value.code == ERR_BAD_ARGUMENTS
+    assert pytest_wrapped_e.value.code == pagerduty.ERR_INVALID_ARGUMENTS
 
 def test_main_exception():
     """Test exception handling in main when process_args raises an exception."""
@@ -84,8 +80,8 @@ def test_main():
         process.assert_called_once_with(sys_args_template)
 
 @pytest.mark.parametrize('side_effect, return_value', [
-    (FileNotFoundError, ERR_FILE_NOT_FOUND),
-    (json.decoder.JSONDecodeError("Expecting value", "", 0), ERR_INVALID_JSON)
+    (FileNotFoundError, pagerduty.ERR_FILE_NOT_FOUND),
+    (json.decoder.JSONDecodeError("Expecting value", "", 0), pagerduty.ERR_INVALID_JSON)
 ])
 def test_process_args_exit(side_effect, return_value):
     """Test the process_args function exit codes.
@@ -114,9 +110,12 @@ def test_process_args():
             patch('requests.post', return_value=requests.Response):
         alert_load.return_value = alert_template
         options_load.return_value = options_template
-        pagerduty.process_args(sys_args_template)
-        generate_msg.assert_called_once_with(alert_template,options_template,sys_args_template[2])
-        generated_msg = pagerduty.generate_msg(alert_template,options_template,sys_args_template[2])
+        args = sys_args_template[:]
+        args.append('info')
+        args.append('file_location.options')
+        pagerduty.process_args(args)
+        generate_msg.assert_called_once_with(alert_template, options_template, sys_args_template[2])
+        generated_msg = pagerduty.generate_msg(alert_template, options_template, sys_args_template[2])
         assert generated_msg==msg_template
         send_msg.assert_called_once_with(msg_template)
 
@@ -133,15 +132,6 @@ def test_process_args_not_sending_message():
         pagerduty.process_args(sys_args_template)
         send_msg.assert_not_called()
 
-def test_debug():
-    """Test the correct execution of the debug function, writing the expected log when debug mode enabled."""
-    with patch('pagerduty.debug_enabled', return_value=True), \
-            patch("pagerduty.open", mock_open()) as open_mock, \
-            patch('pagerduty.LOG_FILE', return_value='integrations.log') as log_file:
-        pagerduty.debug(str(msg_template))
-        open_mock.assert_called_with(log_file, 'a')
-        open_mock().write.assert_called_with(str(msg_template) + '\n')
-
 def test_send_msg_raise_exception():
     """Test that the send_msg function will raise an exception when passed the wrong webhook url."""
     with patch('requests.post') as request_post, \
@@ -149,11 +139,31 @@ def test_send_msg_raise_exception():
         request_post.side_effect = requests.exceptions.ConnectionError
         pagerduty.send_msg(msg_template)
 
-
 def test_send_msg():
-   """Test that the send_msg function works as expected."""
-   headers = {'content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
-   with patch('requests.post', return_value=requests.Response) as request_post:
+    """Test that the send_msg function works as expected."""
+    headers = {'content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    with patch('requests.post', return_value=mock_response) as request_post:
        pagerduty.send_msg(msg_template)
-       url                = 'https://events.pagerduty.com/v2/enqueue'
-       request_post.assert_called_once_with(url, data=msg_template, headers=headers)
+       request_post.assert_called_once_with(pagerduty.WEBHOOK, data=msg_template, headers=headers, timeout=5)
+
+def test_logger(caplog):
+    """Test the correct execution of the logger."""
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    with patch('requests.post', return_value=mock_response):
+        with caplog.at_level(logging.DEBUG, logger='pagerduty'):
+            args = sys_args_template[:]
+            args.append('info')
+            pagerduty.main(args)
+
+    # Assert console log correctness
+    assert caplog.records[0].message == 'Running PagerDuty script'
+    assert caplog.records[1].message == f'Alerts file location: {sys_args_template[1]}'
+    assert caplog.records[2].message == f'Processing alert with ID alert_id'
+    assert caplog.records[-1].levelname == 'INFO'
+    assert "DEBUG" not in caplog.text
+    # Assert the log file is created and is not empty
+    assert os.path.exists(pagerduty.LOG_FILE)
+    assert os.path.getsize(pagerduty.LOG_FILE) > 0

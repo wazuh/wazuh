@@ -11,13 +11,8 @@ import pytest
 import requests
 import slack as slack
 import sys
-from unittest.mock import patch, mock_open
-
-# Exit error codes
-ERR_NO_APIKEY           = 1
-ERR_BAD_ARGUMENTS       = 2
-ERR_FILE_NOT_FOUND      = 6
-ERR_INVALID_JSON        = 7
+import logging
+from unittest.mock import patch, mock_open, MagicMock
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..')) #Necessary to run PyTest
 
@@ -53,16 +48,17 @@ msg_template = '{"severity": 1, "pretext": "Wazuh-X -- Alert generated", "title"
                '"description": "alert description", "id": "rule-id", "firedtimes": 1}, "id": "alert_id", "full_log": ' \
                '"full log.", "decoder": {"name": "decoder-name"}, "location": "wazuh-X", "author_name": "The amazing Wazuh",'\
                '"footer": "Slack API"}'
-slack_webhook = ""
+slack_webhook = "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"
 
-sys_args_template = ['/var/ossec/integrations/slack.py', '/tmp/slack-XXXXXX-XXXXXXX.alert', '', f'{slack_webhook}', '>/dev/null 2>&1','/tmp/slack-XXXXXX-XXXXXXX.options']
+alerts_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/alerts.json')
+sys_args_template = ['/var/ossec/integrations/slack.py', alerts_file, '', slack_webhook]
 
 
 def test_main_bad_arguments_exit():
     """Test that main function exits when wrong number of arguments are passed."""
     with patch("slack.open", mock_open()), pytest.raises(SystemExit) as pytest_wrapped_e:
         slack.main(sys_args_template[0:2])
-    assert pytest_wrapped_e.value.code == ERR_BAD_ARGUMENTS
+    assert pytest_wrapped_e.value.code == slack.ERR_INVALID_ARGUMENTS
 
 def test_main_exception():
     """Test exception handling in main when process_args raises an exception."""
@@ -79,8 +75,8 @@ def test_main():
         process.assert_called_once_with(sys_args_template)
 
 @pytest.mark.parametrize('side_effect, return_value', [
-    (FileNotFoundError, ERR_FILE_NOT_FOUND),
-    (json.decoder.JSONDecodeError("Expecting value", "", 0), ERR_INVALID_JSON)
+    (FileNotFoundError, slack.ERR_FILE_NOT_FOUND),
+    (json.decoder.JSONDecodeError("Expecting value", "", 0), slack.ERR_INVALID_JSON)
 ])
 def test_process_args_exit(side_effect, return_value):
     """Test the process_args function exit codes.
@@ -128,15 +124,6 @@ def test_process_args_not_sending_message():
         slack.process_args(sys_args_template)
         send_msg.assert_not_called()
 
-def test_debug():
-    """Test the correct execution of the debug function, writing the expected log when debug mode enabled."""
-    with patch('slack.debug_enabled', return_value=True), \
-            patch("slack.open", mock_open()) as open_mock, \
-            patch('slack.LOG_FILE', return_value='integrations.log') as log_file:
-        slack.debug(msg_template)
-        open_mock.assert_called_with(log_file, 'a')
-        open_mock().write.assert_called_with(f"{msg_template}\n")
-
 def test_send_msg_raise_exception():
     """Test that the send_msg function will raise an exception when passed the wrong webhook url."""
     with patch('requests.post') as request_post, \
@@ -144,10 +131,29 @@ def test_send_msg_raise_exception():
         request_post.side_effect = requests.exceptions.ConnectionError
         slack.send_msg(msg_template, 'http://webhook-url')
 
-
 def test_send_msg():
     """Test that the send_msg function works as expected."""
     headers = {'content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
-    with patch('requests.post', return_value=requests.Response) as request_post:
-        slack.send_msg(msg_template, sys_args_template[3])
-        request_post.assert_called_once_with(sys_args_template[3], data=msg_template, headers=headers)
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    with patch('requests.post', return_value=mock_response) as request_post:
+        with patch('json.dumps', return_value=''):
+            slack.send_msg(msg_template, sys_args_template[3])
+            request_post.assert_called_once_with(sys_args_template[3], data=msg_template, headers=headers, timeout=5)
+
+def test_logger(caplog):
+    """Test the correct execution of the logger."""
+    with patch('slack.send_msg'):
+        with caplog.at_level(logging.DEBUG, logger='slack'):
+            args = sys_args_template[:]
+            args.append('info')
+            slack.main(args)
+
+    # Assert console log correctness
+    assert caplog.records[0].message == 'Running Slack script'
+    assert caplog.records[1].message == f'Alerts file location: {sys_args_template[1]}'
+    assert caplog.records[-1].levelname == 'INFO'
+    assert "DEBUG" not in caplog.text
+    # Assert the log file is created and is not empty
+    assert os.path.exists(slack.LOG_FILE)
+    assert os.path.getsize(slack.LOG_FILE) > 0
