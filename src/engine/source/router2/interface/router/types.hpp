@@ -69,6 +69,7 @@ enum class TraceLevel : std::uint8_t
     ALL
 };
 
+// TODO Move to router private space and expose only dataList
 class TraceStorage
 {
 public:
@@ -93,7 +94,7 @@ public:
     {
     }
 
-    void ingest(const std::string& asset, const std::string& traceContent, bool result)
+    void addTrace(const std::string& asset, const std::string& traceContent, bool result)
     {
         if (traceContent.empty())
         {
@@ -122,12 +123,6 @@ public:
         }
     }
 
-    void clearData()
-    {
-        m_dataList.clear();
-        m_dataMap.clear();
-    }
-
     const DataList& getDataList() const { return m_dataList; }
 };
 
@@ -144,22 +139,22 @@ class Opt
 private:
     OutputFn m_callback;
     TraceLevel m_traceLevel;
-    std::string m_envId;
+    std::vector<std::string> m_assets;
+    std::string m_environmetName;
 
     // Missing namespace and asset list
 public:
-    Opt(OutputFn callback, TraceLevel traceLevel, const std::string& envId)
-        : m_callback {std::move(callback)}
+    Opt(OutputFn callback, TraceLevel traceLevel, const decltype(m_assets)& assets, const std::string& envName)
+        : m_callback {callback}
         , m_traceLevel {traceLevel}
-        , m_envId {std::move(envId)}
+        , m_assets {assets}
+        , m_environmetName {envName}
     {
-        // validate();
+        //validate();
     }
 
-    OutputFn getOutputFn () const
-    {
-        return m_callback;
-    }
+    const std::string& environmentName() const { return m_environmetName; }
+    auto assets() const -> const decltype(m_assets)& { return m_assets; }
 };
 
 } // namespace test

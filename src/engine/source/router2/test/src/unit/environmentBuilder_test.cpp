@@ -39,9 +39,7 @@ TEST_P(EnvironmentFilterTest, FilterFunctionallity)
     EXPECT_CALL(*mockPolicy, expression()).WillOnce(testing::Return(expresion));
 
     auto policyName = base::Name {"policy/wazuh/0"};
-    auto envBuild = std::make_shared<EnvironmentBuilder>(mockBuilder);
-
-    envBuild->setController(mockMakerController);
+    auto envBuild = std::make_shared<EnvironmentBuilder>(mockBuilder, mockMakerController);
 
     EXPECT_CALL(*mockMakerController, create()).WillOnce(testing::Return(mockController));
     EXPECT_CALL(*mockController, build(testing::_, testing::_)).Times(1);
