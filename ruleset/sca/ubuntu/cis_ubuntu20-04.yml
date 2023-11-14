@@ -1149,10 +1149,10 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition: all
+    condition: any
     rules:
-      - "c:ps -ef -> r:^_chrony && r:/chronyd"
-      - 'f:/etc/chrony/chrony.conf -> r:^server\.+|^pool\.+'
+      - 'd:/etc/chrony/sources.d -> r:\.+.sources$ -> r:^server\.+|^pool\.+'
+>>      - 'f:/etc/chrony/chrony.conf -> r:^server\.+|^pool\.+'
 
   # 2.1.2.2 Ensure chrony is running as user _chrony. (Automated)
   - id: 19047

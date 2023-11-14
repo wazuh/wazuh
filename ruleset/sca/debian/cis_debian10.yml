@@ -1330,7 +1330,7 @@ checks:
       - soc_2: ["CC4.1", "CC5.2"]
     condition: any
     rules:
-      - "not c:ps -ef -> r:^_chrony && r:/chronyd"
+      - 'd:/etc/chrony/sources.d -> r:\.+.sources$ -> r:^server\.+|^pool\.+'
       - 'f:/etc/chrony/chrony.conf -> r:^server\.+|^pool\.+'
 
   # 2.1.2.2 Ensure chrony is running as user _chrony. (Automated)
