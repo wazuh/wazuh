@@ -2,7 +2,7 @@
 
 #include "environmentBuilder.hpp"
 
-#include <bk/rx/controller.hpp>
+#include <bk/mockController.hpp>
 #include <builder/mockPolicy.hpp>
 #include <router/mockBuilder.hpp>
 #include <store/mockStore.hpp>
@@ -14,11 +14,14 @@ class EnvironmentFilterTest : public testing::TestWithParam<std::tuple<int, std:
 protected:
     std::shared_ptr<router::MockBuilder> mockBuilder;
     std::shared_ptr<builder::mocks::MockPolicy> mockPolicy;
+    std::shared_ptr<bk::mocks::MockMakerController> mockMakerController;
+    std::shared_ptr<bk::mocks::MockController> mockController;
     void SetUp() override
     {
         mockBuilder = std::make_shared<MockBuilder>();
         mockPolicy = std::make_shared<builder::mocks::MockPolicy>();
-
+        mockMakerController = std::make_shared<bk::mocks::MockMakerController>();
+        mockController = std::make_shared<bk::mocks::MockController>();
     }
 };
 
@@ -37,6 +40,12 @@ TEST_P(EnvironmentFilterTest, FilterFunctionallity)
 
     auto policyName = base::Name {"policy/wazuh/0"};
     auto envBuild = std::make_shared<EnvironmentBuilder>(mockBuilder);
+
+    envBuild->setController(mockMakerController);
+
+    EXPECT_CALL(*mockMakerController, create()).WillOnce(testing::Return(mockController));
+    EXPECT_CALL(*mockController, build(testing::_, testing::_)).Times(1);
+    EXPECT_CALL(*mockController, stop()).Times(1);
 
     auto env = envBuild->create(policyName, filterID);
 
