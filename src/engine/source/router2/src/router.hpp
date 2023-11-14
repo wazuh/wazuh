@@ -2,6 +2,8 @@
 #define _ROUTER2_ROUTER_HPP
 
 #include <memory>
+#include <shared_mutex>
+
 
 #include <router/types.hpp>
 
@@ -29,7 +31,7 @@ private:
      */
     class RuntimeEntry : public Entry {
     private:
-        Environment m_env; ///< The environment associated with the entry.
+        std::unique_ptr<Environment> m_env; ///< The environment associated with the entry.
 
     public:
         /**
@@ -43,17 +45,19 @@ private:
          * @brief Sets the environment for the RuntimeEntry.
          * @param env The environment to be set.
          */
-        void setEnvironment(const Environment& env) { m_env = env; }
+        void setEnvironment(std::unique_ptr<Environment>&& env) { m_env = std::move(env); }
 
         /**
          * @brief Retrieves the environment associated with the RuntimeEntry.
          * @return A constant reference to the associated environment.
          */
-        const Environment& environment() const { return m_env; }
+        const std::unique_ptr<Environment>& environment() const { return m_env; }
+        std::unique_ptr<Environment>& environment() { return m_env; }
     };
 
     internal::Table<RuntimeEntry> m_table; ///< Internal table for managing RuntimeEntry objects.
-    // TODO: Use a mutex to protect the table
+    mutable std::shared_mutex m_mutex;
+
     std::shared_ptr<EnvironmentBuilder> m_envBuilder; ///< Shared pointer to the environment builder.
 
 public:
@@ -62,16 +66,18 @@ public:
      * @param envBuilder The shared pointer to the EnvironmentBuilder.
      */
     Router(const std::shared_ptr<EnvironmentBuilder>& envBuilder)
-        : m_envBuilder(envBuilder)
-        , m_table() {};
+        : m_table()
+        , m_mutex()
+        , m_envBuilder(envBuilder) {};
 
     /**
      * @brief Constructs a Router with the specified builder.
      * @param builder The shared pointer to the IBuilder interface.
      */
-    Router(const std::shared_ptr<IBuilder>& builder)
-        : m_envBuilder(std::make_shared<EnvironmentBuilder>(builder))
-        , m_table() {};
+    Router(const std::shared_ptr<IBuilder>& builder, std::shared_ptr<bk::IControllerMaker> controllerMaker)
+        : m_table()
+        , m_mutex()
+        , m_envBuilder(std::make_shared<EnvironmentBuilder>(builder, controllerMaker)) {};
 
     /**
      * @brief Adds an environment to the router based on the provided entry post information.
@@ -107,6 +113,23 @@ public:
      * @param event The event to be ingested.
      */
     void ingest(base::Event event);
+
+    /**
+     * @brief Ingests an event into the router for processing and returns the result.
+     * 
+     * @param event The event to be ingested.
+     * @param opt The optional parameters for the ingest operation.
+     * @return test::Output The result 
+     */
+    base::RespOrError<test::Output>
+    ingestTest(base::Event event, const std::string& name, const std::vector<std::string>& assets);
+
+    /**
+     * @brief dumps the router table.
+     * 
+     * @return std::list<Entry> The list of entries in the router table.
+     */
+    std::list<Entry> getEntries() const;
 };
 
 } // namespace router

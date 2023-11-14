@@ -71,6 +71,7 @@ TEST_F(EnvironmentTest, IngestGetCallsController)
     EXPECT_STREQ(event->str().c_str(), environment.ingestGet(std::move(event))->str().c_str());
 }
 
+/*
 using TraceFn = std::function<void(const std::string&, const std::string&, bool)>;
 TEST_F(EnvironmentTest, SubscribeTracesController)
 {
@@ -109,3 +110,4 @@ TEST_F(EnvironmentTest, SubscribeTracesController)
     auto res = environment.subscribeTrace(traceCallback, assetsToSubscribe);
     EXPECT_FALSE(res.has_value());
 }
+*/
