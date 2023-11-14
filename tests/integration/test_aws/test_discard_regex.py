@@ -1,40 +1,37 @@
-import os
+"""
+Copyright (C) 2015-2023, Wazuh Inc.
+Created by Wazuh, Inc. <info@wazuh.com>.
+This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+This module will contains all cases for the discard_regex test suite
+"""
+
 import pytest
 
 # qa-integration-framework imports
 from wazuh_testing import session_parameters
-from wazuh_testing.constants.paths.configurations import TEMPLATE_DIR, TEST_CASES_DIR
 from wazuh_testing.modules.aws import event_monitor, local_internal_options  # noqa: F401
-from wazuh_testing.utils.configuration import (
-    get_test_cases_data,
-    load_configuration_template,
-)
 from wazuh_testing.modules.aws.db_utils import s3_db_exists
 
 # Local module imports
 from .utils import ERROR_MESSAGES, TIMEOUTS
+from conftest import TestConfigurator
 
 pytestmark = [pytest.mark.server]
 
+# Set test configurator for the module
+configurator = TestConfigurator(module='discard_regex_test_module')
 
-# Generic vars
-MODULE = 'discard_regex_test_module'
-TEST_DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-CONFIGURATIONS_PATH = os.path.join(TEST_DATA_PATH, TEMPLATE_DIR, MODULE)
-TEST_CASES_PATH = os.path.join(TEST_DATA_PATH, TEST_CASES_DIR, MODULE)
-
-# -----------------------------------------opvb----------- TEST_PATH -------------------------------------------------------
-configurations_path = os.path.join(CONFIGURATIONS_PATH, 'configuration_discard_regex.yaml')
-cases_path = os.path.join(TEST_CASES_PATH, 'cases_discard_regex.yaml')
-
-configuration_parameters, configuration_metadata, case_ids = get_test_cases_data(cases_path)
-configurations = load_configuration_template(
-    configurations_path, configuration_parameters, configuration_metadata
-)
+# ---------------------------------------------------- TEST_PATH -------------------------------------------------------
+# Test configuration
+configurator.configure_test(configuration_file='configuration_discard_regex.yaml',
+                            cases_file='cases_discard_regex.yaml')
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata', zip(configurations, configuration_metadata), ids=case_ids)
+@pytest.mark.parametrize('configuration, metadata',
+                         zip(configurator.test_configuration_template, configurator.metadata),
+                         ids=configurator.cases_ids)
 def test_discard_regex(
     configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_s3_cloudtrail_db,
     configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring,

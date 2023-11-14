@@ -1,10 +1,16 @@
-import os
+"""
+Copyright (C) 2015-2023, Wazuh Inc.
+Created by Wazuh, Inc. <info@wazuh.com>.
+This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+This module will contains all cases for the only logs after test suite
+"""
+
 import pytest
 from datetime import datetime
 
 # qa-integration-framework imports
 from wazuh_testing import session_parameters
-from wazuh_testing.constants.paths.configurations import TEMPLATE_DIR, TEST_CASES_DIR
 from wazuh_testing.modules import aws as cons
 from wazuh_testing.modules.aws import ONLY_LOGS_AFTER_PARAM, event_monitor, local_internal_options  # noqa: F401
 from wazuh_testing.modules.aws.cli_utils import call_aws_module
@@ -20,34 +26,27 @@ from wazuh_testing.modules.aws.db_utils import (
     get_s3_db_row,
 )
 from wazuh_testing.modules.aws.s3_utils import get_last_file_key, upload_file
-from wazuh_testing.utils.configuration import (
-    get_test_cases_data,
-    load_configuration_template,
-)
 
+# Local module imports
 from .utils import ERROR_MESSAGES, TIMEOUTS
+from conftest import TestConfigurator
 
 pytestmark = [pytest.mark.server]
 
 
-# Generic vars
-MODULE = 'only_logs_after_test_module'
-TEST_DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-CONFIGURATIONS_PATH = os.path.join(TEST_DATA_PATH, TEMPLATE_DIR, MODULE)
-TEST_CASES_PATH = os.path.join(TEST_DATA_PATH, TEST_CASES_DIR, MODULE)
+# Set test configurator for the module
+configurator = TestConfigurator(module='only_logs_after_test_module')
 
 # --------------------------------------------- TEST_BUCKET_WITHOUT_ONLY_LOGS_AFTER ------------------------------------
-t1_configurations_path = os.path.join(CONFIGURATIONS_PATH, 'bucket_configuration_without_only_logs_after.yaml')
-t1_cases_path = os.path.join(TEST_CASES_PATH, 'cases_bucket_without_only_logs_after.yaml')
-
-t1_configuration_parameters, t1_configuration_metadata, t1_case_ids = get_test_cases_data(t1_cases_path)
-t1_configurations = load_configuration_template(
-    t1_configurations_path, t1_configuration_parameters, t1_configuration_metadata
-)
+# Configure T1 test
+configurator.configure_test(configuration_file='bucket_configuration_without_only_logs_after.yaml',
+                            cases_file='cases_bucket_without_only_logs_after.yaml')
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata', zip(t1_configurations, t1_configuration_metadata), ids=t1_case_ids)
+@pytest.mark.parametrize('configuration, metadata',
+                         zip(configurator.test_configuration_template, configurator.metadata),
+                         ids=configurator.cases_ids)
 def test_bucket_without_only_logs_after(
     configuration, metadata, upload_and_delete_file_to_s3, load_wazuh_basic_configuration, set_wazuh_configuration,
     clean_s3_cloudtrail_db, configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function,
@@ -169,17 +168,15 @@ def test_bucket_without_only_logs_after(
 
 
 # -------------------------------------------- TEST_SERVICE_WITHOUT_ONLY_LOGS_AFTER ------------------------------------
-t2_configurations_path = os.path.join(CONFIGURATIONS_PATH, 'service_configuration_without_only_logs_after.yaml')
-t2_cases_path = os.path.join(TEST_CASES_PATH, 'cases_service_without_only_logs_after.yaml')
-
-t2_configuration_parameters, t2_configuration_metadata, t2_case_ids = get_test_cases_data(t2_cases_path)
-t2_configurations = load_configuration_template(
-    t2_configurations_path, t2_configuration_parameters, t2_configuration_metadata
-)
+# Configure T2 test
+configurator.configure_test(configuration_file='service_configuration_without_only_logs_after.yaml',
+                            cases_file='cases_service_without_only_logs_after.yaml')
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata', zip(t2_configurations, t2_configuration_metadata), ids=t2_case_ids)
+@pytest.mark.parametrize('configuration, metadata',
+                         zip(configurator.test_configuration_template, configurator.metadata),
+                         ids=configurator.cases_ids)
 def test_service_without_only_logs_after(
     configuration, metadata, create_log_stream_in_existent_group, load_wazuh_basic_configuration,
     set_wazuh_configuration, clean_aws_services_db, configure_local_internal_options_function, truncate_monitored_files,
@@ -289,17 +286,15 @@ def test_service_without_only_logs_after(
 
 
 # --------------------------------------------- TEST_BUCKET_WITH_ONLY_LOGS_AFTER ---------------------------------------
-t3_configurations_path = os.path.join(CONFIGURATIONS_PATH, 'bucket_configuration_with_only_logs_after.yaml')
-t3_cases_path = os.path.join(TEST_CASES_PATH, 'cases_bucket_with_only_logs_after.yaml')
-
-t3_configuration_parameters, t3_configuration_metadata, t3_case_ids = get_test_cases_data(t3_cases_path)
-t3_configurations = load_configuration_template(
-    t3_configurations_path, t3_configuration_parameters, t3_configuration_metadata
-)
+# Configure T3 test
+configurator.configure_test(configuration_file='bucket_configuration_with_only_logs_after.yaml',
+                            cases_file='cases_bucket_with_only_logs_after.yaml')
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata', zip(t3_configurations, t3_configuration_metadata), ids=t3_case_ids)
+@pytest.mark.parametrize('configuration, metadata',
+                         zip(configurator.test_configuration_template, configurator.metadata),
+                         ids=configurator.cases_ids)
 def test_bucket_with_only_logs_after(
     configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_s3_cloudtrail_db,
     configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
@@ -420,17 +415,15 @@ def test_bucket_with_only_logs_after(
 
 
 # --------------------------------------------TEST_CLOUDWATCH_WITH_ONLY_LOGS_AFTER -------------------------------------
-t4_configurations_path = os.path.join(CONFIGURATIONS_PATH, 'cloudwatch_configuration_with_only_logs_after.yaml')
-t4_cases_path = os.path.join(TEST_CASES_PATH, 'cases_cloudwatch_with_only_logs_after.yaml')
-
-t4_configuration_parameters, t4_configuration_metadata, t4_case_ids = get_test_cases_data(t4_cases_path)
-t4_configurations = load_configuration_template(
-    t4_configurations_path, t4_configuration_parameters, t4_configuration_metadata
-)
+# Configure T4 test
+configurator.configure_test(configuration_file='cloudwatch_configuration_with_only_logs_after.yaml',
+                            cases_file='cases_cloudwatch_with_only_logs_after.yaml')
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata', zip(t4_configurations, t4_configuration_metadata), ids=t4_case_ids)
+@pytest.mark.parametrize('configuration, metadata',
+                         zip(configurator.test_configuration_template, configurator.metadata),
+                         ids=configurator.cases_ids)
 def test_cloudwatch_with_only_logs_after(
     configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
     configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
@@ -549,17 +542,15 @@ def test_cloudwatch_with_only_logs_after(
 
 
 # ------------------------------------------ TEST_INSPECTOR_WITH_ONLY_LOGS_AFTER ---------------------------------------
-t5_configurations_path = os.path.join(CONFIGURATIONS_PATH, 'inspector_configuration_with_only_logs_after.yaml')
-t5_cases_path = os.path.join(TEST_CASES_PATH, 'cases_inspector_with_only_logs_after.yaml')
-
-t5_configuration_parameters, t5_configuration_metadata, t5_case_ids = get_test_cases_data(t5_cases_path)
-t5_configurations = load_configuration_template(
-    t5_configurations_path, t5_configuration_parameters, t5_configuration_metadata
-)
+# Configure T5 test
+configurator.configure_test(configuration_file='inspector_configuration_with_only_logs_after.yaml',
+                            cases_file='cases_inspector_with_only_logs_after.yaml')
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata', zip(t5_configurations, t5_configuration_metadata), ids=t5_case_ids)
+@pytest.mark.parametrize('configuration, metadata',
+                         zip(configurator.test_configuration_template, configurator.metadata),
+                         ids=configurator.cases_ids)
 def test_inspector_with_only_logs_after(
     configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
     configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
@@ -670,13 +661,14 @@ def test_inspector_with_only_logs_after(
 
 
 # ---------------------------------------------------- TEST_MULTIPLE_CALLS ---------------------------------------------
-t5_cases_path = os.path.join(TEST_CASES_PATH, 'cases_bucket_multiple_calls.yaml')
-
-_, t5_configuration_metadata, t5_case_ids = get_test_cases_data(t5_cases_path)
+# Configure T5 test
+configurator.configure_test(cases_file='cases_bucket_multiple_calls.yaml')
 
 
 @pytest.mark.tier(level=1)
-@pytest.mark.parametrize('metadata', t5_configuration_metadata, ids=t5_case_ids)
+@pytest.mark.parametrize('metadata', 
+                         configurator.metadata, 
+                         ids=configurator.cases_ids)
 def test_bucket_multiple_calls(
     metadata, clean_s3_cloudtrail_db, load_wazuh_basic_configuration, restart_wazuh_function, delete_file_from_s3
 ):
@@ -781,13 +773,14 @@ def test_bucket_multiple_calls(
 
 
 # -------------------------------------------- TEST_INSPECTOR_MULTIPLE_CALLS -------------------------------------------
-t6_cases_path = os.path.join(TEST_CASES_PATH, 'cases_inspector_multiple_calls.yaml')
-
-_, t6_configuration_metadata, t6_case_ids = get_test_cases_data(t6_cases_path)
+# Configure T6 test
+configurator.configure_test(cases_file='cases_inspector_multiple_calls.yaml')
 
 
 @pytest.mark.tier(level=1)
-@pytest.mark.parametrize('metadata', t6_configuration_metadata, ids=t6_case_ids)
+@pytest.mark.parametrize('metadata', 
+                         configurator.metadata, 
+                         ids=configurator.cases_ids)
 @pytest.mark.xfail
 def test_inspector_multiple_calls(
     metadata, clean_aws_services_db, load_wazuh_basic_configuration, restart_wazuh_function
@@ -863,13 +856,14 @@ def test_inspector_multiple_calls(
 
 
 # ----------------------------------------- TEST_CLOUDWATCH_MULTIPLE_CALLS ---------------------------------------------
-t7_cases_path = os.path.join(TEST_CASES_PATH, 'cases_cloudwatch_multiple_calls.yaml')
-
-_, t7_configuration_metadata, t7_case_ids = get_test_cases_data(t7_cases_path)
+# Configure T7 test
+configurator.configure_test(cases_file='cases_cloudwatch_multiple_calls.yaml')
 
 
 @pytest.mark.tier(level=1)
-@pytest.mark.parametrize('metadata', t7_configuration_metadata, ids=t7_case_ids)
+@pytest.mark.parametrize('metadata', 
+                         configurator.metadata, 
+                         ids=configurator.cases_ids)
 def test_cloudwatch_multiple_calls(
     metadata, clean_aws_services_db, load_wazuh_basic_configuration, restart_wazuh_function, delete_log_stream
 ):

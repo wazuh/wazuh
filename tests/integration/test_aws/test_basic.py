@@ -1,41 +1,36 @@
-import os
+"""
+Copyright (C) 2015-2023, Wazuh Inc.
+Created by Wazuh, Inc. <info@wazuh.com>.
+This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+This module will contains all cases for the basic test suite
+"""
+
 import pytest
 
 # qa-integration-framework imports
 from wazuh_testing import session_parameters
-from wazuh_testing.constants.aws import TEMPLATE_DIR, TEST_CASES_DIR
 from . import event_monitor, local_internal_options  # noqa: F401
-from wazuh_testing.utils.configuration import (
-    get_test_cases_data,
-    load_configuration_template,
-)
 
 # Local module imports
 from .utils import ERROR_MESSAGES
+from conftest import TestConfigurator
 
 pytestmark = [pytest.mark.server]
 
-
-# Generic vars
-MODULE = 'basic_test_module'
-TEST_DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-CONFIGURATIONS_PATH = os.path.join(TEST_DATA_PATH, TEMPLATE_DIR, MODULE)
-TEST_CASES_PATH = os.path.join(TEST_DATA_PATH, TEST_CASES_DIR, MODULE)
+# Set test configurator for the module
+configurator = TestConfigurator(module='basic_test_module')
 
 # -------------------------------------------- TEST_BUCKET_DEFAULTS ----------------------------------------------------
-# Configuration and cases
-t1_configurations_path = os.path.join(CONFIGURATIONS_PATH, 'bucket_configuration_defaults.yaml')
-t1_cases_path = os.path.join(TEST_CASES_PATH, 'cases_bucket_defaults.yaml')
-
-# Enabled test configurations
-t1_configuration_parameters, t1_configuration_metadata, t1_case_ids = get_test_cases_data(t1_cases_path)
-t1_configurations = load_configuration_template(
-    t1_configurations_path, t1_configuration_parameters, t1_configuration_metadata
-)
+# Configure T1 test
+configurator.configure_test(configuration_file='bucket_configuration_defaults.yaml',
+                            cases_file='cases_bucket_defaults.yaml')
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata', zip(t1_configurations, t1_configuration_metadata), ids=t1_case_ids)
+@pytest.mark.parametrize('configuration, metadata',
+                         zip(configurator.test_configuration_template, configurator.metadata),
+                         ids=configurator.cases_ids)
 def test_bucket_defaults(
     configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_s3_cloudtrail_db,
     configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
@@ -122,19 +117,15 @@ def test_bucket_defaults(
 
 
 # -------------------------------------------- TEST_CLOUDWATCH_DEFAULTS ------------------------------------------------
-# Configuration and cases data
-t2_configurations_path = os.path.join(CONFIGURATIONS_PATH, 'cloudwatch_configuration_defaults.yaml')
-t2_cases_path = os.path.join(TEST_CASES_PATH, 'cases_cloudwatch_defaults.yaml')
-
-# Enabled test configurations
-t2_configuration_parameters, t2_configuration_metadata, t2_case_ids = get_test_cases_data(t2_cases_path)
-configurations = load_configuration_template(
-    t2_configurations_path, t2_configuration_parameters, t2_configuration_metadata
-)
+# Configure T2 test
+configurator.configure_test(configuration_file='cloudwatch_configuration_defaults.yaml',
+                            cases_file='cases_cloudwatch_defaults.yaml')
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata', zip(configurations, t2_configuration_metadata), ids=t2_case_ids)
+@pytest.mark.parametrize('configuration, metadata',
+                         zip(configurator.test_configuration_template, configurator.metadata),
+                         ids=configurator.cases_ids)
 def test_service_defaults(
     configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
     configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
@@ -227,19 +218,15 @@ def test_service_defaults(
 
 
 # ------------------------------------------ TEST_INSPECTOR_DEFAULTS ---------------------------------------------------
-# Configuration and cases data
-t3_configurations_path = os.path.join(CONFIGURATIONS_PATH, 'inspector_configuration_defaults.yaml')
-t3_cases_path = os.path.join(TEST_CASES_PATH, 'cases_inspector_defaults.yaml')
-
-# Enabled test configurations
-t3_configuration_parameters, t3_configuration_metadata, t3_case_ids = get_test_cases_data(t3_cases_path)
-configurations = load_configuration_template(
-    t3_configurations_path, t3_configuration_parameters, t3_configuration_metadata
-)
+# Configure T3 test
+configurator.configure_test(configuration_file='inspector_configuration_defaults.yaml',
+                            cases_file='cases_inspector_defaults.yaml')
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata', zip(configurations, t3_configuration_metadata), ids=t3_case_ids)
+@pytest.mark.parametrize('configuration, metadata',
+                         zip(configurator.test_configuration_template, configurator.metadata),
+                         ids=configurator.cases_ids)
 def test_inspector_defaults(
     configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
     configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring

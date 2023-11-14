@@ -1,4 +1,16 @@
+"""
+Copyright (C) 2015-2023, Wazuh Inc.
+Created by Wazuh, Inc. <info@wazuh.com>.
+This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+This module will contains all necessary components (fixtures, classes, methods)
+to configure the test for it's execution.
+"""
+
 import pytest
+from os.path import join
+
+# Qa-integration-framework imports
 from wazuh_testing.logger import logger
 from wazuh_testing.constants.aws import (
     FAKE_CLOUDWATCH_LOG_GROUP,
@@ -16,7 +28,14 @@ from wazuh_testing.modules.aws.utils import (
 )
 from wazuh_testing.modules.aws.db_utils import delete_s3_db, delete_services_db
 from wazuh_testing.utils.services import control_service
+from wazuh_testing.constants.paths.configurations import TEMPLATE_DIR, TEST_CASES_DIR
+from wazuh_testing.utils.configuration import (
+    get_test_cases_data,
+    load_configuration_template,
+)
 
+# Local imports
+from .utils import TEST_DATA_PATH
 
 @pytest.fixture
 def mark_cases_as_skipped(metadata):
@@ -162,3 +181,54 @@ def clean_aws_services_db():
     yield
 
     delete_services_db()
+
+
+class TestConfigurator:
+    """
+    TestConfigurator class is responsible for configuring test data and parameters for a specific test module.
+
+    Attributes:
+    - module (str): The name of the test module.
+    - configuration_path (str): The path to the configuration directory for the test module.
+    - test_cases_path (str): The path to the test cases directory for the test module.
+    - metadata (dict): Test metadata retrieved from the test cases.
+    - parameters (list): Test parameters retrieved from the test cases.
+    - cases_ids (list): Identifiers for the test cases.
+    - test_configuration_template (dict): The loaded configuration template for the test module.
+
+    """
+    def __init__(self, module):
+        self.module = module
+        self.configuration_path = join(TEST_DATA_PATH, TEMPLATE_DIR, self.module)
+        self.test_cases_path = join(TEST_DATA_PATH, TEST_CASES_DIR, self.module)
+        self.metadata = None
+        self.parameters = None
+        self.cases_ids = None
+        self.test_configuration_template = None
+
+    def configure_test(self, configuration_file="", cases_file=""):
+        """
+        Configures the test data and parameters for the given test module.
+
+        Args:
+        - configuration_file (str): The name of the configuration file.
+        - cases_file (str): The name of the test cases file.
+
+        Returns:
+        None
+        """
+        # Set test configuration path
+        configurations_path = join(self.configuration_path, configuration_file)
+
+        # Set test cases path
+        cases_path = join(self.test_cases_path, cases_file)
+
+        # Get test cases data
+        self.parameters, self.metadata, self.cases_ids = get_test_cases_data(cases_path)
+
+        # load configuration template
+        self.test_configuration_template = load_configuration_template(
+            configurations_path,
+            self.parameters,
+            self.metadata
+        )
