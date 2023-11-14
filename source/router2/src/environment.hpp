@@ -33,6 +33,7 @@ private:
     }
 
 public:
+    // TODO Move to trace storage
     using TraceFn = std::function<void(const std::string&, const std::string&, bool)>; ///< Trace subscriber callback
                                                                                        ///< (Asset, Trace, Result)
 
@@ -105,6 +106,7 @@ public:
      * @param callback
      * @param assets
      * @return std::optional<base::Error>
+     * // TODO Change name
      */
     std::optional<base::Error> subscribeTrace(const TraceFn& callback, const std::vector<std::string>& assets)
     {
