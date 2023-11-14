@@ -1014,8 +1014,10 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2", "10.2.1", "10.2.2", "10.2.4", "10.2.5", "10.3", "11.5"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2", "9.4.5"]
        - soc_2: ["CC5.2", "CC6.1", "CC7.2"]
-     condition:
+     condition: any
      rules:
+      - "f:/etc/security/audit_control -> r:^flags && r:-fm && r:-ex && r:ad && r:aa && r:lo && r:-fr && r:-fw"
+      - "f:/etc/security/audit_control -> r:^flags && r:-all && r:ad && r:aa && r:lo"
 
   # 3.3 Ensure install.log Is Retained for 365 or More Days and No Maximum Size. (Automated)
    - id: 18573
@@ -1034,8 +1036,10 @@ checks:
        - pci_dss_v3.2.1: ["10.7"]
        - pci_dss_v4.0: ["10.1", "10.1.1"]
        - soc_2: ["A1.1"]
-     condition:
+     condition: all
      rules:
+      - 'f:/etc/asl/com.apple.install -> n:^\s*ttl=(\d+) compare > 364'
+      - 'not f:/etc/asl/com.apple.install -> r:^\s*all_max='
 
   # 3.4 Ensure Security Auditing Retention Is Enabled. (Automated)
    - id: 18574
@@ -1054,74 +1058,20 @@ checks:
        - pci_dss_v3.2.1: ["10.7"]
        - pci_dss_v4.0: ["10.1", "10.1.1"]
        - soc_2: ["A1.1"]
-     condition:
+     condition: any
      rules:
+      - 'f:/etc/security/audit_control -> n:^expire-after:\s*(\d+)s OR \d+\w compare => 5184000'
+      - 'f:/etc/security/audit_control -> n:^expire-after:\s*(\d+)h OR \d+\w compare => 1440'
+      - 'f:/etc/security/audit_control -> n:^expire-after:\s*(\d+)d OR \d+\w compare => 60'
+      - 'f:/etc/security/audit_control -> n:^expire-after:\s*(\d+)y OR \d+\w compare => 1'
+      - 'f:/etc/security/audit_control -> n:^expire-after:\s*\d+\w OR (\d+)b compare => 5368709120'
+      - 'f:/etc/security/audit_control -> n:^expire-after:\s*\d+\w OR (\d+)k compare => 5242880'
+      - 'f:/etc/security/audit_control -> n:^expire-after:\s*\d+\w OR (\d+)m compare => 5120'
+      - 'f:/etc/security/audit_control -> n:^expire-after:\s*\d+\w OR (\d+)g compare => 5'
 
-  # 3.5 Ensure Access to Audit Records Is Controlled. (Automated)
-   - id: 18575
-     title: "Ensure Access to Audit Records Is Controlled."
-     description: "The audit system on macOS writes important operational and security information that can be both useful for an attacker and a place for an attacker to attempt to obfuscate unwanted changes that were recorded. As part of defense-in-depth, the /etc/security/audit_control configuration and the files in /var/audit should be owned only by root with group wheel with read-only rights and no other access allowed. macOS ACLs should not be used for these files."
-     rationale: "Audit records should never be changed except by the system daemon posting events. Records may be viewed or extracts manipulated, but the authoritative files should be protected from unauthorized changes."
-     impact: "This control is only checking the default configuration to ensure that unwanted access to audit records is not available."
-     remediation: "Terminal Method: Run the following to commands to set the audit records to the root user and wheel group: $ /usr/bin/sudo /usr/sbin/chown -R root:wheel /etc/security/audit_control $ /usr/bin/sudo /bin/chmod -R o-rw /etc/security/audit_control $ /usr/bin/sudo /usr/sbin/chown -R root:wheel /var/audit/ $ /usr/bin/sudo /bin/chmod -R o-rw /var/audit/ Note: It is recommended to do a thorough verification process on why the audit logs have been changed before following the remediation steps. If the system has different access controls on the audit logs, and the changes cannot be traced, a new install may be prudent. Check for signs of file tampering as well as unapproved OS changes."
-     compliance:
-       - cis: ["3.5"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition:
-     rules:
-
-  # 3.6 Ensure Firewall Logging Is Enabled and Configured. (Automated)
-   - id: 18576
-     title: "Ensure Firewall Logging Is Enabled and Configured."
-     description: "The socketfilter Firewall is what is used when the Firewall is turned on in the Security & Privacy Preference Pane. In order to appropriately monitor what access is allowed and denied, logging must be enabled. The logging level must be set to \"detailed\" to be useful in monitoring connection attempts that the firewall detects. Throttled login is not sufficient for examining Firewall connection attempts. In-depth log monitoring on macOS may require changes to the \"Enable-Private-Data\" key in SystemLogging.System to ensure more complete logging. Reviewing macOS Unified Logs."
-     rationale: "In order to troubleshoot the successes and failures of a Firewall, detailed logging should be enabled."
-     impact: "Detailed logging may result in excessive storage."
-     remediation: "Terminal Method: Run the following command to enable logging of the firewall: $ /usr/bin/sudo /usr/libexec/ApplicationFirewall/socketfilterfw -- setloggingmode on Turning on log mode $ /usr/bin/sudo /usr/libexec/ApplicationFirewall/socketfilterfw -- setloggingopt detail Setting detail log option Note: If the Firewall settings are set through a configuration profile, then modifications cannot be done through the command line. If attempted, you will receive the message Firewall settings cannot be modified from command line on managed Mac computers. Profile Method: Create or edit a configuration profile with the following information: 1. The PayloadType string is com.apple.security.firewall 2. The key to include is EnableFirewall 3. The key must be set to <true/> 4. The key to also include is EnableLogging 5. The key must be set to <true/> 6. The key to also include is LoggingOption 7. The key must be set to <string>detail</string> Note: Firewall Logging must be enabled with this profile. It can either be set with the Firewall and Stealth Mode (2.5.2.2 and 2.5.2.3) or as a separate profile. Setting logging with its own profile will not cause a conflict."
-     references:
-       - 'https://developer.apple.com/documentation/devicemanagement/firewall?languag'
-     compliance:
-       - cis: ["3.6"]
-       - cis_csc_v8: ["4.5", "8.2", "8.5"]
-       - cis_csc_v7: ["6.2", "6.3", "9.2"]
-       - cmmc_v2.0: ["AC.L1-3.1.20", "AU.L2-3.3.1", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-       - hipaa: ["164.312(b)"]
-       - iso_27001-2013: ["A.12.4.1", "A.13.1.3"]
-       - nist_sp_800-53: ["AU-3(1)", "AU-7", "SC-7(5)"]
-       - pci_dss_v3.2.1: ["1.1.4", "1.4", "10.1", "10.2", "10.2.2", "10.2.4", "10.2.5", "10.3"]
-       - pci_dss_v4.0: ["1.2.1", "10.2", "10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2", "9.4.5"]
-       - soc_2: ["CC5.2", "CC6.6", "CC7.2"]
-     condition:
-     rules:
-
-  # 3.7 Audit Software Inventory. (Manual)
-   - id: 18577
-     title: "Audit Software Inventory."
-     description: "With the introduction of Mac OS X 10.6.6, Apple added a new application, App Store, which resides in the Applications directory. This application allows a user with admin privileges and an Apple ID to browse Apple's online App Store, purchase (including no-cost purchases), and install new applications, bypassing Enterprise software inventory controls. Any admin user can install software in the /Applications directory whether from internet downloads, thumb drives, optical media, cloud storage, or even binaries through email. Even standard users can run executables downloaded to their home folder by default. The source of the software is not nearly as important as a consistent audit of all installed software for patch compliance and appropriateness. A single user desktop where the user, administrator, and the person approving software are all the same person probably does not need to audit software inventory to this extent. It is helpful in the case of stability problems or malware, however. Scan systems on a monthly basis and determine the number of unauthorized pieces of software that are installed. Verify that if an unauthorized piece of software is found one month, it is removed from the system the next. Export System Information through the built-in System Information Application or other third-party tools on an organizationally defined timetable."
-     rationale: "Part of comprehensive IT security involves device management and ensuring that all software is authorized and patched. Checking for macOS updates and app updates are relatively simple for the end user, and can even be updated with minimal privileges from trusted sources, if enabled. Remote monitoring of the patch status for software maintained through Apple is very well supported by management applications. Neither Apple capabilities nor third-party patch management solutions will cover all mission-necessary software for most organizations. Full visibility into software present on the system enables vulnerability and risk management. P.S. Don't forget about browser plugins/extensions for all installed software."
-     remediation: "Delete any unnecessary applications from the system."
-     references:
-       - 'https://support.apple.com/en-us/HT203001'
-       - 'https://www.cisecurity.org/controls/inventory-and-control-of-software-assets/'
-     compliance:
-       - cis: ["3.7"]
-       - cis_csc_v8: ["2.1"]
-       - cis_csc_v7: ["2.1"]
-       - cmmc_v2.0: ["CM.L2-3.4.1"]
-       - iso_27001-2013: ["A.8.1.1"]
-       - nist_sp_800-53: ["CM-7(1)", "MA-3"]
-       - pci_dss_v3.2.1: ["1.1.6", "2.4"]
-       - pci_dss_v4.0: ["1.2.5", "6.3.2"]
-       - soc_2: ["CC3.2", "CC6.1"]
-     condition:
-     rules:
+  # 3.5 Ensure Access to Audit Records Is Controlled. (Automated) - Not Implemented
+  # 3.6 Ensure Firewall Logging Is Enabled and Configured. (Automated) - Not Implemented
+  # 3.7 Audit Software Inventory. (Manual) - Not Implemented
 
   # 4.1 Ensure Bonjour Advertising Services Is Disabled. (Automated)
    - id: 18578
@@ -1140,8 +1090,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.mDNSResponder'').objectForKey(''NoMulticastAdvertisements'')" -> r:^1$'
 
   # 4.2 Ensure HTTP Server Is Disabled. (Automated)
    - id: 18579
@@ -1163,8 +1114,9 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+      - "not c:launchctl list -> r:org.apache.httpd"
 
   # 4.3 Ensure NFS Server Is Disabled. (Automated)
    - id: 18580
@@ -1183,29 +1135,12 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "11.5", "2.2", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.5", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+      - "not c:launchctl list -> r:com.apple.nfsd"
+      - "not f:/etc/exports"
 
-  # 5.1.1 Ensure Home Folders Are Secure. (Automated)
-   - id: 18581
-     title: "Ensure Home Folders Are Secure."
-     description: "By default, macOS allows all valid users into the top level of every other user's home folder and restricts access to the Apple default folders within. Another user on the same system can see you have a \"Documents\" folder but cannot see inside it. This configuration does work for personal file sharing but can expose user files to standard accounts on the system. The best parallel for Enterprise environments is that everyone who has a Dropbox account can see everything that is at the top level but can't see your pictures. Similarly with macOS, users can see into every new Directory that is created because of the default permissions. Home folders should be restricted to access only by the user. Sharing should be used on dedicated servers or cloud instances that are managing access controls. Some environments may encounter problems if execute rights are removed as well as read and write. Either no access or execute only for group or others is acceptable."
-     rationale: "Allowing all users to view the top level of all networked users' home folder may not be desirable since it may lead to the revelation of sensitive information."
-     impact: "If implemented, users will not be able to use the \"Public\" folders in other users' home folders. \"Public\" folders with appropriate permissions would need to be set up in the /Shared folder."
-     remediation: "Terminal Method: For each user, run the following command to secure all home folders: $ /usr/bin/sudo /bin/chmod -R og-rwx /Users/<username> Alternately, run the following command if there needs to be executable access for a home folder: $ /usr/bin/sudo /bin/chmod -R og-rw /Users/<username> example: $ /usr/bin/sudo /bin/chmod -R og-rw /Users/firstuser/ $ /usr/bin/sudo /bin/chmod -R og-rwx /Users/thirduser/."
-     compliance:
-       - cis: ["5.1.1"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition:
-     rules:
+  # 5.1.1 Ensure Home Folders Are Secure. (Automated) - Not Implemented
 
   # 5.1.2 Ensure System Integrity Protection Status (SIP) Is Enabled. (Automated)
    - id: 18582
