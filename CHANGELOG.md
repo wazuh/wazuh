@@ -42,17 +42,17 @@ All notable changes to this project will be documented in this file.
 - Added package inventory support for MacPorts in Syscollector. ([#15877](https://github.com/wazuh/wazuh/pull/15877))
 - Added package inventory support for PYPI and node in Syscollector. ([#17982](https://github.com/wazuh/wazuh/pull/17982))
 - Added related process information to the open ports inventory in Syscollector. ([#15000](https://github.com/wazuh/wazuh/pull/15000))
-- Fixed vendor data in package inventory for Brew packages on macOS. ([#16089](https://github.com/wazuh/wazuh/pull/16089))
 
 #### Changed
 
 - The shared modules' code has been sanitized according to the convention. ([#17966](https://github.com/wazuh/wazuh/pull/17966))
 - The package inventory internal messages have been modified to honor the schema compliance. ([#18006](https://github.com/wazuh/wazuh/pull/18006))
-- The agent's leaky bucket throughput limit has been extended to 100.000 EPS. ([#16346](https://github.com/wazuh/wazuh/pull/16346))
 
 #### Fixed
 
 - Fixed detection of osquery 5.4.0+ running outside the integration. ([#17006](https://github.com/wazuh/wazuh/pull/17006))
+- Fixed vendor data in package inventory for Brew packages on macOS. ([#16089](https://github.com/wazuh/wazuh/pull/16089))
+- Fixed WPK rollback restarting host in Windows agent ([#20081](https://github.com/wazuh/wazuh/pull/20081))
 
 ### RESTful API
 
@@ -64,6 +64,10 @@ All notable changes to this project will be documented in this file.
 - Addressed error handling for non-utf-8 encoded file readings. ([#16489](https://github.com/wazuh/wazuh/pull/16489))
 - Resolved an issue in the `WazuhException` class that disrupted the API executor subprocess. ([#16914](https://github.com/wazuh/wazuh/pull/16914))
 - Corrected an empty value problem in the API specification key. ([#16918](https://github.com/wazuh/wazuh/issues/16918))
+
+#### Deleted
+
+- Deprecated `PUT /vulnerability`, `GET /vulnerability/{agent_id}`, `GET /vulnerability/{agent_id}/last_scan` and `GET /vulnerability/{agent_id}/summary/{field}` API endpoints. In future versions, the Wazuh indexer REST API can be used instead. ([#20126](https://github.com/wazuh/wazuh/pull/20126))
 
 ### Other
 

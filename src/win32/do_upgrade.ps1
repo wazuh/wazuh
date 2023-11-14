@@ -133,7 +133,7 @@ function get_uninstall_string {
             foreach ($subsubpath in $subpath) {
                 if ($subsubpath -match "InstallProperties") {
                     if ($subsubpath.GetValue("Publisher") -match $Env:WAZUH_PUBLISHER_VALUE) {
-                        $UninstallString = $subsubpath.GetValue("UninstallString") + " /quiet"
+                        $UninstallString = $subsubpath.GetValue("UninstallString") + " /quiet /norestart"
                     }
                 }
             }
