@@ -5724,7 +5724,7 @@ checks:
     rationale: "This Microsoft feature is designed to collect data and suggest apps based on that data collected. Disabling this setting will help ensure your data is not shared with any third party."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Ink Workspace\\Allow suggested apps in Windows Ink Workspace. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsInkWorkspace.admx/adml that is included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer)."
     compliance:
-      - cis: ["18.9.89.1"]
+      - cis: ["18.10.80.1"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
