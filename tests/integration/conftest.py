@@ -25,7 +25,7 @@ from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils import configuration, database, file, mocking, services
 from wazuh_testing.utils.file import remove_file
 from wazuh_testing.utils.manage_agents import remove_agents
-
+from wazuh_testing.utils.services import control_service
 
 #- - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -543,3 +543,16 @@ def autostart_simulators(request: pytest.FixtureRequest) -> None:
     if services.get_service() is not WAZUH_MANAGER:
         authd.shutdown() if create_authd else None
         remoted.shutdown() if create_remoted else None
+
+@pytest.fixture()
+def simulate_agents(test_metadata):
+
+    agents_amount = test_metadata.get("agents_number", 1)
+    agents = create_agents(agents_amount , 'localhost')
+
+    yield agents
+
+    # Delete simulated agents
+    control_service('start')
+    remove_agents([a.id for a in agents],'manage_agents')
+    control_service('stop')
