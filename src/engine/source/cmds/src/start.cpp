@@ -326,14 +326,20 @@ void runStart(ConfHandler confManager)
             router::Config routerConfig {.m_numThreads = 1,
                                          .m_store = store,
                                          .m_registry = registry,
-                                         .m_controllerMaker = std::make_shared<bk::rx::ControllerMaker>()
+                                         .m_controllerMaker = std::make_shared<bk::rx::ControllerMaker>(),
+                                         .m_queue = eventQueue
                                          };
             // Delete router metrics
             routerAdmin = std::make_shared<router::RouterAdmin>(routerConfig);
+            auto res = routerAdmin->postEnvironment(router::EntryPost::createEntryPost("Default", "policy/wazuh/0", "filter/allow-all/0", 255));
+            if (res.has_value())
+            {
+              throw std::runtime_error("Error creating default environment: " + res.value().message);
+            }
+            routerAdmin->start();
 
             exitHandler.add([routerAdmin]() { routerAdmin->stop(); });
             LOG_INFO("Router initialized.");
-
         }
 
         // Test
@@ -450,13 +456,13 @@ void runStart(ConfHandler confManager)
             server->addEndpoint("API", apiEndpointCfg);
 
             // Event Endpoint
-            // auto eventMetricScope = metrics->getMetricsScope("endpointEvent");
-            // auto eventMetricScopeDelta = metrics->getMetricsScope("endpointEventRate", true);
-            // auto eventHandler = std::bind(&router::Router::fastEnqueueEvent, routerAdmin, std::placeholders::_1);
-            // auto eventEndpointCfg = std::make_shared<endpoint::UnixDatagram>(
-            //     serverEventSock, eventHandler, eventMetricScope, eventMetricScopeDelta, serverEventQueueSize);
-            // server->addEndpoint("EVENT", eventEndpointCfg);
-            // LOG_DEBUG("Server configured.");
+            auto eventMetricScope = metrics->getMetricsScope("endpointEvent");
+            auto eventMetricScopeDelta = metrics->getMetricsScope("endpointEventRate", true);
+            auto eventHandler = std::bind(&router::RouterAdmin::fastEnqueueEvent, routerAdmin, std::placeholders::_1);
+            auto eventEndpointCfg = std::make_shared<endpoint::UnixDatagram>(
+                serverEventSock, eventHandler, eventMetricScope, eventMetricScopeDelta, serverEventQueueSize);
+            server->addEndpoint("EVENT", eventEndpointCfg);
+            LOG_DEBUG("Server configured.");
         }
     }
     catch (const std::exception& e)

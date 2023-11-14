@@ -88,21 +88,23 @@ public:
      *
      * @param builder The builder used to construct the policy and filter.
      */
-    EnvironmentBuilder(std::shared_ptr<IBuilder> builder)
+    EnvironmentBuilder(std::shared_ptr<IBuilder> builder, std::shared_ptr<bk::IControllerMaker> controllerMaker)
         : m_builder(builder)
+        , m_controllerMaker(controllerMaker)
     {
         if (m_builder == nullptr)
         {
             throw std::runtime_error {"Cannot create BuildEnvironment with a null builder"};
         }
+
+        if (m_controllerMaker == nullptr)
+        {
+            throw std::runtime_error {"Cannot create BuildEnvironment with a null controller maker"};
+        }
     }
 
     EnvironmentBuilder() = delete;
 
-    void setController(std::shared_ptr<bk::IControllerMaker> controller)
-    {
-        m_controllerMaker = controller;
-    }
 
     /**
      * @brief Create an environment based on a policy and a filter.
@@ -112,13 +114,13 @@ public:
      * @return Environment The created environment.
      * @throws std::runtime_error if failed to create the environment.
      */
-    Environment create(const base::Name& policyName, const base::Name& filterName)
+    std::unique_ptr<Environment> create(const base::Name& policyName, const base::Name& filterName)
     {
         try
         {
             auto controller = getController(policyName);
             auto expression = getExpression(filterName);
-            return Environment(std::move(expression), std::move(controller));
+            return std::make_unique<Environment>(std::move(expression), std::move(controller));
         }
         catch (const std::exception& e)
         {
