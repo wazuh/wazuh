@@ -5694,6 +5694,30 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\GameDVR -> AllowGameDVR'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\GameDVR -> AllowGameDVR -> 0'
 
+  # 18.10.79.1 (L1) Ensure 'Enable ESS with Supported Peripherals' is set to 'Enabled: 1'. (Automated)
+  - id: 26443
+    title: "Ensure 'Enable ESS with Supported Peripherals' is set to 'Enabled: 1'."
+    description: "Enhanced Sign-in Security isolates Windows Hello biometric (face and fingerprint) template data and matching operations to trusted hardware or specified memory regions. The recommended state for this setting is: Enabled: 1. (Enhanced Sign-in Security Enabled)."
+    rationale: "Because the channel of communication between the sensors and the algorithm is secured, it is impossible for malware to inject or replay data in order to simulate a user signing in or to lock a user out of their machine."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 1 (Enhanced Sign-in Security Enabled): Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Hello for Business\\Enable ESS with Supported Peripherals Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Passport.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates (or newer)."
+    references:
+      - "https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/restore-scpc-config-for-admins"
+      - "https://learn.microsoft.com/en-us/windows/security/identity-protection/hello-for-business/hello-faq"
+    compliance:
+      - cis: ["18.10.79.1"]
+      - cis_csc_v8: ["10.5"]
+      - cis_csc_v7: ["8.3"]
+      - nist_sp_800-53: ["SI-16"]
+      - pci_dss_v3.2.1: ["1.4"]
+      - soc_2: ["CC6.8"]
+    condition: any
+    rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Policies\PassportForWork\Biometrics'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Policies\PassportForWork\Biometrics -> EnableESSwithSupportedPeripherals'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\GameDVR -> EnableESSwithSupportedPeripherals -> 1'
+
+  # 18.10.80.1 (L2) Ensure 'Allow suggested apps in Windows Ink Workspace' is set to 'Disabled'. (Automated)
   - id: 26369
     title: "Ensure 'Allow suggested apps in Windows Ink Workspace' is set to 'Disabled'."
     description: "This policy setting determines whether suggested apps in Windows Ink Workspace are allowed. The recommended state for this setting is: Disabled."
@@ -6113,3 +6137,19 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferQualityUpdates -> 1'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferQualityUpdatesPeriodInDays -> 0'
+
+  # 19.1.3.1 (L1) Ensure 'Enable screen saver' is set to 'Enabled'. (Automated) - Not Implemented
+  # 19.1.3.2 (L1) Ensure 'Password protect the screen saver' is set to 'Enabled'. (Automated) - Not Implemented
+  # 19.1.3.3 (L1) Ensure 'Screen saver timeout' is set to 'Enabled: 900 seconds or fewer, but not 0'. (Automated) - Not Implemented
+  # 19.5.1.1 (L1) Ensure 'Turn off toast notifications on the lock screen' is set to 'Enabled'. (Automated) - Not Implemented
+  # 19.6.6.1.1 (L2) Ensure 'Turn off Help Experience Improvement Program' is set to 'Enabled'. (Automated) - Not Implemented
+  # 19.7.4.1 (L1) Ensure 'Do not preserve zone information in file attachments' is set to 'Disabled'. (Automated) - Not Implemented
+  # 19.7.4.2 (L1) Ensure 'Notify antivirus programs when opening attachments' is set to 'Enabled'. (Automated) - Not Implemented
+  # 19.7.7.1 (L1) Ensure 'Configure Windows spotlight on lock screen' is set to Disabled'. (Automated) - Not Implemented
+  # 19.7.7.2 (L1) Ensure 'Do not suggest third-party content in Windows spotlight' is set to 'Enabled'. (Automated) -- Not Implemented
+  # 19.7.7.3 (L2) Ensure 'Do not use diagnostic data for tailored experiences' is set to 'Enabled'. (Automated) - Not Implemented
+  # 19.7.7.4 (L2) Ensure 'Turn off all Windows spotlight features' is set to 'Enabled'. (Automated)- Not Implemented
+  # 19.7.7.5 (L1) Ensure 'Turn off Spotlight collection on Desktop' is set to 'Enabled'. (Automated) - Not Implemented
+  # 19.7.25.1 (L1) Ensure 'Prevent users from sharing files within their profile.' is set to 'Enabled'. (Automated) - Not Implemented
+  # 19.7.40.1 (L1) Ensure 'Always install with elevated privileges' is set to 'Disabled'. (Automated) - Not Implemented
+  # 19.7.42.2.1 (L2) Ensure 'Prevent Codec Download' is set to 'Enabled'. (Automated) - Not Implemented

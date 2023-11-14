@@ -1,4 +1,4 @@
-name: Framework unit tests
+name: External integrations unit tests
 
 on:
   workflow_dispatch:
@@ -9,8 +9,8 @@ on:
         default: 'main'
   pull_request:
     paths:
-      - '.github/workflows/framework-unit-tests.yml'
-      - 'framework/**'
+      - '.github/workflows/external-integrations-unit-tests.yml'
+      - 'integrations/**'
       - 'src/Makefile'
 
 jobs:
@@ -23,7 +23,7 @@ jobs:
     env:
       PYTHONPATH: /home/runner/work/wazuh/wazuh/api:/home/runner/work/wazuh/wazuh/framework
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -37,5 +37,5 @@ jobs:
           python -m pip install --upgrade pip wheel
           pip install -r framework/requirements-dev.txt --no-build-isolation
 
-      - name: Run Framework tests
-        run: python -m pytest framework
+      - name: Run External integrations tests
+        run: python -m pytest integrations
