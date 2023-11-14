@@ -29,6 +29,7 @@ target_link_libraries(router2_router
     router2::irouter
     builder::ibuilder
     bk::ibk
+    queue::iqueue
 
     PRIVATE
     base
