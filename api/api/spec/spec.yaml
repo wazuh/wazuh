@@ -1446,7 +1446,6 @@ components:
               type: string
           description: "Agent OS information"
         status_code:
-          type: integer
           description: "Agent connection status code"
           type: integer
           format: int32
@@ -18948,6 +18947,7 @@ paths:
     put:
       tags:
         - Vulnerability
+      deprecated: true
       summary: "Run vulnerability detector scan"
       description: "Run a vulnerability detector scan in all nodes"
       operationId: api.controllers.vulnerability_controller.run_vulnerability_scan
@@ -18989,6 +18989,7 @@ paths:
     get:
       tags:
         - Vulnerability
+      deprecated: true
       summary: "Get vulnerabilities"
       description: "Return the vulnerabilities of an agent"
       operationId: api.controllers.vulnerability_controller.get_vulnerability_agent
@@ -19072,6 +19073,7 @@ paths:
     get:
       tags:
       - Vulnerability
+      deprecated: true
       summary: "Get last scan datetime"
       description: "Return when the last full and partial vulnerability scan of a specified agent ended."
       operationId: api.controllers.vulnerability_controller.get_last_scan_agent
@@ -19118,6 +19120,7 @@ paths:
     get:
       tags:
         - Vulnerability
+      deprecated: true
       summary: "Get agent vulnerabilities' field summary"
       description: "Return a summary of the vulnerabilities' field of an agent"
       operationId: api.controllers.vulnerability_controller.get_vulnerabilities_field_summary
