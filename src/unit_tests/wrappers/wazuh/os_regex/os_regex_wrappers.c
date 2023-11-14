@@ -109,3 +109,15 @@ const char *__wrap_OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_match
 
     return __real_OSRegex_Execute_ex(str, reg, regex_match);
 }
+
+extern char **__real_OS_StrBreak(char match, const char *str, size_t size);
+char **__wrap_OS_StrBreak(char match, const char *str, size_t size) {
+    if (test_mode) {
+        if (str) {
+            check_expected(str);
+        }
+        return mock_type(char **);
+    }
+
+    return __real_OS_StrBreak(match, str, size);
+}

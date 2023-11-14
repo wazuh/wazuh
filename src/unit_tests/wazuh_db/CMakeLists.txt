@@ -112,7 +112,8 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,strerror \
                              -Wl,--wrap,wdb_create_profile -Wl,--wrap,Privsep_GetUser -Wl,--wrap,Privsep_GetGroup -Wl,--wrap,chown \
                              -Wl,--wrap,chmod -Wl,--wrap,IsDir -Wl,--wrap,fgets -Wl,--wrap,fflush -Wl,--wrap,fseek -Wl,--wrap,get_node_name \
                              -Wl,--wrap,rbtree_insert \
-                             -Wl,--wrap,stat -Wl,--wrap,fgetpos ${DEBUG_OP_WRAPPERS}")
+                             -Wl,--wrap,stat -Wl,--wrap,fgetpos \
+                             -Wl,--wrap,OS_StrBreak ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_agents_helpers")
 list(APPEND wdb_tests_flags "-Wl,--wrap,strerror \
@@ -140,7 +141,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_count_tables_with_name \
                              -Wl,--wrap,unlink -Wl,--wrap,getpid -Wl,--wrap,time -Wl,--wrap,sqlite3_open_v2 -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,sqlite3_close_v2 \
                              -Wl,--wrap,sqlite3_prepare_v2 -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_column_int -Wl,--wrap,sqlite3_finalize -Wl,--wrap,fgetpos \
                              -Wl,--wrap,fgetc -Wl,--wrap,wdb_global_create_backup -Wl,--wrap,wdb_global_get_most_recent_backup -Wl,--wrap,wdb_global_restore_backup \
-                             -Wl,--wrap,wdb_global_adjust_v4 ${DEBUG_OP_WRAPPERS}")
+                             -Wl,--wrap,wdb_global_adjust_v4 -Wl,--wrap,OS_StrBreak ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_metadata")
 list(APPEND wdb_tests_flags "-Wl,--wrap,sqlite3_prepare_v2 -Wl,--wrap,sqlite3_errmsg \

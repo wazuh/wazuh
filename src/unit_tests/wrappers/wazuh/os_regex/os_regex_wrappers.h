@@ -25,4 +25,6 @@ const char *__wrap_OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_match
 
 void __wrap_OSRegex_FreePattern(OSRegex *reg);
 
+char **__wrap_OS_StrBreak(char match, const char *str, size_t size);
+
 #endif
