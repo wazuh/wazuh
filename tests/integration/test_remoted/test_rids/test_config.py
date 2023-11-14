@@ -8,7 +8,6 @@ import pytest
 
 from pathlib import Path
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
-from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.utils.services import control_service
@@ -23,7 +22,7 @@ from wazuh_testing.utils.configuration import set_internal_options_conf
 pytestmark = [pytest.mark.server, pytest.mark.tier(level=1)]
 
 # Cases metadata and its ids.
-cases_path = Path(TEST_CASES_PATH, 'cases_rids.yaml')
+cases_path = Path(TEST_CASES_PATH, 'cases_config.yaml')
 config_path = Path(CONFIGS_PATH, 'config_rids.yaml')
 test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
@@ -60,10 +59,6 @@ def test_rids_conf(test_configuration, test_metadata, configure_local_internal_o
             type: fixture
             brief: Starts/Restarts the daemons indicated in `daemons_handler_configuration` before each test,
                    once the test finishes, stops the daemons.
-        - restart_wazuh_expect_error
-            type: fixture
-            brief: Restart service when expected error is None, once the test finishes stops the daemons.
-
     '''
 
     log_monitor = FileMonitor(WAZUH_LOG_PATH)
