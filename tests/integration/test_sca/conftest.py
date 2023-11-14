@@ -1,17 +1,16 @@
 import os
 import pytest
+from pathlib import Path
 
 from wazuh_testing.constants.paths.configurations import CIS_RULESET_PATH
 from wazuh_testing.utils.file import copy, remove_file, copy_files_in_folder, delete_path_recursively
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.modules.sca import patterns
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.constants.paths import TEMP_FILE_PATH
 from wazuh_testing.utils import callbacks
 
-
-# Variables
-TEST_DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-
+from . import TEST_DATA_PATH
 
 # Fixtures
 @pytest.fixture()
@@ -31,13 +30,13 @@ def prepare_cis_policies_file(test_metadata):
     Args:
         test_metadata (dict): contains the test metadata. Must contain policy_file key with file name.
     '''
-    files_to_restore = copy_files_in_folder(src_folder=CIS_RULESET_PATH, dst_folder=patterns.TEMP_FILE_PATH)
+    files_to_restore = copy_files_in_folder(src_folder=CIS_RULESET_PATH, dst_folder=TEMP_FILE_PATH)
     filename = test_metadata['policy_file']
-    filepath = os.path.join(TEST_DATA_PATH, 'policies', filename)
+    filepath = Path(TEST_DATA_PATH, 'policies', filename)
     copy(filepath, CIS_RULESET_PATH)
     yield
-    copy_files_in_folder(src_folder=patterns.TEMP_FILE_PATH, dst_folder=CIS_RULESET_PATH, files_to_move=files_to_restore)
-    remove_file(os.path.join(CIS_RULESET_PATH, filename))
+    copy_files_in_folder(src_folder=TEMP_FILE_PATH, dst_folder=CIS_RULESET_PATH, files_to_move=files_to_restore)
+    remove_file(Path(CIS_RULESET_PATH, filename))
 
 
 @pytest.fixture()

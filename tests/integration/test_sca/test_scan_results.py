@@ -31,8 +31,10 @@ references:
 tags:
     - sca
 '''
-import os
 import pytest
+import re
+import json
+from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.utils import callbacks, configuration
@@ -40,19 +42,15 @@ from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.modules.sca import patterns
 from wazuh_testing.modules.modulesd.configuration import MODULESD_DEBUG
 
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0)]
-
-# Reference paths
-TEST_DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-CONFIGURATIONS_PATH = os.path.join(TEST_DATA_PATH, 'configuration_template')
-TEST_CASES_PATH = os.path.join(TEST_DATA_PATH, 'test_cases')
 
 local_internal_options = {MODULESD_DEBUG: '2'}
 
 # Configuration and cases data
-configurations_path = os.path.join(CONFIGURATIONS_PATH, 'configuration_sca.yaml')
-cases_path = os.path.join(TEST_CASES_PATH, 'cases_scan_results.yaml')
+configurations_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_sca.yaml')
+cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_scan_results.yaml')
 
 # Test configurations
 configuration_parameters, configuration_metadata, case_ids = configuration.get_test_cases_data(cases_path)
@@ -60,6 +58,27 @@ configurations = configuration.load_configuration_template(configurations_path, 
 
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
+
+# Callback functions
+def callback_scan_id_result(line):
+    '''Callback that returns the ID an result of a SCA check
+    Args:
+        line (str): line string to check for match.
+    '''
+    match = re.match(patterns.CB_SCAN_RULE_RESULT, line)
+    if match:
+        return [match.group(1), match.group(2)]
+
+
+def callback_detect_sca_scan_summary(line):
+    '''Callback that return the json from a SCA summary event.
+    Args:
+        line (str): line string to check for match.
+    '''
+    match = re.match(patterns.CB_SCA_SCAN_EVENT, line)
+    if match:
+        if json.loads(match.group(1))['type'] == 'summary':
+            return json.loads(match.group(1))
 
 
 # Tests
@@ -141,10 +160,10 @@ def test_sca_scan_results(test_configuration, test_metadata, prepare_cis_policie
         f"Wrong regex-engine found: {engine}, expected: {test_metadata['regex_type']}"
 
     # Check all checks have been done
-    log_monitor.start(callback=patterns.callback_scan_id_result, timeout=20, accumulations=int(test_metadata['results']))
+    log_monitor.start(callback=callback_scan_id_result, timeout=20, accumulations=int(test_metadata['results']))
 
     # # Get scan summary event and check it matches with the policy file used
-    log_monitor.start(callback=patterns.callback_detect_sca_scan_summary, timeout=20)
+    log_monitor.start(callback=callback_detect_sca_scan_summary, timeout=20)
     summary = log_monitor.callback_result
 
     assert summary['policy_id'] == test_metadata['policy_file'][0:-5], f"Unexpected policy_id found. Got \

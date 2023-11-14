@@ -33,6 +33,7 @@ tags:
 '''
 import os
 import pytest
+from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.utils import callbacks, configuration
@@ -40,19 +41,15 @@ from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.modules.sca import patterns
 from wazuh_testing.modules.modulesd.configuration import MODULESD_DEBUG
 
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0)]
-
-# Reference paths
-TEST_DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-CONFIGURATIONS_PATH = os.path.join(TEST_DATA_PATH, 'configuration_template')
-TEST_CASES_PATH = os.path.join(TEST_DATA_PATH, 'test_cases')
 
 local_internal_options = {MODULESD_DEBUG: '2'}
 
 # Configuration and cases data
-configurations_path = os.path.join(CONFIGURATIONS_PATH, 'configuration_sca.yaml')
-cases_path = os.path.join(TEST_CASES_PATH, 'cases_validate_remediation.yaml')
+configurations_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_sca.yaml')
+cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_validate_remediation.yaml')
 
 # Test configurations
 configuration_parameters, configuration_metadata, case_ids = configuration.get_test_cases_data(cases_path)
