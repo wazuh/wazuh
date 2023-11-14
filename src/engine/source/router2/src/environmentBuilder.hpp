@@ -99,6 +99,11 @@ public:
 
     EnvironmentBuilder() = delete;
 
+    void setController(std::shared_ptr<bk::IControllerMaker> controller)
+    {
+        m_controllerMaker = controller;
+    }
+
     /**
      * @brief Create an environment based on a policy and a filter.
      *
