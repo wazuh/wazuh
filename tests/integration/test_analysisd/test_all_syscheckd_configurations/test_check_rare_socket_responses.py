@@ -93,7 +93,8 @@ def test_validate_rare_socket_responses(test_metadata, configure_local_internal_
 
     tier: 2
 
-    parameters:
+    parameters:eceiver_sockets[0].send(test_metadata['input'])
+    monitored_sockets[0].start(c
         - test_metadata:
             type: dict
             brief: Test case metadata.
