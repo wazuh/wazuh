@@ -4,6 +4,7 @@
 #include <gmock/gmock.h>
 
 #include <bk/icontroller.hpp>
+#include <bk/icontroller.hpp>
 
 namespace bk::mocks
 {
@@ -21,6 +22,12 @@ public:
     MOCK_METHOD(const std::unordered_set<std::string>&, getTraceables, (), (const, override));
     MOCK_METHOD(base::RespOrError<Subscription>, subscribe, (const std::string&, const Subscriber&), (override));
     MOCK_METHOD(void, unsubscribe, (const std::string&, Subscription), (override));
+};
+
+class MockMakerController : public IControllerMaker
+{
+public:
+    MOCK_METHOD(std::shared_ptr<IController>, create, (), (override));
 };
 } // namespace bk::mocks
 
