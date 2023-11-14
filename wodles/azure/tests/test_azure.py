@@ -6,7 +6,8 @@ import socket
 import sys
 from datetime import datetime
 from hashlib import md5
-from unittest.mock import call, patch, MagicMock
+from unittest.mock import call, patch, MagicMock, PropertyMock
+
 from typing import Optional
 
 import pytest
@@ -49,8 +50,8 @@ def create_mocked_blob(blob_name: str, last_modified: datetime = None, content_l
     blob.properties.last_modified = (last_modified if last_modified else datetime.now()).replace(tzinfo=pytz.UTC)
 
     # Add Blob length property
-    if content_length:
-        blob.properties.content_length = content_length
+    if not (content_length is None):
+        type(blob.properties).content_length = PropertyMock(return_value=content_length)
 
     return blob
 
@@ -716,9 +717,10 @@ def test_get_blobs(mock_send, mock_update, blob_date, min_date, max_date, desire
         assert mock_update.call_count == len(blob_list) if not extension else len(
             [blob.name for blob in blob_list if extension in blob.name])
 
-
-def test_that_empty_blobs_are_omitted():
+@patch('azure-logs.logging.debug')
+def test_that_empty_blobs_are_omitted(mock_logging):
     """Test get_blobs checks the size of the blob and omits it if is is empty"""
+    azure.args = MagicMock(blobs=None, json_file=False, json_inline=False, reparse=False)
 
     # List of empty blobs to use
     list_of_empty_blobs = [
@@ -740,10 +742,11 @@ def test_that_empty_blobs_are_omitted():
                     min_datetime=parse(PRESENT_DATE), max_datetime=parse(FUTURE_DATE),
                     desired_datetime=parse(FUTURE_DATE))
 
-    for blob in list_of_empty_blobs:
-        assert(blob.properties.content_length.call_count, 1)
-
-    assert(blob_service.get_blob_to_text.call_count, 0)
+    # for blob in list_of_empty_blobs:
+    #     blob.properties.content_length.assert_called()
+    expected_calls = [call("Empty blob Example1, skipping"), call("Empty blob Example2, skipping")]
+    mock_logging.assert_has_calls(expected_calls, any_order=False)
+    blob_service.get_blob_to_text.assert_not_called()
 
 
 @patch('azure-logs.update_row_object')

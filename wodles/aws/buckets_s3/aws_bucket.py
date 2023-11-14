@@ -212,7 +212,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
         self.aws_organization_id = aws_organization_id
         self.date_format = "%Y/%m/%d"
         self.date_regex = re.compile(r'(\d{4}/\d{2}/\d{2})')
-        self.prefix_regex = re.compile("^\d{12}$")
+        self.prefix_regex = re.compile(r"^\d{12}$")
         self.check_prefix = False
 
     def _same_prefix(self, match_start: int or None, aws_account_id: str, aws_region: str) -> bool:

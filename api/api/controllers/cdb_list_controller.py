@@ -125,15 +125,15 @@ async def get_file(request, pretty: bool = False, wait_for_complete: bool = Fals
     return response
 
 
-async def put_file(request, body: dict, overwrite: bool = False, pretty: bool = False, wait_for_complete: bool = False,
+async def put_file(request, body: bytes, overwrite: bool = False, pretty: bool = False, wait_for_complete: bool = False,
                    filename: str = None) -> web.Response:
     """Upload content of CDB list file.
 
     Parameters
     ----------
     request : connexion.request
-    body : dict
-        Dictionary with the content of the file to be uploaded.
+    body : bytes
+        Bytes object with the content of the file to be uploaded.
     pretty : bool
         Show results in human-readable format.
     wait_for_complete : bool
