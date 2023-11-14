@@ -3264,11 +3264,14 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
-    condition: all
+    condition: none
     rules:
-      - 'c:sudo -V -> r:Authentication timestamp timeout:\s*\t*15.0 minutes'
-      - 'f:/etc/sudoers -> n:timestamp_timeout=(\d+) compare <=15'
-      - 'd:/etc/sudoers.d -> r:\.* -> n:timestamp_timeout=(\d+) compare <=15'
+      - 'c:sudo -V -> n:Authentication timestamp timeout: (\d+) minutes compare > 15'
+      - 'c:sudo -V -> n:Authentication timestamp timeout: -(\d+) minutes compare > 0'
+      - 'f:/etc/sudoers -> n:timestamp_timeout\s*\t*=\s*\t*(\d+) compare > 15'
+      - 'f:/etc/sudoers -> n:timestamp_timeout\s*\t*=\s*\t*-(\d+) compare > 0'
+      - 'd:/etc/sudoers.d -> r:\.* -> n:timestamp_timeout\s*\t*=\s*\t*(\d+) compare > 15'
+      - 'd:/etc/sudoers.d -> r:\.* -> n:timestamp_timeout\s*\t*=\s*\t*-(\d+) compare > 0'
 
   # 4.3.7 Ensure access to the su command is restricted. (Automated)
   - id: 19136
