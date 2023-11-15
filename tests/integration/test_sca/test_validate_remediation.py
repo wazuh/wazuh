@@ -33,6 +33,7 @@ tags:
 '''
 import os
 import pytest
+import re
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
@@ -58,6 +59,16 @@ test_folder = '/testfile'
 
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
+
+# Callback functions
+def callback_scan_id_result(line):
+    '''Callback that returns the ID an result of a SCA check
+    Args:
+        line (str): line string to check for match.
+    '''
+    match = re.match(patterns.CB_SCAN_RULE_RESULT, line)
+    if match:
+        return [match.group(1), match.group(2)]
 
 
 # Tests
