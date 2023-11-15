@@ -3313,13 +3313,13 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/security/pwquality.conf -> !r:^\s*# && n:minlen\s*=\s*(\d+) compare >= 14'
-      - 'f:/etc/security/pwquality.conf -> !r:^\s*# && n:minclass\s*=\s*(\d+) compare >= 4'
-      - 'f:/etc/security/pwquality.conf -> !r:^\s*# && r:dcredit = -1'
-      - 'f:/etc/security/pwquality.conf -> !r:^\s*# && r:ucredit = -1'
-      - 'f:/etc/security/pwquality.conf -> !r:^\s*# && r:lcredit = -1'
-      - 'f:/etc/security/pwquality.conf -> !r:^\s*# && r:ocredit = -1'
-      - 'f:/etc/pam.d/common-password -> !r:^\s*# && n:password\s*requisite\s*pam_pwquality.so\s*retry=(\d+) compare <=3'
+      - 'f:/etc/security/pwquality.conf -> !r:^\s*# && n:minlen\s*\t*=\s*\t*(\d+) compare >= 14'
+      - 'f:/etc/security/pwquality.conf -> !r:^\s*# && n:minclass\s*\t*=\s*\t*(\d+) compare >= 4'
+      - 'f:/etc/security/pwquality.conf -> !r:^\s*# && r:dcredit\s*\t*=\s*\t*-1'
+      - 'f:/etc/security/pwquality.conf -> !r:^\s*# && r:ucredit\s*\t*=\s*\t*-1'
+      - 'f:/etc/security/pwquality.conf -> !r:^\s*# && r:lcredit\s*\t*=\s*\t*-1'
+      - 'f:/etc/security/pwquality.conf -> !r:^\s*# && r:ocredit\s*\t*=\s*\t*-1'
+      - 'f:/etc/pam.d/common-password -> !r:^\s*# && n:password\s*\t*requisite\s*\t*pam_pwquality.so\s*\t*retry\s*\t*=\s*\t*(\d+) compare <=3'
 
   # 4.4.2 Ensure lockout for failed password attempts is configured. (Automated)
   - id: 19138
