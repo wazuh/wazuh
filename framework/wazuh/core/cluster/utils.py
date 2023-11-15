@@ -308,8 +308,7 @@ class ClusterLogger(WazuhLogger):
 
 
 def log_subprocess_execution(logger_instance: logging.Logger, logs: dict):
-    """
-    Log messages returned by functions that are executed in cluster's subprocesses.
+    """Log messages returned by functions that are executed in cluster's subprocesses.
 
     Parameters
     ----------

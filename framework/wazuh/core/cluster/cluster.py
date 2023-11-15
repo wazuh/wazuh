@@ -366,7 +366,7 @@ def compress_files(name, list_path, cluster_control_json=None, max_zip_size=None
                     wf.write(new_file)
                 else:
                     # Otherwise, remove it from cluster_control_json.
-                    result_logs['warning'][file].append(f'Maximum zip size exceeded for compressed file. '
+                    result_logs['warning'][file].append('Maximum zip size exceeded. '
                                                         'Not all files will be compressed during this sync.')
                     exceeded_size = True
                     update_cluster_control(file, cluster_control_json)

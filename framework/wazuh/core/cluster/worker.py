@@ -727,14 +727,11 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                           )
 
         errors = {'shared': 0, 'missing': 0, 'extra': 0}
-        result_logs = {'debug': defaultdict(list), 'debug2': defaultdict(list),
-                       'error': defaultdict(list), 'generic_errors': []}
+        result_logs = {'debug2': defaultdict(list), 'error': defaultdict(list), 'generic_errors': []}
 
         for filetype, files in ko_files.items():
             # Overwrite local files marked as shared or missing.
             if filetype == 'shared' or filetype == 'missing':
-                result_logs['debug'][filetype].append(f"Received {len(ko_files[filetype])} {filetype} files to "
-                                                      f"update from master.")
                 for filename, data in files.items():
                     try:
                         result_logs['debug2'][filename].append(f"Processing file {filename}")

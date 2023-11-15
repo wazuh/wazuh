@@ -1032,8 +1032,6 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
 
             os_remove_mock.assert_any_call("queue/testing/")
             assert result_logs['error'] == defaultdict(list)
-            assert result_logs['debug'] == {"shared": ["Received 1 shared files to update from master."],
-                                            "missing": ["Received 1 missing files to update from master."]}
             assert result_logs['debug2'] == {"filename1": ["Processing file filename1", "Processing file filename1"],
                                              "filename3": ["Remove file: 'filename3'"]}
             path_join_mock.assert_has_calls([call(core_common.WAZUH_PATH, 'filename1'),
@@ -1064,8 +1062,6 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                                                 "string indices must be integers"]
                                     }
 
-    assert result_logs['debug'] == {'shared': ["Received 1 shared files to update from master."],
-                                    'missing': ["Received 1 missing files to update from master."]}
     assert result_logs['debug2'] == {'filename1': ["Processing file filename1"],
                                      'filename3': ["Remove file: 'filename3'",
                                                    "File filename3 doesn't exist."],
@@ -1098,8 +1094,6 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                                                "string indices must be integers"],
                                     'missing': ["Error processing missing file 'filename2': "
                                                 "string indices must be integers"]}
-    assert result_logs['debug'] == {'shared': ["Received 1 shared files to update from master."],
-                                    'missing': ["Received 1 missing files to update from master."]}
     assert result_logs['debug2'] == {'filename1': ["Processing file filename1"],
                                      'filename2': ["Processing file filename2"],
                                      'filename3': ["Remove file: 'filename3'", "File filename3 doesn't exist."]}
@@ -1134,7 +1128,6 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
             listdir_mock.assert_called_once()
 
             assert result_logs['error'] == defaultdict(list)
-            assert result_logs['debug'] == defaultdict(list)
             assert result_logs['debug2'] == {'filename3': ["Remove file: 'filename3'",
                                                            "File filename3 doesn't exist."]}
             assert result_logs['generic_errors'] == []
@@ -1157,7 +1150,6 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
         cluster_items=cluster_items)
 
     assert result_logs['error'] == defaultdict(list)
-    assert result_logs['debug'] == defaultdict(list)
     assert result_logs['debug2'] == {'filename3': ["Remove file: 'filename3'",
                                                    "File filename3 doesn't exist."],
                                      '': ["Error removing directory '': [Errno 2] No such file or directory: "
