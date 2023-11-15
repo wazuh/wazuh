@@ -13,32 +13,26 @@ from wazuh_testing import session_parameters
 from wazuh_testing.modules.aws import event_monitor, local_internal_options  # noqa: F401
 
 from wazuh_testing.modules.aws.db_utils import s3_db_exists, services_db_exists
-from wazuh_testing.tools.configuration import (
-    get_test_cases_data,
-    load_configuration_template,
-)
+
+# Local module imports
+from .utils import ERROR_MESSAGES, TIMEOUTS
+from conftest import TestConfigurator
 
 pytestmark = [pytest.mark.server]
 
-# Generic vars
-MODULE = 'discard_regex_test_module'
-TEST_DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-CONFIGURATIONS_PATH = os.path.join(TEST_DATA_PATH, TEMPLATE_DIR, MODULE)
-TEST_CASES_PATH = os.path.join(TEST_DATA_PATH, TEST_CASES_DIR, MODULE)
+# Set test configurator for the module
+configurator = TestConfigurator(module='discard_regex_test_module')
 
 # --------------------------------------------- TEST_BUCKET_DISCARD_REGEX ---------------------------------------------
-t0_configurations_path = os.path.join(CONFIGURATIONS_PATH, 'configuration_bucket_discard_regex.yaml')
-t0_cases_path = os.path.join(TEST_CASES_PATH, 'cases_bucket_discard_regex.yaml')
-
-t0_configuration_parameters, t0_configuration_metadata, t0_case_ids = get_test_cases_data(t0_cases_path)
-t0_configurations = load_configuration_template(
-    t0_configurations_path, t0_configuration_parameters, t0_configuration_metadata
-)
-
+# Configure T1 test
+configurator.configure_test(configuration_file='configuration_bucket_discard_regex.yaml',
+                            cases_file='cases_bucket_discard_regex.yaml')
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata', zip(t0_configurations, t0_configuration_metadata), ids=t0_case_ids)
+@pytest.mark.parametrize('configuration, metadata',
+                         zip(configurator.test_configuration_template, configurator.metadata),
+                         ids=configurator.cases_ids)
 def test_bucket_discard_regex(
         configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_s3_cloudtrail_db,
         configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring,
@@ -155,18 +149,17 @@ def test_bucket_discard_regex(
 
     assert s3_db_exists()
 
-# ----------------------------------------- TEST_CLOUDWATCH_DISCARD_REGEX_JSON ----------------------------------------
-t1_configurations_path = os.path.join(CONFIGURATIONS_PATH, 'configuration_cloudwatch_discard_regex_json.yaml')
-t1_cases_path = os.path.join(TEST_CASES_PATH, 'cases_cloudwatch_discard_regex_json.yaml')
 
-t1_configuration_parameters, t1_configuration_metadata, t1_case_ids = get_test_cases_data(t1_cases_path)
-t1_configurations = load_configuration_template(
-    t1_configurations_path, t1_configuration_parameters, t1_configuration_metadata
-)
+# ----------------------------------------- TEST_CLOUDWATCH_DISCARD_REGEX_JSON ----------------------------------------
+# Configure T2 test
+configurator.configure_test(configuration_file='configuration_cloudwatch_discard_regex_json.yaml',
+                            cases_file='cases_cloudwatch_discard_regex_json.yaml')
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata', zip(t1_configurations, t1_configuration_metadata), ids=t1_case_ids)
+@pytest.mark.parametrize('configuration, metadata',
+                         zip(configurator.test_configuration_template, configurator.metadata),
+                         ids=configurator.cases_ids)
 def test_cloudwatch_discard_regex_json(
         configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
         configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring,
@@ -283,17 +276,15 @@ def test_cloudwatch_discard_regex_json(
 
 
 # ------------------------------------- TEST_CLOUDWATCH_DISCARD_REGEX_SIMPLE_TEXT -------------------------------------
-t2_configurations_path = os.path.join(CONFIGURATIONS_PATH, 'configuration_cloudwatch_discard_regex_simple_text.yaml')
-t2_cases_path = os.path.join(TEST_CASES_PATH, 'cases_cloudwatch_discard_regex_simple_text.yaml')
-
-t2_configuration_parameters, t2_configuration_metadata, t2_case_ids = get_test_cases_data(t2_cases_path)
-t2_configurations = load_configuration_template(
-    t2_configurations_path, t2_configuration_parameters, t2_configuration_metadata
-)
+# Configure T3 test
+configurator.configure_test(configuration_file='configuration_cloudwatch_discard_regex_simple_text.yaml',
+                            cases_file='cases_cloudwatch_discard_regex_simple_text.yaml')
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata', zip(t2_configurations, t2_configuration_metadata), ids=t2_case_ids)
+@pytest.mark.parametrize('configuration, metadata',
+                         zip(configurator.test_configuration_template, configurator.metadata),
+                         ids=configurator.cases_ids)
 def test_cloudwatch_discard_regex_simple_text(
         configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
         configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring,
@@ -408,17 +399,15 @@ def test_cloudwatch_discard_regex_simple_text(
 
 
 # ------------------------------------------- TEST_INSPECTOR_DISCARD_REGEX --------------------------------------------
-t3_configurations_path = os.path.join(CONFIGURATIONS_PATH, 'configuration_inspector_discard_regex.yaml')
-t3_cases_path = os.path.join(TEST_CASES_PATH, 'cases_inspector_discard_regex.yaml')
-
-t3_configuration_parameters, t3_configuration_metadata, t3_case_ids = get_test_cases_data(t3_cases_path)
-t3_configurations = load_configuration_template(
-    t3_configurations_path, t3_configuration_parameters, t3_configuration_metadata
-)
+# Configure T4 test
+configurator.configure_test(configuration_file='configuration_inspector_discard_regex.yaml',
+                            cases_file='cases_inspector_discard_regex.yaml')
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata', zip(t3_configurations, t3_configuration_metadata), ids=t3_case_ids)
+@pytest.mark.parametrize('configuration, metadata',
+                         zip(configurator.test_configuration_template, configurator.metadata),
+                         ids=configurator.cases_ids)
 def test_inspector_discard_regex(
         configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
         configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring,

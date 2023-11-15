@@ -1,10 +1,17 @@
+"""
+Copyright (C) 2015-2023, Wazuh Inc.
+Created by Wazuh, Inc. <info@wazuh.com>.
+This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+This module will contains all callback methods to monitor and event
+"""
+
 import re
 
-from wazuh_testing.modules.aws import VPC_FLOW_TYPE
-from wazuh_testing.modules.aws.cli_utils import analyze_command_output
-from wazuh_testing.modules.aws.patterns import patterns
-from wazuh_testing.modules.aws.errors import errors
-from wazuh_testing.constants.aws import INSPECTOR_TYPE
+#
+from wazuh_testing.constants.aws import VPC_FLOW_TYPE, INSPECTOR_TYPE
+from wazuh_testing.modules.aws.utils import analyze_command_output
+
 
 
 def make_aws_callback(pattern, prefix=''):
