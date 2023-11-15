@@ -44,7 +44,7 @@ def get_remoted_pid():
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
 def test_rids(test_configuration, test_metadata, configure_local_internal_options, truncate_monitored_files,
-                            set_wazuh_configuration, restart_wazuh_expect_error, simulate_agents):
+                            set_wazuh_configuration, daemons_handler, simulate_agents):
 
     '''
     description: Check that RIDS is opened and closed as expected. To do this, it creates injectors(agents and senders)
@@ -68,9 +68,6 @@ def test_rids(test_configuration, test_metadata, configure_local_internal_option
             type: fixture
             brief: Starts/Restarts the daemons indicated in `daemons_handler_configuration` before each test,
                    once the test finishes, stops the daemons.
-        - restart_wazuh_expect_error
-            type: fixture
-            brief: Restart service when expected error is None, once the test finishes stops the daemons.
         - simulate_agents
             type: fixture
             brief: create agents
