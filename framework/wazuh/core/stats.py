@@ -190,7 +190,7 @@ def get_daemons_stats_(filename: str) -> list:
 
     Parameters
     ----------
-    filename: str
+    filename : str
         Full path of the file to get information.
 
     Returns
@@ -224,7 +224,7 @@ def is_agent_a_manager(agent_id: Union[str, int]) -> bool:
 
     Parameters
     ----------
-    agent_id: Union[str, int]
+    agent_id : Union[str, int]
         The ID of the agent to check, which can be either a string or an integer.
 
     Returns
@@ -240,9 +240,9 @@ def get_stats_socket_path(agent_id: Union[str, int], daemon: str) -> str:
 
     Parameters
     ----------
-    agent_id: Union[str, int]
+    agent_id : Union[str, int]
         The ID of the agent, which can be either a string or an integer.
-    daemon: str
+    daemon : str
         The name of the daemon.
 
     Returns
@@ -290,9 +290,9 @@ def check_if_daemon_exists_in_agent(agent_id: Union[str, int], daemon: str) -> b
 
     Parameters
     ----------
-    agent_id: Union[str, int]
+    agent_id : Union[str, int]
         The ID of the agent, which can be either a string or an integer.
-    daemon: str
+    daemon : str
         The name of the daemon.
 
     Returns
@@ -308,9 +308,9 @@ def send_command_to_socket(dest_socket: str, command: str) -> dict:
     """Send a command to a socket
     Parameters
     ----------
-    dest_socket: str
+    dest_socket : str
         The destination socket path.
-    command
+    command : str
         The command to send to the socket
 
     Returns
@@ -340,9 +340,9 @@ def get_daemons_stats_from_socket(agent_id: str, daemon: str) -> dict:
 
     Parameters
     ----------
-    agent_id: str
+    agent_id : str
         Id of the agent to get stats from.
-    daemon: str
+    daemon : str
         Name of the service to get stats from.
 
     Returns
