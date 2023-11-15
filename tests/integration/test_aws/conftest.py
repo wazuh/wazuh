@@ -26,16 +26,15 @@ from wazuh_testing.modules.aws.utils import (
     file_exists,
     upload_file
 )
-from wazuh_testing.modules.aws.db_utils import delete_s3_db, delete_services_db
+from wazuh_testing.modules.aws.utils import delete_s3_db, delete_services_db
 from wazuh_testing.utils.services import control_service
-from wazuh_testing.constants.paths.configurations import TEMPLATE_DIR, TEST_CASES_DIR
 from wazuh_testing.utils.configuration import (
     get_test_cases_data,
     load_configuration_template,
 )
 
 # Local imports
-from .utils import TEST_DATA_PATH
+from .utils import TEST_DATA_PATH,  TEMPLATE_DIR, TEST_CASES_DIR
 
 @pytest.fixture
 def mark_cases_as_skipped(metadata):
