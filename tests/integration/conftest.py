@@ -231,21 +231,18 @@ def restart_wazuh_function(request):
 
 
 @pytest.fixture()
-def file_monitoring(request, file_to_monitor=None):
+def file_monitoring(request):
     """Fixture to handle the monitoring of a specified file.
 
     It uses the variable `file_to_monitor` to determinate the file to monitor. Default `LOG_FILE_PATH`
 
     Args:
         request (fixture): Provide information on the executing test function.
-
-    Parameters
-    ----------
-    request
-    file_to_monitor
     """
-    if file_to_monitor is None:
-        file_to_monitor = getattr(request.module, 'file_to_monitor', WAZUH_LOG_PATH)
+    if hasattr(request.module, 'file_to_monitor'):
+        file_to_monitor = getattr(request.module, 'file_to_monitor')
+    else:
+        file_to_monitor = WAZUH_LOG_PATH
 
     logger.debug(f"Initializing file to monitor to {file_to_monitor}")
 
