@@ -4094,7 +4094,7 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' auditd -> r: install ok installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' auditd -> r:install ok installed"
 
   # 5.2.1.2 Ensure auditd service is enabled and active. (Automated)
   - id: 2672
