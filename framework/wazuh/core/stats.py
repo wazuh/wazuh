@@ -304,6 +304,37 @@ def check_if_daemon_exists_in_agent(agent_id: Union[str, int], daemon: str) -> b
     return not (is_agent_a_manager(agent_id) and daemon in {'agent'})
 
 
+def send_command_to_socket(dest_socket: str, command: str) -> dict:
+    """Send a command to a socket
+    Parameters
+    ----------
+    dest_socket: str
+        The destination socket path.
+    command
+        The command to send to the socket
+
+    Returns
+    -------
+    dict
+        Response from the socket
+
+    """
+    try:
+        s = wazuh_socket.WazuhSocket(dest_socket)
+    except WazuhException:
+        # Error connecting to socket
+        raise WazuhInternalError(1121)
+
+    try:
+        s.send(command.encode())
+        try:
+            return s.receive().decode()
+        except ValueError:
+            raise WazuhInternalError(1118, extra_message="Data could not be received")
+    finally:
+        s.close()
+
+
 def get_daemons_stats_from_socket(agent_id: str, daemon: str) -> dict:
     """Get a daemon stats from an agent or manager.
 
@@ -328,48 +359,32 @@ def get_daemons_stats_from_socket(agent_id: str, daemon: str) -> dict:
     dest_socket = get_stats_socket_path(agent_id=agent_id, daemon=daemon)
     command = create_stats_command(agent_id=agent_id, daemon=daemon)
 
-    try:
-        s = wazuh_socket.WazuhSocket(dest_socket)
-    except WazuhException:
-        # Error connecting to socket
-        raise WazuhInternalError(1121)
+    socket_msg = send_command_to_socket(dest_socket, command)
+    socket_response = json.loads(socket_msg)
 
-    try:
-        s.send(command.encode())
-        try:
-            rec_msg = s.receive().decode()
-        except ValueError:
-            raise WazuhInternalError(1118, extra_message="Data could not be received")
+    # Handle error
+    if socket_response.get('error', 0) != 0:
+        rec_msg = socket_response.get('message', "")
+        raise WazuhError(1117, extra_message=rec_msg)
 
+    data = socket_response['data']
+    data.update((k, utils.get_utc_strptime(data[k], "%Y-%m-%d %H:%M:%S").strftime(common.DATE_FORMAT))
+                for k, v in data.items() if k in {'last_keepalive', 'last_ack'})
+
+    while socket_response.get('remaining', False):
+        last_json_updated = socket_response.get('json_updated', False)
+        command = create_stats_command(agent_id=agent_id, daemon=daemon,
+                                       next_page=not last_json_updated)
+        rec_msg = send_command_to_socket(dest_socket, command)
         socket_response = json.loads(rec_msg)
 
-        # Handle error
-        if socket_response.get('error', 0) != 0:
-            rec_msg = socket_response.get('message', "")
-            raise WazuhError(1117, extra_message=rec_msg)
-
-        data = socket_response['data']
-        data.update((k, utils.get_utc_strptime(data[k], "%Y-%m-%d %H:%M:%S").strftime(common.DATE_FORMAT))
-                    for k, v in data.items() if k in {'last_keepalive', 'last_ack'})
-
-        while socket_response.get('remaining', False):
-            last_json_updated = socket_response.get('json_updated', False)
-            command = create_stats_command(agent_id=agent_id, daemon=daemon,
-                                           next_page=not last_json_updated)
-            s.send(command.encode())
-            rec_msg = s.receive().decode()
-            socket_response = json.loads(rec_msg)
-
-            if last_json_updated:
-                data = socket_response['data']
-                data.update((k, utils.get_utc_strptime(data[k], "%Y-%m-%d %H:%M:%S").strftime(common.DATE_FORMAT))
-                            for k, v in data.items() if k in {'last_keepalive', 'last_ack'})
-            else:
-                page_data = socket_response['data']
-                # Extends existing items
-                [data[key].extend(item) for key, item in page_data.items() if key in data and isinstance(item, list)]
-
-    finally:
-        s.close()
+        if last_json_updated:
+            data = socket_response['data']
+            data.update((k, utils.get_utc_strptime(data[k], "%Y-%m-%d %H:%M:%S").strftime(common.DATE_FORMAT))
+                        for k, v in data.items() if k in {'last_keepalive', 'last_ack'})
+        else:
+            page_data = socket_response['data']
+            # Extends existing items
+            [data[key].extend(item) for key, item in page_data.items() if key in data and isinstance(item, list)]
 
     return data
