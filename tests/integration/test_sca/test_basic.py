@@ -50,7 +50,7 @@ from wazuh_testing.modules.modulesd.configuration import MODULESD_DEBUG
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 
-pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0)]
+pytestmark = [pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
 
 local_internal_options = {MODULESD_DEBUG: '2'}
 
