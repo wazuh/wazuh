@@ -13,9 +13,6 @@
  * @topicName: Name of the topic.
  * @interval: Interval in seconds to execute the content provider.
  * @ondemand: If true, the content provider will be executed on demand.
- * @createDatabase: If true, the RocksDB database will be initialized automatically. If false, the database is assumed
- * to be already initialized.
- * @initialOffset: Offset to be inserted in the database. Only used when @createDatabase is true.
  * @configData: Configuration data to create the orchestration of the content provider.
  * @contentSource: Source of the content.
  * @compressionType: Compression type of the content.
@@ -32,8 +29,6 @@ static const nlohmann::json CONFIG_PARAMETERS =
             "topicName": "test",
             "interval": 10,
             "ondemand": true,
-            "createDatabase": true,
-            "initialOffset": "0",
             "configData":
             {
                 "contentSource": "api",
@@ -49,17 +44,23 @@ static const nlohmann::json CONFIG_PARAMETERS =
         }
         )"_json;
 
+/**
+ * @brief Initialize RocksDB database. If it doesn't exist, it will be created with an initial offset of '0'.
+ *
+ */
+void initializeDatabase()
+{
+    constexpr auto INITIAL_OFFSET {"0"};
+    const auto& databasePath {CONFIG_PARAMETERS.at("configData").at("databasePath").get_ref<const std::string&>()};
+
+    Utils::RocksDBWrapper rocksDbConnector(databasePath);
+    rocksDbConnector.put(Utils::getCompactTimestamp(std::time(nullptr)), INITIAL_OFFSET);
+}
+
 int main()
 {
-    if (CONFIG_PARAMETERS.at("createDatabase"))
-    {
-        // Create RocksDB database if needed.
-        const auto& initialOffset {CONFIG_PARAMETERS.at("initialOffset").get_ref<const std::string&>()};
-        const auto& databasePath {CONFIG_PARAMETERS.at("configData").at("databasePath").get_ref<const std::string&>()};
-
-        Utils::RocksDBWrapper rocksDbConnector(databasePath);
-        rocksDbConnector.put(Utils::getCompactTimestamp(std::time(nullptr)), initialOffset);
-    }
+    // Init RocksDB.
+    initializeDatabase();
 
     auto& instance = ContentModule::instance();
 
