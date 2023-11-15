@@ -8,6 +8,8 @@
 from os.path import join, dirname, realpath
 
 # CONSTANTS
+TEMPLATE_DIR = 'configuration_template'
+TEST_CASES_DIR = 'test_cases'
 
 ERROR_MESSAGES = {
 
