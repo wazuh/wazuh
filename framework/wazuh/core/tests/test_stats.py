@@ -141,6 +141,7 @@ def test_check_if_daemon_exists_in_agent(agent, daemon, expected_value):
     assert stats.check_if_daemon_exists_in_agent(agent, daemon) == expected_value
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize('agents_list, expected_socket_response, expected_result', [
     (None,
      {'timestamp': 1658400850,
@@ -164,11 +165,12 @@ def test_check_if_daemon_exists_in_agent(agent, daemon, expected_value):
                'agents': [{'id': agent_id, 'uptime': datetime(2022, 7, 21, 10, 54, 10, tzinfo=timezone.utc)} for
                           agent_id in [1, 2, 3]]}})
 ])
-@patch('wazuh.core.wazuh_socket.WazuhSocketJSON.close')
-@patch('wazuh.core.wazuh_socket.WazuhSocketJSON.send')
-@patch('wazuh.core.wazuh_socket.WazuhSocketJSON.__init__', return_value=None)
-def test_get_daemons_stats_socket(mock__init__, mock_send, mock_close, agents_list, expected_socket_response,
-                                  expected_result):
+@patch('wazuh.core.wazuh_socket.WazuhAsyncSocketJSON.close')
+@patch('wazuh.core.wazuh_socket.WazuhAsyncSocketJSON.send')
+@patch('wazuh.core.wazuh_socket.WazuhAsyncSocketJSON.connect')
+async def test_get_daemons_stats_socket(mock_connect, mock_send, mock_close, 
+                                        agents_list, expected_socket_response,
+                                        expected_result):
     """Verify get_daemons_stats_socket(socket : str) function works as expected"""
     socket = '/test_path/socket'
     expected_msg = {'version': 1, 'origin': {'module': 'framework'},
@@ -178,26 +180,32 @@ def test_get_daemons_stats_socket(mock__init__, mock_send, mock_close, agents_li
         if agents_list == 'all':
             expected_msg['parameters'] |= {'last_id': 0}
 
-    with patch('wazuh.core.wazuh_socket.WazuhSocketJSON.receive',
-               return_value=expected_socket_response) as mock_receive:
-        result = stats.get_daemons_stats_socket(socket, agents_list=agents_list,
+    with patch('wazuh.core.wazuh_socket.WazuhAsyncSocketJSON.receive',
+               return_value=expected_socket_response) as mock_receive, \
+         patch('wazuh.core.wazuh_socket.WazuhAsyncSocketJSON.receive_json',
+               return_value=expected_socket_response) as mock_receive_json:
+        result = await stats.get_daemons_stats_socket(socket, agents_list=agents_list,
                                                 last_id=0 if agents_list == 'all' else None)
 
-        mock__init__.assert_called_once_with(socket)
-        mock_send.assert_called_once_with(expected_msg)
-        mock_receive.assert_called_once()
+        mock_connect.assert_awaited_once_with(socket)
+        mock_send.assert_awaited_once_with(expected_msg)
+        if  agents_list == 'all':
+            mock_receive.assert_awaited_once()
+        else:
+            mock_receive_json.assert_awaited_once()
         mock_close.assert_called_once()
         assert result == expected_result
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize('agents_list', [
     None, [1, 2, 3]
 ])
-def test_get_daemons_stats_socket_ko(agents_list):
+async def test_get_daemons_stats_socket_ko(agents_list):
     """Test get_daemons_stats_socket(socket : str) function exception works"""
     socket = '/test_path/socket'
     with pytest.raises(WazuhInternalError, match=f".* 1121 .*: {socket}"):
-        stats.get_daemons_stats_socket(socket, agents_list=agents_list)
+        await stats.get_daemons_stats_socket(socket, agents_list=agents_list)
 
 
 def test_get_daemons_stats_():

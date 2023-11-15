@@ -309,7 +309,7 @@ async def test_get_daemon_stats_node(mock_exc, mock_dapi, mock_remove, mock_dfun
         mock_dapi.assert_called_once_with(f=stats.get_daemons_stats,
                                           f_kwargs=mock_remove.return_value,
                                           request_type='distributed_master',
-                                          is_async=False,
+                                          is_async=True,
                                           wait_for_complete=False,
                                           logger=ANY,
                                           rbac_permissions=mock_request['token_info']['rbac_policies'],
