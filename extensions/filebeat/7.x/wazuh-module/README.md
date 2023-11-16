@@ -29,18 +29,14 @@ To add a new version of the module it is necessary to follow the following steps
 
 1. Clone the wazuh/wazuh repository
 2. Check out the branch that adds a new version
-3. Access the directory: extensions/filebeat/7.x/wazuh-module/
-4. Create a directory called: wazuh
+3. Access the directory: **extensions/filebeat/7.x/wazuh-module/**
+4. Create a directory called: **wazuh**
 
 ```
 # mkdir wazuh
 ```
 
-5. Copy the following items to the wazuh directory
-  - _meta
-  - alerts
-  - archives
-  - module.yml
+5. Copy the resources to the **wazuh** directory
 
 ```
 # cp -r _meta wazuh/
@@ -49,13 +45,13 @@ To add a new version of the module it is necessary to follow the following steps
 # cp -r module.yml wazuh/
 ```
 
-6. Set root user and root group to all elements of the wazuh directory (included)
+6. Set **root user** and **root group** to all elements of the **wazuh** directory (included)
 
 ```
 # chown -R root:root wazuh
 ```
 
-7. Set all directories with 755 permissions
+7. Set all directories with **755** permissions
 
 ```
 # chmod 755 wazuh
@@ -67,7 +63,7 @@ To add a new version of the module it is necessary to follow the following steps
 # chmod 755 wazuh/archives/ingest
 ```
 
-8. Set all yml/json files with 644 permissions
+8. Set all yml/json files with **644** permissions
 
 ```
 # chmod 644 wazuh/module.yml
@@ -82,7 +78,7 @@ To add a new version of the module it is necessary to follow the following steps
 # chmod 644 wazuh/archives/ingest/pipeline.json
 ```
 
-9. Create tar.gz file
+9. Create **tar.gz** file
 
 ```
 # tar -czvf wazuh-filebeat-0.4.tar.gz wazuh
