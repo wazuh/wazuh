@@ -123,7 +123,8 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
                       IDLE_PRIORITY_CLASS;
 
     size_t size = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, command, -1, NULL, 0);
-    wchar_t *wcommand = calloc(size, sizeof(wchar_t));
+    wchar_t *wcommand;
+    os_calloc(size, sizeof(wchar_t), wcommand);
 
     MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, command, -1, wcommand, size);
     mdebug2("UTF-8 command: %ls", wcommand);
@@ -131,10 +132,11 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
     if (!CreateProcessW(NULL, wcommand, NULL, NULL, TRUE, dwCreationFlags, NULL, NULL, &sinfo, &pinfo)) {
         winerror = GetLastError();
         merror("at wm_exec(): CreateProcess(%d): %s", winerror, win_strerror(winerror));
+        os_free(wcommand);
         return -1;
     }
 
-    free(wcommand);
+    os_free(wcommand);
 
     if (output) {
         CloseHandle(sinfo.hStdOutput);
