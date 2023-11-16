@@ -18,7 +18,7 @@
  * @url: URL where the content is located.
  * @outputFolder: if defined, the content will be downloaded to this folder.
  * @dataFormat: Format of the content downloaded or after decompression.
- * @contentFileName: Name for the downloaded file (except if using the offline contentSource).
+ * @contentFileName: Name for the downloaded file (unless using the offline contentSource).
  * @offset (integer): Api offset used to override (if greater) the one set on the database.
  */
 static const nlohmann::json CONFIG_PARAMETERS =
