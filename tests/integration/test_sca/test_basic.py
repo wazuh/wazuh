@@ -38,6 +38,7 @@ references:
 tags:
     - sca
 '''
+import sys
 import pytest
 from pathlib import Path
 
@@ -46,13 +47,15 @@ from wazuh_testing.utils import callbacks, configuration
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.modules.sca import patterns
 from wazuh_testing.modules.modulesd.configuration import MODULESD_DEBUG
+from wazuh_testing.modules.agentd.configuration import AGENTD_WINDOWS_DEBUG
+from wazuh_testing.constants.platforms import WINDOWS
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 
 pytestmark = [pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
 
-local_internal_options = {MODULESD_DEBUG: '2'}
+local_internal_options = {AGENTD_WINDOWS_DEBUG if sys.platform == WINDOWS else MODULESD_DEBUG: '2'}
 
 # Configuration and cases data
 configurations_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_sca.yaml')

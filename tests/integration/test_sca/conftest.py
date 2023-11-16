@@ -1,5 +1,7 @@
 import os
 import pytest
+import sys
+import subprocess
 from pathlib import Path
 
 from wazuh_testing.constants.paths.ruleset import CIS_RULESET_PATH
@@ -9,6 +11,7 @@ from wazuh_testing.modules.sca import patterns
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.paths import TEMP_FILE_PATH
 from wazuh_testing.utils import callbacks
+from wazuh_testing.constants.platforms import WINDOWS
 
 from . import TEST_DATA_PATH
 
@@ -40,15 +43,27 @@ def prepare_cis_policies_file(test_metadata):
 
 
 @pytest.fixture()
-def prepare_test_folder(folder_path='/testfile', mode=0o666):
+def prepare_remediation_test(folder_path='/testfile', mode=0o666):
     '''
     Creates folder with a given mode.
     Args:
         folder_path (str): path for the folder to create
         mode (int): mode to be used for folder creation.
     '''
-    os.makedirs(folder_path, mode, exist_ok=True)
+
+    duration = ''
+    if sys.platform == WINDOWS:
+        p = subprocess.run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "net accounts"],
+                           capture_output=True, text=True)
+        duration = p.stdout.splitlines()[6].split(':')[1].replace(" ", "")
+        subprocess.call('net accounts /lockoutduration:30', shell=True)
+    else:
+        os.makedirs(folder_path, mode, exist_ok=True)
 
     yield
 
-    delete_path_recursively(folder_path)
+
+    if sys.platform == WINDOWS:
+        subprocess.call('net accounts /lockoutduration:' + duration, shell=True)
+    else:
+        delete_path_recursively(folder_path)
