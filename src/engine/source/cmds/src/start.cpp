@@ -205,7 +205,7 @@ void runStart(ConfHandler confManager)
     std::shared_ptr<hlp::logpar::Logpar> logpar;
     std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
     std::shared_ptr<metricsManager::MetricsManager> metrics;
-    std::shared_ptr<base::queue::ConcurrentQueue<base::Event>> eventQueue;
+    std::shared_ptr<base::queue::iBlockingConcurrentQueue<base::Event>> eventQueue;
     std::shared_ptr<schemf::Schema> schema;
     std::shared_ptr<sockiface::UnixSocketFactory> sockFactory;
     std::shared_ptr<wazuhdb::WDBManager> wdbManager;
@@ -331,10 +331,10 @@ void runStart(ConfHandler confManager)
                                          };
             // Delete router metrics
             routerAdmin = std::make_shared<router::RouterAdmin>(routerConfig);
-            auto res = routerAdmin->postEnvironment(router::EntryPost::createEntryPost("Default", "policy/wazuh/0", "filter/allow-all/0", 255));
+            auto res = routerAdmin->postEntry(router::prod::EntryPost("Default", "policy/wazuh/0", "filter/allow-all/0", 255));
             if (res.has_value())
             {
-              throw std::runtime_error("Error creating default environment: " + res.value().message);
+                throw std::runtime_error("Error creating default environment: " + res.value().message);
             }
             routerAdmin->start();
 
@@ -458,7 +458,7 @@ void runStart(ConfHandler confManager)
             // Event Endpoint
             auto eventMetricScope = metrics->getMetricsScope("endpointEvent");
             auto eventMetricScopeDelta = metrics->getMetricsScope("endpointEventRate", true);
-            auto eventHandler = std::bind(&router::RouterAdmin::fastEnqueueEvent, routerAdmin, std::placeholders::_1);
+            auto eventHandler = std::bind(&router::RouterAdmin::pushEvent, routerAdmin, std::placeholders::_1);
             auto eventEndpointCfg = std::make_shared<endpoint::UnixDatagram>(
                 serverEventSock, eventHandler, eventMetricScope, eventMetricScopeDelta, serverEventQueueSize);
             server->addEndpoint("EVENT", eventEndpointCfg);

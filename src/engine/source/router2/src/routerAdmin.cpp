@@ -1,6 +1,8 @@
+#include <router/routerAdmin.hpp>
+
 #include "environmentBuilder.hpp"
 #include "router.hpp"
-#include <router/routerAdmin.hpp>
+
 
 constexpr auto WAIT_DEQUEUE_TIMEOUT_USEC = 1 * 1000000;
 
@@ -8,9 +10,9 @@ namespace router
 {
 
 // Private
-void RouterAdmin::validateConfig()
+void RouterAdmin::validateConfig(const Config& config)
 {
-    if (m_config.m_numThreads == 0)
+    if (config.m_numThreads == 0)
     {
         throw std::runtime_error {"Configuration error: numThreads for router must be greater than 0"};
     }
@@ -18,19 +20,24 @@ void RouterAdmin::validateConfig()
 
 // Public
 RouterAdmin::RouterAdmin(const Config& config)
-    : m_config(config)
-    , m_isRunning(false)
+    : m_isRunning(false)
+    , m_bussyMutex()
 {
-    validateConfig();
-    auto generalBuilder = std::make_shared<ConcreteBuilder>(m_config.m_store, m_config.m_registry);
-    auto envBuilder = std::make_shared<EnvironmentBuilder>(generalBuilder, m_config.m_controllerMaker);
+    validateConfig(config);
+
+    // Create the queue
+    m_queue.prod = config.m_queue;
+
+    auto generalBuilder = std::make_shared<ConcreteBuilder>(config.m_store, config.m_registry);
+    auto envBuilder = std::make_shared<EnvironmentBuilder>(generalBuilder, config.m_controllerMaker);
 
     // Create the routers
-    for (std::size_t i = 0; i < m_config.m_numThreads; ++i)
+    for (std::size_t i = 0; i < config.m_numThreads; ++i)
     {
         auto router = std::make_shared<Router>(envBuilder);
         m_routers.push_back(router);
     }
+
 }
 
 void RouterAdmin::start()
@@ -41,6 +48,7 @@ void RouterAdmin::start()
         throw std::runtime_error {"The router is already running"};
     }
 
+    // Launch the workers // TODO Move to each router (Dinamic number of threads)
     for (auto& router : m_routers)
     {
         m_threads.emplace_back(
@@ -49,9 +57,12 @@ void RouterAdmin::start()
                 while (m_isRunning.load())
                 {
                     base::Event event {};
-                    if (m_config.m_queue->waitPop(event, WAIT_DEQUEUE_TIMEOUT_USEC))
+                    if (m_queue.prod->waitPop(event, WAIT_DEQUEUE_TIMEOUT_USEC))
                     {
-                        router->ingest(event);
+                        if (event != nullptr)
+                        {
+                            router->ingest(std::move(event));
+                        }
                     }
                 }
                 //LOG_DEBUG("Thread '{}' router finished.", std::this_thread::get_id());
@@ -72,14 +83,44 @@ void RouterAdmin::stop()
     }
 }
 
-// API
-
-base::OptError RouterAdmin::postEnvironment(const EntryPost& environment)
+/**************************************************************************
+ * IRouterAPI
+ *************************************************************************/
+base::OptError RouterAdmin::postEntry(const prod::EntryPost& entry)
 {
+    /* TODO:
+        1. Crate and add the environment to the router (Disabled environment)
+        2. Check the hash
+        2. Enable all environment or rollback if error
+    */
+    if (auto err = entry.validate())
+    {
+        return err;
+    }
+
+    std::unique_lock lock {m_bussyMutex};
     for (auto& router : m_routers)
     {
-        // Add disabled environment
-        auto error = router->addEnvironment(environment);
+        auto error = router->addEntry(entry);
+        if (error)
+        {
+            return error;
+        }
+    }
+
+    for (auto& router : m_routers)
+    {
+        router->enableEntry(entry.name());
+    }
+    return std::nullopt;
+}
+
+base::OptError RouterAdmin::deleteEntry(const std::string& name)
+{
+    std::unique_lock lock {m_bussyMutex};
+    for (auto& router : m_routers)
+    {
+        auto error = router->removeEntry(name);
         if (error)
         {
             return error;
@@ -88,5 +129,57 @@ base::OptError RouterAdmin::postEnvironment(const EntryPost& environment)
 
     return std::nullopt;
 }
+
+base::RespOrError<prod::Entry> RouterAdmin::getEntry(const std::string& name) const
+{
+    std::shared_lock lock {m_bussyMutex};
+    return m_routers.front()->getEntry(name);
+}
+
+base::OptError RouterAdmin::reloadEntry(const std::string& name)
+{
+    std::unique_lock lock {m_bussyMutex};
+    for (auto& router : m_routers)
+    {
+        auto error = router->rebuildEntry(name);
+        if (error)
+        {
+            return error;
+        }
+    }
+    // If the environment is disabled, enable it all at the end when all the environments are reloaded
+    for (auto& router : m_routers)
+    {
+        auto error = router->enableEntry(name);
+        if (error)
+        {
+            return error;
+        }
+    }
+
+    return std::nullopt;
+}
+
+base::OptError RouterAdmin::changeEntryPriority(const std::string& name, size_t priority)
+{
+    std::unique_lock lock {m_bussyMutex};
+    for (auto& router : m_routers)
+    {
+        auto error = router->changePriority(name, priority);
+        if (error)
+        {
+            return error;
+        }
+    }
+
+    return std::nullopt;
+}
+
+std::list<prod::Entry> RouterAdmin::getEntries() const
+{
+    std::shared_lock lock {m_bussyMutex};
+    return m_routers.front()->getEntries();
+}
+
 
 } // namespace router
