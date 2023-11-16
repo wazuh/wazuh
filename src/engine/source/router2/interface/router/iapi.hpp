@@ -13,20 +13,19 @@ class IRouterAPI
 {
 public:
 
-    // An environment is a session
-    virtual base::OptError postEnvironment(const EntryPost& environment) = 0;
-    // virtual base::OptError patchEnvironment(const EntryPost& environment) = 0;
+    // Production: Entry
+    virtual base::OptError postEntry(const prod::EntryPost& entry) = 0;
+    virtual base::OptError deleteEntry(const std::string& name) = 0;
+    virtual base::RespOrError<prod::Entry> getEntry(const std::string& name) const = 0;
 
-    // postTestEnvironment
-    // patchTestEnvironment
+    virtual base::OptError reloadEntry(const std::string& name) = 0;
+    virtual base::OptError changeEntryPriority(const std::string& name, size_t priority) = 0;
 
-    // virtual base::OptError deleteEnvironment(const std::string& name) = 0;              // Name or id
-    // virtual base::RespOrError<Entry> getEnvironment(const std::string& name) const = 0; // Name or id
+    // Production: Table
+    virtual std::list<prod::Entry> getEntries() const = 0;
 
-    // Table entries
-    // virtual base::RespOrError<std::list<Entry>> getEntries() const = 0;
-
-    // Event test
+    // Production: Ingest
+    virtual void postEvent(base::Event&& event) = 0;
     // virtual base::OptError postTest(const base::Event& event, const test::Opt& settings) = 0;
 
 };
