@@ -1148,7 +1148,7 @@ checks:
      description: "System Integrity Protection is a security feature introduced in OS X 10.11 El Capitan. System Integrity Protection restricts access to System domain locations and restricts runtime attachment to system processes. Any attempt to inspect or attach to a system process will fail. Kernel Extensions are now restricted to /Library/Extensions and are required to be signed with a Developer ID."
      rationale: "Running without System Integrity Protection on a production system runs the risk of the modification of system binaries or code injection of system processes that would otherwise be protected by SIP."
      impact: "System binaries and processes could become compromised."
-     remediation: "Terminal Method: Perform the following steps to enable System Integrity Protection: 1. Reboot into the Recovery Partition (reboot and hold down Command (⌘) + R) 2. Select Utilities 3. Select Terminal 4. Run the following command: $ /usr/bin/sudo /usr/bin/csrutil enable Successfully enabled System Integrity Protection. Please restart the machine for the changes to take effect. 5. Reboot the computer Note: You should research why the system had SIP disabled. It might be a better option to erase the Mac and reinstall the operating system. That is at your discretion. Note: You cannot enable System Integrity Protection from the booted operating system. If the remediation is attempted in the booted OS and not the Recovery Partition the output will give the error csrutil: failed to modify system integrity configuration. This tool needs to be executed from the Recovery OS."
+     remediation: "Terminal Method: Perform the following steps to enable System Integrity Protection: 1. Reboot into the Recovery Partition (reboot and hold down Command () + R) 2. Select Utilities 3. Select Terminal 4. Run the following command: $ /usr/bin/sudo /usr/bin/csrutil enable Successfully enabled System Integrity Protection. Please restart the machine for the changes to take effect. 5. Reboot the computer Note: You should research why the system had SIP disabled. It might be a better option to erase the Mac and reinstall the operating system. That is at your discretion. Note: You cannot enable System Integrity Protection from the booted operating system. If the remediation is attempted in the booted OS and not the Recovery Partition the output will give the error csrutil: failed to modify system integrity configuration. This tool needs to be executed from the Recovery OS."
      references:
        - 'https://developer.apple.com/documentation/security/disabling_and_enabling_syst'
        - 'https://support.apple.com/en-us/HT204899'
@@ -1162,8 +1162,9 @@ checks:
        - pci_dss_v3.2.1: ["1.4"]
        - pci_dss_v4.0: ["1.2.5", "12.3.4", "2.2.4"]
        - soc_2: ["CC5.2", "CC6.8", "CC7.1"]
-     condition:
+     condition: all
      rules:
+      - "c:csrutil status -> r:^System Integrity Protection status: enabled."
 
   # 5.1.3 Ensure Apple Mobile File Integrity (AMFI) Is Enabled. (Automated)
    - id: 18583
@@ -1186,8 +1187,9 @@ checks:
        - nist_sp_800-53: ["CM-10", "CM-7(1)", "CM-7(2)", "CM-8(3)"]
        - pci_dss_v4.0: ["1.2.5", "12.3.4", "2.2.4"]
        - soc_2: ["CC5.2", "CC7.1"]
-     condition:
+     condition: all
      rules:
+      - "not c:nvram -p -> r:amfi_get_out_of_my_way=1"
 
   # 5.1.4 Ensure Sealed System Volume (SSV) Is Enabled. (Automated)
    - id: 18584
@@ -1212,70 +1214,13 @@ checks:
        - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
        - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - "c:csrutil authenticated-root status -> r:^Authenticated Root status: enabled"
 
-  # 5.1.5 Ensure Appropriate Permissions Are Enabled for System Wide Applications. (Automated)
-   - id: 18585
-     title: "Ensure Appropriate Permissions Are Enabled for System Wide Applications."
-     description: "Applications in the System Applications Directory (/Applications) should be world-executable since that is their reason to be on the system. They should not be world-writable and allow any process or user to alter them for other processes or users to then execute modified versions."
-     rationale: "Unauthorized modifications of applications could lead to the execution of malicious code."
-     impact: "Applications changed will no longer be world-writable. Depending on the environment, there will be different risk tolerances on each non-conforming application. Global changes should not be performed where mission-critical applications are misconfigured."
-     remediation: "Terminal Method: Run the following command to change the permissions for each application that does not meet the requirements: $ /usr/bin/sudo IFS=$'\\n' for apps in $( /usr/bin/find /System/Volumes/Data/Applications -iname \"*\\.app\" -type d -perm -2 | grep -v Xcode.app ); do /bin/chmod -R o-w \"$apps\" done Note: Global changes should not be performed where mission-critical applications are part of the improperly permissioned applications."
-     compliance:
-       - cis: ["5.1.5"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition:
-     rules:
-
-  # 5.1.6 Ensure No World Writable Folders Exist in the System Folder. (Automated)
-   - id: 18586
-     title: "Ensure No World Writable Folders Exist in the System Folder."
-     description: "Software sometimes insists on being installed in the /System/Volumes/Data/System Directory and has inappropriate world-writable permissions. Macs with writable files in System should be investigated forensically. A file with open writable permissions is a sign of at best a rogue application. It could also be a sign of a computer compromise and a persistent presence on the system."
-     rationale: "Folders in /System/Volumes/Data/System should not be world-writable. The audit check excludes the \"Drop Box\" folder that is part of Apple's default user template."
-     impact: "Changing file permissions could disrupt the use of applications that rely on files in the System Folder with vulnerable permissions."
-     remediation: "Terminal Method: Run the following command to set permissions so that folders are not world-writable in the /System folder: $ /usr/bin/sudo IFS=$'\\n' for sysPermissions in $( /usr/bin/find /System/Volumes/Data/System -type d - perm -2 | /usr/bin/grep -v \"downloadDir ); do /bin/chmod -R o-w \"$sysPermissions\" done."
-     compliance:
-       - cis: ["5.1.6"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition:
-     rules:
-
-  # 5.1.7 Ensure No World Writable Folders Exist in the Library Folder. (Automated)
-   - id: 18587
-     title: "Ensure No World Writable Folders Exist in the Library Folder."
-     description: "Software sometimes insists on being installed in the /System/Volumes/Data/Library Directory and has inappropriate world-writable permissions."
-     rationale: "Folders in /System/Volumes/Data/Library should not be world-writable. The audit check excludes the /System/Volumes/Data/Library/Caches and /System/Volumes/Data/Library/Preferences/Audio/Data folders where the sticky bit is set."
-     remediation: "Terminal Method: Run the following command to set permissions so that folders are not world-writable in the /System/Volumes/Data/Library folder: $ /usr/bin/sudo IFS=$'\\n' for libPermissions in $( /usr/bin/find /System/Volumes/Data/Library -type d - perm -2 | /usr/bin/grep -v Caches | /usr/bin/grep -v /Preferences/Audio/Data ); do /bin/chmod -R o-w \"$libPermissions\" done."
-     compliance:
-       - cis: ["5.1.7"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition:
-     rules:
+  # 5.1.5 Ensure Appropriate Permissions Are Enabled for System Wide Applications. (Automated) - Not Implemented
+  # 5.1.6 Ensure No World Writable Folders Exist in the System Folder. (Automated) - Not Implemented
+  # 5.1.7 Ensure No World Writable Folders Exist in the Library Folder. (Automated) - Not Implemented
 
   # 5.2.1 Ensure Password Account Lockout Threshold Is Configured. (Automated)
    - id: 18588
@@ -1297,8 +1242,9 @@ checks:
        - pci_dss_v3.2.1: ["8.1.3"]
        - pci_dss_v4.0: ["8.2.4", "8.2.5"]
        - soc_2: ["CC6.2", "CC6.3"]
-     condition:
+     condition: all
      rules:
+      - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:maxFailedLoginAttempts=(\d+) compare < 6'
 
   # 5.2.2 Ensure Password Minimum Length Is Configured. (Automated)
    - id: 18589
