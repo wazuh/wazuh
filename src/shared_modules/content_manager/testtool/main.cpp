@@ -45,16 +45,30 @@ static const nlohmann::json CONFIG_PARAMETERS =
         )"_json;
 
 /**
- * @brief Initialize RocksDB database. If it doesn't exist, it will be created with an initial offset of '0'.
+ * @brief Initialize RocksDB database. If it doesn't exist, it will be created. If it doesn't contain any value, an
+ * initial offset of '0' will be inserted.
  *
  */
 void initializeDatabase()
 {
-    constexpr auto INITIAL_OFFSET {"0"};
     const auto& databasePath {CONFIG_PARAMETERS.at("configData").at("databasePath").get_ref<const std::string&>()};
-
     Utils::RocksDBWrapper rocksDbConnector(databasePath);
-    rocksDbConnector.put(Utils::getCompactTimestamp(std::time(nullptr)), INITIAL_OFFSET);
+    std::string initialOffset;
+
+    try
+    {
+        // If this throws, it means the database is empty.
+        initialOffset = rocksDbConnector.getLastKeyValue().second.ToString();
+    }
+    catch (const std::exception& e)
+    {
+        constexpr auto DEFAULT_INITIAL_OFFSET {"0"};
+
+        initialOffset = DEFAULT_INITIAL_OFFSET;
+        rocksDbConnector.put(Utils::getCompactTimestamp(std::time(nullptr)), DEFAULT_INITIAL_OFFSET);
+    }
+
+    std::cout << "Database initial offset: " << initialOffset << std::endl;
 }
 
 int main()
