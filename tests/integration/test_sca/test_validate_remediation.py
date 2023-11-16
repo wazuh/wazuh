@@ -89,10 +89,10 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
 
     test_phases:
         - Copy cis_sca ruleset file into agent
-        - Create a folder that will be checked by the SCA rules
+        - Create a folder that will be checked by the SCA rules (Linux)
         - Restart wazuh
         - Validate the result for a given SCA check are as expected
-        - Change the folder's permissions
+        - Change the folder's permissions / Modifies the user lockout duration (Windows)
         - Validate the result for a given SCA check change as expected
 
     wazuh_min_version: 4.6.0
@@ -111,7 +111,8 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
             brief: copy test sca policy file. Delete it after test.
         - prepare_remediation_test:
             type: fixture
-            brief: Create a folder with a given set of permissions. Delete it after test.
+            brief: Create a folder with a given set of permissions or modifies the user
+                lockout duration in Windows. Delete it/Restores the value after test.
         - set_wazuh_configuration:
             type: fixture
             brief: Set the wazuh configuration according to the configuration data.

@@ -45,7 +45,7 @@ def prepare_cis_policies_file(test_metadata):
 @pytest.fixture()
 def prepare_remediation_test(folder_path='/testfile', mode=0o666):
     '''
-    Creates folder with a given mode.
+    Creates folder with a given mode or modifies the user lockout duration in Windows.
     Args:
         folder_path (str): path for the folder to create
         mode (int): mode to be used for folder creation.
