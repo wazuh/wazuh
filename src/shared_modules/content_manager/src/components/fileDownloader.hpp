@@ -86,7 +86,7 @@ private:
         const auto& url {context.spUpdaterBaseContext->configData.at("url").get_ref<const std::string&>()};
 
         // Check if file is compressed.
-        const auto& compressed {
+        const auto compressed {
             "raw" != context.spUpdaterBaseContext->configData.at("compressionType").get_ref<const std::string&>()};
 
         // Generate output file path. If the downloaded file is compressed, the output file will be in the downloads

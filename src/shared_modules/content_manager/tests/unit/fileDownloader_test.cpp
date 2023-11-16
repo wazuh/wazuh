@@ -21,8 +21,8 @@
 
 const auto OK_STATUS = R"({"stage":"FileDownloader","status":"ok"})"_json;
 const auto FAIL_STATUS = R"({"stage":"FileDownloader","status":"fail"})"_json;
-const auto BASE_URL = "localhost:4444/";
 const auto CONTENT_FILE_NAME = "content.xyz";
+const std::string BASE_URL = "localhost:4444/";
 
 void FileDownloaderTest::SetUpTestSuite()
 {
@@ -42,7 +42,6 @@ void FileDownloaderTest::SetUp()
     m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>();
     m_spUpdaterBaseContext->downloadsFolder = (m_outputFolder / "downloads").string();
     m_spUpdaterBaseContext->contentsFolder = (m_outputFolder / "contents").string();
-    m_spUpdaterBaseContext->configData["url"] = BASE_URL;
     m_spUpdaterBaseContext->configData["contentFileName"] = CONTENT_FILE_NAME;
 
     m_spUpdaterContext = std::make_shared<UpdaterContext>();
@@ -82,7 +81,7 @@ TEST_F(FileDownloaderTest, DownloadBadURL)
 
     // Set invalid config data. This will make the downloader to download from 'localhost:4444/invalid_file'.
     m_spUpdaterBaseContext->configData["compressionType"] = "raw";
-    m_spUpdaterBaseContext->configData["url"].get_ref<std::string&>() += "invalid_file";
+    m_spUpdaterBaseContext->configData["url"] = BASE_URL + "invalid_file";
 
     // Run downloader.
     ASSERT_THROW(FileDownloader().handleRequest(m_spUpdaterContext), std::runtime_error);
@@ -108,7 +107,7 @@ TEST_F(FileDownloaderTest, DownloadRawFile)
 
     // Set config data. This will make the downloader to download from 'localhost:4444/raw'.
     m_spUpdaterBaseContext->configData["compressionType"] = "raw";
-    m_spUpdaterBaseContext->configData["url"].get_ref<std::string&>() += "raw";
+    m_spUpdaterBaseContext->configData["url"] = BASE_URL + "raw";
 
     // Run downloader.
     ASSERT_NO_THROW(FileDownloader().handleRequest(m_spUpdaterContext));
@@ -137,7 +136,7 @@ TEST_F(FileDownloaderTest, DownloadCompressedFile)
 
     // Set config data. This will make the downloader to download from 'localhost:4444/xz'.
     m_spUpdaterBaseContext->configData["compressionType"] = "xz";
-    m_spUpdaterBaseContext->configData["url"].get_ref<std::string&>() += "xz";
+    m_spUpdaterBaseContext->configData["url"] = BASE_URL + "xz";
 
     // Run downloader.
     ASSERT_NO_THROW(FileDownloader().handleRequest(m_spUpdaterContext));
@@ -167,7 +166,7 @@ TEST_F(FileDownloaderTest, DownloadSameFileTwice)
 
     // Set config data. This will make the downloader to download from 'localhost:4444/xz'.
     m_spUpdaterBaseContext->configData["compressionType"] = "xz";
-    m_spUpdaterBaseContext->configData["url"].get_ref<std::string&>() += "xz";
+    m_spUpdaterBaseContext->configData["url"] = BASE_URL + "xz";
 
     // Run downloader. First download.
     EXPECT_NO_THROW(FileDownloader().handleRequest(m_spUpdaterContext));
@@ -204,7 +203,7 @@ TEST_F(FileDownloaderTest, DownloadSameFileTwiceAndThenADifferentOne)
 
     // Set config data. This will make the downloader to download from 'localhost:4444/xz'.
     m_spUpdaterBaseContext->configData["compressionType"] = "xz";
-    m_spUpdaterBaseContext->configData["url"].get_ref<std::string&>() += "xz";
+    m_spUpdaterBaseContext->configData["url"] = BASE_URL + "xz";
 
     // Run downloader. First download.
     EXPECT_NO_THROW(FileDownloader().handleRequest(m_spUpdaterContext));
@@ -232,7 +231,7 @@ TEST_F(FileDownloaderTest, DownloadSameFileTwiceAndThenADifferentOne)
 
     // Set config data. This will make the downloader to download from 'localhost:4444/raw'.
     m_spUpdaterBaseContext->configData["compressionType"] = "raw";
-    m_spUpdaterBaseContext->configData["url"].get_ref<std::string&>() = std::string(BASE_URL) + "raw";
+    m_spUpdaterBaseContext->configData["url"] = BASE_URL + "raw";
 
     // Run downloader. Third download. Different file.
     EXPECT_NO_THROW(FileDownloader().handleRequest(m_spUpdaterContext));
