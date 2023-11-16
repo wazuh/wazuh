@@ -129,51 +129,6 @@ public:
         }
     }
 
-    /**
-     * @brief Create an environment based on a policy and a filter ID.
-     *
-     * The filter ID is used to create a filter expression that checks if the session ID is equal to the filter ID.
-     * @param policyName The name of the policy.
-     * @param filterId The filter ID.
-     * @param builder The builder used to construct the policy and filter.
-     * @return Environment The created environment.
-     * @throw std::runtime_error if failed to create the environment.
-     */
-    Environment create(const base::Name& policyName, const uint32_t filterId)
-    {
-        if (policyName.parts().size() == 0 || policyName.parts()[0] != "policy")
-        {
-            throw std::runtime_error {"The asset name is empty or it is not a policy"};
-        }
-
-        std::shared_ptr<bk::IController> controller {};
-        try
-        {
-            controller = getController(policyName);
-        }
-        catch (std::runtime_error e)
-        {
-            throw std::runtime_error {fmt::format(
-                "Failed to create environment with policy '{}' and filter '{}': {}", policyName, filterId, e.what())};
-        }
-
-        json::Json value {std::to_string(filterId).c_str()};
-
-        const auto name {fmt::format("Router filter {} -> {}", JSON_PATH_SESSION_FILTER, value.str())};
-
-        auto expression =
-            base::Term<base::EngineOp>::create(name,
-                                               [value](const base::Event& event) -> base::result::Result<base::Event>
-                                               {
-                                                   if (event->equals(JSON_PATH_SESSION_FILTER, value))
-                                                   {
-                                                       return base::result::makeSuccess(event);
-                                                   }
-                                                   return base::result::makeFailure(event);
-                                               });
-
-        return Environment(std::move(expression), std::move(controller));
-    }
 };
 
 } // namespace router

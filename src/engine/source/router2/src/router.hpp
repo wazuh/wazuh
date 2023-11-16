@@ -4,7 +4,6 @@
 #include <memory>
 #include <shared_mutex>
 
-
 #include <router/types.hpp>
 
 #include "environmentBuilder.hpp"
@@ -15,48 +14,31 @@ namespace router
 
 /**
  * @class Router
- * @brief Manages the routing of events through a dynamic environment configuration.
+ * @brief Manages the routing of events through a dynamic environment and policies configuration.
  *
- * The Router class facilitates runtime management of environments using a dynamic table.
- * Environments are represented by RuntimeEntry objects, which store associated entries and
- * environment information.
+ * An environment is a policy + filter combination.
+ * A filter is a set of rules that determine which events are processed by a policy
  */
-class Router {
+class Router
+{
 private:
-    /**
-     * @class RuntimeEntry
-     * @brief Represents a runtime entry with associated environment information.
-     *
-     * Each RuntimeEntry is a child class of the Entry class and contains an Environment object.
-     */
-    class RuntimeEntry : public Entry {
+    class RuntimeEntry : public prod::Entry
+    {
     private:
         std::unique_ptr<Environment> m_env; ///< The environment associated with the entry.
 
     public:
-        /**
-         * @brief Constructs a RuntimeEntry with the provided entry post information.
-         * @param entry The entry post information.
-         */
-        RuntimeEntry(const EntryPost& entry)
-            : Entry(entry) {};
+        explicit RuntimeEntry(const prod::EntryPost& entry)
+            : prod::Entry(entry) {};
 
-        /**
-         * @brief Sets the environment for the RuntimeEntry.
-         * @param env The environment to be set.
-         */
         void setEnvironment(std::unique_ptr<Environment>&& env) { m_env = std::move(env); }
 
-        /**
-         * @brief Retrieves the environment associated with the RuntimeEntry.
-         * @return A constant reference to the associated environment.
-         */
         const std::unique_ptr<Environment>& environment() const { return m_env; }
         std::unique_ptr<Environment>& environment() { return m_env; }
     };
 
-    internal::Table<RuntimeEntry> m_table; ///< Internal table for managing RuntimeEntry objects.
-    mutable std::shared_mutex m_mutex;
+    internal::Table<RuntimeEntry> m_table; ///< Internal table for managing Production Environments.
+    mutable std::shared_mutex m_mutex;     ///< Mutex for the table.
 
     std::shared_ptr<EnvironmentBuilder> m_envBuilder; ///< Shared pointer to the environment builder.
 
@@ -80,25 +62,35 @@ public:
         , m_envBuilder(std::make_shared<EnvironmentBuilder>(builder, controllerMaker)) {};
 
     /**
-     * @brief Adds an environment to the router based on the provided entry post information.
-     * @param entryPost The entry post information.
-     * @return An optional error indicating the success or failure of the operation.
+     * @brief Add a new environment to the router. The environment is disabled by default.
+     * @param entryPost The entry information for the environment.
+     * @return An optional error if the operation failed.
      */
-    base::OptError addEnvironment(const EntryPost& entryPost);
+    base::OptError addEntry(const prod::EntryPost& entryPost);
 
     /**
-     * @brief Removes the environment with the specified name from the router.
+     * @brief Removes the environment
      * @param name The name of the environment to be removed.
-     * @return An optional error indicating the success or failure of the operation.
+     * @return An optional error if the operation failed.
      */
-    base::OptError removeEnvironment(const std::string& name);
+    base::OptError removeEntry(const std::string& name);
 
     /**
-     * @brief Disables the environment with the specified name in the router.
-     * @param name The name of the environment to be disabled.
-     * @return An optional error indicating the success or failure of the operation.
+     * @brief Rebuilds the environment with the specified name.
+     *
+     * @note state of the environment is not changed.
+     * @param name The name of the environment to be reloaded.
+     * @return An optional error if the operation failed.
      */
-    base::OptError disabledEnvironment(const std::string& name);
+    base::OptError rebuildEntry(const std::string& name);
+
+    /**
+     * @brief Enables the environment if it is builded.
+     *
+     * @param name
+     * @return base::OptError
+     */
+    base::OptError enableEntry(const std::string& name);
 
     /**
      * @brief Changes the priority of the environment with the specified name.
@@ -109,27 +101,33 @@ public:
     base::OptError changePriority(const std::string& name, size_t priority);
 
     /**
+     * @brief dumps the router table.
+     *
+     * @return std::list<Entry> The list of entries in the router table.
+     */
+    std::list<prod::Entry> getEntries() const;
+
+    /**
+     * @brief Get an environment by name.
+     *
+     */
+    base::RespOrError<prod::Entry> getEntry(const std::string& name) const;
+
+    /**
      * @brief Ingests an event into the router for processing.
      * @param event The event to be ingested.
      */
-    void ingest(base::Event event);
+    void ingest(base::Event&& event);
 
-    /**
-     * @brief Ingests an event into the router for processing and returns the result.
-     * 
-     * @param event The event to be ingested.
-     * @param opt The optional parameters for the ingest operation.
-     * @return test::Output The result 
-     */
-    base::RespOrError<test::Output>
-    ingestTest(base::Event event, const std::string& name, const std::vector<std::string>& assets);
-
-    /**
-     * @brief dumps the router table.
-     * 
-     * @return std::list<Entry> The list of entries in the router table.
-     */
-    std::list<Entry> getEntries() const;
+    // /**
+    //  * @brief Ingests an event into the router for processing and returns the result.
+    //  * // TODO Move to private
+    //  * @param event The event to be ingested.
+    //  * @param opt The optional parameters for the ingest operation.
+    //  * @return test::Output The result
+    //  */
+    //   base::RespOrError<test::Output>
+    //   ingestTest(base::Event&& event, const std::string& name, const std::vector<std::string>& assets);
 };
 
 } // namespace router
