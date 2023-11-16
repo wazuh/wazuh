@@ -4,31 +4,43 @@ import "engine.proto";
 
 package com.wazuh.api.engine.router;
 
-/* Client-facing representation of a route exposed in APIs */
+enum State
+{
+    STATE_UNKNOWN = 0; ///< Unset state
+    DISABLED = 1;      ///< Entry is inactive, it's not being used or error
+    ENABLED = 2;       ///< Entry is active, it's being used
+}
+
+enum Sync
+{
+    SYNC_UNKNOWN = 0; ///< Unset state
+    UPDATED = 1;      ///< Policy is updated
+    OUTDATED = 2;     ///< Policy is outdated respect to the store
+    DELETED = 3;      ///< Policy is deleted not exist in the store
+    ERROR = 4;        ///< Error, can't get the policy status
+}
+
+/* Client representation of a post route */
+message EntryPost
+{
+    string name = 1;                 // Name of the route
+    string policy = 2;               // Policy to end of the route
+    string filter = 3;               // Filter to apply to the route
+    uint32 priority = 4;             // Priority of the route
+    optional string description = 5; // Description of the route
+}
+
 message Entry
 {
-    optional string name = 1;        // Name of the route
-    optional string filter = 2;      // Filter to apply to the route
-    optional string policy = 3;      // Policy to end of the route
-    optional int32 priority = 4;     // Priority of the route
-    optional string policy_sync = 5; // Status of the policy [updated|updated|error]
-}
+    string name = 1;                 // Name of the route
+    string policy = 2;               // Policy to end of the route
+    string filter = 3;               // Filter to apply to the route
+    uint32 priority = 4;             // Priority of the route
+    optional string description = 5; // Description of the route
 
-/***************************************************
- * Get a route from the router
- *
- * command: router.route/get (<resource>/<action>)
- **************************************************/
-message RouteGet_Request
-{
-    optional string name = 1; // Name of the route to query
-}
-
-message RouteGet_Response
-{
-    ReturnStatus status = 1;   // Status of the query
-    optional string error = 2; // Error message if status is ERROR
-    optional Entry route = 3;  // Route queried if status is OK
+    Sync policy_sync = 6;   // Status of the policy [updated|updated|error]
+    State entry_status = 7; // Status of the entry [INACTIVE|ACTIVE]
+    int64 last_update = 8;  // Last update of the route
 }
 
 /***************************************************
@@ -38,22 +50,9 @@ message RouteGet_Response
  **************************************************/
 message RoutePost_Request
 {
-    optional Entry route = 1; // Route to add
+    optional EntryPost route = 1; // Route to add
 }
 // message RoutePost_Response -> Return a GenericStatus_Response
-
-/***************************************************
- * Patch a route to the router (Parcial update route)
- *
- * Actually, it only supports the update of the priority (Name and priority are required)
- *
- * command: router.route/patch (<resource>/<action>)
- **************************************************/
-message RoutePatch_Request
-{
-    optional Entry route = 1; // Route to update
-}
-// message RoutePatch_Response -> Return a GenericStatus_Response
 
 /***************************************************
  * Delete a route to the router if the route not exists, it returns OK
@@ -68,6 +67,49 @@ message RouteDelete_Request
     optional string name = 1; // Name of the route to delete
 }
 // message RouteDelete_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Get a route from the router
+ *
+ * command: router.route/get (<resource>/<action>)
+ **************************************************/
+message RouteGet_Request
+{
+    optional string name = 1; // Name of the route to get
+}
+
+message RouteGet_Response
+{
+    ReturnStatus status = 1;   // Status of the query
+    optional string error = 2; // Error message if status is ERROR
+    optional Entry route = 3;  // Route queried if status is OK
+}
+
+/***************************************************
+ * Reload a specific route from the router
+ *
+ * command: router.route/reload (<resource>/<action>)
+ **************************************************/
+message RouteReload_Request
+{
+    optional string name = 1; // Name of the route to reload
+}
+
+// message RouteReload_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Patch a route to the router (Parcial update route)
+ *
+ * Actually, it only supports the update of the priority (Name and priority are required)
+ *
+ * command: router.route/patchPriority (<resource>/<action>)
+ **************************************************/
+message RoutePatchPriority_Request
+{
+    optional string name = 1;     // Name of the route to update
+    optional uint32 priority = 2; // Priority of the route to update
+}
+// message RoutePatchPriority_Request -> Return a GenericStatus_Response
 
 /***************************************************
  * Get the table of routes from the router
