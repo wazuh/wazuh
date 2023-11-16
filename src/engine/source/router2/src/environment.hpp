@@ -89,7 +89,7 @@ public:
     {
         if (controller)
         {
-            m_controller = controller;
+            m_controller = std::move(controller);
         }
     }
 

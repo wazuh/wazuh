@@ -17,30 +17,6 @@ namespace router
 // Table here
 namespace internal
 {
-class RouteEntry : public Entry
-{
-private:
-    std::shared_ptr<Environment> m_environment;
-
-public:
-    explicit RouteEntry(const Entry& entry)
-        : Entry {entry} {
-            // build environment
-        };
-
-    const std::shared_ptr<Environment>& environment() const { return m_environment; }
-
-    bool available() const { return m_environment != nullptr && this->m_status == env::State::ACTIVE; }
-
-    base::OptError build();
-
-    const Entry& entry() const
-    {
-        // Update metada
-        return *this;
-    }
-};
-
 /**
  * @brief A template class to store and manage objects with unique names and priorities.
  *

@@ -5,113 +5,115 @@
 
 #include "router.hpp"
 
+namespace {
+/**
+ * @brief Return the current time in seconds since epoch
+ */
+int64_t getStartTime()
+{
+    auto startTime = std::chrono::system_clock::now();
+    return std::chrono::duration_cast<std::chrono::seconds>(startTime.time_since_epoch()).count();
+}
+} // namespace
 namespace router
 {
 
-base::OptError Router::addEnvironment(const EntryPost& entryPost)
+base::OptError Router::addEntry(const prod::EntryPost& entryPost)
 {
-    std::unique_lock lock {m_mutex};
     // Create the environment
     auto entry = RuntimeEntry(entryPost);
-
-    if (m_table.nameExists(entry.name()))
-    {
-        return base::Error {"The name is already in use"};
-    }
-
-    if (entry.isTesting())
-    {
-        return base::Error {"TODO The environment is for testing"};
-    }
-    else if (m_table.priorityExists(entry.priority()))
-    {
-        return base::Error {"The priority is already in use"};
-    }
-
-    // Create the environment
     try
     {
-        auto uniqueEnv = m_envBuilder->create(entry.policy(), entry.filter().value());
+        auto uniqueEnv = m_envBuilder->create(entry.policy(), entry.filter());
         entry.setEnvironment(std::move(uniqueEnv));
-        entry.setStatus(env::State::ACTIVE);
+        entry.status(env::State::DISABLED); // It is disabled until all routes are ready
+        entry.lastUpdate(getStartTime());
     }
     catch (const std::exception& e)
     {
         return base::Error {fmt::format("Failed to create the environment: {}", e.what())};
     }
 
-    if(entry.getCreated() == 0)
+    // Add the entry to the table
     {
-        auto startTime = std::chrono::system_clock::now();
-        auto epochTime = std::chrono::duration_cast<std::chrono::seconds>(startTime.time_since_epoch()).count();
-        entry.setCreated(epochTime);
+        std::unique_lock<std::shared_mutex> lock {m_mutex};
+        if (m_table.nameExists(entryPost.name()))
+        {
+            return base::Error {"The name of the route is already in use"};
+        }
+
+        if (m_table.priorityExists(entryPost.priority()))
+        {
+            return base::Error {"The priority of the route  is already in use"};
+        }
+        m_table.insert(entryPost.name(), entryPost.priority(), std::move(entry));
     }
 
-    // Add the environment to the table
-    auto name = entry.name();
-    auto priority = entry.priority();
-    if (!m_table.insert(name, priority, std::move(entry)))
-    {
-        return base::Error {"Failed to insert the environment into the table"};
-    }
-    return {};
+    return std::nullopt;;
 }
 
-base::OptError Router::removeEnvironment(const std::string& name)
+base::OptError Router::removeEntry(const std::string& name)
 {
     std::unique_lock lock {m_mutex};
     if (!m_table.nameExists(name))
     {
-        return base::Error {"The environment not exist"};
+        return base::Error {"The route not exist"};
     }
-    else
+    m_table.erase(name);
+    return std::nullopt;
+}
+
+base::OptError Router::rebuildEntry(const std::string& name)
+{
+    std::unique_lock lock {m_mutex};
+    if (!m_table.nameExists(name))
     {
-        if (!m_table.erase(name))
-        {
-            return base::Error {"Failed to delete the environment from the table"};
-        }
+        return base::Error {"The route not exist"};
+    }
+    auto& entry = m_table.get(name);
+    try
+    {
+        auto uniqueEnv = m_envBuilder->create(entry.policy(), entry.filter());
+        entry.setEnvironment(std::move(uniqueEnv));
+        entry.lastUpdate(getStartTime());
+        // Mantaing the status of the environment
+    }
+    catch (const std::exception& e)
+    {
+        return base::Error {fmt::format("Failed to reload the route: {}", e.what())};
     }
 
     return std::nullopt;
 }
 
-base::OptError Router::disabledEnvironment(const std::string& name)
-{
+base::OptError Router::enableEntry(const std::string& name) {
     std::unique_lock lock {m_mutex};
-    try
+    if (!m_table.nameExists(name))
     {
-        auto& entry = m_table.get(name);
-        entry.setStatus(env::State::INACTIVE);
+        return base::Error {"The route not exist"};
     }
-    catch (const std::exception& e)
+    auto& entry = m_table.get(name);
+    if (entry.environment() == nullptr)
     {
-        return base::Error {"The environment not exist"};
+        return base::Error {"The route is not buided"}; // bad init in startup
     }
-
+    entry.status(env::State::ENABLED);
     return {};
 }
 
 base::OptError Router::changePriority(const std::string& name, size_t priority)
 {
-    std::unique_lock lock {m_mutex};
-    // Check if the priority is valid only for production environments
-    if (Priority::validate(priority, false))
+
+    if (priority == 0)
     {
-        return base::Error {fmt::format("The priority '{}' is not in the valid range [{}-{}]",
-                                        priority,
-                                        static_cast<size_t>(Priority::Limits::MinProd),
-                                        static_cast<size_t>(Priority::Limits::MaxProd))};
+        return base::Error {"Priority of the route cannot be 0"};
     }
+
+    std::unique_lock lock {m_mutex};
 
     if (!m_table.nameExists(name))
     {
-        return base::Error {"The environment not exist"};
-    }
-
-    auto& entry = m_table.get(name);
-    if (entry.isTesting())
-    {
-        return base::Error {"Cannot change the priority of a testing environment"};
+        return base::Error {"The route not exist"};
     }
 
     if (!m_table.setPriority(name, priority))
@@ -119,48 +121,55 @@ base::OptError Router::changePriority(const std::string& name, size_t priority)
         return base::Error {"Failed to change the priority, it is already in use"};
     }
     // Sync the priority
-    entry.setPriority(priority);
+    m_table.get(name).priority(priority);
 
     return {};
 }
 
-std::list<Entry> Router::getEntries() const
+std::list<prod::Entry> Router::getEntries() const
 {
     std::shared_lock lock {m_mutex};
-    std::list<Entry> entries;
+    std::list<prod::Entry> entries;
 
     for (const auto& entry : m_table)
     {
         entries.push_back(entry);
+        // TODO Update states
     }
-
     return entries;
 }
 
-void Router::ingest(base::Event event)
+base::RespOrError<prod::Entry> Router::getEntry(const std::string& name) const
 {
     std::shared_lock lock {m_mutex};
-    bool processed = false; // Remove this when the router is ready
+    if (!m_table.nameExists(name))
+    {
+        return base::Error {"The route not exist"};
+    }
+    return m_table.get(name);
+}
+
+void Router::ingest(base::Event&& event)
+{
+    std::shared_lock lock {m_mutex};
+
     for (const auto& entry : m_table)
     {
-        if (entry.getStatus() != env::State::ACTIVE)
+        if (entry.status() == env::State::ENABLED && entry.environment()->isAccepted(event))
         {
-            continue;
-        }
-        if (entry.environment()->isAccepted(event))
-        {
-            event = entry.environment()->ingestGet(std::move(event));
-            processed = true;
+            entry.environment()->ingest(std::move(event));
+            event = nullptr;
             break;
         }
     }
 
-    if (!processed)
+    if (event)
     {
         LOG_WARNING("Event not processed: {}", event->str());
     }
 }
 
+/*
 base::RespOrError<test::Output>
 Router::ingestTest(base::Event event, const std::string& name, const std::vector<std::string>& assets)
 {
@@ -171,7 +180,7 @@ Router::ingestTest(base::Event event, const std::string& name, const std::vector
     }
 
     auto& entry = m_table.get(name);
-    if (entry.getStatus() != env::State::ACTIVE)
+    if (entry.getStatus() != env::State::ENABLED)
     {
         return base::Error {"The environment is not active"};
     }
@@ -208,4 +217,7 @@ Router::ingestTest(base::Event event, const std::string& name, const std::vector
     env->cleanSubscriptions();
     return output;
 }
+*/
+
+
 } // namespace router

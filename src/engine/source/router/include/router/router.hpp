@@ -175,7 +175,7 @@ public:
      * This method is inline and does not check the router && queue status
      * @param event
      */
-    void fastEnqueueEvent(const std::string& eventStr)
+    void pushEvent(const std::string& eventStr)
     {
         base::Event event;
         try
@@ -219,45 +219,4 @@ public:
     /**
      * @brief Subscribes to a callback that generates the outputs and traces corresponding to each event.
      *
-     * This function subscribes to a callback mechanism that generates the outputs and traces corresponding
-     * to each event for a specified policy and its instance. The generated output and trace data will be
-     * passed to the provided `outputCallback` and `traceCallback` functions.
-     *
-     * @param outputCallback The callback function to be invoked with the generated output data.
-     * @param traceCallback The callback function to be invoked with the generated trace data.
-     * @param assets Vector of asset names to subscribe to.
-     * @param policyName Name of the policy for which output and trace are to be obtained.
-     * @return std::optional<base::Error> If the policy is not configured for test mode, an error is returned.
-     *         Otherwise, returns std::nullopt if the subscription was successful.
-     */
-    std::optional<base::Error> subscribeOutputAndTraces(const OutputSubscriber& outputCallback,
-                                                        const TraceSubscriber& traceCallback,
-                                                        const std::vector<std::string>& assets,
-                                                        const std::string& policyName);
-
-    /**
-     * @brief Get the Assets object
-     *
-     * @param policyName
-     * @return base::RespOrError<std::vector<std::string>>
-     */
-    base::RespOrError<std::vector<std::string>> getAssets(const std::string& policyName) const;
-
-    /**
-     * @brief
-     *
-     * @param policyName
-     * @return base::OptError
-     */
-    base::OptError unsubscribe(const std::string& policyName);
-
-    /**
-     * @brief Get a hash of the policy
-     *
-     * @param policyName Name of the policy to get the hash
-     * @return std::optional<std::string> Hash of the policy or nullopt if the policy does not exist or is invalid name
-     */
-    std::optional<std::string> getPolicyHash(const std::string& policyName) const;
-};
-} // namespace router
-#endif // _ROUTER_ROUTER_HPP
+     * This function subscrib
