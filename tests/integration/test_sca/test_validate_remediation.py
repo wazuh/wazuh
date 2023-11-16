@@ -139,7 +139,7 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
     # Get the results for the checks obtained in the initial SCA scan
-    log_monitor.start(callback=patterns.callback_scan_id_result, timeout=20, \
+    log_monitor.start(callback=callback_scan_id_result, timeout=20, \
                       only_new_events=True, accumulations=2)
 
     results = log_monitor.callback_result
@@ -152,7 +152,7 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
     os.chmod(test_folder, test_metadata['perms'])
 
     # Get the results for the checks obtained in the SCA scan
-    log_monitor.start(callback=patterns.callback_scan_id_result, timeout=20, \
+    log_monitor.start(callback=callback_scan_id_result, timeout=20, \
                       only_new_events=True, accumulations=2)
     results = log_monitor.callback_result
 
