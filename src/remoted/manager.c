@@ -273,7 +273,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
     char * clean = w_utf8_filter(r_msg, true);
     r_msg = clean;
 
-    if ((strcmp(r_msg, HC_STARTUP) == 0) || (strcmp(r_msg, HC_SHUTDOWN) == 0)) {
+    if (strncmp(r_msg, HC_STARTUP, strlen(HC_STARTUP)) == 0 || strncmp(r_msg, HC_SHUTDOWN, strlen(HC_SHUTDOWN)) == 0) {
         char aux_ip[IPSIZE + 1] = {0};
         switch (key->peer_info.ss_family) {
         case AF_INET:
@@ -285,7 +285,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
         default:
             break;
         }
-        if (strcmp(r_msg, HC_STARTUP) == 0) {
+        if (strncmp(r_msg, HC_STARTUP, strlen(HC_STARTUP)) == 0) {
             mdebug1("Agent %s sent HC_STARTUP from '%s'", key->name, aux_ip);
             is_startup = 1;
             rem_inc_recv_ctrl_startup(key->id);
