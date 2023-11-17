@@ -17,6 +17,9 @@
 #include "os_net.h"
 #include "wazuh_modules/wmodules.h"
 
+#include <windows.h>
+#include <handleapi.h>
+
 #ifdef WIN32
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-function-type"
@@ -49,6 +52,39 @@ static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, i
 
 #define RECV_SOCK 0
 #define SEND_SOCK 1
+
+
+
+int OS_SetSocketFlags(int ossock) {
+    int ret = 0;
+#ifdef WIN32
+    HANDLE hObject = (HANDLE)(void*)ossock;
+    if(!SetHandleInformation(hObject, HANDLE_FLAG_INHERIT, FALSE)) {
+        LPVOID	lpMsgBuf;
+
+        DWORD dwError = WSAGetLastError();
+        FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
+                FORMAT_MESSAGE_FROM_SYSTEM |
+                FORMAT_MESSAGE_IGNORE_INSERTS,
+                NULL,
+                dwError,
+                MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                (LPTSTR) &lpMsgBuf, 0, NULL );
+
+        mwarn("Cannot set close-on-exec flag to socket: %s (%lu)", (LPCTSTR)lpMsgBuf, dwError);
+        LocalFree(lpMsgBuf);
+
+        ret = -1;
+    }
+#else
+    ret = fcntl(ossock, F_SETFD, FD_CLOEXEC);
+    if(-1 == ret) {
+        mwarn("Cannot set close-on-exec flag to socket: %s (%d)", strerror(errno), errno);
+    }
+#endif
+    return ret;
+}
+
 
 
 /* Bind a specific port */
@@ -117,6 +153,7 @@ static int OS_Bindport(u_int16_t _port, unsigned int _proto, const char *_ip, in
         }
     }
 
+    OS_SetSocketFlags(ossock);
     return (ossock);
 }
 
@@ -179,10 +216,7 @@ int OS_BindUnixDomainWithPerms(const char *path, int type, int max_msg_size, uid
     }
 
     // Set close-on-exec
-    if (fcntl(ossock, F_SETFD, FD_CLOEXEC) == -1) {
-        mwarn("Cannot set close-on-exec flag to socket: %s (%d)", strerror(errno), errno);
-    }
-
+    OS_SetSocketFlags(ossock);
     return (ossock);
 }
 
@@ -225,10 +259,7 @@ int OS_ConnectUnixDomain(const char *path, int type, int max_msg_size)
     }
 
     // Set close-on-exec
-    if (fcntl(ossock, F_SETFD, FD_CLOEXEC) == -1) {
-        mwarn("Cannot set close-on-exec flag to socket: %s (%d)", strerror(errno), errno);
-    }
-
+    OS_SetSocketFlags(ossock);
     return (ossock);
 }
 
@@ -319,6 +350,7 @@ static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, i
         return (OS_SOCKTERR);
     }
 
+    OS_SetSocketFlags(ossock);
     return (ossock);
 }
 
