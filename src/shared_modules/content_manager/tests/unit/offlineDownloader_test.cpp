@@ -158,13 +158,14 @@ TEST_F(OfflineDownloaderTest, TwoFileDownloadsOverrideOutput)
 }
 
 /**
- * @brief Tests the download with an URL with an invalid format.
+ * @brief Tests the download of a raw file with an inexistant content folder. Exception is expected.
  *
  */
-TEST_F(OfflineDownloaderTest, InvalidURLFormat)
+TEST_F(OfflineDownloaderTest, InexistantContentFolder)
 {
-    m_spUpdaterBaseContext->configData["url"] = 0;
+    m_spUpdaterBaseContext->configData["url"] = m_inputFilePathRaw.string();
     m_spUpdaterBaseContext->configData["compressionType"] = "raw";
+    m_spUpdaterBaseContext->contentsFolder = m_outputFolder / "inexistantFolder";
 
     nlohmann::json expectedData;
     expectedData["paths"] = m_spUpdaterContext->data.at("paths");
