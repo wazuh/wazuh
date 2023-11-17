@@ -913,11 +913,7 @@ class RouteDelete_Request final :
   enum : int {
     kNameFieldNumber = 1,
   };
-  // optional string name = 1;
-  bool has_name() const;
-  private:
-  bool _internal_has_name() const;
-  public:
+  // string name = 1;
   void clear_name();
   const std::string& name() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
@@ -939,9 +935,8 @@ class RouteDelete_Request final :
   typedef void InternalArenaConstructable_;
   typedef void DestructorSkippable_;
   struct Impl_ {
-    ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
-    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_router_2eproto;
@@ -1071,11 +1066,7 @@ class RouteGet_Request final :
   enum : int {
     kNameFieldNumber = 1,
   };
-  // optional string name = 1;
-  bool has_name() const;
-  private:
-  bool _internal_has_name() const;
-  public:
+  // string name = 1;
   void clear_name();
   const std::string& name() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
@@ -1097,9 +1088,8 @@ class RouteGet_Request final :
   typedef void InternalArenaConstructable_;
   typedef void DestructorSkippable_;
   struct Impl_ {
-    ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
-    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_router_2eproto;
@@ -1418,11 +1408,7 @@ class RouteReload_Request final :
   enum : int {
     kNameFieldNumber = 1,
   };
-  // optional string name = 1;
-  bool has_name() const;
-  private:
-  bool _internal_has_name() const;
-  public:
+  // string name = 1;
   void clear_name();
   const std::string& name() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
@@ -1444,9 +1430,8 @@ class RouteReload_Request final :
   typedef void InternalArenaConstructable_;
   typedef void DestructorSkippable_;
   struct Impl_ {
-    ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
-    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_router_2eproto;
@@ -1577,11 +1562,7 @@ class RoutePatchPriority_Request final :
     kNameFieldNumber = 1,
     kPriorityFieldNumber = 2,
   };
-  // optional string name = 1;
-  bool has_name() const;
-  private:
-  bool _internal_has_name() const;
-  public:
+  // string name = 1;
   void clear_name();
   const std::string& name() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
@@ -1595,11 +1576,7 @@ class RoutePatchPriority_Request final :
   std::string* _internal_mutable_name();
   public:
 
-  // optional uint32 priority = 2;
-  bool has_priority() const;
-  private:
-  bool _internal_has_priority() const;
-  public:
+  // uint32 priority = 2;
   void clear_priority();
   uint32_t priority() const;
   void set_priority(uint32_t value);
@@ -1616,10 +1593,9 @@ class RoutePatchPriority_Request final :
   typedef void InternalArenaConstructable_;
   typedef void DestructorSkippable_;
   struct Impl_ {
-    ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
-    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
     uint32_t priority_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_router_2eproto;
@@ -2056,11 +2032,7 @@ class QueuePost_Request final :
   enum : int {
     kWazuhEventFieldNumber = 1,
   };
-  // optional string wazuh_event = 1;
-  bool has_wazuh_event() const;
-  private:
-  bool _internal_has_wazuh_event() const;
-  public:
+  // string wazuh_event = 1;
   void clear_wazuh_event();
   const std::string& wazuh_event() const;
   template <typename ArgT0 = const std::string&, typename... ArgT>
@@ -2082,9 +2054,8 @@ class QueuePost_Request final :
   typedef void InternalArenaConstructable_;
   typedef void DestructorSkippable_;
   struct Impl_ {
-    ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
-    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr wazuh_event_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_router_2eproto;
@@ -2738,17 +2709,9 @@ inline void RoutePost_Request::set_allocated_route(::com::wazuh::api::engine::ro
 
 // RouteDelete_Request
 
-// optional string name = 1;
-inline bool RouteDelete_Request::_internal_has_name() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
-  return value;
-}
-inline bool RouteDelete_Request::has_name() const {
-  return _internal_has_name();
-}
+// string name = 1;
 inline void RouteDelete_Request::clear_name() {
   _impl_.name_.ClearToEmpty();
-  _impl_._has_bits_[0] &= ~0x00000001u;
 }
 inline const std::string& RouteDelete_Request::name() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.router.RouteDelete_Request.name)
@@ -2757,7 +2720,7 @@ inline const std::string& RouteDelete_Request::name() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void RouteDelete_Request::set_name(ArgT0&& arg0, ArgT... args) {
- _impl_._has_bits_[0] |= 0x00000001u;
+ 
  _impl_.name_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.RouteDelete_Request.name)
 }
@@ -2770,32 +2733,22 @@ inline const std::string& RouteDelete_Request::_internal_name() const {
   return _impl_.name_.Get();
 }
 inline void RouteDelete_Request::_internal_set_name(const std::string& value) {
-  _impl_._has_bits_[0] |= 0x00000001u;
+  
   _impl_.name_.Set(value, GetArenaForAllocation());
 }
 inline std::string* RouteDelete_Request::_internal_mutable_name() {
-  _impl_._has_bits_[0] |= 0x00000001u;
+  
   return _impl_.name_.Mutable(GetArenaForAllocation());
 }
 inline std::string* RouteDelete_Request::release_name() {
   // @@protoc_insertion_point(field_release:com.wazuh.api.engine.router.RouteDelete_Request.name)
-  if (!_internal_has_name()) {
-    return nullptr;
-  }
-  _impl_._has_bits_[0] &= ~0x00000001u;
-  auto* p = _impl_.name_.Release();
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.name_.IsDefault()) {
-    _impl_.name_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  return p;
+  return _impl_.name_.Release();
 }
 inline void RouteDelete_Request::set_allocated_name(std::string* name) {
   if (name != nullptr) {
-    _impl_._has_bits_[0] |= 0x00000001u;
+    
   } else {
-    _impl_._has_bits_[0] &= ~0x00000001u;
+    
   }
   _impl_.name_.SetAllocated(name, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -2810,17 +2763,9 @@ inline void RouteDelete_Request::set_allocated_name(std::string* name) {
 
 // RouteGet_Request
 
-// optional string name = 1;
-inline bool RouteGet_Request::_internal_has_name() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
-  return value;
-}
-inline bool RouteGet_Request::has_name() const {
-  return _internal_has_name();
-}
+// string name = 1;
 inline void RouteGet_Request::clear_name() {
   _impl_.name_.ClearToEmpty();
-  _impl_._has_bits_[0] &= ~0x00000001u;
 }
 inline const std::string& RouteGet_Request::name() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.router.RouteGet_Request.name)
@@ -2829,7 +2774,7 @@ inline const std::string& RouteGet_Request::name() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void RouteGet_Request::set_name(ArgT0&& arg0, ArgT... args) {
- _impl_._has_bits_[0] |= 0x00000001u;
+ 
  _impl_.name_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.RouteGet_Request.name)
 }
@@ -2842,32 +2787,22 @@ inline const std::string& RouteGet_Request::_internal_name() const {
   return _impl_.name_.Get();
 }
 inline void RouteGet_Request::_internal_set_name(const std::string& value) {
-  _impl_._has_bits_[0] |= 0x00000001u;
+  
   _impl_.name_.Set(value, GetArenaForAllocation());
 }
 inline std::string* RouteGet_Request::_internal_mutable_name() {
-  _impl_._has_bits_[0] |= 0x00000001u;
+  
   return _impl_.name_.Mutable(GetArenaForAllocation());
 }
 inline std::string* RouteGet_Request::release_name() {
   // @@protoc_insertion_point(field_release:com.wazuh.api.engine.router.RouteGet_Request.name)
-  if (!_internal_has_name()) {
-    return nullptr;
-  }
-  _impl_._has_bits_[0] &= ~0x00000001u;
-  auto* p = _impl_.name_.Release();
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.name_.IsDefault()) {
-    _impl_.name_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  return p;
+  return _impl_.name_.Release();
 }
 inline void RouteGet_Request::set_allocated_name(std::string* name) {
   if (name != nullptr) {
-    _impl_._has_bits_[0] |= 0x00000001u;
+    
   } else {
-    _impl_._has_bits_[0] &= ~0x00000001u;
+    
   }
   _impl_.name_.SetAllocated(name, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -3064,17 +2999,9 @@ inline void RouteGet_Response::set_allocated_route(::com::wazuh::api::engine::ro
 
 // RouteReload_Request
 
-// optional string name = 1;
-inline bool RouteReload_Request::_internal_has_name() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
-  return value;
-}
-inline bool RouteReload_Request::has_name() const {
-  return _internal_has_name();
-}
+// string name = 1;
 inline void RouteReload_Request::clear_name() {
   _impl_.name_.ClearToEmpty();
-  _impl_._has_bits_[0] &= ~0x00000001u;
 }
 inline const std::string& RouteReload_Request::name() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.router.RouteReload_Request.name)
@@ -3083,7 +3010,7 @@ inline const std::string& RouteReload_Request::name() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void RouteReload_Request::set_name(ArgT0&& arg0, ArgT... args) {
- _impl_._has_bits_[0] |= 0x00000001u;
+ 
  _impl_.name_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.RouteReload_Request.name)
 }
@@ -3096,32 +3023,22 @@ inline const std::string& RouteReload_Request::_internal_name() const {
   return _impl_.name_.Get();
 }
 inline void RouteReload_Request::_internal_set_name(const std::string& value) {
-  _impl_._has_bits_[0] |= 0x00000001u;
+  
   _impl_.name_.Set(value, GetArenaForAllocation());
 }
 inline std::string* RouteReload_Request::_internal_mutable_name() {
-  _impl_._has_bits_[0] |= 0x00000001u;
+  
   return _impl_.name_.Mutable(GetArenaForAllocation());
 }
 inline std::string* RouteReload_Request::release_name() {
   // @@protoc_insertion_point(field_release:com.wazuh.api.engine.router.RouteReload_Request.name)
-  if (!_internal_has_name()) {
-    return nullptr;
-  }
-  _impl_._has_bits_[0] &= ~0x00000001u;
-  auto* p = _impl_.name_.Release();
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.name_.IsDefault()) {
-    _impl_.name_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  return p;
+  return _impl_.name_.Release();
 }
 inline void RouteReload_Request::set_allocated_name(std::string* name) {
   if (name != nullptr) {
-    _impl_._has_bits_[0] |= 0x00000001u;
+    
   } else {
-    _impl_._has_bits_[0] &= ~0x00000001u;
+    
   }
   _impl_.name_.SetAllocated(name, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -3136,17 +3053,9 @@ inline void RouteReload_Request::set_allocated_name(std::string* name) {
 
 // RoutePatchPriority_Request
 
-// optional string name = 1;
-inline bool RoutePatchPriority_Request::_internal_has_name() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
-  return value;
-}
-inline bool RoutePatchPriority_Request::has_name() const {
-  return _internal_has_name();
-}
+// string name = 1;
 inline void RoutePatchPriority_Request::clear_name() {
   _impl_.name_.ClearToEmpty();
-  _impl_._has_bits_[0] &= ~0x00000001u;
 }
 inline const std::string& RoutePatchPriority_Request::name() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.router.RoutePatchPriority_Request.name)
@@ -3155,7 +3064,7 @@ inline const std::string& RoutePatchPriority_Request::name() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void RoutePatchPriority_Request::set_name(ArgT0&& arg0, ArgT... args) {
- _impl_._has_bits_[0] |= 0x00000001u;
+ 
  _impl_.name_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.RoutePatchPriority_Request.name)
 }
@@ -3168,32 +3077,22 @@ inline const std::string& RoutePatchPriority_Request::_internal_name() const {
   return _impl_.name_.Get();
 }
 inline void RoutePatchPriority_Request::_internal_set_name(const std::string& value) {
-  _impl_._has_bits_[0] |= 0x00000001u;
+  
   _impl_.name_.Set(value, GetArenaForAllocation());
 }
 inline std::string* RoutePatchPriority_Request::_internal_mutable_name() {
-  _impl_._has_bits_[0] |= 0x00000001u;
+  
   return _impl_.name_.Mutable(GetArenaForAllocation());
 }
 inline std::string* RoutePatchPriority_Request::release_name() {
   // @@protoc_insertion_point(field_release:com.wazuh.api.engine.router.RoutePatchPriority_Request.name)
-  if (!_internal_has_name()) {
-    return nullptr;
-  }
-  _impl_._has_bits_[0] &= ~0x00000001u;
-  auto* p = _impl_.name_.Release();
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.name_.IsDefault()) {
-    _impl_.name_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  return p;
+  return _impl_.name_.Release();
 }
 inline void RoutePatchPriority_Request::set_allocated_name(std::string* name) {
   if (name != nullptr) {
-    _impl_._has_bits_[0] |= 0x00000001u;
+    
   } else {
-    _impl_._has_bits_[0] &= ~0x00000001u;
+    
   }
   _impl_.name_.SetAllocated(name, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -3204,17 +3103,9 @@ inline void RoutePatchPriority_Request::set_allocated_name(std::string* name) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.router.RoutePatchPriority_Request.name)
 }
 
-// optional uint32 priority = 2;
-inline bool RoutePatchPriority_Request::_internal_has_priority() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
-  return value;
-}
-inline bool RoutePatchPriority_Request::has_priority() const {
-  return _internal_has_priority();
-}
+// uint32 priority = 2;
 inline void RoutePatchPriority_Request::clear_priority() {
   _impl_.priority_ = 0u;
-  _impl_._has_bits_[0] &= ~0x00000002u;
 }
 inline uint32_t RoutePatchPriority_Request::_internal_priority() const {
   return _impl_.priority_;
@@ -3224,7 +3115,7 @@ inline uint32_t RoutePatchPriority_Request::priority() const {
   return _internal_priority();
 }
 inline void RoutePatchPriority_Request::_internal_set_priority(uint32_t value) {
-  _impl_._has_bits_[0] |= 0x00000002u;
+  
   _impl_.priority_ = value;
 }
 inline void RoutePatchPriority_Request::set_priority(uint32_t value) {
@@ -3372,17 +3263,9 @@ TableGet_Response::table() const {
 
 // QueuePost_Request
 
-// optional string wazuh_event = 1;
-inline bool QueuePost_Request::_internal_has_wazuh_event() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
-  return value;
-}
-inline bool QueuePost_Request::has_wazuh_event() const {
-  return _internal_has_wazuh_event();
-}
+// string wazuh_event = 1;
 inline void QueuePost_Request::clear_wazuh_event() {
   _impl_.wazuh_event_.ClearToEmpty();
-  _impl_._has_bits_[0] &= ~0x00000001u;
 }
 inline const std::string& QueuePost_Request::wazuh_event() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.router.QueuePost_Request.wazuh_event)
@@ -3391,7 +3274,7 @@ inline const std::string& QueuePost_Request::wazuh_event() const {
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
 void QueuePost_Request::set_wazuh_event(ArgT0&& arg0, ArgT... args) {
- _impl_._has_bits_[0] |= 0x00000001u;
+ 
  _impl_.wazuh_event_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.QueuePost_Request.wazuh_event)
 }
@@ -3404,32 +3287,22 @@ inline const std::string& QueuePost_Request::_internal_wazuh_event() const {
   return _impl_.wazuh_event_.Get();
 }
 inline void QueuePost_Request::_internal_set_wazuh_event(const std::string& value) {
-  _impl_._has_bits_[0] |= 0x00000001u;
+  
   _impl_.wazuh_event_.Set(value, GetArenaForAllocation());
 }
 inline std::string* QueuePost_Request::_internal_mutable_wazuh_event() {
-  _impl_._has_bits_[0] |= 0x00000001u;
+  
   return _impl_.wazuh_event_.Mutable(GetArenaForAllocation());
 }
 inline std::string* QueuePost_Request::release_wazuh_event() {
   // @@protoc_insertion_point(field_release:com.wazuh.api.engine.router.QueuePost_Request.wazuh_event)
-  if (!_internal_has_wazuh_event()) {
-    return nullptr;
-  }
-  _impl_._has_bits_[0] &= ~0x00000001u;
-  auto* p = _impl_.wazuh_event_.Release();
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.wazuh_event_.IsDefault()) {
-    _impl_.wazuh_event_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  return p;
+  return _impl_.wazuh_event_.Release();
 }
 inline void QueuePost_Request::set_allocated_wazuh_event(std::string* wazuh_event) {
   if (wazuh_event != nullptr) {
-    _impl_._has_bits_[0] |= 0x00000001u;
+    
   } else {
-    _impl_._has_bits_[0] &= ~0x00000001u;
+    
   }
   _impl_.wazuh_event_.SetAllocated(wazuh_event, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING

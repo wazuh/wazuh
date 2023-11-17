@@ -126,6 +126,11 @@ public:
      */
     void postEvent(base::Event&& event) override { m_queue.prod->push(std::move(event)); }
 
+    /**
+     * @copydoc router::IRouterAPI::postStrEvent
+     */
+    base::OptError postStrEvent(std::string_view event) override;
+
 };
 
 } // namespace router
