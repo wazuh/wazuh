@@ -21,7 +21,7 @@
 TEST_F(SocketDBWrapperTest, EmptyTest)
 {
     m_query = "SELECT * FROM test_table;";
-    m_response = "";
+    m_responses = std::vector<std::string> {""};
 
     nlohmann::json output;
     SocketDBWrapper socketDBWrapper(TEST_SOCKET);
@@ -32,7 +32,7 @@ TEST_F(SocketDBWrapperTest, EmptyTest)
 TEST_F(SocketDBWrapperTest, ErrorTest)
 {
     m_query = "SELECT * FROM test_table;";
-    m_response = "err Things happened";
+    m_responses = std::vector<std::string> {R"(err Things happened)"};
 
     nlohmann::json output;
     SocketDBWrapper socketDBWrapper(TEST_SOCKET);
@@ -42,7 +42,7 @@ TEST_F(SocketDBWrapperTest, ErrorTest)
 TEST_F(SocketDBWrapperTest, UnknownTest)
 {
     m_query = "SELECT * FROM test_table;";
-    m_response = "unk Things happened";
+    m_responses = std::vector<std::string> {R"(unk Things happened)"};
 
     nlohmann::json output;
     SocketDBWrapper socketDBWrapper(TEST_SOCKET);
@@ -52,7 +52,7 @@ TEST_F(SocketDBWrapperTest, UnknownTest)
 TEST_F(SocketDBWrapperTest, IgnoreTest)
 {
     m_query = "SELECT * FROM test_table;";
-    m_response = "ign Things happened";
+    m_responses = std::vector<std::string> {R"(ign Things happened)"};
 
     nlohmann::json output;
     SocketDBWrapper socketDBWrapper(TEST_SOCKET);
@@ -62,17 +62,21 @@ TEST_F(SocketDBWrapperTest, IgnoreTest)
 TEST_F(SocketDBWrapperTest, DueTest)
 {
     m_query = "SELECT * FROM test_table;";
-    m_response = "due Things happened";
+    m_responses = std::vector<std::string> {R"(due {"field": "value1"})", R"(due {"field": "value2"})", R"(due {"field": "value3"})", R"(ok {"status":"SUCCESS"})"};
 
     nlohmann::json output;
     SocketDBWrapper socketDBWrapper(TEST_SOCKET);
-    EXPECT_THROW(socketDBWrapper.query(m_query, output), std::exception);
+    EXPECT_NO_THROW(socketDBWrapper.query(m_query, output));
+
+    ASSERT_EQ(output[0].at("field"), "value1");
+    ASSERT_EQ(output[1].at("field"), "value2");
+    ASSERT_EQ(output[2].at("field"), "value3");
 }
 
 TEST_F(SocketDBWrapperTest, InvalidTest)
 {
     m_query = "SELECT * FROM test_table;";
-    m_response = "Invalid";
+    m_responses = std::vector<std::string> {R"(Invalid)"};
 
     nlohmann::json output;
     SocketDBWrapper socketDBWrapper(TEST_SOCKET);
@@ -82,7 +86,7 @@ TEST_F(SocketDBWrapperTest, InvalidTest)
 TEST_F(SocketDBWrapperTest, TimeoutTest)
 {
     m_query = "SELECT * FROM test_table;";
-    m_response = R"(ok [{"field": "value"}])";
+    m_responses = std::vector<std::string> {R"(ok [{"field": "value"}])"};
     m_sleepTime = DB_WRAPPER_QUERY_WAIT_TIME + 10;
 
     nlohmann::json output;
@@ -90,14 +94,14 @@ TEST_F(SocketDBWrapperTest, TimeoutTest)
     EXPECT_THROW(socketDBWrapper.query(m_query, output), std::exception);
 }
 
-TEST_F(SocketDBWrapperTest, SuccessTest)
+TEST_F(SocketDBWrapperTest, OkTest)
 {
     m_query = "SELECT * FROM test_table;";
-    m_response = R"(ok [{"field": "value"}])";
+    m_responses = std::vector<std::string> {R"(ok [{"field": "value"}])"};
 
     nlohmann::json output;
     SocketDBWrapper socketDBWrapper(TEST_SOCKET);
-    socketDBWrapper.query(m_query, output);
+    EXPECT_NO_THROW(socketDBWrapper.query(m_query, output));
 
     ASSERT_EQ(output[0].at("field"), "value");
 }

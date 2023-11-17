@@ -42,7 +42,10 @@ protected:
 
                 std::this_thread::sleep_for(std::chrono::milliseconds(m_sleepTime));
 
-                m_socketServer->send(fd, m_response.c_str(), m_response.size());
+                for(const auto& response : m_responses)
+                {
+                    m_socketServer->send(fd, response.c_str(), response.size());
+                }
             });
     };
     void TearDown() override
@@ -50,13 +53,13 @@ protected:
         m_socketServer->stop();
         m_socketServer.reset();
         m_query.clear();
-        m_response.clear();
+        m_responses.clear();
         m_sleepTime = 0;
     };
 
     std::shared_ptr<SocketServer<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>> m_socketServer;
     std::string m_query;
-    std::string m_response;
+    std::vector<std::string> m_responses;
     int m_sleepTime;
 };
 
