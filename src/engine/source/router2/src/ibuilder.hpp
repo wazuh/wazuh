@@ -43,8 +43,8 @@ public:
 class ConcreteBuilder : public IBuilder
 {
 private:
-    std::shared_ptr<store::IStore> m_storeRead; /**< The store to retrieve internal documents. */
-    std::shared_ptr<builder::internals::Registry<builder::internals::Builder>> m_registry; /**< The registry for builder internals. */
+    std::weak_ptr<store::IStore> m_storeRead; /**< The store to retrieve internal documents. */
+    std::weak_ptr<builder::internals::Registry<builder::internals::Builder>> m_registry; /**< The registry for builder internals. */
 
 public:
 
@@ -54,8 +54,8 @@ public:
      * @param store The store to retrieve internal documents.
      * @param registry The registry for builder internals.
      */
-    ConcreteBuilder(std::shared_ptr<store::IStore> store,
-                    std::shared_ptr<builder::internals::Registry<builder::internals::Builder>> registry)
+    ConcreteBuilder(std::weak_ptr<store::IStore> store,
+                    std::weak_ptr<builder::internals::Registry<builder::internals::Builder>> registry)
         : m_storeRead(store)
         , m_registry(registry)
     {
@@ -66,13 +66,25 @@ public:
      */
     base::RespOrError<std::shared_ptr<builder::IPolicy>> buildPolicy(const base::Name& name) const override
     {
-        auto policyDoc = m_storeRead->readInternalDoc(name);
+        auto storeRead = m_storeRead.lock();
+        if (!storeRead)
+        {
+            return base::Error{"Store is not available"};
+        }
+
+        auto policyDoc = storeRead->readInternalDoc(name);
         if (base::isError(policyDoc))
         {
             return base::getError(policyDoc);
         }
 
-        return std::make_shared<builder::Policy>(base::getResponse<store::Doc>(policyDoc), m_storeRead, m_registry);
+        auto registry = m_registry.lock();
+        if (!registry)
+        {
+            return base::Error{"Registry is not available"};
+        }
+
+        return std::make_shared<builder::Policy>(base::getResponse<store::Doc>(policyDoc), storeRead, registry);
     }
 
     /**
@@ -80,12 +92,23 @@ public:
      */
     base::RespOrError<base::Expression> buildAsset(const base::Name& name) const override
     {
-        auto routeJson = store::utils::get(m_storeRead, name);
+        auto storeRead = m_storeRead.lock();
+        if (!storeRead)
+        {
+            return base::Error{"Store is not available"};
+        }
+        auto registry = m_registry.lock();
+        if (!registry)
+        {
+            return base::Error{"Registry is not available"};
+        }
+
+        auto routeJson = store::utils::get(storeRead, name);
         if (base::isError(routeJson))
         {
             return base::getError(routeJson);
         }
-        builder::Asset asset(base::getResponse<store::Doc>(routeJson), builder::Asset::Type::FILTER, m_registry);
+        builder::Asset asset(base::getResponse<store::Doc>(routeJson), builder::Asset::Type::FILTER, registry);
         return asset.getExpression();
     }
 };
