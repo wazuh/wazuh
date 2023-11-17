@@ -26,6 +26,7 @@ public:
 
     // Production: Ingest
     virtual void postEvent(base::Event&& event) = 0;
+    virtual base::OptError postStrEvent(std::string_view event) = 0;
     // virtual base::OptError postTest(const base::Event& event, const test::Opt& settings) = 0;
 
 };
