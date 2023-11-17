@@ -12,7 +12,7 @@
 #include <baseTypes.hpp>
 #include <logging/logging.hpp>
 #include <parseEvent.hpp>
-#include <queue/iBlockingConcurrentQueue.hpp>
+#include <queue/iqueue.hpp>
 #include <store/istore.hpp>
 
 #include "policyManager.hpp"
@@ -43,7 +43,7 @@ class Router
 {
 
 private:
-    using concurrentQueue = base::queue::iBlockingConcurrentQueue<base::Event>; ///< Alias for the queue type
+    using concurrentQueue = base::queue::iQueue<base::Event>; ///< Alias for the queue type
 
     /* Status */
     /**
@@ -216,7 +216,3 @@ public:
      */
     void clear();
 
-    /**
-     * @brief Subscribes to a callback that generates the outputs and traces corresponding to each event.
-     *
-     * This function subscrib

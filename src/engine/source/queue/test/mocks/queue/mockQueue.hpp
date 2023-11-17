@@ -2,12 +2,12 @@
 #define _MOCK_QUEUE_HPP
 
 #include <gmock/gmock.h>
-#include <queue/iBlockingConcurrentQueue.hpp>
+#include <queue/iqueue.hpp>
 
 using namespace base::queue;
 
 template <typename T>
-class MockQueue : public iBlockingConcurrentQueue<T>
+class MockQueue : public iQueue<T>
 {
 public:
     MOCK_METHOD((void), push, (T&& element, bool priority), (override));
