@@ -205,7 +205,6 @@ void runStart(ConfHandler confManager)
     std::shared_ptr<hlp::logpar::Logpar> logpar;
     std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
     std::shared_ptr<metricsManager::MetricsManager> metrics;
-    std::shared_ptr<base::queue::iBlockingConcurrentQueue<base::Event>> eventQueue;
     std::shared_ptr<schemf::Schema> schema;
     std::shared_ptr<sockiface::UnixSocketFactory> sockFactory;
     std::shared_ptr<wazuhdb::WDBManager> wdbManager;
@@ -230,16 +229,7 @@ void runStart(ConfHandler confManager)
             LOG_INFO("RBAC initialized.");
         }
 
-        // Queue
-        {
-            // Create the scope here
-            auto EventScope = metrics->getMetricsScope("EventQueue");
-            auto EventScopeDelta = metrics->getMetricsScope("EventQueueDelta");
-            eventQueue = std::make_shared<base::queue::ConcurrentQueue<base::Event>>(
-                queueSize, EventScope, EventScopeDelta, queueFloodFile, queueFloodAttempts, queueFloodSleep);
-            LOG_DEBUG("Event queue created.");
-        }
-
+    
         // KVDB
         {
             kvdbManager::KVDBManagerOptions kvdbOptions {kvdbPath, "kvdb"};
@@ -322,14 +312,27 @@ void runStart(ConfHandler confManager)
 
         // Router
         {
+            namespace wq = base::queue;
+            // Queue creation for the router
+            std::shared_ptr<wq::iQueue<base::Event>> eventQueue {};
+            // std::shared_ptr<wq::iQueue<base::Event>> eventQueue {};
+            {
+                auto EventScope = metrics->getMetricsScope("EventQueue");
+                auto EventScopeDelta = metrics->getMetricsScope("EventQueueDelta");
+                eventQueue = std::make_shared<wq::ConcurrentQueue<base::Event>>(
+                    queueSize, EventScope, EventScopeDelta, queueFloodFile, queueFloodAttempts, queueFloodSleep);
+
+                LOG_DEBUG("Event queue created.");
+            }
+
             // builder, store, routerThreads, forceRouterArg
             router::Config routerConfig {.m_numThreads = routerThreads,
-                                         .m_store = store,
-                                         .m_registry = registry,
+                                         .m_wStore = store,
+                                         .m_wRegistry = registry,
                                          .m_controllerMaker = std::make_shared<bk::rx::ControllerMaker>(),
                                          .m_queue = eventQueue
                                          };
-            // Delete router metrics
+
             routerAdmin = std::make_shared<router::RouterAdmin>(routerConfig);
             auto res = routerAdmin->postEntry(router::prod::EntryPost("Default", "policy/wazuh/0", "filter/allow-all/0", 255));
             if (res.has_value())
