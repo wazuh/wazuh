@@ -44,7 +44,7 @@ message Entry
 }
 
 /***************************************************
- * Post a route to the router (Add route)
+ * Post a route to the router
  *
  * command: router.route/post (<resource>/<action>)
  **************************************************/
@@ -55,16 +55,13 @@ message RoutePost_Request
 // message RoutePost_Response -> Return a GenericStatus_Response
 
 /***************************************************
- * Delete a route to the router if the route not exists, it returns OK
+ * Delete a route from the router
  *
- * If the route exists, it returns OK and delete the route
- * If the route not exists, it returns OK, because the route is not present after the operation
  * command: router.route/delete (<resource>/<action>)
  **************************************************/
 message RouteDelete_Request
 {
-
-    optional string name = 1; // Name of the route to delete
+    string name = 1; // Name of the route to delete
 }
 // message RouteDelete_Response -> Return a GenericStatus_Response
 
@@ -75,7 +72,7 @@ message RouteDelete_Request
  **************************************************/
 message RouteGet_Request
 {
-    optional string name = 1; // Name of the route to get
+    string name = 1; // Name of the route to get
 }
 
 message RouteGet_Response
@@ -92,7 +89,7 @@ message RouteGet_Response
  **************************************************/
 message RouteReload_Request
 {
-    optional string name = 1; // Name of the route to reload
+    string name = 1; // Name of the route to reload
 }
 
 // message RouteReload_Response -> Return a GenericStatus_Response
@@ -106,8 +103,8 @@ message RouteReload_Request
  **************************************************/
 message RoutePatchPriority_Request
 {
-    optional string name = 1;     // Name of the route to update
-    optional uint32 priority = 2; // Priority of the route to update
+    string name = 1;     // Name of the route to update
+    uint32 priority = 2; // Priority of the route to update
 }
 // message RoutePatchPriority_Request -> Return a GenericStatus_Response
 
@@ -136,8 +133,8 @@ message TableGet_Response
  **************************************************/
 message QueuePost_Request
 {
-    optional string wazuh_event = 1; // Event to send
-    reserved 2;                      // Reserved for future use (event json position)
-    reserved "event";                // Reserved for event in json format for future use in the engine
+    string wazuh_event = 1; // Event to send
+    reserved 2;             // Reserved for future use (event json position)
+    reserved "event";       // Reserved for event in json format for future use in the engine
 }
 // message RoutePatch_Response -> Return a GenericStatus_Response
