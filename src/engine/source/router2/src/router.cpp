@@ -31,7 +31,7 @@ base::OptError Router::addEntry(const prod::EntryPost& entryPost)
     }
     catch (const std::exception& e)
     {
-        return base::Error {fmt::format("Failed to create the environment: {}", e.what())};
+        return base::Error {fmt::format("Failed to create the route: {}", e.what())};
     }
 
     // Add the entry to the table

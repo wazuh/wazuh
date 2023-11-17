@@ -18,7 +18,7 @@
 #include <api/metrics/handlers.hpp>
 #include <api/policy/handlers.hpp>
 #include <api/policy/policy.hpp>
-// #include <api/router/handlers.hpp>
+#include <api/router/handlers.hpp>
 // #include <api/test/handlers.hpp>
 #include <api/test/sessionManager.hpp>
 #include <bk/rx/controller.hpp>
@@ -323,7 +323,7 @@ void runStart(ConfHandler confManager)
         // Router
         {
             // builder, store, routerThreads, forceRouterArg
-            router::Config routerConfig {.m_numThreads = 1,
+            router::Config routerConfig {.m_numThreads = routerThreads,
                                          .m_store = store,
                                          .m_registry = registry,
                                          .m_controllerMaker = std::make_shared<bk::rx::ControllerMaker>(),
@@ -343,39 +343,7 @@ void runStart(ConfHandler confManager)
         }
 
         // Test
-        /*
-        {
-            sessionManager = std::make_shared<api::sessionManager::SessionManager>();
-
-            // Try to load the sessions from the stregistry
-            const auto strJsonSessions = store->readInternalDoc(router::API_SESSIONS_TABLE_NAME);
-            if (std::holds_alternative<base::Error>(strJsonSessions))
-            {
-                LOG_WARNING("Could not retreive configuration file [{}] needed by the 'Test' module: {}",
-                            router::API_SESSIONS_TABLE_NAME,
-                            std::get<base::Error>(strJsonSessions).message);
-
-                // Create the sessions table
-                const auto storeSetSessionsTable =
-                    store->createInternalDoc(router::API_SESSIONS_TABLE_NAME, json::Json("[]"));
-                if (storeSetSessionsTable.has_value())
-                {
-                    LOG_ERROR("API sessions table could not be created: {}", storeSetSessionsTable.value().message);
-                    exitHandler.execute();
-                    return;
-                }
-            }
-            else
-            {
-                const auto loadError = api::test::handlers::loadSessionsFromJson(
-                    sessionManager, routerAdmin, std::get<json::Json>(strJsonSessions));
-                if (loadError.has_value())
-                {
-                    LOG_ERROR("API sessions loading could not be completed: {}", loadError.value().message);
-                }
-            }
-        }
-        */
+       
 
         // Create and configure the api endpints
         {
@@ -421,7 +389,7 @@ void runStart(ConfHandler confManager)
             }
 
             // Router
-            //api::router::handlers::registerHandlers(routerAdmin, api, policyManager);
+            api::router::handlers::registerHandlers(routerAdmin, api);
             LOG_DEBUG("Router API registered.");
 
             // Graph
