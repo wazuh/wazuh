@@ -18,6 +18,7 @@
 #include <memory>
 
 const auto OK_STATUS = R"({"stage":"OfflineDownloader","status":"ok"})"_json;
+const auto FAIL_STATUS = R"({"stage":"OfflineDownloader","status":"fail"})"_json;
 
 /**
  * @brief Tests the correct instantiation of the class.
@@ -154,4 +155,22 @@ TEST_F(OfflineDownloaderTest, TwoFileDownloadsOverrideOutput)
     ASSERT_NO_THROW(OfflineDownloader().handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
     EXPECT_TRUE(std::filesystem::exists(m_spUpdaterBaseContext->contentsFolder / m_inputFilePathRaw.filename()));
+}
+
+/**
+ * @brief Tests the download with an URL with an invalid format.
+ *
+ */
+TEST_F(OfflineDownloaderTest, InvalidURLFormat)
+{
+    m_spUpdaterBaseContext->configData["url"] = 0;
+    m_spUpdaterBaseContext->configData["compressionType"] = "raw";
+
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
+    expectedData["stageStatus"] = nlohmann::json::array();
+    expectedData["stageStatus"].push_back(FAIL_STATUS);
+
+    ASSERT_THROW(OfflineDownloader().handleRequest(m_spUpdaterContext), std::runtime_error);
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 }

@@ -74,7 +74,9 @@ private:
             return Utils::asciiToHex(hash.hash());
         }
 
+        // LCOV_EXCL_START
         throw std::runtime_error {"Unable to open '" + filepath.string() + "' for hashing."};
+        // LCOV_EXCL_STOP
     };
 
     /**
