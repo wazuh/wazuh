@@ -29,21 +29,20 @@ protected:
     ~XzHelperTest() override = default;
 
     /**
-     * @brief Initial conditions for tests
+     * @brief Set the Up Test Suite object
      *
      */
     // cppcheck-suppress unusedFunction
-    void SetUp() override
+    static void SetUpTestSuite()
     {
         std::filesystem::create_directory(OUTPUT_PATH);
     }
 
     /**
-     * @brief Tear down routine for tests
-     *
+     * @brief Tear down test suite.
      */
     // cppcheck-suppress unusedFunction
-    void TearDown() override
+    static void TearDownTestSuite()
     {
         std::filesystem::remove_all(OUTPUT_PATH);
     }
