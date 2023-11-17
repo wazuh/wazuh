@@ -95,6 +95,13 @@ private:
         }
         const std::filesystem::path inputFilePath {url};
 
+        // Check input file existence.
+        if (!std::filesystem::exists(inputFilePath))
+        {
+            std::cout << "File " << inputFilePath << " doesn't exist. Skipping download." << std::endl;
+            return;
+        }
+
         // Process input file hash.
         auto inputFileHash {hashFile(inputFilePath)};
 

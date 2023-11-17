@@ -18,7 +18,6 @@
 #include <memory>
 
 const auto OK_STATUS = R"({"stage":"OfflineDownloader","status":"ok"})"_json;
-const auto FAIL_STATUS = R"({"stage":"OfflineDownloader","status":"fail"})"_json;
 
 /**
  * @brief Tests the correct instantiation of the class.
@@ -72,7 +71,7 @@ TEST_F(OfflineDownloaderTest, CompressedFileDownload)
 }
 
 /**
- * @brief Tests the download of an inexistant file. Exception is expected, as well as a fail stage status.
+ * @brief Tests the download of an inexistant file.
  *
  */
 TEST_F(OfflineDownloaderTest, InexistantFileDownload)
@@ -83,9 +82,9 @@ TEST_F(OfflineDownloaderTest, InexistantFileDownload)
     nlohmann::json expectedData;
     expectedData["paths"] = m_spUpdaterContext->data.at("paths");
     expectedData["stageStatus"] = nlohmann::json::array();
-    expectedData["stageStatus"].push_back(FAIL_STATUS);
+    expectedData["stageStatus"].push_back(OK_STATUS);
 
-    ASSERT_THROW(OfflineDownloader().handleRequest(m_spUpdaterContext), std::runtime_error);
+    ASSERT_NO_THROW(OfflineDownloader().handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 }
 
