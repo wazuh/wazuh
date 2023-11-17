@@ -72,9 +72,6 @@ link_directories(${SRC_FOLDER}/external/openssl/)
 link_directories(${SRC_FOLDER}/external/lzma/build/)
 link_directories(${SRC_FOLDER}/external/zlib/)
 
-add_subdirectory(external/benchmark EXCLUDE_FROM_ALL)
-add_subdirectory(external/googletest EXCLUDE_FROM_ALL)
-
 include_directories(${SRC_FOLDER}/shared_modules/common)
 include_directories(${SRC_FOLDER}/shared_modules/utils)
 include_directories(${SRC_FOLDER}/shared_modules/router/include)

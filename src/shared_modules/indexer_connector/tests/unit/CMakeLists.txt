@@ -12,8 +12,10 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 
 target_link_libraries(${PROJECT_NAME}
         urlrequest
-        gtest
-        gtest_main
+        debug gtestd
+        debug gtest_maind
+        optimized gtest
+        optimized gtest_main
         indexer_connector
 )
 

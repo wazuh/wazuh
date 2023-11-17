@@ -70,6 +70,7 @@ EXTERNAL_CPYTHON=external/cpython/
 EXTERNAL_MSGPACK=external/msgpack/
 EXTERNAL_BZIP2=external/bzip2/
 EXTERNAL_GOOGLE_TEST=external/googletest/
+EXTERNAL_GOOGLE_BENCHMARK=external/benchmark/
 EXTERNAL_ROCKSDB=external/rocksdb/
 EXTERNAL_FLATBUFFERS=external/flatbuffers/
 EXTERNAL_FLATCC=external/flatcc/
@@ -966,7 +967,7 @@ endif
 external: test_external $(EXTERNAL_LIBS) $(JEMALLOC_LIB)
 
 ifneq (,$(filter ${TEST},YES yes y Y 1))
-external: build_gtest
+external: build_gtest build_benchmark
 endif
 
 ifeq (${TARGET},server)
@@ -2349,6 +2350,11 @@ wazuh-modulesd: ${wmodulesd_o}
 build_gtest:
 	cd $(EXTERNAL_GOOGLE_TEST) && mkdir -p build && cd build && cmake .. ${CMAKE_OPTS} ${GTEST_RELEASE_TYPE}  -DBUILD_GMOCK=ON -DBUILD_SHARED_LIBS=0 && ${MAKE} && cp -r lib ..
 
+### wazuh-google-benchmark ###
+
+build_benchmark:
+	cd $(EXTERNAL_GOOGLE_BENCHMARK) && mkdir -p build && cd build && cmake .. -DBENCHMARK_ENABLE_TESTING=0 ${CMAKE_OPTS} && ${MAKE}
+
 ### wazuh-python ###
 
 WPYTHON_DIR := ${INSTALLDIR}/framework/python
@@ -2636,6 +2642,7 @@ ifneq ($(wildcard external/*/*),)
 	-${MAKE} -C $(EXTERNAL_BZIP2) clean
 	rm -rf $(EXTERNAL_GOOGLE_TEST)lib
 	rm -rf $(EXTERNAL_GOOGLE_TEST)build
+	rm -rf $(EXTERNAL_GOOGLE_BENCHMARK)build
 	rm -rf $(EXTERNAL_ROCKSDB)build
 	rm -rf $(EXTERNAL_FLATBUFFERS)build
 	rm -rf $(EXTERNAL_FLATCC)build

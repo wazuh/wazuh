@@ -42,6 +42,8 @@ file(GLOB UTIL_CXX_UNITTEST_LINUX_SRC
 
 file(COPY input_files DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
+link_directories(${SRC_FOLDER}/external/googletest/lib)
+
 if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
   add_definitions(-DPROMISE_TYPE=PromiseType::SLEEP)
 else()
@@ -57,8 +59,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     add_definitions(-DWIN32=1
                     -D_WIN32_WINNT=0x600)
     target_link_libraries(utils_unit_test
-        gtest
-        gmock
+        debug gtestd
+        debug gmockd
+        optimized gtest
+        optimized gmock
         pthread
         crypto
         ssl
@@ -82,8 +86,10 @@ else()
     endif(APPLE)
 
     target_link_libraries(utils_unit_test
-        gtest
-        gmock
+        debug gtestd
+        debug gmockd
+        optimized gtest
+        optimized gmock
         rocksdb
         crypto
         dl
