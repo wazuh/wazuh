@@ -2,11 +2,6 @@ name: Wodles unit tests
 
 on:
   workflow_dispatch:
-    inputs:
-      base_branch:
-        description: 'Base branch'
-        required: true
-        default: 'main'
   pull_request:
     paths:
       - '.github/workflows/wodles-unit-tests.yml'
