@@ -55,6 +55,12 @@ namespace Xz
             }
         }
 
+        /*! @copydoc IDataCollector::finish() */
+        void finish() override
+        {
+            m_file.close();
+        }
+
         /*! @copydoc IDataCollector::setBuffer() */
         void setBuffer(uint8_t** buffer, size_t& buffSize) override
         {
