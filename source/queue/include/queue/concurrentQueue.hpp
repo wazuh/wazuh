@@ -10,7 +10,7 @@
 #include <optional>
 
 #include <blockingconcurrentqueue.h>
-#include <queue/iBlockingConcurrentQueue.hpp>
+#include <queue/iqueue.hpp>
 
 #include <logging/logging.hpp>
 #include <metrics/iMetricsManager.hpp>
@@ -19,8 +19,7 @@
 namespace base::queue
 {
 
-constexpr int64_t WAIT_DEQUEUE_TIMEOUT_USEC = 1 * 1000; ///< Timeout for the wait_dequeue_timed method
-constexpr int64_t TIME_PER_QUEUE = 1 * 100;             ///< Timeout for the wait_dequeue_timed method
+constexpr int64_t WAIT_DEQUEUE_TIMEOUT_USEC = 1 * 100000; ///< Timeout for the wait_dequeue_timed method
 
 /**
  * @brief Provides a wrapper for the flooding file
@@ -102,7 +101,7 @@ public:
 template<typename T,
          typename D = moodycamel::ConcurrentQueueDefaultTraits,
          typename = std::enable_if_t<std::is_base_of<moodycamel::ConcurrentQueueDefaultTraits, D>::value>>
-class ConcurrentQueue : public iBlockingConcurrentQueue<T>
+class ConcurrentQueue : public iQueue<T>
 {
 private:
     struct Metrics
@@ -117,18 +116,13 @@ private:
         std::shared_ptr<metricsManager::iCounter<uint64_t>> m_consumendPerSecond; ///< Counter for the used queue
     };
 
-    moodycamel::BlockingConcurrentQueue<T> m_lowPriorityQueue {};  ///< The queue itself.
-    moodycamel::BlockingConcurrentQueue<T> m_highPriorityQueue {}; ///< The queue itself.
+    moodycamel::BlockingConcurrentQueue<T> m_queue {}; ///< The queue itself.
 
     std::shared_ptr<FloodingFile> m_floodingFile; ///< The flooding file.
     std::size_t m_maxAttempts;                    ///< The maximum number of attempts to push an element to the queue.
     std::chrono::microseconds m_waitTime;         ///< The time to wait for the queue to be not full.
-    T m_fictitiousValue;
-    std::atomic<bool> m_lastDequeueWasLow {false};
 
     Metrics m_metrics; ///< Metrics for the queue
-
-    bool isFictitious(const T& element) const { return element == m_fictitiousValue; }
 
 public:
     /**
@@ -165,8 +159,7 @@ public:
             throw std::runtime_error("The capacity of the queue must be greater than 0");
         }
 
-        m_lowPriorityQueue = moodycamel::BlockingConcurrentQueue<T, D>(capacity);
-        m_highPriorityQueue = moodycamel::BlockingConcurrentQueue<T, D>(capacity);
+       m_queue = moodycamel::BlockingConcurrentQueue<T>(capacity);
 
         // Verify if the pathFloodedFile is provided
         if (!pathFloodedFile.empty())
@@ -218,67 +211,33 @@ public:
      * push method will block until there is space in the queue.
      */
 
-    void push(T&& element, bool highPriority = false) override
+    void push(T&& element) override
     {
         if (!m_floodingFile)
         {
-            if (highPriority)
+            while (!m_queue.try_enqueue(std::move(element)))
             {
-                while (!m_highPriorityQueue.try_enqueue(std::move(element)))
-                {
-                    std::this_thread::sleep_for(std::chrono::microseconds(500));
-                }
-
-                // Push un elemento ficticio en la cola de baja prioridad
-                // solo si venia desencolando de la cola de baja prioridad
-                if (m_lastDequeueWasLow.load())
-                {
-                    m_lowPriorityQueue.try_enqueue(m_fictitiousValue);
-                }
+                // Right now we process 1 event for ~0.1ms, we sleep by a factor
+                // of 5 because we are saturating the queue and we don't want to.
+                std::this_thread::sleep_for(std::chrono::microseconds(500));
             }
-            else
-            {
-                while (!m_lowPriorityQueue.try_enqueue(std::move(element)))
-                {
-                    std::this_thread::sleep_for(std::chrono::microseconds(500));
-                }
-            }
-
             m_metrics.m_queued->addValue(1UL);
             m_metrics.m_used->addValue(1);
         }
         else
         {
-            if (highPriority)
+            for (std::size_t attempts {0}; attempts < m_maxAttempts; ++attempts)
             {
-                while (!m_highPriorityQueue.try_enqueue(std::move(element)))
+                if (m_queue.try_enqueue(std::move(element)))
                 {
-                    std::this_thread::sleep_for(std::chrono::microseconds(500));
+                    m_metrics.m_queued->addValue(1UL);
+                    m_metrics.m_used->addValue(1UL);
+                    return;
                 }
-                m_metrics.m_queued->addValue(1UL);
-                m_metrics.m_used->addValue(1UL);
-                return;
+                std::this_thread::sleep_for(m_waitTime);
             }
-            else
-            {
-                for (std::size_t attempts {0}; attempts < m_maxAttempts; ++attempts)
-                {
-                    if (m_lowPriorityQueue.try_enqueue(std::move(element)))
-                    {
-                        m_metrics.m_queued->addValue(1UL);
-                        m_metrics.m_used->addValue(1UL);
-                        return;
-                    }
-
-                    std::this_thread::sleep_for(m_waitTime);
-                }
-
-                if (!isFictitious(element))
-                {
-                    m_floodingFile->write(element->str());
-                    m_metrics.m_flooded->addValue(1UL);
-                }
-            }
+            m_floodingFile->write(element->str());
+            m_metrics.m_flooded->addValue(1UL);
         }
     }
 
@@ -296,32 +255,12 @@ public:
      */
     bool waitPop(T& element, int64_t timeout = WAIT_DEQUEUE_TIMEOUT_USEC) override
     {
-        T tempElement;
-        m_lastDequeueWasLow.store(false);
-        auto result = m_highPriorityQueue.try_dequeue(tempElement);
-
-        if (!result)
-        {
-            result = m_lowPriorityQueue.wait_dequeue_timed(tempElement, timeout);
-            if (result)
-            {
-                m_lastDequeueWasLow.store(true);
-            }
-        }
-
+        auto result = m_queue.wait_dequeue_timed(element, timeout);
         if (result)
         {
-            if (!isFictitious(tempElement))
-            {
-                element = std::move(tempElement); // Movemos el valor desde el temporal al argumento de salida
-                m_metrics.m_consumed->addValue(1UL);
-                m_metrics.m_used->addValue(-1);
-                m_metrics.m_consumendPerSecond->addValue(1UL);
-            }
-            else
-            {
-                return false;
-            }
+            m_metrics.m_consumed->addValue(1UL);
+            m_metrics.m_used->addValue(-1);
+            m_metrics.m_consumendPerSecond->addValue(1UL);
         }
 
         return result;
@@ -334,24 +273,17 @@ public:
      * @return true if the queue is empty.
      * @return false otherwise.
      */
-    bool empty(bool highPriority = false) const override
-    {
-        auto& queue = highPriority ? m_highPriorityQueue : m_lowPriorityQueue;
-        return queue.size_approx() == 0;
-    }
-
+    bool empty() const override { return m_queue.size_approx() == 0; }
     /**
      * @brief Gets the size of the queue.
      *
      * @note The size is approximate.
      * @return size_t The size of the queue.
      */
-    size_t size(bool highPriority = false) const override
-    {
-        auto& queue = highPriority ? m_highPriorityQueue : m_lowPriorityQueue;
-        return queue.size_approx();
-    }
+    size_t size() const override { return m_queue.size_approx(); }
 };
+
+
 } // namespace base::queue
 
 #endif // _QUEUES_CONCURRENTQUEUE_HPP
