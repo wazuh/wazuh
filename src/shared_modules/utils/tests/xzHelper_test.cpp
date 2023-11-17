@@ -49,9 +49,6 @@ const auto UNCOMPRESSED_INPUT_FILE {INPUT_PATH / "sample.json"};
 const auto COMPRESSED_INPUT_FILE_ST {INPUT_PATH / "sample.json.st.xz"};
 const auto COMPRESSED_INPUT_FILE_MT {INPUT_PATH / "sample.json.mt.xz"};
 
-const auto DECOMPRESSED_OUTPUT_FILE {OUTPUT_PATH / "sample.json"};
-const auto COMPRESSED_OUTPUT_FILE {OUTPUT_PATH / "sample.json.xz"};
-
 const auto UNCOMPRESSED_REFERENCE_FILE {UNCOMPRESSED_INPUT_FILE};
 const auto COMPRESSED_REFERENCE_FILE_ST {COMPRESSED_INPUT_FILE_ST};
 const auto COMPRESSED_REFERENCE_FILE_MT {COMPRESSED_INPUT_FILE_MT};
@@ -70,6 +67,9 @@ std::vector<uint8_t> XzHelperTest::loadFile(const std::filesystem::path& filePat
  */
 TEST_F(XzHelperTest, NonExistingInputFile)
 {
+    const auto DECOMPRESSED_OUTPUT_FILE {OUTPUT_PATH / "sample-NonExistingInputFile.json"};
+    const auto COMPRESSED_OUTPUT_FILE {OUTPUT_PATH / "sample-NonExistingInputFile.json.xz"};
+    
     EXPECT_THROW(Utils::XzHelper(INPUT_PATH / "nofile.json", COMPRESSED_OUTPUT_FILE).compress(), std::runtime_error);
     EXPECT_THROW(Utils::XzHelper(INPUT_PATH / "nofile.json.xz", DECOMPRESSED_OUTPUT_FILE).decompress(),
                  std::runtime_error);
@@ -94,6 +94,7 @@ TEST_F(XzHelperTest, InvalidOutputFile)
 TEST_F(XzHelperTest, CompressFileOutputToFileSingleThread)
 {
     // Setup
+    const auto COMPRESSED_OUTPUT_FILE {OUTPUT_PATH / "sample-CompressFileOutputToFileSingleThread.json.xz"};
     Utils::XzHelper xz(UNCOMPRESSED_INPUT_FILE, COMPRESSED_OUTPUT_FILE);
 
     // Compress
@@ -110,6 +111,7 @@ TEST_F(XzHelperTest, CompressFileOutputToFileSingleThread)
 TEST_F(XzHelperTest, CompressFileOutputToFileMultithread)
 {
     // Setup
+    const auto COMPRESSED_OUTPUT_FILE {OUTPUT_PATH / "sample-CompressFileOutputToFileMultithread.json.xz"};
     Utils::XzHelper xz(UNCOMPRESSED_INPUT_FILE, COMPRESSED_OUTPUT_FILE, MAX_THREAD_COUNT);
 
     // Compress
@@ -126,6 +128,7 @@ TEST_F(XzHelperTest, CompressFileOutputToFileMultithread)
 TEST_F(XzHelperTest, DecompressFileOutputToFileSingleThread)
 {
     // Setup
+    const auto DECOMPRESSED_OUTPUT_FILE {OUTPUT_PATH / "sample-DecompressFileOutputToFileSingleThread.json"};
     Utils::XzHelper xz(COMPRESSED_INPUT_FILE_ST, DECOMPRESSED_OUTPUT_FILE);
 
     // Decompress
@@ -142,6 +145,7 @@ TEST_F(XzHelperTest, DecompressFileOutputToFileSingleThread)
 TEST_F(XzHelperTest, DecompressFileOutputToFileMultiThread)
 {
     // Setup
+    const auto DECOMPRESSED_OUTPUT_FILE {OUTPUT_PATH / "sample-DecompressFileOutputToFileMultiThread.json"};
     Utils::XzHelper xz(COMPRESSED_INPUT_FILE_MT, DECOMPRESSED_OUTPUT_FILE, MAX_THREAD_COUNT);
 
     // Decompress
@@ -158,6 +162,7 @@ TEST_F(XzHelperTest, DecompressFileOutputToFileMultiThread)
 TEST_F(XzHelperTest, DecompressWithNonExistingInputFile)
 {
     // Setup
+    const auto DECOMPRESSED_OUTPUT_FILE {OUTPUT_PATH / "sample-DecompressWithNonExistingInputFile.json"};
     Utils::XzHelper xz(INPUT_PATH / "nofile.json", DECOMPRESSED_OUTPUT_FILE);
 
     // Decompress, expect exception
@@ -171,6 +176,7 @@ TEST_F(XzHelperTest, DecompressWithNonExistingInputFile)
 TEST_F(XzHelperTest, DecompressInvalidDataFile)
 {
     // Setup: the input file is not compressed so it is invalid
+    const auto DECOMPRESSED_OUTPUT_FILE {OUTPUT_PATH / "sample-DecompressInvalidDataFile.json"};
     Utils::XzHelper xz(UNCOMPRESSED_INPUT_FILE, DECOMPRESSED_OUTPUT_FILE);
 
     // Decompress, expect exception
@@ -347,6 +353,7 @@ TEST_F(XzHelperTest, CompressDataVectorToFile)
     const auto inputData {loadFile(UNCOMPRESSED_INPUT_FILE)};
 
     // Compress
+    const auto COMPRESSED_OUTPUT_FILE {OUTPUT_PATH / "sample-CompressDataVectorToFile.json.xz"};
     Utils::XzHelper xz(inputData, COMPRESSED_OUTPUT_FILE);
     ASSERT_NO_THROW(xz.compress());
 
@@ -365,6 +372,7 @@ TEST_F(XzHelperTest, CompressStringToFile)
     std::string inputString(inputData.begin(), inputData.end());
 
     // Compress
+    const auto COMPRESSED_OUTPUT_FILE {OUTPUT_PATH / "sample-CompressStringToFile.json.xz"};
     Utils::XzHelper xz(inputString, COMPRESSED_OUTPUT_FILE);
     ASSERT_NO_THROW(xz.compress());
 
@@ -382,6 +390,7 @@ TEST_F(XzHelperTest, DecompressDataVectorToFile)
     const auto inputData {loadFile(COMPRESSED_INPUT_FILE_ST)};
 
     // Decompress
+    const auto DECOMPRESSED_OUTPUT_FILE {OUTPUT_PATH / "sample-DecompressDataVectorToFile.json"};
     Utils::XzHelper xz(inputData, DECOMPRESSED_OUTPUT_FILE);
     ASSERT_NO_THROW(xz.decompress());
 
@@ -403,6 +412,7 @@ TEST_F(XzHelperTest, CompressAndDecompressFileToDataVector)
     Utils::XzHelper(UNCOMPRESSED_INPUT_FILE, compressedData).compress();
 
     // Decompress vector into file
+    const auto DECOMPRESSED_OUTPUT_FILE {OUTPUT_PATH / "sample-CompressAndDecompressFileToDataVector.json"};
     Utils::XzHelper(compressedData, DECOMPRESSED_OUTPUT_FILE).decompress();
 
     // Check that the output decompressed file equals the initial input file
@@ -420,6 +430,7 @@ TEST_F(XzHelperTest, CompressAndDecompressDataVectorToFile)
     const auto inputData {loadFile(UNCOMPRESSED_INPUT_FILE)};
 
     // Compress vector into file
+    const auto COMPRESSED_OUTPUT_FILE {OUTPUT_PATH / "sample-CompressAndDecompressDataVectorToFile.json.xz"};
     Utils::XzHelper(inputData, COMPRESSED_OUTPUT_FILE).compress();
 
     // Decompress file into vector
@@ -444,6 +455,7 @@ TEST_F(XzHelperTest, CompressMTAndDecompressSTFileToDataVector)
     Utils::XzHelper(UNCOMPRESSED_INPUT_FILE, compressedData, MAX_THREAD_COUNT).compress();
 
     // Decompress vector into file in multi-thread mode
+    const auto DECOMPRESSED_OUTPUT_FILE {OUTPUT_PATH / "sample-CompressMTAndDecompressSTFileToDataVector.json"};
     Utils::XzHelper(compressedData, DECOMPRESSED_OUTPUT_FILE).decompress();
 
     // Check that the output decompressed file equals the initial input file
@@ -464,6 +476,7 @@ TEST_F(XzHelperTest, CompressSTAndDecompressMTFileToDataVector)
     Utils::XzHelper(UNCOMPRESSED_INPUT_FILE, compressedData).compress();
 
     // Decompress vector into file in multi-thread mode
+    const auto DECOMPRESSED_OUTPUT_FILE {OUTPUT_PATH / "sample-CompressSTAndDecompressMTFileToDataVector.json"};
     Utils::XzHelper(compressedData, DECOMPRESSED_OUTPUT_FILE, MAX_THREAD_COUNT).decompress();
 
     // Check that the output decompressed file equals the initial input file
