@@ -15,6 +15,10 @@ void RouterAdmin::validateConfig(const Config& config)
     {
         throw std::runtime_error {"Configuration error: numThreads for router must be greater than 0"};
     }
+    if (config.m_numThreads > 128)
+    {
+        throw std::runtime_error {"Configuration error: numThreads for router must be less than 128"};
+    }
 }
 
 // Public
@@ -27,7 +31,7 @@ RouterAdmin::RouterAdmin(const Config& config)
     // Create the queue
     m_queue.prod = config.m_queue;
 
-    auto generalBuilder = std::make_shared<ConcreteBuilder>(config.m_store, config.m_registry);
+    auto generalBuilder = std::make_shared<ConcreteBuilder>(config.m_wStore, config.m_wRegistry);
     auto envBuilder = std::make_shared<EnvironmentBuilder>(generalBuilder, config.m_controllerMaker);
 
     // Create the routers

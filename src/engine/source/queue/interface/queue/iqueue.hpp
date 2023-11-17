@@ -1,36 +1,32 @@
-#ifndef _BLOCKING_CONCURRENT_IQUEUE_HPP
-#define _BLOCKING_CONCURRENT_IQUEUE_HPP
+#ifndef _QUEUE_IQUEUE_HPP
+#define _QUEUE_IQUEUE_HPP
 
 namespace base::queue
 {
 
 /**
- * @brief An interface for a blocking concurrent queue with priority support.
+ * @brief An interface for a blocking concurrent queue
  *
  * This interface defines the common operations for a blocking concurrent queue.
  * Implementations should provide methods for pushing, waiting for a pop operation,
- * checking if the queue is empty, and getting the size of the queue. The "priority"
- * parameter can be used to specify whether the element should be treated as high priority (true)
- * or low priority (false).
  *
  * @tparam T The type of elements to be stored in the queue.
  */
 template <typename T>
-class iBlockingConcurrentQueue
+class iQueue
 {
 public:
     /**
      * @brief Destructor for the interface.
      */
-    virtual ~iBlockingConcurrentQueue() = default;
+    virtual ~iQueue() = default;
 
     /**
      * @brief Push an element into the queue.
      *
      * @param element The element to push into the queue.
-     * @param priority (Optional) Set to true for high-priority elements, false for low-priority.
      */
-    virtual void push(T&& element, bool priority = false) = 0;
+    virtual void push(T&& element) = 0;
 
     /**
      * @brief Wait for and pop an element from the queue.
@@ -47,7 +43,7 @@ public:
      * or false to check the low-priority queue.
      * @return true if the specified queue is empty, false otherwise.
      */
-    virtual bool empty(bool priority = false) const = 0;
+    virtual bool empty() const = 0;
 
     /**
      * @brief Get the size of the queue.
@@ -56,8 +52,10 @@ public:
      * or false to get the size of the low-priority queue.
      * @return The number of elements in the specified queue.
      */
-    virtual size_t size(bool priority = false) const = 0;
+    virtual size_t size() const = 0;
 };
+
+
 }
 
 #endif // _BLOCKING_CONCURRENT_IQUEUE_HPP
