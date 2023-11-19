@@ -12,6 +12,8 @@
 #ifndef LOGGER_HELPER_H
 #define LOGGER_HELPER_H
 
+#include "commonDefs.h"
+#include <cstdarg>
 #include <functional>
 #include <iostream>
 #include <map>
@@ -19,17 +21,19 @@
 #include <mutex>
 #include <thread>
 #include <unordered_map>
-#include "commonDefs.h"
-#include <cstdarg>
 
 // We can't use std::source_location until C++20
-#define LogEndl Log::SourceFile {__FILE__, __LINE__, __func__}
-#define logInfo(X, Y, ...) Log::Logger::info(X, LogEndl, Y, ##__VA_ARGS__)
-#define logWarn(X, Y, ...) Log::Logger::warning(X, LogEndl, Y, ##__VA_ARGS__)
+#define LogEndl                                                                                                        \
+    Log::SourceFile                                                                                                    \
+    {                                                                                                                  \
+        __FILE__, __LINE__, __func__                                                                                   \
+    }
+#define logInfo(X, Y, ...)   Log::Logger::info(X, LogEndl, Y, ##__VA_ARGS__)
+#define logWarn(X, Y, ...)   Log::Logger::warning(X, LogEndl, Y, ##__VA_ARGS__)
 #define logDebug1(X, Y, ...) Log::Logger::debug(X, LogEndl, Y, ##__VA_ARGS__)
 #define logDebug2(X, Y, ...) Log::Logger::debugVerbose(X, LogEndl, Y, ##__VA_ARGS__)
-#define logError(X, Y, ...) Log::Logger::error(X, LogEndl, Y, ##__VA_ARGS__)
-#define MAXLEN  65536
+#define logError(X, Y, ...)  Log::Logger::error(X, LogEndl, Y, ##__VA_ARGS__)
+constexpr auto MAXLEN {65536};
 
 namespace Log
 {
@@ -47,20 +51,25 @@ namespace Log
         const char* func;
     };
 
-    static std::function<void(const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>  globalLogFunction;
+    static std::function<void(
+        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>
+        GLOBAL_LOG_FUNCTION;
 
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
 
-    static void assignLogFunction(const std::function<void(const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>& logFunction)
+    static void assignLogFunction(
+        const std::function<
+            void(const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>&
+            logFunction)
     {
-        if (!globalLogFunction)
+        if (!GLOBAL_LOG_FUNCTION)
         {
-            globalLogFunction = logFunction;
+            GLOBAL_LOG_FUNCTION = logFunction;
         }
     }
 
-    #pragma GCC diagnostic pop
+#pragma GCC diagnostic pop
 
     /**
      * @brief Logging helper class.
@@ -68,111 +77,116 @@ namespace Log
      */
     class Logger final
     {
-        public:
-            /**
-             * @brief INFO log.
-             *
-             * @param tag Module tag.
-             * @param msg Message to be logged.
-             * @param sourceFile Log location.
-             */
-            static void info(const char* tag, SourceFile sourceFile, const char* msg, ...)
+    public:
+        /**
+         * @brief INFO log.
+         *
+         * @param tag Module tag.
+         * @param msg Message to be logged.
+         * @param sourceFile Log location.
+         */
+        static void info(const char* tag, SourceFile sourceFile, const char* msg, ...)
+        {
+            if (GLOBAL_LOG_FUNCTION)
             {
-                if (globalLogFunction)
-                {
-                    std::va_list args;
-                    va_start(args, msg);
-                    char formatted_str[MAXLEN];
-                    vsnprintf(formatted_str, MAXLEN, msg, args);
-                    va_end(args);
+                std::va_list args;
+                va_start(args, msg);
+                char formattedStr[MAXLEN] = {0};
+                vsnprintf(formattedStr, MAXLEN, msg, args);
+                va_end(args);
 
-                    globalLogFunction(LOGLEVEL_INFO, tag, sourceFile.file, sourceFile.line, sourceFile.func, formatted_str);
-                }
+                GLOBAL_LOG_FUNCTION(
+                    LOGLEVEL_INFO, tag, sourceFile.file, sourceFile.line, sourceFile.func, formattedStr);
             }
+        }
 
-            /**
-             * @brief WARNING LOG.
-             *
-             * @param tag Module tag.
-             * @param msg Message to be logged.
-             * @param sourceFile Log location.
-             */
-            static void warning(const char* tag, SourceFile sourceFile, const char* msg, ...)
+        /**
+         * @brief WARNING LOG.
+         *
+         * @param tag Module tag.
+         * @param msg Message to be logged.
+         * @param sourceFile Log location.
+         */
+        static void warning(const char* tag, SourceFile sourceFile, const char* msg, ...)
+        {
+            if (GLOBAL_LOG_FUNCTION)
             {
-                if (globalLogFunction)
-                {
-                    std::va_list args;
-                    va_start(args, msg);
-                    char formatted_str[MAXLEN];
-                    vsnprintf(formatted_str, MAXLEN, msg, args);
-                    va_end(args);
+                std::va_list args;
+                va_start(args, msg);
+                char formattedStr[MAXLEN] = {0};
+                vsnprintf(formattedStr, MAXLEN, msg, args);
+                va_end(args);
 
-                    globalLogFunction(LOGLEVEL_WARNING, tag, sourceFile.file, sourceFile.line, sourceFile.func, formatted_str);
-                }
+                GLOBAL_LOG_FUNCTION(
+                    LOGLEVEL_WARNING, tag, sourceFile.file, sourceFile.line, sourceFile.func, formattedStr);
             }
+        }
 
-            /**
-             * @brief DEBUG log.
-             *
-             * @param tag Module tag.
-             * @param msg Message to be logged.
-             * @param sourceFile Log location.
-             */
-            static void debug(const char* tag, SourceFile sourceFile, const char* msg, ...)
+        /**
+         * @brief DEBUG log.
+         *
+         * @param tag Module tag.
+         * @param msg Message to be logged.
+         * @param sourceFile Log location.
+         */
+        static void debug(const char* tag, SourceFile sourceFile, const char* msg, ...)
+        {
+            if (GLOBAL_LOG_FUNCTION)
             {
-                if (globalLogFunction)
-                {
-                    std::va_list args;
-                    va_start(args, msg);
-                    char formatted_str[MAXLEN];
-                    vsnprintf(formatted_str, MAXLEN, msg, args);
-                    va_end(args);
+                std::va_list args;
+                va_start(args, msg);
+                char formattedStr[MAXLEN] = {0};
+                vsnprintf(formattedStr, MAXLEN, msg, args);
+                va_end(args);
 
-                    globalLogFunction(LOGLEVEL_DEBUG, tag, sourceFile.file, sourceFile.line, sourceFile.func, formatted_str);
-                }
+                GLOBAL_LOG_FUNCTION(
+                    LOGLEVEL_DEBUG, tag, sourceFile.file, sourceFile.line, sourceFile.func, formattedStr);
             }
+        }
 
-            /**
-             * @brief DEBUG VERBOSE log.
-             *
-             * @param tag Module tag.
-             * @param msg Message to be logged.
-             * @param sourceFile Log location.
-             */
-            static void debugVerbose(const char* tag, SourceFile sourceFile, const char* msg, ...)
+        /**
+         * @brief DEBUG VERBOSE log.
+         *
+         * @param tag Module tag.
+         * @param msg Message to be logged.
+         * @param sourceFile Log location.
+         */
+        static void debugVerbose(const char* tag, SourceFile sourceFile, const char* msg, ...)
+        {
+            if (GLOBAL_LOG_FUNCTION)
             {
-                if (globalLogFunction)
-                {
-                    std::va_list args;
-                    va_start(args, msg);
-                    char formatted_str[MAXLEN];
-                    vsnprintf(formatted_str, MAXLEN, msg, args);
-                    va_end(args);
+                std::va_list args;
+                va_start(args, msg);
+                char formattedStr[MAXLEN] = {0};
+                vsnprintf(formattedStr, MAXLEN, msg, args);
+                va_end(args);
 
-                    globalLogFunction(LOGLEVEL_DEBUG_VERBOSE, tag, sourceFile.file, sourceFile.line, sourceFile.func, formatted_str);
-                }
+                GLOBAL_LOG_FUNCTION(
+                    LOGLEVEL_DEBUG_VERBOSE, tag, sourceFile.file, sourceFile.line, sourceFile.func, formattedStr);
             }
+        }
 
-            /**
-             * @brief ERROR log.
-             *
-             * @param tag Module tag.
-             * @param msg Message to be logged.
-             * @param sourceFile Log location.
-             */
-            static void error(const char* tag, SourceFile sourceFile, const char* msg, ...)
+        /**
+         * @brief ERROR log.
+         *
+         * @param tag Module tag.
+         * @param msg Message to be logged.
+         * @param sourceFile Log location.
+         */
+        static void error(const char* tag, SourceFile sourceFile, const char* msg, ...)
+        {
+            if (GLOBAL_LOG_FUNCTION)
             {
-                if (globalLogFunction)
-                {
-                    std::va_list args;
-                    va_start(args, msg);
-                    char formatted_str[MAXLEN];
-                    vsnprintf(formatted_str, MAXLEN, msg, args);
-                    va_end(args);
+                std::va_list args;
+                va_start(args, msg);
+                char formattedStr[MAXLEN] = {0};
+                vsnprintf(formattedStr, MAXLEN, msg, args);
+                va_end(args);
 
-                    globalLogFunction(LOGLEVEL_ERROR, tag, sourceFile.file, sourceFile.line, sourceFile.func, formatted_str);
-                }
+                GLOBAL_LOG_FUNCTION(
+                    LOGLEVEL_ERROR, tag, sourceFile.file, sourceFile.line, sourceFile.func, formattedStr);
             }
+        }
     };
 } // namespace Log
 #endif // LOGGER_HELPER_H

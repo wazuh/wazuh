@@ -97,7 +97,7 @@ namespace Utils
 
     static std::string leftTrim(const std::string& str, const std::string& args = " ")
     {
-        const auto pos{ str.find_first_not_of(args) };
+        const auto pos {str.find_first_not_of(args)};
 
         if (pos != std::string::npos)
         {
@@ -109,7 +109,7 @@ namespace Utils
 
     static std::string rightTrim(const std::string& str, const std::string& args = " ")
     {
-        const auto pos{ str.find_last_not_of(args) };
+        const auto pos {str.find_last_not_of(args)};
 
         if (pos != std::string::npos)
         {
@@ -124,8 +124,7 @@ namespace Utils
         return leftTrim(rightTrim(str, args), args);
     }
 
-    static std::vector<std::string> split(const std::string& str,
-                                          const char delimiter)
+    static std::vector<std::string> split(const std::string& str, const char delimiter)
     {
         std::vector<std::string> tokens;
         std::string token;
@@ -176,14 +175,13 @@ namespace Utils
         return ret;
     }
 
-    static void splitMapKeyValue(const std::string& str,
-                                 const char delimiter,
-                                 std::map<std::string, std::string>& mapResult)
+    static void
+    splitMapKeyValue(const std::string& str, const char delimiter, std::map<std::string, std::string>& mapResult)
     {
         constexpr auto NEWLINE_DELIMITER {'\n'};
         std::string line;
         std::vector<std::string> lineKeyValue;
-        std::istringstream strStream{ str };
+        std::istringstream strStream {str};
 
         mapResult.clear();
 
@@ -196,7 +194,8 @@ namespace Utils
                 continue;
             }
 
-            mapResult.insert(std::pair<std::string, std::string>(trim(line.substr(0, delimiterPos), " \"\t"), trim(line.substr(delimiterPos + 1), " \"\t")));
+            mapResult.insert(std::pair<std::string, std::string>(trim(line.substr(0, delimiterPos), " \"\t"),
+                                                                 trim(line.substr(delimiterPos + 1), " \"\t")));
         }
     }
 
@@ -380,7 +379,7 @@ namespace Utils
 
             if (isNumber(str))
             {
-              return seconds;
+                return seconds;
             }
 
             switch (str.at(pos))
