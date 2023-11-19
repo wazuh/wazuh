@@ -2668,7 +2668,7 @@ checks:
     rules:
       - "f:/etc/at.allow"
       - "not f:/etc/at.deny"
-      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/at.allow -> r:640\s*\t*-rw-r-----\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
+      - 'c:stat -Lc "%a %u/%U %g/%G" /etc/at.allow -> r:^640|^600 && r:0 0/root 0/root$'
 
   # 4.2.1 Ensure permissions on /etc/ssh/sshd_config are configured. (Automated)
   - id: 19109
