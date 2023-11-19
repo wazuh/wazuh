@@ -2692,8 +2692,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/ssh/sshd_config -> r:600\s*\t*-rw-------\s*\t*0\s*\t*root\s*\t*0\s*\t*root'
-      - 'c:sh -c "stat -L /etc/ssh/sshd_config.d/*.conf" -> r:Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:sh -c "stat -Lc "%a %u/%U %g/%G" /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf" -> r:\d && !r:^600 0/root 0/root'
 
   # 4.2.2 Ensure permissions on SSH private host key files are configured. (Automated) - Not Implemented
 
