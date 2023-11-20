@@ -1,8 +1,11 @@
+#ifndef _BUILDER_TEST_UNIT_REGISTRY_MOCKREGISTRY_HPP
+#define _BUILDER_TEST_UNIT_REGISTRY_MOCKREGISTRY_HPP
+
 #include <gmock/gmock.h>
 
-#include "registry/iregistry.hpp"
+#include "builders/iregistry.hpp"
 
-namespace builder::registry::mock
+namespace builder::builders::mocks
 {
 
 template<typename T>
@@ -19,4 +22,6 @@ public:
     MOCK_METHOD(base::RespOrError<T>, get, (const std::string& name), (const, override));
 };
 
-} // namespace builder::detail::mock
+} // namespace builder::registry::mock
+
+#endif // _BUILDER_TEST_UNIT_REGISTRY_MOCKREGISTRY_HPP

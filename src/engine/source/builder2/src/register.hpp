@@ -3,7 +3,7 @@
 
 #include <memory>
 
-#include "registry/iregistry.hpp"
+#include "builders/iregistry.hpp"
 
 namespace builder::detail
 {
@@ -15,7 +15,7 @@ namespace builder::detail
  * @param registry Registry of builders.
  */
 template<typename T>
-void registerOpBuilders(const std::shared_ptr<registry::IRegistry<T>>& registry)
+void registerOpBuilders(const std::shared_ptr<builders::IRegistry<T>>& registry)
 {
 }
 // inline void registerStageBuilders(const std::shared_ptr<StageRegistry>& registry) {}
