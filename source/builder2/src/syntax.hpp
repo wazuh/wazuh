@@ -13,6 +13,23 @@
 namespace builder::syntax
 {
 
+// Asset syntax
+namespace asset
+{
+constexpr auto NAME_KEY = "name";               ///< Key for the name field in an asset.
+constexpr auto METADATA_KEY = "metadata";       ///< Key for the metadata field in an asset.
+constexpr auto PARENTS_KEY = "parents";         ///< Key for the parents field in an asset.
+constexpr auto CHECK_KEY = "check";             ///< Key for the check stage in an asset.
+constexpr auto PARSE_KEY = "parse";             ///< Key for the parse stage in an asset.
+constexpr auto DEFINITIONS_KEY = "definitions"; ///< Key for the definitions stage in an asset.
+
+constexpr auto CONDITION_NAME =
+    "condition"; ///< Name of the condition expression in the asset to be displayed in traces.
+constexpr auto CONSEQUENCE_NAME =
+    "stages";                        ///< Name of the consequence expression in the asset to be displayed in traces.
+constexpr auto ASSET_NAME = "asset"; ///< Name of the asset expression to be displayed in traces.
+} // namespace asset
+
 // Field syntax
 namespace field
 {
@@ -125,12 +142,15 @@ inline bool isPolicy(const base::Name& name)
 }
 } // namespace name
 
+namespace integration
+{
 // Integration sections
-constexpr auto INTEGRATION_DECODERS = "decoders";         ///< The name of the decoders section in an integration.
-constexpr auto INTEGRATION_RULES = "rules";               ///< The name of the rules section in an integration.
-constexpr auto INTEGRATION_OUTPUTS = "outputs";           ///< The name of the outputs section in an integration.
-constexpr auto INTEGRATION_FILTERS = "filters";           ///< The name of the filters section in an integration.
-constexpr auto INTEGRATION_INTEGRATIONS = "integrations"; ///< The name of the integrations section in an integration.
+constexpr auto DECODER_PATH = "decoders";         ///< The name of the decoders section in an integration.
+constexpr auto RULE_PATH = "rules";               ///< The name of the rules section in an integration.
+constexpr auto OUTPUT_PATH = "outputs";           ///< The name of the outputs section in an integration.
+constexpr auto FILTER_PATH = "filters";           ///< The name of the filters section in an integration.
+constexpr auto INTEGRATION_PATH = "integrations"; ///< The name of the integrations section in an integration.
+} // namespace integration
 
 /**
  * @brief Get the section name of a resource in an integration.

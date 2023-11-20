@@ -10,6 +10,11 @@
 
 namespace schemf
 {
+// TODO: implement
+struct Type
+{
+};
+
 /**
  * @brief Interface for a schema, allowing to query its fields.
  *
