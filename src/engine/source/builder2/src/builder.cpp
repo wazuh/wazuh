@@ -2,28 +2,28 @@
 
 #include <stdexcept>
 
-#include "builders/types.hpp"
+#include "builders/ibuildState.hpp"
+#include "builders/registry.hpp"
 #include "policy/policy.hpp"
 #include "register.hpp"
-#include "registry/registry.hpp"
 
 namespace builder
 {
-struct StageBuilder // TODO
+
+class Builder::StageRegistry final : public builders::Registry<builders::StageBuilder>
 {
 };
 
-class Builder::StageRegistry final : public registry::Registry<StageBuilder>
+class Builder::OpRegistry final : public builders::Registry<builders::OpBuilder>
 {
 };
 
-class Builder::OpRegistry final : public registry::Registry<builders::OpBuilder>
-{
-};
-
-Builder::Builder(const std::shared_ptr<store::IStore>& storeRead, const std::shared_ptr<schemf::ISchema>& schema)
+Builder::Builder(const std::shared_ptr<store::IStore>& storeRead,
+                 const std::shared_ptr<schemf::ISchema>& schema,
+                 const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder)
     : m_storeRead {storeRead}
     , m_schema {schema}
+    , m_definitionsBuilder {definitionsBuilder}
     , m_stageRegistry {std::make_shared<StageRegistry>()}
     , m_opRegistry {std::make_shared<OpRegistry>()}
 {
@@ -35,6 +35,11 @@ Builder::Builder(const std::shared_ptr<store::IStore>& storeRead, const std::sha
     if (!m_schema)
     {
         throw std::runtime_error {"Schema interface is null"};
+    }
+
+    if (!m_definitionsBuilder)
+    {
+        throw std::runtime_error {"Definitions builder is null"};
     }
 
     // Register all the builders
@@ -50,7 +55,8 @@ base::RespOrError<std::shared_ptr<IPolicy>> Builder::buildPolicy(const base::Nam
         throw std::runtime_error(base::getError(policyDoc).message);
     }
 
-    return std::make_shared<policy::Policy>(base::getResponse<store::Doc>(policyDoc), m_storeRead);
+    return std::make_shared<policy::Policy>(
+        base::getResponse<store::Doc>(policyDoc), m_storeRead, m_definitionsBuilder);
 }
 
 base::RespOrError<base::Expression> Builder::buildAsset(const base::Name& name) const

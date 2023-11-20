@@ -28,8 +28,7 @@ private:
     {
         if (m_nodes.end() != m_nodes.find(key))
         {
-            throw std::runtime_error(
-                fmt::format("Engine base graph: Node \"{}\" already exists.", key));
+            throw std::runtime_error(fmt::format("Engine base graph: Node \"{}\" already exists.", key));
         }
         m_nodes[key] = std::move(value);
     }
@@ -43,13 +42,10 @@ private:
         }
         else
         {
-            if (m_edges[from].end()
-                != std::find(m_edges[from].begin(), m_edges[from].end(), to))
+            if (m_edges[from].end() != std::find(m_edges[from].begin(), m_edges[from].end(), to))
             {
-                throw std::runtime_error(fmt::format(
-                    "Engine base graph: Edge \"{}\" -> \"{}\" already exists.",
-                    from,
-                    to));
+                throw std::runtime_error(
+                    fmt::format("Engine base graph: Edge \"{}\" -> \"{}\" already exists.", from, to));
             }
             else
             {
@@ -62,8 +58,7 @@ private:
     {
         if (m_nodes.end() == m_nodes.find(key))
         {
-            throw std::runtime_error(
-                fmt::format("Engine base graph: Node \"{}\" does not exist.", key));
+            throw std::runtime_error(fmt::format("Engine base graph: Node \"{}\" does not exist.", key));
         }
         m_nodes.erase(key);
         m_edges.erase(key);
@@ -123,10 +118,7 @@ public:
      * @param id Node id.
      * @param node Node value.
      */
-    void addNode(K id, T node)
-    {
-        _addNode(id, std::move(node));
-    }
+    void addNode(K id, T node) { _addNode(id, std::move(node)); }
 
     /**
      * @brief Add directed edge to graph.
@@ -134,10 +126,7 @@ public:
      * @param from Node id.
      * @param to Node id.
      */
-    void addEdge(K from, K to)
-    {
-        _addEdge(from, to);
-    }
+    void addEdge(K from, K to) { _addEdge(from, to); }
 
     /**
      * @brief Inject node in graph.
@@ -166,10 +155,7 @@ public:
      *
      * @return const K& Root node id.
      */
-    const K& rootId() const
-    {
-        return m_root;
-    }
+    const K& rootId() const { return m_root; }
 
     /**
      * @brief Get the node value.
@@ -181,8 +167,7 @@ public:
     {
         if (m_nodes.end() == m_nodes.find(id))
         {
-            throw std::runtime_error(
-                fmt::format("Engine base graph: Node \"{}\" does not exist.", id));
+            throw std::runtime_error(fmt::format("Engine base graph: Node \"{}\" does not exist.", id));
         }
         return m_nodes.at(id);
     }
@@ -199,8 +184,7 @@ public:
     {
         if (m_edges.end() == m_edges.find(id))
         {
-            throw std::runtime_error(
-                fmt::format("Engine base graph: Node \"{}\" has no children.", id));
+            throw std::runtime_error(fmt::format("Engine base graph: Node \"{}\" has no children.", id));
         }
         return m_edges.at(id);
     }
@@ -210,20 +194,14 @@ public:
      *
      * @return const std::unordered_map<K, std::vector<K>>&
      */
-    const std::unordered_map<K, std::vector<K>>& edges() const
-    {
-        return m_edges;
-    }
+    const std::unordered_map<K, std::vector<K>>& edges() const { return m_edges; }
 
     /**
      * @brief Get the nodes map.
      *
      * @return const std::unordered_map<K, T>&
      */
-    const std::unordered_map<K, T>& nodes() const
-    {
-        return m_nodes;
-    }
+    const std::unordered_map<K, T>& nodes() const { return m_nodes; }
 
     /**
      * @brief Check if node exists.
@@ -232,10 +210,7 @@ public:
      * @return true If node exists.
      * @return false If node does not exist.
      */
-    bool hasNode(K id) const
-    {
-        return m_nodes.find(id) != m_nodes.end();
-    }
+    bool hasNode(K id) const { return m_nodes.find(id) != m_nodes.end(); }
 
     /**
      * @brief Check if node has children.
@@ -256,10 +231,7 @@ public:
      * @return true
      * @return false
      */
-    bool empty() const
-    {
-        return m_nodes.empty();
-    }
+    bool empty() const { return m_nodes.empty(); }
 
     /**
      * @brief Preorder traversal of the graph.
@@ -319,6 +291,14 @@ public:
         _preOrder(m_root, visitor);
         ss << "}\n";
         return ss.str();
+    }
+
+    friend bool operator==(const Graph& lhs, const Graph& rhs)
+    {
+        bool root = lhs.m_root == rhs.m_root;
+        bool nodes = lhs.m_nodes == rhs.m_nodes;
+        bool edges = lhs.m_edges == rhs.m_edges;
+        return root && nodes && edges;
     }
 };
 

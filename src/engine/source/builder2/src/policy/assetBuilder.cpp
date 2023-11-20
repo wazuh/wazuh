@@ -1,0 +1,210 @@
+#include "assetBuilder.hpp"
+
+#include <fmt/format.h>
+
+#include "builders/buildState.hpp"
+#include "syntax.hpp"
+
+namespace builder::policy
+{
+base::Name AssetBuilder::getName(const json::Json& value) const
+{
+    auto resp = value.getString();
+    if (!resp)
+    {
+        throw std::runtime_error(
+            fmt::format("Expected '{}' to be a 'string' but got '{}'", syntax::asset::NAME_KEY, value.typeName()));
+    }
+    base::Name name;
+    try
+    {
+        name = base::Name(resp.value());
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error(fmt::format("Invalid name '{}': {}", resp.value(), e.what()));
+    }
+
+    return name;
+}
+
+std::vector<base::Name> AssetBuilder::getParents(const json::Json& value) const
+{
+    auto resp = value.getArray();
+    if (!resp)
+    {
+        throw std::runtime_error(
+            fmt::format("Expected '{}' to be an 'array' but got '{}'", syntax::asset::PARENTS_KEY, value.typeName()));
+    }
+    std::vector<base::Name> parents;
+    for (const auto& jParent : resp.value())
+    {
+        // Check for string
+        auto parentStr = jParent.getString();
+        if (!parentStr)
+        {
+            throw std::runtime_error(
+                fmt::format("Found non-string value '{}' in '{}'", jParent.typeName(), syntax::asset::PARENTS_KEY));
+        }
+
+        // Parse name
+        base::Name parentName;
+        try
+        {
+            parentName = base::Name(parentStr.value());
+        }
+        catch (const std::exception& e)
+        {
+            throw std::runtime_error(fmt::format("Invalid parent name '{}': {}", parentStr.value(), e.what()));
+        }
+
+        // TODO : check parent is the same type as the asset??
+        // if (parentName.parts().front() != name.parts().front()) -> error
+
+        // Check for duplicates
+        if (std::find(parents.begin(), parents.end(), parentName) != parents.end())
+        {
+            throw std::runtime_error(fmt::format("Parent '{}' is duplicated", parentName));
+        }
+        parents.push_back(parentName);
+    }
+
+    return parents;
+}
+
+base::Expression AssetBuilder::buildExpression(std::vector<std::tuple<std::string, json::Json>>& objDoc) const
+{
+    // Get definitions (optional, may appear anywhere in the asset)
+    auto definitionsPos = std::find_if(
+        objDoc.begin(), objDoc.end(), [](auto tuple) { return std::get<0>(tuple) == syntax::asset::DEFINITIONS_KEY; });
+    if (objDoc.end() != definitionsPos)
+    {
+        auto definitions = m_definitionsBuilder->build(std::get<1>(*definitionsPos));
+        m_buildState->setDefinitions(definitions);
+        objDoc.erase(definitionsPos);
+    }
+
+    // Build condition expression
+    std::vector<base::Expression> conditionExpressions;
+    base::Expression condition;
+
+    // Check stage
+    {
+        const auto& [key, value] = *objDoc.begin();
+        if (key == syntax::asset::CHECK_KEY)
+        {
+            auto resp = m_buildState->stageRegistry().get(key);
+            if (base::isError(resp))
+            {
+                throw std::runtime_error(fmt::format("Could not find builder for stage '{}'", key));
+            }
+            auto builder = base::getResponse<builders::StageBuilder>(resp);
+            auto check = builder(value, m_buildState);
+            conditionExpressions.emplace_back(std::move(check));
+            objDoc.erase(objDoc.begin());
+        }
+    }
+
+    // Parse stage
+    {
+        const auto& [key, value] = *objDoc.begin();
+        if (key == syntax::asset::PARSE_KEY)
+        {
+            auto resp = m_buildState->stageRegistry().get(key);
+            if (base::isError(resp))
+            {
+                throw std::runtime_error(fmt::format("Could not find builder for stage '{}'", key));
+            }
+            auto builder = base::getResponse<builders::StageBuilder>(resp);
+            auto parse = builder(value, m_buildState);
+            conditionExpressions.emplace_back(std::move(parse));
+            objDoc.erase(objDoc.begin());
+        }
+    }
+
+    // FIXME: The SUCCESS trace message is needed so test can parse if an asset succeeded or not
+    conditionExpressions.emplace_back(base::Term<base::EngineOp>::create(
+        "AcceptAll", [](auto e) { return base::result::makeSuccess(e, "SUCCESS"); }));
+
+    condition = base::And::create(syntax::asset::CONDITION_NAME, std::move(conditionExpressions));
+
+    // Build the consequence expression (rest of stages)
+    std::vector<base::Expression> consequenceExpressions;
+    base::Expression consequence;
+
+    for (const auto [key, value] : objDoc)
+    {
+        auto resp = m_buildState->stageRegistry().get(key);
+        if (base::isError(resp))
+        {
+            throw std::runtime_error(fmt::format("Could not find builder for stage '{}'", key));
+        }
+        auto builder = base::getResponse<builders::StageBuilder>(resp);
+        auto consequence = builder(value, m_buildState);
+        consequenceExpressions.emplace_back(std::move(consequence));
+    }
+
+    if (consequenceExpressions.empty())
+    {
+        return std::move(condition);
+    }
+    consequence = base::And::create(syntax::asset::CONSEQUENCE_NAME, std::move(consequenceExpressions));
+
+    return base::Implication::create(syntax::asset::ASSET_NAME, std::move(condition), std::move(consequence));
+}
+
+Asset AssetBuilder::operator()(const store::Doc& document) const
+{
+    // Check document is an object
+    auto objDocOpt = document.getObject();
+    if (!objDocOpt)
+    {
+        throw std::runtime_error("Document is not an object");
+    }
+
+    // We need to copy the document because we need to iterate and remove
+    // fixed order stages name->metadata->parents->check->stages
+    auto objDoc = objDocOpt.value();
+
+    // Get name
+    base::Name name;
+    {
+        const auto& [key, value] = *objDoc.begin();
+        if (key != syntax::asset::NAME_KEY)
+        {
+            throw std::runtime_error(
+                fmt::format("Expected '{}' key in asset document but got '{}'", syntax::asset::NAME_KEY, key));
+        }
+        name = getName(value);
+        objDoc.erase(objDoc.begin());
+    }
+
+    // Get metadata (optional)
+    json::Json metadata;
+    {
+        const auto& [key, value] = *objDoc.begin();
+        if (key == syntax::asset::METADATA_KEY)
+        {
+            // TODO: Implement
+            objDoc.erase(objDoc.begin());
+        }
+    }
+
+    // Get parents (optional)
+    std::vector<base::Name> parents;
+    {
+        const auto& [key, value] = *objDoc.begin();
+        if (key == syntax::asset::PARENTS_KEY)
+        {
+            parents = getParents(value);
+            objDoc.erase(objDoc.begin());
+        }
+    }
+
+    // Get expression (rest of stages)(optional)
+    auto expression = buildExpression(objDoc);
+
+    return Asset {std::move(name), std::move(expression), std::move(parents)};
+}
+
+} // namespace builder::policy

@@ -32,13 +32,39 @@ void validateFromReference(const std::string& name,
 {
 }
 
+#define RETURN_FAILURE(runState, event, traceMsg)                                                                      \
+    if ((runState)->trace)                                                                                             \
+    {                                                                                                                  \
+        return base::result::makeFailure(event, traceMsg);                                                             \
+    }                                                                                                                  \
+    else                                                                                                               \
+    {                                                                                                                  \
+        return base::result::makeFailure(event);                                                                       \
+    }
+
+#define RETURN_SUCCESS(runState, event, traceMsg)                                                                      \
+    if ((runState)->trace)                                                                                             \
+    {                                                                                                                  \
+        return base::result::makeSuccess(event, traceMsg);                                                             \
+    }                                                                                                                  \
+    else                                                                                                               \
+    {                                                                                                                  \
+        return base::result::makeSuccess(event);                                                                       \
+    }
+
+#define SANDBOX(runState, code)                                                                                        \
+    if (!(runState)->sandbox)                                                                                          \
+    {                                                                                                                  \
+        code;                                                                                                          \
+    }
+
 // Example of a builder
-base::EngineOp builder(const std::string& targetField,
-                       const std::string& name,
-                       const std::vector<std::string>& rawParameters,
-                       std::shared_ptr<schemf::ISchema> schema,
-                       std::shared_ptr<RuntimeState> runState,
-                       std::shared_ptr<BuildContext> buildCtx)
+base::EngineOp map(const std::string& targetField,
+                   const std::string& name,
+                   const std::vector<std::string>& rawParameters,
+                   std::shared_ptr<schemf::ISchema> schema,
+                   std::shared_ptr<RuntimeState> runState,
+                   std::shared_ptr<BuildContext> buildCtx)
 {
     // Example simple validation, i.e. this helper maps a number
     validateSimple(name, schema, json::Json::Type::Number);
@@ -61,22 +87,22 @@ base::EngineOp builder(const std::string& targetField,
     {
         if (false) // Fake error condition
         {
-            // RETURN_ERROR(state, event, codigo) <- Do a macro for this
-            if (runState->trace)
-            {
-                return base::result::makeFailure(
-                    event, fmt::format("Complex error message that does not impact when trace is not enabled"));
-            }
+            RETURN_FAILURE(runState, event, "trace");
+            // if (runState->trace)
+            // {
+            //     return base::result::makeFailure(
+            //         event, fmt::format("Complex error message that does not impact when trace is not enabled"));
+            // }
 
-            return base::result::makeFailure(event);
+            // return base::result::makeFailure(event, "traza");
         }
 
         // When testing do not perform collateral effects
-        // SANDBOX(state, code) <- Do a macro for this
-        if (!runState->sandbox)
-        {
-            // Do something
-        }
+        SANDBOX(runState, auto code = "collateral effect code")
+        // if (!runState->sandbox)
+        // {
+        //     // Do something
+        // }
 
         // If runtime checking is enabled, validate the event
         // CHECK(state, value) <- Do a macro for this
@@ -104,8 +130,61 @@ base::EngineOp builder(const std::string& targetField,
     };
 }
 
+// Passing functions from wrapper and commposition
+// Cons
+// Necesita que el builder llame a las funciones, tienen que estar en la definicion
+// del builder. Añadir o quitar estas funciones implica cambiar todos los builders
 
-
-TEST(Test, test)
+//
+namespace one
 {
+using Op = std::function<int(int)>;
+using BuildTypeCheck = std::function<void(int)>;
+using Builder = std::function<Op(std::string, BuildTypeCheck)>;
+
+Op addOne(
+    std::string target, BuildTypeCheck buildCheck = [](int) {})
+{
+    buildCheck(1);
+    return [](int x)
+    {
+        return x + 1;
+    };
 }
+
+Op buildCheckWrapper(Builder builder)
+{
+    BuildTypeCheck buildCheck = [](int x)
+    {
+        return;
+    };
+
+    return builder("target", buildCheck);
+}
+
+} // namespace one
+
+namespace two
+{
+
+using Ref = std::string;
+using HelperArg = std::variant<Ref, json::Json>;
+
+struct Context{};
+struct StaticCheck{};
+struct DynamicCheck{};
+class BuildState
+{
+    Context context;
+    StaticCheck check;
+    DynamicCheck runtimeCheck;
+    RuntimeState runState;
+};
+
+void helper(Ref targetField, std::vector<HelperArg> args, const BuildState& buildState)
+{
+    // Do something
+}
+
+} // namespace two
+TEST(Test, test) {}
