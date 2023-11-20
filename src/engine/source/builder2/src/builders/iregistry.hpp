@@ -5,7 +5,7 @@
 
 #include <error.hpp>
 
-namespace builder::registry
+namespace builder::builders
 {
 
 /**
@@ -37,6 +37,6 @@ public:
     virtual base::RespOrError<Builder> get(const std::string& name) const = 0;
 };
 
-} // namespace builder::registry
+} // namespace builder::builders
 
 #endif // _BUILDER_IREGISRTY_HPP

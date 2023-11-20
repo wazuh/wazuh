@@ -1,13 +1,9 @@
-#ifndef _BUILDER2_POLICY_HPP
-#define _BUILDER2_POLICY_HPP
+#ifndef _BUILDER_POLICY_POLICY_HPP
+#define _BUILDER_POLICY_POLICY_HPP
 
 #include <builder/ipolicy.hpp>
 
-#include <memory>
-#include <unordered_map>
-
-#include <fmt/format.h>
-
+#include <defs/idefinitions.hpp>
 #include <store/istore.hpp>
 
 namespace builder::policy
@@ -15,52 +11,47 @@ namespace builder::policy
 class Policy : public IPolicy
 {
 private:
-    base::Name m_name;                                                   ///< Name of the policy
-    std::string m_hash;                                                  ///< Hash of the policy
-    std::unordered_map<store::NamespaceId, base::Name> m_defaultParents; ///< Default parents of decoders by namespace
-    std::unordered_map<store::NamespaceId, std::unordered_set<base::Name>>
-        m_assets; ///< Assets of the policy by namespace
-
-    /**
-     * @brief Read the policy data from the policy document and store it in the class.
-     *
-     * @param doc The policy document.
-     * @param store The store interface to query asset namespace.
-     */
-    void readData(const store::Doc& doc, const std::shared_ptr<store::IStoreReader>& store);
+    base::Name m_name;                       ///< Name of the policy
+    std::string m_hash;                      ///< Hash of the policy
+    std::unordered_set<base::Name> m_assets; ///< Assets in the policy
+    base::Expression m_expression;           ///< Expression of the policy
 
 public:
     Policy() = default;
+    ~Policy() = default;
 
-    Policy(const store::Doc& doc, const std::shared_ptr<store::IStoreReader>& store);
+    Policy(const store::Doc& doc,
+           const std::shared_ptr<store::IStoreReader>& store,
+           const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder);
 
     /**
      * @copydoc IPolicy::name
      */
-    inline base::Name name() const override { return m_name; }
-
-    /**
-     * @copydoc IPolicy::assets
-     */
-    std::unordered_set<base::Name> assets() const override;
-
-    /**
-     * @copydoc IPolicy::expression
-     */
-    base::Expression expression() const override;
-
-    /**
-     * @copydoc IPolicy::getGraphivzStr
-     */
-    std::string getGraphivzStr() const override;
+    inline const base::Name& name() const override { return m_name; }
 
     /*
      * @brief Get the policy hash.
      *
      * @return std::string Hash of the policy.
      */
-    const std::string& hash() const override;
+    inline const std::string& hash() const override { return m_hash; }
+
+    /**
+     * @copydoc IPolicy::assets
+     */
+    inline const std::unordered_set<base::Name>& assets() const override { return m_assets; }
+
+    /**
+     * @copydoc IPolicy::expression
+     */
+    inline const base::Expression& expression() const override { return m_expression; }
+
+    /**
+     * @copydoc IPolicy::getGraphivzStr
+     */
+    // TODO: Implement
+    inline std::string getGraphivzStr() const override { throw std::runtime_error("Not implemented"); }
 };
 } // namespace builder::policy
 
-#endif // _BUILDER2_POLICY_HPP
+#endif // _BUILDER_POLICY_POLICY_HPP

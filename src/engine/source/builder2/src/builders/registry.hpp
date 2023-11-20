@@ -5,9 +5,9 @@
 
 #include <fmt/format.h>
 
-#include "registry/iregistry.hpp"
+#include "iregistry.hpp"
 
-namespace builder::registry
+namespace builder::builders
 {
 
 template<typename Builder>
