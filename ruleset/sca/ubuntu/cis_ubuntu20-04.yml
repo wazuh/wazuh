@@ -2690,9 +2690,10 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition: all
+    condition: none
     rules:
-      - 'c:sh -c "stat -Lc "%a %u/%U %g/%G" /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf" -> r:\d && !r:^600 0/root 0/root'
+      - 'c:stat -Lc "%a %u/%U %g/%G" /etc/ssh/sshd_config -> r:\d && !r:^600 0/root 0/root'
+      - 'c:find /etc/ssh/sshd_config.d -name "*.conf" -exec stat -Lc "%a %u/%U %g/%G" {} \; -> r:\d && !r:^600 0/root 0/root'
 
   # 4.2.2 Ensure permissions on SSH private host key files are configured. (Automated) - Not Implemented
 
