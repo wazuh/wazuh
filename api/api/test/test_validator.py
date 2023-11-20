@@ -73,7 +73,6 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
     ('json', _type_format),
     # paths
     ('/var/ossec/etc/internal_options', _paths),
-    ('/var/ossec/etc/rules/local_rules.xml', _paths),
     ('security-eventchannel', _cdb_filename_path),
     ('local_rules.xml', _xml_filename_path),
     ('local_rules1.xml,local_rules2.xml', _xml_filename),
@@ -144,7 +143,6 @@ def test_validation_check_exp_ok(exp, regex_name):
     ('exe', _type_format),
     # paths
     ('/var/ossec/etc/internal_options$', _paths),
-    ('/var/ossec/etc/rules/local_rules.xml()', _paths),
     ('!scripts/active_response()', _active_response_command),
     ('scripts\\active_response$', _active_response_command),
     # relative paths
@@ -152,7 +150,6 @@ def test_validation_check_exp_ok(exp, regex_name):
     ('../../path', _get_dirnames_path),
     ('/var/ossec/etc/lists/new_lists3', _get_dirnames_path),
     ('../ossec', _get_dirnames_path),
-    ('etc/rules/../../../dir', _get_dirnames_path),
     # version
     ('v4.4', _wazuh_version),
     ('4.4', _wazuh_version),
@@ -198,13 +195,10 @@ def test_is_safe_path():
     """Verify that is_safe_path() works as expected"""
     assert is_safe_path('/api/configuration/api.yaml')
     assert is_safe_path('c:\\api\\configuration\\api.yaml')
-    assert is_safe_path('etc/rules/local_rules.xml', relative=False)
     assert is_safe_path('etc/ossec.conf', relative=True)
     assert is_safe_path('ruleset/decoders/decoder.xml', relative=False)
     assert not is_safe_path('/api/configuration/api.yaml', basedir='non-existent', relative=False)
     assert not is_safe_path('etc/lists/../../../../../../var/ossec/api/scripts/wazuh-apid.py', relative=True)
-    assert not is_safe_path('../etc/rules/rule.xml', relative=False)
-    assert not is_safe_path('../etc/rules/rule.xml')
     assert not is_safe_path('/..')
     assert not is_safe_path('\\..')
     assert not is_safe_path('..\\etc\\rules\\rule.xml')

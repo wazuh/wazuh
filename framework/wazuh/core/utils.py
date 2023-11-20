@@ -1785,26 +1785,6 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
         self.select = self.select & self.filter_fields['fields']
 
 
-@common.context_cached('system_rules')
-def expand_rules() -> set:
-    """Return all ruleset rule files in the system.
-
-    Returns
-    -------
-    set
-        Rule files.
-    """
-    folders = [common.RULES_PATH, common.USER_RULES_PATH]
-    rules = set()
-    for folder in folders:
-        for _, _, files in walk(folder):
-            for f in filter(lambda x: x.endswith(common.RULES_EXTENSION), files):
-                rules.add(f)
-
-    return rules
-
-
-@common.context_cached('system_decoders')
 def expand_decoders() -> set:
     """Return all ruleset decoder files in the system.
 
@@ -1917,7 +1897,7 @@ def validate_wazuh_xml(content: str, config_file: bool = False):
 
 
 def upload_file(content: str, file_path: str, check_xml_formula_values: bool = True):
-    """Upload files (rules, lists, decoders and ossec.conf).
+    """Upload files (lists, decoders and ossec.conf).
 
     Parameters
     ----------

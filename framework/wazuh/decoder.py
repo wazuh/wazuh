@@ -10,10 +10,10 @@ import xmltodict
 
 import wazuh.core.configuration as configuration
 from wazuh.core import common
-from wazuh.core.decoder import load_decoders_from_file, check_status, REQUIRED_FIELDS, SORT_FIELDS, DECODER_FIELDS
+from wazuh.core.decoder import load_decoders_from_file, check_status, format_decoder_file, REQUIRED_FIELDS, \
+    SORT_FIELDS, DECODER_FIELDS
 from wazuh.core.exception import WazuhInternalError, WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.rule import format_rule_decoder_file
 from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml, \
     delete_file_with_backup, upload_file, to_relative_path
 from wazuh.rbac.decorators import expose_resources
@@ -161,11 +161,11 @@ def get_decoders_files(status: str = None, relative_dirname: str = None, filenam
     tags = ['decoder_include', 'decoder_exclude', 'decoder_dir']
     if isinstance(filename, list):
         for f in filename:
-            decoders_files.extend(format_rule_decoder_file(
+            decoders_files.extend(format_decoder_file(
                 ruleset_conf, {'status': status, 'relative_dirname': relative_dirname, 'filename': f},
                 tags))
     else:
-        decoders_files = format_rule_decoder_file(
+        decoders_files = format_decoder_file(
             ruleset_conf,
             {'status': status, 'relative_dirname': relative_dirname, 'filename': filename},
             tags)
