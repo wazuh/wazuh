@@ -378,7 +378,7 @@ void * run_worker(__attribute__((unused)) void * args) {
 
         switch (length) {
         case -1:
-            merror("at run_worker(): at recv(): %s (%d)", strerror(errno), errno);
+            mdebug1("at run_worker(): at recv(): %s (%d)", strerror(errno), errno);
             close(peer);
             continue;
 
