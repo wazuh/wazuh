@@ -5,6 +5,7 @@
 import sys
 import os
 import io
+import re
 from unittest.mock import patch, MagicMock, call
 import pytest
 import json
@@ -24,6 +25,16 @@ SAMPLE_PARQUET_EVENT_1 = {'key1': 'value1', 'key2': 'value2'}
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 logs_path = os.path.join(test_data_path, 'log_files')
+
+
+def test_method_raises_not_implemented():
+    """Test that obtain_logs and process_file methods raise NotImplementedError."""
+    handler = s3_log_handler.AWSS3LogHandler()
+    with pytest.raises(NotImplementedError):
+        handler.obtain_logs("test_bucket", "test_log_path")
+
+    with pytest.raises(NotImplementedError):
+        handler.process_file({"message": "test_message"})
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
@@ -115,6 +126,14 @@ def test_process_jsonl(content, expected):
     assert s3_log_handler.AWSSubscriberBucket._process_jsonl(content) == expected
 
 
+def test_json_event_generator():
+    """Test the _json_event_generator function of AWSSubscriberBucket class."""
+    data = '{"event": "data1"}{"event": "data2"}'
+    generator = s3_log_handler.AWSSubscriberBucket._json_event_generator(data)
+    events = list(generator)
+    assert events == [{"event": "data1"}, {"event": "data2"}]
+
+
 @pytest.mark.parametrize("content, expected", [
     ({'example1': None, 'example2': 'some_value'}, {'example2': 'some_value'}),
     ({'example1': {'a': None, 'b': None}, 'example2': {'a': 1, 'b': None}},
@@ -125,11 +144,82 @@ def test_protected_remove_none_fields(content, expected):
     s3_log_handler.AWSSubscriberBucket._remove_none_fields(content)
     assert content == expected
 
+
+@pytest.mark.parametrize(
+    "bucket_name, log_path, content, expected_logs",
+    [
+        (
+            "test_bucket",
+            "logs/sample.jsonl.gz",
+            '{"event": "data1"}\n{"event": "data2"}\n',
+            [{"event": "data1"}, {"event": "data2"}],
+        ),
+        (
+            "test_bucket",
+            "logs/sample.csv",
+            "Name, Age, City\nJohn, 30, New York",
+            [{"Age": "30", "City": "New York", "Name": "John", "source": "custom"}],
+        ),
+    ],
+    ids=[
+        "JSONL Sample Data",
+        "CSV Sample Data",
+    ],
+)
+def test_obtain_logs_processes_different_data_types(bucket_name, log_path, content, expected_logs):
+    """Test the 'obtain_logs' function of AWSSubscriberBucket class."""
+    with patch('s3_log_handler.wazuh_integration.WazuhIntegration.__init__'):
+        with patch('s3_log_handler.AWSSubscriberBucket.decompress_file', return_value=io.StringIO(content)):
+            formatted_logs = s3_log_handler.AWSSubscriberBucket().obtain_logs(bucket=bucket_name, log_path=log_path)
+
+            assert formatted_logs == expected_logs
+            assert formatted_logs is not None
+
+
+@patch('s3_log_handler.aws_tools.debug')
+def test_process_file_sends_expected_messages(mock_debug):
+    """Test the 'process_file' function of AWSSubscriberBucket class."""
+    with patch('s3_log_handler.wazuh_integration.WazuhIntegration.__init__'):
+        processor = s3_log_handler.AWSSubscriberBucket()
+        processor.discard_regex = re.compile('your_regex_pattern_here')
+        processor.discard_field = 'your_discard_field_value'
+
+        message_body = {'log_path': 'log.txt', 'bucket_path': 'bucket'}
+        formatted_logs = [{'full_log': 'some log entry matching discard regex'}]
+
+        processor.obtain_logs = MagicMock(return_value=formatted_logs)
+        processor.event_should_be_skipped = MagicMock(return_value=False)
+        processor.send_msg = MagicMock()
+
+        formatted_logs_no_full_log = [{'other_field': 'some value'}]
+        processor.obtain_logs.return_value = formatted_logs_no_full_log
+        processor.process_file(message_body)
+
+        expected_msg = {
+            'integration': 'aws',
+            'aws': {
+                'log_info': {
+                    'log_file': 'log.txt',
+                    's3bucket': 'bucket'
+                }
+            }
+        }
+        expected_msg['aws'].update(formatted_logs_no_full_log[0]) 
+        processor.send_msg.assert_called_once_with(expected_msg)
+
+        log_with_match = {'full_log': 'some log entry matching discard regex'}
+        formatted_logs_with_match = [log_with_match]
+
+        processor.obtain_logs.return_value = formatted_logs_with_match
+        processor.process_file(message_body)
+        processor.send_msg.assert_called_once()
+
+
 @pytest.mark.parametrize("content, expected_calls", [
     (['{"event1": "data1"}', '{"event2": "data2"}'], [call('{"event1": "data1"}', dump_json=False), call('{"event2": "data2"}', dump_json=False)])
 ])
 def test_protected_process_jsonl(content, expected_calls):
-    """Test the 'process_file' function of AWSSubscriberBucket class."""
+    """Test the 'process_file' function of AWSSLSubscriberBucket class."""
     aws_ssl_subscriber_bucket = utils.get_mocked_aws_sl_subscriber_bucket()
     message_body = {'bucket_path': 'example-bucket', 'log_path': 'example-log.parquet'}
     mocked_obtain_logs = MagicMock(return_value=content)
@@ -140,3 +230,4 @@ def test_protected_process_jsonl(content, expected_calls):
 
     mocked_obtain_logs.assert_called_once_with(bucket='example-bucket', log_path='example-log.parquet')
     mock_send_msg.assert_has_calls(expected_calls)
+
