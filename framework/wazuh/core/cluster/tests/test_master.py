@@ -1611,7 +1611,7 @@ async def test_master_file_status_update_ok(sleep_mock):
 @pytest.mark.asyncio
 @freeze_time("2021-11-02")
 @patch('asyncio.sleep')
-@patch('wazuh.core.cluster.master.cluster.run_in_pool', return_value=[])
+@patch('wazuh.core.cluster.master.cluster.run_in_pool', return_value={})
 async def test_master_file_status_update_ok(run_in_pool_mock, asyncio_sleep_mock):
     """Check if the file status is properly obtained."""
 
@@ -1660,7 +1660,6 @@ async def test_master_file_status_update_ok(run_in_pool_mock, asyncio_sleep_mock
         except Exception:
             assert "Starting." in logger_mock._info
             assert "Finished in 0.000s. Calculated metadata of 0 files." in logger_mock._info
-            # assert "Error calculating local file integrity: " in logger_mock._error
             setup_task_logger_mock.assert_called_once_with('Local integrity')
             assert master_class.integrity_control == run_in_pool_mock.return_value
 
