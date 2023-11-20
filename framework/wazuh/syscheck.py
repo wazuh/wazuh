@@ -6,7 +6,6 @@ from typing import Union
 
 from wazuh.core import common
 from wazuh.core.agent import Agent, get_agents_info, get_rbac_filters, WazuhDBQueryAgents
-from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhInternalError, WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.syscheck import WazuhDBQuerySyscheck, syscheck_delete_agent

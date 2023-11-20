@@ -29,7 +29,6 @@ from defusedxml.minidom import parseString
 import wazuh.core.results as results
 from api import configuration
 from wazuh.core import common
-from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.wdb import WazuhDBConnection
 
