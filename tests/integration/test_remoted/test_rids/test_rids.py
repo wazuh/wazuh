@@ -1,5 +1,5 @@
 """
- Copyright (C) 2015-2021, Wazuh Inc.
+ Copyright (C) 2015-2023, Wazuh Inc.
  Created by Wazuh, Inc. <info@wazuh.com>.
  This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 """
@@ -17,10 +17,10 @@ from wazuh_testing.utils.configuration import get_test_cases_data, load_configur
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.paths.sockets import QUEUE_RIDS_PATH
 from wazuh_testing.constants.daemons import REMOTE_DAEMON
+from wazuh_testing.modules.remoted.configuration import REMOTED_DEBUG
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
-from wazuh_testing.modules.remoted.configuration import REMOTED_DEBUG
 
 # Set pytest marks.
 pytestmark = [pytest.mark.server, pytest.mark.tier(level=1)]
@@ -71,6 +71,9 @@ def test_rids(test_configuration, test_metadata, configure_local_internal_option
         - simulate_agents
             type: fixture
             brief: create agents
+        - set_wazuh_configuration:
+            type: fixture
+            brief: Apply changes to the ossec.conf configuration.
 
     '''
 

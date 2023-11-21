@@ -1,5 +1,5 @@
 """
- Copyright (C) 2015-2021, Wazuh Inc.
+ Copyright (C) 2015-2023, Wazuh Inc.
  Created by Wazuh, Inc. <info@wazuh.com>.
  This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 """
@@ -11,12 +11,12 @@ from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.utils.services import control_service
-
-from . import CONFIGS_PATH, TEST_CASES_PATH
-
 from wazuh_testing.modules.remoted.configuration import REMOTED_DEBUG, REMOTED_WORKER_POOL, REMOTED_VERIFY_MSG_ID
 from wazuh_testing.modules.remoted import patterns
 from wazuh_testing.utils.configuration import set_internal_options_conf
+
+from . import CONFIGS_PATH, TEST_CASES_PATH
+
 
 # Set pytest marks.
 pytestmark = [pytest.mark.server, pytest.mark.tier(level=1)]
@@ -34,7 +34,7 @@ local_internal_options = {REMOTED_DEBUG: '2'}
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
 def test_rids_conf(test_configuration, test_metadata, configure_local_internal_options, truncate_monitored_files,
-                            set_wazuh_configuration):
+                            daemons_handler, set_wazuh_configuration):
 
     '''
     description: Check that RIDS configuration works as expected for the following fields, `remoted.verify_msg_id` and
@@ -59,6 +59,9 @@ def test_rids_conf(test_configuration, test_metadata, configure_local_internal_o
             type: fixture
             brief: Starts/Restarts the daemons indicated in `daemons_handler_configuration` before each test,
                    once the test finishes, stops the daemons.
+        - set_wazuh_configuration:
+            type: fixture
+            brief: Apply changes to the ossec.conf configuration.
     '''
 
     log_monitor = FileMonitor(WAZUH_LOG_PATH)
