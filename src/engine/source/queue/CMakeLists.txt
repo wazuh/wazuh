@@ -13,13 +13,13 @@ set(INC_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
 set(IFACE_DIR ${CMAKE_CURRENT_LIST_DIR}/interface)
 set(TEST_DIR ${CMAKE_CURRENT_LIST_DIR}/test)
 
-## Interface
+# # Interface
 add_library(queue_iqueue INTERFACE)
 target_include_directories(queue_iqueue INTERFACE ${IFACE_DIR})
 target_link_libraries(queue_iqueue INTERFACE fmt base)
 add_library(queue::iqueue ALIAS queue_iqueue)
 
-## Queue
+# # Queue
 add_library(queue STATIC
   ${SRC_DIR}/concurrentQueue.cpp)
 
@@ -33,28 +33,36 @@ target_include_directories(queue
 target_link_libraries(queue
   PUBLIC
   base # Only for the loggin
-  metrics
   queue::iqueue
+
+  # metrics::imetrics
+  metrics
 )
 
 # Tests
 if(ENGINE_BUILD_TEST)
+  set(TEST_SRC_DIR ${TEST_DIR}/src)
+  set(TEST_SRC_COMPONENT_DIR ${TEST_SRC_DIR}/component)
+  set(TEST_SRC_UNIT_DIR ${TEST_SRC_DIR}/unit)
+  set(TEST_MOCK_DIR ${TEST_DIR}/mocks)
 
-set(TEST_SRC_DIR ${TEST_DIR}/src)
-set(TEST_SRC_COMPONENT_DIR ${TEST_SRC_DIR}/component)
-set(TEST_SRC_UNIT_DIR ${TEST_SRC_DIR}/unit)
-set(TEST_MOCK_DIR ${TEST_DIR}/mocks)
+  # Mocks
+  add_library(queue_mocks INTERFACE)
+  target_include_directories(queue_mocks INTERFACE ${TEST_MOCK_DIR})
+  target_link_libraries(queue_mocks INTERFACE gmock queue)
+  add_library(queue::mocks ALIAS queue_mocks)
 
-# Mocks
-add_library(queue_mocks INTERFACE)
-target_include_directories(queue_mocks INTERFACE ${TEST_MOCK_DIR})
-target_link_libraries(queue_mocks INTERFACE gmock queue)
-add_library(queue::mocks ALIAS queue_mocks)
+  # Component test
+  add_executable(queue_ctest
+    ${TEST_SRC_COMPONENT_DIR}/queue_test.cpp
+  )
 
-add_executable(queue_utest
-  ${TEST_SRC_UNIT_DIR}/priority_queue.cpp
-)
+  target_link_libraries(queue_ctest 
+    gtest_main
+    base
+    queue
+    #metrics::mocks)
+    metrics)
+  gtest_discover_tests(queue_ctest)
 
-target_link_libraries(queue_utest gtest_main base queue queue::mocks)
-gtest_discover_tests(queue_utest)
 endif(ENGINE_BUILD_TEST)

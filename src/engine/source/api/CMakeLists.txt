@@ -49,7 +49,7 @@ target_link_libraries(api
     kvdb::ikvdb
     metrics
     # router
-    router2::irouter
+    router::irouter
     store::fileDriver
     store::istore
     yml
