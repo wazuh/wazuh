@@ -8,7 +8,7 @@ The copy will be made into any of the following output directories:
 - Downloads folder: If the input file is compressed.
 - Contents folder: If the input file is not compressed.
 
-If the copy is successful, this stage also updates the context [data paths](../../src/components/updaterContext.hpp) field with the destination path of the copied file.
+If the copy is successful, this stage also updates the context [data paths](../../src/components/updaterContext.hpp) field with the destination path of the copied file. If the input file doesn't exist, no paths will be appended.
 
 > Note: Despite the class name, there is no such download performed. The copy is made entirely locally.
 

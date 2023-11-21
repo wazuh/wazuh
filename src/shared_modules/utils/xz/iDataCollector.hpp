@@ -34,6 +34,12 @@ namespace Xz
         virtual void begin() = 0;
 
         /**
+         * @brief Called at the end of the process so that the collector can close its state properly
+         *
+         */
+        virtual void finish() {};
+
+        /**
          * @brief Set the output buffer
          *
          * @param[out] buffer Buffer to hold the partial output data

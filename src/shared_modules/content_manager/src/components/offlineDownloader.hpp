@@ -74,7 +74,9 @@ private:
             return Utils::asciiToHex(hash.hash());
         }
 
+        // LCOV_EXCL_START
         throw std::runtime_error {"Unable to open '" + filepath.string() + "' for hashing."};
+        // LCOV_EXCL_STOP
     };
 
     /**
@@ -94,6 +96,13 @@ private:
             Utils::replaceFirst(url, filePrefix, "");
         }
         const std::filesystem::path inputFilePath {url};
+
+        // Check input file existence.
+        if (!std::filesystem::exists(inputFilePath))
+        {
+            std::cout << "File " << inputFilePath << " doesn't exist. Skipping download." << std::endl;
+            return;
+        }
 
         // Process input file hash.
         auto inputFileHash {hashFile(inputFilePath)};
