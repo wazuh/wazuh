@@ -89,7 +89,7 @@ int logr_queue;
 int open_file_attempts;
 logreader *logff;
 logreader_glob *globs;
-logsocket *logsk;
+socket_forwarder *logsk;
 int vcheck_files;
 int maximum_lines;
 int sample_log_length;
@@ -107,7 +107,7 @@ char *files_status_name = "file_status";
 static int _cday = 0;
 int N_INPUT_THREADS = N_MIN_INPUT_THREADS;
 int OUTPUT_QUEUE_SIZE = OUTPUT_MIN_QUEUE_SIZE;
-logsocket default_agent = { .name = "agent" };
+socket_forwarder default_agent = { .name = "agent" };
 logtarget default_target[2] = { { .log_socket = &default_agent } };
 
 /* Output thread variables */

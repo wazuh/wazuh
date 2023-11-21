@@ -91,7 +91,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_exec -Wl,--wrap,sqlite3_errmsg -Wl,-
                             -Wl,--wrap,sqlite3_bind_parameter_index -Wl,--wrap,cJSON_Delete -Wl,--wrap,cJSON_CreateArray -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_column_int \
                             -Wl,--wrap,wdb_init_stmt_in_cache -Wl,--wrap,wdb_get_global_group_hash -Wl,--wrap,wdb_commit2 -Wl,--wrap,wdb_finalize_all_statements \
                             -Wl,--wrap,sqlite3_prepare_v2 -Wl,--wrap,w_get_timestamp -Wl,--wrap,wdb_exec_stmt_silent -Wl,--wrap,w_compress_gzfile \
-                            -Wl,--wrap,sqlite3_finalize -Wl,--wrap,unlink -Wl,--wrap,getpid -Wl,--wrap,opendir -Wl,--wrap,closedir -Wl,--wrap,readdir \
+                            -Wl,--wrap,sqlite3_finalize -Wl,--wrap,popen -Wl,--wrap,unlink -Wl,--wrap,getpid -Wl,--wrap,opendir -Wl,--wrap,closedir -Wl,--wrap,readdir \
                             -Wl,--wrap,stat -Wl,--wrap,w_uncompress_gzfile -Wl,--wrap,wdb_leave -Wl,--wrap,wdb_close -Wl,--wrap,rename -Wl,--wrap,time \
                             -Wl,--wrap,wdb_exec_stmt_single_column -Wl,--wrap,w_is_single_node ${DEBUG_OP_WRAPPERS} ${STDIO_OP_WRAPPERS}")
 
@@ -108,7 +108,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,strerror \
                              -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_CreateArray -Wl,--wrap,cJSON_CreateString -Wl,--wrap,cJSON_Parse \
                              -Wl,--wrap,cJSON_AddItemToObject -Wl,--wrap,cJSON_AddItemToArray -Wl,--wrap,cJSON_AddNumberToObject \
                              -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_PrintUnformatted -Wl,--wrap,cJSON_GetObjectItem \
-                             -Wl,--wrap,cJSON_Delete -Wl,--wrap,time -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap=fgetc\
+                             -Wl,--wrap,cJSON_Delete -Wl,--wrap,time -Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap=fgetc\
                              -Wl,--wrap,fclose -Wl,--wrap,cJSON_AddArrayToObject -Wl,--wrap,remove -Wl,--wrap,opendir -Wl,--wrap,readdir -Wl,--wrap,closedir \
                              -Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result -Wl,--wrap,wdbc_query_parse_json -Wl,--wrap,wdbc_query_parse \
                              -Wl,--wrap,wdb_create_profile -Wl,--wrap,Privsep_GetUser -Wl,--wrap,Privsep_GetGroup -Wl,--wrap,chown \
@@ -137,7 +137,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,
 
 list(APPEND wdb_tests_names "test_wdb_upgrade")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_count_tables_with_name \
-                             -Wl,--wrap,wdb_sql_exec -Wl,--wrap,wdb_metadata_get_entry -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,fclose \
+                             -Wl,--wrap,wdb_sql_exec -Wl,--wrap,wdb_metadata_get_entry -Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,fclose \
                              -Wl,--wrap,remove -Wl,--wrap,opendir -Wl,--wrap,readdir -Wl,--wrap,closedir -Wl,--wrap,fflush -Wl,--wrap,fseek -Wl,--wrap,fgets \
                              -Wl,--wrap,wdb_init -Wl,--wrap,wdb_close -Wl,--wrap,wdb_create_global -Wl,--wrap,wdb_pool_append -Wl,--wrap,chmod -Wl,--wrap,stat \
                              -Wl,--wrap,unlink -Wl,--wrap,getpid -Wl,--wrap,time -Wl,--wrap,sqlite3_open_v2 -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,sqlite3_close_v2 \

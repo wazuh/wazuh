@@ -13,7 +13,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
 
     set(AUDIT_HC_FLAGS "-Wl,--wrap=_mdebug1,--wrap=_mdebug2 -Wl,--wrap,audit_add_rule \
                         -Wl,--wrap,pthread_cond_wait -Wl,--wrap,pthread_mutex_lock \
-                        -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,CreateThread \
+                        -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,CreateThread -Wl,--wrap,popen \
                         -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fgetpos \
                         -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc \
                         -Wl,--wrap,getpid -Wl,--wrap,sleep -Wl,--wrap,unlink -Wl,--wrap,audit_delete_rule \
@@ -37,7 +37,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
     set(SYSCHECK_AUDIT_FLAGS "-Wl,--wrap=_mdebug1,--wrap=_mdebug2,--wrap=_merror,--wrap=_mwarn,--wrap=audit_add_rule\
                               -Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock,--wrap=fim_db_init \
                               -Wl,--wrap=pthread_rwlock_rdlock,--wrap=pthread_rwlock_wrlock,--wrap=pthread_rwlock_unlock \
-                              -Wl,--wrap=fopen,--wrap=fclose,--wrap=fflush,--wrap=fgets,--wrap=fgetpos \
+                              -Wl,--wrap=fopen,--wrap=fclose,--wrap=fflush,--wrap=fgets,--wrap=fgetpos,--wrap=popen \
                               -Wl,--wrap=fread,--wrap=fseek,--wrap=fwrite,--wrap=remove,--wrap=fgetc \
                               -Wl,--wrap=getpid,--wrap=sleep,--wrap=unlink,--wrap=audit_delete_rule \
                               -Wl,--wrap=select,--wrap=audit_parse,--wrap=audit_get_rule_list,--wrap=audit_close \
@@ -58,7 +58,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
     target_compile_options(test_syscheck_audit PRIVATE "-Wall")
 
     set(SYSCHECK_AUDIT_FLAGS "-Wl,--wrap,pthread_cond_wait -Wl,--wrap,pthread_mutex_lock \
-                              -Wl,--wrap,openproc -Wl,--wrap,readproc -Wl,--wrap,freeproc \
+                              -Wl,--wrap,openproc -Wl,--wrap,readproc -Wl,--wrap,freeproc -Wl,--wrap,popen \
                               -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,audit_add_rule -Wl,--wrap,audit_restart  \
                               -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,closeproc  -Wl,--wrap,recv -Wl,--wrap,IsDir \
                               -Wl,--wrap,IsLink -Wl,--wrap,IsFile -Wl,--wrap,IsSocket -Wl,--wrap,fprintf \
@@ -88,7 +88,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
     target_compile_options(test_audit_parse PRIVATE "-Wall")
 
     set(AUDIT_PARSE_FLAGS "-Wl,--wrap=_mdebug1,--wrap=_mdebug2 -Wl,--wrap=_mwarn -Wl,--wrap=_minfo \
-                           -Wl,--wrap,audit_add_rule -Wl,--wrap,pthread_mutex_lock \
+                           -Wl,--wrap,audit_add_rule -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,popen \
                            -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush \
                            -Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite\
                            -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,getpid -Wl,--wrap,sleep -Wl,--wrap,unlink \
@@ -114,7 +114,7 @@ else()
     link_directories(${SRC_FOLDER}/syscheckd/build/bin)
     add_executable(test_win_whodata test_win_whodata.c)
     target_compile_options(test_win_whodata PRIVATE "-Wall")
-    set(WIN_WHODATA_FLAGS "-Wl,--wrap,wstr_replace -Wl,--wrap,SendMSG \
+    set(WIN_WHODATA_FLAGS "-Wl,--wrap,wstr_replace -Wl,--wrap,SendMSG -Wl,--wrap,popen \
                            -Wl,--wrap,free_whodata_event -Wl,--wrap,IsFile -Wl,--wrap=remove \
                            -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                            -Wl,--wrap,wm_exec -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,atexit \

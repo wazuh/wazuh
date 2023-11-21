@@ -106,6 +106,13 @@ typedef struct __Config {
     /* Global rule hash */
     OSHash *g_rules_hash;
 
+    /* Vector of targets forwarder */
+    char** forwarders_list;
+
+    /* Vector of socket configuration from ossec.conf <socket/> */
+    socket_forwarder *socket_list;
+
+
 #ifdef LIBGEOIP_ENABLED
     /* GeoIP support */
     u_int8_t loggeoip;

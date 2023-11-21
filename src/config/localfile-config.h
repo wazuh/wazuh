@@ -53,15 +53,6 @@ extern int maximum_files;
 extern int total_files;
 extern int current_files;
 
-typedef struct _logsocket {
-    char *name;
-    char *location;
-    int mode;
-    char *prefix;
-    int socket;
-    time_t last_attempt;
-} logsocket;
-
 typedef struct _outformat {
     char * target;
     char * format;
@@ -69,7 +60,7 @@ typedef struct _outformat {
 
 typedef struct _logtarget {
     char * format;
-    logsocket * log_socket;
+    socket_forwarder * log_socket;
 } logtarget;
 
 /* Logreader config */
@@ -232,7 +223,7 @@ typedef struct _logreader_config {
     int accept_remote;
     logreader_glob *globs;
     logreader *config;
-    logsocket *socket_list;
+    socket_forwarder *socket_list;
 } logreader_config;
 
 /* Frees the Logcollector config struct  */

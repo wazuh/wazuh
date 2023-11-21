@@ -38,7 +38,7 @@ list(APPEND os_auth_names "test_ssl")
 list(APPEND os_auth_flags "-Wl,--wrap,SSL_read -Wl,--wrap=SSL_new")
 list(APPEND os_auth_names "test_auth_key_request")
 list(APPEND os_auth_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_minfo -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 \
-                           -Wl,--wrap,wm_exec -Wl,--wrap,wpopenv -Wl,--wrap,fgets \
+                           -Wl,--wrap,wm_exec -Wl,--wrap,wpopenv -Wl,--wrap,fgets -Wl,--wrap,popen \
                            -Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,close -Wl,-wrap,send -Wl,--wrap,cJSON_ParseWithOpts \
                            -Wl,--wrap,recv -Wl,--wrap,setsockopt -Wl,--wrap,fcntl -Wl,--wrap,connect -Wl,--wrap,socket \
                            -Wl,--wrap,w_request_agent_add_clustered -Wl,--wrap,sleep -Wl,--wrap,cJSON_Delete -Wl,--wrap,local_add \
@@ -50,7 +50,7 @@ list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} \
                            -Wl,--wrap,os_random -Wl,--wrap,GetRandomNoise -Wl,--wrap,getuname -Wl,--wrap,time")
 list(APPEND os_auth_names "test_generate_cert")
 list (APPEND os_auth_flags "-Wl,--wrap,PEM_write_PrivateKey -Wl,--wrap,PEM_write_X509 -Wl,--wrap,RSA_generate_key_ex \
-                            -Wl,--wrap,X509_sign -Wl,--wrap,_merror \
+                            -Wl,--wrap,X509_sign -Wl,--wrap,_merror -Wl,--wrap,popen \
                             -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgetpos -Wl,--wrap,fread \
                             -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,fgets \
                             -Wl,--wrap,RSA_new -Wl,--wrap,EVP_PKEY_new -Wl,--wrap,X509_new")

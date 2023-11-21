@@ -19,8 +19,8 @@
 #include "db/include/fimCommonDefs.h"
 // Global variables
 syscheck_config syscheck;
-
 int sys_debug_level;
+int audit_queue_full_reported = 0;
 
 #ifdef USE_MAGIC
 #include <magic.h>

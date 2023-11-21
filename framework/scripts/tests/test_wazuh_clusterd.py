@@ -160,6 +160,14 @@ async def test_worker_main(asyncio_sleep_mock):
             self.send_file = send_file
             self.send_string = send_string
 
+    class TaskPoolMock:
+        def __init__(self):
+            self._max_workers = 1
+
+        def map(self, first, second):
+            assert first == cluster_utils.process_spawn_sleep
+            assert second == range(1)
+
     class LoggerMock:
         def __init__(self):
             pass
@@ -179,6 +187,7 @@ async def test_worker_main(asyncio_sleep_mock):
             assert logger == 'test_logger'
             assert cluster_items == {'intervals': {'worker': {'connection_retry': 34}}}
             assert task_pool is None
+            self.task_pool = TaskPoolMock()
 
         def start(self):
             return 'WORKER_START'

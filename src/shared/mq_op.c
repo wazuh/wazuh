@@ -243,6 +243,86 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, __attribute
     return (retval);
 }
 
+int SendJSONtoSCK(char* message, socket_forwarder* Config) {
+    time_t mtime;
+    int retval = 0;
+    int rcode_send;
+
+    if (!Config) {
+        merror("No targets defined for a forwarder.");
+        return -1;
+    }
+
+    if (strcmp(Config->name, "agent") != 0) {
+        int sock_type;
+        const char * strmode;
+
+        switch (Config->mode) {
+        case IPPROTO_UDP:
+            sock_type = SOCK_DGRAM;
+            strmode = "udp";
+            break;
+        case IPPROTO_TCP:
+            sock_type = SOCK_STREAM;
+            strmode = "tcp";
+            break;
+        default:
+            merror("At %s(): undefined protocol. This shouldn't happen.", __FUNCTION__);
+            os_free(message);
+            return -1;
+        }
+
+        // Connect to socket if disconnected
+        if (Config->socket < 0) {
+            if (mtime = time(NULL), mtime > Config->last_attempt + sock_fail_time) {
+                if (Config->socket = OS_ConnectUnixDomain(Config->location, sock_type, OS_MAXSTR + 256), Config->socket < 0) {
+                    Config->last_attempt = mtime;
+                    merror("Unable to connect to socket '%s': %s (%s)", Config->name, Config->location, strmode);
+                    os_free(message);
+                    return -1;
+                }
+                mdebug1("Connected to socket '%s' (%s)", Config->name, Config->location);
+            } else {
+                mdebug2("Discarding event '%s' due to connection issue with '%s'", message, Config->name);
+                os_free(message);
+                return 1;
+            }
+        }
+
+        // Send msg to socket
+        if (rcode_send = OS_SendUnix(Config->socket, message, strlen(message)), rcode_send < 0) {
+            if (rcode_send == OS_SOCKTERR) {
+                if (mtime = time(NULL), mtime > Config->last_attempt + sock_fail_time) {
+                    close(Config->socket);
+
+                    if (Config->socket = OS_ConnectUnixDomain(Config->location, sock_type, OS_MAXSTR + 256), Config->socket < 0) {
+                        merror("Unable to connect to socket '%s': %s (%s).", Config->name, Config->location, strmode);
+                        Config->last_attempt = mtime;
+                    } else {
+                        mdebug1("Connected to socket '%s' (%s)", Config->name, Config->location);
+
+                        if (rcode_send = OS_SendUnix(Config->socket, message, strlen(message)), rcode_send < 0) {
+                            mdebug2("Cannot send message to socket '%s' due %s. (Abort).", Config->name,strerror(errno));
+                            Config->last_attempt = mtime;
+                        } else {
+                            mdebug2("Message send to socket '%s' (%s) successfully.", Config->name, Config->location);
+                        }
+                    }
+                } else {
+                    mdebug2("Discarding event from analysisd due to connection issue with '%s', %s. (Abort).", Config->name,strerror(errno));
+                }
+            } else {
+                mdebug2("Cannot send message to socket '%s' due %s. (Abort).", Config->name,strerror(errno));
+            }
+            retval = 1;
+        } else {
+            mdebug2("Message send to socket '%s' (%s) successfully.", Config->name, Config->location);
+        }
+    }
+    os_free(message);
+    return retval;
+}
+
 #else
 
 int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, logtarget * targets) {

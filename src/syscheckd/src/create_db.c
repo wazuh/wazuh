@@ -312,7 +312,6 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
     cJSON* changed_attributes = NULL;
     cJSON* old_data = NULL;
     cJSON *attributes = NULL;
-    cJSON *aux = NULL;
     cJSON* timestamp = NULL;
     directory_t *configuration = NULL;
     fim_txn_context_t *txn_context = (fim_txn_context_t *) user_data;
@@ -617,6 +616,8 @@ time_t fim_scan() {
     if (isDebug()) {
         fim_print_info(start, end, cputime_start); // LCOV_EXCL_LINE
     }
+    audit_queue_full_reported = 0;
+
     return end_of_scan;
 }
 

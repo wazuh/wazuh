@@ -4,7 +4,8 @@
 
 import sys
 import os
-from unittest.mock import patch
+import io
+from unittest.mock import patch, MagicMock, call
 import pytest
 import json
 
@@ -91,3 +92,51 @@ def test_aws_sl_subscriber_bucket_process_file(mock_wazuh_integration, mock_sts_
     mock_obtain.assert_called_once_with(bucket=SAMPLE_MESSAGE['bucket_path'],
                                         log_path=SAMPLE_MESSAGE['log_path'])
     mock_send.assert_called()
+
+
+@pytest.mark.parametrize("content, is_csv",
+                         [
+                             ("Name, Age, City\nJohn, 30, New York", True),
+                             ("Name1, Age, City\nJohn, 30, New York", False),
+                             ("", True),
+                         ])
+def test_is_csv(content, is_csv):
+    """Test the 'is_csv' function of AWSSubscriberBucket class."""
+    valid_csv_file = io.StringIO(content)
+    assert s3_log_handler.AWSSubscriberBucket.is_csv(valid_csv_file) == is_csv
+
+@pytest.mark.parametrize("content, expected",
+                         [
+                             (['{"event1": "data1"}', '{"event2": "data2"}'],
+                              [{'event1': 'data1'}, {'event2': 'data2'}])
+                         ])
+def test_process_jsonl(content, expected):
+    """Test the '_process_jsonl' function of AWSSubscriberBucket class."""
+    assert s3_log_handler.AWSSubscriberBucket._process_jsonl(content) == expected
+
+
+@pytest.mark.parametrize("content, expected", [
+    ({'example1': None, 'example2': 'some_value'}, {'example2': 'some_value'}),
+    ({'example1': {'a': None, 'b': None}, 'example2': {'a': 1, 'b': None}},
+     {'example1': {}, 'example2': {'a': 1}})
+])
+def test_protected_remove_none_fields(content, expected):
+    """Test the '_remove_none_fields' function of AWSSubscriberBucket class."""
+    s3_log_handler.AWSSubscriberBucket._remove_none_fields(content)
+    assert content == expected
+
+@pytest.mark.parametrize("content, expected_calls", [
+    (['{"event1": "data1"}', '{"event2": "data2"}'], [call('{"event1": "data1"}', dump_json=False), call('{"event2": "data2"}', dump_json=False)])
+])
+def test_protected_process_jsonl(content, expected_calls):
+    """Test the 'process_file' function of AWSSubscriberBucket class."""
+    aws_ssl_subscriber_bucket = utils.get_mocked_aws_sl_subscriber_bucket()
+    message_body = {'bucket_path': 'example-bucket', 'log_path': 'example-log.parquet'}
+    mocked_obtain_logs = MagicMock(return_value=content)
+    aws_ssl_subscriber_bucket.obtain_logs = mocked_obtain_logs
+
+    with patch.object(aws_ssl_subscriber_bucket, 'send_msg') as mock_send_msg:
+        aws_ssl_subscriber_bucket.process_file(message_body)
+
+    mocked_obtain_logs.assert_called_once_with(bucket='example-bucket', log_path='example-log.parquet')
+    mock_send_msg.assert_has_calls(expected_calls)

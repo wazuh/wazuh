@@ -173,7 +173,7 @@ int local_start()
 
     /* No sockets defined */
     if (logsk == NULL) {
-        os_calloc(2, sizeof(logsocket), logsk);
+        os_calloc(2, sizeof(socket_forwarder), logsk);
         logsk[0].name = NULL;
         logsk[0].location = NULL;
         logsk[0].mode = 0;
