@@ -47,6 +47,7 @@ except ImportError:
 
 try:
     import pyarrow.parquet as pq
+    import pyarrow_hotfix
 except ImportError:
     print('ERROR: pyarrow module is required.')
     sys.exit(10)
