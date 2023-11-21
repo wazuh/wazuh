@@ -17,10 +17,10 @@
 #include "os_net.h"
 #include "wazuh_modules/wmodules.h"
 
+#ifdef WIN32
 #include <windows.h>
 #include <handleapi.h>
 
-#ifdef WIN32
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-function-type"
 #endif
