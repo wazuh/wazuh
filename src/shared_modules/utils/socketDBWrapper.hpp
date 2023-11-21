@@ -86,7 +86,15 @@ public:
                         {
                             try
                             {
-                                m_response = nlohmann::json::parse(responsePacket.substr(3));
+                                nlohmann::json responseParsed = nlohmann::json::parse(responsePacket.substr(3));
+                                if(responseParsed.type() == nlohmann::json::value_t::array)
+                                {
+                                    m_response = responseParsed;
+                                }
+                                else
+                                {
+                                    m_response.push_back(responseParsed);
+                                }
                             }
                             catch(const nlohmann::detail::exception& ex)
                             {
