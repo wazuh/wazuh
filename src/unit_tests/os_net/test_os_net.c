@@ -99,6 +99,7 @@ void test_bind_TCP_port_ipv4(void **state) {
     will_return(__wrap_bind, 1);
     will_return(__wrap_setsockopt, 0);
     will_return(__wrap_listen, 0);
+    will_return(__wrap_fcntl, 0);
 
     data->server_root_socket = OS_Bindporttcp(PORT, IPV4, 0);
     assert_return_code(data->server_root_socket, 0);
@@ -111,6 +112,7 @@ void test_bind_TCP_port_null(void **state) {
     will_return(__wrap_bind, 1);
     will_return(__wrap_setsockopt, 0);
     will_return(__wrap_listen, 0);
+    will_return(__wrap_fcntl, 0);
 
     data->server_root_socket = OS_Bindporttcp(PORT, NULL, 0);
     assert_return_code(data->server_root_socket, 0);
@@ -123,6 +125,7 @@ void test_bind_TCP_port_ipv6(void **state) {
     will_return(__wrap_bind, 1);
     will_return(__wrap_setsockopt, 0);
     will_return(__wrap_listen, 0);
+    will_return(__wrap_fcntl, 0);
 
     data->server_root_socket = OS_Bindporttcp(PORT, IPV6, 1);
     assert_return_code(data->server_root_socket, 0);
@@ -135,6 +138,8 @@ void test_connect_TCP_ipv4(void **state) {
     will_return(__wrap_connect, 0);
     will_return(__wrap_getsockopt, 0);
     will_return(__wrap_getsockopt, 0);
+    will_return(__wrap_fcntl, 0);
+
 
     data->client_socket = OS_ConnectTCP(PORT, IPV4, 0, 0);
     assert_return_code(data->client_socket , 0);
@@ -147,6 +152,7 @@ void test_connect_TCP_ipv6(void **state) {
     will_return(__wrap_connect, 0);
     will_return(__wrap_getsockopt, 0);
     will_return(__wrap_getsockopt, 0);
+    will_return(__wrap_fcntl, 0);
 
     data->client_socket = OS_ConnectTCP(PORT, IPV6, 1, 0);
     assert_return_code(data->client_socket , 0);
@@ -159,6 +165,7 @@ void test_connect_TCP_ipv6_link_local_no_interface(void **state) {
     will_return(__wrap_connect, 0);
     will_return(__wrap_getsockopt, 0);
     will_return(__wrap_getsockopt, 0);
+    will_return(__wrap_fcntl, 0);
 
     expect_string(__wrap__minfo, formatted_msg, "No network interface provided to use with link-local IPv6 address.");
 
@@ -173,6 +180,7 @@ void test_connect_TCP_ipv6_link_local_with_interface(void **state) {
     will_return(__wrap_connect, 0);
     will_return(__wrap_getsockopt, 0);
     will_return(__wrap_getsockopt, 0);
+    will_return(__wrap_fcntl, 0);
 
     data->client_socket = OS_ConnectTCP(PORT, IPV6_LINK_LOCAL, 1, 1);
     assert_return_code(data->client_socket , 0);
@@ -301,6 +309,7 @@ void test_bind_UDP_port_ipv4(void **state) {
 
     will_return(__wrap_socket, 3);
     will_return(__wrap_bind, 1);
+    will_return(__wrap_fcntl, 0);
 
     data->server_socket = OS_Bindportudp(PORT, IPV4, 0);
     assert_return_code(data->server_socket, 0);
@@ -311,6 +320,7 @@ void test_bind_UDP_port_ipv6(void **state) {
 
     will_return(__wrap_socket, 3);
     will_return(__wrap_bind, 1);
+    will_return(__wrap_fcntl, 0);
 
     data->server_socket = OS_Bindportudp(PORT, IPV6, 1);
     assert_return_code(data->server_socket, 0);
@@ -323,6 +333,7 @@ void test_connect_UDP_ipv4(void **state) {
     will_return(__wrap_connect, 0);
     will_return(__wrap_getsockopt, 0);
     will_return(__wrap_getsockopt, 0);
+    will_return(__wrap_fcntl, 0);
 
     data->client_socket = OS_ConnectUDP(PORT, IPV4, 0, 0);
     assert_return_code(data->client_socket , 0);
@@ -335,6 +346,7 @@ void test_connect_UDP_ipv6(void **state) {
     will_return(__wrap_connect, 0);
     will_return(__wrap_getsockopt, 0);
     will_return(__wrap_getsockopt, 0);
+    will_return(__wrap_fcntl, 0);
 
     data->client_socket = OS_ConnectUDP(PORT, IPV6, 1, 0);
     assert_return_code(data->client_socket , 0);
@@ -347,6 +359,7 @@ void test_connect_UDP_ipv6_link_local_no_interface(void **state) {
     will_return(__wrap_connect, 0);
     will_return(__wrap_getsockopt, 0);
     will_return(__wrap_getsockopt, 0);
+    will_return(__wrap_fcntl, 0);
 
     expect_string(__wrap__minfo, formatted_msg, "No network interface provided to use with link-local IPv6 address.");
 
@@ -361,6 +374,7 @@ void test_connect_UDP_ipv6_link_local_with_interface(void **state) {
     will_return(__wrap_connect, 0);
     will_return(__wrap_getsockopt, 0);
     will_return(__wrap_getsockopt, 0);
+    will_return(__wrap_fcntl, 0);
 
     data->client_socket = OS_ConnectUDP(PORT, IPV6_LINK_LOCAL, 1, 1);
     assert_return_code(data->client_socket , 0);
