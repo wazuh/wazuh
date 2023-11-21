@@ -23,7 +23,7 @@ SECURITY_LAKE_IAM_ROLE_AUTHENTICATION_URL = 'https://documentation.wazuh.com/cur
                                         'supported-services/security-lake.html#configuring-an-iam-role'
 
 ALL_REGIONS = ['us-east-1', 'us-east-2', 'us-west-1', 'us-west-2', 'ap-northeast-1', 'ap-northeast-2',
-               'ap-southeast-2', 'ap-south-1', 'eu-central-1', 'eu-west-1']
+               'ap-southeast-1', 'ap-southeast-2', 'ap-south-1', 'eu-central-1', 'eu-west-1']
 
 RETRY_ATTEMPTS_KEY: str = "max_attempts"
 RETRY_MODE_CONFIG_KEY: str = "retry_mode"
@@ -145,7 +145,7 @@ def arg_valid_regions(arg_string):
     final_regions = []
     regions = arg_string.split(',')
     for arg_region in regions:
-        if not re.match(r'^([a-z]{2}(-gov)?)-([a-z]{4,7})-\d$', arg_region):
+        if not re.match(r'^([a-z]{2}(-gov)?)-([a-z]{4,9})-\d$', arg_region):
             raise argparse.ArgumentTypeError(
                 f"WARNING: The region '{arg_region}' has not a valid format.'"
             )
