@@ -20,7 +20,7 @@ target_link_libraries(cmds
     bk::rx
     server
     #router
-    router2::router
+    router::router
     store
     api
     uv_a
