@@ -83,7 +83,14 @@ private:
      */
     void download(UpdaterContext& context) const
     {
-        const auto& url {context.spUpdaterBaseContext->configData.at("url").get_ref<const std::string&>()};
+        const auto url {
+            std::filesystem::path(context.spUpdaterBaseContext->configData.at("url").get_ref<const std::string&>())};
+
+        // Parse output filename.
+        if (!url.has_filename())
+        {
+            throw std::runtime_error {"Couldn't get filename from URL: " + url.string()};
+        }
 
         // Check if file is compressed.
         const auto compressed {
@@ -91,11 +98,9 @@ private:
 
         // Generate output file path. If the downloaded file is compressed, the output file will be in the downloads
         // folder and if it's not compressed, in the contents folder.
-        const auto& contentFileName {
-            context.spUpdaterBaseContext->configData.at("contentFileName").get_ref<const std::string&>()};
         const auto outputFilePath {(compressed ? context.spUpdaterBaseContext->downloadsFolder
                                                : context.spUpdaterBaseContext->contentsFolder) /
-                                   contentFileName};
+                                   url.filename()};
 
         // Lambda used on error case.
         const auto onError {[](const std::string& errorMessage, const long& errorCode)
