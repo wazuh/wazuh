@@ -365,7 +365,7 @@ namespace Utils
         }
     }
 
-    static long parseStrToTime(const std::string str)
+    static long parseStrToTime(const std::string& str)
     {
         std::size_t pos;
         try
