@@ -197,6 +197,7 @@ namespace Xz
             {
                 // Process ended successfully, save remaining output data
                 dataCollector.dataReady(m_strm.avail_out);
+                dataCollector.finish();
             }
             else
             {
