@@ -53,9 +53,10 @@ public:
                     {
                         m_responsePartial.push_back(nlohmann::json::parse(responsePacket.substr(4)));
                     }
-                    catch(const nlohmann::detail::exception& ex)
+                    catch (const nlohmann::detail::exception& ex)
                     {
-                        m_exceptionStr = "Error parsing JSON response: " + responsePacket.substr(4) + ". Exception id: " + std::to_string(ex.id) + ". " + ex.what();
+                        m_exceptionStr = "Error parsing JSON response: " + responsePacket.substr(4) +
+                                         ". Exception id: " + std::to_string(ex.id) + ". " + ex.what();
                     }
                 }
                 else
@@ -78,7 +79,7 @@ public:
                     }
                     else if (0 == responsePacket.compare(0, 2, DB_WRAPPER_OK))
                     {
-                        if(!m_responsePartial.empty())
+                        if (!m_responsePartial.empty())
                         {
                             m_response = m_responsePartial;
                         }
@@ -87,7 +88,7 @@ public:
                             try
                             {
                                 nlohmann::json responseParsed = nlohmann::json::parse(responsePacket.substr(3));
-                                if(responseParsed.type() == nlohmann::json::value_t::array)
+                                if (responseParsed.type() == nlohmann::json::value_t::array)
                                 {
                                     m_response = responseParsed;
                                 }
@@ -96,9 +97,10 @@ public:
                                     m_response.push_back(responseParsed);
                                 }
                             }
-                            catch(const nlohmann::detail::exception& ex)
+                            catch (const nlohmann::detail::exception& ex)
                             {
-                                m_exceptionStr = "Error parsing JSON response: " + responsePacket.substr(3) + ". Exception id: " + std::to_string(ex.id) + ". " + ex.what();
+                                m_exceptionStr = "Error parsing JSON response: " + responsePacket.substr(3) +
+                                                 ". Exception id: " + std::to_string(ex.id) + ". " + ex.what();
                             }
                         }
                     }
