@@ -1716,9 +1716,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: all
+    condition: none
     rules:
-      - 'c:ss -lntu -> r:\.*:25\.*LISTEN && !r:127.0.0.1:25\.*LISTEN|::1:25\.*LISTEN'
+      - 'c:ss -Hlntu "( sport = :25 )" -> r:\s+LISTEN\s+ && !r:\s+127.0.0.1:25\s+|\s+::1:25\s+'
 
   # 2.2.17 Ensure rsync service is either not installed or is masked. (Automated)
   - id: 19071
