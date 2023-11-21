@@ -72,7 +72,7 @@ TEST_F(OfflineDownloaderTest, CompressedFileDownload)
 }
 
 /**
- * @brief Tests the download of an inexistant file. Exception is expected, as well as a fail stage status.
+ * @brief Tests the download of an inexistant file.
  *
  */
 TEST_F(OfflineDownloaderTest, InexistantFileDownload)
@@ -83,9 +83,9 @@ TEST_F(OfflineDownloaderTest, InexistantFileDownload)
     nlohmann::json expectedData;
     expectedData["paths"] = m_spUpdaterContext->data.at("paths");
     expectedData["stageStatus"] = nlohmann::json::array();
-    expectedData["stageStatus"].push_back(FAIL_STATUS);
+    expectedData["stageStatus"].push_back(OK_STATUS);
 
-    ASSERT_THROW(OfflineDownloader().handleRequest(m_spUpdaterContext), std::runtime_error);
+    ASSERT_NO_THROW(OfflineDownloader().handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 }
 
@@ -155,4 +155,23 @@ TEST_F(OfflineDownloaderTest, TwoFileDownloadsOverrideOutput)
     ASSERT_NO_THROW(OfflineDownloader().handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
     EXPECT_TRUE(std::filesystem::exists(m_spUpdaterBaseContext->contentsFolder / m_inputFilePathRaw.filename()));
+}
+
+/**
+ * @brief Tests the download of a raw file with an inexistant content folder. Exception is expected.
+ *
+ */
+TEST_F(OfflineDownloaderTest, InexistantContentFolder)
+{
+    m_spUpdaterBaseContext->configData["url"] = m_inputFilePathRaw.string();
+    m_spUpdaterBaseContext->configData["compressionType"] = "raw";
+    m_spUpdaterBaseContext->contentsFolder = m_outputFolder / "inexistantFolder";
+
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
+    expectedData["stageStatus"] = nlohmann::json::array();
+    expectedData["stageStatus"].push_back(FAIL_STATUS);
+
+    ASSERT_THROW(OfflineDownloader().handleRequest(m_spUpdaterContext), std::runtime_error);
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 }
