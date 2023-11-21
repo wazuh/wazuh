@@ -1,25 +1,82 @@
-add_library(router STATIC
-    src/runtimePolicy.cpp
-    src/policyManager.cpp
-    src/router.cpp
-    src/route.cpp
+# Defs
+set(IFACE_DIR ${CMAKE_CURRENT_LIST_DIR}/interface)
+set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
+set(INC_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
+
+# Interface
+add_library(router_irouter INTERFACE)
+target_include_directories(router_irouter INTERFACE ${IFACE_DIR})
+target_link_libraries(router_irouter INTERFACE base)
+add_library(router::irouter ALIAS router_irouter)
+
+# Implementation
+add_library(router_router STATIC
+   ${SRC_DIR}/environment.cpp
+   ${SRC_DIR}/router.cpp
+   ${SRC_DIR}/routerAdmin.cpp
+   ${SRC_DIR}/table.cpp
 )
 
-target_link_libraries(router
+target_include_directories(router_router
     PUBLIC
-    # For api::Route, needs knos runtimeEnvironment becouse know runtimeEnvironment
-    builders
-    bk::rx
-    queue
+    ${INC_DIR}
+
+    PRIVATE
+    ${SRC_DIR}
+)
+target_link_libraries(router_router
+    PUBLIC
+    router::irouter
+    builder::ibuilder
+    bk::ibk
+    queue::iqueue
+
     PRIVATE
     base
-    json
     store::istore
+    builders # Todo delete after refactoring to builder
 )
+add_library(router::router ALIAS router_router)
 
-target_include_directories(router
-    PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    PRIVATE
-    ${CMAKE_CURRENT_LIST_DIR}/src
-)
+# Tests
+if(ENGINE_BUILD_TEST)
+    set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
+    set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/mocks)
+    set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
+    set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
+
+    # # Mocks
+    add_library(router_mocks INTERFACE)
+    target_include_directories(router_mocks INTERFACE ${TEST_MOCK_DIR})
+    target_link_libraries(router_mocks INTERFACE gmock router::irouter)
+    add_library(router::mocks ALIAS router_mocks)
+
+    # # Router component test
+    # add_executable(router_ctest
+    #     ${COMPONENT_SRC_DIR}/router_test.cpp
+    # )
+    # target_link_libraries(router_ctest gtest_main router::irouter router::router)
+    # gtest_discover_tests(router_ctest)
+
+    # Router unit test
+    add_executable(router_utest
+        ${UNIT_SRC_DIR}/environment_test.cpp
+        ${UNIT_SRC_DIR}/table_test.cpp
+        ${UNIT_SRC_DIR}/environmentBuilder_test.cpp
+        ${UNIT_SRC_DIR}/router_test.cpp
+    )
+    target_include_directories(router_utest PRIVATE ${SRC_DIR})
+    target_link_libraries(router_utest
+        gtest_main
+        base
+        router::router
+        router::mocks # Todo delete
+        builders # Todo delete after refactoring to builder
+        builder::mocks
+        store::mocks
+        bk::mocks
+        bk::rx
+    )
+    gtest_discover_tests(router_utest)
+
+endif(ENGINE_BUILD_TEST)
