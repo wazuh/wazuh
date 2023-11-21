@@ -81,7 +81,7 @@ add_executable(kvdb_ctest
 
 target_include_directories(kvdb_ctest
     PRIVATE
-    ${TEST_SRC_DIR})
+    ${TEST_SRC_DIR}) #TODO Remove after implemente metrics mock (Only here for fake metrics)
 
 target_link_libraries(kvdb_ctest gtest_main metrics kvdb)
 gtest_discover_tests(kvdb_ctest)

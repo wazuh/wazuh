@@ -1,486 +1,223 @@
-#include <router/router.hpp>
+#include <functional>
+#include <chrono>
 
-#include <fstream>
-#include <iostream>
+#include <logging/logging.hpp>
 
-#include <builder.hpp>
+#include "router.hpp"
 
-#include <parseEvent.hpp>
-
+namespace {
+/**
+ * @brief Return the current time in seconds since epoch
+ */
+int64_t getStartTime()
+{
+    auto startTime = std::chrono::system_clock::now();
+    return std::chrono::duration_cast<std::chrono::seconds>(startTime.time_since_epoch()).count();
+}
+} // namespace
 namespace router
 {
-constexpr auto WAIT_DEQUEUE_TIMEOUT_USEC = 1 * 1000000;
 
-Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store::IStore> store, std::size_t threads)
-    : m_mutexRoutes {}
-    , m_namePriorityFilter {}
-    , m_priorityRoute {}
-    , m_isRunning {false}
-    , m_numThreads {threads}
-    , m_store {store}
-    , m_threads {}
-    , m_builder {builder}
+base::OptError Router::addEntry(const prod::EntryPost& entryPost)
 {
-
-    if (0 == threads || 128 < threads)
-    {
-        throw std::runtime_error("Router: The number of threads must be between 1 and 128");
-    }
-
-    if (nullptr == builder)
-    {
-        throw std::runtime_error("Router: Builder cannot be null");
-    }
-
-    if (nullptr == store)
-    {
-        throw std::runtime_error("Router: Store cannot be null");
-    }
-
-    m_policyManager = std::make_shared<PolicyManager>(builder, threads);
-
-    auto result = m_store->readInternalDoc(ROUTES_TABLE_NAME);
-    if (std::holds_alternative<base::Error>(result))
-    {
-        const auto error = std::get<base::Error>(result);
-        LOG_DEBUG("Router: Routes table not found in store. Creating new table: {}.", error.message);
-        m_store->createInternalDoc(ROUTES_TABLE_NAME, json::Json {"[]"});
-        return;
-    }
-    else
-    {
-        const auto table = std::get<json::Json>(result).getArray();
-        if (!table.has_value())
-        {
-            throw std::runtime_error("Cannot get routes table from store. Invalid table format");
-        }
-
-        for (const auto& jRoute : *table)
-        {
-            const auto name = jRoute.getString(JSON_PATH_NAME);
-            const auto priority = jRoute.getInt(JSON_PATH_PRIORITY);
-            const auto filter = jRoute.getString(JSON_PATH_FILTER);
-            const auto target = jRoute.getString(JSON_PATH_TARGET);
-            if (!name.has_value() || !priority.has_value() || !target.has_value() || !filter.has_value())
-            {
-                throw std::runtime_error("Router: Cannot get routes table from store. Invalid table format");
-            }
-
-            const auto err = addRoute(name.value(), priority.value(), std::make_pair(filter.value(), std::nullopt), target.value());
-            if (err.has_value())
-            {
-                LOG_WARNING("Router: Route '{}' could not be added to the router: {}.", name.value(), err.value().message);
-            }
-        }
-    }
-    // check if the table is empty
-    if (getRouteTable().empty())
-    {
-        // Add default route
-        LOG_WARNING("There is no environment loaded. Events will be written in disk once the queue is full.");
-    }
-};
-
-std::optional<base::Error> Router::addRoute(const std::string& routeName,
-                                            int priority,
-                                            const std::pair<std::string, std::optional<base::Expression>>& filter,
-                                            const std::string& policyName)
-{
-    // Validate route name
-    if (routeName.empty())
-    {
-        return base::Error {"Route name cannot be empty"};
-    }
-    // Validate Filter name
-    if (filter.first.empty())
-    {
-        return base::Error {"Filter name cannot be empty"};
-    }
-    // Validate policy name
-    if (policyName.empty())
-    {
-        return base::Error {"Policy name cannot be empty"};
-    }
+    // Create the environment
+    auto entry = RuntimeEntry(entryPost);
     try
     {
-        // Build the same route for each thread
-        std::vector<Route> routeInstances {};
-        routeInstances.reserve(m_numThreads);
-        for (std::size_t i = 0; i < m_numThreads; ++i)
+        auto uniqueEnv = m_envBuilder->create(entry.policy(), entry.filter());
+        entry.setEnvironment(std::move(uniqueEnv));
+        entry.status(env::State::DISABLED); // It is disabled until all routes are ready
+        entry.lastUpdate(getStartTime());
+    }
+    catch (const std::exception& e)
+    {
+        return base::Error {fmt::format("Failed to create the route: {}", e.what())};
+    }
+
+    // Add the entry to the table
+    {
+        std::unique_lock<std::shared_mutex> lock {m_mutex};
+        if (m_table.nameExists(entryPost.name()))
         {
-            if (!filter.second.has_value())
-            {
-                try
-                {
-                    auto asset = m_builder->buildFilter(filter.first);
-                    routeInstances.emplace_back(Route {routeName, filter.first, asset.getExpression(), policyName, priority});
-                }
-                catch(const std::exception& e)
-                {
-                    auto sessionsTable = m_store->readInternalDoc(API_SESSIONS_TABLE_NAME);
-                    auto sessionsJson = std::get<json::Json>(sessionsTable);
-                    if (sessionsJson.isArray())
-                    {
-                        auto arr = sessionsJson.getArray().value();
-                        for (size_t i = 0; i < arr.size(); i++)
-                        {
-                            auto id = arr[i].getInt("/id").value();
-                            auto filterName = arr[i].getString("/filtername").value();
-                            auto filter = createFilter(filterName, id);
-                            routeInstances.emplace_back(Route {routeName, filterName, std::get<builder::Asset>(filter).getExpression(), policyName, priority});
-                        }
-                    }
-                }
-            }
-            else
-            {
-                routeInstances.emplace_back(Route {routeName, filter.first, filter.second.value(), policyName, priority});
-            }
+            return base::Error {"The name of the route is already in use"};
         }
 
-        // Add the policy
-        auto err = m_policyManager->addPolicy(policyName);
+        if (m_table.priorityExists(entryPost.priority()))
+        {
+            return base::Error {"The priority of the route  is already in use"};
+        }
+        m_table.insert(entryPost.name(), entryPost.priority(), std::move(entry));
+    }
+
+    return std::nullopt;;
+}
+
+base::OptError Router::removeEntry(const std::string& name)
+{
+    std::unique_lock lock {m_mutex};
+    if (!m_table.nameExists(name))
+    {
+        return base::Error {"The route not exist"};
+    }
+    m_table.erase(name);
+    return std::nullopt;
+}
+
+base::OptError Router::rebuildEntry(const std::string& name)
+{
+    std::unique_lock lock {m_mutex};
+    if (!m_table.nameExists(name))
+    {
+        return base::Error {"The route not exist"};
+    }
+    auto& entry = m_table.get(name);
+    try
+    {
+        auto uniqueEnv = m_envBuilder->create(entry.policy(), entry.filter());
+        entry.setEnvironment(std::move(uniqueEnv));
+        entry.lastUpdate(getStartTime());
+        // Mantaing the status of the environment
+    }
+    catch (const std::exception& e)
+    {
+        return base::Error {fmt::format("Failed to reload the route: {}", e.what())};
+    }
+
+    return std::nullopt;
+}
+
+base::OptError Router::enableEntry(const std::string& name) {
+    std::unique_lock lock {m_mutex};
+    if (!m_table.nameExists(name))
+    {
+        return base::Error {"The route not exist"};
+    }
+    auto& entry = m_table.get(name);
+    if (entry.environment() == nullptr)
+    {
+        return base::Error {"The route is not buided"}; // bad init in startup
+    }
+    entry.status(env::State::ENABLED);
+    return {};
+}
+
+base::OptError Router::changePriority(const std::string& name, size_t priority)
+{
+
+    if (priority == 0)
+    {
+        return base::Error {"Priority of the route cannot be 0"};
+    }
+
+    std::unique_lock lock {m_mutex};
+
+    if (!m_table.nameExists(name))
+    {
+        return base::Error {"The route not exist"};
+    }
+
+    if (!m_table.setPriority(name, priority))
+    {
+        return base::Error {"Failed to change the priority, it is already in use"};
+    }
+    // Sync the priority
+    m_table.get(name).priority(priority);
+
+    return {};
+}
+
+std::list<prod::Entry> Router::getEntries() const
+{
+    std::shared_lock lock {m_mutex};
+    std::list<prod::Entry> entries;
+
+    for (const auto& entry : m_table)
+    {
+        entries.push_back(entry);
+        // TODO Update states
+    }
+    return entries;
+}
+
+base::RespOrError<prod::Entry> Router::getEntry(const std::string& name) const
+{
+    std::shared_lock lock {m_mutex};
+    if (!m_table.nameExists(name))
+    {
+        return base::Error {"The route not exist"};
+    }
+    return m_table.get(name);
+}
+
+void Router::ingest(base::Event&& event)
+{
+    std::shared_lock lock {m_mutex};
+
+    for (const auto& entry : m_table)
+    {
+        if (entry.status() == env::State::ENABLED && entry.environment()->isAccepted(event))
+        {
+            entry.environment()->ingest(std::move(event));
+            event = nullptr;
+            break;
+        }
+    }
+
+    if (event)
+    {
+        LOG_WARNING("Event not processed: {}", event->str());
+    }
+}
+
+/*
+base::RespOrError<test::Output>
+Router::ingestTest(base::Event event, const std::string& name, const std::vector<std::string>& assets)
+{
+    std::shared_lock lock {m_mutex};
+    if (!m_table.nameExists(name))
+    {
+        return base::Error {"The environment not exist"};
+    }
+
+    auto& entry = m_table.get(name);
+    if (entry.getStatus() != env::State::ENABLED)
+    {
+        return base::Error {"The environment is not active"};
+    }
+
+    if (!entry.isTesting())
+    {
+        return base::Error {"The environment is not for testing"};
+    }
+
+    // Get the environment to ingest the event
+    auto& env = entry.environment();
+
+    // Create a return value
+    test::Output output;
+
+    // Suscribe to traces
+    if (!assets.empty())
+    {
+        auto addTraceFn = std::bind(&test::TraceStorage::addTrace,
+                                    &output.m_tracingObj,
+                                    std::placeholders::_1,
+                                    std::placeholders::_2,
+                                    std::placeholders::_3);
+        auto err = env->subscribeTrace(addTraceFn, assets);
+
         if (err)
         {
-            return base::Error {err.value()};
-        }
-
-        // Link the route to the policy
-        {
-            std::unique_lock lock {m_mutexRoutes};
-            std::optional<base::Error> err = std::nullopt;
-            // Check if the route already exists, should we update it?
-            if (m_namePriorityFilter.find(routeName) != m_namePriorityFilter.end())
-            {
-                err = base::Error {fmt::format("Route '{}' already exists", routeName)};
-            }
-            // Check if the priority is already taken
-            if (m_priorityRoute.find(priority) != m_priorityRoute.end())
-            {
-                err = base::Error {fmt::format("Priority '{}' already taken", priority)};
-            }
-            // check error
-            if (err)
-            {
-                lock.unlock();
-                m_policyManager->deletePolicy(policyName);
-                return err;
-            }
-            m_namePriorityFilter.insert(std::make_pair(routeName, std::make_tuple(priority, filter.first)));
-            m_priorityRoute.insert(std::make_pair(priority, std::move(routeInstances)));
+            return base::Error {fmt::format("Failed to running the test mode: {}", base::getError(err).message)};
         }
     }
-    catch (const std::exception& e)
-    {
-        return base::Error {e.what()};
-    }
-    dumpTableToStorage();
-    return std::nullopt;
+    // Ingest the event
+    output.m_event = env->ingestGet(std::move(event));
+
+    env->cleanSubscriptions();
+    return output;
 }
+*/
 
-void Router::removeRoute(const std::string& routeName)
-{
-    std::unique_lock lock {m_mutexRoutes};
-
-    auto it = m_namePriorityFilter.find(routeName);
-    if (it == m_namePriorityFilter.end())
-    {
-        return; // If the route doesn't exist, we don't need to do anything
-    }
-    const auto priority = std::get<0>(it->second);
-
-    auto it2 = m_priorityRoute.find(priority);
-    if (it2 == m_priorityRoute.end())
-    {
-        // Should never happen
-        LOG_WARNING("Router: Priority '{}' not found when removing route '{}'", priority, routeName);
-        return;
-    }
-    const auto policyName = it2->second.front().getTarget();
-    // Remove from maps
-    m_namePriorityFilter.erase(it);
-    m_priorityRoute.erase(it2);
-    lock.unlock();
-
-    dumpTableToStorage();
-    auto err = m_policyManager->deletePolicy(policyName);
-    if (err)
-    {
-        // Should never happen
-        LOG_WARNING("Router: couldn't delete policy '{}': {} ", policyName, err.value().message);
-    }
-}
-
-std::vector<Router::Entry> Router::getRouteTable()
-{
-    std::shared_lock lock {m_mutexRoutes};
-    std::vector<Entry> table {};
-    table.reserve(m_namePriorityFilter.size());
-    try
-    {
-        for (const auto& route : m_namePriorityFilter)
-        {
-            const auto& name = route.first;
-            const auto& priority = std::get<0>(route.second);
-            const auto& filterName = std::get<1>(route.second);
-            const auto& policyName = m_priorityRoute.at(priority).front().getTarget();
-            const auto& hash = m_policyManager->getPolicyHash(policyName).value_or("UNKNOWN");
-            table.emplace_back(name, priority, filterName, policyName, hash);
-        }
-    }
-    catch (const std::exception& e)
-    {
-        LOG_ERROR("Error getting route table: {}.", e.what()); // This should never happen
-    }
-    lock.unlock();
-
-    // Sort by priority
-    std::sort(table.begin(), table.end(), [](const auto& a, const auto& b) { return std::get<1>(a) < std::get<1>(b); });
-
-    return table;
-}
-
-std::optional<Router::Entry> Router::getEntry(const std::string& name)
-{
-    std::shared_lock lock {m_mutexRoutes};
-    auto it = m_namePriorityFilter.find(name);
-    if (it == m_namePriorityFilter.end())
-    {
-        return std::nullopt;
-    }
-    const auto& [priority, filterName] = it->second;
-    const auto& policyName = m_priorityRoute.at(priority).front().getTarget();
-    const auto& hash = m_policyManager->getPolicyHash(policyName).value_or("UNKNOWN");
-
-    return Entry {name, priority, filterName, policyName, hash};
-}
-
-std::optional<base::Error> Router::changeRoutePriority(const std::string& name, int priority)
-{
-    std::unique_lock lock {m_mutexRoutes};
-
-    auto it = m_namePriorityFilter.find(name);
-    if (it == m_namePriorityFilter.end())
-    {
-        return base::Error {fmt::format("Route '{}' not found", name)};
-    }
-    const auto oldPriority = std::get<0>(it->second);
-
-    if (oldPriority == priority)
-    {
-        return std::nullopt;
-    }
-
-    auto it2 = m_priorityRoute.find(oldPriority);
-    if (it2 == m_priorityRoute.end())
-    {
-        return base::Error {fmt::format("Priority '{}' not found", oldPriority)}; // Should never happen
-    }
-
-    // Check if the priority is already taken
-    if (m_priorityRoute.find(priority) != m_priorityRoute.end())
-    {
-        return base::Error {fmt::format("Priority '{}' already taken", priority)};
-    }
-
-    // update the route priority
-    try
-    {
-        for (auto& route : it2->second)
-        {
-            route.setPriority(priority);
-        }
-    }
-    catch (const std::exception& e)
-    {
-        return base::Error {e.what()};
-    }
-
-    // Update maps
-    std::get<0>(it->second) = priority;
-    m_priorityRoute.insert(std::make_pair(priority, std::move(it2->second)));
-    m_priorityRoute.erase(it2);
-    lock.unlock();
-
-    dumpTableToStorage();
-    return std::nullopt;
-}
-
-std::optional<base::Error> Router::enqueueEvent(base::Event&& event, bool priority)
-{
-    if (!m_isRunning.load() || !m_queue)
-    {
-        return base::Error {"The router queue is not initialized"};
-    }
-    m_queue->push(std::move(event), priority);
-    return std::nullopt;
-}
-
-std::optional<base::Error> Router::enqueueWazuhEvent(std::string_view event)
-{
-
-    std::optional<base::Error> err = std::nullopt;
-    try
-    {
-        base::Event ev = base::parseEvent::parseWazuhEvent(event.data());
-        err = enqueueEvent(std::move(ev));
-    }
-    catch (const std::exception& e)
-    {
-        err = base::Error {e.what()};
-    }
-
-    if (err)
-    {
-        return err;
-    }
-    return std::nullopt;
-}
-
-std::optional<base::Error> Router::run(std::shared_ptr<concurrentQueue> queue)
-{
-    std::shared_lock lock {m_mutexRoutes};
-
-    if (m_isRunning.load())
-    {
-        return base::Error {"The router is already running"};
-    }
-    m_queue = queue; // Update queue
-    m_isRunning.store(true);
-
-    for (std::size_t i = 0; i < m_numThreads; ++i)
-    {
-        m_threads.emplace_back(
-            [this, queue, i]()
-            {
-                while (m_isRunning.load())
-                {
-                    base::Event event {};
-                    if (queue->waitPop(event, WAIT_DEQUEUE_TIMEOUT_USEC))
-                    {
-                        std::shared_lock lock {m_mutexRoutes};
-                        for (auto& route : m_priorityRoute)
-                        {
-                            if (route.second[i].accept(event))
-                            {
-                                const auto& target = route.second[i].getTarget();
-                                lock.unlock();
-                                m_policyManager->forwardEvent(target, i, std::move(event));
-                                break;
-                            }
-                        }
-                    }
-                }
-                LOG_DEBUG("Thread '{}' router finished.", i);
-            });
-    };
-
-    return std::nullopt;
-}
-
-void Router::stop()
-{
-    if (!m_isRunning.load())
-    {
-        return;
-    }
-    m_isRunning.store(false);
-    for (auto& thread : m_threads)
-    {
-        thread.join();
-    }
-    m_threads.clear();
-
-    LOG_DEBUG("Router stopped.");
-}
-
-json::Json Router::tableToJson()
-{
-    json::Json data {};
-    data.setArray();
-
-    const auto table = getRouteTable();
-    for (const auto& [name, priority, filterName, policyName, hash] : table)
-    {
-        json::Json entry {};
-        entry.setString(name, JSON_PATH_NAME);
-        entry.setInt(static_cast<int>(priority), JSON_PATH_PRIORITY);
-        entry.setString(filterName, JSON_PATH_FILTER);
-        entry.setString(policyName, JSON_PATH_TARGET);
-        // Don't save the hash
-        data.appendJson(entry);
-    }
-    return data;
-}
-
-void Router::dumpTableToStorage()
-{
-    const auto err = m_store->updateInternalDoc(ROUTES_TABLE_NAME, tableToJson());
-    if (err)
-    {
-        LOG_ERROR("Error updating routes table: {}.", err.value().message);
-        exit(10);
-        // TODO: throw exception and exit program (Review when the exit policy is implemented)
-    }
-}
-
-void Router::clear()
-{
-    {
-        std::unique_lock lock {m_mutexRoutes};
-        m_namePriorityFilter.clear();
-        m_priorityRoute.clear();
-    }
-
-    dumpTableToStorage();
-    m_policyManager->delAllPolicies();
-}
-
-std::optional<base::Error> Router::subscribeOutputAndTraces(const OutputSubscriber& outputCallback,
-                                                            const TraceSubscriber& traceCallback,
-                                                            const std::vector<std::string>& assets,
-                                                            const std::string& policyName)
-{
-    auto data = m_policyManager->subscribeOutputAndTraces(outputCallback, traceCallback, assets, policyName);
-    if (data.has_value())
-    {
-        return data.value();
-    }
-
-    return std::nullopt;
-}
-
-base::RespOrError<std::vector<std::string>> Router::getAssets(const std::string& policyName) const
-{
-    auto res = m_policyManager->getAssets(policyName);
-    if (!base::isError(res))
-    {
-        auto assets = base::getResponse(res);
-        return assets;
-    }
-    else
-    {
-        return base::getError(res);
-    }
-}
-
-base::OptError Router::unsubscribe(const std::string& policyName)
-{
-    for (std::size_t i = 0; i < m_numThreads; ++i)
-    {
-        auto res = m_policyManager->unSubscribeTraces(policyName, i);
-        if (base::isError(res))
-        {
-            return res;
-        }
-    }
-
-    return std::nullopt;
-}
-
-std::optional<std::string> Router::getPolicyHash(const std::string& policyName) const
-{
-    return m_policyManager->getPolicyHash(policyName);
-}
 
 } // namespace router

@@ -334,6 +334,8 @@ void runStart(ConfHandler confManager)
                                          };
 
             routerAdmin = std::make_shared<router::RouterAdmin>(routerConfig);
+            
+            // TODO Remove this
             auto res = routerAdmin->postEntry(router::prod::EntryPost("Default", "policy/wazuh/0", "filter/allow-all/0", 255));
             if (res.has_value())
             {
