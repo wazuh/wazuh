@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <functional>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -137,13 +138,20 @@ private:
                               }};
 
         const auto onError {
-            [](const std::string& message, [[maybe_unused]] const long statusCode)
+            [](const std::string& message, const long statusCode)
             {
-                throw std::runtime_error("CtiApiDownloader - Could not get response from API because: " + message);
+                const std::string exceptionMessage {"Error " + std::to_string(statusCode) + " from server: " + message};
+
+                // If there is an error from the server, throw a different exception.
+                if (statusCode >= 500 && statusCode <= 599)
+                {
+                    throw cti_server_error {exceptionMessage};
+                }
+                throw std::runtime_error {exceptionMessage};
             }};
 
         // Make a get request to the API to get the consumer offset.
-        m_urlRequest.get(HttpURL(m_url), onSuccess, onError);
+        performQueryWithRetry(onSuccess, onError);
     }
 
     /**
@@ -178,8 +186,24 @@ private:
                 throw std::runtime_error {exceptionMessage};
             }};
 
-        // Loop for retrying the downloads from the server until the download is successful or there is an HTTP error
-        // different from 5xx.
+        // Download the content.
+        performQueryWithRetry(onSuccess, onError, queryParameters, fullFilePath);
+    }
+
+    /**
+     * @brief Loop for retrying the downloads from the server until the download is successful or there is an HTTP error
+     * different from 5xx.
+     *
+     * @param onSuccess Callback on success download.
+     * @param onError Callback on error download.
+     * @param queryParameters Parameters to the GET query.
+     * @param outputFilepath File where to store the downloaded content.
+     */
+    void performQueryWithRetry(const std::function<void(const std::string&)>& onSuccess,
+                               const std::function<void(const std::string&, const long)>& onError,
+                               const std::string& queryParameters = "",
+                               const std::string& outputFilepath = "") const
+    {
         constexpr auto INITIAL_SLEEP_TIME {1};
         auto sleepTime {INITIAL_SLEEP_TIME};
         auto retryAttempt {1};
@@ -188,7 +212,7 @@ private:
         {
             try
             {
-                m_urlRequest.get(HttpURL(m_url + queryParameters), onSuccess, onError, fullFilePath);
+                m_urlRequest.get(HttpURL(m_url + queryParameters), onSuccess, onError, outputFilepath);
                 retry = false;
             }
             catch (const cti_server_error& e)
