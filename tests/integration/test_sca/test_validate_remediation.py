@@ -145,7 +145,7 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
 
     # Get the results for the checks obtained in the initial SCA scan
     log_monitor.start(callback=callback_scan_id_result, timeout=20, \
-                      only_new_events=True, accumulations=2)
+                      only_new_events=True, accumulations=3)
 
     results = log_monitor.callback_result
 
@@ -163,7 +163,7 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
 
     # Get the results for the checks obtained in the SCA scan
     log_monitor.start(callback=callback_scan_id_result, timeout=20, \
-                      only_new_events=True, accumulations=2)
+                      only_new_events=True, accumulations=3)
     results = log_monitor.callback_result
 
     # Assert the tested check result changed as expected (passed to failed, and vice-versa)
