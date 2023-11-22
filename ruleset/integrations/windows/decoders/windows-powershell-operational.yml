@@ -22,9 +22,8 @@ normalize:
  - map:
    - wazuh.decoders: array_append(windows-powershell-operational)
    - event.kind: event
-   - event.dataset: powershell
+   - event.dataset: powershell-operational
    - event.category: array_append(process)
-   - event.type: array_append(info)
    - event.sequence: $windows.EventData.SequenceNumber
 
   # User fields
@@ -79,6 +78,10 @@ normalize:
  - check: $event.code == '4106'
    map:
     - event.type: array_append(end)
+
+ - check: $event.code != '4105' AND $event.code != '4106'
+   map:
+   - event.type: array_append(info)
 
 # windows.logon
  - check: $windows.System.Keywords.#text == '0x0'
