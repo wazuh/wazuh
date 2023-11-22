@@ -11,7 +11,7 @@ The output content files will be stored in any of the following output directori
 The download process can be summarized as follows:
 1. Get the last CTI API consumer offset. This is done by performing an HTTP GET query to CTI. This value will be used as the last possible offset to query.
 2. Set the range of offsets to be downloaded, starting from `currentOffset` (set in the context) and with a range-width of `1000`. So, for example, if the current offset is equal to `N`, the range will be from offset `N` to offset `N + 1000`. 
-3. Download the offsets range from **step 2** and update `currentOffset` with the last downloaded offset.
+3. Download the offsets range from **step 2** and update `currentOffset` with the last downloaded offset. The download will be retried indefinitely if the server responses with an 5xx HTTP error code.
 4. Dump the downloaded offsets into an output file. This file path will be generated as `<output-folder>/<currentOffset>-<contentFileName>`.
 5. Push the new file path (from **step 4**) to the context [data paths](../../src/components/updaterContext.hpp).
 6. If the last possible offset (from **step 1**) has been downloaded, the process finishes. Otherwise, the process continues with the **step 2**.

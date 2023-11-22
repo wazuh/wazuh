@@ -139,7 +139,7 @@ TEST_F(CtiApiDownloaderTest, TestHandleAnInvalidUrl)
  */
 TEST_F(CtiApiDownloaderTest, DownloadServerErrorWithRetry)
 {
-    // Push two errors to the server.
+    // Push two errors to the server. This will make the client to retry twice.
     m_spFakeServer->pushError(500);
     m_spFakeServer->pushError(599);
 
@@ -163,7 +163,26 @@ TEST_F(CtiApiDownloaderTest, DownloadServerErrorWithRetry)
  */
 TEST_F(CtiApiDownloaderTest, DownloadClientErrorNoRetry)
 {
-    // Push one error to the server.
+    // Push one errors to the server. No retries should be performed.
+    m_spFakeServer->pushError(400);
+
+    // Set expected data.
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
+    expectedData["stageStatus"] = FAIL_STATUS;
+
+    ASSERT_THROW(m_spCtiApiDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+}
+
+/**
+ * @brief Test the downloader when the server responses with both 4xx and 5xx errors.
+ *
+ */
+TEST_F(CtiApiDownloaderTest, DownloadClientAndServerErrorsRetryAndFail)
+{
+    // Push two errors to the server. This will make the client to retry once.
+    m_spFakeServer->pushError(550);
     m_spFakeServer->pushError(400);
 
     // Set expected data.

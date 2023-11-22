@@ -23,10 +23,10 @@
 #include <thread>
 
 /**
- * @brief Custom exception used to identify 5xx HTTP errors when downloading from the CTI server.
+ * @brief Custom exception used to identify server HTTP errors when downloading from the CTI server.
  *
  */
-class cti_server_5xx_error : public std::exception
+class cti_server_error : public std::exception
 {
     std::string m_what; ///< Exception message.
 
@@ -36,7 +36,7 @@ public:
      *
      * @param what Exception message.
      */
-    cti_server_5xx_error(std::string what)
+    cti_server_error(std::string what)
         : m_what(std::move(what))
     {
     }
@@ -169,9 +169,10 @@ private:
             {
                 const std::string exceptionMessage {"Error " + std::to_string(statusCode) + " from server: " + message};
 
+                // If there is an error from the server, throw a different exception.
                 if (statusCode >= 500 && statusCode <= 599)
                 {
-                    throw cti_server_5xx_error {exceptionMessage};
+                    throw cti_server_error {exceptionMessage};
                 }
                 throw std::runtime_error {exceptionMessage};
             }};
@@ -189,7 +190,7 @@ private:
                 m_urlRequest.get(HttpURL(m_url + queryParameters), onSuccess, onError, fullFilePath);
                 retry = false;
             }
-            catch (cti_server_5xx_error e)
+            catch (cti_server_error e)
             {
                 constexpr auto SLEEP_TIME_THRESHOLD {30};
 
