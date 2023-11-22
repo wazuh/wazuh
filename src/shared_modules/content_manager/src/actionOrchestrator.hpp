@@ -61,8 +61,10 @@ public:
 
     /**
      * @brief Run the content updater orchestration.
+     *
+     * @param offset Manually set current offset to process. Default -1
      */
-    void run() const
+    void run(int offset = -1) const
     {
 
         try
@@ -72,6 +74,11 @@ public:
             spUpdaterContext->spUpdaterBaseContext = m_spBaseContext;
 
             logInfo(WM_CONTENTUPDATER, "Running content update. Topic: %s", m_spBaseContext->topicName.c_str());
+
+            if (offset == 0)
+            {
+                spUpdaterContext->currentOffset = 0;
+            }
 
             // If the database exists, get the last offset
             if (m_spBaseContext->spRocksDB)

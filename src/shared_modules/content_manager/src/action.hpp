@@ -118,7 +118,7 @@ public:
      */
     void registerActionOnDemand()
     {
-        OnDemandManager::instance().addEndpoint(m_topicName, [this]() { this->runActionOnDemand(); });
+        OnDemandManager::instance().addEndpoint(m_topicName, [this](int offset) { this->runActionOnDemand(offset); });
     }
 
     /**
@@ -142,14 +142,15 @@ public:
     /**
      * @brief Runs ondemand action.
      *
+     * @param offset Manually set current offset to process. Default -1
      */
-    void runActionOnDemand()
+    void runActionOnDemand(int offset = -1)
     {
         auto expected = false;
         if (m_actionInProgress.compare_exchange_strong(expected, true))
         {
             logInfo(WM_CONTENTUPDATER, "Ondemand request - starting action for %s", m_topicName.c_str());
-            runAction(ActionID::ON_DEMAND);
+            runAction(ActionID::ON_DEMAND, offset);
         }
         else
         {
@@ -182,11 +183,11 @@ private:
     nlohmann::json m_parameters;
     std::unique_ptr<ActionOrchestrator> m_orchestration;
 
-    void runAction(const ActionID id)
+    void runAction(const ActionID id, int offset = -1)
     {
         try
         {
-            m_orchestration->run();
+            m_orchestration->run(offset);
         }
         catch (const std::exception& e)
         {
