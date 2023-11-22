@@ -25,14 +25,13 @@ normalize:
    - windows.EventData.2: replace(\   , \  )
    - windows.EventData.2: replace(\  ,\,)
  - parse|windows.EventData.2:
-    - <_event_data/kv/=/,/'/'>
+    - <_event_data/kv/=/,/"/'>
 
  - map:
    - wazuh.decoders: array_append(windows-powershell)
    - event.dataset: powershell
    - event.kind: event
    - event.category: array_append(process)
-   - event.type: array_append(info)
    - event.sequence: $_event_data.SequenceNumber
 
   ## Process fields.
@@ -80,6 +79,10 @@ normalize:
  - check: $event.code == '403'
    map:
     - event.type: array_append(end)
+
+ - check: $event.code != '400' AND $event.code != '403'
+   map:
+    - event.type: array_append(info)
 
 # windows.logon
  - check: $windows.System.Keywords.#text == '0x0'
