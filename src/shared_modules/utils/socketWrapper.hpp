@@ -356,7 +356,7 @@ public:
         return !m_unsentPacketList.empty();
     }
 
-    void connect(const SocketAddress& connInfo)
+    void connect(const SocketAddress& connInfo, int type = (SOCK_STREAM | SOCK_NONBLOCK))
     {
         // Close socket if it was already initialized.
         if (m_sock != INVALID_SOCKET)
@@ -365,7 +365,7 @@ public:
         }
 
         // Create socket.
-        m_sock = T::socket(connInfo.type == SocketType::UNIX ? AF_UNIX : AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+        m_sock = T::socket(connInfo.type == SocketType::UNIX ? AF_UNIX : AF_INET, type, 0);
         if (m_sock != INVALID_SOCKET)
         {
             if (T::connect(m_sock, connInfo.addr, connInfo.addrSize) < 0)
