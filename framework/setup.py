@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from setuptools import setup, find_namespace_packages
 from setuptools.command.install import install
 
-WAZUH_VERSION='4.8.0'
+WAZUH_VERSION='4.8.1'
 
 
 class InstallCommand(install):
