@@ -26,7 +26,7 @@
  * @brief Custom exception used to identify server HTTP errors when downloading from the CTI server.
  *
  */
-class cti_server_error : public std::exception
+class cti_server_error : public std::exception // NOLINT
 {
     std::string m_what; ///< Exception message.
 
@@ -36,7 +36,7 @@ public:
      *
      * @param what Exception message.
      */
-    cti_server_error(std::string what)
+    explicit cti_server_error(std::string what)
         : m_what(std::move(what))
     {
     }
@@ -46,7 +46,7 @@ public:
      *
      * @return const char* Message.
      */
-    const char* what()
+    const char* what() const noexcept override
     {
         return m_what.c_str();
     }
