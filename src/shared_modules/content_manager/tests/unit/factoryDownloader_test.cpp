@@ -11,9 +11,9 @@
 
 #include "factoryDownloader_test.hpp"
 #include "CtiApiDownloader.hpp"
-#include "S3Downloader.hpp"
 #include "chainOfResponsability.hpp"
 #include "factoryDownloader.hpp"
+#include "fileDownloader.hpp"
 #include "json.hpp"
 #include "offlineDownloader.hpp"
 #include "updaterContext.hpp"
@@ -36,20 +36,21 @@ TEST_F(FactoryDownloaderTest, CreateCtiApiDownloader)
     EXPECT_TRUE(std::dynamic_pointer_cast<CtiApiDownloader>(spDownloader));
 }
 
-/*
- * @brief Check the creation of a S3Downloader.
+/**
+ * @brief Check the creation of a FileDownloader.
+ *
  */
-TEST_F(FactoryDownloaderTest, CreateS3Downloader)
+TEST_F(FactoryDownloaderTest, CreateFileDownloader)
 {
     // Create the config
-    nlohmann::json config = {{"contentSource", "s3"}};
+    nlohmann::json config = {{"contentSource", "file"}};
 
     // Create the downloader
     std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> spDownloader {};
     EXPECT_NO_THROW(spDownloader = FactoryDownloader::create(config));
 
-    // Check if the downloader is a S3Downloader
-    EXPECT_TRUE(std::dynamic_pointer_cast<S3Downloader>(spDownloader));
+    // Check if the downloader is a FileDownloader
+    EXPECT_TRUE(std::dynamic_pointer_cast<FileDownloader>(spDownloader));
 }
 
 /**

@@ -15,7 +15,7 @@
 #include "APIDownloader.hpp"
 #include "CtiApiDownloader.hpp"
 #include "HTTPRequest.hpp"
-#include "S3Downloader.hpp"
+#include "fileDownloader.hpp"
 #include "json.hpp"
 #include "offlineDownloader.hpp"
 #include "updaterContext.hpp"
@@ -52,9 +52,9 @@ public:
         {
             return std::make_shared<CtiApiDownloader>(HTTPRequest::instance());
         }
-        if ("s3" == downloaderType)
+        if ("file" == downloaderType)
         {
-            return std::make_shared<S3Downloader>();
+            return std::make_shared<FileDownloader>();
         }
         if ("offline" == downloaderType)
         {
