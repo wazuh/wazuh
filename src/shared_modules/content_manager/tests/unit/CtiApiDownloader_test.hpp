@@ -63,6 +63,7 @@ protected:
         )"_json;
         // Create a updater context
         m_spUpdaterContext = std::make_shared<UpdaterContext>();
+        m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
         m_spUpdaterContext->currentOffset = 0;
         // Create folders
         std::filesystem::create_directory(m_spUpdaterBaseContext->outputFolder);

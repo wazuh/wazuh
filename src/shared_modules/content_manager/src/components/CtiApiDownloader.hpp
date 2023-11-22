@@ -16,6 +16,7 @@
 #include "utils/chainOfResponsability.hpp"
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -177,7 +178,9 @@ private:
 
         // Loop for retrying the downloads from the server until the download is successful or there is an HTTP error
         // different from 5xx.
-        auto sleepTime {0};
+        constexpr auto INITIAL_SLEEP_TIME {1};
+        auto sleepTime {INITIAL_SLEEP_TIME};
+        auto retryAttempt {1};
         auto retry {true};
         while (retry)
         {
@@ -186,16 +189,18 @@ private:
                 m_urlRequest.get(HttpURL(m_url + queryParameters), onSuccess, onError, fullFilePath);
                 retry = false;
             }
-            catch (const cti_server_5xx_error& e)
+            catch (cti_server_5xx_error e)
             {
-                constexpr auto SLEEP_TIME_DELTA {3};
                 constexpr auto SLEEP_TIME_THRESHOLD {30};
 
-                // Sleep and, if necessary, increase sleep time.
+                std::cout << e.what() << std::endl;
+
+                // Sleep and, if necessary, increase sleep time exponentially.
                 std::this_thread::sleep_for(std::chrono::seconds(sleepTime));
                 if (sleepTime < SLEEP_TIME_THRESHOLD)
                 {
-                    sleepTime = std::clamp(sleepTime + SLEEP_TIME_DELTA, 0, SLEEP_TIME_THRESHOLD);
+                    sleepTime = std::min(SLEEP_TIME_THRESHOLD, static_cast<int>(std::pow(2, retryAttempt)));
+                    ++retryAttempt;
                 }
             }
         }

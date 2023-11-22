@@ -16,6 +16,7 @@
 #include "external/nlohmann/json.hpp"
 #include <filesystem>
 #include <fstream>
+#include <queue>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -31,6 +32,19 @@ private:
     std::thread m_thread;
     std::string m_host;
     int m_port;
+    std::queue<unsigned long> m_errorsQueue; ///< Errors queue used to return error codes for some queries.
+
+    /**
+     * @brief Pops and returns the last error code from the error queue.
+     *
+     * @return unsigned long Error code.
+     */
+    unsigned long popError()
+    {
+        const auto errorCode {m_errorsQueue.front()};
+        m_errorsQueue.pop();
+        return errorCode;
+    }
 
 public:
     /**
@@ -61,6 +75,16 @@ public:
     }
 
     /**
+     * @brief Appends an error to the error queue.
+     *
+     * @param errorCode Error code to push.
+     */
+    void pushError(const unsigned long& errorCode)
+    {
+        m_errorsQueue.push(errorCode);
+    }
+
+    /**
      * @brief Starts the server and listens for new connections.
      *
      * Setups a fake endpoint, configures the server and starts listening
@@ -73,9 +97,9 @@ public:
                      [](const httplib::Request& req, httplib::Response& res)
                      {
                          const auto response = R"(
-                         {
-                             "key": "value"
-                         })"_json;
+                        {
+                            "key": "value"
+                        })"_json;
                          res.set_content(response.dump(), "text/plain");
                      });
         m_server.Get("/xz",
@@ -139,65 +163,67 @@ public:
                          res.set_content(response.dump(), "text/plain");
                      });
         m_server.Get("/raw/consumers/changes",
-                     [](const httplib::Request& req, httplib::Response& res)
+                     [this](const httplib::Request& req, httplib::Response& res)
                      {
-                         const auto response = R"(
-                        {
-                            "data":
-                            [
-                                {
-                                    "offset": 1,
-                                    "type": "create",
-                                    "version": 1,
-                                    "context": "vulnerabilities",
-                                    "resource": "CVE-2020-0546",
-                                    "payload":
+                         if (m_errorsQueue.empty())
+                         {
+                             const auto response = R"(
+                            {
+                                "data":
+                                [
                                     {
-                                        "description": "not defined",
-                                        "identifier": "CVE-2020-0546",
-                                        "references":
+                                        "offset": 1,
+                                        "type": "create",
+                                        "version": 1,
+                                        "context": "vulnerabilities",
+                                        "resource": "CVE-2020-0546",
+                                        "payload":
+                                        {
+                                            "description": "not defined",
+                                            "identifier": "CVE-2020-0546",
+                                            "references":
+                                            [
+                                                {
+                                                    "url": "https://security.archlinux.org/CVE-2020-0546"
+                                                }
+                                            ],
+                                            "state": "PUBLISHED"
+                                        }
+                                    },
+                                    {
+                                        "offset": 2,
+                                        "type": "update",
+                                        "version": 2,
+                                        "context": "vulnerabilities",
+                                        "resource": "CVE-2020-0546",
+                                        "operations":
+                                        []
+                                    },
+                                    {
+                                        "offset": 3,
+                                        "type": "update",
+                                        "version": 2,
+                                        "context": "vulnerabilities",
+                                        "resource": "CVE-2020-0546",
+                                        "operations":
                                         [
                                             {
-                                                "url": "https://security.archlinux.org/CVE-2020-0546"
+                                                "op": "replace",
+                                                "path": "/description",
+                                                "value": "lalala"
                                             }
-                                        ],
-                                        "state": "PUBLISHED"
+                                        ]
                                     }
-                                },
-                                {
-                                    "offset": 2,
-                                    "type": "update",
-                                    "version": 2,
-                                    "context": "vulnerabilities",
-                                    "resource": "CVE-2020-0546",
-                                    "operations":
-                                    []
-                                },
-                                {
-                                    "offset": 3,
-                                    "type": "update",
-                                    "version": 2,
-                                    "context": "vulnerabilities",
-                                    "resource": "CVE-2020-0546",
-                                    "operations":
-                                    [
-                                        {
-                                            "op": "replace",
-                                            "path": "/description",
-                                            "value": "lalala"
-                                        }
-                                    ]
-                                }
-                            ]
-                        })"_json;
-                         res.set_content(response.dump(), "text/plain");
-                     });
-        m_server.Get("/errors/5xx",
-                     [](const httplib::Request& req, httplib::Response& res)
-                     {
-                         const auto response {"Internal server error."};
-                         res.status = 500;
-                         res.set_content(response, "text/plain");
+                                ]
+                            })"_json;
+                             res.set_content(response.dump(), "text/plain");
+                         }
+                         else
+                         {
+                             constexpr auto RESPONSE {"Something bad happened."};
+                             res.status = popError();
+                             res.set_content(RESPONSE, "text/plain");
+                         }
                      });
         m_server.set_keep_alive_max_count(1);
         m_server.listen(m_host.c_str(), m_port);
