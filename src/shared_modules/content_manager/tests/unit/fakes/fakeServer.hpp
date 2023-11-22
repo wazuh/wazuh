@@ -97,9 +97,9 @@ public:
                      [](const httplib::Request& req, httplib::Response& res)
                      {
                          const auto response = R"(
-                        {
-                            "key": "value"
-                        })"_json;
+                         {
+                             "key": "value"
+                         })"_json;
                          res.set_content(response.dump(), "text/plain");
                      });
         m_server.Get("/xz",
