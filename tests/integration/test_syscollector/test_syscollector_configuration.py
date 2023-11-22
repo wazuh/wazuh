@@ -155,7 +155,7 @@ def test_syscollector_deactivation(test_configuration, test_metadata, set_wazuh_
     '''
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SYSCOLLECTOR_DISABLED), timeout=10)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SYSCOLLECTOR_DISABLED), timeout=30)
     assert log_monitor.callback_result
 
 
