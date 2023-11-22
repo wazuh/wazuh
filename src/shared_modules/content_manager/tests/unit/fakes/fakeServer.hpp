@@ -14,6 +14,7 @@
 
 #include "external/cpp-httplib/httplib.h"
 #include "external/nlohmann/json.hpp"
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <queue>
@@ -82,6 +83,16 @@ public:
     void pushError(const unsigned long& errorCode)
     {
         m_errorsQueue.push(errorCode);
+    }
+
+    /**
+     * @brief Clears the errors queue.
+     *
+     */
+    void clearErrorsQueue()
+    {
+        std::queue<unsigned long> emptyQueue;
+        std::swap(m_errorsQueue, emptyQueue);
     }
 
     /**

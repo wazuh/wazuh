@@ -86,6 +86,8 @@ protected:
         m_spUpdaterContext.reset();
         // Reset UpdaterBaseContext
         m_spUpdaterBaseContext.reset();
+        // Clear fake server error codes.
+        m_spFakeServer->clearErrorsQueue();
     }
 
     /**
