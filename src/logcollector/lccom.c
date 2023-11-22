@@ -43,7 +43,7 @@ size_t lccom_dispatch(char * command, char ** output){
     const char *rcv_comm = command;
     char *rcv_args = NULL;
 
-    if ((rcv_args = strchr(rcv_comm, ' '))){
+    if ((rcv_args = strchr(rcv_comm, ' ')) && !strncmp(rcv_args, "next", 4)){
         *rcv_args = '\0';
         rcv_args++;
     }
