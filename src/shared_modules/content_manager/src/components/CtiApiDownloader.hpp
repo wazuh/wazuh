@@ -21,6 +21,7 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <utility>
 
 /**
  * @brief Custom exception used to identify server HTTP errors when downloading from the CTI server.
@@ -136,7 +137,7 @@ private:
                               }};
 
         const auto onError {
-            [this](const std::string& message, [[maybe_unused]] const long statusCode)
+            [](const std::string& message, [[maybe_unused]] const long statusCode)
             {
                 throw std::runtime_error("CtiApiDownloader - Could not get response from API because: " + message);
             }};
@@ -190,7 +191,7 @@ private:
                 m_urlRequest.get(HttpURL(m_url + queryParameters), onSuccess, onError, fullFilePath);
                 retry = false;
             }
-            catch (cti_server_error e)
+            catch (const cti_server_error& e)
             {
                 constexpr auto SLEEP_TIME_THRESHOLD {30};
 
