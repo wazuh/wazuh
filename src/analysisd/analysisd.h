@@ -37,6 +37,7 @@ extern OSDecoderInfo *NULL_Decoder;
 extern rlim_t nofile;
 extern int sys_debug_level;
 extern OSDecoderInfo *fim_decoder;
+extern limits_t *analysisd_limits;
 
 /**
  * @brief Structure to save all CDB lists.
@@ -106,6 +107,7 @@ extern int num_rule_matching_threads;
 #define FIM_MAX_WAZUH_DB_ATTEMPS 5
 #define SYS_MAX_WAZUH_DB_ATTEMPS 5
 #define PM_MAX_WAZUH_DB_ATTEMPS 5
+
 
 /**
  * @brief mutex for any condition passed as an argument

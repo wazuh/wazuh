@@ -12,9 +12,10 @@
 #define JSONOUT_H
 
 #include "eventinfo.h"
+#include "../kafka_func.h"
 
-void jsonout_output_event(const Eventinfo *lf);
-void jsonout_output_archive(const Eventinfo *lf);
+void jsonout_output_event(const Eventinfo *lf, KafkaProducerConfig* tmp_kafka_producer);
+void jsonout_output_archive(const Eventinfo *lf, KafkaProducerConfig* tmp_kafka_producer);
 void jsonout_output_archive_flush();
 void jsonout_output_event_flush();
 

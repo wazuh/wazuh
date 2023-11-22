@@ -2219,6 +2219,7 @@ analysisd/decoders/plugins/%-test.o: analysisd/decoders/plugins/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DTESTRULE -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
 
 
+OSSEC_LIBS += -lrdkafka
 analysisd/decoders/plugins/%-live.o: analysisd/decoders/plugins/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
 

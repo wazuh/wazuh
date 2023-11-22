@@ -42,6 +42,7 @@
 #include "state.h"
 #include "syscheck_op.h"
 #include "lists_make.h"
+#include "kafka_func.h"
 
 #ifdef PRELUDE_OUTPUT_ENABLED
 #include "output/prelude.h"
@@ -101,6 +102,13 @@ static unsigned int hourly_events;
 static unsigned int hourly_syscheck;
 static unsigned int hourly_firewall;
 
+KafkaCustomerConfig kafka_customer;
+KafkaProducerConfig kafka_producer_archives_log;
+KafkaProducerConfig kafka_producer_alerts_log;
+KafkaProducerConfig kafka_producer_firewall_log;
+KafkaProducerConfig kafka_producer_archives_json;
+KafkaProducerConfig kafka_producer_alerts_json;
+
 /* Archives writer thread */
 void * w_writer_thread(__attribute__((unused)) void * args );
 
@@ -145,6 +153,9 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args);
 
 /* Decode winevt threads */
 void * w_decode_winevt_thread(__attribute__((unused)) void * args);
+
+/* Init kafka */
+int w_init_kafka();
 
 /* Database synchronization thread */
 static void * w_dispatch_dbsync_thread(void * args);
@@ -518,10 +529,15 @@ int main_analysisd(int argc, char **argv)
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
-    /* Chroot */
-    if (Privsep_Chroot(home_path) < 0) {
-        merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
+    /* init kafka*/
+    if(w_init_kafka() != 0) {
+        merror_exit("w_init_kafka init failed!");
     }
+
+    /* Chroot */
+    //if (Privsep_Chroot(home_path) < 0) {
+    //     merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
+    //}
     nowChroot();
 
     /* Set the user */
@@ -1189,8 +1205,7 @@ static void DumpLogstats()
 
 // Message handler thread
 void * ad_input_main(void * args) {
-    int m_queue = *(int *)args;
-    char buffer[OS_MAXSTR + 1] = "";
+    char *buffer;
     char *copy;
     char *msg;
     int result;
@@ -1199,8 +1214,8 @@ void * ad_input_main(void * args) {
     mdebug1("Input message handler thread started.");
 
     while (1) {
-        if (recv = OS_RecvUnix(m_queue, OS_MAXSTR, buffer), recv) {
-            buffer[recv] = '\0';
+        if (recv = kafka_consumer_get_msg(&kafka_customer, &buffer), recv) {
+            //buffer[recv] = '\0';
             msg = buffer;
 
             /* Get the time we received the event */
@@ -1218,6 +1233,7 @@ void * ad_input_main(void * args) {
             result = -1;
 
             if (msg[0] == SYSCHECK_MQ) {
+                mdebug2("SYSCHECK_MQ");
                 if (!queue_full(decode_queue_syscheck_input)) {
                     os_strdup(buffer, copy);
 
@@ -1240,6 +1256,7 @@ void * ad_input_main(void * args) {
                     }
                 }
             } else if (msg[0] == ROOTCHECK_MQ) {
+                mdebug2("ROOTCHECK_MQ");
                 if (!queue_full(decode_queue_rootcheck_input)) {
                     os_strdup(buffer, copy);
 
@@ -1261,6 +1278,7 @@ void * ad_input_main(void * args) {
                     }
                 }
             } else if (msg[0] == SCA_MQ) {
+                mdebug2("SCA_MQ");
                 if (!queue_full(decode_queue_sca_input)) {
                     os_strdup(buffer, copy);
 
@@ -1282,6 +1300,7 @@ void * ad_input_main(void * args) {
                     }
                 }
             } else if (msg[0] == SYSCOLLECTOR_MQ) {
+                mdebug2("SYSCOLLECTOR_MQ");
                 if (!queue_full(decode_queue_syscollector_input)) {
                     os_strdup(buffer, copy);
 
@@ -1303,6 +1322,7 @@ void * ad_input_main(void * args) {
                     }
                 }
             } else if (msg[0] == HOSTINFO_MQ) {
+                mdebug2("HOSTINFO_MQ");
                 if (!queue_full(decode_queue_hostinfo_input)) {
                     os_strdup(buffer, copy);
 
@@ -1324,6 +1344,7 @@ void * ad_input_main(void * args) {
                     }
                 }
             } else if (msg[0] == WIN_EVT_MQ) {
+                mdebug2("WIN_EVT_MQ");
                 if (!queue_full(decode_queue_winevt_input)) {
                     os_strdup(buffer, copy);
 
@@ -1345,6 +1366,7 @@ void * ad_input_main(void * args) {
                     }
                 }
             } else if (msg[0] == DBSYNC_MQ) {
+                mdebug2("DBSYNC_MQ");
                 if (!queue_full(dispatch_dbsync_input)) {
                     os_strdup(buffer, copy);
 
@@ -1366,6 +1388,7 @@ void * ad_input_main(void * args) {
                     }
                 }
             } else if (msg[0] == UPGRADE_MQ) {
+                mdebug2("UPGRADE_MQ");
                 if (!queue_full(upgrade_module_input)) {
                     os_strdup(buffer, copy);
 
@@ -1387,6 +1410,7 @@ void * ad_input_main(void * args) {
                     }
                 }
             } else {
+                mdebug2("else MQ");
                 if (!queue_full(decode_queue_event_input)) {
                     os_strdup(buffer, copy);
 
@@ -1451,19 +1475,21 @@ void * ad_input_main(void * args) {
 void * w_writer_thread(__attribute__((unused)) void * args ){
     Eventinfo *lf = NULL;
 
+
     while(1){
         /* Receive message from queue */
         if (lf = queue_pop_ex(writer_queue), lf) {
+
 
             w_mutex_lock(&writer_threads_mutex);
             w_inc_archives_written(lf->agent_id);
 
             /* If configured to log all, do it */
             if (Config.logall) {
-                OS_Store(lf);
+                OS_Store(lf, &kafka_producer_archives_log);
             }
             if (Config.logall_json) {
-                jsonout_output_archive(lf);
+                jsonout_output_archive(lf, &kafka_producer_archives_json);
             }
 
             Free_Eventinfo(lf);
@@ -1474,27 +1500,24 @@ void * w_writer_thread(__attribute__((unused)) void * args ){
 
 void * w_writer_log_thread(__attribute__((unused)) void * args ){
     Eventinfo *lf = NULL;
-
     while(1){
         /* Receive message from queue */
         if (lf = queue_pop_ex(writer_queue_log), lf) {
-
             w_mutex_lock(&writer_threads_mutex);
             w_inc_alerts_written(lf->agent_id);
 
             if (Config.custom_alert_output) {
                 __crt_ftell = ftell(_aflog);
-                OS_CustomLog(lf, Config.custom_alert_output_format);
+                OS_CustomLog(lf, Config.custom_alert_output_format, &kafka_producer_alerts_log);
             } else if (Config.alerts_log) {
                 __crt_ftell = ftell(_aflog);
-                OS_Log(lf, _aflog);
+                OS_Log(lf, &kafka_producer_alerts_log);
             } else if (Config.jsonout_output) {
                 __crt_ftell = ftell(_jflog);
             }
             /* Log to json file */
             if (Config.jsonout_output) {
-                jsonout_output_event(lf);
-
+                jsonout_output_event(lf, &kafka_producer_alerts_json);
                 if (Config.forwarders_list) {
                     char* json_msg = Eventinfo_to_jsonstr(lf, false, NULL);
                     SendJSONtoSCK(json_msg, Config.socket_list);
@@ -1505,7 +1528,7 @@ void * w_writer_log_thread(__attribute__((unused)) void * args ){
             /* Log to prelude */
             if (Config.prelude) {
                 RuleInfo *rule = lf->generated_rule;
-
+                minfo("Log to prelude");
                 if (rule && Config.prelude_log_level <= rule->level) {
                     OS_PreludeLog(lf);
                 }
@@ -1515,6 +1538,7 @@ void * w_writer_log_thread(__attribute__((unused)) void * args ){
 #ifdef ZEROMQ_OUTPUT_ENABLED
             /* Log to zeromq */
             if (Config.zeromq_output) {
+                minfo("Log to zeromq");
                 zeromq_output_event(lf);
             }
 #endif
@@ -1768,14 +1792,14 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
 
             /* Default values for the log info */
             Zero_Eventinfo(lf);
-
+            mdebug2("queue_pop_ex msg start:%s", msg);
             if (OS_CleanMSG(msg, lf) < 0) {
                 merror(IMSG_ERROR, msg);
                 Free_Eventinfo(lf);
                 free(msg);
                 continue;
             }
-
+            mdebug2("queue_pop_ex msg end:%s", msg);
             if (msg[0] == CISCAT_MQ) {
                 w_inc_modules_ciscat_decoded_events(lf->agent_id);
                 if (!DecodeCiscat(lf, &sock)) {
@@ -1791,6 +1815,7 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
                 }
                 node = OS_GetFirstOSDecoder(lf->program_name);
                 DecodeEvent(lf, Config.g_rules_hash, &decoder_match, node);
+                mdebug2("queue_pop_ex msg end:%s", msg);
             }
 
             free(msg);
@@ -2201,6 +2226,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 os_calloc(1, sizeof(Eventinfo), lf_logall);
                 w_copy_event_for_log(lf, lf_logall);
             }
+            mdebug2("w_process_event_thread->lf_logall,len:%zu, msg:%s", strlen(lf_logall), lf_logall);
             result = queue_push_ex(writer_queue, lf_logall);
             if (result < 0) {
                 if (!reported_writer){
@@ -2286,17 +2312,17 @@ void * w_writer_log_statistical_thread(__attribute__((unused)) void * args ){
 
             if (Config.custom_alert_output) {
                 __crt_ftell = ftell(_aflog);
-                OS_CustomLog(lf, Config.custom_alert_output_format);
+                OS_CustomLog(lf, Config.custom_alert_output_format, &kafka_producer_alerts_log);
             } else if (Config.alerts_log) {
                 __crt_ftell = ftell(_aflog);
-                OS_Log(lf, _aflog);
+                OS_Log(lf, &kafka_producer_alerts_log);
             } else if (Config.jsonout_output) {
                 __crt_ftell = ftell(_jflog);
             }
 
             /* Log to json file */
             if (Config.jsonout_output) {
-                jsonout_output_event(lf);
+                jsonout_output_event(lf, &kafka_producer_alerts_json);
             }
 
             w_mutex_unlock(&writer_threads_mutex);
@@ -2315,7 +2341,7 @@ void * w_writer_log_firewall_thread(__attribute__((unused)) void * args ){
 
             w_mutex_lock(&writer_threads_mutex);
             w_inc_firewall_written(lf->agent_id);
-            FW_Log(lf);
+            FW_Log(lf, &kafka_producer_firewall_log);
             w_mutex_unlock(&writer_threads_mutex);
 
             Free_Eventinfo(lf);
@@ -2413,6 +2439,71 @@ void w_init_queues(){
 
     /* Initialize upgrade module message queue */
     upgrade_module_input = queue_init(getDefine_Int("analysisd", "upgrade_queue_size", 128, 2000000));
+}
+
+int w_init_kafka()
+{
+    kafka_customer.brokers = "10.25.16.155:9092";
+    kafka_customer.group = "test-consumer-group";
+    kafka_customer.topic = "analysisd_queue";
+    kafka_customer.rk = NULL;
+    kafka_customer.topics = NULL;
+    if(!kafka_consumer_init(&kafka_customer)){
+        minfo("kafka_consumer_init error");
+        return -1;
+    }
+    minfo("kafka_consumer_init success");
+
+    kafka_producer_alerts_log.brokers = "10.25.16.155:9092";
+    kafka_producer_alerts_log.topic = "analysisd_alert_log";
+    kafka_producer_alerts_log.rk = NULL;
+    kafka_producer_alerts_log.rkt = NULL;
+    if(!kafka_productor_init(&kafka_producer_alerts_log)) {
+        minfo("kafka_producer_alerts_log init error!");
+        return -1;
+    }
+    minfo("kafka_producer_alerts_log init success");
+
+    kafka_producer_alerts_json.brokers = "10.25.16.155:9092";
+    kafka_producer_alerts_json.topic = "analysisd_alert_json";
+    kafka_producer_alerts_json.rk = NULL;
+    kafka_producer_alerts_json.rkt = NULL;
+    if(!kafka_productor_init(&kafka_producer_alerts_json)) {
+        minfo("kafka_producer_alerts_json init error!");
+        return -1;
+    }
+    minfo("kafka_producer_alerts_json init success");
+
+    // kafka_producer_archives_log.brokers = "10.25.16.155:9092";
+    // kafka_producer_archives_log.topic = "analysisd_archives_log";
+    // kafka_producer_archives_log.rk = NULL;
+    // kafka_producer_archives_log.rkt = NULL;
+    // if(!kafka_productor_init(&kafka_producer_archives_log)) {
+    //     minfo("kafka_producer_archives_log init error!");
+    //     return -1;
+    // }
+    // minfo("kafka_producer_archives_log init success");
+
+    // kafka_producer_archives_json.brokers = "10.25.16.155:9092";
+    // kafka_producer_archives_json.topic = "analysisd_archives_json";
+    // kafka_producer_archives_json.rk = NULL;
+    // kafka_producer_archives_json.rkt = NULL;
+    // if(!kafka_productor_init(&kafka_producer_archives_json)) {
+    //     minfo("kafka_producer_archives_json init error!");
+    //     return -1;
+    // }
+    // minfo("kafka_producer_archives_json init success");
+
+    // kafka_producer_firewall_log.brokers = "10.25.16.155:9092";
+    // kafka_producer_firewall_log.topic = "analysisd_firewall_log";
+    // kafka_producer_firewall_log.rk = NULL;
+    // kafka_producer_firewall_log.rkt = NULL;
+    // if(!kafka_productor_init(&kafka_producer_firewall_log)) {
+    //     minfo("kafka_producer_firewall_log init error!");
+    //     return -1;
+    // }
+    // minfo("kafka_producer_firewall_log init success");
+    return 0;
 }
 
 time_t w_get_current_time(void) {

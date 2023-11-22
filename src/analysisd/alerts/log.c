@@ -75,8 +75,9 @@ static void format_labels(char *buffer, size_t size, const Eventinfo *lf) {
  * The string must be null terminated and contain
  * any necessary new lines, tabs, etc.
  */
-void OS_Store(const Eventinfo *lf)
+void OS_Store(const Eventinfo *lf, KafkaProducerConfig* tmp_kafka_producer)
 {
+    //_eflog
     if (strcmp(lf->location, "ossec-keepalive") == 0) {
         return;
     }
@@ -84,7 +85,8 @@ void OS_Store(const Eventinfo *lf)
         return;
     }
 
-    fprintf(_eflog,
+    char buffer[1024];
+    sprintf(buffer,
             "%d %s %02d %s %s%s%s %s\n",
             lf->year,
             lf->mon,
@@ -94,7 +96,8 @@ void OS_Store(const Eventinfo *lf)
             lf->location[0] != '(' ? "->" : "",
             lf->location,
             lf->full_log);
-
+    mdebug2("OS_Store->_eflog,len:%d,msg:%s", strlen(buffer), buffer);
+    kafka_productor_send_msg(buffer, strlen(buffer), tmp_kafka_producer);
     return;
 }
 
@@ -102,8 +105,9 @@ void OS_Store_Flush(){
     fflush(_eflog);
 }
 
-void OS_Log(Eventinfo *lf, FILE * fp)
+void OS_Log(Eventinfo *lf, KafkaProducerConfig* tmp_kafka_producer)
 {
+    mdebug2("OS_Log start!");
     int i;
     char labels[OS_MAXSTR] = {0};
     char * saveptr;
@@ -124,8 +128,10 @@ void OS_Log(Eventinfo *lf, FILE * fp)
         labels[0] = '\0';
     }
 
+    char buffer[65535];
+    int buffer_len = 0;
     /* Writing to the alert log file */
-    fprintf(fp,
+    buffer_len = sprintf(buffer,
             "** Alert %ld.%ld:%s - %s\n"
             "%d %s %02d %s %s%s%s\n%sRule: %d (level %d) -> '%s'"
             "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n",
@@ -180,109 +186,107 @@ void OS_Log(Eventinfo *lf, FILE * fp)
             lf->dstuser == NULL ? "" : lf->dstuser,
             "\n",
             lf->full_log);
-
     /* FIM events */
 
     if (lf->decoder_info->name != NULL && strncmp(lf->decoder_info->name, "syscheck_", 9) == 0) {
-        fwrite("Attributes:\n", sizeof(char), 12, fp);
+        buffer_len += sprintf(buffer + buffer_len, "Attributes:\n");
 
         if (lf->fields[FIM_SIZE].value && *lf->fields[FIM_SIZE].value != '\0') {
-            fprintf(fp, " - Size: %s\n", lf->fields[FIM_SIZE].value);
+            buffer_len += sprintf(buffer + buffer_len, " - Size: %s\n", lf->fields[FIM_SIZE].value);
         }
 
         if (lf->fields[FIM_PERM].value && *lf->fields[FIM_PERM].value != '\0') {
-            fprintf(fp, " - Permissions: %s\n", lf->fields[FIM_PERM].value);
+            buffer_len += sprintf(buffer + buffer_len, " - Permissions: %s\n", lf->fields[FIM_PERM].value);
         }
 
         if (lf->fields[FIM_MTIME].value && *lf->fields[FIM_MTIME].value != '\0') {
             long aux_time = atol(lf->fields[FIM_MTIME].value);
             char buf_ptr[26];
-            fprintf(fp, " - Date: %s", ctime_r(&aux_time, buf_ptr) != NULL ? buf_ptr : lf->fields[FIM_MTIME].value);
+            buffer_len += sprintf(buffer + buffer_len, " - Date: %s", ctime_r(&aux_time, buf_ptr) != NULL ? buf_ptr : lf->fields[FIM_MTIME].value);
         }
 
         if (lf->fields[FIM_INODE].value && *lf->fields[FIM_INODE].value != '\0') {
-            fprintf(fp, " - Inode: %s\n", lf->fields[FIM_INODE].value);
+            buffer_len += sprintf(buffer + buffer_len, " - Inode: %s\n", lf->fields[FIM_INODE].value);
         }
 
         if (lf->fields[FIM_UID].value && lf->fields[FIM_UNAME].value && *lf->fields[FIM_UNAME].value != '\0') {
-            fprintf(fp, " - User: %s (%s)\n", lf->fields[FIM_UNAME].value, lf->fields[FIM_UID].value);
+            buffer_len += sprintf(buffer + buffer_len, " - User: %s (%s)\n", lf->fields[FIM_UNAME].value, lf->fields[FIM_UID].value);
         }
 
         if (lf->fields[FIM_GID].value && lf->fields[FIM_GNAME].value && *lf->fields[FIM_GNAME].value != '\0') {
-            fprintf(fp, " - Group: %s (%s)\n", lf->fields[FIM_GNAME].value, lf->fields[FIM_GID].value);
+            buffer_len += sprintf(buffer + buffer_len, " - Group: %s (%s)\n", lf->fields[FIM_GNAME].value, lf->fields[FIM_GID].value);
         }
 
         if (lf->fields[FIM_MD5].value && strcmp(lf->fields[FIM_MD5].value, "xxx") && *lf->fields[FIM_MD5].value != '\0') {
-            fprintf(fp, " - MD5: %s\n", lf->fields[FIM_MD5].value);
+            buffer_len += sprintf(buffer + buffer_len, " - MD5: %s\n", lf->fields[FIM_MD5].value);
         }
 
         if (lf->fields[FIM_SHA1].value && strcmp(lf->fields[FIM_SHA1].value, "xxx") && *lf->fields[FIM_SHA1].value != '\0') {
-            fprintf(fp, " - SHA1: %s\n", lf->fields[FIM_SHA1].value);
+            buffer_len += sprintf(buffer + buffer_len, " - SHA1: %s\n", lf->fields[FIM_SHA1].value);
         }
 
         if (lf->fields[FIM_SHA256].value && strcmp(lf->fields[FIM_SHA256].value, "xxx") && *lf->fields[FIM_SHA256].value != '\0') {
-            fprintf(fp, " - SHA256: %s\n", lf->fields[FIM_SHA256].value);
+            buffer_len += sprintf(buffer + buffer_len, " - SHA256: %s\n", lf->fields[FIM_SHA256].value);
         }
 
         if (lf->fields[FIM_ATTRS].value && *lf->fields[FIM_ATTRS].value != '\0') {
-            fprintf(fp, " - File attributes: %s\n", lf->fields[FIM_ATTRS].value);
+            buffer_len += sprintf(buffer + buffer_len, " - File attributes: %s\n", lf->fields[FIM_ATTRS].value);
         }
 
         if (lf->fields[FIM_USER_NAME].value && *lf->fields[FIM_USER_NAME].value != '\0') {
-            fprintf(fp, " - (Audit) %s: %s\n", "User name", lf->fields[FIM_USER_NAME].value);
+            buffer_len += sprintf(buffer + buffer_len, " - (Audit) %s: %s\n", "User name", lf->fields[FIM_USER_NAME].value);
         }
         if (lf->fields[FIM_AUDIT_NAME].value && *lf->fields[FIM_AUDIT_NAME].value != '\0') {
-            fprintf(fp, " - (Audit) %s: %s\n", "Audit name", lf->fields[FIM_AUDIT_NAME].value);
+            buffer_len += sprintf(buffer + buffer_len, " - (Audit) %s: %s\n", "Audit name", lf->fields[FIM_AUDIT_NAME].value);
         }
         if (lf->fields[FIM_EFFECTIVE_NAME].value && *lf->fields[FIM_EFFECTIVE_NAME].value != '\0') {
-            fprintf(fp, " - (Audit) %s: %s\n", "Effective name", lf->fields[FIM_EFFECTIVE_NAME].value);
+            buffer_len += sprintf(buffer + buffer_len, " - (Audit) %s: %s\n", "Effective name", lf->fields[FIM_EFFECTIVE_NAME].value);
         }
         if (lf->fields[FIM_GROUP_NAME].value && *lf->fields[FIM_GROUP_NAME].value != '\0') {
-            fprintf(fp, " - (Audit) %s: %s\n", "Group name", lf->fields[FIM_GROUP_NAME].value);
+            buffer_len += sprintf(buffer + buffer_len, " - (Audit) %s: %s\n", "Group name", lf->fields[FIM_GROUP_NAME].value);
         }
         if (lf->fields[FIM_PROC_ID].value && *lf->fields[FIM_PROC_ID].value != '\0') {
-            fprintf(fp, " - (Audit) %s: %s\n", "Process id", lf->fields[FIM_PROC_ID].value);
+            buffer_len += sprintf(buffer + buffer_len, " - (Audit) %s: %s\n", "Process id", lf->fields[FIM_PROC_ID].value);
         }
         if (lf->fields[FIM_PROC_NAME].value && *lf->fields[FIM_PROC_NAME].value != '\0') {
-            fprintf(fp, " - (Audit) %s: %s\n", "Process name", lf->fields[FIM_PROC_NAME].value);
+            buffer_len += sprintf(buffer + buffer_len, " - (Audit) %s: %s\n", "Process name", lf->fields[FIM_PROC_NAME].value);
         }
         if (lf->fields[FIM_AUDIT_CWD].value && *lf->fields[FIM_AUDIT_CWD].value != '\0') {
-            fprintf(fp, " - (Audit) %s: %s\n", "Process cwd", lf->fields[FIM_AUDIT_CWD].value);
+            buffer_len += sprintf(buffer + buffer_len, " - (Audit) %s: %s\n", "Process cwd", lf->fields[FIM_AUDIT_CWD].value);
         }
         if (lf->fields[FIM_PROC_PNAME].value && *lf->fields[FIM_PROC_PNAME].value != '\0') {
-            fprintf(fp, " - (Audit) %s: %s\n", "Parent process name", lf->fields[FIM_PROC_PNAME].value);
+            buffer_len += sprintf(buffer + buffer_len, " - (Audit) %s: %s\n", "Parent process name", lf->fields[FIM_PROC_PNAME].value);
         }
         if (lf->fields[FIM_PPID].value && *lf->fields[FIM_PPID].value != '\0') {
-            fprintf(fp, " - (Audit) %s: %s\n", "Parent process id", lf->fields[FIM_PPID].value);
+            buffer_len += sprintf(buffer + buffer_len, " - (Audit) %s: %s\n", "Parent process id", lf->fields[FIM_PPID].value);
         }
         if (lf->fields[FIM_AUDIT_PCWD].value && *lf->fields[FIM_AUDIT_PCWD].value != '\0') {
-            fprintf(fp, " - (Audit) %s: %s\n", "Parent process cwd", lf->fields[FIM_AUDIT_PCWD].value);
+            buffer_len += sprintf(buffer + buffer_len, " - (Audit) %s: %s\n", "Parent process cwd", lf->fields[FIM_AUDIT_PCWD].value);
         }
 
         if (lf->fields[FIM_DIFF].value) {
-            fprintf(fp, "\nWhat changed:\n%s\n", lf->fields[FIM_DIFF].value);
+            buffer_len += sprintf(buffer + buffer_len, "\nWhat changed:\n%s\n", lf->fields[FIM_DIFF].value);
         }
 
         if (lf->fields[FIM_TAG].value && *lf->fields[FIM_TAG].value != '\0') {
             char * tags;
             os_strdup(lf->fields[FIM_TAG].value, tags);
-            fwrite("\nTags:\n", sizeof(char), 7, fp);
+            buffer_len += sprintf(buffer + buffer_len, "\nTags:\n");
             char * tag;
             tag = strtok_r(tags, ",", &saveptr);
             while (tag != NULL) {
-                fprintf(fp, " - %s\n", tag);
+                buffer_len += sprintf(buffer + buffer_len, " - %s\n", tag);
                 tag = strtok_r(NULL, ",", &saveptr);
             }
             free(tags);
         }
     }
-
     // Dynamic fields, except for syscheck events
 
     if (lf->decoder_info->name != NULL && strncmp(lf->decoder_info->name, "syscheck_", 9) != 0) {
         for (i = 0; i < lf->nfields; i++) {
             if (lf->fields[i].value != NULL && *lf->fields[i].value != '\0') {
-                fprintf(fp, "%s: %s\n", lf->fields[i].key, lf->fields[i].value);
+                buffer_len += sprintf(buffer + buffer_len, "%s: %s\n", lf->fields[i].key, lf->fields[i].value);
             }
         }
     }
@@ -291,13 +295,16 @@ void OS_Log(Eventinfo *lf, FILE * fp)
     if (lf->last_events) {
         char **lasts = lf->last_events;
         while (*lasts) {
-            fprintf(fp, "%s\n", *lasts);
+            buffer_len += sprintf(buffer + buffer_len, "%s\n", *lasts);
             lasts++;
         }
     }
 
-    fputc('\n', fp);
+    buffer_len += sprintf(buffer + buffer_len, "\n");
+    mdebug2("alarm len:%d, msg:%s\n", buffer_len, buffer);
 
+    kafka_productor_send_msg(buffer, buffer_len, tmp_kafka_producer);
+    mdebug2("OS_Log end!");
     return;
 }
 
@@ -305,8 +312,9 @@ void OS_Log_Flush(){
     fflush(_aflog);
 }
 
-void OS_CustomLog(const Eventinfo *lf, const char *format)
+void OS_CustomLog(const Eventinfo *lf, const char *format, KafkaProducerConfig* tmp_kafka_producer)
 {
+    //aflog
     char *log;
     char *tmp_log;
     char tmp_buffer[1024];
@@ -368,7 +376,8 @@ void OS_CustomLog(const Eventinfo *lf, const char *format)
 
     fprintf(_aflog, "%s", log);
     fprintf(_aflog, "\n");
-
+    mdebug2("OS_CustomLog->len:%d, msg:%s", strlen(log), log);
+    kafka_productor_send_msg(log, strlen(log), tmp_kafka_producer);
     free(log);
 
     return;
@@ -392,8 +401,9 @@ void OS_InitFwLog()
     }
 }
 
-int FW_Log(Eventinfo *lf)
+int FW_Log(Eventinfo *lf, KafkaProducerConfig* tmp_kafka_producer)
 {
+    //fflog
     /* Set the actions */
     switch (*lf->action) {
         /* discard, drop, deny, */
@@ -445,7 +455,8 @@ int FW_Log(Eventinfo *lf)
     }
 
     /* Log to file */
-    fprintf(_fflog,
+    char buffer[1024];
+    sprintf(buffer,
             "%d %s %02d %s %s%s%s %s %s %s:%s->%s:%s\n",
             lf->year,
             lf->mon,
@@ -460,6 +471,8 @@ int FW_Log(Eventinfo *lf)
             lf->srcport,
             lf->dstip,
             lf->dstport);
+    mdebug2("FW_Log->buffer,len:%d,msg:%s", strlen(buffer), buffer);
+    kafka_productor_send_msg(buffer, strlen(buffer), tmp_kafka_producer);
 
     fflush(_fflog);
 

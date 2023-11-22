@@ -12,26 +12,27 @@
 #include "alerts/getloglocation.h"
 #include "format/to_json.h"
 
-void jsonout_output_event(const Eventinfo *lf)
+void jsonout_output_event(const Eventinfo *lf, KafkaProducerConfig* tmp_kafka_producer)
 {
+    //_jflog
     char *json_alert = Eventinfo_to_jsonstr(lf, false, NULL);
-
-    fprintf(_jflog,
-            "%s\n",
-            json_alert);
     if (strstr(json_alert,"gcp")) {
         mdebug2("Sending gcp event: %s", json_alert);
     }
+    mdebug2("jsonout_output_event->json_alert,len:%d, msg:%s",strlen(json_alert), json_alert);
+    kafka_productor_send_msg(json_alert, strlen(json_alert), tmp_kafka_producer);
     free(json_alert);
     return;
 }
-void jsonout_output_archive(const Eventinfo *lf)
+void jsonout_output_archive(const Eventinfo *lf, KafkaProducerConfig* tmp_kafka_producer)
 {
+    //_ejflog
     char *json_alert;
-
     if (strcmp(lf->location, "ossec-keepalive") && !strstr(lf->location, "->ossec-keepalive")) {
         json_alert = Eventinfo_to_jsonstr(lf, true, NULL);
         fprintf(_ejflog, "%s\n", json_alert);
+        mdebug2("jsonout_output_archive->json_alert,len:%d, msg:%s", strlen(json_alert), json_alert);
+        kafka_productor_send_msg(json_alert, strlen(json_alert), tmp_kafka_producer);
         free(json_alert);
     }
 }
