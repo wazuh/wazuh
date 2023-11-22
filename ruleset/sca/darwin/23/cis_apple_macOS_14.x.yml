@@ -921,10 +921,10 @@ checks:
     remediation: "Terminal Method: Perform the following to set the required Security Auditing Flags: Edit the /etc/security/audit_control file and add -fm, ad, -ex, aa, -fr, lo, and -fw to flags. You can also substitute -all for -fm, -ex, -fr, and -fw."
     references:
       - "https://derflounder.wordpress.com/2012/01/30/openbsm-auditing-on-mac-os-x/"
-      - "https://csrc.nist.gov/CSRC/media/Publications/sp/800-179/rev-"
+      - "https://csrc.nist.gov/CSRC/media/Publications/sp/800-179/rev-1/draft/documents/sp800-179r1-draft.pdf"
       - "https://www.scip.ch/en/?labs.20150108"
       - "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-171r2.pdf"
-      - "https://www.whitehouse.gov/wp-content/uploads/2021/08/M-21-31-Improving-"
+      - "https://www.whitehouse.gov/wp-content/uploads/2021/08/M-21-31-Improving-the-Federal-Governments-Investigative-and-Remediation-Capabilities-Related-to-Cybersecurity-Incidents.pdf"
     compliance:
       - cis: ["3.2"]
       - cis_csc_v8: ["3.14", "8.2", "8.5"]
@@ -960,8 +960,8 @@ checks:
       - soc_2: ["A1.1"]
     condition: all
     rules:
-      - 'f:/etc/asl/com.apple.install -> n:^\s*ttl=(\d+) compare > 364'
-      - 'not f:/etc/asl/com.apple.install -> r:^\s*all_max='
+      - 'f:/etc/asl/com.apple.install -> !r:^\s*# && n:ttl=(\d+) compare >= 365'
+      - 'not f:/etc/asl/com.apple.install -> !r:^\s*# && r:all_max='
 
   # 3.4 Ensure Security Auditing Retention Is Enabled. (Automated)
   - id: 34041
@@ -982,14 +982,14 @@ checks:
       - soc_2: ["A1.1"]
     condition: any
     rules:
-      - 'f:/etc/security/audit_control -> n:^expire-after:\s*(\d+)s OR \d+\w compare => 5184000'
-      - 'f:/etc/security/audit_control -> n:^expire-after:\s*(\d+)h OR \d+\w compare => 1440'
-      - 'f:/etc/security/audit_control -> n:^expire-after:\s*(\d+)d OR \d+\w compare => 60'
-      - 'f:/etc/security/audit_control -> n:^expire-after:\s*(\d+)y OR \d+\w compare => 1'
-      - 'f:/etc/security/audit_control -> n:^expire-after:\s*\d+\w OR (\d+)b compare => 5368709120'
-      - 'f:/etc/security/audit_control -> n:^expire-after:\s*\d+\w OR (\d+)k compare => 5242880'
-      - 'f:/etc/security/audit_control -> n:^expire-after:\s*\d+\w OR (\d+)m compare => 5120'
-      - 'f:/etc/security/audit_control -> n:^expire-after:\s*\d+\w OR (\d+)g compare => 5'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)s compare >= 5184000'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)h compare >= 1440'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)d compare >= 60'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)y compare >= 1'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)b compare >= 5368709120'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)k compare >= 5242880'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)m compare >= 5120'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)g compare >= 5'
 
   # 3.5 Ensure Access to Audit Records Is Controlled. (Automated) - Not Implemented
   # 3.6 Ensure Firewall Logging Is Enabled and Configured. (Automated) - Not Implemented
@@ -1024,7 +1024,7 @@ checks:
     impact: "The web server is both a point of attack for the system and a means for unauthorized file transfers."
     remediation: "Terminal Method: Run the following command to disable the HTTP server services: $ /usr/bin/sudo /usr/sbin/apachectl stop $ /usr/bin/sudo /bin/launchctl unload -w /System/Library/LaunchDaemons/org.apache.httpd.plist."
     references:
-      - "https://www.stigviewer.com/stig/apple_macos_11_big_sur/2021-06-16/finding/V-"
+      - "https://www.stigviewer.com/stig/apple_macos_11_big_sur/2021-06-16/finding/V-230793"
       - "https://httpd.apache.org/security/vulnerabilities_24.html"
     compliance:
       - cis: ["4.2"]
@@ -1072,7 +1072,7 @@ checks:
     impact: "System binaries and processes could become compromised."
     remediation: "Terminal Method: Perform the following steps to enable System Integrity Protection: 1. Reboot into the Recovery Partition (reboot and hold down Command () + R) 2. Select Utilities 3. Select Terminal 4. Run the following command: $ /usr/bin/sudo /usr/bin/csrutil enable Successfully enabled System Integrity Protection. Please restart the machine for the changes to take effect. 5. Reboot the computer Note: You should research why the system had SIP disabled. It might be a better option to erase the Mac and reinstall the operating system. That is at your discretion. Note: You cannot enable System Integrity Protection from the booted operating system. If the remediation is attempted in the booted OS and not the Recovery Partition the output will give the error csrutil: failed to modify system integrity configuration. This tool needs to be executed from the Recovery OS."
     references:
-      - "https://developer.apple.com/documentation/security/disabling_and_enabling_syst"
+      - "https://developer.apple.com/documentation/security/disabling_and_enabling_system_integrity_protection"
       - "https://support.apple.com/en-us/HT204899"
     compliance:
       - cis: ["5.1.2"]
