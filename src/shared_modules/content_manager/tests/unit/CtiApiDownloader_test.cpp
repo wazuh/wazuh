@@ -134,7 +134,7 @@ TEST_F(CtiApiDownloaderTest, TestHandleAnInvalidUrl)
 }
 
 /**
- * @brief Test the retry feature of the downloader when the server responses with 5xx errors.
+ * @brief Test the retry feature of the downloader when the server responds with 5xx errors.
  *
  */
 TEST_F(CtiApiDownloaderTest, DownloadServerErrorWithRetry)
@@ -158,7 +158,7 @@ TEST_F(CtiApiDownloaderTest, DownloadServerErrorWithRetry)
 }
 
 /**
- * @brief Test the downloader when the server responses with 4xx errors.
+ * @brief Test the downloader when the server responds with 4xx errors.
  *
  */
 TEST_F(CtiApiDownloaderTest, DownloadClientErrorNoRetry)
@@ -176,7 +176,7 @@ TEST_F(CtiApiDownloaderTest, DownloadClientErrorNoRetry)
 }
 
 /**
- * @brief Test the downloader when the server responses with both 4xx and 5xx errors.
+ * @brief Test the downloader when the server responds with both 4xx and 5xx errors.
  *
  */
 TEST_F(CtiApiDownloaderTest, DownloadClientAndServerErrorsRetryAndFail)
