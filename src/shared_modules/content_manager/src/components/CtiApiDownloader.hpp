@@ -137,21 +137,8 @@ private:
                                   std::cout << "CtiApiDownloader - Request processed successfully.\n";
                               }};
 
-        const auto onError {
-            [](const std::string& message, const long statusCode)
-            {
-                const std::string exceptionMessage {"Error " + std::to_string(statusCode) + " from server: " + message};
-
-                // If there is an error from the server, throw a different exception.
-                if (statusCode >= 500 && statusCode <= 599)
-                {
-                    throw cti_server_error {exceptionMessage};
-                }
-                throw std::runtime_error {exceptionMessage};
-            }};
-
         // Make a get request to the API to get the consumer offset.
-        performQueryWithRetry(onSuccess, onError);
+        performQueryWithRetry(onSuccess);
     }
 
     /**
@@ -172,6 +159,22 @@ private:
                                   std::cout << "CtiApiDownloader - Request processed successfully.\n";
                               }};
 
+        // Download the content.
+        performQueryWithRetry(onSuccess, queryParameters, fullFilePath);
+    }
+
+    /**
+     * @brief Loop for retrying the downloads from the server until the download is successful or there is an HTTP error
+     * different from 5xx.
+     *
+     * @param onSuccess Callback on success download.
+     * @param queryParameters Parameters to the GET query.
+     * @param outputFilepath File where to store the downloaded content.
+     */
+    void performQueryWithRetry(const std::function<void(const std::string&)>& onSuccess,
+                               const std::string& queryParameters = "",
+                               const std::string& outputFilepath = "") const
+    {
         // On download error routine.
         const auto onError {
             [](const std::string& message, const long statusCode)
@@ -186,24 +189,6 @@ private:
                 throw std::runtime_error {exceptionMessage};
             }};
 
-        // Download the content.
-        performQueryWithRetry(onSuccess, onError, queryParameters, fullFilePath);
-    }
-
-    /**
-     * @brief Loop for retrying the downloads from the server until the download is successful or there is an HTTP error
-     * different from 5xx.
-     *
-     * @param onSuccess Callback on success download.
-     * @param onError Callback on error download.
-     * @param queryParameters Parameters to the GET query.
-     * @param outputFilepath File where to store the downloaded content.
-     */
-    void performQueryWithRetry(const std::function<void(const std::string&)>& onSuccess,
-                               const std::function<void(const std::string&, const long)>& onError,
-                               const std::string& queryParameters = "",
-                               const std::string& outputFilepath = "") const
-    {
         constexpr auto INITIAL_SLEEP_TIME {1};
         auto sleepTime {INITIAL_SLEEP_TIME};
         auto retryAttempt {1};
