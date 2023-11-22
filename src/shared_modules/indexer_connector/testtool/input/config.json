@@ -1,15 +1,13 @@
 {
-  "indexer": {
   "name": "wazuh-states-vulnerabilities",
   "enabled": "yes",
-  "hosts": ["http://192.168.1.7:9200"],
-  "username": "user",
-  "password": "pwd",
+  "hosts": ["https://0.0.0.0:9200"],
+  "username": "admin",
+  "password": "admin",
   "api_key": "",
   "ssl": {
-    "certificate_authorities": ["/var/ossec/"],
-    "certificate": "cert",
-    "key": ""
+    "certificate_authorities": ["~/root-ca.pem"],
+    "certificate": "~/indexer.pem",
+    "key": "~/indexer-key.pem"
   }
- }
 }
