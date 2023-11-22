@@ -2,11 +2,6 @@ name: External integrations unit tests
 
 on:
   workflow_dispatch:
-    inputs:
-      base_branch:
-        description: 'Base branch'
-        required: true
-        default: 'main'
   pull_request:
     paths:
       - '.github/workflows/external-integrations-unit-tests.yml'
