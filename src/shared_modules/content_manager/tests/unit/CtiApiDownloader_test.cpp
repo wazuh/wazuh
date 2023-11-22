@@ -134,10 +134,10 @@ TEST_F(CtiApiDownloaderTest, TestHandleAnInvalidUrl)
 }
 
 /**
- * @brief
+ * @brief Test the retry feature of the downloader when the server responses with 5xx errors.
  *
  */
-TEST_F(CtiApiDownloaderTest, RetryDownloadWhen5xxError)
+TEST_F(CtiApiDownloaderTest, DownloadServerErrorWithRetry)
 {
     // Push two errors to the server.
     m_spFakeServer->pushError(500);
@@ -155,4 +155,22 @@ TEST_F(CtiApiDownloaderTest, RetryDownloadWhen5xxError)
 
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
     EXPECT_TRUE(std::filesystem::exists(contentPath));
+}
+
+/**
+ * @brief Test the downloader when the server responses with 4xx errors.
+ *
+ */
+TEST_F(CtiApiDownloaderTest, DownloadClientErrorNoRetry)
+{
+    // Push one error to the server.
+    m_spFakeServer->pushError(400);
+
+    // Set expected data.
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
+    expectedData["stageStatus"] = FAIL_STATUS;
+
+    ASSERT_THROW(m_spCtiApiDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 }
