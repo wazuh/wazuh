@@ -107,6 +107,383 @@ def previous_month(n: int = 1) -> datetime.date:
     return date.replace(hour=00, minute=00, second=00, microsecond=00)
 
 
+def process_array(array: list, search_text: str = None, complementary_search: bool = False,
+                  search_in_fields: list = None, select: list = None, sort_by: list = None,
+                  sort_ascending: bool = True, allowed_sort_fields: list = None, offset: int = 0, limit: int = None,
+                  q: str = '', required_fields: list = None, allowed_select_fields: list = None,
+                  filters: dict = None, distinct: bool = False) -> dict:
+    """Process a Wazuh framework data array.
+
+    Parameters
+    ----------
+    array : list
+        Array to process.
+    search_text : str
+        Text to search and search type.
+    complementary_search : bool
+        Perform a complementary search.
+    search_in_fields : list
+        Fields to search in.
+    select : list
+        Select fields to return.
+    sort_by : list
+        Fields to sort_by. Will sort the array directly if [''] is received.
+    sort_ascending : bool
+        Sort order ascending or descending.
+    allowed_sort_fields : list
+        Allowed fields to sort_by.
+    offset : int
+        First element to return.
+    limit : int
+        Maximum number of elements to return.
+    q : str
+        Query to filter by.
+    required_fields : list
+        Required fields that must appear in the response.
+    allowed_select_fields: list
+        List of fields allowed to select from.
+    filters : dict
+        Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
+    distinct : bool
+        Look for distinct values.
+
+    Returns
+    -------
+    dict
+        Dictionary: {'items': Processed array, 'totalItems': Number of items, before applying offset and limit)}
+    """
+    if not array:
+        return {'items': [], 'totalItems': 0}
+    
+    if isinstance(filters, dict) and len(filters.keys()) > 0:
+        new_array = []
+        for element in array:
+            for key, value in filters.items():
+                if element[key] in value:
+                    new_array.append(element)
+                    break
+
+        array = new_array
+
+    if sort_by == [""]:
+        array = sort_array(array, sort_ascending=sort_ascending)
+    elif sort_by:
+        array = sort_array(array, sort_by=sort_by, sort_ascending=sort_ascending,
+                           allowed_sort_fields=allowed_sort_fields)
+
+    if search_text:
+        array = search_array(array, search_text=search_text, complementary_search=complementary_search,
+                             search_in_fields=search_in_fields)
+
+    if q:
+        array = filter_array_by_query(q, array)
+
+    if select:
+        # Do not force the inclusion of any fields when we are looking for distinct values
+        required_fields = set() if distinct else required_fields
+        array = select_array(array, select=select, required_fields=required_fields,
+                             allowed_select_fields=allowed_select_fields)
+
+    if distinct:
+        distinct_array = []
+        for element in array:
+            if element not in distinct_array:
+                distinct_array.append(element)
+
+        array = distinct_array
+
+    return {'items': cut_array(array, offset=offset, limit=limit), 'totalItems': len(array)}
+
+
+def cut_array(array: list, offset: int = 0, limit: int = common.DATABASE_LIMIT) -> list:
+    """Return a part of the array: from offset to offset + limit.
+
+    Parameters
+    ----------
+    array : list
+        Array to cut.
+    offset : int
+        First element to return.
+    limit : int
+        Maximum number of elements to return. 0 means no cut array.
+
+    Raises
+    ------
+    WazuhError(1400)
+        Invalid offset.
+    WazuhError(1401)
+        Invalid limit.
+    WazuhError(1405)
+        Limit exceeding the maximum permitted.
+    WazuhError(1406)
+        Invalid limit (0).
+
+    Returns
+    -------
+    list
+        Cut array.
+    """
+
+    if limit is not None:
+        if limit > common.MAXIMUM_DATABASE_LIMIT:
+            raise WazuhError(1405, extra_message=str(limit))
+        elif limit == 0:
+            raise WazuhError(1406)
+
+    elif not array or limit is None:
+        return array
+
+    offset = int(offset)
+    limit = int(limit)
+
+    if offset < 0:
+        raise WazuhError(1400)
+    elif limit < 1:
+        raise WazuhError(1401)
+    else:
+        return array[offset:offset + limit]
+
+
+def sort_array(array: list, sort_by: list = None, sort_ascending: bool = True,
+               allowed_sort_fields: list = None) -> list:
+    """Sort an array.
+
+    Parameters
+    ----------
+    array : list
+        Array to sort.
+    sort_by : list
+        Array of fields.
+    sort_ascending : bool
+        Ascending if true and descending if false.
+    allowed_sort_fields : list
+        Check sort_by with allowed_sort_fields (array).
+
+    Raises
+    ------
+    WazuhError(1403)
+        Not a valid sort field.
+    WazuhError(1402)
+        Invalid sort_ascending field.
+
+    Returns
+    -------
+    list
+        Sorted array.
+    """
+
+    def check_sort_fields(allowed_sort_fields, sort_by):
+        # Check if every element in sort['fields'] is in allowed_sort_fields
+        if not sort_by.issubset(allowed_sort_fields):
+            incorrect_fields = ', '.join(sort_by - allowed_sort_fields)
+            raise WazuhError(1403, extra_remediation='Allowed sort fields: {0}. '
+                                                     'Wrong fields: {1}'.format(', '.join(allowed_sort_fields),
+                                                                                incorrect_fields))
+
+    if not array:
+        return array
+
+    if not isinstance(sort_ascending, bool):
+        raise WazuhError(1402)
+
+    is_sort_valid = False
+    if allowed_sort_fields:
+        check_sort_fields(set(allowed_sort_fields), set(sort_by))
+        is_sort_valid = True
+
+    if sort_by:  # array should be a dictionary or a Class
+        if type(array[0]) is dict:
+            not is_sort_valid and check_sort_fields(set(array[0].keys()), set(sort_by))
+            try:
+                return sorted(array,
+                              key=lambda o: tuple(
+                                  o.get(a).lower() if type(o.get(a)) in (str, unicode) else o.get(a) for a in sort_by),
+                              reverse=not sort_ascending)
+            except TypeError:
+                items_with_missing_keys = list()
+                copy_array = deepcopy(array)
+                for item in array:
+                    set(sort_by) & set(item.keys()) and items_with_missing_keys.append(
+                        copy_array.pop(copy_array.index(item)))
+
+                sorted_array = sorted(copy_array, key=lambda o: tuple(
+                    o.get(a).lower() if type(o.get(a)) in (str, unicode) else o.get(a) for a in sort_by),
+                                      reverse=not sort_ascending)
+
+                if not sort_ascending:
+                    items_with_missing_keys.extend(sorted_array)
+                    return items_with_missing_keys
+                else:
+                    sorted_array.extend(items_with_missing_keys)
+                    return sorted_array
+
+        else:
+            return sorted(array,
+                          key=lambda o: tuple(
+                              getattr(o, a).lower() if type(getattr(o, a)) in (str, unicode) else getattr(o, a)
+                              for a in sort_by),
+                          reverse=not sort_ascending)
+    else:
+        if type(array) is set or (type(array[0]) is not dict and 'class \'wazuh' not in str(type(array[0]))):
+            return sorted(array, reverse=not sort_ascending)
+        else:
+            return array
+
+
+def get_values(o: object, fields: list = None) -> list:
+    """Convert the values of an object to an array of strings.
+
+    Parameters
+    ----------
+    o : object
+        Object.
+    fields : list
+        Fields to get values of (only for dictionaries).
+
+    Returns
+    -------
+    list
+        Array of strings.
+    """
+    strings = []
+
+    try:
+        obj = o.to_dict()  # Rule, Decoder, Agent...
+    except:
+        obj = o
+
+    if type(obj) is list:
+        for o in obj:
+            strings.extend(get_values(o))
+    elif type(obj) is dict:
+        for key in obj:
+            if not fields or key in fields:
+                strings.extend(get_values(obj[key]))
+    else:
+        strings.append(obj.lower() if isinstance(obj, str) or isinstance(obj, unicode) else str(obj))
+
+    return strings
+
+
+def search_array(array, search_text: str = None, complementary_search: bool = False,
+                 search_in_fields: list = None) -> list:
+    """Look for the string 'text' in the elements of the array.
+
+    Parameters
+    ----------
+    array : list
+        Array.
+    search_text : str
+        Text to search.
+    complementary_search : bool
+        The text must not be in the array.
+    search_in_fields : list
+        Fields of the array to search in.
+
+    Returns
+    -------
+    list
+        Filtered array.
+    """
+
+    found = []
+
+    for item in array:
+
+        values = get_values(o=item, fields=search_in_fields)
+
+        if not complementary_search:
+            for v in values:
+                if search_text.lower() in v:
+                    found.append(item)
+                    break
+        else:
+            not_in_values = True
+            for v in values:
+                if search_text.lower() in v:
+                    not_in_values = False
+                    break
+            if not_in_values:
+                found.append(item)
+
+    return found
+
+
+def select_array(array: list, select: list = None, required_fields: set = None,
+                 allowed_select_fields: list = None) -> list:
+    """Get only those values from each element in the array that matches the select values.
+
+    Parameters
+    ----------
+    array : list
+        Array of elements. It contains all the results without any filter.
+    select : list of str, optional
+        List of select fields. These can be nested fields of n depth levels. Default `None`
+        Example: ['select1', 'select2.select21.select22', 'select3.select31']
+    required_fields : set, optional
+        Set of fields that must be in the response. These depends on the framework function.
+    allowed_select_fields: list
+        List of fields allowed to select from.
+
+    Raises
+    ------
+    WazuhError(1724)
+        Raise this exception when at least one of the select fields is not valid.
+
+    Returns
+    -------
+    result_list : list
+        Filtered array of dicts with only the selected (and required) fields as keys.
+    """
+
+    def get_nested_fields(dikt, select_field):
+        split_select = select_field.split('.')
+        if len(split_select) == 1:
+            try:
+                last_field = {select_field: dikt[select_field]}
+            except (KeyError, TypeError):
+                last_field = None
+            return last_field
+        else:
+            try:
+                next_element = get_nested_fields(dikt[split_select[0]], '.'.join(split_select[1:]))
+            except (KeyError, TypeError):
+                next_element = None
+            return {split_select[0]: next_element} if next_element else None
+
+    def detect_nested_select(user_select):
+        nested = set()
+        no_nested = set()
+        for element in user_select:
+            no_nested.add(element) if '.' not in element else nested.add(element)
+
+        return nested, no_nested
+
+    if required_fields is None:
+        required_fields = set()
+
+    select_nested, select_no_nested = detect_nested_select(set(select))
+    if allowed_select_fields and not select_no_nested.issubset(allowed_select_fields):
+        raise WazuhError(1724, "{}".format(', '.join(select_no_nested)))
+    select = select_nested.union(select_no_nested)
+
+    result_list = list()
+    for item in array:
+        selected_fields = dict()
+        # Build an entry with the filtered values
+        for sel in select:
+            candidate = get_nested_fields(item, sel)
+            if candidate:
+                selected_fields.update(candidate)
+        # Add required fields if the entry is not empty
+        if array and not allowed_select_fields and not selected_fields:
+            raise WazuhError(1724, "{}".format(', '.join(select)))
+        selected_fields.update({req_field: item[req_field] for req_field in required_fields})
+        result_list.append(selected_fields)
+
+    return result_list
+
+
 _filemode_table = (
     ((stat.S_IFLNK, "l"),
      (stat.S_IFREG, "-"),
@@ -935,8 +1312,7 @@ class WazuhDBBackend(AbstractDatabaseBackend):
     This class describes a wazuh db backend that executes database queries.
     """
 
-    def __init__(self, agent_id: int = None, query_format: str = 'agent', request_slice: int = 500, 
-                 in_memory: bool = False):
+    def __init__(self, agent_id=None, query_format='agent', request_slice=500):
         if query_format == 'agent' and not path.exists(path.join(common.WDB_PATH, f"{agent_id}.db")):
             raise WazuhError(2007, extra_message=f"There is no database for agent {agent_id}. "
                                                  "Please check if the agent has connected to the manager")
@@ -944,12 +1320,11 @@ class WazuhDBBackend(AbstractDatabaseBackend):
         self.agent_id = agent_id
         self.query_format = query_format
         self.request_slice = request_slice
-        self.in_memory = in_memory
 
         super().__init__()
 
     def connect_to_db(self):
-        return WazuhDBConnection(request_slice=self.request_slice, in_memory=self.in_memory)
+        return WazuhDBConnection(request_slice=self.request_slice)
 
     def close_connection(self):
         self.conn.close()
@@ -1508,59 +1883,6 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
             }
         self.select = self.select & self.filter_fields['fields']
 
-class WazuhInMemoryDBQuery(WazuhDBQuery):
-    """Retrieve values from temporary tables that were created with the information gathered from different sources."""
-
-    def __init__(self, data: typing.Dict[str, typing.Any], *args, **kwargs):
-        self.table = 'tmp'
-        self.data = data
-        WazuhDBQuery.__init__(self, backend=WazuhDBBackend(in_memory=True), table=self.table, *args, **kwargs)
-    
-    def _create_temporary_table(self):
-        """Creates a temporary table based on the structure of the information received."""
-        create_stmt = f"CREATE TEMP TABLE {self.table} ("
-        fields = self._dict_to_sql(self.data)
-        create_stmt += f"{fields}\n);"
-
-    def _dict_to_sql(self, dictionary: dict, prefix: str = None) -> str:
-        sql_stmt = ""
-        for i, (k, v) in enumerate(dictionary.items()):
-            if v is None:
-                continue
-
-            if i != 0:
-                sql_stmt += ','
-
-            sql_stmt += f"\n{prefix}{k} "
-            value_type = type(v)
-            if value_type == str:
-                sql_stmt += "TEXT"
-            elif value_type == int or bool:
-               sql_stmt += "INTEGER"
-            elif value_type == float:
-                sql_stmt += "REAL"
-            elif value_type == bytes:
-                sql_stmt += "BLOB"
-            elif value_type == dict:
-                sql_stmt += ','
-                sql_stmt += self._dict_to_sql(v, k+"_")
-            elif value_type == list or set:
-                # TODO: should we store json in this case?
-                sql_stmt = "TEXT"
-
-        return sql_stmt
-
-    def _populate_temporary_table(self):
-        insert_stmt = f"INSERT INTO {self.table} ("
-        for i, (k) in enumerate(self.data.keys()):
-            if i != 0 and i != len(self.data):
-                insert_stmt += ','
-            insert_stmt += k
-
-    def run(self) -> dict:
-        self._create_temporary_table()
-        self._populate_temporary_table()
-        super().run()
 
 @common.context_cached('system_rules')
 def expand_rules() -> set:
