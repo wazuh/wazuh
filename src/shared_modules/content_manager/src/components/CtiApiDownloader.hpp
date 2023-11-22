@@ -14,8 +14,42 @@
 #include "IURLRequest.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
+#include <algorithm>
+#include <chrono>
 #include <iostream>
 #include <memory>
+#include <string>
+#include <thread>
+
+/**
+ * @brief Custom exception used to identify 5xx HTTP errors when downloading from the CTI server.
+ *
+ */
+class cti_server_5xx_error : public std::exception
+{
+    std::string m_what; ///< Exception message.
+
+public:
+    /**
+     * @brief Class constructor.
+     *
+     * @param what Exception message.
+     */
+    cti_server_5xx_error(std::string what)
+        : m_what(std::move(what))
+    {
+    }
+
+    /**
+     * @brief Returns the exception message.
+     *
+     * @return const char* Message.
+     */
+    const char* what()
+    {
+        return m_what.c_str();
+    }
+};
 
 /**
  * @class CtiApiDownloader
@@ -103,9 +137,6 @@ private:
         const auto onError {
             [this](const std::string& message, [[maybe_unused]] const long statusCode)
             {
-                // Set the status of the stage
-                m_context->data.at("stageStatus").push_back(R"({"stage": "CtiApiDownloader", "status": "fail"})"_json);
-
                 throw std::runtime_error("CtiApiDownloader - Could not get response from API because: " + message);
             }};
 
@@ -121,28 +152,53 @@ private:
      */
     void downloadContent(int toOffset, const std::string& fullFilePath) const
     {
+        // Define the parameters for the request.
+        const auto queryParameters = "/changes?from_offset=" + std::to_string(m_context->currentOffset) +
+                                     "&to_offset=" + std::to_string(toOffset);
+
+        // On download success routine.
         const auto onSuccess {[]([[maybe_unused]] const std::string& data)
                               {
                                   std::cout << "CtiApiDownloader - Request processed successfully.\n";
                               }};
 
+        // On download error routine.
         const auto onError {
-            [this](const std::string& message, [[maybe_unused]] const long statusCode)
+            [](const std::string& message, const long statusCode)
             {
-                // Set the status of the stage
-                m_context->data.at("stageStatus").push_back(R"({"stage": "CtiApiDownloader", "status": "fail"})"_json);
+                const std::string exceptionMessage {"Error " + std::to_string(statusCode) + " from server: " + message};
 
-                throw std::runtime_error("CtiApiDownloader - Could not get response from API because: " + message);
+                if (statusCode >= 500 && statusCode <= 599)
+                {
+                    throw cti_server_5xx_error {exceptionMessage};
+                }
+                throw std::runtime_error {exceptionMessage};
             }};
 
-        const auto fromOffset = m_context->currentOffset;
+        // Loop for retrying the downloads from the server until the download is successful or there is an HTTP error
+        // different from 5xx.
+        auto sleepTime {0};
+        auto retry {true};
+        while (retry)
+        {
+            try
+            {
+                m_urlRequest.get(HttpURL(m_url + queryParameters), onSuccess, onError, fullFilePath);
+                retry = false;
+            }
+            catch (const cti_server_5xx_error& e)
+            {
+                constexpr auto SLEEP_TIME_DELTA {3};
+                constexpr auto SLEEP_TIME_THRESHOLD {30};
 
-        // make the parameters for the request
-        const auto queryParameters =
-            "/changes?from_offset=" + std::to_string(fromOffset) + "&to_offset=" + std::to_string(toOffset);
-
-        // Make a get request to the API to get the content.
-        m_urlRequest.get(HttpURL(m_url + queryParameters), onSuccess, onError, fullFilePath);
+                // Sleep and, if necessary, increase sleep time.
+                std::this_thread::sleep_for(std::chrono::seconds(sleepTime));
+                if (sleepTime < SLEEP_TIME_THRESHOLD)
+                {
+                    sleepTime = std::clamp(sleepTime + SLEEP_TIME_DELTA, 0, SLEEP_TIME_THRESHOLD);
+                }
+            }
+        }
     }
 
     IURLRequest& m_urlRequest;                    ///< Interface to perform HTTP requests
@@ -176,7 +232,16 @@ public:
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
         m_context = context;
-        download();
+
+        try
+        {
+            download();
+        }
+        catch (const std::exception& e)
+        {
+            m_context->data.at("stageStatus").push_back(R"({"stage": "CtiApiDownloader", "status": "fail"})"_json);
+            throw;
+        }
 
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(context);
     }

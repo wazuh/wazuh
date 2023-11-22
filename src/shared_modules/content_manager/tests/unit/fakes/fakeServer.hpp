@@ -192,6 +192,13 @@ public:
                         })"_json;
                          res.set_content(response.dump(), "text/plain");
                      });
+        m_server.Get("/errors/5xx",
+                     [](const httplib::Request& req, httplib::Response& res)
+                     {
+                         const auto response {"Internal server error."};
+                         res.status = 500;
+                         res.set_content(response, "text/plain");
+                     });
         m_server.set_keep_alive_max_count(1);
         m_server.listen(m_host.c_str(), m_port);
     }
