@@ -27,11 +27,14 @@ namespace Utils
     class RocksDBWrapper
     {
     public:
-        explicit RocksDBWrapper(const std::string& dbPath)
+        explicit RocksDBWrapper(const std::string& dbPath, bool useBzipCompress = false)
         {
             rocksdb::Options options;
             options.create_if_missing = true;
-            options.compression = rocksdb::kBZip2Compression;
+            if (useBzipCompress)
+            {
+                options.compression = rocksdb::kBZip2Compression;
+            }
             rocksdb::DB* dbRawPtr;
 
             // Create directories recursively if they do not exist
@@ -40,7 +43,7 @@ namespace Utils
             const auto status {rocksdb::DB::Open(options, dbPath, &dbRawPtr)};
             if (!status.ok())
             {
-                throw std::runtime_error("Failed to open RocksDB database. Reason: "+std::string{status.getState()});
+                throw std::runtime_error("Failed to open RocksDB database. Reason: " + std::string {status.getState()});
             }
             // Assigns the raw pointer to the unique_ptr. When db goes out of scope, it will automatically delete the
             // allocated RocksDB instance.
