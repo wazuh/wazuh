@@ -25,7 +25,7 @@ class OnDemandManager final : public Singleton<OnDemandManager>
 {
 private:
     httplib::Server m_server {};
-    std::map<std::string, std::function<void()>> m_endpoints {};
+    std::map<std::string, std::function<void(int)>> m_endpoints {};
     std::shared_mutex m_mutex {};
     std::thread m_serverThread {};
     void startServer();
@@ -38,7 +38,7 @@ public:
      * @param endpoint Endpoint to add
      * @param func Function to call when the endpoint is called
      */
-    void addEndpoint(const std::string& endpoint, std::function<void()> func);
+    void addEndpoint(const std::string& endpoint, std::function<void(int)> func);
 
     /**
      * @brief Remove an endpoint and stop the server if there are no more endpoints
