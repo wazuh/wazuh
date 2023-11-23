@@ -14,9 +14,15 @@
  */
 
 #include "cJSON.h"
+#include "debug_op.h"
 #include "os_err.h"
 #include "wdb.h"
 #include "os_crypto/sha1/sha1_op.h"
+#include "pthreads_op.h"
+#include "flatcc_helpers.h"
+#include "syscollector_deltas_builder.h"
+#include "syscollector_deltas_json_parser.h"
+#include "router.h"
 #include <openssl/evp.h>
 #include <stdarg.h>
 
@@ -52,6 +58,77 @@ extern void mock_assert(const int result, const char* const expression,
     mock_assert((int)(expression), #expression, __FILE__, __LINE__);
 #endif
 
+void wdbi_report_removed(const char* agent_id, wdb_component_t component, const sqlite3_stmt* stmt) {
+    w_mutex_lock(&router_mutex);
+    if (!router_handle) {
+        if (router_handle = router_provider_create("rsync-deltas"), !router_handle) {
+            mdebug2("Failed to create router handle for 'wazuh-db'.");
+            w_mutex_unlock(&router_mutex);
+            return -1;
+        }
+    }
+    w_mutex_unlock(&router_mutex);
+
+    cJSON* j_msg_to_send = NULL;
+    cJSON* j_agent_info = NULL;
+    cJSON* j_data = NULL;
+    char* msg_to_send = NULL;
+    char* type = NULL;
+    int result = SQLITE_ERROR;
+
+    do{
+        j_msg_to_send = cJSON_CreateObject();
+        j_agent_info = cJSON_CreateObject();
+        j_data = cJSON_CreateObject();
+
+        cJSON_AddStringToObject(j_agent_info, "agent_id", agent_id);
+        cJSON_AddItemToObject(j_msg_to_send, "agent_info", j_agent_info);
+
+        switch (component)
+        {
+            case WDB_SYSCOLLECTOR_HOTFIXES:
+                type = "dbsync_hotfixes";
+                cJSON_AddItemToObject(j_data, "hotfix", cJSON_CreateString(sqlite3_column_text(stmt, 0)));
+                break;
+            case WDB_SYSCOLLECTOR_PACKAGES:
+                type = "dbsync_packages";
+                cJSON_AddItemToObject(j_data, "name", cJSON_CreateString(sqlite3_column_text(stmt, 0)));
+                cJSON_AddItemToObject(j_data, "version", cJSON_CreateString(sqlite3_column_text(stmt, 1)));
+                cJSON_AddItemToObject(j_data, "architecture", cJSON_CreateString(sqlite3_column_text(stmt, 2)));
+                cJSON_AddItemToObject(j_data, "format", cJSON_CreateString(sqlite3_column_text(stmt, 3)));
+                cJSON_AddItemToObject(j_data, "location", cJSON_CreateString(sqlite3_column_text(stmt, 4)));
+                break;
+            default:
+                break;
+        }
+
+        cJSON_AddItemToObject(j_msg_to_send, "data_type", cJSON_CreateString(type));
+        cJSON_AddItemToObject(j_msg_to_send, "data", j_data);
+        cJSON_AddItemToObject(j_msg_to_send, "operation", cJSON_CreateString("DELETED"));
+
+        msg_to_send = cJSON_PrintUnformatted(j_msg_to_send);
+
+        if (msg_to_send) {
+            size_t msg_to_send_len = strlen(msg_to_send);
+            size_t flatbuffer_size;
+
+            void* flatbuffer = w_flatcc_parse_json(msg_to_send_len, msg_to_send, &flatbuffer_size, 0, SyscollectorDeltas_Delta_parse_json_table);
+
+            if (flatbuffer) {
+                router_provider_send(router_handle, flatbuffer, flatbuffer_size);
+                w_flatcc_free_buffer(flatbuffer);
+            } else {
+                mdebug2("Unable to publish message for agent %s", agent_id);
+            }
+        }
+
+        cJSON_Delete(j_msg_to_send);
+        cJSON_free(msg_to_send);
+
+        result = wdb_step(stmt);
+    } while(result == SQLITE_ROW);
+}
+
 void wdbi_remove_by_pk(wdb_t *wdb, wdb_component_t component, const char *pk_value) {
     assert(wdb != NULL);
 
@@ -86,9 +163,12 @@ void wdbi_remove_by_pk(wdb_t *wdb, wdb_component_t component, const char *pk_val
         return;
     }
 
-    if (wdb_step(stmt) != SQLITE_DONE) {
+    int result = wdb_step(stmt);
+
+    if (result == SQLITE_ROW) {
+        wdbi_report_removed(wdb->id, component, stmt);
+    } else if (result != SQLITE_DONE) {
         mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return;
     }
 }
 
@@ -311,7 +391,11 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
         sqlite3_bind_text(stmt, 2, end, -1, NULL);
     }
 
-    if (wdb_step(stmt) != SQLITE_DONE) {
+    int result = wdb_step(stmt);
+
+    if (result == SQLITE_ROW) {
+        wdbi_report_removed(wdb->id, component, stmt);
+    } else if (result != SQLITE_DONE) {
         mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
@@ -556,85 +640,6 @@ int wdbi_get_last_manager_checksum(wdb_t *wdb, wdb_component_t component, os_sha
     cJSON_Delete(j_sync_info);
     return result;
 }
-
-// Calculates SHA1 hash from a NULL terminated string array
-int wdbi_array_hash(const char ** strings_to_hash, os_sha1 hexdigest) {
-    size_t it = 0;
-    unsigned char digest[EVP_MAX_MD_SIZE];
-    unsigned int digest_size;
-    int ret_val = OS_SUCCESS;
-
-    EVP_MD_CTX * ctx = EVP_MD_CTX_create();
-    if (!ctx) {
-        mdebug2("Failed during hash context creation");
-        return OS_INVALID;
-    }
-
-    if (1 != EVP_DigestInit(ctx, EVP_sha1()) ) {
-        mdebug2("Failed during hash context initialization");
-        EVP_MD_CTX_destroy(ctx);
-        return OS_INVALID;
-    }
-
-    if (strings_to_hash) {
-        while(strings_to_hash[it]) {
-            if (1 != EVP_DigestUpdate(ctx, strings_to_hash[it], strlen(strings_to_hash[it])) ) {
-                mdebug2("Failed during hash context update");
-                ret_val = OS_INVALID;
-                break;
-            }
-            it++;
-        }
-    }
-
-    EVP_DigestFinal_ex(ctx, digest, &digest_size);
-    EVP_MD_CTX_destroy(ctx);
-    if (ret_val != OS_INVALID) {
-        OS_SHA1_Hexdigest(digest, hexdigest);
-    }
-
-    return ret_val;
-}
-
- // Calculates SHA1 hash from a set of strings as parameters, with NULL as end
- int wdbi_strings_hash(os_sha1 hexdigest, ...) {
-    char* parameter = NULL;
-    unsigned char digest[EVP_MAX_MD_SIZE];
-    unsigned int digest_size;
-    int ret_val = OS_SUCCESS;
-    va_list parameters;
-
-    EVP_MD_CTX * ctx = EVP_MD_CTX_create();
-    if (!ctx) {
-        mdebug2("Failed during hash context creation");
-        return OS_INVALID;
-    }
-
-    if (1 != EVP_DigestInit(ctx, EVP_sha1()) ) {
-        mdebug2("Failed during hash context initialization");
-        EVP_MD_CTX_destroy(ctx);
-        return OS_INVALID;
-    }
-
-    va_start(parameters, hexdigest);
-
-    while(parameter = va_arg(parameters, char*), parameter) {
-        if (1 != EVP_DigestUpdate(ctx, parameter, strlen(parameter)) ) {
-            mdebug2("Failed during hash context update");
-            ret_val = OS_INVALID;
-            break;
-        }
-    }
-    va_end(parameters);
-
-    EVP_DigestFinal_ex(ctx, digest, &digest_size);
-    EVP_MD_CTX_destroy(ctx);
-    if (ret_val != OS_INVALID) {
-        OS_SHA1_Hexdigest(digest, hexdigest);
-    }
-
-    return ret_val;
- }
 
 /**
  * @brief Returns the syncronization status of a component from sync_info table.
