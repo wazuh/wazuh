@@ -19,6 +19,7 @@
 #define SetThreadPriority   wrap_SetThreadPriority
 #define GetCurrentThread    wrap_GetCurrentThread
 #define CreateThread        wrap_CreateThread
+#define CreateProcessW      wrap_CreateProcessW
 
 WINBOOL wrap_SetThreadPriority(HANDLE hThread, int nPriority);
 
@@ -41,4 +42,15 @@ BOOL wrap_OpenProcessToken(HANDLE ProcessHandle,
  * @brief This function loads the expect and will_return calls for the wrapper of SetThreadPriority
  */
 void expect_SetThreadPriority_call(HANDLE handle, int priority, int ret);
+
+BOOL wrap_CreateProcessW(LPCWSTR               lpApplicationName,
+                         LPWSTR                lpCommandLine,
+                         LPSECURITY_ATTRIBUTES lpProcessAttributes,
+                         LPSECURITY_ATTRIBUTES lpThreadAttributes,
+                         BOOL                  bInheritHandles,
+                         DWORD                 dwCreationFlags,
+                         LPVOID                lpEnvironment,
+                         LPCWSTR               lpCurrentDirectory,
+                         LPSTARTUPINFOW        lpStartupInfo,
+                         LPPROCESS_INFORMATION lpProcessInformation);
 #endif
