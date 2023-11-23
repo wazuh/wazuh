@@ -190,6 +190,13 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_create_state_json -Wl,--wrap,wdb_get
 
 # Add extra compiling flags
 add_compile_options(-Wall)
+link_directories(${SRC_FOLDER}/build/shared_modules/router ${SRC_FOLDER}/external/flatcc/lib/)
+include_directories(${SRC_FOLDER}/generated_headers/)
+include_directories(${SRC_FOLDER}/external/flatcc/include)
+
+# Wazuh-DB objects
+FILE(GLOB wazuh_db_objects ${SRC_FOLDER}/wazuh_db/*.o)
+list(REMOVE_ITEM wazuh_db_objects ${SRC_FOLDER}/wazuh_db/main.o ${SRC_FOLDER}/wazuh_db/wdb_shared.o)
 
 # Compilig tests
 list(LENGTH wdb_tests_names count)
@@ -198,13 +205,15 @@ foreach(counter RANGE ${count})
     list(GET wdb_tests_names ${counter} test_name)
     list(GET wdb_tests_flags ${counter} test_flags)
 
-    add_executable(${test_name} ${test_name}.c)
+    add_executable(${test_name} ${test_name}.c ${wazuh_db_objects})
 
     target_link_libraries(
         ${test_name}
         ${WAZUHLIB}
         ${WAZUHEXT}
         ${TEST_DEPS}
+        router
+        flatccrt
     )
 
     if(NOT test_flags STREQUAL " ")
