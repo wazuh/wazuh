@@ -1,20 +1,20 @@
-"""
-Copyright (C) 2015-2023, Wazuh Inc.
-Created by Wazuh, Inc. <info@wazuh.com>.
-This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-This module will contains all cases for the basic test suite
+"""
+This module will contain all cases for the basic test suite
 """
 
 import pytest
 
 # qa-integration-framework imports
 from wazuh_testing import session_parameters
-from . import event_monitor, local_internal_options  # noqa: F401
 
 # Local module imports
+from . import event_monitor
 from .utils import ERROR_MESSAGES
-from conftest import TestConfigurator
+from .conftest import TestConfigurator, local_internal_options
 
 pytestmark = [pytest.mark.server]
 
@@ -32,8 +32,8 @@ configurator.configure_test(configuration_file='bucket_configuration_defaults.ya
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_bucket_defaults(
-    configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_s3_cloudtrail_db,
-    configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
+        configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_s3_cloudtrail_db,
+        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
 ):
     """
     description: The module is invoked with the expected parameters and no error occurs.
@@ -127,8 +127,8 @@ configurator.configure_test(configuration_file='cloudwatch_configuration_default
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_service_defaults(
-    configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
-    configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
+        configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
+        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
 ):
     """
     description: The module is invoked with the expected parameters and no error occurs.
@@ -228,8 +228,8 @@ configurator.configure_test(configuration_file='inspector_configuration_defaults
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_inspector_defaults(
-    configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
-    configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
+        configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
+        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
 ):
     """
     description: The module is invoked with the expected parameters and no error occurs.

@@ -1,38 +1,31 @@
-"""
-Copyright (C) 2015-2023, Wazuh Inc.
-Created by Wazuh, Inc. <info@wazuh.com>.
-This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-This module will contains all cases for the only logs after test suite
 """
+This module will contain all cases for the only logs after test suite
+"""
+import pydevd_pycharm
+
+pydevd_pycharm.settrace('192.168.56.1', port=55555, stdoutToServer=True, stderrToServer=True)
 
 import pytest
 from datetime import datetime
 
 # qa-integration-framework imports
 from wazuh_testing import session_parameters
-from wazuh_testing.modules import aws as cons
-from wazuh_testing.modules.aws import ONLY_LOGS_AFTER_PARAM, event_monitor, local_internal_options  # noqa: F401
-from wazuh_testing.modules.aws.cli_utils import call_aws_module
-from wazuh_testing.modules.aws.cloudwatch_utils import (
-    create_log_events,
-    create_log_stream,
-)
-from wazuh_testing.modules.aws.db_utils import (
-    get_multiple_s3_db_row,
-    get_service_db_row,
-    s3_db_exists,
-    services_db_exists,
-    get_s3_db_row,
-)
-from wazuh_testing.modules.aws.s3_utils import get_last_file_key, upload_file
+from wazuh_testing.constants.paths.aws import S3_CLOUDTRAIL_DB_PATH, AWS_SERVICES_DB_PATH
+from wazuh_testing.constants.aws import ONLY_LOGS_AFTER_PARAM, PATH_DATE_FORMAT
+from wazuh_testing.utils.db_queries.aws_db import get_multiple_s3_db_row, get_service_db_row, get_s3_db_row
+from wazuh_testing.modules.aws.utils import (call_aws_module, create_log_events, create_log_stream, path_exist,
+                                             get_last_file_key, upload_file)
 
 # Local module imports
+from . import event_monitor
 from .utils import ERROR_MESSAGES, TIMEOUTS
-from conftest import TestConfigurator
+from .conftest import TestConfigurator, local_internal_options
 
 pytestmark = [pytest.mark.server]
-
 
 # Set test configurator for the module
 configurator = TestConfigurator(module='only_logs_after_test_module')
@@ -151,7 +144,7 @@ def test_bucket_without_only_logs_after(
 
     assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_event_number']
 
-    assert s3_db_exists()
+    assert path_exist(path=S3_CLOUDTRAIL_DB_PATH)
 
     data = get_s3_db_row(table_name=table_name)
 
@@ -268,7 +261,7 @@ def test_service_without_only_logs_after(
 
     assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
 
-    assert services_db_exists()
+    assert path_exist(path=AWS_SERVICES_DB_PATH)
 
     data = get_service_db_row(table_name="cloudwatch_logs")
 
@@ -397,7 +390,7 @@ def test_bucket_with_only_logs_after(
 
     assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_event_number']
 
-    assert s3_db_exists()
+    assert path_exist(path=S3_CLOUDTRAIL_DB_PATH)
 
     for row in get_multiple_s3_db_row(table_name=table_name):
         assert bucket_name in row.bucket_path
@@ -525,7 +518,7 @@ def test_cloudwatch_with_only_logs_after(
 
     assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_event_number']
 
-    assert services_db_exists()
+    assert path_exist(path=AWS_SERVICES_DB_PATH)
 
     data = get_service_db_row(table_name=table_name_map[service_type])
 
@@ -650,7 +643,7 @@ def test_inspector_with_only_logs_after(
 
     assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_event_number']
 
-    assert services_db_exists()
+    assert path_exist(path=AWS_SERVICES_DB_PATH)
 
     data = get_service_db_row(table_name=table_name_map[service_type])
 
@@ -731,7 +724,7 @@ def test_bucket_multiple_calls(
         base_parameters.extend(['--trail_prefix', path])
 
     # Call the module without only_logs_after and check that no logs were processed
-    last_marker_key = datetime.utcnow().strftime(cons.PATH_DATE_FORMAT)
+    last_marker_key = datetime.utcnow().strftime(PATH_DATE_FORMAT)
 
     event_monitor.check_non_processed_logs_from_output(
         command_output=call_aws_module(*base_parameters),

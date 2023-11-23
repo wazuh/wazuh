@@ -1,12 +1,17 @@
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+"""
+This module will contain all cases for the custom bucket test suite
+"""
+
 import os
 
 import pytest
-from wazuh_testing import TEMPLATE_DIR, TEST_CASES_DIR, global_parameters, T_10
-from wazuh_testing.modules.aws import event_monitor, local_internal_options
-from wazuh_testing.tools.configuration import (
-    get_test_cases_data,
-    load_configuration_template,
-)
+
+# qa-integration-framework imports
+from wazuh_testing import session_parameters
 
 pytestmark = [pytest.mark.server]
 

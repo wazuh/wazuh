@@ -10,6 +10,7 @@ from os.path import join, dirname, realpath
 # CONSTANTS
 TEMPLATE_DIR = 'configuration_template'
 TEST_CASES_DIR = 'test_cases'
+WAZUH_MODULES_DEBUG = 'wazuh_modules.debug'
 
 ERROR_MESSAGES = {
 
@@ -26,7 +27,11 @@ ERROR_MESSAGES = {
     "incorrect_legacy_warning": "The AWS module did not show the expected legacy warning",
     "incorrect_warning": "The AWS module did not show the expected warning",
     "incorrect_invalid_value_message": "The AWS module did not show the expected message about invalid value",
-    "incorrect_service_calls_amount": "The AWS module was not called for bucket or service the right amount of times"
+    "incorrect_service_calls_amount": "The AWS module was not called for bucket or service the right amount of times",
+    "unexpected_number_of_events_found": "Some logs may have been processed, "
+                                         "or the results found are more than expected",
+    "incorrect_marker": "The AWS module did not use the correct marker",
+    "incorrect_no_region_found_message": "The AWS module did not show correct message about non-existent region"
 }
 
 TIMEOUTS = {
