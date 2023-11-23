@@ -79,6 +79,16 @@ public:
             }
         };
     }
+
+    /**
+     * @brief Clean all the subscribers from the trace.
+     *
+     */
+    void unsubscribeAll()
+    {
+        std::unique_lock lock {m_subscribersMutex};
+        m_subscribers.clear();
+    }
 };
 
 } // namespace bk::rx::detail

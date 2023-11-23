@@ -20,45 +20,6 @@ private:
     std::shared_ptr<bk::IControllerMaker> m_controllerMaker; ///< The controller maker used to construct the controller.
 
     /**
-     * @brief Get the Controller object for a given policy.
-     *
-     * @param policyName The name of the policy.
-     * @param builder The builder used to construct the policy.
-     * @return std::shared_ptr<bk::IController> The constructed controller.
-     * @throws std::runtime_error if the policy has no assets or if the backend cannot be built.
-     */
-    std::shared_ptr<bk::IController> getController(const base::Name& policyName)
-    {
-        if (policyName.parts().size() == 0 || policyName.parts()[0] != "policy")
-        {
-            throw std::runtime_error {"The asset name is empty or it is not a policy"};
-        }
-        // Build the policy and create the pipeline
-        auto newPolicy = m_builder->buildPolicy(policyName);
-        if (base::isError(newPolicy))
-        {
-            throw std::runtime_error {base::getError(newPolicy).message};
-        }
-
-        auto policy = base::getResponse(newPolicy);
-        if (policy->assets().empty())
-        {
-            throw std::runtime_error {fmt::format("Policy '{}' has no assets", policyName)};
-        }
-
-        // TODO Check de assets names policy api (Return a string instead of a base::Names?)
-        std::unordered_set<std::string> assetNames;
-        std::transform(policy->assets().begin(),
-                       policy->assets().end(),
-                       std::inserter(assetNames, assetNames.begin()),
-                       [](const auto& name) { return name.toStr(); });
-
-        auto controller = m_controllerMaker->create();
-        controller->build(policy->expression(), assetNames);
-        return controller;
-    }
-
-    /**
      * @brief Get the Expression object for a given filter.
      *
      * @param filterName The name of the filter.
@@ -104,6 +65,44 @@ public:
 
     EnvironmentBuilder() = delete;
 
+    /**
+     * @brief Get the Controller object for a given policy.
+     *
+     * @param policyName The name of the policy.
+     * @param builder The builder used to construct the policy.
+     * @return std::shared_ptr<bk::IController> The constructed controller.
+     * @throws std::runtime_error if the policy has no assets or if the backend cannot be built.
+     */
+    std::shared_ptr<bk::IController> makeController(const base::Name& policyName)
+    {
+        if (policyName.parts().size() == 0 || policyName.parts()[0] != "policy")
+        {
+            throw std::runtime_error {"The asset name is empty or it is not a policy"};
+        }
+        // Build the policy and create the pipeline
+        auto newPolicy = m_builder->buildPolicy(policyName);
+        if (base::isError(newPolicy))
+        {
+            throw std::runtime_error {base::getError(newPolicy).message};
+        }
+
+        auto policy = base::getResponse(newPolicy);
+        if (policy->assets().empty())
+        {
+            throw std::runtime_error {fmt::format("Policy '{}' has no assets", policyName)};
+        }
+
+        // TODO Check de assets names policy api (Return a string instead of a base::Names?)
+        std::unordered_set<std::string> assetNames;
+        std::transform(policy->assets().begin(),
+                       policy->assets().end(),
+                       std::inserter(assetNames, assetNames.begin()),
+                       [](const auto& name) { return name.toStr(); });
+
+        auto controller = m_controllerMaker->create();
+        controller->build(policy->expression(), assetNames);
+        return controller;
+    }
 
     /**
      * @brief Create an environment based on a policy and a filter.
@@ -118,7 +117,7 @@ public:
         std::shared_ptr<bk::IController> controller = nullptr;
         try
         {
-            controller = getController(policyName);
+            controller = makeController(policyName);
             auto expression = getExpression(filterName);
             return std::make_unique<Environment>(std::move(expression), std::move(controller));
         }
@@ -132,7 +131,6 @@ public:
                 "Failed to create environment with policy '{}' and filter '{}': {}", policyName, filterName, e.what())};
         }
     }
-
 };
 
 } // namespace router
