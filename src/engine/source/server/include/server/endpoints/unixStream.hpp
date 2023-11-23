@@ -60,12 +60,16 @@ private:
      *
      * This function is used to process the messages received from the client, it is called when a stream is parsed.
      * @param client Handle to the client that sent the message
+     * @param wAsync AsyncHandler instance that will be used to send the event using send()
      * @param protocolHandler Protocol handler to process the message
-     * @param messages Messages to be processed
+     * @param request Messages to be processed
+     * @param response Shared memory where the callback executed by the AsyncHandle will write the response
      */
     void processMessages(std::weak_ptr<uvw::PipeHandle> clientRef,
+                         std::weak_ptr<uvw::AsyncHandle> wAsync,
                          std::shared_ptr<ProtocolHandler> protocolHandler,
-                         std::vector<std::string>&& messages);
+                         std::vector<std::string>&& request,
+                         std::shared_ptr<std::string> response);
 
     /**
      * @brief Create a Task from a message received from the client and enqueue it
@@ -73,10 +77,12 @@ private:
      * This function is used to create a task work from a message received from the client, it is called when a message
      * is received and enqueued for processing by the thread pool.
      * @param client Handle to the client that sent the message
+     * @param callbackFn A callback function that will be invoked with the generated response
      * @param protocolHandler Protocol handler to process the message
      * @param message Message to be processed
      */
     void createAndEnqueueTask(std::weak_ptr<uvw::PipeHandle> wClient,
+                              std::function<void(const std::string&)> callbackFn,
                               std::shared_ptr<ProtocolHandler> protocolHandler,
                               std::string&& message);
 
@@ -84,9 +90,10 @@ private:
      * @brief Configure the client to close the connection gracefully
      *
      * @param client Client to close
+     * @param async Async Handle to close if the client closes the connection
      * @param timer Timer to close if the client closes the connection
      */
-    void configureCloseClient(std::shared_ptr<uvw::PipeHandle> client, std::shared_ptr<uvw::TimerHandle> timer);
+    void configureCloseClient(std::shared_ptr<uvw::PipeHandle> client, std::shared_ptr<uvw::TimerHandle> timer, std::shared_ptr<uvw::AsyncHandle> async);
 
     /**
      * @brief Create a Timer resource, this timer will be used to close the client connection if it doesn't send any
@@ -94,9 +101,10 @@ private:
      *
      * @param loop Loop to create the timer
      * @param wClient Client to close if the timer expires
+     * @param wAsync Async Handle to close if the timer expires
      * @return Timer resource
      */
-    std::shared_ptr<uvw::TimerHandle> createTimer(std::weak_ptr<uvw::PipeHandle> wClient);
+    std::shared_ptr<uvw::TimerHandle> createTimer(std::weak_ptr<uvw::PipeHandle> wClient, std::weak_ptr<uvw::AsyncHandle> wAsync);
 
 public:
     /**
