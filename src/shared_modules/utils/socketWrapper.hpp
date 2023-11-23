@@ -284,6 +284,73 @@ public:
     };
 };
 
+/**
+ * @brief This class is used for the following format:
+ *          - M bytes: body. Mandatory data to send.
+ */
+class NoHeaderProtocol final
+{
+public:
+    /**
+     * @brief Create the buffer to send according to this protocol.
+     *
+     * @param buffer        Output buffer to write.
+     * @param bufferSize    Size of the output buffer.
+     * @param dataBody      Data to send.
+     * @param sizeBody      Size of the data to send.
+     * @param dataHeader    Optional header to send.
+     * @param sizeHeader    Size of the optional header.
+     */
+    void static buildBuffer(std::vector<char>& buffer,
+                            uint32_t& bufferSize,
+                            const char* dataBody,
+                            uint32_t sizeBody,
+                            const char* dataHeader = nullptr,
+                            uint32_t sizeHeader = 0)
+    {
+        if (sizeBody > BUFFER_MAX_SIZE)
+        {
+            buffer.resize(sizeBody + 1);
+        }
+
+        std::copy(dataBody, dataBody + sizeBody, std::begin(buffer));
+
+        bufferSize = sizeBody;
+    }
+
+    /**
+     * @brief Get the size of the header according to this protocol.
+     *
+     * @param buffer Buffer to obtain the header size from.
+     * @return auto Header size.
+     */
+    auto static getHeaderSize(const std::vector<char>& buffer)
+    {
+        return 0;
+    }
+
+    /**
+     * @brief Get the data offset according to this protocol.
+     *
+     * @param headerSize The size of the header.
+     * @return auto Data offset.
+     */
+    auto static getDataOffset(uint32_t headerSize)
+    {
+        return 0;
+    }
+
+    /**
+     * @brief Get the header offset according to this protocol.
+     *
+     * @return auto Header offset.
+     */
+    auto static getHeaderOffset()
+    {
+        return 0;
+    }
+};
+
 enum class SocketStatus
 {
     HEADER,
