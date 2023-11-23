@@ -35,9 +35,9 @@ public:
         m_it->SeekToFirst();
     }
 
-    RocksDBIterator(std::shared_ptr<rocksdb::Iterator> it, std::string prefix)
+    RocksDBIterator(std::shared_ptr<rocksdb::Iterator> it, std::string_view prefix)
         : m_it(std::move(it))
-        , m_prefix(std::move(prefix))
+        , m_prefix(prefix)
     {
     }
 
@@ -45,7 +45,7 @@ public:
 
     RocksDBIterator(RocksDBIterator&& other) noexcept
         : m_it(std::move(other.m_it))
-        , m_prefix(std::move(other.m_prefix))
+        , m_prefix(other.m_prefix)
     {
     }
 
@@ -64,7 +64,7 @@ public:
         if (this != &other)
         {
             m_it = std::move(other.m_it);
-            m_prefix = std::move(other.m_prefix);
+            m_prefix = other.m_prefix;
         }
         return *this;
     }
@@ -107,7 +107,7 @@ public:
 
 private:
     std::shared_ptr<rocksdb::Iterator> m_it;
-    std::string m_prefix;
+    std::string_view m_prefix;
 };
 
 #endif // _ROCKS_DB_ITERATOR_HPP
