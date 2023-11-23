@@ -2769,9 +2769,9 @@ checks:
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*loglevel\s+INFO|^\s*loglevel\s+VERBOSE'
+      - 'c:sshd -T -> r:^\s*LogLevel\s+INFO|^\s*LogLevel\s*VERBOSE|^\s*loglevel\s+INFO|^\s*loglevel\s+VERBOSE'
       - 'not f:/etc/ssh/sshd_config -> r:^\s*LogLevel\s+ && !r:^\s*\t*LogLevel\s+INFO|^\s*\t*LogLevel\s+VERBOSE|^\s*\t*LogLevel\t+INFO|^\s*\t*LogLevel\t+VERBOSE'
-      - 'not d:/etc/ssh/sshd_config.d/ -> r:\.*.conf$ -> !r:^\s*\t*LogLevel\s+INFO|^\s*\t*LogLevel\s+VERBOSE|^\s*\t*LogLevel\t+INFO|^\s*\t*LogLevel\t+VERBOSE'
+      - 'not d:/etc/ssh/sshd_config.d/ -> r:\.*.conf$ -> r:^\s*LogLevel\s+ && >!r:^\s*\t*LogLevel\s+INFO|^\s*\t*LogLevel\s+VERBOSE|^\s*\t*LogLevel\t+INFO|^\s*\t*LogLevel\t+VERBOSE'
 
   # 4.2.6 Ensure SSH PAM is enabled. (Automated)
   - id: 19113
