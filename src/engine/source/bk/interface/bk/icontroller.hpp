@@ -118,6 +118,12 @@ public:
      * @param subscription the subscription identifier to unsubscribe.
      */
     virtual void unsubscribe(const std::string& traceable, Subscription subscription) = 0;
+
+    /**
+     * @brief Clean all the subscribers from all the traceables.
+     *
+     */
+    virtual void unsubscribeAll() = 0;
 };
 
 /**

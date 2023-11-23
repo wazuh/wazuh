@@ -6,8 +6,8 @@
 #include <shared_mutex>
 
 #include <bk/icontroller.hpp>
-#include <store/istore.hpp>
 #include <queue/iqueue.hpp>
+#include <store/istore.hpp>
 
 #include <builder/registry.hpp>
 #include <parseEvent.hpp>
@@ -18,38 +18,56 @@
 namespace router
 {
 
+namespace test
+{
+using TestingTuple = std::tuple<base::Event, Opt, std::function<void(Output&&)>>;
+using QueueType = std::shared_ptr<TestingTuple>;
+} // namespace test
+using ProdQueueType = base::queue::iQueue<base::Event>;
+using TestQueueType = base::queue::iQueue<test::QueueType>;
+
 // Forward declarations
 class Router;
+class Tester;
 
 struct Config
 {
-
     int m_numThreads;
-    // TODO Change to weak_ptr
-    std::weak_ptr<store::IStore> m_wStore;
+
+    std::weak_ptr<store::IStore> m_wStore; // TODO Change to weak_ptr
     std::weak_ptr<builder::internals::Registry<builder::internals::Builder>> m_wRegistry;
     std::shared_ptr<bk::IControllerMaker> m_controllerMaker;
 
-    std::shared_ptr<base::queue::iQueue<base::Event>> m_queue; // Move to private and fix queue
-
+    std::shared_ptr<ProdQueueType> m_prodQueue;
+    std::shared_ptr<TestQueueType> m_testQueue;
 };
 
-class RouterAdmin : public IRouterAPI
+class RouterAdmin
+    : public IRouterAPI
+    , public ITesterAPI
 {
 
 private:
+    // Global
+    std::atomic_bool m_isRunning;       ///< Flag to know if the router is running
+    std::vector<std::thread> m_threads; ///< Vector of threads for the router (move router)
 
-    // State
-    std::list<std::shared_ptr<Router>> m_routers;
-    mutable std::shared_mutex m_bussyMutex; ///< Mutex for updating the router (Only 1 request at a time)
-    std::atomic_bool m_isRunning;          ///< Flag to know if the router is running
-    std::vector<std::thread> m_threads;    ///< Vector of threads for the router (move router)
-
-    // Internal queue
-    struct Queue
+    // Production
+    struct Production
     {
-        std::shared_ptr<base::queue::iQueue<base::Event>> prod;  // Queue for production events
-    } m_queue;
+        std::list<std::shared_ptr<Router>> routers;
+        mutable std::shared_mutex bussyMutex; ///< Mutex for updating the router (Only 1 request at a time)
+        std::shared_ptr<ProdQueueType> queue;
+        Production() = default;
+    } m_production;
+
+    struct Testing
+    {
+        std::list<std::shared_ptr<Tester>> tester; ///< List of testers
+        mutable std::shared_mutex bussyMutex;      ///< Mutex for updating the testers (Only 1 request at a time)
+        std::shared_ptr<TestQueueType> queue;
+        Testing() = default;
+    } m_testing;
 
     void validateConfig(const Config& config);
 
@@ -83,7 +101,7 @@ public:
             LOG_WARNING("Error parsing event: '{}' (discarding...)", e.what());
             return;
         }
-        m_queue.prod->push(std::move(event));
+        m_production.queue->push(std::move(event));
     }
 
     /**************************************************************************
@@ -123,13 +141,51 @@ public:
     /**
      * @copydoc router::IRouterAPI::postEvent
      */
-    void postEvent(base::Event&& event) override { m_queue.prod->push(std::move(event)); }
+    void postEvent(base::Event&& event) override { m_production.queue->push(std::move(event)); }
 
     /**
      * @copydoc router::IRouterAPI::postStrEvent
      */
     base::OptError postStrEvent(std::string_view event) override;
 
+    /**************************************************************************
+     * ITesterAPI
+     *************************************************************************/
+
+    /**
+     * @copydoc router::ITesterAPI::postTestEnvironment
+     */
+    base::OptError postTestEntry(const test::EntryPost& entry) override;
+
+    /**
+     * @copydoc router::ITesterAPI::deleteTestEnvironment
+     */
+    base::OptError deleteTestEntry(const std::string& name) override;
+
+    /**
+     * @copydoc router::ITesterAPI::getTestEnvironment
+     */
+    base::RespOrError<test::Entry> getTestEntry(const std::string& name) const override;
+
+    /**
+     * @copydoc router::ITesterAPI::reloadTestEnvironment
+     */
+    base::OptError reloadTestEntry(const std::string& name) override;
+
+    /**
+     * @copydoc router::ITesterAPI::getTestEntries
+     */
+    std::list<test::Entry> getTestEntries() const override;
+
+    /**
+     * @copydoc router::ITesterAPI::ingestTest
+     */
+    base::RespOrError<std::future<test::Output>> ingestTest(base::Event&& event, const test::Opt& opt) override;
+
+    /**
+     * @copydoc router::ITesterAPI::ingestTest
+     */
+    base::RespOrError<std::future<test::Output>> ingestTest(std::string_view event, const test::Opt& opt) override;
 };
 
 } // namespace router

@@ -119,15 +119,6 @@ public:
      */
     void ingest(base::Event&& event);
 
-    // /**
-    //  * @brief Ingests an event into the router for processing and returns the result.
-    //  * // TODO Move to private
-    //  * @param event The event to be ingested.
-    //  * @param opt The optional parameters for the ingest operation.
-    //  * @return test::Output The result
-    //  */
-    //   base::RespOrError<test::Output>
-    //   ingestTest(base::Event&& event, const std::string& name, const std::vector<std::string>& assets);
 };
 
 } // namespace router
