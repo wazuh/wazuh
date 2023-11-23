@@ -13,9 +13,9 @@
 #define _ROCKS_DB_WRAPPER_HPP
 
 #include "rocksDBIterator.hpp"
-#include <rocksdb/db.h>
 #include <filesystem>
 #include <iostream>
+#include <rocksdb/db.h>
 #include <string>
 
 namespace Utils
@@ -214,7 +214,7 @@ namespace Utils
          * @param key Key to seek.
          * @return RocksDBIterator Iterator to the database.
          */
-        RocksDBIterator seek(const std::string& key)
+        RocksDBIterator seek(std::string_view key)
         {
             return {std::shared_ptr<rocksdb::Iterator>(m_db->NewIterator(rocksdb::ReadOptions())), key};
         }

@@ -114,12 +114,11 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const std::stri
                         bulkData.append("\n");
                     }
                 }
-
                 // Process data.
                 HTTPRequest::instance().post(
                     HttpURL(url),
                     bulkData,
-                    [&](const std::string& response) {},
+                    [&](const std::string& response) { std::cout << "Response: " << response << std::endl; },
                     [&](const std::string& error, const long statusCode)
                     { std::cout << "Status:" << statusCode << " - Error: " << error << std::endl; },
                     "",

@@ -1,8 +1,15 @@
-<indexer>
+  <indexer>
     <enabled>yes</enabled>
     <hosts>
-        <host>http://127.0.0.1:9200</host>
+      <host>https://0.0.0.0:9200</host>
     </hosts>
     <username>admin</username>
     <password>admin</password>
-</indexer>
+    <ssl>
+      <certificate_authorities>
+        <ca>/etc/filebeat/certs/root-ca.pem</ca>
+      </certificate_authorities>
+      <certificate>/etc/filebeat/certs/filebeat.pem</certificate>
+      <key>/etc/filebeat/certs/filebeat-key.pem</key>
+    </ssl>
+  </indexer>
