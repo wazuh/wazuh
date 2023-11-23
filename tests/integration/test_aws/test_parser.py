@@ -1,19 +1,20 @@
-"""
-Copyright (C) 2015-2023, Wazuh Inc.
-Created by Wazuh, Inc. <info@wazuh.com>.
-This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-This module will contains all cases for the parser test suite
 """
+This module will contain all cases for the parser test suite
+"""
+
 import pytest
 
 # qa-integration-framework imports
 from wazuh_testing import session_parameters
-from wazuh_testing.modules.aws import event_monitor, local_internal_options  # noqa: F401
 
 # Local module imports
+from . import event_monitor
 from .utils import ERROR_MESSAGES, TIMEOUTS
-from conftest import TestConfigurator
+from .conftest import TestConfigurator, local_internal_options
 
 pytestmark = [pytest.mark.server]
 
@@ -423,6 +424,9 @@ def test_invalid_values_in_bucket(
     input_description:
         - The `configuration_values_in_bucket` file provides the configuration for this test.
     """
+
+
+
     log_monitor.start(
         timeout=session_parameters.default_timeout,
         callback=event_monitor.callback_detect_aws_invalid_value,
