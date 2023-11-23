@@ -1,25 +1,22 @@
-"""
-Copyright (C) 2015-2023, Wazuh Inc.
-Created by Wazuh, Inc. <info@wazuh.com>.
-This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-This module will contains all cases for the path test suite
 """
-
+This module will contain all cases for the path test suite
+"""
 import pytest
 
 # qa-integration-framework imports
 from wazuh_testing import session_parameters
-from wazuh_testing.modules.aws import event_monitor, local_internal_options  # noqa: F401
-from wazuh_testing.modules.aws.db_utils import (
-    get_s3_db_row,
-    s3_db_exists,
-    table_exists_or_has_values,
-)
+from wazuh_testing.constants.paths.aws import S3_CLOUDTRAIL_DB_PATH
+from wazuh_testing.utils.db_queries.aws_db import get_s3_db_row, table_exists_or_has_values
+from wazuh_testing.modules.aws.utils import path_exist
 
 # Local module imports
+from . import event_monitor
 from .utils import ERROR_MESSAGES, TIMEOUTS
-from conftest import TestConfigurator
+from .conftest import TestConfigurator, local_internal_options
 
 pytestmark = [pytest.mark.server]
 
@@ -146,8 +143,9 @@ def test_path(
 
         assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_empty_path_message']
 
-    assert s3_db_exists()
+    assert path_exist(path=S3_CLOUDTRAIL_DB_PATH)
 
+    # @todo same as the other db
     if expected_results:
         data = get_s3_db_row(table_name=table_name)
         assert f"{bucket_name}/{path}/" == data.bucket_path

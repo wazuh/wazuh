@@ -1,22 +1,21 @@
-"""
-Copyright (C) 2015-2023, Wazuh Inc.
-Created by Wazuh, Inc. <info@wazuh.com>.
-This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-This module will contains all cases for the remove from bucket test suite
+"""
+This module will contain all cases for the remove from bucket test suite
 """
 
 import pytest
 
 # qa-integration-framework imports
 from wazuh_testing import session_parameters
-from wazuh_testing.modules.aws import event_monitor, local_internal_options  # noqa: F401
-from wazuh_testing.modules.aws.cloudwatch_utils import log_stream_exists
-from wazuh_testing.modules.aws.s3_utils import file_exists
+from wazuh_testing.modules.aws.utils import log_stream_exists, file_exists
 
 # Local module imports
+from . import event_monitor
 from .utils import ERROR_MESSAGES
-from conftest import TestConfigurator
+from .conftest import TestConfigurator, local_internal_options
 
 pytestmark = [pytest.mark.server]
 

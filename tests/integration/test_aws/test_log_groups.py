@@ -10,16 +10,15 @@ import pytest
 
 # qa-integration-framework imports
 from wazuh_testing import session_parameters
-from wazuh_testing.modules.aws import event_monitor, local_internal_options  # noqa: F401
-from wazuh_testing.modules.aws.db_utils import (
-    get_multiple_service_db_row,
-    services_db_exists,
-    table_exists,
-)
+from wazuh_testing.utils.db_queries.aws_db import get_multiple_service_db_row, table_exists
+from wazuh_testing.modules.aws.utils import path_exist
+from wazuh_testing.constants.paths.aws import AWS_SERVICES_DB_PATH
+from wazuh_testing.modules.aws.patterns import NON_EXISTENT_SPECIFIED_LOG_GROUPS
 
 # Local module imports
+from . import event_monitor
 from .utils import ERROR_MESSAGES, TIMEOUTS
-from conftest import TestConfigurator
+from .conftest import TestConfigurator, local_internal_options
 
 pytestmark = [pytest.mark.server]
 
@@ -138,13 +137,14 @@ def test_log_groups(
     else:
         log_monitor.start(
             timeout=TIMEOUTS[10],
-            callback=event_monitor.make_aws_callback(r'.*The specified log group does not exist.'),
+            callback=event_monitor.make_aws_callback(pattern=fr"{NON_EXISTENT_SPECIFIED_LOG_GROUPS}")
         )
 
         assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_no_existent_log_group']
 
-    assert services_db_exists()
+    assert path_exist(path=AWS_SERVICES_DB_PATH)
 
+    # @todo Ask reason behind query retuning string instead of list as stated in docstring
     if expected_results:
         log_group_list = log_group_names.split(",")
         for row in get_multiple_service_db_row(table_name='cloudwatch_logs'):

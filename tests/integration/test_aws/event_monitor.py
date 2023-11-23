@@ -8,10 +8,23 @@ This module will contains all callback methods to monitor and event
 
 import re
 
-#
+# # qa-integration-framework imports
+from wazuh_testing.modules.aws.patterns import (WHITESPACE_MATCH, CURLY_BRACE_MATCH, AWS_MODULE_STARTED_PARAMETRIZED,
+                                                AWS_UNDEFINED_SERVICE_TYPE, AWS_DEPRECATED_CONFIG_DEFINED,
+                                                AWS_NO_SERVICE_WARNING, AWS_MODULE_STARTED, INVALID_EMPTY_TYPE_ERROR,
+                                                EMPTY_CONTENT_ERROR, EMPTY_CONTENT_WARNING,
+                                                INVALID_EMPTY_SERVICE_TYPE_ERROR, INVALID_TAG_CONTENT_ERROR,
+                                                PARSING_BUCKET_ERROR_WARNING,
+                                                PARSING_SERVICE_ERROR_WARNING, SERVICE_ANALYSIS, BUCKET_ANALYSIS,
+                                                MODULE_START, PARSER_ERROR, MODULE_ERROR, NEW_LOG_FOUND, DEBUG_MESSAGE,
+                                                EVENTS_COLLECTED, DEBUG_ANALYSISD_MESSAGE, ANALYSISD_EVENT,
+                                                AWS_EVENT_HEADER, NO_LOG_PROCESSED, NO_BUCKET_LOG_PROCESSED,
+                                                MARKER, NO_NEW_EVENTS, EVENT_SENT, )
 from wazuh_testing.constants.aws import VPC_FLOW_TYPE, INSPECTOR_TYPE
 from wazuh_testing.modules.aws.utils import analyze_command_output
 
+# Local imports
+from .utils import ERROR_MESSAGES
 
 
 def make_aws_callback(pattern, prefix=''):
@@ -24,9 +37,7 @@ def make_aws_callback(pattern, prefix=''):
     Returns:
         lambda: Function that returns if there's a match in the file.
     """
-    pattern = WHITESPACE_REGEX.join(pattern.split())
-    regex = re.compile(CURLY_BRACE_MATCH.format(prefix, pattern))
-
+    regex = re.compile(r'{}{}'.format(prefix, pattern))
     return lambda line: regex.match(line)
 
 
@@ -39,7 +50,7 @@ def callback_detect_aws_module_called(parameters):
     Returns:
         Callable: Callback to match the line.
     """
-    pattern = f'{AWS_MODULE_STARTED_PARAMETRIZED} {" ".join(parameters)}\n*'
+    pattern = fr'{AWS_MODULE_STARTED_PARAMETRIZED}{" ".join(parameters)}\n*'
     regex = re.compile(pattern)
     return lambda line: regex.match(line)
 
@@ -54,9 +65,7 @@ def callback_detect_aws_error_for_missing_type(line):
         Optional[str]: Line if it matches.
     """
 
-    if re.match(
-        AWS_UNDEFINED_SERVICE_TYPE, line
-    ):
+    if re.match(fr"{AWS_UNDEFINED_SERVICE_TYPE}", line):
         return line
 
 
@@ -70,9 +79,7 @@ def callback_detect_aws_legacy_module_warning(line):
         Optional[str]: Line if it matches.
     """
 
-    if re.match(
-        AWS_DEPRECATED_CONFIG_DEFINED, line
-    ):
+    if re.match(fr"{AWS_DEPRECATED_CONFIG_DEFINED}", line):
         return line
 
 
@@ -86,7 +93,9 @@ def callback_detect_aws_module_warning(line):
         Optional[str]: Line if it matches.
     """
 
-    if re.match(AWS_NO_SERVICE_WARNING, line):
+    if re.match(
+            fr"{AWS_NO_SERVICE_WARNING}", line
+    ):
         return line
 
 
@@ -100,7 +109,9 @@ def callback_detect_aws_module_started(line):
         Optional[str]: Line if it matches.
     """
 
-    if re.match(AWS_MODULE_STARTED, line):
+    if re.match(
+            fr"{AWS_MODULE_STARTED}", line
+    ):
         return line
 
 
@@ -115,9 +126,9 @@ def callback_detect_aws_empty_value(line):
     """
 
     if (
-        re.match(INVALID_TYPE_ERROR, line) or
-        re.match(EMPTY_CONTENT_ERROR, line) or
-        re.match(EMPTY_CONTENT_WARNING, line)
+            re.match(fr"{INVALID_EMPTY_TYPE_ERROR}", line) or
+            re.match(fr"{EMPTY_CONTENT_ERROR}", line) or
+            re.match(fr"{EMPTY_CONTENT_WARNING}", line)
     ):
         return line
 
@@ -133,10 +144,10 @@ def callback_detect_aws_invalid_value(line):
     """
 
     if (
-        re.match(INVALID_EMPTY_SERVICE_TYPE_ERROR, line) or
-        re.match(INVALID_TAG_CONTENT_ERROR, line) or
-        re.match(PARSING_BUCKET_ERROR_WARNING, line),
-        re.match(PARSING_SERVICE_ERROR_WARNING, line)
+            re.match(fr"{INVALID_EMPTY_SERVICE_TYPE_ERROR}", line) or
+            re.match(fr"{INVALID_TAG_CONTENT_ERROR}", line) or
+            re.match(fr"{PARSING_BUCKET_ERROR_WARNING}", line),
+            re.match(fr"{PARSING_SERVICE_ERROR_WARNING}", line)
     ):
         return line
 
@@ -152,8 +163,8 @@ def callback_detect_bucket_or_service_call(line):
     """
 
     if (
-        re.match(SERVICE_ANALYSIS, line) or
-        re.match(BUCKET_ANALYSIS, line)
+            re.match(fr"{SERVICE_ANALYSIS}", line) or
+            re.match(fr"{BUCKET_ANALYSIS}", line)
     ):
         return line
 
@@ -168,7 +179,9 @@ def callback_detect_aws_module_start(line):
         Optional[str]: Line if it matches.
     """
 
-    if re.match(MODULE_START, line):
+    if re.match(
+            fr"{MODULE_START}", line
+    ):
         return line
 
 
@@ -181,7 +194,8 @@ def callback_detect_all_aws_err(line):
     Returns:
         Optional[str]: line if it matches.
     """
-    if re.match(PARSER_ERROR, line) or re.match(MODULE_ERROR, line):
+    if (re.match(fr"{PARSER_ERROR}", line) or
+            re.match(fr"{MODULE_ERROR}", line)):
         return line
 
 
@@ -220,7 +234,9 @@ def callback_detect_event_processed(line):
     Returns:
         Optional[str]: line if it matches.
     """
-    if re.match(NEW_LOG_FOUND, line):
+    if re.match(
+            fr"{NEW_LOG_FOUND}", line
+    ):
         return line
 
 
@@ -238,9 +254,9 @@ def callback_detect_event_processed_or_skipped(pattern):
 
 def callback_detect_service_event_processed(expected_results, service_type):
     if service_type == INSPECTOR_TYPE:
-        regex = re.compile(f"{DEBUG_MESSAGE} {expected_results} {EVENTS_COLLECTED}")
+        regex = re.compile(fr"{DEBUG_MESSAGE} {expected_results} {EVENTS_COLLECTED}")
     else:
-        regex = re.compile(f"{DEBUG_ANALYSISD_MESSAGE} {expected_results} {ANALYSISD_EVENT}")
+        regex = re.compile(fr"{DEBUG_ANALYSISD_MESSAGE} {expected_results} {ANALYSISD_EVENT}")
     return lambda line: regex.match(line)
 
 
@@ -253,7 +269,8 @@ def callback_event_sent_to_analysisd(line):
     Returns:
         Optional[str]: line if it matches.
     """
-    if line.startswith(AWS_EVENT_HEADER):
+    if line.startswith(
+            fr"{AWS_EVENT_HEADER}"):
         return line
 
 
@@ -268,7 +285,7 @@ def check_processed_logs_from_output(command_output, expected_results=1):
         command_output=command_output,
         callback=callback_detect_event_processed,
         expected_results=expected_results,
-        error_message=INCORRECT_EVENT_NUMBER
+        error_message=ERROR_MESSAGES['incorrect_event_number']
     )
 
 
@@ -281,15 +298,15 @@ def check_non_processed_logs_from_output(command_output, bucket_type, expected_r
         expected_results (int, optional): Number of results to find. Default to 1.
     """
     if bucket_type == VPC_FLOW_TYPE:
-        pattern = NO_LOG_PROCESSED
+        pattern = fr"{NO_LOG_PROCESSED}"
     else:
-        pattern = NO_BUCKET_LOG_PROCESSED
+        pattern = fr"{NO_BUCKET_LOG_PROCESSED}"
 
     analyze_command_output(
         command_output,
         callback=make_aws_callback(pattern),
         expected_results=expected_results,
-        error_message=UNEXPECTED_NUMBER_OF_EVENTS_FOUND
+        error_message=ERROR_MESSAGES['unexpected_number_of_events_found']
     )
 
 
@@ -301,13 +318,13 @@ def check_marker_from_output(command_output, file_key, expected_results=1):
         file_key (str): Value to check as a marker.
         expected_results (int, optional): Number of results to find. Default to 1.
     """
-    pattern = f"{MARKER} {file_key}"
+    pattern = fr"{MARKER} {file_key}"
 
     analyze_command_output(
         command_output,
         callback=make_aws_callback(pattern),
         expected_results=expected_results,
-        error_message=INCORRECT_MARKER
+        error_message=ERROR_MESSAGES['incorrect_marker']
     )
 
 
@@ -318,19 +335,19 @@ def check_service_processed_logs_from_output(
         command_output=command_output,
         callback=callback_detect_service_event_processed(events_sent, service_type),
         expected_results=expected_results,
-        error_message=INCORRECT_EVENT_NUMBER
+        error_message=ERROR_MESSAGES['incorrect_event_number']
     )
 
 
 def check_service_non_processed_logs_from_output(command_output, service_type, expected_results=1):
     if service_type == INSPECTOR_TYPE:
-        pattern = NO_NEW_EVENTS
+        pattern = fr"{NO_NEW_EVENTS}"
     else:
-        pattern = EVENT_SENT
+        pattern = fr"{EVENT_SENT}"
 
     analyze_command_output(
         command_output,
         callback=make_aws_callback(pattern),
         expected_results=expected_results,
-        error_message=POSSIBLY_PROCESSED_LOGS
+        error_message=ERROR_MESSAGES['unexpected_number_of_events_found']
     )

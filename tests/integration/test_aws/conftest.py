@@ -1,10 +1,9 @@
-"""
-Copyright (C) 2015-2023, Wazuh Inc.
-Created by Wazuh, Inc. <info@wazuh.com>.
-This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+# Copyright (C) 2015-2023, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-This module will contains all necessary components (fixtures, classes, methods)
-to configure the test for it's execution.
+"""
+This module contains all necessary components (fixtures, classes, methods)to configure the test for its execution.
 """
 
 import pytest
@@ -32,9 +31,16 @@ from wazuh_testing.utils.configuration import (
     get_test_cases_data,
     load_configuration_template,
 )
+from wazuh_testing.modules.monitord import configuration as monitord_config
 
 # Local imports
-from .utils import TEST_DATA_PATH,  TEMPLATE_DIR, TEST_CASES_DIR
+from .utils import TEST_DATA_PATH,  TEMPLATE_DIR, TEST_CASES_DIR, WAZUH_MODULES_DEBUG
+
+
+# Set local internal options
+local_internal_options = {WAZUH_MODULES_DEBUG: '2',
+                          monitord_config.MONITORD_ROTATE_LOG: '0'}
+
 
 @pytest.fixture
 def mark_cases_as_skipped(metadata):
@@ -71,7 +77,6 @@ def upload_and_delete_file_to_s3(metadata):
         metadata['uploaded_file'] = filename
 
     yield
-
     if file_exists(filename=filename, bucket_name=bucket_name):
         delete_file(filename=filename, bucket_name=bucket_name)
         logger.debug('Deleted file: %s from bucket %s', filename, bucket_name)
@@ -159,9 +164,8 @@ def fixture_delete_log_stream(metadata):
     delete_log_stream(log_stream=log_stream)
     logger.debug('Deleted log stream: %s', log_stream)
 
+
 # DB fixtures
-
-
 @pytest.fixture
 def clean_s3_cloudtrail_db():
     """Delete the DB file before and after the test execution"""
@@ -190,10 +194,10 @@ class TestConfigurator:
     - module (str): The name of the test module.
     - configuration_path (str): The path to the configuration directory for the test module.
     - test_cases_path (str): The path to the test cases directory for the test module.
-    - metadata (dict): Test metadata retrieved from the test cases.
+    - metadata (list): Test metadata retrieved from the test cases.
     - parameters (list): Test parameters retrieved from the test cases.
     - cases_ids (list): Identifiers for the test cases.
-    - test_configuration_template (dict): The loaded configuration template for the test module.
+    - test_configuration_template (list): The loaded configuration template for the test module.
 
     """
     def __init__(self, module):
