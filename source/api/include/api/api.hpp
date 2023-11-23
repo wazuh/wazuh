@@ -52,14 +52,16 @@ public:
     }
 
     /**
-     * @brief Process a request
+     * @brief Processes a request and invokes a callback function with the response.
      *
-     * Process a request as a string and return the response as a string, this
-     * method is thread-safe and verify the request before calling the handler.
-     * @param message Request message
-     * @return std::string Response message
+     * This method takes a JSON-formatted request message, processes it, and generates
+     * a response. The response is then passed to the provided callback function.
+     *
+     * @param message The JSON-formatted request message.
+     * @param callbackFn A callback function that will be invoked with the generated response.
+     *
      */
-    std::string processRequest(const std::string& message)
+    void processRequest(const std::string& message, std::function<void(const std::string&)> callbackFn)
     {
         wpResponse wresponse {};
         json::Json jrequest {};
@@ -71,7 +73,8 @@ public:
         catch (const std::exception& e)
         {
             wresponse = base::utils::wazuhProtocol::WazuhResponse::invalidJsonRequest();
-            return wresponse.toString();
+            callbackFn(wresponse.toString());
+            return;
         }
 
         try
@@ -91,7 +94,8 @@ public:
             LOG_DEBUG("Exception in Api::processRequest: %s", e.what());
             wresponse = base::utils::wazuhProtocol::WazuhResponse::unknownError();
         }
-        return wresponse.toString();
+
+        callbackFn(wresponse.toString());
     }
 
     /**
