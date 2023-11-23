@@ -146,18 +146,60 @@ std::shared_ptr<uvw::PipeHandle> UnixStream::createClient()
 {
     // Create a new client
     auto client = m_loop->resource<uvw::PipeHandle>();
+    auto weakClient = std::weak_ptr<uvw::PipeHandle>(client);
+
+    // Create a Async Handle for asynchronous sending of responses
+    auto asyncHandle = m_loop->resource<uvw::AsyncHandle>();
+    auto weakAsyncHandle = std::weak_ptr<uvw::AsyncHandle>(asyncHandle);
 
     // Create a new timer for the client timeout
-    auto weakClient = std::weak_ptr<uvw::PipeHandle>(client);
-    auto timer = createTimer(weakClient);
+    auto timer = createTimer(weakClient, weakAsyncHandle);
 
     // Configure the close events for the client
-    configureCloseClient(client, timer);
+    configureCloseClient(client, timer, asyncHandle);
 
-    // Create 1 protocol handler per client
+    auto response = std::make_shared<std::string>();
+    auto responseTimer = std::make_shared<base::chrono::Timer>();
+
+    // Create protocol handler per client
     auto protocolHandler = m_factory->create();
+
+    asyncHandle->on<uvw::AsyncEvent>(
+        [weakClient,
+         address = m_address,
+         &currentTaskQueueSize = m_currentTaskQueueSize,
+         metric = m_metric,
+         responseTimer,
+         protocolHandler,
+         response](const uvw::AsyncEvent&, uvw::AsyncHandle& syncHandle)
+        {
+            --currentTaskQueueSize;
+            metric.m_queueSize->recordValue(currentTaskQueueSize.load());
+
+            // Check if client is closed
+            auto client = weakClient.lock();
+            if (!client)
+            {
+                LOG_DEBUG("[Endpoint: {}] endpoint: Client already closed (remote close), discarting response",
+                          address);
+                return;
+            }
+            else if (client->closing())
+            {
+                LOG_DEBUG("[Endpoint: {}] Client closed, discarding response", address);
+                return;
+            }
+
+            // Send the response
+            auto [buffer, size] = protocolHandler->streamToSend(response);
+            client->write(std::move(buffer), size);
+            auto elapsedTime = responseTimer->elapsed<std::chrono::milliseconds>();
+            metric.m_responseTime->recordValue(static_cast<uint64_t>(elapsedTime));
+        });
+
     client->on<uvw::DataEvent>(
-        [this, weakClient, timer, protocolHandler](const uvw::DataEvent& data, uvw::PipeHandle& clientRef)
+        [this, weakClient, weakAsyncHandle, timer, protocolHandler, response](const uvw::DataEvent& data,
+                                                                              uvw::PipeHandle& clientRef)
         {
             // Avoid use _clientRef, it's a reference to the client, but we want to use the shared_ptr
             // to avoid the client release the memory before the workers finish the processing
@@ -192,7 +234,7 @@ std::shared_ptr<uvw::PipeHandle> UnixStream::createClient()
             m_metric.m_totalRequest->addValue(result->size());
             m_metric.m_requestPerSecond->addValue(result->size());
 
-            processMessages(weakClient, protocolHandler, std::move(result.value()));
+            processMessages(weakClient, weakAsyncHandle, protocolHandler, std::move(result.value()), response);
         });
 
     // Accept the connection
@@ -201,37 +243,44 @@ std::shared_ptr<uvw::PipeHandle> UnixStream::createClient()
 }
 
 void UnixStream::processMessages(std::weak_ptr<uvw::PipeHandle> wClient,
+                                 std::weak_ptr<uvw::AsyncHandle> wAsync,
                                  std::shared_ptr<ProtocolHandler> protocolHandler,
-                                 std::vector<std::string>&& messages)
+                                 std::vector<std::string>&& request,
+                                 std::shared_ptr<std::string> response)
 {
+    auto callbackFn = [wAsync, address = m_address, response](const std::string& res) -> void
+    {
+        *response = res;
 
-    for (auto& message : messages)
+        auto async = wAsync.lock();
+        if (!async)
+        {
+            LOG_DEBUG("[Endpoint: {}] endpoint: Async already closed (remote close), discarting response", address);
+            return;
+        }
+        else if (async->closing())
+        {
+            LOG_DEBUG("[Endpoint: {}] endpoint: Async already closed, discarting response", address);
+            return;
+        }
+
+        async->send();
+    };
+
+    for (auto& message : request)
     {
         // No queue worker, process the message in the main thread
         if (0 == m_taskQueueSize)
         {
-            auto responseTimer = base::chrono::Timer();
-            auto response = std::make_shared<std::string>();
             try
             {
-                *response = protocolHandler->onMessage(message);
+                protocolHandler->onMessage(message, callbackFn);
             }
             catch (const std::exception& e)
             {
                 LOG_WARNING("[Endpoint: {}] endpoint: Error processing message [callback]: {}", m_address, e.what());
-                *response = protocolHandler->getErrorResponse();
             }
-            auto [buffer, size] = protocolHandler->streamToSend(std::move(response));
-            auto client = wClient.lock();
-            if (!client)
-            {
-                LOG_WARNING("[Endpoint: {}] endpoint: Client already closed", m_address);
-                return;
-            }
-            client->write(std::move(buffer), size);
 
-            auto elapsedTime = responseTimer.elapsed<std::chrono::milliseconds>();
-            m_metric.m_responseTime->recordValue(static_cast<uint64_t>(elapsedTime));
             continue;
         }
         // Send the message to the queue worker (#TODO: Should be add the size of the worker?)
@@ -254,81 +303,56 @@ void UnixStream::processMessages(std::weak_ptr<uvw::PipeHandle> wClient,
             continue;
         }
 
-        createAndEnqueueTask(wClient, protocolHandler, std::move(message));
+        createAndEnqueueTask(wClient, callbackFn, protocolHandler, std::move(message));
     }
 }
 
 void UnixStream::createAndEnqueueTask(std::weak_ptr<uvw::PipeHandle> wClient,
+                                      std::function<void(const std::string&)> callbackFn,
                                       std::shared_ptr<ProtocolHandler> protocolHandler,
                                       std::string&& message)
 {
-    auto responseTimer = std::make_shared<base::chrono::Timer>();
-    auto response = std::make_shared<std::string>();
     ++m_currentTaskQueueSize;
-
     // Create a new queue worker for the request
     auto work = m_loop->resource<uvw::WorkReq>(
-        [this, response, message, protocolHandler]()
+        [message, callbackFn, protocolHandler, address = m_address]()
         {
             try
             {
-                *response = protocolHandler->onMessage(message);
+                protocolHandler->onMessage(message, callbackFn);
             }
             catch (const std::exception& e)
             {
-                LOG_WARNING("[Endpoint: {}] endpoint: Error processing message [callback]: {}", m_address, e.what());
-                *response = protocolHandler->getErrorResponse();
+                LOG_WARNING("[Endpoint: {}] endpoint: Error processing message [callback]: {}", address, e.what());
             }
         });
 
     // On error
     work->on<uvw::ErrorEvent>(
-        [this](const uvw::ErrorEvent& error, uvw::WorkReq& worker)
+        [address = m_address, metric = m_metric, &currentTaskQueueSize = m_currentTaskQueueSize](
+            const uvw::ErrorEvent& error, uvw::WorkReq& worker)
         {
-            LOG_ERROR("[Endpoint: {}] endpoint: Error processing message: {}", m_address, error.what());
-            --m_currentTaskQueueSize;
-            m_metric.m_queueSize->recordValue(m_currentTaskQueueSize.load());
+            LOG_ERROR("[Endpoint: {}] endpoint: Error processing message: {}", address, error.what());
+            --currentTaskQueueSize;
+            metric.m_queueSize->recordValue(currentTaskQueueSize.load());
         });
 
     // On finish
-    work->on<uvw::WorkEvent>(
-        [this, wClient, response, protocolHandler, responseTimer](const uvw::WorkEvent&, uvw::WorkReq& work)
-        {
-            --m_currentTaskQueueSize;
-            m_metric.m_queueSize->recordValue(m_currentTaskQueueSize.load());
-
-            // Check if client is closed
-            auto client = wClient.lock();
-            if (!client)
-            {
-                LOG_DEBUG("[Endpoint: {}] endpoint: Client already closed (remote close), discarting response",
-                          m_address);
-                return;
-            }
-            else if (client->closing())
-            {
-                LOG_DEBUG("[Endpoint: {}] Client closed, discarding response", m_address);
-                return;
-            }
-
-            // Send the response
-            auto [buffer, size] = protocolHandler->streamToSend(response);
-            client->write(std::move(buffer), size);
-            auto elapsedTime = responseTimer->elapsed<std::chrono::milliseconds>();
-            m_metric.m_responseTime->recordValue(static_cast<uint64_t>(elapsedTime));
-        });
+    work->on<uvw::WorkEvent>([address = m_address](const uvw::WorkEvent&, uvw::WorkReq& work)
+                             { LOG_DEBUG("[Endpoint: {}] endpoint: Finish", address); });
 
     work->queue();
     m_metric.m_queueSize->recordValue(m_currentTaskQueueSize.load());
 }
 
-std::shared_ptr<uvw::TimerHandle> UnixStream::createTimer(std::weak_ptr<uvw::PipeHandle> wClient)
+std::shared_ptr<uvw::TimerHandle> UnixStream::createTimer(std::weak_ptr<uvw::PipeHandle> wClient,
+                                                          std::weak_ptr<uvw::AsyncHandle> wAsync)
 {
     auto timer = m_loop->resource<uvw::TimerHandle>();
 
     // Timeout, close the client
     timer->on<uvw::TimerEvent>(
-        [wClient, address = m_address](const uvw::TimerEvent&, uvw::TimerHandle& timerRef)
+        [wClient, wAsync, address = m_address](const uvw::TimerEvent&, uvw::TimerHandle& timerRef)
         {
             LOG_DEBUG("[Endpoint: {}] Client timeout, close connection.", address);
             auto client = wClient.lock();
@@ -340,6 +364,17 @@ std::shared_ptr<uvw::TimerHandle> UnixStream::createTimer(std::weak_ptr<uvw::Pip
             {
                 client->close();
             }
+
+            auto async = wAsync.lock();
+            if (wAsync.expired())
+            {
+                LOG_DEBUG("[Endpoint: {}] Async Handle already closed", address);
+            }
+            else if (async && !async->closing())
+            {
+                async->close();
+            }
+
             timerRef.close();
         });
 
@@ -356,15 +391,21 @@ std::shared_ptr<uvw::TimerHandle> UnixStream::createTimer(std::weak_ptr<uvw::Pip
     return timer;
 }
 
-void UnixStream::configureCloseClient(std::shared_ptr<uvw::PipeHandle> client, std::shared_ptr<uvw::TimerHandle> timer)
+void UnixStream::configureCloseClient(std::shared_ptr<uvw::PipeHandle> client,
+                                      std::shared_ptr<uvw::TimerHandle> timer,
+                                      std::shared_ptr<uvw::AsyncHandle> async)
 {
 
-    auto gracefullEnd = [timer, metric = m_metric](uvw::PipeHandle& client)
+    auto gracefullEnd = [timer, async, metric = m_metric](uvw::PipeHandle& client)
     {
         if (!timer->closing())
         {
             timer->stop();
             timer->close();
+        }
+        if (!async->closing())
+        {
+            async->close();
         }
         if (!client.closing())
         {

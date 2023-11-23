@@ -1,6 +1,7 @@
 #ifndef _SERVER_PROTOCOL_HANDLER_BASE_HPP
 #define _SERVER_PROTOCOL_HANDLER_BASE_HPP
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -46,12 +47,12 @@ public:
      * Process the message received from the server, it is used to process the message received from the server and
      * generate the data to send to the client.
      * @param message Message received from the server
-     * @return The response of processing the message to send to the client
+     * @param callbackFn A callback function that will be invoked with the generated response.
      *
      * @note If the method throws an exception, the connection should be closed witout sending any data to the client.
      * @note The message is the response of processing the message received from the client.
      */
-    virtual std::string onMessage(const std::string& message) = 0;
+    virtual void onMessage(const std::string& message, std::function<void(const std::string&)> callbackFn) = 0;
 
 
     /**

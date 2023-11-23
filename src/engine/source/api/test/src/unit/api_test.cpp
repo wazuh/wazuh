@@ -1,70 +1,60 @@
 #include <gtest/gtest.h>
 
-#include <api/api.hpp>
 #include "../apiAuxiliarFunctions.hpp"
-
+#include <api/api.hpp>
 
 using namespace api;
 
-wpResponse testHandler(const wpRequest& request) {
+wpResponse testHandler(const wpRequest& request)
+{
     return wpResponse(json::Json(R"({"response": "OK"})"), 0);
 }
 
-wpResponse testHandlerExeption(const wpRequest& request) {
+wpResponse testHandlerExeption(const wpRequest& request)
+{
     throw std::runtime_error("test exception");
     return wpResponse(json::Json(R"({"response": "OK"})"), 0);
 }
 
-class ApiTest : public testing::Test {
+class ApiTest : public testing::TestWithParam<std::tuple<std::string, std::string>>
+{
 protected:
     Api m_api;
 
-    void SetUp() override {
+    void SetUp() override
+    {
         initLogging();
         m_api.registerHandler("testCommand", testHandler);
         m_api.registerHandler("testCommandException", testHandlerExeption);
-
     }
 };
 
-TEST_F(ApiTest, ProcessRequest_ValidRequest) {
+TEST_P(ApiTest, ProcessRequest)
+{
+    const std::string& message = std::get<0>(GetParam());
+    const std::string& expectedResponse = std::get<1>(GetParam());
 
-    wpRequest request = wpRequest::create("testCommand", "test_moudule", json::Json(R"({})"));
+    std::string response;
+    auto callbackFn = [&response](const std::string& res)
+    {
+        response = res;
+    };
 
-    std::string expectedResponse = R"({"data":{"response":"OK"},"error":0})";
-    std::string response = m_api.processRequest(request.toStr());
-
+    m_api.processRequest(message, callbackFn);
     EXPECT_EQ(response, expectedResponse);
 }
 
-TEST_F(ApiTest, ProcessRequest_MalformedJson) {
-    std::string message = R"({"command": "testCommand", "parameters":})";
-    std::string expectedResponse = wpResponse::invalidJsonRequest().toString();
-    std::string response = m_api.processRequest(message);
-
-    EXPECT_EQ(response, expectedResponse);
-}
-
-TEST_F(ApiTest, ProcessRequest_InvalidSchema) {
-    std::string message = R"({"version":1,"command":123,"parameters":{},"origin":{"module":"wazuh-engine","name":"test_moudule"}})";
-    std::string expectedResponse = R"({"data":{},"error":4,"message":"Invalid request: The request must have a 'command' field containing a string value"})";
-    std::string response = m_api.processRequest(message);
-
-    EXPECT_EQ(response, expectedResponse);
-}
-
-TEST_F(ApiTest, ProcessRequest_UnregisteredCommand) {
-    wpRequest request = wpRequest::create("no_exist_cmd", "test_moudule", json::Json(R"({})"));
-    std::string expectedResponse = R"({"data":{},"error":5,"message":"Command \"no_exist_cmd\" not found"})";
-    std::string response = m_api.processRequest(request.toStr());
-
-    EXPECT_EQ(response, expectedResponse);
-}
-
-TEST_F(ApiTest, ProcessRequest_HandlerException) {
-    wpRequest request = wpRequest::create("testCommandException", "test_moudule", json::Json(R"({})"));
-    std::string expectedResponse = wpResponse::unknownError().toString();
-    std::string response = m_api.processRequest(request.toStr());
-
-    EXPECT_EQ(response, expectedResponse);
-}
+INSTANTIATE_TEST_SUITE_P(
+    ApiTestInstantiation,
+    ApiTest,
+    testing::Values(
+        std::make_tuple(wpRequest::create("testCommand", "test_moudule", json::Json(R"({})")).toStr(),
+                        R"({"data":{"response":"OK"},"error":0})"),
+        std::make_tuple(R"({"command": "testCommand", "parameters":)", wpResponse::invalidJsonRequest().toString()),
+        std::make_tuple(
+            R"({"version":1,"command":123,"parameters":{},"origin":{"module":"wazuh-engine","name":"test_moudule"}})",
+            R"({"data":{},"error":4,"message":"Invalid request: The request must have a 'command' field containing a string value"})"),
+        std::make_tuple(wpRequest::create("no_exist_cmd", "test_moudule", json::Json(R"({})")).toStr(),
+                        R"({"data":{},"error":5,"message":"Command \"no_exist_cmd\" not found"})"),
+        std::make_tuple(wpRequest::create("testCommandException", "test_moudule", json::Json(R"({})")).toStr(),
+                        wpResponse::unknownError().toString())));
