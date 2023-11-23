@@ -1,32 +1,24 @@
-"""
-Copyright (C) 2015-2023, Wazuh Inc.
-Created by Wazuh, Inc. <info@wazuh.com>.
-This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-This module will contains all cases for the region test suite
 """
-
+This module will contain all cases for the region test suite
+"""
 import pytest
 
 # qa-integration-framework imports
 from wazuh_testing import session_parameters
-from wazuh_testing.modules.aws import event_monitor, local_internal_options  # noqa: F401
-from wazuh_testing.modules.aws import (  # noqa: F401
-    AWS_SERVICES_DB_PATH,
-    RANDOM_ACCOUNT_ID,
-    event_monitor,
-    local_internal_options
-)
-from wazuh_testing.modules.aws.db_utils import (
-    get_multiple_s3_db_row,
-    get_multiple_service_db_row,
-    s3_db_exists,
-    table_exists_or_has_values,
-)
+from wazuh_testing.constants.aws import RANDOM_ACCOUNT_ID
+from wazuh_testing.constants.paths.aws import AWS_SERVICES_DB_PATH, S3_CLOUDTRAIL_DB_PATH
+from wazuh_testing.modules.aws.utils import path_exist
+from wazuh_testing.utils.db_queries.aws_db import (get_multiple_service_db_row, table_exists_or_has_values,
+                                                   get_multiple_s3_db_row)
 
 # Local module imports
+from . import event_monitor
 from .utils import ERROR_MESSAGES, TIMEOUTS
-from conftest import TestConfigurator
+from .conftest import TestConfigurator, local_internal_options
 
 pytestmark = [pytest.mark.server]
 
@@ -109,7 +101,7 @@ def test_regions(
     only_logs_after = metadata['only_logs_after']
     regions = metadata['regions']
     expected_results = metadata['expected_results']
-    pattern = fr".*DEBUG: \+\+\+ No logs to process in bucket: {RANDOM_ACCOUNT_ID}/{regions}"
+    pattern = f".*DEBUG: \+\+\+ No logs to process in bucket: {RANDOM_ACCOUNT_ID}/{regions}"
 
     parameters = [
         'wodles/aws/aws-s3',
@@ -154,7 +146,7 @@ def test_regions(
 
         assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_no_region_found_message']
 
-    assert s3_db_exists()
+    assert path_exist(path=S3_CLOUDTRAIL_DB_PATH)
 
     if expected_results:
         regions_list = regions.split(",")
