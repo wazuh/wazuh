@@ -1123,8 +1123,8 @@ checks:
     references:
       - "https://developer.apple.com/news/?id=3xpv8r2m"
       - "https://eclecticlight.co/2020/11/30/is-big-surs-system-volume-sealed/"
-      - "https://eclecticlight.co/2020/06/25/big-surs-signed-system-volume-added-"
-      - "https://support.apple.com/guide/security/signed-system-volume-security-"
+      - "https://eclecticlight.co/2020/06/25/big-surs-signed-system-volume-added-security-protection/"
+      - "https://support.apple.com/guide/security/signed-system-volume-security-secd698747c9/web"
     compliance:
       - cis: ["5.1.4"]
       - cis_csc_v8: ["3.6", "3.11"]
@@ -1166,7 +1166,8 @@ checks:
       - soc_2: ["CC6.2", "CC6.3"]
     condition: all
     rules:
-      - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:maxFailedLoginAttempts=(\d+) compare < 6'
+      - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:maxFailedLoginAttempts=(\d+) compare <= 5'
+      - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:policyAttributeMinutesUntilFailedAuthenticationReset=(\d+) compare >= 15'
 
   # 5.2.2 Ensure Password Minimum Length Is Configured. (Automated)
   - id: 34049
@@ -1185,7 +1186,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:minChars=(\d+) compare > 14'
+      - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:minChars=(\d+) compare >= 15'
 
   # 5.2.3 Ensure Complex Password Must Contain Alphabetic Characters Is Configured. (Manual)
   - id: 34050
@@ -1202,7 +1203,7 @@ checks:
       - iso_27001-2013: ["A.9.4.3"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition: any
+    condition: all
     rules:
       - "c:pwpolicy -getaccountpolicies -> r:Contain at least one number and one alphabetic character."
       - 'c:sh  -c "pwpolicy -getaccountpolicies | grep -A1 minimumLetters " -> n:>(\d+)< compare >= 1'
@@ -1222,7 +1223,7 @@ checks:
       - iso_27001-2013: ["A.9.4.3"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition: any
+    condition: all
     rules:
       - "c:pwpolicy -getaccountpolicies -> r:Contain at least one number and one alphabetic character."
       - 'c:sh  -c "pwpolicy -getaccountpolicies | grep -A1 minimumNumericCharacters " -> n:>(\d+)< compare >= 1'
@@ -1244,7 +1245,7 @@ checks:
       - iso_27001-2013: ["A.9.4.3"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition: any
+    condition: all
     rules:
       - 'c:sh  -c "pwpolicy -getaccountpolicies | grep -A1 minimumMixedCaseCharacters " -> n:>(\d+)< compare >= 1'
 
@@ -1265,7 +1266,7 @@ checks:
       - pci_dss_v4.0: ["8.3.7"]
     condition: all
     rules:
-      - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:maxMinutesUntilChangePassword=(\d+) compare < 525601'
+      - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:maxMinutesUntilChangePassword=(\d+) compare <= 525601'
 
   # 5.2.8 Ensure Password History Is Configured. (Automated) - Not Implemented
   # 5.3.1 Ensure all user storage APFS volumes are encrypted. (Manual) - Not Implemented
@@ -1344,7 +1345,7 @@ checks:
     impact: "While Fast user switching is a workaround for some lab environments, especially where there is even less of an expectation of privacy, this setting change may impact some maintenance workflows."
     remediation: "Terminal Method: Run the following command to disable a user logging into another user's active and/or locked session: $ /usr/bin/sudo /usr/bin/security authorizationdb write system.login.screensaver use-login-window-ui YES (0)."
     references:
-      - "https://derflounder.wordpress.com/2014/02/16/managing-the-authorization-"
+      - "https://derflounder.wordpress.com/2014/02/16/managing-the-authorization-database-in-os-x-mavericks/"
       - "https://www.jamf.com/jamf-nation/discussions/18195/system-login-screensaver"
     compliance:
       - cis: ["5.7"]
@@ -1413,12 +1414,12 @@ checks:
     impact: "Some organizations may have effective Mac OS anti-malware tools that XProtect conflicts with."
     remediation: "Terminal Method: Run the following command to enable and update XProtect: $ sudo /bin/launchctl load -w /Library/Apple/System/Library/LaunchDaemons/com.apple.XProtect.daemon.scan.pl ist $ sudo /bin/launchctl load -w /Library/Apple/System/Library/LaunchDaemons/com.apple.XprotectFramework.Plugi nService.plist $ sudo /usr/sbin/softwareupdate -l --background-critical softwareupdate[97180]: Triggering a background check with forced scan (critical and config-data updates only) ... Note: Xprotect can only be enabled/disabled if SIP (System Integrity Protection) is disabled. If Xprotect is disabled, the system might be compromised and needs to be investigated."
     references:
-      - "https://eclecticlight.co/2021/10/27/silently-updated-security-data-files-in-"
+      - "https://eclecticlight.co/2021/10/27/silently-updated-security-data-files-in-monterey/"
       - "https://eclecticlight.co/2020/12/14/silently-updated-security-data-files-in-big-sur/"
-      - "https://eclecticlight.co/2019/10/17/security-data-files-how-theyve-changed-in-"
+      - "https://eclecticlight.co/2019/10/17/security-data-files-how-theyve-changed-in-catalina/"
       - "https://eclecticlight.co/2022/05/12/apple-has-pushed-an-update-to-xprotect-21/"
-      - "https://support.apple.com/guide/security/protecting-against-malware-"
-      - "https://eclecticlight.co/2023/06/12/malware-detection-and-remediation-by-"
+      - "https://support.apple.com/guide/security/protecting-against-malware-sec469d47bd8/web"
+      - "https://eclecticlight.co/2023/06/12/malware-detection-and-remediation-by-xprotect-remediator/"
     compliance:
       - cis: ["5.10"]
       - cis_csc_v8: ["10.1", "10.2", "10.5"]
