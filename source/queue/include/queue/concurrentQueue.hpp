@@ -8,7 +8,8 @@
 #include <iostream>
 #include <memory>
 #include <mutex>
-#include <optional>
+#include <string>
+#include <type_traits>
 
 #include <blockingconcurrentqueue.h>
 #include <queue/iqueue.hpp>
@@ -22,6 +23,19 @@ namespace base::queue
 
 constexpr int64_t WAIT_DEQUEUE_TIMEOUT_USEC = 1 * 100000; ///< Timeout for the wait_dequeue_timed method
 
+// Check if T has a str method
+template<typename T, typename = std::void_t<>>
+struct has_str_method : std::false_type
+{
+};
+
+template<typename T>
+struct has_str_method<T, std::void_t<decltype(std::declval<T>()->str())>> : std::true_type
+{
+};
+
+template<typename T>
+inline constexpr bool has_str_method_v = has_str_method<T>::value;
 /**
  * @brief Provides a wrapper for the flooding file
  *
@@ -125,6 +139,50 @@ private:
 
     Metrics m_metrics; ///< Metrics for the queue
 
+    template<typename U = T>
+    std::enable_if_t<has_str_method_v<U>, void> pushWithStr(U&& element)
+    {
+
+        if (!m_floodingFile)
+        {
+            while (!m_queue.try_enqueue(std::move(element)))  // TODO Wait whats? Move more than once?
+            {
+                // Right now we process 1 event for ~0.1ms, we sleep by a factor
+                // of 5 because we are saturating the queue and we don't want to.
+                std::this_thread::sleep_for(std::chrono::microseconds(500));
+            }
+            m_metrics.m_queued->addValue(1UL);
+            m_metrics.m_used->addValue(1);
+        }
+        else
+        {
+            for (std::size_t attempts {0}; attempts < m_maxAttempts; ++attempts)
+            {
+                if (m_queue.try_enqueue(std::move(element))) // TODO Wait whats? Move more than once?
+                {
+                    m_metrics.m_queued->addValue(1UL);
+                    m_metrics.m_used->addValue(1UL);
+                    return;
+                }
+                std::this_thread::sleep_for(m_waitTime);
+            }
+             // Puedo asegurarme de que T sea un tipo de shared ptr?
+             // Y ademas que si no tiene el metodo str no se descargye a disco? Es mejor un to_string?
+            if (element != nullptr)
+            {
+                m_floodingFile->write(element->str());
+            }
+
+            m_metrics.m_flooded->addValue(1UL);
+        }
+    }
+
+    template<typename U = T>
+    std::enable_if_t<!has_str_method_v<U>, void> pushWithoutStr(U&& element)
+    {
+        throw std::logic_error("The type T must have a ->str() method");
+    }
+
 public:
     /**
      * @brief Construct a new Concurrent Queue object
@@ -151,10 +209,6 @@ public:
                              const int waitTime = -1)
         : m_floodingFile {nullptr}
     {
-        // Verify if T has a toString method (for flooding the queue)
-        static_assert(std::is_same<decltype(std::declval<T>()->str()), std::string>::value,
-                      "T must have a ->str() method");
-
         if (capacity <= 0)
         {
             throw std::runtime_error("The capacity of the queue must be greater than 0");
@@ -203,6 +257,18 @@ public:
         m_metrics.m_consumendPerSecond = m_metrics.m_metricsScopeDelta->getCounterUInteger("ConsumedEventsPerSecond");
     }
 
+    void push(T&& element) override
+    {
+        if constexpr (has_str_method_v<T>)
+        {
+            pushWithStr(std::move(element));
+        }
+        else
+        {
+            pushWithoutStr(std::move(element));
+        }
+    }
+
     /**
      * @brief Pushes a new element to the queue.
      *
@@ -211,35 +277,24 @@ public:
      * @note If the pathFloodedFile is not provided, the queue will not be flooded,and the
      * push method will block until there is space in the queue.
      */
+    
 
-    void push(T&& element) override
+    /**
+     * @brief Tries to push an element to the queue.
+     *
+     * @param element The element to be pushed, it will be copied.
+     * @return true if the element was pushed.
+     * @return false if the queue is full.
+     */
+    bool try_push(const T& element) override
     {
-        if (!m_floodingFile)
+        auto result = m_queue.try_enqueue(element);
+        if (result)
         {
-            while (!m_queue.try_enqueue(std::move(element)))
-            {
-                // Right now we process 1 event for ~0.1ms, we sleep by a factor
-                // of 5 because we are saturating the queue and we don't want to.
-                std::this_thread::sleep_for(std::chrono::microseconds(500));
-            }
             m_metrics.m_queued->addValue(1UL);
             m_metrics.m_used->addValue(1);
         }
-        else
-        {
-            for (std::size_t attempts {0}; attempts < m_maxAttempts; ++attempts)
-            {
-                if (m_queue.try_enqueue(std::move(element)))
-                {
-                    m_metrics.m_queued->addValue(1UL);
-                    m_metrics.m_used->addValue(1UL);
-                    return;
-                }
-                std::this_thread::sleep_for(m_waitTime);
-            }
-            m_floodingFile->write(element->str());
-            m_metrics.m_flooded->addValue(1UL);
-        }
+        return result;
     }
 
     /**
@@ -264,6 +319,18 @@ public:
             m_metrics.m_consumendPerSecond->addValue(1UL);
         }
 
+        return result;
+    }
+
+    bool tryPop(T& element) override
+    {
+        auto result = m_queue.try_dequeue(element);
+        if (result)
+        {
+            m_metrics.m_consumed->addValue(1UL);
+            m_metrics.m_used->addValue(-1);
+            m_metrics.m_consumendPerSecond->addValue(1UL);
+        }
         return result;
     }
 

@@ -1,6 +1,8 @@
 #ifndef _QUEUE_IQUEUE_HPP
 #define _QUEUE_IQUEUE_HPP
 
+
+
 namespace base::queue
 {
 
@@ -12,7 +14,7 @@ namespace base::queue
  *
  * @tparam T The type of elements to be stored in the queue.
  */
-template <typename T>
+template<typename T>
 class iQueue
 {
 public:
@@ -22,11 +24,19 @@ public:
     virtual ~iQueue() = default;
 
     /**
-     * @brief Push an element into the queue.
+     * @brief Push an element into the queue if fails to push, flush element to file.
      *
-     * @param element The element to push into the queue.
+     * @param element The element to push into the queue
      */
     virtual void push(T&& element) = 0;
+
+    /**
+     * @brief Try to push an element into the queue
+     *
+     * @param element
+     * @return true if the element was pushed successfully, false otherwise.
+     */
+    virtual bool try_push(const T& element) = 0;
 
     /**
      * @brief Wait for and pop an element from the queue.
@@ -35,6 +45,14 @@ public:
      * @param timeout (Optional) The maximum time to wait for an element (in milliseconds).
      */
     virtual bool waitPop(T& element, int64_t timeout = 0) = 0;
+
+    /**
+     * @brief Try to pop an element from the queue.
+     *
+     * @param element A reference to store the popped element.
+     * @return true if an element was popped successfully, false otherwise.
+     */
+    virtual bool tryPop(T& element) = 0;
 
     /**
      * @brief Check if the queue is empty.
@@ -55,7 +73,6 @@ public:
     virtual size_t size() const = 0;
 };
 
+} // namespace base::queue
 
-}
-
-#endif // _BLOCKING_CONCURRENT_IQUEUE_HPP
+#endif // _QUEUE_IQUEUE_HPP
