@@ -22,6 +22,7 @@ public:
     MOCK_METHOD(const std::unordered_set<std::string>&, getTraceables, (), (const, override));
     MOCK_METHOD(base::RespOrError<Subscription>, subscribe, (const std::string&, const Subscriber&), (override));
     MOCK_METHOD(void, unsubscribe, (const std::string&, Subscription), (override));
+    MOCK_METHOD(void, unsubscribeAll, (), (override));
 };
 
 class MockMakerController : public IControllerMaker

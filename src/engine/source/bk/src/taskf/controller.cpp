@@ -50,4 +50,13 @@ void Controller::unsubscribe(const std::string& traceable, Subscription subscrip
 
     it->second->unsubscribe(subscription);
 }
+
+void Controller::unsubscribeAll()
+{
+    for (auto& [name, trace] : m_traces)
+    {
+        trace->unsubscribeAll();
+    }
+}
+
 } // namespace bk::taskf
