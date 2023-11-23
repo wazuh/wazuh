@@ -142,6 +142,11 @@ public:
      * @copydoc bk::IController::unsubscribe
      */
     void unsubscribe(const std::string& traceable, Subscription subscription) override;
+
+    /**
+     * @copydoc bk::IController::unsubscribeAll
+     */
+    void unsubscribeAll() override;
 };
 
 class ControllerMaker : public IControllerMaker

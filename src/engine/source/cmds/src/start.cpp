@@ -312,17 +312,26 @@ void runStart(ConfHandler confManager)
 
         // Router
         {
-            namespace wq = base::queue;
-            // Queue creation for the router
-            std::shared_ptr<wq::iQueue<base::Event>> eventQueue {};
-            // std::shared_ptr<wq::iQueue<base::Event>> eventQueue {};
+            // External queues
+            using QEventType = base::queue::ConcurrentQueue<base::Event>;
+            using QTestType = base::queue::ConcurrentQueue<router::test::QueueType>;
+            
+            std::shared_ptr<QEventType> eventQueue {};
+            std::shared_ptr<QTestType> testQueue {};
             {
-                auto EventScope = metrics->getMetricsScope("EventQueue");
-                auto EventScopeDelta = metrics->getMetricsScope("EventQueueDelta");
-                eventQueue = std::make_shared<wq::ConcurrentQueue<base::Event>>(
-                    queueSize, EventScope, EventScopeDelta, queueFloodFile, queueFloodAttempts, queueFloodSleep);
+                auto scope = metrics->getMetricsScope("EventQueue");
+                auto scopeDelta = metrics->getMetricsScope("EventQueueDelta");
+                // TODO queueFloodFile, queueFloodAttempts, queueFloodSleep -> Move to Queue.flood options
+                eventQueue = std::make_shared<QEventType>(
+                    queueSize, scope, scopeDelta, queueFloodFile, queueFloodAttempts, queueFloodSleep);
 
                 LOG_DEBUG("Event queue created.");
+            }
+            {
+                auto scope = metrics->getMetricsScope("TestQueue");
+                auto scopeDelta = metrics->getMetricsScope("TestQueueDelta");
+                testQueue = std::make_shared<QTestType>(queueSize, scope, scopeDelta);
+                LOG_DEBUG("Test queue created.");
             }
 
             // builder, store, routerThreads, forceRouterArg
@@ -330,8 +339,8 @@ void runStart(ConfHandler confManager)
                                          .m_wStore = store,
                                          .m_wRegistry = registry,
                                          .m_controllerMaker = std::make_shared<bk::rx::ControllerMaker>(),
-                                         .m_queue = eventQueue
-                                         };
+                                         .m_prodQueue = eventQueue,
+                                         .m_testQueue = testQueue};
 
             routerAdmin = std::make_shared<router::RouterAdmin>(routerConfig);
             

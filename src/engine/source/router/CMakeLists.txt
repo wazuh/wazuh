@@ -11,10 +11,12 @@ add_library(router::irouter ALIAS router_irouter)
 
 # Implementation
 add_library(router_router STATIC
-   ${SRC_DIR}/environment.cpp
-   ${SRC_DIR}/router.cpp
-   ${SRC_DIR}/routerAdmin.cpp
-   ${SRC_DIR}/table.cpp
+    ${SRC_DIR}/table.cpp
+    ${SRC_DIR}/environment.cpp
+    ${SRC_DIR}/router.cpp
+    
+    ${SRC_DIR}/tester.cpp
+    ${SRC_DIR}/routerAdmin.cpp
 )
 
 target_include_directories(router_router
@@ -53,7 +55,7 @@ if(ENGINE_BUILD_TEST)
 
     # # Router component test
     # add_executable(router_ctest
-    #     ${COMPONENT_SRC_DIR}/router_test.cpp
+    # ${COMPONENT_SRC_DIR}/router_test.cpp
     # )
     # target_link_libraries(router_ctest gtest_main router::irouter router::router)
     # gtest_discover_tests(router_ctest)
@@ -78,5 +80,4 @@ if(ENGINE_BUILD_TEST)
         bk::rx
     )
     gtest_discover_tests(router_utest)
-
 endif(ENGINE_BUILD_TEST)

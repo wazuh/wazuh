@@ -34,8 +34,9 @@ enum class Sync : std::uint8_t
 
 } // namespace env
 
-
-// Production namespace
+/**************************************************************************
+ *                      Production types (router)                         *
+ *************************************************************************/
 namespace prod
 {
 /**
@@ -49,7 +50,6 @@ private:
     base::Name m_filter;                      ///< Filter of the environment
     std::size_t m_priority;                   ///< Priority of the environment
     std::optional<std::string> m_description; ///< Description of the environment
-
 
 public:
     EntryPost() = delete;
@@ -106,7 +106,7 @@ class Entry : public EntryPost
 private:
     env::Sync m_policySync;     ///< Policy sync status
     env::State m_status;        ///< Status of the environment
-    std::uint64_t m_lastUpdate; /// Last update of the environment
+    std::uint64_t m_lastUpdate; /// Last update of the environment [TODO: Review this metadata]
 
 public:
     Entry(const EntryPost& entryPost)
@@ -126,96 +126,113 @@ public:
     void status(env::State status) { m_status = status; }
 };
 
-}
+} // namespace prod
 
+/**************************************************************************
+ *                      Testing types (tester)                            *
+ *************************************************************************/
 namespace test
 {
 
-enum class TraceLevel : std::uint8_t
+/**
+ * @brief Request for adding a new entry in production
+ */
+class EntryPost
 {
-    NONE = 0,
-    ASSET_ONLY,
-    ALL
-};
-
-// TODO Move to router private space and expose only dataList
-class TraceStorage
-{
-public:
-    using TraceList = std::vector<std::string>;
-    struct AssetData
-    {
-        TraceList traces;
-        bool success = false; ///< False if the asset has failed
-    };
-
-    using DataPair = std::pair<std::string, AssetData>;
-    using DataList = std::list<DataPair>;
-
 private:
-    DataList m_dataList;
-    std::unordered_map<std::string, DataList::iterator> m_dataMap;
+    std::string m_name;                       ///< Name of the environment
+    base::Name m_policy;                      ///< Policy of the environment
+    std::optional<std::string> m_description; ///< Description of the environment
+    std::size_t m_lifetime;                   ///< Lifetime of the environment
 
 public:
-    TraceStorage()
-        : m_dataList()
-        , m_dataMap()
+    EntryPost() = delete;
+
+    EntryPost(std::string name, base::Name policy)
+        : m_name {std::move(name)}
+        , m_policy {std::move(policy)}
+        , m_description {}
     {
     }
 
-    void addTrace(const std::string& asset, const std::string& traceContent, bool result)
+    base::OptError validate() const
     {
-        if (traceContent.empty())
+        if (m_name.empty())
         {
-            return;
+            return base::Error {"Name cannot be empty"};
         }
-
-        // Try inserting the asset into the map.
-        auto [it, inserted] = m_dataMap.try_emplace(asset, m_dataList.end());
-
-        // If is new, insert it into the list.
-        if (inserted)
+        if (m_policy.parts().size() == 0)
         {
-            m_dataList.emplace_back(asset, AssetData {});
-            it->second = std::prev(m_dataList.end());
+            return base::Error {"Policy name is empty"};
         }
-
-        auto& data = it->second->second;
-
-        if (traceContent == "SUCCESS")
-        {
-            data.success = true;
-        }
-        else
-        {
-            data.traces.push_back(traceContent);
-        }
+        return base::OptError {};
     }
 
-    const DataList& getDataList() const { return m_dataList; }
+    // Setters and getters
+    const std::string& name() const { return m_name; }
+    const base::Name& policy() const { return m_policy; }
+
+    const std::optional<std::string>& description() const { return m_description; }
+    void description(std::string_view description) { m_description = description; }
+
+    std::size_t lifetime() const { return m_lifetime; }
+    void lifetime(std::size_t lifetime) { m_lifetime = lifetime; }
 };
 
-struct Output
+/**
+ * @brief Response for get an entry in production
+ */
+class Entry : public EntryPost
 {
-    base::Event m_event;
-    TraceStorage m_tracingObj;
+private:
+    env::Sync m_policySync;  ///< Policy sync status
+    env::State m_status;     ///< Status of the environment
+    std::uint64_t m_lastUse; /// Last use of the entry.
+
+public:
+    Entry(const EntryPost& entryPost)
+        : EntryPost {entryPost}
+        , m_lastUse {0}
+        , m_policySync {env::Sync::UNKNOWN}
+        , m_status {env::State::UNKNOWN} {};
+
+    // Setters and getters
+    std::uint64_t lastUpdate() const { return m_lastUse; }
+    void lastUpdate(std::uint64_t lastUpdate) { m_lastUse = lastUpdate; }
+
+    env::Sync policySync() const { return m_policySync; }
+    void policySync(env::Sync policySync) { m_policySync = policySync; }
+
+    env::State status() const { return m_status; }
+    void status(env::State status) { m_status = status; }
 };
 
-using OutputFn = std::function<void(Output&&)>;
 
+/**
+ * @brief Options for request a testing event
+ */
 class Opt
 {
+public:
+    /**
+     * @brief Tracin level for testing
+     */
+    enum class TraceLevel : std::uint8_t
+    {
+        NONE = 0,
+        ASSET_ONLY,
+        ALL
+    };
+
 private:
-    OutputFn m_callback;
     TraceLevel m_traceLevel;
     std::vector<std::string> m_assets;
     std::string m_environmetName;
 
     // Missing namespace and asset list
 public:
-    Opt(OutputFn callback, TraceLevel traceLevel, const decltype(m_assets)& assets, const std::string& envName)
-        : m_callback {callback}
-        , m_traceLevel {traceLevel}
+    Opt(TraceLevel traceLevel, const decltype(m_assets)& assets, const std::string& envName)
+        : m_traceLevel {traceLevel}
         , m_assets {assets}
         , m_environmetName {envName}
     {
@@ -224,7 +241,49 @@ public:
 
     const std::string& environmentName() const { return m_environmetName; }
     auto assets() const -> const decltype(m_assets)& { return m_assets; }
+    TraceLevel traceLevel() const { return m_traceLevel; }
 };
+
+/**
+ * @brief Represent a output of a testing event
+ */
+class Output
+{
+public:
+    struct AssetTrace ///< Represent a trace of an asset
+    {
+        bool success = false;            ///< True if the asset has success
+        std::vector<std::string> traces; ///< List of traces of the asset (if any)
+    };
+    using DataPair = std::pair<std::string, AssetTrace>; ///< Pair of asset name and tracing data
+
+protected:
+    base::Event m_event;          ///< Result event of the testing
+    std::list<DataPair> m_traces; ///< List of traces of the testing
+
+public:
+    Output()
+        : m_event {}
+        , m_traces {}
+    {
+    }
+
+    base::Event& event() { return m_event; }
+    const base::Event& event() const { return m_event; }
+
+    std::list<DataPair>& traceList() { return m_traces; }
+    const std::list<DataPair>& traceList() const { return m_traces; }
+
+    bool isValid() const
+    {
+        if (m_event == nullptr)
+        {
+            return false;
+        }
+        return true;
+    }
+};
+
 
 } // namespace test
 
