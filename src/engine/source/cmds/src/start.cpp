@@ -415,7 +415,7 @@ void runStart(ConfHandler confManager)
             // API Endpoint
             auto apiMetricScope = metrics->getMetricsScope("endpointAPI");
             auto apiMetricScopeDelta = metrics->getMetricsScope("endpointAPIRate", true);
-            auto apiHandler = std::bind(&api::Api::processRequest, api, std::placeholders::_1);
+            auto apiHandler = std::bind(&api::Api::processRequest, api, std::placeholders::_1, std::placeholders::_2);
             auto apiClientFactory = std::make_shared<ph::WStreamFactory>(apiHandler); // API endpoint
             apiClientFactory->setErrorResponse(base::utils::wazuhProtocol::WazuhResponse::unknownError().toString());
             apiClientFactory->setBusyResponse(base::utils::wazuhProtocol::WazuhResponse::busyServer().toString());
