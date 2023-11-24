@@ -144,7 +144,7 @@ public:
      *
      * @param offset Manually set current offset to process. Default -1
      */
-    void runActionOnDemand(int offset = -1)
+    void runActionOnDemand(const int offset = -1)
     {
         auto expected = false;
         if (m_actionInProgress.compare_exchange_strong(expected, true))
@@ -183,7 +183,7 @@ private:
     nlohmann::json m_parameters;
     std::unique_ptr<ActionOrchestrator> m_orchestration;
 
-    void runAction(const ActionID id, int offset = -1)
+    void runAction(const ActionID id, const int offset = -1)
     {
         try
         {

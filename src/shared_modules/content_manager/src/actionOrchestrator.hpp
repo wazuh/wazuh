@@ -64,7 +64,7 @@ public:
      *
      * @param offset Manually set current offset to process. Default -1
      */
-    void run(int offset = -1) const
+    void run(const int offset = -1) const
     {
 
         try
