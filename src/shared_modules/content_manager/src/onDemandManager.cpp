@@ -11,10 +11,9 @@
 
 #include "onDemandManager.hpp"
 #include "../sharedDefs.hpp"
+#include "defs.h"
 #include <filesystem>
 #include <utility>
-
-constexpr auto SOCKET_PATH {"/tmp/wazuh-ondemand.sock"};
 
 /**
  * @brief Start the server
@@ -60,9 +59,9 @@ void OnDemandManager::startServer()
                              }
                          });
             m_server.set_address_family(AF_UNIX);
-            std::filesystem::remove(SOCKET_PATH);
+            std::filesystem::remove(ONDEMAND_SOCK);
 
-            runningTrigger = m_server.listen(SOCKET_PATH, true);
+            runningTrigger = m_server.listen(ONDEMAND_SOCK, true);
         });
 
     // Spin lock until server is ready
