@@ -1,4 +1,6 @@
 #include "cmdArgsParser.hpp"
+#include "flatbuffers/flatbuffers.h"
+#include "flatbuffers/idl.h"
 #include "routerModule.hpp"
 #include "routerProvider.hpp"
 #include "routerSubscriber.hpp"
@@ -44,7 +46,32 @@ int main(int argc, const char* argv[])
             [&](const std::vector<char>& message)
             {
                 std::cout << "Received message #" << ++count << ": ";
-                std::cout << std::string(message.data(), message.size()) << std::endl;
+                auto fbsPath = args.fbsPath();
+
+                if (fbsPath.empty())
+                {
+                    std::cout << std::string(message.begin(), message.end()) << std::endl;
+                }
+                else
+                {
+                    flatbuffers::IDLOptions options;
+                    options.strict_json = true;
+                    flatbuffers::Parser parser(options);
+                    std::string schemaStr;
+
+                    if (!flatbuffers::LoadFile(fbsPath.c_str(), false, &schemaStr))
+                    {
+                        throw std::runtime_error("Unable to load schema file.");
+                    }
+                    if (!parser.Parse(schemaStr.c_str()))
+                    {
+                        throw std::runtime_error("Unable to parse schema file.");
+                    }
+
+                    std::string strData;
+                    flatbuffers::GenText(parser, reinterpret_cast<const uint8_t*>(message.data()), &strData);
+                    std::cout << strData << std::endl;
+                }
             });
     }
     else if (args.mode() == "broker")
