@@ -16,7 +16,7 @@ from wazuh_testing.modules.aws.utils import path_exist
 
 # Local module imports
 from . import event_monitor
-from .utils import ERROR_MESSAGES, TIMEOUTS
+from .utils import ERROR_MESSAGE, TIMEOUT
 from .conftest import TestConfigurator, local_internal_options
 
 pytestmark = [pytest.mark.server]
@@ -120,7 +120,7 @@ def test_path_suffix(
         callback=event_monitor.callback_detect_aws_module_start
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
@@ -128,22 +128,22 @@ def test_path_suffix(
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     if expected_results:
         log_monitor.start(
-            timeout=TIMEOUTS[20],
+            timeout=TIMEOUT[20],
             callback=event_monitor.callback_detect_event_processed,
         )
-        assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_event_number']
+        assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_event_number']
 
     else:
         log_monitor.start(
-            timeout=TIMEOUTS[10],
+            timeout=TIMEOUT[10],
             callback=event_monitor.make_aws_callback(pattern),
         )
 
-        assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_empty_path_suffix_message']
+        assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_empty_path_suffix_message']
 
     assert path_exist(path=S3_CLOUDTRAIL_DB_PATH)
 
@@ -160,4 +160,4 @@ def test_path_suffix(
         callback=event_monitor.callback_detect_all_aws_err
     )
 
-    assert log_monitor.callback_result is None, ERROR_MESSAGES['error_found']
+    assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']

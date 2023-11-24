@@ -13,7 +13,7 @@ from wazuh_testing import session_parameters
 
 # Local module imports
 from . import event_monitor
-from .utils import ERROR_MESSAGES
+from .utils import ERROR_MESSAGE
 from .conftest import TestConfigurator, local_internal_options
 
 pytestmark = [pytest.mark.server]
@@ -97,7 +97,7 @@ def test_bucket_defaults(
         callback=event_monitor.callback_detect_aws_module_start
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
@@ -105,7 +105,7 @@ def test_bucket_defaults(
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     # Detect any ERROR message
     log_monitor.start(
@@ -113,7 +113,7 @@ def test_bucket_defaults(
         callback=event_monitor.callback_detect_all_aws_err
     )
 
-    assert log_monitor.callback_result is None, ERROR_MESSAGES['error_found']
+    assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']
 
 
 # -------------------------------------------- TEST_CLOUDWATCH_DEFAULTS ------------------------------------------------
@@ -198,7 +198,7 @@ def test_service_defaults(
         callback=event_monitor.callback_detect_aws_module_start
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
@@ -206,7 +206,7 @@ def test_service_defaults(
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     # Detect any ERROR message
     log_monitor.start(
@@ -214,7 +214,7 @@ def test_service_defaults(
         callback=event_monitor.callback_detect_all_aws_err
     )
 
-    assert log_monitor.callback_result is None, ERROR_MESSAGES['error_found']
+    assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']
 
 
 # ------------------------------------------ TEST_INSPECTOR_DEFAULTS ---------------------------------------------------
@@ -297,7 +297,7 @@ def test_inspector_defaults(
         callback=event_monitor.callback_detect_aws_module_start
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
@@ -305,7 +305,7 @@ def test_inspector_defaults(
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     # Detect any ERROR message
     log_monitor.start(
@@ -313,4 +313,4 @@ def test_inspector_defaults(
         callback=event_monitor.callback_detect_all_aws_err
     )
 
-    assert log_monitor.callback_result is None, ERROR_MESSAGES['error_found']
+    assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']

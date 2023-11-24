@@ -5,9 +5,6 @@
 """
 This module will contain all cases for the only logs after test suite
 """
-import pydevd_pycharm
-
-pydevd_pycharm.settrace('192.168.56.1', port=55555, stdoutToServer=True, stderrToServer=True)
 
 import pytest
 from datetime import datetime
@@ -22,13 +19,16 @@ from wazuh_testing.modules.aws.utils import (call_aws_module, create_log_events,
 
 # Local module imports
 from . import event_monitor
-from .utils import ERROR_MESSAGES, TIMEOUTS
+from .utils import ERROR_MESSAGE, TIMEOUT
 from .conftest import TestConfigurator, local_internal_options
 
 pytestmark = [pytest.mark.server]
 
 # Set test configurator for the module
 configurator = TestConfigurator(module='only_logs_after_test_module')
+
+import pydevd_pycharm
+pydevd_pycharm.settrace('192.168.56.1', port=55555, stdoutToServer=True, stderrToServer=True)
 
 # --------------------------------------------- TEST_BUCKET_WITHOUT_ONLY_LOGS_AFTER ------------------------------------
 # Configure T1 test
@@ -126,7 +126,7 @@ def test_bucket_without_only_logs_after(
         callback=event_monitor.callback_detect_aws_module_start
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
@@ -134,7 +134,7 @@ def test_bucket_without_only_logs_after(
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     log_monitor.start(
         timeout=session_parameters.default_timeout,
@@ -142,7 +142,7 @@ def test_bucket_without_only_logs_after(
         accumulations=expected_results
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_event_number']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_event_number']
 
     assert path_exist(path=S3_CLOUDTRAIL_DB_PATH)
 
@@ -157,7 +157,7 @@ def test_bucket_without_only_logs_after(
         callback=event_monitor.callback_detect_all_aws_err
     )
 
-    assert log_monitor.callback_result is None, ERROR_MESSAGES['error_found']
+    assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']
 
 
 # -------------------------------------------- TEST_SERVICE_WITHOUT_ONLY_LOGS_AFTER ------------------------------------
@@ -251,7 +251,7 @@ def test_service_without_only_logs_after(
         callback=event_monitor.callback_detect_aws_module_start
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
@@ -259,7 +259,7 @@ def test_service_without_only_logs_after(
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     assert path_exist(path=AWS_SERVICES_DB_PATH)
 
@@ -275,7 +275,7 @@ def test_service_without_only_logs_after(
         callback=event_monitor.callback_detect_all_aws_err
     )
 
-    assert log_monitor.callback_result is None, ERROR_MESSAGES['error_found']
+    assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']
 
 
 # --------------------------------------------- TEST_BUCKET_WITH_ONLY_LOGS_AFTER ---------------------------------------
@@ -372,7 +372,7 @@ def test_bucket_with_only_logs_after(
         callback=event_monitor.callback_detect_aws_module_start
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
@@ -380,15 +380,15 @@ def test_bucket_with_only_logs_after(
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     log_monitor.start(
-        timeout=TIMEOUTS[20],
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_event_processed,
         accumulations=expected_results
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_event_number']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_event_number']
 
     assert path_exist(path=S3_CLOUDTRAIL_DB_PATH)
 
@@ -404,7 +404,7 @@ def test_bucket_with_only_logs_after(
         callback=event_monitor.callback_detect_all_aws_err
     )
 
-    assert log_monitor.callback_result is None, ERROR_MESSAGES['error_found']
+    assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']
 
 
 # --------------------------------------------TEST_CLOUDWATCH_WITH_ONLY_LOGS_AFTER -------------------------------------
@@ -501,7 +501,7 @@ def test_cloudwatch_with_only_logs_after(
         callback=event_monitor.callback_detect_aws_module_start
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
@@ -509,14 +509,14 @@ def test_cloudwatch_with_only_logs_after(
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     log_monitor.start(
-        timeout=TIMEOUTS[10],
+        timeout=TIMEOUT[10],
         callback=event_monitor.callback_detect_service_event_processed(expected_results, service_type),
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_event_number']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_event_number']
 
     assert path_exist(path=AWS_SERVICES_DB_PATH)
 
@@ -531,7 +531,7 @@ def test_cloudwatch_with_only_logs_after(
         callback=event_monitor.callback_detect_all_aws_err
     )
 
-    assert log_monitor.callback_result is None, ERROR_MESSAGES['error_found']
+    assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']
 
 
 # ------------------------------------------ TEST_INSPECTOR_WITH_ONLY_LOGS_AFTER ---------------------------------------
@@ -626,7 +626,7 @@ def test_inspector_with_only_logs_after(
         callback=event_monitor.callback_detect_aws_module_start
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
@@ -634,14 +634,14 @@ def test_inspector_with_only_logs_after(
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     log_monitor.start(
-        timeout=TIMEOUTS[10],
+        timeout=TIMEOUT[10],
         callback=event_monitor.callback_detect_service_event_processed(expected_results, service_type),
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_event_number']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_event_number']
 
     assert path_exist(path=AWS_SERVICES_DB_PATH)
 
@@ -654,7 +654,7 @@ def test_inspector_with_only_logs_after(
 
 
 # ---------------------------------------------------- TEST_MULTIPLE_CALLS ---------------------------------------------
-# Configure T5 test
+# Configure T6 test
 configurator.configure_test(cases_file='cases_bucket_multiple_calls.yaml')
 
 
@@ -766,7 +766,7 @@ def test_bucket_multiple_calls(
 
 
 # -------------------------------------------- TEST_INSPECTOR_MULTIPLE_CALLS -------------------------------------------
-# Configure T6 test
+# Configure T7 test
 configurator.configure_test(cases_file='cases_inspector_multiple_calls.yaml')
 
 
@@ -849,7 +849,7 @@ def test_inspector_multiple_calls(
 
 
 # ----------------------------------------- TEST_CLOUDWATCH_MULTIPLE_CALLS ---------------------------------------------
-# Configure T7 test
+# Configure T8 test
 configurator.configure_test(cases_file='cases_cloudwatch_multiple_calls.yaml')
 
 

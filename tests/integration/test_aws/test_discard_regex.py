@@ -1,22 +1,23 @@
-"""
-Copyright (C) 2015-2023, Wazuh Inc.
-Created by Wazuh, Inc. <info@wazuh.com>.
-This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-This module will contains all cases for the discard_regex test suite
+"""
+This module will contain all cases for the discard_regex test suite
 """
 
 import pytest
 
 # qa-integration-framework imports
 from wazuh_testing import session_parameters
-from wazuh_testing.modules.aws import event_monitor, local_internal_options  # noqa: F401
-
-from wazuh_testing.modules.aws.db_utils import s3_db_exists, services_db_exists
+from wazuh_testing.constants.paths.aws import S3_CLOUDTRAIL_DB_PATH, AWS_SERVICES_DB_PATH
+from wazuh_testing.modules.aws.utils import path_exist
 
 # Local module imports
-from .utils import ERROR_MESSAGES, TIMEOUTS
-from conftest import TestConfigurator
+from . import event_monitor
+from .utils import ERROR_MESSAGE, TIMEOUT
+from .conftest import TestConfigurator, local_internal_options
+
 
 pytestmark = [pytest.mark.server]
 
@@ -131,7 +132,7 @@ def test_bucket_discard_regex(
         callback=event_monitor.callback_detect_aws_module_start
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
@@ -139,15 +140,17 @@ def test_bucket_discard_regex(
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     log_monitor.start(
-        timeout=TIMEOUTS[20],
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_event_processed_or_skipped(pattern),
         accumulations=found_logs + skipped_logs
     )
 
-    assert s3_db_exists()
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_discard_regex_message']
+
+    assert path_exist(path=S3_CLOUDTRAIL_DB_PATH)
 
 
 # ----------------------------------------- TEST_CLOUDWATCH_DISCARD_REGEX_JSON ----------------------------------------
@@ -250,29 +253,29 @@ def test_cloudwatch_discard_regex_json(
 
     # Check AWS module started
     log_monitor.start(
-        timeout=global_parameters.default_timeout,
-        callback=event_monitor.callback_detect_aws_module_start,
-        error_message='The AWS module did not start as expected',
-    ).result()
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_aws_module_start
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
-        timeout=global_parameters.default_timeout,
-        callback=event_monitor.callback_detect_aws_module_called(parameters),
-        error_message='The AWS module was not called with the correct parameters',
-    ).result()
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_aws_module_called(parameters)
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     log_monitor.start(
-        timeout=T_20,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_event_processed_or_skipped(pattern),
-        error_message=(
-            'The AWS module did not show the correct message about discard regex or ',
-            'did not process the expected amount of logs'
-        ),
-        accum_results=found_logs
-    ).result()
+        accumulations=found_logs
+    )
 
-    assert services_db_exists()
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_discard_regex_message']
+
+    assert path_exist(path=AWS_SERVICES_DB_PATH)
 
 
 # ------------------------------------- TEST_CLOUDWATCH_DISCARD_REGEX_SIMPLE_TEXT -------------------------------------
@@ -373,29 +376,29 @@ def test_cloudwatch_discard_regex_simple_text(
 
     # Check AWS module started
     log_monitor.start(
-        timeout=global_parameters.default_timeout,
-        callback=event_monitor.callback_detect_aws_module_start,
-        error_message='The AWS module did not start as expected',
-    ).result()
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_aws_module_start
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
-        timeout=global_parameters.default_timeout,
-        callback=event_monitor.callback_detect_aws_module_called(parameters),
-        error_message='The AWS module was not called with the correct parameters',
-    ).result()
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_aws_module_called(parameters)
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     log_monitor.start(
-        timeout=T_20,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_event_processed_or_skipped(pattern),
-        error_message=(
-            'The AWS module did not show the correct message about discard regex or ',
-            'did not process the expected amount of logs'
-        ),
-        accum_results=found_logs
-    ).result()
+        accumulations=found_logs
+    )
 
-    assert services_db_exists()
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_discard_regex_message']
+
+    assert path_exist(path=AWS_SERVICES_DB_PATH)
 
 
 # ------------------------------------------- TEST_INSPECTOR_DISCARD_REGEX --------------------------------------------
@@ -496,26 +499,26 @@ def test_inspector_discard_regex(
 
     # Check AWS module started
     log_monitor.start(
-        timeout=global_parameters.default_timeout,
-        callback=event_monitor.callback_detect_aws_module_start,
-        error_message='The AWS module did not start as expected',
-    ).result()
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_aws_module_start
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
-        timeout=global_parameters.default_timeout,
-        callback=event_monitor.callback_detect_aws_module_called(parameters),
-        error_message='The AWS module was not called with the correct parameters',
-    ).result()
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_aws_module_called(parameters)
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     log_monitor.start(
-        timeout=T_20,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_event_processed_or_skipped(pattern),
-        error_message=(
-            'The AWS module did not show the correct message about discard regex or ',
-            'did not process the expected amount of logs'
-        ),
-        accum_results=found_logs
-    ).result()
+        accumulations=found_logs
+    )
 
-    assert services_db_exists()
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_discard_regex_message']
+
+    assert path_exist(path=AWS_SERVICES_DB_PATH)

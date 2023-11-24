@@ -220,18 +220,20 @@ class TestConfigurator:
         Returns:
         None
         """
-        # Set test configuration path
-        configurations_path = join(self.configuration_path, configuration_file)
-
         # Set test cases path
         cases_path = join(self.test_cases_path, cases_file)
 
         # Get test cases data
         self.parameters, self.metadata, self.cases_ids = get_test_cases_data(cases_path)
 
-        # load configuration template
-        self.test_configuration_template = load_configuration_template(
-            configurations_path,
-            self.parameters,
-            self.metadata
-        )
+        # Set test configuration template for tests with config files
+        if configuration_file != "":
+            # Set config path
+            configurations_path = join(self.configuration_path, configuration_file)
+
+            # load configuration template
+            self.test_configuration_template = load_configuration_template(
+                configurations_path,
+                self.parameters,
+                self.metadata
+            )

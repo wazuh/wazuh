@@ -17,7 +17,7 @@ from wazuh_testing.utils.db_queries.aws_db import (get_multiple_service_db_row, 
 
 # Local module imports
 from . import event_monitor
-from .utils import ERROR_MESSAGES, TIMEOUTS
+from .utils import ERROR_MESSAGE, TIMEOUT
 from .conftest import TestConfigurator, local_internal_options
 
 pytestmark = [pytest.mark.server]
@@ -119,7 +119,7 @@ def test_regions(
         callback=event_monitor.callback_detect_aws_module_start
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
@@ -127,24 +127,24 @@ def test_regions(
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     if expected_results:
         log_monitor.start(
-            timeout=TIMEOUTS[20],
+            timeout=TIMEOUT[20],
             callback=event_monitor.callback_detect_event_processed,
             accumulations=expected_results
         )
 
-        assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_event_number']
+        assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_event_number']
 
     else:
         log_monitor.start(
-            timeout=TIMEOUTS[10],
+            timeout=TIMEOUT[10],
             callback=event_monitor.make_aws_callback(pattern),
         )
 
-        assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_no_region_found_message']
+        assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_no_region_found_message']
 
     assert path_exist(path=S3_CLOUDTRAIL_DB_PATH)
 
@@ -164,7 +164,7 @@ def test_regions(
         callback=event_monitor.callback_detect_all_aws_err
     )
 
-    assert log_monitor.callback_result is None, ERROR_MESSAGES['error_found']
+    assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']
 
 
 # -------------------------------------------- TEST_CLOUDWATCH_REGIONS -------------------------------------------------
@@ -261,7 +261,7 @@ def test_cloudwatch_regions(
         callback=event_monitor.callback_detect_aws_module_start
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
@@ -269,15 +269,15 @@ def test_cloudwatch_regions(
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     if expected_results:
         log_monitor.start(
-            timeout=TIMEOUTS[20],
+            timeout=TIMEOUT[20],
             callback=event_monitor.callback_detect_service_event_processed(expected_results, service_type),
             accumulations=len(regions_list)
         )
-        assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_event_number']
+        assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_event_number']
 
     else:
         log_monitor.start(
@@ -287,7 +287,7 @@ def test_cloudwatch_regions(
             ),
         )
 
-        assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_non-existent_region_message']
+        assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_non-existent_region_message']
 
     table_name = 'cloudwatch_logs'
 
@@ -304,7 +304,7 @@ def test_cloudwatch_regions(
         callback=event_monitor.callback_detect_all_aws_err
     )
 
-    assert log_monitor.callback_result is None, ERROR_MESSAGES['error_found']
+    assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']
 
 
 # ------------------------------------------ TEST_INSPECTOR_PATH -------------------------------------------------------
@@ -399,7 +399,7 @@ def test_inspector_regions(
         callback=event_monitor.callback_detect_aws_module_start
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
@@ -407,15 +407,15 @@ def test_inspector_regions(
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     if expected_results:
         log_monitor.start(
-            timeout=TIMEOUTS[20],
+            timeout=TIMEOUT[20],
             callback=event_monitor.callback_detect_service_event_processed(expected_results, service_type),
             accumulations=len(regions_list)
         )
-        assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_event_number']
+        assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_event_number']
 
     else:
         log_monitor.start(
@@ -425,7 +425,7 @@ def test_inspector_regions(
             ),
         )
 
-        assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_non-existent_region_message']
+        assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_non-existent_region_message']
 
     table_name = 'aws_services'
 
@@ -442,7 +442,7 @@ def test_inspector_regions(
         callback=event_monitor.callback_detect_all_aws_err
     )
 
-    assert log_monitor.callback_result is None, ERROR_MESSAGES['error_found']
+    assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']
 
     # Detect any ERROR message
     log_monitor.start(
@@ -450,4 +450,4 @@ def test_inspector_regions(
         callback=event_monitor.callback_detect_all_aws_err
     )
 
-    assert log_monitor.callback_result is None, ERROR_MESSAGES['error_found']
+    assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']

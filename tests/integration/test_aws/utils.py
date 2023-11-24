@@ -12,7 +12,7 @@ TEMPLATE_DIR = 'configuration_template'
 TEST_CASES_DIR = 'test_cases'
 WAZUH_MODULES_DEBUG = 'wazuh_modules.debug'
 
-ERROR_MESSAGES = {
+ERROR_MESSAGE = {
 
     "failed_start": "The AWS module did not start as expected",
     "incorrect_parameters": "The AWS module was not called with the correct parameters",
@@ -31,10 +31,14 @@ ERROR_MESSAGES = {
     "unexpected_number_of_events_found": "Some logs may have been processed, "
                                          "or the results found are more than expected",
     "incorrect_marker": "The AWS module did not use the correct marker",
-    "incorrect_no_region_found_message": "The AWS module did not show correct message about non-existent region"
+    "incorrect_no_region_found_message": "The AWS module did not show correct message about non-existent region",
+    "incorrect_discard_regex_message": "The AWS module did not show the correct message about discard regex or, "
+                                       "did not process the expected amount of logs",
+    "failed_sqs_message_retrieval": "The AWS module did not retrieve the expected message from the SQS Queue",
+    "failed_message_handling": "The AWS module did not handle the expected message"
 }
 
-TIMEOUTS = {
+TIMEOUT = {
 
     10: 10,
     20: 20
