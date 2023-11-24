@@ -22,7 +22,6 @@
 #include <array>
 #include <filesystem>
 #include <fstream>
-#include <iostream>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -84,6 +83,51 @@ private:
     };
 
     /**
+     * @brief Copy a file from the localsystem.
+     *
+     * @param inputFilepath Input path from where to copy the file.
+     * @param outputFilepath Output path where to paste the file.
+     * @return true if the file was copied, otherwise false.
+     */
+    bool copyFile(const std::filesystem::path& inputFilepath, const std::filesystem::path& outputFilepath) const
+    {
+        constexpr auto FILE_PREFIX {"file://"};
+
+        // Remove file prefix.
+        auto unprefixedUrl {inputFilepath.string()};
+        Utils::replaceFirst(unprefixedUrl, FILE_PREFIX, "");
+
+        // Check input file existence.
+        if (!std::filesystem::exists(unprefixedUrl))
+        {
+            logWarn(
+                    WM_CONTENTUPDATER, "File '%s' doesn't exist. Skipping download.", inputFilePath.string().c_str());
+            return false;
+        }
+
+        // Copy file, overriding the output one if necessary.
+        std::filesystem::copy(unprefixedUrl, outputFilepath, std::filesystem::copy_options::overwrite_existing);
+        return true;
+    }
+
+    /**
+     * @brief Download a file from an HTTP server.
+     *
+     * @param inputFileURL URL from where to download the file.
+     * @param outputFilepath Output path where to store the downloaded file.
+     */
+    void downloadFile(const std::filesystem::path& inputFileURL, const std::filesystem::path& outputFilepath) const
+    {
+        const auto onError {[](const std::string& errorMessage, const long errorCode)
+                            {
+                                throw std::runtime_error {"(" + std::to_string(errorCode) + ") " + errorMessage};
+                            }};
+
+        // Download file from URL.
+        m_urlRequest.download(HttpURL(inputFileURL), outputFilepath, onError);
+    }
+
+    /**
      * @brief Downloads the requested local file and update the context accordingly.
      *
      * @note Despite the method name, there is no such download since the file is present in the filesystem.
@@ -97,7 +141,7 @@ private:
         constexpr auto HTTPS_PREFIX {"https://"};
 
         // Remote or local file URL.
-        std::filesystem::path fileUrl {
+        const std::filesystem::path fileUrl {
             context.spUpdaterBaseContext->configData.at("url").get_ref<const std::string&>()};
 
         // Check input filename existence.
@@ -114,51 +158,26 @@ private:
                                         : context.spUpdaterBaseContext->contentsFolder};
         outputFilePath = outputFilePath / fileUrl.filename();
 
-        auto httpDownload {false}; // Flag that indicates if the download is made from an HTTP server.
         if (Utils::startsWith(fileUrl, FILE_PREFIX))
         {
-            // Remove file prefix.
-            auto unprefixedUrl {fileUrl.string()};
-            Utils::replaceFirst(unprefixedUrl, FILE_PREFIX, "");
-            fileUrl = std::filesystem::path(unprefixedUrl);
-
-            // Check input file existence.
-            if (!std::filesystem::exists(fileUrl))
+            if (!copyFile(fileUrl, outputFilePath))
             {
-                logWarn(
-                    WM_CONTENTUPDATER, "File '%s' doesn't exist. Skipping download.", inputFilePath.string().c_str());
                 return;
             }
         }
         else if (Utils::startsWith(fileUrl, HTTP_PREFIX) || Utils::startsWith(fileUrl, HTTPS_PREFIX))
         {
-            const auto onError {[](const std::string& errorMessage, const long errorCode)
-                                {
-                                    throw std::runtime_error {"(" + std::to_string(errorCode) + ") " + errorMessage};
-                                }};
-
-            // Download file from URL.
-            m_urlRequest.download(HttpURL(fileUrl), outputFilePath, onError);
-            httpDownload = true;
+            downloadFile(fileUrl, outputFilePath);
         }
         else
         {
             throw std::runtime_error {"Unkown URL prefix for " + fileUrl.string()};
         }
 
-        // Process input file hash.
-        const auto inputFile {httpDownload ? outputFilePath : fileUrl};
-        auto inputFileHash {hashFile(inputFile)};
-
         // Just process the new file if the hash is different from the last one.
+        auto inputFileHash {hashFile(outputFilePath)};
         if (context.spUpdaterBaseContext->downloadedFileHash != inputFileHash)
         {
-            if (!httpDownload)
-            {
-                // Copy file, overriding the output one if necessary.
-                std::filesystem::copy(fileUrl, outputFilePath, std::filesystem::copy_options::overwrite_existing);
-            }
-
             // Store new hash.
             context.spUpdaterBaseContext->downloadedFileHash = std::move(inputFileHash);
 
