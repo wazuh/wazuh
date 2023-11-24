@@ -10,18 +10,24 @@
  */
 
 #include "offlineDownloader_test.hpp"
+#include "HTTPRequest.hpp"
 #include "json.hpp"
 #include "offlineDownloader.hpp"
 #include "gtest/gtest.h"
 #include <filesystem>
 #include <fstream>
 #include <memory>
-#include "HTTPRequest.hpp"
+#include <string>
 
 const auto OK_STATUS = R"({"stage":"OfflineDownloader","status":"ok"})"_json;
 const auto FAIL_STATUS = R"({"stage":"OfflineDownloader","status":"fail"})"_json;
 
 constexpr auto FILE_PREFIX {"file://"};
+constexpr auto HTTP_PREFIX {"http://"};
+
+const auto CONTENT_FILENAME_RAW = "raw";
+const auto CONTENT_FILENAME_XZ = "xz";
+const std::string BASE_URL = "localhost:4444/";
 
 /**
  * @brief Tests the correct instantiation of the class.
@@ -177,4 +183,108 @@ TEST_F(OfflineDownloaderTest, InexistantContentFolder)
 
     ASSERT_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext), std::runtime_error);
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+}
+
+/**
+ * @brief Tests the download of a raw file from an HTTP server.
+ *
+ */
+TEST_F(OfflineDownloaderTest, HttpDownloadRawFile)
+{
+    m_spUpdaterBaseContext->configData["url"] = HTTP_PREFIX + BASE_URL + CONTENT_FILENAME_RAW;
+    m_spUpdaterBaseContext->configData["compressionType"] = "raw";
+
+    const auto expectedOutputFile {m_spUpdaterBaseContext->contentsFolder.string() + "/" + CONTENT_FILENAME_RAW};
+
+    nlohmann::json expectedData;
+    expectedData["paths"].push_back(expectedOutputFile);
+    expectedData["stageStatus"] = nlohmann::json::array();
+    expectedData["stageStatus"].push_back(OK_STATUS);
+
+    ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+    EXPECT_TRUE(std::filesystem::exists(expectedOutputFile));
+}
+
+/**
+ * @brief Tests the download of a compressed file from an HTTP server.
+ *
+ */
+TEST_F(OfflineDownloaderTest, HttpDownloadCompressedFile)
+{
+    m_spUpdaterBaseContext->configData["url"] = HTTP_PREFIX + BASE_URL + CONTENT_FILENAME_XZ;
+    m_spUpdaterBaseContext->configData["compressionType"] = "xz";
+
+    const auto expectedOutputFile {m_spUpdaterBaseContext->downloadsFolder.string() + "/" + CONTENT_FILENAME_XZ};
+
+    nlohmann::json expectedData;
+    expectedData["paths"].push_back(expectedOutputFile);
+    expectedData["stageStatus"] = nlohmann::json::array();
+    expectedData["stageStatus"].push_back(OK_STATUS);
+
+    ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+    EXPECT_TRUE(std::filesystem::exists(expectedOutputFile));
+}
+
+/**
+ * @brief Tests the download from an HTTP URL without filename.
+ *
+ */
+TEST_F(OfflineDownloaderTest, HttpDownloadFileWithoutFilename)
+{
+    m_spUpdaterBaseContext->configData["url"] = HTTP_PREFIX + BASE_URL;
+    m_spUpdaterBaseContext->configData["compressionType"] = "raw";
+
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
+    expectedData["stageStatus"] = nlohmann::json::array();
+    expectedData["stageStatus"].push_back(FAIL_STATUS);
+
+    ASSERT_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext), std::runtime_error);
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+}
+
+/**
+ * @brief Tests the download from an URL with an unsupported prefix.
+ *
+ */
+TEST_F(OfflineDownloaderTest, DownloadUnknownPrefixedFile)
+{
+    m_spUpdaterBaseContext->configData["url"] = "prefix://" + BASE_URL + CONTENT_FILENAME_XZ;
+    m_spUpdaterBaseContext->configData["compressionType"] = "raw";
+
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
+    expectedData["stageStatus"] = nlohmann::json::array();
+    expectedData["stageStatus"].push_back(FAIL_STATUS);
+
+    ASSERT_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext), std::runtime_error);
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+}
+
+/**
+ * @brief Tests the download of a raw file from an HTTP server, overriding an existing one.
+ *
+ */
+TEST_F(OfflineDownloaderTest, HttpDownloadRawFileOverride)
+{
+    m_spUpdaterBaseContext->configData["url"] = HTTP_PREFIX + BASE_URL + CONTENT_FILENAME_RAW;
+    m_spUpdaterBaseContext->configData["compressionType"] = "raw";
+
+    const auto expectedOutputFile {m_spUpdaterBaseContext->contentsFolder.string() + "/" + CONTENT_FILENAME_RAW};
+
+    nlohmann::json expectedData;
+    expectedData["paths"].push_back(expectedOutputFile);
+    expectedData["stageStatus"] = nlohmann::json::array();
+    expectedData["stageStatus"].push_back(OK_STATUS);
+
+    // Create dummy file in the expected output path.
+    std::ofstream testFileStream {expectedOutputFile};
+    testFileStream << "I will be overridden :(" << std::endl;
+    testFileStream.close();
+
+    ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+    EXPECT_TRUE(std::filesystem::exists(expectedOutputFile));
 }

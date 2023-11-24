@@ -170,6 +170,13 @@ private:
 
             // Download finished: Insert path into context.
             context.data.at("paths").push_back(outputFilePath.string());
+            return;
+        }
+
+        if (httpDownload)
+        {
+            // Remove temporary downloaded file.
+            std::filesystem::remove(inputFilePath);
         }
     }
 

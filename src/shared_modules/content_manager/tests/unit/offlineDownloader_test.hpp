@@ -12,6 +12,7 @@
 #ifndef _OFFLINE_DOWNLOADER_TEST
 #define _OFFLINE_DOWNLOADER_TEST
 
+#include "fakes/fakeServer.hpp"
 #include "offlineDownloader.hpp"
 #include "updaterContext.hpp"
 #include "gtest/gtest.h"
@@ -29,13 +30,15 @@ protected:
     OfflineDownloaderTest() = default;
     ~OfflineDownloaderTest() override = default;
 
-    const std::filesystem::path m_tempPath {std::filesystem::temp_directory_path()};          ///< Temporary path.
-    const std::filesystem::path m_inputFilePathRaw {m_tempPath / "testFile.txt"}; ///< Raw input test path.
+    const std::filesystem::path m_tempPath {std::filesystem::temp_directory_path()}; ///< Temporary path.
+    const std::filesystem::path m_inputFilePathRaw {m_tempPath / "testFile.txt"};    ///< Raw input test path.
     const std::filesystem::path m_inputFilePathCompressed {m_tempPath /
                                                            "testFile.txt.gz"}; ///< Compressed input test path.
     const std::filesystem::path m_outputFolder {m_tempPath / "offline-downloader-tests"}; ///< Output test folder.
     std::shared_ptr<UpdaterContext> m_spUpdaterContext;         ///< UpdaterContext used on tests.
     std::shared_ptr<UpdaterBaseContext> m_spUpdaterBaseContext; ///< UpdaterBaseContext used on tests.
+
+    inline static std::unique_ptr<FakeServer> m_spFakeServer; ///< Fake HTTP server used in tests.
 
     /**
      * @brief Set up routine for each test fixture.
@@ -78,6 +81,27 @@ protected:
         std::filesystem::remove(m_inputFilePathRaw);
         std::filesystem::remove(m_inputFilePathCompressed);
         std::filesystem::remove_all(m_outputFolder);
+    }
+
+    /**
+     * @brief Set up routine for the test suite.
+     *
+     */
+    static void SetUpTestSuite()
+    {
+        if (!m_spFakeServer)
+        {
+            m_spFakeServer = std::make_unique<FakeServer>("localhost", 4444);
+        }
+    }
+
+    /**
+     * @brief Tear down routine for the test suite.
+     *
+     */
+    static void TearDownTestSuite()
+    {
+        m_spFakeServer.reset();
     }
 };
 
