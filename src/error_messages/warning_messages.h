@@ -52,7 +52,7 @@
 #define FIM_WHODATA_RENDER_EVENT                "(6933): Error rendering the event. Error %lu."
 #define FIM_WHODATA_RENDER_PARAM                "(6934): Invalid number of rendered parameters."
 #define FIM_DB_TEMPORARY_FILE_POSITION          "(6935): Unable to reposition temporary file to beginning. Error[%d]: '%s'"
-#define FIM_REG_VAL_WRONG_TYPE                  "(6936): Wrong registry value type processed for report_changes."
+#define FIM_REG_VAL_WRONG_TYPE                  "(6936): Wrong registry value type processed for report_changes. Check registry path: '%s'"
 #define FIM_INVALID_REG_OPTION_SKIP             "(6937): Invalid option '%s' for attribute '%s'. The registry '%s' not be monitored."
 #define FIM_REGISTRY_EVENT_NULL_ENTRY           "(6938): Invalid null registry event."
 #define FIM_REGISTRY_EVENT_NULL_ENTRY_KEY       "(6939): Invalid registry event with a null key was detected."

@@ -374,7 +374,7 @@ int fim_diff_registry_tmp(const char *value_data,
 
             default:
                 // Wrong type
-                mwarn(FIM_REG_VAL_WRONG_TYPE);
+                mwarn(FIM_REG_VAL_WRONG_TYPE, diff->file_origin);
                 ret = -1;
                 break;
         }
