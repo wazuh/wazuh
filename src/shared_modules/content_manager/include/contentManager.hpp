@@ -26,6 +26,8 @@
 #define EXPORTED
 #endif
 
+constexpr auto ONDEMAND_SOCK {"/tmp/wazuh-ondemand.sock"};
+
 /**
  * @brief ContentModule class.
  *

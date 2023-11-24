@@ -11,6 +11,7 @@
 
 #include "onDemandManager.hpp"
 #include "../sharedDefs.hpp"
+#include "contentManager.hpp"
 #include "defs.h"
 #include <filesystem>
 #include <utility>

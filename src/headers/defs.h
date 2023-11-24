@@ -141,7 +141,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define CONTROL_SOCK "queue/sockets/control"
 #define LOGTEST_SOCK "queue/sockets/logtest"
 #define AGENT_UPGRADE_SOCK "queue/sockets/upgrade"
-#define ONDEMAND_SOCK "/tmp/wazuh-ondemand.sock"
 
 // Tasks socket
 #define TASK_QUEUE "queue/tasks/task"
