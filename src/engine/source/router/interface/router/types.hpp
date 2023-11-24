@@ -284,6 +284,8 @@ public:
     }
 };
 
+using TestingTuple = std::tuple<base::Event, Opt, std::function<void(base::RespOrError<Output>&&)>>;
+using QueueType = std::shared_ptr<TestingTuple>;
 
 } // namespace test
 

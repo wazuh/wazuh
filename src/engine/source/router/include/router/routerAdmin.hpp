@@ -18,17 +18,12 @@
 namespace router
 {
 
-namespace test
-{
-using TestingTuple = std::tuple<base::Event, Opt, std::function<void(Output&&)>>;
-using QueueType = std::shared_ptr<TestingTuple>;
-} // namespace test
 using ProdQueueType = base::queue::iQueue<base::Event>;
 using TestQueueType = base::queue::iQueue<test::QueueType>;
 
 // Forward declarations
-class Router;
-class Tester;
+class Worker;
+class EnvironmentBuilder;
 
 struct Config
 {
@@ -49,25 +44,12 @@ class RouterAdmin
 
 private:
     // Global
-    std::atomic_bool m_isRunning;       ///< Flag to know if the router is running
-    std::vector<std::thread> m_threads; ///< Vector of threads for the router (move router)
+    std::list<std::shared_ptr<Worker>> m_workers; ///< Vector of threads for the router (move router)
+    mutable std::shared_mutex m_syncMutex;        ///< Mutex for the router / testet and Workers synchronization
 
-    // Production
-    struct Production
-    {
-        std::list<std::shared_ptr<Router>> routers;
-        mutable std::shared_mutex bussyMutex; ///< Mutex for updating the router (Only 1 request at a time)
-        std::shared_ptr<ProdQueueType> queue;
-        Production() = default;
-    } m_production;
-
-    struct Testing
-    {
-        std::list<std::shared_ptr<Tester>> tester; ///< List of testers
-        mutable std::shared_mutex bussyMutex;      ///< Mutex for updating the testers (Only 1 request at a time)
-        std::shared_ptr<TestQueueType> queue;
-        Testing() = default;
-    } m_testing;
+    std::shared_ptr<ProdQueueType> m_eventQueue;      ///< The event queue
+    std::shared_ptr<TestQueueType> m_testQueue;       ///< The test queue
+    std::shared_ptr<EnvironmentBuilder> m_envBuilder; ///< The environment builder
 
     void validateConfig(const Config& config);
 
@@ -101,7 +83,7 @@ public:
             LOG_WARNING("Error parsing event: '{}' (discarding...)", e.what());
             return;
         }
-        m_production.queue->push(std::move(event));
+        m_eventQueue->push(std::move(event));
     }
 
     /**************************************************************************
@@ -141,7 +123,7 @@ public:
     /**
      * @copydoc router::IRouterAPI::postEvent
      */
-    void postEvent(base::Event&& event) override { m_production.queue->push(std::move(event)); }
+    void postEvent(base::Event&& event) override { m_eventQueue->push(std::move(event)); }
 
     /**
      * @copydoc router::IRouterAPI::postStrEvent
@@ -180,12 +162,12 @@ public:
     /**
      * @copydoc router::ITesterAPI::ingestTest
      */
-    base::RespOrError<std::future<test::Output>> ingestTest(base::Event&& event, const test::Opt& opt) override;
+    std::future<base::RespOrError<test::Output>> ingestTest(base::Event&& event, const test::Opt& opt) override;
 
     /**
      * @copydoc router::ITesterAPI::ingestTest
      */
-    base::RespOrError<std::future<test::Output>> ingestTest(std::string_view event, const test::Opt& opt) override;
+    std::future<base::RespOrError<test::Output>> ingestTest(std::string_view event, const test::Opt& opt) override;
 };
 
 } // namespace router
