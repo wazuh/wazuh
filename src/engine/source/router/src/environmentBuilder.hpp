@@ -71,7 +71,7 @@ public:
      * @param policyName The name of the policy.
      * @param builder The builder used to construct the policy.
      * @return std::shared_ptr<bk::IController> The constructed controller.
-     * @throws std::runtime_error if the policy has no assets or if the backend cannot be built.
+     * @throws std::runtime_error if the policy has no assets or if the backend cannot be built. // TODO Move to base::Error
      */
     std::shared_ptr<bk::IController> makeController(const base::Name& policyName)
     {
@@ -110,7 +110,7 @@ public:
      * @param policyName The name of the policy.
      * @param filterName The name of the filter.
      * @return Environment The created environment.
-     * @throws std::runtime_error if failed to create the environment.
+     * @throws std::runtime_error if failed to create the environment. // TODO CHange to base::Error
      */
     std::unique_ptr<Environment> create(const base::Name& policyName, const base::Name& filterName)
     {
