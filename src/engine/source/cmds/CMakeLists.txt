@@ -7,7 +7,6 @@ add_library(cmds STATIC
     src/config.cpp
     # src/router.cpp
     src/metrics.cpp
-    src/integration.cpp
     src/policy.cpp
 )
 

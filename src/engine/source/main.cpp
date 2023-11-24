@@ -6,7 +6,6 @@
 #include <cmds/catalog.hpp>
 #include <cmds/config.hpp>
 #include <cmds/graph.hpp>
-#include <cmds/integration.hpp>
 #include <cmds/kvdb.hpp>
 #include <cmds/metrics.hpp>
 #include <cmds/policy.hpp>
@@ -47,7 +46,6 @@ int main(int argc, char* argv[])
     cmd::config::configure(app);
     // cmd::router::configure(app);
     cmd::metrics::configure(app);
-    cmd::integration::configure(app);
     cmd::policy::configure(app);
 
     try
