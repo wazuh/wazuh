@@ -44,8 +44,8 @@ public:
     virtual std::list<test::Entry> getTestEntries() const = 0;
 
     // Testing: Ingest
-    virtual base::RespOrError<std::future<test::Output>> ingestTest(base::Event&& event, const test::Opt& opt) = 0;
-    virtual base::RespOrError<std::future<test::Output>> ingestTest(std::string_view event, const test::Opt& opt) = 0;
+    virtual std::future<base::RespOrError<test::Output>> ingestTest(base::Event&& event, const test::Opt& opt) = 0;
+    virtual std::future<base::RespOrError<test::Output>> ingestTest(std::string_view event, const test::Opt& opt) = 0;
 };
 } // namespace router
 
