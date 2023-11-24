@@ -31,6 +31,11 @@ from api import configuration
 from wazuh.core import common
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.wdb import WazuhDBConnection
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.engine.result import Result
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.sql import text
 
 # Python 2/3 compatibility
 if sys.version_info[0] == 3:
@@ -1306,13 +1311,16 @@ class AbstractDatabaseBackend:
     def execute(self, query, request, count=False):
         raise NotImplementedError
 
+    def migrate(self, query: str, params: dict = None):
+        raise NotImplementedError
+
 
 class WazuhDBBackend(AbstractDatabaseBackend):
     """
     This class describes a wazuh db backend that executes database queries.
     """
 
-    def __init__(self, agent_id=None, query_format='agent', request_slice=500):
+    def __init__(self, agent_id: int = None, query_format: str = 'agent', request_slice: int = 500):
         if query_format == 'agent' and not path.exists(path.join(common.WDB_PATH, f"{agent_id}.db")):
             raise WazuhError(2007, extra_message=f"There is no database for agent {agent_id}. "
                                                  "Please check if the agent has connected to the manager")
@@ -1329,31 +1337,6 @@ class WazuhDBBackend(AbstractDatabaseBackend):
     def close_connection(self):
         self.conn.close()
 
-    def _substitute_params(self, query, request):
-        """
-        Substitute request parameters in query. This is only necessary when the backend is wdb. Sqlite substitutes
-        parameters by itself.
-        """
-        for k, v in request.items():
-            if isinstance(v, list):
-                values = list()
-                for element in v:
-                    if isinstance(element, (int, float)) or (isinstance(element, str) and element.isnumeric()):
-                        values.append(element)
-                    else:
-                        values.append(f"'{element}'")
-                value = f"{','.join(values)}"
-            elif isinstance(v, (int, float)):
-                value = f"{v}"
-            elif isinstance(v, str):
-                value = f"'{v}'"
-            else:
-                raise TypeError(f'Invalid type for request parameters: {type(v)}')
-            # Escape backslash to avoid re error
-            value = value.replace('\\', '\\\\')
-            query = re.sub(r':\b' + re.escape(str(k)) + r'\b', value, query)
-        return query
-
     def _render_query(self, query):
         """Render query attending the format."""
         if self.query_format == 'mitre':
@@ -1367,9 +1350,96 @@ class WazuhDBBackend(AbstractDatabaseBackend):
 
     def execute(self, query, request, count=False):
         """Execute SQL query through WazuhDB socket."""
-        query = self._substitute_params(query, request)
+        query = substitute_query_params(query, request)
         return self.conn.execute(query=self._render_query(query), count=count)
 
+class WazuhDBInMemoryBackend(AbstractDatabaseBackend):
+
+    _session: Session
+    key_types: typing.Dict[str, typing.Any] = {}
+
+    def connect_to_db(self):
+        """Open a connection to the database."""
+        engine = create_engine('sqlite:///:memory:', echo=False)
+        self._session = sessionmaker(bind=engine)()
+
+    def close_connection(self):
+        """Close connection to the database."""
+        self._session.close()
+
+    def execute(self, query: str, request: dict, count: bool = False) -> int | dict:
+        """Execute SQL query through in memory database.
+        
+        Parameters
+        ----------
+        query : str
+            Query to execute.
+        request : dict
+            Database request, empty in this case.
+        count : bool
+            Whether to return number of results obtained.
+
+        Returns
+        -------
+        int | dict
+            Integer if requesting the count or dictionary with the results obtained. False if there was an error.
+        """
+        try:
+            query = substitute_query_params(query, request)
+            result = self._session.execute(statement=text(query))
+            self._session.commit()
+            if count:
+                row = result.fetchone()
+                return row.tuple()[0]
+
+            return self._parse_results(result)
+        except IntegrityError:
+            self._session.rollback()
+            return False
+    
+    def migrate(self, query: str, params: dict = None):
+        try:
+            self._session.execute(statement=text(query), params=params)
+            self._session.commit()
+        except IntegrityError:
+            self._session.rollback()
+    
+    def _parse_results(self, result: Result) -> typing.List[dict]:
+        """Parses SQLAlchemy rows into a list of dictionaries.
+        
+        Parameters
+        ----------
+        result : Result
+            Query result.
+        
+        Returns
+        -------
+        list[dict]
+            Results in a list of dictionaries.
+        """
+        res: typing.List[dict] = []
+        for row in result:
+            item = self._parse_special_types(row._asdict())
+            if item:
+                res.append(item)
+        return res
+
+    def _parse_special_types(self, item: dict) -> dict:
+        for key, value_type in self.key_types.items():
+            if key not in item:
+                continue
+
+            if value_type is bool:
+                item.update({key: bool(item[key])})
+            
+            if value_type in (list, set):
+                value = item[key]
+                item.update({key: value.split(',')})
+            
+            if item[key] is None:
+                item.pop(key)
+
+        return item
 
 class WazuhDBQuery(object):
     """This class describes a database query for wazuh."""
@@ -1883,6 +1953,150 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
             }
         self.select = self.select & self.filter_fields['fields']
 
+class WazuhInMemoryDBQuery(WazuhDBQuery):
+    """Retrieve values from temporary tables that were created with the information gathered from different sources."""
+
+    _dict_type = typing.Dict[str, typing.Any]
+    mapping: typing.Dict[str, typing.Any] = {}
+
+    def __init__(self, array: typing.List[_dict_type], offset: int, limit: int,
+                 count: bool = True, get_data: bool = True, *args, **kwargs):
+        if not array:
+            return
+        
+        # Shrink array to avoid creating unnecessary rows
+        if offset and limit:
+            array = array[offset:offset+limit]
+
+        self.table = 'tmp'
+        self._map_fields(array)
+        fields = {}
+        for field in self.mapping:
+            fields.update({field: field})
+
+        WazuhDBQuery.__init__(self, backend=WazuhDBInMemoryBackend(), table=self.table, fields=fields, offset=offset,
+                              limit=limit, count=count, get_data=get_data, *args, **kwargs)
+        # Build key-value_type mapping so we know how to parse results afterwards
+        self.backend.key_types.update(self.mapping)
+        self._create_temporary_table()
+        self._populate_temporary_table(array)
+    
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.mapping.clear()
+        self.backend.close_connection()
+        super().__exit__(exc_type, exc_val, exc_tb)
+
+    def _filter_status(self, status_filter):
+        raise NotImplementedError
+    
+    def _map_fields(self, array: typing.List[_dict_type], prefix: str = None):
+        for item in array:
+            for key, value in item.items():
+                key = prefix+key if prefix else key
+
+                if key in self.mapping:
+                    continue
+
+                if isinstance(value, dict):
+                    self._map_fields([value], key+"_")
+                    continue
+
+                self.mapping.update({key: type(value)})
+
+    def _create_temporary_table(self):
+        """Creates a temporary table based on the structure of the information received."""
+        create_stmt = f"CREATE TEMP TABLE {self.table} ("
+        fields = self._dict_to_sql()
+        create_stmt += f"{fields}\n);"
+        self.backend.migrate(query=create_stmt)
+
+    def _dict_to_sql(self) -> str:
+        sql_stmt = ''
+        for i, (k, v) in enumerate(self.mapping.items()):
+            if i != 0:
+                sql_stmt += ','
+
+            sql_stmt += f"\n{k} "
+            sql_stmt += self._value_type_to_sql(v)
+            if k == 'id':
+                sql_stmt += ' PRIMARY KEY'
+
+        return sql_stmt
+
+    def _value_type_to_sql(self, value_type: typing.Any) -> str:
+        """Returns an SQL type based on the value type.
+        
+        Parameters
+        ----------
+        value_type : typing.Any
+            Item value type.
+
+        Returns
+        -------
+        str
+            SQL type.
+        """
+        if value_type is str:
+            return 'TEXT'
+        if value_type in (int, bool):
+            return 'INTEGER'
+        if value_type is float:
+            return 'REAL'
+
+        return 'TEXT'
+
+    def _populate_temporary_table(self, array: typing.List[_dict_type]):
+        params = {}
+
+        insert_stmt = f"INSERT INTO {self.table} ("
+        insert_stmt += self._create_insert_fields_stmt()
+        insert_stmt += ') VALUES '
+        for i, item in enumerate(array):
+            if i != 0:
+                insert_stmt += ','
+            insert_stmt += '('
+            insert_stmt += self._create_insert_values_stmt(params, item) + ')'
+        insert_stmt += ';'
+
+        self.backend.migrate(query=insert_stmt, params=params)
+
+    def _create_insert_fields_stmt(self) -> str:
+        stmt = ''
+        for i, (k) in enumerate(self.mapping.keys()):
+            if i != 0:
+                stmt += ','
+
+            stmt += k
+
+        return stmt
+
+    def _create_insert_values_stmt(self, params: dict, item: _dict_type) -> str:
+        stmt = ''
+        for i, key in enumerate(self.mapping):
+            if i != 0:
+                stmt += ','
+
+            index = len(params)
+            stmt += f":{index}"
+            if key not in item:
+                params.update({str(index): None})
+                continue
+
+            value = item[key]
+            if isinstance(value, (list, set)):
+                # Encode lists and sets to a comma-separated string
+                value = ','.join(str(x) for x in value)
+            elif isinstance(value, dict):
+                stmt += self._create_insert_values_stmt(params, value)
+                continue
+        
+            params.update({str(index): value})
+
+        return stmt
+
 
 @common.context_cached('system_rules')
 def expand_rules() -> set:
@@ -2252,3 +2466,34 @@ def get_utc_strptime(date: str, datetime_format: str) -> datetime:
         The current date.
     """
     return datetime.strptime(date, datetime_format).replace(tzinfo=timezone.utc)
+
+def substitute_query_params(query: str, request: dict):
+    """
+    Substitute request parameters in query.
+
+    Parameters
+    ----------
+    query: str
+        Database query.
+    request: dict
+        Database query request parameters.
+    """
+    for k, v in request.items():
+        if isinstance(v, list):
+            values = list()
+            for element in v:
+                if isinstance(element, (int, float)) or (isinstance(element, str) and element.isnumeric()):
+                    values.append(element)
+                else:
+                    values.append(f"'{element}'")
+            value = f"{','.join(values)}"
+        elif isinstance(v, (int, float)):
+            value = f"{v}"
+        elif isinstance(v, str):
+            value = f"'{v}'"
+        else:
+            raise TypeError(f'Invalid type for request parameters: {type(v)}')
+        # Escape backslash to avoid re error
+        value = value.replace('\\', '\\\\')
+        query = re.sub(r':\b' + re.escape(str(k)) + r'\b', value, query)
+    return query
