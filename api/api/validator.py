@@ -91,7 +91,7 @@ api_config_schema = {
                 "ca": {"type": "string",
                        "pattern": r"^[\w\-.]+$"},
                 "ssl_protocol": {"type": "string", "enum": ["tls", "tlsv1", "tlsv1.1", "tlsv1.2", "TLS",
-                                                            "TLSv1", "TLSv1.1", "TLSv1.2"]},
+                                                            "TLSv1", "TLSv1.1", "TLSv1.2", "auto", "AUTO"]},
                 "ssl_ciphers": {"type": "string"}
             },
         },

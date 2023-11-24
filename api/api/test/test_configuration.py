@@ -22,7 +22,7 @@ custom_api_configuration = {
         "cert": "server.crt",
         "use_ca": False,
         "ca": "ca.crt",
-        "ssl_protocol": "TLSv1.2",
+        "ssl_protocol": "auto",
         "ssl_ciphers": ""
     },
     "logs": {

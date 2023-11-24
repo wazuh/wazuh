@@ -8,10 +8,15 @@ import argparse
 import os
 import signal
 import sys
+import warnings
 
 from api.constants import API_LOG_PATH
 from wazuh.core.wlogging import TimeBasedFileRotatingHandler, SizeBasedFileRotatingHandler
 from wazuh.core import pyDaemonModule
+
+SSL_DEPRECATED_MESSAGE = 'The `{ssl_protocol}` SSL protocol option was deprecated in {release} and will be removed ' \
+                         'in the next minor in favor of the `auto` option and the manual setting of the minimum and ' \
+                         'maximum TLS supported versions.'
 
 API_MAIN_PROCESS = 'wazuh-apid'
 API_LOCAL_REQUEST_PROCESS = 'wazuh-apid_exec'
@@ -298,11 +303,18 @@ if __name__ == '__main__':
                 'tls': ssl.PROTOCOL_TLS,
                 'tlsv1': ssl.PROTOCOL_TLSv1,
                 'tlsv1.1': ssl.PROTOCOL_TLSv1_1,
-                'tlsv1.2': ssl.PROTOCOL_TLSv1_2
+                'tlsv1.2': ssl.PROTOCOL_TLSv1_2,
+                'auto': ssl.PROTOCOL_TLS_SERVER
             }
 
-            ssl_protocol = allowed_ssl_protocols[api_conf['https']['ssl_protocol'].lower()]
-            ssl_context = ssl.SSLContext(protocol=ssl_protocol)
+            config_ssl_protocol = api_conf['https']['ssl_protocol']
+            ssl_protocol = allowed_ssl_protocols[config_ssl_protocol.lower()]
+
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=DeprecationWarning)
+                if ssl_protocol is not ssl.PROTOCOL_TLS_SERVER:
+                    logger.warning(SSL_DEPRECATED_MESSAGE.format(ssl_protocol=config_ssl_protocol, release="4.8"))
+                ssl_context = ssl.SSLContext(protocol=ssl_protocol)
 
             if api_conf['https']['use_ca']:
                 ssl_context.verify_mode = ssl.CERT_REQUIRED
