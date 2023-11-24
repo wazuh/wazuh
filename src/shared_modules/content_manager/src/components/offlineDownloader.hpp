@@ -13,6 +13,7 @@
 #define _OFFLINE_DOWNLOADER_HPP
 
 #include "../sharedDefs.hpp"
+#include "IURLRequest.hpp"
 #include "hashHelper.h"
 #include "json.hpp"
 #include "stringHelper.h"
@@ -37,6 +38,8 @@
 class OfflineDownloader final : public AbstractHandler<std::shared_ptr<UpdaterContext>>
 {
 private:
+    IURLRequest& m_urlRequest; ///< HTTP driver instance.
+
     /**
      * @brief Pushes the state of the current stage into the data field of the context.
      *
@@ -89,20 +92,50 @@ private:
      */
     void download(UpdaterContext& context) const
     {
-        // Take the 'url' as the input file path.
-        auto url {context.spUpdaterBaseContext->configData.at("url").get<std::string>()};
-        constexpr auto filePrefix {"file://"};
-        if (Utils::startsWith(url, filePrefix))
-        {
-            Utils::replaceFirst(url, filePrefix, "");
-        }
-        const std::filesystem::path inputFilePath {url};
+        constexpr auto FILE_PREFIX {"file://"};
+        constexpr auto HTTP_PREFIX {"http://"};
+        constexpr auto HTTPS_PREFIX {"https://"};
 
-        // Check input file existence.
-        if (!std::filesystem::exists(inputFilePath))
+        auto url {context.spUpdaterBaseContext->configData.at("url").get<std::string>()};
+        std::filesystem::path inputFilePath;
+        auto httpDownload {false};
+
+        if (Utils::startsWith(url, FILE_PREFIX))
         {
-            logWarn(WM_CONTENTUPDATER, "File %s doesn't exist. Skipping download.", inputFilePath.string().c_str());
-            return;
+            // Use the URL as a path to a file within the filesystem.
+            Utils::replaceFirst(url, FILE_PREFIX, "");
+            inputFilePath = url;
+
+            // Check input file existence.
+            if (!std::filesystem::exists(inputFilePath))
+            {
+                logWarn(
+                    WM_CONTENTUPDATER, "File '%s' doesn't exist. Skipping download.", inputFilePath.string().c_str());
+                return;
+            }
+        }
+        else if (Utils::startsWith(url, HTTP_PREFIX) || Utils::startsWith(url, HTTPS_PREFIX))
+        {
+            const auto onError {[](const std::string& errorMessage, const long errorCode)
+                                {
+                                    throw std::runtime_error {"(" + std::to_string(errorCode) + ") " + errorMessage};
+                                }};
+
+            const std::filesystem::path pathURL {url};
+            if (!pathURL.has_filename())
+            {
+                throw std::runtime_error {"Couldn't get filename from URL: " + url};
+            }
+
+            inputFilePath = std::filesystem::temp_directory_path() / pathURL.filename();
+            httpDownload = true;
+
+            // Download file from URL and store in a temporary directory.
+            m_urlRequest.download(HttpURL(url), inputFilePath, onError);
+        }
+        else
+        {
+            throw std::runtime_error {"Unkown URL prefix for " + url};
         }
 
         // Process input file hash.
@@ -121,8 +154,16 @@ private:
                                             : context.spUpdaterBaseContext->contentsFolder};
             outputFilePath = outputFilePath / inputFilePath.filename();
 
-            // Copy file, overriding the output one if necessary.
-            std::filesystem::copy(inputFilePath, outputFilePath, std::filesystem::copy_options::overwrite_existing);
+            if (httpDownload)
+            {
+                // Move downloaded file.
+                std::filesystem::rename(inputFilePath, outputFilePath);
+            }
+            else
+            {
+                // Copy file, overriding the output one if necessary.
+                std::filesystem::copy(inputFilePath, outputFilePath, std::filesystem::copy_options::overwrite_existing);
+            }
 
             // Store new hash.
             context.spUpdaterBaseContext->downloadedFileHash = std::move(inputFileHash);
@@ -133,6 +174,14 @@ private:
     }
 
 public:
+    /**
+     * @brief Class constructor.
+     *
+     * @param urlRequest HTTP driver instance to use within the class.
+     */
+    explicit OfflineDownloader(IURLRequest& urlRequest)
+        : m_urlRequest(urlRequest) {};
+
     /**
      * @brief Copies a file from the local filesystem in order to be processed and passes the control to the next chain
      * stage.

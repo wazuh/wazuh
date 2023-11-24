@@ -58,7 +58,7 @@ public:
         }
         if ("offline" == downloaderType)
         {
-            return std::make_shared<OfflineDownloader>();
+            return std::make_shared<OfflineDownloader>(HTTPRequest::instance());
         }
 
         throw std::invalid_argument {"Invalid 'contentSource' type: " + downloaderType};

@@ -16,9 +16,12 @@
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include "HTTPRequest.hpp"
 
 const auto OK_STATUS = R"({"stage":"OfflineDownloader","status":"ok"})"_json;
 const auto FAIL_STATUS = R"({"stage":"OfflineDownloader","status":"fail"})"_json;
+
+constexpr auto FILE_PREFIX {"file://"};
 
 /**
  * @brief Tests the correct instantiation of the class.
@@ -26,8 +29,8 @@ const auto FAIL_STATUS = R"({"stage":"OfflineDownloader","status":"fail"})"_json
  */
 TEST_F(OfflineDownloaderTest, Instantiation)
 {
-    EXPECT_NO_THROW(OfflineDownloader());
-    EXPECT_NO_THROW(std::make_shared<OfflineDownloader>());
+    EXPECT_NO_THROW(OfflineDownloader(HTTPRequest::instance()));
+    EXPECT_NO_THROW(std::make_shared<OfflineDownloader>(HTTPRequest::instance()));
 }
 
 /**
@@ -36,7 +39,7 @@ TEST_F(OfflineDownloaderTest, Instantiation)
  */
 TEST_F(OfflineDownloaderTest, RawFileDownload)
 {
-    m_spUpdaterBaseContext->configData["url"] = m_inputFilePathRaw.string();
+    m_spUpdaterBaseContext->configData["url"] = FILE_PREFIX + m_inputFilePathRaw.string();
     m_spUpdaterBaseContext->configData["compressionType"] = "raw";
 
     nlohmann::json expectedData;
@@ -45,7 +48,7 @@ TEST_F(OfflineDownloaderTest, RawFileDownload)
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
 
-    ASSERT_NO_THROW(OfflineDownloader().handleRequest(m_spUpdaterContext));
+    ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
     EXPECT_TRUE(std::filesystem::exists(m_spUpdaterBaseContext->contentsFolder / m_inputFilePathRaw.filename()));
 }
@@ -56,7 +59,7 @@ TEST_F(OfflineDownloaderTest, RawFileDownload)
  */
 TEST_F(OfflineDownloaderTest, CompressedFileDownload)
 {
-    m_spUpdaterBaseContext->configData["url"] = m_inputFilePathCompressed.string();
+    m_spUpdaterBaseContext->configData["url"] = FILE_PREFIX + m_inputFilePathCompressed.string();
     m_spUpdaterBaseContext->configData["compressionType"] = "gzip";
 
     nlohmann::json expectedData;
@@ -65,7 +68,7 @@ TEST_F(OfflineDownloaderTest, CompressedFileDownload)
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
 
-    ASSERT_NO_THROW(OfflineDownloader().handleRequest(m_spUpdaterContext));
+    ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
     EXPECT_TRUE(
         std::filesystem::exists(m_spUpdaterBaseContext->downloadsFolder / m_inputFilePathCompressed.filename()));
@@ -77,7 +80,7 @@ TEST_F(OfflineDownloaderTest, CompressedFileDownload)
  */
 TEST_F(OfflineDownloaderTest, InexistantFileDownload)
 {
-    m_spUpdaterBaseContext->configData["url"] = "file://" + m_tempPath.string() + "/inexistant.txt";
+    m_spUpdaterBaseContext->configData["url"] = FILE_PREFIX + m_tempPath.string() + "/inexistant.txt";
     m_spUpdaterBaseContext->configData["compressionType"] = "raw";
 
     nlohmann::json expectedData;
@@ -85,7 +88,7 @@ TEST_F(OfflineDownloaderTest, InexistantFileDownload)
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
 
-    ASSERT_NO_THROW(OfflineDownloader().handleRequest(m_spUpdaterContext));
+    ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 }
 
@@ -96,7 +99,7 @@ TEST_F(OfflineDownloaderTest, InexistantFileDownload)
  */
 TEST_F(OfflineDownloaderTest, SkipFileProcessing)
 {
-    m_spUpdaterBaseContext->configData["url"] = m_inputFilePathRaw.string();
+    m_spUpdaterBaseContext->configData["url"] = FILE_PREFIX + m_inputFilePathRaw.string();
     m_spUpdaterBaseContext->configData["compressionType"] = "raw";
 
     nlohmann::json expectedData;
@@ -105,7 +108,7 @@ TEST_F(OfflineDownloaderTest, SkipFileProcessing)
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
 
-    ASSERT_NO_THROW(OfflineDownloader().handleRequest(m_spUpdaterContext));
+    ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
     EXPECT_TRUE(std::filesystem::exists(m_spUpdaterBaseContext->contentsFolder / m_inputFilePathRaw.filename()));
 
@@ -116,7 +119,7 @@ TEST_F(OfflineDownloaderTest, SkipFileProcessing)
     // No paths are expected.
     expectedData.at("paths").clear();
 
-    ASSERT_NO_THROW(OfflineDownloader().handleRequest(m_spUpdaterContext));
+    ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 }
 
@@ -127,7 +130,7 @@ TEST_F(OfflineDownloaderTest, SkipFileProcessing)
  */
 TEST_F(OfflineDownloaderTest, TwoFileDownloadsOverrideOutput)
 {
-    m_spUpdaterBaseContext->configData["url"] = m_inputFilePathRaw.string();
+    m_spUpdaterBaseContext->configData["url"] = FILE_PREFIX + m_inputFilePathRaw.string();
     m_spUpdaterBaseContext->configData["compressionType"] = "raw";
 
     // Set expected data.
@@ -138,7 +141,7 @@ TEST_F(OfflineDownloaderTest, TwoFileDownloadsOverrideOutput)
     expectedData["stageStatus"].push_back(OK_STATUS);
 
     // Trigger first download.
-    ASSERT_NO_THROW(OfflineDownloader().handleRequest(m_spUpdaterContext));
+    ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
     EXPECT_TRUE(std::filesystem::exists(m_spUpdaterBaseContext->contentsFolder / m_inputFilePathRaw.filename()));
 
@@ -152,7 +155,7 @@ TEST_F(OfflineDownloaderTest, TwoFileDownloadsOverrideOutput)
     m_spUpdaterContext->data.at("paths").clear();
 
     // Trigger second download.
-    ASSERT_NO_THROW(OfflineDownloader().handleRequest(m_spUpdaterContext));
+    ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
     EXPECT_TRUE(std::filesystem::exists(m_spUpdaterBaseContext->contentsFolder / m_inputFilePathRaw.filename()));
 }
@@ -163,7 +166,7 @@ TEST_F(OfflineDownloaderTest, TwoFileDownloadsOverrideOutput)
  */
 TEST_F(OfflineDownloaderTest, InexistantContentFolder)
 {
-    m_spUpdaterBaseContext->configData["url"] = m_inputFilePathRaw.string();
+    m_spUpdaterBaseContext->configData["url"] = FILE_PREFIX + m_inputFilePathRaw.string();
     m_spUpdaterBaseContext->configData["compressionType"] = "raw";
     m_spUpdaterBaseContext->contentsFolder = m_outputFolder / "inexistantFolder";
 
@@ -172,6 +175,6 @@ TEST_F(OfflineDownloaderTest, InexistantContentFolder)
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(FAIL_STATUS);
 
-    ASSERT_THROW(OfflineDownloader().handleRequest(m_spUpdaterContext), std::runtime_error);
+    ASSERT_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext), std::runtime_error);
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 }

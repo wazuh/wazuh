@@ -30,8 +30,8 @@ protected:
     ~OfflineDownloaderTest() override = default;
 
     const std::filesystem::path m_tempPath {std::filesystem::temp_directory_path()};          ///< Temporary path.
-    const std::filesystem::path m_inputFilePathRaw {"file://" / m_tempPath / "testFile.txt"}; ///< Raw input test path.
-    const std::filesystem::path m_inputFilePathCompressed {"file://" / m_tempPath /
+    const std::filesystem::path m_inputFilePathRaw {m_tempPath / "testFile.txt"}; ///< Raw input test path.
+    const std::filesystem::path m_inputFilePathCompressed {m_tempPath /
                                                            "testFile.txt.gz"}; ///< Compressed input test path.
     const std::filesystem::path m_outputFolder {m_tempPath / "offline-downloader-tests"}; ///< Output test folder.
     std::shared_ptr<UpdaterContext> m_spUpdaterContext;         ///< UpdaterContext used on tests.
