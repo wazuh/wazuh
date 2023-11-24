@@ -50,18 +50,19 @@ STATIC void handle_incoming_data_from_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_storage * peer_info);
 STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storage * peer_info);
 
-// Mutex for router provider handle
-static pthread_mutex_t router_rsync_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t router_syscollector_mutex = PTHREAD_MUTEX_INITIALIZER;
-
 // Headers for syscollector messages: DBSYNC_MQ + WM_SYS_LOCATION and SYSCOLLECTOR_MQ + WM_SYS_LOCATION
 #define DBSYNC_SYSCOLLECTOR_HEADER "5:syscollector:"
 #define SYSCOLLECTOR_HEADER "d:syscollector:"
 #define DBSYNC_SYSCOLLECTOR_HEADER_SIZE 15
 #define SYSCOLLECTOR_HEADER_SIZE 15
 
+#define REMOTED_ROUTER_HANDLE_WAIT_TIME 10
+
 // Router message forwarder
 void router_message_forward(char* msg, const char* agent_id);
+
+// Router handle thread
+void * rem_router_handle(__attribute__((unused)) void * args);
 
 // Message handler thread
 static void * rem_handler_main(__attribute__((unused)) void * args);
@@ -185,6 +186,9 @@ void HandleSecure()
 
     // Router module logging initialization
     router_initialize(taggedLogFunction);
+
+    // Router handle thread
+    w_create_thread(rem_router_handle, NULL);
 
     // Create message handler thread pool
     {
@@ -401,6 +405,27 @@ void * rem_handler_main(__attribute__((unused)) void * args) {
         rem_msgfree(message);
     }
 
+    return NULL;
+}
+
+// Router handle thread
+void * rem_router_handle(__attribute__((unused)) void * args) {
+    while (!router_syscollector_handle || !router_rsync_handle) {
+        if (!router_syscollector_handle) {
+            if (router_syscollector_handle = router_provider_create("deltas-syscollector"), !router_syscollector_handle) {
+                mdebug2("Failed to create router handle for 'syscollector'.");
+            }
+        }
+
+        if (!router_rsync_handle) {
+            if (router_rsync_handle = router_provider_create("rsync-syscollector"), !router_rsync_handle) {
+                mdebug2("Failed to create router handle for 'rsync'.");
+            }
+        }
+
+        sleep(REMOTED_ROUTER_HANDLE_WAIT_TIME);
+    }
+    mdebug2("Router handles for 'wazuh-remoted' created.");
     return NULL;
 }
 
@@ -806,31 +831,21 @@ void router_message_forward(char* msg, const char* agent_id) {
     flatcc_json_parser_table_f *parser = NULL;
 
     if(strncmp(msg, SYSCOLLECTOR_HEADER, SYSCOLLECTOR_HEADER_SIZE) == 0) {
-        w_mutex_lock(&router_syscollector_mutex);
         if (!router_syscollector_handle) {
-            if (router_syscollector_handle = router_provider_create("deltas-syscollector"), !router_syscollector_handle) {
-                mdebug2("Failed to create router handle for 'syscollector'.");
-                w_mutex_unlock(&router_syscollector_mutex);
-                return;
-            }
+            mdebug2("Router handle for 'syscollector' not available.");
+            return;
         }
         router_handle = router_syscollector_handle;
         message_header_size = SYSCOLLECTOR_HEADER_SIZE;
         parser = SyscollectorDeltas_Delta_parse_json_table;
-        w_mutex_unlock(&router_syscollector_mutex);
     } else if(strncmp(msg, DBSYNC_SYSCOLLECTOR_HEADER, DBSYNC_SYSCOLLECTOR_HEADER_SIZE) == 0) {
-        w_mutex_lock(&router_rsync_mutex);
         if (!router_rsync_handle) {
-            if (router_rsync_handle = router_provider_create("rsync-syscollector"), !router_rsync_handle) {
-                mdebug2("Failed to create router handle for 'rsync'.");
-                w_mutex_unlock(&router_rsync_mutex);
-                return;
-            }
+            mdebug2("Router handle for 'rsync' not available.");
+            return;
         }
         router_handle = router_rsync_handle;
         message_header_size = DBSYNC_SYSCOLLECTOR_HEADER_SIZE;
         parser = SyscollectorSynchronization_SyncMsg_parse_json_table;
-        w_mutex_unlock(&router_rsync_mutex);
     }
 
     if (!router_handle) {
