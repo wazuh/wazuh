@@ -288,3 +288,89 @@ TEST_F(OfflineDownloaderTest, HttpDownloadRawFileOverride)
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
     EXPECT_TRUE(std::filesystem::exists(expectedOutputFile));
 }
+
+/**
+ * @brief Tests the download from an invalid HTTP URL.
+ *
+ */
+TEST_F(OfflineDownloaderTest, HttpDownloadInvalidURL)
+{
+    m_spUpdaterBaseContext->configData["url"] = HTTP_PREFIX + BASE_URL + "invalid";
+    m_spUpdaterBaseContext->configData["compressionType"] = "raw";
+
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
+    expectedData["stageStatus"] = nlohmann::json::array();
+    expectedData["stageStatus"].push_back(FAIL_STATUS);
+
+    ASSERT_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext), std::runtime_error);
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+}
+
+/**
+ * @brief Tests the download of twice the same file from an HTTP server.
+ *
+ */
+TEST_F(OfflineDownloaderTest, HttpDownloadFileTwice)
+{
+    m_spUpdaterBaseContext->configData["url"] = HTTP_PREFIX + BASE_URL + CONTENT_FILENAME_RAW;
+    m_spUpdaterBaseContext->configData["compressionType"] = "raw";
+
+    const auto expectedOutputFile {m_spUpdaterBaseContext->contentsFolder.string() + "/" + CONTENT_FILENAME_RAW};
+
+    nlohmann::json expectedData;
+    expectedData["paths"].push_back(expectedOutputFile);
+    expectedData["stageStatus"] = nlohmann::json::array();
+    expectedData["stageStatus"].push_back(OK_STATUS);
+
+    ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+    EXPECT_TRUE(std::filesystem::exists(expectedOutputFile));
+
+    // Clear first execution data.
+    m_spUpdaterContext->data.at("stageStatus").clear();
+    m_spUpdaterContext->data.at("paths").clear();
+
+    // No paths should be published.
+    expectedData["paths"].clear();
+
+    ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+    EXPECT_TRUE(std::filesystem::exists(expectedOutputFile));
+}
+
+/**
+ * @brief Tests the download of twice the same file: once from an HTTP server, and once from the filesystem.
+ *
+ */
+TEST_F(OfflineDownloaderTest, HttpAndLocalDownloadFileTwice)
+{
+    m_spUpdaterBaseContext->configData["url"] = HTTP_PREFIX + BASE_URL + CONTENT_FILENAME_RAW;
+    m_spUpdaterBaseContext->configData["compressionType"] = "raw";
+
+    const auto expectedOutputFile {m_spUpdaterBaseContext->contentsFolder.string() + "/" + CONTENT_FILENAME_RAW};
+
+    nlohmann::json expectedData;
+    expectedData["paths"].push_back(expectedOutputFile);
+    expectedData["stageStatus"] = nlohmann::json::array();
+    expectedData["stageStatus"].push_back(OK_STATUS);
+
+    ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+    EXPECT_TRUE(std::filesystem::exists(expectedOutputFile));
+
+    // Clear first execution data.
+    m_spUpdaterContext->data.at("stageStatus").clear();
+    m_spUpdaterContext->data.at("paths").clear();
+
+    // Create local file with the same content as the downloaded one.
+    const auto inputLocalFile {m_outputFolder / CONTENT_FILENAME_RAW};
+    std::filesystem::copy(expectedOutputFile, inputLocalFile);
+    m_spUpdaterBaseContext->configData["url"] = FILE_PREFIX + inputLocalFile.string();
+
+    // No paths should be published.
+    expectedData["paths"].clear();
+
+    ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+}
