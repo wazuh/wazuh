@@ -14,7 +14,7 @@ from wazuh_testing.modules.aws.utils import log_stream_exists, file_exists
 
 # Local module imports
 from . import event_monitor
-from .utils import ERROR_MESSAGES
+from .utils import ERROR_MESSAGE
 from .conftest import TestConfigurator, local_internal_options
 
 pytestmark = [pytest.mark.server]
@@ -112,7 +112,7 @@ def test_remove_from_bucket(
         callback=event_monitor.callback_detect_aws_module_start
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
@@ -120,7 +120,7 @@ def test_remove_from_bucket(
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     assert not file_exists(filename=metadata['uploaded_file'], bucket_name=bucket_name)
 
@@ -130,7 +130,7 @@ def test_remove_from_bucket(
         callback=event_monitor.callback_detect_all_aws_err
     )
 
-    assert log_monitor.callback_result is None, ERROR_MESSAGES['error_found']
+    assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']
 
 
 # ---------------------------------------------------- TEST_REMOVE_LOG_STREAM ------------------------------------------
@@ -221,7 +221,7 @@ def test_remove_log_stream(
         callback=event_monitor.callback_detect_aws_module_start
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
@@ -229,7 +229,7 @@ def test_remove_log_stream(
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_parameters']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     assert not log_stream_exists(log_stream=metadata['log_stream'], log_group=log_group_name)
 
@@ -239,4 +239,4 @@ def test_remove_log_stream(
         callback=event_monitor.callback_detect_all_aws_err
     )
 
-    assert log_monitor.callback_result is None, ERROR_MESSAGES['error_found']
+    assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']

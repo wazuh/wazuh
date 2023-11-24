@@ -13,7 +13,7 @@ from wazuh_testing import session_parameters
 
 # Local module imports
 from . import event_monitor
-from .utils import ERROR_MESSAGES, TIMEOUTS
+from .utils import ERROR_MESSAGE, TIMEOUT
 from .conftest import TestConfigurator, local_internal_options
 
 pytestmark = [pytest.mark.server]
@@ -87,7 +87,7 @@ def test_bucket_and_service_missing(
         callback=event_monitor.callback_detect_aws_module_warning,
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_warning']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_warning']
 
 
 # -------------------------------------------- TEST_TYPE_MISSING_IN_BUCKET ---------------------------------------------
@@ -155,7 +155,7 @@ def test_type_missing_in_bucket(
         callback=event_monitor.callback_detect_aws_legacy_module_warning,
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_legacy_warning']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_legacy_warning']
 
 
 # -------------------------------------------- TEST_TYPE_MISSING_IN_SERVICE --------------------------------------------
@@ -224,7 +224,7 @@ def test_type_missing_in_service(
         callback=event_monitor.callback_detect_aws_error_for_missing_type,
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_error_message']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_error_message']
 
 
 # -------------------------------------------- TEST_EMPTY_VALUES_IN_BUCKET ---------------------------------------------
@@ -292,7 +292,7 @@ def test_empty_values_in_bucket(
         callback=event_monitor.callback_detect_aws_empty_value,
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_empty_value_message']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_empty_value_message']
 
 
 # -------------------------------------------- TEST_EMPTY_VALUES_IN_SERVICE --------------------------------------------
@@ -361,7 +361,7 @@ def test_empty_values_in_service(
         callback=event_monitor.callback_detect_aws_empty_value,
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_empty_value_message']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_empty_value_message']
 
 
 # ------------------------------------------ TEST_INVALID_VALUES_IN_BUCKET ---------------------------------------------
@@ -432,7 +432,7 @@ def test_invalid_values_in_bucket(
         callback=event_monitor.callback_detect_aws_invalid_value,
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_invalid_value_message']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_invalid_value_message']
 
 
 # ------------------------------------------ TEST_INVALID_VALUES_IN_BUCKET ---------------------------------------------
@@ -500,7 +500,7 @@ def test_invalid_values_in_service(
         callback=event_monitor.callback_detect_aws_invalid_value,
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_invalid_value_message']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_invalid_value_message']
 
 
 # --------------------------------------- TEST_MULTIPLE_BUCKET_AND_SERVICE_TAGS ----------------------------------------
@@ -564,9 +564,9 @@ def test_multiple_bucket_and_service_tags(
         - The `configuration_multiple_bucket_and_service_tags` file provides the configuration for this test.
     """
     log_monitor.start(
-        timeout=TIMEOUTS[20],
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_bucket_or_service_call,
         accumulations=4
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_service_calls_amount']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_service_calls_amount']
