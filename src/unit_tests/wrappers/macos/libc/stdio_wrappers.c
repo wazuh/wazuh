@@ -132,7 +132,7 @@ void * wrap_mmap (void *start, size_t length, int prot, int flags, int fd, off_t
         }
 
         return ret;
-        
+
     }
     return mmap(start, length, prot, flags, fd, offset);
 }
@@ -168,6 +168,6 @@ FILE * wrap_fopen (const char* path, const char* mode) {
 
         return ret;
     } else {
-        return wfopen(path, mode);
+        return fopen(path, mode);
     }
 }
