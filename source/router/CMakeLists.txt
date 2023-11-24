@@ -14,8 +14,9 @@ add_library(router_router STATIC
     ${SRC_DIR}/table.cpp
     ${SRC_DIR}/environment.cpp
     ${SRC_DIR}/router.cpp
-    
     ${SRC_DIR}/tester.cpp
+    ${SRC_DIR}/worker.cpp
+
     ${SRC_DIR}/routerAdmin.cpp
 )
 
