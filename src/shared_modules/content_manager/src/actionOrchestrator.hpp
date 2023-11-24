@@ -75,16 +75,16 @@ public:
 
             logInfo(WM_CONTENTUPDATER, "Running content update. Topic: %s", m_spBaseContext->topicName.c_str());
 
-            if (offset == 0)
-            {
-                spUpdaterContext->currentOffset = 0;
-            }
-
             // If the database exists, get the last offset
             if (m_spBaseContext->spRocksDB)
             {
                 spUpdaterContext->currentOffset =
                     std::stoi(m_spBaseContext->spRocksDB->getLastKeyValue().second.ToString());
+            }
+
+            if (offset == 0)
+            {
+                spUpdaterContext->currentOffset = 0;
             }
 
             // Run the updater chain
