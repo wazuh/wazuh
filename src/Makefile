@@ -1295,7 +1295,7 @@ TAR := tar -xf
 GUNZIP := gunzip
 GZIP := gzip
 CURL := curl -so
-DEPS_VERSION = 22
+DEPS_VERSION = 24
 RESOURCES_URL_BASE := https://packages.wazuh.com/deps/
 RESOURCES_URL := $(RESOURCES_URL_BASE)$(DEPS_VERSION)
 CPYTHON := cpython
@@ -2366,7 +2366,7 @@ build_benchmark:
 WPYTHON_DIR := ${INSTALLDIR}/framework/python
 OPTIMIZE_CPYTHON?=no
 WPYTHON_TAR=cpython.tar.gz
-WLIBPYTHON=libpython3.9.so.1.0
+WLIBPYTHON=libpython3.10.so.1.0
 
 ifneq (,$(filter ${OPTIMIZE_CPYTHON},YES yes y Y 1))
 CPYTHON_FLAGS=--enable-optimizations

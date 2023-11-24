@@ -228,6 +228,12 @@ def test_cut_array_ko(limit, offset, expected_exception):
          'datetime=2017-10-25T14:48:53.732000Z', None, None, None, None, None, False,
          [{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}], 1),
 
+        ([{'name': 'W', 'datetime': '2017-10-25T14:48:53.732000Z'},
+          {'name': 'I', 'datetime': '2018-05-15T12:34:12.544000Z'}],
+         '(name=W,name=I)', None, None, None, None, None, False,
+         [{'name': 'W', 'datetime': '2017-10-25T14:48:53.732000Z'},
+          {'name': 'I', 'datetime': '2018-05-15T12:34:12.544000Z'}], 2),
+
         ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'},
           {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z'}],
          'datetime<2017-10-26', None, None, None, None, None, False,

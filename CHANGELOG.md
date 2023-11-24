@@ -14,22 +14,55 @@ All notable changes to this project will be documented in this file.
 - Improved wazuh-db detection of deleted database files. ([#18476](https://github.com/wazuh/wazuh/pull/18476))
 - Added timeout and retry parameters to the VirusTotal integration. ([#16893](https://github.com/wazuh/wazuh/pull/16893))
 - Extended wazuh-analysisd EPS metrics with events dropped by overload and remaining credits in the previous cycle. ([#18988](https://github.com/wazuh/wazuh/pull/18988))
+- Replaced Filebeat's date index name processor. ([#19819](https://github.com/wazuh/wazuh/pull/19819))
+- Updated API and framework packages installation commands to use pip instead of direct invocation of setuptools. ([#18466](https://github.com/wazuh/wazuh/pull/18466))
+- Upgraded docker-compose V1 to V2 in API Integration test scripts. ([#17750](https://github.com/wazuh/wazuh/pull/17750)) 
+- Refactored how cluster status dates are treated in the cluster. ([#17015](https://github.com/wazuh/wazuh/pull/17015))
+
+#### Fixed
+- Updated cluster connection cleanup to remove temporary files when the connection between a worker and a master is broken. ([#17886](https://github.com/wazuh/wazuh/pull/17886))
 
 ### Agent
 
 #### Added
 
 - Added snap package manager support to Syscollector. ([#15740](https://github.com/wazuh/wazuh/pull/15740))
+- Added event size validation for the external integrations. ([#17932](https://github.com/wazuh/wazuh/pull/17932))
+- Added new unit tests for the AWS integration. ([#17623](https://github.com/wazuh/wazuh/pull/17623))
 
 #### Changed
 
 - Disabled host's IP query by Logcollector when ip_update_interval=0. ([#18574](https://github.com/wazuh/wazuh/pull/18574))
+- The MS Graph integration module now supports multiple tenants. ([#19064](https://github.com/wazuh/wazuh/pull/19064))
+- FIM now buffers the Linux audit events for who-data to prevent side effects in other components. ([#16200](https://github.com/wazuh/wazuh/pull/16200))
+- The sub-process execution implementation has been improved. ([#19720](https://github.com/wazuh/wazuh/pull/19720))
+- Refactored and modularized the AWS integration code. ([#17623](https://github.com/wazuh/wazuh/pull/17623))
 
 #### Fixed
 
 - Fixed process path retrieval in Syscollector on Windows XP. ([#16839](https://github.com/wazuh/wazuh/pull/16839))
 - Fixed detection of the OS version on Alpine Linux. ([#16056](https://github.com/wazuh/wazuh/pull/16056))
 - Fixed Solaris 10 name not showing in the Dashboard. ([#18642](https://github.com/wazuh/wazuh/pull/18642))
+
+### RESTful API
+
+#### Added
+
+- Added new `GET /manager/version/check` endpoint to obtain information about new releases of Wazuh. ([#19952](https://github.com/wazuh/wazuh/pull/19952))
+
+#### Removed
+
+- Removed `PUT /vulnerability`, `GET /vulnerability/{agent_id}`, `GET /vulnerability/{agent_id}/last_scan` and `GET /vulnerability/{agent_id}/summary/{field}` API endpoints as they were deprecated in version 4.7.0. Use the Wazuh indexer REST API instead. ([#20119](https://github.com/wazuh/wazuh/pull/20119))
+
+### Other
+
+#### Changed
+
+- Upgraded external aiohttp library dependency version to 3.8.5. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
+- Upgraded external cryptography library dependency version to 41.0.4. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
+- Upgraded external numpy library dependency version to 1.26.0. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
+- Upgraded external grpcio library dependency version to 1.58.0. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
+- Upgraded embedded Python version to 3.10.13. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
 
 
 ## [v4.7.1]
@@ -73,17 +106,17 @@ All notable changes to this project will be documented in this file.
 - Added package inventory support for MacPorts in Syscollector. ([#15877](https://github.com/wazuh/wazuh/pull/15877))
 - Added package inventory support for PYPI and node in Syscollector. ([#17982](https://github.com/wazuh/wazuh/pull/17982))
 - Added related process information to the open ports inventory in Syscollector. ([#15000](https://github.com/wazuh/wazuh/pull/15000))
-- Fixed vendor data in package inventory for Brew packages on macOS. ([#16089](https://github.com/wazuh/wazuh/pull/16089))
 
 #### Changed
 
 - The shared modules' code has been sanitized according to the convention. ([#17966](https://github.com/wazuh/wazuh/pull/17966))
 - The package inventory internal messages have been modified to honor the schema compliance. ([#18006](https://github.com/wazuh/wazuh/pull/18006))
-- The agent's leaky bucket throughput limit has been extended to 100.000 EPS. ([#16346](https://github.com/wazuh/wazuh/pull/16346))
 
 #### Fixed
 
 - Fixed detection of osquery 5.4.0+ running outside the integration. ([#17006](https://github.com/wazuh/wazuh/pull/17006))
+- Fixed vendor data in package inventory for Brew packages on macOS. ([#16089](https://github.com/wazuh/wazuh/pull/16089))
+- Fixed WPK rollback restarting host in Windows agent ([#20081](https://github.com/wazuh/wazuh/pull/20081))
 
 ### RESTful API
 
@@ -95,6 +128,10 @@ All notable changes to this project will be documented in this file.
 - Addressed error handling for non-utf-8 encoded file readings. ([#16489](https://github.com/wazuh/wazuh/pull/16489))
 - Resolved an issue in the `WazuhException` class that disrupted the API executor subprocess. ([#16914](https://github.com/wazuh/wazuh/pull/16914))
 - Corrected an empty value problem in the API specification key. ([#16918](https://github.com/wazuh/wazuh/issues/16918))
+
+#### Deleted
+
+- Deprecated `PUT /vulnerability`, `GET /vulnerability/{agent_id}`, `GET /vulnerability/{agent_id}/last_scan` and `GET /vulnerability/{agent_id}/summary/{field}` API endpoints. In future versions, the Wazuh indexer REST API can be used instead. ([#20126](https://github.com/wazuh/wazuh/pull/20126))
 
 ### Other
 
