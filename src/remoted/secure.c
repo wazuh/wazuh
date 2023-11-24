@@ -412,6 +412,7 @@ void * rem_handler_main(__attribute__((unused)) void * args) {
 
 // Router handle thread
 void * rem_router_handle(__attribute__((unused)) void * args) {
+    mdebug2("Creating router handles for 'wazuh-remoted'.");
     while (!router_syscollector_handle || !router_rsync_handle) {
         if (!router_syscollector_handle) {
             if (router_syscollector_handle = router_provider_create("deltas-syscollector"), !router_syscollector_handle) {
