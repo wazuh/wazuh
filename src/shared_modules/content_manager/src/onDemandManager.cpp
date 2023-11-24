@@ -38,7 +38,7 @@ void OnDemandManager::startServer()
                                  offset = std::stoi(offset_param->second);
                              }
 
-                             if(offset != -1 && offset != 0)
+                             if (offset != -1 && offset != 0)
                              {
                                  res.status = 400;
                                  res.body = "Invalid offset value. Use instead:\n"
