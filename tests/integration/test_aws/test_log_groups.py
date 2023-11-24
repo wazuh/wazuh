@@ -17,7 +17,7 @@ from wazuh_testing.modules.aws.patterns import NON_EXISTENT_SPECIFIED_LOG_GROUPS
 
 # Local module imports
 from . import event_monitor
-from .utils import ERROR_MESSAGES, TIMEOUTS
+from .utils import ERROR_MESSAGE, TIMEOUT
 from .conftest import TestConfigurator, local_internal_options
 
 pytestmark = [pytest.mark.server]
@@ -120,7 +120,7 @@ def test_log_groups(
         callback=event_monitor.callback_detect_aws_module_start
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
@@ -130,17 +130,17 @@ def test_log_groups(
 
     if expected_results:
         log_monitor.start(
-            timeout=TIMEOUTS[20],
+            timeout=TIMEOUT[20],
             callback=event_monitor.callback_detect_service_event_processed(expected_results, service_type),
             accumulations=len(log_group_names.split(','))
         )
     else:
         log_monitor.start(
-            timeout=TIMEOUTS[10],
+            timeout=TIMEOUT[10],
             callback=event_monitor.make_aws_callback(pattern=fr"{NON_EXISTENT_SPECIFIED_LOG_GROUPS}")
         )
 
-        assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_no_existent_log_group']
+        assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_no_existent_log_group']
 
     assert path_exist(path=AWS_SERVICES_DB_PATH)
 
@@ -158,4 +158,4 @@ def test_log_groups(
         callback=event_monitor.callback_detect_all_aws_err
     )
 
-    assert log_monitor.callback_result is None, ERROR_MESSAGES['error_found']
+    assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']
