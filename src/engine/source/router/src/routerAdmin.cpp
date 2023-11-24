@@ -1,10 +1,6 @@
 #include <router/routerAdmin.hpp>
 
-#include "environmentBuilder.hpp"
-#include "router.hpp"
-#include "tester.hpp"
-
-constexpr auto WAIT_DEQUEUE_TIMEOUT_USEC = 1 * 1000000;
+#include "worker.hpp"
 
 namespace router
 {
@@ -46,82 +42,40 @@ void RouterAdmin::validateConfig(const Config& config)
 
 // Public
 RouterAdmin::RouterAdmin(const Config& config)
-    : m_isRunning(false)
+    : m_workers()
+    , m_eventQueue(config.m_prodQueue)
+    , m_testQueue(config.m_testQueue)
+    , m_envBuilder()
 {
     validateConfig(config);
 
-    // Set queues
-    m_production.queue = config.m_prodQueue;
-    m_testing.queue = config.m_testQueue;
 
-    // TODO Remove after the builder is implemented
-    auto generalBuilder = std::make_shared<ConcreteBuilder>(config.m_wStore, config.m_wRegistry);
-    auto envBuilder = std::make_shared<EnvironmentBuilder>(generalBuilder, config.m_controllerMaker);
+    auto builder = std::make_shared<ConcreteBuilder>(config.m_wStore, config.m_wRegistry); // TODO Remove after the builder is implemented
+    m_envBuilder = std::make_shared<EnvironmentBuilder>(builder, config.m_controllerMaker);
 
-    // Create the routers and testers
+    // Create the Workers
     for (std::size_t i = 0; i < config.m_numThreads; ++i)
     {
-        auto router = std::make_shared<Router>(envBuilder);
-        m_production.routers.push_back(router);
-
-        auto tester = std::make_shared<Tester>(envBuilder);
-        m_testing.tester.push_back(tester);
+        auto worker = std::make_shared<Worker>(m_envBuilder, m_eventQueue, m_testQueue);
+        m_workers.emplace_back(std::move(worker));
     }
 }
 
 void RouterAdmin::start()
 {
-    bool expected = false;
-    if (!m_isRunning.compare_exchange_strong(expected, true))
+   std::shared_lock lock {m_syncMutex};
+    for (auto& worker : m_workers)
     {
-        throw std::runtime_error {"The router is already running"};
-    }
-
-    // Launch the workers // TODO Create the workers class
-    for (auto& router : m_production.routers)
-    {
-        m_threads.emplace_back(
-            [this, router]
-            {
-                while (m_isRunning.load())
-                {
-                    // Testing
-                    // {
-                    //     test::QueueType tuple {};
-                    //     if (m_testing.queue->tryPop(tuple))
-                    //     {
-                    //         if (tuple != nullptr)
-                    //         {
-                    //             
-                    //         }
-                    //     }
-                    // }
-                    // Producion
-                    {
-                        base::Event event {};
-                        if (m_production.queue->waitPop(event, WAIT_DEQUEUE_TIMEOUT_USEC))
-                        {
-                            if (event != nullptr)
-                            {
-                                router->ingest(std::move(event));
-                            }
-                        }
-                    }
-                }
-                LOG_DEBUG("Thread router finished.");
-            });
+        worker->start();
     }
 }
 
 void RouterAdmin::stop()
 {
-    bool expected = true;
-    if (m_isRunning.compare_exchange_strong(expected, false))
+    std::shared_lock lock {m_syncMutex};
+    for (auto& worker : m_workers)
     {
-        for (auto& thread : m_threads)
-        {
-            thread.join();
-        }
+        worker->stop();
     }
 }
 
@@ -140,10 +94,10 @@ base::OptError RouterAdmin::postEntry(const prod::EntryPost& entry)
         return err;
     }
 
-    std::unique_lock lock {m_production.bussyMutex};
-    for (auto& router : m_production.routers)
+    std::unique_lock lock {m_syncMutex};
+    for (auto& worker : m_workers)
     {
-        auto error = router->addEntry(entry);
+        auto error = worker->getRouter()->addEntry(entry);
         if (error)
         {
             // TODO Rollback
@@ -151,25 +105,24 @@ base::OptError RouterAdmin::postEntry(const prod::EntryPost& entry)
         }
     }
 
-    for (auto& router : m_production.routers)
+     for (auto& worker : m_workers)
     {
-        router->enableEntry(entry.name());
+        worker->getRouter()->enableEntry(entry.name());
     }
     return std::nullopt;
 }
 
 base::OptError RouterAdmin::deleteEntry(const std::string& name)
 {
-    std::unique_lock lock {m_production.bussyMutex};
-
+    std::unique_lock lock {m_syncMutex};
     if (name.empty())
     {
         return base::Error {"Name cannot be empty"};
     }
 
-    for (auto& router : m_production.routers)
+    for (auto& worker : m_workers)
     {
-        auto error = router->removeEntry(name);
+        auto error = worker->getRouter()->removeEntry(name);
         if (error)
         {
             return error;
@@ -186,8 +139,8 @@ base::RespOrError<prod::Entry> RouterAdmin::getEntry(const std::string& name) co
         return base::Error {"Name cannot be empty"};
     }
 
-    std::shared_lock lock {m_production.bussyMutex};
-    return m_production.routers.front()->getEntry(name);
+    std::shared_lock lock {m_syncMutex};
+    return m_workers.front()->getRouter()->getEntry(name);
 }
 
 base::OptError RouterAdmin::reloadEntry(const std::string& name)
@@ -197,19 +150,19 @@ base::OptError RouterAdmin::reloadEntry(const std::string& name)
         return base::Error {"Name cannot be empty"};
     }
 
-    std::unique_lock lock {m_production.bussyMutex};
-    for (auto& router : m_production.routers)
+    std::unique_lock lock {m_syncMutex};
+    for (auto& worker : m_workers)
     {
-        auto error = router->rebuildEntry(name);
+        auto error = worker->getRouter()->rebuildEntry(name);
         if (error)
         {
             return error;
         }
     }
     // If the environment is disabled, enable it all at the end when all the environments are reloaded
-    for (auto& router : m_production.routers)
+    for (auto& worker : m_workers)
     {
-        auto error = router->enableEntry(name);
+        auto error = worker->getRouter()->enableEntry(name);
         if (error)
         {
             return error;
@@ -226,10 +179,10 @@ base::OptError RouterAdmin::changeEntryPriority(const std::string& name, size_t 
         return base::Error {"Name cannot be empty"};
     }
 
-    std::unique_lock lock {m_production.bussyMutex};
-    for (auto& router : m_production.routers)
+    std::unique_lock lock {m_syncMutex};
+    for (auto& worker : m_workers)
     {
-        auto error = router->changePriority(name, priority);
+        auto error = worker->getRouter()->changePriority(name, priority);
         if (error)
         {
             return error;
@@ -241,8 +194,8 @@ base::OptError RouterAdmin::changeEntryPriority(const std::string& name, size_t 
 
 std::list<prod::Entry> RouterAdmin::getEntries() const
 {
-    std::shared_lock lock {m_production.bussyMutex};
-    return m_production.routers.front()->getEntries();
+    std::shared_lock lock {m_syncMutex};
+    return m_workers.front()->getRouter()->getEntries();
 }
 
 base::OptError RouterAdmin::postStrEvent(std::string_view event)
@@ -285,10 +238,10 @@ base::OptError RouterAdmin::postTestEntry(const test::EntryPost& entry)
         return err;
     }
 
-    std::unique_lock lock {m_testing.bussyMutex};
-    for (auto& tester : m_testing.tester)
+    std::unique_lock lock {m_syncMutex};
+    for (auto& worker : m_workers)
     {
-        auto error = tester->addEntry(entry);
+        auto error = worker->getTester()->addEntry(entry);
         if (error)
         {
             // TODO Rollback
@@ -296,9 +249,9 @@ base::OptError RouterAdmin::postTestEntry(const test::EntryPost& entry)
         }
     }
 
-    for (auto& tester : m_testing.tester)
+    for (auto& worker : m_workers)
     {
-        tester->enableEntry(entry.name());
+        worker->getTester()->enableEntry(entry.name());
     }
 
     return std::nullopt;
@@ -306,16 +259,16 @@ base::OptError RouterAdmin::postTestEntry(const test::EntryPost& entry)
 
 base::OptError RouterAdmin::deleteTestEntry(const std::string& name)
 {
-    std::unique_lock lock {m_testing.bussyMutex};
+    std::unique_lock lock {m_syncMutex};
 
     if (name.empty())
     {
         return base::Error {"Name cannot be empty"};
     }
 
-    for (auto& tester : m_testing.tester)
+   for (auto& worker : m_workers)
     {
-        auto error = tester->removeEntry(name);
+        auto error = worker->getTester()->removeEntry(name);
         if (error)
         {
             return error;
@@ -332,8 +285,8 @@ base::RespOrError<test::Entry> RouterAdmin::getTestEntry(const std::string& name
         return base::Error {"Name cannot be empty"};
     }
 
-    std::shared_lock lock {m_testing.bussyMutex};
-    return m_testing.tester.front()->getEntry(name);
+    std::shared_lock lock {m_syncMutex};
+    return m_workers.front()->getTester()->getEntry(name);
 }
 
 base::OptError RouterAdmin::reloadTestEntry(const std::string& name)
@@ -343,19 +296,19 @@ base::OptError RouterAdmin::reloadTestEntry(const std::string& name)
         return base::Error {"Name cannot be empty"};
     }
 
-    std::unique_lock lock {m_testing.bussyMutex};
-    for (auto& tester : m_testing.tester)
+    std::unique_lock lock {m_syncMutex};
+   for (auto& worker : m_workers)
     {
-        auto error = tester->rebuildEntry(name);
+        auto error =worker->getTester()->rebuildEntry(name);
         if (error)
         {
             return error;
         }
     }
     // If the environment is disabled, enable it all at the end when all the environments are reloaded
-    for (auto& tester : m_testing.tester)
+   for (auto& worker : m_workers)
     {
-        auto error = tester->enableEntry(name);
+        auto error =worker->getTester()->enableEntry(name);
         if (error)
         {
             return error;
@@ -367,55 +320,44 @@ base::OptError RouterAdmin::reloadTestEntry(const std::string& name)
 
 std::list<test::Entry> RouterAdmin::getTestEntries() const
 {
-    std::shared_lock lock {m_testing.bussyMutex};
-    return m_testing.tester.front()->getEntries();
+    std::shared_lock lock {m_syncMutex};
+    return m_workers.front()->getTester()->getEntries();
 }
 
-base::RespOrError<std::future<test::Output>> RouterAdmin::ingestTest(base::Event&& event, const test::Opt& opt)
+std::future<base::RespOrError<test::Output>> RouterAdmin::ingestTest(base::Event&& event, const test::Opt& opt)
 {
 
-    auto promisePtr = std::make_shared<std::promise<test::Output>>();
+    auto promisePtr = std::make_shared<std::promise<base::RespOrError<test::Output>>>();
     auto future = promisePtr->get_future();
 
-    auto callback = [promPtr = std::move(promisePtr)](test::Output&& output)
+    auto callback = [promPtr = std::move(promisePtr)](base::RespOrError<test::Output>&& output) -> void
     {
         promPtr->set_value(std::move(output));
     };
 
     auto tuple = std::make_shared<test::TestingTuple>(std::move(event), opt, std::move(callback));
-    if (!m_testing.queue->try_push(tuple))
+    if (!m_testQueue->try_push(tuple))
     {
-        return base::Error {"The queue of test event is full"};
+        throw std::runtime_error {"The testing queue is full"};
     }
 
     // TODO: if the production queue is empty, send dummy event to wake up the production thread
     // TODO If the event queue is full, this will block the thread
     // If the queue is full and try flood to the file, what will happen?
-    if (m_production.queue->empty())
-    {
-        m_production.queue->push(base::Event(nullptr));
-    }
+    // if (m_production.queue->empty())
+    // {
+    //     m_production.queue->push(base::Event(nullptr));
+    // }
 
     return future;
 }
 
-base::RespOrError<std::future<test::Output>> RouterAdmin::ingestTest(std::string_view event, const test::Opt& opt)
+std::future<base::RespOrError<test::Output>> RouterAdmin::ingestTest(std::string_view event, const test::Opt& opt)
 {
-    if (event.empty())
-    {
-        return base::Error {"Event cannot be empty"};
-    }
 
-    base::OptError err = std::nullopt;
-    try
-    {
-        base::Event ev = base::parseEvent::parseWazuhEvent(event.data());
-        return this->ingestTest(std::move(ev), opt);
-    }
-    catch (const std::exception& e)
-    {
-        return base::Error {e.what()};
-    }
+    base::Event ev = base::parseEvent::parseWazuhEvent(event.data());
+
+    return this->ingestTest(std::move(ev), opt);
 }
 
 } // namespace router
