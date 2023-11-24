@@ -1,3 +1,5 @@
+#include "HTTPRequest.hpp"
+#include "UNIXSocketRequest.hpp"
 #include "contentManager.hpp"
 #include "contentRegister.hpp"
 #include "defs.h"
@@ -47,6 +49,7 @@ static const nlohmann::json CONFIG_PARAMETERS =
 int main()
 {
     auto& instance = ContentModule::instance();
+    const std::string topic_name = CONFIG_PARAMETERS.at("topicName").get<std::string>();
 
     // Server
     instance.start(
@@ -76,11 +79,15 @@ int main()
             }
         });
     // CLiente -> vulnenability  detector
-    ContentRegister registerer {CONFIG_PARAMETERS.at("topicName").get<std::string>(), CONFIG_PARAMETERS};
+    ContentRegister registerer {topic_name, CONFIG_PARAMETERS};
     std::this_thread::sleep_for(std::chrono::seconds(5));
-    std::cout << "changing interval" << std::endl;
-    registerer.changeSchedulerInterval(10);
-    // End client
+
+    // OnDemand request
+    std::string url = "localhost/ondemand/" + topic_name + "?offset=-1";
+    UNIXSocketRequest::instance().get(
+        HttpUnixSocketURL(ONDEMAND_SOCK, url),
+        [](const std::string& msg) { std::cout << msg << std::endl; },
+        [](const std::string& msg, const long responseCode) { std::cout << msg << ": " << responseCode << std::endl; });
 
     std::this_thread::sleep_for(std::chrono::seconds(60));
 
