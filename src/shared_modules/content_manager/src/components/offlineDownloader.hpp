@@ -96,73 +96,67 @@ private:
         constexpr auto HTTP_PREFIX {"http://"};
         constexpr auto HTTPS_PREFIX {"https://"};
 
-        auto url {context.spUpdaterBaseContext->configData.at("url").get<std::string>()};
-        std::filesystem::path inputFilePath;
-        auto httpDownload {false};
+        // Remote or local file URL.
+        std::filesystem::path fileUrl {
+            context.spUpdaterBaseContext->configData.at("url").get_ref<const std::string&>()};
 
-        if (Utils::startsWith(url, FILE_PREFIX))
+        // Check input filename existence.
+        if (!fileUrl.has_filename())
         {
-            // Use the URL as a path to a file within the filesystem.
-            Utils::replaceFirst(url, FILE_PREFIX, "");
-            inputFilePath = url;
+            throw std::runtime_error {"Couldn't get filename from URL: " + fileUrl.string()};
+        }
+
+        // Generate output file path. If the input file is compressed, the output file will be in the downloads
+        // folder and if it's not compressed, in the contents folder.
+        const auto compressed {
+            "raw" != context.spUpdaterBaseContext->configData.at("compressionType").get_ref<const std::string&>()};
+        auto outputFilePath {compressed ? context.spUpdaterBaseContext->downloadsFolder
+                                        : context.spUpdaterBaseContext->contentsFolder};
+        outputFilePath = outputFilePath / fileUrl.filename();
+
+        auto httpDownload {false}; // Flag that indicates if the download is made from an HTTP server.
+        if (Utils::startsWith(fileUrl, FILE_PREFIX))
+        {
+            // Remove file prefix.
+            auto unprefixedUrl {fileUrl.string()};
+            Utils::replaceFirst(unprefixedUrl, FILE_PREFIX, "");
+            fileUrl = std::filesystem::path(unprefixedUrl);
 
             // Check input file existence.
-            if (!std::filesystem::exists(inputFilePath))
+            if (!std::filesystem::exists(fileUrl))
             {
                 logWarn(
                     WM_CONTENTUPDATER, "File '%s' doesn't exist. Skipping download.", inputFilePath.string().c_str());
                 return;
             }
         }
-        else if (Utils::startsWith(url, HTTP_PREFIX) || Utils::startsWith(url, HTTPS_PREFIX))
+        else if (Utils::startsWith(fileUrl, HTTP_PREFIX) || Utils::startsWith(fileUrl, HTTPS_PREFIX))
         {
             const auto onError {[](const std::string& errorMessage, const long errorCode)
                                 {
                                     throw std::runtime_error {"(" + std::to_string(errorCode) + ") " + errorMessage};
                                 }};
 
-            const std::filesystem::path pathURL {url};
-            if (!pathURL.has_filename())
-            {
-                throw std::runtime_error {"Couldn't get filename from URL: " + url};
-            }
-
-            inputFilePath = std::filesystem::temp_directory_path() / pathURL.filename();
+            // Download file from URL.
+            m_urlRequest.download(HttpURL(fileUrl), outputFilePath, onError);
             httpDownload = true;
-
-            // Download file from URL and store in a temporary directory.
-            m_urlRequest.download(HttpURL(url), inputFilePath, onError);
         }
         else
         {
-            throw std::runtime_error {"Unkown URL prefix for " + url};
+            throw std::runtime_error {"Unkown URL prefix for " + fileUrl.string()};
         }
 
         // Process input file hash.
-        auto inputFileHash {hashFile(inputFilePath)};
+        const auto inputFile {httpDownload ? outputFilePath : fileUrl};
+        auto inputFileHash {hashFile(inputFile)};
 
         // Just process the new file if the hash is different from the last one.
         if (context.spUpdaterBaseContext->downloadedFileHash != inputFileHash)
         {
-            // Check if file is compressed.
-            const auto compressed {
-                "raw" != context.spUpdaterBaseContext->configData.at("compressionType").get_ref<const std::string&>()};
-
-            // Generate output file path. If the input file is compressed, the output file will be in the downloads
-            // folder and if it's not compressed, in the contents folder.
-            auto outputFilePath {compressed ? context.spUpdaterBaseContext->downloadsFolder
-                                            : context.spUpdaterBaseContext->contentsFolder};
-            outputFilePath = outputFilePath / inputFilePath.filename();
-
-            if (httpDownload)
-            {
-                // Move downloaded file.
-                std::filesystem::rename(inputFilePath, outputFilePath);
-            }
-            else
+            if (!httpDownload)
             {
                 // Copy file, overriding the output one if necessary.
-                std::filesystem::copy(inputFilePath, outputFilePath, std::filesystem::copy_options::overwrite_existing);
+                std::filesystem::copy(fileUrl, outputFilePath, std::filesystem::copy_options::overwrite_existing);
             }
 
             // Store new hash.
@@ -170,13 +164,6 @@ private:
 
             // Download finished: Insert path into context.
             context.data.at("paths").push_back(outputFilePath.string());
-            return;
-        }
-
-        if (httpDownload)
-        {
-            // Remove temporary downloaded file.
-            std::filesystem::remove(inputFilePath);
         }
     }
 
