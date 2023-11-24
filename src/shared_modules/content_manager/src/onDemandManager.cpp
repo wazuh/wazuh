@@ -31,32 +31,38 @@ void OnDemandManager::startServer()
                          {
                              std::shared_lock<std::shared_mutex> lock {m_mutex};
 
-                             // Default value. Do not replace current offset
-                             int offset = -1;
-
-                             if (auto offset_param = req.params.find("offset"); offset_param != req.params.end())
+                             try
                              {
-                                 offset = std::stoi(offset_param->second);
-                             }
+                                 // Default value. Do not replace current offset
+                                 int offset = -1;
 
-                             if (offset != -1 && offset != 0)
+                                 if (auto offset_param = req.params.find("offset"); offset_param != req.params.end())
+                                 {
+                                     offset = std::stoi(offset_param->second);
+                                 }
+
+                                 if (offset != -1 && offset != 0)
+                                 {
+                                     throw std::invalid_argument("Invalid offset value. Use instead:\n"
+                                                                 "offset=0 (Start with offset 0)\n"
+                                                                 "offset=-1 (Do not replace current offset)");
+                                 }
+
+                                 const auto& it {m_endpoints.find(req.matches[1].str())};
+                                 if (it != m_endpoints.end())
+                                 {
+                                     it->second(offset);
+                                     res.status = 200;
+                                 }
+                                 else
+                                 {
+                                     res.status = 404;
+                                 }
+                             }
+                             catch (const std::exception& e)
                              {
                                  res.status = 400;
-                                 res.body = "Invalid offset value. Use instead:\n"
-                                            "offset=0 (Start with offset 0)\n"
-                                            "offset=-1 (Do not replace current offset)";
-                                 return;
-                             }
-
-                             const auto& it {m_endpoints.find(req.matches[1].str())};
-                             if (it != m_endpoints.end())
-                             {
-                                 it->second(offset);
-                                 res.status = 200;
-                             }
-                             else
-                             {
-                                 res.status = 404;
+                                 res.body = e.what();
                              }
                          });
             m_server.set_address_family(AF_UNIX);
