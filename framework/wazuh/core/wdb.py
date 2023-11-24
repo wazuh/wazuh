@@ -23,7 +23,7 @@ class AsyncWazuhDBConnection:
     Represent an async connection to the wdb socket.
     """
 
-    def __init__(self, loop: asyncio.AbstractEventLoopPolicy = None, in_memory: bool = False):
+    def __init__(self, loop: asyncio.AbstractEventLoopPolicy = None):
         """Class constructor.
 
         Parameters
@@ -36,13 +36,10 @@ class AsyncWazuhDBConnection:
         self.loop = loop
         self._reader = None
         self._writer = None
-        self.in_memory = in_memory
 
     async def open_connection(self):
         """Establish a Unix socket connection."""
         self._reader, self._writer = await asyncio.open_unix_connection(path=self.socket_path)
-        if self.in_memory:
-            self._send(':memory:')
 
     def close(self):
         """Close writer socket."""
@@ -136,7 +133,7 @@ class WazuhDBConnection:
     Represent a connection to the wdb socket.
     """
 
-    def __init__(self, request_slice: int = 500, in_memory: bool = False):
+    def __init__(self, request_slice: int = 500):
         """Class constructor.
 
         Parameters
@@ -149,8 +146,6 @@ class WazuhDBConnection:
         try:
             self.__conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             self.__conn.connect(self.socket_path)
-            if in_memory:
-                self.send(':memory')
         except OSError as e:
             raise WazuhInternalError(2005, e)
 
