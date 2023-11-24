@@ -58,16 +58,11 @@ extern void mock_assert(const int result, const char* const expression,
     mock_assert((int)(expression), #expression, __FILE__, __LINE__);
 #endif
 
-void wdbi_report_removed(const char* agent_id, wdb_component_t component, const sqlite3_stmt* stmt) {
-    w_mutex_lock(&router_mutex);
+void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite3_stmt* stmt) {
     if (!router_handle) {
-        if (router_handle = router_provider_create("rsync-deltas"), !router_handle) {
-            mdebug2("Failed to create router handle for 'wazuh-db'.");
-            w_mutex_unlock(&router_mutex);
-            return -1;
-        }
+        mdebug2("Router handle not available.");
+        return;
     }
-    w_mutex_unlock(&router_mutex);
 
     cJSON* j_msg_to_send = NULL;
     cJSON* j_agent_info = NULL;
@@ -88,15 +83,15 @@ void wdbi_report_removed(const char* agent_id, wdb_component_t component, const 
         {
             case WDB_SYSCOLLECTOR_HOTFIXES:
                 type = "dbsync_hotfixes";
-                cJSON_AddItemToObject(j_data, "hotfix", cJSON_CreateString(sqlite3_column_text(stmt, 0)));
+                cJSON_AddItemToObject(j_data, "hotfix", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
                 break;
             case WDB_SYSCOLLECTOR_PACKAGES:
                 type = "dbsync_packages";
-                cJSON_AddItemToObject(j_data, "name", cJSON_CreateString(sqlite3_column_text(stmt, 0)));
-                cJSON_AddItemToObject(j_data, "version", cJSON_CreateString(sqlite3_column_text(stmt, 1)));
-                cJSON_AddItemToObject(j_data, "architecture", cJSON_CreateString(sqlite3_column_text(stmt, 2)));
-                cJSON_AddItemToObject(j_data, "format", cJSON_CreateString(sqlite3_column_text(stmt, 3)));
-                cJSON_AddItemToObject(j_data, "location", cJSON_CreateString(sqlite3_column_text(stmt, 4)));
+                cJSON_AddItemToObject(j_data, "name", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
+                cJSON_AddItemToObject(j_data, "version", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 1)));
+                cJSON_AddItemToObject(j_data, "architecture", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 2)));
+                cJSON_AddItemToObject(j_data, "format", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 3)));
+                cJSON_AddItemToObject(j_data, "location", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 4)));
                 break;
             default:
                 break;
@@ -120,6 +115,8 @@ void wdbi_report_removed(const char* agent_id, wdb_component_t component, const 
             } else {
                 mdebug2("Unable to publish message for agent %s", agent_id);
             }
+        } else {
+            mdebug2("Unable to dump delete message to publish agent %s", agent_id);
         }
 
         cJSON_Delete(j_msg_to_send);

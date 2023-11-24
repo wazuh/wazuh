@@ -32,7 +32,6 @@
 
 // Router provider variables
 ROUTER_PROVIDER_HANDLE router_handle = NULL;
-pthread_mutex_t router_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static const char *SQL_CREATE_TEMP_TABLE = "CREATE TEMP TABLE IF NOT EXISTS s(rowid INTEGER PRIMARY KEY, pageno INT);";
 static const char *SQL_TRUNCATE_TEMP_TABLE = "DELETE FROM s;";

@@ -113,7 +113,6 @@ typedef enum wdb_global_group_hash_operations_t {
 
 // Router provider variables
 extern ROUTER_PROVIDER_HANDLE router_handle;
-extern pthread_mutex_t router_mutex;
 
 typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,
@@ -1551,7 +1550,7 @@ int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * beg
 
 int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, const char * tail);
 
-void wdbi_report_removed(const char* agent_id, wdb_component_t component, const sqlite3_stmt* stmt);
+void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite3_stmt* stmt);
 
 /**
  * @brief Updates the timestamps and counters of a component from sync_info table. It should be called when
