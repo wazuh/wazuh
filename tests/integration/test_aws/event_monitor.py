@@ -24,7 +24,7 @@ from wazuh_testing.constants.aws import VPC_FLOW_TYPE, INSPECTOR_TYPE
 from wazuh_testing.modules.aws.utils import analyze_command_output
 
 # Local imports
-from .utils import ERROR_MESSAGES
+from .utils import ERROR_MESSAGE
 
 
 def make_aws_callback(pattern, prefix=''):
@@ -285,7 +285,7 @@ def check_processed_logs_from_output(command_output, expected_results=1):
         command_output=command_output,
         callback=callback_detect_event_processed,
         expected_results=expected_results,
-        error_message=ERROR_MESSAGES['incorrect_event_number']
+        error_message=ERROR_MESSAGE['incorrect_event_number']
     )
 
 
@@ -306,7 +306,7 @@ def check_non_processed_logs_from_output(command_output, bucket_type, expected_r
         command_output,
         callback=make_aws_callback(pattern),
         expected_results=expected_results,
-        error_message=ERROR_MESSAGES['unexpected_number_of_events_found']
+        error_message=ERROR_MESSAGE['unexpected_number_of_events_found']
     )
 
 
@@ -324,7 +324,7 @@ def check_marker_from_output(command_output, file_key, expected_results=1):
         command_output,
         callback=make_aws_callback(pattern),
         expected_results=expected_results,
-        error_message=ERROR_MESSAGES['incorrect_marker']
+        error_message=ERROR_MESSAGE['incorrect_marker']
     )
 
 
@@ -335,7 +335,7 @@ def check_service_processed_logs_from_output(
         command_output=command_output,
         callback=callback_detect_service_event_processed(events_sent, service_type),
         expected_results=expected_results,
-        error_message=ERROR_MESSAGES['incorrect_event_number']
+        error_message=ERROR_MESSAGE['incorrect_event_number']
     )
 
 
@@ -349,5 +349,5 @@ def check_service_non_processed_logs_from_output(command_output, service_type, e
         command_output,
         callback=make_aws_callback(pattern),
         expected_results=expected_results,
-        error_message=ERROR_MESSAGES['unexpected_number_of_events_found']
+        error_message=ERROR_MESSAGE['unexpected_number_of_events_found']
     )

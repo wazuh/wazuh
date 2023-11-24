@@ -6,39 +6,31 @@
 This module will contain all cases for the custom bucket test suite
 """
 
-import os
-
 import pytest
 
 # qa-integration-framework imports
 from wazuh_testing import session_parameters
 
+# Local module imports
+from . import event_monitor
+from .utils import ERROR_MESSAGE, TIMEOUT
+from .conftest import TestConfigurator, local_internal_options
+
 pytestmark = [pytest.mark.server]
 
-# Generic vars
-# Name of the folder test module
-MODULE = 'custom_bucket_test_module'
-# Path of the data for the tests
-TEST_DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-# Path for the configuration of this module
-CONFIGURATION_PATH = os.path.join(TEST_DATA_PATH, TEMPLATE_DIR, MODULE)
-# Path for the test cases of this module
-TEST_CASE_PATH = os.path.join(TEST_DATA_PATH, TEST_CASES_DIR, MODULE)
+# Set test configurator for the module
+configurator = TestConfigurator(module='custom_bucket_test_module')
 
 # -------------------------------------------- TEST_CUSTOM_BUCKETS_DEFAULTS -------------------------------------------
-# Configuration and cases data
-t1_configurations_path = os.path.join(CONFIGURATION_PATH, 'custom_bucket_configuration.yaml')
-t1_cases_path = os.path.join(TEST_CASE_PATH, 'cases_bucket_custom.yaml')
-
-# Enabled test configurations
-t1_configuration_parameters, t1_configuration_metadata, t1_case_ids = get_test_cases_data(t1_cases_path)
-t1_configurations = load_configuration_template(
-    t1_configurations_path, t1_configuration_parameters, t1_configuration_metadata
-)
+# Configure T1 test
+configurator.configure_test(configuration_file='custom_bucket_configuration.yaml',
+                            cases_file='cases_bucket_custom.yaml')
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata', zip(t1_configurations, t1_configuration_metadata), ids=t1_case_ids)
+@pytest.mark.parametrize('configuration, metadata',
+                         zip(configurator.test_configuration_template, configurator.metadata),
+                         ids=configurator.cases_ids)
 def test_custom_bucket_defaults(configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
                                 configure_local_internal_options_function, truncate_monitored_files,
                                 restart_wazuh_function, file_monitoring):
@@ -110,40 +102,39 @@ def test_custom_bucket_defaults(configuration, metadata, load_wazuh_basic_config
 
     # Check AWS module started
     log_monitor.start(
-        timeout=global_parameters.default_timeout,
-        callback=event_monitor.callback_detect_aws_module_start,
-        error_message='The AWS module did not start as expected',
-    ).result()
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_aws_module_start
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
-        timeout=global_parameters.default_timeout,
-        callback=event_monitor.make_aws_callback(expected_log, prefix='^.*'),
-        error_message='The AWS module was not called with the correct parameters',
-    ).result()
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.make_aws_callback(expected_log, prefix='^.*')
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     # Detect any ERROR message
-    with pytest.raises(TimeoutError):
-        log_monitor.start(
-            timeout=global_parameters.default_timeout,
-            callback=event_monitor.callback_detect_all_aws_err,
-        ).result()
+    log_monitor.start(
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_all_aws_err
+    )
+
+    assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']
 
 
 # -------------------------------------------- TEST_CUSTOM_BUCKETS_LOGS -------------------------------------------
-# Configuration and cases data
-t2_configurations_path = os.path.join(CONFIGURATION_PATH, 'custom_bucket_configuration.yaml')
-t2_cases_path = os.path.join(TEST_CASE_PATH, 'cases_bucket_custom_logs.yaml')
-
-# Enabled test configurations
-t2_configuration_parameters, t2_configuration_metadata, t2_case_ids = get_test_cases_data(t2_cases_path)
-t2_configurations = load_configuration_template(
-    t2_configurations_path, t2_configuration_parameters, t2_configuration_metadata
-)
+# Configure T2 test
+configurator.configure_test(configuration_file='custom_bucket_configuration.yaml',
+                            cases_file='cases_bucket_custom_logs.yaml')
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata', zip(t2_configurations, t2_configuration_metadata), ids=t2_case_ids)
+@pytest.mark.parametrize('configuration, metadata',
+                         zip(configurator.test_configuration_template, configurator.metadata),
+                         ids=configurator.cases_ids)
 def test_custom_bucket_logs(configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
                             configure_local_internal_options_function, truncate_monitored_files,
                             restart_wazuh_function, file_monitoring, upload_and_delete_file_to_s3):
@@ -225,31 +216,43 @@ def test_custom_bucket_logs(configuration, metadata, load_wazuh_basic_configurat
 
     # Check AWS module started
     log_monitor.start(
-        timeout=global_parameters.default_timeout,
-        callback=event_monitor.callback_detect_aws_module_start,
-        error_message='The AWS module did not start as expected',
-    ).result()
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_aws_module_start
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
-        timeout=global_parameters.default_timeout,
-        callback=event_monitor.make_aws_callback(expected_log, prefix='^.*'),
-        error_message='The AWS module was not called with the correct parameters',
-    ).result()
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.make_aws_callback(expected_log, prefix='^.*')
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     retrieve_pattern = fr'.*Retrieving messages from: {sqs_name}'
     message_pattern = fr'.*The message is: .*'
 
-    # Check if retrieves from the queue
+    # Check if the message was retrieved from the queue
     log_monitor.start(
-        timeout=T_10,
-        callback=event_monitor.make_aws_callback(retrieve_pattern),
-        error_message='The AWS module did not retrieve from the SQS Queue',
-    ).result()
+        timeout=TIMEOUT[10],
+        callback=event_monitor.make_aws_callback(retrieve_pattern)
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_sqs_message_retrieval']
 
     # Check if it processes the created file
     log_monitor.start(
-        timeout=T_10,
-        callback=event_monitor.make_aws_callback(message_pattern),
-        error_message='The AWS module did not handle the message',
-    ).result()
+        timeout=TIMEOUT[10],
+        callback=event_monitor.make_aws_callback(message_pattern)
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_message_handling']
+
+    # Detect any ERROR message
+    log_monitor.start(
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_all_aws_err
+    )
+
+    assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']
