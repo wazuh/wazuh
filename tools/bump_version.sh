@@ -147,11 +147,22 @@ then
 
     if [ $? != 0 ]
     then
-        echo "Error: no suitable version definition found at file $WIN_RESOURCE"
+        echo "Error: no suitable version definition (VER_PRODUCTVERSION_STR) found at file $WIN_RESOURCE"
         exit 1
     fi
 
     sed -E -i'' -e "s/^(#define VER_PRODUCTVERSION_STR +)v.+/\1$version/" $WIN_RESOURCE
+
+    egrep "^#define VER_PRODUCTVERSION [[:digit:]]+,[[:digit:]]+,[[:digit:]]+,[[:digit:]]+" $WIN_RESOURCE > /dev/null
+
+    if [ $? != 0 ]
+    then
+        echo "Error: no suitable version definition (VER_PRODUCTVERSION) found at file $WIN_RESOURCE"
+        exit 1
+    fi
+
+    product_commas=`echo "${version:1}.0" | tr '.' ','`
+    sed -E -i'' -e "s/^(#define VER_PRODUCTVERSION +).+/\1$product_commas/" $WIN_RESOURCE
 fi
 
 if [ -n "$revision" ]
@@ -191,19 +202,6 @@ then
     # Documentation config file
 
     sed -E -i'' -e "s/PROJECT_NUMBER         = \".+\"/PROJECT_NUMBER         = \"$CURRENT_VERSION-$revision\"/g" $VERSION_DOCU
-
-    # version.rc
-
-    egrep "^#define VER_PRODUCTVERSION [[:digit:]]+,[[:digit:]]+,[[:digit:]]+,[[:digit:]]+" $WIN_RESOURCE > /dev/null
-
-    if [ $? != 0 ]
-    then
-        echo "Error: no suitable version definition found at file $WIN_RESOURCE"
-        exit 1
-    fi
-
-    product_commas=`echo $product | tr '.' ','`
-    sed -E -i'' -e "s/^(#define VER_PRODUCTVERSION +).+/\1$product_commas/" $WIN_RESOURCE
 fi
 
 if [ -n "$product" ]

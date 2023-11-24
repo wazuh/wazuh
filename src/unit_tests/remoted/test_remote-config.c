@@ -178,7 +178,7 @@ static void test_w_remoted_parse_agents_invalid_value(void **state) {
     expect_string(__wrap__mwarn, formatted_msg,
                   "(9001): Ignored invalid value 'invalid_value' for 'allow_higher_versions'.");
     w_remoted_parse_agents(node, &logr);
-    assert_true(logr.allow_higher_versions);
+    assert_int_equal(logr.allow_higher_versions, REMOTED_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT);
 
     os_free(node[0]->element);
     os_free(node[0]->content);
@@ -200,7 +200,7 @@ static void test_w_remoted_parse_agents_invalid_element(void **state) {
     expect_string(__wrap__mwarn, formatted_msg,
                   "(1230): Invalid element in the configuration: 'invalid_element'.");
     w_remoted_parse_agents(node, &logr);
-    assert_true(logr.allow_higher_versions);
+    assert_int_equal(logr.allow_higher_versions, REMOTED_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT);
 
     os_free(node[0]->element);
     os_free(node[0]->content);

@@ -20,6 +20,7 @@ All notable changes to this project will be documented in this file.
 #### Changed
 
 - An unnecessary sanity check related to Syscollector has been removed from wazuh-db. ([#16008](https://github.com/wazuh/wazuh/pull/16008))
+- The manager now rejects agents with a higher version by default. ([#20367](https://github.com/wazuh/wazuh/pull/20367))
 
 #### Fixed
 
@@ -47,6 +48,7 @@ All notable changes to this project will be documented in this file.
 
 - The shared modules' code has been sanitized according to the convention. ([#17966](https://github.com/wazuh/wazuh/pull/17966))
 - The package inventory internal messages have been modified to honor the schema compliance. ([#18006](https://github.com/wazuh/wazuh/pull/18006))
+- The agent connection log has been updated to clarify that the agent must connect to an agent with the same or higher version. ([#20360](https://github.com/wazuh/wazuh/pull/20360))
 
 #### Fixed
 
