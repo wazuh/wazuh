@@ -243,6 +243,9 @@ int main(int argc, char ** argv)
         }
     }
 
+    // Router module logging initialization
+    router_initialize(taggedLogFunction);
+
     if (status = pthread_create(&thread_router, NULL, run_router_handle, NULL), status != 0) {
         merror("Couldn't create 'run_router_handle' thread: %s", strerror(status));
         goto failure;
@@ -549,6 +552,7 @@ void * run_up(__attribute__((unused)) void * args) {
 }
 
 void * run_router_handle(__attribute__((unused)) void * args) {
+    mdebug2("Creating router handle for 'wazuh-db'.");
     while (!router_handle) {
         if (router_handle = router_provider_create(WDB_ROUTER_DELETED_TOPIC), !router_handle) {
             mdebug2("Failed to create router handle for 'wazuh-db'.");
