@@ -15,7 +15,7 @@ If the download is successful, this stage also updates the context [data paths](
 The context fields related to this stage are:
 
 - `configData`
-  + `url`: Used as input file URL. **IMPORTANT**: If it has the `file://` prefix, the file will be copied from the filesystem. If it has the `http://` or `https://` prefixes, the file will be downloaded from a server pointed by the URL.
+  + `url`: Used as input file URL. **IMPORTANT**: If it has the `file://` prefix, the file will be copied from the filesystem. If it has the `http://` or `https://` prefixes, the file will be downloaded from a server pointed by the URL. Any other prefix will invalidate the URL.
   + `compressionType`: Used to know whether the input file is compressed or not.
 - `downloadsFolder`: Used as output folder when the input file is compressed.
 - `contentsFolder`: Used as output folder when the input file is not compressed.
