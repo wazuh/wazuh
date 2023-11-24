@@ -2,7 +2,7 @@
 
 ## Details
 
-The [offline downloader](../../src/components/offlineDownloader.hpp) stage is part of the Content Manager orchestration and is in charge of downloading a file in an offline mode by whether copying a file from the local filesystem or downloading it from an HTTP server (the stage will deduce which approach to use depending on the URL prefix). The input file hash is calculated and stored in order to avoid processing the same file multiple times in the next orchestration executions.
+The [offline downloader](../../src/components/offlineDownloader.hpp) stage is part of the Content Manager orchestration and is in charge of downloading a file in offline mode by whether copying a file from the local filesystem or downloading it from an HTTP server (the stage will deduce which approach to use depending on the URL prefix). The input file hash is calculated and stored in order to avoid processing the same file multiple times in the next orchestration executions.
 
 The download will be made into any of the following output directories:
 - Downloads folder: If the input file is compressed.

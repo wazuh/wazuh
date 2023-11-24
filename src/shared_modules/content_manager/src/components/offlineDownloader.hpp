@@ -30,8 +30,8 @@
 /**
  * @class OfflineDownloader
  *
- * @brief Class in charge of copying a file from the filesystem and update the context accordingly, as a step of a chain
- * of responsibility.
+ * @brief Class in charge of downloading a file in offline mode and updating the context accordingly, as a step of a
+ * chain of responsibility.
  *
  */
 class OfflineDownloader final : public AbstractHandler<std::shared_ptr<UpdaterContext>>
@@ -128,9 +128,7 @@ private:
     }
 
     /**
-     * @brief Downloads the requested local file and update the context accordingly.
-     *
-     * @note Despite the method name, there is no such download since the file is present in the filesystem.
+     * @brief Downloads a file in offline mode and updates the context accordingly.
      *
      * @param context Updater context.
      */
@@ -196,7 +194,7 @@ public:
         : m_urlRequest(urlRequest) {};
 
     /**
-     * @brief Copies a file from the local filesystem in order to be processed and passes the control to the next chain
+     * @brief Downloads a file in offline mode in order to be processed and passes the control to the next chain
      * stage.
      *
      * @param context Updater context.
