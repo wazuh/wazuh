@@ -111,7 +111,6 @@ namespace Utils
             const auto status {m_db->Get(rocksdb::ReadOptions(), key, &value)};
             if (status.IsNotFound())
             {
-                std::cerr << "Key not found: " << key << '\n';
                 return false;
             }
             else if (!status.ok())
@@ -141,7 +140,6 @@ namespace Utils
             const auto status {m_db->Get(rocksdb::ReadOptions(), m_db->DefaultColumnFamily(), key, &value)};
             if (status.IsNotFound())
             {
-                std::cerr << "Key not found: " << key << '\n';
                 return false;
             }
             else if (!status.ok())

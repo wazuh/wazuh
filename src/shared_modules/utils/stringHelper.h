@@ -243,6 +243,16 @@ namespace Utils
         return temp;
     }
 
+    static std::string toLowerCase(const std::string& str)
+    {
+        std::string temp {str};
+        std::transform(std::begin(temp),
+                       std::end(temp),
+                       std::begin(temp),
+                       [](std::string::value_type character) { return std::tolower(character); });
+        return temp;
+    }
+
     static bool startsWith(const std::string& str, const std::string& start)
     {
         if (!str.empty() && str.length() >= start.length())

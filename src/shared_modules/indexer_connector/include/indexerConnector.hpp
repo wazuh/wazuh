@@ -18,6 +18,9 @@
 #define EXPORTED
 #endif
 
+class ServerSelector;
+class SecureCommunication;
+
 #include "threadEventDispatcher.hpp"
 #include <json.hpp>
 #include <string>
@@ -30,6 +33,25 @@ using ThreadDispatchQueue = ThreadEventDispatcher<std::string, std::function<voi
  */
 class EXPORTED IndexerConnector final
 {
+    /**
+     * @brief Initialized status.
+     *
+     */
+    bool m_initialized {false};
+
+    /**
+     * @brief Intialize method used to load template data and initialize the index.
+     *
+     * @param templateData Template data.
+     * @param indexName Index name.
+     * @param selector Server selector.
+     * @param secureCommunication Secure communication.
+     */
+    void initialize(const nlohmann::json& templateData,
+                    const std::string& indexName,
+                    const std::shared_ptr<ServerSelector>& selector,
+                    const SecureCommunication& secureCommunication);
+
 public:
     /**
      * @brief Class constructor that initializes the publisher.
