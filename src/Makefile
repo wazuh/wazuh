@@ -1743,7 +1743,6 @@ build_shared_modules: $(WAZUHEXT_LIB)
 .PHONY: flatbuffers_schemas
 flatbuffers_schemas: ${FLATCCRT_LIB}
 	${FLATCC_BIN} --json -a -g -o generated_headers/ shared_modules/utils/flatbuffers/schemas/syscollectorRsync/*.fbs
-	${FLATCC_BIN} --json -a -g -o generated_headers/ shared_modules/utils/flatbuffers/schemas/common/*.fbs
 	${FLATCC_BIN} --json -a -g -o generated_headers/ shared_modules/utils/flatbuffers/schemas/syscollectorDeltas/*.fbs
 
 #### Sysinfo ##
@@ -2723,7 +2722,13 @@ clean-internals: clean-unit-tests
 	rm -rf $(RSYNC)build
 	rm -rf $(SYSCOLLECTOR)build
 	rm -rf $(SHARED_MODULES)utils/flatbuffers/include/
-	rm -rf $(wildcard $(VULNERABILITY_SCANNER)include/*_generated.h)
+	rm -rf $(VULNERABILITY_SCANNER)include/*_generated.h
+	rm -rf $(VULNERABILITY_SCANNER)include/*_schema.h
+	rm -rf generated_headers/*_builder.h
+	rm -rf generated_headers/*_parser.h
+	rm -rf generated_headers/*_printer.h
+	rm -rf generated_headers/*_verifier.h
+	rm -rf generated_headers/*_reader.h
 	rm -rf $(SYSINFO)build
 	rm -rf $(SYSCHECK)build
 	rm -rf ${SHARED_MODULES}http-request/build

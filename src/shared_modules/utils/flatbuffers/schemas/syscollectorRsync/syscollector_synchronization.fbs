@@ -117,7 +117,7 @@ table syscollector_ports
 
 table syscollector_processes
 {
-    argvs: [string];
+    argvs: string;
     checksum: string;
     cmd: string;
     egroup: string;
@@ -198,12 +198,19 @@ table integrity_check_left
   checksum: string;
 }
 
+table integrity_clear
+{
+    attributes_type:string;
+    id:int;
+}
+
 union DataUnion
 {
     state,
     integrity_check_global,
     integrity_check_left,
-    integrity_check_right
+    integrity_check_right,
+    integrity_clear
 }
 
 table SyncMsg

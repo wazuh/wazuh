@@ -17,12 +17,12 @@
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 
-class SyscollectorFbTest : public ::testing::Test
+class SyscollectorSyncTest : public ::testing::Test
 {
     protected:
 
-        SyscollectorFbTest() = default;
-        virtual ~SyscollectorFbTest() = default;
+        SyscollectorSyncTest() = default;
+        virtual ~SyscollectorSyncTest() = default;
 
         void SetUp() override;
         void TearDown() override;

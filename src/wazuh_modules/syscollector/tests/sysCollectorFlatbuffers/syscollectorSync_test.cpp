@@ -9,16 +9,16 @@
  * Foundation.
  */
 
-#include "syscollectorFb_test.h"
+#include "syscollectorSync_test.h"
 
 const std::string syscollector_message {SCHEMA_ROOT_PATH "syscollector_synchronization.fbs"};
 const char* INCLUDE_DIRECTORIES[] = { SCHEMA_ROOT_PATH, nullptr };
 
-void SyscollectorFbTest::SetUp() {};
+void SyscollectorSyncTest::SetUp() {};
 
-void SyscollectorFbTest::TearDown() {};
+void SyscollectorSyncTest::TearDown() {};
 
-TEST(SyscollectorFbTest, JSONParsePackageUnix)
+TEST(SyscollectorSyncTest, JSONParsePackageUnix)
 {
 
     const std::string alert_json =
@@ -45,7 +45,7 @@ TEST(SyscollectorFbTest, JSONParsePackageUnix)
 
 }
 
-TEST(SyscollectorFbTest, JSONParsePackageWin)
+TEST(SyscollectorSyncTest, JSONParsePackageWin)
 {
     const std::string alert_json =
         "{\n  agent_info: {\n    agent_id: \"001\",\n    node_name: \"node01\"\n  },\n  data_type: \"state\",\n  data: {\n    attributes_type: \"syscollector_packages\",\n    attributes: {\n      checksum: \"9141d4744f95aad5db1cf8cf17c33c2f7dffed40\",\n      format: \"win\",\n      install_time: \"20230804\",\n      item_id: \"e8cc756531b3adaae0e8a51c6800a681f4e903aa\",\n      name: \"Microsoft Application Amazing Runtime\",\n      location: \"C:\\\\Users\\\\winuser\\\\AppData\\\\Local\\\\Microsoft\\\\Amazing\\\\Application\",\n      scan_time: \"0000/00/00 00:00:00\",\n      vendor: \"Microsoft Application Amazing\",\n      version: \"110.110.110.10.10\"\n    },\n    index: \"e8cc756531b3adaae0e8a51c6800a681f4e903aa\",\n    timestamp: \"\"\n  }\n}\n";
@@ -71,7 +71,7 @@ TEST(SyscollectorFbTest, JSONParsePackageWin)
 
 }
 
-TEST(SyscollectorFbTest, JSONParseHotfix)
+TEST(SyscollectorSyncTest, JSONParseHotfix)
 {
     const std::string alert_json =
         "{\n  agent_info: {\n    agent_id: \"001\",\n    node_name: \"node01\"\n  },\n  data_type: \"state\",\n  data: {\n    attributes_type: \"syscollector_hotfixes\",\n    attributes: {\n      checksum: \"5cfcee837ce896ef9229da1064b2844439ff3cc6\",\n      hotfix: \"KB5026037\",\n      scan_time: \"0000/00/00 00:00:00\"\n    },\n    index: \"KB5026037\",\n    timestamp: \"\"\n  }\n}\n";
@@ -97,7 +97,7 @@ TEST(SyscollectorFbTest, JSONParseHotfix)
 
 }
 
-TEST(SyscollectorFbTest, JSONParseProcessUnix)
+TEST(SyscollectorSyncTest, JSONParseProcessUnix)
 {
     const std::string alert_json =
         "{\n  agent_info: {\n    agent_id: \"001\",\n    node_name: \"node01\"\n  },\n  data_type: \"state\",\n  data: {\n    attributes_type: \"syscollector_processes\",\n    attributes: {\n      checksum: \"bc425a0d5337df58bd60e54fdb889fbf370d425a\",\n      egroup: \"root\",\n      euser: \"root\",\n      fgroup: \"root\",\n      name: \"writeback\",\n      nice: -20,\n      nlwp: 1,\n      pid: \"39\",\n      ppid: 2,\n      processor: 2,\n      rgroup: \"root\",\n      ruser: \"root\",\n      scan_time: \"20000/00/00 00:00:00\",\n      sgroup: \"root\",\n      start_time: 1691513206,\n      state: \"I\",\n      suser: \"root\",\n      tgid: 39\n    },\n    index: \"39\",\n    timestamp: \"\"\n  }\n}\n";
@@ -123,7 +123,7 @@ TEST(SyscollectorFbTest, JSONParseProcessUnix)
 
 }
 
-TEST(SyscollectorFbTest, JSONParseProcessWin)
+TEST(SyscollectorSyncTest, JSONParseProcessWin)
 {
     const std::string alert_json =
         "{\n  agent_info: {\n    agent_id: \"001\",\n    node_name: \"node01\"\n  },\n  data_type: \"state\",\n  data: {\n    attributes_type: \"syscollector_processes\",\n    attributes: {\n      checksum: \"62abb948062c25a4065b35b17746ae2442e850d1\",\n      cmd: \"C:\\\\Windows\\\\System32\\\\svchost.exe\",\n      name: \"svchost.exe\",\n      nlwp: 7,\n      pid: \"1328\",\n      ppid: 680,\n      priority: 8,\n      scan_time: \"0000/00/00 00:00:00\",\n      size: 3534848,\n      start_time: 1686590435,\n      vm_size: 17723392\n    },\n    index: \"1328\",\n    timestamp: \"\"\n  }\n}\n";
@@ -149,7 +149,7 @@ TEST(SyscollectorFbTest, JSONParseProcessWin)
 
 }
 
-TEST(SyscollectorFbTest, JSONParsePortsUnix)
+TEST(SyscollectorSyncTest, JSONParsePortsUnix)
 {
     const std::string alert_json =
         "{\n  agent_info: {\n    agent_id: \"001\",\n    node_name: \"node01\"\n  },\n  data_type: \"state\",\n  data: {\n    attributes_type: \"syscollector_ports\",\n    attributes: {\n      checksum: \"02d4570c4cf94ba0f79c34e8a52216fddf73a39a\",\n      inode: 42468,\n      item_id: \"cb8f094adf3aeb9630f2f51d1beeb5472eb0a8fb\",\n      local_ip: \"192.168.0.10\",\n      local_port: 37990,\n      protocol: \"udp\",\n      remote_ip: \"192.168.0.30\",\n      remote_port: 1514,\n      scan_time: \"0000/00/00 00:00:00\"\n    },\n    index: \"cb8f094adf3aeb9630f2f51d1beeb5472eb0a8fb\",\n    timestamp: \"\"\n  }\n}\n";
@@ -175,7 +175,7 @@ TEST(SyscollectorFbTest, JSONParsePortsUnix)
 
 }
 
-TEST(SyscollectorFbTest, JSONParsePortsWin)
+TEST(SyscollectorSyncTest, JSONParsePortsWin)
 {
 
     const std::string alert_json =
@@ -202,7 +202,7 @@ TEST(SyscollectorFbTest, JSONParsePortsWin)
 
 }
 
-TEST(SyscollectorFbTest, JSONParseHwInfo)
+TEST(SyscollectorSyncTest, JSONParseHwInfo)
 {
 
     const std::string alert_json =
@@ -229,7 +229,7 @@ TEST(SyscollectorFbTest, JSONParseHwInfo)
 
 }
 
-TEST(SyscollectorFbTest, JSONParseOsInfo)
+TEST(SyscollectorSyncTest, JSONParseOsInfo)
 {
 
     const std::string alert_json =
@@ -256,7 +256,7 @@ TEST(SyscollectorFbTest, JSONParseOsInfo)
 
 }
 
-TEST(SyscollectorFbTest, JSONParseNetAddr)
+TEST(SyscollectorSyncTest, JSONParseNetAddr)
 {
 
     const std::string alert_json =
@@ -283,7 +283,7 @@ TEST(SyscollectorFbTest, JSONParseNetAddr)
 
 }
 
-TEST(SyscollectorFbTest, JSONParseNetItf)
+TEST(SyscollectorSyncTest, JSONParseNetItf)
 {
 
     const std::string alert_json =
@@ -310,7 +310,7 @@ TEST(SyscollectorFbTest, JSONParseNetItf)
 
 }
 
-TEST(SyscollectorFbTest, JSONIntegrityGlobal)
+TEST(SyscollectorSyncTest, JSONIntegrityGlobal)
 {
 
     const std::string alert_json =
@@ -337,7 +337,7 @@ TEST(SyscollectorFbTest, JSONIntegrityGlobal)
 
 }
 
-TEST(SyscollectorFbTest, JSONIntegrityRight)
+TEST(SyscollectorSyncTest, JSONIntegrityRight)
 {
 
     const std::string alert_json =
@@ -364,7 +364,7 @@ TEST(SyscollectorFbTest, JSONIntegrityRight)
 
 }
 
-TEST(SyscollectorFbTest, JSONIntegrityLeft)
+TEST(SyscollectorSyncTest, JSONIntegrityLeft)
 {
 
     const std::string alert_json =
