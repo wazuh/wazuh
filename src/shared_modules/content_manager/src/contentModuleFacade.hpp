@@ -32,6 +32,7 @@ public:
     /**
      * @brief Register endpoint to receive initialization of modules from other processes.
      *
+     * @param logFunction Log function.
      */
     void
     start(const std::function<
