@@ -258,5 +258,5 @@ The content is downloaded and, since it's compressed, stored at the _downloads_ 
 2 directories, 2 files
 ```
 
-The `/tmp/output_folder/contents/test_context_test_consumer_1000_2000.json` path is published for the consumers to read. The second time the orchestration is launched, no data is published since the downlaoded file didn't change.
+The `/tmp/output_folder/contents/test_context_test_consumer_1000_2000.json` path is published for the consumers to read. The second time the orchestration is launched, no data is published since the downloaded file didn't change.
 
