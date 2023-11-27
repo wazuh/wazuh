@@ -19,7 +19,7 @@ from wazuh.core import cluster as metadata, common, exception, utils
 from wazuh.core.agent import Agent
 from wazuh.core.cluster import server, cluster, common as c_common
 from wazuh.core.cluster.dapi import dapi
-from wazuh.core.cluster.utils import context_tag
+from wazuh.core.cluster.utils import context_tag, log_subprocess_execution
 from wazuh.core.common import DECIMALS_DATE_FORMAT
 from wazuh.core.utils import get_utc_now
 from wazuh.core.wdb import AsyncWazuhDBConnection
@@ -1073,8 +1073,11 @@ class Master(server.AbstractServer):
             before = perf_counter()
             file_integrity_logger.info("Starting.")
             try:
-                self.integrity_control = await cluster.run_in_pool(self.loop, self.task_pool, cluster.get_files_status,
-                                                                   self.integrity_control)
+                self.integrity_control, logs = await cluster.run_in_pool(self.loop,
+                                                                         self.task_pool,
+                                                                         cluster.get_files_status,
+                                                                         self.integrity_control)
+                log_subprocess_execution(file_integrity_logger, logs)
             except Exception as e:
                 file_integrity_logger.error(f"Error calculating local file integrity: {e}")
             finally:

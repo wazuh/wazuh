@@ -9,6 +9,7 @@ import os.path
 import shutil
 import zlib
 from asyncio import wait_for
+from collections import defaultdict
 from functools import partial
 from operator import eq
 from os import listdir, path, remove, stat, walk
@@ -144,11 +145,13 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
     -------
     walk_files : dict
         Paths (keys) and metadata (values) of the requested files found inside 'dirname'.
+    result_logs: dict
+        Dict containing debug or any error messages emitted in the process.
     """
     if previous_status is None:
         previous_status = {}
     walk_files = {}
-
+    result_logs = {'debug': defaultdict(list), 'error': defaultdict(list)}
     full_dirname = path.join(common.WAZUH_PATH, dirname)
     # Get list of all files and directories inside 'full_dirname'.
     try:
@@ -186,14 +189,14 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
                             # Use the relative file path as a key to save its metadata dictionary.
                             walk_files[relative_file_path] = file_metadata
                     except FileNotFoundError as e:
-                        logger.debug(f"File {file_} was deleted in previous iteration: {e}")
+                        result_logs['debug'][root_].append(f"File {file_} was deleted in previous iteration: {e}")
                     except PermissionError as e:
-                        logger.error(f"Can't read metadata from file {file_}: {e}")
+                        result_logs['error'][root_].append(f"Can't read metadata from file {file_}: {e}")
             else:
                 break
     except OSError as e:
         raise WazuhInternalError(3015, e)
-    return walk_files
+    return walk_files, result_logs
 
 
 def get_files_status(previous_status=None, get_hash=True):
@@ -210,6 +213,8 @@ def get_files_status(previous_status=None, get_hash=True):
     -------
     final_items : dict
         Paths (keys) and metadata (values) of all the files requested in cluster.json['files'].
+    result_logs: dict
+        Dict containing debug or any error messages emitted in the process.
     """
     if previous_status is None:
         previous_status = {}
@@ -217,17 +222,24 @@ def get_files_status(previous_status=None, get_hash=True):
     cluster_items = get_cluster_items()
 
     final_items = {}
+    result_logs = {'debug': defaultdict(dict), 'warning': defaultdict(list), 'error': defaultdict(dict)}
     for file_path, item in cluster_items['files'].items():
         if file_path == "excluded_files" or file_path == "excluded_extensions":
             continue
         try:
-            final_items.update(
-                walk_dir(file_path, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
-                         cluster_items['files']['excluded_extensions'], file_path, previous_status, get_hash))
+            items, logs = walk_dir(file_path, item['recursive'], item['files'],
+                                   cluster_items['files']['excluded_files'],
+                                   cluster_items['files']['excluded_extensions'],
+                                   file_path, previous_status, get_hash)
+            if 'debug' in logs and logs['debug']:
+                result_logs['debug'][file_path].update(dict(logs['debug']))
+            if 'error' in logs and logs['error']:
+                result_logs['error'][file_path].update(dict(logs['error']))
+            final_items.update(items)
         except Exception as e:
-            logger.warning(f"Error getting file status: {e}.")
+            result_logs['warning'][file_path].append(f"Error getting file status: {e}.")
 
-    return final_items
+    return final_items, result_logs
 
 
 def get_ruleset_status(previous_status):
@@ -253,9 +265,9 @@ def get_ruleset_status(previous_status):
         if file_path == "excluded_files" or file_path == "excluded_extensions" or file_path not in user_ruleset:
             continue
         try:
-            final_items.update(
-                walk_dir(file_path, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
-                         cluster_items['files']['excluded_extensions'], file_path, previous_status, True))
+            items, _ = walk_dir(file_path, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
+                                cluster_items['files']['excluded_extensions'], file_path, previous_status, True)
+            final_items.update(items)
         except Exception as e:
             logger.warning(f"Error getting file status: {e}.")
 
@@ -315,9 +327,12 @@ def compress_files(name, list_path, cluster_control_json=None, max_zip_size=None
     -------
     compress_file_path : str
         Path where the compress file has been saved.
+    result_logs: dict
+        Dict containing warning and debug messages emitted in the process.
     """
     zip_size = 0
     exceeded_size = False
+    result_logs = {'warning': defaultdict(list), 'debug': defaultdict(list)}
     compress_level = get_cluster_items()['intervals']['communication']['compress_level']
     if max_zip_size is None:
         max_zip_size = get_cluster_items()['intervals']['communication']['max_zip_size']
@@ -337,7 +352,8 @@ def compress_files(name, list_path, cluster_control_json=None, max_zip_size=None
                 with open(path.join(common.WAZUH_PATH, file), 'rb') as rf:
                     new_file = rf.read()
                     if len(new_file) > max_zip_size:
-                        logger.warning(f'File too large to be synced: {path.join(common.WAZUH_PATH, file)}')
+                        result_logs['warning'][file].append(f'File too large to be synced: '
+                                                            f'{path.join(common.WAZUH_PATH, file)}')
                         update_cluster_control(file, cluster_control_json)
                         continue
                     # Compress the content of each file and surrounds it with separators.
@@ -350,13 +366,14 @@ def compress_files(name, list_path, cluster_control_json=None, max_zip_size=None
                     wf.write(new_file)
                 else:
                     # Otherwise, remove it from cluster_control_json.
-                    logger.warning('Maximum zip size exceeded. Not all files will be compressed during this sync.')
+                    result_logs['warning'][file].append('Maximum zip size exceeded. '
+                                                        'Not all files will be compressed during this sync.')
                     exceeded_size = True
                     update_cluster_control(file, cluster_control_json)
             except zlib.error as e:
                 raise WazuhError(3001, str(e))
             except Exception as e:
-                logger.debug(str(WazuhException(3001, str(e))))
+                result_logs['debug'][file].append(f"Exception raised: " + str(WazuhException(3001, str(e))))
                 update_cluster_control(file, cluster_control_json, exists=False)
 
         try:
@@ -366,7 +383,7 @@ def compress_files(name, list_path, cluster_control_json=None, max_zip_size=None
         except Exception as e:
             raise WazuhError(3001, str(e))
 
-    return zip_file_path
+    return zip_file_path, result_logs
 
 
 async def async_decompress_files(zip_path, ko_files_name="files_metadata.json"):

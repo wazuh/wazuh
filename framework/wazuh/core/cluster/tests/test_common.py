@@ -1767,8 +1767,9 @@ async def test_sync_task_sync():
 @patch("json.dumps", return_value='')
 @patch("os.path.relpath", return_value="path")
 @patch("os.unlink", return_value="unlinked path")
-@patch("wazuh.core.cluster.cluster.compress_files", return_value="files/path/")
-async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock, json_dumps_mock):
+@patch("wazuh.core.cluster.cluster.compress_files", return_value=("files/path/", {}))
+@patch("wazuh.core.cluster.utils.log_subprocess_execution")
+async def test_sync_files_sync_ok(log_subprocess_mock, compress_files_mock, unlink_mock, relpath_mock, json_dumps_mock):
     """Check if the methods to synchronize files are defined."""
     files_to_sync = {"path1": "metadata1"}
     files_metadata = {"path2": "metadata2"}
@@ -1811,6 +1812,7 @@ async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock
     # Test second condition
     with patch.object(logging.getLogger("wazuh"), "error") as logger_mock:
         await sync_files.sync(files_to_sync, files_metadata, 1, task_pool=None)
+        log_subprocess_mock.assert_called()
         json_dumps_mock.assert_called_once_with(
             exception.WazuhClusterError(code=3020, extra_message="cmd"),
             cls=cluster_common.WazuhJSONEncoder)
@@ -1826,6 +1828,7 @@ async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock
                 logger_debug_mock.assert_has_calls([call(
                     f"Compressing {'files and ' if files_to_sync else ''}'files_metadata.json' of 1 files."),
                     call("Sending zip file."), call("Zip file sent."), call("Decreasing sync size limit to 30.00 MB.")])
+                log_subprocess_mock.assert_called()
                 logger_error_mock.assert_called_once_with("Error sending zip file: ")
                 compress_files_mock.assert_has_calls([call('Testing', {'path1': 'metadata1'},
                                                            {'path2': 'metadata2'}, None)] * 2)
@@ -1846,6 +1849,7 @@ async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock
                 logger_debug_mock.assert_has_calls([call(
                     f"Compressing {'files and ' if files_to_sync else ''}'files_metadata.json' of 1 files."),
                     call("Sending zip file."), call("Zip file sent."), call('Increasing sync size limit to 37.50 MB.')])
+                log_subprocess_mock.assert_called()
                 logger_error_mock.assert_called_once_with(
                     f"Error sending zip file: {exception.WazuhException(3016, 'cmd_e')}")
                 compress_files_mock.assert_called_once_with('Testing', {'path1': 'metadata1'},
@@ -1867,6 +1871,7 @@ async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock
             logger_debug_mock.assert_has_calls([call(
                 f"Compressing {'files and ' if files_to_sync else ''}'files_metadata.json' of 1 files."),
                 call("Sending zip file."), call("Zip file sent."), call("Increasing sync size limit to 46.88 MB.")])
+            log_subprocess_mock.assert_called()
             compress_files_mock.assert_called_once_with('Testing', {'path1': 'metadata1'}, {'path2': 'metadata2'}, None)
             unlink_mock.assert_called_once_with("files/path/")
             relpath_mock.assert_called_once_with('files/path/', common.WAZUH_PATH)
