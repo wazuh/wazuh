@@ -3,6 +3,23 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.7.1]
 
+### Manager
+
+#### Fixed
+
+- Fixed a thread lock bug that slowed down wazuh-db performance. ([#20178](https://github.com/wazuh/wazuh/pull/20178))
+- Fixed a bug in Vulnerability detector that skipped vulnerabilities for Windows 11 21H2. ([#20386](https://github.com/wazuh/wazuh/pull/20386))
+- The installer now updates the merged.mg file permissions on upgrade. ([#5941](https://github.com/wazuh/wazuh/pull/5941))
+
+### Agent
+
+#### Fixed
+
+- Fixed a bug that prevented the local IP from appearing in the port inventory from macOS agents. ([#20332](https://github.com/wazuh/wazuh/pull/20332))
+- Fixed the default Logcollector settings on macOS to collect logs out-of-the-box. ([#20180](https://github.com/wazuh/wazuh/pull/20180))
+- Fixed a bug in the FIM decoder at wazuh-analysisd that ignored Windows Registry events from agents under 4.6.0. ([#20169](https://github.com/wazuh/wazuh/pull/20169))
+- Fixed multiple bugs in the Syscollector decoder at wazuh-analysisd that did not sanitize the input data properly. ([#20250](https://github.com/wazuh/wazuh/pull/20250))
+
 
 ## [v4.7.0]
 
