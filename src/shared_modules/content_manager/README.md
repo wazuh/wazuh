@@ -116,7 +116,7 @@ CtiApiDownloader - Starting
 CtiApiDownloader - Request processed successfully.
 CtiApiDownloader - Finishing
 SkipStep - Executing
-PubSubPublisher - No data data to publish
+PubSubPublisher - No data to publish
 All files in the folder have been deleted.
 ```
 
@@ -240,7 +240,7 @@ ActionOrchestrator - Running process
 Content file didn't change from last download
 FileDownloader - Download done successfully
 ZipDecompressor - Finishing process
-PubSubPublisher - No data data to publish
+PubSubPublisher - No data to publish
 SkipStep - Executing
 SkipStep - Executing
 ```
