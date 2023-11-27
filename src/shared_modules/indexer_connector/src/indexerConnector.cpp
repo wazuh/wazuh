@@ -73,7 +73,7 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const std::stri
     nlohmann::json templateData = nlohmann::json::parse(templateFile);
 
     // Initialize publisher.
-    auto selector = std::make_shared<ServerSelector>(config.at("hosts"), INTERVAL, secureCommunication);
+    auto selector {std::make_shared<ServerSelector>(config.at("hosts"), INTERVAL, secureCommunication)};
 
     // Initialize index template.
     HTTPRequest::instance().put(
