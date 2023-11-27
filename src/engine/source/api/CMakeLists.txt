@@ -23,8 +23,7 @@ add_library(api STATIC
     ${ENGINE_API_SOURCE_DIR}/policy/policy.cpp
     ${ENGINE_API_SOURCE_DIR}/registry.cpp
     ${ENGINE_API_SOURCE_DIR}/router/handlers.cpp
-    #${ENGINE_API_SOURCE_DIR}/test/handlers.cpp
-    #${ENGINE_API_SOURCE_DIR}/test/sessionManager.cpp
+    ${ENGINE_API_SOURCE_DIR}/tester/handlers.cpp
 )
 
 target_include_directories(api
@@ -38,7 +37,7 @@ target_include_directories(api
     ${ENGINE_API_SOURCE_DIR}/metrics
     ${ENGINE_API_SOURCE_DIR}/policy
     ${ENGINE_API_SOURCE_DIR}/router
-    #${ENGINE_API_SOURCE_DIR}/test
+    ${ENGINE_API_SOURCE_DIR}/tester
 )
 
 target_link_libraries(api
@@ -50,7 +49,6 @@ target_link_libraries(api
     json
     kvdb::ikvdb
     metrics
-    # router
     router::irouter
     store::fileDriver
     store::istore
@@ -82,8 +80,7 @@ add_executable(api_utest
   ${TEST_SRC_UNIT_DIR}/kvdb/kvdb_api_test.cpp
   ${TEST_SRC_UNIT_DIR}/policy/handlers_test.cpp
   ${TEST_SRC_UNIT_DIR}/policy/policy_test.cpp
-  # ${TEST_SRC_UNIT_DIR}/test/session_test.cpp
-  # ${TEST_SRC_UNIT_DIR}/router/handlers_test.cpp
+  # TODO: ${TEST_SRC_UNIT_DIR}/router/handlers_test.cpp
   ${TEST_SRC_UNIT_DIR}/adapter_test.cpp
   ${TEST_SRC_UNIT_DIR}/api_test.cpp
   ${TEST_SRC_UNIT_DIR}/registry_test.cpp

@@ -1,10 +1,11 @@
+#include <utility>
+
 #include <api/adapter.hpp>
 #include <eMessages/router.pb.h>
 
 #include <api/router/handlers.hpp>
 #include <router/iapi.hpp>
 
-#include <utility>
 namespace api::router::handlers
 {
 // Using the engine protobuffer namespace
@@ -36,8 +37,8 @@ std::variant<api::wpResponse, base::Name> getName(const std::string& name, const
 }
 
 template<typename RequestType, typename ResponseType>
-std::variant<base::utils::wazuhProtocol::WazuhResponse, std::pair<std::shared_ptr<::router::IRouterAPI>, RequestType>>
-getRequest(const base::utils::wazuhProtocol::WazuhRequest& wRequest, const std::weak_ptr<::router::IRouterAPI>& wRouter)
+std::variant<api::wpResponse, std::pair<std::shared_ptr<::router::IRouterAPI>, RequestType>>
+getRequest(const api::wpRequest& wRequest, const std::weak_ptr<::router::IRouterAPI>& wRouter)
 {
         auto res = ::api::adapter::fromWazuhRequest<RequestType, ResponseType>(wRequest);
         // validate the request
@@ -68,6 +69,7 @@ eRouter::Entry eRouteEntryFromEntry(const ::router::prod::Entry& entry)
     {
         eEntry.mutable_description()->assign(entry.description().value());
     }
+    // TODO: set the status and sync
     eEntry.set_policy_sync(eRouter::Sync::SYNC_UNKNOWN);
     eEntry.set_entry_status(eRouter::State::STATE_UNKNOWN);
     eEntry.set_last_update(entry.lastUpdate());
@@ -111,6 +113,10 @@ api::Handler routePost(const std::weak_ptr<::router::IRouterAPI>& router)
                                             std::get<base::Name>(policyName),
                                             std::get<base::Name>(filterName),
                                             eRequest.route().priority());
+        if (eRequest.route().has_description() && !eRequest.route().description().empty())
+        {
+            entryPost.description(eRequest.route().description());
+        }
         auto error = router->postEntry(entryPost);
 
         // Build the response

@@ -5,6 +5,8 @@
 #include <list>
 #include <optional>
 #include <string>
+#include <tuple>
+#include <unordered_set>
 
 #include <baseTypes.hpp>
 #include <error.hpp>
@@ -148,10 +150,11 @@ private:
 public:
     EntryPost() = delete;
 
-    EntryPost(std::string name, base::Name policy)
+    EntryPost(std::string name, base::Name policy, std::size_t lifetime)
         : m_name {std::move(name)}
         , m_policy {std::move(policy)}
         , m_description {}
+        , m_lifetime {lifetime}
     {
     }
 
@@ -197,8 +200,8 @@ public:
         , m_status {env::State::UNKNOWN} {};
 
     // Setters and getters
-    std::uint64_t lastUpdate() const { return m_lastUse; }
-    void lastUpdate(std::uint64_t lastUpdate) { m_lastUse = lastUpdate; }
+    std::uint64_t lastUse() const { return m_lastUse; }
+    void lastUse(std::uint64_t lastUse) { m_lastUse = lastUse; }
 
     env::Sync policySync() const { return m_policySync; }
     void policySync(env::Sync policySync) { m_policySync = policySync; }
@@ -207,11 +210,10 @@ public:
     void status(env::State status) { m_status = status; }
 };
 
-
 /**
  * @brief Options for request a testing event
  */
-class Opt
+class Options
 {
 public:
     /**
@@ -226,17 +228,30 @@ public:
 
 private:
     TraceLevel m_traceLevel;
-    std::vector<std::string> m_assets;
+    std::unordered_set<std::string> m_assets;
     std::string m_environmetName;
 
     // Missing namespace and asset list
 public:
-    Opt(TraceLevel traceLevel, const decltype(m_assets)& assets, const std::string& envName)
+    Options(TraceLevel traceLevel, const decltype(m_assets)& assets, const std::string& envName)
         : m_traceLevel {traceLevel}
         , m_assets {assets}
         , m_environmetName {envName}
     {
-        // validate();
+    }
+
+    base::OptError validate() const
+    {
+        if (m_environmetName.empty())
+        {
+            return base::Error {"Environment name cannot be empty"};
+        }
+
+        if (traceLevel() == TraceLevel::NONE && assets().size() > 0)
+        {
+            return base::Error {"Assets cannot be set if trace level is NONE"};
+        }
+        return base::OptError {};
     }
 
     const std::string& environmentName() const { return m_environmetName; }
@@ -284,7 +299,7 @@ public:
     }
 };
 
-using TestingTuple = std::tuple<base::Event, Opt, std::function<void(base::RespOrError<Output>&&)>>;
+using TestingTuple = std::tuple<base::Event, Options, std::function<void(base::RespOrError<Output>&&)>>;
 using QueueType = std::shared_ptr<TestingTuple>;
 
 } // namespace test

@@ -19,9 +19,10 @@
 #include <api/policy/handlers.hpp>
 #include <api/policy/policy.hpp>
 #include <api/router/handlers.hpp>
-// #include <api/test/handlers.hpp>
+#include <api/tester/handlers.hpp>
 #include <api/test/sessionManager.hpp>
 #include <bk/rx/controller.hpp>
+//#include <bk/taskf/controller.hpp>
 #include <builder/builder.hpp>
 #include <builder/register.hpp>
 #include <cmds/details/stackExecutor.hpp>
@@ -30,12 +31,10 @@
 #include <logpar/logpar.hpp>
 #include <logpar/registerParsers.hpp>
 #include <metrics/metricsManager.hpp>
-#include <parseEvent.hpp> // Event
-#include <queue/concurrentQueue.hpp> // Queue
+#include <parseEvent.hpp>
+#include <queue/concurrentQueue.hpp>
 #include <rbac/rbac.hpp>
-// #include <router/router.hpp>
-#include <router/routerAdmin.hpp>
-#include <bk/rx/controller.hpp>
+#include <router/orchestrator.hpp>
 
 #include <schemf/schema.hpp>
 #include <server/endpoints/unixDatagram.hpp> // Event
@@ -201,7 +200,7 @@ void runStart(ConfHandler confManager)
     std::shared_ptr<builder::internals::Registry<builder::internals::Builder>> registry;
     std::shared_ptr<builder::Builder> builder;
     std::shared_ptr<api::catalog::Catalog> catalog;
-    std::shared_ptr<router::RouterAdmin> routerAdmin;
+    std::shared_ptr<router::Orchestrator> orchestrator;
     std::shared_ptr<hlp::logpar::Logpar> logpar;
     std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
     std::shared_ptr<metricsManager::MetricsManager> metrics;
@@ -342,22 +341,22 @@ void runStart(ConfHandler confManager)
                                          .m_prodQueue = eventQueue,
                                          .m_testQueue = testQueue};
 
-            routerAdmin = std::make_shared<router::RouterAdmin>(routerConfig);
-            
+            orchestrator = std::make_shared<router::Orchestrator>(routerConfig);
+
             // TODO Remove this
-            auto res = routerAdmin->postEntry(router::prod::EntryPost("Default", "policy/wazuh/0", "filter/allow-all/0", 255));
+            auto res = orchestrator->postEntry(router::prod::EntryPost("Default", "policy/wazuh/0", "filter/allow-all/0", 255));
             if (res.has_value())
             {
                 throw std::runtime_error("Error creating default environment: " + res.value().message);
             }
-            routerAdmin->start();
+            orchestrator->start();
 
-            exitHandler.add([routerAdmin]() { routerAdmin->stop(); });
+            exitHandler.add([orchestrator]() { orchestrator->stop(); });
             LOG_INFO("Router initialized.");
         }
 
         // Test
-       
+
 
         // Create and configure the api endpints
         {
@@ -395,15 +394,8 @@ void runStart(ConfHandler confManager)
                 LOG_DEBUG("Policy API registered.");
             }
 
-            // Test
-            {
-                //api::test::handlers::Config testConfig {sessionManager, routerAdmin, registry, store, policyManager};
-                //api::test::handlers::registerHandlers(testConfig, api);
-                LOG_DEBUG("Test API registered.");
-            }
-
             // Router
-            api::router::handlers::registerHandlers(routerAdmin, api);
+            api::router::handlers::registerHandlers(orchestrator, api);
             LOG_DEBUG("Router API registered.");
 
             // Graph
@@ -412,6 +404,13 @@ void runStart(ConfHandler confManager)
                 api::graph::handlers::Config graphConfig {builder};
                 api::graph::handlers::registerHandlers(graphConfig, api);
                 LOG_DEBUG("Graph API registered.");
+            }
+
+
+            // Tester
+            {
+                api::tester::handlers::registerHandlers(orchestrator, store, api);
+                LOG_DEBUG("Tester API registered.");
             }
         }
 
@@ -440,7 +439,7 @@ void runStart(ConfHandler confManager)
             // Event Endpoint
             auto eventMetricScope = metrics->getMetricsScope("endpointEvent");
             auto eventMetricScopeDelta = metrics->getMetricsScope("endpointEventRate", true);
-            auto eventHandler = std::bind(&router::RouterAdmin::pushEvent, routerAdmin, std::placeholders::_1);
+            auto eventHandler = std::bind(&router::Orchestrator::pushEvent, orchestrator, std::placeholders::_1);
             auto eventEndpointCfg = std::make_shared<endpoint::UnixDatagram>(
                 serverEventSock, eventHandler, eventMetricScope, eventMetricScopeDelta, serverEventQueueSize);
             server->addEndpoint("EVENT", eventEndpointCfg);

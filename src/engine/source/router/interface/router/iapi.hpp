@@ -44,8 +44,12 @@ public:
     virtual std::list<test::Entry> getTestEntries() const = 0;
 
     // Testing: Ingest
-    virtual std::future<base::RespOrError<test::Output>> ingestTest(base::Event&& event, const test::Opt& opt) = 0;
-    virtual std::future<base::RespOrError<test::Output>> ingestTest(std::string_view event, const test::Opt& opt) = 0;
+    virtual std::future<base::RespOrError<test::Output>> ingestTest(base::Event&& event, const test::Options& opt) = 0;
+    virtual std::future<base::RespOrError<test::Output>> ingestTest(std::string_view event, const test::Options& opt) = 0;
+
+    // Get the assets of the policy of the entry
+    virtual base::RespOrError<std::unordered_set<std::string>> getAssets(const std::string& name) const = 0;
+
 };
 } // namespace router
 
