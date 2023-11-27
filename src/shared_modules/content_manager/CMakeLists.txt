@@ -20,6 +20,7 @@ include_directories(include)
 
 include_directories(${SRC_FOLDER})
 include_directories(${SRC_FOLDER}/headers)
+include_directories(${SRC_FOLDER}/external/cJSON)
 include_directories(${SRC_FOLDER}/external/nlohmann)
 include_directories(${SRC_FOLDER}/external/curl/include/curl)
 include_directories(${SRC_FOLDER}/external/lzma/src/liblzma/api)
