@@ -12,6 +12,7 @@
 #ifndef _EXECUTION_CONTEXT_HPP
 #define _EXECUTION_CONTEXT_HPP
 
+#include "../sharedDefs.hpp"
 #include "chainOfResponsability.hpp"
 #include "json.hpp"
 #include "stringHelper.h"
@@ -109,7 +110,7 @@ private:
             context.spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)), std::to_string(currentOffset));
         }
 
-        std::cout << "API offset to be used: " << currentOffset << std::endl;
+        logDebug2(WM_CONTENTUPDATER, "API offset to be used: %d", currentOffset);
     }
 
     /**
@@ -139,7 +140,9 @@ private:
         if (std::filesystem::exists(outputFolderPath))
         {
             // Delete the output folder to avoid conflicts.
-            std::cout << "The previous output folder: " << outputFolderPath << " will be removed." << std::endl;
+            logDebug1(WM_CONTENTUPDATER,
+                      "The previous output folder: %s will be removed.",
+                      outputFolderPath.string().c_str());
             std::filesystem::remove_all(outputFolderPath);
         }
 
@@ -151,7 +154,7 @@ private:
         context.downloadsFolder = outputFolderPath / DOWNLOAD_FOLDER;
         context.contentsFolder = outputFolderPath / CONTENTS_FOLDER;
 
-        std::cout << "Output folders created." << std::endl;
+        logDebug2(WM_CONTENTUPDATER, "Output folders created.");
     }
 
 public:

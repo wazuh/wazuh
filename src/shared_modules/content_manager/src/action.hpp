@@ -15,6 +15,7 @@
 #include "actionOrchestrator.hpp"
 #include "onDemandManager.hpp"
 #include "routerProvider.hpp"
+#include "sharedDefs.hpp"
 #include <atomic>
 #include <chrono>
 #include <external/nlohmann/json.hpp>
@@ -80,15 +81,14 @@ public:
                         bool expected = false;
                         if (m_actionInProgress.compare_exchange_strong(expected, true))
                         {
-                            std::cout << "Action: Initiating scheduling action for " << m_topicName << std::endl;
+                            logInfo("Initiating scheduling action for %s", m_topicName.c_str());
                             runAction(ActionID::SCHEDULED);
                         }
                         else
                         {
                             // LCOV_EXCL_START
-                            std::cerr << "Action: Request scheduling - Download in progress. "
-                                         "The scheduling is ignored for "
-                                      << m_topicName << std::endl;
+                            logInfo("Request scheduling - Download in progress. The scheduling is ignored for %s",
+                                    m_topicName.c_str());
                             // LCOV_EXCL_STOP
                         }
                     }
@@ -109,7 +109,7 @@ public:
         {
             m_schedulerThread.join();
         }
-        std::cout << "Action: Scheduler stopped for " << m_topicName << std::endl;
+        logInfo("Scheduler stopped for %s", m_topicName.c_str());
     }
 
     /**
@@ -148,13 +148,13 @@ public:
         auto expected = false;
         if (m_actionInProgress.compare_exchange_strong(expected, true))
         {
-            std::cout << "Action: Ondemand request - starting action for " << m_topicName << std::endl;
+            logInfo("Ondemand request - starting action for %s", m_topicName.c_str());
             runAction(ActionID::ON_DEMAND);
         }
         else
         {
             // LCOV_EXCL_START
-            std::cerr << "Action: Ondemand request - another action in progress for " << m_topicName << std::endl;
+            logInfo("Ondemand request - another action in progress for %s", m_topicName.c_str());
             // LCOV_EXCL_STOP
         }
     }
@@ -190,7 +190,7 @@ private:
         }
         catch (const std::exception& e)
         {
-            std::cout << "Action for '" << m_topicName << "' failed: " << e.what() << std::endl;
+            logError("Action for '%s' failed: %s", m_topicName.c_str(), e.what());
         }
 
         m_actionInProgress = false;

@@ -12,6 +12,7 @@
 #ifndef _SKIP_STEP_HPP
 #define _SKIP_STEP_HPP
 
+#include "../sharedDefs.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
 
@@ -45,7 +46,7 @@ public:
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
 
-        std::cout << "SkipStep - Executing" << std::endl;
+        logDebug2(WM_CONTENTUPDATER, "SkipStep - Executing");
 
         for (auto const& action : preActions)
         {

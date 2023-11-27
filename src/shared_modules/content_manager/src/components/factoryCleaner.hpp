@@ -12,6 +12,7 @@
 #ifndef _FACTORY_CLEANER_HPP
 #define _FACTORY_CLEANER_HPP
 
+#include "../sharedDefs.hpp"
 #include "cleanUpContent.hpp"
 #include "skipStep.hpp"
 #include "updaterContext.hpp"
@@ -38,12 +39,12 @@ public:
     {
         if (config.at("deleteDownloadedContent").get<bool>())
         {
-            std::cout << "Downloaded content cleaner created" << std::endl;
+            logDebug2(WM_CONTENTUPDATER, "Downloaded content cleaner created");
             return std::make_shared<CleanUpContent>();
         }
         else
         {
-            std::cout << "Downloaded content cleaner not needed" << std::endl;
+            logDebug2(WM_CONTENTUPDATER, "Downloaded content cleaner not needed");
             return std::make_shared<SkipStep>();
         }
     }

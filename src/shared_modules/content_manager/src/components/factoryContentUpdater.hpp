@@ -40,7 +40,7 @@ public:
      */
     static std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> create(nlohmann::json& config)
     {
-        std::cout << "FactoryContentUpdater - Starting process" << std::endl;
+        logDebug2(WM_CONTENTUPDATER, "FactoryContentUpdater - Starting process");
 
         auto factoryDownloader {FactoryDownloader::create(config)};
         auto factoryDecompressor {FactoryDecompressor::create(config)};
@@ -57,7 +57,7 @@ public:
             ->setNext(factoryVersionUpdater)
             ->setNext(factoryCleaner);
 
-        std::cout << "FactoryContentUpdater - Finishing process" << std::endl;
+        logDebug2(WM_CONTENTUPDATER, "FactoryContentUpdater - Finishing process");
 
         return updaterChain;
     }

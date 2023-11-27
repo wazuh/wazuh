@@ -131,6 +131,13 @@ TEST_F(StringUtilsTest, ToUpper)
     EXPECT_EQ("123", Utils::toUpperCase("123"));
 }
 
+TEST_F(StringUtilsTest, ToLower)
+{
+    EXPECT_EQ("", Utils::toLowerCase(""));
+    EXPECT_EQ("hello world", Utils::toLowerCase("HeLlO WoRlD"));
+    EXPECT_EQ("123", Utils::toLowerCase("123"));
+}
+
 TEST_F(StringUtilsTest, StartsWith)
 {
     const std::string start{"Package_"};

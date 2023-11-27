@@ -1425,7 +1425,6 @@ components:
               type: string
           description: "Agent OS information"
         status_code:
-          type: integer
           description: "Agent connection status code"
           type: integer
           format: int32

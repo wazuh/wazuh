@@ -16,6 +16,7 @@
 #include "components/factoryContentUpdater.hpp"
 #include "components/updaterContext.hpp"
 #include "routerProvider.hpp"
+#include "sharedDefs.hpp"
 #include "utils/rocksDBWrapper.hpp"
 #include <iostream>
 #include <memory>
@@ -35,10 +36,9 @@ public:
      */
     explicit ActionOrchestrator(const std::shared_ptr<RouterProvider> channel, const nlohmann::json& parameters)
     {
-        std::cout << "ActionOrchestrator - Starting process" << std::endl;
-
         try
         {
+            logDebug1(WM_CONTENTUPDATER, "Creating content updater orchestration");
             // Create a context
             m_spBaseContext = std::make_shared<UpdaterBaseContext>();
             m_spBaseContext->topicName = parameters.at("topicName");
@@ -52,7 +52,7 @@ public:
             // Create a updater chain
             m_spUpdaterOrchestration = FactoryContentUpdater::create(m_spBaseContext->configData);
 
-            std::cout << "ActionOrchestrator - Finishing process" << std::endl;
+            logDebug1(WM_CONTENTUPDATER, "Content updater orchestration created");
         }
         catch (const std::exception& e)
         {
@@ -65,13 +65,14 @@ public:
      */
     void run() const
     {
-        std::cout << "ActionOrchestrator - Running process" << std::endl;
 
         try
         {
             // Create a updater context
             auto spUpdaterContext {std::make_shared<UpdaterContext>()};
             spUpdaterContext->spUpdaterBaseContext = m_spBaseContext;
+
+            logInfo(WM_CONTENTUPDATER, "Running content update. Topic: %s", m_spBaseContext->topicName.c_str());
 
             // If the database exists, get the last offset
             if (m_spBaseContext->spRocksDB)

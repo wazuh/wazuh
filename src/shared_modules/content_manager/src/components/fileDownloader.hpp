@@ -12,6 +12,7 @@
 #ifndef _FILE_DOWNLOADER_HPP
 #define _FILE_DOWNLOADER_HPP
 
+#include "../sharedDefs.hpp"
 #include "HTTPRequest.hpp"
 #include "chainOfResponsability.hpp"
 #include "hashHelper.h"
@@ -115,7 +116,7 @@ private:
         auto downloadFileHash {hashFile(outputFilePath)};
         if (context.spUpdaterBaseContext->downloadedFileHash == downloadFileHash)
         {
-            std::cout << "Content file didn't change from last download" << std::endl;
+            logDebug1(WM_CONTENTUPDATER, "Content file didn't change from last download");
             return;
         }
 
@@ -150,7 +151,7 @@ public:
         // Push success state.
         pushStageStatus(context->data, "ok");
 
-        std::cout << "FileDownloader - Download done successfully" << std::endl;
+        logDebug2(WM_CONTENTUPDATER, "FileDownloader - Download done successfully");
 
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(context);
     }

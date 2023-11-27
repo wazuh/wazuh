@@ -41,7 +41,7 @@ public:
      * @param topicName Topic name.
      * @param parameters Object parameters, including interval and ondemand.
      */
-    explicit ContentRegister(std::string topicName, const nlohmann::json parameters);
+    explicit ContentRegister(std::string topicName, const nlohmann::json& parameters);
     ~ContentRegister() = default;
 
     /**

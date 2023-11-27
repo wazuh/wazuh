@@ -12,6 +12,7 @@
 #ifndef _GZIP_DECOMPRESSOR_HPP
 #define _GZIP_DECOMPRESSOR_HPP
 
+#include "../sharedDefs.hpp"
 #include "json.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
@@ -102,7 +103,7 @@ public:
         // Push success state.
         pushStageStatus(context->data, "ok");
 
-        std::cout << "GzipDecompressor - Finishing process" << std::endl;
+        logDebug2(WM_CONTENTUPDATER, "GzipDecompressor - Finishing process");
 
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(context);
     }

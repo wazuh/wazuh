@@ -13,9 +13,9 @@
 #define _ROCKS_DB_WRAPPER_HPP
 
 #include "rocksDBIterator.hpp"
-#include <rocksdb/db.h>
 #include <filesystem>
 #include <iostream>
+#include <rocksdb/db.h>
 #include <string>
 
 namespace Utils
@@ -111,7 +111,6 @@ namespace Utils
             const auto status {m_db->Get(rocksdb::ReadOptions(), key, &value)};
             if (status.IsNotFound())
             {
-                std::cerr << "Key not found: " << key << '\n';
                 return false;
             }
             else if (!status.ok())
@@ -141,7 +140,6 @@ namespace Utils
             const auto status {m_db->Get(rocksdb::ReadOptions(), m_db->DefaultColumnFamily(), key, &value)};
             if (status.IsNotFound())
             {
-                std::cerr << "Key not found: " << key << '\n';
                 return false;
             }
             else if (!status.ok())
@@ -214,7 +212,7 @@ namespace Utils
          * @param key Key to seek.
          * @return RocksDBIterator Iterator to the database.
          */
-        RocksDBIterator seek(const std::string& key)
+        RocksDBIterator seek(std::string_view key)
         {
             return {std::shared_ptr<rocksdb::Iterator>(m_db->NewIterator(rocksdb::ReadOptions())), key};
         }

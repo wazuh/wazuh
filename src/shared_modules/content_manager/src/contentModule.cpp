@@ -15,24 +15,12 @@
 #include "content_manager.h"
 #include <utility>
 
-static std::function<void(const modules_log_level_t, const std::string&)> GS_LOG_FUNCTION;
-
-static void logFunction(const modules_log_level_t logLevel, const std::string& message)
+void ContentModule::start(
+    const std::function<
+        void(const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>&
+        logFunction)
 {
-    if (!message.empty() && GS_LOG_FUNCTION)
-    {
-        GS_LOG_FUNCTION(logLevel, message);
-    }
-}
-
-void ContentModule::start(const std::function<void(const modules_log_level_t, const std::string&)>& logFunction)
-{
-    if (!GS_LOG_FUNCTION)
-    {
-        GS_LOG_FUNCTION = logFunction;
-    }
-
-    ContentModuleFacade::instance().start();
+    ContentModuleFacade::instance().start(logFunction);
 }
 
 void ContentModule::stop()
@@ -40,7 +28,7 @@ void ContentModule::stop()
     ContentModuleFacade::instance().stop();
 }
 
-ContentRegister::ContentRegister(std::string name, const nlohmann::json parameters)
+ContentRegister::ContentRegister(std::string name, const nlohmann::json& parameters)
     : m_name {std::move(name)}
 {
     ContentModuleFacade::instance().addProvider(m_name, parameters);
@@ -70,16 +58,16 @@ extern "C"
 {
 #endif
 
-    void content_manager_start(log_callback_t callbackLog)
+    void content_manager_start(full_log_fnc_t callbackLog)
     {
-        if (!GS_LOG_FUNCTION)
-        {
-            GS_LOG_FUNCTION = [callbackLog](const modules_log_level_t logLevel, const std::string& message)
-            {
-                callbackLog(logLevel, message.c_str(), "content-manager");
-            };
-        }
-        ContentModuleFacade::instance().start();
+        ContentModuleFacade::instance().start(
+            [callbackLog](const int logLevel,
+                          const std::string& tag,
+                          const std::string& file,
+                          const int line,
+                          const std::string& func,
+                          const std::string& logMessage)
+            { callbackLog(logLevel, tag.c_str(), file.c_str(), line, func.c_str(), logMessage.c_str()); });
     }
 
     void content_manager_stop()

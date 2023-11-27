@@ -12,6 +12,7 @@
 #ifndef _CLEAN_UP_CONTENT_HPP
 #define _CLEAN_UP_CONTENT_HPP
 
+#include "../sharedDefs.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
 #include <filesystem>
@@ -40,7 +41,7 @@ private:
         // Check if the path exists.
         if (!std::filesystem::exists(path))
         {
-            std::cout << "The path does not exist: " << path << std::endl;
+            logWarn(WM_CONTENTUPDATER, "The path does not exist: %s", path.string().c_str());
             return;
         }
 
@@ -50,7 +51,7 @@ private:
         // Create the folder again.
         std::filesystem::create_directory(path);
 
-        std::cout << "All files in the folder have been deleted." << std::endl;
+        logDebug1(WM_CONTENTUPDATER, "All files in the folder have been deleted.");
     }
 
 public:

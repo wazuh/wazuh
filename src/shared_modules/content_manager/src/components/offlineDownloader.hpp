@@ -12,6 +12,7 @@
 #ifndef _OFFLINE_DOWNLOADER_HPP
 #define _OFFLINE_DOWNLOADER_HPP
 
+#include "../sharedDefs.hpp"
 #include "hashHelper.h"
 #include "json.hpp"
 #include "stringHelper.h"
@@ -100,7 +101,7 @@ private:
         // Check input file existence.
         if (!std::filesystem::exists(inputFilePath))
         {
-            std::cout << "File " << inputFilePath << " doesn't exist. Skipping download." << std::endl;
+            logWarn(WM_CONTENTUPDATER, "File %s doesn't exist. Skipping download.", inputFilePath.string().c_str());
             return;
         }
 
@@ -156,7 +157,7 @@ public:
         // Push success state.
         pushStageStatus(context->data, "ok");
 
-        std::cout << "OfflineDownloader - Download done successfully" << std::endl;
+        logDebug2(WM_CONTENTUPDATER, "OfflineDownloader - Download done successfully");
 
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(context);
     }

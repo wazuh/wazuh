@@ -63,6 +63,7 @@ protected:
         )"_json;
         // Create a updater context
         m_spUpdaterContext = std::make_shared<UpdaterContext>();
+        m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
         m_spUpdaterContext->currentOffset = 0;
         // Create folders
         std::filesystem::create_directory(m_spUpdaterBaseContext->outputFolder);
@@ -85,6 +86,8 @@ protected:
         m_spUpdaterContext.reset();
         // Reset UpdaterBaseContext
         m_spUpdaterBaseContext.reset();
+        // Clear fake server error codes.
+        m_spFakeServer->clearErrorsQueue();
     }
 
     /**

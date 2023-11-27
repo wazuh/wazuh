@@ -42,7 +42,7 @@ public:
     static std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> create(const nlohmann::json& config)
     {
         auto const downloaderType {config.at("contentSource").get<std::string>()};
-        std::cout << "Creating '" << downloaderType << "' downloader" << std::endl;
+        logDebug2("Creating '%s' downloader", downloaderType.c_str());
 
         if ("api" == downloaderType)
         {
