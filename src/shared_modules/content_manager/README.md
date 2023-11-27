@@ -49,9 +49,9 @@ All the downloadded content will be stored in the filesystem, making it availabl
 
 > For simplicity, only the usage case related configurations are shown.
 
-The config above will make the Content Manager to launch each `10` seconds an orchestration that will download the content offsets from the Wazuh CTI API (context: `test_context`, consumer: `test_consumer`). The Content Manager will store the offsets, by groups of 1000, into output files located at `/tmp/output_folder`.
+The configuration above will make the Content Manager to launch each `10` seconds an orchestration that will download the content offsets from the Wazuh CTI API (context: `test_context`, consumer: `test_consumer`). The Content Manager will store the offsets, by groups of 1000, into output files located at `/tmp/output_folder`.
 
-Executing the Content Manager for the first time, with a starting offset of `975000`, will download from offset `975000` to the last available offset (`978576` on this example):
+Executing the Content Manager for the first time, with a starting offset of `975000`, will download from offset `975000` to the last available offset (`978576` on this example).
 
 ```bash
 # ./content_manager_test_tool 
@@ -77,7 +77,7 @@ SkipStep - Executing
 PubSubPublisher - Data published
 ```
 
-The output files containing the downloaded offsets are available under `output_folder/contents/`, each of one contains 1000 offsets (the last one can contain fewer offsets if the total amount of offsets is not multiple of 1000):
+The output files containing the downloaded offsets are available under `output_folder/contents/`, each of one contains 1000 offsets (the last one can contain fewer offsets if the total amount of offsets is not multiple of 1000).
 
 ```bash
 # tree /tmp/output_folder/
@@ -142,7 +142,7 @@ The Content Manager can also download content from a regular API. The functional
 
 > For simplicity, only the usage case related configurations are shown.
 
-The config above will make the Content Manager to launch each `5` seconds an orchestration that will download the content from the API `https://jsonplaceholder.typicode.com/todos/1` and store the content in `/tmp/output_folder`.
+The configuration above will make the Content Manager to launch each `5` seconds an orchestration that will download the content from the API `https://jsonplaceholder.typicode.com/todos/1` and store the content in `/tmp/output_folder`.
 
 
 ```bash
@@ -215,7 +215,7 @@ When downloading files, the Content Manager keeps track of the last downloaded f
 
 > For simplicity, only the usage case related configurations are shown.
 
-The config above will make the Content Manager to launch each `5` seconds an orchestration that will download a compressed (ZIP) content file from an URL.
+The configuration above will make the Content Manager to launch each `5` seconds an orchestration that will download a compressed (ZIP) content file from an URL.
 
 ```bash
 # ./content_manager_test_tool
@@ -260,3 +260,82 @@ The content is downloaded and, since it's compressed, stored at the _downloads_ 
 
 The `/tmp/output_folder/contents/test_context_test_consumer_1000_2000.json` path is published for the consumers to read. The second time the orchestration is launched, no data is published since the downloaded file didn't change.
 
+### Use case: Offline download
+
+The Content Manager has the capability of processing a content file in an offline mode: Depending on the URL prefix, the content source will be either copied from the local filesystem or downloaded from a local HTTP server.
+
+The file will be stored at the output folder and, if compressed, it will be decompressed at the contents folder.
+
+When processing files, the Content Manager keeps track of the last processed file hash. In this way, if processing the same file twice in a row, the second time no data is published, avoiding the consumers to re-process the content.
+
+In the offline mode, the compression type is deduced from the URL extension. For example, if the URL finishes with the `.xz` preffix, an XZ decompressor will be instantiated in the orchestration. Any extension outside the supported ones will be treated as a raw (not compressed) file format.
+
+```json
+{
+    "topicName": "Offline content download from filesystem",
+    "interval": 120,
+    "configData":
+    {
+        "contentSource": "offline",
+        "deleteDownloadedContent": false,
+        "url": "file:///home/data/content.xz",
+        "outputFolder": "/tmp/output_folder",
+        "dataFormat": "xml"
+    }
+}
+```
+
+```json
+{
+    "topicName": "Offline content download from HTTP server",
+    "interval": 120,
+    "configData":
+    {
+        "contentSource": "offline",
+        "deleteDownloadedContent": false,
+        "url": "http://localhost:8888/content.xz",
+        "outputFolder": "/tmp/output_folder",
+        "dataFormat": "xml"
+    }
+}
+```
+
+> For simplicity, only the usage case related configurations are shown.
+
+The configurations above will make the Content Manager to launch each `120` seconds an orchestration that will process a compressed (XZ) content file copied from the filesystem and downloaded from an HTTP server, respectively.
+
+The URL prefix is very important: If it's equal to `file://`, it will try to copy the file from the filesystem. If it's equal to `http://` of `https://`, it will try to download the file from a server. Any other prefix is not allowed.
+
+```bash
+# ./content_manager_test_tool
+ActionOrchestrator - Starting process
+API offset to be used: 0
+Output folders created.
+FactoryContentUpdater - Starting process
+Creating 'offline' downloader
+Creating 'xz' content decompressor
+Version updater not needed
+Downloaded content cleaner not needed
+FactoryContentUpdater - Finishing process
+ActionOrchestrator - Finishing process
+ActionOrchestrator - Running process
+OfflineDownloader - Download done successfully
+PubSubPublisher - Data published
+SkipStep - Executing
+SkipStep - Executing
+```
+
+```bash
+# tree /tmp/output_folder/
+/tmp/output_folder/
+|-- contents
+|   `-- content.xml
+`-- downloads
+    `-- content.xz
+
+2 directories, 2 files
+```
+
+The content is downloaded (or copied) and, since it's compressed, stored at the _downloads_ folder, and decompressed at the _contents_ folder. If `deleteDownloadedContent` was equal to `true`, the compressed file would be deleted after the decompression, just keeping the XML data.
+
+The `/tmp/output_folder/contents/content.xml` path is published for the consumers to read.
