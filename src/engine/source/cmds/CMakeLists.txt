@@ -16,6 +16,7 @@ target_link_libraries(cmds
     yml
     defs
     builders
+    #bk::taskf
     bk::rx
     server
     #router

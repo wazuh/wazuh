@@ -108,7 +108,14 @@ public:
      * @param opt The parameters for the ingest operation.
      * @return test::Output The result
      */
-    base::RespOrError<test::Output> ingestTest(base::Event&& event, const test::Opt& opt);
+    base::RespOrError<test::Output> ingestTest(base::Event&& event, const test::Options& opt);
+
+    /**
+     * @brief get the assets of the policy of the entry.
+     * @param name The name of the entry.
+     * @return base::RespOrError<std::unordered_set<std::string>> The assets of the policy.
+     */
+    base::RespOrError<std::unordered_set<std::string>> getAssets(const std::string& name) const;
 };
 } // namespace router
 

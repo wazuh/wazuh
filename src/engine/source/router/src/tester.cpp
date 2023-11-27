@@ -53,7 +53,7 @@ public:
         {
             data.success = true;
         }
-        else
+        else // TODO Should we trace only the option trace level? or filter in client side?
         {
             data.traces.push_back(traceContent);
         }
@@ -66,7 +66,8 @@ base::OptError Tester::addEntry(const test::EntryPost& entryPost)
     auto entry = RuntimeEntry(entryPost);
     try
     {
-        entry.setController(m_envBuilder->makeController(entryPost.policy()));
+        auto controller = m_envBuilder->makeController(entryPost.policy());
+        entry.setController(std::move(controller));
         entry.status(env::State::DISABLED); // It is disabled until all tester are ready
         entry.lifetime(entry.lifetime());
     }
@@ -158,7 +159,7 @@ base::RespOrError<test::Entry> Tester::getEntry(const std::string& name) const
 }
 
 // Testing
-base::RespOrError<test::Output> Tester::ingestTest(base::Event&& event, const test::Opt& opt)
+base::RespOrError<test::Output> Tester::ingestTest(base::Event&& event, const test::Options& opt)
 {
     std::shared_lock lock {m_mutex};
 
@@ -168,7 +169,7 @@ base::RespOrError<test::Output> Tester::ingestTest(base::Event&& event, const te
     }
     auto& entry = m_table.at(opt.environmentName());
 
-    if (entry.status() != env::State::ENABLED)
+    if (entry.status() != env::State::ENABLED || entry.controller() == nullptr)
     {
         return base::Error {"The testing environment is not enabled"};
     }
@@ -177,10 +178,12 @@ base::RespOrError<test::Output> Tester::ingestTest(base::Event&& event, const te
     auto result = std::make_shared<test::InternalOutput>();
     for (const auto& asset : opt.assets())
     {
-
-        auto err = entry.controller()->subscribe(asset,
-                                                 [asset, result](const std::string& trace, bool success) -> void
-                                                 { result->addTrace(asset, trace, success); });
+        bk::Subscriber subFn = [asset, result](const std::string& trace, bool success) -> void
+        {
+            LOG_DEBUG("Asset: {}, Trace: {}, Success: {}", asset, trace, success);
+            result->addTrace(asset, trace, success);
+        };
+        auto err = entry.controller()->subscribe(asset, subFn);
         if (base::isError(err))
         {
             entry.controller()->unsubscribeAll();
@@ -195,5 +198,20 @@ base::RespOrError<test::Output> Tester::ingestTest(base::Event&& event, const te
     entry.controller()->unsubscribeAll();
 
     return *result;
+}
+
+base::RespOrError<std::unordered_set<std::string>> Tester::getAssets(const std::string& name) const
+{
+    std::shared_lock lock {m_mutex};
+    if (m_table.find(name) == m_table.end())
+    {
+        return base::Error {"The testing environment not exist"};
+    }
+    auto& entry = m_table.at(name);
+    if (entry.status() != env::State::ENABLED || entry.controller() == nullptr)
+    {
+        return base::Error {"The testing environment is not builded"};
+    }
+    return entry.controller()->getTraceables();
 }
 } // namespace router
