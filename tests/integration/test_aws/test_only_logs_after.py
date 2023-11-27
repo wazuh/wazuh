@@ -12,10 +12,12 @@ from datetime import datetime
 # qa-integration-framework imports
 from wazuh_testing import session_parameters
 from wazuh_testing.constants.paths.aws import S3_CLOUDTRAIL_DB_PATH, AWS_SERVICES_DB_PATH
-from wazuh_testing.constants.aws import ONLY_LOGS_AFTER_PARAM, PATH_DATE_FORMAT
+from wazuh_testing.constants.aws import ONLY_LOGS_AFTER_PARAM, PATH_DATE_FORMAT, VPC_FLOW_TYPE, INSPECTOR_TYPE
 from wazuh_testing.utils.db_queries.aws_db import get_multiple_s3_db_row, get_service_db_row, get_s3_db_row
 from wazuh_testing.modules.aws.utils import (call_aws_module, create_log_events, create_log_stream, path_exist,
-                                             get_last_file_key, upload_file)
+                                             get_last_file_key, upload_file, analyze_command_output)
+from wazuh_testing.modules.aws.patterns import (NO_LOG_PROCESSED, NO_BUCKET_LOG_PROCESSED, MARKER, NO_NEW_EVENTS,
+                                                EVENT_SENT)
 
 # Local module imports
 from . import event_monitor
@@ -703,7 +705,7 @@ def test_bucket_multiple_calls(
             brief: Restart the wazuh service.
         - delete_file_from_s3:
             type: fixture
-            brief: Delete the a file after the test execution.
+            brief: Delete the file after the test execution.
     input_description:
         - The `cases_multiple_calls` file provides the test cases.
     """
@@ -726,42 +728,57 @@ def test_bucket_multiple_calls(
     # Call the module without only_logs_after and check that no logs were processed
     last_marker_key = datetime.utcnow().strftime(PATH_DATE_FORMAT)
 
-    event_monitor.check_non_processed_logs_from_output(
+    # Get bucket type
+    if bucket_type == VPC_FLOW_TYPE:
+        pattern = fr"{NO_LOG_PROCESSED}"
+    else:
+        pattern = fr"{NO_BUCKET_LOG_PROCESSED}"
+
+    # Check for the non 'processed' messages in the given output.
+    analyze_command_output(
         command_output=call_aws_module(*base_parameters),
-        bucket_type=bucket_type
+        callback=event_monitor.make_aws_callback(pattern),
+        expected_results=1,
+        error_message=ERROR_MESSAGE['unexpected_number_of_events_found']
     )
 
-    # Call the module with only_logs_after set in the past and check that the expected number of logs were
-    # processed
-    event_monitor.check_processed_logs_from_output(
+    # Call the module with only_logs_after set in the past and check that the expected number of logs were processed
+    analyze_command_output(
         command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2022-NOV-20'),
-        expected_results=3
+        callback=event_monitor.callback_detect_event_processed,
+        expected_results=3,
+        error_message=ERROR_MESSAGE['incorrect_event_number']
     )
 
     # Call the module with the same parameters in and check there were no duplicates
     expected_skipped_logs_step_3 = metadata.get('expected_skipped_logs_step_3', 1)
-    event_monitor.check_non_processed_logs_from_output(
+    analyze_command_output(
         command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2022-NOV-20'),
-        bucket_type=bucket_type,
-        expected_results=expected_skipped_logs_step_3
+        callback=event_monitor.make_aws_callback(pattern),
+        expected_results=expected_skipped_logs_step_3,
+        error_message=ERROR_MESSAGE['incorrect_event_number']
     )
 
-    # Call the module with only_logs_after set with an early date than setted previously and check that no logs
+    # Call the module with only_logs_after set with an early date than the one set previously and check that no logs
     # were processed, there were no duplicates
-    event_monitor.check_non_processed_logs_from_output(
+    analyze_command_output(
         command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2022-NOV-22'),
-        bucket_type=bucket_type,
-        expected_results=expected_skipped_logs_step_3 - 1 if expected_skipped_logs_step_3 > 1 else 1
+        callback=event_monitor.make_aws_callback(pattern),
+        expected_results=expected_skipped_logs_step_3 - 1 if expected_skipped_logs_step_3 > 1 else 1,
+        error_message=ERROR_MESSAGE['incorrect_event_number']
     )
 
     # Upload a log file for the day of the test execution and call the module without only_logs_after and check that
     # only the uploaded logs were processed and the last marker is specified in the DB.
     last_marker_key = get_last_file_key(bucket_type, bucket_name, datetime.utcnow())
     metadata['filename'] = upload_file(bucket_type, bucket_name)
+    pattern = fr"{MARKER}{last_marker_key}"
 
-    event_monitor.check_marker_from_output(
+    analyze_command_output(
         command_output=call_aws_module(*base_parameters),
-        file_key=last_marker_key
+        callback=event_monitor.make_aws_callback(pattern),
+        expected_results=1,
+        error_message=ERROR_MESSAGE['incorrect_marker']
     )
 
 
@@ -819,32 +836,40 @@ def test_inspector_multiple_calls(
         '--debug', '2'
     ]
 
+    if service_type == INSPECTOR_TYPE:
+        pattern = fr"{NO_NEW_EVENTS}"
+    else:
+        pattern = fr"{EVENT_SENT}"
+
     # Call the module without only_logs_after and check that no logs were processed
-    event_monitor.check_service_non_processed_logs_from_output(
-        command_output=call_aws_module(*base_parameters), service_type=service_type, expected_results=1
+    analyze_command_output(
+        command_output=call_aws_module(*base_parameters),
+        callback=event_monitor.make_aws_callback(pattern),
+        error_message=ERROR_MESSAGE['unexpected_number_of_events_found']
     )
 
-    # Call the module with only_logs_after set in the past and check that the expected number of logs were
-    # processed
-    event_monitor.check_service_processed_logs_from_output(
+    # Call the module with only_logs_after set in the past and check that the expected number of logs were processed.
+    analyze_command_output(
         command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2023-JAN-30'),
-        service_type=service_type,
-        events_sent=4
+        callback=event_monitor.callback_detect_service_event_processed(
+            expected_results=4,
+            service_type=service_type),
+        error_message=ERROR_MESSAGE['incorrect_event_number']
     )
 
     # Call the module with the same parameters in and check there were no duplicates
-    event_monitor.check_service_non_processed_logs_from_output(
+    analyze_command_output(
         command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2023-JAN-30'),
-        service_type=service_type,
-        expected_results=1
+        callback=event_monitor.make_aws_callback(pattern),
+        error_message=ERROR_MESSAGE['unexpected_number_of_events_found']
     )
 
-    # Call the module with only_logs_after set with an early date than setted previously and check that no logs
+    # Call the module with only_logs_after set with an early date than the one set previously and check that no logs
     # were processed, there were no duplicates
-    event_monitor.check_service_non_processed_logs_from_output(
+    analyze_command_output(
         command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2023-JAN-31'),
-        service_type=service_type,
-        expected_results=1
+        callback=event_monitor.make_aws_callback(pattern),
+        error_message=ERROR_MESSAGE['unexpected_number_of_events_found']
     )
 
 
@@ -912,32 +937,43 @@ def test_cloudwatch_multiple_calls(
         '--debug', '2'
     ]
 
+    if service_type == INSPECTOR_TYPE:
+        pattern = fr"{NO_NEW_EVENTS}"
+    else:
+        pattern = fr"{EVENT_SENT}"
+
     # Call the module without only_logs_after and check that no logs were processed
-    event_monitor.check_service_non_processed_logs_from_output(
-        command_output=call_aws_module(*base_parameters), service_type=service_type, expected_results=0
+    analyze_command_output(
+        command_output=call_aws_module(*base_parameters),
+        callback=event_monitor.make_aws_callback(pattern),
+        expected_results=0,
+        error_message=ERROR_MESSAGE['unexpected_number_of_events_found']
     )
 
-    # Call the module with only_logs_after set in the past and check that the expected number of logs were
-    # processed
-    event_monitor.check_service_processed_logs_from_output(
+    # Call the module with only_logs_after set in the past and check that the expected number of logs were processed.
+    analyze_command_output(
         command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2023-JAN-12'),
-        service_type=service_type,
-        events_sent=3
+        callback=event_monitor.callback_detect_service_event_processed(
+            expected_results=3,
+            service_type=service_type),
+        error_message=ERROR_MESSAGE['incorrect_event_number']
     )
 
     # Call the module with the same parameters in and check there were no duplicates
-    event_monitor.check_service_non_processed_logs_from_output(
+    analyze_command_output(
         command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2023-JAN-12'),
-        service_type=service_type,
-        expected_results=0
+        callback=event_monitor.make_aws_callback(pattern),
+        expected_results=0,
+        error_message=ERROR_MESSAGE['unexpected_number_of_events_found']
     )
 
-    # Call the module with only_logs_after set with an early date than setted previously and check that no logs
+    # Call the module with only_logs_after set with an early date than the one set previously and check that no logs
     # were processed, there were no duplicates
-    event_monitor.check_service_non_processed_logs_from_output(
+    analyze_command_output(
         command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2023-JAN-15'),
-        service_type=service_type,
-        expected_results=0
+        callback=event_monitor.make_aws_callback(pattern),
+        expected_results=0,
+        error_message=ERROR_MESSAGE['unexpected_number_of_events_found']
     )
 
     # Upload a log file for the day of the test execution and call the module without only_logs_after and check that
@@ -945,6 +981,11 @@ def test_cloudwatch_multiple_calls(
     log_stream = create_log_stream()
     metadata['log_stream'] = log_stream
     create_log_events(log_stream)
-    event_monitor.check_service_processed_logs_from_output(
-        command_output=call_aws_module(*base_parameters), service_type=service_type, events_sent=1
+
+    analyze_command_output(
+        command_output=call_aws_module(*base_parameters),
+        callback=event_monitor.callback_detect_service_event_processed(
+            expected_results=1,
+            service_type=service_type),
+        error_message=ERROR_MESSAGE['incorrect_event_number']
     )
