@@ -25,7 +25,7 @@ extern "C"
 {
 #endif
 
-#include "commonDefs.h"
+#include "common/commonDefs.h"
 #include "logging_helper.h"
 
     EXPORTED void content_manager_start(full_log_fnc_t callbackLog);
