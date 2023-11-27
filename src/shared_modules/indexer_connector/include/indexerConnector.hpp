@@ -58,14 +58,14 @@ public:
      *
      * @param config Indexer configuration, including database_path and servers.
      * @param templatePath Path to the template file.
-     * @param callback Callback function to be called when trying to log a message.
+     * @param logFunction Callback function to be called when trying to log a message.
      */
     explicit IndexerConnector(
         const nlohmann::json& config,
         const std::string& templatePath,
-        const std::function<void(
-            const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>& =
-            {});
+        const std::function<
+            void(const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>&
+            logFunction = {});
 
     ~IndexerConnector();
 
