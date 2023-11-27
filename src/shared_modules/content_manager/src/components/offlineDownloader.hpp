@@ -115,16 +115,21 @@ private:
      *
      * @param inputFileURL URL from where to download the file.
      * @param outputFilepath Output path where to store the downloaded file.
+     * @return true if the file was downloaded, otherwise false.
      */
-    void downloadFile(const std::filesystem::path& inputFileURL, const std::filesystem::path& outputFilepath) const
+    bool downloadFile(const std::filesystem::path& inputFileURL, const std::filesystem::path& outputFilepath) const
     {
-        const auto onError {[](const std::string& errorMessage, const long errorCode)
+        auto returnCode {true};
+        const auto onError {[&returnCode](const std::string& errorMessage, const long errorCode)
                             {
-                                throw std::runtime_error {"(" + std::to_string(errorCode) + ") " + errorMessage};
+                                std::cout << "Error " << std::to_string(errorCode)
+                                          << " when downloading file: " << errorMessage << std::endl;
+                                returnCode = false;
                             }};
 
         // Download file from URL.
         m_urlRequest.download(HttpURL(inputFileURL), outputFilepath, onError);
+        return returnCode;
     }
 
     /**
@@ -165,7 +170,10 @@ private:
         }
         else if (Utils::startsWith(fileUrl, HTTP_PREFIX) || Utils::startsWith(fileUrl, HTTPS_PREFIX))
         {
-            downloadFile(fileUrl, outputFilePath);
+            if (!downloadFile(fileUrl, outputFilePath))
+            {
+                return;
+            }
         }
         else
         {

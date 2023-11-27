@@ -301,9 +301,9 @@ TEST_F(OfflineDownloaderTest, HttpDownloadInvalidURL)
     nlohmann::json expectedData;
     expectedData["paths"] = m_spUpdaterContext->data.at("paths");
     expectedData["stageStatus"] = nlohmann::json::array();
-    expectedData["stageStatus"].push_back(FAIL_STATUS);
+    expectedData["stageStatus"].push_back(OK_STATUS);
 
-    ASSERT_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext), std::runtime_error);
+    ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 }
 
