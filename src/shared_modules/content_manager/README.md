@@ -24,9 +24,9 @@ The input configuration of the Content Manager is described below:
 
 ### Use case: Download offsets from CTI API
 
-One of the most important capabilities of the Content Manager is to download content deltas (called _offsets_) from a _Cyber Threat Intelligence_ (CTI) API. The module will try to download all available offsets, until it reaches the last one available, and it can also keep track of the last downloaded offset in order to avoid redundant downloads. 
+One of the most important capabilities of the Content Manager is to download content deltas (called _offsets_) from a _Cyber Threat Intelligence_ (CTI) API. The module will try to download all available offsets until it reaches the last one available, and it can also keep track of the last downloaded to avoid redundant downloads. 
 
-All the downloadded content will be stored in the filesystem, making it available to other modules that may want to consume it.
+All the downloaded content will be stored in the filesystem, making it available to other modules that may want to consume it.
 
 ```json
 {
@@ -47,11 +47,11 @@ All the downloadded content will be stored in the filesystem, making it availabl
 }
 ```
 
-> For simplicity, only the usage case related configurations are shown.
+> For simplicity, only the usage case-related configurations are shown.
 
-The configuration above will make the Content Manager to launch each `10` seconds an orchestration that will download the content offsets from the Wazuh CTI API (context: `test_context`, consumer: `test_consumer`). The Content Manager will store the offsets, by groups of 1000, into output files located at `/tmp/output_folder`.
+The configuration above will make the Content Manager launch each `10` seconds an orchestration that will download the content offsets from the Wazuh CTI API (context: `test_context`, consumer: `test_consumer`). The Content Manager will store the offsets, by groups of 1000, into output files located int `/tmp/output_folder`.
 
-Executing the Content Manager for the first time, with a starting offset of `975000`, will download from offset `975000` to the last available offset (`978576` on this example).
+Executing the Content Manager for the first time, with a starting offset of `975000`, will download from offset `975000` to the last available offset (`978576` in this example).
 
 ```bash
 # ./content_manager_test_tool 
@@ -77,7 +77,7 @@ SkipStep - Executing
 PubSubPublisher - Data published
 ```
 
-The output files containing the downloaded offsets are available under `output_folder/contents/`, each of one contains 1000 offsets (the last one can contain fewer offsets if the total amount of offsets is not multiple of 1000).
+The output files containing the downloaded offsets are available under `output_folder/contents/`, each of which contains 1000 offsets (the last one can contain fewer offsets if the total amount of offsets is not multiple of 1000).
 
 ```bash
 # tree /tmp/output_folder/
@@ -92,7 +92,7 @@ The output files containing the downloaded offsets are available under `output_f
 2 directories, 4 files
 ```
 
-> If the content was compresed, the output files would be stored in the _downloads_ folder.
+> If the content was compressed, the output files would be stored in the _downloads_ folder.
 
 The `/tmp/output_folder/contents/*-content.json` paths are published for the consumers to read.
 
@@ -122,7 +122,7 @@ All files in the folder have been deleted.
 
 ### Use case: Download from regular API
 
-The Content Manager can also download content from a regular API. The functionality is quite straigthforward: Download from a given URL and store the content in an output file. No API parameters are handlded nor added by the module.
+The Content Manager can also download content from a regular API. The functionality is quite straightforward: Download from a given URL and store the content in an output file. No API parameters are handled nor added by the module.
 
 ```json
 {
@@ -140,9 +140,9 @@ The Content Manager can also download content from a regular API. The functional
 }
 ```
 
-> For simplicity, only the usage case related configurations are shown.
+> For simplicity, only the usage case-related configurations are shown.
 
-The configuration above will make the Content Manager to launch each `5` seconds an orchestration that will download the content from the API `https://jsonplaceholder.typicode.com/todos/1` and store the content in `/tmp/output_folder`.
+The configuration above will make the Content Manager launch each `5` seconds an orchestration that will download the content from the API `https://jsonplaceholder.typicode.com/todos/1` and store the content in `/tmp/output_folder`.
 
 
 ```bash
@@ -166,7 +166,7 @@ SkipStep - Executing
 All files in the folder have been deleted.
 ```
 
-The downloaded content will be all stored in an unique file called `content.json`:
+The downloaded content will be all stored in a unique file called `content.json`:
 
 ```bash
 # tree /tmp/output_folder/  
@@ -188,15 +188,15 @@ The downloaded content will be all stored in an unique file called `content.json
 }
 ```
 
-> If the content was compresed, the output file would be stored in the _downloads_ folder.
+> If the content was compressed, the output file would be stored in the _downloads_ folder.
 
 The `/tmp/output_folder/contents/content.json` path is published for the consumers to read.
 
 ### Use case: Remote file download
 
-The Content Manager has the capability of downloading a content file from an URL. The file will be stored at the output folder and, if compressed, it will be decompressed at the contents folder.
+The Content Manager has the capability of downloading a content file from a URL. The file will be stored int the output folder and, if compressed, it will be decompressed int the contents folder.
 
-When downloading files, the Content Manager keeps track of the last downloaded file hash. In this way, if downloading the same file twice in a row, the second time no data is published, avoiding the consumers to re-process the content.
+When downloading files, the Content Manager keeps track of the last downloaded file hash. In this way, if downloading the same file twice in a row, the second time no data is published, preventing the consumers from re-process the content.
 
 ```json
 {
@@ -213,9 +213,9 @@ When downloading files, the Content Manager keeps track of the last downloaded f
 }
 ```
 
-> For simplicity, only the usage case related configurations are shown.
+> For simplicity, only the usage case-related configurations are shown.
 
-The configuration above will make the Content Manager to launch each `5` seconds an orchestration that will download a compressed (ZIP) content file from an URL.
+The configuration above will make the Content Manager launch each `5` seconds an orchestration that will download a compressed (ZIP) content file from a URL.
 
 ```bash
 # ./content_manager_test_tool
@@ -245,7 +245,7 @@ SkipStep - Executing
 SkipStep - Executing
 ```
 
-The content is downloaded and, since it's compressed, stored at the _downloads_ folder, and decompressed at the _contents_ folder. If `deleteDownloadedContent` was equal to `true`, the compressed file would be deleted after the decompression, just keeping the JSON data.
+The content is downloaded and, since it's compressed, stored int the _downloads_ folder, and decompressed int the _contents_ folder. If `deleteDownloadedContent` was equal to `true`, the compressed file would be deleted after the decompression, just keeping the JSON data.
 
 ```bash
 # tree /tmp/output_folder/
@@ -264,11 +264,11 @@ The `/tmp/output_folder/contents/test_context_test_consumer_1000_2000.json` path
 
 The Content Manager has the capability of processing a content file in an offline mode: Depending on the URL prefix, the content source will be either copied from the local filesystem or downloaded from a local HTTP server.
 
-The file will be stored at the output folder and, if compressed, it will be decompressed at the contents folder.
+The file will be stored int the output folder and, if compressed, it will be decompressed int the contents folder.
 
-When processing files, the Content Manager keeps track of the last processed file hash. In this way, if processing the same file twice in a row, the second time no data is published, avoiding the consumers to re-process the content.
+When processing files, the Content Manager keeps track of the last processed file hash. In this way, if processing the same file twice in a row, the second time no data is published, preventing the consumers from re-process the content.
 
-In the offline mode, the compression type is deduced from the URL extension. For example, if the URL finishes with the `.xz` preffix, an XZ decompressor will be instantiated in the orchestration. Any extension outside the supported ones will be treated as a raw (not compressed) file format.
+In the offline mode, the compression type is deduced from the URL extension. For example, if the URL finishes with the `.xz` prefix, an XZ decompressor will be instantiated in the orchestration. Any extension outside the supported ones will be treated as a raw (not compressed) file format.
 
 ```json
 {
@@ -300,9 +300,9 @@ In the offline mode, the compression type is deduced from the URL extension. For
 }
 ```
 
-> For simplicity, only the usage case related configurations are shown.
+> For simplicity, only the usage case-related configurations are shown.
 
-The configurations above will make the Content Manager to launch each `120` seconds an orchestration that will process a compressed (XZ) content file copied from the filesystem and downloaded from an HTTP server, respectively.
+The configurations above will make the Content Manager launch each `120` seconds an orchestration that will process a compressed (XZ) content file copied from the filesystem and downloaded from an HTTP server, respectively.
 
 The URL prefix is very important: If it's equal to `file://`, it will try to copy the file from the filesystem. If it's equal to `http://` of `https://`, it will try to download the file from a server. Any other prefix is not allowed.
 
@@ -336,6 +336,6 @@ SkipStep - Executing
 2 directories, 2 files
 ```
 
-The content is downloaded (or copied) and, since it's compressed, stored at the _downloads_ folder, and decompressed at the _contents_ folder. If `deleteDownloadedContent` was equal to `true`, the compressed file would be deleted after the decompression, just keeping the XML data.
+The content is downloaded (or copied) and, since it's compressed, stored int the _downloads_ folder, and decompressed int the _contents_ folder. If `deleteDownloadedContent` was equal to `true`, the compressed file would be deleted after the decompression, just keeping the XML data.
 
 The `/tmp/output_folder/contents/content.xml` path is published for the consumers to read.
