@@ -145,7 +145,6 @@ def test_path(
 
     assert path_exist(path=S3_CLOUDTRAIL_DB_PATH)
 
-    # @todo same as the other db
     if expected_results:
         data = get_s3_db_row(table_name=table_name)
         assert f"{bucket_name}/{path}/" == data.bucket_path
