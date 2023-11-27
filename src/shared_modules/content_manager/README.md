@@ -4,6 +4,8 @@ The Content Manager is a module that is in charge of obtaining the Wazuh Content
 
 ## Usage
 
+The Content Manager counts with a [test tool](./testtool/main.cpp) that can be used to perform tests, try out different configurations, and to better understand the module.
+
 The input configuration of the Content Manager is described below:
 
 - `topicName`: Topic name, used to represent the actions being executed.
@@ -16,17 +18,21 @@ The input configuration of the Content Manager is described below:
   + `deleteDownloadedContent`: If true, the downloaded content will be deleted after being processed.
   + `url`: URL from where the content will be downloaded or copied.
   + `outputFolder`: If defined, the content (downloads and uncompressed content) will be downloaded in this folder.
-  + `dataFormat`: Content data format. Examples: `json`, `xml`, `txt`.
+  + `dataFormat`: Content data format. Examples: `json`, `xml`, `txt`, etc.
   + `contentFileName`: Used by some downloaders to know where to store the downloaded content.
   + `databasePath`: Path from where the RocksDB database should be read. The database stores the last offset fetched (when using the `cti-api` content source).
 
 ### Use case: Download offsets from CTI API
 
+One of the most important capabilities of the Content Manager is to download content deltas (called _offsets_) from a _Cyber Threat Intelligence_ (CTI) API. The module will try to download all available offsets, until it reaches the last one available, and it can also keep track of the last downloaded offset in order to avoid redundant downloads. 
+
+All the downloadded content will be stored in the filesystem, making it available to other modules that may want to consume it.
+
 ```json
 {
     "topicName": "CTI API offset fetching",
     "interval": 10,
-    "ondemand": true,
+    "ondemand": false,
     "configData":
     {
         "contentSource": "cti-api",
@@ -45,6 +51,7 @@ The input configuration of the Content Manager is described below:
 The config above will make the Content Manager to launch each `10` seconds an orchestration that will download the content offsets from the Wazuh CTI API (context: `test_context`, consumer: `test_consumer`). The Content Manager will store the offsets, by groups of 1000, into output files located at `/tmp/output_folder`.
 
 Executing the Content Manager for the first time, with a starting offset of `975000`, will download from offset `975000` to the last available offset (`978576` on this example):
+
 ```bash
 # ./content_manager_test_tool 
 ActionOrchestrator - Starting process
@@ -70,6 +77,7 @@ PubSubPublisher - Data published
 ```
 
 The output files containing the downloaded offsets are available under `output_folder/contents/`, each of one contains 1000 offsets (the last one can contain fewer offsets if the total amount of offsets is not multiple of 1000):
+
 ```bash
 # tree /tmp/output_folder/
 /tmp/output_folder/
@@ -83,10 +91,12 @@ The output files containing the downloaded offsets are available under `output_f
 2 directories, 4 files
 ```
 
+> If the content was compresed, the output files would be stored in the _downloads_ folder.
+
 Given that we are using the `cti-api` content versioner, the last offset fetched is stored and used in the next execution. This is useful to avoid downloading offsets that we have already downloaded. In the log below, we can see that the Content Manager is starting with the last offset from the first execution and, since there are no more offsets to download, nothing is downloaded nor published.
 
 ```bash
-# ./content_manager_test_tool 
+# ./content_manager_test_tool
 ActionOrchestrator - Starting process
 API offset to be used: 978576
 The previous output folder: "/tmp/output_folder" will be removed.
@@ -108,3 +118,75 @@ All files in the folder have been deleted.
 ```
 
 ### Use case: Download from regular API
+
+The Content Manager can also download content from a regular API. The functionality is quite straigthforward: Download from a given URL and store the content in an output file. No API parameters are handlded nor added by the module.
+
+```json
+{
+    "topicName": "API content download",
+    "interval": 5,
+    "ondemand": false,
+    "configData":
+    {
+        "contentSource": "api",
+        "compressionType": "raw",
+        "versionedContent": "false",
+        "deleteDownloadedContent": true,
+        "url": "https://jsonplaceholder.typicode.com/todos/1",
+        "outputFolder": "/tmp/output_folder",
+        "dataFormat": "json",
+        "contentFileName": "content.json",
+        "databasePath": "/tmp/content_updater/rocksdb"
+    }
+}
+```
+
+The config above will make the Content Manager to launch each `5` seconds an orchestration that will download the content from the API `https://jsonplaceholder.typicode.com/todos/1` and store the content in `/tmp/output_folder`.
+
+
+```bash
+# ./content_manager_test_tool
+ActionOrchestrator - Starting process
+API offset to be used: 0
+Output folders created.
+FactoryContentUpdater - Starting process
+Creating 'api' downloader
+Creating 'raw' content decompressor
+Version updater not needed
+Downloaded content cleaner created
+FactoryContentUpdater - Finishing process
+ActionOrchestrator - Finishing process
+ActionOrchestrator - Running process
+APIDownloader - Starting
+APIDownloader - Finishing - Download done successfully
+SkipStep - Executing
+PubSubPublisher - Data published
+SkipStep - Executing
+All files in the folder have been deleted.
+```
+
+The downloaded content will be all stored in an unique file called `content.json`:
+
+```bash
+# tree /tmp/output_folder/  
+/tmp/output_folder/
+|-- contents
+|   `-- content.json
+`-- downloads
+
+2 directories, 1 file
+```
+
+```bash
+# cat /tmp/output_folder/contents/content.json 
+{
+  "userId": 1,
+  "id": 1,
+  "title": "delectus aut autem",
+  "completed": false
+}
+```
+
+> If the content was compresed, the output file would be stored in the _downloads_ folder.
+
+### Use case: Offline downloads
