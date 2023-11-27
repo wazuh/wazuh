@@ -9,7 +9,7 @@ This module will contains all callback methods to monitor and event
 import re
 
 # # qa-integration-framework imports
-from wazuh_testing.modules.aws.patterns import (WHITESPACE_MATCH, CURLY_BRACE_MATCH, AWS_MODULE_STARTED_PARAMETRIZED,
+from wazuh_testing.modules.aws.patterns import (AWS_MODULE_STARTED_PARAMETRIZED,
                                                 AWS_UNDEFINED_SERVICE_TYPE, AWS_DEPRECATED_CONFIG_DEFINED,
                                                 AWS_NO_SERVICE_WARNING, AWS_MODULE_STARTED, INVALID_EMPTY_TYPE_ERROR,
                                                 EMPTY_CONTENT_ERROR, EMPTY_CONTENT_WARNING,
@@ -18,13 +18,8 @@ from wazuh_testing.modules.aws.patterns import (WHITESPACE_MATCH, CURLY_BRACE_MA
                                                 PARSING_SERVICE_ERROR_WARNING, SERVICE_ANALYSIS, BUCKET_ANALYSIS,
                                                 MODULE_START, PARSER_ERROR, MODULE_ERROR, NEW_LOG_FOUND, DEBUG_MESSAGE,
                                                 EVENTS_COLLECTED, DEBUG_ANALYSISD_MESSAGE, ANALYSISD_EVENT,
-                                                AWS_EVENT_HEADER, NO_LOG_PROCESSED, NO_BUCKET_LOG_PROCESSED,
-                                                MARKER, NO_NEW_EVENTS, EVENT_SENT, )
-from wazuh_testing.constants.aws import VPC_FLOW_TYPE, INSPECTOR_TYPE
-from wazuh_testing.modules.aws.utils import analyze_command_output
-
-# Local imports
-from .utils import ERROR_MESSAGE
+                                                AWS_EVENT_HEADER, NO_LOG_PROCESSED, NO_BUCKET_LOG_PROCESSED)
+from wazuh_testing.constants.aws import INSPECTOR_TYPE
 
 
 def make_aws_callback(pattern, prefix=''):
@@ -272,82 +267,3 @@ def callback_event_sent_to_analysisd(line):
     if line.startswith(
             fr"{AWS_EVENT_HEADER}"):
         return line
-
-
-def check_processed_logs_from_output(command_output, expected_results=1):
-    """Check for processed messages in the give output.
-
-    Args:
-        command_output (str): Output to analyze.
-        expected_results (int, optional): Number of results to find. Default to 1.
-    """
-    analyze_command_output(
-        command_output=command_output,
-        callback=callback_detect_event_processed,
-        expected_results=expected_results,
-        error_message=ERROR_MESSAGE['incorrect_event_number']
-    )
-
-
-def check_non_processed_logs_from_output(command_output, bucket_type, expected_results=1):
-    """Check for the non 'processed' messages in the give output.
-
-    Args:
-        command_output (str): Output to analyze.
-        bucket_type (str): Bucket type to select the message.
-        expected_results (int, optional): Number of results to find. Default to 1.
-    """
-    if bucket_type == VPC_FLOW_TYPE:
-        pattern = fr"{NO_LOG_PROCESSED}"
-    else:
-        pattern = fr"{NO_BUCKET_LOG_PROCESSED}"
-
-    analyze_command_output(
-        command_output,
-        callback=make_aws_callback(pattern),
-        expected_results=expected_results,
-        error_message=ERROR_MESSAGE['unexpected_number_of_events_found']
-    )
-
-
-def check_marker_from_output(command_output, file_key, expected_results=1):
-    """Check for the marker message in the given output.
-
-    Args:
-        command_output (str): Output to analyze.
-        file_key (str): Value to check as a marker.
-        expected_results (int, optional): Number of results to find. Default to 1.
-    """
-    pattern = fr"{MARKER} {file_key}"
-
-    analyze_command_output(
-        command_output,
-        callback=make_aws_callback(pattern),
-        expected_results=expected_results,
-        error_message=ERROR_MESSAGE['incorrect_marker']
-    )
-
-
-def check_service_processed_logs_from_output(
-        command_output, events_sent, service_type, expected_results=1
-):
-    analyze_command_output(
-        command_output=command_output,
-        callback=callback_detect_service_event_processed(events_sent, service_type),
-        expected_results=expected_results,
-        error_message=ERROR_MESSAGE['incorrect_event_number']
-    )
-
-
-def check_service_non_processed_logs_from_output(command_output, service_type, expected_results=1):
-    if service_type == INSPECTOR_TYPE:
-        pattern = fr"{NO_NEW_EVENTS}"
-    else:
-        pattern = fr"{EVENT_SENT}"
-
-    analyze_command_output(
-        command_output,
-        callback=make_aws_callback(pattern),
-        expected_results=expected_results,
-        error_message=ERROR_MESSAGE['unexpected_number_of_events_found']
-    )

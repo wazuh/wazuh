@@ -144,7 +144,6 @@ def test_log_groups(
 
     assert path_exist(path=AWS_SERVICES_DB_PATH)
 
-    # @todo Ask reason behind query retuning string instead of list as stated in docstring
     if expected_results:
         log_group_list = log_group_names.split(",")
         for row in get_multiple_service_db_row(table_name='cloudwatch_logs'):
