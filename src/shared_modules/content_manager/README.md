@@ -39,14 +39,15 @@ All the downloadded content will be stored in the filesystem, making it availabl
         "compressionType": "raw",
         "versionedContent": "cti-api",
         "deleteDownloadedContent": true,
-        "url": "https://cti-dev.wazuh.com/api/v1/catalog/contexts/test_context/consumers/test_consumer",
+        "url": "https://cti.wazuh.com/api/v1/catalog/contexts/test_context/consumers/test_consumer",
         "outputFolder": "/tmp/output_folder",
-        "dataFormat": "json",
         "contentFileName": "content.json",
         "databasePath": "/tmp/content_updater/rocksdb"
     }
 }
 ```
+
+> For simplicity, only the usage case related configurations are shown.
 
 The config above will make the Content Manager to launch each `10` seconds an orchestration that will download the content offsets from the Wazuh CTI API (context: `test_context`, consumer: `test_consumer`). The Content Manager will store the offsets, by groups of 1000, into output files located at `/tmp/output_folder`.
 
@@ -93,6 +94,8 @@ The output files containing the downloaded offsets are available under `output_f
 
 > If the content was compresed, the output files would be stored in the _downloads_ folder.
 
+The `/tmp/output_folder/contents/*-content.json` paths are published for the consumers to read.
+
 Given that we are using the `cti-api` content versioner, the last offset fetched is stored and used in the next execution. This is useful to avoid downloading offsets that we have already downloaded. In the log below, we can see that the Content Manager is starting with the last offset from the first execution and, since there are no more offsets to download, nothing is downloaded nor published.
 
 ```bash
@@ -130,16 +133,14 @@ The Content Manager can also download content from a regular API. The functional
     {
         "contentSource": "api",
         "compressionType": "raw",
-        "versionedContent": "false",
-        "deleteDownloadedContent": true,
         "url": "https://jsonplaceholder.typicode.com/todos/1",
         "outputFolder": "/tmp/output_folder",
-        "dataFormat": "json",
-        "contentFileName": "content.json",
-        "databasePath": "/tmp/content_updater/rocksdb"
+        "contentFileName": "content.json"
     }
 }
 ```
+
+> For simplicity, only the usage case related configurations are shown.
 
 The config above will make the Content Manager to launch each `5` seconds an orchestration that will download the content from the API `https://jsonplaceholder.typicode.com/todos/1` and store the content in `/tmp/output_folder`.
 
@@ -178,7 +179,7 @@ The downloaded content will be all stored in an unique file called `content.json
 ```
 
 ```bash
-# cat /tmp/output_folder/contents/content.json 
+# cat /tmp/output_folder/contents/content.json
 {
   "userId": 1,
   "id": 1,
@@ -189,4 +190,73 @@ The downloaded content will be all stored in an unique file called `content.json
 
 > If the content was compresed, the output file would be stored in the _downloads_ folder.
 
-### Use case: Offline downloads
+The `/tmp/output_folder/contents/content.json` path is published for the consumers to read.
+
+### Use case: Remote file download
+
+The Content Manager has the capability of downloading a content file from an URL. The file will be stored at the output folder and, if compressed, it will be decompressed at the contents folder.
+
+When downloading files, the Content Manager keeps track of the last downloaded file hash. In this way, if downloading the same file twice in a row, the second time no data is published, avoiding the consumers to re-process the content.
+
+```json
+{
+    "topicName": "File content download",
+    "interval": 5,
+    "configData":
+    {
+        "contentSource": "file",
+        "compressionType": "zip",
+        "deleteDownloadedContent": false,
+        "url": "https://cti.wazuh.com/cti-snapshots/store/contexts/test_context/consumers/test_consumer/1000_2000.zip",
+        "outputFolder": "/tmp/output_folder"
+    }
+}
+```
+
+> For simplicity, only the usage case related configurations are shown.
+
+The config above will make the Content Manager to launch each `5` seconds an orchestration that will download a compressed (ZIP) content file from an URL.
+
+```bash
+# ./content_manager_test_tool
+ActionOrchestrator - Starting process
+API offset to be used: 0
+Output folders created.
+FactoryContentUpdater - Starting process
+Creating 'file' downloader
+Creating 'zip' content decompressor
+Version updater not needed
+Downloaded content cleaner not needed
+FactoryContentUpdater - Finishing process
+ActionOrchestrator - Finishing process
+ActionOrchestrator - Running process
+FileDownloader - Download done successfully
+ZipDecompressor - Finishing process
+PubSubPublisher - Data published
+SkipStep - Executing
+SkipStep - Executing
+Action: Initiating scheduling action for test
+ActionOrchestrator - Running process
+Content file didn't change from last download
+FileDownloader - Download done successfully
+ZipDecompressor - Finishing process
+PubSubPublisher - No data data to publish
+SkipStep - Executing
+SkipStep - Executing
+```
+
+The content is downloaded and, since it's compressed, stored at the _downloads_ folder, and decompressed at the _contents_ folder. If `deleteDownloadedContent` was equal to `true`, the compressed file would be deleted after the decompression, just keeping the JSON data.
+
+```bash
+# tree /tmp/output_folder/
+/tmp/output_folder/
+|-- contents
+|   `-- test_context_test_consumer_1000_2000.json
+`-- downloads
+    `-- 1000_2000.zip
+
+2 directories, 2 files
+```
+
+The `/tmp/output_folder/contents/test_context_test_consumer_1000_2000.json` path is published for the consumers to read. The second time the orchestration is launched, no data is published since the downlaoded file didn't change.
+
