@@ -308,7 +308,7 @@ TEST_F(OfflineDownloaderTest, HttpDownloadInvalidURL)
 }
 
 /**
- * @brief Tests the download of twice the same file from an HTTP server.
+ * @brief Tests the download of the same file twice from an HTTP server.
  *
  */
 TEST_F(OfflineDownloaderTest, HttpDownloadFileTwice)
@@ -340,7 +340,7 @@ TEST_F(OfflineDownloaderTest, HttpDownloadFileTwice)
 }
 
 /**
- * @brief Tests the download of twice the same file: once from an HTTP server, and once from the filesystem.
+ * @brief Tests the download of the same file twice. Once from an HTTP server, and once from the local filesystem.
  *
  */
 TEST_F(OfflineDownloaderTest, HttpAndLocalDownloadFileTwice)
