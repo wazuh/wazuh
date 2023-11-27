@@ -367,9 +367,12 @@ def get_daemons_stats_from_socket(agent_id: str, daemon: str) -> dict:
         rec_msg = socket_response.get('message', "")
         raise WazuhError(1117, extra_message=rec_msg)
 
-    data = socket_response['data']
-    data.update((k, utils.get_utc_strptime(data[k], "%Y-%m-%d %H:%M:%S").strftime(common.DATE_FORMAT))
-                for k, v in data.items() if k in {'last_keepalive', 'last_ack'})
+    global_data = socket_response['data'].get('global', {})
+    interval_data = socket_response['data'].get('interval', {})
+    data = {'global': PaginatedDataHandler(), 'interval': PaginatedDataHandler()}
+
+    data['global'].set_data(global_data)
+    data['interval'].set_data(interval_data)
 
     while socket_response.get('remaining', False):
         last_json_updated = socket_response.get('json_updated', False)
@@ -378,13 +381,104 @@ def get_daemons_stats_from_socket(agent_id: str, daemon: str) -> dict:
         rec_msg = send_command_to_socket(dest_socket, command)
         socket_response = json.loads(rec_msg)
 
-        if last_json_updated:
-            data = socket_response['data']
-            data.update((k, utils.get_utc_strptime(data[k], "%Y-%m-%d %H:%M:%S").strftime(common.DATE_FORMAT))
-                        for k, v in data.items() if k in {'last_keepalive', 'last_ack'})
-        else:
-            page_data = socket_response['data']
-            # Extends existing items
-            [data[key].extend(item) for key, item in page_data.items() if key in data and isinstance(item, list)]
+        global_data = socket_response['data'].get('global', {})
+        interval_data = socket_response['data'].get('interval', {})
 
-    return data
+        if last_json_updated:
+            data = {'global': PaginatedDataHandler(), 'interval': PaginatedDataHandler()}
+
+            data['global'].set_data(global_data)
+            data['interval'].set_data(interval_data)
+        else:
+            if data['global'].is_empty():
+                data['global'].set_data(global_data)
+            else:
+                data['global'].update_data(global_data)
+
+            if data['interval'].is_empty():
+                data['interval'].set_data(interval_data)
+            else:
+                data['interval'].update_data(interval_data)
+
+    return {'global': data['global'].to_dict(), 'interval': data['interval'].to_dict()}
+
+
+class PaginatedDataHandler:
+    """Class for handling paginated data.
+
+    Attributes
+    ----------
+    _internal_data : dict
+        Internal data storage.
+
+    Methods
+    -------
+    is_empty()
+        Check if internal data is empty.
+    set_data(data)
+        Set internal data with the provided data.
+    update_data(data)
+        Update internal data with the provided data.
+    to_dict()
+        Return the internal data as a dictionary.
+
+    """
+
+    def __init__(self):
+        """Initialize an instance of PaginationData."""
+        self._internal_data = {}
+
+    def is_empty(self):
+        """Check if internal data is empty.
+
+        Returns
+        -------
+        bool
+            True if internal data is empty, False otherwise.
+
+        """
+        return len(self._internal_data) == 0
+
+    def set_data(self, data):
+        """Set internal data with the provided data.
+
+        Parameters
+        ----------
+        data : dict
+            Data to set.
+
+        """
+        if data:
+            self._internal_data = data
+            self._internal_data['start'] = utils.get_utc_strptime(data['start'], "%Y-%m-%d %H:%M:%S").strftime(common.DATE_FORMAT)
+            self._internal_data['end'] = utils.get_utc_strptime(data['end'], "%Y-%m-%d %H:%M:%S").strftime(common.DATE_FORMAT)
+
+    def update_data(self, data):
+        """Update internal data with the provided data.
+
+        If internal data is empty, it sets the data; otherwise, it appends files
+        and updates the end timestamp.
+
+        Parameters
+        ----------
+        data : dict
+            Data to update.
+
+        """
+        if self.is_empty():
+            self.set_data(data)
+        else:
+            if data:
+                [self._internal_data['files'].append(item) for item in data.get('files', [])]
+                self._internal_data['end'] = utils.get_utc_strptime(data['end'], "%Y-%m-%d %H:%M:%S").strftime(common.DATE_FORMAT)
+
+    def to_dict(self):
+        """Return the internal data as a dictionary.
+
+        Returns
+        -------
+        dict
+            Internal data as a dictionary.
+
+        """
+        return self._internal_data
