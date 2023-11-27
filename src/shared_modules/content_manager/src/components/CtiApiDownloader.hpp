@@ -11,6 +11,7 @@
 #ifndef _CTI_API_DOWNLOADER_HPP
 #define _CTI_API_DOWNLOADER_HPP
 
+#include "../sharedDefs.hpp"
 #include "IURLRequest.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
@@ -70,7 +71,7 @@ private:
      */
     void download()
     {
-        std::cout << "CtiApiDownloader - Starting" << std::endl;
+        logDebug2(WM_CONTENTUPDATER, "CtiApiDownloader - Starting");
         // Get the parameters needed to download the content.
         getParameters();
 
@@ -100,7 +101,7 @@ private:
 
         // Set the status of the stage.
         m_context->data.at("stageStatus").push_back(R"({"stage": "CtiApiDownloader", "status": "ok"})"_json);
-        std::cout << "CtiApiDownloader - Finishing" << std::endl;
+        logDebug2(WM_CONTENTUPDATER, "CtiApiDownloader - Finishing");
     }
 
     /**
@@ -134,7 +135,7 @@ private:
                               {
                                   const auto dataBlobObj = nlohmann::json::parse(data);
                                   m_consumerLastOffset = dataBlobObj.at("data").at("last_offset").get<int>();
-                                  std::cout << "CtiApiDownloader - Request processed successfully.\n";
+                                  logDebug2(WM_CONTENTUPDATER, "CtiApiDownloader - Request processed successfully.");
                               }};
 
         // Make a get request to the API to get the consumer offset.
@@ -156,7 +157,7 @@ private:
         // On download success routine.
         const auto onSuccess {[]([[maybe_unused]] const std::string& data)
                               {
-                                  std::cout << "CtiApiDownloader - Request processed successfully.\n";
+                                  logDebug2(WM_CONTENTUPDATER, "CtiApiDownloader - Request processed successfully.");
                               }};
 
         // Download the content.
@@ -204,7 +205,7 @@ private:
             {
                 constexpr auto SLEEP_TIME_THRESHOLD {30};
 
-                std::cout << e.what() << std::endl;
+                logError(WM_CONTENTUPDATER, e.what());
 
                 // Sleep and, if necessary, increase sleep time exponentially.
                 std::this_thread::sleep_for(std::chrono::seconds(sleepTime));

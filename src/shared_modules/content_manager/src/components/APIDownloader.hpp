@@ -11,6 +11,7 @@
 #ifndef _API_DOWNLOADER_HPP
 #define _API_DOWNLOADER_HPP
 
+#include "../sharedDefs.hpp"
 #include "IURLRequest.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
@@ -33,7 +34,7 @@ private:
      */
     void download()
     {
-        std::cout << "APIDownloader - Starting" << std::endl;
+        logDebug2(WM_CONTENTUPDATER, "APIDownloader - Starting");
         // Get the parameters needed to download the content.
         getParameters();
 
@@ -46,7 +47,7 @@ private:
         // Set the status of the stage
         m_context->data.at("stageStatus").push_back(R"({"stage": "APIDownloader", "status": "ok"})"_json);
 
-        std::cout << "APIDownloader - Finishing - Download done successfully" << std::endl;
+        logDebug2(WM_CONTENTUPDATER, "APIDownloader - Finishing - Download done successfully");
     }
 
     /**

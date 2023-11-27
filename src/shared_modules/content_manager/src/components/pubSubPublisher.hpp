@@ -12,6 +12,7 @@
 #ifndef _PUB_SUB_PUBLISHER_HPP
 #define _PUB_SUB_PUBLISHER_HPP
 
+#include "../sharedDefs.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
 #include <iostream>
@@ -40,11 +41,11 @@ private:
             const auto stringifyJson = context.data.dump();
 
             context.spUpdaterBaseContext->spChannel->send({stringifyJson.begin(), stringifyJson.end()});
-            std::cout << "PubSubPublisher - Data published" << std::endl;
+            logDebug2(WM_CONTENTUPDATER, "PubSubPublisher - Data published");
         }
         else
         {
-            std::cout << "PubSubPublisher - No data data to publish" << std::endl;
+            logDebug2(WM_CONTENTUPDATER, "PubSubPublisher - No data data to publish");
         }
     }
 

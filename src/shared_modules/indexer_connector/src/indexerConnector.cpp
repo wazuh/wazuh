@@ -11,9 +11,12 @@
 
 #include "indexerConnector.hpp"
 #include "HTTPRequest.hpp"
+#include "loggerHelper.h"
 #include "secureCommunication.hpp"
 #include "serverSelector.hpp"
 #include <fstream>
+
+#define IC_NAME "indexer-connnector"
 
 // TODO: remove the LCOV flags when the implementation of this class is completed
 // LCOV_EXCL_START
@@ -23,8 +26,17 @@ std::unordered_map<IndexerConnector*, std::unique_ptr<ThreadDispatchQueue>> QUEU
 constexpr auto DATABASE_WORKERS = 1;
 constexpr auto DATABASE_BASE_PATH = "queue/indexer/";
 
-IndexerConnector::IndexerConnector(const nlohmann::json& config, const std::string& templatePath)
+IndexerConnector::IndexerConnector(
+    const nlohmann::json& config,
+    const std::string& templatePath,
+    const std::function<
+        void(const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>&
+        logFunction)
 {
+    if (logFunction)
+    {
+        Log::assignLogFunction(logFunction);
+    }
     // Initialize publisher.
     auto selector = std::make_shared<ServerSelector>(config.at("hosts"));
 
@@ -84,7 +96,10 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const std::stri
     }
     catch (const std::exception& e)
     {
-        std::cout << "Error initializing IndexerConnector: " << e.what() << ", we will try again later." << std::endl;
+        logWarn(IC_NAME,
+                "Error initializing IndexerConnector: %s"
+                ", we will try again later.",
+                e.what());
     }
 
     QUEUE_MAP[this] = std::make_unique<ThreadDispatchQueue>(
@@ -133,16 +148,19 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const std::stri
                 HTTPRequest::instance().post(
                     HttpURL(url),
                     bulkData,
-                    [&](const std::string& response) { std::cout << "Response: " << response << std::endl; },
+                    [&](const std::string& response) { logDebug2(IC_NAME, "Response: %s", response.c_str()); },
                     [&](const std::string& error, const long statusCode)
-                    { std::cout << "Status:" << statusCode << " - Error: " << error << std::endl; },
+                    {
+                        // TODO: Need to handle the case when the index is not created yet, to avoid losing data.
+                        logError(IC_NAME, "Error: %s, status code: %ld", error.c_str(), statusCode);
+                    },
                     "",
                     DEFAULT_HEADERS,
                     secureCommunication);
             }
             catch (const std::exception& e)
             {
-                std::cout << "Error: " << e.what() << std::endl;
+                logError(IC_NAME, "Error: %s", e.what());
             }
         },
         DATABASE_BASE_PATH + indexName,
@@ -169,10 +187,7 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
         HttpURL(selector->getNext() + "/_index_template/" + indexName + "_template"),
         templateData,
         [&](const std::string& response) {},
-        [&](const std::string& error, const long statusCode) {
-            throw std::runtime_error("Error trying to initialize template: " + error + " - " +
-                                     std::to_string(statusCode));
-        },
+        [&](const std::string& error, const long) { throw std::runtime_error(error); },
         "",
         DEFAULT_HEADERS,
         secureCommunication);
@@ -186,8 +201,7 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
         {
             if (statusCode != 400)
             {
-                throw std::runtime_error("Error trying to initialize index: " + error + " - " +
-                                         std::to_string(statusCode));
+                throw std::runtime_error(error);
             }
         },
         "",

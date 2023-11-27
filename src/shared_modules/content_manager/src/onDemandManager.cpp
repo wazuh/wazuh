@@ -10,6 +10,7 @@
  */
 
 #include "onDemandManager.hpp"
+#include "sharedDefs.hpp"
 #include <filesystem>
 #include <utility>
 
@@ -64,7 +65,7 @@ void OnDemandManager::stopServer()
     {
         m_serverThread.join();
     }
-    std::cout << "Server stopped" << std::endl;
+    logDebug1(WM_CONTENTUPDATER, "Server stopped");
 }
 
 void OnDemandManager::addEndpoint(const std::string& endpoint, std::function<void()> func)

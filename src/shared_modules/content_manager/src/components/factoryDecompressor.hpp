@@ -69,7 +69,7 @@ public:
             decompressorType = deduceCompressionType(config.at("url").get_ref<const std::string&>());
         }
 
-        std::cout << "Creating '" << decompressorType << "' content decompressor" << std::endl;
+        logDebug2(WM_CONTENTUPDATER, "Creating '%s' content decompressor", decompressorType.c_str());
 
         if ("xz" == decompressorType)
         {

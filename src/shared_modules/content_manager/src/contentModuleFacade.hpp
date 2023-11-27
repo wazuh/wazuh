@@ -33,7 +33,10 @@ public:
      * @brief Register endpoint to receive initialization of modules from other processes.
      *
      */
-    void start();
+    void
+    start(const std::function<
+          void(const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>&
+              logFunction);
 
     /**
      * @brief Clear providers.

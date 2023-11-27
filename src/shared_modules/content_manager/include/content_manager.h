@@ -25,11 +25,10 @@ extern "C"
 {
 #endif
 
+#include "commonDefs.h"
 #include "logging_helper.h"
 
-    typedef void((*log_callback_t)(const modules_log_level_t level, const char* log, const char* tag));
-
-    EXPORTED void content_manager_start(log_callback_t callbackLog);
+    EXPORTED void content_manager_start(full_log_fnc_t callbackLog);
 
     EXPORTED void content_manager_stop();
 
@@ -37,7 +36,7 @@ extern "C"
 }
 #endif
 
-typedef void (*content_manager_start_func)(log_callback_t callbackLog);
+typedef void (*content_manager_start_func)(full_log_fnc_t callbackLog);
 
 typedef void (*content_manager_stop_func)();
 

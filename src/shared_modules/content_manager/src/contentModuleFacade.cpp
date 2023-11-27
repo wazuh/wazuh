@@ -10,24 +10,14 @@
  */
 
 #include "contentModuleFacade.hpp"
-// #include "factoryDecoder.hpp"
+#include "sharedDefs.hpp"
 
-void ContentModuleFacade::start()
+void ContentModuleFacade::start(
+    const std::function<
+        void(const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>&
+        logFunction)
 {
-    // Register endpoint to receive initialization of modules from other processes.
-    /*    RouterProvider::instance().initLocal(CONTENT_MODULE_ENDPOINT_NAME);
-        RouterSubscriber::instance().subscriberLocal(CONTENT_MODULE_ENDPOINT_NAME,
-                                                     [&](std::shared_ptr<std::vector<char>> data)
-                                                     {
-                                                         try
-                                                         {
-                                                             FactoryDecoder::create(data)->decode();
-                                                         }
-                                                         catch (const std::exception& e)
-                                                         {
-                                                             std::cerr << "start: " << e.what() << std::endl;
-                                                         }
-                                                     });*/
+    Log::assignLogFunction(logFunction);
 }
 
 void ContentModuleFacade::stop()
@@ -57,7 +47,7 @@ void ContentModuleFacade::startScheduling(const std::string& name, size_t interv
     }
     catch (const std::exception& e)
     {
-        std::cerr << "startScheduling: " << e.what() << std::endl;
+        logError(WM_CONTENTUPDATER, "startScheduling: %s", e.what());
     }
 }
 void ContentModuleFacade::startOndemand(const std::string& name)
@@ -69,7 +59,7 @@ void ContentModuleFacade::startOndemand(const std::string& name)
     }
     catch (const std::exception& e)
     {
-        std::cerr << "startOndemand: " << e.what() << std::endl;
+        logError(WM_CONTENTUPDATER, "startOnDemand: %s", e.what());
     }
 }
 
@@ -82,6 +72,6 @@ void ContentModuleFacade::changeSchedulerInterval(const std::string& name, const
     }
     catch (const std::exception& e)
     {
-        std::cerr << "changeSchedulingTime: " << e.what() << std::endl;
+        logError(WM_CONTENTUPDATER, "changeSchedulingTime: %s", e.what());
     }
 }

@@ -42,12 +42,12 @@ public:
 
         if (versionUpdaterType.compare("cti-api") == 0)
         {
-            std::cout << "Creating '" << versionUpdaterType << "' version updater" << std::endl;
+            logDebug2(WM_CONTENTUPDATER, "Creating '%s' version updater", versionUpdaterType.c_str());
             return std::make_shared<UpdateCtiApiOffset>();
         }
         if (versionUpdaterType.compare("false") == 0)
         {
-            std::cout << "Version updater not needed" << std::endl;
+            logDebug2(WM_CONTENTUPDATER, "Version updater not needed");
             return std::make_shared<SkipStep>();
         }
         else

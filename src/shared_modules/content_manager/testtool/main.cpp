@@ -48,9 +48,32 @@ int main()
     auto& instance = ContentModule::instance();
 
     // Server
-    instance.start([](const modules_log_level_t logLevel, const std::string& message)
-                   { std::cout << message << std::endl; });
+    instance.start(
+        [](const int logLevel,
+           const std::string& tag,
+           const std::string& file,
+           const int line,
+           const std::string& func,
+           const std::string& message)
+        {
+            auto pos = file.find_last_of('/');
+            if (pos != std::string::npos)
+            {
+                pos++;
+            }
+            std::string fileName = file.substr(pos, file.size() - pos);
 
+            if (logLevel != LOG_ERROR)
+            {
+                std::cout << tag << ":" << fileName << ":" << line << " " << func << " : " << message.c_str()
+                          << std::endl;
+            }
+            else
+            {
+                std::cerr << tag << ":" << fileName << ":" << line << " " << func << " : " << message.c_str()
+                          << std::endl;
+            }
+        });
     // CLiente -> vulnenability  detector
     ContentRegister registerer {CONFIG_PARAMETERS.at("topicName").get<std::string>(), CONFIG_PARAMETERS};
     std::this_thread::sleep_for(std::chrono::seconds(5));
