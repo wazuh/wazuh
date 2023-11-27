@@ -58,6 +58,7 @@ public:
      *
      * @param config Indexer configuration, including database_path and servers.
      * @param templatePath Path to the template file.
+     * @param callback Callback function to be called when trying to log a message.
      */
     explicit IndexerConnector(
         const nlohmann::json& config,
