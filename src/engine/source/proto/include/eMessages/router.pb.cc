@@ -53,7 +53,7 @@ PROTOBUF_CONSTEXPR Entry::Entry(
   , /*decltype(_impl_.description_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.priority_)*/0u
   , /*decltype(_impl_.policy_sync_)*/0
-  , /*decltype(_impl_.last_update_)*/int64_t{0}
+  , /*decltype(_impl_.last_update_)*/uint64_t{0u}
   , /*decltype(_impl_.entry_status_)*/0} {}
 struct EntryDefaultTypeInternal {
   PROTOBUF_CONSTEXPR EntryDefaultTypeInternal()
@@ -349,7 +349,7 @@ const char descriptor_table_protodef_router_2eproto[] PROTOBUF_SECTION_VARIABLE(
   "policy_sync\030\006 \001(\0162!.com.wazuh.api.engine"
   ".router.Sync\0228\n\014entry_status\030\007 \001(\0162\".com"
   ".wazuh.api.engine.router.State\022\023\n\013last_u"
-  "pdate\030\010 \001(\003B\016\n\014_description\"Y\n\021RoutePost"
+  "pdate\030\010 \001(\004B\016\n\014_description\"Y\n\021RoutePost"
   "_Request\022:\n\005route\030\001 \001(\0132&.com.wazuh.api."
   "engine.router.EntryPostH\000\210\001\001B\010\n\006_route\"#"
   "\n\023RouteDelete_Request\022\014\n\004name\030\001 \001(\t\" \n\020R"
@@ -904,7 +904,7 @@ inline void Entry::SharedCtor(
     , decltype(_impl_.description_){}
     , decltype(_impl_.priority_){0u}
     , decltype(_impl_.policy_sync_){0}
-    , decltype(_impl_.last_update_){int64_t{0}}
+    , decltype(_impl_.last_update_){uint64_t{0u}}
     , decltype(_impl_.entry_status_){0}
   };
   _impl_.name_.InitDefault();
@@ -1039,7 +1039,7 @@ const char* Entry::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
         } else
           goto handle_unusual;
         continue;
-      // int64 last_update = 8;
+      // uint64 last_update = 8;
       case 8:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 64)) {
           _impl_.last_update_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
@@ -1137,10 +1137,10 @@ uint8_t* Entry::_InternalSerialize(
       7, this->_internal_entry_status(), target);
   }
 
-  // int64 last_update = 8;
+  // uint64 last_update = 8;
   if (this->_internal_last_update() != 0) {
     target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteInt64ToArray(8, this->_internal_last_update(), target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(8, this->_internal_last_update(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -1199,9 +1199,9 @@ size_t Entry::ByteSizeLong() const {
       ::_pbi::WireFormatLite::EnumSize(this->_internal_policy_sync());
   }
 
-  // int64 last_update = 8;
+  // uint64 last_update = 8;
   if (this->_internal_last_update() != 0) {
-    total_size += ::_pbi::WireFormatLite::Int64SizePlusOne(this->_internal_last_update());
+    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_last_update());
   }
 
   // .com.wazuh.api.engine.router.State entry_status = 7;

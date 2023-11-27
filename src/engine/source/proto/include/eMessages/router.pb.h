@@ -590,13 +590,13 @@ class Entry final :
   void _internal_set_policy_sync(::com::wazuh::api::engine::router::Sync value);
   public:
 
-  // int64 last_update = 8;
+  // uint64 last_update = 8;
   void clear_last_update();
-  int64_t last_update() const;
-  void set_last_update(int64_t value);
+  uint64_t last_update() const;
+  void set_last_update(uint64_t value);
   private:
-  int64_t _internal_last_update() const;
-  void _internal_set_last_update(int64_t value);
+  uint64_t _internal_last_update() const;
+  void _internal_set_last_update(uint64_t value);
   public:
 
   // .com.wazuh.api.engine.router.State entry_status = 7;
@@ -624,7 +624,7 @@ class Entry final :
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr description_;
     uint32_t priority_;
     int policy_sync_;
-    int64_t last_update_;
+    uint64_t last_update_;
     int entry_status_;
   };
   union { Impl_ _impl_; };
@@ -2591,22 +2591,22 @@ inline void Entry::set_entry_status(::com::wazuh::api::engine::router::State val
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.Entry.entry_status)
 }
 
-// int64 last_update = 8;
+// uint64 last_update = 8;
 inline void Entry::clear_last_update() {
-  _impl_.last_update_ = int64_t{0};
+  _impl_.last_update_ = uint64_t{0u};
 }
-inline int64_t Entry::_internal_last_update() const {
+inline uint64_t Entry::_internal_last_update() const {
   return _impl_.last_update_;
 }
-inline int64_t Entry::last_update() const {
+inline uint64_t Entry::last_update() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.router.Entry.last_update)
   return _internal_last_update();
 }
-inline void Entry::_internal_set_last_update(int64_t value) {
+inline void Entry::_internal_set_last_update(uint64_t value) {
   
   _impl_.last_update_ = value;
 }
-inline void Entry::set_last_update(int64_t value) {
+inline void Entry::set_last_update(uint64_t value) {
   _internal_set_last_update(value);
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.Entry.last_update)
 }

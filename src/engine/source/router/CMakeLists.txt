@@ -17,7 +17,7 @@ add_library(router_router STATIC
     ${SRC_DIR}/tester.cpp
     ${SRC_DIR}/worker.cpp
 
-    ${SRC_DIR}/routerAdmin.cpp
+    ${SRC_DIR}/orchestrator.cpp
 )
 
 target_include_directories(router_router

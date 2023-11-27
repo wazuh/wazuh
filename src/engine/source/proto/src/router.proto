@@ -40,7 +40,7 @@ message Entry
 
     Sync policy_sync = 6;   // Status of the policy [updated|updated|error]
     State entry_status = 7; // Status of the entry [INACTIVE|ACTIVE]
-    int64 last_update = 8;  // Last update of the route
+    uint64 last_update = 8; // Last update of the route
 }
 
 /***************************************************

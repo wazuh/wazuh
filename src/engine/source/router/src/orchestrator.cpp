@@ -1,4 +1,4 @@
-#include <router/routerAdmin.hpp>
+#include <router/orchestrator.hpp>
 
 #include "worker.hpp"
 
@@ -6,7 +6,7 @@ namespace router
 {
 
 // Private
-void RouterAdmin::validateConfig(const Config& config)
+void Orchestrator::validateConfig(const Config& config)
 {
     if (config.m_numThreads < 1)
     {
@@ -41,7 +41,7 @@ void RouterAdmin::validateConfig(const Config& config)
 }
 
 // Public
-RouterAdmin::RouterAdmin(const Config& config)
+Orchestrator::Orchestrator(const Config& config)
     : m_workers()
     , m_eventQueue(config.m_prodQueue)
     , m_testQueue(config.m_testQueue)
@@ -49,8 +49,8 @@ RouterAdmin::RouterAdmin(const Config& config)
 {
     validateConfig(config);
 
-
-    auto builder = std::make_shared<ConcreteBuilder>(config.m_wStore, config.m_wRegistry); // TODO Remove after the builder is implemented
+    auto builder = std::make_shared<ConcreteBuilder>(
+        config.m_wStore, config.m_wRegistry); // TODO Remove after the builder is implemented
     m_envBuilder = std::make_shared<EnvironmentBuilder>(builder, config.m_controllerMaker);
 
     // Create the Workers
@@ -61,16 +61,16 @@ RouterAdmin::RouterAdmin(const Config& config)
     }
 }
 
-void RouterAdmin::start()
+void Orchestrator::start()
 {
-   std::shared_lock lock {m_syncMutex};
+    std::shared_lock lock {m_syncMutex};
     for (auto& worker : m_workers)
     {
         worker->start();
     }
 }
 
-void RouterAdmin::stop()
+void Orchestrator::stop()
 {
     std::shared_lock lock {m_syncMutex};
     for (auto& worker : m_workers)
@@ -82,7 +82,7 @@ void RouterAdmin::stop()
 /**************************************************************************
  * IRouterAPI
  *************************************************************************/
-base::OptError RouterAdmin::postEntry(const prod::EntryPost& entry)
+base::OptError Orchestrator::postEntry(const prod::EntryPost& entry)
 {
     /* TODO:
         1. Crate and add the environment to the router (Disabled environment)
@@ -105,14 +105,14 @@ base::OptError RouterAdmin::postEntry(const prod::EntryPost& entry)
         }
     }
 
-     for (auto& worker : m_workers)
+    for (auto& worker : m_workers)
     {
         worker->getRouter()->enableEntry(entry.name());
     }
     return std::nullopt;
 }
 
-base::OptError RouterAdmin::deleteEntry(const std::string& name)
+base::OptError Orchestrator::deleteEntry(const std::string& name)
 {
     std::unique_lock lock {m_syncMutex};
     if (name.empty())
@@ -132,7 +132,7 @@ base::OptError RouterAdmin::deleteEntry(const std::string& name)
     return std::nullopt;
 }
 
-base::RespOrError<prod::Entry> RouterAdmin::getEntry(const std::string& name) const
+base::RespOrError<prod::Entry> Orchestrator::getEntry(const std::string& name) const
 {
     if (name.empty())
     {
@@ -143,7 +143,7 @@ base::RespOrError<prod::Entry> RouterAdmin::getEntry(const std::string& name) co
     return m_workers.front()->getRouter()->getEntry(name);
 }
 
-base::OptError RouterAdmin::reloadEntry(const std::string& name)
+base::OptError Orchestrator::reloadEntry(const std::string& name)
 {
     if (name.empty())
     {
@@ -172,7 +172,7 @@ base::OptError RouterAdmin::reloadEntry(const std::string& name)
     return std::nullopt;
 }
 
-base::OptError RouterAdmin::changeEntryPriority(const std::string& name, size_t priority)
+base::OptError Orchestrator::changeEntryPriority(const std::string& name, size_t priority)
 {
     if (name.empty())
     {
@@ -192,13 +192,13 @@ base::OptError RouterAdmin::changeEntryPriority(const std::string& name, size_t 
     return std::nullopt;
 }
 
-std::list<prod::Entry> RouterAdmin::getEntries() const
+std::list<prod::Entry> Orchestrator::getEntries() const
 {
     std::shared_lock lock {m_syncMutex};
     return m_workers.front()->getRouter()->getEntries();
 }
 
-base::OptError RouterAdmin::postStrEvent(std::string_view event)
+base::OptError Orchestrator::postStrEvent(std::string_view event)
 {
     if (event.empty())
     {
@@ -226,7 +226,7 @@ base::OptError RouterAdmin::postStrEvent(std::string_view event)
 /**************************************************************************
  * ITesterAPI
  *************************************************************************/
-base::OptError RouterAdmin::postTestEntry(const test::EntryPost& entry)
+base::OptError Orchestrator::postTestEntry(const test::EntryPost& entry)
 {
     /* TODO:
         1. Crate and add the environment to the router (Disabled environment)
@@ -257,7 +257,7 @@ base::OptError RouterAdmin::postTestEntry(const test::EntryPost& entry)
     return std::nullopt;
 }
 
-base::OptError RouterAdmin::deleteTestEntry(const std::string& name)
+base::OptError Orchestrator::deleteTestEntry(const std::string& name)
 {
     std::unique_lock lock {m_syncMutex};
 
@@ -266,7 +266,7 @@ base::OptError RouterAdmin::deleteTestEntry(const std::string& name)
         return base::Error {"Name cannot be empty"};
     }
 
-   for (auto& worker : m_workers)
+    for (auto& worker : m_workers)
     {
         auto error = worker->getTester()->removeEntry(name);
         if (error)
@@ -278,7 +278,7 @@ base::OptError RouterAdmin::deleteTestEntry(const std::string& name)
     return std::nullopt;
 }
 
-base::RespOrError<test::Entry> RouterAdmin::getTestEntry(const std::string& name) const
+base::RespOrError<test::Entry> Orchestrator::getTestEntry(const std::string& name) const
 {
     if (name.empty())
     {
@@ -289,7 +289,7 @@ base::RespOrError<test::Entry> RouterAdmin::getTestEntry(const std::string& name
     return m_workers.front()->getTester()->getEntry(name);
 }
 
-base::OptError RouterAdmin::reloadTestEntry(const std::string& name)
+base::OptError Orchestrator::reloadTestEntry(const std::string& name)
 {
     if (name.empty())
     {
@@ -297,18 +297,18 @@ base::OptError RouterAdmin::reloadTestEntry(const std::string& name)
     }
 
     std::unique_lock lock {m_syncMutex};
-   for (auto& worker : m_workers)
+    for (auto& worker : m_workers)
     {
-        auto error =worker->getTester()->rebuildEntry(name);
+        auto error = worker->getTester()->rebuildEntry(name);
         if (error)
         {
             return error;
         }
     }
     // If the environment is disabled, enable it all at the end when all the environments are reloaded
-   for (auto& worker : m_workers)
+    for (auto& worker : m_workers)
     {
-        auto error =worker->getTester()->enableEntry(name);
+        auto error = worker->getTester()->enableEntry(name);
         if (error)
         {
             return error;
@@ -318,14 +318,19 @@ base::OptError RouterAdmin::reloadTestEntry(const std::string& name)
     return std::nullopt;
 }
 
-std::list<test::Entry> RouterAdmin::getTestEntries() const
+std::list<test::Entry> Orchestrator::getTestEntries() const
 {
     std::shared_lock lock {m_syncMutex};
     return m_workers.front()->getTester()->getEntries();
 }
 
-std::future<base::RespOrError<test::Output>> RouterAdmin::ingestTest(base::Event&& event, const test::Opt& opt)
+std::future<base::RespOrError<test::Output>> Orchestrator::ingestTest(base::Event&& event, const test::Options& opt)
 {
+    auto error = opt.validate();
+    if (error)
+    {
+        throw std::runtime_error {error.value().message};
+    }
 
     auto promisePtr = std::make_shared<std::promise<base::RespOrError<test::Output>>>();
     auto future = promisePtr->get_future();
@@ -352,12 +357,23 @@ std::future<base::RespOrError<test::Output>> RouterAdmin::ingestTest(base::Event
     return future;
 }
 
-std::future<base::RespOrError<test::Output>> RouterAdmin::ingestTest(std::string_view event, const test::Opt& opt)
+std::future<base::RespOrError<test::Output>> Orchestrator::ingestTest(std::string_view event, const test::Options& opt)
 {
 
     base::Event ev = base::parseEvent::parseWazuhEvent(event.data());
 
     return this->ingestTest(std::move(ev), opt);
+}
+
+base::RespOrError<std::unordered_set<std::string>> Orchestrator::getAssets(const std::string& name) const
+{
+    if (name.empty())
+    {
+        return base::Error {"Name cannot be empty"};
+    }
+
+    std::shared_lock lock {m_syncMutex};
+    return m_workers.front()->getTester()->getAssets(name);
 }
 
 } // namespace router
