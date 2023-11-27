@@ -13,6 +13,7 @@
 #define _MONITORING_HPP
 
 #include "HTTPRequest.hpp"
+#include "secureCommunication.hpp"
 #include "shared_modules/content_manager/src/dataDecoder.hpp"
 #include "stringHelper.h"
 #include <atomic>
@@ -22,6 +23,7 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <unordered_set>
 #include <vector>
 
 constexpr auto INTERVAL = 60u;
@@ -88,8 +90,11 @@ public:
      *
      * @param values Servers to be monitored.
      * @param interval Interval for monitoring.
+     * @param secureCommunication Object that provides secure communication.
      */
-    explicit Monitoring(const std::vector<std::string>& values, const uint32_t interval = INTERVAL)
+    explicit Monitoring(const std::vector<std::string>& values,
+                        const uint32_t interval = INTERVAL,
+                        const SecureCommunication& secureCommunication = {})
         : m_interval(interval)
     {
         // Initialize the map with the values, all servers are available.
@@ -100,8 +105,9 @@ public:
 
         // Start the thread, that will check the health of the servers.
         m_thread = std::thread(
-            [this]()
+            [this, secureCommunication]()
             {
+                const std::unordered_set<std::string> headers {"Accept-Charset: utf-8"};
                 while (!m_stop)
                 {
                     std::unique_lock<std::mutex> lock(m_mutex);
@@ -116,7 +122,7 @@ public:
                         {
                             // Get the health of the server.
                             HTTPRequest::instance().get(
-                                HttpURL(value.first + "/_cat/health"),
+                                HttpURL(value.first + "/_cat/health?v"),
                                 [&](std::string response)
                                 {
                                     // Remove the tabs and double spaces.
@@ -148,7 +154,10 @@ public:
                                         value.second = false; // LCOV_EXCL_LINE
                                     }
                                 },
-                                [&](const std::string& error, const long /*statusCode*/) { value.second = false; });
+                                [&](const std::string& error, const long /*statusCode*/) { value.second = false; },
+                                "",
+                                headers,
+                                secureCommunication);
                         }
                     }
                 }

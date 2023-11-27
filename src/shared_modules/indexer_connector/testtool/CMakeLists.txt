@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.12.4)
 
+# Copy input files to the build directory
+file(COPY input DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
 file(GLOB INDEXER_CONNECTOR_TOOL_SRC
     "*.cpp"
     )

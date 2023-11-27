@@ -37,8 +37,6 @@ IndexerConnector::IndexerConnector(
     {
         Log::assignLogFunction(logFunction);
     }
-    // Initialize publisher.
-    auto selector = std::make_shared<ServerSelector>(config.at("hosts"));
 
     // Get index name.
     auto indexName {config.at("name").get_ref<const std::string&>()};
@@ -88,6 +86,9 @@ IndexerConnector::IndexerConnector(
         throw std::runtime_error("Could not open template file.");
     }
     nlohmann::json templateData = nlohmann::json::parse(templateFile);
+
+    // Initialize publisher.
+    auto selector {std::make_shared<ServerSelector>(config.at("hosts"), INTERVAL, secureCommunication)};
 
     // Try to initialize data in the wazuh-indexer.
     try

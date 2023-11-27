@@ -14,6 +14,7 @@
 
 #include "monitoring.hpp"
 #include "roundRobinSelector.hpp"
+#include "secureCommunication.hpp"
 #include <memory>
 #include <string>
 
@@ -34,11 +35,14 @@ public:
      *
      * @param values Servers to be selected.
      * @param timeout Timeout for monitoring.
+     * @param secureCommunication Object that provides secure communication.
      */
-    explicit ServerSelector(const std::vector<std::string>& values, const uint32_t timeout = INTERVAL)
+    explicit ServerSelector(const std::vector<std::string>& values,
+                            const uint32_t timeout = INTERVAL,
+                            const SecureCommunication& secureCommunication = {})
         : RoundRobinSelector<std::string>(values)
     {
-        monitoring = std::make_shared<Monitoring>(values, timeout);
+        monitoring = std::make_shared<Monitoring>(values, timeout, secureCommunication);
     }
 
     /**
