@@ -37,7 +37,8 @@ struct Config
     std::shared_ptr<TestQueueType> m_testQueue;
 };
 
-class RouterAdmin
+// Change name to syncronizer
+class Orchestrator
     : public IRouterAPI
     , public ITesterAPI
 {
@@ -54,10 +55,10 @@ private:
     void validateConfig(const Config& config);
 
 public:
-    ~RouterAdmin() = default;
-    RouterAdmin() = delete;
+    ~Orchestrator() = default;
+    Orchestrator() = delete;
 
-    RouterAdmin(const Config& config);
+    Orchestrator(const Config& config);
 
     /**
      * @brief Start the router
@@ -162,12 +163,17 @@ public:
     /**
      * @copydoc router::ITesterAPI::ingestTest
      */
-    std::future<base::RespOrError<test::Output>> ingestTest(base::Event&& event, const test::Opt& opt) override;
+    std::future<base::RespOrError<test::Output>> ingestTest(base::Event&& event, const test::Options& opt) override;
 
     /**
      * @copydoc router::ITesterAPI::ingestTest
      */
-    std::future<base::RespOrError<test::Output>> ingestTest(std::string_view event, const test::Opt& opt) override;
+    std::future<base::RespOrError<test::Output>> ingestTest(std::string_view event, const test::Options& opt) override;
+
+    /**
+     * @copydoc router::ITesterAPI::getAssets
+     */
+    base::RespOrError<std::unordered_set<std::string>> getAssets(const std::string& name) const override;
 };
 
 } // namespace router
