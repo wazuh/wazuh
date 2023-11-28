@@ -139,8 +139,7 @@ enum Sync : int {
   SYNC_UNKNOWN = 0,
   UPDATED = 1,
   OUTDATED = 2,
-  DELETED = 3,
-  ERROR = 4,
+  ERROR = 3,
   Sync_INT_MIN_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::min(),
   Sync_INT_MAX_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::max()
 };
@@ -509,8 +508,8 @@ class Entry final :
     kDescriptionFieldNumber = 5,
     kPriorityFieldNumber = 4,
     kPolicySyncFieldNumber = 6,
-    kLastUpdateFieldNumber = 8,
     kEntryStatusFieldNumber = 7,
+    kUptimeFieldNumber = 8,
   };
   // string name = 1;
   void clear_name();
@@ -590,15 +589,6 @@ class Entry final :
   void _internal_set_policy_sync(::com::wazuh::api::engine::router::Sync value);
   public:
 
-  // uint64 last_update = 8;
-  void clear_last_update();
-  uint64_t last_update() const;
-  void set_last_update(uint64_t value);
-  private:
-  uint64_t _internal_last_update() const;
-  void _internal_set_last_update(uint64_t value);
-  public:
-
   // .com.wazuh.api.engine.router.State entry_status = 7;
   void clear_entry_status();
   ::com::wazuh::api::engine::router::State entry_status() const;
@@ -606,6 +596,15 @@ class Entry final :
   private:
   ::com::wazuh::api::engine::router::State _internal_entry_status() const;
   void _internal_set_entry_status(::com::wazuh::api::engine::router::State value);
+  public:
+
+  // uint32 uptime = 8;
+  void clear_uptime();
+  uint32_t uptime() const;
+  void set_uptime(uint32_t value);
+  private:
+  uint32_t _internal_uptime() const;
+  void _internal_set_uptime(uint32_t value);
   public:
 
   // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.router.Entry)
@@ -624,8 +623,8 @@ class Entry final :
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr description_;
     uint32_t priority_;
     int policy_sync_;
-    uint64_t last_update_;
     int entry_status_;
+    uint32_t uptime_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_router_2eproto;
@@ -2591,24 +2590,24 @@ inline void Entry::set_entry_status(::com::wazuh::api::engine::router::State val
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.Entry.entry_status)
 }
 
-// uint64 last_update = 8;
-inline void Entry::clear_last_update() {
-  _impl_.last_update_ = uint64_t{0u};
+// uint32 uptime = 8;
+inline void Entry::clear_uptime() {
+  _impl_.uptime_ = 0u;
 }
-inline uint64_t Entry::_internal_last_update() const {
-  return _impl_.last_update_;
+inline uint32_t Entry::_internal_uptime() const {
+  return _impl_.uptime_;
 }
-inline uint64_t Entry::last_update() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.router.Entry.last_update)
-  return _internal_last_update();
+inline uint32_t Entry::uptime() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.router.Entry.uptime)
+  return _internal_uptime();
 }
-inline void Entry::_internal_set_last_update(uint64_t value) {
+inline void Entry::_internal_set_uptime(uint32_t value) {
   
-  _impl_.last_update_ = value;
+  _impl_.uptime_ = value;
 }
-inline void Entry::set_last_update(uint64_t value) {
-  _internal_set_last_update(value);
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.Entry.last_update)
+inline void Entry::set_uptime(uint32_t value) {
+  _internal_set_uptime(value);
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.Entry.uptime)
 }
 
 // -------------------------------------------------------------------
