@@ -12,6 +12,7 @@
 #ifndef _XZ_DECOMPRESSOR_HPP
 #define _XZ_DECOMPRESSOR_HPP
 
+#include "../sharedDefs.hpp"
 #include "json.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
@@ -37,6 +38,8 @@ private:
     {
         for (auto& path : context.data.at("paths"))
         {
+            logDebug2(WM_CONTENTUPDATER, "Attempting to decompress '%s'", path.get_ref<const std::string&>().c_str());
+
             std::filesystem::path inputPath {path};
             try
             {
@@ -73,6 +76,8 @@ public:
      */
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
+        logDebug2(WM_CONTENTUPDATER, "XZDecompressor - Starting process");
+
         decompress(*context);
 
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(context);

@@ -109,13 +109,16 @@ private:
                             }};
 
         // Download and store file.
+        logDebug2(WM_CONTENTUPDATER, "Attempting to download file from '%s'", url.string().c_str());
         HTTPRequest::instance().download(HttpURL(url), outputFilePath, onError);
 
         // Just process the new file if the hash is different from the last one.
         auto downloadFileHash {hashFile(outputFilePath)};
         if (context.spUpdaterBaseContext->downloadedFileHash == downloadFileHash)
         {
-            logDebug1(WM_CONTENTUPDATER, "Content file didn't change from last download");
+            logDebug2(WM_CONTENTUPDATER,
+                      "File '%s' didn't change from last download so it won't be published",
+                      outputFilePath.string().c_str());
             return;
         }
 
@@ -135,6 +138,8 @@ public:
      */
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
+        logDebug2(WM_CONTENTUPDATER, "FileDownloader - Starting process");
+
         try
         {
             download(*context);
@@ -149,8 +154,6 @@ public:
 
         // Push success state.
         pushStageStatus(context->data, "ok");
-
-        logDebug2(WM_CONTENTUPDATER, "FileDownloader - Download done successfully");
 
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(context);
     }

@@ -12,6 +12,7 @@
 #ifndef _FACTORY_CONTENT_UPDATER_HPP
 #define _FACTORY_CONTENT_UPDATER_HPP
 
+#include "../sharedDefs.hpp"
 #include "factoryCleaner.hpp"
 #include "factoryDecompressor.hpp"
 #include "factoryDownloader.hpp"
@@ -56,8 +57,6 @@ public:
             ->setNext(factoryPublisher)
             ->setNext(factoryVersionUpdater)
             ->setNext(factoryCleaner);
-
-        logDebug2(WM_CONTENTUPDATER, "FactoryContentUpdater - Finishing process");
 
         return updaterChain;
     }

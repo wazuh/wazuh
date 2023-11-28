@@ -45,8 +45,7 @@ public:
      */
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
-
-        logDebug2(WM_CONTENTUPDATER, "SkipStep - Executing");
+        logDebug2(WM_CONTENTUPDATER, "SkipStep - Starting process");
 
         for (auto const& action : preActions)
         {

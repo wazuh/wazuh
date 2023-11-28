@@ -39,13 +39,13 @@ private:
             // serialize the JSON object
             const auto stringifyJson = context.data.dump();
 
+            logDebug2(WM_CONTENTUPDATER, "Data to be published: '%s'", stringifyJson.c_str());
+
             context.spUpdaterBaseContext->spChannel->send({stringifyJson.begin(), stringifyJson.end()});
-            logDebug2(WM_CONTENTUPDATER, "PubSubPublisher - Data published");
+            return;
         }
-        else
-        {
-            logDebug2(WM_CONTENTUPDATER, "PubSubPublisher - No data data to publish");
-        }
+
+        logDebug2(WM_CONTENTUPDATER, "No data to publish");
     }
 
 public:
@@ -57,6 +57,7 @@ public:
      */
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
+        logDebug2(WM_CONTENTUPDATER, "PubSubPublisher - Starting process");
 
         publish(*context);
 

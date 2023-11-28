@@ -108,8 +108,6 @@ private:
             // Put the current offset in the database.
             context.spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)), std::to_string(currentOffset));
         }
-
-        logDebug2(WM_CONTENTUPDATER, "API offset to be used: %d", currentOffset);
     }
 
     /**
@@ -139,8 +137,8 @@ private:
         if (std::filesystem::exists(outputFolderPath))
         {
             // Delete the output folder to avoid conflicts.
-            logDebug1(WM_CONTENTUPDATER,
-                      "The previous output folder: %s will be removed.",
+            logDebug2(WM_CONTENTUPDATER,
+                      "Attempting to remove previous output folder '%s'",
                       outputFolderPath.string().c_str());
             std::filesystem::remove_all(outputFolderPath);
         }

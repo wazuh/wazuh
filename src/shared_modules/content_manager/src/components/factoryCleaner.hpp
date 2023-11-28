@@ -36,14 +36,13 @@ public:
      */
     static std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> create(const nlohmann::json& config)
     {
-        if (config.at("deleteDownloadedContent").get<bool>())
+        if (config.at("deleteDownloadedContent").get_ref<const bool&>())
         {
-            logDebug2(WM_CONTENTUPDATER, "Downloaded content cleaner created");
             return std::make_shared<CleanUpContent>();
+            logDebug2(WM_CONTENTUPDATER, "Content cleaner created");
         }
         else
         {
-            logDebug2(WM_CONTENTUPDATER, "Downloaded content cleaner not needed");
             return std::make_shared<SkipStep>();
         }
     }

@@ -36,12 +36,14 @@ public:
     {
         try
         {
-            logDebug1(WM_CONTENTUPDATER, "Creating content updater orchestration");
             // Create a context
             m_spBaseContext = std::make_shared<UpdaterBaseContext>();
             m_spBaseContext->topicName = parameters.at("topicName");
             m_spBaseContext->configData = parameters.at("configData");
             m_spBaseContext->spChannel = channel;
+
+            logDebug1(
+                WM_CONTENTUPDATER, "Creating '%s' Content Updater orchestration", m_spBaseContext->topicName.c_str());
 
             // Create and run the execution context
             auto executionContext {std::make_shared<ExecutionContext>()};
@@ -70,7 +72,7 @@ public:
             auto spUpdaterContext {std::make_shared<UpdaterContext>()};
             spUpdaterContext->spUpdaterBaseContext = m_spBaseContext;
 
-            logInfo(WM_CONTENTUPDATER, "Running content update. Topic: %s", m_spBaseContext->topicName.c_str());
+            logInfo(WM_CONTENTUPDATER, "Running '%s' content update", m_spBaseContext->topicName.c_str());
 
             // If the database exists, get the last offset
             if (m_spBaseContext->spRocksDB)
@@ -85,7 +87,7 @@ public:
         catch (const std::exception& e)
         {
             cleanContext();
-            throw std::invalid_argument {"Orchestration run failed. " + std::string {e.what()}};
+            throw std::invalid_argument {"Orchestration run failed: " + std::string {e.what()}};
         }
     }
 

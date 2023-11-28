@@ -105,6 +105,10 @@ private:
         }
 
         // Copy file, overriding the output one if necessary.
+        logDebug2(WM_CONTENTUPDATER,
+                  "Attempting to copy file '%s' into '%s'",
+                  inputFilepath.string().c_str(),
+                  outputFilepath.string().c_str());
         std::filesystem::copy(unprefixedUrl, outputFilepath, std::filesystem::copy_options::overwrite_existing);
         return true;
     }
@@ -127,6 +131,10 @@ private:
             }};
 
         // Download file from URL.
+        logDebug2(WM_CONTENTUPDATER,
+                  "Attempting to download file  from '%s' into '%s'",
+                  inputFileURL.string().c_str(),
+                  outputFilepath.string().c_str());
         m_urlRequest.download(HttpURL(inputFileURL), outputFilepath, onError);
         return returnCode;
     }
@@ -188,7 +196,12 @@ private:
 
             // Download finished: Insert path into context.
             context.data.at("paths").push_back(outputFilePath.string());
+            return;
         }
+
+        logDebug2(WM_CONTENTUPDATER,
+                  "File '%s' didn't change from last download so it won't be published",
+                  outputFilePath.string().c_str());
     }
 
 public:
@@ -209,6 +222,8 @@ public:
      */
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
+        logDebug2(WM_CONTENTUPDATER, "OfflineDownloader - Starting process");
+
         try
         {
             download(*context);
@@ -223,8 +238,6 @@ public:
 
         // Push success state.
         pushStageStatus(context->data, "ok");
-
-        logDebug2(WM_CONTENTUPDATER, "OfflineDownloader - Download done successfully");
 
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(context);
     }

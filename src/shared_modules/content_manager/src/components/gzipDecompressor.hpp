@@ -56,6 +56,8 @@ private:
     {
         for (auto& path : context.data.at("paths"))
         {
+            logDebug2(WM_CONTENTUPDATER, "Attempting to decompress '%s'", path.get_ref<const std::string&>().c_str());
+
             // Copy input path.
             std::filesystem::path inputPath {path};
             auto outputPath {path.get<std::string>()};
@@ -87,6 +89,8 @@ public:
      */
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
+        logDebug2(WM_CONTENTUPDATER, "GzipDecompressor - Starting process");
+
         try
         {
             decompress(*context);
@@ -101,8 +105,6 @@ public:
 
         // Push success state.
         pushStageStatus(context->data, "ok");
-
-        logDebug2(WM_CONTENTUPDATER, "GzipDecompressor - Finishing process");
 
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(context);
     }

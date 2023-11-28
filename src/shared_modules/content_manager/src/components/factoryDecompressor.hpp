@@ -12,6 +12,7 @@
 #ifndef _FACTORY_DECOMPRESSOR_HPP
 #define _FACTORY_DECOMPRESSOR_HPP
 
+#include "../sharedDefs.hpp"
 #include "XZDecompressor.hpp"
 #include "gzipDecompressor.hpp"
 #include "skipStep.hpp"
@@ -69,7 +70,7 @@ public:
             decompressorType = deduceCompressionType(config.at("url").get_ref<const std::string&>());
         }
 
-        logDebug2(WM_CONTENTUPDATER, "Creating '%s' content decompressor", decompressorType.c_str());
+        logDebug2(WM_CONTENTUPDATER, "Attempting to create '%s' decompressor", decompressorType.c_str());
 
         if ("xz" == decompressorType)
         {

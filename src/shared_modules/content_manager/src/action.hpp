@@ -189,7 +189,7 @@ private:
         }
         catch (const std::exception& e)
         {
-            logError("Action for '%s' failed: %s", m_topicName.c_str(), e.what());
+            logError(WM_CONTENTUPDATER, "Action for '%s' failed: %s", m_topicName.c_str(), e.what());
         }
 
         m_actionInProgress = false;

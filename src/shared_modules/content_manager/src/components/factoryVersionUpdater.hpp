@@ -12,6 +12,7 @@
 #ifndef _FACTORY_VERSION_UPDATER_HPP
 #define _FACTORY_VERSION_UPDATER_HPP
 
+#include "../sharedDefs.hpp"
 #include "skipStep.hpp"
 #include "updateCtiApiOffset.hpp"
 #include "updaterContext.hpp"
@@ -36,17 +37,15 @@ public:
      */
     static std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> create(const nlohmann::json& config)
     {
-
-        auto const versionUpdaterType {config.at("versionedContent").get<std::string>()};
+        auto const versionUpdaterType {config.at("versionedContent").get_ref<const std::string&>()};
+        logDebug2(WM_CONTENTUPDATER, "Attempting to create '%s' version updater", versionUpdaterType.c_str());
 
         if (versionUpdaterType.compare("cti-api") == 0)
         {
-            logDebug2(WM_CONTENTUPDATER, "Creating '%s' version updater", versionUpdaterType.c_str());
             return std::make_shared<UpdateCtiApiOffset>();
         }
         if (versionUpdaterType.compare("false") == 0)
         {
-            logDebug2(WM_CONTENTUPDATER, "Version updater not needed");
             return std::make_shared<SkipStep>();
         }
         else

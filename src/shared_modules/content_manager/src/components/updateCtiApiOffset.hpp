@@ -12,6 +12,7 @@
 #ifndef _UPDATE_CTI_API_OFFSET_HPP
 #define _UPDATE_CTI_API_OFFSET_HPP
 
+#include "../sharedDefs.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
 #include "utils/timeHelper.h"
@@ -62,6 +63,7 @@ public:
      */
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
+        logDebug2(WM_CONTENTUPDATER, "UpdateCtiApiOffset - Starting process");
 
         update(*context);
 

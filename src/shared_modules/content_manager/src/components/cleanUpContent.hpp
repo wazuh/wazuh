@@ -49,8 +49,6 @@ private:
 
         // Create the folder again.
         std::filesystem::create_directory(path);
-
-        logDebug1(WM_CONTENTUPDATER, "All files in the folder have been deleted.");
     }
 
 public:
@@ -62,6 +60,7 @@ public:
      */
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
+        logDebug2(WM_CONTENTUPDATER, "CleanUpContent - Starting process");
 
         cleanUp(*context);
 
