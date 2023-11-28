@@ -288,7 +288,6 @@ TEST_F(UnixStreamTest, MultipleEchoMessages)
     for (const auto& message : messages)
     {
         auto res = send(clientSockfd, message.c_str(), message.size(), 0);
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
         ASSERT_EQ(res, message.size());
         totalSize += message.size();
     }
@@ -366,7 +365,6 @@ TEST_F(UnixStreamTest, MultipleConnections)
     for (int i = 0; i < numClients; ++i)
     {
         auto res = send(clientSockets[i], messages[i].c_str(), messages[i].size(), 0);
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
         ASSERT_EQ(res, messages[i].size());
     }
 
@@ -444,7 +442,6 @@ TEST_F(UnixStreamTest, QueueWorker_SameClient)
         message += std::to_string(i);
         message += "<END>";
         auto res = send(clientSockfd, message.c_str(), message.size(), 0);
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
         ASSERT_EQ(res, message.size());
         expectedResponse += message;
     }
@@ -610,7 +607,6 @@ TEST_F(UnixStreamTest, taskQueueSizeTestAndOverflow)
         message += std::to_string(i);
         message += "<END>";
         auto res = send(clientSockfd, message.c_str(), message.size(), 0);
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
         ASSERT_EQ(res, message.size());
         sendedMessages++;
         expectedProcessedMessages += message;
@@ -621,7 +617,6 @@ TEST_F(UnixStreamTest, taskQueueSizeTestAndOverflow)
         int clientSockfd2 = createUnixSocketClient(m_socketPath);
         std::string message = "Hello, busy World! message<END>";
         auto res = send(clientSockfd2, message.c_str(), message.size(), 0);
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
         ASSERT_EQ(res, message.size());
         sendedMessages++;
         busyMessage++; // This message is sended but not processed
@@ -667,7 +662,6 @@ TEST_F(UnixStreamTest, taskQueueSizeTestAndOverflow)
             message += std::to_string(i);
             message += "<END>";
             auto res = send(clientSockfd, message.c_str(), message.size(), 0);
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
             ASSERT_EQ(res, message.size());
             sendedMessages++;
             busyMessage++; // This message is sended but not processed
@@ -719,6 +713,35 @@ TEST_F(UnixStreamTest, taskQueueSizeTestAndOverflow)
 
     // Check the number of messages processed
     ASSERT_EQ(*(m_factory->m_processedMessages), sendedMessages - busyMessage);
+
+    // Read the response from the client
+    std::string response {};
+    response.reserve(expectedProcessedMessages.size());
+    attempts = 0;
+
+    while (response.length() < expectedProcessedMessages.size())
+    {
+        ASSERT_LT(attempts++, maxAttempts) << "Messages not received from client";
+        char buffer[1024] = {};
+        // Non-blocking read
+        ssize_t received = recv(clientSockfd, buffer, sizeof(buffer), MSG_DONTWAIT);
+        if (received == 0)
+        {
+            // Connection closed
+            FAIL() << "Connection closed";
+        }
+        if (received == -1)
+        {
+            // No data available
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            continue;
+        }
+        ASSERT_GT(received, 0);
+        response.append(buffer, received);
+    };
+
+    // Check the messages received by the client (the order is not guaranteed)
+    ASSERT_EQ(expectedProcessedMessages.length(), response.length()) << "Response not expected";
 
     server.close();
     stopHandler->send();
