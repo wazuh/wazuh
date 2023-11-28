@@ -1435,6 +1435,13 @@ class WazuhDBInMemoryBackend(AbstractDatabaseBackend):
             if value_type in (list, set):
                 value = item[key]
                 item.update({key: value.split(',')})
+
+            # if '_' in key:
+            #     # TODO: parse keys belonging to dictionaries recursively
+            #     # sample_nested_var=1 should be {"sample": {"nested": {"var": 1}}}
+            #     parts = key.split('_')
+            #     for part in parts:
+            #         item.update({part: {value}})
             
             if item[key] is None:
                 item.pop(key)
@@ -2064,14 +2071,7 @@ class WazuhInMemoryDBQuery(WazuhDBQuery):
         self.backend.migrate(query=insert_stmt, params=params)
 
     def _create_insert_fields_stmt(self) -> str:
-        stmt = ''
-        for i, (k) in enumerate(self.mapping.keys()):
-            if i != 0:
-                stmt += ','
-
-            stmt += k
-
-        return stmt
+        return ','.join(self.mapping.keys())
 
     def _create_insert_values_stmt(self, params: dict, item: _dict_type) -> str:
         stmt = ''
