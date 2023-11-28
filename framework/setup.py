@@ -21,7 +21,7 @@ class InstallCommand(install):
 
     def run(self):
         here = os.path.abspath(os.path.dirname(__file__))
-        with open(os.path.join(here, 'wazuh', 'core', 'wazuh.json'), 
+        with open(os.path.join(here, 'wazuh', 'core', 'wazuh.json'),
                   encoding='utf-8', mode='w') as file:
             json.dump({'install_type': 'server',
                        'wazuh_version': f'v{WAZUH_VERSION}',
