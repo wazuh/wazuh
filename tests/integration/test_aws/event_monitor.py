@@ -1,8 +1,8 @@
-"""
-Copyright (C) 2015-2023, Wazuh Inc.
-Created by Wazuh, Inc. <info@wazuh.com>.
-This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+# Copyright (C) 2015-2023, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+"""
 This module will contains all callback methods to monitor and event
 """
 
@@ -59,8 +59,9 @@ def callback_detect_aws_error_for_missing_type(line):
     Returns:
         Optional[str]: Line if it matches.
     """
-
-    if re.match(fr"{AWS_UNDEFINED_SERVICE_TYPE}", line):
+    if re.match(
+      fr"{AWS_UNDEFINED_SERVICE_TYPE}", line
+    ):
         return line
 
 
@@ -73,8 +74,9 @@ def callback_detect_aws_legacy_module_warning(line):
     Returns:
         Optional[str]: Line if it matches.
     """
-
-    if re.match(fr"{AWS_DEPRECATED_CONFIG_DEFINED}", line):
+    if re.match(
+            fr"{AWS_DEPRECATED_CONFIG_DEFINED}", line
+    ):
         return line
 
 
@@ -87,7 +89,6 @@ def callback_detect_aws_module_warning(line):
     Returns:
         Optional[str]: Line if it matches.
     """
-
     if re.match(
             fr"{AWS_NO_SERVICE_WARNING}", line
     ):
@@ -103,7 +104,6 @@ def callback_detect_aws_module_started(line):
     Returns:
         Optional[str]: Line if it matches.
     """
-
     if re.match(
             fr"{AWS_MODULE_STARTED}", line
     ):
@@ -173,7 +173,6 @@ def callback_detect_aws_module_start(line):
     Returns:
         Optional[str]: Line if it matches.
     """
-
     if re.match(
             fr"{MODULE_START}", line
     ):
@@ -189,8 +188,11 @@ def callback_detect_all_aws_err(line):
     Returns:
         Optional[str]: line if it matches.
     """
-    if (re.match(fr"{PARSER_ERROR}", line) or
-            re.match(fr"{MODULE_ERROR}", line)):
+    if (re.match(
+             fr"{PARSER_ERROR}", line) or
+        re.match(
+              fr"{MODULE_ERROR}", line)
+       ):
         return line
 
 

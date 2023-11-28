@@ -9,7 +9,7 @@ This module contains all necessary components (fixtures, classes, methods)to con
 import pytest
 from os.path import join
 
-# Qa-integration-framework imports
+# qa-integration-framework imports
 from wazuh_testing.logger import logger
 from wazuh_testing.constants.aws import (
     FAKE_CLOUDWATCH_LOG_GROUP,
@@ -77,6 +77,7 @@ def upload_and_delete_file_to_s3(metadata):
         metadata['uploaded_file'] = filename
 
     yield
+
     if file_exists(filename=filename, bucket_name=bucket_name):
         delete_file(filename=filename, bucket_name=bucket_name)
         logger.debug('Deleted file: %s from bucket %s', filename, bucket_name)
@@ -163,7 +164,7 @@ def fixture_delete_log_stream(metadata):
     log_stream = metadata['log_stream']
     delete_log_stream(log_stream=log_stream)
     logger.debug('Deleted log stream: %s', log_stream)
-
+    
 
 # DB fixtures
 @pytest.fixture
@@ -223,7 +224,7 @@ class TestConfigurator:
         # Set test cases path
         cases_path = join(self.test_cases_path, cases_file)
 
-        # Get test cases data
+        # set test cases data
         self.parameters, self.metadata, self.cases_ids = get_test_cases_data(cases_path)
 
         # Set test configuration template for tests with config files

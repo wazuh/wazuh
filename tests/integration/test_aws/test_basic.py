@@ -11,6 +11,7 @@ import pytest
 # qa-integration-framework imports
 from wazuh_testing import session_parameters
 
+
 # Local module imports
 from . import event_monitor
 from .utils import ERROR_MESSAGE
@@ -96,7 +97,7 @@ def test_bucket_defaults(
         timeout=session_parameters.default_timeout,
         callback=event_monitor.callback_detect_aws_module_start
     )
-
+    
     assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
 
     # Check command was called correctly
@@ -104,7 +105,7 @@ def test_bucket_defaults(
         timeout=session_parameters.default_timeout,
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
-
+    
     assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     # Detect any ERROR message
@@ -213,7 +214,7 @@ def test_service_defaults(
         timeout=session_parameters.default_timeout,
         callback=event_monitor.callback_detect_all_aws_err
     )
-
+    
     assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']
 
 
