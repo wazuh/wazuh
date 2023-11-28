@@ -30,6 +30,7 @@
 #   22 - Invalid region
 #   23 - Profile not found
 
+import configparser
 import signal
 import sys
 
@@ -57,7 +58,7 @@ from os import path
 import operator
 from datetime import datetime, timezone
 from time import mktime
-from typing import Callable
+from typing import Iterator, Optional, List
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import utils
