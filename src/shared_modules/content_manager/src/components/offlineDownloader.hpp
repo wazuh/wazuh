@@ -100,8 +100,7 @@ private:
         // Check input file existence.
         if (!std::filesystem::exists(unprefixedUrl))
         {
-            logWarn(
-                    WM_CONTENTUPDATER, "File '%s' doesn't exist. Skipping download.", inputFilePath.string().c_str());
+            logWarn(WM_CONTENTUPDATER, "File '%s' doesn't exist. Skipping download.", inputFilepath.string().c_str());
             return false;
         }
 
@@ -120,12 +119,12 @@ private:
     bool downloadFile(const std::filesystem::path& inputFileURL, const std::filesystem::path& outputFilepath) const
     {
         auto returnCode {true};
-        const auto onError {[&returnCode](const std::string& errorMessage, const long errorCode)
-                            {
-                                std::cout << "Error " << std::to_string(errorCode)
-                                          << " when downloading file: " << errorMessage << std::endl;
-                                returnCode = false;
-                            }};
+        const auto onError {
+            [&returnCode](const std::string& errorMessage, const long errorCode)
+            {
+                logWarn(WM_CONTENTUPDATER, "Error '%d' when downloading file: %s", errorCode, errorMessage);
+                returnCode = false;
+            }};
 
         // Download file from URL.
         m_urlRequest.download(HttpURL(inputFileURL), outputFilepath, onError);
