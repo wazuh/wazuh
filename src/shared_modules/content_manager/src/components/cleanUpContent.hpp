@@ -16,7 +16,6 @@
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
 #include <filesystem>
-#include <iostream>
 #include <memory>
 
 /**

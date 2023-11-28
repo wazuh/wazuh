@@ -17,7 +17,6 @@
 #include "components/updaterContext.hpp"
 #include "routerProvider.hpp"
 #include "utils/rocksDBWrapper.hpp"
-#include <iostream>
 #include <memory>
 
 /**

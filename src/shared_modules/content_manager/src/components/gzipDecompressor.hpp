@@ -19,7 +19,6 @@
 #include "utils/stringHelper.h"
 #include "utils/zlibHelper.hpp"
 #include <filesystem>
-#include <iostream>
 #include <memory>
 #include <string>
 #include <utility>

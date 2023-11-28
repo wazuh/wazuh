@@ -18,7 +18,6 @@
 #include "utils/chainOfResponsability.hpp"
 #include "utils/zlibHelper.hpp"
 #include <filesystem>
-#include <iostream>
 #include <iterator>
 #include <memory>
 #include <string>

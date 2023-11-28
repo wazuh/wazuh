@@ -15,7 +15,6 @@
 #include "IURLRequest.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
-#include <iostream>
 #include <memory>
 
 /**

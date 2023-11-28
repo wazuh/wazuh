@@ -17,7 +17,6 @@
 #include "utils/chainOfResponsability.hpp"
 #include "utils/stringHelper.h"
 #include "utils/xzHelper.hpp"
-#include <iostream>
 #include <memory>
 
 /**
