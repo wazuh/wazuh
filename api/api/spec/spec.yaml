@@ -4378,7 +4378,7 @@ components:
                   format: int32
         uuid:
           type: string
-          description: "Identificator of the Wazuh instance"
+          description: "Identifier of the Wazuh instance"
 
     # Rules models
     RuleFile:
