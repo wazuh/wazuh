@@ -17,6 +17,7 @@ class Environment
 private:
     base::Expression m_filter;                     ///< Filter of the route
     std::shared_ptr<bk::IController> m_controller; ///< Controller of the policy
+    std::string m_hash;                            ///< Hash of the current policy (controller)
 
     /**
      * @brief Stop the controller
@@ -38,9 +39,10 @@ public:
      * @param filter of the route
      * @param controller of the policy
      */
-    Environment(base::Expression&& filter, std::shared_ptr<bk::IController>&& controller)
+    Environment(base::Expression&& filter, std::shared_ptr<bk::IController>&& controller, std::string&& hash)
         : m_filter {filter}
         , m_controller {controller}
+        , m_hash {hash}
     {
         if (!m_controller)
         {
@@ -92,6 +94,12 @@ public:
         }
         m_controller = std::move(controller);
     }
+
+    /**
+     * @brief Get hash of the current policy (controller)
+     * 
+     */
+    const std::string& hash() const { return m_hash; }
 
 };
 } // namespace router

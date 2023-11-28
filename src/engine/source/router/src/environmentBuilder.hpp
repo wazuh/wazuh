@@ -1,6 +1,10 @@
 #ifndef _ROUTER_ENVIRONMENT_BUILD_HPP
 #define _ROUTER_ENVIRONMENT_BUILD_HPP
 
+#include <memory>
+#include <unordered_set>
+#include <utility>
+
 #include <bk/icontroller.hpp>
 
 #include "environment.hpp"
@@ -72,7 +76,7 @@ public:
      * @return std::shared_ptr<bk::IController> The constructed controller.
      * @throws std::runtime_error if the policy has no assets or if the backend cannot be built. // TODO Move to base::Error
      */
-    std::shared_ptr<bk::IController> makeController(const base::Name& policyName)
+    auto makeController(const base::Name& policyName) -> std::pair<std::shared_ptr<bk::IController>, std::string>
     {
         if (policyName.parts().size() == 0 || policyName.parts()[0] != "policy")
         {
@@ -100,7 +104,7 @@ public:
 
         auto controller = m_controllerMaker->create();
         controller->build(policy->expression(), assetNames);
-        return controller;
+        return {controller, policy->hash()};
     }
 
     /**
@@ -116,9 +120,10 @@ public:
         std::shared_ptr<bk::IController> controller = nullptr;
         try
         {
-            controller = makeController(policyName);
+            std::string hash {};
+            std::tie(controller, hash) = makeController(policyName);
             auto expression = getExpression(filterName);
-            return std::make_unique<Environment>(std::move(expression), std::move(controller));
+            return std::make_unique<Environment>(std::move(expression), std::move(controller), std::move(hash));
         }
         catch (const std::runtime_error& e)
         {

@@ -28,7 +28,7 @@ private:
     class RuntimeEntry : public test::Entry
     {
     private:
-        std::shared_ptr<bk::IController> m_controller;
+        std::shared_ptr<bk::IController> m_controller;    ///< Controller of the policy to be tested.
 
     public:
         explicit RuntimeEntry(const test::EntryPost& entry)
@@ -60,8 +60,6 @@ private:
             }
             return *this;
         }
-
-        void setController(std::shared_ptr<bk::IController> controller) { m_controller = std::move(controller); }
 
         const std::shared_ptr<bk::IController>& controller() const { return m_controller; }
         std::shared_ptr<bk::IController>& controller() { return m_controller; }
@@ -135,6 +133,14 @@ public:
      * @return base::RespOrError<std::unordered_set<std::string>> The assets of the policy.
      */
     base::RespOrError<std::unordered_set<std::string>> getAssets(const std::string& name) const;
+
+    /**
+     * @brief Update the last time the entry was used.
+     * @param name The name of the entry.
+     * @return false if the entry does not exist.
+     */
+    bool updateLastUsed(const std::string& name);
+
 };
 } // namespace router
 

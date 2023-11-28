@@ -17,15 +17,14 @@ enum Sync
     SYNC_UNKNOWN = 0; ///< Unset state
     UPDATED = 1;      ///< Policy is updated
     OUTDATED = 2;     ///< Policy is outdated respect to the store
-    DELETED = 3;      ///< Policy is deleted not exist in the store
-    ERROR = 4;        ///< Error, can't get the policy status
+    ERROR = 3;        ///< Error, can't get the policy status
 }
 
 message SessionPost
 {
     string name = 1;                 // Name of the session
     string policy = 2;               // Policy associated to the session
-    uint64 lifetime = 3;             // Lifetime of the session
+    uint32 lifetime = 3;             // Lifetime of the session
     optional string description = 4; // Optional description of the session
 }
 
@@ -33,12 +32,12 @@ message Session
 {
     string name = 1;                 // Name of the session
     string policy = 2;               // Policy associated to the session
-    uint64 lifetime = 3;             // Lifetime of the session
+    uint32 lifetime = 3;             // Lifetime of the session
     optional string description = 4; // Optional description of the session
 
     Sync policy_sync = 6;   // Status of the policy [updated|updated|error]
     State entry_status = 7; // Status of the session [INACTIVE|ACTIVE]
-    uint64 last_use = 8;    // Last use of the session
+    uint32 last_use = 8;    // Last use of the session
 }
 
 /***************************************************

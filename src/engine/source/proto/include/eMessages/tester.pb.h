@@ -372,13 +372,13 @@ class SessionPost final :
   std::string* _internal_mutable_description();
   public:
 
-  // uint64 lifetime = 3;
+  // uint32 lifetime = 3;
   void clear_lifetime();
-  uint64_t lifetime() const;
-  void set_lifetime(uint64_t value);
+  uint32_t lifetime() const;
+  void set_lifetime(uint32_t value);
   private:
-  uint64_t _internal_lifetime() const;
-  void _internal_set_lifetime(uint64_t value);
+  uint32_t _internal_lifetime() const;
+  void _internal_set_lifetime(uint32_t value);
   public:
 
   // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.tester.SessionPost)
@@ -394,7 +394,7 @@ class SessionPost final :
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr policy_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr description_;
-    uint64_t lifetime_;
+    uint32_t lifetime_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_tester_2eproto;
@@ -576,13 +576,13 @@ class Session final :
   std::string* _internal_mutable_description();
   public:
 
-  // uint64 lifetime = 3;
+  // uint32 lifetime = 3;
   void clear_lifetime();
-  uint64_t lifetime() const;
-  void set_lifetime(uint64_t value);
+  uint32_t lifetime() const;
+  void set_lifetime(uint32_t value);
   private:
-  uint64_t _internal_lifetime() const;
-  void _internal_set_lifetime(uint64_t value);
+  uint32_t _internal_lifetime() const;
+  void _internal_set_lifetime(uint32_t value);
   public:
 
   // .com.wazuh.api.engine.tester.Sync policy_sync = 6;
@@ -603,13 +603,13 @@ class Session final :
   void _internal_set_entry_status(::com::wazuh::api::engine::tester::State value);
   public:
 
-  // uint64 last_use = 8;
+  // uint32 last_use = 8;
   void clear_last_use();
-  uint64_t last_use() const;
-  void set_last_use(uint64_t value);
+  uint32_t last_use() const;
+  void set_last_use(uint32_t value);
   private:
-  uint64_t _internal_last_use() const;
-  void _internal_set_last_use(uint64_t value);
+  uint32_t _internal_last_use() const;
+  void _internal_set_last_use(uint32_t value);
   public:
 
   // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.tester.Session)
@@ -625,10 +625,10 @@ class Session final :
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr policy_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr description_;
-    uint64_t lifetime_;
+    uint32_t lifetime_;
     int policy_sync_;
     int entry_status_;
-    uint64_t last_use_;
+    uint32_t last_use_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_tester_2eproto;
@@ -2679,22 +2679,22 @@ inline void SessionPost::set_allocated_policy(std::string* policy) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.SessionPost.policy)
 }
 
-// uint64 lifetime = 3;
+// uint32 lifetime = 3;
 inline void SessionPost::clear_lifetime() {
-  _impl_.lifetime_ = uint64_t{0u};
+  _impl_.lifetime_ = 0u;
 }
-inline uint64_t SessionPost::_internal_lifetime() const {
+inline uint32_t SessionPost::_internal_lifetime() const {
   return _impl_.lifetime_;
 }
-inline uint64_t SessionPost::lifetime() const {
+inline uint32_t SessionPost::lifetime() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.SessionPost.lifetime)
   return _internal_lifetime();
 }
-inline void SessionPost::_internal_set_lifetime(uint64_t value) {
+inline void SessionPost::_internal_set_lifetime(uint32_t value) {
   
   _impl_.lifetime_ = value;
 }
-inline void SessionPost::set_lifetime(uint64_t value) {
+inline void SessionPost::set_lifetime(uint32_t value) {
   _internal_set_lifetime(value);
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.SessionPost.lifetime)
 }
@@ -2871,22 +2871,22 @@ inline void Session::set_allocated_policy(std::string* policy) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.Session.policy)
 }
 
-// uint64 lifetime = 3;
+// uint32 lifetime = 3;
 inline void Session::clear_lifetime() {
-  _impl_.lifetime_ = uint64_t{0u};
+  _impl_.lifetime_ = 0u;
 }
-inline uint64_t Session::_internal_lifetime() const {
+inline uint32_t Session::_internal_lifetime() const {
   return _impl_.lifetime_;
 }
-inline uint64_t Session::lifetime() const {
+inline uint32_t Session::lifetime() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.Session.lifetime)
   return _internal_lifetime();
 }
-inline void Session::_internal_set_lifetime(uint64_t value) {
+inline void Session::_internal_set_lifetime(uint32_t value) {
   
   _impl_.lifetime_ = value;
 }
-inline void Session::set_lifetime(uint64_t value) {
+inline void Session::set_lifetime(uint32_t value) {
   _internal_set_lifetime(value);
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.Session.lifetime)
 }
@@ -2999,22 +2999,22 @@ inline void Session::set_entry_status(::com::wazuh::api::engine::tester::State v
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.Session.entry_status)
 }
 
-// uint64 last_use = 8;
+// uint32 last_use = 8;
 inline void Session::clear_last_use() {
-  _impl_.last_use_ = uint64_t{0u};
+  _impl_.last_use_ = 0u;
 }
-inline uint64_t Session::_internal_last_use() const {
+inline uint32_t Session::_internal_last_use() const {
   return _impl_.last_use_;
 }
-inline uint64_t Session::last_use() const {
+inline uint32_t Session::last_use() const {
   // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.Session.last_use)
   return _internal_last_use();
 }
-inline void Session::_internal_set_last_use(uint64_t value) {
+inline void Session::_internal_set_last_use(uint32_t value) {
   
   _impl_.last_use_ = value;
 }
-inline void Session::set_last_use(uint64_t value) {
+inline void Session::set_last_use(uint32_t value) {
   _internal_set_last_use(value);
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.Session.last_use)
 }

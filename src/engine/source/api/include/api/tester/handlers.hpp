@@ -2,6 +2,7 @@
 #define _API_TESTER_HANDLERS_HPP
 
 #include <api/api.hpp>
+#include <api/policy/ipolicy.hpp>
 #include <router/iapi.hpp>
 #include <store/istore.hpp>
 
@@ -10,10 +11,12 @@ namespace api::tester::handlers
 // Session
 api::Handler sessionPost(const std::weak_ptr<::router::ITesterAPI>& tester);
 api::Handler sessionDelete(const std::weak_ptr<::router::ITesterAPI>& tester);
-api::Handler sessionGet(const std::weak_ptr<::router::ITesterAPI>& tester);
+api::Handler sessionGet(const std::weak_ptr<::router::ITesterAPI>& tester,
+                        const std::weak_ptr<api::policy::IPolicy>& policy);
 api::Handler sessionReload(const std::weak_ptr<::router::ITesterAPI>& tester);
 // Table of sessions
-api::Handler tableGet(const std::weak_ptr<::router::ITesterAPI>& tester);
+api::Handler tableGet(const std::weak_ptr<::router::ITesterAPI>& tester,
+                      const std::weak_ptr<api::policy::IPolicy>& policy);
 // Use of session
 api::Handler runPost(const std::weak_ptr<::router::ITesterAPI>& tester,
                      const std::weak_ptr<store::IStoreReader>& store);
@@ -27,6 +30,7 @@ api::Handler runPost(const std::weak_ptr<::router::ITesterAPI>& tester,
  */
 void registerHandlers(const std::weak_ptr<::router::ITesterAPI>& tester,
                       const std::weak_ptr<store::IStoreReader>& store,
+                      const std::weak_ptr<api::policy::IPolicy>& policy,
                       std::shared_ptr<api::Api> api);
 } // namespace api::tester::handlers
 
