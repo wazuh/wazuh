@@ -3,31 +3,6 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.9.0]
 
-### Manager
-
-#### Added
-
-- The manager now supports alert forwarding to Fluentd. ([#17306](https://github.com/wazuh/wazuh/pull/17306))
-
-### Agent
-
-#### Changed
-
-- The directory /boot has been removed from the default FIM settings for AIX. #19753
-
-### Ruleset
-
-#### Changed
-
-- The solved vulnerability rule has been clarified. ([#19754](https://github.com/wazuh/wazuh/pull/19754))
-
-### Other
-
-#### Fixed
-
-- Fixed a buffer overflow hazard in HMAC internal library. ([#19794](https://github.com/wazuh/wazuh/pull/19794))
-
-
 ## [v4.8.0]
 
 ### Manager
