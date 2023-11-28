@@ -25,7 +25,8 @@ base::OptError Router::addEntry(const prod::EntryPost& entryPost)
     try
     {
         auto uniqueEnv = m_envBuilder->create(entry.policy(), entry.filter());
-        entry.setEnvironment(std::move(uniqueEnv));
+        entry.hash(uniqueEnv->hash());
+        entry.environment() = std::move(uniqueEnv);
         entry.status(env::State::DISABLED); // It is disabled until all routes are ready
         entry.lastUpdate(getStartTime());
     }
@@ -74,8 +75,9 @@ base::OptError Router::rebuildEntry(const std::string& name)
     try
     {
         auto uniqueEnv = m_envBuilder->create(entry.policy(), entry.filter());
-        entry.setEnvironment(std::move(uniqueEnv));
+        entry.environment() = std::move(uniqueEnv);
         entry.lastUpdate(getStartTime());
+        entry.hash(entry.environment()->hash());
         // Mantaing the status of the environment
     }
     catch (const std::exception& e)

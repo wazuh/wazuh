@@ -21,7 +21,7 @@
 #include <api/router/handlers.hpp>
 #include <api/tester/handlers.hpp>
 #include <bk/rx/controller.hpp>
-//#include <bk/taskf/controller.hpp>
+// #include <bk/taskf/controller.hpp>
 #include <builder/builder.hpp>
 #include <builder/register.hpp>
 #include <cmds/details/stackExecutor.hpp>
@@ -207,7 +207,7 @@ void runStart(ConfHandler confManager)
     std::shared_ptr<sockiface::UnixSocketFactory> sockFactory;
     std::shared_ptr<wazuhdb::WDBManager> wdbManager;
     std::shared_ptr<rbac::RBAC> rbac;
-    std::shared_ptr<api::policy::Policy> policyManager;
+    std::shared_ptr<api::policy::IPolicy> policyManager;
 
     try
     {
@@ -306,6 +306,12 @@ void runStart(ConfHandler confManager)
             LOG_INFO("Catalog initialized.");
         }
 
+        // Policy manager
+        {
+            policyManager = std::make_shared<api::policy::Policy>(store, builder);
+            LOG_INFO("Policy manager initialized.");
+        }
+
         // Router
         {
             // External queues
@@ -376,14 +382,13 @@ void runStart(ConfHandler confManager)
 
             // Policy
             {
-                policyManager = std::make_shared<api::policy::Policy>(store, builder);
                 api::policy::handlers::registerHandlers(policyManager, api);
                 exitHandler.add([]() { LOG_DEBUG("Policy API terminated."); });
                 LOG_DEBUG("Policy API registered.");
             }
 
             // Router
-            api::router::handlers::registerHandlers(orchestrator, api);
+            api::router::handlers::registerHandlers(orchestrator, policyManager, api);
             LOG_DEBUG("Router API registered.");
 
             // Graph
@@ -394,12 +399,9 @@ void runStart(ConfHandler confManager)
                 LOG_DEBUG("Graph API registered.");
             }
 
-
             // Tester
-            {
-                api::tester::handlers::registerHandlers(orchestrator, store, api);
-                LOG_DEBUG("Tester API registered.");
-            }
+            api::tester::handlers::registerHandlers(orchestrator, store, policyManager, api);
+            LOG_DEBUG("Tester API registered.");
         }
 
         // Server

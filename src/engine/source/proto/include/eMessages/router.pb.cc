@@ -53,8 +53,8 @@ PROTOBUF_CONSTEXPR Entry::Entry(
   , /*decltype(_impl_.description_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.priority_)*/0u
   , /*decltype(_impl_.policy_sync_)*/0
-  , /*decltype(_impl_.last_update_)*/uint64_t{0u}
-  , /*decltype(_impl_.entry_status_)*/0} {}
+  , /*decltype(_impl_.entry_status_)*/0
+  , /*decltype(_impl_.uptime_)*/0u} {}
 struct EntryDefaultTypeInternal {
   PROTOBUF_CONSTEXPR EntryDefaultTypeInternal()
       : _instance(::_pbi::ConstantInitialized{}) {}
@@ -226,7 +226,7 @@ const uint32_t TableStruct_router_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::Entry, _impl_.description_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::Entry, _impl_.policy_sync_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::Entry, _impl_.entry_status_),
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::Entry, _impl_.last_update_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::Entry, _impl_.uptime_),
   ~0u,
   ~0u,
   ~0u,
@@ -343,40 +343,40 @@ const char descriptor_table_protodef_router_2eproto[] PROTOBUF_SECTION_VARIABLE(
   "ter\032\014engine.proto\"u\n\tEntryPost\022\014\n\004name\030\001"
   " \001(\t\022\016\n\006policy\030\002 \001(\t\022\016\n\006filter\030\003 \001(\t\022\020\n\010"
   "priority\030\004 \001(\r\022\030\n\013description\030\005 \001(\tH\000\210\001\001"
-  "B\016\n\014_description\"\370\001\n\005Entry\022\014\n\004name\030\001 \001(\t"
+  "B\016\n\014_description\"\363\001\n\005Entry\022\014\n\004name\030\001 \001(\t"
   "\022\016\n\006policy\030\002 \001(\t\022\016\n\006filter\030\003 \001(\t\022\020\n\010prio"
   "rity\030\004 \001(\r\022\030\n\013description\030\005 \001(\tH\000\210\001\001\0226\n\013"
   "policy_sync\030\006 \001(\0162!.com.wazuh.api.engine"
   ".router.Sync\0228\n\014entry_status\030\007 \001(\0162\".com"
-  ".wazuh.api.engine.router.State\022\023\n\013last_u"
-  "pdate\030\010 \001(\004B\016\n\014_description\"Y\n\021RoutePost"
-  "_Request\022:\n\005route\030\001 \001(\0132&.com.wazuh.api."
-  "engine.router.EntryPostH\000\210\001\001B\010\n\006_route\"#"
-  "\n\023RouteDelete_Request\022\014\n\004name\030\001 \001(\t\" \n\020R"
-  "outeGet_Request\022\014\n\004name\030\001 \001(\t\"\247\001\n\021RouteG"
-  "et_Response\0222\n\006status\030\001 \001(\0162\".com.wazuh."
-  "api.engine.ReturnStatus\022\022\n\005error\030\002 \001(\tH\000"
-  "\210\001\001\0226\n\005route\030\003 \001(\0132\".com.wazuh.api.engin"
-  "e.router.EntryH\001\210\001\001B\010\n\006_errorB\010\n\006_route\""
-  "#\n\023RouteReload_Request\022\014\n\004name\030\001 \001(\t\"<\n\032"
-  "RoutePatchPriority_Request\022\014\n\004name\030\001 \001(\t"
-  "\022\020\n\010priority\030\002 \001(\r\"\022\n\020TableGet_Request\"\230"
-  "\001\n\021TableGet_Response\0222\n\006status\030\001 \001(\0162\".c"
-  "om.wazuh.api.engine.ReturnStatus\022\022\n\005erro"
-  "r\030\002 \001(\tH\000\210\001\001\0221\n\005table\030\003 \003(\0132\".com.wazuh."
-  "api.engine.router.EntryB\010\n\006_error\"5\n\021Que"
-  "uePost_Request\022\023\n\013wazuh_event\030\001 \001(\tJ\004\010\002\020"
-  "\003R\005event*5\n\005State\022\021\n\rSTATE_UNKNOWN\020\000\022\014\n\010"
-  "DISABLED\020\001\022\013\n\007ENABLED\020\002*K\n\004Sync\022\020\n\014SYNC_"
-  "UNKNOWN\020\000\022\013\n\007UPDATED\020\001\022\014\n\010OUTDATED\020\002\022\013\n\007"
-  "DELETED\020\003\022\t\n\005ERROR\020\004b\006proto3"
+  ".wazuh.api.engine.router.State\022\016\n\006uptime"
+  "\030\010 \001(\rB\016\n\014_description\"Y\n\021RoutePost_Requ"
+  "est\022:\n\005route\030\001 \001(\0132&.com.wazuh.api.engin"
+  "e.router.EntryPostH\000\210\001\001B\010\n\006_route\"#\n\023Rou"
+  "teDelete_Request\022\014\n\004name\030\001 \001(\t\" \n\020RouteG"
+  "et_Request\022\014\n\004name\030\001 \001(\t\"\247\001\n\021RouteGet_Re"
+  "sponse\0222\n\006status\030\001 \001(\0162\".com.wazuh.api.e"
+  "ngine.ReturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\0226"
+  "\n\005route\030\003 \001(\0132\".com.wazuh.api.engine.rou"
+  "ter.EntryH\001\210\001\001B\010\n\006_errorB\010\n\006_route\"#\n\023Ro"
+  "uteReload_Request\022\014\n\004name\030\001 \001(\t\"<\n\032Route"
+  "PatchPriority_Request\022\014\n\004name\030\001 \001(\t\022\020\n\010p"
+  "riority\030\002 \001(\r\"\022\n\020TableGet_Request\"\230\001\n\021Ta"
+  "bleGet_Response\0222\n\006status\030\001 \001(\0162\".com.wa"
+  "zuh.api.engine.ReturnStatus\022\022\n\005error\030\002 \001"
+  "(\tH\000\210\001\001\0221\n\005table\030\003 \003(\0132\".com.wazuh.api.e"
+  "ngine.router.EntryB\010\n\006_error\"5\n\021QueuePos"
+  "t_Request\022\023\n\013wazuh_event\030\001 \001(\tJ\004\010\002\020\003R\005ev"
+  "ent*5\n\005State\022\021\n\rSTATE_UNKNOWN\020\000\022\014\n\010DISAB"
+  "LED\020\001\022\013\n\007ENABLED\020\002*>\n\004Sync\022\020\n\014SYNC_UNKNO"
+  "WN\020\000\022\013\n\007UPDATED\020\001\022\014\n\010OUTDATED\020\002\022\t\n\005ERROR"
+  "\020\003b\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_router_2eproto_deps[1] = {
   &::descriptor_table_engine_2eproto,
 };
 static ::_pbi::once_flag descriptor_table_router_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_router_2eproto = {
-    false, false, 1228, descriptor_table_protodef_router_2eproto,
+    false, false, 1210, descriptor_table_protodef_router_2eproto,
     "router.proto",
     &descriptor_table_router_2eproto_once, descriptor_table_router_2eproto_deps, 1, 11,
     schemas, file_default_instances, TableStruct_router_2eproto::offsets,
@@ -419,7 +419,6 @@ bool Sync_IsValid(int value) {
     case 1:
     case 2:
     case 3:
-    case 4:
       return true;
     default:
       return false;
@@ -849,8 +848,8 @@ Entry::Entry(const Entry& from)
     , decltype(_impl_.description_){}
     , decltype(_impl_.priority_){}
     , decltype(_impl_.policy_sync_){}
-    , decltype(_impl_.last_update_){}
-    , decltype(_impl_.entry_status_){}};
+    , decltype(_impl_.entry_status_){}
+    , decltype(_impl_.uptime_){}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   _impl_.name_.InitDefault();
@@ -886,8 +885,8 @@ Entry::Entry(const Entry& from)
       _this->GetArenaForAllocation());
   }
   ::memcpy(&_impl_.priority_, &from._impl_.priority_,
-    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.entry_status_) -
-    reinterpret_cast<char*>(&_impl_.priority_)) + sizeof(_impl_.entry_status_));
+    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.uptime_) -
+    reinterpret_cast<char*>(&_impl_.priority_)) + sizeof(_impl_.uptime_));
   // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.router.Entry)
 }
 
@@ -904,8 +903,8 @@ inline void Entry::SharedCtor(
     , decltype(_impl_.description_){}
     , decltype(_impl_.priority_){0u}
     , decltype(_impl_.policy_sync_){0}
-    , decltype(_impl_.last_update_){uint64_t{0u}}
     , decltype(_impl_.entry_status_){0}
+    , decltype(_impl_.uptime_){0u}
   };
   _impl_.name_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -960,8 +959,8 @@ void Entry::Clear() {
     _impl_.description_.ClearNonDefaultToEmpty();
   }
   ::memset(&_impl_.priority_, 0, static_cast<size_t>(
-      reinterpret_cast<char*>(&_impl_.entry_status_) -
-      reinterpret_cast<char*>(&_impl_.priority_)) + sizeof(_impl_.entry_status_));
+      reinterpret_cast<char*>(&_impl_.uptime_) -
+      reinterpret_cast<char*>(&_impl_.priority_)) + sizeof(_impl_.uptime_));
   _impl_._has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
@@ -1039,10 +1038,10 @@ const char* Entry::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
         } else
           goto handle_unusual;
         continue;
-      // uint64 last_update = 8;
+      // uint32 uptime = 8;
       case 8:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 64)) {
-          _impl_.last_update_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          _impl_.uptime_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
           CHK_(ptr);
         } else
           goto handle_unusual;
@@ -1137,10 +1136,10 @@ uint8_t* Entry::_InternalSerialize(
       7, this->_internal_entry_status(), target);
   }
 
-  // uint64 last_update = 8;
-  if (this->_internal_last_update() != 0) {
+  // uint32 uptime = 8;
+  if (this->_internal_uptime() != 0) {
     target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(8, this->_internal_last_update(), target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(8, this->_internal_uptime(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -1199,15 +1198,15 @@ size_t Entry::ByteSizeLong() const {
       ::_pbi::WireFormatLite::EnumSize(this->_internal_policy_sync());
   }
 
-  // uint64 last_update = 8;
-  if (this->_internal_last_update() != 0) {
-    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_last_update());
-  }
-
   // .com.wazuh.api.engine.router.State entry_status = 7;
   if (this->_internal_entry_status() != 0) {
     total_size += 1 +
       ::_pbi::WireFormatLite::EnumSize(this->_internal_entry_status());
+  }
+
+  // uint32 uptime = 8;
+  if (this->_internal_uptime() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_uptime());
   }
 
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
@@ -1246,11 +1245,11 @@ void Entry::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF
   if (from._internal_policy_sync() != 0) {
     _this->_internal_set_policy_sync(from._internal_policy_sync());
   }
-  if (from._internal_last_update() != 0) {
-    _this->_internal_set_last_update(from._internal_last_update());
-  }
   if (from._internal_entry_status() != 0) {
     _this->_internal_set_entry_status(from._internal_entry_status());
+  }
+  if (from._internal_uptime() != 0) {
+    _this->_internal_set_uptime(from._internal_uptime());
   }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
@@ -1289,8 +1288,8 @@ void Entry::InternalSwap(Entry* other) {
       &other->_impl_.description_, rhs_arena
   );
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
-      PROTOBUF_FIELD_OFFSET(Entry, _impl_.entry_status_)
-      + sizeof(Entry::_impl_.entry_status_)
+      PROTOBUF_FIELD_OFFSET(Entry, _impl_.uptime_)
+      + sizeof(Entry::_impl_.uptime_)
       - PROTOBUF_FIELD_OFFSET(Entry, _impl_.priority_)>(
           reinterpret_cast<char*>(&_impl_.priority_),
           reinterpret_cast<char*>(&other->_impl_.priority_));

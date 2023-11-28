@@ -40,7 +40,7 @@ struct Config
     std::shared_ptr<ProdQueueType> m_prodQueue; ///< The event queue
     std::shared_ptr<TestQueueType> m_testQueue; ///< The test queue
 
-    std::size_t m_testTimeout; ///< Timeout for the tests
+    int m_testTimeout; ///< Timeout for the tests
 };
 
 // Change name to syncronizer

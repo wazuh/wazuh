@@ -51,26 +51,48 @@ getRequest(const api::wpRequest& wRequest, const std::weak_ptr<::router::ITester
     return std::make_pair(tester, std::get<RequestType>(res));
 }
 
+eTester::Sync getHashSatus(const ::router::test::Entry& entry, const std::weak_ptr<api::policy::IPolicy>& wPolicyManager)
+{
+    auto policyManager = wPolicyManager.lock();
+    if (!policyManager)
+    {
+        return eTester::Sync::SYNC_UNKNOWN;
+    }
+
+    auto resPolicy = policyManager->getHash(entry.policy());
+    if (base::isError(resPolicy))
+    {
+        return eTester::Sync::ERROR;
+    }
+
+    return base::getResponse(resPolicy) == entry.hash() ? eTester::Sync::UPDATED : eTester::Sync::OUTDATED;
+}
+
+
 /**
  * @brief Transform a router::test::Entry to a eTester::Session
  *
  * @param entry Entry to transform
  * @return eTester::Session
  */
-eTester::Session toSession(const ::router::test::Entry& entry)
+eTester::Session toSession(const ::router::test::Entry& entry, const std::weak_ptr<api::policy::IPolicy>& wPolicyManager)
 {
     eTester::Session session;
     session.set_name(entry.name());
     session.set_policy(entry.policy().fullName());
-    session.set_lifetime(entry.lifetime());
+    session.set_lifetime(static_cast<uint32_t>(entry.lifetime()));
     if (entry.description().has_value())
     {
         session.mutable_description()->assign(entry.description().value());
     }
-    // TODO: set the status and sync
-    session.set_policy_sync(eTester::Sync::SYNC_UNKNOWN);
-    session.set_entry_status(eTester::State::STATE_UNKNOWN);
-    session.set_last_use(entry.lastUse());
+
+    eTester::State state = ::router::env::State::ENABLED == entry.status()    ? eTester::State::ENABLED
+                           : ::router::env::State::DISABLED == entry.status() ? eTester::State::DISABLED
+                                                                              : eTester::State::STATE_UNKNOWN;
+
+    session.set_policy_sync(getHashSatus(entry, wPolicyManager));
+    session.set_entry_status(state);
+    session.set_last_use(static_cast<uint32_t>(entry.lastUse()));
     return session;
 }
 
@@ -244,9 +266,9 @@ api::Handler sessionDelete(const std::weak_ptr<::router::ITesterAPI>& tester)
     };
 }
 
-api::Handler sessionGet(const std::weak_ptr<::router::ITesterAPI>& tester)
+api::Handler sessionGet(const std::weak_ptr<::router::ITesterAPI>& tester, const std::weak_ptr<api::policy::IPolicy>& policy)
 {
-    return [wTester = tester](const api::wpRequest& wRequest) -> api::wpResponse
+    return [wTester = tester, wPolicyManager = policy](const api::wpRequest& wRequest) -> api::wpResponse
     {
         using RequestType = eTester::SessionGet_Request;
         using ResponseType = eTester::SessionGet_Response;
@@ -268,7 +290,7 @@ api::Handler sessionGet(const std::weak_ptr<::router::ITesterAPI>& tester)
 
         // Create the response
         ResponseType eResponse;
-        eResponse.mutable_session()->CopyFrom(toSession(base::getResponse(entry)));
+        eResponse.mutable_session()->CopyFrom(toSession(base::getResponse(entry), wPolicyManager));
         eResponse.set_status(eEngine::ReturnStatus::OK);
         return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
     };
@@ -299,9 +321,9 @@ api::Handler sessionReload(const std::weak_ptr<::router::ITesterAPI>& tester)
     };
 }
 
-api::Handler tableGet(const std::weak_ptr<::router::ITesterAPI>& tester)
+api::Handler tableGet(const std::weak_ptr<::router::ITesterAPI>& tester, const std::weak_ptr<api::policy::IPolicy>& policy)
 {
-    return [wTester = tester](const api::wpRequest& wRequest) -> api::wpResponse
+    return [wTester = tester, wPolicyManager = policy](const api::wpRequest& wRequest) -> api::wpResponse
     {
         using RequestType = eTester::TableGet_Request;
         using ResponseType = eTester::TableGet_Response;
@@ -321,7 +343,7 @@ api::Handler tableGet(const std::weak_ptr<::router::ITesterAPI>& tester)
         ResponseType eResponse;
         for (const auto& entry : entries)
         {
-            eResponse.add_sessions()->CopyFrom(toSession(entry));
+            eResponse.add_sessions()->CopyFrom(toSession(entry, wPolicyManager));
         }
         eResponse.set_status(eEngine::ReturnStatus::OK);
         return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
@@ -432,13 +454,14 @@ api::Handler runPost(const std::weak_ptr<::router::ITesterAPI>& tester, const st
 
 void registerHandlers(const std::weak_ptr<::router::ITesterAPI>& tester,
                       const std::weak_ptr<store::IStoreReader>& store,
+                      const std::weak_ptr<api::policy::IPolicy>& policy,
                       std::shared_ptr<api::Api> api)
 {
     if (!(api->registerHandler("tester.session/post", sessionPost(tester))
           && api->registerHandler("tester.session/delete", sessionDelete(tester))
-          && api->registerHandler("tester.session/get", sessionGet(tester))
+          && api->registerHandler("tester.session/get", sessionGet(tester, policy))
           && api->registerHandler("tester.session/reload", sessionReload(tester))
-          && api->registerHandler("tester.table/get", tableGet(tester))
+          && api->registerHandler("tester.table/get", tableGet(tester, policy))
           // && api->registerHandler("tester.table/delete", tableDelete(tester))
           && api->registerHandler("tester.run/post", runPost(tester, store))))
     {
