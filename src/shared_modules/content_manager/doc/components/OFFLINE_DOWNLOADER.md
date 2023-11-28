@@ -2,22 +2,20 @@
 
 ## Details
 
-The [offline downloader](../../src/components/offlineDownloader.hpp) stage is part of the Content Manager orchestration and is in charge of copying an input file from the local filesystem to be processed by the following stages. The input file hash is calculated and stored in order to avoid processing the same file multiple times in the next orchestration executions.
+The [offline downloader](../../src/components/offlineDownloader.hpp) stage is part of the Content Manager orchestration and is in charge of downloading a file in offline mode by whether copying a file from the local filesystem or downloading it from an HTTP server (the stage will deduce which approach to use depending on the URL prefix). The input file hash is calculated and stored in order to avoid processing the same file multiple times in the next orchestration executions.
 
-The copy will be made into any of the following output directories:
+The download will be made into any of the following output directories:
 - Downloads folder: If the input file is compressed.
 - Contents folder: If the input file is not compressed.
 
-If the copy is successful, this stage also updates the context [data paths](../../src/components/updaterContext.hpp) field with the destination path of the copied file. If the input file doesn't exist, no paths will be appended.
-
-> Note: Despite the class name, there is no such download performed. The copy is made entirely locally.
+If the download is successful, this stage also updates the context [data paths](../../src/components/updaterContext.hpp) field with the destination path of the downloaded file. For the copy case, if the input file doesn't exist, no paths will be appended.
 
 ## Relation with the UpdaterContext
 
 The context fields related to this stage are:
 
 - `configData`
-  + `url`: Used as input file path. The prefix `file://` is allowed.
+  + `url`: Used as input file URL. **IMPORTANT**: If it has the `file://` prefix, the file will be copied from the filesystem. If it has the `http://` or `https://` prefixes, the file will be downloaded from a server pointed by the URL. Any other prefix will invalidate the URL.
   + `compressionType`: Used to know whether the input file is compressed or not.
 - `downloadsFolder`: Used as output folder when the input file is compressed.
 - `contentsFolder`: Used as output folder when the input file is not compressed.

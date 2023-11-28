@@ -13,6 +13,7 @@
 #define _OFFLINE_DOWNLOADER_HPP
 
 #include "../sharedDefs.hpp"
+#include "IURLRequest.hpp"
 #include "hashHelper.h"
 #include "json.hpp"
 #include "stringHelper.h"
@@ -21,7 +22,6 @@
 #include <array>
 #include <filesystem>
 #include <fstream>
-#include <iostream>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -30,13 +30,15 @@
 /**
  * @class OfflineDownloader
  *
- * @brief Class in charge of copying a file from the filesystem and update the context accordingly, as a step of a chain
- * of responsibility.
+ * @brief Class in charge of downloading a file in offline mode and updating the context accordingly, as a step of a
+ * chain of responsibility.
  *
  */
 class OfflineDownloader final : public AbstractHandler<std::shared_ptr<UpdaterContext>>
 {
 private:
+    IURLRequest& m_urlRequest; ///< HTTP driver instance.
+
     /**
      * @brief Pushes the state of the current stage into the data field of the context.
      *
@@ -81,49 +83,106 @@ private:
     };
 
     /**
-     * @brief Downloads the requested local file and update the context accordingly.
+     * @brief Copy a file from the localsystem.
      *
-     * @note Despite the method name, there is no such download since the file is present in the filesystem.
+     * @param inputFilepath Input path from where to copy the file.
+     * @param outputFilepath Output path where to paste the file.
+     * @return true if the file was copied, otherwise false.
+     */
+    bool copyFile(const std::filesystem::path& inputFilepath, const std::filesystem::path& outputFilepath) const
+    {
+        constexpr auto FILE_PREFIX {"file://"};
+
+        // Remove file prefix.
+        auto unprefixedUrl {inputFilepath.string()};
+        Utils::replaceFirst(unprefixedUrl, FILE_PREFIX, "");
+
+        // Check input file existence.
+        if (!std::filesystem::exists(unprefixedUrl))
+        {
+            logWarn(WM_CONTENTUPDATER, "File '%s' doesn't exist. Skipping download.", inputFilepath.string().c_str());
+            return false;
+        }
+
+        // Copy file, overriding the output one if necessary.
+        std::filesystem::copy(unprefixedUrl, outputFilepath, std::filesystem::copy_options::overwrite_existing);
+        return true;
+    }
+
+    /**
+     * @brief Download a file from an HTTP server.
+     *
+     * @param inputFileURL URL from where to download the file.
+     * @param outputFilepath Output path where to store the downloaded file.
+     * @return true if the file was downloaded, otherwise false.
+     */
+    bool downloadFile(const std::filesystem::path& inputFileURL, const std::filesystem::path& outputFilepath) const
+    {
+        auto returnCode {true};
+        const auto onError {
+            [&returnCode](const std::string& errorMessage, const long errorCode)
+            {
+                logWarn(WM_CONTENTUPDATER, "Error '%d' when downloading file: %s", errorCode, errorMessage.c_str());
+                returnCode = false;
+            }};
+
+        // Download file from URL.
+        m_urlRequest.download(HttpURL(inputFileURL), outputFilepath, onError);
+        return returnCode;
+    }
+
+    /**
+     * @brief Downloads a file in offline mode and updates the context accordingly.
      *
      * @param context Updater context.
      */
     void download(UpdaterContext& context) const
     {
-        // Take the 'url' as the input file path.
-        auto url {context.spUpdaterBaseContext->configData.at("url").get<std::string>()};
-        constexpr auto filePrefix {"file://"};
-        if (Utils::startsWith(url, filePrefix))
-        {
-            Utils::replaceFirst(url, filePrefix, "");
-        }
-        const std::filesystem::path inputFilePath {url};
+        constexpr auto FILE_PREFIX {"file://"};
+        constexpr auto HTTP_PREFIX {"http://"};
+        constexpr auto HTTPS_PREFIX {"https://"};
 
-        // Check input file existence.
-        if (!std::filesystem::exists(inputFilePath))
+        // Remote or local file URL.
+        const std::filesystem::path fileUrl {
+            context.spUpdaterBaseContext->configData.at("url").get_ref<const std::string&>()};
+
+        // Check input filename existence.
+        if (!fileUrl.has_filename())
         {
-            logWarn(WM_CONTENTUPDATER, "File %s doesn't exist. Skipping download.", inputFilePath.string().c_str());
-            return;
+            throw std::runtime_error {"Couldn't get filename from URL: " + fileUrl.string()};
         }
 
-        // Process input file hash.
-        auto inputFileHash {hashFile(inputFilePath)};
+        // Generate output file path. If the input file is compressed, the output file will be in the downloads
+        // folder and if it's not compressed, in the contents folder.
+        const auto compressed {
+            "raw" != context.spUpdaterBaseContext->configData.at("compressionType").get_ref<const std::string&>()};
+        auto outputFilePath {compressed ? context.spUpdaterBaseContext->downloadsFolder
+                                        : context.spUpdaterBaseContext->contentsFolder};
+        outputFilePath = outputFilePath / fileUrl.filename();
+
+        if (Utils::startsWith(fileUrl, FILE_PREFIX))
+        {
+            if (!copyFile(fileUrl, outputFilePath))
+            {
+                return;
+            }
+        }
+        else if (Utils::startsWith(fileUrl, HTTP_PREFIX) || Utils::startsWith(fileUrl, HTTPS_PREFIX))
+        {
+            if (!downloadFile(fileUrl, outputFilePath))
+            {
+                return;
+            }
+        }
+        else
+        {
+            throw std::runtime_error {"Unknown URL prefix for " + fileUrl.string()};
+        }
 
         // Just process the new file if the hash is different from the last one.
+        auto inputFileHash {hashFile(outputFilePath)};
         if (context.spUpdaterBaseContext->downloadedFileHash != inputFileHash)
         {
-            // Check if file is compressed.
-            const auto compressed {
-                "raw" != context.spUpdaterBaseContext->configData.at("compressionType").get_ref<const std::string&>()};
-
-            // Generate output file path. If the input file is compressed, the output file will be in the downloads
-            // folder and if it's not compressed, in the contents folder.
-            auto outputFilePath {compressed ? context.spUpdaterBaseContext->downloadsFolder
-                                            : context.spUpdaterBaseContext->contentsFolder};
-            outputFilePath = outputFilePath / inputFilePath.filename();
-
-            // Copy file, overriding the output one if necessary.
-            std::filesystem::copy(inputFilePath, outputFilePath, std::filesystem::copy_options::overwrite_existing);
-
             // Store new hash.
             context.spUpdaterBaseContext->downloadedFileHash = std::move(inputFileHash);
 
@@ -134,7 +193,15 @@ private:
 
 public:
     /**
-     * @brief Copies a file from the local filesystem in order to be processed and passes the control to the next chain
+     * @brief Class constructor.
+     *
+     * @param urlRequest HTTP driver instance to use within the class.
+     */
+    explicit OfflineDownloader(IURLRequest& urlRequest)
+        : m_urlRequest(urlRequest) {};
+
+    /**
+     * @brief Downloads a file in offline mode in order to be processed and passes the control to the next chain
      * stage.
      *
      * @param context Updater context.
