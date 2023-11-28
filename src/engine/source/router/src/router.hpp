@@ -31,8 +31,6 @@ private:
         explicit RuntimeEntry(const prod::EntryPost& entry)
             : prod::Entry(entry) {};
 
-        void setEnvironment(std::unique_ptr<Environment>&& env) { m_env = std::move(env); }
-
         const std::unique_ptr<Environment>& environment() const { return m_env; }
         std::unique_ptr<Environment>& environment() { return m_env; }
     };
@@ -40,7 +38,7 @@ private:
     internal::Table<RuntimeEntry> m_table; ///< Internal table for managing Production Environments.
     mutable std::shared_mutex m_mutex;     ///< Mutex for the table.
 
-    std::shared_ptr<EnvironmentBuilder> m_envBuilder; ///< Shared pointer to the environment builder.
+    std::shared_ptr<EnvironmentBuilder> m_envBuilder; ///< Environment builder for create new entries
 
 public:
     /**

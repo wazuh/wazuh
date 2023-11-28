@@ -31,7 +31,6 @@ enum class Sync : std::uint8_t
     UNKNOWN,  ///< Unset sync status
     UPDATED,  ///< Policy is updated
     OUTDATED, ///< Policy is outdated respect to the store
-    DELETED,  ///< Policy is deleted not exist in the store
     ERROR     ///< Error, can't get the policy status
 };
 
@@ -123,6 +122,7 @@ private:
     env::Sync m_policySync;     ///< Policy sync status
     env::State m_status;        ///< Status of the environment
     std::uint64_t m_lastUpdate; /// Last update of the environment [TODO: Review this metadata]
+    std::string m_hash;         /// Hash of the policy
 
 public:
     Entry(const EntryPost& entryPost)
@@ -140,6 +140,9 @@ public:
 
     env::State status() const { return m_status; }
     void status(env::State status) { m_status = status; }
+
+    const std::string& hash() const { return m_hash; }
+    void hash(const std::string& hash) { m_hash = hash; }
 };
 
 } // namespace prod
@@ -217,6 +220,7 @@ private:
     env::Sync m_policySync;  ///< Policy sync status
     env::State m_status;     ///< Status of the environment
     std::uint64_t m_lastUse; /// Last use of the entry.
+    std::string m_hash;      /// Hash of the policy
 
 public:
     Entry(const EntryPost& entryPost)
@@ -234,6 +238,9 @@ public:
 
     env::State status() const { return m_status; }
     void status(env::State status) { m_status = status; }
+
+    const std::string& hash() const { return m_hash; }
+    void hash(const std::string& hash) { m_hash = hash; }
 };
 
 /**
