@@ -26,7 +26,7 @@ void Worker::start()
                 {
                     auto& [event, opt, callback] = *testEvent;
                     auto output = m_tester->ingestTest(std::move(event), opt);
-                    callback(std::move(output)); // Change to response or error
+                    callback(std::move(output));
                 }
 
                 // Process production queue

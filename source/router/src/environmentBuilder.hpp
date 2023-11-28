@@ -10,7 +10,7 @@ namespace router
 {
 
 /**
- * @brief BuildEnvironment class for creating environments based on policies and filters.
+ * @brief Class used to build an environment.
  *
  */
 class EnvironmentBuilder
@@ -44,9 +44,8 @@ private:
 
 public:
     /**
-     * @brief Construct a new BuildEnvironment object
-     *
-     * @param builder The builder used to construct the policy and filter.
+     * @brief Create a new EnvironmentBuilder
+     * 
      */
     EnvironmentBuilder(std::shared_ptr<IBuilder> builder, std::shared_ptr<bk::IControllerMaker> controllerMaker)
         : m_builder(builder)

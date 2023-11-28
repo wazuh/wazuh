@@ -7,6 +7,7 @@
 namespace api::router::handlers
 {
 
+// Handler for router commands, returns a handler that will call the router
 api::Handler routePost(const std::weak_ptr<::router::IRouterAPI>& router);
 api::Handler routeDelete(const std::weak_ptr<::router::IRouterAPI>& router);
 api::Handler routeGet(const std::weak_ptr<::router::IRouterAPI>& router);

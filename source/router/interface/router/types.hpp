@@ -8,9 +8,10 @@
 #include <tuple>
 #include <unordered_set>
 
+#include <logging/logging.hpp>
+
 #include <baseTypes.hpp>
 #include <error.hpp>
-#include <logging/logging.hpp>
 #include <name.hpp>
 
 namespace router
@@ -56,6 +57,14 @@ private:
 public:
     EntryPost() = delete;
 
+    /**
+     * @brief New entry in production
+     * 
+     * @param name Name of environment
+     * @param policy Policy of the environment
+     * @param filter Filter of the environment
+     * @param priority Priority of the environment
+     */
     EntryPost(std::string name, base::Name policy, base::Name filter, std::size_t priority)
         : m_name {std::move(name)}
         , m_policy {std::move(policy)}
@@ -65,6 +74,11 @@ public:
     {
     }
 
+    /**
+     * @brief Validate the entry
+     * 
+     * @return base::OptError Error if the entry is not valid
+     */
     base::OptError validate() const
     {
         if (m_name.empty())
@@ -150,6 +164,13 @@ private:
 public:
     EntryPost() = delete;
 
+    /**
+     * @brief New entry in production
+     * 
+     * @param name Name of environment
+     * @param policy Policy of the environment
+     * @param lifetime Lifetime of the testing environment
+     */
     EntryPost(std::string name, base::Name policy, std::size_t lifetime)
         : m_name {std::move(name)}
         , m_policy {std::move(policy)}
@@ -158,6 +179,11 @@ public:
     {
     }
 
+    /**
+     * @brief Validate the entry
+     * 
+     * @return base::OptError Error if the entry is not valid
+     */
     base::OptError validate() const
     {
         if (m_name.empty())
@@ -227,12 +253,18 @@ public:
     };
 
 private:
-    TraceLevel m_traceLevel;
-    std::unordered_set<std::string> m_assets;
-    std::string m_environmetName;
+    TraceLevel m_traceLevel;                  ///< Tracing level for testing
+    std::unordered_set<std::string> m_assets; ///< List of assets to trace (if any)
+    std::string m_environmetName;             ///< Name of the environment to test
 
-    // Missing namespace and asset list
 public:
+    /**
+     * @brief Create a new options for testing
+     * 
+     * @param traceLevel Tracing level for testing
+     * @param assets List of assets to trace (if any)
+     * @param envName  Name of the environment to test
+     */
     Options(TraceLevel traceLevel, const decltype(m_assets)& assets, const std::string& envName)
         : m_traceLevel {traceLevel}
         , m_assets {assets}
@@ -240,6 +272,11 @@ public:
     {
     }
 
+    /**
+     * @brief Validate the options
+     * 
+     * @return base::OptError Error if the options are not valid
+     */
     base::OptError validate() const
     {
         if (m_environmetName.empty())
@@ -254,6 +291,7 @@ public:
         return base::OptError {};
     }
 
+    // Setters and getters
     const std::string& environmentName() const { return m_environmetName; }
     auto assets() const -> const decltype(m_assets)& { return m_assets; }
     TraceLevel traceLevel() const { return m_traceLevel; }
@@ -277,12 +315,16 @@ protected:
     std::list<DataPair> m_traces; ///< List of traces of the testing
 
 public:
-    Output()
+    /**
+     * @brief Create empty output
+     */
+    Output() 
         : m_event {}
         , m_traces {}
     {
     }
 
+    // Setters and getters
     base::Event& event() { return m_event; }
     const base::Event& event() const { return m_event; }
 
@@ -299,6 +341,7 @@ public:
     }
 };
 
+// Specialization of the external Queue for testing
 using TestingTuple = std::tuple<base::Event, Options, std::function<void(base::RespOrError<Output>&&)>>;
 using QueueType = std::shared_ptr<TestingTuple>;
 

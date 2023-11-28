@@ -50,6 +50,9 @@ public:
     // Get the assets of the policy of the entry
     virtual base::RespOrError<std::unordered_set<std::string>> getAssets(const std::string& name) const = 0;
 
+    // Get the timeout of the test of event ingestion (in milliseconds)
+    virtual std::size_t getTestTimeout() const = 0;
+
 };
 } // namespace router
 

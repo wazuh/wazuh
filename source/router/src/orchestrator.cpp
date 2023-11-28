@@ -38,6 +38,10 @@ void Orchestrator::validateConfig(const Config& config)
     {
         throw std::runtime_error {"Configuration error: testQueue cannot be empty"};
     }
+    if (config.m_testTimeout < 1)
+    {
+        throw std::runtime_error {"Configuration error: testTimeout must be greater than 0"};
+    }
 }
 
 // Public
@@ -46,11 +50,12 @@ Orchestrator::Orchestrator(const Config& config)
     , m_eventQueue(config.m_prodQueue)
     , m_testQueue(config.m_testQueue)
     , m_envBuilder()
+    , m_testTimeout(config.m_testTimeout)
 {
     validateConfig(config);
 
-    auto builder = std::make_shared<ConcreteBuilder>(
-        config.m_wStore, config.m_wRegistry); // TODO Remove after the builder is implemented
+    // TODO Remove after the builder is implemented
+    auto builder = std::make_shared<ConcreteBuilder>(config.m_wStore, config.m_wRegistry);
     m_envBuilder = std::make_shared<EnvironmentBuilder>(builder, config.m_controllerMaker);
 
     // Create the Workers
@@ -346,13 +351,11 @@ std::future<base::RespOrError<test::Output>> Orchestrator::ingestTest(base::Even
         throw std::runtime_error {"The testing queue is full"};
     }
 
-    // TODO: if the production queue is empty, send dummy event to wake up the production thread
-    // TODO If the event queue is full, this will block the thread
-    // If the queue is full and try flood to the file, what will happen?
-    // if (m_production.queue->empty())
-    // {
-    //     m_production.queue->push(base::Event(nullptr));
-    // }
+    // If the production queue is empty, send dummy event to wake up the production thread
+    if (m_eventQueue->empty())
+    {
+        m_eventQueue->push(base::Event(nullptr));
+    }
 
     return future;
 }
