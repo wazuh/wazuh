@@ -5,7 +5,7 @@ namespace
 /**
  * @brief Return the current time in seconds since epoch
  */
-int64_t getStartTime()
+inline int64_t getStartTime()
 {
     auto startTime = std::chrono::system_clock::now();
     return std::chrono::duration_cast<std::chrono::seconds>(startTime.time_since_epoch()).count();
@@ -66,8 +66,9 @@ base::OptError Tester::addEntry(const test::EntryPost& entryPost)
     auto entry = RuntimeEntry(entryPost);
     try
     {
-        auto controller = m_envBuilder->makeController(entryPost.policy());
-        entry.setController(controller);
+        auto [controller, hash] = m_envBuilder->makeController(entry.policy());
+        entry.controller() = controller;
+        entry.hash(hash);
         entry.status(env::State::DISABLED); // It is disabled until all tester are ready
         entry.lifetime(entry.lifetime());
     }
@@ -111,8 +112,9 @@ base::OptError Tester::rebuildEntry(const std::string& name)
     auto& entry = m_table.at(name);
     try
     {
-        auto controller = m_envBuilder->makeController(entry.policy());
-        entry.setController(std::move(controller));
+        auto [controller, hash] = m_envBuilder->makeController(entry.policy());
+        entry.controller() = controller;
+        entry.hash(hash);
     }
     catch (const std::exception& e)
     {
@@ -212,5 +214,17 @@ base::RespOrError<std::unordered_set<std::string>> Tester::getAssets(const std::
         return base::Error {"The testing environment is not builded"};
     }
     return entry.controller()->getTraceables();
+}
+
+bool Tester::updateLastUsed(const std::string& name)
+{
+    std::unique_lock lock {m_mutex};
+    if (m_table.find(name) == m_table.end())
+    {
+        return false;
+    }
+    auto& entry = m_table.at(name);
+    entry.lastUse(getStartTime());
+    return true;
 }
 } // namespace router

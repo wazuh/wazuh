@@ -20,7 +20,15 @@ using RouterAndRequest = std::pair<std::shared_ptr<::router::IRouterAPI>, Reques
 
 namespace
 {
-
+/**
+ * @brief   Return the current time in seconds since epoch
+ * @return  Current time in seconds since epoch
+ */
+inline int64_t currentTime()
+{
+    auto startTime = std::chrono::system_clock::now();
+    return std::chrono::duration_cast<std::chrono::seconds>(startTime.time_since_epoch()).count();
+}
 /**
  * @brief Get the base::Name from a string or an error response if the name is invalid
  *
@@ -71,9 +79,33 @@ getRequest(const api::wpRequest& wRequest, const std::weak_ptr<::router::IRouter
 
     return std::make_pair(router, std::get<RequestType>(res));
 }
-} // namespace
 
-eRouter::Entry eRouteEntryFromEntry(const ::router::prod::Entry& entry)
+
+eRouter::Sync getHashSatus(const ::router::prod::Entry& entry, const std::weak_ptr<api::policy::IPolicy>& wPolicyManager)
+{
+    auto policyManager = wPolicyManager.lock();
+    if (!policyManager)
+    {
+        return eRouter::Sync::SYNC_UNKNOWN;
+    }
+
+    auto resPolicy = policyManager->getHash(entry.policy());
+    if (base::isError(resPolicy))
+    {
+        return eRouter::Sync::ERROR;
+    }
+
+    return base::getResponse(resPolicy) == entry.hash() ? eRouter::Sync::UPDATED : eRouter::Sync::OUTDATED;
+}
+
+/**
+ * @brief Convert a router entry to a api entry
+ * 
+ * @param entry to convert
+ * @param wPolicyManager for hash comparison
+ * @return eRouter::Entry 
+ */
+eRouter::Entry eRouteEntryFromEntry(const ::router::prod::Entry& entry, const std::weak_ptr<api::policy::IPolicy>& wPolicyManager)
 {
     eRouter::Entry eEntry;
     eEntry.set_name(entry.name());
@@ -84,12 +116,19 @@ eRouter::Entry eRouteEntryFromEntry(const ::router::prod::Entry& entry)
     {
         eEntry.mutable_description()->assign(entry.description().value());
     }
-    // TODO: set the status and sync
-    eEntry.set_policy_sync(eRouter::Sync::SYNC_UNKNOWN);
-    eEntry.set_entry_status(eRouter::State::STATE_UNKNOWN);
-    eEntry.set_last_update(entry.lastUpdate());
+
+    eRouter::State state = ::router::env::State::ENABLED == entry.status()    ? eRouter::State::ENABLED
+                           : ::router::env::State::DISABLED == entry.status() ? eRouter::State::DISABLED
+                                                                              : eRouter::State::STATE_UNKNOWN;
+
+    eEntry.set_policy_sync(getHashSatus(entry, wPolicyManager));
+    eEntry.set_entry_status(state);
+
+    // Calculate the uptime
+    eEntry.set_uptime(static_cast<uint32_t>(currentTime() - entry.lastUpdate()));
     return eEntry;
 }
+} // namespace
 
 api::Handler routePost(const std::weak_ptr<::router::IRouterAPI>& router)
 {
@@ -171,9 +210,9 @@ api::Handler routeDelete(const std::weak_ptr<::router::IRouterAPI>& router)
     };
 }
 
-api::Handler routeGet(const std::weak_ptr<::router::IRouterAPI>& router)
+api::Handler routeGet(const std::weak_ptr<::router::IRouterAPI>& router, const std::weak_ptr<api::policy::IPolicy>& policy)
 {
-    return [wRouter = router](const api::wpRequest& wRequest) -> api::wpResponse
+    return [wRouter = router, wPolicyManager = policy](const api::wpRequest& wRequest) -> api::wpResponse
     {
         using RequestType = eRouter::RouteGet_Request;
         using ResponseType = eRouter::RouteGet_Response;
@@ -198,7 +237,7 @@ api::Handler routeGet(const std::weak_ptr<::router::IRouterAPI>& router)
         // Build the response
         ResponseType eResponse;
         const auto& entry = base::getResponse(getResult);
-        eResponse.mutable_route()->CopyFrom(eRouteEntryFromEntry(entry));
+        eResponse.mutable_route()->CopyFrom(eRouteEntryFromEntry(entry, wPolicyManager));
 
         return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
     };
@@ -268,9 +307,9 @@ api::Handler routePatchPriority(const std::weak_ptr<::router::IRouterAPI>& route
     };
 }
 
-api::Handler tableGet(const std::weak_ptr<::router::IRouterAPI>& router)
+api::Handler tableGet(const std::weak_ptr<::router::IRouterAPI>& router, const std::weak_ptr<api::policy::IPolicy>& policy)
 {
-    return [wRouter = router](const api::wpRequest& wRequest) -> api::wpResponse
+    return [wRouter = router, wPolicyManager = policy](const api::wpRequest& wRequest) -> api::wpResponse
     {
         using RequestType = eRouter::TableGet_Request;
         using ResponseType = eRouter::TableGet_Response;
@@ -290,7 +329,7 @@ api::Handler tableGet(const std::weak_ptr<::router::IRouterAPI>& router)
         auto eTable = eResponse.mutable_table(); // Create the empty table
         for (const auto& entry : entries)
         {
-            eTable->Add(eRouteEntryFromEntry(entry));
+            eTable->Add(eRouteEntryFromEntry(entry, wPolicyManager));
         }
         eResponse.set_status(eEngine::ReturnStatus::OK);
 
@@ -324,16 +363,16 @@ api::Handler queuePost(const std::weak_ptr<::router::IRouterAPI>& router)
     };
 }
 
-void registerHandlers(const std::weak_ptr<::router::IRouterAPI>& router, std::shared_ptr<api::Api> api)
+void registerHandlers(const std::weak_ptr<::router::IRouterAPI>& router, const std::weak_ptr<api::policy::IPolicy>& policy, std::shared_ptr<api::Api> api)
 {
     // Commands to manage routes
     const bool ok = api->registerHandler("router.route/post", routePost(router))
                     && api->registerHandler("router.route/delete", routeDelete(router))
-                    && api->registerHandler("router.route/get", routeGet(router))
+                    && api->registerHandler("router.route/get", routeGet(router, policy))
                     && api->registerHandler("router.route/reload", routeReload(router))
                     && api->registerHandler("router.route/patchPriority", routePatchPriority(router))
                     // Commands to manage the routes table
-                    && api->registerHandler("router.table/get", tableGet(router))
+                    && api->registerHandler("router.table/get", tableGet(router, policy))
                     // Commands to manage the queue of events
                     && api->registerHandler("router.queue/post", queuePost(router));
 

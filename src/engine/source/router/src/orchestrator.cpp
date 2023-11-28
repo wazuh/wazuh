@@ -50,9 +50,10 @@ Orchestrator::Orchestrator(const Config& config)
     , m_eventQueue(config.m_prodQueue)
     , m_testQueue(config.m_testQueue)
     , m_envBuilder()
-    , m_testTimeout(config.m_testTimeout)
 {
     validateConfig(config);
+
+    m_testTimeout = config.m_testTimeout;
 
     // TODO Remove after the builder is implemented
     auto builder = std::make_shared<ConcreteBuilder>(config.m_wStore, config.m_wRegistry);
@@ -355,6 +356,12 @@ std::future<base::RespOrError<test::Output>> Orchestrator::ingestTest(base::Even
     if (m_eventQueue->empty())
     {
         m_eventQueue->push(base::Event(nullptr));
+    }
+
+    // Whens the send is done, update the first woker->getTester() with the last used
+    {
+        std::shared_lock lock {m_syncMutex};
+        m_workers.front()->getTester()->updateLastUsed(opt.environmentName());
     }
 
     return future;
