@@ -15,7 +15,7 @@
 #define AD_CONF_UNPARSED 3
 #define AD_CONF_UNDEFINED 2
 
-#define AUTHD_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT true   ///< Default allow_higher_versions value (true)
+#define AUTHD_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT false    ///< Default allow_higher_versions value (false)
 
 #include <time.h>
 

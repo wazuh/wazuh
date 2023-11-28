@@ -100,13 +100,13 @@ void test_wdb_open_tasks_pool_success(void **state)
     wdb_t *ret = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
 
-    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_rwlock_lock_read);
     expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, WDB_TASK_NAME);
     will_return(__wrap_OSHash_Get, data->wdb);
 
     expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
 
     ret = wdb_open_tasks();
 
@@ -117,7 +117,13 @@ void test_wdb_open_tasks_create_error(void **state)
 {
     wdb_t *ret = NULL;
 
-    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_rwlock_lock_read);
+    expect_any(__wrap_OSHash_Get, self);
+    expect_string(__wrap_OSHash_Get, key, WDB_TASK_NAME);
+    will_return(__wrap_OSHash_Get, NULL);
+    expect_function_call(__wrap_rwlock_unlock);
+
+    expect_function_call(__wrap_rwlock_lock_write);
     expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, WDB_TASK_NAME);
     will_return(__wrap_OSHash_Get, NULL);
@@ -140,7 +146,7 @@ void test_wdb_open_tasks_create_error(void **state)
     will_return(__wrap_sqlite3_close_v2, OS_SUCCESS);
 
     expect_string(__wrap__merror, formatted_msg, "Couldn't create SQLite database 'queue/tasks/tasks.db'");
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
 
     ret = wdb_open_tasks();
 
@@ -152,13 +158,13 @@ void test_wdb_open_global_pool_success(void **state)
     wdb_t *ret = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
 
-    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_rwlock_lock_read);
     expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, WDB_GLOB_NAME);
     will_return(__wrap_OSHash_Get, data->wdb);
 
     expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
 
     ret = wdb_open_global();
 
@@ -169,7 +175,13 @@ void test_wdb_open_global_create_fail(void **state)
 {
     wdb_t *ret = NULL;
 
-    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_rwlock_lock_read);
+    expect_any(__wrap_OSHash_Get, self);
+    expect_string(__wrap_OSHash_Get, key, WDB_GLOB_NAME);
+    will_return(__wrap_OSHash_Get, NULL);
+    expect_function_call(__wrap_rwlock_unlock);
+
+    expect_function_call(__wrap_rwlock_lock_write);
     expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, WDB_GLOB_NAME);
     will_return(__wrap_OSHash_Get, NULL);
@@ -193,7 +205,7 @@ void test_wdb_open_global_create_fail(void **state)
     will_return(__wrap_sqlite3_close_v2, OS_SUCCESS);
 
     expect_string(__wrap__merror, formatted_msg, "Couldn't create SQLite database 'queue/db/global.db'");
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
 
     ret = wdb_open_global();
 
@@ -1669,15 +1681,15 @@ void test_wdb_check_fragmentation_node_null(void **state)
     os_calloc(1,sizeof(sqlite3 *),db_pool_begin->db);
     db_pool_begin->stmt[0] = (sqlite3_stmt*)1;
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_lock_read);
+    expect_function_call(__wrap_rwlock_unlock);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_rwlock_lock_read);
     expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, "000");
     will_return(__wrap_OSHash_Get, NULL);
 
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
 
     wdb_check_fragmentation();
 
@@ -1693,10 +1705,10 @@ void test_wdb_check_fragmentation_get_state_error(void **state)
     os_calloc(1,sizeof(sqlite3 *),db_pool_begin->db);
     db_pool_begin->stmt[0] = (sqlite3_stmt*)1;
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_lock_read);
+    expect_function_call(__wrap_rwlock_unlock);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_rwlock_lock_read);
     expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, "000");
     will_return(__wrap_OSHash_Get, db_pool_begin);
@@ -1723,7 +1735,7 @@ void test_wdb_check_fragmentation_get_state_error(void **state)
     expect_string(__wrap__merror, formatted_msg, "Couldn't get current state for the database '000'");
 
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
 
     wdb_check_fragmentation();
 
@@ -1739,10 +1751,10 @@ void test_wdb_check_fragmentation_get_last_vacuum_data_error(void **state)
     os_calloc(1,sizeof(sqlite3 *),db_pool_begin->db);
     db_pool_begin->stmt[0] = (sqlite3_stmt*)1;
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_lock_read);
+    expect_function_call(__wrap_rwlock_unlock);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_rwlock_lock_read);
     expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, "000");
     will_return(__wrap_OSHash_Get, db_pool_begin);
@@ -1799,7 +1811,7 @@ void test_wdb_check_fragmentation_get_last_vacuum_data_error(void **state)
     expect_string(__wrap__merror, formatted_msg, "Couldn't get last vacuum info for the database '000'");
 
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
 
     wdb_check_fragmentation();
 
@@ -1818,10 +1830,10 @@ void test_wdb_check_fragmentation_commit_error(void **state)
     db_pool_begin->stmt[0] = (sqlite3_stmt*)1;
     db_pool_begin->transaction = 1;
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_lock_read);
+    expect_function_call(__wrap_rwlock_unlock);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_rwlock_lock_read);
     expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, "000");
     will_return(__wrap_OSHash_Get, db_pool_begin);
@@ -1911,7 +1923,7 @@ void test_wdb_check_fragmentation_commit_error(void **state)
     expect_string(__wrap__merror, formatted_msg, "Couldn't execute commit statement, before vacuum, for the database '000'");
 
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
 
     wdb_check_fragmentation();
 
@@ -1929,10 +1941,10 @@ void test_wdb_check_fragmentation_vacuum_error(void **state)
     os_calloc(1,sizeof(sqlite3 *),db_pool_begin->db);
     db_pool_begin->transaction = 0;
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_lock_read);
+    expect_function_call(__wrap_rwlock_unlock);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_rwlock_lock_read);
     expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, "000");
     will_return(__wrap_OSHash_Get, db_pool_begin);
@@ -2022,7 +2034,7 @@ void test_wdb_check_fragmentation_vacuum_error(void **state)
     expect_string(__wrap__merror, formatted_msg, "Couldn't execute vacuum for the database '000'");
 
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
 
     wdb_check_fragmentation();
 
@@ -2040,10 +2052,10 @@ void test_wdb_check_fragmentation_get_fragmentation_after_vacuum_error(void **st
     os_calloc(1,sizeof(sqlite3 *),db_pool_begin->db);
     db_pool_begin->transaction = 0;
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_lock_read);
+    expect_function_call(__wrap_rwlock_unlock);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_rwlock_lock_read);
     expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, "000");
     will_return(__wrap_OSHash_Get, db_pool_begin);
@@ -2148,7 +2160,7 @@ void test_wdb_check_fragmentation_get_fragmentation_after_vacuum_error(void **st
     expect_string(__wrap__merror, formatted_msg, "Couldn't get fragmentation after vacuum for the database '000'");
 
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
 
     wdb_check_fragmentation();
 
@@ -2166,10 +2178,10 @@ void test_wdb_check_fragmentation_update_last_vacuum_data_error(void **state)
     os_calloc(1,sizeof(sqlite3 *),db_pool_begin->db);
     db_pool_begin->transaction = 0;
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_lock_read);
+    expect_function_call(__wrap_rwlock_unlock);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_rwlock_lock_read);
     expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, "000");
     will_return(__wrap_OSHash_Get, db_pool_begin);
@@ -2296,7 +2308,7 @@ void test_wdb_check_fragmentation_update_last_vacuum_data_error(void **state)
     expect_string(__wrap__merror, formatted_msg, "Couldn't update last vacuum info for the database '000'");
 
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
 
     wdb_check_fragmentation();
 
@@ -2314,10 +2326,10 @@ void test_wdb_check_fragmentation_success_with_warning(void **state)
     os_calloc(1,sizeof(sqlite3 *),db_pool_begin->db);
     db_pool_begin->transaction = 0;
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_lock_read);
+    expect_function_call(__wrap_rwlock_unlock);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_rwlock_lock_read);
     expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, "000");
     will_return(__wrap_OSHash_Get, db_pool_begin);
@@ -2424,7 +2436,7 @@ void test_wdb_check_fragmentation_success_with_warning(void **state)
     expect_string(__wrap__mwarn, formatted_msg, "After vacuum, the database '000' has become just as fragmented or worse");
 
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
 
     wdb_check_fragmentation();
 
@@ -2442,10 +2454,10 @@ void test_wdb_check_fragmentation_success(void **state)
     os_calloc(1,sizeof(sqlite3 *),db_pool_begin->db);
     db_pool_begin->transaction = 0;
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_lock_read);
+    expect_function_call(__wrap_rwlock_unlock);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_rwlock_lock_read);
     expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, "000");
     will_return(__wrap_OSHash_Get, db_pool_begin);
@@ -2550,7 +2562,7 @@ void test_wdb_check_fragmentation_success(void **state)
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
 
     wdb_check_fragmentation();
 
@@ -2568,10 +2580,10 @@ void test_wdb_check_fragmentation_no_vacuum_free_pages(void **state)
     os_calloc(1,sizeof(sqlite3 *),db_pool_begin->db);
     db_pool_begin->transaction = 0;
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_lock_read);
+    expect_function_call(__wrap_rwlock_unlock);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_rwlock_lock_read);
     expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, "000");
     will_return(__wrap_OSHash_Get, db_pool_begin);
@@ -2627,7 +2639,7 @@ void test_wdb_check_fragmentation_no_vacuum_free_pages(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "No vacuum data in metadata table.");
 
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
 
     wdb_check_fragmentation();
 
@@ -2646,10 +2658,10 @@ void test_wdb_check_fragmentation_no_vacuum_current_fragmentation(void **state)
     os_calloc(1,sizeof(sqlite3 *),db_pool_begin->db);
     db_pool_begin->transaction = 0;
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_lock_read);
+    expect_function_call(__wrap_rwlock_unlock);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_rwlock_lock_read);
     expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, "000");
     will_return(__wrap_OSHash_Get, db_pool_begin);
@@ -2705,7 +2717,7 @@ void test_wdb_check_fragmentation_no_vacuum_current_fragmentation(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "No vacuum data in metadata table.");
 
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
 
     wdb_check_fragmentation();
 
@@ -2725,10 +2737,10 @@ void test_wdb_check_fragmentation_no_vacuum_current_fragmentation_delta(void **s
     os_calloc(1,sizeof(sqlite3 *),db_pool_begin->db);
     db_pool_begin->transaction = 0;
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_lock_read);
+    expect_function_call(__wrap_rwlock_unlock);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_rwlock_lock_read);
     expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, "000");
     will_return(__wrap_OSHash_Get, db_pool_begin);
@@ -2810,7 +2822,7 @@ void test_wdb_check_fragmentation_no_vacuum_current_fragmentation_delta(void **s
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
 
     wdb_check_fragmentation();
 
@@ -2830,10 +2842,10 @@ void test_wdb_check_fragmentation_vacuum_first(void **state)
     os_calloc(1,sizeof(sqlite3 *),db_pool_begin->db);
     db_pool_begin->transaction = 0;
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_lock_read);
+    expect_function_call(__wrap_rwlock_unlock);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_rwlock_lock_read);
     expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, "000");
     will_return(__wrap_OSHash_Get, db_pool_begin);
@@ -2938,7 +2950,7 @@ void test_wdb_check_fragmentation_vacuum_first(void **state)
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
 
     wdb_check_fragmentation();
 
@@ -2958,10 +2970,10 @@ void test_wdb_check_fragmentation_vacuum_current_fragmentation_delta(void **stat
     os_calloc(1,sizeof(sqlite3 *),db_pool_begin->db);
     db_pool_begin->transaction = 0;
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_lock_read);
+    expect_function_call(__wrap_rwlock_unlock);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_rwlock_lock_read);
     expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, "000");
     will_return(__wrap_OSHash_Get, db_pool_begin);
@@ -3092,7 +3104,7 @@ void test_wdb_check_fragmentation_vacuum_current_fragmentation_delta(void **stat
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_rwlock_unlock);
 
     wdb_check_fragmentation();
 
