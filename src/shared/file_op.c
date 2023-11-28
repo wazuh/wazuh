@@ -2767,7 +2767,7 @@ FILE * wfopen(const char * pathname, const char * mode) {
 
 #else
     FILE *fp = fopen(pathname, mode);
-    
+
     if(fp) {
     	w_file_cloexec(fp);
     }
@@ -2791,7 +2791,7 @@ int w_compress_gzfile(const char *filesrc, const char *filedst) {
     /* Read file */
     fd = wfopen(filesrc, "rb");
     if (!fd) {
-        merror("in w_compress_gzfile(): wfopen error %s (%d):'%s'",
+        merror("in w_compress_gzfile(): fopen error %s (%d):'%s'",
                 filesrc,
                 errno,
                 strerror(errno));
@@ -2856,7 +2856,7 @@ int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst) {
     /* Read file */
     fd = wfopen(gzfiledst, "wb");
     if (!fd) {
-        merror("in w_uncompress_gzfile(): wfopen error %s (%d):'%s'",
+        merror("in w_uncompress_gzfile(): fopen error %s (%d):'%s'",
                 gzfiledst,
                 errno,
                 strerror(errno));
