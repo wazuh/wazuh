@@ -44,6 +44,9 @@ static const nlohmann::json CONFIG_PARAMETERS =
         }
         )"_json;
 
+// Enable/Disable logging verbosity.
+static const auto VERBOSE {true};
+
 int main()
 {
     auto& instance = ContentModule::instance();
@@ -57,6 +60,12 @@ int main()
            const std::string& func,
            const std::string& message)
         {
+            if (!VERBOSE && (logLevel == LOG_DEBUG || logLevel == LOG_DEBUG_VERBOSE))
+            {
+                // Don't log debug logs when VERBOSE is false.
+                return;
+            }
+
             auto pos = file.find_last_of('/');
             if (pos != std::string::npos)
             {
@@ -66,16 +75,17 @@ int main()
 
             if (logLevel != LOGLEVEL_ERROR)
             {
-                std::cout << tag << ":" << fileName << ":" << line << " " << func << " : " << message.c_str()
+                std::cout << tag << ":" << fileName << ":" << line << " " << func << ": " << message.c_str()
                           << std::endl;
             }
             else
             {
-                std::cerr << tag << ":" << fileName << ":" << line << " " << func << " : " << message.c_str()
+                std::cerr << tag << ":" << fileName << ":" << line << " " << func << ": " << message.c_str()
                           << std::endl;
             }
         });
-    // CLiente -> vulnenability  detector
+
+    // Client -> Vulnerability detector
     ContentRegister registerer {CONFIG_PARAMETERS.at("topicName").get<std::string>(), CONFIG_PARAMETERS};
     std::this_thread::sleep_for(std::chrono::seconds(5));
     std::cout << "changing interval" << std::endl;

@@ -138,7 +138,7 @@ public:
      */
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
-        logDebug2(WM_CONTENTUPDATER, "FileDownloader - Starting process");
+        logDebug1(WM_CONTENTUPDATER, "FileDownloader - Starting process");
 
         try
         {

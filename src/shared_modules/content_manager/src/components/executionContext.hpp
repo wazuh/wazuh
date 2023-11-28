@@ -144,14 +144,13 @@ private:
         }
 
         // Create the folders.
+        logDebug2(WM_CONTENTUPDATER, "Attempting to create output folders at '%s'", outputFolderPath.string().c_str());
         std::filesystem::create_directory(outputFolderPath);
         std::filesystem::create_directory(outputFolderPath / DOWNLOAD_FOLDER);
         std::filesystem::create_directory(outputFolderPath / CONTENTS_FOLDER);
 
         context.downloadsFolder = outputFolderPath / DOWNLOAD_FOLDER;
         context.contentsFolder = outputFolderPath / CONTENTS_FOLDER;
-
-        logDebug2(WM_CONTENTUPDATER, "Output folders created.");
     }
 
 public:
@@ -163,6 +162,8 @@ public:
      */
     std::shared_ptr<UpdaterBaseContext> handleRequest(std::shared_ptr<UpdaterBaseContext> context) override
     {
+        logDebug1(WM_CONTENTUPDATER, "ExecutionContext - Starting process");
+
         // Check if the database path is given and not empty.
         if (context->configData.contains("databasePath") &&
             !context->configData.at("databasePath").get<std::string>().empty())

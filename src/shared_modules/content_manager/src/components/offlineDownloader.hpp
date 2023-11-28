@@ -106,7 +106,7 @@ private:
 
         // Copy file, overriding the output one if necessary.
         logDebug2(WM_CONTENTUPDATER,
-                  "Attempting to copy file '%s' into '%s'",
+                  "Attempting to copy file from '%s' into '%s'",
                   inputFilepath.string().c_str(),
                   outputFilepath.string().c_str());
         std::filesystem::copy(unprefixedUrl, outputFilepath, std::filesystem::copy_options::overwrite_existing);
@@ -132,7 +132,7 @@ private:
 
         // Download file from URL.
         logDebug2(WM_CONTENTUPDATER,
-                  "Attempting to download file  from '%s' into '%s'",
+                  "Attempting to download file from '%s' into '%s'",
                   inputFileURL.string().c_str(),
                   outputFilepath.string().c_str());
         m_urlRequest.download(HttpURL(inputFileURL), outputFilepath, onError);
@@ -222,7 +222,7 @@ public:
      */
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
-        logDebug2(WM_CONTENTUPDATER, "OfflineDownloader - Starting process");
+        logDebug1(WM_CONTENTUPDATER, "OfflineDownloader - Starting process");
 
         try
         {

@@ -108,7 +108,7 @@ public:
         {
             m_schedulerThread.join();
         }
-        logInfo(WM_CONTENTUPDATER, "Scheduler stopped for %s", m_topicName.c_str());
+        logInfo(WM_CONTENTUPDATER, "Scheduler stopped for '%s'", m_topicName.c_str());
     }
 
     /**
@@ -147,13 +147,13 @@ public:
         auto expected = false;
         if (m_actionInProgress.compare_exchange_strong(expected, true))
         {
-            logInfo(WM_CONTENTUPDATER, "Ondemand request - starting action for %s", m_topicName.c_str());
+            logInfo(WM_CONTENTUPDATER, "Ondemand request - Starting action for %s", m_topicName.c_str());
             runAction(ActionID::ON_DEMAND);
         }
         else
         {
             // LCOV_EXCL_START
-            logInfo(WM_CONTENTUPDATER, "Ondemand request - another action in progress for %s", m_topicName.c_str());
+            logInfo(WM_CONTENTUPDATER, "Ondemand request - Another action in progress for %s", m_topicName.c_str());
             // LCOV_EXCL_STOP
         }
     }
