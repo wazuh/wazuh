@@ -32,7 +32,7 @@ PROTOBUF_CONSTEXPR SessionPost::SessionPost(
   , /*decltype(_impl_.name_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.policy_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.description_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.lifetime_)*/uint64_t{0u}} {}
+  , /*decltype(_impl_.lifetime_)*/0u} {}
 struct SessionPostDefaultTypeInternal {
   PROTOBUF_CONSTEXPR SessionPostDefaultTypeInternal()
       : _instance(::_pbi::ConstantInitialized{}) {}
@@ -49,10 +49,10 @@ PROTOBUF_CONSTEXPR Session::Session(
   , /*decltype(_impl_.name_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.policy_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.description_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.lifetime_)*/uint64_t{0u}
+  , /*decltype(_impl_.lifetime_)*/0u
   , /*decltype(_impl_.policy_sync_)*/0
   , /*decltype(_impl_.entry_status_)*/0
-  , /*decltype(_impl_.last_use_)*/uint64_t{0u}} {}
+  , /*decltype(_impl_.last_use_)*/0u} {}
 struct SessionDefaultTypeInternal {
   PROTOBUF_CONSTEXPR SessionDefaultTypeInternal()
       : _instance(::_pbi::ConstantInitialized{}) {}
@@ -404,14 +404,14 @@ const char descriptor_table_protodef_tester_2eproto[] PROTOBUF_SECTION_VARIABLE(
   "\n\014tester.proto\022\033com.wazuh.api.engine.tes"
   "ter\032\014engine.proto\032\034google/protobuf/struc"
   "t.proto\"g\n\013SessionPost\022\014\n\004name\030\001 \001(\t\022\016\n\006"
-  "policy\030\002 \001(\t\022\020\n\010lifetime\030\003 \001(\004\022\030\n\013descri"
+  "policy\030\002 \001(\t\022\020\n\010lifetime\030\003 \001(\r\022\030\n\013descri"
   "ption\030\004 \001(\tH\000\210\001\001B\016\n\014_description\"\347\001\n\007Ses"
   "sion\022\014\n\004name\030\001 \001(\t\022\016\n\006policy\030\002 \001(\t\022\020\n\010li"
-  "fetime\030\003 \001(\004\022\030\n\013description\030\004 \001(\tH\000\210\001\001\0226"
+  "fetime\030\003 \001(\r\022\030\n\013description\030\004 \001(\tH\000\210\001\001\0226"
   "\n\013policy_sync\030\006 \001(\0162!.com.wazuh.api.engi"
   "ne.tester.Sync\0228\n\014entry_status\030\007 \001(\0162\".c"
   "om.wazuh.api.engine.tester.State\022\020\n\010last"
-  "_use\030\010 \001(\004B\016\n\014_description\"\264\001\n\006Result\022&\n"
+  "_use\030\010 \001(\rB\016\n\014_description\"\264\001\n\006Result\022&\n"
   "\006output\030\001 \001(\0132\026.google.protobuf.Value\022D\n"
   "\014asset_traces\030\002 \003(\0132..com.wazuh.api.engi"
   "ne.tester.Result.AssetTrace\032<\n\nAssetTrac"
@@ -584,7 +584,7 @@ inline void SessionPost::SharedCtor(
     , decltype(_impl_.name_){}
     , decltype(_impl_.policy_){}
     , decltype(_impl_.description_){}
-    , decltype(_impl_.lifetime_){uint64_t{0u}}
+    , decltype(_impl_.lifetime_){0u}
   };
   _impl_.name_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -632,7 +632,7 @@ void SessionPost::Clear() {
   if (cached_has_bits & 0x00000001u) {
     _impl_.description_.ClearNonDefaultToEmpty();
   }
-  _impl_.lifetime_ = uint64_t{0u};
+  _impl_.lifetime_ = 0u;
   _impl_._has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
@@ -664,10 +664,10 @@ const char* SessionPost::_InternalParse(const char* ptr, ::_pbi::ParseContext* c
         } else
           goto handle_unusual;
         continue;
-      // uint64 lifetime = 3;
+      // uint32 lifetime = 3;
       case 3:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 24)) {
-          _impl_.lifetime_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          _impl_.lifetime_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
           CHK_(ptr);
         } else
           goto handle_unusual;
@@ -732,10 +732,10 @@ uint8_t* SessionPost::_InternalSerialize(
         2, this->_internal_policy(), target);
   }
 
-  // uint64 lifetime = 3;
+  // uint32 lifetime = 3;
   if (this->_internal_lifetime() != 0) {
     target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(3, this->_internal_lifetime(), target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(3, this->_internal_lifetime(), target);
   }
 
   // optional string description = 4;
@@ -786,9 +786,9 @@ size_t SessionPost::ByteSizeLong() const {
         this->_internal_description());
   }
 
-  // uint64 lifetime = 3;
+  // uint32 lifetime = 3;
   if (this->_internal_lifetime() != 0) {
-    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_lifetime());
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_lifetime());
   }
 
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
@@ -933,10 +933,10 @@ inline void Session::SharedCtor(
     , decltype(_impl_.name_){}
     , decltype(_impl_.policy_){}
     , decltype(_impl_.description_){}
-    , decltype(_impl_.lifetime_){uint64_t{0u}}
+    , decltype(_impl_.lifetime_){0u}
     , decltype(_impl_.policy_sync_){0}
     , decltype(_impl_.entry_status_){0}
-    , decltype(_impl_.last_use_){uint64_t{0u}}
+    , decltype(_impl_.last_use_){0u}
   };
   _impl_.name_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -1018,10 +1018,10 @@ const char* Session::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) 
         } else
           goto handle_unusual;
         continue;
-      // uint64 lifetime = 3;
+      // uint32 lifetime = 3;
       case 3:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 24)) {
-          _impl_.lifetime_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          _impl_.lifetime_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
           CHK_(ptr);
         } else
           goto handle_unusual;
@@ -1054,10 +1054,10 @@ const char* Session::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) 
         } else
           goto handle_unusual;
         continue;
-      // uint64 last_use = 8;
+      // uint32 last_use = 8;
       case 8:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 64)) {
-          _impl_.last_use_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          _impl_.last_use_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
           CHK_(ptr);
         } else
           goto handle_unusual;
@@ -1112,10 +1112,10 @@ uint8_t* Session::_InternalSerialize(
         2, this->_internal_policy(), target);
   }
 
-  // uint64 lifetime = 3;
+  // uint32 lifetime = 3;
   if (this->_internal_lifetime() != 0) {
     target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(3, this->_internal_lifetime(), target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(3, this->_internal_lifetime(), target);
   }
 
   // optional string description = 4;
@@ -1142,10 +1142,10 @@ uint8_t* Session::_InternalSerialize(
       7, this->_internal_entry_status(), target);
   }
 
-  // uint64 last_use = 8;
+  // uint32 last_use = 8;
   if (this->_internal_last_use() != 0) {
     target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(8, this->_internal_last_use(), target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(8, this->_internal_last_use(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -1186,9 +1186,9 @@ size_t Session::ByteSizeLong() const {
         this->_internal_description());
   }
 
-  // uint64 lifetime = 3;
+  // uint32 lifetime = 3;
   if (this->_internal_lifetime() != 0) {
-    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_lifetime());
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_lifetime());
   }
 
   // .com.wazuh.api.engine.tester.Sync policy_sync = 6;
@@ -1203,9 +1203,9 @@ size_t Session::ByteSizeLong() const {
       ::_pbi::WireFormatLite::EnumSize(this->_internal_entry_status());
   }
 
-  // uint64 last_use = 8;
+  // uint32 last_use = 8;
   if (this->_internal_last_use() != 0) {
-    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_last_use());
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_last_use());
   }
 
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
