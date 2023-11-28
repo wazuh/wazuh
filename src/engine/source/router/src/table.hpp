@@ -24,7 +24,8 @@ namespace internal
  *
  * The objects are stored in a set sorted by priority, and can be accessed by name
  * using a hash map for fast lookup.
- */template<typename T>
+ */
+template<typename T>
 class Table
 {
 private:

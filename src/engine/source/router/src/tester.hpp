@@ -42,7 +42,26 @@ private:
             }
         }
 
-        void setController(std::shared_ptr<bk::IController>&& controller) { m_controller = std::move(controller); }
+        // Move constructor
+        RuntimeEntry(RuntimeEntry&& other) noexcept
+            : test::Entry(std::move(other))
+            , m_controller(std::move(other.m_controller)) {
+                other.m_controller = nullptr;
+            };
+
+        // Move assignment
+        RuntimeEntry& operator=(RuntimeEntry&& other) noexcept
+        {
+            if (this != &other)
+            {
+                test::Entry::operator=(std::move(other));
+                m_controller = std::move(other.m_controller);
+                other.m_controller = nullptr;
+            }
+            return *this;
+        }
+
+        void setController(std::shared_ptr<bk::IController> controller) { m_controller = std::move(controller); }
 
         const std::shared_ptr<bk::IController>& controller() const { return m_controller; }
         std::shared_ptr<bk::IController>& controller() { return m_controller; }
