@@ -21,12 +21,12 @@ check: >-
   ($event.provider == Microsoft-Windows-Security-Auditing OR $event.provider == Microsoft-Windows-Eventlog)
 
 normalize:
-
   # Generic fields
   - map:
       - wazuh.decoders: array_append(windows-security)
       - event.dataset: security
       - event.code: $event.id
+      - event.module: security
       - event: kvdb_get_merge(windows_security_eventid_to_category_type_action, $event.id)
       - windows.logon.id: $windows.EventData.SubjectLogonId
 
@@ -283,7 +283,7 @@ normalize:
       - source.ip: $windows.EventData.IpAddress
       - source.port: $windows.EventData.IpPort
       - source.domain: $windows.EventData.WorkstationName
-      - related.ip: array_append_unique($windows.EventData.ClientAddress)
+      - related.ip: array_append_unique($windows.EventData.IpAddress)
       - _process_parts: parse_file($windows.EventData.ProcessName)
       - process.name: $_process_parts.name
 
