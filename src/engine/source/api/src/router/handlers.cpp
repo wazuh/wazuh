@@ -12,17 +12,24 @@ namespace api::router::handlers
 namespace eRouter = ::com::wazuh::api::engine::router;
 namespace eEngine = ::com::wazuh::api::engine;
 
-namespace {
+using api::adapter::genericError;
+using api::adapter::genericSuccess;
+
+template<typename RequestType>
+using RouterAndRequest = std::pair<std::shared_ptr<::router::IRouterAPI>, RequestType>; ///< Router and request pair
+
+namespace
+{
 
 /**
  * @brief Get the base::Name from a string or an error response if the name is invalid
- * 
- * @tparam ResponseType 
+ *
+ * @tparam ResponseType
  * @param name to convert
  * @param field fild to get the error response
- * @return std::variant<api::wpResponse, base::Name> 
+ * @return std::variant<api::wpResponse, base::Name>
  */
-template <typename ResponseType>
+template<typename ResponseType>
 std::variant<api::wpResponse, base::Name> getName(const std::string& name, const std::string& field)
 {
     try
@@ -31,30 +38,38 @@ std::variant<api::wpResponse, base::Name> getName(const std::string& name, const
     }
     catch (const std::exception& e)
     {
-        return ::api::adapter::genericError<ResponseType>("Invalid " + field + " name: " + e.what());
+        return genericError<ResponseType>("Invalid " + field + " name: " + e.what());
     }
-
 }
 
+/**
+ * @brief Get the request from the wazuh request and validate the router
+ *
+ * @tparam RequestType
+ * @tparam ResponseType
+ * @param wRequest The wazuh request to convert
+ * @param wRouter weak pointer to the router to validate
+ * @return std::variant<api::wpResponse, RouterAndRequest<RequestType>>
+ */
 template<typename RequestType, typename ResponseType>
-std::variant<api::wpResponse, std::pair<std::shared_ptr<::router::IRouterAPI>, RequestType>>
+std::variant<api::wpResponse, RouterAndRequest<RequestType>>
 getRequest(const api::wpRequest& wRequest, const std::weak_ptr<::router::IRouterAPI>& wRouter)
 {
-        auto res = ::api::adapter::fromWazuhRequest<RequestType, ResponseType>(wRequest);
-        // validate the request
-        if (std::holds_alternative<api::wpResponse>(res))
-        {
-            return std::move(std::get<api::wpResponse>(res));
-        }
+    auto res = ::api::adapter::fromWazuhRequest<RequestType, ResponseType>(wRequest);
+    // validate the request
+    if (std::holds_alternative<api::wpResponse>(res))
+    {
+        return std::move(std::get<api::wpResponse>(res));
+    }
 
-        // validate the router
-        auto router = wRouter.lock();
-        if (!router)
-        {
-            return ::api::adapter::genericError<ResponseType>("Router is not available");
-        }
+    // validate the router
+    auto router = wRouter.lock();
+    if (!router)
+    {
+        return genericError<ResponseType>("Router is not available");
+    }
 
-        return std::make_pair(router, std::get<RequestType>(res));
+    return std::make_pair(router, std::get<RequestType>(res));
 }
 } // namespace
 
@@ -89,16 +104,16 @@ api::Handler routePost(const std::weak_ptr<::router::IRouterAPI>& router)
         {
             return std::move(std::get<api::wpResponse>(res));
         }
-        auto& [router, eRequest] = std::get<std::pair<std::shared_ptr<::router::IRouterAPI>, RequestType>>(res);
+        auto& [router, eRequest] = std::get<RouterAndRequest<RequestType>>(res);
 
         // Check the route name
         if (!eRequest.has_route())
         {
-            return ::api::adapter::genericError<ResponseType>("Missing /route");
+            return genericError<ResponseType>("Missing /route");
         }
 
-        auto policyName =  getName<ResponseType>(eRequest.route().policy(), "policy");
-        auto filterName =  getName<ResponseType>(eRequest.route().filter(), "filter");
+        auto policyName = getName<ResponseType>(eRequest.route().policy(), "policy");
+        auto filterName = getName<ResponseType>(eRequest.route().filter(), "filter");
         if (std::holds_alternative<api::wpResponse>(policyName))
         {
             return std::move(std::get<api::wpResponse>(policyName));
@@ -120,17 +135,14 @@ api::Handler routePost(const std::weak_ptr<::router::IRouterAPI>& router)
         auto error = router->postEntry(entryPost);
 
         // Build the response
-        ResponseType eResponse;
-        eResponse.set_status(error.has_value() ? eEngine::ReturnStatus::ERROR : eEngine::ReturnStatus::OK);
         if (error.has_value())
         {
-            eResponse.set_error(error.value().message);
+            genericError<ResponseType>(error.value().message);
         }
 
-        return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
+        return genericSuccess<ResponseType>();
     };
 }
-
 
 api::Handler routeDelete(const std::weak_ptr<::router::IRouterAPI>& router)
 {
@@ -147,18 +159,17 @@ api::Handler routeDelete(const std::weak_ptr<::router::IRouterAPI>& router)
         }
 
         // Validate the params request
-        auto& [router, eRequest] = std::get<std::pair<std::shared_ptr<::router::IRouterAPI>, RequestType>>(res);
+        auto& [router, eRequest] = std::get<RouterAndRequest<RequestType>>(res);
 
         auto error = router->deleteEntry(eRequest.name());
         if (error.has_value())
         {
-            return ::api::adapter::genericError<ResponseType>(error.value().message);
+            return genericError<ResponseType>(error.value().message);
         }
 
-        return ::api::adapter::genericSuccess<ResponseType>();
+        return genericSuccess<ResponseType>();
     };
 }
-
 
 api::Handler routeGet(const std::weak_ptr<::router::IRouterAPI>& router)
 {
@@ -174,14 +185,14 @@ api::Handler routeGet(const std::weak_ptr<::router::IRouterAPI>& router)
             return std::move(std::get<api::wpResponse>(res));
         }
 
-        auto& [router, eRequest] = std::get<std::pair<std::shared_ptr<::router::IRouterAPI>, RequestType>>(res);
+        auto& [router, eRequest] = std::get<RouterAndRequest<RequestType>>(res);
 
         // Execute the command
         const auto& getResult = router->getEntry(eRequest.name());
 
         if (base::isError(getResult))
         {
-            return ::api::adapter::genericError<ResponseType>(base::getError(getResult).message);
+            return genericError<ResponseType>(base::getError(getResult).message);
         }
 
         // Build the response
@@ -207,14 +218,14 @@ api::Handler routeReload(const std::weak_ptr<::router::IRouterAPI>& router)
             return std::move(std::get<api::wpResponse>(res));
         }
 
-        auto& [router, eRequest] = std::get<std::pair<std::shared_ptr<::router::IRouterAPI>, RequestType>>(res);
+        auto& [router, eRequest] = std::get<RouterAndRequest<RequestType>>(res);
 
         // Execute the command
         const auto& getResult = router->reloadEntry(eRequest.name());
 
         if (base::isError(getResult))
         {
-            return ::api::adapter::genericError<ResponseType>(base::getError(getResult).message);
+            return genericError<ResponseType>(base::getError(getResult).message);
         }
 
         // Build the response
@@ -239,14 +250,14 @@ api::Handler routePatchPriority(const std::weak_ptr<::router::IRouterAPI>& route
             return std::move(std::get<api::wpResponse>(res));
         }
 
-        auto& [router, eRequest] = std::get<std::pair<std::shared_ptr<::router::IRouterAPI>, RequestType>>(res);
+        auto& [router, eRequest] = std::get<RouterAndRequest<RequestType>>(res);
 
         // Execute the command
         const auto& getResult = router->changeEntryPriority(eRequest.name(), eRequest.priority());
 
         if (base::isError(getResult))
         {
-            return ::api::adapter::genericError<ResponseType>(base::getError(getResult).message);
+            return genericError<ResponseType>(base::getError(getResult).message);
         }
 
         // Build the response
@@ -256,8 +267,6 @@ api::Handler routePatchPriority(const std::weak_ptr<::router::IRouterAPI>& route
         return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
     };
 }
-
-
 
 api::Handler tableGet(const std::weak_ptr<::router::IRouterAPI>& router)
 {
@@ -273,7 +282,7 @@ api::Handler tableGet(const std::weak_ptr<::router::IRouterAPI>& router)
             return std::move(std::get<api::wpResponse>(res));
         }
 
-        auto& [router, eRequest] = std::get<std::pair<std::shared_ptr<::router::IRouterAPI>, RequestType>>(res);
+        auto& [router, eRequest] = std::get<RouterAndRequest<RequestType>>(res);
         const auto entries = router->getEntries();
 
         // Build the response
@@ -304,14 +313,14 @@ api::Handler queuePost(const std::weak_ptr<::router::IRouterAPI>& router)
             return std::move(std::get<api::wpResponse>(res));
         }
 
-        auto& [router, eRequest] = std::get<std::pair<std::shared_ptr<::router::IRouterAPI>, RequestType>>(res);
+        auto& [router, eRequest] = std::get<RouterAndRequest<RequestType>>(res);
         const auto postRes = router->postStrEvent(eRequest.wazuh_event());
 
         if (postRes.has_value())
         {
-            return ::api::adapter::genericError<ResponseType>(postRes.value().message);
+            return genericError<ResponseType>(postRes.value().message);
         }
-        return ::api::adapter::genericSuccess<ResponseType>();
+        return genericSuccess<ResponseType>();
     };
 }
 

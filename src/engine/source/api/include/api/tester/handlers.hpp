@@ -14,7 +14,6 @@ api::Handler sessionGet(const std::weak_ptr<::router::ITesterAPI>& tester);
 api::Handler sessionReload(const std::weak_ptr<::router::ITesterAPI>& tester);
 // Table of sessions
 api::Handler tableGet(const std::weak_ptr<::router::ITesterAPI>& tester);
-// api::Handler tableDelete(const std::weak_ptr<::router::ITesterAPI>& tester);
 // Use of session
 api::Handler runPost(const std::weak_ptr<::router::ITesterAPI>& tester,
                      const std::weak_ptr<store::IStoreReader>& store);

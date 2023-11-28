@@ -53,7 +53,7 @@ public:
         {
             data.success = true;
         }
-        else // TODO Should we trace only the option trace level? or filter in client side?
+        else
         {
             data.traces.push_back(traceContent);
         }
@@ -67,7 +67,7 @@ base::OptError Tester::addEntry(const test::EntryPost& entryPost)
     try
     {
         auto controller = m_envBuilder->makeController(entryPost.policy());
-        entry.setController(std::move(controller));
+        entry.setController(controller);
         entry.status(env::State::DISABLED); // It is disabled until all tester are ready
         entry.lifetime(entry.lifetime());
     }
@@ -84,7 +84,7 @@ base::OptError Tester::addEntry(const test::EntryPost& entryPost)
             return base::Error {"The name of the testing environment already exist"};
         }
 
-        m_table.insert({entryPost.name(), std::move(entry)});
+        m_table.emplace(entryPost.name(), std::move(entry));
     }
 
     return std::nullopt;
@@ -180,7 +180,6 @@ base::RespOrError<test::Output> Tester::ingestTest(base::Event&& event, const te
     {
         bk::Subscriber subFn = [asset, result](const std::string& trace, bool success) -> void
         {
-            LOG_DEBUG("Asset: {}, Trace: {}, Success: {}", asset, trace, success);
             result->addTrace(asset, trace, success);
         };
         auto err = entry.controller()->subscribe(asset, subFn);
