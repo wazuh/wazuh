@@ -71,6 +71,11 @@ variables:
     </labels>
     </agent_config>
 
+  empty_file_xml:
+    <?xml version="1.0" ?>
+    <metadata>
+    </metadata>
+
   wrong_file_xml:
     <agent_confi>
 
