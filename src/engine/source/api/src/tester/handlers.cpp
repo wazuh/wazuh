@@ -1,3 +1,5 @@
+#include <sstream>
+
 #include <eMessages/tester.pb.h>
 #include <router/iapi.hpp>
 
@@ -9,11 +11,27 @@ namespace api::tester::handlers
 namespace eTester = ::com::wazuh::api::engine::tester;
 namespace eEngine = ::com::wazuh::api::engine;
 
+using api::adapter::genericError;
+using api::adapter::genericSuccess;
+
+template<typename RequestType>
+using TesterAndRequest = std::pair<std::shared_ptr<::router::ITesterAPI>, RequestType>; ///< Tester and request
+
 namespace
 {
 
+/**
+ * @brief Get the request, validate it and return the tester and the request
+ * or the error response
+ *
+ * @tparam RequestType Type of the request
+ * @tparam ResponseType Type of the response
+ * @param wRequest Request to validate
+ * @param wTester Tester to use
+ * @return std::variant<api::wpResponse, TesterAndRequest<RequestType>>
+ */
 template<typename RequestType, typename ResponseType>
-std::variant<api::wpResponse, std::pair<std::shared_ptr<::router::ITesterAPI>, RequestType>>
+std::variant<api::wpResponse, TesterAndRequest<RequestType>>
 getRequest(const api::wpRequest& wRequest, const std::weak_ptr<::router::ITesterAPI>& wTester)
 {
     auto res = ::api::adapter::fromWazuhRequest<RequestType, ResponseType>(wRequest);
@@ -27,12 +45,18 @@ getRequest(const api::wpRequest& wRequest, const std::weak_ptr<::router::ITester
     auto tester = wTester.lock();
     if (!tester)
     {
-        return ::api::adapter::genericError<ResponseType>("Tester is not available");
+        return genericError<ResponseType>("Tester is not available");
     }
 
     return std::make_pair(tester, std::get<RequestType>(res));
 }
 
+/**
+ * @brief Transform a router::test::Entry to a eTester::Session
+ *
+ * @param entry Entry to transform
+ * @return eTester::Session
+ */
 eTester::Session toSession(const ::router::test::Entry& entry)
 {
     eTester::Session session;
@@ -50,8 +74,19 @@ eTester::Session toSession(const ::router::test::Entry& entry)
     return session;
 }
 
+/**
+ * @brief Filter the assets of a policy by namespaces and return them in a set of strings
+ * or the error response
+ *
+ * @tparam RequestType
+ * @tparam ResponseType
+ * @param eRequest Request to get namespaces and policy name
+ * @param wStore Store to use to get the namespaces of the assets
+ * @param tester Tester to use to get the assets of the policy
+ * @return std::variant<api::wpResponse, std::unordered_set<std::string>>
+ */
 template<typename RequestType, typename ResponseType>
-auto getAssetsForTrace(const RequestType& eRequest,
+auto getNsFilterAssets(const RequestType& eRequest,
                        const std::weak_ptr<store::IStoreReader>& wStore,
                        const std::shared_ptr<::router::ITesterAPI>& tester)
     -> std::variant<api::wpResponse, std::unordered_set<std::string>>
@@ -60,7 +95,7 @@ auto getAssetsForTrace(const RequestType& eRequest,
     auto store = wStore.lock();
     if (!store)
     {
-        return ::api::adapter::genericError<ResponseType>("Store is not available");
+        return genericError<ResponseType>("Store is not available");
     }
 
     // Get namespaces
@@ -71,14 +106,14 @@ auto getAssetsForTrace(const RequestType& eRequest,
     }
     if (namespaces.empty())
     {
-        return ::api::adapter::genericError<ResponseType>("Namespaces parameter is required");
+        return genericError<ResponseType>("Namespaces parameter is required");
     }
 
     // Get all assets of the running policy
     auto resPolicyAssets = tester->getAssets(eRequest.name());
     if (base::isError(resPolicyAssets))
     {
-        return ::api::adapter::genericError<ResponseType>(base::getError(resPolicyAssets).message);
+        return genericError<ResponseType>(base::getError(resPolicyAssets).message);
     }
     auto& policyAssets = base::getResponse(resPolicyAssets);
 
@@ -89,7 +124,7 @@ auto getAssetsForTrace(const RequestType& eRequest,
         auto assetNamespace = store->getNamespace(asset);
         if (!assetNamespace)
         {
-            return ::api::adapter::genericError<ResponseType>(fmt::format("Asset {} not found in store", asset));
+            return genericError<ResponseType>(fmt::format("Asset {} not found in store", asset));
         }
         if (std::find(namespaces.begin(), namespaces.end(), assetNamespace.value()) != namespaces.end())
         {
@@ -99,6 +134,12 @@ auto getAssetsForTrace(const RequestType& eRequest,
     return assets;
 }
 
+/**
+ * @brief Transform a router::test::Output to a eTester::Result
+ *
+ * @param output Output to transform
+ * @return eTester::Result
+ */
 eTester::Result fromOutput(const ::router::test::Output& output)
 {
     eTester::Result result {};
@@ -144,11 +185,11 @@ api::Handler sessionPost(const std::weak_ptr<::router::ITesterAPI>& tester)
         {
             return std::move(std::get<api::wpResponse>(res));
         }
-        auto& [tester, eRequest] = std::get<std::pair<std::shared_ptr<::router::ITesterAPI>, RequestType>>(res);
+        auto& [tester, eRequest] = std::get<TesterAndRequest<RequestType>>(res);
 
         if (!eRequest.has_session())
         {
-            return ::api::adapter::genericError<ResponseType>("Session parameter is required");
+            return genericError<ResponseType>("Session parameter is required");
         }
 
         // Create the query
@@ -159,7 +200,7 @@ api::Handler sessionPost(const std::weak_ptr<::router::ITesterAPI>& tester)
         }
         catch (const std::exception& e)
         {
-            return ::api::adapter::genericError<ResponseType>(fmt::format("Invalid policy for session: {}", e.what()));
+            return genericError<ResponseType>(fmt::format("Invalid policy for session: {}", e.what()));
         }
 
         ::router::test::EntryPost entry(eRequest.session().name(), policy, eRequest.session().lifetime());
@@ -172,10 +213,9 @@ api::Handler sessionPost(const std::weak_ptr<::router::ITesterAPI>& tester)
         auto error = tester->postTestEntry(entry);
         if (error)
         {
-            return ::api::adapter::genericError<ResponseType>(
-                fmt::format("Error creating session: {}", error.value().message));
+            return genericError<ResponseType>(fmt::format("Error creating session: {}", error.value().message));
         }
-        return ::api::adapter::genericSuccess<ResponseType>();
+        return genericSuccess<ResponseType>();
     };
 }
 
@@ -192,16 +232,15 @@ api::Handler sessionDelete(const std::weak_ptr<::router::ITesterAPI>& tester)
         {
             return std::move(std::get<api::wpResponse>(res));
         }
-        auto& [tester, eRequest] = std::get<std::pair<std::shared_ptr<::router::ITesterAPI>, RequestType>>(res);
+        auto& [tester, eRequest] = std::get<TesterAndRequest<RequestType>>(res);
 
         // Delete the session
         auto error = tester->deleteTestEntry(eRequest.name());
         if (error)
         {
-            return ::api::adapter::genericError<ResponseType>(
-                fmt::format("Error deleting session: {}", error.value().message));
+            return genericError<ResponseType>(fmt::format("Error deleting session: {}", error.value().message));
         }
-        return ::api::adapter::genericSuccess<ResponseType>();
+        return genericSuccess<ResponseType>();
     };
 }
 
@@ -218,14 +257,13 @@ api::Handler sessionGet(const std::weak_ptr<::router::ITesterAPI>& tester)
         {
             return std::move(std::get<api::wpResponse>(res));
         }
-        auto& [tester, eRequest] = std::get<std::pair<std::shared_ptr<::router::ITesterAPI>, RequestType>>(res);
+        auto& [tester, eRequest] = std::get<TesterAndRequest<RequestType>>(res);
 
         // Get the session
         auto entry = tester->getTestEntry(eRequest.name());
         if (base::isError(entry))
         {
-            return ::api::adapter::genericError<ResponseType>(
-                fmt::format("Error getting session: {}", base::getError(entry).message));
+            return genericError<ResponseType>(fmt::format("Error getting session: {}", base::getError(entry).message));
         }
 
         // Create the response
@@ -249,16 +287,15 @@ api::Handler sessionReload(const std::weak_ptr<::router::ITesterAPI>& tester)
         {
             return std::move(std::get<api::wpResponse>(res));
         }
-        auto& [tester, eRequest] = std::get<std::pair<std::shared_ptr<::router::ITesterAPI>, RequestType>>(res);
+        auto& [tester, eRequest] = std::get<TesterAndRequest<RequestType>>(res);
 
         // Reload the session
         auto error = tester->reloadTestEntry(eRequest.name());
         if (error)
         {
-            return ::api::adapter::genericError<ResponseType>(
-                fmt::format("Error reloading session: {}", error.value().message));
+            return genericError<ResponseType>(fmt::format("Error reloading session: {}", error.value().message));
         }
-        return ::api::adapter::genericSuccess<ResponseType>();
+        return genericSuccess<ResponseType>();
     };
 }
 
@@ -275,7 +312,7 @@ api::Handler tableGet(const std::weak_ptr<::router::ITesterAPI>& tester)
         {
             return std::move(std::get<api::wpResponse>(res));
         }
-        auto& [tester, eRequest] = std::get<std::pair<std::shared_ptr<::router::ITesterAPI>, RequestType>>(res);
+        auto& [tester, eRequest] = std::get<TesterAndRequest<RequestType>>(res);
 
         // Get the table
         auto entries = tester->getTestEntries();
@@ -304,7 +341,7 @@ api::Handler runPost(const std::weak_ptr<::router::ITesterAPI>& tester, const st
         {
             return std::move(std::get<api::wpResponse>(res));
         }
-        auto& [tester, eRequest] = std::get<std::pair<std::shared_ptr<::router::ITesterAPI>, RequestType>>(res);
+        auto& [tester, eRequest] = std::get<TesterAndRequest<RequestType>>(res);
 
         // Checks params
         using OTraceLavel = ::router::test::Options::TraceLevel;
@@ -317,7 +354,7 @@ api::Handler runPost(const std::weak_ptr<::router::ITesterAPI>& tester, const st
         if (traceLevel != OTraceLavel::NONE)
         {
             // Get the assets of the policy filtered by namespaces
-            auto resFilteredAssets = getAssetsForTrace<RequestType, ResponseType>(eRequest, wStore, tester);
+            auto resFilteredAssets = getNsFilterAssets<RequestType, ResponseType>(eRequest, wStore, tester);
             if (std::holds_alternative<api::wpResponse>(resFilteredAssets))
             {
                 return std::move(std::get<api::wpResponse>(resFilteredAssets));
@@ -335,8 +372,7 @@ api::Handler runPost(const std::weak_ptr<::router::ITesterAPI>& tester, const st
                 {
                     if (filteredAssets.find(asset) == filteredAssets.end())
                     {
-                        return ::api::adapter::genericError<ResponseType>(
-                            fmt::format("Asset {} not found in store", asset));
+                        return genericError<ResponseType>(fmt::format("Asset {} not found in store", asset));
                     }
                     requestAssets.insert(asset);
                 }
@@ -347,13 +383,21 @@ api::Handler runPost(const std::weak_ptr<::router::ITesterAPI>& tester, const st
         // Create The event to test
         std::string eventStr {};
         {
-            auto location = eRequest.location();
-            size_t pos;
-            while ((pos = location.find(':')) != std::string::npos)
+            std::stringstream streamLocation;
+            // Escape the ':' character in the location (Wazuh protocol)
+            for (const auto& c : eRequest.location())
             {
-                location.replace(pos, 1, "|:");
+                if (c == ':')
+                {
+                    streamLocation << "|:";
+                }
+                else
+                {
+                    streamLocation << c;
+                }
             }
-            eventStr = eRequest.queue() + ":" + location + ":" + eRequest.message();
+
+            eventStr = eRequest.queue() + ":" + streamLocation.str() + ":" + eRequest.message();
         }
 
         // Run the test
@@ -363,28 +407,26 @@ api::Handler runPost(const std::weak_ptr<::router::ITesterAPI>& tester, const st
             auto result = tester->ingestTest(eventStr, opt);
 
             // Create the response
-            auto r = result.wait_for(std::chrono::milliseconds(100));
+            auto r = result.wait_for(std::chrono::milliseconds(tester->getTestTimeout()));
             if (r == std::future_status::ready)
             {
                 auto output = result.get();
                 if (base::isError(output))
                 {
-                    return ::api::adapter::genericError<ResponseType>("Error running test: "
-                                                                      + base::getError(output).message);
+                    return genericError<ResponseType>("Error running test: " + base::getError(output).message);
                 }
                 ResponseType eResponse {};
                 eResponse.mutable_result()->CopyFrom(fromOutput(base::getResponse(output)));
                 eResponse.set_status(eEngine::ReturnStatus::OK);
                 return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
-
             }
         }
         catch (const std::exception& e)
         {
-            return ::api::adapter::genericError<ResponseType>(fmt::format("Error running test: {}", e.what()));
+            return genericError<ResponseType>(fmt::format("Error running test: {}", e.what()));
         }
 
-        return ::api::adapter::genericError<ResponseType>("Error running test: Timeout");
+        return genericError<ResponseType>("Error running test: Timeout");
     };
 }
 

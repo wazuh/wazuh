@@ -20,7 +20,6 @@
 #include <api/policy/policy.hpp>
 #include <api/router/handlers.hpp>
 #include <api/tester/handlers.hpp>
-#include <api/test/sessionManager.hpp>
 #include <bk/rx/controller.hpp>
 //#include <bk/taskf/controller.hpp>
 #include <builder/builder.hpp>
@@ -37,10 +36,10 @@
 #include <router/orchestrator.hpp>
 
 #include <schemf/schema.hpp>
-#include <server/endpoints/unixDatagram.hpp> // Event
-#include <server/endpoints/unixStream.hpp>   //API
+#include <server/endpoints/unixDatagram.hpp>
+#include <server/endpoints/unixStream.hpp>
 #include <server/engineServer.hpp>
-#include <server/protocolHandlers/wStream.hpp> //API
+#include <server/protocolHandlers/wStream.hpp>
 #include <sockiface/unixSocketFactory.hpp>
 #include <store/drivers/fileDriver.hpp>
 #include <store/store.hpp>
@@ -209,7 +208,6 @@ void runStart(ConfHandler confManager)
     std::shared_ptr<wazuhdb::WDBManager> wdbManager;
     std::shared_ptr<rbac::RBAC> rbac;
     std::shared_ptr<api::policy::Policy> policyManager;
-    std::shared_ptr<api::sessionManager::SessionManager> sessionManager;
 
     try
     {
@@ -228,7 +226,6 @@ void runStart(ConfHandler confManager)
             LOG_INFO("RBAC initialized.");
         }
 
-    
         // KVDB
         {
             kvdbManager::KVDBManagerOptions kvdbOptions {kvdbPath, "kvdb"};
@@ -314,7 +311,7 @@ void runStart(ConfHandler confManager)
             // External queues
             using QEventType = base::queue::ConcurrentQueue<base::Event>;
             using QTestType = base::queue::ConcurrentQueue<router::test::QueueType>;
-            
+
             std::shared_ptr<QEventType> eventQueue {};
             std::shared_ptr<QTestType> testQueue {};
             {
@@ -333,30 +330,21 @@ void runStart(ConfHandler confManager)
                 LOG_DEBUG("Test queue created.");
             }
 
-            // builder, store, routerThreads, forceRouterArg
+            // forceRouterArg
             router::Config routerConfig {.m_numThreads = routerThreads,
                                          .m_wStore = store,
                                          .m_wRegistry = registry,
                                          .m_controllerMaker = std::make_shared<bk::rx::ControllerMaker>(),
                                          .m_prodQueue = eventQueue,
-                                         .m_testQueue = testQueue};
+                                         .m_testQueue = testQueue,
+                                         .m_testTimeout = serverApiTimeout};
 
             orchestrator = std::make_shared<router::Orchestrator>(routerConfig);
-
-            // TODO Remove this
-            auto res = orchestrator->postEntry(router::prod::EntryPost("Default", "policy/wazuh/0", "filter/allow-all/0", 255));
-            if (res.has_value())
-            {
-                throw std::runtime_error("Error creating default environment: " + res.value().message);
-            }
             orchestrator->start();
 
             exitHandler.add([orchestrator]() { orchestrator->stop(); });
             LOG_INFO("Router initialized.");
         }
-
-        // Test
-
 
         // Create and configure the api endpints
         {
