@@ -1006,7 +1006,6 @@ int policy_check() {
     BOOL open_policy = FALSE;
     NTSTATUS Status;
     DWORD err_code;
-    LPSTR err_msg = NULL;
 
     ZeroMemory(&ObjectAttributes, sizeof(ObjectAttributes));
     Status = LsaOpenPolicy(NULL, &ObjectAttributes, POLICY_VIEW_AUDIT_INFORMATION, &PolicyHandle);
@@ -1089,7 +1088,8 @@ int policy_check() {
 
 error:
     err_code = GetLastError();
-
+    char err_msg[OS_SIZE_1024];
+    err_msg[OS_SIZE_1024 - 1] = '\0';
     FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_MAX_WIDTH_MASK,
                   NULL, err_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR) &err_msg, OS_SIZE_1024, NULL);
     mwarn(FIM_WHODATA_ERROR_CHECKING_POL, err_msg, err_code);

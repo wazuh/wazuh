@@ -42,6 +42,18 @@
 #include <winerror.h>
 #include <sddl.h>
 
+#ifdef WAZUH_UNIT_TESTING
+#include "../unit_tests/wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../unit_tests/wrappers/windows/errhandlingapi_wrappers.h"
+#include "../unit_tests/wrappers/windows/winbase_wrappers.h"
+#include "../unit_tests/wrappers/windows/winevt_wrappers.h"
+
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 typedef struct _os_event {
     char *name;
     unsigned int id;
@@ -68,8 +80,8 @@ typedef struct _os_channel {
     EVT_HANDLE subscription;
 } os_channel;
 
-static char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags);
-static EVT_HANDLE read_bookmark(os_channel *channel);
+STATIC char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags);
+STATIC EVT_HANDLE read_bookmark(os_channel *channel);
 
 wchar_t *convert_unix_string(char *string)
 {
@@ -122,7 +134,7 @@ wchar_t *convert_unix_string(char *string)
     return (dest);
 }
 
-char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
+STATIC char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
 {
     char *message = NULL;
     EVT_HANDLE publisher = NULL;
@@ -170,7 +182,7 @@ char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
         goto cleanup;
     }
 
-    if ((buffer = calloc(size, sizeof(wchar_t))) == NULL) {
+    if ((buffer = calloc(++size, sizeof(wchar_t))) == NULL) {
         merror(
             "Could not calloc() memory which returned [(%d)-(%s)]",
             errno,
