@@ -1297,6 +1297,19 @@ components:
                   - $ref: '#/components/schemas/WazuhRemotedStats'
         - $ref: '#/components/schemas/AllItemsResponse'
 
+    AllItemsResponseNewVersions:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                $ref: '#/components/schemas/NewVersions'
+
     BasicInfo:
       type: object
       properties:
@@ -4275,6 +4288,97 @@ components:
           nullable: true
           format: date-time
           description: "Date when the latest scan started. If no scans have been run, null will be returned"
+
+    NewVersions:
+      type: object
+      properties:
+        last_check_date:
+          type: string
+          description: "Datetime of the last query to the CTI service"
+        current_version:
+          type: string
+          description: "Current version in the format vX.Y.Z"
+        update_check:
+          type: boolean
+          description: "Flag that indicates if the service is enabled"
+        last_available_major:
+          type: object
+          description: "Information about the most recent available major update"
+          properties:
+            tag:
+              type: string
+              description: "Version in the format vX.Y.Z"
+            description:
+              type: string
+            title:
+              type: string
+            published_date:
+              type: string
+            semver:
+              type: object
+              properties:
+                major:
+                  type: integer
+                  format: int32
+                minor:
+                  type: integer
+                  format: int32
+                patch:
+                  type: integer
+                  format: int32
+        last_available_minor:
+          type: object
+          description: "Information about the most recent available minor update"
+          properties:
+            tag:
+              type: string
+              description: "Version in the format vX.Y.Z"
+            description:
+              type: string
+            title:
+              type: string
+            published_date:
+              type: string
+            semver:
+              type: object
+              properties:
+                major:
+                  type: integer
+                  format: int32
+                minor:
+                  type: integer
+                  format: int32
+                patch:
+                  type: integer
+                  format: int32
+        last_available_patch:
+          type: object
+          description: "Information about the most recent available patch update"
+          properties:
+            tag:
+              type: string
+              description: "Version in the format vX.Y.Z"
+            description:
+              type: string
+            title:
+              type: string
+            published_date:
+              type: string
+            semver:
+              type: object
+              properties:
+                major:
+                  type: integer
+                  format: int32
+                minor:
+                  type: integer
+                  format: int32
+                patch:
+                  type: integer
+                  format: int32
+        uuid:
+          type: string
+          description: "Identifier of the Wazuh instance"
 
     # Rules models
     RuleFile:
@@ -13084,7 +13188,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseNewVersions'
               example:
                 data:
                   last_check_date: '2023-10-09T15:39:57.616301+00:00'
@@ -13117,6 +13226,7 @@ paths:
                       major: 4
                       minor: 8
                       patch: 2
+                  uuid": "edc90f7f-fca4-446c-8985-e69520948e42"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
