@@ -122,7 +122,7 @@ private:
         const auto onError {
             [&returnCode](const std::string& errorMessage, const long errorCode)
             {
-                logWarn(WM_CONTENTUPDATER, "Error '%d' when downloading file: %s", errorCode, errorMessage);
+                logWarn(WM_CONTENTUPDATER, "Error '%d' when downloading file: %s", errorCode, errorMessage.c_str());
                 returnCode = false;
             }};
 
@@ -176,7 +176,7 @@ private:
         }
         else
         {
-            throw std::runtime_error {"Unkown URL prefix for " + fileUrl.string()};
+            throw std::runtime_error {"Unknown URL prefix for " + fileUrl.string()};
         }
 
         // Just process the new file if the hash is different from the last one.
