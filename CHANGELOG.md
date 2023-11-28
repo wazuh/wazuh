@@ -70,6 +70,23 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.7.1]
 
+### Manager
+
+#### Fixed
+
+- Fixed a thread lock bug that slowed down wazuh-db performance. ([#20178](https://github.com/wazuh/wazuh/pull/20178))
+- Fixed a bug in Vulnerability detector that skipped vulnerabilities for Windows 11 21H2. ([#20386](https://github.com/wazuh/wazuh/pull/20386))
+- The installer now updates the merged.mg file permissions on upgrade. ([#5941](https://github.com/wazuh/wazuh/pull/5941))
+
+### Agent
+
+#### Fixed
+
+- Fixed a bug that prevented the local IP from appearing in the port inventory from macOS agents. ([#20332](https://github.com/wazuh/wazuh/pull/20332))
+- Fixed the default Logcollector settings on macOS to collect logs out-of-the-box. ([#20180](https://github.com/wazuh/wazuh/pull/20180))
+- Fixed a bug in the FIM decoder at wazuh-analysisd that ignored Windows Registry events from agents under 4.6.0. ([#20169](https://github.com/wazuh/wazuh/pull/20169))
+- Fixed multiple bugs in the Syscollector decoder at wazuh-analysisd that did not sanitize the input data properly. ([#20250](https://github.com/wazuh/wazuh/pull/20250))
+
 
 ## [v4.7.0]
 
@@ -87,13 +104,14 @@ All notable changes to this project will be documented in this file.
 #### Changed
 
 - An unnecessary sanity check related to Syscollector has been removed from wazuh-db. ([#16008](https://github.com/wazuh/wazuh/pull/16008))
+- The manager now rejects agents with a higher version by default. ([#20367](https://github.com/wazuh/wazuh/pull/20367))
 
 #### Fixed
 
 - Fixed an unexpected error by the Cluster when a worker gets restarted. ([#16683](https://github.com/wazuh/wazuh/pull/16683))
 - Fixed an issue that let the manager validate wrong XML configurations. ([#16681](https://github.com/wazuh/wazuh/pull/16681))
-- Fixed syscollector packages multiarch values ([#19722](https://github.com/wazuh/wazuh/issues/19722))
-- Fieed wazuh-agent crash randomly when RPCRT4.dll is loaded ([#18591](https://github.com/wazuh/wazuh/issues/18591))
+- Fixed Syscollector packages multiarch values. ([#19722](https://github.com/wazuh/wazuh/issues/19722))
+- Fixed a bug that made the Windows agent crash randomly when loading RPCRT4.dll. ([#18591](https://github.com/wazuh/wazuh/issues/18591))
 
 #### Deleted
 
@@ -114,6 +132,7 @@ All notable changes to this project will be documented in this file.
 
 - The shared modules' code has been sanitized according to the convention. ([#17966](https://github.com/wazuh/wazuh/pull/17966))
 - The package inventory internal messages have been modified to honor the schema compliance. ([#18006](https://github.com/wazuh/wazuh/pull/18006))
+- The agent connection log has been updated to clarify that the agent must connect to an agent with the same or higher version. ([#20360](https://github.com/wazuh/wazuh/pull/20360))
 
 #### Fixed
 
