@@ -16,46 +16,39 @@ from wazuh.core.decoder import load_decoders_from_file, check_status, REQUIRED_F
 from wazuh.core.exception import WazuhInternalError, WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.rule import format_rule_decoder_file
-from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml, \
+from wazuh.core.utils import process_array, WazuhInMemoryDBQuery, safe_move, validate_wazuh_xml, \
     upload_file, to_relative_path, full_copy
 from wazuh.rbac.decorators import expose_resources
 
 
 def get_decoders(names: list = None, status: str = None, filename: list = None, relative_dirname: str = None,
-                 parents: bool = False, offset: int = 0, limit: int = common.DATABASE_LIMIT, select: list = None,
-                 sort_by: list = None, sort_ascending: bool = True, search_text: str = None,
-                 complementary_search: bool = False, search_in_fields: list = None,
-                 q: str = '', distinct: bool = False) -> AffectedItemsWazuhResult:
+                 parents: bool = False, offset: int = 0, limit: int = common.DATABASE_LIMIT, search: str = None,
+                 select: list = None, sort: dict = None, q: str = '',
+                 distinct: bool = False) -> AffectedItemsWazuhResult:
     """Get a list of available decoders.
 
     Parameters
     ----------
     names : list
         Filters by decoder name.
-    filename : list
-        List of filenames to filter by.
     status : str
         Filters by status: enabled, disabled, all.
-    parents : bool
-        Just parent decoders.
+    filename : list
+        List of filenames to filter by.
     relative_dirname : str
         Filters by relative dirname.
-    search_text : str
-        Text to search.
-    complementary_search : bool
-        Find items without the text to search. Default: False
-    search_in_fields : list
-        Fields to search in.
-    select : list
-        List of selected fields to return
-    sort_by : list
-        Fields to sort the items by.
-    sort_ascending : bool
-        Sort in ascending (true) or descending (false) order. Default: True
+    parents : bool
+        Just parent decoders.
     offset : int
         First element to return.
     limit : int
         Maximum number of elements to return.
+    search : dict
+        Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
+    select : list
+        List of selected fields to return
+    sort : dict
+        Fields to sort the items by.
     q : str
         Defines query to filter.
     distinct : bool
@@ -69,9 +62,9 @@ def get_decoders(names: list = None, status: str = None, filename: list = None, 
     result = AffectedItemsWazuhResult(none_msg='No decoder was returned',
                                       some_msg='Some decoders were not returned',
                                       all_msg='All selected decoders were returned')
-    all_decoders = list()
+    all_decoders = []
     if names is None:
-        names = list()
+        names = []
 
     for decoder_file in get_decoders_files(limit=None).affected_items:
         all_decoders.extend(load_decoders_from_file(decoder_file['filename'], decoder_file['relative_dirname'],
@@ -103,12 +96,11 @@ def get_decoders(names: list = None, status: str = None, filename: list = None, 
     for decoder_name in no_existent_files:
         result.add_failed_item(id_=decoder_name, error=WazuhError(1504))
 
-    data = process_array(decoders, search_text=search_text, search_in_fields=search_in_fields,
-                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         allowed_sort_fields=SORT_FIELDS, offset=offset, select=select, limit=limit, q=q,
-                         required_fields=REQUIRED_FIELDS, allowed_select_fields=DECODER_FIELDS, distinct=distinct)
-    result.affected_items = data['items']
-    result.total_affected_items = data['totalItems']
+    with WazuhInMemoryDBQuery(decoders, search=search, sort=sort, offset=offset, limit=limit, select=select, query=q,
+                              distinct=distinct, default_sort_field=SORT_FIELDS[0]) as db_query:
+        data = db_query.run()
+        result.affected_items = data['items']
+        result.total_affected_items = data['totalItems']
 
     return result
 

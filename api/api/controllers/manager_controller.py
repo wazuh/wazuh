@@ -377,10 +377,8 @@ async def get_log(request, pretty: bool = False, wait_for_complete: bool = False
     """
     f_kwargs = {'offset': offset,
                 'limit': limit,
-                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['timestamp'],
-                'sort_ascending': False if sort is None or parse_api_param(sort, 'sort')['order'] == 'desc' else True,
-                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
-                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
                 'tag': tag,
                 'level': level,
                 'q': q,

@@ -14,7 +14,7 @@ from wazuh.core.exception import WazuhError
 from wazuh.core.manager import status, get_api_conf, get_ossec_logs, get_logs_summary, validate_ossec_conf, \
     OSSEC_LOG_FIELDS
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml, full_copy
+from wazuh.core.utils import WazuhInMemoryDBQuery, safe_move, validate_wazuh_xml, full_copy
 from wazuh.rbac.decorators import expose_resources
 
 cluster_enabled = not read_cluster_config(from_import=True)['disabled']
@@ -47,31 +47,24 @@ def get_status() -> AffectedItemsWazuhResult:
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def ossec_log(level: str = None, tag: str = None, offset: int = 0, limit: int = common.DATABASE_LIMIT,
-              sort_by: dict = None, sort_ascending: bool = True, search_text: str = None,
-              complementary_search: bool = False, search_in_fields: list = None,
-              q: str = '', select: str = None, distinct: bool = False) -> AffectedItemsWazuhResult:
+              sort: dict = None, search: str = None, q: str = '', select: str = None, 
+              distinct: bool = False) -> AffectedItemsWazuhResult:
     """Get logs from ossec.log.
 
     Parameters
     ----------
+    level : str
+        Filters by log level.
+    tag : str
+        Filters by category/tag of log.
     offset : int
         First element to return in the collection.
     limit : int
         Maximum number of elements to return.
-    tag : str
-        Filters by category/tag of log.
-    level : str
-        Filters by log level.
-    sort_by : dict
-        Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
-    sort_ascending : bool
-        Sort in ascending (true) or descending (false) order.
-    search_text : str
-        Text to search.
-    complementary_search : bool
-        Find items without the text to search.
-    search_in_fields : list
-        Fields to search in.
+    sort : dict
+        Fields to sort the items by.
+    search : dict
+        Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
     q : str
         Query to filter results by.
     select : str
@@ -91,19 +84,17 @@ def ossec_log(level: str = None, tag: str = None, offset: int = 0, limit: int = 
                                                f"{' in specified node' if node_id != 'manager' else ''}"
                                       )
     logs = get_ossec_logs()
-
     query = []
     level and query.append(f'level={level}')
     tag and query.append(f'tag={tag}')
     q and query.append(q)
     query = ';'.join(query)
 
-    data = process_array(logs, search_text=search_text, search_in_fields=search_in_fields,
-                         complementary_search=complementary_search, sort_by=sort_by,
-                         sort_ascending=sort_ascending, offset=offset, limit=limit, q=query,
-                         select=select, allowed_select_fields=OSSEC_LOG_FIELDS, distinct=distinct)
-    result.affected_items.extend(data['items'])
-    result.total_affected_items = data['totalItems']
+    with WazuhInMemoryDBQuery(array=logs, offset=offset, limit=limit, sort=sort, search=search, select=select, 
+                              query=query, distinct=distinct, default_sort_field=OSSEC_LOG_FIELDS[0]) as db_query:
+        data = db_query.run()
+        result.affected_items.extend(data['items'])
+        result.total_affected_items = data['totalItems']
 
     return result
 
