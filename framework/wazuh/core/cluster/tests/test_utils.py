@@ -240,6 +240,27 @@ def test_ClusterLogger():
     os.path.exists(current_logger_path) and os.remove(current_logger_path)
 
 
+def test_log_subprocess_execution():
+    """Check that the passed messages from subprocesses are logged with the expected level."""
+    logs = {'debug': {'example_debug': ["Debug level message."]},
+            'debug2': {'example_debug2': ["Debug2 level message."]},
+            'warning': {'example_debug2': ["Warning level message."]},
+            'error': {'example_error': ["Error level message."]},
+            'generic_errors': ['First generic error to be logged', 'Second generic error to be logged'],
+            }
+    with patch.object(utils.logger, 'debug') as debug_logger, \
+            patch.object(utils.logger, 'debug2') as debug2_logger, \
+            patch.object(utils.logger, 'warning') as warning_logger, \
+            patch.object(utils.logger, 'error') as error_logger:
+        utils.log_subprocess_execution(utils.logger, logs)
+        debug_logger.assert_called_with(f"{dict(logs['debug'])}")
+        debug2_logger.assert_called_with(f"{dict(logs['debug2'])}")
+        warning_logger.assert_called_with(f"{dict(logs['warning'])}")
+        error_logger.assert_any_call(f"{dict(logs['error'])}")
+        for error in logs['generic_errors']:
+            error_logger.assert_any_call(error, exc_info=False)
+
+
 @patch('os.getpid', return_value=0000)
 @patch('wazuh.core.cluster.utils.pyDaemonModule.create_pid')
 def test_process_spawn_sleep(pyDaemon_create_pid_mock, get_pid_mock):

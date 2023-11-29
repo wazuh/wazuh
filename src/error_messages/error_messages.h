@@ -293,7 +293,7 @@
 #define INV_DEF         "(2302): Invalid definition for %s.%s: '%s'."
 
 /* Agent errors */
-#define AG_WAIT_SERVER  "(4101): Waiting for server reply (not started). Tried: '%s'."
+#define AG_WAIT_SERVER  "(4101): Waiting for server reply (not started). Tried: '%s'. Ensure that the manager version is '%s' or higher."
 #define AG_CONNECTED    "(4102): Connected to the server ([%s]:%d/%s)."
 #define AG_USINGIP      "(4103): Server IP address already set. Trying that before the hostname."
 #define AG_INV_HOST     "(4104): Invalid hostname: '%s'."
