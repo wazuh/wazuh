@@ -41,7 +41,6 @@ references:
     - https://documentation.wazuh.com/current/user-manual/capabilities/syscollector.html
     - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/wodle-syscollector.html
 '''
-import os
 import sys
 from pathlib import Path
 
