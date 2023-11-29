@@ -712,7 +712,7 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode, const char
         /* Open filename */
 
         if (state_ok) {
-            if (fp = wfopen(final_name, mode == OS_BINARY ? "wb" : "w"), !fp) {
+            if (fp = wfopen(tmp_file, mode == OS_BINARY ? "wb" : "w"), !fp) {
                 ret = 0;
                 merror("Unable to unmerge file '%s' due to [(%d)-(%s)].", tmp_file, errno, strerror(errno));
             }
@@ -2717,9 +2717,9 @@ FILE * wfopen(const char * pathname, const char * mode) {
             flags &= ~_O_RDONLY;
             break;
         case 'a':
-            dwDesiredAccess = GENERIC_WRITE;
+            dwDesiredAccess = FILE_APPEND_DATA;
             dwCreationDisposition = OPEN_ALWAYS;
-            flags = _O_CREAT;
+            flags = _O_CREAT | _O_APPEND;
             break;
         case 'b':
             flags &= ~_O_TEXT;
