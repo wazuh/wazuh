@@ -1,11 +1,12 @@
-#include <functional>
 #include <chrono>
+#include <functional>
 
 #include <logging/logging.hpp>
 
 #include "router.hpp"
 
-namespace {
+namespace
+{
 /**
  * @brief Return the current time in seconds since epoch
  */
@@ -50,7 +51,8 @@ base::OptError Router::addEntry(const prod::EntryPost& entryPost)
         m_table.insert(entryPost.name(), entryPost.priority(), std::move(entry));
     }
 
-    return std::nullopt;;
+    return std::nullopt;
+    ;
 }
 
 base::OptError Router::removeEntry(const std::string& name)
@@ -88,7 +90,8 @@ base::OptError Router::rebuildEntry(const std::string& name)
     return std::nullopt;
 }
 
-base::OptError Router::enableEntry(const std::string& name) {
+base::OptError Router::enableEntry(const std::string& name)
+{
     std::unique_lock lock {m_mutex};
     if (!m_table.nameExists(name))
     {

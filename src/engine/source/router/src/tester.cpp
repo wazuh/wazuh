@@ -95,7 +95,8 @@ base::OptError Tester::removeEntry(const std::string& name)
 {
     std::unique_lock lock {m_mutex};
     auto it = m_table.find(name);
-    if (it == m_table.end()) {
+    if (it == m_table.end())
+    {
         return base::Error {"The testing environment not exist"};
     }
     m_table.erase(it);
@@ -155,7 +156,7 @@ std::list<test::Entry> Tester::getEntries() const
 base::RespOrError<test::Entry> Tester::getEntry(const std::string& name) const
 {
     std::shared_lock lock {m_mutex};
-        auto it = m_table.find(name);
+    auto it = m_table.find(name);
     if (it == m_table.end())
     {
         return base::Error {"The testing environment not exist"};

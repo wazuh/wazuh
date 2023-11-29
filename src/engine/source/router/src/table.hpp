@@ -133,7 +133,6 @@ public:
         return true;
     }
 
-
     /**
      * @brief Delete an object by name.
      * @param name The name of the object.
@@ -221,7 +220,6 @@ public:
         // No free priority found in the specified range
         throw std::out_of_range("No free priority in the specified range.");
     }
-
 
     /**
      * @brief Get a reference to an object by name.
