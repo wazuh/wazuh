@@ -20,8 +20,8 @@
 namespace Log
 {
     std::function<void(
-            const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>
-        GLOBAL_LOG_FUNCTION;
+        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>
+    GLOBAL_LOG_FUNCTION;
 };
 
 #ifdef __cplusplus
