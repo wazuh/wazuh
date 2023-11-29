@@ -82,7 +82,7 @@ int main()
     std::this_thread::sleep_for(std::chrono::seconds(5));
 
     // OnDemand request
-    std::string url = "localhost/ondemand/" + topic_name + "?offset=-1";
+    std::string url = "http://localhost/ondemand/" + topic_name + "?offset=-1";
     UNIXSocketRequest::instance().get(
         HttpUnixSocketURL(ONDEMAND_SOCK, url),
         [](const std::string& msg) { std::cout << msg << std::endl; },
