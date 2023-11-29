@@ -17,7 +17,6 @@
 #include <functional>
 #include <map>
 #include <shared_mutex>
-
 /**
  * @brief OnDemandManager class.
  *

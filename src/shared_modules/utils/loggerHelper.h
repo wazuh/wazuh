@@ -51,7 +51,7 @@ namespace Log
         const char* func;
     };
 
-    static std::function<void(
+    extern std::function<void(
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>
         GLOBAL_LOG_FUNCTION;
 

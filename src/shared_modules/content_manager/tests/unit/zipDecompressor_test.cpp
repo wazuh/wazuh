@@ -17,6 +17,13 @@
 #include <memory>
 #include <vector>
 
+namespace Log
+{
+    std::function<void(
+            const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>
+        GLOBAL_LOG_FUNCTION;
+};
+
 // Folder containing all the input files.
 const auto INPUT_FILES_DIR {std::filesystem::current_path() / "input_files" / "zipDecompressor"};
 

@@ -1,5 +1,6 @@
 #include "contentManager.hpp"
 #include "contentRegister.hpp"
+#include "defs.h"
 #include <chrono>
 #include <iostream>
 #include <thread>
@@ -63,7 +64,7 @@ int main()
             }
             std::string fileName = file.substr(pos, file.size() - pos);
 
-            if (logLevel != LOG_ERROR)
+            if (logLevel != LOGLEVEL_ERROR)
             {
                 std::cout << tag << ":" << fileName << ":" << line << " " << func << " : " << message.c_str()
                           << std::endl;
