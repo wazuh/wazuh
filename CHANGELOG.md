@@ -10,6 +10,8 @@ All notable changes to this project will be documented in this file.
 - Fixed a thread lock bug that slowed down wazuh-db performance. ([#20178](https://github.com/wazuh/wazuh/pull/20178))
 - Fixed a bug in Vulnerability detector that skipped vulnerabilities for Windows 11 21H2. ([#20386](https://github.com/wazuh/wazuh/pull/20386))
 - The installer now updates the merged.mg file permissions on upgrade. ([#5941](https://github.com/wazuh/wazuh/pull/5941))
+- Fixed an insecure request warning in the shuffle integration. ([#19993](https://github.com/wazuh/wazuh/pull/19993))
+- Fixed a bug that corrupted cluster logs when they were rotated. ([#19888](https://github.com/wazuh/wazuh/pull/19888))
 
 ### Agent
 
@@ -19,7 +21,23 @@ All notable changes to this project will be documented in this file.
 - Fixed the default Logcollector settings on macOS to collect logs out-of-the-box. ([#20180](https://github.com/wazuh/wazuh/pull/20180))
 - Fixed a bug in the FIM decoder at wazuh-analysisd that ignored Windows Registry events from agents under 4.6.0. ([#20169](https://github.com/wazuh/wazuh/pull/20169))
 - Fixed multiple bugs in the Syscollector decoder at wazuh-analysisd that did not sanitize the input data properly. ([#20250](https://github.com/wazuh/wazuh/pull/20250))
+- Added the pyarrow_hotfix dependency to fix the pyarrow CVE-2023-47248 vulnerability in the AWS integration. ([#20284](https://github.com/wazuh/wazuh/pull/20284))
 
+### RESTful API
+
+#### Fixed
+
+- Fixed inconsistencies in the behavior of the `q` parameter of some endpoints. ([#18423](https://github.com/wazuh/wazuh/pull/18423))
+- Fixed a bug in the `q` parameter of the `GET /groups/{group_id}/agents` endpoint. ([#18495](https://github.com/wazuh/wazuh/pull/18495))
+- Fixed bug in the regular expression used to to reject non ASCII characters in some endpoints. ([#19533](https://github.com/wazuh/wazuh/pull/19533))
+
+### Other
+
+#### Changed
+
+- Upgraded external certifi library dependency version to 2023.07.22. ([#20149](https://github.com/wazuh/wazuh/pull/20149))
+- Upgraded external requests library dependency version to 2.31.0. ([#20149](https://github.com/wazuh/wazuh/pull/20149))
+- Upgraded embedded Python version to 3.9.18. ([#18800](https://github.com/wazuh/wazuh/issues/18800))
 
 ## [v4.7.0]
 
