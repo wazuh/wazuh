@@ -50,10 +50,13 @@ namespace Log
         int line;
         const char* func;
     };
+// Remove visibility of this extern function
+#pragma GCC visibility push(hidden)
 
-    static std::function<void(
+    extern std::function<void(
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>
         GLOBAL_LOG_FUNCTION;
+#pragma GCC visibility pop
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"

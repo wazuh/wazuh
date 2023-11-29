@@ -14,6 +14,13 @@
 #include <regex>
 #include <sstream>
 
+namespace Log
+{
+    std::function<void(
+            const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>
+        GLOBAL_LOG_FUNCTION;
+};
+
 constexpr auto INFO_REGEX = "info Tag .+\\.cpp \\d+ TestBody Testing Info log\\n";
 constexpr auto ERROR_REGEX = "error Tag .+\\.cpp \\d+ TestBody Testing Error log\\n";
 constexpr auto DEBUG_REGEX = "debug Tag .+\\.cpp \\d+ TestBody Testing Debug log\\n";

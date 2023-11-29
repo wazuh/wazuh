@@ -12,7 +12,6 @@
 #ifndef _CONTENT_MODULE_HPP
 #define _CONTENT_MODULE_HPP
 
-#include "logging_helper.h"
 #include "singleton.hpp"
 #include <functional>
 #include <memory>
