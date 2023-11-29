@@ -31,11 +31,10 @@ private:
     }
 
 public:
-
     Environment() = default;
     /**
      * @brief Create a new environment
-     * 
+     *
      * @param filter of the route
      * @param controller of the policy
      */
@@ -97,10 +96,9 @@ public:
 
     /**
      * @brief Get hash of the current policy (controller)
-     * 
+     *
      */
     const std::string& hash() const { return m_hash; }
-
 };
 } // namespace router
 

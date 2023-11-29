@@ -9,9 +9,9 @@
 
 #include <router/types.hpp>
 
+#include "environmentBuilder.hpp"
 #include "router.hpp"
 #include "tester.hpp"
-#include "environmentBuilder.hpp"
 
 namespace router
 {

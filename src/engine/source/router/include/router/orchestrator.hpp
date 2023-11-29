@@ -25,24 +25,6 @@ using TestQueueType = base::queue::iQueue<test::QueueType>;
 class Worker;
 class EnvironmentBuilder;
 
-/**
- * @brief Configuration for the Orchestrator
- *
- */
-struct Config
-{
-    int m_numThreads; ///< Number of workers to create
-
-    std::weak_ptr<store::IStore> m_wStore; ///< Store to read namespaces and configurations
-    std::weak_ptr<builder::internals::Registry<builder::internals::Builder>> m_wRegistry; ///< Registry of builders
-    std::shared_ptr<bk::IControllerMaker> m_controllerMaker; ///< Controller maker for creating controllers
-
-    std::shared_ptr<ProdQueueType> m_prodQueue; ///< The event queue
-    std::shared_ptr<TestQueueType> m_testQueue; ///< The test queue
-
-    int m_testTimeout; ///< Timeout for the tests
-};
-
 // Change name to syncronizer
 class Orchestrator
     : public IRouterAPI
@@ -50,7 +32,7 @@ class Orchestrator
 {
 
 private:
-    // Global
+
     std::list<std::shared_ptr<Worker>> m_workers; ///< List of workers
     mutable std::shared_mutex m_syncMutex;        ///< Mutex for the Workers synchronization (1 query at a time)
 
@@ -58,21 +40,40 @@ private:
     std::shared_ptr<TestQueueType> m_testQueue;       ///< The test queue
     std::shared_ptr<EnvironmentBuilder> m_envBuilder; ///< The environment builder
 
-    std::size_t m_testTimeout; ///< Timeout for the tests
-
-    void validateConfig(const Config& config); ///< Validate the orchestrator configuration
+    std::weak_ptr<store::IStore> m_wStore; ///< Read and store configurations
+    std::size_t m_testTimeout;             ///< Timeout for the tests
 
     template<typename Func>
     base::OptError forEachWorker(Func f);
 
-    template<typename Func>
-    void forEachWorkerVoid(Func f);
+    void dumpTesters() const;
+    void dumpWorkers() const;
+    void loadInitialStates();
 
 public:
     ~Orchestrator() = default;
     Orchestrator() = delete;
+    /**
+     * @brief Configuration for the Orchestrator
+     *
+     */
+    struct Options
+    {
+        int m_numThreads; ///< Number of workers to create
 
-    Orchestrator(const Config& config);
+        std::weak_ptr<store::IStore> m_wStore; ///< Store to read namespaces and configurations
+        std::weak_ptr<builder::internals::Registry<builder::internals::Builder>> m_wRegistry; ///< Registry of builders
+
+        std::shared_ptr<bk::IControllerMaker> m_controllerMaker; ///< Controller maker for creating controllers
+        std::shared_ptr<ProdQueueType> m_prodQueue;              ///< The event queue
+        std::shared_ptr<TestQueueType> m_testQueue;              ///< The test queue
+
+        int m_testTimeout; ///< Timeout for handlers of testers
+
+        void validate() const; ///< Validate the configuration options if is invalid throw an  std::runtime_error
+    };
+
+    Orchestrator(const Options& opt);
 
     /**
      * @brief Start the router
