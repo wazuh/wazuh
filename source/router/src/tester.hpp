@@ -28,7 +28,7 @@ private:
     class RuntimeEntry : public test::Entry
     {
     private:
-        std::shared_ptr<bk::IController> m_controller;    ///< Controller of the policy to be tested.
+        std::shared_ptr<bk::IController> m_controller; ///< Controller of the policy to be tested.
 
     public:
         explicit RuntimeEntry(const test::EntryPost& entry)
@@ -45,9 +45,10 @@ private:
         // Move constructor
         RuntimeEntry(RuntimeEntry&& other) noexcept
             : test::Entry(std::move(other))
-            , m_controller(std::move(other.m_controller)) {
-                other.m_controller = nullptr;
-            };
+            , m_controller(std::move(other.m_controller))
+        {
+            other.m_controller = nullptr;
+        };
 
         // Move assignment
         RuntimeEntry& operator=(RuntimeEntry&& other) noexcept
@@ -140,7 +141,6 @@ public:
      * @return false if the entry does not exist.
      */
     bool updateLastUsed(const std::string& name);
-
 };
 } // namespace router
 
