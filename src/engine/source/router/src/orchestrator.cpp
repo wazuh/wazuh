@@ -21,23 +21,6 @@ void validatePointer(const T& ptr, const std::string& name)
 } // namespace
 
 // Private
-void Orchestrator::validateConfig(const Config& config)
-{
-    if (config.m_numThreads < 1 || config.m_numThreads > 128)
-    {
-        throw std::runtime_error {"Configuration error: numThreads must be between 1 and 128"};
-    }
-    validatePointer(config.m_wStore, "store");
-    validatePointer(config.m_wRegistry, "registry");
-    validatePointer(config.m_controllerMaker, "controllerMaker");
-    validatePointer(config.m_prodQueue, "prodQueue");
-    validatePointer(config.m_testQueue, "testQueue");
-    if (config.m_testTimeout < 1)
-    {
-        throw std::runtime_error {"Configuration error: testTimeout must be greater than 0"};
-    }
-}
-
 template<typename Func>
 base::OptError Orchestrator::forEachWorker(Func f)
 {
@@ -51,23 +34,58 @@ base::OptError Orchestrator::forEachWorker(Func f)
     return std::nullopt;
 }
 
+/**************************************************************************
+ * Manage configuration
+ *************************************************************************/
+void Orchestrator::dumpTesters() const
+{
+    // TODO
+}
+
+void Orchestrator::dumpWorkers() const
+{
+    // TODO
+}
+
+void Orchestrator::loadInitialStates()
+{
+    // TODO
+}
+
+
 // Public
-Orchestrator::Orchestrator(const Config& config)
+void Orchestrator::Options::validate() const
+{
+    if (m_numThreads < 1 || m_numThreads > 128)
+    {
+        throw std::runtime_error {"Configuration error: numThreads must be between 1 and 128"};
+    }
+    validatePointer(m_wStore, "store");
+    validatePointer(m_wRegistry, "registry");
+    validatePointer(m_controllerMaker, "controllerMaker");
+    validatePointer(m_prodQueue, "prodQueue");
+    validatePointer(m_testQueue, "testQueue");
+    if (m_testTimeout < 1)
+    {
+        throw std::runtime_error {"Configuration error: testTimeout must be greater than 0"};
+    }
+}
+Orchestrator::Orchestrator(const Options& opt)
     : m_workers()
-    , m_eventQueue(config.m_prodQueue)
-    , m_testQueue(config.m_testQueue)
+    , m_eventQueue(opt.m_prodQueue)
+    , m_testQueue(opt.m_testQueue)
     , m_envBuilder()
 {
-    validateConfig(config);
+    opt.validate();
 
-    m_testTimeout = config.m_testTimeout;
+    m_testTimeout = opt.m_testTimeout;
 
     // TODO Remove after the builder is implemented
-    auto builder = std::make_shared<ConcreteBuilder>(config.m_wStore, config.m_wRegistry);
-    m_envBuilder = std::make_shared<EnvironmentBuilder>(builder, config.m_controllerMaker);
+    auto builder = std::make_shared<ConcreteBuilder>(opt.m_wStore, opt.m_wRegistry);
+    m_envBuilder = std::make_shared<EnvironmentBuilder>(builder, opt.m_controllerMaker);
 
     // Create the Workers
-    for (std::size_t i = 0; i < config.m_numThreads; ++i)
+    for (std::size_t i = 0; i < opt.m_numThreads; ++i)
     {
         auto worker = std::make_shared<Worker>(m_envBuilder, m_eventQueue, m_testQueue);
         m_workers.emplace_back(std::move(worker));

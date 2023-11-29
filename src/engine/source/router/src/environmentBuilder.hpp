@@ -20,6 +20,7 @@ namespace router
 class EnvironmentBuilder
 {
 private:
+    // TODO Make a m_builder a weak_ptr when the IBuilder lifetime is managed by the engine start
     std::shared_ptr<IBuilder> m_builder;                     ///< The builder used to construct the policy and filter.
     std::shared_ptr<bk::IControllerMaker> m_controllerMaker; ///< The controller maker used to construct the controller.
 
@@ -49,7 +50,7 @@ private:
 public:
     /**
      * @brief Create a new EnvironmentBuilder
-     * 
+     *
      */
     EnvironmentBuilder(std::shared_ptr<IBuilder> builder, std::shared_ptr<bk::IControllerMaker> controllerMaker)
         : m_builder(builder)
@@ -74,7 +75,8 @@ public:
      * @param policyName The name of the policy.
      * @param builder The builder used to construct the policy.
      * @return std::shared_ptr<bk::IController> The constructed controller.
-     * @throws std::runtime_error if the policy has no assets or if the backend cannot be built. // TODO Move to base::Error
+     * @throws std::runtime_error if the policy has no assets or if the backend cannot be built. // TODO Move to
+     * base::Error
      */
     auto makeController(const base::Name& policyName) -> std::pair<std::shared_ptr<bk::IController>, std::string>
     {

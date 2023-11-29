@@ -116,7 +116,6 @@ public:
      * @param event The event to be ingested.
      */
     void ingest(base::Event&& event);
-
 };
 
 } // namespace router
