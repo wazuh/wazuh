@@ -97,7 +97,7 @@ base::OptError Router::enableEntry(const std::string& name) {
     auto& entry = m_table.get(name);
     if (entry.environment() == nullptr)
     {
-        return base::Error {"The route is not buided"}; // bad init in startup
+        return base::Error {"The route is not buided"};
     }
     entry.status(env::State::ENABLED);
     return {};
