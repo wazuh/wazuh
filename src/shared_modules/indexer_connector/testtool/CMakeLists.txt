@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.12.4)
 
+include_directories(../../../headers/)
+
 # Copy input files to the build directory
 file(COPY input DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
