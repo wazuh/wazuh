@@ -254,6 +254,12 @@ def test_cut_array_ko(limit, offset, expected_exception):
          'datetime>2017-10-26;datetime<2018-05-15T12:34:12.001000Z', None, None, None, None, None, False,
          [{'item': 'value_1', 'datetime': '2018-05-15T12:34:12Z'}], 1),
 
+        ([{'name': 'value_1', 'status': 'disabled'},
+          {'name': 'value_2', 'status': 'enabled'},
+          {'name': 'value_3', 'status': 'enabled'}],
+         'status=enabled;(name=value_1,name=value_3)', None, None, None, None, None, False,
+         [{'name': 'value_3', 'status': 'enabled'}], 1),
+
         # Test cases with filters, limit and search
         ([{'item': 'value_1', 'some': 't'}, {'item': 'value_2', 'some': 'a'}, {'item': 'value_3', 'some': 'b'}],
          None, {'item': 'value_1', 'some': 't'}, 1, None, None, None, False,
