@@ -337,7 +337,7 @@ void runStart(ConfHandler confManager)
             }
 
             // forceRouterArg
-            router::Config routerConfig {.m_numThreads = routerThreads,
+            router::Orchestrator::Options config {.m_numThreads = routerThreads,
                                          .m_wStore = store,
                                          .m_wRegistry = registry,
                                          .m_controllerMaker = std::make_shared<bk::rx::ControllerMaker>(),
@@ -345,7 +345,7 @@ void runStart(ConfHandler confManager)
                                          .m_testQueue = testQueue,
                                          .m_testTimeout = serverApiTimeout};
 
-            orchestrator = std::make_shared<router::Orchestrator>(routerConfig);
+            orchestrator = std::make_shared<router::Orchestrator>(config);
             orchestrator->start();
 
             exitHandler.add([orchestrator]() { orchestrator->stop(); });

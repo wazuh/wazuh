@@ -58,7 +58,7 @@ public:
 
     /**
      * @brief New entry in production
-     * 
+     *
      * @param name Name of environment
      * @param policy Policy of the environment
      * @param filter Filter of the environment
@@ -75,7 +75,7 @@ public:
 
     /**
      * @brief Validate the entry
-     * 
+     *
      * @return base::OptError Error if the entry is not valid
      */
     base::OptError validate() const
@@ -169,7 +169,7 @@ public:
 
     /**
      * @brief New entry in production
-     * 
+     *
      * @param name Name of environment
      * @param policy Policy of the environment
      * @param lifetime Lifetime of the testing environment
@@ -184,7 +184,7 @@ public:
 
     /**
      * @brief Validate the entry
-     * 
+     *
      * @return base::OptError Error if the entry is not valid
      */
     base::OptError validate() const
@@ -267,7 +267,7 @@ private:
 public:
     /**
      * @brief Create a new options for testing
-     * 
+     *
      * @param traceLevel Tracing level for testing
      * @param assets List of assets to trace (if any)
      * @param envName  Name of the environment to test
@@ -281,7 +281,7 @@ public:
 
     /**
      * @brief Validate the options
-     * 
+     *
      * @return base::OptError Error if the options are not valid
      */
     base::OptError validate() const
@@ -325,7 +325,7 @@ public:
     /**
      * @brief Create empty output
      */
-    Output() 
+    Output()
         : m_event {}
         , m_traces {}
     {
