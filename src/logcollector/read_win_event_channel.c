@@ -150,7 +150,7 @@ STATIC char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
     if (publisher == NULL) {
         LSTATUS err = GetLastError();
         char error_msg[OS_SIZE_1024];
-        error_msg[OS_SIZE_1024 - 1] = '\0';
+        memset(error_msg, 0, OS_SIZE_1024);
         FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS
                 | FORMAT_MESSAGE_MAX_WIDTH_MASK,
                 NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
@@ -182,7 +182,10 @@ STATIC char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
         goto cleanup;
     }
 
-    if ((buffer = calloc(++size, sizeof(wchar_t))) == NULL) {
+    /* Increase buffer size by one due to the difference in the size count between EvtFormatMessage() and
+       WideCharToMultiByte() */
+    size += 1;
+    if ((buffer = calloc(size, sizeof(wchar_t))) == NULL) {
         merror(
             "Could not calloc() memory which returned [(%d)-(%s)]",
             errno,
