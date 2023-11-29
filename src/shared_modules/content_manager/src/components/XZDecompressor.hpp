@@ -13,6 +13,7 @@
 #define _XZ_DECOMPRESSOR_HPP
 
 #include "../sharedDefs.hpp"
+#include "componentsHelper.hpp"
 #include "json.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
@@ -36,6 +37,8 @@ private:
      */
     void decompress(UpdaterContext& context) const
     {
+        constexpr auto COMPONENT_NAME {"XZDecompressor"};
+
         for (auto& path : context.data.at("paths"))
         {
             std::filesystem::path inputPath {path};
@@ -60,13 +63,14 @@ private:
             catch (const std::exception& e)
             {
                 // Set the status of the stage
-                context.data.at("stageStatus").push_back(R"({"stage": "XZDecompressor", "status": "fail"})"_json);
+                Utils::pushComponentStatus(COMPONENT_NAME, Utils::ComponentStatus::STATUS_FAIL, context);
 
                 throw std::runtime_error("XZDecompressor - Could not decompress the file " + inputPath.string() +
                                          " because: " + e.what());
             }
         }
-        context.data.at("stageStatus").push_back(R"({"stage": "XZDecompressor", "status": "ok"})"_json);
+
+        Utils::pushComponentStatus(COMPONENT_NAME, Utils::ComponentStatus::STATUS_OK, context);
     }
 
 public:
