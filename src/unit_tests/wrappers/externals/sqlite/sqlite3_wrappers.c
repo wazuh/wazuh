@@ -135,8 +135,7 @@ int __wrap_sqlite3_exec(__attribute__((unused)) sqlite3* db,                    
     check_expected(sql);
     if (errmsg) {
         *errmsg = mock_ptr_type(char *);
-    }
-    else {
+    } else {
         check_expected(errmsg);
     }
     return mock();
