@@ -183,6 +183,8 @@ private:
 
     void runAction(const ActionID id)
     {
+        logInfo(WM_CONTENTUPDATER, "Action for '%s' started", m_topicName.c_str());
+
         try
         {
             m_orchestration->run();
@@ -192,6 +194,7 @@ private:
             logError(WM_CONTENTUPDATER, "Action for '%s' failed: %s", m_topicName.c_str(), e.what());
         }
 
+        logInfo(WM_CONTENTUPDATER, "Action for '%s' finished", m_topicName.c_str());
         m_actionInProgress = false;
     }
 };
