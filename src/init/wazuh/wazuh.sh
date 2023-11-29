@@ -218,7 +218,10 @@ WazuhUpgrade()
         fi
     fi
     ./src/init/delete-oldusers.sh $OSSEC_GROUP
-
+    
+    # Set merged.mg permissions to new ones
+    find $PREINSTALLEDDIR/etc/shared/ -type f -name 'merged.mg' -exec chmod 644 {} \;
+    
     # Remove unnecessary `execa` socket
     if [ -f "$DIRECTORY/queue/alerts/execa" ]; then
         rm -f $DIRECTORY/queue/alerts/execa
