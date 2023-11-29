@@ -10,16 +10,16 @@ The input configuration of the Content Manager is described below:
 
 - `topicName`: Topic name, used to represent the actions being executed.
 - `interval`: Interval, in seconds, between each action execution.
-- `ondemand`: If true, the module will be executed on demand.
+- `ondemand`: If `true`, the module will be executed on demand.
 - `configData`: Configuration data to create the orchestration of the module.
   + `contentSource`: Source of the content. Can be any of `api`, `cti-api`, `file`, or `offline`.
-  + `compressionType`: Compression type of the content. Can be any of `gzip`, `zip`, or `xz`.
+  + `compressionType`: Compression type of the content. Can be any of `gzip`, `zip`, `xz`, or `raw`.
   + `versionedContent`: Type of versioned content. Can be any of `false` (content versioning disabled) or `cti-api`.
-  + `deleteDownloadedContent`: If true, the downloaded content will be deleted after being processed.
-  + `url`: URL from where the content will be downloaded or copied.
+  + `deleteDownloadedContent`: If `true`, the downloaded content will be deleted after being processed.
+  + `url`: URL from where the content will be downloaded or copied. Depending on the `contentSource` type, it supports HTTP/S and filesystem paths.
   + `outputFolder`: If defined, the content (downloads and uncompressed content) will be downloaded in this folder.
   + `dataFormat`: Content data format. Examples: `json`, `xml`, `txt`, etc.
-  + `contentFileName`: Used by some downloaders to know where to store the downloaded content.
+  + `contentFileName`: Used as output content file name by the API and CTI API downloaders.
   + `databasePath`: Path from where the RocksDB database should be read. The database stores the last offset fetched (when using the `cti-api` content source).
 
 ### Use case: Download offsets from CTI API
