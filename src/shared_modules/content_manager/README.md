@@ -22,7 +22,16 @@ The input configuration of the Content Manager is described below:
   + `contentFileName`: Used as output content file name by the API and CTI API downloaders.
   + `databasePath`: Path from where the RocksDB database should be read. The database stores the last offset fetched (when using the `cti-api` content source).
 
-### Use case: Download offsets from CTI API
+## Use cases
+
+The Content Manager module can be used in many ways depending on the user's needs. Here is a summary of the possible use cases:
+
+- [Download offsets from CTI API](#download-offsets-from-cti-api)
+- [Download from regular API](#download-from-regular-api)
+- [Remote file download](#remote-file-download)
+- [Offline download](#offline-download)
+
+### Download offsets from CTI API
 
 One of the most important capabilities of the Content Manager is to download content deltas (called _offsets_) from a _Cyber Threat Intelligence_ (CTI) API. The module will try to download all available offsets, starting from the last offset fetched from the previous execution (stored in the RocksDB database), until it reaches the last offset available in the API.
 
@@ -120,7 +129,7 @@ PubSubPublisher - No data to publish
 All files in the folder have been deleted.
 ```
 
-### Use case: Download from regular API
+### Download from regular API
 
 The Content Manager can also download content from a regular API. The functionality is quite straightforward: Download from a given URL and store the content in an output file. No API parameters are handled nor added by the module.
 
@@ -192,7 +201,7 @@ The downloaded content will be all stored in a unique file called `content.json`
 
 The `/tmp/output_folder/contents/content.json` path is published for the consumers to read.
 
-### Use case: Remote file download
+### Remote file download
 
 The Content Manager has the capability of downloading a content file from a URL. The file will be stored in the output folder and, if compressed, it will be decompressed in the contents folder.
 
@@ -260,7 +269,7 @@ The content is downloaded and, since it's compressed, stored in the _downloads_ 
 
 The `/tmp/output_folder/contents/test_context_test_consumer_1000_2000.json` path is published for the consumers to read. The second time the orchestration is launched, no data is published since the downloaded file didn't change.
 
-### Use case: Offline download
+### Offline download
 
 The Content Manager has the capability of processing a content file in an offline mode: Depending on the URL prefix, the content source will be either copied from the local filesystem or downloaded from a local HTTP server.
 
