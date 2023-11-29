@@ -1009,7 +1009,10 @@ ${LIBPLIST_LIB}:
 LIBFFI_FLAGS = "CFLAGS=-fPIC"
 
 ${LIBFFI_LIB}:
-	cd ${EXTERNAL_LIBFFI} && ./configure $(LIBFFI_FLAGS) && ${MAKE}
+	cd ${EXTERNAL_LIBFFI} && test -e server || (./configure $(LIBFFI_FLAGS) && ${MAKE})
+ifneq (${TARGET},server)
+	cd ${EXTERNAL_LIBFFI} && test -e server && mv server $(TARGET) || true
+endif
 
 #### zlib ##########
 
