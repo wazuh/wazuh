@@ -94,22 +94,23 @@ base::OptError Tester::addEntry(const test::EntryPost& entryPost)
 base::OptError Tester::removeEntry(const std::string& name)
 {
     std::unique_lock lock {m_mutex};
-    if (m_table.find(name) == m_table.end())
-    {
+    auto it = m_table.find(name);
+    if (it == m_table.end()) {
         return base::Error {"The testing environment not exist"};
     }
-    m_table.erase(name);
+    m_table.erase(it);
     return std::nullopt;
 }
 
 base::OptError Tester::rebuildEntry(const std::string& name)
 {
     std::unique_lock lock {m_mutex};
-    if (m_table.find(name) == m_table.end())
+    auto it = m_table.find(name);
+    if (it == m_table.end())
     {
         return base::Error {"The testing environment not exist"};
     }
-    auto& entry = m_table.at(name);
+    auto& entry = it->second;
     try
     {
         auto [controller, hash] = m_envBuilder->makeController(entry.policy());
@@ -126,11 +127,12 @@ base::OptError Tester::rebuildEntry(const std::string& name)
 base::OptError Tester::enableEntry(const std::string& name)
 {
     std::unique_lock lock {m_mutex};
-    if (m_table.find(name) == m_table.end())
+    auto it = m_table.find(name);
+    if (it == m_table.end())
     {
         return base::Error {"The testing environment not exist"};
     }
-    auto& entry = m_table.at(name);
+    auto& entry = it->second;
     if (entry.controller() == nullptr)
     {
         return base::Error {"The testing environment is not builded"};
@@ -145,7 +147,7 @@ std::list<test::Entry> Tester::getEntries() const
     std::list<test::Entry> entries;
     for (const auto& [name, entry] : m_table)
     {
-        entries.push_back(entry);
+        entries.emplace_back(entry);
     }
     return entries;
 }
@@ -153,11 +155,12 @@ std::list<test::Entry> Tester::getEntries() const
 base::RespOrError<test::Entry> Tester::getEntry(const std::string& name) const
 {
     std::shared_lock lock {m_mutex};
-    if (m_table.find(name) == m_table.end())
+        auto it = m_table.find(name);
+    if (it == m_table.end())
     {
         return base::Error {"The testing environment not exist"};
     }
-    return m_table.at(name);
+    return it->second;
 }
 
 // Testing
@@ -165,11 +168,12 @@ base::RespOrError<test::Output> Tester::ingestTest(base::Event&& event, const te
 {
     std::shared_lock lock {m_mutex};
 
-    if (m_table.find(opt.environmentName()) == m_table.end())
+    auto it = m_table.find(opt.environmentName());
+    if (it == m_table.end())
     {
         return base::Error {"The testing environment not exist"};
     }
-    auto& entry = m_table.at(opt.environmentName());
+    auto& entry = it->second;
 
     if (entry.status() != env::State::ENABLED || entry.controller() == nullptr)
     {
@@ -204,11 +208,12 @@ base::RespOrError<test::Output> Tester::ingestTest(base::Event&& event, const te
 base::RespOrError<std::unordered_set<std::string>> Tester::getAssets(const std::string& name) const
 {
     std::shared_lock lock {m_mutex};
-    if (m_table.find(name) == m_table.end())
+    auto it = m_table.find(name);
+    if (it == m_table.end())
     {
         return base::Error {"The testing environment not exist"};
     }
-    auto& entry = m_table.at(name);
+    auto& entry = it->second;
     if (entry.status() != env::State::ENABLED || entry.controller() == nullptr)
     {
         return base::Error {"The testing environment is not builded"};
@@ -219,11 +224,12 @@ base::RespOrError<std::unordered_set<std::string>> Tester::getAssets(const std::
 bool Tester::updateLastUsed(const std::string& name)
 {
     std::unique_lock lock {m_mutex};
-    if (m_table.find(name) == m_table.end())
+    auto it = m_table.find(name);
+    if (it == m_table.end())
     {
         return false;
     }
-    auto& entry = m_table.at(name);
+    auto& entry = it->second;
     entry.lastUse(getStartTime());
     return true;
 }

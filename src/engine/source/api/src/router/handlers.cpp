@@ -176,7 +176,7 @@ api::Handler routePost(const std::weak_ptr<::router::IRouterAPI>& router)
         // Build the response
         if (error.has_value())
         {
-            genericError<ResponseType>(error.value().message);
+            return genericError<ResponseType>(error.value().message);
         }
 
         return genericSuccess<ResponseType>();

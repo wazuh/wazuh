@@ -423,32 +423,26 @@ api::Handler runPost(const std::weak_ptr<::router::ITesterAPI>& tester, const st
         }
 
         // Run the test
-        try
-        {
-            auto opt = ::router::test::Options(traceLevel, assetToTrace, eRequest.name());
-            auto result = tester->ingestTest(eventStr, opt);
+        auto opt = ::router::test::Options(traceLevel, assetToTrace, eRequest.name());
+        auto result = tester->ingestTest(eventStr, opt);
 
-            // Create the response
-            auto r = result.wait_for(std::chrono::milliseconds(tester->getTestTimeout()));
-            if (r == std::future_status::ready)
-            {
-                auto output = result.get();
-                if (base::isError(output))
-                {
-                    return genericError<ResponseType>("Error running test: " + base::getError(output).message);
-                }
-                ResponseType eResponse {};
-                eResponse.mutable_result()->CopyFrom(fromOutput(base::getResponse(output)));
-                eResponse.set_status(eEngine::ReturnStatus::OK);
-                return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
-            }
-        }
-        catch (const std::exception& e)
+        // Create the response
+        auto r = result.wait_for(std::chrono::milliseconds(tester->getTestTimeout()));
+        if (r != std::future_status::ready)
         {
-            return genericError<ResponseType>(fmt::format("Error running test: {}", e.what()));
+            return genericError<ResponseType>("Error running test: Timeout");
         }
 
-        return genericError<ResponseType>("Error running test: Timeout");
+        auto output = result.get();
+        if (base::isError(output))
+        {
+            return genericError<ResponseType>("Error running test: " + base::getError(output).message);
+        }
+        ResponseType eResponse {};
+        eResponse.mutable_result()->CopyFrom(fromOutput(base::getResponse(output)));
+        eResponse.set_status(eEngine::ReturnStatus::OK);
+        return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
+
     };
 }
 

@@ -5,43 +5,50 @@
 namespace router
 {
 
+namespace
+{
+template<typename T>
+void validatePointer(const T& ptr, const std::string& name)
+{
+    if constexpr (std::is_same_v<T, std::weak_ptr<typename T::element_type>>)
+    {
+        if (ptr.expired())
+            throw std::runtime_error {"Configuration error: " + name + " cannot be empty"};
+    }
+    else if (!ptr)
+        throw std::runtime_error {"Configuration error: " + name + " cannot be empty"};
+}
+} // namespace
+
 // Private
 void Orchestrator::validateConfig(const Config& config)
 {
-    if (config.m_numThreads < 1)
+    if (config.m_numThreads < 1 || config.m_numThreads > 128)
     {
-        throw std::runtime_error {"Configuration error: numThreads for router must be greater than 0"};
+        throw std::runtime_error {"Configuration error: numThreads must be between 1 and 128"};
     }
-    if (config.m_numThreads > 128)
-    {
-        throw std::runtime_error {"Configuration error: numThreads for router must be less than 128"};
-    }
-
-    if (config.m_wStore.expired())
-    {
-        throw std::runtime_error {"Configuration error: store cannot be empty"};
-    }
-
-    if (config.m_wRegistry.expired())
-    {
-        throw std::runtime_error {"Configuration error: registry cannot be empty"};
-    }
-    if (config.m_controllerMaker == nullptr)
-    {
-        throw std::runtime_error {"Configuration error: controllerMaker cannot be empty"};
-    }
-    if (config.m_prodQueue == nullptr)
-    {
-        throw std::runtime_error {"Configuration error: prodQueue cannot be empty"};
-    }
-    if (config.m_testQueue == nullptr)
-    {
-        throw std::runtime_error {"Configuration error: testQueue cannot be empty"};
-    }
+    validatePointer(config.m_wStore, "store");
+    validatePointer(config.m_wRegistry, "registry");
+    validatePointer(config.m_controllerMaker, "controllerMaker");
+    validatePointer(config.m_prodQueue, "prodQueue");
+    validatePointer(config.m_testQueue, "testQueue");
     if (config.m_testTimeout < 1)
     {
         throw std::runtime_error {"Configuration error: testTimeout must be greater than 0"};
     }
+}
+
+template<typename Func>
+base::OptError Orchestrator::forEachWorker(Func f)
+{
+    for (const auto& worker : m_workers)
+    {
+        if (auto error = f(worker); error)
+        {
+            return error;
+        }
+    }
+    return std::nullopt;
 }
 
 // Public
@@ -70,7 +77,7 @@ Orchestrator::Orchestrator(const Config& config)
 void Orchestrator::start()
 {
     std::shared_lock lock {m_syncMutex};
-    for (auto& worker : m_workers)
+    for (const auto& worker : m_workers)
     {
         worker->start();
     }
@@ -79,7 +86,7 @@ void Orchestrator::start()
 void Orchestrator::stop()
 {
     std::shared_lock lock {m_syncMutex};
-    for (auto& worker : m_workers)
+    for (const auto& worker : m_workers)
     {
         worker->stop();
     }
@@ -90,32 +97,20 @@ void Orchestrator::stop()
  *************************************************************************/
 base::OptError Orchestrator::postEntry(const prod::EntryPost& entry)
 {
-    /* TODO:
-        1. Crate and add the environment to the router (Disabled environment)
-        2. Check the hash
-        2. Enable all environment or rollback if error
-    */
     if (auto err = entry.validate())
     {
         return err;
     }
 
     std::unique_lock lock {m_syncMutex};
-    for (auto& worker : m_workers)
+    auto error = forEachWorker([&entry](const auto& worker) { return worker->getRouter()->addEntry(entry); });
+
+    if (error)
     {
-        auto error = worker->getRouter()->addEntry(entry);
-        if (error)
-        {
-            // TODO Rollback
-            return error;
-        }
+        return error;
     }
 
-    for (auto& worker : m_workers)
-    {
-        worker->getRouter()->enableEntry(entry.name());
-    }
-    return std::nullopt;
+    return forEachWorker([&entry](const auto& worker) { return worker->getRouter()->enableEntry(entry.name()); });
 }
 
 base::OptError Orchestrator::deleteEntry(const std::string& name)
@@ -126,16 +121,7 @@ base::OptError Orchestrator::deleteEntry(const std::string& name)
         return base::Error {"Name cannot be empty"};
     }
 
-    for (auto& worker : m_workers)
-    {
-        auto error = worker->getRouter()->removeEntry(name);
-        if (error)
-        {
-            return error;
-        }
-    }
-
-    return std::nullopt;
+    return forEachWorker([&name](const auto& worker) { return worker->getRouter()->removeEntry(name); });
 }
 
 base::RespOrError<prod::Entry> Orchestrator::getEntry(const std::string& name) const
@@ -157,25 +143,13 @@ base::OptError Orchestrator::reloadEntry(const std::string& name)
     }
 
     std::unique_lock lock {m_syncMutex};
-    for (auto& worker : m_workers)
+    auto err = forEachWorker([&name](const auto& worker) { return worker->getRouter()->rebuildEntry(name); });
+    if (err)
     {
-        auto error = worker->getRouter()->rebuildEntry(name);
-        if (error)
-        {
-            return error;
-        }
-    }
-    // If the environment is disabled, enable it all at the end when all the environments are reloaded
-    for (auto& worker : m_workers)
-    {
-        auto error = worker->getRouter()->enableEntry(name);
-        if (error)
-        {
-            return error;
-        }
+        return err;
     }
 
-    return std::nullopt;
+    return forEachWorker([&name](const auto& worker) { return worker->getRouter()->enableEntry(name); });
 }
 
 base::OptError Orchestrator::changeEntryPriority(const std::string& name, size_t priority)
@@ -186,16 +160,8 @@ base::OptError Orchestrator::changeEntryPriority(const std::string& name, size_t
     }
 
     std::unique_lock lock {m_syncMutex};
-    for (auto& worker : m_workers)
-    {
-        auto error = worker->getRouter()->changePriority(name, priority);
-        if (error)
-        {
-            return error;
-        }
-    }
-
-    return std::nullopt;
+    return forEachWorker([&name, priority](const auto& worker)
+                         { return worker->getRouter()->changePriority(name, priority); });
 }
 
 std::list<prod::Entry> Orchestrator::getEntries() const
@@ -234,33 +200,20 @@ base::OptError Orchestrator::postStrEvent(std::string_view event)
  *************************************************************************/
 base::OptError Orchestrator::postTestEntry(const test::EntryPost& entry)
 {
-    /* TODO:
-        1. Crate and add the environment to the router (Disabled environment)
-        2. Check the hash
-        2. Enable all environment or rollback if error
-    */
+
     if (auto err = entry.validate())
     {
         return err;
     }
 
     std::unique_lock lock {m_syncMutex};
-    for (auto& worker : m_workers)
+    auto error = forEachWorker([&entry](const auto& worker) { return worker->getTester()->addEntry(entry); });
+    if (error)
     {
-        auto error = worker->getTester()->addEntry(entry);
-        if (error)
-        {
-            // TODO Rollback
-            return error;
-        }
+        return error;
     }
 
-    for (auto& worker : m_workers)
-    {
-        worker->getTester()->enableEntry(entry.name());
-    }
-
-    return std::nullopt;
+    return forEachWorker([&entry](const auto& worker) { return worker->getTester()->enableEntry(entry.name()); });
 }
 
 base::OptError Orchestrator::deleteTestEntry(const std::string& name)
@@ -272,16 +225,7 @@ base::OptError Orchestrator::deleteTestEntry(const std::string& name)
         return base::Error {"Name cannot be empty"};
     }
 
-    for (auto& worker : m_workers)
-    {
-        auto error = worker->getTester()->removeEntry(name);
-        if (error)
-        {
-            return error;
-        }
-    }
-
-    return std::nullopt;
+    return forEachWorker([&name](const auto& worker) { return worker->getTester()->removeEntry(name); });
 }
 
 base::RespOrError<test::Entry> Orchestrator::getTestEntry(const std::string& name) const
@@ -303,25 +247,12 @@ base::OptError Orchestrator::reloadTestEntry(const std::string& name)
     }
 
     std::unique_lock lock {m_syncMutex};
-    for (auto& worker : m_workers)
+    auto error = forEachWorker([&name](const auto& worker) { return worker->getTester()->rebuildEntry(name); });
+    if (error)
     {
-        auto error = worker->getTester()->rebuildEntry(name);
-        if (error)
-        {
-            return error;
-        }
+        return error;
     }
-    // If the environment is disabled, enable it all at the end when all the environments are reloaded
-    for (auto& worker : m_workers)
-    {
-        auto error = worker->getTester()->enableEntry(name);
-        if (error)
-        {
-            return error;
-        }
-    }
-
-    return std::nullopt;
+    return forEachWorker([&name](const auto& worker) { return worker->getTester()->enableEntry(name); });
 }
 
 std::list<test::Entry> Orchestrator::getTestEntries() const
@@ -332,47 +263,52 @@ std::list<test::Entry> Orchestrator::getTestEntries() const
 
 std::future<base::RespOrError<test::Output>> Orchestrator::ingestTest(base::Event&& event, const test::Options& opt)
 {
-    auto error = opt.validate();
-    if (error)
+    if (auto error = opt.validate(); error)
     {
-        throw std::runtime_error {error.value().message};
+        return std::async(std::launch::deferred,
+                          [err = std::move(error)]() -> base::RespOrError<test::Output> { return *err; });
     }
 
     auto promisePtr = std::make_shared<std::promise<base::RespOrError<test::Output>>>();
     auto future = promisePtr->get_future();
 
-    auto callback = [promPtr = std::move(promisePtr)](base::RespOrError<test::Output>&& output) -> void
+    auto callback = [promisePtr](base::RespOrError<test::Output>&& output)
     {
-        promPtr->set_value(std::move(output));
+        promisePtr->set_value(std::move(output));
     };
-
     auto tuple = std::make_shared<test::TestingTuple>(std::move(event), opt, std::move(callback));
+
     if (!m_testQueue->try_push(tuple))
     {
-        throw std::runtime_error {"The testing queue is full"};
+        return std::async(std::launch::deferred,
+                          []() -> base::RespOrError<test::Output> { return base::Error {"Test queue is full"}; });
     }
 
-    // If the production queue is empty, send dummy event to wake up the production thread
     if (m_eventQueue->empty())
     {
         m_eventQueue->push(base::Event(nullptr));
     }
 
-    // Whens the send is done, update the first woker->getTester() with the last used
     {
         std::shared_lock lock {m_syncMutex};
         m_workers.front()->getTester()->updateLastUsed(opt.environmentName());
     }
-
     return future;
 }
 
 std::future<base::RespOrError<test::Output>> Orchestrator::ingestTest(std::string_view event, const test::Options& opt)
 {
 
-    base::Event ev = base::parseEvent::parseWazuhEvent(event.data());
-
-    return this->ingestTest(std::move(ev), opt);
+    try
+    {
+        base::Event ev = base::parseEvent::parseWazuhEvent(event.data());
+        return this->ingestTest(std::move(ev), opt);
+    }
+    catch (const std::exception& e)
+    {
+        return std::async(std::launch::deferred,
+                          [err = base::Error {e.what()}]() -> base::RespOrError<test::Output> { return err; });
+    }
 }
 
 base::RespOrError<std::unordered_set<std::string>> Orchestrator::getAssets(const std::string& name) const
