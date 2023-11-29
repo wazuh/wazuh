@@ -197,4 +197,3 @@ if __name__ == '__main__':
         if aws_tools.debug_level > 0:
             raise
         sys.exit(1)
-
