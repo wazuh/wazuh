@@ -62,6 +62,12 @@ private:
 
     void validateConfig(const Config& config); ///< Validate the orchestrator configuration
 
+    template<typename Func>
+    base::OptError forEachWorker(Func f);
+
+    template<typename Func>
+    void forEachWorkerVoid(Func f);
+
 public:
     ~Orchestrator() = default;
     Orchestrator() = delete;
@@ -91,13 +97,12 @@ public:
         try
         {
             event = base::parseEvent::parseWazuhEvent(eventStr);
+            m_eventQueue->push(std::move(event));
         }
         catch (const std::exception& e)
         {
             LOG_WARNING("Error parsing event: '{}' (discarding...)", e.what());
-            return;
         }
-        m_eventQueue->push(std::move(event));
     }
 
     /**************************************************************************
