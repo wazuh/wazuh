@@ -69,6 +69,7 @@ public:
                 std::unique_lock<std::mutex> lock(m_mutex);
 
                 // Run action on start, independently of the interval time.
+                logInfo(WM_CONTENTUPDATER, "Starting on-start action for '%s'", m_topicName.c_str());
                 runAction(ActionID::SCHEDULED);
 
                 while (m_schedulerRunning)
@@ -79,14 +80,14 @@ public:
                         bool expected = false;
                         if (m_actionInProgress.compare_exchange_strong(expected, true))
                         {
-                            logInfo(WM_CONTENTUPDATER, "Initiating scheduling action for %s", m_topicName.c_str());
+                            logInfo(WM_CONTENTUPDATER, "Starting scheduled action for '%s'", m_topicName.c_str());
                             runAction(ActionID::SCHEDULED);
                         }
                         else
                         {
                             // LCOV_EXCL_START
                             logInfo(WM_CONTENTUPDATER,
-                                    "Request scheduling - Download in progress. The scheduling is ignored for %s",
+                                    "Action in progress for '%s', scheduled request ignored",
                                     m_topicName.c_str());
                             // LCOV_EXCL_STOP
                         }
@@ -147,13 +148,13 @@ public:
         auto expected = false;
         if (m_actionInProgress.compare_exchange_strong(expected, true))
         {
-            logInfo(WM_CONTENTUPDATER, "Ondemand request - Starting action for %s", m_topicName.c_str());
+            logInfo(WM_CONTENTUPDATER, "Starting on-demand action for '%s'", m_topicName.c_str());
             runAction(ActionID::ON_DEMAND);
         }
         else
         {
             // LCOV_EXCL_START
-            logInfo(WM_CONTENTUPDATER, "Ondemand request - Another action in progress for %s", m_topicName.c_str());
+            logInfo(WM_CONTENTUPDATER, "Action in progress for '%s', on-demand request ignored", m_topicName.c_str());
             // LCOV_EXCL_STOP
         }
     }

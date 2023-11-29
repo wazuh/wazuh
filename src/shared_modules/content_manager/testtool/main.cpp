@@ -1,6 +1,7 @@
 #include "contentManager.hpp"
 #include "contentRegister.hpp"
 #include "defs.h"
+#include "loggerHelper.h"
 #include <chrono>
 #include <iostream>
 #include <thread>
@@ -45,7 +46,7 @@ static const nlohmann::json CONFIG_PARAMETERS =
         )"_json;
 
 // Enable/Disable logging verbosity.
-static const auto VERBOSE {true};
+static const auto VERBOSE {false};
 
 int main()
 {
@@ -60,7 +61,7 @@ int main()
            const std::string& func,
            const std::string& message)
         {
-            if (!VERBOSE && (logLevel == LOG_DEBUG || logLevel == LOG_DEBUG_VERBOSE))
+            if (!VERBOSE && (logLevel == Log::LOGLEVEL_DEBUG || logLevel == Log::LOGLEVEL_DEBUG_VERBOSE))
             {
                 // Don't log debug logs when VERBOSE is false.
                 return;
@@ -73,7 +74,7 @@ int main()
             }
             std::string fileName = file.substr(pos, file.size() - pos);
 
-            if (logLevel != LOGLEVEL_ERROR)
+            if (logLevel != Log::LOGLEVEL_ERROR && logLevel != Log::LOGLEVEL_CRITICAL)
             {
                 std::cout << tag << ":" << fileName << ":" << line << " " << func << ": " << message.c_str()
                           << std::endl;
