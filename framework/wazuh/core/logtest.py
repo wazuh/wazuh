@@ -65,5 +65,5 @@ def validate_dummy_logtest():
     parameters = {"location": "dummy", "log_format": "syslog", "event": "Hello"}
 
     response = send_logtest_msg(command, parameters)
-    if response.get('error', 1) == 1:
+    if response.get('data', {}).get('codemsg', -1) == -1:
         raise WazuhError(1113)

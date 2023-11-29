@@ -43,7 +43,7 @@ def test_send_logtest_msg(create_message_mock, close_mock, send_mock, init_mock,
 @patch('wazuh.core.logtest.create_wazuh_socket_message')
 def test_validate_dummy_logtest(create_message_mock, close_mock, send_mock, init_mock):
     with patch('wazuh.core.logtest.WazuhSocketJSON.receive',
-               return_value={'data': {}, 'error': 1}):
+               return_value={'data': {'codemsg': -1}, 'error': 0}):
         with pytest.raises(WazuhError) as err_info:
             validate_dummy_logtest()
 
