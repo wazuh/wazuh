@@ -747,3 +747,161 @@ TEST_F(UnixStreamTest, taskQueueSizeTestAndOverflow)
     stopHandler->send();
     thread.join();
 }
+
+TEST_F(UnixStreamTest, ClouseResourcePerAbruptClosure)
+{
+    // Queue of workers
+    const std::size_t taskQueueSize = 16;
+
+    // Configure UnixStream server
+    UnixStream server(m_socketPath,
+                      m_factory,
+                      std::make_shared<FakeMetricScope>(),
+                      std::make_shared<FakeMetricScope>(),
+                      taskQueueSize);
+    server.bind(m_loop);
+    auto [stopHandler, thread] = startLoopThread(m_loop);
+    const auto maxAttempts = 10;
+
+    // Create and connect Unix domain socket client
+    int clientSockfd = createUnixSocketClient(m_socketPath);
+
+    // Send messages taskQueueSize messages to the server
+    std::string expectedResponse {};
+    for (std::size_t i = 0; i < taskQueueSize; ++i)
+    {
+        std::string message = "Hello, World! ";
+        message += std::to_string(i);
+        message += "<END>";
+        auto res = send(clientSockfd, message.c_str(), message.size(), 0);
+        ASSERT_EQ(res, message.size());
+        expectedResponse += message;
+    }
+
+    // Wait for the messages to be processed
+    auto attempts = 0;
+    while (*(m_factory->m_processedMessages) < taskQueueSize)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        ASSERT_LT(attempts++, maxAttempts) << "Messages not processed";
+    }
+
+    auto numAsyncsLiving = 0;
+    m_loop->walk([&numAsyncsLiving](const uvw::BaseHandle& handle) {
+        auto type = handle.type();
+
+        switch (type) {
+            case uvw::details::UVHandleType::ASYNC:
+                numAsyncsLiving ++;
+                break;
+            default:
+                break;
+        }
+
+    });
+
+    EXPECT_EQ(numAsyncsLiving, 1);
+
+    shutdown(clientSockfd, SHUT_WR);
+    close(clientSockfd);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+
+    auto numAsyncsOpen = 0;
+    m_loop->walk([&numAsyncsOpen](const uvw::BaseHandle& handle) {
+        auto type = handle.type();
+
+        switch (type) {
+            case uvw::details::UVHandleType::ASYNC:
+                numAsyncsOpen ++;
+                break;
+            default:
+                break;
+        }
+
+    });
+
+    EXPECT_EQ(numAsyncsOpen, 1);
+
+    server.close();
+    stopHandler->send();
+    thread.join();
+}
+
+TEST_F(UnixStreamTest, ClouseResourcePerTimeout)
+{
+    // Queue of workers
+    const std::size_t taskQueueSize = 16;
+
+    auto timeout = 3000;
+
+    // Configure UnixStream server
+    UnixStream server(m_socketPath,
+                      m_factory,
+                      std::make_shared<FakeMetricScope>(),
+                      std::make_shared<FakeMetricScope>(),
+                      taskQueueSize,
+                      timeout);
+    server.bind(m_loop);
+    auto [stopHandler, thread] = startLoopThread(m_loop);
+    const auto maxAttempts = 100;
+
+    // Create and connect Unix domain socket client
+    int clientSockfd = createUnixSocketClient(m_socketPath);
+
+    // Send messages taskQueueSize messages to the server
+    for (std::size_t i = 0; i < taskQueueSize; ++i)
+    {
+        std::string message = "Hello, World! ";
+        message += std::to_string(i);
+        message += "<END>";
+        auto res = send(clientSockfd, message.c_str(), message.size(), 0);
+        ASSERT_EQ(res, message.size());
+    }
+
+    // Wait for the messages to be processed
+    auto attempts = 0;
+    while (*(m_factory->m_processedMessages) < taskQueueSize)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+        ASSERT_LT(attempts++, maxAttempts) << "Messages not processed";
+    }
+
+    auto numAsyncsLiving = 0;
+    m_loop->walk([&numAsyncsLiving](const uvw::BaseHandle& handle) {
+        auto type = handle.type();
+
+        switch (type) {
+            case uvw::details::UVHandleType::ASYNC:
+                numAsyncsLiving ++;
+                break;
+            default:
+                break;
+        }
+
+    });
+
+    EXPECT_EQ(numAsyncsLiving, 1);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(timeout*2));
+
+    auto numAsyncsOpen = 0;
+    m_loop->walk([&numAsyncsOpen](const uvw::BaseHandle& handle) {
+        auto type = handle.type();
+
+        switch (type) {
+            case uvw::details::UVHandleType::ASYNC:
+                numAsyncsOpen ++;
+                break;
+            default:
+                break;
+        }
+
+    });
+
+    EXPECT_EQ(numAsyncsOpen, 1);
+
+    server.close();
+    stopHandler->send();
+    thread.join();
+}

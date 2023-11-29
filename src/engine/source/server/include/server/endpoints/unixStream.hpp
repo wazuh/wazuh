@@ -67,7 +67,7 @@ private:
      * @param response Shared memory where the callback executed by the AsyncHandle will write the response
      */
     void processMessages(std::weak_ptr<uvw::PipeHandle> clientRef,
-                         std::vector<std::weak_ptr<uvw::AsyncHandle>> asyncs,
+                         std::shared_ptr<std::vector<std::weak_ptr<uvw::AsyncHandle>>> asyncs,
                          std::shared_ptr<ProtocolHandler> protocolHandler,
                          std::vector<std::string>&& requests);
 
@@ -82,7 +82,7 @@ private:
      * @param message Message to be processed
      */
     void createAndEnqueueTask(std::weak_ptr<uvw::PipeHandle> wClient,
-                              std::vector<std::weak_ptr<uvw::AsyncHandle>> asyncs,
+                              std::shared_ptr<std::vector<std::weak_ptr<uvw::AsyncHandle>>> asyncs,
                               std::shared_ptr<ProtocolHandler> protocolHandler,
                               std::string&& request);
 
@@ -95,7 +95,7 @@ private:
      */
     void configureCloseClient(std::shared_ptr<uvw::PipeHandle> client,
                               std::shared_ptr<uvw::TimerHandle> timer,
-                              std::vector<std::weak_ptr<uvw::AsyncHandle>> async);
+                              std::shared_ptr<std::vector<std::weak_ptr<uvw::AsyncHandle>>> async);
 
     /**
      * @brief Create a Timer resource, this timer will be used to close the client connection if it doesn't send any
@@ -107,7 +107,7 @@ private:
      * @return Timer resource
      */
     std::shared_ptr<uvw::TimerHandle> createTimer(std::weak_ptr<uvw::PipeHandle> wClient,
-                                                  std::vector<std::weak_ptr<uvw::AsyncHandle>> asyncs);
+                                                  std::shared_ptr<std::vector<std::weak_ptr<uvw::AsyncHandle>>> asyncs);
 
 public:
     /**
