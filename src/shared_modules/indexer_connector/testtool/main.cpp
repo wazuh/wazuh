@@ -1,4 +1,5 @@
 #include "cmdArgParser.hpp"
+#include "logging_helper.h"
 #include <indexerConnector.hpp>
 #include <iomanip>
 #include <iostream>
@@ -92,7 +93,33 @@ int main(const int argc, const char* argv[])
         const auto configuration = nlohmann::json::parse(configurationFile);
 
         // Create indexer connector.
-        IndexerConnector indexerConnector(configuration, cmdArgParser.getTemplateFilePath());
+        IndexerConnector indexerConnector(configuration,
+                                          cmdArgParser.getTemplateFilePath(),
+                                          [](const int logLevel,
+                                             const std::string& tag,
+                                             const std::string& file,
+                                             const int line,
+                                             const std::string& func,
+                                             const std::string& message)
+                                          {
+                                              auto pos = file.find_last_of('/');
+                                              if (pos != std::string::npos)
+                                              {
+                                                  pos++;
+                                              }
+                                              std::string fileName = file.substr(pos, file.size() - pos);
+
+                                              if (logLevel != LOG_ERROR)
+                                              {
+                                                  std::cout << tag << ":" << fileName << ":" << line << " " << func
+                                                            << " : " << message.c_str() << std::endl;
+                                              }
+                                              else
+                                              {
+                                                  std::cerr << tag << ":" << fileName << ":" << line << " " << func
+                                                            << " : " << message.c_str() << std::endl;
+                                              }
+                                          });
         // Read events file.
         // If the events file path is empty, then the events are generated
         // automatically.

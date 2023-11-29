@@ -16,7 +16,8 @@
 #include "serverSelector.hpp"
 #include <fstream>
 
-#define IC_NAME "indexer-connnector"
+#define IC_NAME       "indexer-connnector"
+#define MAX_WAIT_TIME 30
 
 // TODO: remove the LCOV flags when the implementation of this class is completed
 // LCOV_EXCL_START
@@ -97,10 +98,30 @@ IndexerConnector::IndexerConnector(
     }
     catch (const std::exception& e)
     {
-        logWarn(IC_NAME,
-                "Error initializing IndexerConnector: %s"
-                ", we will try again later.",
-                e.what());
+        logWarn(IC_NAME, "Error initializing IndexerConnector: %s", e.what());
+
+        m_initializeThread = std::thread(
+            [this, templateData, indexName, selector, secureCommunication]()
+            {
+                auto sleepTime = std::chrono::seconds(1);
+                while (!m_initialized && sleepTime.count() <= MAX_WAIT_TIME)
+                {
+                    try
+                    {
+                        initialize(templateData, indexName, selector, secureCommunication);
+                    }
+                    catch (const std::exception& e)
+                    {
+                        logWarn(IC_NAME,
+                                "Error initializing IndexerConnector: %s, we will try again after %ld seconds.",
+                                e.what(),
+                                sleepTime.count());
+
+                        std::this_thread::sleep_for(sleepTime);
+                        sleepTime *= 2;
+                    }
+                }
+            });
     }
 
     QUEUE_MAP[this] = std::make_unique<ThreadDispatchQueue>(
@@ -108,9 +129,14 @@ IndexerConnector::IndexerConnector(
         {
             try
             {
+                if (m_initializeThread.joinable())
+                {
+                    m_initializeThread.join();
+                }
+
                 if (!m_initialized)
                 {
-                    initialize(templateData, indexName, selector, secureCommunication);
+                    throw std::runtime_error("Indexer connector is not initialized.");
                 }
 
                 auto url = selector->getNext();
