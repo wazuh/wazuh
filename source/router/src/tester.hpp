@@ -78,9 +78,10 @@ public:
     /**
      * @brief Add a new entry (policy) to the tester
      * @param entryPost The entry information for testing policy
+     * @param ignoreFail If true, if the operation fails the entry is added in disabled state.
      * @return An optional error if the operation failed.
      */
-    base::OptError addEntry(const test::EntryPost& entryPost);
+    base::OptError addEntry(const test::EntryPost& entryPost, bool ignoreFail = false);
 
     /**
      * @brief Removes a entry (testing policy) from the tester
@@ -140,7 +141,7 @@ public:
      * @param name The name of the entry.
      * @return false if the entry does not exist.
      */
-    bool updateLastUsed(const std::string& name);
+    bool updateLastUsed(const std::string& name, uint64_t lastUsed = std::numeric_limits<uint64_t>::max());
 };
 } // namespace router
 
