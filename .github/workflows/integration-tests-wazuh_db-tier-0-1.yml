@@ -1,4 +1,4 @@
-name: Integration tests for Analysisd - Tier 0 and 1
+name: Integration tests for Wazuh_db - Tier 0 and 1
 
 on:
   workflow_dispatch:
@@ -9,11 +9,11 @@ on:
         default: 'main'
   pull_request:
     paths:
-        - ".github/workflows/integration-tests-analysisd-tier-0-1.yml"
-        - "src/analysisd/**"
+        - ".github/workflows/integration-tests-wazuh_db-tier-0-1.yml"
+        - "src/wazuh_db/**"
         - "src/Makefile"
         - "tests/integration/conftest.py"
-        - "tests/integration/test_analysisd/**"
+        - "tests/integration/test_wazuh_db/**"
 
 jobs:
   build:
@@ -78,8 +78,8 @@ jobs:
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
           sudo pip install qa-integration-framework/
           sudo rm -rf qa-integration-framework/
-      # Run analysisd integration tests.
-      - name: Run analysisd integration tests
+      # Run wazuh_db integration tests.
+      - name: Run wazuh_db integration tests
         run: |
           cd tests/integration
-          sudo python -m pytest --tier 0 --tier 1 test_analysisd/
+          sudo python -m pytest --tier 0 --tier 1 test_wazuh_db/
