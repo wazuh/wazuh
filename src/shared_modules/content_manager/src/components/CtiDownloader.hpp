@@ -87,13 +87,15 @@ protected:
      */
     struct CtiBaseParameters
     {
-        int lastOffset;
-        std::string lastSnapshotLink;
+        int lastOffset;               ///< Last available offset from CTI.
+        std::string lastSnapshotLink; ///< Last snapshot URL from CTI.
     };
 
     /**
      * @brief Get the CTI API base parameters.
      *
+     * @param ctiURL Base URL from where to download the CTI parameters.
+     * @return struct CtiBaseParameters Base parameters of the CTI API.
      */
     CtiBaseParameters getCtiBaseParameters(const std::string& ctiURL)
     {
