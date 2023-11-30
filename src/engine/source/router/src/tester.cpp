@@ -30,7 +30,10 @@ public:
     {
     }
 
-    void addTrace(const std::string& asset, const std::string& traceContent, bool result)
+    void addTrace(const std::string& asset,
+                  const std::string& traceContent,
+                  bool result,
+                  const test::Options::TraceLevel level)
     {
         if (traceContent.empty())
         {
@@ -53,7 +56,7 @@ public:
         {
             data.success = true;
         }
-        else
+        else if (level == test::Options::TraceLevel::ALL)
         {
             data.traces.push_back(traceContent);
         }
@@ -190,9 +193,9 @@ base::RespOrError<test::Output> Tester::ingestTest(base::Event&& event, const te
     auto result = std::make_shared<test::InternalOutput>();
     for (const auto& asset : opt.assets())
     {
-        bk::Subscriber subFn = [asset, result](const std::string& trace, bool success) -> void
+        bk::Subscriber subFn = [asset, result, level = opt.traceLevel()](const std::string& trace, bool success) -> void
         {
-            result->addTrace(asset, trace, success);
+            result->addTrace(asset, trace, success, level);
         };
         auto err = entry.controller()->subscribe(asset, subFn);
         if (base::isError(err))
