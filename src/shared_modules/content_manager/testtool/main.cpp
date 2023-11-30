@@ -47,46 +47,56 @@ static const nlohmann::json CONFIG_PARAMETERS =
 // Enable/Disable logging verbosity.
 static const auto VERBOSE {false};
 
+/**
+ * @brief Log function callback used on the Content Manager test tool.
+ *
+ * @param logLevel Log level.
+ * @param tag Log tag.
+ * @param file File from where the logger is called.
+ * @param line Line from where the logger is called.
+ * @param func Function from where the logger is called.
+ * @param message Message to log.
+ */
+void logFunction(const int logLevel,
+                 const std::string& tag,
+                 const std::string& file,
+                 const int line,
+                 const std::string& func,
+                 const std::string& message)
+{
+    auto pos {file.find_last_of('/')};
+    if (pos != std::string::npos)
+    {
+        pos++;
+    }
+    const auto fileName {file.substr(pos, file.size() - pos)};
+
+    if (logLevel == LOGLEVEL_ERROR || logLevel == LOGLEVEL_CRITICAL)
+    {
+        // Error logs.
+        std::cerr << tag << ": " << message.c_str() << std::endl;
+    }
+    else if (logLevel == LOGLEVEL_INFO || logLevel == LOGLEVEL_WARNING)
+    {
+        // Info and warning logs.
+        std::cout << tag << ": " << message.c_str() << std::endl;
+    }
+    else
+    {
+        // Debug logs.
+        if (VERBOSE)
+        {
+            std::cout << tag << ":" << fileName << ":" << line << " " << func << ": " << message.c_str() << std::endl;
+        }
+    }
+}
+
 int main()
 {
     auto& instance = ContentModule::instance();
 
     // Server
-    instance.start(
-        [](const int logLevel,
-           const std::string& tag,
-           const std::string& file,
-           const int line,
-           const std::string& func,
-           const std::string& message)
-        {
-            auto pos {file.find_last_of('/')};
-            if (pos != std::string::npos)
-            {
-                pos++;
-            }
-            const auto fileName {file.substr(pos, file.size() - pos)};
-
-            if (logLevel == LOGLEVEL_ERROR || logLevel == LOGLEVEL_CRITICAL)
-            {
-                // Error logs.
-                std::cerr << tag << ": " << message.c_str() << std::endl;
-            }
-            else if (logLevel == LOGLEVEL_INFO || logLevel == LOGLEVEL_WARNING)
-            {
-                // Info and warning logs.
-                std::cout << tag << ": " << message.c_str() << std::endl;
-            }
-            else
-            {
-                // Debug logs.
-                if (VERBOSE)
-                {
-                    std::cout << tag << ":" << fileName << ":" << line << " " << func << ": " << message.c_str()
-                              << std::endl;
-                }
-            }
-        });
+    instance.start(logFunction);
 
     // Client -> Vulnerability detector
     ContentRegister registerer {CONFIG_PARAMETERS.at("topicName").get<std::string>(), CONFIG_PARAMETERS};
