@@ -1,5 +1,6 @@
 #include <router/orchestrator.hpp>
 
+#include "entryConverter.hpp"
 #include "worker.hpp"
 
 namespace router
@@ -7,6 +8,10 @@ namespace router
 
 namespace
 {
+/// @brief Validate that the pointer is not empty
+/// @tparam T  Type of the pointer
+/// @param ptr Pointer to validate
+/// @param name Name of the pointer
 template<typename T>
 void validatePointer(const T& ptr, const std::string& name)
 {
@@ -21,8 +26,7 @@ void validatePointer(const T& ptr, const std::string& name)
 } // namespace
 
 // Private
-template<typename Func>
-base::OptError Orchestrator::forEachWorker(Func f)
+base::OptError Orchestrator::forEachWorker(WorkerOp f)
 {
     for (const auto& worker : m_workers)
     {
@@ -35,23 +39,102 @@ base::OptError Orchestrator::forEachWorker(Func f)
 }
 
 /**************************************************************************
- * Manage configuration
+ * Manage configuration - Dump
  *************************************************************************/
+base::OptError loadTesterOnWorker(const std::vector<EntryConverter>& entries, const std::shared_ptr<Worker>& worker)
+{
+    for (const auto& entry : entries)
+    {
+        auto err = worker->getTester()->addEntry(test::EntryPost(entry), true);
+        if (err)
+        {
+            return err;
+        }
+        worker->getTester()->updateLastUsed(entry.name(), entry.lastUse().value_or(0));
+        worker->getTester()->enableEntry(entry.name());
+    }
+    return std::nullopt;
+}
+
+base::OptError loadRouterOnWoker(const std::vector<EntryConverter>& entries, const std::shared_ptr<Worker>& worker)
+{
+    for (const auto& entry : entries)
+    {
+        auto err = worker->getRouter()->addEntry(prod::EntryPost(entry), true);
+        if (err)
+        {
+            return err;
+        }
+        worker->getRouter()->enableEntry(entry.name());
+    }
+    return std::nullopt;
+}
+
+void saveConfig(const std::weak_ptr<store::IStoreInternal>& wStore, const base::Name& storeName, const json::Json& dump)
+{
+    auto store = wStore.lock();
+    if (!store)
+    {
+        LOG_ERROR("Store is unavailable for dumping entries");
+    }
+    else
+    {
+        store->upsertInternalDoc(storeName, dump);
+    }
+}
+
 void Orchestrator::dumpTesters() const
 {
-    // TODO
+    auto jDump = EntryConverter::toJsonArray(m_workers.front()->getTester()->getEntries());
+    saveConfig(m_wStore, m_storeTesterName, jDump);
 }
 
-void Orchestrator::dumpWorkers() const
+void Orchestrator::dumpRouters() const
 {
-    // TODO
+    auto jDump = EntryConverter::toJsonArray(m_workers.front()->getRouter()->getEntries());
+    saveConfig(m_wStore, m_storeRouterName, jDump);
 }
-
-void Orchestrator::loadInitialStates()
+/**************************************************************************
+ * Manage configuration - Loader
+ *************************************************************************/
+std::vector<EntryConverter> getEntryFromStore(const std::shared_ptr<store::IStoreInternal>& store,
+                                              const base::Name& tableName)
 {
-    // TODO
+    const auto jsonEntry = store->readInternalDoc(tableName);
+    if (base::isError(jsonEntry))
+    {
+        LOG_INFO("Router: {} table not found in store. Creating new table: {}",
+                 tableName.toStr(),
+                 base::getError(jsonEntry).message);
+        store->createInternalDoc(tableName, json::Json {"[]"});
+        return {};
+    }
+
+    return EntryConverter::fromJsonArray(base::getResponse(jsonEntry));
 }
 
+void Orchestrator::initWorkers()
+{
+    auto store = m_wStore.lock();
+    if (!store)
+    {
+        throw std::runtime_error {"Store is unavailable for loading the initial states"};
+    }
+
+    auto error = forEachWorker([entries = getEntryFromStore(store, m_storeTesterName)](const auto& worker)
+                               { return loadTesterOnWorker(entries, worker); });
+    if (error)
+    {
+        LOG_ERROR("Router: Cannot load testers from store: {}", error->message);
+    }
+
+    error = forEachWorker([entries = getEntryFromStore(store, m_storeRouterName)](const auto& worker)
+                          { return loadRouterOnWoker(entries, worker); });
+    if (error)
+    {
+        LOG_ERROR("Router: Cannot load routers from store: {}", error->message);
+    }
+}
 
 // Public
 void Orchestrator::Options::validate() const
@@ -75,21 +158,28 @@ Orchestrator::Orchestrator(const Options& opt)
     , m_eventQueue(opt.m_prodQueue)
     , m_testQueue(opt.m_testQueue)
     , m_envBuilder()
+    , m_syncMutex()
+    , m_storeTesterName(STORE_PATH_TESTER_TABLE)
+    , m_storeRouterName(STORE_PATH_ROUTER_TABLE)
 {
     opt.validate();
 
-    m_testTimeout = opt.m_testTimeout;
-
-    // TODO Remove after the builder is implemented
+    // TODO Remove this builder after the builder is implemented
     auto builder = std::make_shared<ConcreteBuilder>(opt.m_wStore, opt.m_wRegistry);
-    m_envBuilder = std::make_shared<EnvironmentBuilder>(builder, opt.m_controllerMaker);
 
-    // Create the Workers
+    m_envBuilder = std::make_shared<EnvironmentBuilder>(builder, opt.m_controllerMaker);
+    m_testTimeout = opt.m_testTimeout;
+    m_wStore = opt.m_wStore;
+
+    // Create empty workers
     for (std::size_t i = 0; i < opt.m_numThreads; ++i)
     {
         auto worker = std::make_shared<Worker>(m_envBuilder, m_eventQueue, m_testQueue);
         m_workers.emplace_back(std::move(worker));
     }
+
+    // Configure the workers
+    initWorkers();
 }
 
 void Orchestrator::start()
@@ -104,6 +194,7 @@ void Orchestrator::start()
 void Orchestrator::stop()
 {
     std::shared_lock lock {m_syncMutex};
+    dumpTesters(); // TODO: For save the last used time
     for (const auto& worker : m_workers)
     {
         worker->stop();
@@ -128,7 +219,13 @@ base::OptError Orchestrator::postEntry(const prod::EntryPost& entry)
         return error;
     }
 
-    return forEachWorker([&entry](const auto& worker) { return worker->getRouter()->enableEntry(entry.name()); });
+    error = forEachWorker([&entry](const auto& worker) { return worker->getRouter()->enableEntry(entry.name()); });
+    if (error)
+    {
+        return error;
+    }
+    dumpRouters();
+    return std::nullopt;
 }
 
 base::OptError Orchestrator::deleteEntry(const std::string& name)
@@ -139,7 +236,13 @@ base::OptError Orchestrator::deleteEntry(const std::string& name)
         return base::Error {"Name cannot be empty"};
     }
 
-    return forEachWorker([&name](const auto& worker) { return worker->getRouter()->removeEntry(name); });
+    auto error = forEachWorker([&name](const auto& worker) { return worker->getRouter()->removeEntry(name); });
+    if (error)
+    {
+        return error;
+    }
+    dumpRouters();
+    return std::nullopt;
 }
 
 base::RespOrError<prod::Entry> Orchestrator::getEntry(const std::string& name) const
@@ -178,8 +281,14 @@ base::OptError Orchestrator::changeEntryPriority(const std::string& name, size_t
     }
 
     std::unique_lock lock {m_syncMutex};
-    return forEachWorker([&name, priority](const auto& worker)
-                         { return worker->getRouter()->changePriority(name, priority); });
+    auto error = forEachWorker([&name, priority](const auto& worker)
+                               { return worker->getRouter()->changePriority(name, priority); });
+    if (error)
+    {
+        return error;
+    }
+    dumpRouters();
+    return std::nullopt;
 }
 
 std::list<prod::Entry> Orchestrator::getEntries() const
@@ -231,7 +340,13 @@ base::OptError Orchestrator::postTestEntry(const test::EntryPost& entry)
         return error;
     }
 
-    return forEachWorker([&entry](const auto& worker) { return worker->getTester()->enableEntry(entry.name()); });
+    error = forEachWorker([&entry](const auto& worker) { return worker->getTester()->enableEntry(entry.name()); });
+    if (error)
+    {
+        return error;
+    }
+    dumpTesters();
+    return std::nullopt;
 }
 
 base::OptError Orchestrator::deleteTestEntry(const std::string& name)
@@ -243,7 +358,13 @@ base::OptError Orchestrator::deleteTestEntry(const std::string& name)
         return base::Error {"Name cannot be empty"};
     }
 
-    return forEachWorker([&name](const auto& worker) { return worker->getTester()->removeEntry(name); });
+    auto error = forEachWorker([&name](const auto& worker) { return worker->getTester()->removeEntry(name); });
+    if (error)
+    {
+        return error;
+    }
+    dumpTesters();
+    return std::nullopt;
 }
 
 base::RespOrError<test::Entry> Orchestrator::getTestEntry(const std::string& name) const

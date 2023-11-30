@@ -16,6 +16,7 @@ add_library(router_router STATIC
     ${SRC_DIR}/router.cpp
     ${SRC_DIR}/tester.cpp
     ${SRC_DIR}/worker.cpp
+    ${SRC_DIR}/entryConverter.cpp
 
     ${SRC_DIR}/orchestrator.cpp
 )

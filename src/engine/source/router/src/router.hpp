@@ -62,9 +62,10 @@ public:
     /**
      * @brief Add a new environment to the router. The environment is disabled by default.
      * @param entryPost The entry information for the environment.
+     * @paran ignoreFail
      * @return An optional error if the operation failed.
      */
-    base::OptError addEntry(const prod::EntryPost& entryPost);
+    base::OptError addEntry(const prod::EntryPost& entryPost, bool ignoreFail = false);
 
     /**
      * @brief Removes the environment
