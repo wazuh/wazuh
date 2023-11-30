@@ -53,8 +53,8 @@ public:
      *
      */
     EnvironmentBuilder(std::shared_ptr<IBuilder> builder, std::shared_ptr<bk::IControllerMaker> controllerMaker)
-        : m_builder(builder)
-        , m_controllerMaker(controllerMaker)
+        : m_builder(std::move(builder))
+        , m_controllerMaker(std::move(controllerMaker))
     {
         if (m_builder == nullptr)
         {
