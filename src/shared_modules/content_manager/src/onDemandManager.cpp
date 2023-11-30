@@ -65,7 +65,10 @@ void OnDemandManager::startServer()
                              }
                          });
             m_server.set_address_family(AF_UNIX);
+
             std::filesystem::remove(ONDEMAND_SOCK);
+            std::filesystem::path path {ONDEMAND_SOCK};
+            std::filesystem::create_directories(path.parent_path());
 
             runningTrigger = m_server.listen(ONDEMAND_SOCK, true);
         });
