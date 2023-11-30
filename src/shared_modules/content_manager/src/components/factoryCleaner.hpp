@@ -38,8 +38,8 @@ public:
     {
         if (config.at("deleteDownloadedContent").get_ref<const bool&>())
         {
-            return std::make_shared<CleanUpContent>();
             logDebug1(WM_CONTENTUPDATER, "Content cleaner created");
+            return std::make_shared<CleanUpContent>();
         }
         else
         {
