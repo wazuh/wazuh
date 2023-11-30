@@ -56,8 +56,6 @@ private:
     {
         for (auto& path : context.data.at("paths"))
         {
-            logDebug2(WM_CONTENTUPDATER, "Attempting to decompress '%s'", path.get_ref<const std::string&>().c_str());
-
             // Copy input path.
             std::filesystem::path inputPath {path};
             auto outputPath {path.get<std::string>()};
@@ -73,6 +71,10 @@ private:
             outputPath = Utils::rightTrim(outputPath, inputPath.extension());
 
             // Decompress.
+            logDebug2(WM_CONTENTUPDATER,
+                      "Attempting to decompress '%s' into '%s'",
+                      inputPath.string().c_str(),
+                      outputPath.c_str());
             Utils::ZlibHelper::gzipDecompress(inputPath, outputPath);
 
             // Decompression finished: Update context path.

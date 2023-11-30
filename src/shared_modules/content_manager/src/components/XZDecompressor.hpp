@@ -38,8 +38,6 @@ private:
     {
         for (auto& path : context.data.at("paths"))
         {
-            logDebug2(WM_CONTENTUPDATER, "Attempting to decompress '%s'", path.get_ref<const std::string&>().c_str());
-
             std::filesystem::path inputPath {path};
             try
             {
@@ -53,6 +51,10 @@ private:
                                   context.spUpdaterBaseContext->configData.at("dataFormat").get<std::string>());
                 std::filesystem::path outputPath {path};
 
+                logDebug2(WM_CONTENTUPDATER,
+                          "Attempting to decompress '%s' into '%s'",
+                          inputPath.string().c_str(),
+                          outputPath.string().c_str());
                 Utils::XzHelper(inputPath, outputPath).decompress();
             }
             catch (const std::exception& e)

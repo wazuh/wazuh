@@ -60,7 +60,10 @@ private:
 
         for (const auto& path : context.data.at("paths"))
         {
-            logDebug2(WM_CONTENTUPDATER, "Attempting to decompress '%s'", path.get_ref<const std::string&>().c_str());
+            logDebug2(WM_CONTENTUPDATER,
+                      "Attempting to decompress '%s' into '%s'",
+                      path.get_ref<const std::string&>().c_str(),
+                      outputFolder.string().c_str());
 
             // Decompress and move paths.
             auto decompressedFiles {Utils::ZlibHelper::zipDecompress(path, outputFolder)};
