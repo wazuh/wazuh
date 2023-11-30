@@ -11,7 +11,7 @@
 
 #include "hashHelper_test.h"
 #include "hashHelper.h"
-
+#include <filesystem>
 
 void HashHelperTest::SetUp() {};
 
@@ -20,6 +20,13 @@ void HashHelperTest::TearDown() {};
 using ::testing::_;
 using ::testing::Return;
 using namespace Utils;
+
+// Path where the test files reside.
+const std::filesystem::path INPUT_FILES_DIR {std::filesystem::current_path() / "input_files" / "hashHelper"};
+
+// Test file used for hashing.
+const std::filesystem::path TEST_FILE {INPUT_FILES_DIR / "data.json"};
+const std::string TEST_FILE_HASH {"9c8ff5a046322fd04e244ce92e991118f26403f1"};
 
 TEST_F(HashHelperTest, UnsupportedHashType)
 {
@@ -82,4 +89,18 @@ TEST_F(HashHelperTest, HashHelperHashIterativeSha256)
     const auto result{ hash.hash() };
     EXPECT_EQ(sizeof(expected), result.size());
     EXPECT_TRUE(!memcmp(expected, result.data(), result.size()));
+}
+
+#include "stringHelper.h"
+TEST_F(HashHelperTest, HashFile)
+{
+    // 9c8ff5a046322fd04e244ce92e991118f26403f1
+    const std::vector<unsigned char> expectedHash {156, 143, 245, 160, 70, 50, 47, 208, 78, 36, 76, 233, 46, 153, 17, 24, 242, 100, 3, 241};
+    
+    EXPECT_EQ(Utils::hashFile(TEST_FILE), expectedHash);
+}
+
+TEST_F(HashHelperTest, HashFileInexistantFile)
+{
+    EXPECT_THROW(Utils::hashFile(INPUT_FILES_DIR / "inexistant_file.xml"), std::runtime_error);
 }

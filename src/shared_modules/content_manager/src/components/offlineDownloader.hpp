@@ -41,34 +41,6 @@ private:
     IURLRequest& m_urlRequest; ///< HTTP driver instance.
 
     /**
-     * @brief Function to calculate the hash of a file.
-     *
-     * @param filepath Path to the file.
-     * @return std::string Digest vector.
-     */
-    std::string hashFile(const std::filesystem::path& filepath) const
-    {
-        if (std::ifstream inputFile(filepath, std::fstream::in); inputFile)
-        {
-            constexpr int BUFFER_SIZE {4096};
-            std::array<char, BUFFER_SIZE> buffer {};
-
-            Utils::HashData hash;
-            while (inputFile.read(buffer.data(), buffer.size()))
-            {
-                hash.update(buffer.data(), inputFile.gcount());
-            }
-            hash.update(buffer.data(), inputFile.gcount());
-
-            return Utils::asciiToHex(hash.hash());
-        }
-
-        // LCOV_EXCL_START
-        throw std::runtime_error {"Unable to open '" + filepath.string() + "' for hashing."};
-        // LCOV_EXCL_STOP
-    };
-
-    /**
      * @brief Copy a file from the localsystem.
      *
      * @param inputFilepath Input path from where to copy the file.
@@ -174,7 +146,7 @@ private:
         }
 
         // Just process the new file if the hash is different from the last one.
-        auto inputFileHash {hashFile(outputFilePath)};
+        auto inputFileHash {Utils::asciiToHex(Utils::hashFile(outputFilePath))};
         if (context.spUpdaterBaseContext->downloadedFileHash != inputFileHash)
         {
             // Store new hash.

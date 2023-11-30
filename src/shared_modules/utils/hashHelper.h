@@ -16,6 +16,9 @@
 #include <vector>
 #include <stdexcept>
 #include "openssl/evp.h"
+#include <fstream>
+#include <array>
+#include <filesystem>
 
 namespace Utils
 {
@@ -125,7 +128,31 @@ namespace Utils
             std::unique_ptr<EVP_MD_CTX, EvpContextDeleter> m_spCtx;
     };
 
+    /**
+     * @brief Function to calculate the hash of a file.
+     *
+     * @param filepath Path to the file.
+     * @return std::vector<unsigned char> Digest vector.
+     */
+    static std::vector<unsigned char> hashFile(const std::filesystem::path& filepath)
+    {
+        if (std::ifstream inputFile(filepath, std::fstream::in); inputFile)
+        {
+            constexpr int BUFFER_SIZE {4096};
+            std::array<char, BUFFER_SIZE> buffer {};
 
+            HashData hash;
+            while (inputFile.read(buffer.data(), buffer.size()))
+            {
+                hash.update(buffer.data(), inputFile.gcount());
+            }
+            hash.update(buffer.data(), inputFile.gcount());
+
+            return hash.hash();
+        }
+
+        throw std::runtime_error {"Unable to open '" + filepath.string() + "' for hashing."};
+    };
 }
 
 #endif // _HASH_HELPER_H
