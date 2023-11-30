@@ -31,9 +31,11 @@ references:
 tags:
     - sca
 '''
+import sys
 import os
 import pytest
 import re
+import subprocess
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
@@ -41,16 +43,18 @@ from wazuh_testing.utils import callbacks, configuration
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.modules.sca import patterns
 from wazuh_testing.modules.modulesd.configuration import MODULESD_DEBUG
+from wazuh_testing.modules.agentd.configuration import AGENTD_WINDOWS_DEBUG
+from wazuh_testing.constants.platforms import WINDOWS
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
-pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0)]
+pytestmark = [pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
 
-local_internal_options = {MODULESD_DEBUG: '2'}
+local_internal_options = {AGENTD_WINDOWS_DEBUG if sys.platform == WINDOWS else MODULESD_DEBUG: '2'}
 
 # Configuration and cases data
 configurations_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_sca.yaml')
-cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_validate_remediation.yaml')
+cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_validate_remediation_win.yaml' if sys.platform == WINDOWS else 'cases_validate_remediation.yaml')
 
 # Test configurations
 configuration_parameters, configuration_metadata, case_ids = configuration.get_test_cases_data(cases_path)
@@ -74,7 +78,7 @@ def callback_scan_id_result(line):
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(configurations, configuration_metadata), ids=case_ids)
 def test_validate_remediation_results(test_configuration, test_metadata, prepare_cis_policies_file, truncate_monitored_files,
-                                      prepare_test_folder, set_wazuh_configuration,
+                                      prepare_remediation_test, set_wazuh_configuration,
                                       configure_local_internal_options, daemons_handler,
                                       wait_for_sca_enabled):
     '''
@@ -85,10 +89,10 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
 
     test_phases:
         - Copy cis_sca ruleset file into agent
-        - Create a folder that will be checked by the SCA rules
+        - Create a folder that will be checked by the SCA rules (Linux)
         - Restart wazuh
         - Validate the result for a given SCA check are as expected
-        - Change the folder's permissions
+        - Change the folder's permissions / Modifies the user lockout duration (Windows)
         - Validate the result for a given SCA check change as expected
 
     wazuh_min_version: 4.6.0
@@ -105,9 +109,10 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
         - prepare_cis_policies_file:
             type: fixture
             brief: copy test sca policy file. Delete it after test.
-        - prepare_test_folder:
+        - prepare_remediation_test:
             type: fixture
-            brief: Create a folder with a given set of permissions. Delete it after test.
+            brief: Create a folder with a given set of permissions or modifies the user
+                lockout duration in Windows. Delete it/Restores the value after test.
         - set_wazuh_configuration:
             type: fixture
             brief: Set the wazuh configuration according to the configuration data.
@@ -140,7 +145,7 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
 
     # Get the results for the checks obtained in the initial SCA scan
     log_monitor.start(callback=callback_scan_id_result, timeout=20, \
-                      only_new_events=True, accumulations=2)
+                      only_new_events=True, accumulations=3)
 
     results = log_monitor.callback_result
 
@@ -148,12 +153,17 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
     check_result = results[test_metadata['check_id']-1][1]
     assert check_result == test_metadata['initial_result'], f"Got unexcepted SCA result: {test_metadata['initial_result']},\
                                                          got {check_result}"
-    # Modify the folder's permissions
-    os.chmod(test_folder, test_metadata['perms'])
+
+    if sys.platform == WINDOWS:
+        # Modify lockout duration
+        subprocess.call('net accounts /lockoutduration:100', shell=True)
+    else:
+        # Modify the folder's permissions
+        os.chmod(test_folder, test_metadata['perms'])
 
     # Get the results for the checks obtained in the SCA scan
     log_monitor.start(callback=callback_scan_id_result, timeout=20, \
-                      only_new_events=True, accumulations=2)
+                      only_new_events=True, accumulations=3)
     results = log_monitor.callback_result
 
     # Assert the tested check result changed as expected (passed to failed, and vice-versa)

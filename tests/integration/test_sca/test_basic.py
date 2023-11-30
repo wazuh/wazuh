@@ -38,6 +38,7 @@ references:
 tags:
     - sca
 '''
+import sys
 import pytest
 from pathlib import Path
 
@@ -46,13 +47,15 @@ from wazuh_testing.utils import callbacks, configuration
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.modules.sca import patterns
 from wazuh_testing.modules.modulesd.configuration import MODULESD_DEBUG
+from wazuh_testing.modules.agentd.configuration import AGENTD_WINDOWS_DEBUG
+from wazuh_testing.constants.platforms import WINDOWS
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 
-pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0)]
+pytestmark = [pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
 
-local_internal_options = {MODULESD_DEBUG: '2'}
+local_internal_options = {AGENTD_WINDOWS_DEBUG if sys.platform == WINDOWS else MODULESD_DEBUG: '2'}
 
 # Configuration and cases data
 configurations_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_sca.yaml')
@@ -135,7 +138,7 @@ def test_sca_enabled(test_configuration, test_metadata, prepare_cis_policies_fil
     '''
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCA_ENABLED), timeout=10)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCA_ENABLED), timeout=60 if sys.platform == WINDOWS else 10)
     assert log_monitor.callback_result
     log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCA_SCAN_STARTED), timeout=10)
     assert log_monitor.callback_result
