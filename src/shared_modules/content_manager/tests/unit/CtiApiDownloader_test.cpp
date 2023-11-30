@@ -17,6 +17,8 @@
 const auto OK_STATUS = R"([{"stage":"CtiApiDownloader","status":"ok"}])"_json;
 const auto FAIL_STATUS = R"([{"stage":"CtiApiDownloader","status":"fail"}])"_json;
 
+constexpr auto DEFAULT_TYPE {"offsets"}; ///< Default content type.
+
 /**
  * @brief Tests handle a valid request with raw data.
  */
@@ -34,6 +36,10 @@ TEST_F(CtiApiDownloaderTest, TestHandleValidRequestWithRawData)
     const auto stageStatus = m_spUpdaterContext->data.at("stageStatus");
 
     EXPECT_EQ(stageStatus, OK_STATUS);
+
+    const auto type = m_spUpdaterContext->data.at("type");
+
+    EXPECT_EQ(type, DEFAULT_TYPE);
 
     // It's true because the compressionType is `raw`
     EXPECT_TRUE(std::filesystem::exists(contentPath));
@@ -63,6 +69,10 @@ TEST_F(CtiApiDownloaderTest, TestHandleValidRequestWithCompressedData)
 
     EXPECT_EQ(stageStatus, OK_STATUS);
 
+    const auto type = m_spUpdaterContext->data.at("type");
+
+    EXPECT_EQ(type, DEFAULT_TYPE);
+
     // It's false because the compressionType isn't `raw`
     EXPECT_FALSE(std::filesystem::exists(contentPath));
 
@@ -89,6 +99,10 @@ TEST_F(CtiApiDownloaderTest, TestHandleValidRequestWithCompressedDataAndInvalidO
     const auto stageStatus = m_spUpdaterContext->data.at("stageStatus");
 
     EXPECT_EQ(stageStatus, FAIL_STATUS);
+
+    const auto type = m_spUpdaterContext->data.at("type");
+
+    EXPECT_EQ(type, DEFAULT_TYPE);
 }
 
 /**
@@ -110,6 +124,10 @@ TEST_F(CtiApiDownloaderTest, TestHandleAnEmptyUrl)
     const auto stageStatus = m_spUpdaterContext->data.at("stageStatus");
 
     EXPECT_EQ(stageStatus, FAIL_STATUS);
+
+    const auto type = m_spUpdaterContext->data.at("type");
+
+    EXPECT_EQ(type, DEFAULT_TYPE);
 }
 
 /**
@@ -131,6 +149,10 @@ TEST_F(CtiApiDownloaderTest, TestHandleAnInvalidUrl)
     const auto stageStatus = m_spUpdaterContext->data.at("stageStatus");
 
     EXPECT_EQ(stageStatus, FAIL_STATUS);
+
+    const auto type = m_spUpdaterContext->data.at("type");
+
+    EXPECT_EQ(type, DEFAULT_TYPE);
 }
 
 /**
@@ -150,6 +172,7 @@ TEST_F(CtiApiDownloaderTest, DownloadServerErrorWithRetry)
     nlohmann::json expectedData;
     expectedData["paths"].push_back(contentPath);
     expectedData["stageStatus"] = OK_STATUS;
+    expectedData["type"] = DEFAULT_TYPE;
 
     ASSERT_NO_THROW(m_spCtiApiDownloader->handleRequest(m_spUpdaterContext));
 
@@ -170,6 +193,7 @@ TEST_F(CtiApiDownloaderTest, DownloadClientErrorNoRetry)
     nlohmann::json expectedData;
     expectedData["paths"] = m_spUpdaterContext->data.at("paths");
     expectedData["stageStatus"] = FAIL_STATUS;
+    expectedData["type"] = DEFAULT_TYPE;
 
     ASSERT_THROW(m_spCtiApiDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
@@ -189,6 +213,7 @@ TEST_F(CtiApiDownloaderTest, DownloadClientAndServerErrorsRetryAndFail)
     nlohmann::json expectedData;
     expectedData["paths"] = m_spUpdaterContext->data.at("paths");
     expectedData["stageStatus"] = FAIL_STATUS;
+    expectedData["type"] = DEFAULT_TYPE;
 
     ASSERT_THROW(m_spCtiApiDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);

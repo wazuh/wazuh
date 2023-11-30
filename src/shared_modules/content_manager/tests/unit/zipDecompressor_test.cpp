@@ -43,6 +43,8 @@ const auto ZIP_EMPTY {INPUT_FILES_DIR / "empty.zip"};
 const auto OK_STATUS = R"({"stage":"ZipDecompressor","status":"ok"})"_json;
 const auto FAIL_STATUS = R"({"stage":"ZipDecompressor","status":"fail"})"_json;
 
+constexpr auto DEFAULT_TYPE {"raw"}; ///< Default content type.
+
 /**
  * @brief Tests the correct class instantiation.
  *
@@ -64,6 +66,7 @@ TEST_F(ZipDecompressorTest, DecompressNoFile)
     expectedData["paths"] = m_spContext->data.at("paths");
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
+    expectedData["type"] = DEFAULT_TYPE;
 
     // Run decompression.
     ASSERT_NO_THROW(ZipDecompressor().handleRequest(m_spContext));
@@ -83,6 +86,7 @@ TEST_F(ZipDecompressorTest, DecompressOneZipOneFile)
     expectedData["paths"] = ZIP_CONTENT_A_EXPECTED_FILES;
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
+    expectedData["type"] = DEFAULT_TYPE;
 
     // Set input files.
     m_spContext->data.at("paths").push_back(ZIP_CONTENT_A);
@@ -111,6 +115,7 @@ TEST_F(ZipDecompressorTest, DecompressOneZipTwoFiles)
     expectedData["paths"] = ZIP_CONTENT_B_EXPECTED_FILES;
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
+    expectedData["type"] = DEFAULT_TYPE;
 
     // Set input files.
     m_spContext->data.at("paths").push_back(ZIP_CONTENT_B);
@@ -143,6 +148,7 @@ TEST_F(ZipDecompressorTest, DecompressTwoZips)
     expectedData["paths"] = expectedPaths;
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
+    expectedData["type"] = DEFAULT_TYPE;
 
     // Set input files.
     m_spContext->data.at("paths").push_back(ZIP_CONTENT_A);
@@ -175,6 +181,7 @@ TEST_F(ZipDecompressorTest, DecompressInexistantFile)
     expectedData["paths"] = m_spContext->data.at("paths");
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(FAIL_STATUS);
+    expectedData["type"] = DEFAULT_TYPE;
 
     // Run decompression.
     EXPECT_THROW(ZipDecompressor().handleRequest(m_spContext), std::runtime_error);
@@ -197,6 +204,7 @@ TEST_F(ZipDecompressorTest, DecompressEmptyZip)
     expectedData["paths"] = m_spContext->data.at("paths");
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(FAIL_STATUS);
+    expectedData["type"] = DEFAULT_TYPE;
 
     // Run decompression.
     EXPECT_THROW(ZipDecompressor().handleRequest(m_spContext), std::runtime_error);

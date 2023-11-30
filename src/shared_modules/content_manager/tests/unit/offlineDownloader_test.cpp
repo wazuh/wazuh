@@ -29,6 +29,8 @@ const auto CONTENT_FILENAME_RAW = "raw";
 const auto CONTENT_FILENAME_XZ = "xz";
 const std::string BASE_URL = "localhost:4444/";
 
+constexpr auto DEFAULT_TYPE {"raw"}; ///< Default content type.
+
 /**
  * @brief Tests the correct instantiation of the class.
  *
@@ -53,6 +55,7 @@ TEST_F(OfflineDownloaderTest, RawFileDownload)
                                     m_inputFilePathRaw.filename().string());
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
+    expectedData["type"] = DEFAULT_TYPE;
 
     ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
@@ -73,6 +76,7 @@ TEST_F(OfflineDownloaderTest, CompressedFileDownload)
                                     m_inputFilePathCompressed.filename().string());
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
+    expectedData["type"] = DEFAULT_TYPE;
 
     ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
@@ -93,6 +97,7 @@ TEST_F(OfflineDownloaderTest, InexistantFileDownload)
     expectedData["paths"] = m_spUpdaterContext->data.at("paths");
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
+    expectedData["type"] = DEFAULT_TYPE;
 
     ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
@@ -113,6 +118,7 @@ TEST_F(OfflineDownloaderTest, SkipFileProcessing)
                                     m_inputFilePathRaw.filename().string());
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
+    expectedData["type"] = DEFAULT_TYPE;
 
     ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
@@ -145,6 +151,7 @@ TEST_F(OfflineDownloaderTest, TwoFileDownloadsOverrideOutput)
                                     m_inputFilePathRaw.filename().string());
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
+    expectedData["type"] = DEFAULT_TYPE;
 
     // Trigger first download.
     ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
@@ -180,6 +187,7 @@ TEST_F(OfflineDownloaderTest, InexistantContentFolder)
     expectedData["paths"] = m_spUpdaterContext->data.at("paths");
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(FAIL_STATUS);
+    expectedData["type"] = DEFAULT_TYPE;
 
     ASSERT_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext), std::runtime_error);
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
@@ -200,6 +208,7 @@ TEST_F(OfflineDownloaderTest, HttpDownloadRawFile)
     expectedData["paths"].push_back(expectedOutputFile);
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
+    expectedData["type"] = DEFAULT_TYPE;
 
     ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
@@ -221,6 +230,7 @@ TEST_F(OfflineDownloaderTest, HttpDownloadCompressedFile)
     expectedData["paths"].push_back(expectedOutputFile);
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
+    expectedData["type"] = DEFAULT_TYPE;
 
     ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
@@ -240,6 +250,7 @@ TEST_F(OfflineDownloaderTest, HttpDownloadFileWithoutFilename)
     expectedData["paths"] = m_spUpdaterContext->data.at("paths");
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(FAIL_STATUS);
+    expectedData["type"] = DEFAULT_TYPE;
 
     ASSERT_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext), std::runtime_error);
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
@@ -258,6 +269,7 @@ TEST_F(OfflineDownloaderTest, DownloadUnknownPrefixedFile)
     expectedData["paths"] = m_spUpdaterContext->data.at("paths");
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(FAIL_STATUS);
+    expectedData["type"] = DEFAULT_TYPE;
 
     ASSERT_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext), std::runtime_error);
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
@@ -278,6 +290,7 @@ TEST_F(OfflineDownloaderTest, HttpDownloadRawFileOverride)
     expectedData["paths"].push_back(expectedOutputFile);
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
+    expectedData["type"] = DEFAULT_TYPE;
 
     // Create dummy file in the expected output path.
     std::ofstream testFileStream {expectedOutputFile};
@@ -302,6 +315,7 @@ TEST_F(OfflineDownloaderTest, HttpDownloadInvalidURL)
     expectedData["paths"] = m_spUpdaterContext->data.at("paths");
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
+    expectedData["type"] = DEFAULT_TYPE;
 
     ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
@@ -322,6 +336,7 @@ TEST_F(OfflineDownloaderTest, HttpDownloadFileTwice)
     expectedData["paths"].push_back(expectedOutputFile);
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
+    expectedData["type"] = DEFAULT_TYPE;
 
     ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
@@ -354,6 +369,7 @@ TEST_F(OfflineDownloaderTest, HttpAndLocalDownloadFileTwice)
     expectedData["paths"].push_back(expectedOutputFile);
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
+    expectedData["type"] = DEFAULT_TYPE;
 
     ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
