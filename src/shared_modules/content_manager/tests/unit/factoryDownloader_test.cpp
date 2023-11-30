@@ -20,7 +20,7 @@
 #include "gtest/gtest.h"
 #include <memory>
 
-/*
+/**
  * @brief Check the creation of a CtiOffsetDownloader.
  */
 TEST_F(FactoryDownloaderTest, CreateCtiOffsetDownloader)
@@ -34,6 +34,21 @@ TEST_F(FactoryDownloaderTest, CreateCtiOffsetDownloader)
 
     // Check if the downloader is a CtiOffsetDownloader
     EXPECT_TRUE(std::dynamic_pointer_cast<CtiOffsetDownloader>(spDownloader));
+}
+
+/**
+ * @brief Check the creation of a CtiSnapshotDownloader.
+ *
+ */
+TEST_F(FactoryDownloaderTest, CreateCtiSnapshotDownloader)
+{
+    // Create the config
+    const auto config = R"({"contentSource":"cti-snapshot"})"_json;
+
+    // Create the downloader.
+    std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> spDownloader {};
+    ASSERT_NO_THROW(spDownloader = FactoryDownloader::create(config));
+    EXPECT_TRUE(std::dynamic_pointer_cast<CtiSnapshotDownloader>(spDownloader));
 }
 
 /**

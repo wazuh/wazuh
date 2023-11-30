@@ -14,6 +14,7 @@
 
 #include "APIDownloader.hpp"
 #include "CtiOffsetDownloader.hpp"
+#include "CtiSnapshotDownloader.hpp"
 #include "HTTPRequest.hpp"
 #include "fileDownloader.hpp"
 #include "json.hpp"
@@ -51,6 +52,10 @@ public:
         if ("cti-offset" == downloaderType)
         {
             return std::make_shared<CtiOffsetDownloader>(HTTPRequest::instance());
+        }
+        if ("cti-snapshot" == downloaderType)
+        {
+            return std::make_shared<CtiSnapshotDownloader>(HTTPRequest::instance());
         }
         if ("file" == downloaderType)
         {

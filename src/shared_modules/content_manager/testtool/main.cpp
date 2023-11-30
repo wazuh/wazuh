@@ -30,11 +30,11 @@ static const nlohmann::json CONFIG_PARAMETERS =
             "ondemand": true,
             "configData":
             {
-                "contentSource": "api",
-                "compressionType": "raw",
+                "contentSource": "cti-snapshot",
+                "compressionType": "zip",
                 "versionedContent": "false",
                 "deleteDownloadedContent": true,
-                "url": "https://jsonplaceholder.typicode.com/todos/1",
+                "url": "https://cti-dev.wazuh.com/api/v1/catalog/contexts/vulnerabilities_ap/consumers/test_ap",
                 "outputFolder": "/tmp/testProvider",
                 "dataFormat": "json",
                 "contentFileName": "example.json",
@@ -82,7 +82,7 @@ int main()
     registerer.changeSchedulerInterval(10);
     // End client
 
-    std::this_thread::sleep_for(std::chrono::seconds(60));
+    std::this_thread::sleep_for(std::chrono::seconds(600));
 
     // Stop server
     instance.stop();
