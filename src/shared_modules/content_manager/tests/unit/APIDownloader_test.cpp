@@ -10,10 +10,11 @@
  */
 
 #include "APIDownloader_test.hpp"
-#include "APIDownloader.hpp"
 #include "updaterContext.hpp"
 #include "gtest/gtest.h"
 #include <filesystem>
+
+constexpr auto DEFAULT_TYPE {"raw"}; ///< Default content type.
 
 /**
  * @brief Tests handle a valid request with raw data.
@@ -43,6 +44,10 @@ TEST_F(APIDownloaderTest, TestHandleValidRequestWithRawData)
     const auto stageStatus = m_spUpdaterContext->data.at("stageStatus");
 
     EXPECT_EQ(stageStatus, expectedStageStatus);
+
+    const auto type = m_spUpdaterContext->data.at("type");
+
+    EXPECT_EQ(type, DEFAULT_TYPE);
 
     // It's true because the compressionType is `raw`
     EXPECT_TRUE(std::filesystem::exists(contentPath));
@@ -83,6 +88,10 @@ TEST_F(APIDownloaderTest, TestHandleValidRequestWithCompressedData)
 
     EXPECT_EQ(stageStatus, expectedStageStatus);
 
+    const auto type = m_spUpdaterContext->data.at("type");
+
+    EXPECT_EQ(type, DEFAULT_TYPE);
+
     // It's false because the compressionType isn't `raw`
     EXPECT_FALSE(std::filesystem::exists(contentPath));
 
@@ -120,6 +129,10 @@ TEST_F(APIDownloaderTest, TestHandleValidRequestWithCompressedDataAndInvalidOutp
     const auto stageStatus = m_spUpdaterContext->data.at("stageStatus");
 
     EXPECT_EQ(stageStatus, expectedStageStatus);
+
+    const auto type = m_spUpdaterContext->data.at("type");
+
+    EXPECT_EQ(type, DEFAULT_TYPE);
 }
 
 /**
@@ -152,6 +165,10 @@ TEST_F(APIDownloaderTest, TestHandleAnEmptyUrl)
     const auto stageStatus = m_spUpdaterContext->data.at("stageStatus");
 
     EXPECT_EQ(stageStatus, expectedStageStatus);
+
+    const auto type = m_spUpdaterContext->data.at("type");
+
+    EXPECT_EQ(type, DEFAULT_TYPE);
 }
 
 /**
@@ -184,4 +201,8 @@ TEST_F(APIDownloaderTest, TestHandleAnInvalidUrl)
     const auto stageStatus = m_spUpdaterContext->data.at("stageStatus");
 
     EXPECT_EQ(stageStatus, expectedStageStatus);
+
+    const auto type = m_spUpdaterContext->data.at("type");
+
+    EXPECT_EQ(type, DEFAULT_TYPE);
 }

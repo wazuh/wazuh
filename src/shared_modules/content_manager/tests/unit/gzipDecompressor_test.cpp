@@ -23,6 +23,8 @@ const auto INPUT_INEXISTANT_FILE_PATH {INPUT_FILES_DIR / "inexistant.xml.gz"};
 const auto OK_STATUS = R"({"stage":"GzipDecompressor","status":"ok"})"_json;
 const auto FAIL_STATUS = R"({"stage":"GzipDecompressor","status":"fail"})"_json;
 
+constexpr auto DEFAULT_TYPE {"raw"}; ///< Default content type.
+
 /**
  * @brief Test the correct instantiation of the class.
  *
@@ -44,6 +46,7 @@ TEST_F(GzipDecompressorTest, DecompressNoFile)
     expectedData["paths"] = m_spContext->data.at("paths");
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
+    expectedData["type"] = DEFAULT_TYPE;
 
     // Run decompression.
     ASSERT_NO_THROW(GzipDecompressor().handleRequest(m_spContext));
@@ -66,6 +69,7 @@ TEST_F(GzipDecompressorTest, DecompressOneFile)
     expectedData["paths"].push_back(OUTPUT_SAMPLE_A_FILE_PATH.string());
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
+    expectedData["type"] = DEFAULT_TYPE;
 
     // Run decompression.
     ASSERT_NO_THROW(GzipDecompressor().handleRequest(m_spContext));
@@ -93,6 +97,7 @@ TEST_F(GzipDecompressorTest, DecompressTwoFiles)
     expectedData["paths"].push_back(OUTPUT_SAMPLE_B_FILE_PATH.string());
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
+    expectedData["type"] = DEFAULT_TYPE;
 
     // Run decompression.
     ASSERT_NO_THROW(GzipDecompressor().handleRequest(m_spContext));
@@ -119,6 +124,7 @@ TEST_F(GzipDecompressorTest, DecompressInexistantFile)
     expectedData["paths"] = m_spContext->data.at("paths");
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(FAIL_STATUS);
+    expectedData["type"] = DEFAULT_TYPE;
 
     // Run decompression.
     ASSERT_THROW(GzipDecompressor().handleRequest(m_spContext), std::runtime_error);
@@ -143,6 +149,7 @@ TEST_F(GzipDecompressorTest, DecompressTwoFilesOneInexistant)
     expectedData["paths"].push_back(INPUT_INEXISTANT_FILE_PATH);
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(FAIL_STATUS);
+    expectedData["type"] = DEFAULT_TYPE;
 
     // Run decompression.
     ASSERT_THROW(GzipDecompressor().handleRequest(m_spContext), std::runtime_error);
