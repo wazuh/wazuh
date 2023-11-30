@@ -98,11 +98,6 @@ def wait_server_rollback():
     wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_UNABLE_TO_CONNECT))
     assert (wazuh_log_monitor.callback_result != None), f'Unable to connect to any server message not found'
 
-def delete_keys_file():
-    """Remove the agent's client.keys file."""
-    os.remove(WAZUH_CLIENT_KEYS_PATH)
-    time.sleep(1)
-
 def check_module_stop():
     """
         Watch ossec.log until "Unable to access queue" message is found

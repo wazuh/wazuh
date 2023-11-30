@@ -63,7 +63,7 @@ from wazuh_testing.utils.services import control_service
 from wazuh_testing.utils import callbacks
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from .. import wait_keepalive, wait_enrollment, check_module_stop, delete_keys_file, kill_server
+from .. import wait_keepalive, wait_enrollment, check_module_stop, kill_server
 
 # Marks
 pytestmark = pytest.mark.tier(level=0)
@@ -84,7 +84,7 @@ local_internal_options.update({AGENTD_TIMEOUT: '5'})
 
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuration, configure_local_internal_options, truncate_monitored_files):
+def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuration, configure_local_internal_options, truncate_monitored_files, remove_keys_file):
     '''
     description: Check how the agent behaves when it makes multiple enrollment attempts
                  before getting its key. For this, the agent starts without keys and
@@ -136,7 +136,6 @@ def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuratio
     # Preapre test
     authd_server = AuthdSimulator()
     authd_server.start()
-    delete_keys_file()
 
     # Start whole Agent service to check other daemons status after initialization
     control_service('start')

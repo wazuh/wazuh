@@ -3,9 +3,11 @@
   configuration_parameters:
     PROTOCOL: 'tcp'
   metadata:
+    CLEAN_KEYS: true
 
 - name: UDP protocol
   description: Check connection via UDP
   configuration_parameters:
     PROTOCOL: 'udp'
   metadata:
+    CLEAN_KEYS: true

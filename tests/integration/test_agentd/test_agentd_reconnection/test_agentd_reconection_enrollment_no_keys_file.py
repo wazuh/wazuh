@@ -59,7 +59,7 @@ from wazuh_testing.utils.configuration import get_test_cases_data, load_configur
 from wazuh_testing.utils.services import control_service
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from .. import wait_keepalive, delete_keys_file, kill_server, wait_enrollment_try
+from .. import wait_keepalive, kill_server, wait_enrollment_try
 
 # Marks
 pytestmark = pytest.mark.tier(level=0)
@@ -80,7 +80,7 @@ local_internal_options.update({AGENTD_TIMEOUT: '5'})
 
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_agentd_reconection_enrollment_no_keys_file(test_metadata, set_wazuh_configuration, configure_local_internal_options, truncate_monitored_files):
+def test_agentd_reconection_enrollment_no_keys_file(test_metadata, set_wazuh_configuration, configure_local_internal_options, truncate_monitored_files, remove_keys_file):
     '''
     description: Check how the agent behaves when losing communication with
                  the 'wazuh-remoted' daemon and a new enrollment is sent to
@@ -130,9 +130,6 @@ def test_agentd_reconection_enrollment_no_keys_file(test_metadata, set_wazuh_con
     # Start AuthdSimulator
     authd_server = AuthdSimulator()
     authd_server.start()
-
-    # Delete keys file
-    delete_keys_file()
 
     # Start target Agent
     control_service('start')
