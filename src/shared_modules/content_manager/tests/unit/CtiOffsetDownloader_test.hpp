@@ -12,7 +12,7 @@
 #ifndef _CTI_API_DOWNLOADER_TEST_HPP
 #define _CTI_API_DOWNLOADER_TEST_HPP
 
-#include "CtiApiDownloader.hpp"
+#include "CtiOffsetDownloader.hpp"
 #include "HTTPRequest.hpp"
 #include "fakes/fakeServer.hpp"
 #include "updaterContext.hpp"
@@ -20,19 +20,19 @@
 #include <memory>
 
 /**
- * @brief Runs unit tests for CtiApiDownloader
+ * @brief Runs unit tests for CtiOffsetDownloader
  */
-class CtiApiDownloaderTest : public ::testing::Test
+class CtiOffsetDownloaderTest : public ::testing::Test
 {
 protected:
-    CtiApiDownloaderTest() = default;
-    ~CtiApiDownloaderTest() override = default;
+    CtiOffsetDownloaderTest() = default;
+    ~CtiOffsetDownloaderTest() override = default;
 
     std::shared_ptr<UpdaterContext> m_spUpdaterContext; ///< UpdaterContext used on the merge pipeline.
 
     std::shared_ptr<UpdaterBaseContext> m_spUpdaterBaseContext; ///< UpdaterBaseContext used on the merge pipeline.
 
-    std::shared_ptr<CtiApiDownloader> m_spCtiApiDownloader; ///< CtiApiDownloader used to download the content.
+    std::shared_ptr<CtiOffsetDownloader> m_spCtiOffsetDownloader; ///< CtiOffsetDownloader used to download the content.
 
     inline static std::unique_ptr<FakeServer> m_spFakeServer; ///< Pointer to FakeServer class
 
@@ -43,7 +43,7 @@ protected:
     // cppcheck-suppress unusedFunction
     void SetUp() override
     {
-        m_spCtiApiDownloader = std::make_shared<CtiApiDownloader>(HTTPRequest::instance());
+        m_spCtiOffsetDownloader = std::make_shared<CtiOffsetDownloader>(HTTPRequest::instance());
         // Create a updater base context
         m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>();
         m_spUpdaterBaseContext->outputFolder = "/tmp/api-downloader-tests";
@@ -51,7 +51,7 @@ protected:
         m_spUpdaterBaseContext->contentsFolder = m_spUpdaterBaseContext->outputFolder / CONTENTS_FOLDER;
         m_spUpdaterBaseContext->configData = R"(
             {
-                "contentSource": "cti-api",
+                "contentSource": "cti-offset",
                 "compressionType": "raw",
                 "versionedContent": "false",
                 "deleteDownloadedContent": false,
@@ -80,8 +80,8 @@ protected:
     {
         // Remove outputFolder
         std::filesystem::remove_all(m_spUpdaterBaseContext->outputFolder);
-        // Reset CtiApiDownloader
-        m_spCtiApiDownloader.reset();
+        // Reset CtiOffsetDownloader
+        m_spCtiOffsetDownloader.reset();
         // Reset UpdaterContext
         m_spUpdaterContext.reset();
         // Reset UpdaterBaseContext

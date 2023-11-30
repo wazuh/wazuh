@@ -70,14 +70,18 @@ public:
     void run()
     {
         m_server.Get("/xz/consumers",
-                     [](const httplib::Request& req, httplib::Response& res)
+                     [this](const httplib::Request& req, httplib::Response& res)
                      {
-                         const auto response = R"(
-                         {
-                            "data": {
-                            "last_offset": 3
+                         auto response = R"(
+                            {
+                                "data": 
+                                {
+                                    "last_offset": 3
+                                }
                             }
-                         })"_json;
+                         )"_json;
+                         response["data"]["last_snapshot_link"] = "127.0.0.1:" + std::to_string(m_port) + "/xz";
+
                          res.set_content(response.dump(), "text/plain");
                      });
         m_server.Get("/xz/consumers/changes",
@@ -100,14 +104,18 @@ public:
                          }
                      });
         m_server.Get("/raw/consumers",
-                     [](const httplib::Request& req, httplib::Response& res)
+                     [this](const httplib::Request& req, httplib::Response& res)
                      {
-                         const auto response = R"(
-                         {
-                            "data": {
-                            "last_offset": 3
+                         auto response = R"(
+                            {
+                                "data": 
+                                {
+                                    "last_offset": 3
+                                }
                             }
-                         })"_json;
+                         )"_json;
+                         response["data"]["last_snapshot_link"] = "127.0.0.1:" + std::to_string(m_port) + "/raw";
+
                          res.set_content(response.dump(), "text/plain");
                      });
         m_server.Get("/raw/consumers/changes",

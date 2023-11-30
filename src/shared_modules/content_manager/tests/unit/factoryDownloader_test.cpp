@@ -10,7 +10,7 @@
  */
 
 #include "factoryDownloader_test.hpp"
-#include "CtiApiDownloader.hpp"
+#include "CtiOffsetDownloader.hpp"
 #include "chainOfResponsability.hpp"
 #include "factoryDownloader.hpp"
 #include "fileDownloader.hpp"
@@ -21,19 +21,19 @@
 #include <memory>
 
 /*
- * @brief Check the creation of a CtiApiDownloader.
+ * @brief Check the creation of a CtiOffsetDownloader.
  */
-TEST_F(FactoryDownloaderTest, CreateCtiApiDownloader)
+TEST_F(FactoryDownloaderTest, CreateCtiOffsetDownloader)
 {
     // Create the config
-    nlohmann::json config = {{"contentSource", "cti-api"}};
+    nlohmann::json config = {{"contentSource", "cti-offset"}};
 
     // Create the downloader
     std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> spDownloader {};
     EXPECT_NO_THROW(spDownloader = FactoryDownloader::create(config));
 
-    // Check if the downloader is a CtiApiDownloader
-    EXPECT_TRUE(std::dynamic_pointer_cast<CtiApiDownloader>(spDownloader));
+    // Check if the downloader is a CtiOffsetDownloader
+    EXPECT_TRUE(std::dynamic_pointer_cast<CtiOffsetDownloader>(spDownloader));
 }
 
 /**
