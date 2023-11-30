@@ -126,6 +126,9 @@ unescapeString(std::string_view str, char escapeChar, const char escapedChar, co
     return unescapeString(str, escapeChar, std::string(1, escapedChar), strictMode);
 }
 
+
+// TODO Add scape string with char. Implement on test handler location.
+
 } // namespace base::utils::string
 
 #endif // _STRING_UTILS_H

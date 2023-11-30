@@ -32,23 +32,30 @@ class Orchestrator
 {
 
 private:
+    constexpr static const char* STORE_PATH_TESTER_TABLE = "router/tester/0"; ///< Default path for the tester state
+    constexpr static const char* STORE_PATH_ROUTER_TABLE = "router/router/0"; ///< Default path for the router state
 
+    // Workers synchronization
     std::list<std::shared_ptr<Worker>> m_workers; ///< List of workers
     mutable std::shared_mutex m_syncMutex;        ///< Mutex for the Workers synchronization (1 query at a time)
 
+    // Workers configuration
     std::shared_ptr<ProdQueueType> m_eventQueue;      ///< The event queue
     std::shared_ptr<TestQueueType> m_testQueue;       ///< The test queue
     std::shared_ptr<EnvironmentBuilder> m_envBuilder; ///< The environment builder
 
-    std::weak_ptr<store::IStore> m_wStore; ///< Read and store configurations
-    std::size_t m_testTimeout;             ///< Timeout for the tests
+    // Configuration options
+    std::weak_ptr<store::IStoreInternal> m_wStore; ///< Read and store configurations
+    base::Name m_storeTesterName;                  ///< Path of internal configuration state for testers
+    base::Name m_storeRouterName;                  ///< Path of internal configuration state for routers
+    std::size_t m_testTimeout;                     ///< Timeout for the tests
 
-    template<typename Func>
-    base::OptError forEachWorker(Func f);
+    using WorkerOp = std::function<base::OptError(const std::shared_ptr<Worker>&)>;
+    base::OptError forEachWorker(WorkerOp f);
 
     void dumpTesters() const;
-    void dumpWorkers() const;
-    void loadInitialStates();
+    void dumpRouters() const;
+    void initWorkers();
 
 public:
     ~Orchestrator() = default;

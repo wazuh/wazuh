@@ -61,7 +61,7 @@ public:
 };
 } // namespace test
 
-base::OptError Tester::addEntry(const test::EntryPost& entryPost)
+base::OptError Tester::addEntry(const test::EntryPost& entryPost, bool ignoreFail)
 {
     auto entry = RuntimeEntry(entryPost);
     try
@@ -69,13 +69,18 @@ base::OptError Tester::addEntry(const test::EntryPost& entryPost)
         auto [controller, hash] = m_envBuilder->makeController(entry.policy());
         entry.controller() = controller;
         entry.hash(hash);
-        entry.status(env::State::DISABLED); // It is disabled until all tester are ready
-        entry.lifetime(entry.lifetime());
     }
     catch (const std::exception& e)
     {
-        return base::Error {fmt::format("Failed to create the testing environment: {}", e.what())};
+        if (!ignoreFail)
+        {
+            return base::Error {fmt::format("Failed to create the testing environment: {}", e.what())};
+        }
+        entry.controller() = nullptr;
+        entry.hash("");
     }
+    entry.status(env::State::DISABLED); // It is disabled until all tester are ready
+    entry.lifetime(entry.lifetime());
 
     // Add the entry to the table
     {
@@ -222,7 +227,7 @@ base::RespOrError<std::unordered_set<std::string>> Tester::getAssets(const std::
     return entry.controller()->getTraceables();
 }
 
-bool Tester::updateLastUsed(const std::string& name)
+bool Tester::updateLastUsed(const std::string& name, uint64_t lastUsed)
 {
     std::unique_lock lock {m_mutex};
     auto it = m_table.find(name);
@@ -231,7 +236,14 @@ bool Tester::updateLastUsed(const std::string& name)
         return false;
     }
     auto& entry = it->second;
-    entry.lastUse(getStartTime());
+    if (lastUsed == std::numeric_limits<uint64_t>::max())
+    {
+        entry.lastUse(getStartTime());
+    }
+    else
+    {
+        entry.lastUse(lastUsed);
+    }
     return true;
 }
 } // namespace router
