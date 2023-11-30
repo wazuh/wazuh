@@ -14,9 +14,7 @@ from api.constants import API_LOG_PATH
 from wazuh.core.wlogging import TimeBasedFileRotatingHandler, SizeBasedFileRotatingHandler
 from wazuh.core import pyDaemonModule
 
-SSL_DEPRECATED_MESSAGE = 'The `{ssl_protocol}` SSL protocol option was deprecated in {release} and will be removed ' \
-                         'in the next minor in favor of the `auto` option and the manual setting of the minimum and ' \
-                         'maximum TLS supported versions.'
+SSL_DEPRECATED_MESSAGE = 'The `{ssl_protocol}` SSL protocol is deprecated.'
 
 API_MAIN_PROCESS = 'wazuh-apid'
 API_LOCAL_REQUEST_PROCESS = 'wazuh-apid_exec'
@@ -312,8 +310,8 @@ if __name__ == '__main__':
 
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore", category=DeprecationWarning)
-                if ssl_protocol is not ssl.PROTOCOL_TLS_SERVER:
-                    logger.warning(SSL_DEPRECATED_MESSAGE.format(ssl_protocol=config_ssl_protocol, release="4.8"))
+                if ssl_protocol in (ssl.PROTOCOL_TLSv1, ssl.PROTOCOL_TLSv1_1):
+                    logger.warning(SSL_DEPRECATED_MESSAGE.format(ssl_protocol=config_ssl_protocol))
                 ssl_context = ssl.SSLContext(protocol=ssl_protocol)
 
             if api_conf['https']['use_ca']:
