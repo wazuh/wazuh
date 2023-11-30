@@ -1,7 +1,6 @@
 #include "contentManager.hpp"
 #include "contentRegister.hpp"
 #include "defs.h"
-#include "loggerHelper.h"
 #include <chrono>
 #include <iostream>
 #include <thread>
@@ -61,28 +60,31 @@ int main()
            const std::string& func,
            const std::string& message)
         {
-            if (!VERBOSE && (logLevel == Log::LOGLEVEL_DEBUG || logLevel == Log::LOGLEVEL_DEBUG_VERBOSE))
-            {
-                // Don't log debug logs when VERBOSE is false.
-                return;
-            }
-
-            auto pos = file.find_last_of('/');
+            auto pos {file.find_last_of('/')};
             if (pos != std::string::npos)
             {
                 pos++;
             }
-            std::string fileName = file.substr(pos, file.size() - pos);
+            const auto fileName {file.substr(pos, file.size() - pos)};
 
-            if (logLevel != Log::LOGLEVEL_ERROR && logLevel != Log::LOGLEVEL_CRITICAL)
+            if (logLevel == LOGLEVEL_ERROR || logLevel == LOGLEVEL_CRITICAL)
             {
-                std::cout << tag << ":" << fileName << ":" << line << " " << func << ": " << message.c_str()
-                          << std::endl;
+                // Error logs.
+                std::cerr << tag << ": " << message.c_str() << std::endl;
+            }
+            else if (logLevel == LOGLEVEL_INFO || logLevel == LOGLEVEL_WARNING)
+            {
+                // Info and warning logs.
+                std::cout << tag << ": " << message.c_str() << std::endl;
             }
             else
             {
-                std::cerr << tag << ":" << fileName << ":" << line << " " << func << ": " << message.c_str()
-                          << std::endl;
+                // Debug logs.
+                if (VERBOSE)
+                {
+                    std::cout << tag << ":" << fileName << ":" << line << " " << func << ": " << message.c_str()
+                              << std::endl;
+                }
             }
         });
 
