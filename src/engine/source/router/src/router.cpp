@@ -19,7 +19,7 @@ int64_t getStartTime()
 namespace router
 {
 
-base::OptError Router::addEntry(const prod::EntryPost& entryPost)
+base::OptError Router::addEntry(const prod::EntryPost& entryPost, bool ignoreFail)
 {
     // Create the environment
     auto entry = RuntimeEntry(entryPost);
@@ -28,13 +28,18 @@ base::OptError Router::addEntry(const prod::EntryPost& entryPost)
         auto uniqueEnv = m_envBuilder->create(entry.policy(), entry.filter());
         entry.hash(uniqueEnv->hash());
         entry.environment() = std::move(uniqueEnv);
-        entry.status(env::State::DISABLED); // It is disabled until all routes are ready
-        entry.lastUpdate(getStartTime());
     }
     catch (const std::exception& e)
     {
-        return base::Error {fmt::format("Failed to create the route: {}", e.what())};
+        if(!ignoreFail)
+        {
+            return base::Error {fmt::format("Failed to create the route: {}", e.what())};
+        }
+        entry.environment() = nullptr;
+        entry.hash("");
     }
+        entry.status(env::State::DISABLED); // It is disabled until all routes are ready
+        entry.lastUpdate(getStartTime());
 
     // Add the entry to the table
     {
@@ -139,7 +144,6 @@ std::list<prod::Entry> Router::getEntries() const
     for (const auto& entry : m_table)
     {
         entries.push_back(entry);
-        // TODO Update states
     }
     return entries;
 }

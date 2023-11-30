@@ -96,6 +96,10 @@ public:
         {
             return base::Error {"Priority cannot be 0"};
         }
+        if (m_priority > 1000)
+        {
+            return base::Error {"Priority cannot be greater than 10000"};
+        }
         return base::OptError {};
     }
 
