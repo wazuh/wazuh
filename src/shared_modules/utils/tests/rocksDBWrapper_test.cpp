@@ -331,10 +331,151 @@ TEST_F(RocksDBWrapperTest, TestCreateFolderRecursively)
 
     std::optional<Utils::RocksDBWrapper> db_wrapper;
 
-    EXPECT_NO_THROW({
-        db_wrapper = Utils::RocksDBWrapper(DATABASE_NAME);
-    });
+    EXPECT_NO_THROW({ db_wrapper = Utils::RocksDBWrapper(DATABASE_NAME); });
 
     db_wrapper->deleteAll();
     std::filesystem::remove_all(DATABASE_NAME);
+}
+
+TEST_F(RocksDBWrapperTest, TestBatchDelete)
+{
+    // Insert
+    std::vector<std::pair<std::string, rocksdb::Slice>> keyValueVector {
+        {std::make_pair("key1", rocksdb::Slice("value1"))},
+        {std::make_pair("key2", rocksdb::Slice("value2"))},
+        {std::make_pair("key3", rocksdb::Slice("value3"))}};
+
+    EXPECT_NO_THROW(db_wrapper->put(keyValueVector));
+
+    // Get
+    rocksdb::PinnableSlice value;
+    EXPECT_TRUE(db_wrapper->get("key1", value));
+    EXPECT_EQ(value, "value1");
+
+    EXPECT_TRUE(db_wrapper->get("key2", value));
+    EXPECT_EQ(value, "value2");
+
+    EXPECT_TRUE(db_wrapper->get("key3", value));
+    EXPECT_EQ(value, "value3");
+
+    // Remove
+    std::vector<std::string> keyVector {"key1", "key2", "key3"};
+    db_wrapper->delete_(keyVector);
+
+    EXPECT_FALSE(db_wrapper->get("key1", value));
+    EXPECT_FALSE(db_wrapper->get("key2", value));
+    EXPECT_FALSE(db_wrapper->get("key3", value));
+}
+
+TEST_F(RocksDBWrapperTest, TestColumFamilyDB)
+{
+    auto cfDb = std::make_shared<Utils::RocksDBWrapper>(DATABASE_CF_NAME, std::vector<std::string>({"cf1", "cf2"}));
+
+    // Insert
+    cfDb->put(ROCKSDB_DEFAULT_COLUMN, "key0", rocksdb::Slice("value0"));
+    cfDb->put("cf1", "key1", rocksdb::Slice("value1"));
+    cfDb->put( "cf2", "key2", rocksdb::Slice("value2"));
+
+    // Get
+    rocksdb::PinnableSlice value;
+
+    EXPECT_TRUE(cfDb->get(ROCKSDB_DEFAULT_COLUMN, "key0", value));
+    EXPECT_EQ(value, "value0");
+
+    EXPECT_TRUE(cfDb->get("cf1", "key1", value));
+    EXPECT_EQ(value, "value1");
+
+    EXPECT_TRUE(cfDb->get("cf2", "key2", value));
+    EXPECT_EQ(value, "value2");
+
+    // Remove
+    EXPECT_NO_THROW(cfDb->delete_(ROCKSDB_DEFAULT_COLUMN, "key0"));
+    EXPECT_NO_THROW(cfDb->delete_("cf1", "key1"));
+    EXPECT_NO_THROW(cfDb->delete_("cf2", "key2"));
+
+    EXPECT_FALSE(cfDb->get(ROCKSDB_DEFAULT_COLUMN, "key0", value));
+    EXPECT_FALSE(cfDb->get("cf1", "key1", value));
+    EXPECT_FALSE(cfDb->get("cf2", "key2", value));
+
+    // Clean
+    EXPECT_NO_THROW(cfDb.reset());
+    std::filesystem::remove_all(DATABASE_CF_NAME);
+}
+
+TEST_F(RocksDBWrapperTest, TestColumFamilyDBBatch)
+{
+    auto cfDb = std::make_shared<Utils::RocksDBWrapper>(DATABASE_CF_NAME, std::vector<std::string>({"cf1", "cf2"}));
+
+    // Insert
+    std::vector<std::tuple<std::string, std::string, rocksdb::Slice>> columnKeyValueVector {
+        {std::make_tuple(ROCKSDB_DEFAULT_COLUMN, "key0", rocksdb::Slice("value0"))},
+        {std::make_tuple("cf1", "key1", rocksdb::Slice("value1"))},
+        {std::make_tuple("cf2", "key2", rocksdb::Slice("value2"))}};
+
+    EXPECT_NO_THROW(cfDb->put(columnKeyValueVector));
+
+    // Get
+    rocksdb::PinnableSlice value;
+
+    EXPECT_TRUE(cfDb->get(ROCKSDB_DEFAULT_COLUMN, "key0", value));
+    EXPECT_EQ(value, "value0");
+
+    EXPECT_TRUE(cfDb->get("cf1", "key1", value));
+    EXPECT_EQ(value, "value1");
+
+    EXPECT_TRUE(cfDb->get("cf2", "key2", value));
+    EXPECT_EQ(value, "value2");
+
+    // Remove
+    std::vector<std::pair<std::string, std::string>> columnKeyVector {
+        std::make_pair(ROCKSDB_DEFAULT_COLUMN, "key0"), std::make_pair("cf1", "key1"), std::make_pair("cf2", "key2")};
+
+    cfDb->delete_(columnKeyVector);
+
+    EXPECT_FALSE(cfDb->get(ROCKSDB_DEFAULT_COLUMN, "key0", value));
+    EXPECT_FALSE(cfDb->get("cf1", "key1", value));
+    EXPECT_FALSE(cfDb->get( "cf2", "key2", value));
+
+    // Clean
+    EXPECT_NO_THROW(cfDb.reset());
+    std::filesystem::remove_all(DATABASE_CF_NAME);
+}
+
+TEST_F(RocksDBWrapperTest, TestColumFamilyDBSeek)
+{
+    auto cfDb = std::make_shared<Utils::RocksDBWrapper>(DATABASE_CF_NAME, std::vector<std::string>({"cf1", "cf2"}));
+
+    // Insert
+    std::vector<std::tuple<std::string, std::string, rocksdb::Slice>> columnKeyValueVector {
+        std::make_tuple(ROCKSDB_DEFAULT_COLUMN, "key_default_0", rocksdb::Slice("value_default_0")),
+        std::make_tuple(ROCKSDB_DEFAULT_COLUMN, "key_default_1", rocksdb::Slice("value_default_1")),
+        std::make_tuple(ROCKSDB_DEFAULT_COLUMN, "key_default_2", rocksdb::Slice("value_default_2")),
+        std::make_tuple("cf1", "key_cf1_0", rocksdb::Slice("value_cf1_0")),
+        std::make_tuple("cf1", "key_cf1_1", rocksdb::Slice("value_cf1_1")),
+        std::make_tuple("cf1", "key_cf1_2", rocksdb::Slice("value_cf1_2")),
+        std::make_tuple("cf2", "key_cf2_0", rocksdb::Slice("value_cf2_0")),
+        std::make_tuple("cf2", "key_cf2_1", rocksdb::Slice("value_cf2_1")),
+        std::make_tuple("cf2", "key_cf2_2", rocksdb::Slice("value_cf2_2"))};
+
+    EXPECT_NO_THROW(cfDb->put(columnKeyValueVector));
+
+    // Seek default column
+    std::vector<std::string> prefixArray {"default", "cf1", "cf2"};
+
+    auto testLambda = [&](auto prefix)
+    {
+        auto counter {0};
+        for (const auto& [key, value] : cfDb->seek(prefix, "key_" + prefix + "_"))
+        {
+            EXPECT_EQ(key, "key_" + prefix + "_" + std::to_string(counter));
+            EXPECT_EQ(value, "value_" + prefix + "_" + std::to_string(counter));
+            ++counter;
+        }
+        EXPECT_EQ(counter, 3);
+    };
+
+    for (const auto& prefix : prefixArray)
+    {
+        testLambda(prefix);
+    }
 }

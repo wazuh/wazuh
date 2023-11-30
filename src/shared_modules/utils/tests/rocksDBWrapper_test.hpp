@@ -17,6 +17,7 @@
 #include <filesystem>
 
 static const std::string DATABASE_NAME {"test.db"};
+static const std::string DATABASE_CF_NAME {"testCF"};
 
 /**
  * @brief Tests the RocksDBWrapper class
