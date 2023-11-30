@@ -2,7 +2,7 @@ import os
 import pytest
 from pathlib import Path
 
-from wazuh_testing.constants.paths.configurations import CIS_RULESET_PATH
+from wazuh_testing.constants.paths.ruleset import CIS_RULESET_PATH
 from wazuh_testing.utils.file import copy, remove_file, copy_files_in_folder, delete_path_recursively
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.modules.sca import patterns
@@ -32,7 +32,7 @@ def prepare_cis_policies_file(test_metadata):
     '''
     files_to_restore = copy_files_in_folder(src_folder=CIS_RULESET_PATH, dst_folder=TEMP_FILE_PATH)
     filename = test_metadata['policy_file']
-    filepath = Path(TEST_DATA_PATH, 'policies', filename)
+    filepath = Path(TEST_DATA_PATH, 'policies_samples', filename)
     copy(filepath, CIS_RULESET_PATH)
     yield
     copy_files_in_folder(src_folder=TEMP_FILE_PATH, dst_folder=CIS_RULESET_PATH, files_to_move=files_to_restore)

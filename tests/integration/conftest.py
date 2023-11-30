@@ -27,7 +27,7 @@ from wazuh_testing.utils.file import remove_file
 from wazuh_testing.utils.manage_agents import remove_agents
 
 
-#- - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - - -
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
