@@ -180,7 +180,7 @@ if (NOT ${TARGET} STREQUAL "")
       add_dependencies(compile_schemas_deltas ${schema}_schema_deltas_target)
     endforeach()
 
-    add_dependencies(${PROJECT_NAME} compile_schemas_deltas)
+    add_dependencies(syscollector compile_schemas_deltas)
   endif()
 endif()
 
