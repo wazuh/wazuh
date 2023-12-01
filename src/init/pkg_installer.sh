@@ -7,7 +7,19 @@ WAZUH_HOME=$(pwd)
 TMP_DIR_BACKUP=./tmp_bkp
 
 # Clean before backup
+if [ -d "./tmp_bkp" ]; then
+    ATTEMPTS=5
+    while [ $ATTEMPTS -gt 0 ]; do
+        sleep 1
+        ATTEMPTS=$[ATTEMPTS - 1]
+        if [[ $(find ./tmp_bkp -cmin -0.1) ]]; then
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - There is an upgrade in progress. Aborting..." >> ./logs/upgrade.log
+            exit 1
+        fi
+    done
+fi
 rm -rf ./tmp_bkp/
+
 WAZUH_REVISION=0
 OSSEC_LIST_FILES=""
 RESTORE_OSSEC_OWN=0
@@ -129,7 +141,7 @@ echo "$(date +"%Y/%m/%d %H:%M:%S") - Generating Backup." >> ./logs/upgrade.log
 
 for dir in "${FOLDERS_TO_BACKUP[@]}"; do
     mkdir -p "${TMP_DIR_BACKUP}${dir}"
-    cp -a ${dir}/* "${TMP_DIR_BACKUP}${dir}"
+    rsync -a --exclude "diff" ${dir}/* "${TMP_DIR_BACKUP}${dir}"
 done
 
 if [ -f $OSSEC_INIT_FILE ]; then
@@ -278,3 +290,5 @@ else
 
     $CONTROL start >> ./logs/upgrade.log 2>&1
 fi
+
+exit 0
