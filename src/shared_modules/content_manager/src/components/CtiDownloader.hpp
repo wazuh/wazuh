@@ -183,8 +183,8 @@ protected:
      */
     virtual void download(UpdaterContext& context) = 0;
 
-    IURLRequest& m_urlRequest;   ///< Interface to perform HTTP requests.
-    std::string m_componentName; ///< Stage name.
+    IURLRequest& m_urlRequest;         ///< Interface to perform HTTP requests.
+    const std::string m_componentName; ///< Stage name.
 
 public:
     // LCOV_EXCL_START

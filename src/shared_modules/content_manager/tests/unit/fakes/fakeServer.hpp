@@ -251,6 +251,14 @@ public:
         m_server.Get("/snapshot/consumers",
                      [this](const httplib::Request& req, httplib::Response& res)
                      {
+                         if (!m_errorsQueue.empty())
+                         {
+                             constexpr auto RESPONSE {"Something bad happened."};
+                             res.status = popError();
+                             res.set_content(RESPONSE, "text/plain");
+                             return;
+                         }
+
                          auto response = R"(
                             {
                                 "data": 

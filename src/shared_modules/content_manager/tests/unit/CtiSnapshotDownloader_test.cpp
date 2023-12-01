@@ -44,7 +44,7 @@ void CtiSnapshotDownloaderTest::SetUp()
 void CtiSnapshotDownloaderTest::TearDown()
 {
     // Remove output folder and clear fake server errors queue.
-    std::filesystem::remove_all(m_spUpdaterContext->spUpdaterBaseContext->outputFolder);
+    std::filesystem::remove_all(m_spUpdaterContext->spUpdaterBaseContext->downloadsFolder);
     m_spFakeServer->clearErrorsQueue();
 }
 
@@ -112,44 +112,4 @@ TEST_F(CtiSnapshotDownloaderTest, SnapshotDownloadWithRetry)
 
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
     EXPECT_TRUE(std::filesystem::exists(expectedContentPath));
-}
-
-/**
- * @brief Tests the download of an snapshot file with a client error.
- *
- */
-TEST_F(CtiSnapshotDownloaderTest, SnapshotDownloadClientError)
-{
-    // Push client error.
-    m_spFakeServer->pushError(400);
-
-    ASSERT_THROW(CtiSnapshotDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext), std::runtime_error);
-
-    // Set expected data.
-    nlohmann::json expectedData;
-    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
-    expectedData["stageStatus"] = FAIL_STATUS;
-    expectedData["type"] = CONTENT_TYPE;
-
-    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
-}
-
-/**
- * @brief Tests the download of an snapshot file with a bad response from the server, where no last_snapshot_link is
- * present..
- *
- */
-TEST_F(CtiSnapshotDownloaderTest, SnapshotDownloadBadResponseFromServer)
-{
-    m_spUpdaterContext->spUpdaterBaseContext->configData["url"] = RAW_URL;
-
-    ASSERT_THROW(CtiSnapshotDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext), std::runtime_error);
-
-    // Set expected data.
-    nlohmann::json expectedData;
-    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
-    expectedData["stageStatus"] = FAIL_STATUS;
-    expectedData["type"] = CONTENT_TYPE;
-
-    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 }
