@@ -145,7 +145,7 @@ public:
                                 }
                             }
                          )"_json;
-                         response["data"]["last_snapshot_link"] = "127.0.0.1:" + std::to_string(m_port) + "/xz";
+                         response["data"]["last_snapshot_link"] = "localhost:" + std::to_string(m_port) + "/xz";
 
                          res.set_content(response.dump(), "text/plain");
                      });
@@ -179,7 +179,7 @@ public:
                                 }
                             }
                          )"_json;
-                         response["data"]["last_snapshot_link"] = "127.0.0.1:" + std::to_string(m_port) + "/raw";
+                         response["data"]["last_snapshot_link"] = "localhost:" + std::to_string(m_port) + "/raw";
 
                          res.set_content(response.dump(), "text/plain");
                      });
@@ -260,7 +260,7 @@ public:
                             }
                          )"_json;
                          response["data"]["last_snapshot_link"] =
-                             "127.0.0.1:" + std::to_string(m_port) + "/" + SNAPSHOT_FILE_NAME;
+                             "localhost:" + std::to_string(m_port) + "/" + SNAPSHOT_FILE_NAME;
 
                          res.set_content(response.dump(), "text/plain");
                      });
