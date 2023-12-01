@@ -14,9 +14,9 @@
             - server:
                 elements:
                 - address:
-                    value: SERVER_ADDRESS_1
+                    value: 127.0.0.0
                 - port:
-                    value: REMOTED_PORT_1
+                    value: 1514
                 - protocol:
                     value: PROTOCOL
                 - max_retries:
@@ -26,9 +26,9 @@
             - server:
                 elements:
                 - address:
-                    value: SERVER_ADDRESS_2
+                    value: 127.0.0.1
                 - port:
-                    value: REMOTED_PORT_2
+                    value: 1516
                 - protocol:
                     value: PROTOCOL
                 - max_retries:
@@ -38,9 +38,9 @@
             - server:
                 elements:
                 - address:
-                    value: SERVER_ADDRESS_3
+                    value: 127.0.0.2
                 - port:
-                    value: REMOTED_PORT_3
+                    value: 1517
                 - protocol:
                     value: PROTOCOL
                 - max_retries:
