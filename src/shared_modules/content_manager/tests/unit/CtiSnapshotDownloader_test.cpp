@@ -30,19 +30,15 @@ void CtiSnapshotDownloaderTest::SetUp()
 {
     // Create base context.
     auto spBaseContext {std::make_shared<UpdaterBaseContext>()};
-    spBaseContext->outputFolder = OUTPUT_DIR;
-    spBaseContext->downloadsFolder = spBaseContext->outputFolder / DOWNLOAD_FOLDER;
-    spBaseContext->contentsFolder = spBaseContext->outputFolder / CONTENTS_FOLDER;
+    spBaseContext->downloadsFolder = OUTPUT_DIR;
     spBaseContext->configData["url"] = FAKE_CTI_URL;
 
     // Create updater context.
     m_spUpdaterContext = std::make_shared<UpdaterContext>();
     m_spUpdaterContext->spUpdaterBaseContext = spBaseContext;
 
-    // Create output folders.
-    std::filesystem::create_directory(spBaseContext->outputFolder);
+    // Create output folder.
     std::filesystem::create_directory(spBaseContext->downloadsFolder);
-    std::filesystem::create_directory(spBaseContext->contentsFolder);
 }
 
 void CtiSnapshotDownloaderTest::TearDown()
