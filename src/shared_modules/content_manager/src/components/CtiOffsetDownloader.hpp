@@ -17,6 +17,7 @@
 #include "IURLRequest.hpp"
 #include "updaterContext.hpp"
 #include <algorithm>
+#include <sstream>
 #include <string>
 
 /**
@@ -36,7 +37,7 @@ private:
     void download(UpdaterContext& context) override
     {
         // Set the content type as offset.
-        m_context->data.at("type") = "offsets";
+        context.data.at("type") = "offsets";
 
         logDebug2(WM_CONTENTUPDATER, "CtiOffsetDownloader - Starting");
         // Get the parameters needed to download the content.
@@ -48,8 +49,11 @@ private:
         // Iterate until the current offset is equal to the consumer offset.
         while (context.currentOffset < consumerLastOffset)
         {
+            // Amount of offsets to download on each query.
+            constexpr auto OFFSETS_DELTA {1000};
+
             // Calculate the offset to download
-            const auto toOffset = std::min(consumerLastOffset, context.currentOffset + 1000);
+            const auto toOffset {std::min(consumerLastOffset, context.currentOffset + OFFSETS_DELTA)};
 
             // full path where the content will be saved.
             std::ostringstream filePathStream;
