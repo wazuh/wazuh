@@ -30,7 +30,9 @@ class SocketDBWrapper final
 {
 private:
     std::shared_ptr<SocketClient<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>> m_dbSocket;
-    std::string m_response;
+    nlohmann::json m_response;
+    nlohmann::json m_responsePartial;
+    std::string m_exceptionStr;
     std::mutex m_mutex;
     std::condition_variable m_conditionVariable;
 
@@ -43,13 +45,80 @@ public:
             [&](const char* body, uint32_t bodySize, const char* header, uint32_t headerSize)
             {
                 std::unique_lock<std::mutex> lock {m_mutex};
-                m_response = std::string(body, bodySize);
-                m_conditionVariable.notify_one();
+                std::string responsePacket(body, bodySize);
+
+                if (0 == responsePacket.compare(0, 3, DB_WRAPPER_DUE))
+                {
+                    try
+                    {
+                        m_responsePartial.push_back(nlohmann::json::parse(responsePacket.substr(4)));
+                    }
+                    catch (const nlohmann::detail::exception& ex)
+                    {
+                        m_exceptionStr = "Error parsing JSON response: " + responsePacket.substr(4) +
+                                         ". Exception id: " + std::to_string(ex.id) + ". " + ex.what();
+                    }
+                }
+                else
+                {
+                    if (responsePacket.empty())
+                    {
+                        m_exceptionStr = "Empty DB response";
+                    }
+                    else if (0 == responsePacket.compare(0, 3, DB_WRAPPER_ERROR))
+                    {
+                        m_exceptionStr = "DB query error: " + responsePacket.substr(4);
+                    }
+                    else if (0 == responsePacket.compare(0, 3, DB_WRAPPER_IGNORE))
+                    {
+                        m_exceptionStr = "DB query ignored: " + responsePacket.substr(4);
+                    }
+                    else if (0 == responsePacket.compare(0, 3, DB_WRAPPER_UNKNOWN))
+                    {
+                        m_exceptionStr = "DB query unknown response: " + responsePacket.substr(4);
+                    }
+                    else if (0 == responsePacket.compare(0, 2, DB_WRAPPER_OK))
+                    {
+                        if (!m_responsePartial.empty())
+                        {
+                            m_response = m_responsePartial;
+                        }
+                        else
+                        {
+                            try
+                            {
+                                nlohmann::json responseParsed = nlohmann::json::parse(responsePacket.substr(3));
+                                if (responseParsed.type() == nlohmann::json::value_t::array)
+                                {
+                                    m_response = responseParsed;
+                                }
+                                else
+                                {
+                                    m_response.push_back(responseParsed);
+                                }
+                            }
+                            catch (const nlohmann::detail::exception& ex)
+                            {
+                                m_exceptionStr = "Error parsing JSON response: " + responsePacket.substr(3) +
+                                                 ". Exception id: " + std::to_string(ex.id) + ". " + ex.what();
+                            }
+                        }
+                    }
+                    else
+                    {
+                        m_exceptionStr = "DB query invalid response: " + responsePacket;
+                    }
+                    m_conditionVariable.notify_one();
+                }
             });
     }
 
     void query(const std::string& query, nlohmann::json& response)
     {
+        m_response.clear();
+        m_responsePartial.clear();
+        m_exceptionStr.clear();
+
         std::unique_lock<std::mutex> lock {m_mutex};
         m_dbSocket->send(query.c_str(), query.size());
         auto res = m_conditionVariable.wait_for(lock, std::chrono::milliseconds(DB_WRAPPER_QUERY_WAIT_TIME));
@@ -59,40 +128,12 @@ public:
             throw std::runtime_error("Timeout waiting for DB response");
         }
 
-        if (m_response.empty())
+        if (!m_exceptionStr.empty())
         {
-            throw std::runtime_error("Empty DB response");
+            throw std::runtime_error(m_exceptionStr);
         }
 
-        if (0 == m_response.compare(0, 3, DB_WRAPPER_ERROR))
-        {
-            throw std::runtime_error("DB query error: " + m_response.substr(4));
-        }
-
-        if (0 == m_response.compare(0, 3, DB_WRAPPER_IGNORE))
-        {
-            throw std::runtime_error("DB query ignored: " + m_response.substr(4));
-        }
-
-        if (0 == m_response.compare(0, 3, DB_WRAPPER_UNKNOWN))
-        {
-            throw std::runtime_error("DB query unknown response: " + m_response.substr(4));
-        }
-
-        if (0 == m_response.compare(0, 3, DB_WRAPPER_DUE))
-        {
-            // TODO: Implement due response
-            throw std::runtime_error("DB query with pending data");
-        }
-
-        if (0 == m_response.compare(0, 2, DB_WRAPPER_OK))
-        {
-            response = nlohmann::json::parse(m_response.substr(3));
-        }
-        else
-        {
-            throw std::runtime_error("DB query invalid response: " + m_response);
-        }
+        response = m_response;
     }
 };
 

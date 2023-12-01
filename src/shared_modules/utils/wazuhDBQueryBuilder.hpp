@@ -149,6 +149,26 @@ public:
         return *this;
     }
 
+    WazuhDBQueryBuilder& agentGetHotfixesCommand(const std::string& id)
+    {
+        if (!Utils::isNumber(id))
+        {
+            throw std::runtime_error("Invalid agent id");
+        }
+        m_query += "agent " + id + " hotfix get ";
+        return *this;
+    }
+
+    WazuhDBQueryBuilder& agentGetPackagesCommand(const std::string& id)
+    {
+        if (!Utils::isNumber(id))
+        {
+            throw std::runtime_error("Invalid agent id");
+        }
+        m_query += "agent " + id + " package get ";
+        return *this;
+    }
+
     std::string build()
     {
         return m_query;
