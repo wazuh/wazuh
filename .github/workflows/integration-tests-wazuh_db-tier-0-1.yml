@@ -59,7 +59,7 @@ jobs:
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_SYSLOG="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_AUTHD="n"' >> ./etc/preloaded-vars.conf
+          echo 'USER_ENABLE_AUTHD="y"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_AUTO_START="y"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
