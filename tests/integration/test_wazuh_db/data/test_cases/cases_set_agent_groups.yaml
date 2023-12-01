@@ -1,5 +1,7 @@
 - name: Group Append - Add TestGroup1
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_required_group: TestGroup1
     input: "global set-agent-groups {\"mode\":\"append\",\"sync_status\":\"syncreq\",\"data\":[{\"id\":001,\"groups\":\
             [\"TestGroup1\"]}]}"
@@ -9,7 +11,9 @@
     expected_group_sync_status: syncreq
 
 - name: Group Append Empty groups - Agent has no groups - Warning - No groups added
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     input: "global set-agent-groups {\"mode\":\"append\",\"sync_status\":\"syncreq\",\"data\":[{\"id\":002,\"groups\":\
             []}]}"
     output: ok
@@ -19,7 +23,9 @@
     expected_group_sync_status: syncreq
 
 - name: Group Append Empty groups - Agent has default group - No groups affected
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_input: "global set-agent-groups {\"mode\":\"append\",\"sync_status\":\"syncreq\",\"data\":[{\"id\":003,\
                 \"groups\":[\"default\"]}]}"
     input: "global set-agent-groups {\"mode\":\"append\",\"sync_status\":\"syncreq\",\"data\":[{\"id\":003,\"groups\":\
@@ -30,7 +36,9 @@
     expected_group_sync_status: syncreq
 
 - name: Group Append Add same group twice - Has only one group
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_required_group: TestGroup1
     pre_input: "global set-agent-groups {\"mode\":\"append\",\"sync_status\":\"syncreq\",\"data\":[{\"id\":004,\
                 \"groups\":[\"TestGroup1\"]}]}"
@@ -42,7 +50,9 @@
     expected_group_sync_status: syncreq
 
 - name: Group Append group - Agent has one group - Agent has two groups
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_required_group: TestGroup1,TestGroup2
     pre_input: "global set-agent-groups {\"mode\":\"append\",\"sync_status\":\"syncreq\",\"data\":[{\"id\":005,\
                 \"groups\":[\"TestGroup1\"]}]}"
@@ -54,7 +64,9 @@
     expected_group_sync_status: syncreq
 
 - name: Group Empty-Only - Agent Has no groups. One Group is Added
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_required_group: TestGroup1
     input: "global set-agent-groups {\"mode\":\"empty_only\",\"sync_status\":\"syncreq\",\"data\":[{\"id\":006,\
             \"groups\":[\"TestGroup1\"]}]}"
@@ -64,7 +76,9 @@
     expected_group_sync_status: syncreq
 
 - name: Group Empty-Only - Agent Has one group. No new groups added
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_required_group: TestGroup1
     pre_input: "global set-agent-groups {\"mode\":\"empty_only\",\"sync_status\":\"syncreq\",\"data\":[{\"id\":007,\
                 \"groups\":[\"TestGroup1\"]}]}"
@@ -76,7 +90,9 @@
     expected_group_sync_status: syncreq
 
 - name: Group Override - Agent Has one group.  New group replaces old group
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_required_group: TestGroup1,TestGroup2
     pre_input: "global set-agent-groups {\"mode\":\"override\",\"sync_status\":\"syncreq\",\"data\":[{\"id\":008,\
                 \"groups\":[\"TestGroup1\"]}]}"
@@ -88,7 +104,9 @@
     expected_group_sync_status: syncreq
 
 - name: Group Override - Agent has one group - Pass no new group.  Warning - groups deleted
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_required_group: TestGroup1
     pre_input: "global set-agent-groups {\"mode\":\"override\",\"sync_status\":\"syncreq\",\"data\":[{\"id\":009,\
                 \"groups\":[\"TestGroup1\"]}]}"
@@ -101,7 +119,9 @@
     expected_group_sync_status: syncreq
 
 - name: Group Remove - Agent has one Group - Remove the group.  Agent has default assigned
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_required_group: TestGroup1
     pre_input: "global set-agent-groups {\"mode\":\"override\",\"sync_status\":\"syncreq\",\"data\":[{\"id\":010,\
                 \"groups\":[\"TestGroup1\"]}]}"
@@ -113,7 +133,9 @@
     expected_group_sync_status: syncreq
 
 - name: Group Remove - Agent has TestGroup1 and TestGroup2 - Remove Tesgroup1.  Agent has TestGroup2 assigned
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_required_group: TestGroup1,TestGroup2
     pre_input: "global set-agent-groups {\"mode\":\"override\",\"sync_status\":\"syncreq\",\"data\":[{\"id\":011,
                 \"groups\":[\"TestGroup1\",\"TestGroup2\"]}]}"
@@ -125,7 +147,9 @@
     expected_group_sync_status: syncreq
 
 - name: Group Remove - Agent has no groups - Try remove a group.  Agent has default assigned
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_required_group: TestGroup1
     input: "global set-agent-groups {\"mode\":\"remove\",\"sync_status\":\"syncreq\",\"data\":[{\"id\":012,\"groups\":
             [\"TestGroup1\"]}]}"
@@ -135,7 +159,9 @@
     expected_group_sync_status: syncreq
 
 - name: Invalid Mode - use an Invalid mode - no groups added
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_required_group: TestGroup1
     input: "global set-agent-groups {\"mode\":\"wrong_mode\",\"sync_status\":\"syncreq\",\"data\":[{\"id\":013,\
             \"groups\":[\"TestGroup1\"]}]}"
@@ -145,7 +171,9 @@
     expected_group_sync_status: synced
 
 - name: No Mode - No mode is passed - no groups affected
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_required_group: TestGroup1
     input: "global set-agent-groups {\"mode\":\"\",\"sync_status\":\"syncreq\",\"data\":[{\"id\":014,\"groups\":\
             [\"TestGroup1\"]}]}"
@@ -155,7 +183,9 @@
     expected_group_sync_status: synced
 
 - name: sync_status Synced - Assign a group using Synced Sync Status - agent has TestGroup1 assigned
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_required_group: TestGroup1
     input: "global set-agent-groups {\"mode\":\"append\",\"sync_status\":\"synced\",\"data\":[{\"id\":015,\"groups\":\
             [\"TestGroup1\"]}]}"
@@ -165,7 +195,9 @@
     expected_group_sync_status: synced
 
 - name: Wrong sync_status - Assign a group using and invalid Sync_Status - agent has no group
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_required_group: TestGroup1
     input: "global set-agent-groups {\"mode\":\"append\",\"sync_status\":\"wrong_status\",\"data\":[{\"id\":016,\
             \"groups\":[\"TestGroup1\"]}]}"
@@ -175,7 +207,9 @@
     expected_group_sync_status: synced
 
 - name: No sync_status - Assign a group using and empty Sync_Status field - agent has no group assigned
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_required_group: TestGroup1
     input: "global set-agent-groups {\"mode\":\"append\",\"sync_status\":\"\",\"data\":[{\"id\":017,\"groups\":\
             [\"TestGroup1\"]}]}"
@@ -185,7 +219,9 @@
     expected_group_sync_status: synced
 
 - name: Missing Fields - Assign a group using without data field - agent has no group assigned
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     input: "global set-agent-groups {\"mode\":\"append\",\"sync_status\":\"syncreq\"}"
     output: "err Invalid JSON data, missing required fields"
     agent_id: 18
@@ -193,7 +229,9 @@
     expected_group_sync_status: synced
 
 - name: Missing Fields - Assign a group using without data groups field - agent has no group assigned
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     input: "global set-agent-groups {\"mode\":\"append\",\"sync_status\":\"syncreq\",\"data\":[{\"id\":019}]}"
     output: err An error occurred during the set of the groups
     agent_id: 19
@@ -201,7 +239,9 @@
     expected_group_sync_status: synced
 
 - name: Missing Fields - Assign a group using without data id field - agent has no group assigned
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_required_group: TestGroup1
     input: "global set-agent-groups {\"mode\":\"append\",\"sync_status\":\"syncreq\",\"data\":[{\"groups\":\
             [\"TestGroup1\"]}]}"
@@ -211,7 +251,9 @@
     expected_group_sync_status: synced
 
 - name: Missing Fields - Assign a group using without mode field - agent has no group assigned
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_required_group: TestGroup1
     input: "global set-agent-groups {\"sync_status\":\"syncreq\",\"data\":[{\"id\":021,\"groups\":[\"TestGroup1\"]}]}"
     output: err Invalid JSON data, missing required fields
@@ -220,7 +262,9 @@
     expected_group_sync_status: synced
 
 - name: Missing Fields - Assign a group using without sync_status field - agent has TestGroup1 assigned
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_required_group: TestGroup1
     input: "global set-agent-groups {\"mode\":\"append\",\"data\":[{\"id\":022,\"groups\":[\"TestGroup1\"]}]}"
     output: ok
@@ -229,7 +273,9 @@
     expected_group_sync_status: synced
 
 - name: Valid group name format - Assign a group with a '.' character
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_required_group: Test.Group1
     input: "global set-agent-groups {\"mode\":\"append\",\"sync_status\":\"syncreq\",\"data\":[{\"id\":023,\"groups\":\
             [\"Test.Group1\"]}]}"
@@ -239,7 +285,9 @@
     expected_group_sync_status: syncreq
 
 - name: Valid group name format - Assign a group with a '-' character
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_required_group: Test-Group1
     input: "global set-agent-groups {\"mode\":\"append\",\"sync_status\":\"syncreq\",\"data\":[{\"id\":024,\"groups\":\
             [\"Test-Group1\"]}]}"
@@ -249,7 +297,9 @@
     expected_group_sync_status: syncreq
 
 - name: Valid group name format - Assign a group with a '_' character
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_required_group: Test_Group1
     input: "global set-agent-groups {\"mode\":\"append\",\"sync_status\":\"syncreq\",\"data\":[{\"id\":025,\"groups\":\
             [\"Test_Group1\"]}]}"
@@ -259,7 +309,9 @@
     expected_group_sync_status: syncreq
 
 - name: Valid group name format - Assign a group with a long name
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_required_group: "19im4QM7Vn8vr4kE4YeZJ92AMvZS8bkKGrinEPSfAjNnhDgZ2a741ajntTWCaB6oJpOORSP46wLs2g14TqfbAJDmsbOxJG\
                          3xMcYwFj5hcwpABb75W0CE6EQv9cTDm0SBqZAC6PIJltof7brN0bIodOPSrIL7XyDXnquqSuIaeuqY1uwcvBTlrlvRqFuH\
                          2wfIpkxEwgxlj2LcLOzE4nrebf1Ot8C0gBmVYZbjBDwUrHBHNpDL7tnScnISannzT8J"
@@ -275,7 +327,9 @@
     expected_group_sync_status: syncreq
 
 - name: Wrong group name format - Assign a group with an invalid group name (has invalid ',' character) - Warning
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     input: "global set-agent-groups {\"mode\":\"append\",\"sync_status\":\"syncreq\",\"data\":[{\"id\":027,\"groups\":\
             [\"Test,Group1\"]}]}"
     output: err An error occurred during the set of the groups
@@ -285,7 +339,9 @@
     expected_group_sync_status: synced
 
 - name: Wrong group name format - Assign a group with an invalid group name (has invalid '@' character) - Warning
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     input: "global set-agent-groups {\"mode\":\"append\",\"sync_status\":\"syncreq\",\"data\":[{\"id\":028,\"groups\":\
             [\"TestGroup1@\"]}]}"
     output: err An error occurred during the set of the groups
@@ -295,7 +351,9 @@
     expected_group_sync_status: synced
 
 - name: Wrong group name format - Assign a group with an invalid group name (.) - Warning
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     input: "global set-agent-groups {\"mode\":\"append\",\"sync_status\":\"syncreq\",\"data\":[{\"id\":029,\"groups\":\
             [\".\"]}]}"
     output: err An error occurred during the set of the groups
@@ -305,7 +363,9 @@
     expected_group_sync_status: synced
 
 - name: Wrong group name format - Assign a group with an invalid group name (..) - Warning
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     input: "global set-agent-groups {\"mode\":\"append\",\"sync_status\":\"syncreq\",\"data\":[{\"id\":030,\"groups\":\
             [\"..\"]}]}"
     output: err An error occurred during the set of the groups
@@ -315,7 +375,9 @@
     expected_group_sync_status: synced
 
 - name: Wrong group name format - Assign a group with an invalid group name (too long) - Warning
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     input: "global set-agent-groups {\"mode\":\"append\",\"sync_status\":\"syncreq\",\"data\":[{\"id\":031,\"groups\":\
             [\"19im4QM7Vn8vr4kE4YeZJ92AMvZS8bkKGrinEPSfAjNnhDgZ2a741ajntTWCaB6oJpOORSP46wLs2g14TqfbAJDmsbOxJG3xMcYwFj5h\
             cwpABb75W0CE6EQv9cTDm0SBqZAC6PIJltof7brN0bIodOPSrIL7XyDXnquqSuIaeuqY1uwcvBTlrlvRqFuH2wfIpkxEwgxlj2LcLOzE4nr\

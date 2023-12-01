@@ -1,0 +1,87 @@
+- name: Backup Enabled Interval 5s Max_Files Empty
+  description:
+  configuration_parameters:
+    ENABLED: 'yes'
+    INTERVAL: '5s'
+    MAX_FILES: ''
+  metadata:
+    enabled: 'yes'
+    interval: '5s'
+    max_files: ''
+
+- name: Backup Enabled Interval 5s Max_Files Invalid
+  description:
+  configuration_parameters:
+    ENABLED: 'yes'
+    INTERVAL: '5s'
+    MAX_FILES: 'value'
+  metadata:
+    enabled: 'yes'
+    interval: '5s'
+    max_files: 'value'
+
+- name: Backup Enabled Interval Empty Max_Files 1
+  description:
+  configuration_parameters:
+    ENABLED: 'yes'
+    INTERVAL: ''
+    MAX_FILES: '1'
+  metadata:
+    enabled: 'yes'
+    interval: ''
+    max_files: '1'
+
+- name: Backup Enabled Interval Invalid Max_Files 1
+  description:
+  configuration_parameters:
+    ENABLED: 'yes'
+    INTERVAL: 'value'
+    MAX_FILES: '1'
+  metadata:
+    enabled: 'yes'
+    interval: 'value'
+    max_files: '1'
+
+- name: Backup Enabled Interval 5s Max_Files 1
+  description:
+  configuration_parameters:
+    ENABLED: 'no'
+    INTERVAL: '5s'
+    MAX_FILES: '1'
+  metadata:
+    enabled: 'no'
+    interval: '5s'
+    max_files: '1'
+
+- name: Backup Enabled Interval 5s Max_Files 1
+  description:
+  configuration_parameters:
+    ENABLED: 'yes'
+    INTERVAL: '5s'
+    MAX_FILES: '1'
+  metadata:
+    enabled: 'yes'
+    interval: '5s'
+    max_files: '1'
+
+- name: Backup Enabled Interval 5s Max_Files 3
+  description:
+  configuration_parameters:
+    ENABLED: 'yes'
+    INTERVAL: '5s'
+    MAX_FILES: '3'
+  metadata:
+    enabled: 'yes'
+    interval: '5s'
+    max_files: '3'
+
+- name: Backup Enabled Interval 5s Max_Files 0
+  description:
+  configuration_parameters:
+    ENABLED: 'yes'
+    INTERVAL: '5s'
+    MAX_FILES: '0'
+  metadata:
+    enabled: 'yes'
+    interval: '5s'
+    max_files: '0'

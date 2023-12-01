@@ -52,7 +52,7 @@ references:
 tags:
     - wazuh_db
 '''
-import os
+from pathlib import Path
 import time
 import pytest
 
@@ -61,16 +61,16 @@ from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils import callbacks
 from wazuh_testing.utils.database import query_wdb, delete_dbs
 from wazuh_testing.utils.db_queries.global_db import insert_agent_in_db
-from wazuh_testing.utils.file import get_list_of_content_yml
+from wazuh_testing.utils import configuration
+
+from . import TEST_CASES_FOLDER_PATH
 
 # Marks
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
 # Configurations
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test_configuration/data')
-messages_file = os.path.join(os.path.join(test_data_path, 'test_cases'), 'cases_set_agent_groups.yaml')
-module_tests = get_list_of_content_yml(messages_file)
-
+t_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_set_agent_groups.yaml')
+t_config_parameters, t_config_metadata, t_case_ids = configuration.get_test_cases_data(t_cases_path)
 
 # Fixtures
 @pytest.fixture(scope='module')
@@ -82,17 +82,12 @@ def remove_database(request):
 daemons_handler_configuration = {'all_daemons': True}
 
 # Tests
-@pytest.mark.parametrize('test_case',
-                         [case['test_case'] for module_data in module_tests for case in module_data[0]],
-                         ids=[f"{module_name}: {case['name']}"
-                              for module_data, module_name in module_tests
-                              for case in module_data]
-                         )
-def test_set_agent_groups(remove_database, daemons_handler, test_case, create_groups):
+@pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
+def test_set_agent_groups(remove_database, daemons_handler, test_metadata, create_groups):
     '''
     description: Check that every input message using the 'set_agent_groups' command in wazuh-db socket generates
                  the proper output to wazuh-db socket. To do this, it performs a query to the socket with a command
-                 taken from the list of test_cases's 'input' field, and compare the result with the test_case's
+                 taken from the list of test_metadata's 'input' field, and compare the result with the test_metadata's
                  'output' and 'expected_group' fields.
 
     wazuh_min_version: 4.4.0
@@ -104,9 +99,9 @@ def test_set_agent_groups(remove_database, daemons_handler, test_case, create_gr
         - daemons_handler:
             type: fixture
             brief: Reset the 'ossec.log' file and restart Wazuh.
-        - test_case:
+        - test_metadata:
             type: fixture
-            brief: List of test_case stages (dicts with input, output and agent_id and expected_groups keys).
+            brief: List of test_metadata stages (dicts with input, output and agent_id and expected_groups keys).
         - create_groups:
             type: fixture:
             brief: Create required groups.
@@ -128,35 +123,35 @@ def test_set_agent_groups(remove_database, daemons_handler, test_case, create_gr
         - wazuh_db
         - wdb_socket
     '''
-    output = test_case['output']
-    agent_id = test_case['agent_id']
+    output = test_metadata['output']
+    agent_id = test_metadata['agent_id']
 
     # Insert test Agent
     response = insert_agent_in_db(id=agent_id, connection_status='disconnected', registration_time=str(time.time()))
 
     # Apply preconditions
-    if 'pre_input' in test_case:
-        query_wdb(test_case['pre_input'])
+    if 'pre_input' in test_metadata:
+        query_wdb(test_metadata['pre_input'])
 
     # Add tested group
-    response = query_wdb(test_case["input"])
+    response = query_wdb(test_metadata["input"])
 
     # validate output
     assert response == output, f"Assertion Error - expected {output}, but got {response}"
 
     # Check warnings
-    if 'expected_warning' in test_case:
+    if 'expected_warning' in test_metadata:
         log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-        log_monitor.start(callback=callbacks.generate_callback(test_case['expected_warning']), timeout=20)
+        log_monitor.start(callback=callbacks.generate_callback(test_metadata['expected_warning']), timeout=20)
         assert log_monitor.callback_result
 
 
     # get agent data and validate agent's groups
     response = query_wdb(f'global get-agent-info {agent_id}')
 
-    assert test_case['expected_group_sync_status'] == response[0]['group_sync_status']
+    assert test_metadata['expected_group_sync_status'] == response[0]['group_sync_status']
 
-    if test_case["expected_group"] == 'None':
+    if test_metadata["expected_group"] == 'None':
         assert 'group' not in response[0], "Agent has groups data and it was expecting no group data"
     else:
-        assert test_case["expected_group"] == response[0]['group'], "Did not receive the expected groups in the agent."
+        assert test_metadata["expected_group"] == response[0]['group'], "Did not receive the expected groups in the agent."

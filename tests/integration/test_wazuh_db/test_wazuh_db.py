@@ -42,40 +42,35 @@ references:
 tags:
     - wazuh_db
 '''
-import os
+from pathlib import Path
 import re
 import time
 import pytest
-import yaml
 import json
 import random
 
-from wazuh_testing.constants.paths import WAZUH_PATH
+from wazuh_testing.constants.paths.sockets import WAZUH_DB_SOCKET_PATH
 from wazuh_testing.utils.database import delete_dbs
-from wazuh_testing.utils.file import get_list_of_content_yml
 from wazuh_testing.tools.wazuh_manager import remove_all_agents
 from wazuh_testing.utils.services import control_service
 from wazuh_testing.utils.callbacks import make_callback
 from wazuh_testing.modules.wazuh_db import WAZUH_DB_PREFIX
+from wazuh_testing.utils import configuration
+
+from . import TEST_CASES_FOLDER_PATH
 
 # Marks
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
 # Configurations
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test_configuration/data')
-agent_message_files = os.path.join(test_data_path, 'config_templates/agent')
-global_message_file = os.path.join(test_data_path, 'config_templates/global', 'config_global_messages.yaml')
+t1_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_agent_messages.yaml')
+t1_config_parameters, t1_config_metadata, t1_case_ids = configuration.get_test_cases_data(t1_cases_path)
 
-global_module_tests = get_list_of_content_yml(global_message_file)
-agent_module_tests = []
-for file in os.listdir(agent_message_files):
-    with open(os.path.join(agent_message_files, file)) as f:
-        agent_module_tests.append((yaml.safe_load(f), file.split('_')[0]))
+t2_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_global_messages.yaml')
+t2_config_parameters, t2_config_metadata, t2_case_ids = configuration.get_test_cases_data(t2_cases_path)
 
 # Variables
-log_monitor_paths = []
-wdb_path = os.path.join(os.path.join(WAZUH_PATH, 'queue', 'db', 'wdb'))
-receiver_sockets_params = [(wdb_path, 'AF_UNIX', 'TCP')]
+receiver_sockets_params = [(WAZUH_DB_SOCKET_PATH, 'AF_UNIX', 'TCP')]
 WAZUH_DB_CHECKSUM_CALCULUS_TIMEOUT = 20
 
 # mitm_analysisd = ManInTheMiddle(address=analysis_path, family='AF_UNIX', connection_protocol='UDP')
@@ -310,14 +305,10 @@ def pre_insert_packages():
         assert data[0] == 'ok', f"Unable to insert package {pkg_n}"
 
 
-@pytest.mark.parametrize('test_case',
-                         [case['test_case'] for module_data in agent_module_tests for case in module_data[0]],
-                         ids=[f"{module_name}: {case['name']}"
-                              for module_data, module_name in agent_module_tests
-                              for case in module_data]
-                         )
+
+@pytest.mark.parametrize('test_metadata', t1_config_metadata, ids=t1_case_ids)
 def test_wazuh_db_messages_agent(restart_wazuh, clean_registered_agents, configure_sockets_environment,
-                                 connect_to_sockets_module, insert_agents_test, test_case):
+                                 connect_to_sockets_module, insert_agents_test, test_metadata):
     '''
     description: Check that every input agent message in wazuh-db socket generates the proper output to wazuh-db
                  socket. To do this, it performs a query to the socket with a command taken from the input list of
@@ -366,7 +357,7 @@ def test_wazuh_db_messages_agent(restart_wazuh, clean_registered_agents, configu
         - wazuh_db
         - wdb_socket
     '''
-    for index, stage in enumerate(test_case):
+    for index, stage in enumerate(test_metadata['test_case']):
         if 'ignore' in stage and stage['ignore'] == 'yes':
             continue
 
@@ -383,13 +374,8 @@ def test_wazuh_db_messages_agent(restart_wazuh, clean_registered_agents, configu
             .format(index + 1, stage['stage'], expected_output, response)
 
 
-@pytest.mark.parametrize('test_case',
-                         [case['test_case'] for module_data in global_module_tests for case in module_data[0]],
-                         ids=[f"{module_name}: {case['name']}"
-                              for module_data, module_name in global_module_tests
-                              for case in module_data]
-                         )
-def test_wazuh_db_messages_global(connect_to_sockets_module, restart_wazuh, test_case):
+@pytest.mark.parametrize('test_metadata', t2_config_metadata, ids=t2_case_ids)
+def test_wazuh_db_messages_global(connect_to_sockets_module, restart_wazuh, test_metadata):
     '''
     description: Check that every global input message in wazuh-db socket generates the proper output to wazuh-db
                  socket. To do this, it performs a query to the socket with a command taken from the input list of
@@ -427,7 +413,7 @@ def test_wazuh_db_messages_global(connect_to_sockets_module, restart_wazuh, test
         - wazuh_db
         - wdb_socket
     '''
-    for index, stage in enumerate(test_case):
+    for index, stage in enumerate(test_metadata['test_case']):
         if 'ignore' in stage and stage['ignore'] == 'yes':
             continue
 

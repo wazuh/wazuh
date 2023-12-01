@@ -50,13 +50,13 @@ tags:
     - wazuh_db
 '''
 import os
+from pathlib import Path
 import subprocess
 
 import pytest
 import time
 import numbers
 
-from wazuh_testing.utils.configuration import load_wazuh_configurations
 from wazuh_testing.utils.services import control_service
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils import callbacks
@@ -64,57 +64,30 @@ from wazuh_testing.constants import paths
 from wazuh_testing.constants.executions import TIER0, SERVER, LINUX
 from wazuh_testing.utils.database import validate_interval_format
 from wazuh_testing.modules.wazuh_db import patterns
+from wazuh_testing.utils import configuration
 
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 # Marks
 pytestmark =  [TIER0, LINUX, SERVER]
 
-
 # Configuration
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test_configuration/data')
-configurations_path = os.path.join(test_data_path, 'config_templates/global/config_wazuh_db_backups_conf.yaml')
-backups_path = os.path.join(paths.WAZUH_PATH, 'backup', 'db')
+t_config_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_wazuh_db_backups_conf.yaml')
+t_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_wazuh_db_backups_conf.yaml')
+t_config_parameters, t_config_metadata, t_case_ids = configuration.get_test_cases_data(t_cases_path)
+t_configurations = configuration.load_configuration_template(t_config_path, t_config_parameters, t_config_metadata)
+
+backups_path = Path(paths.WAZUH_PATH, 'backup', 'db')
 interval = 5
-
-parameters = [{'ENABLED': 'yes', 'INTERVAL': str(interval)+'s', 'MAX_FILES':''},
-              {'ENABLED': 'yes', 'INTERVAL': str(interval)+'s', 'MAX_FILES':'value'},
-              {'ENABLED': 'yes', 'INTERVAL': '', 'MAX_FILES':'1'},
-              {'ENABLED': 'yes', 'INTERVAL': 'value', 'MAX_FILES':1},
-              {'ENABLED': 'no', 'INTERVAL': str(interval)+'s', 'MAX_FILES':1},
-              {'ENABLED': 'yes', 'INTERVAL': str(interval)+'s', 'MAX_FILES':1},
-              {'ENABLED': 'yes', 'INTERVAL': str(interval)+'s', 'MAX_FILES':3},
-              {'ENABLED': 'yes', 'INTERVAL': str(interval)+'s', 'MAX_FILES':0}
-            ]
-
-metadata = [{'ENABLED': 'yes', 'INTERVAL': str(interval)+'s', 'MAX_FILES':''},
-            {'ENABLED': 'yes', 'INTERVAL': str(interval)+'s', 'MAX_FILES':'value'},
-            {'ENABLED': 'yes', 'INTERVAL': '', 'MAX_FILES':1},
-            {'ENABLED': 'yes', 'INTERVAL': 'value', 'MAX_FILES':1},
-            {'ENABLED': 'no', 'INTERVAL': str(interval)+'s', 'MAX_FILES':1},
-            {'ENABLED': 'yes', 'INTERVAL': str(interval)+'s', 'MAX_FILES':1},
-            {'ENABLED': 'yes', 'INTERVAL': str(interval)+'s', 'MAX_FILES':3},
-            {'ENABLED': 'yes', 'INTERVAL': str(interval)+'s', 'MAX_FILES':0}
-           ]
-
-configurations = load_wazuh_configurations(configurations_path, __name__ ,
-                                           params=parameters, metadata=metadata)
-
 
 # Variables
 wazuh_log_monitor = file_monitor.FileMonitor(paths.logs.WAZUH_LOG_PATH)
 timeout = 15
 
-
-# Fixtures
-@pytest.fixture(scope='module', params=configurations)
-def get_configuration(request):
-    """Get configurations from the module."""
-    return request.param
-
-
 # Tests
-@pytest.mark.parametrize('backups_path', [backups_path])
-def test_wdb_backup_configs(get_configuration, configure_environment, clear_logs, remove_backups, backups_path):
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(t_configurations, t_config_metadata), ids=t_case_ids)
+def test_wdb_backup_configs(test_configuration, test_metadata, set_wazuh_configuration,
+                            clear_logs, remove_backups):
     '''
     description: Check that given different wdb backup configuration parameters, the expected behavior is achieved.
                  For this, the test gets a series of parameters for the wazuh_db_backups_conf.yaml file and applies
@@ -160,8 +133,8 @@ def test_wdb_backup_configs(get_configuration, configure_environment, clear_logs
         - wdb_socket
 
     '''
-    test_interval = get_configuration['metadata']['INTERVAL']
-    test_max_files = get_configuration['metadata']['MAX_FILES']
+    test_interval = test_metadata['interval']
+    test_max_files = test_metadata['max_files']
     try:
         control_service('restart')
     except (subprocess.CalledProcessError, ValueError) as err:
@@ -183,21 +156,21 @@ def test_wdb_backup_configs(get_configuration, configure_environment, clear_logs
     time.sleep(interval*(int(test_max_files)+1))
 
     # Manage if backup generation is not enabled - no backups expected
-    if get_configuration['metadata']['ENABLED'] == 'no':
+    if test_metadata['enabled'] == 'no':
         # Fail the test if a file or more were found in the backups_path
         if os.listdir(backups_path):
             pytest.fail("Error: A file was found in backups_path. No backups where expected when enabled is 'no'.")
     # Manage if backup generation is enabled - one or more backups expected
     else:
         result = wazuh_log_monitor.start(callback=callbacks.generate_callback(patterns.BACKUP_CREATION_CALLBACK),
-                                        timeout=timeout, accumulations=test_max_files+1)
+                                        timeout=timeout, accumulations=int(test_max_files)+1)
         assert wazuh_log_monitor.callback_result, 'Did not receive expected\
                                                         "Created Global database..." event'
 
 
-        assert result == test_max_files+1, f'Expected {test_max_files} backup creation messages, but got {result}.'
+        assert result == int(test_max_files)+1, f'Expected {test_max_files} backup creation messages, but got {result}.'
         total_files=0
         for file in os.listdir(backups_path):
             total_files = total_files+1
-        assert total_files == test_max_files, f'Wrong backup file ammount, expected {test_max_files} \
+        assert total_files == int(test_max_files), f'Wrong backup file ammount, expected {test_max_files} \
                                                 but {total_files} are present in folder.'

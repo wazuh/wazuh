@@ -1,12 +1,16 @@
 - name: No Agents Registered - No Hash - Error
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     output: "'hash': None"
     no_hash: true
     agent_ids: []
     agent_status: []
 
 - name: Two Agents Registered - Valid Hash - Both Synced => Synced
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_required_group: Test_group1,Test_group2
     output: synced
     agent_ids:
@@ -17,7 +21,9 @@
       - synced
 
 - name: Two Agents Registered - Valid Hash - Both Syncreq => Syncreq
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_required_group: Test_group1,Test_group2
     output: syncreq
     agent_ids:
@@ -28,7 +34,9 @@
       - syncreq
 
 - name: Two Agents Registered - Valid Hash - Syncreq and Synced => Syncreq
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_required_group: Test_group1,Test_group2
     output: syncreq
     agent_ids:
@@ -39,7 +47,9 @@
       - syncreq
 
 - name: Two Agents Registered - Invalid Hash length. => error hash Less than 40 chars
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_required_group: Test_group1,Test_group2
     output: err Hash hex-digest does not have the expected length. Expected (40) got (14)
     invalid_hash: invalidhash123
@@ -51,7 +61,9 @@
       - syncreq
 
 - name: Two Agents Registered - Hash param Empty. => error hash Less than 40 chars
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_required_group: Test_group1,Test_group2
     output: err Hash hex-digest does not have the expected length. Expected (40) got (0)
     invalid_hash: ""
@@ -63,7 +75,9 @@
       - syncreq
 
 - name: Two Agents Registered - Both Synced - Hash does not match DB Hash => hash_mismatch
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_required_group: Test_group1,Test_group2
     output: hash_mismatch
     invalid_hash: invalidhash1invalidhash1invalidhash13456
@@ -75,7 +89,9 @@
       - synced
 
 - name: Two Agents Registered - Syncreq - Hash does not match DB Hash => syncreq
-  test_case:
+  description:
+  configuration_parameters:
+  metadata:
     pre_required_group: Test_group1,Test_group2
     output: syncreq
     invalid_hash: invalidhash1invalidhash1invalidhash13456

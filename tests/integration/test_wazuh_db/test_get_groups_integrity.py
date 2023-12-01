@@ -52,46 +52,39 @@ references:
 tags:
     - wazuh_db
 '''
-import os
+from pathlib import Path
 import time
 import pytest
 
-from wazuh_testing.constants.paths import WAZUH_PATH
 from wazuh_testing.utils.database import query_wdb
 from wazuh_testing.utils.db_queries.global_db import insert_agent_in_db, remove_db_agent
-from wazuh_testing.utils.file import get_list_of_content_yml
+from wazuh_testing.utils import configuration
+
+from . import TEST_CASES_FOLDER_PATH
 
 # Marks
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
 # Configurations
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test_configuration/data')
-messages_file = os.path.join(os.path.join(test_data_path, 'test_cases'), 'cases_get_groups_integrity_messages.yaml')
-module_tests = get_list_of_content_yml(messages_file)
-
-wdb_path = os.path.join(os.path.join(WAZUH_PATH, 'queue', 'db', 'wdb'))
+t_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_get_groups_integrity_messages.yaml')
+t_config_parameters, t_config_metadata, t_case_ids = configuration.get_test_cases_data(t_cases_path)
 
 
 # Tests
-@pytest.mark.parametrize('test_case',
-                         [case['test_case'] for module_data in module_tests for case in module_data[0]],
-                         ids=[f"{module_name}: {case['name']}"
-                              for module_data, module_name in module_tests
-                              for case in module_data]
-                         )
-def test_get_groups_integrity(test_case, create_groups):
+@pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
+def test_get_groups_integrity(test_metadata, create_groups):
     '''
     description: Check that every input message using the 'get-groups-integrity' command in wazuh-db socket generates
                  the proper output to wazuh-db socket. To do this, it performs a query to the socket with a command
-                 taken from the list of test_cases's 'input' field, and compare the result with the test_case's
+                 taken from the list of test_metadata's 'input' field, and compare the result with the test_metadata's
                  'output' field.
 
     wazuh_min_version: 4.4.0
 
     parameters:
-        - test_case:
+        - test_metadata:
             type: fixture
-            brief: List of test_case stages (dicts with input, output and agent_id and expected_groups keys).
+            brief: List of test_metadata stages (dicts with input, output and agent_id and expected_groups keys).
         - create_groups:
             type: fixture
             brief: Create required groups
@@ -113,9 +106,9 @@ def test_get_groups_integrity(test_case, create_groups):
         - wazuh_db
         - wdb_socket
     '''
-    output = test_case["output"]
-    agent_ids = test_case["agent_ids"]
-    agent_status = test_case["agent_status"]
+    output = test_metadata["output"]
+    agent_ids = test_metadata["agent_ids"]
+    agent_status = test_metadata["agent_status"]
 
     # Insert test Agents
     for index, id in enumerate(agent_ids):
@@ -126,14 +119,14 @@ def test_get_groups_integrity(test_case, create_groups):
         response = query_wdb(command)
 
     # Get database hash
-    if "invalid_hash" in test_case:
-        hash = test_case["invalid_hash"]
+    if "invalid_hash" in test_metadata:
+        hash = test_metadata["invalid_hash"]
     else:
         response = query_wdb('global sync-agent-groups-get {"last_id": 0, "condition": "all", "get_global_hash": true,'
                              '"set_synced": false, "agent_delta_registration": 0}')
         response = response[0]
         hash = response["hash"]
-        if "no_hash" in test_case:
+        if "no_hash" in test_metadata:
             response = str(response)
             assert output in response, f'Unexpected response: got {response}, but expected {output}'
             return

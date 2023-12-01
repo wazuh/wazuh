@@ -39,35 +39,29 @@ references:
 tags:
     - wazuh_db
 '''
-import os
+from pathlib import Path
 import pytest
-import yaml
-from wazuh_testing.constants.paths import WAZUH_PATH
+from wazuh_testing.constants.paths.sockets import WAZUH_DB_SOCKET_PATH
 from wazuh_testing.utils.database import query_wdb
-from wazuh_testing.utils.file import get_list_of_content_yml
+from wazuh_testing.utils import configuration
+
+from . import TEST_CASES_FOLDER_PATH
 
 # Marks
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
 # Configurations
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test_configuration/data')
-messages_file = os.path.join(os.path.join(test_data_path, 'config_templates/global'), 'config_wazuhdb_getconfig.yaml')
-module_tests = get_list_of_content_yml(messages_file)
-log_monitor_paths = []
-wdb_path = os.path.join(os.path.join(WAZUH_PATH, 'queue', 'db', 'wdb'))
-receiver_sockets_params = [(wdb_path, 'AF_UNIX', 'TCP')]
+t_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_wazuhdb_getconfig.yaml')
+t_config_parameters, t_config_metadata, t_case_ids = configuration.get_test_cases_data(t_cases_path)
+
+receiver_sockets_params = [(WAZUH_DB_SOCKET_PATH, 'AF_UNIX', 'TCP')]
 monitored_sockets_params = [('wazuh-db', None, True)]
 receiver_sockets = None  # Set in the fixtures
 
 
 # Tests
-@pytest.mark.parametrize('test_case',
-                         [case['test_case'] for module_data in module_tests for case in module_data[0]],
-                         ids=[f"{module_name}: {case['name']}"
-                              for module_data, module_name in module_tests
-                              for case in module_data]
-                         )
-def test_sync_agent_groups(configure_sockets_environment, connect_to_sockets_module, test_case):
+@pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
+def test_sync_agent_groups(configure_sockets_environment, connect_to_sockets_module, test_metadata):
     '''
     description: Check that commands about wazuhdb getconfig works properly.
     wazuh_min_version: 4.4.0
@@ -92,10 +86,9 @@ def test_sync_agent_groups(configure_sockets_environment, connect_to_sockets_mod
         - wdb_socket
     '''
     # Set each case
-    case_data = test_case[0]
-    output = case_data["output"]
+    output = test_metadata["output"]
 
-    response = query_wdb(case_data["input"])
+    response = query_wdb(test_metadata["input"])
 
     # Validate response
     assert output in str(response), f"The expected output: {output} was not found in response: {response}"

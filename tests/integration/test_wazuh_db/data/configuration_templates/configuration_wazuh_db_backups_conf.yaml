@@ -1,8 +1,4 @@
-- tags:
-  apply_to_modules:
-  - test_db_backup
-  - test_wdb_backup_configs
-  sections:
+- sections:
   - section: wdb
     elements:
     - backup:
