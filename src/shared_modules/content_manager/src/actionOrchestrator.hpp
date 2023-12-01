@@ -72,7 +72,7 @@ public:
             auto spUpdaterContext {std::make_shared<UpdaterContext>()};
             spUpdaterContext->spUpdaterBaseContext = m_spBaseContext;
 
-            logInfo(WM_CONTENTUPDATER, "Running '%s' content update", m_spBaseContext->topicName.c_str());
+            logDebug2(WM_CONTENTUPDATER, "Running '%s' content update", m_spBaseContext->topicName.c_str());
 
             // If the database exists, get the last offset
             if (m_spBaseContext->spRocksDB)

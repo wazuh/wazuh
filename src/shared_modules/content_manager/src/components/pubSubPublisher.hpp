@@ -46,7 +46,7 @@ private:
             return;
         }
 
-        logInfo(WM_CONTENTUPDATER, "No data to publish");
+        logDebug2(WM_CONTENTUPDATER, "No data to publish");
     }
 
 public:
