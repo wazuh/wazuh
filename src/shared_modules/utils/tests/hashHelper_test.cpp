@@ -26,7 +26,6 @@ const std::filesystem::path INPUT_FILES_DIR {std::filesystem::current_path() / "
 
 // Test file used for hashing.
 const std::filesystem::path TEST_FILE {INPUT_FILES_DIR / "data.json"};
-const std::string TEST_FILE_HASH {"9c8ff5a046322fd04e244ce92e991118f26403f1"};
 
 TEST_F(HashHelperTest, UnsupportedHashType)
 {
