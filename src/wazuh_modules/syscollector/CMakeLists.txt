@@ -153,23 +153,34 @@ if (NOT ${TARGET} STREQUAL "")
                 syscollector_deltas
     )
 
+    add_custom_target(compile_schemas_deltas)
     foreach(schema IN LISTS DeltaSchemas)
       set(FBS_FILE "${FLATBUFFERS_FOLDER}/syscollectorDeltas/${schema}.fbs")
-      add_custom_target(${schema}_target
-        COMMAND ${FLATC_PATH}/flatc -c -o ${FLATBUFFERS_FOLDER}/../include/ --no-warnings ${FBS_FILE}
+      set(RSYNC_OUTPUT_HEADER_GENERATED "${FLATBUFFERS_FOLDER}/../include/${schema}_generated.h")
+      set(RSYNC_OUTPUT_HEADER "${FLATBUFFERS_FOLDER}/../include/${schema}_schema.h")
+
+      add_custom_command(
+        OUTPUT "${RSYNC_OUTPUT_HEADER_GENERATED}"
+        COMMAND ${FLATC_PATH}/flatc
+        ARGS -c
+        ARGS -o "${FLATBUFFERS_FOLDER}/../include" "${FBS_FILE}"
+        ARGS --no-warnings
         COMMENT "Executing flatc to generate ${schema} header file."
       )
 
       add_custom_command(
-          TARGET compile_schemas
+          OUTPUT "${RSYNC_OUTPUT_HEADER}"
           COMMAND bash -c "echo -e '// This file was generated from ${FBS_FILE} , do not modify \\n#ifndef ${schema}_HEADER\\n#define ${schema}_HEADER\\nauto constexpr ${schema}_SCHEMA = R\"('`cat ${FBS_FILE}`')\" ;\\n#endif // ${schema}_HEADER\\n ' > ${FLATBUFFERS_FOLDER}/../include/${schema}_schema.h"
           COMMENT "Creating header from schema file: '${schema}'"
-          DEPENDS ${FBS_FILE}
+          DEPENDS "${RSYNC_OUTPUT_HEADER_GENERATED}"
           WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
           VERBATIM)
 
-      add_dependencies(${PROJECT_NAME} ${schema}_target)
+      add_custom_target(${schema}_schema_deltas_target DEPENDS ${RSYNC_OUTPUT_HEADER})
+      add_dependencies(compile_schemas_deltas ${schema}_schema_deltas_target)
     endforeach()
+
+    add_dependencies(${PROJECT_NAME} compile_schemas_deltas)
   endif()
 endif()
 
