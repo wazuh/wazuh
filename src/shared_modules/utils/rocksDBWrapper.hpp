@@ -27,14 +27,10 @@ namespace Utils
     class RocksDBWrapper
     {
     public:
-        explicit RocksDBWrapper(const std::string& dbPath, bool useBzipCompress = false)
+        explicit RocksDBWrapper(const std::string& dbPath)
         {
             rocksdb::Options options;
             options.create_if_missing = true;
-            if (useBzipCompress)
-            {
-                options.compression = rocksdb::kBZip2Compression;
-            }
             rocksdb::DB* dbRawPtr;
 
             // Create directories recursively if they do not exist
@@ -238,6 +234,35 @@ namespace Utils
         {
             static const RocksDBIterator END_ITERATOR;
             return END_ITERATOR;
+        }
+
+        /**
+         * @brief Compacts the key range in the RocksDB database.
+         *
+         * This function triggers compaction for the entire key range in the RocksDB
+         * database. Compaction helps to reduce the storage space used by the database
+         * and improve its performance by eliminating unnecessary data. This function 
+         * is similar to compactDatabase() but, first enable the option of use the 
+         * kBZip2Compression compression type.
+         *
+         * @note This function uses default compact range options.
+         *
+         * @see rocksdb::CompactRangeOptions
+         */
+        void compactDatabaseUsingBzip2()
+        {
+            auto status = m_db->SetOptions({{"compression","kBZip2Compression"}});
+            if(!status.ok())
+            {
+                throw std::runtime_error("Failed to set 'kBZip2Compression' option");
+            }
+
+            // Create compact range options with kForceOptimized settings
+            rocksdb::CompactRangeOptions compactOptions;
+            compactOptions.bottommost_level_compaction = rocksdb::BottommostLevelCompaction::kForceOptimized;
+
+            // Perform compaction for the entire key range
+            m_db->CompactRange(compactOptions, nullptr, nullptr);
         }
 
         /**
