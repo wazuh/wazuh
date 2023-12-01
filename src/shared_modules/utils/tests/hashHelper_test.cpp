@@ -91,15 +91,23 @@ TEST_F(HashHelperTest, HashHelperHashIterativeSha256)
     EXPECT_TRUE(!memcmp(expected, result.data(), result.size()));
 }
 
-#include "stringHelper.h"
+/**
+ * @brief Test the hashing of a file.
+ *
+ */
 TEST_F(HashHelperTest, HashFile)
 {
-    // 9c8ff5a046322fd04e244ce92e991118f26403f1
-    const std::vector<unsigned char> expectedHash {156, 143, 245, 160, 70, 50, 47, 208, 78, 36, 76, 233, 46, 153, 17, 24, 242, 100, 3, 241};
-    
+    // SHA1SUM as string: 9c8ff5a046322fd04e244ce92e991118f26403f1
+    const std::vector<unsigned char> expectedHash {156, 143, 245, 160, 70, 50, 47,  208, 78, 36,
+                                                   76,  233, 46,  153, 17, 24, 242, 100, 3,  241};
+
     EXPECT_EQ(Utils::hashFile(TEST_FILE), expectedHash);
 }
 
+/**
+ * @brief Test the hashing of an inexistant file.
+ *
+ */
 TEST_F(HashHelperTest, HashFileInexistantFile)
 {
     EXPECT_THROW(Utils::hashFile(INPUT_FILES_DIR / "inexistant_file.xml"), std::runtime_error);
