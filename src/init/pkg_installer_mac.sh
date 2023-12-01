@@ -5,6 +5,19 @@
 # Generating Backup
 CURRENT_DIR=`pwd`
 TMP_DIR_BACKUP=./tmp_bkp
+
+# Clean before backup
+if [ -d "./tmp_bkp" ]; then
+    ATTEMPTS=5
+    while [ $ATTEMPTS -gt 0 ]; do
+        sleep 1
+        ATTEMPTS=$[ATTEMPTS - 1]
+        if [[ $(find ./tmp_bkp -cmin -0.1) ]]; then
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - There is an upgrade in progress. Aborting..." >> ./logs/upgrade.log
+            exit 1
+        fi
+    done
+fi
 rm -rf ./tmp_bkp/
 
 BDATE=$(date +"%m-%d-%Y_%H-%M-%S")
@@ -26,7 +39,7 @@ FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/queue)
 
 for dir in "${FOLDERS_TO_BACKUP[@]}"; do
     mkdir -p "${TMP_DIR_BACKUP}${dir}"
-    cp -a ${dir}/* "${TMP_DIR_BACKUP}${dir}"
+    rsync -a --exclude "diff" ${dir}/* "${TMP_DIR_BACKUP}${dir}"
 done
 
 # Save service file
@@ -117,3 +130,5 @@ else
 
     $CONTROL start >> ./logs/upgrade.log 2>&1
 fi
+
+exit 0
