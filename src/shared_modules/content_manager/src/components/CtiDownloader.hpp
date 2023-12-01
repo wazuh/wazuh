@@ -211,6 +211,8 @@ public:
      */
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
+        logDebug1(WM_CONTENTUPDATER, "%s - Starting process", m_componentName.c_str());
+
         try
         {
             download(*context);
