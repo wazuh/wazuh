@@ -46,38 +46,37 @@ references:
 tags:
     - logtest_configuration
 '''
-import os
+from pathlib import Path
 import pytest
 
 from wazuh_testing.global_parameters import GlobalParameters
 from logtest import (callback_logtest_started, callback_logtest_disabled, callback_configuration_error)
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.utils.configuration import load_wazuh_configurations
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
+from wazuh_testing.utils import configuration
+
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 
 # Marks
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
-# Configurations
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/config_templates')
-configurations_path = os.path.join(test_data_path, 'config_wazuh_conf.yaml')
-configurations = load_wazuh_configurations(configurations_path, __name__)
+# Configuration
+t_config_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_wazuh_conf.yaml')
+t_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_configuration_file.yaml')
+t_config_parameters, t_config_metadata, t_case_ids = configuration.get_test_cases_data(t_cases_path)
+t_configurations = configuration.load_configuration_template(t_config_path, t_config_parameters, t_config_metadata)
 
 # Variables
 wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 global_parameters = GlobalParameters()
 
-
-# Fixture
-@pytest.fixture(scope='module', params=configurations)
-def get_configuration(request):
-    """Get configurations from the module."""
-    return request.param
-
+# Test daemons to restart.
+daemons_handler_configuration = {'all_daemons': True}
 
 # Test
-def test_configuration_file(get_configuration, configure_environment, restart_wazuh):
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(t_configurations, t_config_metadata), ids=t_case_ids)
+def test_configuration_file(test_configuration, test_metadata, set_wazuh_configuration, daemons_handler):
     '''
     description: Checks if `wazuh-logtest` works as expected under different predefined configurations that cause
                  `wazuh-logtest` to start correctly, to be disabled, or to register an error. To do this, it checks
@@ -116,9 +115,9 @@ def test_configuration_file(get_configuration, configure_environment, restart_wa
         - analysisd
     '''
     callback = None
-    if 'valid_conf' in get_configuration['tags']:
+    if 'valid_conf' == test_metadata['tags']:
         callback = callback_logtest_started
-    elif 'disabled_conf' in get_configuration['tags']:
+    elif 'disabled_conf' == test_metadata['tags']:
         callback = callback_logtest_disabled
     else:
         callback = callback_configuration_error

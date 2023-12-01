@@ -46,38 +46,37 @@ references:
 tags:
     - logtest_configuration
 '''
-import os
+from pathlib import Path
 import re
 
 import pytest
-from wazuh_testing.constants.paths import WAZUH_PATH
-from wazuh_testing.utils.configuration import load_wazuh_configurations
+from wazuh_testing.constants.paths.sockets import ANALYSISD_ANALISIS_SOCKET_PATH
+from wazuh_testing.utils import configuration
+
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 # Marks
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
 # Configuration
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/config_templates')
-configurations_path = os.path.join(test_data_path, 'config_wazuh_conf.yaml')
-configurations = load_wazuh_configurations(configurations_path, __name__)
+t_config_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_wazuh_conf.yaml')
+t_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_get_configuration_sock.yaml')
+t_config_parameters, t_config_metadata, t_case_ids = configuration.get_test_cases_data(t_cases_path)
+t_configurations = configuration.load_configuration_template(t_config_path, t_config_parameters, t_config_metadata)
 
 # Variables
-logtest_sock = os.path.join(os.path.join(WAZUH_PATH, 'queue', 'sockets', 'analysis'))
-receiver_sockets_params = [(logtest_sock, 'AF_UNIX', 'TCP')]
+receiver_sockets_params = [(ANALYSISD_ANALISIS_SOCKET_PATH, 'AF_UNIX', 'TCP')]
 receiver_sockets = None
 msg_get_config = '{"version": 1, "origin": {"module": "api"}, "command": "getconfig", "module": "api",\
                  "parameters": {"section": "rule_test"}}'
 
-
-# Fixture
-@pytest.fixture(scope='module', params=configurations)
-def get_configuration(request):
-    """Get configurations from the module."""
-    return request.param
-
+# Test daemons to restart.
+daemons_handler_configuration = {'all_daemons': True}
 
 # Test
-def test_get_configuration_sock(get_configuration, configure_environment, restart_wazuh, connect_to_sockets_function):
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(t_configurations, t_config_metadata), ids=t_case_ids)
+def test_get_configuration_sock(test_configuration, test_metadata, set_wazuh_configuration,
+                                daemons_handler, connect_to_sockets_function):
     '''
     description: Check analysis Unix socket returns the correct Logtest configuration under different sets of
                  configurations, `wazuh-analisysd` returns the right information from the `rule_test` configuration
@@ -122,32 +121,29 @@ def test_get_configuration_sock(get_configuration, configure_environment, restar
         - settings
         - analysisd
     '''
-    configuration = get_configuration['sections'][0]['elements']
 
-    if 'invalid_threads_conf' in get_configuration['tags']:
-        configuration[1]['threads']['value'] = '128'
-    elif 'invalid_users_conf' in get_configuration['tags']:
-        configuration[2]['max_sessions']['value'] = '500'
-    elif 'invalid_timeout_conf' in get_configuration['tags']:
-        configuration[3]['session_timeout']['value'] = '31536000'
+    if 'invalid_threads_conf' == test_metadata['tags']:
+        test_metadata['threads'] = '128'
+    elif 'invalid_users_conf' == test_metadata['tags']:
+        test_metadata['max_sessions'] = '500'
+    elif 'invalid_timeout_conf' == test_metadata['tags']:
+        test_metadata['session_timeout'] = '31536000'
 
     receiver_sockets[0].send(msg_get_config, True)
     msg_recived = receiver_sockets[0].receive().decode()
-
-    print("puto mensaje")
-    print(msg_recived)
 
     matched = re.match(r'.*{"enabled":"(\S+)","threads":(\d+),"max_sessions":(\d+),"session_timeout":(\d+)}}',
                        msg_recived)
     assert matched is not None, f'Real message was: "{msg_recived}"'
 
-    assert matched.group(1) == configuration[0]['enabled']['value'], f"""Expected value in enabled tag:
-           '{configuration[0]['enabled']['value']}'. Value received: '{matched.group(1)}'"""
+    assert matched.group(1) == test_metadata['enabled'], f"""Expected value in enabled tag:
+           '{test_metadata['enabled']}'. Value received: '{matched.group(1)}'"""
 
-    assert matched.group(2) == configuration[1]['threads']['value'], f"""Expected value in threads tag:
-           '{configuration[1]['threads']['value']}'. Value received: '{matched.group(2)}'"""
+    assert matched.group(2) == test_metadata['threads'], f"""Expected value in threads tag:
+           '{test_metadata['threads']}'. Value received: '{matched.group(2)}'"""
 
-    assert matched.group(3) == configuration[2]['max_sessions']['value'], f"""Expected value in max_sessions tag:
-           '{configuration[2]['max_sessions']['value']}'. Value received: '{matched.group(3)}'"""
-    assert matched.group(4) == configuration[3]['session_timeout']['value'], f"""Expected value in session_timeout tag:
-           '{configuration[3]['session_timeout']['value']}'. Value received: '{matched.group(4)}'"""
+    assert matched.group(3) == test_metadata['max_sessions'], f"""Expected value in max_sessions tag:
+           '{test_metadata['max_sessions']}'. Value received: '{matched.group(3)}'"""
+
+    assert matched.group(4) == test_metadata['session_timeout'], f"""Expected value in session_timeout tag:
+           '{test_metadata['session_timeout']}'. Value received: '{matched.group(4)}'"""
