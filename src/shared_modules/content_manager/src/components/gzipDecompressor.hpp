@@ -71,10 +71,8 @@ private:
             outputPath = Utils::rightTrim(outputPath, inputPath.extension());
 
             // Decompress.
-            logDebug2(WM_CONTENTUPDATER,
-                      "Attempting to decompress '%s' into '%s'",
-                      inputPath.string().c_str(),
-                      outputPath.c_str());
+            logDebug2(
+                WM_CONTENTUPDATER, "Decompressing '%s' into '%s'", inputPath.string().c_str(), outputPath.c_str());
             Utils::ZlibHelper::gzipDecompress(inputPath, outputPath);
 
             // Decompression finished: Update context path.

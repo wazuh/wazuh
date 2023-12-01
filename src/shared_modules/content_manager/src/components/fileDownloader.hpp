@@ -109,7 +109,7 @@ private:
                             }};
 
         // Download and store file.
-        logDebug2(WM_CONTENTUPDATER, "Attempting to download file from '%s'", url.string().c_str());
+        logDebug2(WM_CONTENTUPDATER, "Downloading file from '%s'", url.string().c_str());
         HTTPRequest::instance().download(HttpURL(url), outputFilePath, onError);
 
         // Just process the new file if the hash is different from the last one.

@@ -72,7 +72,7 @@ private:
      */
     void downloadContent()
     {
-        logDebug2(WM_CONTENTUPDATER, "Attempting to download from API '%s'", m_url.c_str());
+        logDebug2(WM_CONTENTUPDATER, "Downloading from API '%s'", m_url.c_str());
 
         const auto onError {
             [this](const std::string& message, [[maybe_unused]] const long statusCode)

@@ -137,14 +137,12 @@ private:
         if (std::filesystem::exists(outputFolderPath))
         {
             // Delete the output folder to avoid conflicts.
-            logDebug2(WM_CONTENTUPDATER,
-                      "Attempting to remove previous output folder '%s'",
-                      outputFolderPath.string().c_str());
+            logDebug2(WM_CONTENTUPDATER, "Removing previous output folder '%s'", outputFolderPath.string().c_str());
             std::filesystem::remove_all(outputFolderPath);
         }
 
         // Create the folders.
-        logDebug2(WM_CONTENTUPDATER, "Attempting to create output folders at '%s'", outputFolderPath.string().c_str());
+        logDebug2(WM_CONTENTUPDATER, "Creating output folders at '%s'", outputFolderPath.string().c_str());
         std::filesystem::create_directory(outputFolderPath);
         std::filesystem::create_directory(outputFolderPath / DOWNLOAD_FOLDER);
         std::filesystem::create_directory(outputFolderPath / CONTENTS_FOLDER);

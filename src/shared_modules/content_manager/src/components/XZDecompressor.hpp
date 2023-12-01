@@ -52,7 +52,7 @@ private:
                 std::filesystem::path outputPath {path};
 
                 logDebug2(WM_CONTENTUPDATER,
-                          "Attempting to decompress '%s' into '%s'",
+                          "Decompressing '%s' into '%s'",
                           inputPath.string().c_str(),
                           outputPath.string().c_str());
                 Utils::XzHelper(inputPath, outputPath).decompress();

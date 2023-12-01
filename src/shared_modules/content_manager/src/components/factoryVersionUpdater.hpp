@@ -38,7 +38,7 @@ public:
     static std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> create(const nlohmann::json& config)
     {
         auto const versionUpdaterType {config.at("versionedContent").get_ref<const std::string&>()};
-        logDebug1(WM_CONTENTUPDATER, "Attempting to create '%s' version updater", versionUpdaterType.c_str());
+        logDebug1(WM_CONTENTUPDATER, "Creating '%s' version updater", versionUpdaterType.c_str());
 
         if (versionUpdaterType.compare("cti-api") == 0)
         {

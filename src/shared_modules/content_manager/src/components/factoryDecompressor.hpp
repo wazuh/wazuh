@@ -70,7 +70,7 @@ public:
             decompressorType = deduceCompressionType(config.at("url").get_ref<const std::string&>());
         }
 
-        logDebug1(WM_CONTENTUPDATER, "Attempting to create '%s' decompressor", decompressorType.c_str());
+        logDebug1(WM_CONTENTUPDATER, "Creating '%s' decompressor", decompressorType.c_str());
 
         if ("xz" == decompressorType)
         {

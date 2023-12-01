@@ -61,7 +61,7 @@ private:
         for (const auto& path : context.data.at("paths"))
         {
             logDebug2(WM_CONTENTUPDATER,
-                      "Attempting to decompress '%s' into '%s'",
+                      "Decompressing '%s' into '%s'",
                       path.get_ref<const std::string&>().c_str(),
                       outputFolder.string().c_str());
 
