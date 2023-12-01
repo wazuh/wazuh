@@ -23,6 +23,8 @@
 #include <thread>
 #include <utility>
 
+const std::string SNAPSHOT_FILE_NAME {"content_snapshot.xyz"};
+
 /**
  * @brief This class is a simple HTTP server that provides a fake server.
  */
@@ -243,6 +245,60 @@ public:
                              res.status = popError();
                              res.set_content(RESPONSE, "text/plain");
                          }
+                     });
+
+        // Endpoint that returns the link to a dummy snapshot file.
+        m_server.Get("/snapshot/consumers",
+                     [this](const httplib::Request& req, httplib::Response& res)
+                     {
+                         auto response = R"(
+                            {
+                                "data": 
+                                {
+                                    "last_offset": 3
+                                }
+                            }
+                         )"_json;
+                         response["data"]["last_snapshot_link"] =
+                             "127.0.0.1:" + std::to_string(m_port) + "/" + SNAPSHOT_FILE_NAME;
+
+                         res.set_content(response.dump(), "text/plain");
+                     });
+
+        // Endpoint that responses with a dummy snapshot file.
+        m_server.Get("/" + SNAPSHOT_FILE_NAME,
+                     [this](const httplib::Request& req, httplib::Response& res)
+                     {
+                         if (!m_errorsQueue.empty())
+                         {
+                             constexpr auto RESPONSE {"Something bad happened."};
+                             res.status = popError();
+                             res.set_content(RESPONSE, "text/plain");
+                             return;
+                         }
+
+                         // Create dummy snapshot file.
+                         std::ofstream snapshotFile {SNAPSHOT_FILE_NAME};
+                         snapshotFile << R"({"data":"content"})"_json;
+                         snapshotFile.close();
+
+                         // Read and send dummy file.
+                         std::ifstream inputFile {SNAPSHOT_FILE_NAME, std::ios::in | std::ios::binary};
+                         if (inputFile)
+                         {
+                             std::ostringstream response;
+                             response << inputFile.rdbuf();
+                             inputFile.close();
+                             res.set_content(response.str(), "application/octet-stream");
+                         }
+                         else
+                         {
+                             res.status = 404;
+                             res.set_content("File not found", "text/plain");
+                         }
+
+                         // Remove dummy file.
+                         std::filesystem::remove(SNAPSHOT_FILE_NAME);
                      });
         m_server.set_keep_alive_max_count(1);
         m_server.listen(m_host.c_str(), m_port);

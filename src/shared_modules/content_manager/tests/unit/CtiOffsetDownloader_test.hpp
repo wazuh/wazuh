@@ -9,8 +9,8 @@
  * Foundation.
  */
 
-#ifndef _CTI_API_DOWNLOADER_TEST_HPP
-#define _CTI_API_DOWNLOADER_TEST_HPP
+#ifndef _CTI_OFFSET_DOWNLOADER_TEST_HPP
+#define _CTI_OFFSET_DOWNLOADER_TEST_HPP
 
 #include "CtiOffsetDownloader.hpp"
 #include "HTTPRequest.hpp"
@@ -112,4 +112,4 @@ protected:
     }
 };
 
-#endif //_CTI_API_DOWNLOADER_TEST_HPP
+#endif //_CTI_OFFSET_DOWNLOADER_TEST_HPP

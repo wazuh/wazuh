@@ -1,5 +1,5 @@
 /*
- * Wazuh content manager
+ * Wazuh Content Manager
  * Copyright (C) 2015, Wazuh Inc.
  * Nov 30, 2023.
  *
