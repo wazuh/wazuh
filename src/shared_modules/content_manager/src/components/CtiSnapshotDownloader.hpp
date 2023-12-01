@@ -48,7 +48,7 @@ private:
                                   context.data.at("paths").push_back(outputFilepath);
                               }};
 
-        logDebug2(WM_CONTENTUPDATER, "Attempting to download snapshot from '%s'", lastSnapshotURL.string().c_str());
+        logDebug2(WM_CONTENTUPDATER, "Downloading snapshot from '%s'", lastSnapshotURL.string().c_str());
 
         // Download the content.
         performQueryWithRetry(lastSnapshotURL, onSuccess, "", outputFilepath);
