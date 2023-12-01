@@ -163,6 +163,8 @@ union Provider {
 
 table AgentInfo {
     agent_id:string;
+    agent_ip:string;
+    agent_name:string;
     node_name:string;
 }
 

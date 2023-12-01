@@ -2,8 +2,10 @@ namespace SyscollectorSynchronization;
 
 table AgentInfo
 {
-    agent_id: string;
-    node_name: string;
+    agent_id:string;
+    agent_ip:string;
+    agent_name:string;
+    node_name:string;
 }
 
 table syscollector_hotfixes
