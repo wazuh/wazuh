@@ -80,15 +80,16 @@ if (NOT ${TARGET} STREQUAL "")
     list(APPEND Schemas
                 syscollector_synchronization
     )
-    message("Compile schemas")
-    message("${SRC_FOLDER}/external/flatbuffers/build/flatc")
+
     add_custom_target(compile_schemas)
     foreach(schema IN LISTS Schemas)
       set(FILE "${FLATBUFFERS_FOLDER}/syscollectorRsync/${schema}.fbs")
-      message("Analizing file ${FILE}")
+      set(RSYNC_OUTPUT_HEADER_GENERATED "${FLATBUFFERS_FOLDER}/../include/${schema}_generated.h")
+      set(RSYNC_OUTPUT_HEADER "${FLATBUFFERS_FOLDER}/../include/${schema}_schema.h")
+
       add_custom_command(
-          TARGET compile_schemas
-          COMMAND ${SRC_FOLDER}/external/flatbuffers/build/flatc
+          OUTPUT "${RSYNC_OUTPUT_HEADER_GENERATED}"
+          COMMAND ${FLATC_PATH}/flatc
           ARGS --cpp
           ARGS -o "${FLATBUFFERS_FOLDER}/../include" "${FILE}"
           ARGS --no-warnings
@@ -97,13 +98,15 @@ if (NOT ${TARGET} STREQUAL "")
           WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
       add_custom_command(
-          TARGET compile_schemas
+          OUTPUT "${RSYNC_OUTPUT_HEADER}"
           COMMAND bash -c "echo -e '// This file was generated from ${FILE} , do not modify \\n#ifndef ${schema}_HEADER\\n#define ${schema}_HEADER\\nauto constexpr ${schema}_SCHEMA = R\"('`cat ${FILE}`')\" ;\\n#endif // ${schema}_HEADER\\n ' > ${FLATBUFFERS_FOLDER}/../include/${schema}_schema.h"
           COMMENT "Creating header from schema file: '${schema}'"
-          DEPENDS ${FILE}
+          DEPENDS "${RSYNC_OUTPUT_HEADER_GENERATED}"
           WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
           VERBATIM)
 
+      add_custom_target(${schema}_schema_target DEPENDS ${RSYNC_OUTPUT_HEADER})
+      add_dependencies(compile_schemas ${schema}_schema_target)
     endforeach()
   endif()
 endif()
