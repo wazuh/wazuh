@@ -20,11 +20,11 @@
 
 auto constexpr DB_WRAPPER_QUERY_WAIT_TIME {500};
 
-auto constexpr DB_WRAPPER_OK {"ok"};
-auto constexpr DB_WRAPPER_ERROR {"err"};
-auto constexpr DB_WRAPPER_UNKNOWN {"unk"};
-auto constexpr DB_WRAPPER_IGNORE {"ign"};
-auto constexpr DB_WRAPPER_DUE {"due"};
+char constexpr DB_WRAPPER_OK[] = {"ok"};
+char constexpr DB_WRAPPER_ERROR[] = {"err"};
+char constexpr DB_WRAPPER_UNKNOWN[] {"unk"};
+char constexpr DB_WRAPPER_IGNORE[] {"ign"};
+char constexpr DB_WRAPPER_DUE[] {"due"};
 
 class SocketDBWrapper final
 {
@@ -44,10 +44,10 @@ public:
         m_dbSocket->connect(
             [&](const char* body, uint32_t bodySize, const char* header, uint32_t headerSize)
             {
-                std::unique_lock<std::mutex> lock {m_mutex};
+                std::lock_guard<std::mutex> lock {m_mutex};
                 std::string responsePacket(body, bodySize);
 
-                if (0 == responsePacket.compare(0, 3, DB_WRAPPER_DUE))
+                if (0 == responsePacket.compare(0, sizeof(DB_WRAPPER_DUE) - 1, DB_WRAPPER_DUE))
                 {
                     try
                     {
@@ -65,19 +65,20 @@ public:
                     {
                         m_exceptionStr = "Empty DB response";
                     }
-                    else if (0 == responsePacket.compare(0, 3, DB_WRAPPER_ERROR))
+                    else if (0 == responsePacket.compare(0, sizeof(DB_WRAPPER_ERROR) - 1, DB_WRAPPER_ERROR))
                     {
-                        m_exceptionStr = "DB query error: " + responsePacket.substr(4);
+                        m_exceptionStr = "DB query error: " + responsePacket.substr(sizeof(DB_WRAPPER_ERROR));
                     }
-                    else if (0 == responsePacket.compare(0, 3, DB_WRAPPER_IGNORE))
+                    else if (0 == responsePacket.compare(0, sizeof(DB_WRAPPER_IGNORE) - 1, DB_WRAPPER_IGNORE))
                     {
-                        m_exceptionStr = "DB query ignored: " + responsePacket.substr(4);
+                        m_exceptionStr = "DB query ignored: " + responsePacket.substr(sizeof(DB_WRAPPER_IGNORE));
                     }
-                    else if (0 == responsePacket.compare(0, 3, DB_WRAPPER_UNKNOWN))
+                    else if (0 == responsePacket.compare(0, sizeof(DB_WRAPPER_UNKNOWN) - 1, DB_WRAPPER_UNKNOWN))
                     {
-                        m_exceptionStr = "DB query unknown response: " + responsePacket.substr(4);
+                        m_exceptionStr =
+                            "DB query unknown response: " + responsePacket.substr(sizeof(DB_WRAPPER_UNKNOWN));
                     }
-                    else if (0 == responsePacket.compare(0, 2, DB_WRAPPER_OK))
+                    else if (0 == responsePacket.compare(0, sizeof(DB_WRAPPER_OK) - 1, DB_WRAPPER_OK))
                     {
                         if (!m_responsePartial.empty())
                         {
@@ -87,7 +88,8 @@ public:
                         {
                             try
                             {
-                                nlohmann::json responseParsed = nlohmann::json::parse(responsePacket.substr(3));
+                                nlohmann::json responseParsed =
+                                    nlohmann::json::parse(responsePacket.substr(sizeof(DB_WRAPPER_OK) - 1));
                                 if (responseParsed.type() == nlohmann::json::value_t::array)
                                 {
                                     m_response = responseParsed;
@@ -99,8 +101,9 @@ public:
                             }
                             catch (const nlohmann::detail::exception& ex)
                             {
-                                m_exceptionStr = "Error parsing JSON response: " + responsePacket.substr(3) +
-                                                 ". Exception id: " + std::to_string(ex.id) + ". " + ex.what();
+                                m_exceptionStr =
+                                    "Error parsing JSON response: " + responsePacket.substr(sizeof(DB_WRAPPER_OK) - 1) +
+                                    ". Exception id: " + std::to_string(ex.id) + ". " + ex.what();
                             }
                         }
                     }
@@ -121,7 +124,7 @@ public:
 
         std::unique_lock<std::mutex> lock {m_mutex};
         m_dbSocket->send(query.c_str(), query.size());
-        auto res = m_conditionVariable.wait_for(lock, std::chrono::milliseconds(DB_WRAPPER_QUERY_WAIT_TIME));
+        const auto res = m_conditionVariable.wait_for(lock, std::chrono::milliseconds(DB_WRAPPER_QUERY_WAIT_TIME));
 
         if (res == std::cv_status::timeout)
         {
