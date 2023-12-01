@@ -1,3 +1,6 @@
+#ifndef _CACHELRU_HPP
+#define _CACHELRU_HPP
+
 #include <list>
 #include <map>
 #include <optional>
@@ -89,3 +92,5 @@ private:
         m_list.emplace_front(key);
     }
 };
+
+#endif // CACHELRU_HPP

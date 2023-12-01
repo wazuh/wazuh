@@ -12,21 +12,22 @@
 #ifndef _TIME_HELPER_H
 #define _TIME_HELPER_H
 
-#include <string>
+#include <chrono>
 #include <ctime>
 #include <iomanip>
 #include <sstream>
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-function"
+#include <string>
 
 namespace Utils
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+
     static std::string getTimestamp(const std::time_t& time, const bool utc = true)
     {
         std::stringstream ss;
         // gmtime: result expressed as a UTC time
-        tm* localTime { utc ? gmtime(&time) : localtime(&time)};
+        tm* localTime {utc ? gmtime(&time) : localtime(&time)};
         // Final timestamp: "YYYY/MM/DD hh:mm:ss"
         // Date
         ss << std::setfill('0') << std::setw(4) << std::to_string(localTime->tm_year + 1900);
@@ -59,7 +60,7 @@ namespace Utils
     {
         std::stringstream ss;
         // gmtime: result expressed as a UTC time
-        tm const* localTime { utc ? gmtime(&time) : localtime(&time)};
+        tm const* localTime {utc ? gmtime(&time) : localtime(&time)};
         // Date
         ss << std::setfill('0') << std::setw(4) << std::to_string(localTime->tm_year + 1900);
         ss << std::setfill('0') << std::setw(2) << std::to_string(localTime->tm_mon + 1);
@@ -70,8 +71,26 @@ namespace Utils
         ss << std::setfill('0') << std::setw(2) << std::to_string(localTime->tm_sec);
         return ss.str();
     }
-}
 
+    static std::string getCurrentISO8601()
+    {
+        // Get local time in UTC
+        auto now = std::chrono::system_clock::now();
+        auto itt = std::chrono::system_clock::to_time_t(now);
+
+        std::ostringstream ss;
+        ss << std::put_time(gmtime(&itt), "%FT%T");
+
+        // Get milliseconds from the current time
+        auto milliseconds =
+            std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000;
+
+        // ISO 8601
+        ss << '.' << std::setfill('0') << std::setw(3) << milliseconds << 'Z';
+
+        return ss.str();
+    }
 #pragma GCC diagnostic pop
+} // namespace Utils
 
 #endif // _TIME_HELPER_H

@@ -65,6 +65,29 @@ foreach(loop_var ${EXTERNAL_RES})
     check_and_download_dep(${loop_var} ${RESOURCES_URL})
 endforeach(loop_var)
 
+# Read VERSION and REVISION file and set variable with the content.
+file(READ ${SRC_FOLDER}/VERSION VERSION_FILE)
+string(STRIP ${VERSION_FILE} VERSION_FILE)
+add_definitions(-DVERSION="${VERSION_FILE}")
+
+file(READ ${SRC_FOLDER}/REVISION REVISION_FILE)
+string(STRIP ${REVISION_FILE} REVISION_FILE)
+add_definitions(-DREVISION="${REVISION_FILE}")
+
+## If REVISION OR FILE is empty fail
+if("${REVISION_FILE}" STREQUAL "")
+    message(FATAL_ERROR "REVISION file is empty")
+endif("${REVISION_FILE}" STREQUAL "")
+
+if("${VERSION_FILE}" STREQUAL "")
+    message(FATAL_ERROR "VERSION file is empty")
+endif("${VERSION_FILE}" STREQUAL "")
+
+message("==============================================")
+message("Wazuh version: ${VERSION_FILE}")
+message("Wazuh revision: ${REVISION_FILE}")
+message("==============================================")
+
 set(BENCHMARK_ENABLE_TESTING "OFF")
 link_directories(${SRC_FOLDER})
 link_directories(${SRC_FOLDER}/external/rocksdb/build/)
