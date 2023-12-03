@@ -68,7 +68,7 @@ TEST_F(PubSubPublisherTest, TestPublishValidDataWithouStartTheRouterProvider)
     m_spUpdaterBaseContext->spChannel = std::make_shared<RouterProvider>("component-tests");
 
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
-    m_spUpdaterContext->data = R"({ "paths": ["/dummy/path"], "stageStatus": [] })"_json;
+    m_spUpdaterContext->data = R"({ "type": "raw", "paths": ["/dummy/path"], "stageStatus": [] })"_json;
 
     EXPECT_THROW(m_spPubSubPublisher->handleRequest(m_spUpdaterContext), std::runtime_error);
 

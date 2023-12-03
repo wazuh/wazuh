@@ -71,6 +71,9 @@ private:
      */
     void download()
     {
+        // Set the type of the content.
+        m_context->data.at("type") = "offsets";
+
         logDebug2(WM_CONTENTUPDATER, "CtiApiDownloader - Starting");
         // Get the parameters needed to download the content.
         getParameters();
