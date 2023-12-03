@@ -168,6 +168,8 @@ int main(const int argc, const char* argv[])
                 }
             }
         }
+        std::cout << "Press enter to stop the indexer connector tool..." << std::endl;
+        std::cin.get();
     }
     catch (const std::exception& e)
     {
