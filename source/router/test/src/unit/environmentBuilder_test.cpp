@@ -34,6 +34,8 @@ TEST(EnvironmentBuilderTest, Create_ValidPolicyAndFilter)
     EXPECT_CALL(*controllerMaker, create()).WillOnce(Return(mockController));
 
     EXPECT_CALL(*mockPolicy, expression()).WillOnce(Return(base::Expression {}));
+    std::string hash = "hash";
+    EXPECT_CALL(*mockPolicy, hash()).WillOnce(ReturnRef(hash));
     EXPECT_CALL(*mockController, build(_, _)).WillOnce(Return());
 
     EXPECT_CALL(*builder, buildAsset(filterName)).WillOnce(Return(base::Expression {}));
@@ -89,6 +91,8 @@ TEST(EnvironmentBuilderTest, Create_ValidPolicyAndInvalidFilter)
     EXPECT_CALL(*controllerMaker, create()).WillOnce(Return(mockController));
 
     EXPECT_CALL(*mockPolicy, expression()).WillOnce(Return(base::Expression {}));
+    std::string hash = "hash";
+    EXPECT_CALL(*mockPolicy, hash()).WillOnce(ReturnRef(hash));
     EXPECT_CALL(*mockController, build(_, _)).WillOnce(Return());
 
     EXPECT_CALL(*builder, buildAsset(filterName)).WillOnce(Return(base::Error {"error"}));
