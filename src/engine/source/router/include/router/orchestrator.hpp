@@ -51,11 +51,11 @@ private:
     std::size_t m_testTimeout;                     ///< Timeout for the tests
 
     using WorkerOp = std::function<base::OptError(const std::shared_ptr<Worker>&)>;
-    base::OptError forEachWorker(WorkerOp f);
+    base::OptError forEachWorker(const WorkerOp& f); ///< Apply the function f to each worker
 
-    void dumpTesters() const;
-    void dumpRouters() const;
-    void initWorkers();
+    void dumpTesters() const; ///< Dump the testers to the store
+    void dumpRouters() const; ///< Dump the routers to the store
+    void initWorkers();      ///< Initialize the workers from the store when the orchestrator is created
 
 public:
     ~Orchestrator() = default;

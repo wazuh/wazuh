@@ -8,10 +8,9 @@ namespace router
 
 namespace
 {
-/// @brief Validate that the pointer is not empty
-/// @tparam T  Type of the pointer
-/// @param ptr Pointer to validate
-/// @param name Name of the pointer
+/**
+ * @brief Validates that the pointer is not empty
+*/
 template<typename T>
 void validatePointer(const T& ptr, const std::string& name)
 {
@@ -26,7 +25,7 @@ void validatePointer(const T& ptr, const std::string& name)
 } // namespace
 
 // Private
-base::OptError Orchestrator::forEachWorker(WorkerOp f)
+base::OptError Orchestrator::forEachWorker(const WorkerOp& f)
 {
     for (const auto& worker : m_workers)
     {
