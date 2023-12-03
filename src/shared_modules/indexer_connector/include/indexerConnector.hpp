@@ -37,8 +37,11 @@ class EXPORTED IndexerConnector final
      * @brief Initialized status.
      *
      */
-    bool m_initialized {false};
-
+    std::atomic<bool> m_initialized {false};
+    std::thread m_initializeThread;
+    std::condition_variable m_cv;
+    std::mutex m_mutex;
+    std::atomic<bool> m_stopping {false};
     /**
      * @brief Intialize method used to load template data and initialize the index.
      *
