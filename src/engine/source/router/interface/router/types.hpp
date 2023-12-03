@@ -98,7 +98,7 @@ public:
         }
         if (m_priority > 1000)
         {
-            return base::Error {"Priority cannot be greater than 10000"};
+            return base::Error {"Priority cannot be greater than 1000"};
         }
         return base::OptError {};
     }
