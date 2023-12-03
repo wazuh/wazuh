@@ -16,7 +16,6 @@
 #include "components/factoryContentUpdater.hpp"
 #include "components/updaterContext.hpp"
 #include "routerProvider.hpp"
-#include "sharedDefs.hpp"
 #include "utils/rocksDBWrapper.hpp"
 #include <iostream>
 #include <memory>

@@ -18,6 +18,12 @@
 
 #define IC_NAME       "indexer-connnector"
 #define MAX_WAIT_TIME 30
+namespace Log
+{
+    std::function<void(
+        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>
+        GLOBAL_LOG_FUNCTION;
+};
 
 // TODO: remove the LCOV flags when the implementation of this class is completed
 // LCOV_EXCL_START

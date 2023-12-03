@@ -17,6 +17,13 @@
 #include <string>
 #include <vector>
 
+namespace Log
+{
+    std::function<void(
+        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>
+        GLOBAL_LOG_FUNCTION;
+};
+
 /*
  * @brief Tests the instantiation of the ActionOrchestratorTest class
  */

@@ -15,7 +15,6 @@
 #include "actionOrchestrator.hpp"
 #include "onDemandManager.hpp"
 #include "routerProvider.hpp"
-#include "sharedDefs.hpp"
 #include <atomic>
 #include <chrono>
 #include <external/nlohmann/json.hpp>
@@ -81,13 +80,14 @@ public:
                         bool expected = false;
                         if (m_actionInProgress.compare_exchange_strong(expected, true))
                         {
-                            logInfo("Initiating scheduling action for %s", m_topicName.c_str());
+                            logInfo(WM_CONTENTUPDATER, "Initiating scheduling action for %s", m_topicName.c_str());
                             runAction(ActionID::SCHEDULED);
                         }
                         else
                         {
                             // LCOV_EXCL_START
-                            logInfo("Request scheduling - Download in progress. The scheduling is ignored for %s",
+                            logInfo(WM_CONTENTUPDATER,
+                                    "Request scheduling - Download in progress. The scheduling is ignored for %s",
                                     m_topicName.c_str());
                             // LCOV_EXCL_STOP
                         }
@@ -109,7 +109,7 @@ public:
         {
             m_schedulerThread.join();
         }
-        logInfo("Scheduler stopped for %s", m_topicName.c_str());
+        logInfo(WM_CONTENTUPDATER, "Scheduler stopped for %s", m_topicName.c_str());
     }
 
     /**
@@ -148,13 +148,13 @@ public:
         auto expected = false;
         if (m_actionInProgress.compare_exchange_strong(expected, true))
         {
-            logInfo("Ondemand request - starting action for %s", m_topicName.c_str());
+            logInfo(WM_CONTENTUPDATER, "Ondemand request - starting action for %s", m_topicName.c_str());
             runAction(ActionID::ON_DEMAND);
         }
         else
         {
             // LCOV_EXCL_START
-            logInfo("Ondemand request - another action in progress for %s", m_topicName.c_str());
+            logInfo(WM_CONTENTUPDATER, "Ondemand request - another action in progress for %s", m_topicName.c_str());
             // LCOV_EXCL_STOP
         }
     }
