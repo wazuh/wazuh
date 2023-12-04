@@ -1,209 +1,207 @@
----
--
-  name: "Json malformed (Missing \")"
+- name: "Json malformed (Missing \")"
   description: "Check invalid input for client request"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input: '{"version":1,origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"token":"4885bbf4","log_format":"syslog","location":"master->/var/log/syslog"}}'
     output: '{"message":"(7307): Error parsing JSON in position 14, ... rsion\":1,origin\":{\"n ...","error":1,"data":{}}'
     stage: 'Json malformed (Missing ")'
--
-  name: "Missing event"
+
+- name: "Missing event"
   description: "Check invalid input for client request"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"token":"4885bbf4","log_format":"syslog","location":"master->/var/log/syslog"}}'
     output: "{\"message\":\"(7313): 'event' JSON field not found\",\"error\":2,\"data\":{}}"
     stage: 'Missing event'
--
-  name: "Bad type num - event"
+
+- name: "Bad type num - event"
   description: "Check invalid input for client request"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"event": 123456,"log_format":"syslog","location":"master->/var/log/syslog"}}'
     output: "{\"message\":\"(7317): 'event' JSON field value is not valid\",\"error\":2,\"data\":{}}"
     stage: 'Bad type num - event'
--
-  name: "Bad type array - event"
+
+- name: "Bad type array - event"
   description: "Check invalid input for client request"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"event": ["test"],"log_format":"syslog","location":"master->/var/log/syslog"}}'
     output: "{\"message\":\"(7317): 'event' JSON field value is not valid\",\"error\":2,\"data\":{}}"
     stage: 'Bad type array - event'
--
-  name: "Bad type bool - event"
+
+- name: "Bad type bool - event"
   description: "Check invalid input for client request"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"event": true,"log_format":"syslog","location":"master->/var/log/syslog"}}'
     output: "{\"message\":\"(7317): 'event' JSON field value is not valid\",\"error\":2,\"data\":{}}"
     stage: 'Bad type bool - event'
--
-  name: "Null event"
+
+- name: "Null event"
   description: "Check invalid input for client request"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"event": null,"log_format":"syslog","location":"master->/var/log/syslog"}}'
     output: "{\"message\":\"(7317): 'event' JSON field value is not valid\",\"error\":2,\"data\":{}}"
     stage: 'Null event'
--
-  name: "Missing log_format"
+
+- name: "Missing log_format"
   description: "Check invalid input for client request"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"event":"Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756.","location":"master->/var/log/syslog"}}'
     output: "{\"message\":\"(7308): 'log_format' JSON field is required and must be a string\",\"error\":2,\"data\":{}}"
     stage: 'Missing log_format'
--
-  name: "Bad type num - log_format"
+
+- name: "Bad type num - log_format"
   description: "Check invalid input for client request"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"log_format" : 123456,"event":"Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756.","location":"master->/var/log/syslog"}}'
     output: "{\"message\":\"(7308): 'log_format' JSON field is required and must be a string\",\"error\":2,\"data\":{}}"
     stage: 'Bad type num - log_format'
--
-  name: "Bad type array - log_format"
+
+- name: "Bad type array - log_format"
   description: "Check invalid input for client request"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"log_format" : ["test"] ,"event":"Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756.","location":"master->/var/log/syslog"}}'
     output: "{\"message\":\"(7308): 'log_format' JSON field is required and must be a string\",\"error\":2,\"data\":{}}"
     stage: 'Bad type array - log_format'
--
-  name: "Bad type bool - log_format"
+
+- name: "Bad type bool - log_format"
   description: "Check invalid input for client request"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"log_format" : false,"event":"Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756.","location":"master->/var/log/syslog"}}'
     output: "{\"message\":\"(7308): 'log_format' JSON field is required and must be a string\",\"error\":2,\"data\":{}}"
     stage: 'Bad type bool - log_format'
--
-  name: "Null log_format"
+
+- name: "Null log_format"
   description: "Check invalid input for client request"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"log_format" : null,"event":"Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756.","location":"master->/var/log/syslog"}}'
     output: "{\"message\":\"(7308): 'log_format' JSON field is required and must be a string\",\"error\":2,\"data\":{}}"
     stage: 'Null log_format'
--
-  name: "Missing location"
+
+- name: "Missing location"
   description: "Check invalid input for client request"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"token":"4885bbf4","event":"Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756.","log_format":"syslog"}}'
     output: "{\"message\":\"(7308): 'location' JSON field is required and must be a string\",\"error\":2,\"data\":{}}"
     stage: 'Missing location'
--
-  name: "Bad type num - location"
+
+- name: "Bad type num - location"
   description: "Check invalid input for client request"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"location" : 123456,"event":"Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756.","log_format":"syslog"}}'
     output: "{\"message\":\"(7308): 'location' JSON field is required and must be a string\",\"error\":2,\"data\":{}}"
     stage: 'Bad type num - location'
--
-  name: "Bad type array - location"
+
+- name: "Bad type array - location"
   description: "Check invalid input for client request"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"location" : ["test"] ,"event":"Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756.","log_format":"syslog"}}'
     output: "{\"message\":\"(7308): 'location' JSON field is required and must be a string\",\"error\":2,\"data\":{}}"
     stage: 'Bad type array - location'
--
-  name: "Bad type bool - location"
+
+- name: "Bad type bool - location"
   description: "Check invalid input for client request"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"location" : false,"event":"Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756.","log_format":"syslog"}}'
     output: "{\"message\":\"(7308): 'location' JSON field is required and must be a string\",\"error\":2,\"data\":{}}"
     stage: 'Bad type bool - location'
--
-  name: "Null location"
+
+- name: "Null location"
   description: "Check invalid input for client request"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"location" : null,"event":"Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756.","log_format":"syslog"}}'
     output: "{\"message\":\"(7308): 'location' JSON field is required and must be a string\",\"error\":2,\"data\":{}}"
     stage: 'Null location'
--
-  name: "Missing event/log_format"
+
+- name: "Missing event/log_format"
   description: "Check invalid input for client request"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"token":"4885bbf4","location":"master->/var/log/syslog"}}'
     output: "{\"message\":\"(7308): 'log_format' JSON field is required and must be a string\",\"error\":2,\"data\":{}}"
     stage: 'Missing event/log_format'
--
-  name: "Missing event/location"
+
+- name: "Missing event/location"
   description: "Check invalid input for client request"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"token":"4885bbf4","log_format":"syslog"}}'
     output: "{\"message\":\"(7308): 'location' JSON field is required and must be a string\",\"error\":2,\"data\":{}}"
     stage: 'Missing event/location'
--
-  name: "Missing log_format/location"
+
+- name: "Missing log_format/location"
   description: "Check invalid input for client request"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"token":"4885bbf4","event":"Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756."}}'
     output: "{\"message\":\"(7308): 'location' JSON field is required and must be a string\",\"error\":2,\"data\":{}}"
     stage: 'Missing log_format/location'
--
-  name: "Missing event/log_format/location"
+
+- name: "Missing event/log_format/location"
   description: "Check invalid input for client request"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{}}'
     output: "{\"message\":\"(7308): 'location' JSON field is required and must be a string\",\"error\":2,\"data\":{}}"
     stage: 'Missing event/log_format/location'
--
-  name: "Command not found"
+
+- name: "Command not found"
   description: "check invalid command"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"bad_command","parameters":{"location" : "123456","event":"Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756.","log_format":"syslog"}}'
     output: "{\"message\":\"(7306): Unable to process command\",\"error\":3,\"data\":{}}"
     stage: 'Command not found'
--
-  name: "Invalid command type - num"
+
+- name: "Invalid command type - num"
   description: "Check invalid command type - num"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":112,"parameters":{"location" : "123456","event":"Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756.","log_format":"syslog"}}'
     output: "{\"message\":\"(7317): 'command' JSON field value is not valid\",\"error\":2,\"data\":{}}"
     stage: 'Invalid command type - num'
--
-  name: "Invalid command type - bool"
+
+- name: "Invalid command type - bool"
   description: "Check invalid command type - bool"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":false,"parameters":{"location" : "123456","event":"Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756.","log_format":"syslog"}}'
     output: "{\"message\":\"(7317): 'command' JSON field value is not valid\",\"error\":2,\"data\":{}}"
     stage: 'Invalid command type - bool'
--
-  name: "Invalid command type - array"
+
+- name: "Invalid command type - array"
   description: "Check invalid command type - array"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":["112"],"parameters":{"location" : "123456","event":"Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756.","log_format":"syslog"}}'
     output: "{\"message\":\"(7317): 'command' JSON field value is not valid\",\"error\":2,\"data\":{}}"
     stage: 'Invalid command type - array'
--
-  name: "Invalid command type - Object"
+
+- name: "Invalid command type - Object"
   description: "Check invalid command type - Object"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":{"command":"log_processing"},"parameters":{"location" : "123456","event":"Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756.","log_format":"syslog"}}'
     output: "{\"message\":\"(7317): 'command' JSON field value is not valid\",\"error\":2,\"data\":{}}"
     stage: 'Invalid command type - Object'
--
-  name: "Oversize message"
+
+- name: "Oversize message"
   description: "Check a message larger than the expected maximum"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input: '{{"token": kTy234Sdvtp7","event": "{}","log_format": "syslog","location": "master->/var/log/syslog"}}'
     output: "{\"message\":\"(7315): Failure to receive message: size is bigger than expected\",\"error\":5}"
     stage: 'Oversize message'

@@ -46,35 +46,34 @@ references:
 tags:
     - logtest_configuration
 '''
-import os
+from pathlib import Path
 import pytest
-import yaml
 from struct import pack
 
-from wazuh_testing.constants.paths import WAZUH_PATH
+from wazuh_testing.constants.paths.sockets import LOGTEST_SOCKET_PATH
+from wazuh_testing.utils import configuration
+
+from . import TEST_CASES_FOLDER_PATH
 
 # Marks
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
-# Configurations
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/config_templates')
-messages_path = os.path.join(test_data_path, 'config_invalid_socket_input.yaml')
-with open(messages_path) as f:
-    test_cases = yaml.safe_load(f)
+# Configuration
+t_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_invalid_socket_input.yaml')
+t_config_parameters, t_config_metadata, t_case_ids = configuration.get_test_cases_data(t_cases_path)
 
 # Variables
-logtest_path = os.path.join(os.path.join(WAZUH_PATH, 'queue', 'sockets', 'logtest'))
-receiver_sockets_params = [(logtest_path, 'AF_UNIX', 'TCP')]
+receiver_sockets_params = [(LOGTEST_SOCKET_PATH, 'AF_UNIX', 'TCP')]
 receiver_sockets = None  # Set in the fixtures
+
+# Test daemons to restart.
+daemons_handler_configuration = {'daemons': ['wazuh-analysisd', 'wazuh-db']}
 
 
 # Tests
-
-@pytest.mark.parametrize('test_case',
-                         [test_case['test_case'] for test_case in test_cases],
-                         ids=[test_case['name'] for test_case in test_cases])
-def test_invalid_socket_input(restart_required_logtest_daemons, wait_for_logtest_startup, connect_to_sockets_function,
-                              test_case: list):
+@pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
+def test_invalid_socket_input(test_metadata, daemons_handler_module,
+                              wait_for_logtest_startup, connect_to_sockets_function):
     '''
     description: Check if `wazuh-logtest` correctly detects and handles errors when sending a message through
                  the socket to `wazuh-analysisd`. To do this, it sends the inputs through a socket(differentiating by
@@ -114,15 +113,12 @@ def test_invalid_socket_input(restart_required_logtest_daemons, wait_for_logtest
         - errors
         - analysisd
     '''
-    stage = test_case[0]
-
-    if stage["stage"] != 'Oversize message':
-        receiver_sockets[0].send(stage['input'], size=True)
+    if test_metadata["stage"] != 'Oversize message':
+        receiver_sockets[0].send(test_metadata['input'], size=True)
     else:
         logtest_max_req_size = 2 ** 16
         oversize_header = pack("<I", logtest_max_req_size)
-        receiver_sockets[0].send(stage['input'].format(oversize_header))
+        receiver_sockets[0].send(test_metadata['input'].format(oversize_header))
 
     result = receiver_sockets[0].receive(size=True).rstrip(b'\x00').decode()
-    assert stage['output'] == result, 'Failed test case stage {}: {}'.format(test_case.index(stage) + 1,
-                                                                             stage['stage'])
+    assert test_metadata['output'] == result, 'Failed test case stage {}'.format(test_metadata['stage'])
