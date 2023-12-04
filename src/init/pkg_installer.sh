@@ -4,6 +4,10 @@
 SERVICE=wazuh-agent
 OSSEC_INIT_FILE=/etc/ossec-init.conf
 WAZUH_HOME=$(pwd)
+if [ "${WAZUH_HOME}" = "/" ]; then
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Execution path is wrong, interrupting upgrade." >> ./logs/upgrade.log
+    exit 1
+fi
 TMP_DIR_BACKUP=./tmp_bkp
 
 # Check if there is an upgrade in progress
@@ -23,7 +27,7 @@ for dir in "${BACKUP_FOLDERS[@]}"; do
 done
 
 # Clean before backup
-rm -rf ./tmp_bkp/
+rm -rf "${TMP_DIR_BACKUP}/"
 
 WAZUH_REVISION=0
 OSSEC_LIST_FILES=""
@@ -150,8 +154,8 @@ for dir in "${FOLDERS_TO_BACKUP[@]}"; do
 done
 
 if [ -f $OSSEC_INIT_FILE ]; then
-    mkdir -p ./tmp_bkp/etc
-    cp -p $OSSEC_INIT_FILE ./tmp_bkp/etc
+    mkdir -p "${TMP_DIR_BACKUP}/etc"
+    cp -p $OSSEC_INIT_FILE "${TMP_DIR_BACKUP}/etc"
 fi
 
 # Check if systemd is used
@@ -194,8 +198,24 @@ done <<< "$BACKUP_LIST_FILES"
 
 # Generate Backup
 mkdir -p ./backup
-tar czf ./backup/backup_[${BDATE}].tar.gz -C ./tmp_bkp . >> ./logs/upgrade.log 2>&1
-rm -rf ./tmp_bkp/
+if [ "$(ls -A ${TMP_DIR_BACKUP})" ]; then
+    tar czf ./backup/backup_[${BDATE}].tar.gz -C ${TMP_DIR_BACKUP} . >> ./logs/upgrade.log 2>&1
+else
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Nothing to compress while creating the Backup, interrupting upgrade." >> ./logs/upgrade.log
+    exit 1
+fi
+
+RESULT=$?
+rm -rf ${TMP_DIR_BACKUP}/
+
+# Check Backup creation
+if [ $RESULT -eq 0 ]; then
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Backup generated in ${WAZUH_HOME}/backup/backup_[${BDATE}].tar.gz" >> ./logs/upgrade.log
+else
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Error creating the Backup, interrupting upgrade." >> ./logs/upgrade.log
+    rm -rf ./backup/backup_[${BDATE}].tar.gz
+    exit 1
+fi
 
 # If necessary, the list of files is saved with the ossec ownership (Agent < 4.3)
 if [ "${WAZUH_REVISION}" -lt "40300" ]; then
