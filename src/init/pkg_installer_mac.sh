@@ -4,7 +4,7 @@
 
 # Generating Backup
 CURRENT_DIR=`pwd`
-if [ "${CURRENT_DIR}" -eq "/" ]; then
+if [ "${CURRENT_DIR}" = "/" ]; then
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Execution path is wrong, interrupting upgrade." >> ./logs/upgrade.log
     exit 1
 fi
