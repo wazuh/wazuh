@@ -47,60 +47,51 @@ tags:
     - logtest_configuration
 '''
 import pytest
-import os
-from yaml import safe_load
+from os import remove
+from pathlib import Path
 from shutil import copy
 from json import loads
 
-from wazuh_testing.constants.paths import WAZUH_PATH
+from wazuh_testing.constants.paths.sockets import LOGTEST_SOCKET_PATH
+from wazuh_testing.constants.paths.ruleset import CUSTOM_RULES_PATH
+from wazuh_testing.utils import configuration
+
+from . import TEST_CASES_FOLDER_PATH, TEST_RULES_DECODERS_PATH
 
 # Marks
 
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
-# Configurations
-
-config_test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/config_templates')
-messages_path = os.path.join(config_test_data_path, 'config_invalid_rules_syntax.yaml')
-with open(messages_path) as f:
-    test_cases = safe_load(f)
+# Configuration
+t_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_invalid_rules_syntax.yaml')
+t_config_parameters, t_config_metadata, t_case_ids = configuration.get_test_cases_data(t_cases_path)
 
 # Variables
+receiver_sockets_params = [(LOGTEST_SOCKET_PATH, 'AF_UNIX', 'TCP')]
+receiver_sockets = []
 
-logtest_path = os.path.join(os.path.join(WAZUH_PATH, 'queue', 'sockets', 'logtest'))
-receiver_sockets_params = [(logtest_path, 'AF_UNIX', 'TCP')]
-
-
-# Cases
-cases_test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/test_cases')
+# Test daemons to restart.
+daemons_handler_configuration = {'daemons': ['wazuh-analysisd', 'wazuh-db']}
 
 # Fixtures
-
 @pytest.fixture(scope='function')
-def configure_local_rules(get_configuration, request):
+def configure_local_rules(test_metadata):
     """Configure a custom rule in local_rules.xml for testing."""
 
     # configuration for testing
-    file_test = os.path.join(cases_test_data_path, get_configuration['rules'])
-    target_file_test = os.path.join(WAZUH_PATH, 'etc', 'rules', get_configuration['rules'])
+    file_test = Path(TEST_RULES_DECODERS_PATH, test_metadata['rules'])
+    target_file_test = Path(CUSTOM_RULES_PATH, test_metadata['rules'])
     copy(file_test, target_file_test)
 
     yield
 
     # remove configuration
-    os.remove(target_file_test)
-
-
-@pytest.fixture(scope='module', params=test_cases, ids=[test_case['name'] for test_case in test_cases])
-def get_configuration(request):
-    """Get configurations from the module."""
-    return request.param
-
+    remove(target_file_test)
 
 # Tests
-
-def test_invalid_rule_syntax(get_configuration, configure_local_rules,
-                             restart_required_logtest_daemons,
+@pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
+def test_invalid_rule_syntax(test_metadata, configure_local_rules,
+                             daemons_handler_module,
                              wait_for_logtest_startup,
                              connect_to_sockets_function):
     '''
@@ -113,14 +104,14 @@ def test_invalid_rule_syntax(get_configuration, configure_local_rules,
     tier: 0
 
     parameters:
-        - get_configuration:
+        - test_metadata:
             type: fixture
-            brief: Get configuration from the module.
+            brief: Get metadata from the module.
         - configure_local_rules:
             type: fixture
             brief: Configure a custom rule in local_rules.xml for testing. Restart Wazuh is needed for applying the
                    configuration.
-        - restart_required_logtest_daemons:
+        - daemons_handler_module:
             type: fixture
             brief: Wazuh logtests daemons handler.
         - wait_for_logtest_startup:
@@ -147,7 +138,7 @@ def test_invalid_rule_syntax(get_configuration, configure_local_rules,
         - analysisd
     '''
     # send the logtest request
-    receiver_sockets[0].send(get_configuration['input'], size=True)
+    receiver_sockets[0].send(test_metadata['input'], size=True)
 
     # receive logtest reply and parse it
     response = receiver_sockets[0].receive(size=True).rstrip(b'\x00').decode()
@@ -156,15 +147,17 @@ def test_invalid_rule_syntax(get_configuration, configure_local_rules,
     # error list to enable multi-assert per test-case
     errors = []
 
-    if 'output_error' in get_configuration and get_configuration['output_error'] != result["error"]:
+    if 'output_error' in test_metadata and test_metadata['output_error'] != result["error"]:
         errors.append("output_error")
 
-    if ('output_data_msg' in get_configuration and
-            get_configuration['output_data_msg'] not in result["data"]["messages"][0]):
+    if ('output_data_msg' in test_metadata and
+            test_metadata['output_data_msg'] not in result["data"]["messages"][0]):
+        print(result["data"]["messages"][0])
+        print(test_metadata['output_data_msg'])
         errors.append("output_data_msg")
 
-    if ('output_data_codemsg' in get_configuration and
-            get_configuration['output_data_codemsg'] != result["data"]["codemsg"]):
+    if ('output_data_codemsg' in test_metadata and
+            test_metadata['output_data_codemsg'] != result["data"]["codemsg"]):
         errors.append("output_data_codemsg")
 
     # error if any check fails
