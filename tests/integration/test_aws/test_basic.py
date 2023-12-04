@@ -11,7 +11,6 @@ import pytest
 # qa-integration-framework imports
 from wazuh_testing import session_parameters
 
-
 # Local module imports
 from . import event_monitor
 from .utils import ERROR_MESSAGE, TestConfigurator, local_internal_options
@@ -96,7 +95,7 @@ def test_bucket_defaults(
         timeout=session_parameters.default_timeout,
         callback=event_monitor.callback_detect_aws_module_start
     )
-    
+
     assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
 
     # Check command was called correctly
@@ -104,7 +103,7 @@ def test_bucket_defaults(
         timeout=session_parameters.default_timeout,
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
-    
+
     assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     # Detect any ERROR message
@@ -126,9 +125,9 @@ configurator.configure_test(configuration_file='cloudwatch_configuration_default
 @pytest.mark.parametrize('configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
-def test_service_defaults(
-        configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
-        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
+def test_service_defaults(configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
+                          clean_aws_services_db, configure_local_internal_options_function, truncate_monitored_files,
+                          restart_wazuh_function, file_monitoring
 ):
     """
     description: The module is invoked with the expected parameters and no error occurs.
@@ -213,7 +212,7 @@ def test_service_defaults(
         timeout=session_parameters.default_timeout,
         callback=event_monitor.callback_detect_all_aws_err
     )
-    
+
     assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']
 
 
@@ -227,9 +226,9 @@ configurator.configure_test(configuration_file='inspector_configuration_defaults
 @pytest.mark.parametrize('configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
-def test_inspector_defaults(
-        configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
-        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
+def test_inspector_defaults(configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
+                            clean_aws_services_db, configure_local_internal_options_function, truncate_monitored_files,
+                            restart_wazuh_function, file_monitoring
 ):
     """
     description: The module is invoked with the expected parameters and no error occurs.

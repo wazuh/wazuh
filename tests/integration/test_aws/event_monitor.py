@@ -113,9 +113,9 @@ def callback_detect_aws_empty_value(line):
     """
 
     if (
-            re.match(fr"{INVALID_EMPTY_TYPE_ERROR}", line) or
-            re.match(fr"{EMPTY_CONTENT_ERROR}", line) or
-            re.match(fr"{EMPTY_CONTENT_WARNING}", line)
+        re.match(fr"{INVALID_EMPTY_TYPE_ERROR}", line) or
+        re.match(fr"{EMPTY_CONTENT_ERROR}", line) or
+        re.match(fr"{EMPTY_CONTENT_WARNING}", line)
     ):
         return line
 
@@ -131,10 +131,10 @@ def callback_detect_aws_invalid_value(line):
     """
 
     if (
-            re.match(fr"{INVALID_EMPTY_SERVICE_TYPE_ERROR}", line) or
-            re.match(fr"{INVALID_TAG_CONTENT_ERROR}", line) or
-            re.match(fr"{PARSING_BUCKET_ERROR_WARNING}", line),
-            re.match(fr"{PARSING_SERVICE_ERROR_WARNING}", line)
+        re.match(fr"{INVALID_EMPTY_SERVICE_TYPE_ERROR}", line) or
+        re.match(fr"{INVALID_TAG_CONTENT_ERROR}", line) or
+        re.match(fr"{PARSING_BUCKET_ERROR_WARNING}", line),
+        re.match(fr"{PARSING_SERVICE_ERROR_WARNING}", line)
     ):
         return line
 
@@ -150,8 +150,8 @@ def callback_detect_bucket_or_service_call(line):
     """
 
     if (
-            re.match(fr"{SERVICE_ANALYSIS}", line) or
-            re.match(fr"{BUCKET_ANALYSIS}", line)
+        re.match(fr"{SERVICE_ANALYSIS}", line) or
+        re.match(fr"{BUCKET_ANALYSIS}", line)
     ):
         return line
 
