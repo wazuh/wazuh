@@ -70,7 +70,6 @@ private:
             context.data.at("paths").push_back(fullFilePath);
         }
 
-        // Set the status of the stage.
         logDebug2(WM_CONTENTUPDATER, "CtiOffsetDownloader - Finishing");
     }
 
