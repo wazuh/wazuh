@@ -492,7 +492,12 @@ def upload_rule_file(filename: str, content: str, relative_dirname: str = None,
         upload_file(content, to_relative_path(full_path))
 
         # After uploading the file, validate it using a logtest dummy msg
-        validate_dummy_logtest()
+        try:
+            validate_dummy_logtest()
+        except WazuhError as exc:
+            if not overwrite and exists(full_path):
+                delete_rule_file(filename=filename, relative_dirname=relative_dirname)
+                raise exc
 
         result.affected_items.append(to_relative_path(full_path))
         result.total_affected_items = len(result.affected_items)
