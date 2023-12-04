@@ -1,5 +1,3 @@
-import os
-import time
 from datetime import datetime
 
 from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH
@@ -33,6 +31,22 @@ def parse_time_from_log_line(log_line):
     log_time = datetime(year=int(year), month=int(month), day=int(day), hour=int(hour), minute=int(minute),
                         second=int(second))
     return log_time
+
+def get_regex(pattern, server_address, server_port):
+    if(pattern == 'AGENTD_TRYING_CONNECT'):
+        regex = globals()[pattern]
+        values = {'IP': str(server_address), 'PORT':str(server_port)}
+    elif (pattern == 'AGENTD_REQUESTING_KEY'):
+        regex = globals()[pattern]
+        values = {'IP': str(server_address)}
+    elif (pattern == 'AGENTD_CONNECTED_TO_ENROLLMENT'):
+        regex = globals()[pattern]
+        values = {'IP': '', 'PORT': ''}
+    elif (pattern == 'AGENTD_RECEIVED_VALID_KEY' or pattern == 'AGENTD_RECEIVED_ACK' or 
+          pattern == 'AGENTD_SERVER_RESPONDED' or pattern == 'AGENTD_RECEIVED_ACK'):
+        regex = globals()[pattern]
+        values = {}
+    return regex, values
 
 def wait_keepalive():
     """
