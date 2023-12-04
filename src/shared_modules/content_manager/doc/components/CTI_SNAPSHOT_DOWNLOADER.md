@@ -2,7 +2,7 @@
 
 ## Details
 
-The [CTI snapshot downloader](../../src/components/CtiSnapshotDownloader.hpp) stage is part of the Content Manager orchestration and is in charge of downloading a content snapshot file from a CTI API to be then processed by the following stages. The downloaded file is assumed to be compresed and so is stored the downloads folder.
+The [CTI snapshot downloader](../../src/components/CtiSnapshotDownloader.hpp) stage is part of the Content Manager orchestration and is in charge of downloading a content snapshot file from a CTI API to be then processed by the following stages. The downloaded file is assumed to be compressed and so is stored in the downloads folder.
 
 The download process can be summarized in two steps:
 1. Get the last snapshot file URL from CTI. This is done by performing an HTTP GET query to the CTI base URL.

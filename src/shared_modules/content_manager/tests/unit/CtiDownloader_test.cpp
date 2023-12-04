@@ -12,6 +12,7 @@
 #include "CtiDownloader_test.hpp"
 #include "CtiDownloader.hpp"
 #include "HTTPRequest.hpp"
+#include "fakes/fakeServer.hpp"
 #include "updaterContext.hpp"
 #include "gtest/gtest.h"
 #include <memory>

@@ -32,16 +32,16 @@
  */
 class cti_server_error : public std::exception // NOLINT
 {
-    std::string m_what; ///< Exception message.
+    std::string m_errorMessage; ///< Exception message.
 
 public:
     /**
      * @brief Class constructor.
      *
-     * @param what Exception message.
+     * @param errorMessage Exception message.
      */
-    explicit cti_server_error(std::string what)
-        : m_what(std::move(what))
+    explicit cti_server_error(std::string errorMessage)
+        : m_errorMessage(std::move(errorMessage))
     {
     }
 
@@ -52,7 +52,7 @@ public:
      */
     const char* what() const noexcept override
     {
-        return m_what.c_str();
+        return m_errorMessage.c_str();
     }
 };
 
