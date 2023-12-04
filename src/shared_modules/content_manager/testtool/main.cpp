@@ -3,6 +3,8 @@
 #include "defs.h"
 #include <chrono>
 #include <iostream>
+#include <map>
+#include <string>
 #include <thread>
 
 /*
@@ -71,22 +73,32 @@ void logFunction(const int logLevel,
     }
     const auto fileName {file.substr(pos, file.size() - pos)};
 
+    // Set log level tag.
+    static const std::map<int, std::string> LOG_LEVEL_TAGS {{LOGLEVEL_DEBUG_VERBOSE, "DEBUG_VERBOSE"},
+                                                            {LOGLEVEL_DEBUG, "DEBUG"},
+                                                            {LOGLEVEL_INFO, "INFO"},
+                                                            {LOGLEVEL_WARNING, "WARNING"},
+                                                            {LOGLEVEL_ERROR, "ERROR"},
+                                                            {LOGLEVEL_CRITICAL, "CRITICAL"}};
+    const auto levelTag {"[" + LOG_LEVEL_TAGS.at(logLevel) + "]"};
+
     if (logLevel == LOGLEVEL_ERROR || logLevel == LOGLEVEL_CRITICAL)
     {
         // Error logs.
-        std::cerr << tag << ": " << message.c_str() << std::endl;
+        std::cerr << tag << ":" << levelTag << ": " << message.c_str() << std::endl;
     }
     else if (logLevel == LOGLEVEL_INFO || logLevel == LOGLEVEL_WARNING)
     {
         // Info and warning logs.
-        std::cout << tag << ": " << message.c_str() << std::endl;
+        std::cout << tag << ":" << levelTag << ": " << message.c_str() << std::endl;
     }
     else
     {
         // Debug logs.
         if (VERBOSE)
         {
-            std::cout << tag << ":" << fileName << ":" << line << " " << func << ": " << message.c_str() << std::endl;
+            std::cout << tag << ":" << levelTag << ":" << fileName << ":" << line << " " << func << ": "
+                      << message.c_str() << std::endl;
         }
     }
 }
