@@ -46,8 +46,8 @@ private:
         m_lastSnapshotLink = parameters.lastSnapshotLink;
     }
 
-    int m_lastOffset;               ///< Last offset downloaded from CTI.
-    std::string m_lastSnapshotLink; ///< Last snapshot link downloaded from CTI.
+    int m_lastOffset {};               ///< Last offset downloaded from CTI.
+    std::string m_lastSnapshotLink {}; ///< Last snapshot link downloaded from CTI.
 
 public:
     /**

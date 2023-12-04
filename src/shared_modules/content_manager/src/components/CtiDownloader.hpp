@@ -87,8 +87,8 @@ protected:
      */
     struct CtiBaseParameters
     {
-        int lastOffset;               ///< Last available offset from CTI.
-        std::string lastSnapshotLink; ///< Last snapshot URL from CTI.
+        int lastOffset {};               ///< Last available offset from CTI.
+        std::string lastSnapshotLink {}; ///< Last snapshot URL from CTI.
     };
 
     /**
@@ -188,7 +188,7 @@ protected:
 
 public:
     // LCOV_EXCL_START
-    virtual ~CtiDownloader() override = default;
+    ~CtiDownloader() override = default;
     // LCOV_EXCL_STOP
 
     /**
@@ -197,9 +197,9 @@ public:
      * @param urlRequest Object to perform the HTTP requests to the CTI API.
      * @param componentName Component name used to update the stage status.
      */
-    explicit CtiDownloader(IURLRequest& urlRequest, const std::string& componentName)
+    explicit CtiDownloader(IURLRequest& urlRequest, std::string componentName)
         : m_urlRequest(urlRequest)
-        , m_componentName(componentName)
+        , m_componentName(std::move(componentName))
     {
     }
 
@@ -217,7 +217,7 @@ public:
         {
             download(*context);
         }
-        catch (const std::exception& e)
+        catch ([[maybe_unused]] const std::exception& e)
         {
             // Push fail status.
             pushStageStatus(*context, "fail");
