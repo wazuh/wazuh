@@ -76,7 +76,7 @@ daemons_handler_configuration = {'all_daemons': True}
 # Test
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t_configurations, t_config_metadata), ids=t_case_ids)
 def test_get_configuration_sock(test_configuration, test_metadata, set_wazuh_configuration,
-                                daemons_handler, connect_to_sockets_function):
+                                daemons_handler, connect_to_sockets):
     '''
     description: Check analysis Unix socket returns the correct Logtest configuration under different sets of
                  configurations, `wazuh-analisysd` returns the right information from the `rule_test` configuration
@@ -98,7 +98,7 @@ def test_get_configuration_sock(test_configuration, test_metadata, set_wazuh_con
         - restart_wazuh:
             type: fixture
             brief: Restart wazuh, ossec.log and start a new monitor.
-        - connect_to_sockets_function:
+        - connect_to_sockets:
             type: fixture
             brief: Function scope version of 'connect_to_sockets' which connects to the specified sockets for the test.
 

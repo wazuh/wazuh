@@ -107,7 +107,7 @@ def configure_rules_list(test_metadata):
 @pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
 def test_rules_verbose(test_metadata, daemons_handler_module,
                        configure_rules_list, wait_for_logtest_startup,
-                       connect_to_sockets_function):
+                       connect_to_sockets):
     '''
     description: Check if 'wazuh-logtest' works correctly in 'verbose' mode for rules debugging. To do this, it sends
                  the inputs through a socket, receives and decodes the message. Then, it checks
@@ -131,7 +131,7 @@ def test_rules_verbose(test_metadata, daemons_handler_module,
         - wait_for_logtest_startup:
             type: fixture
             brief: Wait until logtest has begun.
-        - connect_to_sockets_function:
+        - connect_to_sockets:
             type: fixture
             brief: Function scope version of 'connect_to_sockets' which connects to the specified sockets for the test.
 

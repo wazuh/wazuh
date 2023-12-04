@@ -93,7 +93,7 @@ def configure_local_rules(test_metadata):
 def test_invalid_rule_syntax(test_metadata, configure_local_rules,
                              daemons_handler_module,
                              wait_for_logtest_startup,
-                             connect_to_sockets_function):
+                             connect_to_sockets):
     '''
     description: Check if `wazuh-logtest` correctly detects and handles errors when processing a rules file.
                  To do this, it sends a logtest request(via AF_UNIX socket) using the input configurations and parses
@@ -117,7 +117,7 @@ def test_invalid_rule_syntax(test_metadata, configure_local_rules,
         - wait_for_logtest_startup:
             type: fixture
             brief: Wait until logtest has begun.
-        - connect_to_sockets_function:
+        - connect_to_sockets:
             type: fixture
             brief: Function scope version of 'connect_to_sockets' which connects to the specified sockets for the test.
 

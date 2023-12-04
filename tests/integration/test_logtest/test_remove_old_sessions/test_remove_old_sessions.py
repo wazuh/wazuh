@@ -47,25 +47,27 @@ tags:
     - logtest_configuration
 '''
 import pytest
-import os
+from pathlib import Path
+from json import dumps
 
 from logtest import callback_remove_session, callback_session_initialized
-from wazuh_testing.utils.configuration  import load_wazuh_configurations
 from wazuh_testing.tools.socket_controller import SocketController
 from wazuh_testing.constants.paths.sockets import LOGTEST_SOCKET_PATH
 from wazuh_testing.global_parameters import GlobalParameters
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.tools.monitors.file_monitor import FileMonitor
-from json import dumps
+from wazuh_testing.tools.monitors import file_monitor
+from wazuh_testing.utils import configuration
+
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 # Marks
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
-# Configurations
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/config_templates')
-configurations_path = os.path.join(test_data_path, 'config_wazuh_conf.yaml')
-configurations = load_wazuh_configurations(configurations_path, __name__)
-local_internal_options = {'analysisd.debug': '2'}
+# Configuration
+t_config_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_old_sessions.yaml')
+t_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_old_sessions.yaml')
+t_config_parameters, t_config_metadata, t_case_ids = configuration.get_test_cases_data(t_cases_path)
+t_configurations = configuration.load_configuration_template(t_config_path, t_config_parameters, t_config_metadata)
 
 # Variables
 local_internal_options = {'analysisd.debug': '1'}
@@ -76,32 +78,16 @@ create_session_data = {'version': 1, 'command': 'log_processing',
                                       'location': 'master->/var/log/syslog'}}
 msg_create_session = dumps(create_session_data)
 global_parameters = GlobalParameters()
-wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+wazuh_log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
-
-# Functions to manage the comunication with Wazuh-logtest
-def create_connection():
-    return SocketController(address=LOGTEST_SOCKET_PATH, family='AF_UNIX', connection_protocol='TCP')
-
-
-def remove_connection(connection):
-    connection.close()
-    del connection
-
-
-# Fixture
-
-@pytest.fixture(scope='module', params=configurations)
-def get_configuration(request):
-    """Get configurations from the module."""
-    return request.param
+# Test daemons to restart.
+daemons_handler_configuration = {'all_daemons': True}
 
 
 # Test
-
-def test_remove_old_session(configure_local_internal_options_module,
-                            get_configuration, configure_environment,
-                            file_monitoring, restart_required_logtest_daemons,
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(t_configurations, t_config_metadata), ids=t_case_ids)
+def test_remove_old_session(configure_local_internal_options, test_configuration,
+                            test_metadata, set_wazuh_configuration, daemons_handler,
                             wait_for_logtest_startup):
     '''
     description: Check if 'wazuh-logtest' correctly detects and handles the situation where trying to use more
@@ -154,17 +140,18 @@ def test_remove_old_session(configure_local_internal_options_module,
         - session_limit
         - analysisd
     '''
-    max_sessions = int(get_configuration['sections'][0]['elements'][2]['max_sessions']['value'])
+    max_sessions = int(test_metadata['max_sessions'])
 
     first_session_token = None
 
     for i in range(0, max_sessions):
 
-        receiver_socket = create_connection()
+        receiver_socket = SocketController(address=LOGTEST_SOCKET_PATH, family='AF_UNIX', connection_protocol='TCP')
         receiver_socket.send(msg_create_session, True)
         msg_recived = receiver_socket.receive()[4:]
         msg_recived = msg_recived.decode()
-        remove_connection(receiver_socket)
+        receiver_socket.close()
+        del receiver_socket
 
         if i == 0:
             first_session_token = wazuh_log_monitor.start(timeout=global_parameters.default_timeout,
@@ -176,11 +163,12 @@ def test_remove_old_session(configure_local_internal_options_module,
             assert wazuh_log_monitor.callback_result,'Session initialization event not found'
 
     # This session should do Wazuh-logtest to remove the oldest session
-    receiver_socket = create_connection()
+    receiver_socket = SocketController(address=LOGTEST_SOCKET_PATH, family='AF_UNIX', connection_protocol='TCP')
     receiver_socket.send(msg_create_session, True)
     msg_recived = receiver_socket.receive()[4:]
     msg_recived = msg_recived.decode()
-    remove_connection(receiver_socket)
+    receiver_socket.close()
+    del receiver_socket
 
     remove_session_token = wazuh_log_monitor.start(timeout=global_parameters.default_timeout,
                                              callback=callback_remove_session)
