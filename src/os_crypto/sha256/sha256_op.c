@@ -15,10 +15,10 @@
 #include "headers/defs.h"
 
 #include <openssl/sha.h>
+#include <openssl/evp.h>
 
 int OS_SHA256_File(const char *fname, os_sha256 output, int mode)
 {
-    SHA256_CTX c;
     FILE *fp;
     unsigned char buf[2048 + 2];
     unsigned char md[SHA256_DIGEST_LENGTH];
@@ -32,18 +32,28 @@ int OS_SHA256_File(const char *fname, os_sha256 output, int mode)
         return (-1);
     }
 
-    SHA256_Init(&c);
-    while ((n = fread(buf, 1, 2048, fp)) > 0) {
-        buf[n] = '\0';
-        SHA256_Update(&c, buf, n);
+    EVP_MD_CTX *sha256_ctx = EVP_MD_CTX_new();
+
+    if (!sha256_ctx) {
+        fclose(fp);
+        return (-1);
     }
 
-    SHA256_Final(&(md[0]), &c);
+    EVP_DigestInit(sha256_ctx, EVP_sha256());
+
+    while ((n = fread(buf, 1, 2048, fp)) > 0) {
+        buf[n] = '\0';
+        EVP_DigestUpdate(sha256_ctx, buf, n);
+    }
+
+    EVP_DigestFinal(sha256_ctx, md, NULL);
 
     for (n = 0; n < SHA256_DIGEST_LENGTH; n++) {
         snprintf(output, 3, "%02x", md[n]);
         output += 2;
     }
+
+    EVP_MD_CTX_free(sha256_ctx);
 
     fclose(fp);
 
@@ -52,32 +62,38 @@ int OS_SHA256_File(const char *fname, os_sha256 output, int mode)
 
 void OS_SHA256_String(const char *str, os_sha256 output)
 {
-    SHA256_CTX c;
     unsigned char md[SHA256_DIGEST_LENGTH];
     size_t n;
 
-    SHA256_Init(&c);
-    SHA256_Update(&c, str, strlen(str));
-    SHA256_Final(&(md[0]), &c);
+    EVP_MD_CTX *sha256_ctx = EVP_MD_CTX_new();
+
+    EVP_DigestInit(sha256_ctx, EVP_sha256());
+    EVP_DigestUpdate(sha256_ctx, str, strlen(str));
+    EVP_DigestFinal(sha256_ctx, md, NULL);
 
     for (n = 0; n < SHA256_DIGEST_LENGTH; n++) {
         snprintf(output, 3, "%02x", md[n]);
         output += 2;
     }
+
+    EVP_MD_CTX_free(sha256_ctx);
 }
 
 void OS_SHA256_String_sized(const char *str, char* output, size_t size)
 {
-    SHA256_CTX c;
     unsigned char md[SHA256_DIGEST_LENGTH];
     size_t n;
 
-    SHA256_Init(&c);
-    SHA256_Update(&c, str, strlen(str));
-    SHA256_Final(&(md[0]), &c);
+    EVP_MD_CTX *sha256_ctx = EVP_MD_CTX_new();
+
+    EVP_DigestInit(sha256_ctx, EVP_sha256());
+    EVP_DigestUpdate(sha256_ctx, str, strlen(str));
+    EVP_DigestFinal(sha256_ctx, md, NULL);
 
     for (n = 0; n < size/2 && n < SHA256_DIGEST_LENGTH; n++) {
         snprintf(output, 3, "%02x", md[n]);
         output += 2;
     }
+
+    EVP_MD_CTX_free(sha256_ctx);
 }
