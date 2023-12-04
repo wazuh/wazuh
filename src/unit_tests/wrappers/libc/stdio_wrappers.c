@@ -18,17 +18,17 @@
 
 fpos_t * test_position = NULL;
 
-extern int __real_fclose(FILE *_File);
-int __wrap_fclose(FILE *_File) {
+extern int __real_fclose(FILE *__stream);
+int __wrap_fclose(FILE *__stream) {
     if(test_mode) {
-        check_expected(_File);
+        check_expected(__stream);
         return mock();
     } else {
-        return __real_fclose(_File);
+        return __real_fclose(__stream);
     }
 }
-void expect_fclose(FILE *_File, int ret) {
-    expect_value(__wrap_fclose, _File, _File);
+void expect_fclose(FILE *__stream, int ret) {
+    expect_value(__wrap_fclose, __stream, __stream);
     will_return(__wrap_fclose, ret);
 }
 

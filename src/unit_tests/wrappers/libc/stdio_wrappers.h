@@ -15,8 +15,8 @@
 
 extern fpos_t * test_position;
 
-int __wrap_fclose(FILE *_File);
-void expect_fclose(FILE *_File, int ret);
+int __wrap_fclose(FILE *__stream);
+void expect_fclose(FILE *__stream, int ret);
 
 int __wrap_fflush(FILE *__stream);
 

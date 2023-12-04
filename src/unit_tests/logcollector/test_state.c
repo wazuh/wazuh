@@ -21,6 +21,7 @@
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../wrappers/posix/pthread_wrappers.h"
@@ -878,9 +879,9 @@ void test_w_logcollector_state_dump_fail_open(void ** state) {
     will_return(__wrap_cJSON_Print, strdup("Test 123"));
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_fopen, path, LOGCOLLECTOR_STATE);
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, __filename, LOGCOLLECTOR_STATE);
+    expect_string(__wrap_wfopen, __modes, "w");
+    will_return(__wrap_wfopen, NULL);
 
     const char * error_msg = "(1103): Could not open file "
                              "'" LOGCOLLECTOR_STATE "' due to";
@@ -898,9 +899,9 @@ void test_w_logcollector_state_dump_fail_write(void ** state) {
     will_return(__wrap_cJSON_Print, strdup("Test 123"));
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_fopen, path, LOGCOLLECTOR_STATE);
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, (FILE *) 100);
+    expect_string(__wrap_wfopen, __filename, LOGCOLLECTOR_STATE);
+    expect_string(__wrap_wfopen, __modes, "w");
+    will_return(__wrap_wfopen, (FILE *) 100);
     will_return(__wrap_fwrite, 0);
 
     const char * error_msg = "(1110): Could not write file "
@@ -922,9 +923,9 @@ void test_w_logcollector_state_dump_ok(void ** state) {
     will_return(__wrap_cJSON_Print, strdup("Test 123"));
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_fopen, path, LOGCOLLECTOR_STATE);
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, (FILE *) 100);
+    expect_string(__wrap_wfopen, __filename, LOGCOLLECTOR_STATE);
+    expect_string(__wrap_wfopen, __modes, "w");
+    will_return(__wrap_wfopen, (FILE *) 100);
     will_return(__wrap_fwrite, 1);
 
     expect_value(__wrap_fclose, _File, (FILE *) 100);
@@ -1064,9 +1065,9 @@ void test_w_logcollector_state_main_ok(void ** state) {
     will_return(__wrap_cJSON_Print, strdup("Test 123"));
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_fopen, path, LOGCOLLECTOR_STATE);
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, (FILE *) 100);
+    expect_string(__wrap_wfopen, __filename, LOGCOLLECTOR_STATE);
+    expect_string(__wrap_wfopen, __modes, "w");
+    will_return(__wrap_wfopen, (FILE *) 100);
     will_return(__wrap_fwrite, 1);
 
     expect_value(__wrap_fclose, _File, (FILE *) 100);
