@@ -43,7 +43,7 @@ def send_logtest_msg(command: str = None, parameters: dict = None) -> dict:
     return response
 
 
-def validate_dummy_logtest():
+def validate_dummy_logtest() -> dict:
     """
     Validates a dummy log test by sending a log test message.
 
