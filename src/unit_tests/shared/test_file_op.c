@@ -19,6 +19,7 @@
 #include "../error_messages/error_messages.h"
 #include "../wrappers/common.h"
 #include "../wrappers/libc/stdlib_wrappers.h"
+#include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
@@ -87,9 +88,9 @@ void test_CreatePID_success(void **state)
 
     *state = content;
 
-    expect_string(__wrap_fopen, path, "var/run/test-2345.pid");
-    expect_string(__wrap_fopen, mode, "a");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __filename, "var/run/test-2345.pid");
+    expect_string(__wrap_wfopen, __modes, "a");
+    will_return(__wrap_wfopen, 1);
 
     expect_value(__wrap_fprintf, __stream, 1);
     expect_string(__wrap_fprintf, formatted_msg, "2345\n");
@@ -110,9 +111,9 @@ void test_CreatePID_failure_chmod(void **state)
     (void) state;
     int ret;
 
-    expect_string(__wrap_fopen, path, "var/run/test-2345.pid");
-    expect_string(__wrap_fopen, mode, "a");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __filename, "var/run/test-2345.pid");
+    expect_string(__wrap_wfopen, __modes, "a");
+    will_return(__wrap_wfopen, 1);
 
     expect_value(__wrap_fprintf, __stream, 1);
     expect_string(__wrap_fprintf, formatted_msg, "2345\n");
@@ -135,9 +136,9 @@ void test_CreatePID_failure_fopen(void **state)
     (void) state;
     int ret;
 
-    expect_string(__wrap_fopen, path, "var/run/test-2345.pid");
-    expect_string(__wrap_fopen, mode, "a");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, __filename, "var/run/test-2345.pid");
+    expect_string(__wrap_wfopen, __modes, "a");
+    will_return(__wrap_wfopen, NULL);
 
     ret = CreatePID("test", 2345);
     assert_int_equal(-1, ret);
@@ -187,9 +188,9 @@ void test_w_is_compressed_gz_file_uncompressed(void **state) {
     char * path = "/test/file.gz";
     int ret = 0;
 
-    expect_string(__wrap_fopen, path, "/test/file.gz");
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen,__filename, "/test/file.gz");
+    expect_string(__wrap_wfopen, __modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fread, "fake");
     will_return(__wrap_fread, 2);
@@ -207,9 +208,9 @@ void test_w_is_compressed_bz2_file_compressed(void **state) {
     char * path = "/test/file.bz2";
     int ret = 0;
 
-    expect_string(__wrap_fopen, path, "/test/file.bz2");
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen,__filename, "/test/file.bz2");
+    expect_string(__wrap_wfopen, __modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
     // BZh is 0x42 0x5a 0x68
     will_return(__wrap_fread, "BZh");
@@ -226,9 +227,9 @@ void test_w_is_compressed_bz2_file_uncompressed(void **state) {
     char * path = "/test/file.bz2";
     int ret = 0;
 
-    expect_string(__wrap_fopen, path, "/test/file.bz2");
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen,__filename, "/test/file.bz2");
+    expect_string(__wrap_wfopen, __modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fread, "fake");
     will_return(__wrap_fread, 3);
@@ -249,9 +250,9 @@ void test_w_uncompress_bz2_gz_file_bz2(void **state) {
     char * dest = "/test/file";
     int ret;
 
-    expect_string(__wrap_fopen, path, "/test/file.bz2");
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen,__filename, "/test/file.bz2");
+    expect_string(__wrap_wfopen, __modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fread, "BZh");
     will_return(__wrap_fread, 3);
@@ -260,9 +261,9 @@ void test_w_uncompress_bz2_gz_file_bz2(void **state) {
     expect_string(__wrap_bzip2_uncompress, file, "/test/file");
     will_return(__wrap_bzip2_uncompress, 0);
 
-    expect_string(__wrap_fopen, path, "/test/file.bz2");
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 0);
+    expect_string(__wrap_wfopen,__filename, "/test/file.bz2");
+    expect_string(__wrap_wfopen, __modes, "rb");
+    will_return(__wrap_wfopen, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "The file '/test/file.bz2' was successfully uncompressed into '/test/file'");
 
@@ -280,9 +281,9 @@ void test_MergeAppendFile_open_fail(void **state) {
     int path_offset = -1;
     int ret;
 
-    expect_string(__wrap_fopen, path, file);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, __filename, file);
+    expect_string(__wrap_wfopen, __modes, "r");
+    will_return(__wrap_wfopen, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "Unable to open file: 'test.txt' due to [(0)-(Success)].");
 
@@ -297,9 +298,9 @@ void test_MergeAppendFile_fseek_fail(void **state) {
     int path_offset = -1;
     int ret;
 
-    expect_string(__wrap_fopen, path, file);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 6);
+    expect_string(__wrap_wfopen, __filename, file);
+    expect_string(__wrap_wfopen, __modes, "r");
+    will_return(__wrap_wfopen, 6);
 
     will_return(__wrap_fseek, 1);
 
@@ -319,9 +320,9 @@ void test_MergeAppendFile_fseek2_fail(void **state) {
     int path_offset = -1;
     int ret;
 
-    expect_string(__wrap_fopen, path, file);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 6);
+    expect_string(__wrap_wfopen, __filename, file);
+    expect_string(__wrap_wfopen, __modes, "r");
+    will_return(__wrap_wfopen, 6);
 
     will_return(__wrap_fseek, 0);
 
@@ -350,9 +351,9 @@ void test_MergeAppendFile_diff_ftell(void **state) {
     int path_offset = 0;
     int ret;
 
-    expect_string(__wrap_fopen, path, file);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 6);
+    expect_string(__wrap_wfopen, __filename, file);
+    expect_string(__wrap_wfopen, __modes, "r");
+    will_return(__wrap_wfopen, 6);
 
     will_return(__wrap_fseek, 0);
 
@@ -390,9 +391,9 @@ void test_MergeAppendFile_success(void **state) {
     int path_offset = 0;
     int ret;
 
-    expect_string(__wrap_fopen, path, file);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 6);
+    expect_string(__wrap_wfopen, __filename, file);
+    expect_string(__wrap_wfopen, __modes, "r");
+    will_return(__wrap_wfopen, 6);
 
     will_return(__wrap_fseek, 0);
 
@@ -431,11 +432,11 @@ void test_w_compress_gzfile_wfopen_fail(void **state){
     char *srcfile = "testfilesrc";
     char *dstfile = "testfiledst.gz";
 
-    expect_string(__wrap_fopen, path, srcfile);
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, __filename, srcfile);
+    expect_string(__wrap_wfopen, __modes, "rb");
+    will_return(__wrap_wfopen, NULL);
 
-    expect_string(__wrap__merror, formatted_msg, "in w_compress_gzfile(): wfopen error testfilesrc (0):'Success'");
+    expect_string(__wrap__merror, formatted_msg, "in w_compress_gzfile(): fopen error testfilesrc (0):'Success'");
 
     ret = w_compress_gzfile(srcfile, dstfile);
     assert_int_equal(ret, -1);
@@ -447,9 +448,9 @@ void test_w_compress_gzfile_gzopen_fail(void **state){
     char *srcfile = "testfilesrc";
     char *dstfile = "testfiledst.gz";
 
-    expect_string(__wrap_fopen, path, srcfile);
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __filename, srcfile);
+    expect_string(__wrap_wfopen, __modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
     expect_string(__wrap_gzopen, path, dstfile);
     expect_string(__wrap_gzopen, mode, "w");
@@ -470,9 +471,9 @@ void test_w_compress_gzfile_write_error(void **state){
     char *srcfile = "testfilesrc";
     char *dstfile = "testfiledst.gz";
 
-    expect_string(__wrap_fopen, path, srcfile);
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __filename, srcfile);
+    expect_string(__wrap_wfopen, __modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
     expect_string(__wrap_gzopen, path, dstfile);
     expect_string(__wrap_gzopen, mode, "w");
@@ -506,9 +507,9 @@ void test_w_compress_gzfile_success(void **state){
     char *srcfile = "testfilesrc";
     char *dstfile = "testfiledst.gz";
 
-    expect_string(__wrap_fopen, path, srcfile);
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __filename, srcfile);
+    expect_string(__wrap_wfopen, __mode, "rb");
+    will_return(__wrap_wfopen, 1);
 
     expect_string(__wrap_gzopen, path, dstfile);
     expect_string(__wrap_gzopen, mode, "w");
@@ -560,11 +561,11 @@ void test_w_uncompress_gzfile_fopen_fail(void **state) {
     will_return(__wrap_lstat, &buf);
     will_return(__wrap_lstat, 0);
 
-    expect_string(__wrap_fopen, path, dstfile);
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, __filename, dstfile);
+    expect_string(__wrap_wfopen, __modes, "wb");
+    will_return(__wrap_wfopen, NULL);
 
-    expect_string(__wrap__merror, formatted_msg, "in w_uncompress_gzfile(): wfopen error testfiledst (0):'Success'");
+    expect_string(__wrap__merror, formatted_msg, "in w_uncompress_gzfile(): fopen error testfiledst (0):'Success'");
 
     ret = w_uncompress_gzfile(srcfile, dstfile);
     assert_int_equal(ret, -1);
@@ -580,9 +581,9 @@ void test_w_uncompress_gzfile_gzopen_fail(void **state) {
     will_return(__wrap_lstat, &buf);
     will_return(__wrap_lstat, 0);
 
-    expect_string(__wrap_fopen, path, dstfile);
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __filename, dstfile);
+    expect_string(__wrap_wfopen, __modes, "wb");
+    will_return(__wrap_wfopen, 1);
 
     expect_string(__wrap_gzopen, path, srcfile);
     expect_string(__wrap_gzopen, mode, "rb");
@@ -607,9 +608,9 @@ void test_w_uncompress_gzfile_first_read_fail(void **state) {
     will_return(__wrap_lstat, &buf);
     will_return(__wrap_lstat, 0);
 
-    expect_string(__wrap_fopen, path, dstfile);
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __filename, dstfile);
+    expect_string(__wrap_wfopen, __modes, "wb");
+    will_return(__wrap_wfopen, 1);
 
     expect_string(__wrap_gzopen, path, srcfile);
     expect_string(__wrap_gzopen, mode, "rb");
@@ -651,9 +652,9 @@ void test_w_uncompress_gzfile_first_read_success(void **state) {
     will_return(__wrap_lstat, &buf);
     will_return(__wrap_lstat, 0);
 
-    expect_string(__wrap_fopen, path, dstfile);
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __filename, dstfile);
+    expect_string(__wrap_wfopen, __modes, "wb");
+    will_return(__wrap_wfopen, 1);
 
     expect_string(__wrap_gzopen, path, srcfile);
     expect_string(__wrap_gzopen, mode, "rb");
@@ -699,9 +700,9 @@ void test_w_uncompress_gzfile_success(void **state) {
     will_return(__wrap_lstat, &buf);
     will_return(__wrap_lstat, 0);
 
-    expect_string(__wrap_fopen, path, dstfile);
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __filename, dstfile);
+    expect_string(__wrap_wfopen, __modes, "wb");
+    will_return(__wrap_wfopen, 1);
 
     expect_string(__wrap_gzopen, path, srcfile);
     expect_string(__wrap_gzopen, mode, "rb");
@@ -868,9 +869,9 @@ void test_get_file_content(void **state)
     const char * expected = "test string";
     const char * file_name = "test_file.txt";
 
-    expect_string(__wrap_fopen, path, file_name);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __filename, file_name);
+    expect_string(__wrap_wfopen, __modes, "r");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_ftell, 0);
     will_return(__wrap_fseek, 0);
@@ -893,7 +894,7 @@ void test_get_file_content(void **state)
 void test_get_file_pointer_NULL(void **state)
 {
     const char * path = NULL;
-    
+
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot open NULL path");
 
     FILE * fp = w_get_file_pointer(path);
@@ -904,9 +905,9 @@ void test_get_file_pointer_NULL(void **state)
 void test_get_file_pointer_invalid(void **state)
 {
     const char * file_name = "test_file.txt";
-    expect_string(__wrap_fopen, path, file_name);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 0);
+    expect_string(__wrap_wfopen, __filename, file_name);
+    expect_string(__wrap_wfopen, __modes, "r");
+    will_return(__wrap_wfopen, 0);
     expect_string(__wrap__mdebug1, formatted_msg, "(1103): Could not open file 'test_file.txt' due to [(0)-(Success)].");
 
     FILE * fp = w_get_file_pointer(file_name);
@@ -917,9 +918,9 @@ void test_get_file_pointer_invalid(void **state)
 void test_get_file_pointer_success(void **state)
 {
     const char * file_name = "test_file.txt";
-    expect_string(__wrap_fopen, path, file_name);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, __filename, file_name);
+    expect_string(__wrap_wfopen, __modes, "r");
+    will_return(__wrap_wfopen, 1);
 
     FILE * fp = w_get_file_pointer(file_name);
 
