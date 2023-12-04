@@ -41,6 +41,11 @@ namespace Utils
                                     const ComponentStatus& componentStatus,
                                     UpdaterContext& context)
     {
+        if (componentName.empty())
+        {
+            throw std::runtime_error {"Can not push status with empty component name"};
+        }
+
         // LCOV_EXCL_START
         const std::map<ComponentStatus, std::string> statusTags {{ComponentStatus::STATUS_OK, "ok"},
                                                                  {ComponentStatus::STATUS_FAIL, "fail"}};
