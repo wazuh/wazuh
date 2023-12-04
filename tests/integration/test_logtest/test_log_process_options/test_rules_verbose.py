@@ -47,35 +47,32 @@ tags:
     - logtest_configuration
 '''
 import json
-import os
+from pathlib import Path
 import shutil
 import re
 
 import pytest
-import yaml
-from wazuh_testing.constants import paths
+from wazuh_testing.constants.paths.sockets import LOGTEST_SOCKET_PATH
 from wazuh_testing.constants import users
 from wazuh_testing.constants.paths import ruleset
-from logtest import callback_logtest_started
-from wazuh_testing.utils.services import control_service
-from wazuh_testing.utils.file import truncate_file
-from wazuh_testing.tools.monitors.file_monitor import FileMonitor
+from wazuh_testing.utils import configuration
+
+from . import TEST_CASES_FOLDER_PATH, TEST_RULES_PATH
 
 
 # Marks
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
-# Configurations
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/test_cases/')
-messages_path = os.path.join(test_data_path, 'rules_verbose.yaml')
-logtest_startup_timeout = 30
-
-with open(messages_path) as f:
-    test_cases = yaml.safe_load(f)
+# Configuration
+t_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_rules_verbose.yaml')
+t_config_parameters, t_config_metadata, t_case_ids = configuration.get_test_cases_data(t_cases_path)
 
 # Variables
-receiver_sockets_params = [(paths.sockets.LOGTEST_SOCKET_PATH, 'AF_UNIX', 'TCP')]
+receiver_sockets_params = [(LOGTEST_SOCKET_PATH, 'AF_UNIX', 'TCP')]
 receiver_sockets = None
+
+# Test daemons to restart.
+daemons_handler_configuration = {'daemons': ['wazuh-analysisd', 'wazuh-db']}
 
 local_rules_debug_messages = ['Trying rule: 880000 - Parent rules verbose', '*Rule 880000 matched',
                               '*Trying child rules', 'Trying rule: 880001 - test last_match', '*Rule 880001 matched',
@@ -84,7 +81,7 @@ local_rules_debug_messages = ['Trying rule: 880000 - Parent rules verbose', '*Ru
 
 # Fixtures
 @pytest.fixture(scope='function')
-def configure_rules_list(get_configuration, request):
+def configure_rules_list(test_metadata):
     """Configure a custom rules for testing.
 
     Restart Wazuh is not needed for applying the configuration, is optional.
@@ -93,9 +90,9 @@ def configure_rules_list(get_configuration, request):
     # save current rules
     shutil.copy(ruleset.LOCAL_RULES_PATH, ruleset.LOCAL_RULES_PATH + '.cpy')
 
-    file_test = get_configuration['rule_file']
+    file_test = Path(TEST_RULES_PATH, test_metadata['rule_file'])
     # copy test rules
-    shutil.copy(test_data_path + file_test, ruleset.LOCAL_RULES_PATH)
+    shutil.copy(file_test, ruleset.LOCAL_RULES_PATH)
     shutil.chown(ruleset.LOCAL_RULES_PATH, users.WAZUH_UNIX_USER, users.WAZUH_UNIX_GROUP)
 
     yield
@@ -105,37 +102,10 @@ def configure_rules_list(get_configuration, request):
     shutil.chown(ruleset.LOCAL_RULES_PATH, users.WAZUH_UNIX_USER, users.WAZUH_UNIX_GROUP)
 
 
-@pytest.fixture(scope='module', params=test_cases, ids=[test_case['name'] for test_case in test_cases])
-def get_configuration(request):
-    """Get configurations from the module."""
-    return request.param
-
-
-@pytest.fixture(scope='module')
-def wait_for_logtest_startup(request):
-    """Wait until logtest has begun."""
-    log_monitor = FileMonitor(paths.logs.WAZUH_LOG_PATH)
-    log_monitor.start(timeout=logtest_startup_timeout, callback=callback_logtest_started)
-
-
-@pytest.fixture(scope='module')
-def restart_required_logtest_daemons():
-    """Wazuh logtests daemons handler."""
-    required_logtest_daemons = ['wazuh-analysisd']
-
-    truncate_file(paths.logs.WAZUH_LOG_PATH)
-
-    for daemon in required_logtest_daemons:
-        control_service('restart', daemon=daemon)
-
-    yield
-
-    for daemon in required_logtest_daemons:
-        control_service('stop', daemon=daemon)
-
 
 # Tests
-def test_rules_verbose(get_configuration, restart_required_logtest_daemons,
+@pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
+def test_rules_verbose(test_metadata, daemons_handler_module,
                        configure_rules_list, wait_for_logtest_startup,
                        connect_to_sockets_function):
     '''
@@ -148,10 +118,10 @@ def test_rules_verbose(get_configuration, restart_required_logtest_daemons,
     tier: 0
 
     parameters:
-        - get_configuration:
-            type: fixture
-            brief: Get configuration from the module.
-        - restart_required_logtest_daemons:
+        - test_metadata:
+            type: list
+            brief: List of metadata values. (dicts with input, output and stage keys)
+        - daemons_handler_module:
             type: fixture
             brief: Wazuh logtests daemons handler.
         - configure_rules_list:
@@ -186,16 +156,16 @@ def test_rules_verbose(get_configuration, restart_required_logtest_daemons,
         - analysisd
     '''
     # send the logtest request
-    receiver_sockets[0].send(get_configuration['input'], size=True)
+    receiver_sockets[0].send(test_metadata['input'], size=True)
 
     # receive logtest reply and parse it
     response = receiver_sockets[0].receive(size=True).rstrip(b'\x00').decode()
     result = json.loads(response)
 
     assert result['error'] == 0
-    assert result['data']['output']['rule']['id'] == get_configuration['rule_id']
+    assert result['data']['output']['rule']['id'] == test_metadata['rule_id']
 
-    if 'verbose_mode' in get_configuration and get_configuration['verbose_mode']:
+    if 'verbose_mode' in test_metadata and test_metadata['verbose_mode']:
         if 'rules_debug' in result['data']:
             assert result['data']['rules_debug'][-len(local_rules_debug_messages):] == local_rules_debug_messages
         else:
@@ -204,7 +174,7 @@ def test_rules_verbose(get_configuration, restart_required_logtest_daemons,
     else:
         assert 'rules_debug' not in result['data']
 
-    if 'warning_message' in get_configuration:
-        r = re.compile(get_configuration['warning_message'])
+    if 'warning_message' in test_metadata:
+        r = re.compile(test_metadata['warning_message'])
         match_list = list(filter(r.match, result['data']['messages']))
         assert match_list, 'The warning message was not found in the response data'
