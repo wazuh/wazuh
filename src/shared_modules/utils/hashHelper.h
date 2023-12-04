@@ -18,7 +18,10 @@
 #include "openssl/evp.h"
 #include <fstream>
 #include <array>
-#include <filesystem>
+#include <string>
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
 
 namespace Utils
 {
@@ -134,9 +137,10 @@ namespace Utils
      * @param filepath Path to the file.
      * @return std::vector<unsigned char> Digest vector.
      */
-    static std::vector<unsigned char> hashFile(const std::filesystem::path& filepath)
+    static std::vector<unsigned char> hashFile(const std::string& filepath)
     {
-        if (std::ifstream inputFile(filepath, std::fstream::in); inputFile)
+        std::ifstream inputFile(filepath, std::fstream::in);
+        if (inputFile.good())
         {
             constexpr int BUFFER_SIZE {4096};
             std::array<char, BUFFER_SIZE> buffer {};
@@ -151,8 +155,10 @@ namespace Utils
             return hash.hash();
         }
 
-        throw std::runtime_error {"Unable to open '" + filepath.string() + "' for hashing."};
+        throw std::runtime_error {"Unable to open '" + filepath + "' for hashing."};
     };
-}
+} // namespace Utils
+
+#pragma GCC diagnostic pop
 
 #endif // _HASH_HELPER_H
