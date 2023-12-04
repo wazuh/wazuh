@@ -4,6 +4,10 @@
 
 # Generating Backup
 CURRENT_DIR=`pwd`
+if [ "${CURRENT_DIR}" -eq "/" ]; then
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Execution path is wrong, interrupting upgrade." >> ./logs/upgrade.log
+    exit 1
+fi
 TMP_DIR_BACKUP=./tmp_bkp
 
 # Check if there is an upgrade in progress
@@ -23,7 +27,7 @@ for dir in "${BACKUP_FOLDERS[@]}"; do
 done
 
 # Clean before backup
-rm -rf ./tmp_bkp/
+rm -rf ${TMP_DIR_BACKUP}/
 
 BDATE=$(date +"%m-%d-%Y_%H-%M-%S")
 declare -a FOLDERS_TO_BACKUP
@@ -68,8 +72,24 @@ done <<< "$BACKUP_LIST_FILES"
 
 # Generate Backup
 mkdir -p ./backup
-tar czf ./backup/backup_[${BDATE}].tar.gz -C ./tmp_bkp . >> ./logs/upgrade.log 2>&1
-rm -rf ./tmp_bkp/
+if [ "$(ls -A ${TMP_DIR_BACKUP})" ]; then
+    tar czf ./backup/backup_[${BDATE}].tar.gz -C ${TMP_DIR_BACKUP} . >> ./logs/upgrade.log 2>&1
+else
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Nothing to compress while creating the Backup, interrupting upgrade." >> ./logs/upgrade.log
+    exit 1
+fi
+
+RESULT=$?
+rm -rf ${TMP_DIR_BACKUP}/
+
+# Check Backup creation
+if [ $RESULT -eq 0 ]; then
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Backup generated in ${CURRENT_DIR}/backup/backup_[${BDATE}].tar.gz" >> ./logs/upgrade.log
+else
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Error creating the Backup, interrupting upgrade." >> ./logs/upgrade.log
+    rm -rf ./backup/backup_[${BDATE}].tar.gz
+    exit 1
+fi
 
 # Installing upgrade
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade started." >> ./logs/upgrade.log
@@ -104,8 +124,8 @@ else
     $CONTROL stop >> ./logs/upgrade.log 2>&1
 
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Deleting upgrade files..." >> ./logs/upgrade.log
-    for dir in ${FOLDERS_TO_BACKUP[@]}; do
-        rm -rf ${dir} >> ./logs/upgrade.log 2>&1
+    for dir in "${FOLDERS_TO_BACKUP[@]}"; do
+        rm -rf "${dir}" >> ./logs/upgrade.log 2>&1
     done
 
     # Cleaning for old versions
@@ -121,10 +141,15 @@ else
     rm -rf ./backup/restore
     mkdir -p ./backup/restore
     tar xzf ./backup/backup_[${BDATE}].tar.gz -C ./backup/restore >> ./logs/upgrade.log 2>&1
+    RESULT=$?
 
-    for dir in ./backup/restore/*; do
-        cp -a ${dir}/* /$(basename ${dir}) >> ./logs/upgrade.log 2>&1
-    done
+    if [ $RESULT -eq 0 ] && [ "$(ls -A ./backup/restore/)" ]; then
+        for dir in ./backup/restore/*; do
+            cp -a ${dir}/* /$(basename ${dir}) >> ./logs/upgrade.log 2>&1
+        done
+    else
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Error uncompressing the Backup, it has not been possible to restore the installation." >> ./logs/upgrade.log
+    fi
 
     rm -rf ./backup/restore
 
