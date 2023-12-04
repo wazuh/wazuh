@@ -47,47 +47,31 @@ tags:
     - logtest_configuration
 '''
 import json
-import os
+from pathlib import Path
 import pytest
-import yaml
 
 from logtest import callback_session_initialized, callback_invalid_token
-from wazuh_testing.constants.paths import WAZUH_PATH
+from wazuh_testing.constants.paths.sockets import LOGTEST_SOCKET_PATH
 from wazuh_testing.tools.socket_controller import SocketController
+from wazuh_testing.utils import configuration
+
+from . import TEST_CASES_FOLDER_PATH
 
 # Marks
 
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
-# Configurations
+# Configuration
+t_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_invalid_session_token.yaml')
+t_config_parameters, t_config_metadata, t_case_ids = configuration.get_test_cases_data(t_cases_path)
 
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/config_templates')
-messages_path = os.path.join(test_data_path, 'config_invalid_session_token.yaml')
-with open(messages_path) as f:
-    test_cases = yaml.safe_load(f)
-    tc = list(test_cases)
-
-# Variables
-
-logtest_path = os.path.join(os.path.join(WAZUH_PATH, 'queue', 'sockets', 'logtest'))
-
-
-# Functions used on the test
-
-def create_connection():
-    return SocketController(address=logtest_path, family='AF_UNIX', connection_protocol='TCP')
-
-
-def close_connection(connection):
-    connection.close()
+# Test daemons to restart.
+daemons_handler_configuration = {'daemons': ['wazuh-analysisd', 'wazuh-db']}
 
 
 # Tests
-
-@pytest.mark.parametrize('test_case',
-                         [test_case['test_case'] for test_case in test_cases],
-                         ids=[test_case['name'] for test_case in test_cases])
-def test_invalid_session_token(restart_required_logtest_daemons, wait_for_logtest_startup, test_case):
+@pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
+def test_invalid_session_token(test_metadata, daemons_handler_module, wait_for_logtest_startup):
     '''
     description: Check if `wazuh-logtest` correctly detects and handles errors when using a session token.
                  To do this, it sends the inputs through a socket, receives and decodes the message. Then, it checks
@@ -98,15 +82,15 @@ def test_invalid_session_token(restart_required_logtest_daemons, wait_for_logtes
     tier: 0
 
     parameters:
-        - restart_required_logtest_daemons:
+        - daemons_handler_module:
             type: fixture
             brief: Wazuh logtests daemons handler.
         - wait_for_logtest_startup:
             type: fixture
             brief: Wait until logtest has begun.
-        - test_case:
+        - test_metadata:
             type: list
-            brief: List of test_case stages (dicts with input, output and stage keys)
+            brief: List of metadata values (dicts with input, output and stage keys)
 
     assertions:
         - Verify that new session is correctly initialized.
@@ -127,8 +111,7 @@ def test_invalid_session_token(restart_required_logtest_daemons, wait_for_logtes
         - analysisd
     '''
     errors = []
-    stage = test_case[0]
-    connection = create_connection()
+    connection = SocketController(address=LOGTEST_SOCKET_PATH, family='AF_UNIX', connection_protocol='TCP')
 
     # Generate logtest request
     request_pattern = """{{ "version":1,
@@ -137,10 +120,10 @@ def test_invalid_session_token(restart_required_logtest_daemons, wait_for_logtes
         "parameters":{{ "token":{} , {} , {} , {} }}
         }}"""
 
-    input = request_pattern.format(stage['input_token'],
-                                   stage['input_event'],
-                                   stage['input_log_format'],
-                                   stage['input_location'])
+    input = request_pattern.format(test_metadata['input_token'],
+                                   test_metadata['input_event'],
+                                   test_metadata['input_log_format'],
+                                   test_metadata['input_location'])
 
     # Send request
     connection.send(input, size=True)
@@ -148,7 +131,7 @@ def test_invalid_session_token(restart_required_logtest_daemons, wait_for_logtes
     # Parse logtest reply as JSON
     result = json.loads(connection.receive(size=True).rstrip(b'\x00').decode())
 
-    close_connection(connection)
+    connection.close()
 
     # Get the generated token
     new_token = result["data"]['token']
@@ -156,11 +139,11 @@ def test_invalid_session_token(restart_required_logtest_daemons, wait_for_logtes
     # Check invalid token warning message
     match = callback_invalid_token(result["data"]['messages'][0])
     if match is None:
-        errors.append(stage['stage'])
+        errors.append(test_metadata['stage'])
 
     # Check new token message is generated
     match = callback_session_initialized(result["data"]['messages'][1])
     if match is None:
-        errors.append(stage['stage'])
+        errors.append(test_metadata['stage'])
 
     assert not errors, "Failed stage(s) :{}".format("\n".join(errors))
