@@ -25,6 +25,7 @@ TEST_F(ComponentsHelperTest, PushComponentStatusCleanContext)
 {
     const auto expectedData = R"(
         {
+            "type": "raw",
             "paths": [],
             "stageStatus":
             [
@@ -50,6 +51,7 @@ TEST_F(ComponentsHelperTest, PushComponentStatusCleanContextOkAndFailStatus)
 {
     const auto expectedData = R"(
         {
+            "type": "raw",
             "paths": [],
             "stageStatus":
             [
@@ -79,6 +81,7 @@ TEST_F(ComponentsHelperTest, PushComponentStatusWithPaths)
 {
     const auto expectedData = R"(
         {
+            "type": "raw",
             "paths": [
                 "/tmp/file.txt"
             ],
@@ -107,6 +110,7 @@ TEST_F(ComponentsHelperTest, PushComponentStatusWithStageStatus)
 {
     const auto expectedData = R"(
         {
+            "type": "raw",
             "paths": [],
             "stageStatus":
             [
@@ -137,6 +141,7 @@ TEST_F(ComponentsHelperTest, PushComponentStatusWithStageStatusAndPath)
 {
     const auto expectedData = R"(
         {
+            "type": "raw",
             "paths": [
                 "/tmp/file.txt"
             ],
