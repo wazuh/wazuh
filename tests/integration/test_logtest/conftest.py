@@ -22,29 +22,10 @@ from wazuh_testing.tools.socket_controller import SocketController
 from wazuh_testing.logger import logger
 
 @pytest.fixture(scope='module')
-def restart_required_logtest_daemons():
-    """Wazuh logtests daemons handler."""
-    required_logtest_daemons = ['wazuh-analysisd', 'wazuh-db']
-
-    for daemon in required_logtest_daemons:
-        control_service('stop', daemon=daemon)
-
-    truncate_file(WAZUH_LOG_PATH)
-
-    for daemon in required_logtest_daemons:
-        control_service('start', daemon=daemon)
-
-    yield
-
-    for daemon in required_logtest_daemons:
-        control_service('stop', daemon=daemon)
-
-
-@pytest.fixture(scope='module')
 def wait_for_logtest_startup(request):
     """Wait until logtest has begun."""
     log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    log_monitor.start(callback=callback_logtest_started, timeout=logcollector.LOG_COLLECTOR_GLOBAL_TIMEOUT)
+    log_monitor.start(callback=callback_logtest_started, timeout=logcollector.LOG_COLLECTOR_GLOBAL_TIMEOUT, only_new_events=True)
 
 
 def connect_to_sockets(request):
