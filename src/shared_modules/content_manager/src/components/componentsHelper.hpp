@@ -41,8 +41,10 @@ namespace Utils
                                     const ComponentStatus& componentStatus,
                                     UpdaterContext& context)
     {
+        // LCOV_EXCL_START
         const std::map<ComponentStatus, std::string> statusTags {{ComponentStatus::STATUS_OK, "ok"},
                                                                  {ComponentStatus::STATUS_FAIL, "fail"}};
+        // LCOV_EXCL_STOP
 
         auto statusObject = nlohmann::json::object();
         statusObject["stage"] = componentName;
