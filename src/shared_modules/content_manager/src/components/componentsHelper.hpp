@@ -14,6 +14,7 @@
 
 #include "json.hpp"
 #include "updaterContext.hpp"
+#include <map>
 #include <stdexcept>
 #include <string>
 
@@ -40,22 +41,12 @@ namespace Utils
                                     const ComponentStatus& componentStatus,
                                     UpdaterContext& context)
     {
-        const auto getComponentStatusString {
-            [](const ComponentStatus& status)
-            {
-                switch (status)
-                {
-                    case ComponentStatus::STATUS_OK: return "ok"; break;
-
-                    case ComponentStatus::STATUS_FAIL: return "fail"; break;
-
-                    default: throw std::runtime_error {"Unknown component status: " + std::to_string(status)}; break;
-                }
-            }};
+        const std::map<ComponentStatus, std::string> statusTags {{ComponentStatus::STATUS_OK, "ok"},
+                                                                 {ComponentStatus::STATUS_FAIL, "fail"}};
 
         auto statusObject = nlohmann::json::object();
         statusObject["stage"] = componentName;
-        statusObject["status"] = getComponentStatusString(componentStatus);
+        statusObject["status"] = statusTags.at(componentStatus);
 
         context.data.at("stageStatus").push_back(statusObject);
     }
