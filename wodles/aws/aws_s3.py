@@ -135,6 +135,8 @@ def set_profile_dict_config(boto_config: dict, profile: str, profile_config: dic
     profile_config : dict
         The user config dict containing the profile configuration.
     """
+    profile = remove_prefix(profile, 'profile ')
+
     # Set s3 config
     if f'{profile}.s3' in str(profile_config):
         s3_config = {
@@ -168,6 +170,24 @@ def set_profile_dict_config(boto_config: dict, profile: str, profile_config: dic
             )
         }
         boto_config['config'].proxies_config = proxies_config
+
+
+def remove_prefix(text: str, prefix: str) -> str:
+    """Removes the prefix from the text if it exists. Otherwise, it returns the text unchanged.
+    
+    Parameters
+    ----------
+    text : str
+        Text to remove the prefix from.
+    prefix : str    
+        Prefix to be removed.
+    
+    Returns
+    -------
+    str
+        Text without the prefix.
+    """
+    return text[len(prefix):] if text.startswith(prefix) else text
 
 
 ################################################################################
@@ -361,7 +381,11 @@ class WazuhIntegration:
             aws_config = get_aws_config_params()
 
             # Set profile
-            profile = profile if profile is not None else 'default'
+            if profile is not None:
+                if profile not in aws_config.sections():
+                    profile = f"profile {profile}"
+            else:
+                profile = 'default'
 
             try:
                 # Get profile config dictionary
