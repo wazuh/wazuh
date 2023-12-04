@@ -28,9 +28,10 @@ protected:
     CtiOffsetDownloaderTest() = default;
     ~CtiOffsetDownloaderTest() override = default;
 
-    std::shared_ptr<UpdaterContext> m_spUpdaterContext; ///< UpdaterContext used on the merge pipeline.
+    std::shared_ptr<UpdaterContext> m_spUpdaterContext; ///< UpdaterContext used on the update orchestration.
 
-    std::shared_ptr<UpdaterBaseContext> m_spUpdaterBaseContext; ///< UpdaterBaseContext used on the merge pipeline.
+    std::shared_ptr<UpdaterBaseContext>
+        m_spUpdaterBaseContext; ///< UpdaterBaseContext used on the update orchestration.
 
     std::shared_ptr<CtiOffsetDownloader> m_spCtiOffsetDownloader; ///< CtiOffsetDownloader used to download the content.
 

@@ -27,7 +27,7 @@ protected:
     CtiDownloaderTest() = default;
     ~CtiDownloaderTest() override = default;
 
-    std::shared_ptr<UpdaterContext> m_spUpdaterContext;       ///< UpdaterContext used on the merge pipeline.
+    std::shared_ptr<UpdaterContext> m_spUpdaterContext;       ///< UpdaterContext used on the update orchestration.
     inline static std::unique_ptr<FakeServer> m_spFakeServer; ///< FakeServer used for tests.
 
     /**
