@@ -48,25 +48,27 @@ tags:
     - logtest_configuration
 '''
 import pytest
-import os
+from pathlib import Path
+from time import sleep
+from json import dumps
 
 from logtest import callback_remove_session, callback_session_initialized
-from wazuh_testing.utils.configuration import load_wazuh_configurations
 from wazuh_testing.constants.paths.sockets import LOGTEST_SOCKET_PATH
 from wazuh_testing.global_parameters import GlobalParameters
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.tools.monitors.file_monitor import FileMonitor
-from time import sleep
-from json import dumps
+from wazuh_testing.tools.monitors import file_monitor
+from wazuh_testing.utils import configuration
+
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 # Marks
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
-# Configurations
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/config_templates')
-configurations_path = os.path.join(test_data_path, 'config_wazuh_conf.yaml')
-configurations = load_wazuh_configurations(configurations_path, __name__)
-local_internal_options = {'analysisd.debug': '2'}
+# Configuration
+t_config_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_old_sessions.yaml')
+t_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_old_session_for_inactivity.yaml')
+t_config_parameters, t_config_metadata, t_case_ids = configuration.get_test_cases_data(t_cases_path)
+t_configurations = configuration.load_configuration_template(t_config_path, t_config_parameters, t_config_metadata)
 
 # Variables
 receiver_sockets_params = [(LOGTEST_SOCKET_PATH, 'AF_UNIX', 'TCP')]
@@ -79,27 +81,18 @@ create_session_data = {'version': 1, 'command': 'log_processing',
                                       'location': 'master->/var/log/syslog'}}
 msg_create_session = dumps(create_session_data)
 
+# Test daemons to restart.
+daemons_handler_configuration = {'all_daemons': True}
+
 global_parameters = GlobalParameters()
-wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-
-
-# Fixtures
-
-@pytest.fixture(scope='module', params=configurations)
-def get_configuration(request):
-    """Get configurations from the module."""
-    return request.param
+wazuh_log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
 
 # Test
-
-def test_remove_old_session_for_inactivity(configure_local_internal_options_module,
-                                           get_configuration,
-                                           configure_environment,
-                                           restart_required_logtest_daemons,
-                                           file_monitoring,
-                                           wait_for_logtest_startup,
-                                           connect_to_sockets_function):
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(t_configurations, t_config_metadata), ids=t_case_ids)
+def test_remove_old_session_for_inactivity(configure_local_internal_options, test_configuration,
+                                           test_metadata, set_wazuh_configuration, daemons_handler,
+                                           wait_for_logtest_startup, connect_to_sockets):
     '''
     description: Check if 'wazuh-logtest' correctly detects and handles the situation where trying to remove old
                  sessions due to inactivity. To do this, it creates more sessions than allowed and waits session_timeout
@@ -128,7 +121,7 @@ def test_remove_old_session_for_inactivity(configure_local_internal_options_modu
         - wait_for_logtest_startup:
             type: fixture
             brief: Wait until logtest has begun.
-        - connect_to_sockets_function:
+        - connect_to_sockets:
             type: fixture
             brief: Function scope version of 'connect_to_sockets' which connects to the specified sockets for the test.
 
@@ -148,7 +141,7 @@ def test_remove_old_session_for_inactivity(configure_local_internal_options_modu
         - inactivity
         - analysisd
     '''
-    session_timeout = int(get_configuration['sections'][0]['elements'][3]['session_timeout']['value'])
+    session_timeout = int(test_metadata['timeout'])
 
     receiver_sockets[0].send(msg_create_session, True)
     msg_recived = receiver_sockets[0].receive()[4:]

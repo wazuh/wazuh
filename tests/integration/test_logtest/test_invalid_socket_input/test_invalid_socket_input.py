@@ -73,7 +73,7 @@ daemons_handler_configuration = {'daemons': ['wazuh-analysisd', 'wazuh-db']}
 # Tests
 @pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
 def test_invalid_socket_input(test_metadata, daemons_handler_module,
-                              wait_for_logtest_startup, connect_to_sockets_function):
+                              wait_for_logtest_startup, connect_to_sockets):
     '''
     description: Check if `wazuh-logtest` correctly detects and handles errors when sending a message through
                  the socket to `wazuh-analysisd`. To do this, it sends the inputs through a socket(differentiating by
@@ -91,7 +91,7 @@ def test_invalid_socket_input(test_metadata, daemons_handler_module,
         - wait_for_logtest_startup:
             type: fixture
             brief: Wait until logtest has begun.
-        - connect_to_sockets_function:
+        - connect_to_sockets:
             type: fixture
             brief: Function scope version of 'connect_to_sockets' which connects to the specified sockets for the test.
         - test_metadata:
