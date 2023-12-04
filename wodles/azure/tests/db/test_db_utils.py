@@ -5,14 +5,18 @@
 # This program is free software; you can redistribute
 # it and/or modify it under the terms of GPLv2
 
+import sys
 from datetime import datetime
+from os.path import abspath, dirname
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from wodles.azure.azure_utils import DATETIME_MASK
-from wodles.azure.db import orm
-from wodles.azure.db.utils import create_new_row, update_row_object
+sys.path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
+
+from azure_utils import DATETIME_MASK
+from db import orm
+from db.utils import create_new_row, update_row_object
 
 PAST_DATE = "2022-01-01T12:00:00.000000Z"
 PRESENT_DATE = "2022-06-15T12:00:00.000000Z"
@@ -29,8 +33,8 @@ FUTURE_DATE = "2022-12-31T12:00:00.000000Z"
         (FUTURE_DATE, FUTURE_DATE),
     ],
 )
-@patch("wodles.azure.db.orm.update_row")
-@patch("wodles.azure.db.orm.get_row")
+@patch("db.orm.update_row")
+@patch("db.orm.get_row")
 def test_update_row_object(mock_get, mock_update, min_date, max_date):
     """Test update_row_object alter the database values when corresponds."""
     mock_table = MagicMock(__tablename__="")
@@ -52,8 +56,8 @@ def test_update_row_object(mock_get, mock_update, min_date, max_date):
         mock_update.assert_not_called()
 
 
-@patch("wodles.azure.azure_utils.logging.error")
-@patch("wodles.azure.db.orm.get_row", side_effect=AttributeError)
+@patch("azure_utils.logging.error")
+@patch("db.orm.get_row", side_effect=AttributeError)
 def test_update_row_object_ko(mock_get, mock_logging):
     """Test update_row_object handles ORM errors as expected."""
     with pytest.raises(SystemExit) as err:
@@ -64,10 +68,10 @@ def test_update_row_object_ko(mock_get, mock_logging):
     mock_logging.assert_called_once()
 
 
-@patch("wodles.azure.azure_utils.logging.error")
-@patch("wodles.azure.db.orm.update_row", side_effect=orm.AzureORMError)
+@patch("azure_utils.logging.error")
+@patch("db.orm.update_row", side_effect=orm.AzureORMError)
 @patch(
-    "wodles.azure.db.orm.get_row",
+    "db.orm.get_row",
     return_value=MagicMock(
         min_processed_date=PRESENT_DATE, max_processed_date=PRESENT_DATE
     ),
@@ -85,7 +89,7 @@ def test_update_row_object_ko_update(mock_get, mock_update, mock_logging):
     mock_logging.assert_called_once()
 
 
-@patch("wodles.azure.db.orm.add_row")
+@patch("db.orm.add_row")
 def test_create_new_row(add_row):
     """Test create_new_row invokes the ORM functionality with a valid row object."""
     mock_table = MagicMock(__tablename__="")
@@ -104,8 +108,8 @@ def test_create_new_row(add_row):
     add_row.assert_called_with(row=item)
 
 
-@patch("wodles.azure.azure_utils.logging.error")
-@patch("wodles.azure.db.orm.add_row", side_effect=orm.AzureORMError)
+@patch("azure_utils.logging.error")
+@patch("db.orm.add_row", side_effect=orm.AzureORMError)
 def test_create_new_row_ko(mock_add_row, mock_logging):
     """Test create_new_row raises an error if when attempting to add a invalid row object."""
     with pytest.raises(SystemExit) as err:

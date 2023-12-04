@@ -6,16 +6,19 @@
 # it and/or modify it under the terms of GPLv2
 
 import json
+import sys
 from hashlib import md5
-from os.path import dirname, join, realpath
+from os.path import abspath, dirname, join, realpath
 from unittest.mock import MagicMock, patch
 
 import pytest
 from dateutil.parser import parse
 from requests import HTTPError
 
-from wodles.azure.db import orm
-from wodles.azure.services.graph import (
+sys.path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
+
+from db import orm
+from services.graph import (
     URL_GRAPH,
     build_graph_url,
     get_graph_events,
@@ -36,10 +39,10 @@ TEST_DATA_PATH = join(dirname(dirname(realpath(__file__))), "data")
         ("/var/ossec/", None, None, "", "", "", False),
     ],
 )
-@patch("wodles.azure.services.graph.get_graph_events")
-@patch("wodles.azure.services.graph.build_graph_url")
-@patch("wodles.azure.services.graph.get_token")
-@patch("wodles.azure.services.graph.read_auth_file")
+@patch("services.graph.get_graph_events")
+@patch("services.graph.build_graph_url")
+@patch("services.graph.get_token")
+@patch("services.graph.read_auth_file")
 def test_start_graph(
     mock_auth,
     mock_token,
@@ -97,11 +100,11 @@ def test_start_graph(
     )
 
 
-@patch("wodles.azure.azure_utils.logging.error")
-@patch("wodles.azure.services.graph.get_graph_events", side_effect=HTTPError)
-@patch("wodles.azure.services.graph.build_graph_url")
-@patch("wodles.azure.services.graph.get_token")
-@patch("wodles.azure.services.graph.read_auth_file", return_value=("client", "secret"))
+@patch("azure_utils.logging.error")
+@patch("services.graph.get_graph_events", side_effect=HTTPError)
+@patch("services.graph.build_graph_url")
+@patch("services.graph.get_token")
+@patch("services.graph.read_auth_file", return_value=("client", "secret"))
 def test_start_graph_ko(mock_auth, mock_token, mock_build, mock_get, mock_logging):
     """Test start_graph shows error message if get_log_analytics_events returns an HTTP error."""
     args = MagicMock(
@@ -111,7 +114,7 @@ def test_start_graph_ko(mock_auth, mock_token, mock_build, mock_get, mock_loggin
     mock_logging.assert_called_once()
 
 
-@patch("wodles.azure.azure_utils.logging.error")
+@patch("azure_utils.logging.error")
 def test_start_graph_ko_credentials(mock_logging):
     """Test start_graph stops its execution if no valid credentials are provided."""
     args = MagicMock(graph_tenant_domain=None)
@@ -130,10 +133,10 @@ def test_start_graph_ko_credentials(mock_logging):
         (PAST_DATE, PAST_DATE, PRESENT_DATE, True),
     ],
 )
-@patch("wodles.azure.azure_utils.logging.info")
-@patch("wodles.azure.services.graph.offset_to_datetime")
-@patch("wodles.azure.services.graph.create_new_row")
-@patch("wodles.azure.db.orm.get_row", return_value=None)
+@patch("azure_utils.logging.info")
+@patch("services.graph.offset_to_datetime")
+@patch("services.graph.create_new_row")
+@patch("db.orm.get_row", return_value=None)
 def test_build_graph_url(
     mock_get,
     mock_create,
@@ -184,8 +187,8 @@ def test_build_graph_url(
     assert expected_str in result
 
 
-@patch("wodles.azure.azure_utils.logging.error")
-@patch("wodles.azure.db.orm.get_row", side_effect=orm.AzureORMError)
+@patch("azure_utils.logging.error")
+@patch("db.orm.get_row", side_effect=orm.AzureORMError)
 def test_build_graph_url_ko(mock_get, mock_logging):
     """Test build_log_analytics_query handles ORM exceptions."""
     with pytest.raises(SystemExit) as err:
@@ -194,9 +197,9 @@ def test_build_graph_url_ko(mock_get, mock_logging):
     mock_logging.assert_called_once()
 
 
-@patch("wodles.azure.services.graph.send_message")
-@patch("wodles.azure.services.graph.update_row_object")
-@patch("wodles.azure.services.graph.get")
+@patch("services.graph.send_message")
+@patch("services.graph.update_row_object")
+@patch("services.graph.get")
 def test_get_graph_events(mock_get, mock_update, mock_send):
     """Test get_graph_events recursively request the data using the specified url and process the values present in the
     response."""
@@ -226,8 +229,8 @@ def test_get_graph_events(mock_get, mock_update, mock_send):
 
 
 @pytest.mark.parametrize("status_code", [400, 500])
-@patch("wodles.azure.azure_utils.logging.error")
-@patch("wodles.azure.services.graph.get")
+@patch("azure_utils.logging.error")
+@patch("services.graph.get")
 def test_get_graph_events_error_responses(mock_get, mock_logging, status_code):
     """Test get_graph_events handles invalid responses from the request module."""
     response_mock = MagicMock(status_code=status_code)

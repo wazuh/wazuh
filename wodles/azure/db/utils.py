@@ -9,11 +9,14 @@ import logging
 import sys
 from datetime import datetime
 from hashlib import md5
+from os.path import abspath, dirname
 
 from dateutil.parser import parse
 
-from wodles.azure.azure_utils import DATETIME_MASK, offset_to_datetime
-from wodles.azure.db import orm
+sys.path.insert(0, dirname(dirname(abspath(__file__))))
+
+from azure_utils import DATETIME_MASK, offset_to_datetime
+from db import orm
 
 
 def update_row_object(

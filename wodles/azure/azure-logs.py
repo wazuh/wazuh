@@ -18,22 +18,18 @@
 ################################################################################################
 import logging
 import sys
-from os.path import abspath, dirname
 
-import wodles.azure.db.orm as orm
-from wodles.azure.azure_utils import get_script_arguments, set_logger
-from wodles.azure.services.analytics import start_log_analytics
-from wodles.azure.services.graph import start_graph
-from wodles.azure.services.storage import start_storage
-
-sys.path.insert(0, dirname(dirname(abspath(__file__))))
-
+from azure_utils import get_script_arguments, set_logger
+from db.orm import check_database_integrity
+from services.analytics import start_log_analytics
+from services.graph import start_graph
+from services.storage import start_storage
 
 if __name__ == "__main__":
     args = get_script_arguments()
     set_logger(args.debug_level)
 
-    if not orm.check_database_integrity():
+    if not check_database_integrity():
         sys.exit(1)
 
     if args.log_analytics:

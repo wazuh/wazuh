@@ -6,9 +6,10 @@
 # it and/or modify it under the terms of GPLv2
 
 import json
+import sys
 from datetime import datetime
 from hashlib import md5
-from os.path import dirname, join, realpath
+from os.path import abspath, dirname, join, realpath
 from typing import Optional
 from unittest.mock import MagicMock, PropertyMock, call, patch
 
@@ -18,8 +19,10 @@ from azure.common import AzureException, AzureHttpError
 from azure.storage.common._error import AzureSigningError
 from dateutil.parser import parse
 
-from wodles.azure.db import orm
-from wodles.azure.services.storage import get_blobs, start_storage
+sys.path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
+
+from db import orm
+from services.storage import get_blobs, start_storage
 
 PAST_DATE = "2022-01-01T12:00:00.000000Z"
 PRESENT_DATE = "2022-06-15T12:00:00.000000Z"
@@ -67,11 +70,11 @@ def create_mocked_blob(
         ("/var/ossec/", "", "", "*"),
     ],
 )
-@patch("wodles.azure.services.storage.get_blobs")
-@patch("wodles.azure.services.storage.create_new_row")
-@patch("wodles.azure.services.storage.orm.get_row", return_value=None)
-@patch("wodles.azure.services.storage.BlockBlobService")
-@patch("wodles.azure.services.storage.read_auth_file")
+@patch("services.storage.get_blobs")
+@patch("services.storage.create_new_row")
+@patch("services.storage.orm.get_row", return_value=None)
+@patch("services.storage.BlockBlobService")
+@patch("services.storage.read_auth_file")
 def test_start_storage(
     mock_auth,
     mock_blob,
@@ -127,10 +130,10 @@ def test_start_storage(
         ("*", None),
     ],
 )
-@patch("wodles.azure.azure_utils.logging.error")
-@patch("wodles.azure.services.storage.create_new_row", side_effect=orm.AzureORMError)
-@patch("wodles.azure.db.orm.get_row", return_value=None)
-@patch("wodles.azure.services.storage.BlockBlobService")
+@patch("azure_utils.logging.error")
+@patch("services.storage.create_new_row", side_effect=orm.AzureORMError)
+@patch("db.orm.get_row", return_value=None)
+@patch("services.storage.BlockBlobService")
 def test_start_storage_ko(
     mock_blob, mock_get, mock_create, mock_logging, container_name, exception
 ):
@@ -157,7 +160,7 @@ def test_start_storage_ko(
     mock_logging.assert_called_once()
 
 
-@patch("wodles.azure.azure_utils.logging.error")
+@patch("azure_utils.logging.error")
 def test_start_storage_ko_credentials(mock_logging):
     """Test start_storage stops its execution if no valid credentials are provided."""
     args = MagicMock(storage_auth_path=None, account_name=None, account_key=None)
@@ -290,8 +293,8 @@ def test_start_storage_ko_credentials(mock_logging):
         ),
     ],
 )
-@patch("wodles.azure.services.storage.update_row_object")
-@patch("wodles.azure.services.storage.send_message")
+@patch("services.storage.update_row_object")
+@patch("services.storage.send_message")
 def test_get_blobs(
     mock_send,
     mock_update,
@@ -397,7 +400,7 @@ def test_get_blobs(
         )
 
 
-@patch("wodles.azure.azure_utils.logging.debug")
+@patch("azure_utils.logging.debug")
 def test_that_empty_blobs_are_omitted(mock_logging):
     """Test get_blobs checks the size of the blob and omits it if is is empty"""
     # List of empty blobs to use
@@ -441,8 +444,8 @@ def test_that_empty_blobs_are_omitted(mock_logging):
     blob_service.get_blob_to_text.assert_not_called()
 
 
-@patch("wodles.azure.services.storage.update_row_object")
-@patch("wodles.azure.services.storage.send_message")
+@patch("services.storage.update_row_object")
+@patch("services.storage.send_message")
 def test_get_blobs_only_with_prefix(mock_send, mock_update):
     """Test get_blobs process only the blobs corresponding to a specific prefix, ignoring the rest."""
     args = MagicMock(blobs=None, json_file=False, json_inline=False, reparse=False)
@@ -502,7 +505,7 @@ def test_get_blobs_only_with_prefix(mock_send, mock_update):
     )
 
 
-@patch("wodles.azure.azure_utils.logging.error")
+@patch("azure_utils.logging.error")
 def test_get_blobs_list_blobs_ko(mock_logging):
     """Test get_blobs_list_blobs handles exceptions from 'list_blobs'."""
     m = MagicMock()
@@ -533,8 +536,8 @@ def test_get_blobs_list_blobs_ko(mock_logging):
         AzureHttpError(message="", status_code=""),
     ],
 )
-@patch("wodles.azure.services.storage.logging.error")
-@patch("wodles.azure.services.storage.update_row_object")
+@patch("services.storage.logging.error")
+@patch("services.storage.update_row_object")
 def test_get_blobs_blob_data_ko(mock_update, mock_logging, exception):
     """Test get_blobs_list_blobs handles exceptions from 'get_blob_to_text'."""
     num_blobs = 5
@@ -563,9 +566,9 @@ def test_get_blobs_blob_data_ko(mock_update, mock_logging, exception):
 
 
 @pytest.mark.parametrize("exception", [json.JSONDecodeError, TypeError, KeyError])
-@patch("wodles.azure.services.storage.logging.error")
-@patch("wodles.azure.services.storage.loads")
-@patch("wodles.azure.services.storage.update_row_object")
+@patch("services.storage.logging.error")
+@patch("services.storage.loads")
+@patch("services.storage.update_row_object")
 def test_get_blobs_json_ko(mock_update, mock_loads, mock_logging, exception):
     """Test get_blobs_list_blobs handles exceptions from 'json.loads'."""
     num_blobs = 5

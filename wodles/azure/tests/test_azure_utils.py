@@ -8,13 +8,17 @@
 import logging
 import os
 import socket
+import sys
+from os.path import abspath, dirname
 from unittest.mock import MagicMock, patch
 
 import pytest
 from dateutil.parser import parse
 from requests import RequestException
 
-from wodles.azure.azure_utils import (
+sys.path.insert(0, dirname(dirname(abspath(__file__))))
+
+from azure_utils import (
     ANALYSISD,
     LOG_LEVELS,
     LOGGING_DATE_FORMAT,
@@ -38,7 +42,7 @@ TEST_AUTHENTICATION_PATH = os.path.join(TEST_DATA_PATH, "authentication_files")
 
 
 @pytest.mark.parametrize("debug_level", [0, 1, 2, 3])
-@patch("wodles.azure.azure_utils.logging.basicConfig")
+@patch("azure_utils.logging.basicConfig")
 def test_set_logger(mock_logging, debug_level):
     """Test set_logger sets the expected logging verbosity level."""
     set_logger(debug_level)
@@ -148,7 +152,7 @@ def test_read_auth_file(file_name, fields):
         "invalid_authentication_file_3",
     ],
 )
-@patch("wodles.azure.azure_utils.logging.error")
+@patch("azure_utils.logging.error")
 def test_read_auth_file_ko(mock_logging, file_name):
     """Test read_auth_file correctly handles invalid authentication files."""
     with pytest.raises(SystemExit) as err:
@@ -160,7 +164,7 @@ def test_read_auth_file_ko(mock_logging, file_name):
     mock_logging.assert_called_once()
 
 
-@patch("wodles.azure.azure_utils.post")
+@patch("azure_utils.post")
 def test_get_token(mock_post):
     """Test get_token makes the expected token request and returns its value."""
     expected_token = "token"
@@ -196,8 +200,8 @@ def test_get_token(mock_post):
         (None, None, []),
     ],
 )
-@patch("wodles.azure.azure_utils.logging.error")
-@patch("wodles.azure.azure_utils.post")
+@patch("azure_utils.logging.error")
+@patch("azure_utils.post")
 def test_get_token_ko(mock_post, mock_logging, exception, error_msg, error_codes):
     """Test get_token handles exceptions when the 'access_token' field is not present in the response."""
     m = MagicMock()
@@ -210,9 +214,9 @@ def test_get_token_ko(mock_post, mock_logging, exception, error_msg, error_codes
     mock_logging.assert_called_once()
 
 
-@patch("wodles.azure.azure_utils.socket.close")
-@patch("wodles.azure.azure_utils.socket.send")
-@patch("wodles.azure.azure_utils.socket.connect")
+@patch("azure_utils.socket.close")
+@patch("azure_utils.socket.send")
+@patch("azure_utils.socket.connect")
 def test_send_message(mock_connect, mock_send, mock_close):
     """Test send_message sends the messages to the Wazuh queue socket."""
     message = "msg"
@@ -223,10 +227,10 @@ def test_send_message(mock_connect, mock_send, mock_close):
 
 
 @pytest.mark.parametrize("error_code", [111, 90, 1])
-@patch("wodles.azure.azure_utils.logging.error")
-@patch("wodles.azure.azure_utils.socket.close")
-@patch("wodles.azure.azure_utils.socket.send")
-@patch("wodles.azure.azure_utils.socket.connect")
+@patch("azure_utils.logging.error")
+@patch("azure_utils.socket.close")
+@patch("azure_utils.socket.send")
+@patch("azure_utils.socket.connect")
 def test_send_message_ko(mock_connect, mock_send, mock_close, mock_logging, error_code):
     """Test send_message handle the socket exceptions."""
     s = socket.error()
@@ -251,7 +255,7 @@ def test_send_message_ko(mock_connect, mock_send, mock_close, mock_logging, erro
         ("1m", "2022-12-31T11:59:00.000000Z"),
     ],
 )
-@patch("wodles.azure.azure_utils.datetime")
+@patch("azure_utils.datetime")
 def test_offset_to_datetime(mock_time, offset, expected_date):
     """Test offset_to_datetime returns the expected values for the offset provided."""
     mock_time.utcnow.return_value = parse("2022-12-31T12:00:00.000000Z")
@@ -259,8 +263,8 @@ def test_offset_to_datetime(mock_time, offset, expected_date):
     assert result == parse(expected_date)
 
 
-@patch("wodles.azure.azure_utils.logging.error")
-@patch("wodles.azure.azure_utils.datetime")
+@patch("azure_utils.logging.error")
+@patch("azure_utils.datetime")
 def test_offset_to_datetime_ko(mock_time, mock_logging):
     """Test offset_to_datetime handles the exception when an invalid offset format was provided."""
     with pytest.raises(SystemExit) as err:

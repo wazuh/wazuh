@@ -10,6 +10,7 @@ import sys
 from datetime import datetime
 from hashlib import md5
 from json import JSONDecodeError, dumps, loads
+from os.path import abspath, dirname
 
 from azure.common import AzureException, AzureHttpError
 from azure.storage.blob import BlockBlobService
@@ -17,15 +18,17 @@ from azure.storage.common._error import AzureSigningError
 from azure.storage.common.retry import no_retry
 from dateutil.parser import parse
 
-from wodles.azure.azure_utils import (
+sys.path.insert(0, dirname(dirname(abspath(__file__))))
+
+from azure_utils import (
     CREDENTIALS_URL,
     DEPRECATED_MESSAGE,
     offset_to_datetime,
     read_auth_file,
     send_message,
 )
-from wodles.azure.db import orm
-from wodles.azure.db.utils import create_new_row, update_row_object
+from db import orm
+from db.utils import create_new_row, update_row_object
 
 
 def start_storage(args):

@@ -9,13 +9,16 @@ import logging
 import sys
 from argparse import ArgumentParser
 from datetime import datetime, timedelta, timezone
+from os.path import abspath, dirname
 from socket import AF_UNIX, SOCK_DGRAM
 from socket import error as socket_error
 from socket import socket
 
 from requests import RequestException, post
 
-from wodles.utils import ANALYSISD, MAX_EVENT_SIZE
+sys.path.insert(0, dirname(dirname(abspath(__file__))))
+
+from utils import ANALYSISD, MAX_EVENT_SIZE
 
 SOCKET_HEADER = "1:Azure:"
 

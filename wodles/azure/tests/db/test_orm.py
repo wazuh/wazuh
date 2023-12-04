@@ -7,14 +7,17 @@
 
 import hashlib
 import json
-from os.path import dirname, join, realpath
+import sys
+from os.path import abspath, dirname, join, realpath
 from unittest.mock import patch
 
 import pytest
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.exc import IntegrityError
 
-import wodles.azure.db.orm as orm
+sys.path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
+
+import db.orm as orm
 
 # Overwrite ORM's engine to avoid creating the local database file during the tests
 orm.engine = create_engine("sqlite:///", echo=False)
@@ -127,7 +130,7 @@ def test_get_rows_ko(create_and_teardown_db):
         orm.get_all_rows(table=orm.Graph)
 
 
-@patch("wodles.azure.db.orm.session.commit", side_effect=IntegrityError)
+@patch("db.orm.session.commit", side_effect=IntegrityError)
 def test_update_row_ko(create_and_teardown_db):
     """Ensure the update_row function catch exceptions when trying to commit the changes."""
     with pytest.raises(orm.AzureORMError):
@@ -150,7 +153,7 @@ def test_update_row_ko(create_and_teardown_db):
 def test_load_dates_json(last_dates_file_path):
     """Check the load_dates_json function properly loads the contents of the files, regardless of their structure as
     long as it is a valid one."""
-    with patch("wodles.azure.db.orm.last_dates_path", new=last_dates_file_path):
+    with patch("db.orm.last_dates_path", new=last_dates_file_path):
         last_dates_dict = orm.load_dates_json()
         for key in last_dates_dict.keys():
             assert isinstance(last_dates_dict[key], dict)
@@ -173,7 +176,7 @@ def test_load_dates_json_no_file(mock_open, mock_exists):
 )
 def test_load_dates_json_ko(last_dates_file_path):
     """Check the load_dates_json handles exception as expected when an invalid file is provided."""
-    with patch("wodles.azure.db.orm.last_dates_path", new=last_dates_file_path):
+    with patch("db.orm.last_dates_path", new=last_dates_file_path):
         with pytest.raises(json.JSONDecodeError):
             orm.load_dates_json()
 
@@ -186,8 +189,8 @@ def test_load_dates_json_ko(last_dates_file_path):
         (False, 100),
     ],
 )
-@patch("wodles.azure.db.orm.create_db")
-@patch("wodles.azure.db.orm.migrate_from_last_dates_file")
+@patch("db.orm.create_db")
+@patch("db.orm.migrate_from_last_dates_file")
 def test_check_integrity(
     mock_migrate, mock_create_db, create_and_teardown_db, file_exists, file_size
 ):
@@ -207,7 +210,7 @@ def test_check_integrity_ko(teardown_db):
     with patch("os.path.exists"):
         with patch("os.path.getsize", return_value=100):
             with patch(
-                "wodles.azure.db.orm.migrate_from_last_dates_file",
+                "db.orm.migrate_from_last_dates_file",
                 side_effect=Exception,
             ):
                 assert orm.check_database_integrity() is False
@@ -232,7 +235,7 @@ def test_migrate_from_last_dates_file(last_dates_file_path, create_and_teardown_
     with open(last_dates_file_path, "r") as file:
         test_file_contents = json.load(file)
 
-    with patch("wodles.azure.db.orm.last_dates_path", new=last_dates_file_path):
+    with patch("db.orm.last_dates_path", new=last_dates_file_path):
         orm.migrate_from_last_dates_file()
 
     # Validate the contents of each table

@@ -6,16 +6,19 @@
 # it and/or modify it under the terms of GPLv2
 
 import json
+import sys
 from hashlib import md5
-from os.path import dirname, join, realpath
+from os.path import abspath, dirname, join, realpath
 from unittest.mock import MagicMock, call, patch
 
 import pytest
 from dateutil.parser import parse
 from requests import HTTPError
 
-from wodles.azure.db import orm
-from wodles.azure.services.analytics import (
+sys.path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
+
+from db import orm
+from services.analytics import (
     URL_ANALYTICS,
     build_log_analytics_query,
     get_log_analytics_events,
@@ -38,10 +41,10 @@ TEST_DATA_PATH = join(dirname(dirname(realpath(__file__))), "data")
         ("/var/ossec/", None, None, "", "", "", False, ""),
     ],
 )
-@patch("wodles.azure.services.analytics.get_log_analytics_events")
-@patch("wodles.azure.services.analytics.build_log_analytics_query")
-@patch("wodles.azure.services.analytics.get_token")
-@patch("wodles.azure.services.analytics.read_auth_file")
+@patch("services.analytics.get_log_analytics_events")
+@patch("services.analytics.build_log_analytics_query")
+@patch("services.analytics.get_token")
+@patch("services.analytics.read_auth_file")
 def test_start_log_analytics(
     mock_auth,
     mock_token,
@@ -104,14 +107,14 @@ def test_start_log_analytics(
     )
 
 
-@patch("wodles.azure.azure_utils.logging.error")
+@patch("azure_utils.logging.error")
 @patch(
-    "wodles.azure.services.analytics.get_log_analytics_events", side_effect=HTTPError
+    "services.analytics.get_log_analytics_events", side_effect=HTTPError
 )
-@patch("wodles.azure.services.analytics.build_log_analytics_query")
-@patch("wodles.azure.services.analytics.get_token")
+@patch("services.analytics.build_log_analytics_query")
+@patch("services.analytics.get_token")
 @patch(
-    "wodles.azure.services.analytics.read_auth_file", return_value=("client", "secret")
+    "services.analytics.read_auth_file", return_value=("client", "secret")
 )
 def test_start_log_analytics_ko(
     mock_auth, mock_token, mock_build, mock_get_logs, mock_logging
@@ -129,7 +132,7 @@ def test_start_log_analytics_ko(
     mock_logging.assert_called_once()
 
 
-@patch("wodles.azure.azure_utils.logging.error")
+@patch("azure_utils.logging.error")
 def test_start_log_analytics_ko_credentials(mock_logging):
     """Test start_log_analytics stops its execution if no valid credentials are provided."""
     args = MagicMock(la_tenant_domain=None)
@@ -148,9 +151,9 @@ def test_start_log_analytics_ko_credentials(mock_logging):
         (PAST_DATE, PAST_DATE, PRESENT_DATE, True),
     ],
 )
-@patch("wodles.azure.services.analytics.offset_to_datetime")
-@patch("wodles.azure.services.analytics.create_new_row")
-@patch("wodles.azure.db.orm.get_row", return_value=None)
+@patch("services.analytics.offset_to_datetime")
+@patch("services.analytics.create_new_row")
+@patch("db.orm.get_row", return_value=None)
 def test_build_log_analytics_query(
     mock_get, mock_create, mock_datetime, min_date, max_date, desired_date, reparse
 ):
@@ -187,8 +190,8 @@ def test_build_log_analytics_query(
     assert expected_str in result["query"]
 
 
-@patch("wodles.azure.azure_utils.logging.error")
-@patch("wodles.azure.db.orm.get_row", side_effect=orm.AzureORMError)
+@patch("azure_utils.logging.error")
+@patch("db.orm.get_row", side_effect=orm.AzureORMError)
 def test_build_log_analytics_query_ko(mock_get, mock_logging):
     """Test build_log_analytics_query handles ORM exceptions."""
     with pytest.raises(SystemExit) as err:
@@ -206,11 +209,11 @@ def test_build_log_analytics_query_ko(mock_get, mock_logging):
         ("log_analytics_events_empty", None),
     ],
 )
-@patch("wodles.azure.azure_utils.logging.error")
-@patch("wodles.azure.services.analytics.update_row_object")
-@patch("wodles.azure.services.analytics.iter_log_analytics_events")
-@patch("wodles.azure.services.analytics.get_time_position")
-@patch("wodles.azure.services.analytics.get")
+@patch("azure_utils.logging.error")
+@patch("services.analytics.update_row_object")
+@patch("services.analytics.iter_log_analytics_events")
+@patch("services.analytics.get_time_position")
+@patch("services.analytics.get")
 def test_get_log_analytics_events(
     mock_get, mock_position, mock_iter, mock_update, mock_logging, file, time_position
 ):
@@ -251,7 +254,7 @@ def test_get_log_analytics_events(
         mock_update.assert_called_once()
 
 
-@patch("wodles.azure.services.analytics.get")
+@patch("services.analytics.get")
 def test_get_log_analytics_events_error_responses(mock_get):
     """Test get_log_analytics_events handles invalid responses from the request module."""
     la_query = "test_query"
@@ -277,7 +280,7 @@ def test_get_time_position(columns, position):
     assert result == position
 
 
-@patch("wodles.azure.services.analytics.send_message")
+@patch("services.analytics.send_message")
 def test_iter_log_analytics_events(mock_send):
     """Test iter_log_analytics_events iterates through the columns and rows to build the events and send them to the
     socket."""

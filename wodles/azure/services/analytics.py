@@ -9,11 +9,14 @@ import logging
 import sys
 from hashlib import md5
 from json import dumps
+from os.path import abspath, dirname
 
 from dateutil.parser import parse
 from requests import HTTPError, get
 
-from wodles.azure.azure_utils import (
+sys.path.insert(0, dirname(dirname(abspath(__file__))))
+
+from azure_utils import (
     CREDENTIALS_URL,
     DATETIME_MASK,
     DEPRECATED_MESSAGE,
@@ -22,8 +25,8 @@ from wodles.azure.azure_utils import (
     read_auth_file,
     send_message,
 )
-from wodles.azure.db import orm
-from wodles.azure.db.utils import create_new_row, update_row_object
+from db import orm
+from db.utils import create_new_row, update_row_object
 
 URL_ANALYTICS = "https://api.loganalytics.io"
 
