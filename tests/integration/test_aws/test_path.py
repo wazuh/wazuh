@@ -15,8 +15,7 @@ from wazuh_testing.modules.aws.utils import path_exist
 
 # Local module imports
 from . import event_monitor
-from .utils import ERROR_MESSAGE, TIMEOUT
-from .conftest import TestConfigurator, local_internal_options
+from .utils import ERROR_MESSAGE, TIMEOUT, TestConfigurator, local_internal_options
 
 pytestmark = [pytest.mark.server]
 

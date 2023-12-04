@@ -14,8 +14,7 @@ from wazuh_testing.modules.aws.utils import log_stream_exists, file_exists
 
 # Local module imports
 from . import event_monitor
-from .utils import ERROR_MESSAGE
-from .conftest import TestConfigurator, local_internal_options
+from .utils import ERROR_MESSAGE, TestConfigurator, local_internal_options
 
 pytestmark = [pytest.mark.server]
 

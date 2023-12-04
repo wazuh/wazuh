@@ -14,8 +14,7 @@ from wazuh_testing import session_parameters
 
 # Local module imports
 from . import event_monitor
-from .utils import ERROR_MESSAGE
-from .conftest import TestConfigurator, local_internal_options
+from .utils import ERROR_MESSAGE, TestConfigurator, local_internal_options
 
 pytestmark = [pytest.mark.server]
 

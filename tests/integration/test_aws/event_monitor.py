@@ -3,7 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 """
-This module will contains all callback methods to monitor and event
+This module will contain all callback methods to monitor and event
 """
 
 import re
@@ -59,9 +59,7 @@ def callback_detect_aws_error_for_missing_type(line):
     Returns:
         Optional[str]: Line if it matches.
     """
-    if re.match(
-      fr"{AWS_UNDEFINED_SERVICE_TYPE}", line
-    ):
+    if re.match(fr"{AWS_UNDEFINED_SERVICE_TYPE}", line):
         return line
 
 
@@ -74,9 +72,7 @@ def callback_detect_aws_legacy_module_warning(line):
     Returns:
         Optional[str]: Line if it matches.
     """
-    if re.match(
-            fr"{AWS_DEPRECATED_CONFIG_DEFINED}", line
-    ):
+    if re.match(fr"{AWS_DEPRECATED_CONFIG_DEFINED}", line):
         return line
 
 
@@ -89,9 +85,7 @@ def callback_detect_aws_module_warning(line):
     Returns:
         Optional[str]: Line if it matches.
     """
-    if re.match(
-            fr"{AWS_NO_SERVICE_WARNING}", line
-    ):
+    if re.match(fr"{AWS_NO_SERVICE_WARNING}", line):
         return line
 
 
@@ -104,9 +98,7 @@ def callback_detect_aws_module_started(line):
     Returns:
         Optional[str]: Line if it matches.
     """
-    if re.match(
-            fr"{AWS_MODULE_STARTED}", line
-    ):
+    if re.match(fr"{AWS_MODULE_STARTED}", line):
         return line
 
 
@@ -173,9 +165,7 @@ def callback_detect_aws_module_start(line):
     Returns:
         Optional[str]: Line if it matches.
     """
-    if re.match(
-            fr"{MODULE_START}", line
-    ):
+    if re.match(fr"{MODULE_START}", line):
         return line
 
 
@@ -188,11 +178,9 @@ def callback_detect_all_aws_err(line):
     Returns:
         Optional[str]: line if it matches.
     """
-    if (re.match(
-             fr"{PARSER_ERROR}", line) or
-        re.match(
-              fr"{MODULE_ERROR}", line)
-       ):
+    if (re.match(fr"{PARSER_ERROR}", line) or
+            re.match(fr"{MODULE_ERROR}", line)
+    ):
         return line
 
 
@@ -205,7 +193,7 @@ def callback_detect_aws_read_err(line):
     Returns:
         Optional[str]: line if it matches.
     """
-    if re.match(PARSER_ERROR, line):
+    if re.match(fr"{PARSER_ERROR}", line):
         return line
 
 
@@ -218,7 +206,7 @@ def callback_detect_aws_wmodule_err(line):
     Returns:
         Optional[str]: line if it matches.
     """
-    if re.match(MODULE_ERROR, line):
+    if re.match(fr"{MODULE_ERROR}", line):
         return line
 
 
@@ -231,9 +219,7 @@ def callback_detect_event_processed(line):
     Returns:
         Optional[str]: line if it matches.
     """
-    if re.match(
-            fr"{NEW_LOG_FOUND}", line
-    ):
+    if re.match(fr"{NEW_LOG_FOUND}", line):
         return line
 
 
@@ -266,6 +252,5 @@ def callback_event_sent_to_analysisd(line):
     Returns:
         Optional[str]: line if it matches.
     """
-    if line.startswith(
-            fr"{AWS_EVENT_HEADER}"):
+    if line.startswith(fr"{AWS_EVENT_HEADER}"):
         return line

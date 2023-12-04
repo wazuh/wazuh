@@ -17,8 +17,7 @@ from wazuh_testing.utils.db_queries.aws_db import (get_multiple_service_db_row, 
 
 # Local module imports
 from . import event_monitor
-from .utils import ERROR_MESSAGE, TIMEOUT
-from .conftest import TestConfigurator, local_internal_options
+from .utils import ERROR_MESSAGE, TIMEOUT, TestConfigurator, local_internal_options
 
 pytestmark = [pytest.mark.server]
 

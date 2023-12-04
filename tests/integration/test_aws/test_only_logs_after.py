@@ -21,16 +21,12 @@ from wazuh_testing.modules.aws.patterns import (NO_LOG_PROCESSED, NO_BUCKET_LOG_
 
 # Local module imports
 from . import event_monitor
-from .utils import ERROR_MESSAGE, TIMEOUT
-from .conftest import TestConfigurator, local_internal_options
+from .utils import ERROR_MESSAGE, TIMEOUT, TestConfigurator, local_internal_options
 
 pytestmark = [pytest.mark.server]
 
 # Set test configurator for the module
 configurator = TestConfigurator(module='only_logs_after_test_module')
-
-import pydevd_pycharm
-pydevd_pycharm.settrace('192.168.56.1', port=55555, stdoutToServer=True, stderrToServer=True)
 
 # --------------------------------------------- TEST_BUCKET_WITHOUT_ONLY_LOGS_AFTER ------------------------------------
 # Configure T1 test
@@ -836,10 +832,7 @@ def test_inspector_multiple_calls(
         '--debug', '2'
     ]
 
-    if service_type == INSPECTOR_TYPE:
-        pattern = fr"{NO_NEW_EVENTS}"
-    else:
-        pattern = fr"{EVENT_SENT}"
+    pattern = fr"{NO_NEW_EVENTS}"
 
     # Call the module without only_logs_after and check that no logs were processed
     analyze_command_output(
@@ -937,10 +930,7 @@ def test_cloudwatch_multiple_calls(
         '--debug', '2'
     ]
 
-    if service_type == INSPECTOR_TYPE:
-        pattern = fr"{NO_NEW_EVENTS}"
-    else:
-        pattern = fr"{EVENT_SENT}"
+    pattern = fr"{EVENT_SENT}"
 
     # Call the module without only_logs_after and check that no logs were processed
     analyze_command_output(
