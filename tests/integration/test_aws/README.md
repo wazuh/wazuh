@@ -1,8 +1,9 @@
-# AWS Integration
+# AWS Integration tests
 
 ## Description
 
-It is a _wodle based_ module that has a capability to pull logs from several AWS services.
+It is a _wodle based_ module that test the capabilities of the Wazuh AWS integration, pulling logs from different
+buckets and services.
 
 ## Tests directory structure
 
@@ -11,6 +12,7 @@ wazuh/tests/integration/test_aws
 ├── data
 │   ├── configuration_template
 │   │   ├── basic_test_module
+│   │   ├── custom_bucket_test_module
 │   │   ├── discard_regex_test_module
 │   │   ├── log_groups_test_module
 │   │   ├── only_logs_after_test_module
@@ -21,6 +23,7 @@ wazuh/tests/integration/test_aws
 │   │   └── remove_from_bucket_test_module
 │   └── test_cases
 │       ├── basic_test_module
+│       ├── custom_bucket_test_module
 │       ├── discard_regex_test_module
 │       ├── log_groups_test_module
 │       ├── only_logs_after_test_module
@@ -33,6 +36,7 @@ wazuh/tests/integration/test_aws
 ├── README.md
 ├── conftest.py
 ├── test_basic.py
+├── test_custom_bucket.py
 ├── test_discard_regex.py
 ├── test_log_groups.py
 ├── test_only_logs_after.py
@@ -41,20 +45,6 @@ wazuh/tests/integration/test_aws
 ├── test_regions.py
 ├── test_remove_from_bucket.py
 └── utils.py
-```
-
-## Deps directory structure
-
-```bash
-qa-integration-framework/src/wazuh_testing/modules/aws
-├── __init__.py
-├── cli_utils.py
-├── cloudwatch_utils.py
-├── data_generator.py
-├── db_utils.py
-├── event_monitor.py
-├── exceptions.py 
-└── s3_utils.py
 ```
 
 ## Requirements
@@ -71,8 +61,9 @@ For a step-by-step example guide using linux go to the [test setup section](#lin
 
 ## Configuration settings
 
-- **credentials**
-    Set the credentials at `$HOME/.aws/credentials` (being `HOME` the home directory of the user who runs the tests, more information [here](https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html#profiles)) with the content:
+- **Credentials**:
+    Set the credentials at `$HOME/.aws/credentials` (being `HOME` the home directory of the user who runs the tests, 
+ more information [here](https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html#profiles) with the content:
 
 ```ini
 [qa]
@@ -103,21 +94,18 @@ _We are using **Ubuntu 22.04** for this example:_
 
 - Install **Wazuh**
 
-- Install python tests dependencies:
+- Install Python tests dependencies:
 
-    ```shell script
-    # Install pip
-    apt install python3-pip git -y
-  
-    # Clone `wazuh` repository within your testing environment
-    git clone https://github.com/wazuh/wazuh.git
+```shell script
+# Install pip
+apt install python3-pip git -y
 
-    # Clone the `qa-integration-framework` repository withing your testing environment
-    git clone https://github.com/wazuh/qa-integration-framework.git
-  
-    # Install tests dependencies
-    python3 -m pip install qa-integration-framework/
-    ```
+# Clone the `qa-integration-framework` repository withing your testing environment
+git clone https://github.com/wazuh/qa-integration-framework.git
+
+# Install tests dependencies
+python3 -m pip install qa-integration-framework/
+```
 
 
 ## Integration tests
@@ -133,14 +121,15 @@ from the closest one, it will look for the next one (if possible) until reaching
 need to run every test from the following path, where the general _conftest_ is:
 
 ```shell script
-cd wazuh/tests/integration/test_aws/
+    cd wazuh/tests/integration/test_aws/
 ```
 
 To run any test, we just need to call `pytest` from `python3` using the following line:
 
 ```shell script
-python3 -m pytest [options] [file_or_dir] [file_or_dir] [...]
+    python3 -m pytest [options] [file_or_dir] [file_or_dir] [...]
 ```
+
 
 **Options:**
 
@@ -153,7 +142,7 @@ python3 -m pytest [options] [file_or_dir] [file_or_dir] [...]
 - `--tier`: only run tests with given tier (ex. --tier 2)
 - `--html`: generates a HTML report for the test results. (ex. --html=report.html)
 - `--default-timeout`: overwrites the default timeout (in seconds). This value is used to make a test fail if a
-  condition is not met before the given time lapse. Some tests make use of this value and other has other fixed timeout
+  condition is not met before the given timelapse. Some tests make use of this value and other has other fixed timeout
   that cannot be modified.
 
 _Use `-h` to see the rest or check its [documentation](https://docs.pytest.org/en/latest/usage.html)._
