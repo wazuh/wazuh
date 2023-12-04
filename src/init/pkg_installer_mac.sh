@@ -16,7 +16,7 @@ for dir in "${BACKUP_FOLDERS[@]}"; do
         sleep 1
         ATTEMPTS=$[ATTEMPTS - 1]
         if [[ $("find" "${dir}" "-cmin" "-0.1") ]]; then
-            echo "$(date +"%Y/%m/%d %H:%M:%S") - There is an upgrade in progress. Aborting..."
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - There is an upgrade in progress. Aborting..." >> ./logs/upgrade.log
             exit 1
         fi
     done
