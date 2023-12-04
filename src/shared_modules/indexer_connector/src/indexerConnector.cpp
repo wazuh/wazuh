@@ -202,6 +202,11 @@ IndexerConnector::~IndexerConnector()
     m_cv.notify_all();
 
     QUEUE_MAP.erase(this);
+
+    if (m_initializeThread.joinable())
+    {
+        m_initializeThread.join();
+    }
 }
 
 void IndexerConnector::publish(const std::string& message)
