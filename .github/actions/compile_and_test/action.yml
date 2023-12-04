@@ -13,9 +13,9 @@ inputs:
 
 runs:
   using: "composite"
-  steps:    
+  steps:
       # Dependencies for testing:
-      # - valgrind 
+      # - valgrind
       - name: Install dependencies
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
@@ -34,6 +34,11 @@ runs:
         run: |
           SRC_FOLDER=$(pwd)/src
 
+          VERSION=$(cat src/VERSION)
+          echo $VERSION
+          REVISION=$(cat src/REVISION)
+          echo $REVISION
+
           cd ${{ inputs.path }}
 
           if [[ "${{ inputs.asan }}" != "false" ]]; then
@@ -45,9 +50,9 @@ runs:
             echo "Compiling for valgrind and coverage"
             export COMPILATION_FLAGS="-fprofile-arcs -ftest-coverage -lgcov --coverage"
           fi
-
+          # Read version and revision file.
           mkdir -p build && cd build
-          cmake -DSRC_FOLDER=${SRC_FOLDER} -DCMAKE_CXX_FLAGS="$COMPILATION_FLAGS" -DUNIT_TEST=ON .. && make -j2
+          cmake -DSRC_FOLDER=${SRC_FOLDER} -DCMAKE_CXX_FLAGS="$COMPILATION_FLAGS" -DUNIT_TEST=ON -DVERSION="$VERSION" -DREVISION="$REVISION" .. && make -j2
         shell: bash
 
       - name: Test
