@@ -18,8 +18,6 @@
 #include "utils/chainOfResponsability.hpp"
 #include <memory>
 
-constexpr auto COMPONENT_NAME {"APIDownlader"};
-
 /**
  * @class APIDownloader
  *
@@ -44,9 +42,6 @@ private:
 
         // Save the path of the downloaded content in the context
         m_context->data.at("paths").push_back(m_fullFilePath);
-
-        // Set the status of the stage
-        Utils::pushComponentStatus(COMPONENT_NAME, Utils::ComponentStatus::STATUS_OK, *m_context);
 
         logDebug2(WM_CONTENTUPDATER, "APIDownloader - Finishing - Download done successfully");
     }
@@ -80,11 +75,8 @@ private:
         logDebug2(WM_CONTENTUPDATER, "Downloading from API '%s'", m_url.c_str());
 
         const auto onError {
-            [this](const std::string& message, [[maybe_unused]] const long statusCode)
+            [](const std::string& message, [[maybe_unused]] const long statusCode)
             {
-                // Set the status of the stage
-                Utils::pushComponentStatus(COMPONENT_NAME, Utils::ComponentStatus::STATUS_FAIL, *m_context);
-
                 throw std::runtime_error("APIDownloader - Could not get response from API because: " + message);
             }};
 
@@ -96,7 +88,6 @@ private:
     std::string m_fullFilePath {};                ///< Full path where the content will be saved.
     IURLRequest& m_urlRequest;                    ///< Interface to perform HTTP requests
     std::shared_ptr<UpdaterContext> m_context {}; ///< updater context
-    const std::string COMPONENT_NAME {"APIDownloader"};
 
 public:
     // LCOV_EXCL_START
@@ -122,9 +113,24 @@ public:
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
         logDebug1(WM_CONTENTUPDATER, "APIDownloader - Starting process");
+        constexpr auto COMPONENT_NAME {"APIDownloader"};
 
         m_context = context;
-        download();
+
+        try
+        {
+            download();
+        }
+        catch (const std::exception& e)
+        {
+            // Push error state.
+            Utils::pushComponentStatus(COMPONENT_NAME, Utils::ComponentStatus::STATUS_FAIL, *context);
+
+            throw std::runtime_error("Download failed: " + std::string(e.what()));
+        }
+
+        // Push success state.
+        Utils::pushComponentStatus(COMPONENT_NAME, Utils::ComponentStatus::STATUS_OK, *context);
 
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(context);
     }
