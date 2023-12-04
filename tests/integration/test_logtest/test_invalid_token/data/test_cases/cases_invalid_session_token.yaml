@@ -1,60 +1,58 @@
----
--
-  name: "Invalid token lenght"
+- name: "Invalid token lenght"
   description: "Check Invalid token input for client request"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input_event: '"event": "Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756."'
     input_log_format: '"log_format": "syslog"'
     input_location: '"location": "master->/var/log/syslog"'
     input_token: '"helloworld"'
     stage: "Invalid token lenght"
--
-  name: "Invalid token data type(number)"
+
+- name: "Invalid token data type(number)"
   description: "Check Invalid token input for client request"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input_event: '"event": "Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756."'
     input_log_format: '"log_format": "syslog"'
     input_location: '"location": "master->/var/log/syslog"'
     input_token: '123123132'
     stage: "Invalid token data type(number)"
--
-  name: "Invalid token data type(boolean)"
+
+- name: "Invalid token data type(boolean)"
   description: "Check Invalid token input for client request"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input_event: '"event": "Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756."'
     input_log_format: '"log_format": "syslog"'
     input_location: '"location": "master->/var/log/syslog"'
     input_token: 'true'
     stage: "Invalid token data type(boolean)"
--
-  name: "Invalid token data type(null)"
+
+- name: "Invalid token data type(null)"
   description: "Check Invalid token input for client request"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input_event: '"event": "Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756."'
     input_log_format: '"log_format": "syslog"'
     input_location: '"location": "master->/var/log/syslog"'
     input_token: 'null'
     stage: "Invalid token data type(null)"
--
-  name: "Invalid token data type(array)"
+
+- name: "Invalid token data type(array)"
   description: "Check Invalid token input for client request"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input_event: '"event": "Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756."'
     input_log_format: '"log_format": "syslog"'
     input_location: '"location": "master->/var/log/syslog"'
     input_token: '["hello","world!"]'
     stage: "Invalid token data type(array)"
 
--
-  name: "Invalid token data type(json object)"
+
+- name: "Invalid token data type(json object)"
   description: "Check Invalid token input for client request"
-  test_case:
-  -
+  configuration_parameters:
+  metadata:
     input_event: '"event": "Jun 24 11:54:19 Master systemd[2099]: Started VTE child process 20118 launched by terminator process 17756."'
     input_log_format: '"log_format": "syslog"'
     input_location: '"location": "master->/var/log/syslog"'

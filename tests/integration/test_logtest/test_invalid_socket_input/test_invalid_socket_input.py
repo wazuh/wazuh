@@ -85,7 +85,7 @@ def test_invalid_socket_input(test_metadata, daemons_handler_module,
     tier: 0
 
     parameters:
-        - restart_required_logtest_daemons:
+        - daemons_handler_module:
             type: fixture
             brief: Wazuh logtests daemons handler.
         - wait_for_logtest_startup:
@@ -94,9 +94,9 @@ def test_invalid_socket_input(test_metadata, daemons_handler_module,
         - connect_to_sockets_function:
             type: fixture
             brief: Function scope version of 'connect_to_sockets' which connects to the specified sockets for the test.
-        - test_case:
+        - test_metadata:
             type: list
-            brief: List of test_case stages. (dicts with input, output and stage keys)
+            brief: List of metadata values. (dicts with input, output and stage keys)
 
     assertions:
         - Verify that the communication through the sockets works well by verifying that all the test cases produce
