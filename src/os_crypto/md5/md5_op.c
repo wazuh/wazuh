@@ -14,41 +14,45 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <openssl/evp.h>
 
 #include "md5_op.h"
-#include <openssl/md5.h>
 #include "headers/defs.h"
 #include "headers/file_op.h"
 
 int OS_MD5_File(const char *fname, os_md5 output, int mode)
 {
     FILE *fp;
-    MD5_CTX ctx;
-    unsigned char buf[1024 + 1];
-    unsigned char digest[16];
+    EVP_MD_CTX *mdctx;
+    unsigned char buf[1024];
+    unsigned char digest[EVP_MAX_MD_SIZE];
     size_t n;
 
     memset(output, 0, sizeof(os_md5));
-    buf[1024] = '\0';
 
     fp = wfopen(fname, mode == OS_BINARY ? "rb" : "r");
     if (!fp) {
         return (-1);
     }
 
-    MD5_Init(&ctx);
-    while ((n = fread(buf, 1, sizeof(buf) - 1, fp)) > 0) {
-        buf[n] = '\0';
-        MD5_Update(&ctx, buf, (unsigned)n);
+    mdctx = EVP_MD_CTX_new();
+    if (!mdctx) {
+        fclose(fp);
+        return (-1);
     }
 
-    MD5_Final(digest, &ctx);
+    EVP_DigestInit(mdctx, EVP_md5());
+    while ((n = fread(buf, 1, sizeof(buf), fp)) > 0) {
+        EVP_DigestUpdate(mdctx, buf, n);
+    }
+
+    EVP_DigestFinal(mdctx, digest, NULL);
 
     for (n = 0; n < 16; n++) {
-        snprintf(output, 3, "%02x", digest[n]);
-        output += 2;
+        snprintf(output + n * 2, 3, "%02x", digest[n]);
     }
 
+    EVP_MD_CTX_free(mdctx);
     fclose(fp);
 
     return (0);
@@ -56,20 +60,24 @@ int OS_MD5_File(const char *fname, os_md5 output, int mode)
 
 int OS_MD5_Str(const char *str, ssize_t length, os_md5 output)
 {
-    unsigned char digest[16];
+    EVP_MD_CTX *mdctx;
+    unsigned char digest[EVP_MAX_MD_SIZE];
+    size_t n;
 
-    int n;
-
-    MD5_CTX ctx;
-    MD5_Init(&ctx);
-    MD5_Update(&ctx, (const unsigned char *)str, length < 0 ? (unsigned)strlen(str) : (unsigned)length);
-    MD5_Final(digest, &ctx);
-
-    output[32] = '\0';
-    for (n = 0; n < 16; n++) {
-        snprintf(output, 3, "%02x", digest[n]);
-        output += 2;
+    mdctx = EVP_MD_CTX_new();
+    if (!mdctx) {
+        return (-1);
     }
+
+    EVP_DigestInit(mdctx, EVP_md5());
+    EVP_DigestUpdate(mdctx, str, length < 0 ? (size_t)strlen(str) : (size_t)length);
+    EVP_DigestFinal(mdctx, digest, NULL);
+
+    for (n = 0; n < 16; n++) {
+        snprintf(output + n * 2, 3, "%02x", digest[n]);
+    }
+
+    EVP_MD_CTX_free(mdctx);
 
     return (0);
 }
