@@ -13,7 +13,7 @@
 #define WM_AZURE
 
 #define WM_AZURE_LOGTAG ARGV0 ":" AZ_WM_NAME
-#define WM_AZURE_SCRIPT_PATH "wodles/azure/azure-logs"
+#define WM_AZURE_SCRIPT_PATH "wodles/azure/azure"
 
 #define LOG_ANALYTICS   0
 #define GRAPHS          1
