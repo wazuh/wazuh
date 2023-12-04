@@ -32,7 +32,8 @@ configurator.configure_test(configuration_file='custom_bucket_configuration.yaml
                          ids=configurator.cases_ids)
 def test_custom_bucket_defaults(configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
                                 configure_local_internal_options_function, truncate_monitored_files,
-                                restart_wazuh_function, file_monitoring):
+                                restart_wazuh_function, file_monitoring
+):
     """
     description: Test the AWS S3 custom bucket module is invoked with the expected parameters and no error occurs.
 
@@ -136,7 +137,8 @@ configurator.configure_test(configuration_file='custom_bucket_configuration.yaml
                          ids=configurator.cases_ids)
 def test_custom_bucket_logs(configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
                             configure_local_internal_options_function, truncate_monitored_files,
-                            restart_wazuh_function, file_monitoring, upload_and_delete_file_to_s3):
+                            restart_wazuh_function, file_monitoring, upload_and_delete_file_to_s3
+):
     """
     description: Test the AWS S3 custom bucket module is invoked with the expected parameters and retrieve
     the messages from the SQS Queue.
