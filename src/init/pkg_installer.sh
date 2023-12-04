@@ -6,18 +6,23 @@ OSSEC_INIT_FILE=/etc/ossec-init.conf
 WAZUH_HOME=$(pwd)
 TMP_DIR_BACKUP=./tmp_bkp
 
-# Clean before backup
-if [ -d "./tmp_bkp" ]; then
+# Check if there is an upgrade in progress
+declare -a BACKUP_FOLDERS
+[ -d "./tmp_bkp" ] && BACKUP_FOLDERS+=("./tmp_bkp")
+[ -d "./backup" ] && BACKUP_FOLDERS+=("./backup")
+for dir in "${BACKUP_FOLDERS[@]}"; do
     ATTEMPTS=5
     while [ $ATTEMPTS -gt 0 ]; do
         sleep 1
         ATTEMPTS=$[ATTEMPTS - 1]
-        if [[ $(find ./tmp_bkp -cmin -0.1) ]]; then
-            echo "$(date +"%Y/%m/%d %H:%M:%S") - There is an upgrade in progress. Aborting..." >> ./logs/upgrade.log
+        if [[ $("find" "${dir}" "-cmin" "-0.1") ]]; then
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - There is an upgrade in progress. Aborting..."
             exit 1
         fi
     done
-fi
+done
+
+# Clean before backup
 rm -rf ./tmp_bkp/
 
 WAZUH_REVISION=0
