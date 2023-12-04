@@ -15,6 +15,7 @@
 
 #include "headers/defs.h"
 #include "../sha1/sha1_op.h"
+#include <openssl/evp.h>
 #include <openssl/sha.h>
 #include "hmac.h"
 
@@ -28,7 +29,6 @@ int OS_HMAC_SHA1_Str(const char *key, const char *text, os_sha1 output)
     int i;
     size_t key_length;
     size_t text_length;
-    SHA_CTX context;
 
     key_length = strlen(key);
     text_length = strlen(text);
@@ -53,20 +53,28 @@ int OS_HMAC_SHA1_Str(const char *key, const char *text, os_sha1 output)
         i_key_pad[i] ^= 0x36;
     }
 
-    SHA1_Init(&context);
+    EVP_MD_CTX *sha1_ctx = EVP_MD_CTX_new();
+    if (!sha1_ctx) {
+        return -1;
+    }
 
-    SHA1_Update(&context, i_key_pad, HMAC_SHA1_BLOCKSIZE);
-    SHA1_Update(&context, text, text_length);
+    EVP_DigestInit(sha1_ctx, EVP_sha1());
+    EVP_DigestUpdate(sha1_ctx, i_key_pad, HMAC_SHA1_BLOCKSIZE);
+    EVP_DigestUpdate(sha1_ctx, text, text_length);
+    EVP_DigestFinal(sha1_ctx, result, NULL);
+    EVP_MD_CTX_free(sha1_ctx);
+    sha1_ctx = NULL;
 
-    SHA1_Final(result, &context);
+    sha1_ctx = EVP_MD_CTX_new();
+    if (!sha1_ctx) {
+        return -1;
+    }
 
-
-    SHA1_Init(&context);
-
-    SHA1_Update(&context, o_key_pad, HMAC_SHA1_BLOCKSIZE);
-    SHA1_Update(&context, result, SHA_DIGEST_LENGTH);
-
-    SHA1_Final(result, &context);
+    EVP_DigestInit(sha1_ctx, EVP_sha1());
+    EVP_DigestUpdate(sha1_ctx, o_key_pad, HMAC_SHA1_BLOCKSIZE);
+    EVP_DigestUpdate(sha1_ctx, result, SHA_DIGEST_LENGTH);
+    EVP_DigestFinal(sha1_ctx, result, NULL);
+    EVP_MD_CTX_free(sha1_ctx);
 
     for (i = 0; i < SHA_DIGEST_LENGTH; i++) {
         snprintf(output + i * 2, 3, "%02x", result[i]);
@@ -85,7 +93,6 @@ int OS_HMAC_SHA1_File(const char *key, const char *file_path, os_sha1 output, in
 
     int i;
     size_t key_length;
-    SHA_CTX context;
     FILE *fp;
 
     key_length = strlen(key);
@@ -114,23 +121,31 @@ int OS_HMAC_SHA1_File(const char *key, const char *file_path, os_sha1 output, in
         return -1;
     }
 
-    SHA1_Init(&context);
-
-    SHA1_Update(&context, i_key_pad, HMAC_SHA1_BLOCKSIZE);
+    EVP_MD_CTX *sha1_ctx = EVP_MD_CTX_new();
+    if (!sha1_ctx) {
+        return -1;
+    }
+    EVP_DigestInit(sha1_ctx, EVP_sha1());
+    EVP_DigestUpdate(sha1_ctx, i_key_pad, HMAC_SHA1_BLOCKSIZE);
 
     while ((i = fread(buffer, 1, 2048, fp)) > 0) {
         buffer[i] = '\0';
-        SHA1_Update(&context, buffer, i);
+        EVP_DigestUpdate(sha1_ctx, buffer, i);
     }
 
-    SHA1_Final(result, &context);
+    EVP_DigestFinal(sha1_ctx, result, NULL);
+    EVP_MD_CTX_free(sha1_ctx);
+    sha1_ctx = NULL;
 
-    SHA1_Init(&context);
-
-    SHA1_Update(&context, o_key_pad, HMAC_SHA1_BLOCKSIZE);
-    SHA1_Update(&context, result, SHA_DIGEST_LENGTH);
-
-    SHA1_Final(result, &context);
+    sha1_ctx = EVP_MD_CTX_new();
+    if (!sha1_ctx) {
+        return -1;
+    }
+    EVP_DigestInit(sha1_ctx, EVP_sha1());
+    EVP_DigestUpdate(sha1_ctx, o_key_pad, HMAC_SHA1_BLOCKSIZE);
+    EVP_DigestUpdate(sha1_ctx, result, HMAC_SHA1_BLOCKSIZE);
+    EVP_DigestFinal(sha1_ctx, result, NULL);
+    EVP_MD_CTX_free(sha1_ctx);
 
     for (i = 0; i < SHA_DIGEST_LENGTH; i++) {
         snprintf(output + i * 2, 3, "%02x", result[i]);
