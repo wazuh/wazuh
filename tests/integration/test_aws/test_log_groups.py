@@ -1,44 +1,39 @@
-import os
+"""
+Copyright (C) 2015-2023, Wazuh Inc.
+Created by Wazuh, Inc. <info@wazuh.com>.
+This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+This module will contains all cases for the log groups test suite
+"""
+
 import pytest
 
 # qa-integration-framework imports
 from wazuh_testing import session_parameters
-from wazuh_testing.constants.paths.configurations import TEMPLATE_DIR, TEST_CASES_DIR
-from wazuh_testing.modules.aws import event_monitor, local_internal_options  # noqa: F401
-from wazuh_testing.utils.configuration import (
-    get_test_cases_data,
-    load_configuration_template,
-)
-from wazuh_testing.modules.aws.db_utils import (
-    get_multiple_service_db_row,
-    services_db_exists,
-    table_exists,
-)
+from wazuh_testing.utils.db_queries.aws_db import get_multiple_service_db_row, table_exists
+from wazuh_testing.modules.aws.utils import path_exist
+from wazuh_testing.constants.paths.aws import AWS_SERVICES_DB_PATH
+from wazuh_testing.modules.aws.patterns import NON_EXISTENT_SPECIFIED_LOG_GROUPS
 
 # Local module imports
-from .utils import ERROR_MESSAGES, TIMEOUTS
+from . import event_monitor
+from .utils import ERROR_MESSAGE, TIMEOUT, TestConfigurator, local_internal_options
 
 pytestmark = [pytest.mark.server]
 
-
-# Generic vars
-MODULE = 'log_groups_test_module'
-TEST_DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-CONFIGURATIONS_PATH = os.path.join(TEST_DATA_PATH, TEMPLATE_DIR, MODULE)
-TEST_CASES_PATH = os.path.join(TEST_DATA_PATH, TEST_CASES_DIR, MODULE)
+# Set test configurator for the module
+configurator = TestConfigurator(module='log_groups_test_module')
 
 # ----------------------------------------------- TEST_AWS_LOG_GROUPS --------------------------------------------------
-t1_configurations_path = os.path.join(CONFIGURATIONS_PATH, 'configuration_log_groups.yaml')
-t1_cases_path = os.path.join(TEST_CASES_PATH, 'cases_log_groups.yaml')
-
-t1_configuration_parameters, t1_configuration_metadata, t1_case_ids = get_test_cases_data(t1_cases_path)
-t1_configurations = load_configuration_template(
-    t1_configurations_path, t1_configuration_parameters, t1_configuration_metadata
-)
+# Configure T1 test
+configurator.configure_test(configuration_file='configuration_log_groups.yaml',
+                            cases_file='cases_log_groups.yaml')
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata', zip(t1_configurations, t1_configuration_metadata), ids=t1_case_ids)
+@pytest.mark.parametrize('configuration, metadata',
+                         zip(configurator.test_configuration_template, configurator.metadata),
+                         ids=configurator.cases_ids)
 def test_log_groups(
     configuration, metadata, create_log_stream, load_wazuh_basic_configuration, set_wazuh_configuration,
     clean_aws_services_db, configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function,
@@ -124,7 +119,7 @@ def test_log_groups(
         callback=event_monitor.callback_detect_aws_module_start
     )
 
-    assert log_monitor.callback_result is not None, ERROR_MESSAGES['failed_start']
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
 
     # Check command was called correctly
     log_monitor.start(
@@ -134,19 +129,19 @@ def test_log_groups(
 
     if expected_results:
         log_monitor.start(
-            timeout=TIMEOUTS[20],
+            timeout=TIMEOUT[20],
             callback=event_monitor.callback_detect_service_event_processed(expected_results, service_type),
             accumulations=len(log_group_names.split(','))
         )
     else:
         log_monitor.start(
-            timeout=TIMEOUTS[10],
-            callback=event_monitor.make_aws_callback(r'.*The specified log group does not exist.'),
+            timeout=TIMEOUT[10],
+            callback=event_monitor.make_aws_callback(pattern=fr"{NON_EXISTENT_SPECIFIED_LOG_GROUPS}")
         )
 
-        assert log_monitor.callback_result is not None, ERROR_MESSAGES['incorrect_no_existent_log_group']
+        assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_no_existent_log_group']
 
-    assert services_db_exists()
+    assert path_exist(path=AWS_SERVICES_DB_PATH)
 
     if expected_results:
         log_group_list = log_group_names.split(",")
@@ -161,4 +156,4 @@ def test_log_groups(
         callback=event_monitor.callback_detect_all_aws_err
     )
 
-    assert log_monitor.callback_result is None, ERROR_MESSAGES['error_found']
+    assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']

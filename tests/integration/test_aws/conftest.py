@@ -1,4 +1,14 @@
+# Copyright (C) 2015-2023, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+"""
+This module contain all necessary components (fixtures, classes, methods)to configure the test for its execution.
+"""
+
 import pytest
+
+# qa-integration-framework imports
 from wazuh_testing.logger import logger
 from wazuh_testing.constants.aws import (
     FAKE_CLOUDWATCH_LOG_GROUP,
@@ -14,7 +24,7 @@ from wazuh_testing.modules.aws.utils import (
     file_exists,
     upload_file
 )
-from wazuh_testing.modules.aws.db_utils import delete_s3_db, delete_services_db
+from wazuh_testing.modules.aws.utils import delete_s3_db, delete_services_db
 from wazuh_testing.utils.services import control_service
 
 
@@ -140,10 +150,9 @@ def fixture_delete_log_stream(metadata):
     log_stream = metadata['log_stream']
     delete_log_stream(log_stream=log_stream)
     logger.debug('Deleted log stream: %s', log_stream)
+    
 
 # DB fixtures
-
-
 @pytest.fixture
 def clean_s3_cloudtrail_db():
     """Delete the DB file before and after the test execution"""
