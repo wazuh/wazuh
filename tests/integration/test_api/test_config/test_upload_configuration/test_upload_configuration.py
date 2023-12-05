@@ -7,7 +7,7 @@ copyright: Copyright (C) 2015, Wazuh Inc.
 
 type: integration
 
-brief: This tests checks that the configuration is set correctly in the manager via the API.
+brief: This test checks that the configuration is set correctly in the manager via the API.
 
 components:
     - api
@@ -81,7 +81,7 @@ def test_upload_configuration(test_configuration, test_metadata, add_configurati
     """
     description: Check if the API works when uploading configurations.
 
-    wazuh_min_version: 4.2.0
+    wazuh_min_version: 4.4.0
 
     test_phases:
         - setup:
