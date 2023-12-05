@@ -1,8 +1,8 @@
-# CTI API Downloader stage
+# CTI Offset Downloader stage
 
 ## Details
 
-The [CTI API downloader](../../src/components/CtiApiDownloader.hpp) stage is part of the Content Manager orchestration and is in charge of downloading content from a CTI API to be then processed by the following stages. The downloaded content is stored in one or multiple output files, whose paths will be then published for the consumers to read.
+The [CTI offset downloader](../../src/components/CtiOffsetDownloader.hpp) stage is part of the Content Manager orchestration and is in charge of downloading content from a CTI API to be then processed by the following stages. The downloaded content is stored in one or multiple output files, whose paths will be then published for the consumers to read.
 
 The output content files will be stored in any of the following output directories:
 - Downloads folder: If the input files are compressed.

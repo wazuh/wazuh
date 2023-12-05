@@ -9,27 +9,27 @@
  * Foundation.
  */
 
-#include "CtiApiDownloader_test.hpp"
+#include "CtiOffsetDownloader_test.hpp"
 #include "updaterContext.hpp"
 #include "gtest/gtest.h"
 #include <filesystem>
 
-const auto OK_STATUS = R"([{"stage":"CtiApiDownloader","status":"ok"}])"_json;
-const auto FAIL_STATUS = R"([{"stage":"CtiApiDownloader","status":"fail"}])"_json;
+const auto OK_STATUS = R"([{"stage":"CtiOffsetDownloader","status":"ok"}])"_json;
+const auto FAIL_STATUS = R"([{"stage":"CtiOffsetDownloader","status":"fail"}])"_json;
 
 constexpr auto DEFAULT_TYPE {"offsets"}; ///< Default content type.
 
 /**
  * @brief Tests handle a valid request with raw data.
  */
-TEST_F(CtiApiDownloaderTest, TestHandleValidRequestWithRawData)
+TEST_F(CtiOffsetDownloaderTest, TestHandleValidRequestWithRawData)
 {
     const auto& fileName {
         m_spUpdaterContext->spUpdaterBaseContext->configData.at("contentFileName").get<std::string>()};
     const auto contentPath {static_cast<std::string>(m_spUpdaterBaseContext->contentsFolder) + "/3-" + fileName};
     const auto downloadPath {static_cast<std::string>(m_spUpdaterBaseContext->downloadsFolder) + "/3-" + fileName};
 
-    EXPECT_NO_THROW(m_spCtiApiDownloader->handleRequest(m_spUpdaterContext));
+    EXPECT_NO_THROW(m_spCtiOffsetDownloader->handleRequest(m_spUpdaterContext));
 
     EXPECT_EQ(m_spUpdaterContext->data.at("paths").at(0), contentPath);
 
@@ -51,7 +51,7 @@ TEST_F(CtiApiDownloaderTest, TestHandleValidRequestWithRawData)
 /**
  * @brief Tests handle a valid request with compressed data.
  */
-TEST_F(CtiApiDownloaderTest, TestHandleValidRequestWithCompressedData)
+TEST_F(CtiOffsetDownloaderTest, TestHandleValidRequestWithCompressedData)
 {
     m_spUpdaterBaseContext->configData["url"] = "http://localhost:4444/xz/consumers";
     m_spUpdaterBaseContext->configData["compressionType"] = "xz";
@@ -61,7 +61,7 @@ TEST_F(CtiApiDownloaderTest, TestHandleValidRequestWithCompressedData)
     const auto contentPath {static_cast<std::string>(m_spUpdaterBaseContext->contentsFolder) + "/3-" + fileName};
     const auto downloadPath {static_cast<std::string>(m_spUpdaterBaseContext->downloadsFolder) + "/3-" + fileName};
 
-    EXPECT_NO_THROW(m_spCtiApiDownloader->handleRequest(m_spUpdaterContext));
+    EXPECT_NO_THROW(m_spCtiOffsetDownloader->handleRequest(m_spUpdaterContext));
 
     EXPECT_EQ(m_spUpdaterContext->data.at("paths").at(0), downloadPath);
 
@@ -83,7 +83,7 @@ TEST_F(CtiApiDownloaderTest, TestHandleValidRequestWithCompressedData)
 /**
  * @brief Tests handle a valid request with compressed data and invalid output folder.
  */
-TEST_F(CtiApiDownloaderTest, TestHandleValidRequestWithCompressedDataAndInvalidOutputFolder)
+TEST_F(CtiOffsetDownloaderTest, TestHandleValidRequestWithCompressedDataAndInvalidOutputFolder)
 {
     m_spUpdaterBaseContext->configData["url"] = "http://localhost:4444/xz";
     m_spUpdaterBaseContext->configData["compressionType"] = "xz";
@@ -92,7 +92,7 @@ TEST_F(CtiApiDownloaderTest, TestHandleValidRequestWithCompressedDataAndInvalidO
     m_spUpdaterBaseContext->downloadsFolder = m_spUpdaterBaseContext->outputFolder / DOWNLOAD_FOLDER;
     m_spUpdaterBaseContext->contentsFolder = m_spUpdaterBaseContext->outputFolder / CONTENTS_FOLDER;
 
-    EXPECT_THROW(m_spCtiApiDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
+    EXPECT_THROW(m_spCtiOffsetDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
 
     EXPECT_TRUE(m_spUpdaterContext->data.at("paths").empty());
 
@@ -108,7 +108,7 @@ TEST_F(CtiApiDownloaderTest, TestHandleValidRequestWithCompressedDataAndInvalidO
 /**
  * @brief Tests handle an empty url.
  */
-TEST_F(CtiApiDownloaderTest, TestHandleAnEmptyUrl)
+TEST_F(CtiOffsetDownloaderTest, TestHandleAnEmptyUrl)
 {
     m_spUpdaterBaseContext->configData["url"] = "";
     m_spUpdaterBaseContext->configData["compressionType"] = "xz";
@@ -117,7 +117,7 @@ TEST_F(CtiApiDownloaderTest, TestHandleAnEmptyUrl)
     m_spUpdaterBaseContext->downloadsFolder = m_spUpdaterBaseContext->outputFolder / DOWNLOAD_FOLDER;
     m_spUpdaterBaseContext->contentsFolder = m_spUpdaterBaseContext->outputFolder / CONTENTS_FOLDER;
 
-    EXPECT_THROW(m_spCtiApiDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
+    EXPECT_THROW(m_spCtiOffsetDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
 
     EXPECT_TRUE(m_spUpdaterContext->data.at("paths").empty());
 
@@ -133,7 +133,7 @@ TEST_F(CtiApiDownloaderTest, TestHandleAnEmptyUrl)
 /**
  * @brief Tests handle an invalid url.
  */
-TEST_F(CtiApiDownloaderTest, TestHandleAnInvalidUrl)
+TEST_F(CtiOffsetDownloaderTest, TestHandleAnInvalidUrl)
 {
     m_spUpdaterBaseContext->configData["url"] = "http://localhost:4444/invalid-url";
     m_spUpdaterBaseContext->configData["compressionType"] = "xz";
@@ -142,7 +142,7 @@ TEST_F(CtiApiDownloaderTest, TestHandleAnInvalidUrl)
     m_spUpdaterBaseContext->downloadsFolder = m_spUpdaterBaseContext->outputFolder / DOWNLOAD_FOLDER;
     m_spUpdaterBaseContext->contentsFolder = m_spUpdaterBaseContext->outputFolder / CONTENTS_FOLDER;
 
-    EXPECT_THROW(m_spCtiApiDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
+    EXPECT_THROW(m_spCtiOffsetDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
 
     EXPECT_TRUE(m_spUpdaterContext->data.at("paths").empty());
 
@@ -159,7 +159,7 @@ TEST_F(CtiApiDownloaderTest, TestHandleAnInvalidUrl)
  * @brief Test the retry feature of the downloader when the server responds with 5xx errors.
  *
  */
-TEST_F(CtiApiDownloaderTest, DownloadServerErrorWithRetry)
+TEST_F(CtiOffsetDownloaderTest, DownloadServerErrorWithRetry)
 {
     // Push two errors to the server. This will make the client to retry twice.
     m_spFakeServer->pushError(500);
@@ -174,7 +174,7 @@ TEST_F(CtiApiDownloaderTest, DownloadServerErrorWithRetry)
     expectedData["stageStatus"] = OK_STATUS;
     expectedData["type"] = DEFAULT_TYPE;
 
-    ASSERT_NO_THROW(m_spCtiApiDownloader->handleRequest(m_spUpdaterContext));
+    ASSERT_NO_THROW(m_spCtiOffsetDownloader->handleRequest(m_spUpdaterContext));
 
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
     EXPECT_TRUE(std::filesystem::exists(contentPath));
@@ -184,7 +184,7 @@ TEST_F(CtiApiDownloaderTest, DownloadServerErrorWithRetry)
  * @brief Test the downloader when the server responds with 4xx errors.
  *
  */
-TEST_F(CtiApiDownloaderTest, DownloadClientErrorNoRetry)
+TEST_F(CtiOffsetDownloaderTest, DownloadClientErrorNoRetry)
 {
     // Push one errors to the server. No retries should be performed.
     m_spFakeServer->pushError(400);
@@ -195,7 +195,7 @@ TEST_F(CtiApiDownloaderTest, DownloadClientErrorNoRetry)
     expectedData["stageStatus"] = FAIL_STATUS;
     expectedData["type"] = DEFAULT_TYPE;
 
-    ASSERT_THROW(m_spCtiApiDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
+    ASSERT_THROW(m_spCtiOffsetDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 }
 
@@ -203,7 +203,7 @@ TEST_F(CtiApiDownloaderTest, DownloadClientErrorNoRetry)
  * @brief Test the downloader when the server responds with both 4xx and 5xx errors.
  *
  */
-TEST_F(CtiApiDownloaderTest, DownloadClientAndServerErrorsRetryAndFail)
+TEST_F(CtiOffsetDownloaderTest, DownloadClientAndServerErrorsRetryAndFail)
 {
     // Push two errors to the server. This will make the client to retry once.
     m_spFakeServer->pushError(550);
@@ -215,6 +215,6 @@ TEST_F(CtiApiDownloaderTest, DownloadClientAndServerErrorsRetryAndFail)
     expectedData["stageStatus"] = FAIL_STATUS;
     expectedData["type"] = DEFAULT_TYPE;
 
-    ASSERT_THROW(m_spCtiApiDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
+    ASSERT_THROW(m_spCtiOffsetDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 }

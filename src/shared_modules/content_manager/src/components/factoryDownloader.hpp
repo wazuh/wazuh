@@ -13,7 +13,8 @@
 #define _FACTORY_DOWNLOADER_HPP
 
 #include "APIDownloader.hpp"
-#include "CtiApiDownloader.hpp"
+#include "CtiOffsetDownloader.hpp"
+#include "CtiSnapshotDownloader.hpp"
 #include "HTTPRequest.hpp"
 #include "fileDownloader.hpp"
 #include "json.hpp"
@@ -48,9 +49,13 @@ public:
         {
             return std::make_shared<APIDownloader>(HTTPRequest::instance());
         }
-        if ("cti-api" == downloaderType)
+        if ("cti-offset" == downloaderType)
         {
-            return std::make_shared<CtiApiDownloader>(HTTPRequest::instance());
+            return std::make_shared<CtiOffsetDownloader>(HTTPRequest::instance());
+        }
+        if ("cti-snapshot" == downloaderType)
+        {
+            return std::make_shared<CtiSnapshotDownloader>(HTTPRequest::instance());
         }
         if ("file" == downloaderType)
         {
