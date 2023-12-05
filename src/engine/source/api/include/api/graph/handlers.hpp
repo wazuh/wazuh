@@ -2,7 +2,7 @@
 #define _API_GRAPH_HANDLERS_HPP
 
 #include <api/api.hpp>
-#include <builder.hpp>
+#include <builder/ibuilder.hpp>
 
 namespace api::graph::handlers
 {
@@ -14,7 +14,7 @@ namespace api::graph::handlers
  */
 struct Config
 {
-    std::shared_ptr<builder::Builder> m_builder;
+    std::shared_ptr<builder::IBuilder> m_builder;
 };
 
 /** @brief Handler for the resource endpoint get command.

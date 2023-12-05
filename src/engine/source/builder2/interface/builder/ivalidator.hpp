@@ -27,6 +27,14 @@ public:
      * @return base::OptError An error if the Asset is not valid.
      */
     virtual base::OptError validateAsset(const json::Json& json) const = 0;
+
+    /**
+     * @brief Validate a Policy.
+     *
+     * @param json Policy Json definition.
+     * @return base::OptError An error if the Policy is not valid.
+     */
+    virtual base::OptError validatePolicy(const json::Json& json) const = 0;
 };
 
 } // namespace builder

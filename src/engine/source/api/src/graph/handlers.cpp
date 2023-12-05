@@ -7,10 +7,7 @@
 #include <eMessages/graph.pb.h>
 #include <logpar/registerParsers.hpp>
 #include <schemf/schema.hpp>
-
-#include "builder.hpp"
-#include "register.hpp"
-#include "registry.hpp"
+#include <builder/ibuilder.hpp>
 
 namespace
 {
@@ -95,14 +92,14 @@ api::Handler resourceGet(const Config& config)
 
         if (GraphType::POLICY == graphType)
         {
-            eResponse.set_content(policy.getGraphivzStr());
+            eResponse.set_content(policy->getGraphivzStr());
         }
         else
         {
             base::Expression policyExpression;
             try
             {
-                policyExpression = policy.expression();
+                policyExpression = policy->expression();
             }
             catch (const std::exception& e)
             {

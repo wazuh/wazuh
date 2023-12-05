@@ -3,10 +3,10 @@
 namespace router
 {
 
-Route::Route(const std::string& name, builder::Asset& assetRoute, const std::string& target, int priority)
+Route::Route(const std::string& name, base::Expression& assetRoute, const std::string& target, int priority)
     : m_name {name}
-    , m_filter {assetRoute.getExpression()}
-    , m_filterName {assetRoute.m_name}
+    , m_filter {assetRoute}
+    , m_filterName {assetRoute->getName()}
     , m_target {target}
     , m_priority {ROUTE_MINIMUM_PRIORITY}
 {

@@ -8,13 +8,13 @@ add_library(router STATIC
 target_link_libraries(router
     PUBLIC
     # For api::Route, needs knos runtimeEnvironment becouse know runtimeEnvironment
-    builders
     bk::rx
     queue
     PRIVATE
     base
     json
     store::istore
+    builder2::ibuilder
 )
 
 target_include_directories(router

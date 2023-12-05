@@ -9,6 +9,22 @@ target_include_directories(builder2_ibuilder INTERFACE ${IFACE_DIR})
 target_link_libraries(builder2_ibuilder INTERFACE base) # Base for expression
 add_library(builder2::ibuilder ALIAS builder2_ibuilder)
 
+## Builders Obj Lib
+# If debug is enabled, Add the RE2_ON_VALGRIND definition for RE2
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  add_compile_definitions(RE2_ON_VALGRIND)
+endif()
+
+CPMAddPackage(
+  NAME RE2
+  GITHUB_REPOSITORY google/re2
+  GIT_TAG 2022-02-01
+  VERSION release 2022-02-01
+  EXCLUDE_FROM_ALL YES
+  OPTIONS
+    "RE2_BUILD_TESTING OFF"
+)
+
 ## Lib
 SET(BUILDER_PUB_INCS
     ${INC_DIR}
@@ -23,15 +39,32 @@ add_library(builder2 STATIC
     ${SRC_DIR}/policy/policy.cpp
     ${SRC_DIR}/policy/assetBuilder.cpp
     ${SRC_DIR}/filterBuilder.cpp
+    ${SRC_DIR}/builders/stage/check.cpp
+    ${SRC_DIR}/builders/stage/map.cpp
+    ${SRC_DIR}/builders/stage/parse.cpp
+    ${SRC_DIR}/builders/stage/normalize.cpp
+    ${SRC_DIR}/builders/baseHelper.cpp
+    ${SRC_DIR}/builders/opmap/map.cpp
+    ${SRC_DIR}/builders/opfilter/filter.cpp
 )
 target_include_directories(builder2 PUBLIC ${BUILDER_PUB_INCS} PRIVATE ${BUILDER_PRI_INCS})
+# TODO make variables so we can use them in the tests and make private the dependencies
 target_link_libraries(builder2
     PUBLIC
     builder2::ibuilder
     store::istore
-    schemf::ischema
-    defs
     base
+    defs::idefinitions
+    schemval::ivalidator
+    re2
+    logicexpr
+    logpar
+
+    PRIVATE
+
+    schemf::ischema
+
+
 )
 
 # Tests
@@ -61,6 +94,8 @@ add_executable(builder2_utest
     ${UNIT_SRC_DIR}/policy/factory_test.cpp
     ${UNIT_SRC_DIR}/policy/assetBuilder_test.cpp
     ${UNIT_SRC_DIR}/filterBuilder_test.cpp
+    # TODO update
+    # ${UNIT_SRC_DIR}/builders/helperParser_test.cpp
     ${UNIT_SRC_DIR}/exploratory_test.cpp # TODO: delete
 )
 target_include_directories(builder2_utest PUBLIC ${BUILDER_PUB_INCS} PRIVATE ${BUILDER_PRI_INCS} ${UNIT_SRC_DIR})

@@ -14,11 +14,6 @@ Definitions::Definitions(const json::Json& definitions)
         throw std::runtime_error(fmt::format("Definitions must be an object, got {}", definitions.typeName()));
     }
 
-    if (definitions.size() < 1)
-    {
-        throw std::runtime_error("Definitions must not be empty");
-    }
-
     auto defVars = definitions.getObject().value();
     for (const auto& [name, value] : defVars)
     {

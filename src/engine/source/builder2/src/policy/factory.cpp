@@ -317,7 +317,7 @@ BuiltAssets buildAssets(const PolicyData& data,
             for (const auto& assetName : assetNames)
             {
                 // Get document
-                auto resp = store->readDoc(assetName);
+                auto resp = store::utils::get(store, assetName);
                 if (base::isError(resp))
                 {
                     throw std::runtime_error(fmt::format("Asset '{}' not found", assetName));

@@ -4,7 +4,7 @@
 #include <optional>
 #include <string>
 
-#include <builder.hpp>
+#include <builder/ibuilder.hpp>
 #include <error.hpp>
 #include <bk/icontroller.hpp>
 
@@ -57,7 +57,7 @@ public:
      *
      * @note: This function is not thread safe. Only one policy can be built at a time.
      */
-    std::optional<base::Error> build(std::shared_ptr<builder::Builder> builder);
+    std::optional<base::Error> build(std::shared_ptr<builder::IBuilder> builder);
 
     /**
      * @brief Inyect an event into the policy

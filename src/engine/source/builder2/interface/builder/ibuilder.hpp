@@ -26,7 +26,7 @@ public:
      * @param name Name of the policy.
      * @return base::RespOrError<std::shared_ptr<IPolicy>> The policy or an error.
      */
-    virtual base::RespOrError<std::shared_ptr<IPolicy>> buildPolicy(const base::Name& name) const = 0;
+    virtual std::shared_ptr<IPolicy> buildPolicy(const base::Name& name) const = 0;
 
     /**
      * @brief Build an asset expression from the store.
@@ -35,7 +35,7 @@ public:
      * @param name Name of the asset.
      * @return base::RespOrError<base::Expression> The asset expression or an error.
      */
-    virtual base::RespOrError<base::Expression> buildAsset(const base::Name& name) const = 0;
+    virtual base::Expression buildAsset(const base::Name& name) const = 0;
 };
 
 } // namespace builder

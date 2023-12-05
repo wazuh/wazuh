@@ -51,7 +51,7 @@ def to_engine_schema(flat_definition: dict) -> dict:
     for name_path, entry in flat_definition.items():
         field = _flat_entry_to_field(name_path, entry)
         engine_schema[field.name] = dict()
-        engine_schema[field.name]['type'] = str(field.json_type)
+        engine_schema[field.name]['type'] = str(field.indexer_type)
         engine_schema[field.name]['array'] = field.array
 
     return engine_schema
