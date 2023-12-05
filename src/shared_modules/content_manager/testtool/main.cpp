@@ -47,7 +47,7 @@ static const nlohmann::json CONFIG_PARAMETERS =
         )"_json;
 
 // Enable/Disable logging verbosity.
-static const auto VERBOSE {false};
+static const auto VERBOSE {true};
 
 /**
  * @brief Log function callback used on the Content Manager test tool.

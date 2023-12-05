@@ -39,7 +39,7 @@ private:
         // Set the content type as offset.
         context.data.at("type") = "offsets";
 
-        logDebug2(WM_CONTENTUPDATER, "CtiOffsetDownloader - Starting");
+        logDebug2(WM_CONTENTUPDATER, "Initial API offset: %d", context.currentOffset);
         // Get the parameters needed to download the content.
         getParameters(context);
 
@@ -69,8 +69,6 @@ private:
             // Save the path of the downloaded content in the context.
             context.data.at("paths").push_back(fullFilePath);
         }
-
-        logDebug2(WM_CONTENTUPDATER, "CtiOffsetDownloader - Finishing");
     }
 
     /**
@@ -105,11 +103,11 @@ private:
         const auto queryParameters =
             "/changes?from_offset=" + std::to_string(context.currentOffset) + "&to_offset=" + std::to_string(toOffset);
 
-        // On download success routine.
-        const auto onSuccess {[]([[maybe_unused]] const std::string& data)
-                              {
-                                  logDebug2(WM_CONTENTUPDATER, "CtiOffsetDownloader - Request processed successfully.");
-                              }};
+        // Empty on download success routine.
+        const auto onSuccess {[]([[maybe_unused]] const std::string& data) {
+        }};
+
+        logDebug2(WM_CONTENTUPDATER, "Downloading offsets from: '%s'", (m_url + queryParameters).c_str());
 
         // Download the content.
         performQueryWithRetry(m_url, onSuccess, queryParameters, fullFilePath);
