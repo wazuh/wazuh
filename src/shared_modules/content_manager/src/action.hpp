@@ -145,21 +145,17 @@ public:
      */
     void runActionOnDemand()
     {
-        if (m_schedulerRunning.load())
+        auto expected = false;
+        if (m_actionInProgress.compare_exchange_strong(expected, true))
         {
-            auto expected = false;
-            if (m_actionInProgress.compare_exchange_strong(expected, true))
-            {
-                logInfo(WM_CONTENTUPDATER, "Starting on-demand action for '%s'", m_topicName.c_str());
-                runAction(ActionID::ON_DEMAND);
-            }
-            else
-            {
-                // LCOV_EXCL_START
-                logInfo(
-                    WM_CONTENTUPDATER, "Action in progress for '%s', on-demand request ignored", m_topicName.c_str());
-                // LCOV_EXCL_STOP
-            }
+            logInfo(WM_CONTENTUPDATER, "Starting on-demand action for '%s'", m_topicName.c_str());
+            runAction(ActionID::ON_DEMAND);
+        }
+        else
+        {
+            // LCOV_EXCL_START
+            logInfo(WM_CONTENTUPDATER, "Action in progress for '%s', on-demand request ignored", m_topicName.c_str());
+            // LCOV_EXCL_STOP
         }
     }
 

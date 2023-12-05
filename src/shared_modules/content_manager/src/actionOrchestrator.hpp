@@ -31,7 +31,7 @@ public:
      *
      * @param channel Channel where the orchestration will publish the data.
      * @param parameters Parameters used to create the orchestration.
-     * @param shouldRun ADD DOCU.
+     * @param shouldRun Flag used to interrupt the orchestration stages.
      */
     explicit ActionOrchestrator(const std::shared_ptr<RouterProvider> channel,
                                 const nlohmann::json& parameters,
