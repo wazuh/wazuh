@@ -17,9 +17,9 @@ declare -a BACKUP_FOLDERS
 for dir in "${BACKUP_FOLDERS[@]}"; do
     ATTEMPTS=5
     while [ $ATTEMPTS -gt 0 ]; do
-        sleep 1
+        sleep 10
         ATTEMPTS=$[ATTEMPTS - 1]
-        if [[ $("find" "${dir}" "-cmin" "-0.1") ]]; then
+        if [[ $("find" "${dir}" "-cmin" "-1") ]]; then
             echo "$(date +"%Y/%m/%d %H:%M:%S") - There is an upgrade in progress. Aborting..." >> ./logs/upgrade.log
             exit 1
         fi
