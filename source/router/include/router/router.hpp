@@ -58,7 +58,7 @@ private:
 
     /* Resources */
     std::shared_ptr<PolicyManager> m_policyManager; ///< Policy manager
-    std::shared_ptr<builder::Builder> m_builder;    ///< Builder
+    std::shared_ptr<builder::IBuilder> m_builder;    ///< Builder
     std::shared_ptr<concurrentQueue> m_queue;       ///< Queue to get events
     std::shared_ptr<store::IStore> m_store;         ///< Store to get/save routes table
 
@@ -93,7 +93,7 @@ public:
      * @param store Store to get/save the routes table
      * @param threads Number of threads for the pool
      */
-    Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store::IStore> store, std::size_t threads = 1);
+    Router(std::shared_ptr<builder::IBuilder> builder, std::shared_ptr<store::IStore> store, std::size_t threads = 1);
 
     /**
      * @brief Get the list of route names, priority and target

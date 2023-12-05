@@ -1,7 +1,9 @@
 #include <gtest/gtest.h>
 
-#include "mockRegistry.hpp" // Force include to ensure it compiles
+#include "builders/ibuildCtx.hpp"
 #include "builders/registry.hpp"
+#include "mockRegistry.hpp" // Force include to ensure it compiles
+#include "register.hpp"
 
 using namespace builder::builders;
 using namespace builder::builders::mocks;
@@ -35,6 +37,34 @@ TEST(RegistryTest, GetFailNotRegistered)
     EXPECT_TRUE(base::isError(resp));
 }
 
+TEST(RegistryTest, MetaRegistry)
+{
+    auto metaRegistry = MetaRegistry<int, std::string>::create<Registry>();
+
+    metaRegistry->add<int>("test", 1);
+    metaRegistry->add<std::string>("test", "test");
+
+    auto l = [](std::shared_ptr<MetaRegistry<int, std::string>> metaRegistry)
+    {
+        auto intBuilder = metaRegistry->get<int>("test");
+        auto strBuilder = metaRegistry->get<std::string>("test");
+
+        ASSERT_EQ(base::getResponse<int>(intBuilder), 1);
+        ASSERT_EQ(base::getResponse<std::string>(strBuilder), "test");
+
+        auto missIntBuilder = metaRegistry->get<int>("miss");
+        auto missStrBuilder = metaRegistry->get<std::string>("miss");
+
+        ASSERT_TRUE(base::isError(missIntBuilder));
+        ASSERT_TRUE(base::isError(missStrBuilder));
+
+        // Compile failure
+        // metaRegistry->get<float>("test");
+    };
+
+    l(metaRegistry);
+}
+
 // Ensure that the mock registry compiles, needs to be instantiated because it's a template
 TEST(RegistryTest, Mock)
 {
@@ -46,4 +76,43 @@ TEST(RegistryTest, Mock)
     EXPECT_CALL(registry, get("test")).WillOnce(testing::Return(getError<int>()));
     auto resp = registry.get("test");
     EXPECT_TRUE(base::isError(resp));
+}
+
+TEST(RegistryTest, MetaRegistryMock)
+{
+    auto mockMetaRegistry = MockMetaRegistry<int, std::string>::createMock();
+    EXPECT_CALL(mockMetaRegistry->getRegistry<int>(), get("test")).WillOnce(testing::Return(1));
+    EXPECT_CALL(mockMetaRegistry->getRegistry<std::string>(), get("test")).WillOnce(testing::Return("test"));
+    EXPECT_CALL(mockMetaRegistry->getRegistry<int>(), get("miss")).WillOnce(testing::Return(getError<int>()));
+    EXPECT_CALL(mockMetaRegistry->getRegistry<std::string>(), get("miss"))
+        .WillOnce(testing::Return(getError<std::string>()));
+
+    auto l = [](std::shared_ptr<MetaRegistry<int, std::string>> metaRegistry)
+    {
+        auto intBuilder = metaRegistry->get<int>("test");
+        auto strBuilder = metaRegistry->get<std::string>("test");
+
+        ASSERT_EQ(base::getResponse<int>(intBuilder), 1);
+        ASSERT_EQ(base::getResponse<std::string>(strBuilder), "test");
+
+        auto missIntBuilder = metaRegistry->get<int>("miss");
+        auto missStrBuilder = metaRegistry->get<std::string>("miss");
+
+        ASSERT_TRUE(base::isError(missIntBuilder));
+        ASSERT_TRUE(base::isError(missStrBuilder));
+
+        // Compile failure
+        // metaRegistry->get<float>("test");
+    };
+
+    l(mockMetaRegistry);
+}
+
+TEST(RegistryTest, RegisterBuilders)
+{
+    auto metaRegistry = RegistryType::create<Registry>();
+    builder::BuilderDeps deps {};
+
+    ASSERT_NO_THROW(builder::detail::registerOpBuilders<RegistryType>(metaRegistry, deps));
+    ASSERT_NO_THROW(builder::detail::registerStageBuilders<RegistryType>(metaRegistry, deps));
 }

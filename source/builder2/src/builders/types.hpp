@@ -1,16 +1,15 @@
 #ifndef _BUILDER_BUILDERS_TYPES_HPP
 #define _BUILDER_BUILDERS_TYPES_HPP
 
+#include <expression.hpp>
+#include <json/json.hpp>
+
+#include "baseTypes.hpp"
+#include "builders/ibuildCtx.hpp"
+
 namespace builder::builders
 {
 
-// TODO: implement
-struct Reference
-{
-};
-struct OpArgs
-{
-};
 
 } // namespace builder::builders
 

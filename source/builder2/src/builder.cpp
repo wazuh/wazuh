@@ -2,30 +2,30 @@
 
 #include <stdexcept>
 
-#include "builders/ibuildState.hpp"
+#include <store/utils.hpp>
+
+#include "builders/ibuildCtx.hpp"
 #include "builders/registry.hpp"
+#include "policy/assetBuilder.hpp"
 #include "policy/policy.hpp"
 #include "register.hpp"
 
 namespace builder
 {
 
-class Builder::StageRegistry final : public builders::Registry<builders::StageBuilder>
-{
-};
-
-class Builder::OpRegistry final : public builders::Registry<builders::OpBuilder>
+class Builder::Registry final : public builders::RegistryType
 {
 };
 
 Builder::Builder(const std::shared_ptr<store::IStore>& storeRead,
                  const std::shared_ptr<schemf::ISchema>& schema,
-                 const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder)
+                 const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
+                 const std::shared_ptr<schemval::IValidator>& validator,
+                 const BuilderDeps& builderDeps)
     : m_storeRead {storeRead}
     , m_schema {schema}
+    , m_validator {validator}
     , m_definitionsBuilder {definitionsBuilder}
-    , m_stageRegistry {std::make_shared<StageRegistry>()}
-    , m_opRegistry {std::make_shared<OpRegistry>()}
 {
     if (!m_storeRead)
     {
@@ -42,12 +42,19 @@ Builder::Builder(const std::shared_ptr<store::IStore>& storeRead,
         throw std::runtime_error {"Definitions builder is null"};
     }
 
-    // Register all the builders
-    // detail::registerStageBuilders<Builder>(m_stageRegistry);
-    detail::registerOpBuilders<builders::OpBuilder>(m_opRegistry);
+    if (!m_validator)
+    {
+        throw std::runtime_error {"Validator is null"};
+    }
+
+    // Registry
+    m_registry = std::static_pointer_cast<Registry>(Registry::create<builders::Registry>());
+
+    detail::registerStageBuilders<Registry>(m_registry, builderDeps);
+    detail::registerOpBuilders<Registry>(m_registry, builderDeps);
 }
 
-base::RespOrError<std::shared_ptr<IPolicy>> Builder::buildPolicy(const base::Name& name) const
+std::shared_ptr<IPolicy> Builder::buildPolicy(const base::Name& name) const
 {
     auto policyDoc = m_storeRead->readInternalDoc(name);
     if (base::isError(policyDoc))
@@ -55,23 +62,66 @@ base::RespOrError<std::shared_ptr<IPolicy>> Builder::buildPolicy(const base::Nam
         throw std::runtime_error(base::getError(policyDoc).message);
     }
 
-    return std::make_shared<policy::Policy>(
-        base::getResponse<store::Doc>(policyDoc), m_storeRead, m_definitionsBuilder);
+    auto policy = std::make_shared<policy::Policy>(
+        base::getResponse<store::Doc>(policyDoc), m_storeRead, m_definitionsBuilder, m_registry, m_validator);
+
+    return policy;
 }
 
-base::RespOrError<base::Expression> Builder::buildAsset(const base::Name& name) const
+base::Expression Builder::buildAsset(const base::Name& name) const
 {
-    return base::Error {"Not implemented"};
+    auto assetDoc = store::utils::get(m_storeRead, name);
+    if (base::isError(assetDoc))
+    {
+        throw std::runtime_error(base::getError(assetDoc).message);
+    }
+
+    auto buildCtx = std::make_shared<builders::BuildCtx>();
+    buildCtx->setRegistry(m_registry);
+    buildCtx->setValidator(m_validator);
+    buildCtx->runState().trace = true;
+
+    auto assetBuilder = std::make_shared<policy::AssetBuilder>(buildCtx, m_definitionsBuilder);
+    auto asset = (*assetBuilder)(base::getResponse<store::Doc>(assetDoc));
+
+    return asset.expression();
 }
 
 base::OptError Builder::validateIntegration(const json::Json& json) const
 {
-    return base::OptError {};
+    return base::Error {"Not implemented"};
 }
 
 base::OptError Builder::validateAsset(const json::Json& json) const
 {
-    return base::OptError {};
+    try
+    {
+        auto buildCtx = std::make_shared<builders::BuildCtx>();
+        buildCtx->setRegistry(m_registry);
+        buildCtx->setValidator(m_validator);
+        auto assetBuilder = std::make_shared<policy::AssetBuilder>(buildCtx, m_definitionsBuilder);
+        auto asset = (*assetBuilder)(json);
+    }
+    catch (const std::exception& e)
+    {
+        return base::Error {e.what()};
+    }
+
+    return base::noError();
 }
 
+base::OptError Builder::validatePolicy(const json::Json& json) const
+{
+    // TODO: handle empty policies and missing assets
+    // try
+    // {
+    //     auto policy = std::make_shared<policy::Policy>(json, m_storeRead, m_definitionsBuilder, m_registry);
+    // }
+    // catch (const std::exception& e)
+    // {
+    //     return base::Error {e.what()};
+    // }
+
+    return base::noError();
+}
 } // namespace builder

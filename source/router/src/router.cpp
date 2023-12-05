@@ -3,7 +3,7 @@
 #include <fstream>
 #include <iostream>
 
-#include <builder.hpp>
+#include <builder/ibuilder.hpp>
 
 #include <parseEvent.hpp>
 
@@ -11,7 +11,7 @@ namespace router
 {
 constexpr auto WAIT_DEQUEUE_TIMEOUT_USEC = 1 * 1000000;
 
-Router::Router(std::shared_ptr<builder::Builder> builder, std::shared_ptr<store::IStore> store, std::size_t threads)
+Router::Router(std::shared_ptr<builder::IBuilder> builder, std::shared_ptr<store::IStore> store, std::size_t threads)
     : m_mutexRoutes {}
     , m_namePriorityFilter {}
     , m_priorityRoute {}
@@ -108,7 +108,7 @@ std::optional<base::Error> Router::addRoute(const std::string& routeName,
         routeInstances.reserve(m_numThreads);
         for (std::size_t i = 0; i < m_numThreads; ++i)
         {
-            auto filter = m_builder->buildFilter(filterName);
+            auto filter = m_builder->buildAsset(filterName);
             routeInstances.emplace_back(Route {routeName, filter, policyName, priority});
         }
 

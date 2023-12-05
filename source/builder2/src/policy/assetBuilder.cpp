@@ -1,8 +1,8 @@
 #include "assetBuilder.hpp"
 
+#include <base/utils/stringUtils.hpp>
 #include <fmt/format.h>
 
-#include "builders/buildState.hpp"
 #include "syntax.hpp"
 
 namespace builder::policy
@@ -72,16 +72,26 @@ std::vector<base::Name> AssetBuilder::getParents(const json::Json& value) const
     return parents;
 }
 
-base::Expression AssetBuilder::buildExpression(std::vector<std::tuple<std::string, json::Json>>& objDoc) const
+base::Expression AssetBuilder::buildExpression(const base::Name& name,
+                                               std::vector<std::tuple<std::string, json::Json>>& objDoc) const
 {
+    auto newContext = std::make_shared<builders::BuildCtx>(*m_buildCtx);
+
     // Get definitions (optional, may appear anywhere in the asset)
     auto definitionsPos = std::find_if(
         objDoc.begin(), objDoc.end(), [](auto tuple) { return std::get<0>(tuple) == syntax::asset::DEFINITIONS_KEY; });
     if (objDoc.end() != definitionsPos)
     {
         auto definitions = m_definitionsBuilder->build(std::get<1>(*definitionsPos));
-        m_buildState->setDefinitions(definitions);
+        newContext->setDefinitions(definitions);
         objDoc.erase(definitionsPos);
+    }
+    else
+    {
+        // Empty definitions
+        json::Json emptyDefinitions;
+        emptyDefinitions.setObject();
+        newContext->setDefinitions(m_definitionsBuilder->build(std::move(emptyDefinitions)));
     }
 
     // Build condition expression
@@ -93,13 +103,13 @@ base::Expression AssetBuilder::buildExpression(std::vector<std::tuple<std::strin
         const auto& [key, value] = *objDoc.begin();
         if (key == syntax::asset::CHECK_KEY)
         {
-            auto resp = m_buildState->stageRegistry().get(key);
+            auto resp = m_buildCtx->registry().get<builders::StageBuilder>(key);
             if (base::isError(resp))
             {
                 throw std::runtime_error(fmt::format("Could not find builder for stage '{}'", key));
             }
             auto builder = base::getResponse<builders::StageBuilder>(resp);
-            auto check = builder(value, m_buildState);
+            auto check = builder(value, newContext);
             conditionExpressions.emplace_back(std::move(check));
             objDoc.erase(objDoc.begin());
         }
@@ -108,15 +118,33 @@ base::Expression AssetBuilder::buildExpression(std::vector<std::tuple<std::strin
     // Parse stage
     {
         const auto& [key, value] = *objDoc.begin();
-        if (key == syntax::asset::PARSE_KEY)
+        // Parse stage syntax is different from other stages parse|<key>: <value>
+        if (base::utils::string::startsWith(key, syntax::asset::PARSE_KEY))
         {
-            auto resp = m_buildState->stageRegistry().get(key);
+            // TODO fix this hack, we need to format the json as the old parse stage
+            json::Json stageParseValue;
+            stageParseValue.setArray();
+            auto targetField = key.substr(std::string(syntax::asset::PARSE_KEY).size() + 1);
+            if (value.isArray())
+            {
+                json::Json tmp;
+                tmp.setObject();
+                auto arr = value.getArray().value();
+                for (size_t i = 0; i < arr.size(); i++)
+                {
+                    auto parseValue = arr[i].getString().value();
+                    tmp.setString(parseValue, json::Json::formatJsonPath(targetField, true));
+                    stageParseValue.appendJson(tmp);
+                }
+            }
+
+            auto resp = m_buildCtx->registry().get<builders::StageBuilder>(syntax::asset::PARSE_KEY);
             if (base::isError(resp))
             {
                 throw std::runtime_error(fmt::format("Could not find builder for stage '{}'", key));
             }
             auto builder = base::getResponse<builders::StageBuilder>(resp);
-            auto parse = builder(value, m_buildState);
+            auto parse = builder(stageParseValue, newContext);
             conditionExpressions.emplace_back(std::move(parse));
             objDoc.erase(objDoc.begin());
         }
@@ -134,23 +162,23 @@ base::Expression AssetBuilder::buildExpression(std::vector<std::tuple<std::strin
 
     for (const auto [key, value] : objDoc)
     {
-        auto resp = m_buildState->stageRegistry().get(key);
+        auto resp = m_buildCtx->registry().get<builders::StageBuilder>(key);
         if (base::isError(resp))
         {
             throw std::runtime_error(fmt::format("Could not find builder for stage '{}'", key));
         }
         auto builder = base::getResponse<builders::StageBuilder>(resp);
-        auto consequence = builder(value, m_buildState);
+        auto consequence = builder(value, newContext);
         consequenceExpressions.emplace_back(std::move(consequence));
     }
 
     if (consequenceExpressions.empty())
     {
-        return std::move(condition);
+        return base::And::create(name, {std::move(condition)});
     }
     consequence = base::And::create(syntax::asset::CONSEQUENCE_NAME, std::move(consequenceExpressions));
 
-    return base::Implication::create(syntax::asset::ASSET_NAME, std::move(condition), std::move(consequence));
+    return base::Implication::create(name, std::move(condition), std::move(consequence));
 }
 
 Asset AssetBuilder::operator()(const store::Doc& document) const
@@ -202,7 +230,7 @@ Asset AssetBuilder::operator()(const store::Doc& document) const
     }
 
     // Get expression (rest of stages)(optional)
-    auto expression = buildExpression(objDoc);
+    auto expression = buildExpression(name, objDoc);
 
     return Asset {std::move(name), std::move(expression), std::move(parents)};
 }

@@ -16,7 +16,7 @@ target_link_libraries(cmds
     json
     yml
     defs
-    builders
+    builder2
     bk::rx
     server
     router
@@ -29,6 +29,7 @@ target_link_libraries(cmds
     eMessages
     metrics
     schemf
+    schemval
     wdb
     sockiface
     rbac

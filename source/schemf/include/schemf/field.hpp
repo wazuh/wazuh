@@ -6,11 +6,13 @@
 #include <string>
 
 #include <json/json.hpp>
+#include <schemf/type.hpp>
 
 #include "error.hpp"
 
 namespace schemf
 {
+
 /**
  * @brief Holds metadata about a field in a schema.
  *
@@ -18,11 +20,9 @@ namespace schemf
 class Field
 {
 private:
-    using JType = json::Json::Type;
-
-    JType m_type;                              ///< The type of the field.
+    Type m_type;                               ///< The type of the field.
     std::map<std::string, Field> m_properties; ///< The properties of the field.
-    JType m_itemsType;                         ///< The type of the items in the field.
+    bool m_isArray;                            ///< Whether the field is an array.
 
 public:
     /**
@@ -31,19 +31,19 @@ public:
      * @note This is a struct instead of a class to allow for aggregate initialization.
      *
      * @param type The type of the field.
-     * @param itemsType The type of the items in the field.
+     * @param isArray Whether the field is an array.
      * @param properties The properties of the field.
      */
     struct Parameters
     {
-        JType type = JType::Null;
-        JType itemsType = JType::Null;
+        Type type = Type::ERROR;
+        bool isArray = false;
         std::map<std::string, Field> properties = {};
 
         friend std::ostream& operator<<(std::ostream& os, const Parameters& parameters)
         {
             os << "FieldParameters("
-               << "Type:" << parameters.type << ", ItemsType:" << parameters.itemsType
+               << "Type:" << typeToStr(parameters.type) << std::boolalpha << ", Array:" << parameters.isArray
                << ", Properties:" << parameters.properties.size() << ")";
 
             return os;
@@ -59,14 +59,11 @@ public:
      */
     explicit Field(const Parameters& parameters);
 
-    /**
-     * @brief Construct a new Field object
-     *
-     * @param value The json value from which to construct the field.
-     */
-    explicit Field(const json::Json& value);
-
-    Field() = default;
+    Field()
+        : m_type(Type::ERROR)
+        , m_isArray(false)
+    {
+    }
     ~Field() = default;
     Field(const Field&) = default;
     Field(Field&&) = default;
@@ -75,30 +72,23 @@ public:
 
     friend bool operator==(const Field& lhs, const Field& rhs)
     {
-        return lhs.m_type == rhs.m_type && lhs.m_properties == rhs.m_properties && lhs.m_itemsType == rhs.m_itemsType;
+        return lhs.m_type == rhs.m_type && lhs.m_properties == rhs.m_properties && lhs.m_isArray == rhs.m_isArray;
     }
     friend bool operator!=(const Field& lhs, const Field& rhs) { return !(lhs == rhs); }
     friend std::ostream& operator<<(std::ostream& os, const Field& field)
     {
-        os << "Field(Type:" << field.m_type;
-        if (field.m_type == JType::Array)
-        {
-            os << ", ItemsType:" << field.m_itemsType;
-        }
-        if (field.m_type == JType::Object || field.m_itemsType == JType::Object)
-        {
-            os << ", Properties:" << field.m_properties.size();
-        }
-        os << ")";
+        os << "Field(Type:" << typeToStr(field.m_type) << std::boolalpha << ", Array:" << field.m_isArray
+           << ", Properties:" << field.m_properties.size() << ")";
+
         return os;
     }
 
     /**
      * @brief Get the type of the field.
      *
-     * @return json::Json::Type
+     * @return Type
      */
-    json::Json::Type type() const;
+    inline Type type() const { return m_type; }
 
     /**
      * @brief Get the properties of the field.
@@ -119,13 +109,12 @@ public:
     std::map<std::string, Field>& properties();
 
     /**
-     * @brief Get the type of the items in the field.
+     * @brief Query whether the field is an array.
      *
-     * @return json::Json::Type
-     *
-     * @throw std::runtime_error If the field is not an array.
+     * @return true
+     * @return false
      */
-    json::Json::Type itemsType() const;
+    inline bool isArray() const { return m_isArray; }
 
     /**
      * @brief Add a property to the field.

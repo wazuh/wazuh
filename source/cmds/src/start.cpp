@@ -23,8 +23,8 @@
 #include <api/test/sessionManager.hpp>
 #include <bk/rx/controller.hpp>
 #include <builder/builder.hpp>
-#include <builder/register.hpp>
 #include <cmds/details/stackExecutor.hpp>
+#include <defs/defs.hpp>
 #include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
 #include <logpar/logpar.hpp>
@@ -34,6 +34,7 @@
 #include <rbac/rbac.hpp>
 #include <router/router.hpp>
 #include <schemf/schema.hpp>
+#include <schemval/validator.hpp>
 #include <server/endpoints/unixDatagram.hpp> // Event
 #include <server/endpoints/unixStream.hpp>   //API
 #include <server/engineServer.hpp>
@@ -45,8 +46,6 @@
 
 #include "base/utils/getExceptionStack.hpp"
 #include "defaultSettings.hpp"
-#include "register.hpp"
-#include "registry.hpp"
 
 namespace
 {
@@ -287,23 +286,26 @@ void runStart(ConfHandler confManager)
 
         // Builder and registry
         {
-            auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
-            builder::internals::dependencies deps;
-            deps.logparDebugLvl = 0;
-            deps.logpar = logpar;
-            deps.kvdbScopeName = "builder";
-            deps.kvdbManager = kvdbManager;
-            deps.helperRegistry = std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>();
-            deps.schema = schema;
-            deps.forceFieldNaming = false;
-            deps.sockFactory = std::make_shared<sockiface::UnixSocketFactory>();
-            deps.wdbManager =
-                std::make_shared<wazuhdb::WDBManager>(std::string(wazuhdb::WDB_SOCK_PATH), deps.sockFactory);
-            builder::internals::registerHelperBuilders(deps.helperRegistry, deps);
-            builder::internals::registerBuilders(registry, deps);
-            LOG_DEBUG("Builders registered.");
-
-            builder = std::make_shared<builder::Builder>(store, registry);
+            // auto registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
+            // builder::internals::dependencies deps;
+            // deps.logparDebugLvl = 0;
+            // deps.logpar = logpar;
+            // deps.kvdbScopeName = "builder";
+            // deps.kvdbManager = kvdbManager;
+            // deps.helperRegistry =
+            // std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>(); deps.schema =
+            // schema; deps.forceFieldNaming = false; deps.sockFactory =
+            // std::make_shared<sockiface::UnixSocketFactory>(); deps.wdbManager =
+            //     std::make_shared<wazuhdb::WDBManager>(std::string(wazuhdb::WDB_SOCK_PATH), deps.sockFactory);
+            // builder::internals::registerHelperBuilders(deps.helperRegistry, deps);
+            // builder::internals::registerBuilders(registry, deps);
+            // LOG_DEBUG("Builders registered.");
+            builder::BuilderDeps builderDeps;
+            builderDeps.logparDebugLvl = 0;
+            builderDeps.logpar = logpar;
+            auto defs = std::make_shared<defs::DefinitionsBuilder>();
+            auto schemaValidator = std::make_shared<schemval::Validator>(schema);
+            builder = std::make_shared<builder::Builder>(store, schema, defs, schemaValidator, builderDeps);
             LOG_INFO("Builder initialized.");
         }
 

@@ -45,6 +45,19 @@ public:
      */
     std::string replace(std::string_view input) const override;
 };
+
+class DefinitionsBuilder : public IDefinitionsBuilder
+{
+    public:
+    DefinitionsBuilder() = default;
+    ~DefinitionsBuilder() = default;
+
+    std::shared_ptr<IDefinitions> build(const json::Json& value) const override
+    {
+        return std::make_shared<Definitions>(value);
+    }
+};
+
 } // namespace defs
 
 #endif // _DEFS_HPP_
