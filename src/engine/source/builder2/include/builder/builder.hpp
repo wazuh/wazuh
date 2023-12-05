@@ -7,25 +7,41 @@
 #include <builder/ivalidator.hpp>
 #include <defs/idefinitions.hpp>
 #include <schemf/ischema.hpp>
+#include <schemval/ivalidator.hpp>
 #include <store/istore.hpp>
+
+#include <logpar/logpar.hpp>
 
 namespace builder
 {
+
+struct BuilderDeps
+{
+    size_t logparDebugLvl = 0;
+    std::shared_ptr<hlp::logpar::Logpar> logpar = nullptr;
+    // TODO: add other dependencies
+    // std::string kvdbScopeName;
+    // std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager;
+    // std::shared_ptr<Registry<HelperBuilder>> helperRegistry;
+    // std::shared_ptr<schemf::ISchema> schema;
+    // bool forceFieldNaming = false;
+    // std::shared_ptr<sockiface::ISockFactory> sockFactory;
+    // std::shared_ptr<wazuhdb::IWDBManager> wdbManager;
+};
 
 class Builder final
     : public IBuilder
     , public IValidator
 {
 private:
-    class StageRegistry;
-    class OpRegistry;
+    class Registry;
 
     std::shared_ptr<store::IStore> m_storeRead;                      ///< Store reader interface
     std::shared_ptr<schemf::ISchema> m_schema;                       ///< Schema interface
+    std::shared_ptr<schemval::IValidator> m_validator;               ///< Schema validator
     std::shared_ptr<defs::IDefinitionsBuilder> m_definitionsBuilder; ///< Definitions builder
 
-    std::shared_ptr<StageRegistry> m_stageRegistry; ///< Stage builders registry
-    std::shared_ptr<OpRegistry> m_opRegistry;       ///< Operation builders registry
+    std::shared_ptr<Registry> m_registry; ///< builders registry
 
 public:
     Builder() = default;
@@ -33,14 +49,16 @@ public:
 
     Builder(const std::shared_ptr<store::IStore>& storeRead,
             const std::shared_ptr<schemf::ISchema>& schema,
-            const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder);
+            const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
+            const std::shared_ptr<schemval::IValidator>& validator,
+            const BuilderDeps& builderDeps);
 
-    base::RespOrError<std::shared_ptr<IPolicy>> buildPolicy(const base::Name& name) const override;
-    base::RespOrError<base::Expression> buildAsset(const base::Name& name) const override;
+    std::shared_ptr<IPolicy> buildPolicy(const base::Name& name) const override;
+    base::Expression buildAsset(const base::Name& name) const override;
 
-    // TODO: validatePolicy???
     base::OptError validateIntegration(const json::Json& json) const override;
     base::OptError validateAsset(const json::Json& json) const override;
+    base::OptError validatePolicy(const json::Json& json) const override;
 };
 
 } // namespace builder

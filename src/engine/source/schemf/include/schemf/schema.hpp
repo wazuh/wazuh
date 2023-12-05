@@ -70,7 +70,7 @@ public:
     /**
      * @copydoc ISchema::getType
      */
-    json::Json::Type getType(const DotPath& name) const override;
+    inline Type getType(const DotPath& name) const override { return get(name).type(); }
 
     /**
      * @copydoc ISchema::hasField
@@ -78,19 +78,9 @@ public:
     bool hasField(const DotPath& name) const override;
 
     /**
-     * @copydoc ISchema::validate
+     * @copydoc ISchema::isArray
      */
-    std::optional<base::Error> validate(const DotPath& target, const json::Json& value) const override;
-
-    /**
-     * @copydoc ISchema::validate
-     */
-    std::optional<base::Error> validate(const DotPath& target, const DotPath& reference) const override;
-
-    /**
-     * @copydoc ISchema::getRuntimeValidator
-     */
-    RuntimeValidator getRuntimeValidator(const DotPath& target) const override;
+    inline bool isArray(const DotPath& name) const override { return get(name).isArray(); }
 
     /**
      * @brief Load a schema from a JSON object, adding each field to the schema.

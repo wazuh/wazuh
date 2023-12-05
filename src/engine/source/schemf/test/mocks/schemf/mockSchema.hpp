@@ -10,17 +10,9 @@ namespace schemf::mocks
 class MockSchema : public ISchema
 {
 public:
-    MOCK_METHOD(json::Json::Type, getType, (const DotPath& name), (const, override));
+    MOCK_METHOD(Type, getType, (const DotPath& name), (const, override));
     MOCK_METHOD(bool, hasField, (const DotPath& name), (const, override));
-    MOCK_METHOD(std::optional<base::Error>,
-                validate,
-                (const DotPath& target, const json::Json& value),
-                (const, override));
-    MOCK_METHOD(std::optional<base::Error>,
-                validate,
-                (const DotPath& target, const DotPath& reference),
-                (const, override));
-    MOCK_METHOD(RuntimeValidator, getRuntimeValidator, (const DotPath& target), (const, override));
+    MOCK_METHOD(bool, isArray, (const DotPath& name), (const, override));
 };
 } // namespace schemf::mocks
 

@@ -6,6 +6,9 @@
 #include <string>
 #include <vector>
 
+#include <fmt/core.h>
+#include <fmt/format.h>
+
 #include <utils/stringUtils.hpp>
 
 /**
@@ -228,6 +231,18 @@ public:
                        });
 
         return DotPath(parts.begin(), parts.end());
+    }
+};
+
+// Make DotPath formatable by fmt
+template<>
+struct fmt::formatter<DotPath> : formatter<std::string>
+{
+    // parse is inherited from formatter<string_view>.
+    template<typename FormatContext>
+    auto format(const DotPath& path, FormatContext& ctx)
+    {
+        return formatter<std::string>::format(path.str(), ctx);
     }
 };
 

@@ -21,6 +21,8 @@ constexpr auto METADATA_KEY = "metadata";       ///< Key for the metadata field 
 constexpr auto PARENTS_KEY = "parents";         ///< Key for the parents field in an asset.
 constexpr auto CHECK_KEY = "check";             ///< Key for the check stage in an asset.
 constexpr auto PARSE_KEY = "parse";             ///< Key for the parse stage in an asset.
+constexpr auto NORMALIZE_KEY = "normalize";     ///< Key for the normalize stage in an asset.
+constexpr auto MAP_KEY = "map";                 ///< Key for the map stage in an asset.
 constexpr auto DEFINITIONS_KEY = "definitions"; ///< Key for the definitions stage in an asset.
 
 constexpr auto CONDITION_NAME =

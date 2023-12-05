@@ -10,7 +10,7 @@ namespace router
 
 constexpr auto SUBSCRIBE_CONFIGURATION_ERROR {"No subscription method has been configured"};
 
-std::optional<base::Error> RuntimePolicy::build(std::shared_ptr<builder::Builder> builder)
+std::optional<base::Error> RuntimePolicy::build(std::shared_ptr<builder::IBuilder> builder)
 {
     if (m_controller)
     {
@@ -22,20 +22,20 @@ std::optional<base::Error> RuntimePolicy::build(std::shared_ptr<builder::Builder
         // Build the policy and create the pipeline
         auto policy = builder->buildPolicy(m_asset);
 
-        if (policy.assets().empty())
+        if (policy->assets().empty())
         {
             return base::Error {fmt::format("Policy '{}' has no assets", m_asset)};
         }
 
         // TODO Check de assets names policy api (Return a string instead of a base::Names?)
         std::unordered_set<std::string> assetNames;
-        std::transform(policy.assets().begin(),
-                       policy.assets().end(),
+        std::transform(policy->assets().begin(),
+                       policy->assets().end(),
                        std::inserter(assetNames, assetNames.begin()),
                        [](const auto& name) { return name.toStr(); });
 
-        m_controller = std::make_shared<bk::rx::Controller>(policy.expression(), assetNames);
-        m_hash = policy.hash();
+        m_controller = std::make_shared<bk::rx::Controller>(policy->expression(), assetNames);
+        m_hash = policy->hash();
     }
     catch (std::exception& e)
     {

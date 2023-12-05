@@ -77,13 +77,13 @@ base::EngineOp map(const std::string& targetField,
     validateFromReference(name, schema, parameters[0]);
 
     // Get runtime validator
-    auto runtimeValidator = schema->getRuntimeValidator(targetField);
+    // auto runtimeValidator = schema->getRuntimeValidator(targetField);
 
     // Do build things ...
     // We can now obtain the same handler for the entire asset using the buildCtx
 
     // The actual operation
-    return [runtimeValidator, parameters, runState](const base::Event& event)
+    return [parameters, runState](const base::Event& event)
     {
         if (false) // Fake error condition
         {
@@ -109,16 +109,16 @@ base::EngineOp map(const std::string& targetField,
         if (runState->check)
         {
             json::Json fakeValue;
-            auto error = runtimeValidator(fakeValue);
-            if (error)
-            {
-                if (runState->trace)
-                {
-                    return base::result::makeFailure(event, fmt::format("Complex error message"));
-                }
+            // auto error = runtimeValidator(fakeValue);
+            // if (error)
+            // {
+            //     if (runState->trace)
+            //     {
+            //         return base::result::makeFailure(event, fmt::format("Complex error message"));
+            //     }
 
-                return base::result::makeFailure(event);
-            }
+            //     return base::result::makeFailure(event);
+            // }
         }
 
         if (runState->trace)
@@ -166,25 +166,18 @@ Op buildCheckWrapper(Builder builder)
 
 namespace two
 {
+using Op = base::EngineOp;
 
-using Ref = std::string;
-using HelperArg = std::variant<Ref, json::Json>;
-
-struct Context{};
-struct StaticCheck{};
-struct DynamicCheck{};
-class BuildState
+struct Builder
 {
-    Context context;
-    StaticCheck check;
-    DynamicCheck runtimeCheck;
-    RuntimeState runState;
+private:
+    base::EngineOp op;
+
+public:
+    virtual ~Builder() = default;
+    virtual std::optional<json::Json::Type> buildType() const = 0;
+
 };
-
-void helper(Ref targetField, std::vector<HelperArg> args, const BuildState& buildState)
-{
-    // Do something
-}
 
 } // namespace two
 TEST(Test, test) {}

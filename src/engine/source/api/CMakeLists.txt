@@ -43,8 +43,6 @@ target_include_directories(api
 
 target_link_libraries(api
     base
-    builder::ibuilder
-    builders # TODO remove this dependency and implement the interface
     eMessages
     fmt
     json
@@ -57,6 +55,8 @@ target_link_libraries(api
     schemf
     rbac::irbac
     api::iapi
+    builder2::ibuilder
+    logpar
 )
 
 # Tests
@@ -87,6 +87,6 @@ add_executable(api_utest
   ${TEST_SRC_UNIT_DIR}/registry_test.cpp
 )
 
-target_link_libraries(api_utest gtest_main base api schemf::mocks test_mocks store::mocks rbac::mocks api::mocks builder::mocks kvdb::mocks)
+target_link_libraries(api_utest gtest_main base api schemf::mocks test_mocks store::mocks rbac::mocks api::mocks kvdb::mocks)
 gtest_discover_tests(api_utest)
 endif(ENGINE_BUILD_TEST)
