@@ -49,57 +49,59 @@ references:
 tags:
     - logtest_configuration
 '''
-import os
+from pathlib import Path
 import pytest
+import os
 
 from wazuh_testing.constants.paths import WAZUH_PATH
-from yaml import safe_load
+from wazuh_testing.constants.paths.sockets import LOGTEST_SOCKET_PATH
 from shutil import copy
 from json import loads
+from wazuh_testing.utils import configuration
+
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH, TEST_RULES_DECODERS_PATH
 
 # Marks
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
-# Configurations
-config_test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/config_templates')
-messages_path = os.path.join(config_test_data_path, 'config_cdb_list.yaml')
-
-with open(messages_path) as f:
-    test_cases = safe_load(f)
-
-test_cases_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/test_cases')
+# Configuration
+t_config_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_cdb_labels.yaml')
+t_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_cdb_labels.yaml')
+t_config_parameters, t_config_metadata, t_case_ids = configuration.get_test_cases_data(t_cases_path)
+t_configurations = configuration.load_configuration_template(t_config_path, t_config_parameters, t_config_metadata)
 
 # Variables
-logtest_path = os.path.join(os.path.join(WAZUH_PATH, 'queue', 'sockets', 'logtest'))
-receiver_sockets_params = [(logtest_path, 'AF_UNIX', 'TCP')]
+receiver_sockets_params = [(LOGTEST_SOCKET_PATH, 'AF_UNIX', 'TCP')]
 receiver_sockets = None
 
+# Test daemons to restart.
+daemons_handler_configuration = {'daemons': ['wazuh-analysisd', 'wazuh-db']}
 
 # Fixtures
 @pytest.fixture(scope='function')
-def configure_cdbs_list(get_configuration, request):
+def configure_cdbs_list(test_metadata):
     """Configure a custom cdbs for testing.
 
     Restarting Wazuh is not needed for applying the configuration, it is optional.
     """
 
     # cdb configuration for testing
-    cdb_dir = os.path.join(WAZUH_PATH, get_configuration['cdb_dir'])
+    cdb_dir = os.path.join(WAZUH_PATH, test_metadata['cdb_dir'])
     if not os.path.exists(cdb_dir):
         os.makedirs(cdb_dir)
 
-    file_cdb_test = os.path.join(test_cases_data_path, get_configuration['cdb_file'])
-    file_cdb_dst = os.path.join(cdb_dir, get_configuration['cdb_file'])
+    file_cdb_test = os.path.join(TEST_RULES_DECODERS_PATH, test_metadata['cdb_file'])
+    file_cdb_dst = os.path.join(cdb_dir, test_metadata['cdb_file'])
 
     copy(file_cdb_test, file_cdb_dst)
 
     # rule configuration for testing
-    rule_dir = os.path.join(WAZUH_PATH, get_configuration['rule_dir'])
+    rule_dir = os.path.join(WAZUH_PATH, test_metadata['rule_dir'])
     if not os.path.exists(rule_dir):
         os.makedirs(rule_dir)
 
-    file_rule_test = os.path.join(test_cases_data_path, get_configuration['rule_file'])
-    file_rule_dst = os.path.join(rule_dir, get_configuration['rule_file'])
+    file_rule_test = os.path.join(TEST_RULES_DECODERS_PATH, test_metadata['rule_file'])
+    file_rule_dst = os.path.join(rule_dir, test_metadata['rule_file'])
 
     copy(file_rule_test, file_rule_dst)
 
@@ -114,15 +116,11 @@ def configure_cdbs_list(get_configuration, request):
         os.rmdir(rule_dir)
 
 
-@pytest.fixture(scope='module', params=test_cases, ids=[test_case['name'] for test_case in test_cases])
-def get_configuration(request):
-    """Get configurations from the module."""
-    return request.param
-
-
-def test_cdb_list(restart_required_logtest_daemons, get_configuration,
-                  configure_environment, configure_cdbs_list,
-                  wait_for_logtest_startup, connect_to_sockets_function):
+# Test
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(t_configurations, t_config_metadata), ids=t_case_ids)
+def test_cdb_list(test_configuration, test_metadata, set_wazuh_configuration,
+                  daemons_handler_module, configure_cdbs_list,
+                  wait_for_logtest_startup, connect_to_sockets):
     '''
     description: Checks if modifying the configuration of the cdb list, by using its labels, takes effect when opening
                  new logtest sessions without having to reset the manager. To do this, it sends a request to logtest
@@ -133,22 +131,25 @@ def test_cdb_list(restart_required_logtest_daemons, get_configuration,
     tier: 0
 
     parameters:
-        - restart_required_logtest_daemons:
+        - test_configuration:
+            type: dict
+            brief: Configuration loaded from `configuration_templates`.
+        - test_metadata:
+            type: dict
+            brief: Test case metadata.
+        - set_wazuh_configuration:
             type: fixture
-            brief: Wazuh logtests daemons handler.
-        - get_configuration:
+            brief: Apply changes to the ossec.conf configuration.
+        - daemons_handler_module:
             type: fixture
-            brief: Get configurations from the module.
-        - configure_environment:
-            type: fixture
-            brief: Configure a custom environment for testing. Restart Wazuh is needed for applying the configuration.
+            brief: Handler of Wazuh daemons.
         - configure_cdbs_list:
             type: fixture
             brief: Configure a custom cdbs for testing.
         - wait_for_logtest_startup:
             type: fixture
             brief: Wait until logtest has begun.
-        - connect_to_sockets_function:
+        - connect_to_sockets:
             type: fixture
             brief: Function scope version of 'connect_to_sockets' which connects to the specified sockets for the test.
 
@@ -171,14 +172,14 @@ def test_cdb_list(restart_required_logtest_daemons, get_configuration,
         - analysisd
     '''
     # send the logtest request
-    receiver_sockets[0].send(get_configuration['input'], size=True)
+    receiver_sockets[0].send(test_metadata['input'], size=True)
 
     # receive logtest reply and parse it
     response = receiver_sockets[0].receive(size=True).rstrip(b'\x00').decode()
     result = loads(response)
 
     assert result['error'] == 0
-    if 'test_exclude' in get_configuration:
+    if 'test_exclude' in test_metadata:
         assert 'cdb' not in result['data']['output']
     else:
-        assert result['data']['output']['rule']['id'] == get_configuration['rule_id']
+        assert result['data']['output']['rule']['id'] == test_metadata['rule_id']
