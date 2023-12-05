@@ -1,3 +1,4 @@
+import ast
 import json
 import re
 import subprocess
@@ -233,7 +234,7 @@ def test_validate_data_dict_field(response, fields_dict):
 
         for element in field_list:
             try:
-                assert (isinstance(element[key], eval(value)) for key, value in dikt.items())
+                assert (isinstance(element[key], ast.literal_eval(value)) for key, value in dikt.items())
             except KeyError:
                 assert len(element) == 1
                 assert isinstance(element['count'], int)
@@ -481,7 +482,7 @@ def check_agent_active_status(agents_list):
             raise subprocess.SubprocessError("Error while trying to get agents") from exc
 
         # Transform string representation of list to list and save agents id
-        id_active_agents = [agent['id'] for agent in eval(output)]
+        id_active_agents = [agent['id'] for agent in ast.literal_eval(output)]
 
         if all(a in id_active_agents for a in agents_list):
             break

@@ -1,6 +1,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import ast
 import asyncio
 import base64
 import contextlib
@@ -1794,7 +1795,7 @@ def as_wazuh_object(dct: Dict):
             return datetime.datetime.fromisoformat(dct['__wazuh_datetime__'])
         elif '__unhandled_exc__' in dct:
             exc_data = dct['__unhandled_exc__']
-            return eval(exc_data['__class__'])(*exc_data['__args__'])
+            return ast.literal_eval(exc_data['__class__'])(*exc_data['__args__'])
         return dct
 
     except (KeyError, AttributeError):
