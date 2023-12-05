@@ -5,6 +5,22 @@ $TMP_BACKUP_DIR               = "wazuh_backup_tmp"
 $Env:WAZUH_DEF_REG_START_PATH = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Installer\UserData\S-1-5-18\Products\"
 $Env:WAZUH_PUBLISHER_VALUE    = "Wazuh, Inc."
 
+# Check if there is an upgrade in progress
+$BACKUP_FOLDERS = @()
+if (Test-Path $env:temp\$TMP_BACKUP_DIR) { $BACKUP_FOLDERS += "$env:temp\$TMP_BACKUP_DIR" }
+if (Test-Path $Env:WAZUH_BACKUP_DIR) { $BACKUP_FOLDERS += "$Env:WAZUH_BACKUP_DIR" }
+foreach ($dir in $BACKUP_FOLDERS) {
+    $attempts = 5
+    while ($attempts -gt 0) {
+        Start-Sleep 10
+        $attempts--
+        if ((Get-ChildItem $dir -recurse | Where-Object { $_.LastWriteTime -gt (Get-Date).AddMinutes(-1) })) {
+            Write-Output "$(Get-Date -Format u) - There is an upgrade in progress. Aborting..." >> .\upgrade\upgrade.log
+            exit 1
+        }
+    }
+}
+
 # Delete previous upgrade.log
 Remove-Item -Path ".\upgrade\upgrade.log" -ErrorAction SilentlyContinue
 
@@ -325,3 +341,5 @@ Remove-Item $Env:WAZUH_BACKUP_DIR -recurse -ErrorAction SilentlyContinue
 Remove-Item -Path ".\upgrade\*"  -Exclude "*.log", "upgrade_result" -ErrorAction SilentlyContinue
 Remove-Item -Path ".\wazuh-agent*.msi" -ErrorAction SilentlyContinue
 Remove-Item -Path ".\do_upgrade.ps1" -ErrorAction SilentlyContinue
+
+exit 0
