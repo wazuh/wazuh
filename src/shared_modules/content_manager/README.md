@@ -10,15 +10,15 @@ The input configuration of the Content Manager is described below:
 - `interval`: Interval, in seconds, between each action execution.
 - `ondemand`: If `true`, the module will be executed on demand.
 - `configData`: Configuration data to create the orchestration of the module.
-  + `contentSource`: Source of the content. Can be any of `api`, `cti-api`, `file`, or `offline`. See the [use cases section](#use-cases) for more information.
+  + `contentSource`: Source of the content. Can be any of `api`, `cti-offset`, `cti-snapshot`, `file`, or `offline`. See the [use cases section](#use-cases) for more information.
   + `compressionType`: Compression type of the content. Can be any of `gzip`, `zip`, `xz`, or `raw`.
-  + `versionedContent`: Type of versioned content. Can be any of `false` (content versioning disabled) or `cti-api` (only useful if using the `cti-api` content source).
+  + `versionedContent`: Type of versioned content. Can be any of `false` (content versioning disabled) or `cti-api` (only useful if using the `cti-offset` content source).
   + `deleteDownloadedContent`: If `true`, the downloaded content will be deleted after being processed.
   + `url`: URL from where the content will be downloaded or copied. Depending on the `contentSource` type, it supports HTTP/S and filesystem paths.
   + `outputFolder`: If defined, the content (downloads and uncompressed content) will be downloaded in this folder.
   + `dataFormat`: Content data format. Examples: `json`, `xml`, `txt`, etc.
   + `contentFileName`: Used as output content file name by the API and CTI API downloaders. If not provided, it will be defaulted as `<temp_dir>/output_folder`, being `<temp_dir>` a directory location suitable for temporary files.
-  + `databasePath`: Path for the RocksDB database. The database stores the last offset fetched (when using the `cti-api` content source).
+  + `databasePath`: Path for the RocksDB database. The database stores the last offset fetched (when using the `cti-offset` content source).
 
 > The Content Manager counts with a [test tool](./testtool/main.cpp) that can be used to perform tests, try out different configurations, and to better understand the module.
 
@@ -27,6 +27,7 @@ The input configuration of the Content Manager is described below:
 The Content Manager module can be used in many ways depending on the user's needs. Here is a summary of the possible use cases:
 
 - [Download offsets from CTI API](#download-offsets-from-cti-api)
+- [Download snapshot from CTI API](#download-snapshot-from-cti-api)
 - [Download from regular API](#download-from-regular-api)
 - [Remote file download](#remote-file-download)
 - [Offline download](#offline-download)
@@ -44,7 +45,7 @@ All the downloaded content will be stored in the filesystem, making it available
     "ondemand": false,
     "configData":
     {
-        "contentSource": "cti-api",
+        "contentSource": "cti-offset",
         "compressionType": "raw",
         "versionedContent": "cti-api",
         "deleteDownloadedContent": true,
@@ -68,20 +69,20 @@ ActionOrchestrator - Starting process
 API offset to be used: 975000
 Output folders created.
 FactoryContentUpdater - Starting process
-Creating 'cti-api' downloader
+Creating 'cti-offset' downloader
 Creating 'raw' content decompressor
 Creating 'cti-api' version updater
 Downloaded content cleaner created
 FactoryContentUpdater - Finishing process
 ActionOrchestrator - Finishing process
 ActionOrchestrator - Running process
-CtiApiDownloader - Starting
-CtiApiDownloader - Request processed successfully.
-CtiApiDownloader - Request processed successfully.
-CtiApiDownloader - Request processed successfully.
-CtiApiDownloader - Request processed successfully.
-CtiApiDownloader - Request processed successfully.
-CtiApiDownloader - Finishing
+CtiOffsetDownloader - Starting
+CtiOffsetDownloader - Request processed successfully.
+CtiOffsetDownloader - Request processed successfully.
+CtiOffsetDownloader - Request processed successfully.
+CtiOffsetDownloader - Request processed successfully.
+CtiOffsetDownloader - Request processed successfully.
+CtiOffsetDownloader - Finishing
 SkipStep - Executing
 PubSubPublisher - Data published
 ```
@@ -114,20 +115,46 @@ API offset to be used: 978576
 The previous output folder: "/tmp/output_folder" will be removed.
 Output folders created.
 FactoryContentUpdater - Starting process
-Creating 'cti-api' downloader
+Creating 'cti-offset' downloader
 Creating 'raw' content decompressor
 Creating 'cti-api' version updater
 Downloaded content cleaner created
 FactoryContentUpdater - Finishing process
 ActionOrchestrator - Finishing process
 ActionOrchestrator - Running process
-CtiApiDownloader - Starting
-CtiApiDownloader - Request processed successfully.
-CtiApiDownloader - Finishing
+CtiOffsetDownloader - Starting
+CtiOffsetDownloader - Request processed successfully.
+CtiOffsetDownloader - Finishing
 SkipStep - Executing
 PubSubPublisher - No data to publish
 All files in the folder have been deleted.
 ```
+
+### Download snapshot from CTI API
+
+Another option to download content from CTI is to download a snapshot file. This file is compressed and includes all the content available for a given context.
+
+The snapshot file will be decompressed and stored in the filesystem, making it available to other modules that may want to consume it.
+
+```json
+{
+    "topicName": "CTI API snapshot fetching",
+    "interval": 10,
+    "ondemand": false,
+    "configData":
+    {
+        "contentSource": "cti-snapshot",
+        "compressionType": "zip",
+        "deleteDownloadedContent": true,
+        "url": "https://cti.wazuh.com/api/v1/catalog/contexts/test_context/consumers/test_consumer",
+        "outputFolder": "/tmp/output_folder"
+    }
+}
+```
+
+> For simplicity, only the usage case-related configurations are shown.
+
+The configuration above will make the Content Manager launch each `10` seconds an orchestration that will download the content snapshot from the Wazuh CTI API (context: `test_context`, consumer: `test_consumer`). The Content Manager will decompress the snapshot and store its content into the output folder `/tmp/output_folder`.
 
 ### Download from regular API
 
