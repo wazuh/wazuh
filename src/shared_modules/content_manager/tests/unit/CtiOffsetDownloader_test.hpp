@@ -37,7 +37,7 @@ protected:
     std::shared_ptr<CtiOffsetDownloader> m_spCtiOffsetDownloader; ///< CtiOffsetDownloader used to download the content.
 
     inline static std::unique_ptr<FakeServer> m_spFakeServer; ///< Pointer to FakeServer class
-    const std::atomic<bool> m_shouldRun {true};               ///< Run flag.
+    std::atomic<bool> m_shouldRun;                            ///< Run flag.
 
     /**
      * @brief Sets initial conditions for each test case.
@@ -46,6 +46,7 @@ protected:
     // cppcheck-suppress unusedFunction
     void SetUp() override
     {
+        m_shouldRun = true;
         m_spCtiOffsetDownloader = std::make_shared<CtiOffsetDownloader>(HTTPRequest::instance());
         // Create a updater base context
         m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_shouldRun);

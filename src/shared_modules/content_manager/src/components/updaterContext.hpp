@@ -91,6 +91,11 @@ struct UpdaterBaseContext
     uint8_t updateVersion {0}; ///< updateVersion
     uint8_t clean {0};         ///< clean
 
+    /**
+     * @brief Struct constructor.
+     *
+     * @param shouldRun Reference to an interruption flag.
+     */
     UpdaterBaseContext(const std::atomic<bool>& shouldRun = std::atomic<bool>(true))
         : shouldRun(shouldRun)
     {
