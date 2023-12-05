@@ -13,7 +13,7 @@
 #include "os_crypto/sha1/sha1_op.h"
 #include "os_crypto/sha256/sha256_op.h"
 #include "monitord.h"
-#include <openssl/md5.h>
+#include <openssl/evp.h>
 #include <openssl/sha.h>
 
 /* Sign a log file */
@@ -31,9 +31,9 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
     os_sha256 sf256_sum;
     os_sha256 sf256_sum_old;
 
-    SHA_CTX sha1_ctx;
-    MD5_CTX md5_ctx;
-    SHA256_CTX sha256_ctx;
+    EVP_MD_CTX *sha1_ctx = EVP_MD_CTX_new();
+    EVP_MD_CTX *md5_ctx = EVP_MD_CTX_new();
+    EVP_MD_CTX *sha256_ctx = EVP_MD_CTX_new();
 
     char logfilesum[OS_FLSIZE + 1];
     char logfilesum_old[OS_FLSIZE + 1];
@@ -58,9 +58,9 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
     os_snprintf(logfilesum, OS_FLSIZE, "%s.sum", logfile_r);
     snprintf(logfilesum_old, OS_FLSIZE, "%s.%s.sum", logfile_old, ext);
 
-    MD5_Init(&md5_ctx);
-    SHA1_Init(&sha1_ctx);
-    SHA256_Init(&sha256_ctx);
+    EVP_DigestInit(sha1_ctx, EVP_sha1());
+    EVP_DigestInit(md5_ctx, EVP_md5());
+    EVP_DigestInit(sha256_ctx, EVP_sha256());
 
     /* Generate MD5 of the old file */
     if (OS_MD5_File(logfilesum_old, mf_sum_old, OS_TEXT) < 0) {
@@ -87,9 +87,9 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
 
     if (fp = fopen(logfile_r, "r"), fp) {
         while (n = fread(buffer, 1, 2048, fp), n > 0) {
-            SHA1_Update(&sha1_ctx, buffer, n);
-            MD5_Update(&md5_ctx, buffer, (unsigned long)n);
-            SHA256_Update(&sha256_ctx, buffer, n);
+            EVP_DigestUpdate(sha1_ctx, buffer, n);
+            EVP_DigestUpdate(md5_ctx, buffer, n);
+            EVP_DigestUpdate(sha256_ctx, buffer, n);
         }
 
         fclose(fp);
@@ -99,9 +99,9 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
         for (i = 1; snprintf(logfile_r, OS_FLSIZE + 1, "%s-%.3d.%s", logfile, i, ext), !IsFile(logfile_r) && FileSize(logfile_r) > 0; i++) {
             if (fp = fopen(logfile_r, "r"), fp) {
                 while (n = fread(buffer, 1, 2048, fp), n > 0) {
-                    SHA1_Update(&sha1_ctx, buffer, n);
-                    MD5_Update(&md5_ctx, buffer, (unsigned long)n);
-                    SHA256_Update(&sha256_ctx, buffer, n);
+                    EVP_DigestUpdate(sha1_ctx, buffer, n);
+                    EVP_DigestUpdate(md5_ctx, buffer, n);
+                    EVP_DigestUpdate(sha256_ctx, buffer, n);
                 }
 
                 fclose(fp);
@@ -111,21 +111,21 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
             }
         }
 
-        MD5_Final(md5_digest, &md5_ctx);
+        EVP_DigestFinal(md5_ctx, md5_digest, NULL);
         char *mpos = mf_sum;
         for (n = 0; n < 16; n++) {
             snprintf(mpos, 3, "%02x", md5_digest[n]);
             mpos += 2;
         }
 
-        SHA1_Final(&(md[0]), &sha1_ctx);
+        EVP_DigestFinal(sha1_ctx, md, NULL);
         char *spos = sf_sum;
         for (n = 0; n < SHA_DIGEST_LENGTH; n++) {
             snprintf(spos, 3, "%02x", md[n]);
             spos += 2;
         }
 
-        SHA256_Final(&(md256[0]), &sha256_ctx);
+        EVP_DigestFinal(sha256_ctx, md256, NULL);
         char *sspos = sf256_sum;
         for (n = 0; n < SHA256_DIGEST_LENGTH; n++) {
             snprintf(sspos, 3, "%02x", md256[n]);
@@ -137,6 +137,10 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
         strncpy(sf_sum, "none", 6);
         strncpy(sf256_sum, "none", 6);
     }
+
+    EVP_MD_CTX_free(md5_ctx);
+    EVP_MD_CTX_free(sha1_ctx);
+    EVP_MD_CTX_free(sha256_ctx);
 
     fp = fopen(logfilesum, "w");
     if (!fp) {
