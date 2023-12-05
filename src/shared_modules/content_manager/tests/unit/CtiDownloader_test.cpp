@@ -24,6 +24,9 @@ constexpr auto CONTENT_TYPE {"raw"};
 constexpr auto FAKE_CTI_URL {"http://localhost:4444/snapshot/consumers"};
 constexpr auto RAW_URL {"http://localhost:4444/raw"};
 
+constexpr auto DEFAULT_LAST_OFFSET {0};
+constexpr auto DEFAULT_LAST_SNAPSHOT_LINK {""};
+
 /**
  * @class CtiDummyDownloader
  *
@@ -46,8 +49,8 @@ private:
         m_lastSnapshotLink = parameters.lastSnapshotLink;
     }
 
-    int m_lastOffset {};               ///< Last offset downloaded from CTI.
-    std::string m_lastSnapshotLink {}; ///< Last snapshot link downloaded from CTI.
+    int m_lastOffset {DEFAULT_LAST_OFFSET};                      ///< Last offset downloaded from CTI.
+    std::string m_lastSnapshotLink {DEFAULT_LAST_SNAPSHOT_LINK}; ///< Last snapshot link downloaded from CTI.
 
 public:
     /**
@@ -209,4 +212,27 @@ TEST_F(CtiDownloaderTest, BaseParametersDownloadClientError)
     expectedData["type"] = CONTENT_TYPE;
 
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+}
+
+/**
+ * @brief Tests the interruption of the download of the base parameters.
+ *
+ */
+TEST_F(CtiDownloaderTest, BaseParametersDownloadInterrupted)
+{
+    auto downloader {CtiDummyDownloader(HTTPRequest::instance())};
+
+    m_shouldRun = false;
+    ASSERT_NO_THROW(downloader.handleRequest(m_spUpdaterContext));
+
+    // Check expected data.
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
+    expectedData["stageStatus"] = OK_STATUS;
+    expectedData["type"] = CONTENT_TYPE;
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+
+    // Check expected base parameters.
+    EXPECT_EQ(downloader.getLastOffset(), DEFAULT_LAST_OFFSET);
+    EXPECT_EQ(downloader.getLastSnapshotLink(), DEFAULT_LAST_SNAPSHOT_LINK);
 }
