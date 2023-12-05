@@ -137,7 +137,7 @@ protected:
         auto sleepTime {INITIAL_SLEEP_TIME};
         auto retryAttempt {1};
         auto retry {true};
-        while (retry)
+        while (retry && m_spUpdaterContext->spUpdaterBaseContext->shouldRun.load())
         {
             try
             {
@@ -168,8 +168,9 @@ protected:
      */
     virtual void download(UpdaterContext& context) = 0;
 
-    IURLRequest& m_urlRequest;         ///< Interface to perform HTTP requests.
-    const std::string m_componentName; ///< Stage name.
+    IURLRequest& m_urlRequest;                          ///< Interface to perform HTTP requests.
+    const std::string m_componentName;                  ///< Stage name.
+    std::shared_ptr<UpdaterContext> m_spUpdaterContext; ///< Updater context.
 
 public:
     // LCOV_EXCL_START
@@ -197,6 +198,8 @@ public:
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
         logDebug1(WM_CONTENTUPDATER, "%s - Starting process", m_componentName.c_str());
+
+        m_spUpdaterContext = context;
 
         try
         {

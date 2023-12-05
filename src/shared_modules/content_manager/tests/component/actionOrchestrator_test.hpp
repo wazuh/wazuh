@@ -14,6 +14,7 @@
 
 #include "fakes/fakeServer.hpp"
 #include "gtest/gtest.h"
+#include <atomic>
 #include <external/nlohmann/json.hpp>
 #include <filesystem>
 #include <memory>
@@ -28,7 +29,8 @@ protected:
     ActionOrchestratorTest() = default;
     ~ActionOrchestratorTest() override = default;
 
-    nlohmann::json m_parameters; ///< Parameters used to create the ActionOrchestrator
+    nlohmann::json m_parameters;                ///< Parameters used to create the ActionOrchestrator
+    const std::atomic<bool> m_shouldRun {true}; ///< Run flag.
 
     inline static std::unique_ptr<FakeServer> m_spFakeServer; ///< Pointer to FakeServer class
 

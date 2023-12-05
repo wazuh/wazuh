@@ -48,7 +48,7 @@ public:
         , m_cv {}
         , m_topicName {std::move(topicName)}
         , m_interval {0}
-        , m_orchestration {std::make_unique<ActionOrchestrator>(channel, parameters)}
+        , m_orchestration {std::make_unique<ActionOrchestrator>(channel, parameters, m_schedulerRunning)}
     {
         m_parameters = std::move(parameters);
     }
@@ -145,17 +145,21 @@ public:
      */
     void runActionOnDemand()
     {
-        auto expected = false;
-        if (m_actionInProgress.compare_exchange_strong(expected, true))
+        if (m_schedulerRunning.load())
         {
-            logInfo(WM_CONTENTUPDATER, "Starting on-demand action for '%s'", m_topicName.c_str());
-            runAction(ActionID::ON_DEMAND);
-        }
-        else
-        {
-            // LCOV_EXCL_START
-            logInfo(WM_CONTENTUPDATER, "Action in progress for '%s', on-demand request ignored", m_topicName.c_str());
-            // LCOV_EXCL_STOP
+            auto expected = false;
+            if (m_actionInProgress.compare_exchange_strong(expected, true))
+            {
+                logInfo(WM_CONTENTUPDATER, "Starting on-demand action for '%s'", m_topicName.c_str());
+                runAction(ActionID::ON_DEMAND);
+            }
+            else
+            {
+                // LCOV_EXCL_START
+                logInfo(
+                    WM_CONTENTUPDATER, "Action in progress for '%s', on-demand request ignored", m_topicName.c_str());
+                // LCOV_EXCL_STOP
+            }
         }
     }
 
@@ -173,7 +177,7 @@ public:
 private:
     std::shared_ptr<RouterProvider> m_channel;
     std::thread m_schedulerThread;
-    bool m_schedulerRunning = false;
+    std::atomic<bool> m_schedulerRunning = false;
     std::atomic<bool> m_actionInProgress;
     std::atomic<size_t> m_interval;
     std::mutex m_mutex;

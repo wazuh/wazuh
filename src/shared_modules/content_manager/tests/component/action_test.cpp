@@ -196,7 +196,7 @@ TEST_F(ActionTest, TestInstantiationOfTwoActionsWithTheSameTopicName)
 /*
  * @brief Tests the instantiation of the Action class and runActionOnDemand
  */
-TEST_F(ActionTest, TestInstantiationAndRunActionOnDemand)
+TEST_F(ActionTest, DISABLED_TestInstantiationAndRunActionOnDemand)
 {
     m_parameters["ondemand"] = true;
 

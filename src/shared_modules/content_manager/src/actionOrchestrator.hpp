@@ -31,13 +31,16 @@ public:
      *
      * @param channel Channel where the orchestration will publish the data.
      * @param parameters Parameters used to create the orchestration.
+     * @param shouldRun ADD DOCU.
      */
-    explicit ActionOrchestrator(const std::shared_ptr<RouterProvider> channel, const nlohmann::json& parameters)
+    explicit ActionOrchestrator(const std::shared_ptr<RouterProvider> channel,
+                                const nlohmann::json& parameters,
+                                const std::atomic<bool>& shouldRun)
     {
         try
         {
             // Create a context
-            m_spBaseContext = std::make_shared<UpdaterBaseContext>();
+            m_spBaseContext = std::make_shared<UpdaterBaseContext>(shouldRun);
             m_spBaseContext->topicName = parameters.at("topicName");
             m_spBaseContext->configData = parameters.at("configData");
             m_spBaseContext->spChannel = channel;
