@@ -57,6 +57,11 @@ private:
     {
         for (auto& path : context.data.at("paths"))
         {
+            if (context.shouldStop)
+            {
+                break;
+            }
+
             // Copy input path.
             std::filesystem::path inputPath {path};
             auto outputPath {path.get<std::string>()};

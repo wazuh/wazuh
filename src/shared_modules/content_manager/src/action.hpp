@@ -186,7 +186,7 @@ private:
     {
         try
         {
-            m_orchestration->run();
+            m_orchestration->run(m_schedulerRunning);
         }
         catch (const std::exception& e)
         {

@@ -61,15 +61,16 @@ public:
 
     /**
      * @brief Run the content updater orchestration.
+     *
+     * @param shouldStop Variable to control the graceful shutdown of the orchestration.
      */
-    void run() const
+    void run(const bool& shouldStop) const
     {
 
         try
         {
             // Create a updater context
-            auto spUpdaterContext {std::make_shared<UpdaterContext>()};
-            spUpdaterContext->spUpdaterBaseContext = m_spBaseContext;
+            auto spUpdaterContext {std::make_shared<UpdaterContext>(m_spBaseContext, shouldStop)};
 
             logInfo(WM_CONTENTUPDATER, "Running content update. Topic: %s", m_spBaseContext->topicName.c_str());
 

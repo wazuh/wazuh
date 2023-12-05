@@ -81,8 +81,8 @@ private:
         // First, make a get request to the API to get the consumer offset.
         getConsumerLastOffset();
 
-        // Iterate until the current offset is equal to the consumer offset.
-        while (m_context->currentOffset < m_consumerLastOffset)
+        // Iterate until the current offset is equal to the consumer offset or the shutdown is requested.
+        while (!m_context->shouldStop && m_context->currentOffset < m_consumerLastOffset)
         {
             // Calculate the offset to download
             const auto toOffset = std::min(m_consumerLastOffset, m_context->currentOffset + 1000);
@@ -197,7 +197,7 @@ private:
         auto sleepTime {INITIAL_SLEEP_TIME};
         auto retryAttempt {1};
         auto retry {true};
-        while (retry)
+        while (!m_context->shouldStop && retry)
         {
             try
             {

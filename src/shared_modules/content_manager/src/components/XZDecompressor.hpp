@@ -38,6 +38,11 @@ private:
     {
         for (auto& path : context.data.at("paths"))
         {
+            if (context.shouldStop)
+            {
+                break;
+            }
+
             std::filesystem::path inputPath {path};
             try
             {

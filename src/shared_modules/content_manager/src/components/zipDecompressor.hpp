@@ -61,6 +61,11 @@ private:
 
         for (const auto& path : context.data.at("paths"))
         {
+            if (context.shouldStop)
+            {
+                break;
+            }
+
             // Decompress and move paths.
             auto decompressedFiles {Utils::ZlibHelper::zipDecompress(path, outputFolder)};
             newPaths.insert(newPaths.end(),

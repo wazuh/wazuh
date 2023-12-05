@@ -124,6 +124,19 @@ struct UpdaterContext final : private UpdaterBaseContext
      *
      */
     int currentOffset {0};
+
+    /**
+     * @brief Variable to control the graceful shutdown of the orchestration.
+     *
+     */
+    const bool& shouldStop;
+
+public:
+    UpdaterContext(std::shared_ptr<UpdaterBaseContext> spUpdaterBaseContext, const bool& shouldStop)
+        : spUpdaterBaseContext {spUpdaterBaseContext}
+        , shouldStop {shouldStop}
+    {
+    }
 };
 
 #endif // _UPDATER_CONTEXT_HPP
