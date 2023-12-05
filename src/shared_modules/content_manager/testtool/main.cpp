@@ -3,6 +3,8 @@
 #include "defs.h"
 #include <chrono>
 #include <iostream>
+#include <map>
+#include <string>
 #include <thread>
 
 /*
@@ -44,38 +46,71 @@ static const nlohmann::json CONFIG_PARAMETERS =
         }
         )"_json;
 
+// Enable/Disable logging verbosity.
+static const auto VERBOSE {true};
+
+/**
+ * @brief Log function callback used on the Content Manager test tool.
+ *
+ * @param logLevel Log level.
+ * @param tag Log tag.
+ * @param file File from where the logger is called.
+ * @param line Line from where the logger is called.
+ * @param func Function from where the logger is called.
+ * @param message Message to log.
+ */
+void logFunction(const int logLevel,
+                 const std::string& tag,
+                 const std::string& file,
+                 const int line,
+                 const std::string& func,
+                 const std::string& message)
+{
+    auto pos {file.find_last_of('/')};
+    if (pos != std::string::npos)
+    {
+        pos++;
+    }
+    const auto fileName {file.substr(pos, file.size() - pos)};
+
+    // Set log level tag.
+    static const std::map<int, std::string> LOG_LEVEL_TAGS {{LOGLEVEL_DEBUG_VERBOSE, "DEBUG_VERBOSE"},
+                                                            {LOGLEVEL_DEBUG, "DEBUG"},
+                                                            {LOGLEVEL_INFO, "INFO"},
+                                                            {LOGLEVEL_WARNING, "WARNING"},
+                                                            {LOGLEVEL_ERROR, "ERROR"},
+                                                            {LOGLEVEL_CRITICAL, "CRITICAL"}};
+    const auto levelTag {"[" + LOG_LEVEL_TAGS.at(logLevel) + "]"};
+
+    if (logLevel == LOGLEVEL_ERROR || logLevel == LOGLEVEL_CRITICAL)
+    {
+        // Error logs.
+        std::cerr << tag << ":" << levelTag << ": " << message.c_str() << std::endl;
+    }
+    else if (logLevel == LOGLEVEL_INFO || logLevel == LOGLEVEL_WARNING)
+    {
+        // Info and warning logs.
+        std::cout << tag << ":" << levelTag << ": " << message.c_str() << std::endl;
+    }
+    else
+    {
+        // Debug logs.
+        if (VERBOSE)
+        {
+            std::cout << tag << ":" << levelTag << ":" << fileName << ":" << line << " " << func << ": "
+                      << message.c_str() << std::endl;
+        }
+    }
+}
+
 int main()
 {
     auto& instance = ContentModule::instance();
 
     // Server
-    instance.start(
-        [](const int logLevel,
-           const std::string& tag,
-           const std::string& file,
-           const int line,
-           const std::string& func,
-           const std::string& message)
-        {
-            auto pos = file.find_last_of('/');
-            if (pos != std::string::npos)
-            {
-                pos++;
-            }
-            std::string fileName = file.substr(pos, file.size() - pos);
+    instance.start(logFunction);
 
-            if (logLevel != LOGLEVEL_ERROR)
-            {
-                std::cout << tag << ":" << fileName << ":" << line << " " << func << " : " << message.c_str()
-                          << std::endl;
-            }
-            else
-            {
-                std::cerr << tag << ":" << fileName << ":" << line << " " << func << " : " << message.c_str()
-                          << std::endl;
-            }
-        });
-    // CLiente -> vulnenability  detector
+    // Client -> Vulnerability detector
     ContentRegister registerer {CONFIG_PARAMETERS.at("topicName").get<std::string>(), CONFIG_PARAMETERS};
     std::this_thread::sleep_for(std::chrono::seconds(5));
     std::cout << "changing interval" << std::endl;

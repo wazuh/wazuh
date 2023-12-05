@@ -17,7 +17,6 @@
 #include "skipStep.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
-#include <iostream>
 #include <memory>
 
 /**
@@ -37,14 +36,13 @@ public:
      */
     static std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> create(const nlohmann::json& config)
     {
-        if (config.at("deleteDownloadedContent").get<bool>())
+        if (config.at("deleteDownloadedContent").get_ref<const bool&>())
         {
-            logDebug2(WM_CONTENTUPDATER, "Downloaded content cleaner created");
+            logDebug1(WM_CONTENTUPDATER, "Content cleaner created");
             return std::make_shared<CleanUpContent>();
         }
         else
         {
-            logDebug2(WM_CONTENTUPDATER, "Downloaded content cleaner not needed");
             return std::make_shared<SkipStep>();
         }
     }

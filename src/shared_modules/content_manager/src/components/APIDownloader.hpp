@@ -15,7 +15,6 @@
 #include "IURLRequest.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
-#include <iostream>
 #include <memory>
 
 /**
@@ -34,7 +33,6 @@ private:
      */
     void download()
     {
-        logDebug2(WM_CONTENTUPDATER, "APIDownloader - Starting");
         // Get the parameters needed to download the content.
         getParameters();
 
@@ -46,8 +44,6 @@ private:
 
         // Set the status of the stage
         m_context->data.at("stageStatus").push_back(R"({"stage": "APIDownloader", "status": "ok"})"_json);
-
-        logDebug2(WM_CONTENTUPDATER, "APIDownloader - Finishing - Download done successfully");
     }
 
     /**
@@ -76,6 +72,8 @@ private:
      */
     void downloadContent()
     {
+        logDebug2(WM_CONTENTUPDATER, "Downloading from API '%s'", m_url.c_str());
+
         const auto onError {
             [this](const std::string& message, [[maybe_unused]] const long statusCode)
             {
@@ -117,6 +115,8 @@ public:
      */
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
+        logDebug1(WM_CONTENTUPDATER, "APIDownloader - Starting process");
+
         m_context = context;
         download();
 

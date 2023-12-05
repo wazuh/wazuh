@@ -12,12 +12,12 @@
 #ifndef _XZ_DECOMPRESSOR_HPP
 #define _XZ_DECOMPRESSOR_HPP
 
+#include "../sharedDefs.hpp"
 #include "json.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
 #include "utils/stringHelper.h"
 #include "utils/xzHelper.hpp"
-#include <iostream>
 #include <memory>
 
 /**
@@ -51,6 +51,10 @@ private:
                                   context.spUpdaterBaseContext->configData.at("dataFormat").get<std::string>());
                 std::filesystem::path outputPath {path};
 
+                logDebug2(WM_CONTENTUPDATER,
+                          "Decompressing '%s' into '%s'",
+                          inputPath.string().c_str(),
+                          outputPath.string().c_str());
                 Utils::XzHelper(inputPath, outputPath).decompress();
             }
             catch (const std::exception& e)
@@ -74,6 +78,8 @@ public:
      */
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
+        logDebug1(WM_CONTENTUPDATER, "XZDecompressor - Starting process");
+
         decompress(*context);
 
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(context);

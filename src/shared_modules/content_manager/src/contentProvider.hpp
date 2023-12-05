@@ -17,7 +17,6 @@
 #include "routerSubscriber.hpp"
 #include <external/nlohmann/json.hpp>
 #include <filesystem>
-#include <iostream>
 #include <memory>
 #include <string>
 #include <utility>

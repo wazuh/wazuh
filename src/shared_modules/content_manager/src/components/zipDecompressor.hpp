@@ -18,7 +18,6 @@
 #include "utils/chainOfResponsability.hpp"
 #include "utils/zlibHelper.hpp"
 #include <filesystem>
-#include <iostream>
 #include <iterator>
 #include <memory>
 #include <string>
@@ -61,6 +60,11 @@ private:
 
         for (const auto& path : context.data.at("paths"))
         {
+            logDebug2(WM_CONTENTUPDATER,
+                      "Decompressing '%s' into '%s'",
+                      path.get_ref<const std::string&>().c_str(),
+                      outputFolder.string().c_str());
+
             // Decompress and move paths.
             auto decompressedFiles {Utils::ZlibHelper::zipDecompress(path, outputFolder)};
             newPaths.insert(newPaths.end(),
@@ -81,6 +85,8 @@ public:
      */
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
+        logDebug1(WM_CONTENTUPDATER, "ZipDecompressor - Starting process");
+
         try
         {
             decompress(*context);
@@ -95,8 +101,6 @@ public:
 
         // Push success state.
         pushStageStatus(context->data, "ok");
-
-        logDebug2(WM_CONTENTUPDATER, "ZipDecompressor - Finishing process");
 
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(context);
     }

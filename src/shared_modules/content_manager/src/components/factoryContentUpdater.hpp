@@ -12,6 +12,7 @@
 #ifndef _FACTORY_CONTENT_UPDATER_HPP
 #define _FACTORY_CONTENT_UPDATER_HPP
 
+#include "../sharedDefs.hpp"
 #include "factoryCleaner.hpp"
 #include "factoryDecompressor.hpp"
 #include "factoryDownloader.hpp"
@@ -40,7 +41,7 @@ public:
      */
     static std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> create(nlohmann::json& config)
     {
-        logDebug2(WM_CONTENTUPDATER, "FactoryContentUpdater - Starting process");
+        logDebug1(WM_CONTENTUPDATER, "FactoryContentUpdater - Starting process");
 
         auto factoryDownloader {FactoryDownloader::create(config)};
         auto factoryDecompressor {FactoryDecompressor::create(config)};
@@ -56,8 +57,6 @@ public:
             ->setNext(factoryPublisher)
             ->setNext(factoryVersionUpdater)
             ->setNext(factoryCleaner);
-
-        logDebug2(WM_CONTENTUPDATER, "FactoryContentUpdater - Finishing process");
 
         return updaterChain;
     }

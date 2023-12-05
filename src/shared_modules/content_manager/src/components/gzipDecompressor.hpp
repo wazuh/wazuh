@@ -19,7 +19,6 @@
 #include "utils/stringHelper.h"
 #include "utils/zlibHelper.hpp"
 #include <filesystem>
-#include <iostream>
 #include <memory>
 #include <string>
 #include <utility>
@@ -72,6 +71,8 @@ private:
             outputPath = Utils::rightTrim(outputPath, inputPath.extension());
 
             // Decompress.
+            logDebug2(
+                WM_CONTENTUPDATER, "Decompressing '%s' into '%s'", inputPath.string().c_str(), outputPath.c_str());
             Utils::ZlibHelper::gzipDecompress(inputPath, outputPath);
 
             // Decompression finished: Update context path.
@@ -88,6 +89,8 @@ public:
      */
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
+        logDebug1(WM_CONTENTUPDATER, "GzipDecompressor - Starting process");
+
         try
         {
             decompress(*context);
@@ -102,8 +105,6 @@ public:
 
         // Push success state.
         pushStageStatus(context->data, "ok");
-
-        logDebug2(WM_CONTENTUPDATER, "GzipDecompressor - Finishing process");
 
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(context);
     }
