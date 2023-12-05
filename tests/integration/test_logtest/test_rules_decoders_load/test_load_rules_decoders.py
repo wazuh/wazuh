@@ -49,45 +49,29 @@ tags:
     - logtest_configuration
 '''
 import json
-import os
+from pathlib import Path
 import shutil
 
 import pytest
-import yaml
-from wazuh_testing.constants.paths import WAZUH_PATH
 from wazuh_testing.tools.socket_controller import SocketController
+from wazuh_testing.constants.paths.sockets import LOGTEST_SOCKET_PATH
+from wazuh_testing.utils import configuration
+
+from . import TEST_CASES_FOLDER_PATH, TEST_RULES_DECODERS_PATH
 
 # Marks
 
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
-# Configurations
+# Configuration
+t_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_load_rules_decoders.yaml')
+t_config_parameters, t_config_metadata, t_case_ids = configuration.get_test_cases_data(t_cases_path)
 
-config_test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/config_templates')
-messages_path = os.path.join(config_test_data_path, 'config_load_rules_decoders.yaml')
-with open(messages_path) as f:
-    test_cases = yaml.safe_load(f)
-    tc = list(test_cases)
-
-test_cases_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/test_cases')
-
-# Variables
-
-logtest_path = os.path.join(os.path.join(WAZUH_PATH, 'queue', 'sockets', 'logtest'))
-
-
-# Functions used on the test
-
-def create_connection():
-    return SocketController(address=logtest_path, family='AF_UNIX', connection_protocol='TCP')
-
-
-def close_connection(connection):
-    connection.close()
-
+# Test daemons to restart.
+daemons_handler_configuration = {'daemons': ['wazuh-analysisd', 'wazuh-db']}
 
 def create_dummy_session():
-    connection = create_connection()
+    connection = SocketController(address=LOGTEST_SOCKET_PATH, family='AF_UNIX', connection_protocol='TCP')
     dummy_request = """{ "version": 1,
             "origin":{"name":"Integration Test","module":"api"},
             "command":"log_processing",
@@ -96,15 +80,13 @@ def create_dummy_session():
 
     connection.send(dummy_request, size=True)
     token = json.loads(connection.receive(size=True).rstrip(b'\x00').decode())["data"]["token"]
-    close_connection(connection)
+    connection.close()
     return token
 
 
 # Tests
-@pytest.mark.parametrize('test_case',
-                         list(test_cases),
-                         ids=[test_case['name'] for test_case in test_cases])
-def test_load_rules_decoders(restart_required_logtest_daemons, wait_for_logtest_startup, test_case):
+@pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
+def test_load_rules_decoders(test_metadata, daemons_handler_module, wait_for_logtest_startup):
     '''
     description: Check if 'wazuh-logtest' does produce the right decoder/rule matching when processing a log under
                  different sets of configurations. To do this, it creates backup rules and decoders and copies the test
@@ -116,18 +98,15 @@ def test_load_rules_decoders(restart_required_logtest_daemons, wait_for_logtest_
     tier: 0
 
     parameters:
-        - restart_required_logtest_daemons:
+        - daemons_handler_module:
             type: fixture
             brief: Wazuh logtests daemons handler.
         - wait_for_logtest_startup:
             type: fixture
             brief: Wait until logtest has begun.
-        - connect_to_sockets_function:
-            type: fixture
-            brief: Function scope version of 'connect_to_sockets' which connects to the specified sockets for the test.
-        - test_case:
+        - test_metadata:
             type: list
-            brief: List of test_case stages. (dicts with input, output and stage keys)
+            brief: List of metadata values. (dicts with input, output and stage keys)
 
     assertions:
         - Verify that the predecoder output matches with test case expected.
@@ -149,45 +128,45 @@ def test_load_rules_decoders(restart_required_logtest_daemons, wait_for_logtest_
     # List to store assert messages
     errors = []
 
-    if 'local_rules' in test_case:
+    if 'local_rules' in test_metadata:
         # save current rules
         shutil.copy('/var/ossec/etc/rules/local_rules.xml',
                     '/var/ossec/etc/rules/local_rules.xml.cpy')
 
-        file_test = test_case['local_rules']
+        file_test = test_metadata['local_rules']
         # copy test rules
-        shutil.copy(test_cases_data_path + file_test, '/var/ossec/etc/rules/local_rules.xml')
+        shutil.copy(Path(TEST_RULES_DECODERS_PATH, file_test), '/var/ossec/etc/rules/local_rules.xml')
         shutil.chown('/var/ossec/etc/rules/local_rules.xml', "wazuh", "wazuh")
 
-    if 'local_decoders' in test_case:
+    if 'local_decoders' in test_metadata:
         # save current decoders
         shutil.copy('/var/ossec/etc/decoders/local_decoder.xml',
                     '/var/ossec/etc/decoders/local_decoder.xml.cpy')
 
-        file_test = test_case['local_decoders']
+        file_test = test_metadata['local_decoders']
         # copy test decoder
-        shutil.copy(test_cases_data_path + file_test, '/var/ossec/etc/decoders/local_decoder.xml')
+        shutil.copy(Path(TEST_RULES_DECODERS_PATH, file_test), '/var/ossec/etc/decoders/local_decoder.xml')
         shutil.chown('/var/ossec/etc/decoders/local_decoder.xml', "wazuh", "wazuh")
 
     # Create session token
-    if 'same_session' in test_case and test_case['same_session']:
+    if 'same_session' in test_metadata and test_metadata['same_session']:
         session_token = create_dummy_session()
 
-    for stage in test_case['test_case']:
+    for stage in test_metadata['stages']:
 
         for i in range(stage['repeat'] if 'repeat' in stage else 1):
 
-            connection = create_connection()
+            connection = SocketController(address=LOGTEST_SOCKET_PATH, family='AF_UNIX', connection_protocol='TCP')
             # Generate logtest request
-            if 'same_session' in test_case and test_case['same_session']:
+            if 'same_session' in test_metadata and test_metadata['same_session']:
                 request_pattern = """{{ "version":1,
                     "origin":{{"name":"Integration Test","module":"api"}},
                     "command":"log_processing",
                     "parameters":{{ "token":"{}" , {} , {} , {} }}
                     }}"""
                 input = request_pattern.format(session_token, stage['input_event'],
-                                               test_case['input_log_format'],
-                                               test_case['input_location'])
+                                               test_metadata['input_log_format'],
+                                               test_metadata['input_location'])
             else:
                 request_pattern = """{{ "version":1,
                     "origin":{{"name":"Integration Test","module":"api"}},
@@ -195,8 +174,8 @@ def test_load_rules_decoders(restart_required_logtest_daemons, wait_for_logtest_
                     "parameters":{{ {} , {} , {} }}
                     }}"""
                 input = request_pattern.format(stage['input_event'],
-                                               test_case['input_log_format'],
-                                               test_case['input_location'])
+                                               test_metadata['input_log_format'],
+                                               test_metadata['input_location'])
 
             # Send request
             connection.send(input, size=True)
@@ -207,7 +186,7 @@ def test_load_rules_decoders(restart_required_logtest_daemons, wait_for_logtest_
             # Parse logtest response as JSON
             result = json.loads(response)
 
-            close_connection(connection)
+            connection.close()
 
             # Check predecoder
             if ('output_predecoder' in stage and
@@ -227,13 +206,13 @@ def test_load_rules_decoders(restart_required_logtest_daemons, wait_for_logtest_
             if 'output_alert' in stage and stage['output_alert'] != result["data"]['alert']:
                 errors.append(stage['stage'])
 
-    if 'local_rules' in test_case:
+    if 'local_rules' in test_metadata:
         # restore previous rules
         shutil.move('/var/ossec/etc/rules/local_rules.xml.cpy',
                     '/var/ossec/etc/rules/local_rules.xml')
     shutil.chown('/var/ossec/etc/rules/local_rules.xml', "wazuh", "wazuh")
 
-    if 'local_decoders' in test_case:
+    if 'local_decoders' in test_metadata:
         # restore previous decoders
         shutil.move('/var/ossec/etc/decoders/local_decoder.xml.cpy',
                     '/var/ossec/etc/decoders/local_decoder.xml')
