@@ -12,7 +12,7 @@ TMP_DIR_BACKUP=./tmp_bkp
 
 # Check if there is an upgrade in progress
 declare -a BACKUP_FOLDERS
-[ -d "./tmp_bkp" ] && BACKUP_FOLDERS+=("./tmp_bkp")
+[ -d "${TMP_DIR_BACKUP}" ] && BACKUP_FOLDERS+=("${TMP_DIR_BACKUP}")
 [ -d "./backup" ] && BACKUP_FOLDERS+=("./backup")
 for dir in "${BACKUP_FOLDERS[@]}"; do
     ATTEMPTS=5
@@ -27,7 +27,7 @@ for dir in "${BACKUP_FOLDERS[@]}"; do
 done
 
 # Clean before backup
-rm -rf "${TMP_DIR_BACKUP}/"
+rm -rf ${TMP_DIR_BACKUP}/
 
 WAZUH_REVISION=0
 OSSEC_LIST_FILES=""
@@ -284,6 +284,12 @@ else
     # Restore backup
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Restoring backup...." >> ./logs/upgrade.log
     tar xzf ./backup/backup_[${BDATE}].tar.gz -C / >> ./logs/upgrade.log 2>&1
+    RESULT=$?
+
+    if [ $RESULT -ne 0 ]; then
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Error uncompressing the Backup, it has not been possible to restore the installation." >> ./logs/upgrade.log
+        exit 1
+    fi
 
     # Assign the ossec ownership, if appropriate
     if [ $RESTORE_OSSEC_OWN -eq 1 ]; then
