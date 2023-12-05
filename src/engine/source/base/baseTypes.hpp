@@ -8,6 +8,7 @@
 namespace base
 {
 using Event = std::shared_ptr<json::Json>;
+using ConstEvent = const std::shared_ptr<const json::Json>&;
 using EngineOp = std::function<result::Result<Event>(Event)>;
 } // namespace base
 

@@ -5,7 +5,6 @@
 #include <schemf/schema.hpp>
 
 using namespace schemf;
-using JType = json::Json::Type;
 
 using ParamsTuple = std::tuple<std::vector<std::tuple<std::string, Field::Parameters>>, bool>;
 class Params : public ::testing::TestWithParam<ParamsTuple>
@@ -80,21 +79,21 @@ TEST_P(Params, Remove)
 INSTANTIATE_TEST_SUITE_P(
     SchemaTest,
     Params,
-    ::testing::Values(ParamsTuple({{"a", {JType::String}}}, true),
-                      ParamsTuple({{"a", {JType::Number}}}, true),
-                      ParamsTuple({{"a", {JType::Null}}}, false),
-                      ParamsTuple({{"a", {JType::Object}}}, true),
-                      ParamsTuple({{"a", {JType::Array}}}, false),
-                      ParamsTuple({{"a", {JType::Array, JType::Number}}}, true),
-                      ParamsTuple({{"a", {JType::Boolean}}}, true),
-                      ParamsTuple({{"a", {JType::Object}}, {"a", {JType::Boolean}}}, false),
-                      ParamsTuple({{"a", {JType::String}}, {"a.b", {JType::String}}}, false),
-                      ParamsTuple({{"a", {JType::Object}}, {"a.b", {JType::String}}}, true),
-                      ParamsTuple({{"a.b.c.d", {JType::Boolean}}}, true),
-                      ParamsTuple({{"a.b.c.d", {JType::Number}}, {"a.b", {JType::String}}}, false),
-                      ParamsTuple({{"a.b.c.d", {JType::Number}}, {"a.b.a", {JType::String}}}, true),
-                      ParamsTuple({{"a", {JType::Array, JType::Number}}, {"a.b", {JType::Number}}}, false),
-                      ParamsTuple({{"a", {JType::Array, JType::Object}}, {"a.b", {JType::Number}}}, true)));
+    ::testing::Values(ParamsTuple({{"a", {Type::TEXT}}}, true),
+                      ParamsTuple({{"a", {Type::INTEGER}}}, true),
+                      ParamsTuple({{"a", {Type::ERROR}}}, false),
+                      ParamsTuple({{"a", {Type::OBJECT}}}, true),
+                      ParamsTuple({{"a", {.isArray = true}}}, false),
+                      ParamsTuple({{"a", {Type::INTEGER, true}}}, true),
+                      ParamsTuple({{"a", {Type::BOOLEAN}}}, true),
+                      ParamsTuple({{"a", {Type::OBJECT}}, {"a", {Type::BOOLEAN}}}, false),
+                      ParamsTuple({{"a", {Type::TEXT}}, {"a.b", {Type::TEXT}}}, false),
+                      ParamsTuple({{"a", {Type::OBJECT}}, {"a.b", {Type::TEXT}}}, true),
+                      ParamsTuple({{"a.b.c.d", {Type::BOOLEAN}}}, true),
+                      ParamsTuple({{"a.b.c.d", {Type::INTEGER}}, {"a.b", {Type::TEXT}}}, false),
+                      ParamsTuple({{"a.b.c.d", {Type::INTEGER}}, {"a.b.a", {Type::TEXT}}}, true),
+                      ParamsTuple({{"a", {Type::INTEGER, true}}, {"a.b", {Type::INTEGER}}}, false),
+                      ParamsTuple({{"a", {Type::OBJECT, true}}, {"a.b", {Type::INTEGER}}}, true)));
 
 using LoadTuple = std::tuple<std::string, bool>;
 class LoadJson : public ::testing::TestWithParam<LoadTuple>
@@ -114,14 +113,8 @@ TEST_P(LoadJson, Loads)
         for (const auto& [key, value] : jsonObj)
         {
             ASSERT_TRUE(schema.hasField(key));
-            if (value.getBool("/array").value_or(false))
-            {
-                ASSERT_EQ(schema.getType(key), json::Json::Type::Array);
-            }
-            else
-            {
-                ASSERT_EQ(schema.getType(key), json::Json::strToType(value.getString("/type").value().c_str()));
-            }
+            ASSERT_EQ(value.getBool("/array").value_or(false), schema.isArray(key));
+            ASSERT_EQ(schema.getType(key), strToType(value.getString("/type").value().c_str()));
         }
     }
     else
@@ -132,19 +125,19 @@ TEST_P(LoadJson, Loads)
 
 INSTANTIATE_TEST_SUITE_P(SchemaTest,
                          LoadJson,
-                         ::testing::Values(LoadTuple(R"({"a": {"type": "string"}})", true),
-                                           LoadTuple(R"({"a": {"type": "number"}})", true),
+                         ::testing::Values(LoadTuple(R"({"a": {"type": "text"}})", true),
+                                           LoadTuple(R"({"a": {"type": "integer"}})", true),
                                            LoadTuple(R"({"a": {"type": "null"}})", false),
                                            LoadTuple(R"({"a": {"type": "object"}})", true),
                                            LoadTuple(R"({"a": {"type": "array"}})", false),
                                            LoadTuple(R"({"a": {"type": "boolean"}})", true),
-                                           LoadTuple(R"({"a": {"type": "string"}, "a.b": {"type": "string"}})", false),
-                                           LoadTuple(R"({"a": {"type": "string", "array": true}})", true),
-                                           LoadTuple(R"({"a": {"type": "number", "array": true}})", true),
+                                           LoadTuple(R"({"a": {"type": "keyword"}, "a.b": {"type": "keyword"}})", false),
+                                           LoadTuple(R"({"a": {"type": "text", "array": true}})", true),
+                                           LoadTuple(R"({"a": {"type": "long", "array": true}})", true),
                                            LoadTuple(R"({"a": {"type": "object", "array": true}})", true),
                                            LoadTuple(R"({"a": {"type": "boolean", "array": true}})", true),
-                                           LoadTuple(R"({"a": {"type": "array", "array": true}})", true),
-                                           LoadTuple(R"({"a.": {"type": "string"}})", false),
+                                           LoadTuple(R"({"a": {"type": "array", "array": true}})", false),
+                                           LoadTuple(R"({"a.": {"type": "keyword"}})", false),
                                            LoadTuple(R"({"a": {}})", false),
-                                           LoadTuple(R"({"a": [{"type": "string"}]})", false),
-                                           LoadTuple(R"([{"a": {"type": "string"}}])", false)));
+                                           LoadTuple(R"({"a": [{"type": "text"}]})", false),
+                                           LoadTuple(R"([{"a": {"type": "keyword"}}])", false)));

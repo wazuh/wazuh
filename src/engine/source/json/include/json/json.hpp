@@ -53,6 +53,20 @@ public:
         return os;
     }
 
+    static constexpr auto typeToStr(Type type)
+    {
+        switch (type)
+        {
+            case Type::Null: return "null";
+            case Type::Object: return "object";
+            case Type::Array: return "array";
+            case Type::String: return "string";
+            case Type::Number: return "number";
+            case Type::Boolean: return "boolean";
+            default: return "unknown";
+        }
+    }
+
     static constexpr Type strToType(const char* str)
     {
         if (strcmp(str, "null") == 0)

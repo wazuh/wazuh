@@ -6,6 +6,8 @@
 #include <defs/idefinitions.hpp>
 #include <store/istore.hpp>
 
+#include "builders/ibuildCtx.hpp"
+
 namespace builder::policy
 {
 class Policy : public IPolicy
@@ -22,7 +24,9 @@ public:
 
     Policy(const store::Doc& doc,
            const std::shared_ptr<store::IStoreReader>& store,
-           const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder);
+           const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
+           const std::shared_ptr<builders::RegistryType>& registry,
+           const std::shared_ptr<schemval::IValidator>& validator);
 
     /**
      * @copydoc IPolicy::name

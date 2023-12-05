@@ -22,14 +22,12 @@ void Schema::addField(const DotPath& name, const Field& field)
         // If the field doesn't exist, add it as an empty object
         if (entry == current->end())
         {
-            current->emplace(*it, Field({.type = json::Json::Type::Object}));
+            current->emplace(*it, Field({.type = Type::OBJECT}));
             current = &current->at(*it).properties();
         }
         else
         {
-            if (entry->second.type() != json::Json::Type::Object
-                && (entry->second.type() == json::Json::Type::Array
-                    && entry->second.itemsType() != json::Json::Type::Object))
+            if (!hasProperties(entry->second.type()))
             {
                 throw std::runtime_error(fmt::format("Field '{}' is not an object in '{}", *it, name.str()));
             }
@@ -108,12 +106,6 @@ const Field& Schema::get(const DotPath& name) const
     return *target;
 }
 
-json::Json::Type Schema::getType(const DotPath& name) const
-{
-    auto type = get(name).type();
-    return type;
-}
-
 bool Schema::hasField(const DotPath& name) const
 {
     const auto* current = &m_fields;
@@ -134,46 +126,6 @@ bool Schema::hasField(const DotPath& name) const
     return true;
 }
 
-std::optional<base::Error> Schema::validate(const DotPath& target, const json::Json& value) const
-{
-    auto field = get(target);
-    auto valueField = Field(value);
-
-    if (field != valueField)
-    {
-        return base::Error {"Type mismatch"};
-    }
-
-    return std::nullopt;
-}
-
-std::optional<base::Error> Schema::validate(const DotPath& target, const DotPath& reference) const
-{
-    auto field = get(target);
-    auto ref = get(reference);
-
-    if (field != ref)
-    {
-        return base::Error {"Type mismatch"};
-    }
-
-    return std::nullopt;
-}
-
-ISchema::RuntimeValidator Schema::getRuntimeValidator(const DotPath& target) const
-{
-    auto field = get(target);
-    return [field](const json::Json& value) -> std::optional<base::Error>
-    {
-        if (field.type() != value.type())
-        {
-            return base::Error {"Type mismatch"};
-        }
-
-        return std::nullopt;
-    };
-}
-
 Field Schema::entryToField(const std::string& name, const json::Json& entry) const
 {
     if (entry.type() != json::Json::Type::Object)
@@ -188,18 +140,21 @@ Field Schema::entryToField(const std::string& name, const json::Json& entry) con
     {
         throw std::runtime_error(fmt::format("Field '{}' must have a type", name));
     }
+    params.type = strToType(type.value().c_str());
+    params.isArray = entry.getBool("/array").value_or(false);
 
-    if (entry.getBool("/array").value_or(false))
+    Field field;
+    try
     {
-        params.itemsType = json::Json::strToType(type.value().c_str());
-        params.type = json::Json::Type::Array;
+        field = Field(params);
     }
-    else
+    catch (const std::exception& e)
     {
-        params.type = json::Json::strToType(type.value().c_str());
+        throw std::runtime_error(
+            fmt::format("Field '{}' cannot be built from entry '{}', error: '{}'", name, entry.prettyStr(), e.what()));
     }
 
-    return Field(params);
+    return field;
 }
 
 void Schema::load(const json::Json& json)

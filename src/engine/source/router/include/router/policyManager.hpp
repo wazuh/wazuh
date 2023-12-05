@@ -32,7 +32,7 @@ private:
     const std::size_t m_numInstances; ///< Number of instances of each policy
 
     /* Resources */
-    std::shared_ptr<builder::Builder> m_builder; ///< Builder for policy creation
+    std::shared_ptr<builder::IBuilder> m_builder; ///< Builder for policy creation
 
 public:
     /**
@@ -43,7 +43,7 @@ public:
      * @param builder Builder for policy creation
      * @param maxInstances Number of instances of each policy
      */
-    PolicyManager(std::shared_ptr<builder::Builder> builder, std::size_t maxInstances)
+    PolicyManager(std::shared_ptr<builder::IBuilder> builder, std::size_t maxInstances)
         : m_policies {}
         , m_mutex {}
         , m_numInstances {maxInstances}

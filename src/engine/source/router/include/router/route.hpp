@@ -9,7 +9,6 @@
 #include <baseTypes.hpp>
 #include <json/json.hpp>
 
-#include <asset.hpp>
 #include <expression.hpp>
 
 namespace router
@@ -56,7 +55,7 @@ public:
      * @param priority Priority of the route
      * @throw std::runtime_error if the priority is out of range
      */
-    Route(const std::string& name, builder::Asset& assetRoute, const std::string& target, int priority);
+    Route(const std::string& name, base::Expression& assetRoute, const std::string& target, int priority);
 
     /**
      * @brief Get the Name of the route

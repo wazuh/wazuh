@@ -246,7 +246,7 @@ base::Expression buildSubgraphExpression(const Graph<base::Name, Asset>& subgrap
     // Assert T is a valid operation
     static_assert(std::is_base_of_v<base::Operation, ChildOperator>, "ChildOperator must be a valid operation");
 
-    auto root = ChildOperator::create(subgraph.node(subgraph.rootId()).name(), {});
+    auto root = ChildOperator::create(subgraph.rootId(), {});
 
     // Avoid duplicating nodes when multiple parents has the same child node
     std::map<std::string, base::Expression> builtNodes;
