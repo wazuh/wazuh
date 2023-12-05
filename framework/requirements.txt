@@ -62,8 +62,7 @@ pathlib==1.0.1
 protobuf==3.19.6
 proto-plus==1.19.0
 psutil==5.9.0
-pyarrow==13.0.0
-pyarrow_hotfix==0.5
+pyarrow==14.0.1
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
 pycparser==2.21
@@ -82,7 +81,7 @@ SQLAlchemy==2.0.0
 tabulate==0.8.9
 typing-extensions==4.5.0
 typing-inspect==0.7.1
-urllib3==1.26.5
+urllib3==1.26.18
 uvloop==0.17.0
 websocket-client==0.57.0
 Werkzeug==2.2.3
