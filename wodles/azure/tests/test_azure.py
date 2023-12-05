@@ -358,7 +358,7 @@ def test_get_log_analytics_events(mock_get, mock_position, mock_iter, mock_updat
     body = "body"
     headers = "headers"
     azure.get_log_analytics_events(url=url, body=body, headers=headers, md5_hash="")
-    mock_get.assert_called_with(url, params=body, headers=headers)
+    mock_get.assert_called_with(url, params=body, headers=headers, timeout=10)
     if rows is None or (len(rows) > 0 and time_position is None):
         mock_logging.assert_called_once()
     elif len(rows) == 0:
@@ -541,7 +541,7 @@ def test_get_graph_events(mock_get, mock_update, mock_send):
 
     headers = "headers"
     azure.get_graph_events(url=url, headers=headers, md5_hash="")
-    mock_get.assert_called_with(url=url, headers=headers)
+    mock_get.assert_called_with(url=url, headers=headers, timeout=10)
     assert mock_update.call_count == num_events
     assert mock_send.call_count == num_events
 
@@ -855,7 +855,7 @@ def test_get_token(mock_post):
     mock_post.return_value = m
     token = azure.get_token(client_id, secret, domain, scope)
     auth_url = f'{azure.URL_LOGGING}/{domain}/oauth2/v2.0/token'
-    mock_post.assert_called_with(auth_url, data=body)
+    mock_post.assert_called_with(auth_url, data=body, timeout=10)
     assert token == expected_token
 
 
