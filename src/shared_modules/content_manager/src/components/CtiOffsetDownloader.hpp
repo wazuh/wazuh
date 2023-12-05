@@ -52,7 +52,7 @@ private:
         {
             if (!context.spUpdaterBaseContext->shouldRun.load())
             {
-                logWarn(WM_CONTENTUPDATER, "Download has been interrupted");
+                logWarn(WM_CONTENTUPDATER, "The offsets download has been interrupted");
                 return;
             }
 
