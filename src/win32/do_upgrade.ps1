@@ -12,9 +12,9 @@ if (Test-Path $Env:WAZUH_BACKUP_DIR) { $BACKUP_FOLDERS += "$Env:WAZUH_BACKUP_DIR
 foreach ($dir in $BACKUP_FOLDERS) {
     $attempts = 5
     while ($attempts -gt 0) {
-        Start-Sleep 1
+        Start-Sleep 10
         $attempts--
-        if ((Get-ChildItem $dir -recurse | Where-Object { $_.LastWriteTime -gt (Get-Date).AddMinutes(-0.1) })) {
+        if ((Get-ChildItem $dir -recurse | Where-Object { $_.LastWriteTime -gt (Get-Date).AddMinutes(-1) })) {
             Write-Output "$(Get-Date -Format u) - There is an upgrade in progress. Aborting..." >> .\upgrade\upgrade.log
             exit 1
         }
