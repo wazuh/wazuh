@@ -12,7 +12,7 @@ TMP_DIR_BACKUP=./tmp_bkp
 
 # Check if there is an upgrade in progress
 declare -a BACKUP_FOLDERS
-[ -d "./tmp_bkp" ] && BACKUP_FOLDERS+=("./tmp_bkp")
+[ -d "${TMP_DIR_BACKUP}" ] && BACKUP_FOLDERS+=("${TMP_DIR_BACKUP}")
 [ -d "./backup" ] && BACKUP_FOLDERS+=("./backup")
 for dir in "${BACKUP_FOLDERS[@]}"; do
     ATTEMPTS=5
@@ -149,6 +149,8 @@ else
         done
     else
         echo "$(date +"%Y/%m/%d %H:%M:%S") - Error uncompressing the Backup, it has not been possible to restore the installation." >> ./logs/upgrade.log
+        rm -rf ./backup/restore
+        exit 1
     fi
 
     rm -rf ./backup/restore
