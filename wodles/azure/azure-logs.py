@@ -21,9 +21,9 @@ import sys
 
 from azure_utils import get_script_arguments, set_logger
 from db.orm import check_database_integrity
-from services.analytics import start_log_analytics
-from services.graph import start_graph
-from services.storage import start_storage
+from azure_services.analytics import start_log_analytics
+from azure_services.graph import start_graph
+from azure_services.storage import start_storage
 
 if __name__ == "__main__":
     args = get_script_arguments()

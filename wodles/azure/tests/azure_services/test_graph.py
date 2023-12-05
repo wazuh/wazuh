@@ -18,7 +18,7 @@ from requests import HTTPError
 sys.path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
 
 from db import orm
-from services.graph import (
+from azure_services.graph import (
     URL_GRAPH,
     build_graph_url,
     get_graph_events,
@@ -39,10 +39,10 @@ TEST_DATA_PATH = join(dirname(dirname(realpath(__file__))), "data")
         ("/var/ossec/", None, None, "", "", "", False),
     ],
 )
-@patch("services.graph.get_graph_events")
-@patch("services.graph.build_graph_url")
-@patch("services.graph.get_token")
-@patch("services.graph.read_auth_file")
+@patch("azure_services.graph.get_graph_events")
+@patch("azure_services.graph.build_graph_url")
+@patch("azure_services.graph.get_token")
+@patch("azure_services.graph.read_auth_file")
 def test_start_graph(
     mock_auth,
     mock_token,
@@ -101,10 +101,10 @@ def test_start_graph(
 
 
 @patch("azure_utils.logging.error")
-@patch("services.graph.get_graph_events", side_effect=HTTPError)
-@patch("services.graph.build_graph_url")
-@patch("services.graph.get_token")
-@patch("services.graph.read_auth_file", return_value=("client", "secret"))
+@patch("azure_services.graph.get_graph_events", side_effect=HTTPError)
+@patch("azure_services.graph.build_graph_url")
+@patch("azure_services.graph.get_token")
+@patch("azure_services.graph.read_auth_file", return_value=("client", "secret"))
 def test_start_graph_ko(mock_auth, mock_token, mock_build, mock_get, mock_logging):
     """Test start_graph shows error message if get_log_analytics_events returns an HTTP error."""
     args = MagicMock(
@@ -134,8 +134,8 @@ def test_start_graph_ko_credentials(mock_logging):
     ],
 )
 @patch("azure_utils.logging.info")
-@patch("services.graph.offset_to_datetime")
-@patch("services.graph.create_new_row")
+@patch("azure_services.graph.offset_to_datetime")
+@patch("azure_services.graph.create_new_row")
 @patch("db.orm.get_row", return_value=None)
 def test_build_graph_url(
     mock_get,
@@ -197,9 +197,9 @@ def test_build_graph_url_ko(mock_get, mock_logging):
     mock_logging.assert_called_once()
 
 
-@patch("services.graph.send_message")
-@patch("services.graph.update_row_object")
-@patch("services.graph.get")
+@patch("azure_services.graph.send_message")
+@patch("azure_services.graph.update_row_object")
+@patch("azure_services.graph.get")
 def test_get_graph_events(mock_get, mock_update, mock_send):
     """Test get_graph_events recursively request the data using the specified url and process the values present in the
     response."""
@@ -230,7 +230,7 @@ def test_get_graph_events(mock_get, mock_update, mock_send):
 
 @pytest.mark.parametrize("status_code", [400, 500])
 @patch("azure_utils.logging.error")
-@patch("services.graph.get")
+@patch("azure_services.graph.get")
 def test_get_graph_events_error_responses(mock_get, mock_logging, status_code):
     """Test get_graph_events handles invalid responses from the request module."""
     response_mock = MagicMock(status_code=status_code)

@@ -18,7 +18,7 @@ from requests import HTTPError
 sys.path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
 
 from db import orm
-from services.analytics import (
+from azure_services.analytics import (
     URL_ANALYTICS,
     build_log_analytics_query,
     get_log_analytics_events,
@@ -41,10 +41,10 @@ TEST_DATA_PATH = join(dirname(dirname(realpath(__file__))), "data")
         ("/var/ossec/", None, None, "", "", "", False, ""),
     ],
 )
-@patch("services.analytics.get_log_analytics_events")
-@patch("services.analytics.build_log_analytics_query")
-@patch("services.analytics.get_token")
-@patch("services.analytics.read_auth_file")
+@patch("azure_services.analytics.get_log_analytics_events")
+@patch("azure_services.analytics.build_log_analytics_query")
+@patch("azure_services.analytics.get_token")
+@patch("azure_services.analytics.read_auth_file")
 def test_start_log_analytics(
     mock_auth,
     mock_token,
@@ -109,12 +109,12 @@ def test_start_log_analytics(
 
 @patch("azure_utils.logging.error")
 @patch(
-    "services.analytics.get_log_analytics_events", side_effect=HTTPError
+    "azure_services.analytics.get_log_analytics_events", side_effect=HTTPError
 )
-@patch("services.analytics.build_log_analytics_query")
-@patch("services.analytics.get_token")
+@patch("azure_services.analytics.build_log_analytics_query")
+@patch("azure_services.analytics.get_token")
 @patch(
-    "services.analytics.read_auth_file", return_value=("client", "secret")
+    "azure_services.analytics.read_auth_file", return_value=("client", "secret")
 )
 def test_start_log_analytics_ko(
     mock_auth, mock_token, mock_build, mock_get_logs, mock_logging
@@ -151,8 +151,8 @@ def test_start_log_analytics_ko_credentials(mock_logging):
         (PAST_DATE, PAST_DATE, PRESENT_DATE, True),
     ],
 )
-@patch("services.analytics.offset_to_datetime")
-@patch("services.analytics.create_new_row")
+@patch("azure_services.analytics.offset_to_datetime")
+@patch("azure_services.analytics.create_new_row")
 @patch("db.orm.get_row", return_value=None)
 def test_build_log_analytics_query(
     mock_get, mock_create, mock_datetime, min_date, max_date, desired_date, reparse
@@ -210,10 +210,10 @@ def test_build_log_analytics_query_ko(mock_get, mock_logging):
     ],
 )
 @patch("azure_utils.logging.error")
-@patch("services.analytics.update_row_object")
-@patch("services.analytics.iter_log_analytics_events")
-@patch("services.analytics.get_time_position")
-@patch("services.analytics.get")
+@patch("azure_services.analytics.update_row_object")
+@patch("azure_services.analytics.iter_log_analytics_events")
+@patch("azure_services.analytics.get_time_position")
+@patch("azure_services.analytics.get")
 def test_get_log_analytics_events(
     mock_get, mock_position, mock_iter, mock_update, mock_logging, file, time_position
 ):
@@ -254,7 +254,7 @@ def test_get_log_analytics_events(
         mock_update.assert_called_once()
 
 
-@patch("services.analytics.get")
+@patch("azure_services.analytics.get")
 def test_get_log_analytics_events_error_responses(mock_get):
     """Test get_log_analytics_events handles invalid responses from the request module."""
     la_query = "test_query"
@@ -280,7 +280,7 @@ def test_get_time_position(columns, position):
     assert result == position
 
 
-@patch("services.analytics.send_message")
+@patch("azure_services.analytics.send_message")
 def test_iter_log_analytics_events(mock_send):
     """Test iter_log_analytics_events iterates through the columns and rows to build the events and send them to the
     socket."""

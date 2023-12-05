@@ -22,7 +22,7 @@ from dateutil.parser import parse
 sys.path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
 
 from db import orm
-from services.storage import get_blobs, start_storage
+from azure_services.storage import get_blobs, start_storage
 
 PAST_DATE = "2022-01-01T12:00:00.000000Z"
 PRESENT_DATE = "2022-06-15T12:00:00.000000Z"
@@ -70,11 +70,11 @@ def create_mocked_blob(
         ("/var/ossec/", "", "", "*"),
     ],
 )
-@patch("services.storage.get_blobs")
-@patch("services.storage.create_new_row")
-@patch("services.storage.orm.get_row", return_value=None)
-@patch("services.storage.BlockBlobService")
-@patch("services.storage.read_auth_file")
+@patch("azure_services.storage.get_blobs")
+@patch("azure_services.storage.create_new_row")
+@patch("azure_services.storage.orm.get_row", return_value=None)
+@patch("azure_services.storage.BlockBlobService")
+@patch("azure_services.storage.read_auth_file")
 def test_start_storage(
     mock_auth,
     mock_blob,
@@ -131,9 +131,9 @@ def test_start_storage(
     ],
 )
 @patch("azure_utils.logging.error")
-@patch("services.storage.create_new_row", side_effect=orm.AzureORMError)
+@patch("azure_services.storage.create_new_row", side_effect=orm.AzureORMError)
 @patch("db.orm.get_row", return_value=None)
-@patch("services.storage.BlockBlobService")
+@patch("azure_services.storage.BlockBlobService")
 def test_start_storage_ko(
     mock_blob, mock_get, mock_create, mock_logging, container_name, exception
 ):
@@ -293,8 +293,8 @@ def test_start_storage_ko_credentials(mock_logging):
         ),
     ],
 )
-@patch("services.storage.update_row_object")
-@patch("services.storage.send_message")
+@patch("azure_services.storage.update_row_object")
+@patch("azure_services.storage.send_message")
 def test_get_blobs(
     mock_send,
     mock_update,
@@ -444,8 +444,8 @@ def test_that_empty_blobs_are_omitted(mock_logging):
     blob_service.get_blob_to_text.assert_not_called()
 
 
-@patch("services.storage.update_row_object")
-@patch("services.storage.send_message")
+@patch("azure_services.storage.update_row_object")
+@patch("azure_services.storage.send_message")
 def test_get_blobs_only_with_prefix(mock_send, mock_update):
     """Test get_blobs process only the blobs corresponding to a specific prefix, ignoring the rest."""
     args = MagicMock(blobs=None, json_file=False, json_inline=False, reparse=False)
@@ -536,8 +536,8 @@ def test_get_blobs_list_blobs_ko(mock_logging):
         AzureHttpError(message="", status_code=""),
     ],
 )
-@patch("services.storage.logging.error")
-@patch("services.storage.update_row_object")
+@patch("azure_services.storage.logging.error")
+@patch("azure_services.storage.update_row_object")
 def test_get_blobs_blob_data_ko(mock_update, mock_logging, exception):
     """Test get_blobs_list_blobs handles exceptions from 'get_blob_to_text'."""
     num_blobs = 5
@@ -566,9 +566,9 @@ def test_get_blobs_blob_data_ko(mock_update, mock_logging, exception):
 
 
 @pytest.mark.parametrize("exception", [json.JSONDecodeError, TypeError, KeyError])
-@patch("services.storage.logging.error")
-@patch("services.storage.loads")
-@patch("services.storage.update_row_object")
+@patch("azure_services.storage.logging.error")
+@patch("azure_services.storage.loads")
+@patch("azure_services.storage.update_row_object")
 def test_get_blobs_json_ko(mock_update, mock_loads, mock_logging, exception):
     """Test get_blobs_list_blobs handles exceptions from 'json.loads'."""
     num_blobs = 5
