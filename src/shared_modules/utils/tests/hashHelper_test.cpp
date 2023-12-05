@@ -25,7 +25,7 @@ using namespace Utils;
 const std::filesystem::path INPUT_FILES_DIR {std::filesystem::current_path() / "input_files" / "hashHelper"};
 
 // Test file used for hashing.
-const std::filesystem::path TEST_FILE {INPUT_FILES_DIR / "data.json"};
+const std::filesystem::path TEST_FILE {INPUT_FILES_DIR / "test_file.xyz"};
 
 TEST_F(HashHelperTest, UnsupportedHashType)
 {
@@ -96,9 +96,8 @@ TEST_F(HashHelperTest, HashHelperHashIterativeSha256)
  */
 TEST_F(HashHelperTest, HashFile)
 {
-    // SHA1SUM as string: 9c8ff5a046322fd04e244ce92e991118f26403f1
-    const std::vector<unsigned char> expectedHash {156, 143, 245, 160, 70, 50, 47,  208, 78, 36,
-                                                   76,  233, 46,  153, 17, 24, 242, 100, 3,  241};
+    const std::vector<unsigned char> expectedHash { 0x2e, 0x95, 0xd7, 0x58, 0x2c, 0x53, 0x58, 0x3f, 0xa8, 0xaf,
+                                                    0xb5, 0x4e, 0x0f, 0xe7, 0xa2, 0x59, 0x7c, 0x92, 0xcb, 0xba};
 
     EXPECT_EQ(Utils::hashFile(TEST_FILE), expectedHash);
 }
