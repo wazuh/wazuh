@@ -10,6 +10,7 @@
 
 #include <headers/shared.h>
 #include <openssl/pem.h>
+#include <openssl/evp.h>
 #include <openssl/err.h>
 
 #define SIGNLEN 2048 / 8
@@ -24,7 +25,7 @@ int w_wpk_unsign(const char * source, const char * target, const char ** ca_stor
     X509 * cert = NULL;
     EVP_PKEY * pkey = NULL;
     RSA * rsa = NULL;
-    SHA256_CTX hash;
+    EVP_MD_CTX *hash = EVP_MD_CTX_new();
     FILE * filein = NULL;
     FILE * fileout = NULL;
     unsigned long err;
@@ -86,10 +87,10 @@ int w_wpk_unsign(const char * source, const char * target, const char ** ca_stor
         goto cleanup;
     }
 
-    SHA256_Init(&hash);
+    EVP_DigestInit(hash, EVP_sha256());
 
     while (length = fread(buffer, 1, BUFLEN, filein), length > 0) {
-        SHA256_Update(&hash, buffer, length);
+        EVP_DigestUpdate(hash, buffer, length);
     }
 
     if (length < 0) {
@@ -97,7 +98,7 @@ int w_wpk_unsign(const char * source, const char * target, const char ** ca_stor
         goto cleanup;
     }
 
-    SHA256_Final(digest, &hash);
+    EVP_DigestFinal(hash, digest, NULL);
 
     // Verify signature (PKCS1)
 
@@ -106,7 +107,7 @@ int w_wpk_unsign(const char * source, const char * target, const char ** ca_stor
         goto cleanup;
     }
 
-    if (rsa = EVP_PKEY_get1_RSA(pkey), !rsa) {
+    if (rsa = EVP_PKEY_get0_RSA(pkey), !rsa) {
         merror("Couldn't get public RSA key from certificate.");
         goto cleanup;
     }
@@ -162,6 +163,10 @@ cleanup:
 
     if (fileout) {
         fclose(fileout);
+    }
+
+    if (hash) {
+        EVP_MD_CTX_free(hash);
     }
 
     X509_free(cert);
