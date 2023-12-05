@@ -106,8 +106,8 @@ protected:
     }
 
     /**
-     * @brief Loop for retrying the downloads from the server until the download is successful or there is an HTTP error
-     * different from 5xx.
+     * @brief Loop for retrying the downloads from the server until the download is successful, there is an HTTP error
+     * different from 5xx, or in case of an interruption.
      *
      * @param URL URL to download from.
      * @param onSuccess Callback on success download.

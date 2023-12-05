@@ -35,7 +35,7 @@ public:
      */
     explicit ActionOrchestrator(const std::shared_ptr<RouterProvider> channel,
                                 const nlohmann::json& parameters,
-                                const std::atomic<bool>& shouldRun)
+                                const std::atomic<bool>& shouldRun = std::atomic<bool>(true))
     {
         try
         {
