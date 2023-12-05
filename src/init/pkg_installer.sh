@@ -239,9 +239,10 @@ status="pending"
 COUNTER=30
 while [ "$status" != "connected" -a $COUNTER -gt 0 ]; do
     . ./var/run/wazuh-agentd.state >> ./logs/upgrade.log 2>&1
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Waiting connection... Remaining attempts: ${COUNTER}." >> ./logs/upgrade.log
     sleep 1
     COUNTER=$[COUNTER - 1]
-    echo "$(date +"%Y/%m/%d %H:%M:%S") - Waiting connection... Status = "${status}". Remaining attempts: ${COUNTER}." >> ./logs/upgrade.log
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Status = "${status}". " >> ./logs/upgrade.log
 done
 
 # Check connection
