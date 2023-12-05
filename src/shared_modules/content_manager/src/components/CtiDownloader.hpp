@@ -205,12 +205,12 @@ public:
         catch ([[maybe_unused]] const std::exception& e)
         {
             // Push fail status.
-            Utils::pushComponentStatus(m_componentName, Utils::ComponentStatus::STATUS_FAIL, *context);
+            Components::pushStatus(m_componentName, Components::Status::STATUS_FAIL, *context);
             throw;
         }
 
         // Push success status.
-        Utils::pushComponentStatus(m_componentName, Utils::ComponentStatus::STATUS_OK, *context);
+        Components::pushStatus(m_componentName, Components::Status::STATUS_OK, *context);
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(context);
     }
 };

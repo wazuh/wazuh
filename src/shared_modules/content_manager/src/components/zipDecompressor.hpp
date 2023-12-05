@@ -81,13 +81,13 @@ public:
         catch (const std::exception& e)
         {
             // Push error state.
-            Utils::pushComponentStatus(COMPONENT_NAME, Utils::ComponentStatus::STATUS_FAIL, *context);
+            Components::pushStatus(COMPONENT_NAME, Components::Status::STATUS_FAIL, *context);
 
             throw std::runtime_error("Decompression failed: " + std::string(e.what()));
         }
 
         // Push success state.
-        Utils::pushComponentStatus(COMPONENT_NAME, Utils::ComponentStatus::STATUS_OK, *context);
+        Components::pushStatus(COMPONENT_NAME, Components::Status::STATUS_OK, *context);
 
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(context);
     }

@@ -63,14 +63,14 @@ private:
             catch (const std::exception& e)
             {
                 // Set the status of the stage
-                Utils::pushComponentStatus(COMPONENT_NAME, Utils::ComponentStatus::STATUS_FAIL, context);
+                Components::pushStatus(COMPONENT_NAME, Components::Status::STATUS_FAIL, context);
 
                 throw std::runtime_error("XZDecompressor - Could not decompress the file " + inputPath.string() +
                                          " because: " + e.what());
             }
         }
 
-        Utils::pushComponentStatus(COMPONENT_NAME, Utils::ComponentStatus::STATUS_OK, context);
+        Components::pushStatus(COMPONENT_NAME, Components::Status::STATUS_OK, context);
     }
 
 public:

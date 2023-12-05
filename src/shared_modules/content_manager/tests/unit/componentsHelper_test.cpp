@@ -36,7 +36,7 @@ TEST_F(ComponentsHelperTest, PushComponentStatusCleanContext)
     )"_json;
 
     UpdaterContext context;
-    ASSERT_NO_THROW(Utils::pushComponentStatus("ComponentName", Utils::ComponentStatus::STATUS_OK, context));
+    ASSERT_NO_THROW(Components::pushStatus("ComponentName", Components::Status::STATUS_OK, context));
     EXPECT_EQ(expectedData, context.data);
 }
 
@@ -66,8 +66,8 @@ TEST_F(ComponentsHelperTest, PushComponentStatusCleanContextOkAndFailStatus)
     )"_json;
 
     UpdaterContext context;
-    ASSERT_NO_THROW(Utils::pushComponentStatus("ComponentName", Utils::ComponentStatus::STATUS_OK, context));
-    ASSERT_NO_THROW(Utils::pushComponentStatus("ComponentName", Utils::ComponentStatus::STATUS_FAIL, context));
+    ASSERT_NO_THROW(Components::pushStatus("ComponentName", Components::Status::STATUS_OK, context));
+    ASSERT_NO_THROW(Components::pushStatus("ComponentName", Components::Status::STATUS_FAIL, context));
     EXPECT_EQ(expectedData, context.data);
 }
 
@@ -96,7 +96,7 @@ TEST_F(ComponentsHelperTest, PushComponentStatusWithPaths)
     UpdaterContext context;
     context.data.at("paths").push_back("/tmp/file.txt");
 
-    ASSERT_NO_THROW(Utils::pushComponentStatus("ComponentName", Utils::ComponentStatus::STATUS_OK, context));
+    ASSERT_NO_THROW(Components::pushStatus("ComponentName", Components::Status::STATUS_OK, context));
     EXPECT_EQ(expectedData, context.data);
 }
 
@@ -127,7 +127,7 @@ TEST_F(ComponentsHelperTest, PushComponentStatusWithStageStatus)
     UpdaterContext context;
     context.data.at("stageStatus").push_back(R"({"stage":"SomeOtherComponentName","status":"ok"})"_json);
 
-    ASSERT_NO_THROW(Utils::pushComponentStatus("ComponentName", Utils::ComponentStatus::STATUS_OK, context));
+    ASSERT_NO_THROW(Components::pushStatus("ComponentName", Components::Status::STATUS_OK, context));
     EXPECT_EQ(expectedData, context.data);
 }
 
@@ -161,7 +161,7 @@ TEST_F(ComponentsHelperTest, PushComponentStatusWithStageStatusAndPath)
     context.data.at("paths").push_back("/tmp/file.txt");
     context.data.at("stageStatus").push_back(R"({"stage":"SomeOtherComponentName","status":"ok"})"_json);
 
-    ASSERT_NO_THROW(Utils::pushComponentStatus("ComponentName", Utils::ComponentStatus::STATUS_OK, context));
+    ASSERT_NO_THROW(Components::pushStatus("ComponentName", Components::Status::STATUS_OK, context));
     EXPECT_EQ(expectedData, context.data);
 }
 
@@ -180,6 +180,6 @@ TEST_F(ComponentsHelperTest, PushComponentStatusWithEmptyComponentName)
     )"_json;
 
     UpdaterContext context;
-    ASSERT_THROW(Utils::pushComponentStatus("", Utils::ComponentStatus::STATUS_OK, context), std::runtime_error);
+    ASSERT_THROW(Components::pushStatus("", Components::Status::STATUS_OK, context), std::runtime_error);
     EXPECT_EQ(expectedData, context.data);
 }

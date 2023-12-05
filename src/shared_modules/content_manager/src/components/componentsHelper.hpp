@@ -18,13 +18,13 @@
 #include <stdexcept>
 #include <string>
 
-namespace Utils
+namespace Components
 {
     /**
      * @brief Possible components' status.
      *
      */
-    enum ComponentStatus
+    enum Status
     {
         STATUS_OK,
         STATUS_FAIL
@@ -37,9 +37,8 @@ namespace Utils
      * @param componentStatus Status to be pushed.
      * @param context Reference to the component context.
      */
-    static void pushComponentStatus(const std::string& componentName,
-                                    const ComponentStatus& componentStatus,
-                                    UpdaterContext& context)
+    static void
+    pushStatus(const std::string& componentName, const Components::Status& componentStatus, UpdaterContext& context)
     {
         if (componentName.empty())
         {
@@ -47,8 +46,8 @@ namespace Utils
         }
 
         // LCOV_EXCL_START
-        const std::map<ComponentStatus, std::string> statusTags {{ComponentStatus::STATUS_OK, "ok"},
-                                                                 {ComponentStatus::STATUS_FAIL, "fail"}};
+        const std::map<Components::Status, std::string> statusTags {{Components::Status::STATUS_OK, "ok"},
+                                                                    {Components::Status::STATUS_FAIL, "fail"}};
         // LCOV_EXCL_STOP
 
         auto statusObject = nlohmann::json::object();
@@ -57,6 +56,6 @@ namespace Utils
 
         context.data.at("stageStatus").push_back(statusObject);
     }
-} // namespace Utils
+} // namespace Components
 
 #endif // _COMPONENTS_HELPER_HPP
