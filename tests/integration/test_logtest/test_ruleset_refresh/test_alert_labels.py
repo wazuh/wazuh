@@ -49,47 +49,50 @@ tags:
     - logtest_configuration
 '''
 import os
+from pathlib import Path
 import pytest
 
 from wazuh_testing.constants.paths import WAZUH_PATH
 from wazuh_testing.constants.paths.sockets import LOGTEST_SOCKET_PATH
-from yaml import safe_load
 from shutil import copy
 from json import loads
+from wazuh_testing.utils import configuration
+
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH, TEST_RULES_DECODERS_PATH
 
 
 # Marks
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
-# Configurations
-config_test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/config_templates')
-messages_path = os.path.join(config_test_data_path, 'config_log_alert_level.yaml')
-
-with open(messages_path) as f:
-    test_cases = safe_load(f)
-
-test_cases_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/test_cases')
+# Configuration
+t_config_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_alert_labels.yaml')
+t_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_alert_labels.yaml')
+t_config_parameters, t_config_metadata, t_case_ids = configuration.get_test_cases_data(t_cases_path)
+t_configurations = configuration.load_configuration_template(t_config_path, t_config_parameters, t_config_metadata)
 
 # Variables
 receiver_sockets_params = [(LOGTEST_SOCKET_PATH, 'AF_UNIX', 'TCP')]
 receiver_sockets = None
 
+# Test daemons to restart.
+daemons_handler_configuration = {'daemons': ['wazuh-analysisd', 'wazuh-db']}
+
 
 # Fixtures
 @pytest.fixture(scope='function')
-def configure_rules_list(get_configuration, request):
+def configure_rules_list(test_metadata):
     """Configure a custom rules and log alert level for testing.
 
     Restarting Wazuh is not needed for applying the configuration, it is optional.
     """
 
     # configuration for testing
-    rules_dir = os.path.join(WAZUH_PATH, get_configuration['rule_dir'])
+    rules_dir = os.path.join(WAZUH_PATH, test_metadata['rule_dir'])
     if not os.path.exists(rules_dir):
         os.makedirs(rules_dir)
 
-    file_test = os.path.join(test_cases_data_path, get_configuration['rule_file'])
-    file_dst = os.path.join(rules_dir, get_configuration['rule_file'])
+    file_test = os.path.join(TEST_RULES_DECODERS_PATH, test_metadata['rule_file'])
+    file_dst = os.path.join(rules_dir, test_metadata['rule_file'])
 
     copy(file_test, file_dst)
 
@@ -101,16 +104,11 @@ def configure_rules_list(get_configuration, request):
         os.rmdir(rules_dir)
 
 
-@pytest.fixture(scope='module', params=test_cases, ids=[test_case['name'] for test_case in test_cases])
-def get_configuration(request):
-    """Get configurations from the module."""
-    return request.param
-
-
 # Tests
-def test_rule_list(restart_required_logtest_daemons, get_configuration,
-                   configure_environment, configure_rules_list,
-                   wait_for_logtest_startup, connect_to_sockets_function):
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(t_configurations, t_config_metadata), ids=t_case_ids)
+def test_rule_list(test_configuration, test_metadata, set_wazuh_configuration,
+                  daemons_handler_module, configure_rules_list,
+                   wait_for_logtest_startup, connect_to_sockets):
     '''
     description: Check that after modifying the alert level it takes effect when opening new logtest sessions, without
                  having to reset the manager. To do this, it sends a request to logtest socket and gets its response.
@@ -121,22 +119,25 @@ def test_rule_list(restart_required_logtest_daemons, get_configuration,
     tier: 0
 
     parameters:
-        - restart_required_logtest_daemons:
+        - test_configuration:
+            type: dict
+            brief: Configuration loaded from `configuration_templates`.
+        - test_metadata:
+            type: dict
+            brief: Test case metadata.
+        - set_wazuh_configuration:
             type: fixture
-            brief: Wazuh logtests daemons handler.
-        - get_configuration:
+            brief: Apply changes to the ossec.conf configuration.
+        - daemons_handler_module:
             type: fixture
-            brief: Get configurations from the module.
-        - configure_environment:
-            type: fixture
-            brief: Configure a custom environment for testing. Restart Wazuh is needed for applying the configuration.
+            brief: Handler of Wazuh daemons.
         - configure_rules_list:
             type: fixture
             brief: Configure custom rules for testing.
         - wait_for_logtest_startup:
             type: fixture
             brief: Wait until logtest has begun.
-        - connect_to_sockets_function:
+        - connect_to_sockets:
             type: fixture
             brief: Function scope version of 'connect_to_sockets' which connects to the specified sockets for the test.
 
@@ -158,12 +159,12 @@ def test_rule_list(restart_required_logtest_daemons, get_configuration,
         - analysisd
     '''
     # send the logtest request
-    receiver_sockets[0].send(get_configuration['input'], size=True)
+    receiver_sockets[0].send(test_metadata['input'], size=True)
 
     # receive logtest reply and parse it
     response = receiver_sockets[0].receive(size=True).rstrip(b'\x00').decode()
     result = loads(response)
 
     assert result['error'] == 0
-    assert result['data']['output']['rule']['id'] == get_configuration['rule_id']
-    assert result['data']['alert'] is get_configuration['alert']
+    assert result['data']['output']['rule']['id'] == test_metadata['rule_id']
+    assert result['data']['alert'] is test_metadata['alert']
