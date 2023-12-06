@@ -143,9 +143,9 @@ private:
 
         // Create the folders.
         logDebug2(WM_CONTENTUPDATER, "Creating output folders at '%s'", outputFolderPath.string().c_str());
-        std::filesystem::create_directory(outputFolderPath);
-        std::filesystem::create_directory(outputFolderPath / DOWNLOAD_FOLDER);
-        std::filesystem::create_directory(outputFolderPath / CONTENTS_FOLDER);
+        std::filesystem::create_directories(outputFolderPath);
+        std::filesystem::create_directories(outputFolderPath / DOWNLOAD_FOLDER);
+        std::filesystem::create_directories(outputFolderPath / CONTENTS_FOLDER);
 
         context.downloadsFolder = outputFolderPath / DOWNLOAD_FOLDER;
         context.contentsFolder = outputFolderPath / CONTENTS_FOLDER;
