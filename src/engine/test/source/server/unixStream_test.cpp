@@ -33,6 +33,14 @@ std::filesystem::path uniquePath()
     ss << pid << "_" << tid; // Unique path per thread and process
     return std::filesystem::path("/tmp") / (ss.str() + "_unixStream_test.sock");
 }
+
+struct ResourceCounter
+{
+    std::atomic<std::size_t> asyncs;
+    std::atomic<std::size_t> clients;
+    std::atomic<std::size_t> timers;
+};
+
 } // namespace
 
 class TestProtocolHandler : public ProtocolHandler
@@ -117,6 +125,13 @@ public:
         return std::make_tuple(std::move(buffer), message->size());
     }
 
+    std::tuple<std::unique_ptr<char[]>, std::size_t> streamToSend(const std::string& message) override
+    {
+        std::unique_ptr<char[]> buffer(new char[message.size()]);
+        std::copy(message.begin(), message.end(), buffer.get());
+        return std::make_tuple(std::move(buffer), message.size());
+    }
+
     std::tuple<std::unique_ptr<char[]>, std::size_t> getBusyResponse() override
     {
         auto busyMessage = std::make_shared<std::string>("Server is busy");
@@ -198,7 +213,7 @@ int createUnixSocketClient(const std::string& m_socketPath)
     return sockfd;
 }
 
-std::tuple<std::shared_ptr<uvw::AsyncHandle>, std::thread> startLoopThread(std::shared_ptr<uvw::Loop> m_loop)
+std::tuple<std::shared_ptr<uvw::AsyncHandle>, std::thread, std::shared_ptr<uvw::AsyncHandle>> startLoopThread(std::shared_ptr<uvw::Loop> m_loop, std::shared_ptr<ResourceCounter> resourceCounter = nullptr)
 {
 
     // Prepare the loop stop handler
@@ -219,8 +234,31 @@ std::tuple<std::shared_ptr<uvw::AsyncHandle>, std::thread> startLoopThread(std::
             m_loop->run<uvw::Loop::Mode::DEFAULT>();
             LOG_INFO("Loop thread finished");
         });
+    // Prepare the loop thread
+    auto counterHandler = m_loop->resource<uvw::AsyncHandle>();
+    counterHandler->on<uvw::AsyncEvent>(
+        [m_loop, resourceCounter](const uvw::AsyncEvent&, uvw::AsyncHandle& handle)
+        {
+            m_loop->walk([resourceCounter](const uvw::BaseHandle& handle) {
+                auto type = handle.type();
 
-    return {stopHandler, std::move(loopThread)};
+                switch (type) {
+                    case uvw::details::UVHandleType::PIPE:
+                        resourceCounter->clients.fetch_add(1);
+                        break;
+                    case uvw::details::UVHandleType::ASYNC:
+                        resourceCounter->asyncs.fetch_add(1);
+                        break;
+                    case uvw::details::UVHandleType::TIMER:
+                        resourceCounter->timers.fetch_add(1);
+                        break;
+                    default:
+                        break;
+                }
+            });
+        });
+
+    return {stopHandler, std::move(loopThread), counterHandler};
 }
 
 TEST_F(UnixStreamTest, BindAndClose)
@@ -238,7 +276,7 @@ TEST_F(UnixStreamTest, EchoMessage)
     UnixStream server(
         m_socketPath, m_factory, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
     server.bind(m_loop);
-    auto [stopHandler, thread] = startLoopThread(m_loop);
+    auto [stopHandler, thread, counterHandler] = startLoopThread(m_loop);
 
     // Create and connect Unix domain socket client
     // auto& processedMessages = ;
@@ -263,6 +301,7 @@ TEST_F(UnixStreamTest, EchoMessage)
     std::string response(buffer, received);
     ASSERT_EQ(message, response);
 
+    counterHandler->close();
     close(clientSockfd);
     server.close();
     stopHandler->send();
@@ -276,7 +315,7 @@ TEST_F(UnixStreamTest, MultipleEchoMessages)
     UnixStream server(
         m_socketPath, m_factory, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
     server.bind(m_loop);
-    auto [stopHandler, thread] = startLoopThread(m_loop);
+    auto [stopHandler, thread, counterHandler] = startLoopThread(m_loop);
 
     // Create and connect Unix domain socket client
     int clientSockfd = createUnixSocketClient(m_socketPath);
@@ -334,6 +373,7 @@ TEST_F(UnixStreamTest, MultipleEchoMessages)
         offset += message.size();
     }
 
+    counterHandler->close();
     close(clientSockfd);
     server.close();
     stopHandler->send();
@@ -346,7 +386,7 @@ TEST_F(UnixStreamTest, MultipleConnections)
     UnixStream server(
         m_socketPath, m_factory, std::make_shared<FakeMetricScope>(), std::make_shared<FakeMetricScope>());
     server.bind(m_loop);
-    auto [stopHandler, thread] = startLoopThread(m_loop);
+    auto [stopHandler, thread, counterHandler] = startLoopThread(m_loop);
 
     // Create and connect multiple Unix domain socket clients
     int numClients = 5;
@@ -410,6 +450,7 @@ TEST_F(UnixStreamTest, MultipleConnections)
         ASSERT_EQ(messages[i], responses[i]);
     }
 
+    counterHandler->close();
     server.close();
     stopHandler->send();
     thread.join();
@@ -428,7 +469,7 @@ TEST_F(UnixStreamTest, QueueWorker_SameClient)
                       std::make_shared<FakeMetricScope>(),
                       taskQueueSize);
     server.bind(m_loop);
-    auto [stopHandler, thread] = startLoopThread(m_loop);
+    auto [stopHandler, thread, counterHandler] = startLoopThread(m_loop);
     const auto maxAttempts = 10;
 
     // Create and connect Unix domain socket client
@@ -482,6 +523,7 @@ TEST_F(UnixStreamTest, QueueWorker_SameClient)
     // Check the responses (order is not guaranteed, so we check the length)
     ASSERT_EQ(expectedResponse.length(), response.length());
 
+    counterHandler->close();
     server.close();
     stopHandler->send();
     thread.join();
@@ -500,7 +542,7 @@ TEST_F(UnixStreamTest, QueueWorker_multiplesClient)
                       std::make_shared<FakeMetricScope>(),
                       taskQueueSize);
     server.bind(m_loop);
-    auto [stopHandler, thread] = startLoopThread(m_loop);
+    auto [stopHandler, thread, counterHandler] = startLoopThread(m_loop);
     const auto maxAttempts = 10;
     const auto clients = taskQueueSize;
 
@@ -569,6 +611,7 @@ TEST_F(UnixStreamTest, QueueWorker_multiplesClient)
         ASSERT_EQ(messages[i], responses[i]);
     }
 
+    counterHandler->close();
     server.close();
     stopHandler->send();
     thread.join();
@@ -592,7 +635,7 @@ TEST_F(UnixStreamTest, taskQueueSizeTestAndOverflow)
                       std::make_shared<FakeMetricScope>(),
                       taskQueueSize);
     server.bind(m_loop);
-    auto [stopHandler, thread] = startLoopThread(m_loop);
+    auto [stopHandler, thread, counterHandler] = startLoopThread(m_loop);
     const auto maxAttempts = 10;
 
     // Create and connect Unix domain socket client
@@ -743,6 +786,7 @@ TEST_F(UnixStreamTest, taskQueueSizeTestAndOverflow)
     // Check the messages received by the client (the order is not guaranteed)
     ASSERT_EQ(expectedProcessedMessages.length(), response.length()) << "Response not expected";
 
+    counterHandler->close();
     server.close();
     stopHandler->send();
     thread.join();
@@ -760,7 +804,9 @@ TEST_F(UnixStreamTest, ClouseResourcePerAbruptClosure)
                       std::make_shared<FakeMetricScope>(),
                       taskQueueSize);
     server.bind(m_loop);
-    auto [stopHandler, thread] = startLoopThread(m_loop);
+
+    auto counters = std::make_shared<ResourceCounter>();
+    auto [stopHandler, thread, counterHandler] = startLoopThread(m_loop, counters);
     const auto maxAttempts = 10;
 
     // Create and connect Unix domain socket client
@@ -786,43 +832,28 @@ TEST_F(UnixStreamTest, ClouseResourcePerAbruptClosure)
         ASSERT_LT(attempts++, maxAttempts) << "Messages not processed";
     }
 
-    auto numAsyncsLiving = 0;
-    m_loop->walk([&numAsyncsLiving](const uvw::BaseHandle& handle) {
-        auto type = handle.type();
+    counterHandler->send();
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
 
-        switch (type) {
-            case uvw::details::UVHandleType::ASYNC:
-                numAsyncsLiving ++;
-                break;
-            default:
-                break;
-        }
-
-    });
-
-    EXPECT_EQ(numAsyncsLiving, 1);
+    EXPECT_EQ(counters->asyncs.load(), 2); // An async for closure and another that performs the counting
+    EXPECT_EQ(counters->clients.load(), 2); // Server And Client
+    EXPECT_EQ(counters->timers.load(), 1); // Timer created for the client
+    counters->asyncs = 0;
+    counters->clients = 0;
+    counters->timers = 0;
 
     shutdown(clientSockfd, SHUT_WR);
     close(clientSockfd);
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    counterHandler->send();
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
 
-    auto numAsyncsOpen = 0;
-    m_loop->walk([&numAsyncsOpen](const uvw::BaseHandle& handle) {
-        auto type = handle.type();
+    EXPECT_EQ(counters->asyncs.load(), 2); // Both asyncs still exist
+    EXPECT_EQ(counters->clients.load(), 1); // Only the server remains. The client has been deleted
+    EXPECT_EQ(counters->timers.load(), 0); // Timer has been deleted
 
-        switch (type) {
-            case uvw::details::UVHandleType::ASYNC:
-                numAsyncsOpen ++;
-                break;
-            default:
-                break;
-        }
-
-    });
-
-    EXPECT_EQ(numAsyncsOpen, 1);
-
+    counterHandler->close();
     server.close();
     stopHandler->send();
     thread.join();
@@ -843,8 +874,9 @@ TEST_F(UnixStreamTest, ClouseResourcePerTimeout)
                       taskQueueSize,
                       timeout);
     server.bind(m_loop);
-    auto [stopHandler, thread] = startLoopThread(m_loop);
-    const auto maxAttempts = 100;
+    auto counters = std::make_shared<ResourceCounter>();
+    auto [stopHandler, thread, counterHandler] = startLoopThread(m_loop, counters);
+    const auto maxAttempts = 10;
 
     // Create and connect Unix domain socket client
     int clientSockfd = createUnixSocketClient(m_socketPath);
@@ -867,40 +899,27 @@ TEST_F(UnixStreamTest, ClouseResourcePerTimeout)
         ASSERT_LT(attempts++, maxAttempts) << "Messages not processed";
     }
 
-    auto numAsyncsLiving = 0;
-    m_loop->walk([&numAsyncsLiving](const uvw::BaseHandle& handle) {
-        auto type = handle.type();
+    counterHandler->send();
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
 
-        switch (type) {
-            case uvw::details::UVHandleType::ASYNC:
-                numAsyncsLiving ++;
-                break;
-            default:
-                break;
-        }
+    EXPECT_EQ(counters->asyncs.load(), 2); // An async for closure and another that performs the counting
+    EXPECT_EQ(counters->clients.load(), 2); // Server And Client
+    EXPECT_EQ(counters->timers.load(), 1); // Timer created for the client
+    counters->asyncs = 0;
+    counters->clients = 0;
+    counters->timers = 0;
 
-    });
-
-    EXPECT_EQ(numAsyncsLiving, 1);
-
+    // Timeout genereted
     std::this_thread::sleep_for(std::chrono::milliseconds(timeout*2));
 
-    auto numAsyncsOpen = 0;
-    m_loop->walk([&numAsyncsOpen](const uvw::BaseHandle& handle) {
-        auto type = handle.type();
+    counterHandler->send();
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
 
-        switch (type) {
-            case uvw::details::UVHandleType::ASYNC:
-                numAsyncsOpen ++;
-                break;
-            default:
-                break;
-        }
+    EXPECT_EQ(counters->asyncs.load(), 2); // Both asyncs still exist
+    EXPECT_EQ(counters->clients.load(), 1); // Only the server remains. The client has been deleted
+    EXPECT_EQ(counters->timers.load(), 0); // Timer has been deleted
 
-    });
-
-    EXPECT_EQ(numAsyncsOpen, 1);
-
+    counterHandler->close();
     server.close();
     stopHandler->send();
     thread.join();
