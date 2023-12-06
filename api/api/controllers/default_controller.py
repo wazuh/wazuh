@@ -6,9 +6,9 @@ import logging
 import socket
 from datetime import datetime
 
-from aiohttp import web
+from connexion.lifecycle import ConnexionResponse
 
-from api.encoder import dumps, prettify
+from api.controllers.util import json_response
 from api.models.basic_info_model import BasicInfo
 from wazuh.core.common import DATE_FORMAT
 from wazuh.core.results import WazuhResult
@@ -18,7 +18,7 @@ from wazuh.core.utils import get_utc_now
 logger = logging.getLogger('wazuh-api')
 
 
-async def default_info(pretty: bool = False) -> web.Response:
+async def default_info(pretty: bool = False) -> ConnexionResponse:
     """Return basic information about the Wazuh API.
 
     Parameters
@@ -28,7 +28,7 @@ async def default_info(pretty: bool = False) -> web.Response:
 
     Returns
     -------
-    web.Response
+    ConnexionResponse
         API response.
     """
     info_data = load_spec()
@@ -41,6 +41,6 @@ async def default_info(pretty: bool = False) -> web.Response:
         'hostname': socket.gethostname(),
         'timestamp': get_utc_now().strftime(DATE_FORMAT)
     }
-    response = WazuhResult({'data': BasicInfo.from_dict(data)})
+    data = WazuhResult({'data': BasicInfo.from_dict(data)})
 
-    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
