@@ -87,7 +87,7 @@ struct UpdaterBaseContext
      *
      * @param shouldRun Reference to an interruption flag.
      */
-    UpdaterBaseContext(const std::atomic<bool>& shouldRun = std::atomic<bool>(true))
+    explicit UpdaterBaseContext(const std::atomic<bool>& shouldRun)
         : shouldRun(shouldRun)
     {
     }
@@ -97,7 +97,7 @@ struct UpdaterBaseContext
  * @brief Object created and handled on every execution of the updater chain.
  *
  */
-struct UpdaterContext final : private UpdaterBaseContext
+struct UpdaterContext
 {
     /**
      * @brief Pointer to the Updater context.
