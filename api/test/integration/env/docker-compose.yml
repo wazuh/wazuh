@@ -15,6 +15,11 @@ services:
     volumes:
       - ./configurations/tmp/manager:/tmp_volume
       - ./tools/:/tools
+      # Folders to be used in local development environments
+      # - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/ossec/framework/python/lib/python3.10/site-packages/wazuh
+      # - ${WAZUH_LOCAL_PATH}/api/api:/var/ossec/framework/python/lib/python3.10/site-packages/api
+      # - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/ossec/framework/scripts
+      # - ${WAZUH_LOCAL_PATH}/api/scripts/wazuh-apid.py:/var/ossec/api/scripts/wazuh-apid.py    
     entrypoint:
       - /scripts/entrypoint.sh
       - wazuh-master
@@ -33,6 +38,11 @@ services:
     volumes:
       - ./configurations/tmp/manager:/tmp_volume
       - ./tools/:/tools
+      # Folders to be used in local development environments
+      # - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/ossec/framework/python/lib/python3.10/site-packages/wazuh
+      # - ${WAZUH_LOCAL_PATH}/api/api:/var/ossec/framework/python/lib/python3.10/site-packages/api
+      # - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/ossec/framework/scripts
+      # - ${WAZUH_LOCAL_PATH}/api/scripts/wazuh-apid.py:/var/ossec/api/scripts/wazuh-apid.py   
     entrypoint:
       - /scripts/entrypoint.sh
       - wazuh-master
@@ -50,6 +60,11 @@ services:
     volumes:
       - ./configurations/tmp/manager:/tmp_volume
       - ./tools/:/tools
+      # Folders to be used in local development environments
+      # - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/ossec/framework/python/lib/python3.10/site-packages/wazuh
+      # - ${WAZUH_LOCAL_PATH}/api/api:/var/ossec/framework/python/lib/python3.10/site-packages/api
+      # - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/ossec/framework/scripts
+      # - ${WAZUH_LOCAL_PATH}/api/scripts/wazuh-apid.py:/var/ossec/api/scripts/wazuh-apid.py         
     entrypoint:
       - /scripts/entrypoint.sh
       - wazuh-master
