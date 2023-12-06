@@ -57,6 +57,15 @@ std::tuple<std::unique_ptr<char[]>, std::size_t> WStream::streamToSend(std::shar
     return {std::move(buffer), size + 4};
 }
 
+std::tuple<std::unique_ptr<char[]>, std::size_t> WStream::streamToSend(const std::string& message)
+{
+    auto size = message.size();
+    auto buffer = std::make_unique<char[]>(size + 4);
+    std::memcpy(buffer.get(), &size, 4);
+    std::memcpy(buffer.get() + 4, message.data(), size);
+    return {std::move(buffer), size + 4};
+}
+
 std::tuple<std::unique_ptr<char[]>, std::size_t> WStream::getBusyResponse()
 {
     return streamToSend(m_busyResponse);
