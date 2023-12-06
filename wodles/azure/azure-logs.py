@@ -25,7 +25,7 @@ from azure_services.analytics import start_log_analytics
 from azure_services.graph import start_graph
 from azure_services.storage import start_storage
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     args = get_script_arguments()
     set_logger(args.debug_level)
 
@@ -40,6 +40,6 @@ if __name__ == "__main__":
         start_storage(args)
     else:
         logging.error(
-            "No valid API was specified. Please use 'graph', 'log_analytics' or 'storage'."
+            'No valid API was specified. Please use "graph", "log_analytics" or "storage".'
         )
         sys.exit(1)

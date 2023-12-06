@@ -43,7 +43,7 @@ def update_row_object(
         old_max_str = row.max_processed_date
     except (orm.AzureORMError, AttributeError) as e:
         logging.error(
-            f"Error trying to obtain row object from '{table.__tablename__}' using md5='{md5}': {e}"
+            f'Error trying to obtain row object from "{table.__tablename__}" using md5="{md5}": {e}'
         )
         sys.exit(1)
     old_min_date = parse(old_min_str, fuzzy=True)
@@ -56,15 +56,15 @@ def update_row_object(
         min_ = new_min if new_min_date < old_min_date else old_min_str
         max_ = new_max if new_max_date > old_max_date else old_max_str
         logging.debug(
-            f"Attempting to update a {table.__tablename__} row object. "
-            f"MD5: '{md5_hash}', min_date: '{min_}', max_date: '{max_}'"
+            f'Attempting to update a {table.__tablename__} row object. '
+            f'MD5: "{md5_hash}", min_date: "{min_}", max_date: "{max_}"'
         )
         try:
             orm.update_row(
                 table=table, md5=md5_hash, min_date=min_, max_date=max_, query=query
             )
         except orm.AzureORMError as e:
-            logging.error(f"Error updating row object from {table.__tablename__}: {e}")
+            logging.error(f'Error updating row object from {table.__tablename__}: {e}')
             sys.exit(1)
 
 
@@ -88,7 +88,7 @@ def create_new_row(table: orm.Base, md5_hash: str, query: str, offset: str) -> o
         A copy of the inserted row object.
     """
     logging.info(
-        f"{md5_hash} was not found in the database for {table.__tablename__}. Adding it."
+        f'{md5_hash} was not found in the database for {table.__tablename__}. Adding it.'
     )
     desired_datetime = (
         offset_to_datetime(offset)
@@ -103,12 +103,12 @@ def create_new_row(table: orm.Base, md5_hash: str, query: str, offset: str) -> o
         max_processed_date=desired_str,
     )
     logging.debug(
-        f"Attempting to insert row object into {table.__tablename__} with md5='{md5_hash}', "
-        f"min_date='{desired_str}', max_date='{desired_str}'"
+        f'Attempting to insert row object into {table.__tablename__} with md5="{md5_hash}", '
+        f'min_date="{desired_str}", max_date="{desired_str}"'
     )
     try:
         orm.add_row(row=item)
     except orm.AzureORMError as e:
-        logging.error(f"Error inserting row object into {table.__tablename__}: {e}")
+        logging.error(f'Error inserting row object into {table.__tablename__}: {e}')
         sys.exit(1)
     return item

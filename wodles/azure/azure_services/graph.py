@@ -28,43 +28,43 @@ from azure_utils import (
 from db import orm
 from db.utils import create_new_row, update_row_object
 
-URL_GRAPH = "https://graph.microsoft.com"
+URL_GRAPH = 'https://graph.microsoft.com'
 
 
 def start_graph(args):
     """Run the Microsoft Graph integration processing the logs available for the given query and offset values in
     the configuration. The client or application must have permission to access Microsoft Graph."""
-    logging.info("Azure Graph starting.")
+    logging.info('Azure Graph starting.')
 
     # Read credentials
     if args.graph_auth_path and args.graph_tenant_domain:
         client, secret = read_auth_file(
-            auth_path=args.graph_auth_path, fields=("application_id", "application_key")
+            auth_path=args.graph_auth_path, fields=('application_id', 'application_key')
         )
     elif args.graph_id and args.graph_key and args.graph_tenant_domain:
         logging.warning(
             DEPRECATED_MESSAGE.format(
-                name="graph_id and graph_key", release="4.4", url=CREDENTIALS_URL
+                name='graph_id and graph_key', release='4.4', url=CREDENTIALS_URL
             )
         )
         client = args.graph_id
         secret = args.graph_key
     else:
-        logging.error("Graph: No parameters have been provided for authentication.")
+        logging.error('Graph: No parameters have been provided for authentication.')
         sys.exit(1)
 
     # Get the token
-    logging.info("Graph: Getting authentication token.")
+    logging.info('Graph: Getting authentication token.')
     token = get_token(
         client_id=client,
         secret=secret,
         domain=args.graph_tenant_domain,
-        scope=f"{URL_GRAPH}/.default",
+        scope=f'{URL_GRAPH}/.default',
     )
-    headers = {"Authorization": f"Bearer {token}"}
+    headers = {'Authorization': f'Bearer {token}'}
 
     # Build the query
-    logging.info("Graph: Building the url.")
+    logging.info('Graph: Building the url.')
     md5_hash = md5(args.graph_query.encode()).hexdigest()
     url = build_graph_url(
         query=args.graph_query,
@@ -72,10 +72,10 @@ def start_graph(args):
         reparse=args.reparse,
         md5_hash=md5_hash,
     )
-    logging.info(f"Graph: The URL is '{url}'")
+    logging.info(f'Graph: The URL is "{url}"')
 
     # Get events
-    logging.info("Graph: Pagination starts")
+    logging.info('Graph: Pagination starts')
     try:
         get_graph_events(
             url=url,
@@ -85,8 +85,8 @@ def start_graph(args):
             tag=args.graph_tag,
         )
     except HTTPError as e:
-        logging.error(f"Graph: {e}")
-    logging.info("Graph: End")
+        logging.error(f'Graph: {e}')
+    logging.info('Graph: End')
 
 
 def build_graph_url(query: str, offset: str, reparse: bool, md5_hash: str):
@@ -115,7 +115,7 @@ def build_graph_url(query: str, offset: str, reparse: bool, md5_hash: str):
             )
     except orm.AzureORMError as e:
         logging.error(
-            f"Error trying to obtain row object from '{orm.Graph.__tablename__}' using md5='{md5}': {e}"
+            f'Error trying to obtain row object from "{orm.Graph.__tablename__}" using md5="{md5}": {e}'
         )
         sys.exit(1)
 
@@ -126,26 +126,26 @@ def build_graph_url(query: str, offset: str, reparse: bool, md5_hash: str):
     desired_datetime = offset_to_datetime(offset) if offset else max_datetime
     desired_str = desired_datetime.strftime(DATETIME_MASK)
     filtering_condition = (
-        "createdDateTime" if "signins" in query.lower() else "activityDateTime"
+        'createdDateTime' if 'signins' in query.lower() else 'activityDateTime'
     )
 
     # If reparse was provided, get the logs ignoring if they were already processed
     if reparse:
-        filter_value = f"{filtering_condition}+ge+{desired_str}"
+        filter_value = f'{filtering_condition}+ge+{desired_str}'
     # Build the filter taking into account the min and max values from the file
     else:
         if desired_datetime < min_datetime:
             filter_value = (
-                f"({filtering_condition}+lt+{min_str}+and+{filtering_condition}+ge+{desired_str})"
-                f"+or+({filtering_condition}+gt+{max_str})"
+                f'({filtering_condition}+lt+{min_str}+and+{filtering_condition}+ge+{desired_str})'
+                f'+or+({filtering_condition}+gt+{max_str})'
             )
         elif desired_datetime > max_datetime:
-            filter_value = f"{filtering_condition}+ge+{desired_str}"
+            filter_value = f'{filtering_condition}+ge+{desired_str}'
         else:
-            filter_value = f"{filtering_condition}+gt+{max_str}"
+            filter_value = f'{filtering_condition}+gt+{max_str}'
 
-    logging.info(f"Graph: The search starts for query: '{query}' using {filter_value}")
-    return f"{URL_GRAPH}/v1.0/{query}{'?' if '?' not in query else ''}&$filter={filter_value}"
+    logging.info(f'Graph: The search starts for query: "{query}" using {filter_value}')
+    return f'{URL_GRAPH}/v1.0/{query}{"?" if "?" not in query else ""}&$filter={filter_value}'
 
 
 def get_graph_events(url: str, headers: dict, md5_hash: str, query: str, tag: str):
@@ -169,12 +169,12 @@ def get_graph_events(url: str, headers: dict, md5_hash: str, query: str, tag: st
 
     if response.status_code == 200:
         response_json = response.json()
-        values_json = response_json.get("value")
+        values_json = response_json.get('value')
         for value in values_json:
             try:
-                date = value["activityDateTime"]
+                date = value['activityDateTime']
             except KeyError:
-                date = value["createdDateTime"]
+                date = value['createdDateTime']
             update_row_object(
                 table=orm.Graph,
                 md5_hash=md5_hash,
@@ -182,25 +182,25 @@ def get_graph_events(url: str, headers: dict, md5_hash: str, query: str, tag: st
                 new_max=date,
                 query=query,
             )
-            value["azure_tag"] = "azure-ad-graph"
+            value['azure_tag'] = 'azure-ad-graph'
             if tag:
-                value["azure_aad_tag"] = tag
+                value['azure_aad_tag'] = tag
             json_result = dumps(value)
-            logging.info("Graph: Sending event by socket.")
+            logging.info('Graph: Sending event by socket.')
             send_message(json_result)
 
         if len(values_json) == 0:
-            logging.info("Graph: There are no new results")
-        next_url = response_json.get("@odata.nextLink")
+            logging.info('Graph: There are no new results')
+        next_url = response_json.get('@odata.nextLink')
 
         if next_url:
             get_graph_events(
                 url=next_url, headers=headers, md5_hash=md5_hash, query=query, tag=tag
             )
     elif response.status_code == 400:
-        logging.error(f"Bad Request for url: {response.url}")
+        logging.error(f'Bad Request for url: {response.url}')
         logging.error(
-            f"Ensure the URL is valid and there is data available for the specified datetime."
+            f'Ensure the URL is valid and there is data available for the specified datetime.'
         )
     else:
         response.raise_for_status()

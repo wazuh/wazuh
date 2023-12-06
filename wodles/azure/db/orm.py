@@ -17,18 +17,18 @@ from sqlalchemy.exc import IntegrityError, OperationalError, StatementError
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.sql.expression import select
 
-DATABASE_NAME = "azure.db"
+DATABASE_NAME = 'azure.db'
 database_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), DATABASE_NAME)
-LAST_DATES_NAME = "last_dates.json"
+LAST_DATES_NAME = 'last_dates.json'
 last_dates_path = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), LAST_DATES_NAME
 )
-last_dates_default_contents = {"log_analytics": {}, "graph": {}, "storage": {}}
+last_dates_default_contents = {'log_analytics': {}, 'graph': {}, 'storage': {}}
 
-LAST_DATES_MAX_FIELD_NAME = "max"
-LAST_DATES_MIN_FIELD_NAME = "min"
+LAST_DATES_MAX_FIELD_NAME = 'max'
+LAST_DATES_MIN_FIELD_NAME = 'min'
 
-engine = create_engine("sqlite:///" + database_path, echo=False)
+engine = create_engine('sqlite:///' + database_path, echo=False)
 session = sessionmaker(bind=engine)()
 Base = declarative_base()
 
@@ -49,18 +49,18 @@ class AzureTable:
 
 
 class Graph(AzureTable, Base):
-    __tablename__ = "graph"
-    __table_args__ = (UniqueConstraint("md5", name="md5_restriction"),)
+    __tablename__ = 'graph'
+    __table_args__ = (UniqueConstraint('md5', name='md5_restriction'),)
 
 
 class LogAnalytics(AzureTable, Base):
-    __tablename__ = "log_analytics"
-    __table_args__ = (UniqueConstraint("md5", name="md5_restriction"),)
+    __tablename__ = 'log_analytics'
+    __table_args__ = (UniqueConstraint('md5', name='md5_restriction'),)
 
 
 class Storage(AzureTable, Base):
-    __tablename__ = "storage"
-    __table_args__ = (UniqueConstraint("md5", name="md5_restriction"),)
+    __tablename__ = 'storage'
+    __table_args__ = (UniqueConstraint('md5', name='md5_restriction'),)
 
 
 class AzureORMError(Exception):
@@ -95,7 +95,7 @@ def check_database_integrity() -> bool:
     bool
         True if the check finished successfully, False otherwise.
     """
-    logging.info("Checking database integrity")
+    logging.info('Checking database integrity')
     create_db()
 
     # Check if a migration from an old last_dates_file is required
@@ -103,15 +103,15 @@ def check_database_integrity() -> bool:
         try:
             migrate_from_last_dates_file()
         except Exception as e:
-            logging.error(f"Error during last_dates file migration process: {e}")
+            logging.error(f'Error during last_dates file migration process: {e}')
             return False
         try:
             os.remove(last_dates_path)
         except OSError:
             logging.warning(
-                f"It was not possible to remove the old last_dates file at {last_dates_path}"
+                f'It was not possible to remove the old last_dates file at {last_dates_path}'
             )
-    logging.info("Database integrity check finished")
+    logging.info('Database integrity check finished')
     return True
 
 
@@ -158,7 +158,7 @@ def get_all_rows(table: Base) -> list:
 
 def migrate_from_last_dates_file():
     """Load a 'last_dates.json' file and insert its contents into the database."""
-    logging.info("Migration from an old last_dates file is necessary. ")
+    logging.info('Migration from an old last_dates file is necessary. ')
     last_dates_content = load_dates_json()
     keys = last_dates_content.keys()
     for service in [Graph, LogAnalytics, Storage]:
@@ -172,12 +172,12 @@ def migrate_from_last_dates_file():
                 ]
                 row = service(
                     md5=md5_hash,
-                    query="",
+                    query='',
                     min_processed_date=min_value,
                     max_processed_date=max_value,
                 )
                 add_row(row=row)
-    logging.info("The database migration process finished successfully.")
+    logging.info('The database migration process finished successfully.')
 
 
 def update_row(table: Base, md5: str, min_date: str, max_date: str, query: str = None):
@@ -201,9 +201,9 @@ def update_row(table: Base, md5: str, min_date: str, max_date: str, query: str =
     AzureORMError
     """
     try:
-        row_data = {"min_processed_date": min_date, "max_processed_date": max_date}
+        row_data = {'min_processed_date': min_date, 'max_processed_date': max_date}
         if query:
-            row_data["query"] = query
+            row_data['query'] = query
         session.execute(update(table).where(table.md5 == md5).values(row_data))
         session.commit()
     except (IntegrityError, OperationalError, StatementError) as e:
@@ -225,7 +225,7 @@ def load_dates_json() -> dict:
     json.JSONDecodeError
     OSError
     """
-    logging.info(f"Getting the data from {last_dates_path}.")
+    logging.info(f'Getting the data from {last_dates_path}.')
     try:
         if os.path.exists(last_dates_path):
             with open(last_dates_path) as file:
@@ -240,7 +240,7 @@ def load_dates_json() -> dict:
             contents = last_dates_default_contents
         return contents
     except (json.JSONDecodeError, OSError) as e:
-        logging.error(f"Error: The file of the last dates could not be read: '{e}.")
+        logging.error(f'Error: The file of the last dates could not be read: {e}.')
         raise e
 
 
@@ -349,5 +349,5 @@ def get_default_min_max_values() -> str:
         Execution date as a string with format %Y-%m-%dT%H:%M:%S.%fZ
     """
     return (
-        datetime.utcnow().replace(tzinfo=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        datetime.utcnow().replace(tzinfo=timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
     )

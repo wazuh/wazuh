@@ -20,21 +20,21 @@ sys.path.insert(0, dirname(dirname(abspath(__file__))))
 
 from utils import ANALYSISD, MAX_EVENT_SIZE
 
-SOCKET_HEADER = "1:Azure:"
+SOCKET_HEADER = '1:Azure:'
 
-DATETIME_MASK = "%Y-%m-%dT%H:%M:%S.%fZ"
+DATETIME_MASK = '%Y-%m-%dT%H:%M:%S.%fZ'
 
 # Logger parameters
-LOGGING_MSG_FORMAT = "%(asctime)s azure: %(levelname)s: %(message)s"
-LOGGING_DATE_FORMAT = "%Y/%m/%d %H:%M:%S"
+LOGGING_MSG_FORMAT = '%(asctime)s azure: %(levelname)s: %(message)s'
+LOGGING_DATE_FORMAT = '%Y/%m/%d %H:%M:%S'
 LOG_LEVELS = {0: logging.WARNING, 1: logging.INFO, 2: logging.DEBUG}
 
-CREDENTIALS_URL = "https://documentation.wazuh.com/current/azure/activity-services/prerequisites/credentials.html"
+CREDENTIALS_URL = 'https://documentation.wazuh.com/current/azure/activity-services/prerequisites/credentials.html'
 DEPRECATED_MESSAGE = (
-    "The {name} authentication parameter was deprecated in {release}. "
-    "Please use another authentication method instead. Check {url} for more information."
+    'The {name} authentication parameter was deprecated in {release}. '
+    'Please use another authentication method instead. Check {url} for more information.'
 )
-URL_LOGGING = "https://login.microsoftonline.com"
+URL_LOGGING = 'https://login.microsoftonline.com'
 
 
 def set_logger(debug_level: int):
@@ -44,8 +44,8 @@ def set_logger(debug_level: int):
         format=LOGGING_MSG_FORMAT,
         datefmt=LOGGING_DATE_FORMAT,
     )
-    logging.getLogger("azure").setLevel(LOG_LEVELS.get(debug_level, logging.WARNING))
-    logging.getLogger("urllib3").setLevel(logging.ERROR)
+    logging.getLogger('azure').setLevel(LOG_LEVELS.get(debug_level, logging.WARNING))
+    logging.getLogger('urllib3').setLevel(logging.ERROR)
 
 
 def get_script_arguments():
@@ -55,232 +55,232 @@ def get_script_arguments():
     # only one must be present (log_analytics, graph or storage)
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
-        "--log_analytics",
-        action="store_true",
+        '--log_analytics',
+        action='store_true',
         required=False,
-        help="Activates Log Analytics API call.",
+        help='Activates Log Analytics API call.',
     )
     group.add_argument(
-        "--graph", action="store_true", required=False, help="Activates Graph API call."
+        '--graph', action='store_true', required=False, help='Activates Graph API call.'
     )
     group.add_argument(
-        "--storage",
-        action="store_true",
+        '--storage',
+        action='store_true',
         required=False,
-        help="Activates Storage API call.",
+        help='Activates Storage API call.',
     )
 
     # Log Analytics arguments #
     parser.add_argument(
-        "--la_id",
-        metavar="ID",
+        '--la_id',
+        metavar='ID',
         type=str,
         required=False,
-        help="Application ID for Log Analytics authentication. "
-        f"{DEPRECATED_MESSAGE.format(name='la_id', release='4.4', url=CREDENTIALS_URL)}",
+        help='Application ID for Log Analytics authentication. '
+        f'{DEPRECATED_MESSAGE.format(name="la_id", release="4.4", url=CREDENTIALS_URL)}',
     )
     parser.add_argument(
-        "--la_key",
-        metavar="KEY",
+        '--la_key',
+        metavar='KEY',
         type=str,
         required=False,
-        help="Application Key for Log Analytics authentication. "
-        f"{DEPRECATED_MESSAGE.format(name='la_key', release='4.4', url=CREDENTIALS_URL)}",
+        help='Application Key for Log Analytics authentication. '
+        f'{DEPRECATED_MESSAGE.format(name="la_key", release="4.4", url=CREDENTIALS_URL)}',
     )
     parser.add_argument(
-        "--la_auth_path",
-        metavar="filepath",
+        '--la_auth_path',
+        metavar='filepath',
         type=str,
         required=False,
-        help="Path of the file containing the credentials for authentication.",
+        help='Path of the file containing the credentials for authentication.',
     )
     parser.add_argument(
-        "--la_tenant_domain",
-        metavar="domain",
+        '--la_tenant_domain',
+        metavar='domain',
         type=str,
         required=False,
-        help="Tenant domain for Log Analytics.",
+        help='Tenant domain for Log Analytics.',
     )
     parser.add_argument(
-        "--la_query",
-        metavar="query",
+        '--la_query',
+        metavar='query',
         required=False,
-        help="Query for Log Analytics.",
+        help='Query for Log Analytics.',
         type=arg_valid_la_query,
     )
     parser.add_argument(
-        "--workspace",
-        metavar="workspace",
+        '--workspace',
+        metavar='workspace',
         type=str,
         required=False,
-        help="Workspace for Log Analytics.",
+        help='Workspace for Log Analytics.',
     )
     parser.add_argument(
-        "--la_tag",
-        metavar="tag",
+        '--la_tag',
+        metavar='tag',
         type=str,
         required=False,
-        help="Tag that is added to the query result.",
+        help='Tag that is added to the query result.',
     )
     parser.add_argument(
-        "--la_time_offset",
-        metavar="time",
+        '--la_time_offset',
+        metavar='time',
         type=str,
         required=False,
-        help="Time range for the request.",
+        help='Time range for the request.',
     )
 
     # Graph arguments #
     parser.add_argument(
-        "--graph_id",
-        metavar="ID",
+        '--graph_id',
+        metavar='ID',
         type=str,
         required=False,
-        help="Application ID for Graph authentication. "
-        f"{DEPRECATED_MESSAGE.format(name='graph_id', release='4.4', url=CREDENTIALS_URL)}",
+        help='Application ID for Graph authentication. '
+        f'{DEPRECATED_MESSAGE.format(name="graph_id", release="4.4", url=CREDENTIALS_URL)}',
     )
     parser.add_argument(
-        "--graph_key",
-        metavar="KEY",
+        '--graph_key',
+        metavar='KEY',
         type=str,
         required=False,
-        help="Application KEY for Graph authentication. "
-        f"{DEPRECATED_MESSAGE.format(name='graph_key', release='4.4', url=CREDENTIALS_URL)}",
+        help='Application KEY for Graph authentication. '
+        f'{DEPRECATED_MESSAGE.format(name="graph_key", release="4.4", url=CREDENTIALS_URL)}',
     )
     parser.add_argument(
-        "--graph_auth_path",
-        metavar="filepath",
+        '--graph_auth_path',
+        metavar='filepath',
         type=str,
         required=False,
-        help="Path of the file containing the credentials authentication.",
+        help='Path of the file containing the credentials authentication.',
     )
     parser.add_argument(
-        "--graph_tenant_domain",
-        metavar="domain",
+        '--graph_tenant_domain',
+        metavar='domain',
         type=str,
         required=False,
-        help="Tenant domain for Graph.",
+        help='Tenant domain for Graph.',
     )
     parser.add_argument(
-        "--graph_query",
-        metavar="query",
+        '--graph_query',
+        metavar='query',
         required=False,
         type=arg_valid_graph_query,
-        help="Query for Graph.",
+        help='Query for Graph.',
     )
     parser.add_argument(
-        "--graph_tag",
-        metavar="tag",
+        '--graph_tag',
+        metavar='tag',
         type=str,
         required=False,
-        help="Tag that is added to the query result.",
+        help='Tag that is added to the query result.',
     )
     parser.add_argument(
-        "--graph_time_offset",
-        metavar="time",
+        '--graph_time_offset',
+        metavar='time',
         type=str,
         required=False,
-        help="Time range for the request.",
+        help='Time range for the request.',
     )
 
     # Storage arguments #
     parser.add_argument(
-        "--account_name",
-        metavar="account",
+        '--account_name',
+        metavar='account',
         type=str,
         required=False,
-        help="Storage account name for authentication. "
-        f"{DEPRECATED_MESSAGE.format(name='account_name', release='4.4', url=CREDENTIALS_URL)}",
+        help='Storage account name for authentication. '
+        f'{DEPRECATED_MESSAGE.format(name="account_name", release="4.4", url=CREDENTIALS_URL)}',
     )
     parser.add_argument(
-        "--account_key",
-        metavar="KEY",
+        '--account_key',
+        metavar='KEY',
         type=str,
         required=False,
-        help="Storage account key for authentication. "
-        f"{DEPRECATED_MESSAGE.format(name='account_key', release='4.4', url=CREDENTIALS_URL)}",
+        help='Storage account key for authentication. '
+        f'{DEPRECATED_MESSAGE.format(name="account_key", release="4.4", url=CREDENTIALS_URL)}',
     )
     parser.add_argument(
-        "--storage_auth_path",
-        metavar="filepath",
+        '--storage_auth_path',
+        metavar='filepath',
         type=str,
         required=False,
-        help="Path of the file containing the credentials authentication.",
+        help='Path of the file containing the credentials authentication.',
     )
     parser.add_argument(
-        "--container",
-        metavar="container",
+        '--container',
+        metavar='container',
         required=False,
         type=arg_valid_container_name,
-        help="Name of the container where searches the blobs.",
+        help='Name of the container where searches the blobs.',
     )
     parser.add_argument(
-        "--blobs",
-        metavar="blobs",
+        '--blobs',
+        metavar='blobs',
         required=False,
         type=arg_valid_blob_extension,
-        help="Extension of blobs. For example: '*.log'",
+        help='Extension of blobs. For example: "*.log"',
     )
     parser.add_argument(
-        "--storage_tag",
-        metavar="tag",
+        '--storage_tag',
+        metavar='tag',
         type=str,
         required=False,
-        help="Tag that is added to each blob request.",
+        help='Tag that is added to each blob request.',
     )
     parser.add_argument(
-        "--json_file",
-        action="store_true",
+        '--json_file',
+        action='store_true',
         required=False,
-        help="Specifies that the blob is only composed of events in json file format. "
-        "By default, the content of the blob is considered to be plain text.",
+        help='Specifies that the blob is only composed of events in json file format. '
+        'By default, the content of the blob is considered to be plain text.',
     )
     parser.add_argument(
-        "--json_inline",
-        action="store_true",
+        '--json_inline',
+        action='store_true',
         required=False,
-        help="Specifies that the blob is only composed of events in json inline format. "
-        "By default, the content of the blob is considered to be plain text.",
+        help='Specifies that the blob is only composed of events in json inline format. '
+        'By default, the content of the blob is considered to be plain text.',
     )
     parser.add_argument(
-        "--storage_time_offset",
-        metavar="time",
+        '--storage_time_offset',
+        metavar='time',
         type=str,
         required=False,
-        help="Time range for the request.",
+        help='Time range for the request.',
     )
     parser.add_argument(
-        "-p",
-        "--prefix",
-        dest="prefix",
-        help="The relative path to the logs",
+        '-p',
+        '--prefix',
+        dest='prefix',
+        help='The relative path to the logs',
         type=str,
         required=False,
     )
 
     # General parameters #
     parser.add_argument(
-        "--reparse",
-        action="store_true",
-        dest="reparse",
-        help="Parse the log, even if its been parsed before",
+        '--reparse',
+        action='store_true',
+        dest='reparse',
+        help='Parse the log, even if its been parsed before',
         default=False,
     )
     parser.add_argument(
-        "-d",
-        "--debug",
-        action="store",
+        '-d',
+        '--debug',
+        action='store',
         type=int,
-        dest="debug_level",
+        dest='debug_level',
         default=0,
-        help="Specify debug level. Admits values from 0 to 2.",
+        help='Specify debug level. Admits values from 0 to 2.',
     )
 
     return parser.parse_args()
 
 
 def arg_valid_container_name(arg_string):
-    return arg_string.replace('"', "") if arg_string else arg_string
+    return arg_string.replace('"', '') if arg_string else arg_string
 
 
 def arg_valid_graph_query(arg_string):
@@ -289,15 +289,15 @@ def arg_valid_graph_query(arg_string):
             arg_string = arg_string[1:]
         if arg_string[-1] == "'":
             arg_string = arg_string[:-1]
-        return arg_string.replace("\\$", "$")
+        return arg_string.replace('\\$', '$')
 
 
 def arg_valid_la_query(arg_string):
-    return arg_string.replace("\\!", "!") if arg_string else arg_string
+    return arg_string.replace('\\!', '!') if arg_string else arg_string
 
 
 def arg_valid_blob_extension(arg_string):
-    return arg_string.replace('"', "").replace("*", "") if arg_string else arg_string
+    return arg_string.replace('"', '').replace('*', '') if arg_string else arg_string
 
 
 def read_auth_file(auth_path: str, fields: tuple):
@@ -317,29 +317,29 @@ def read_auth_file(auth_path: str, fields: tuple):
     """
     credentials = {}
     try:
-        with open(auth_path, "r") as auth_file:
+        with open(auth_path, 'r') as auth_file:
             for line in auth_file:
                 key, value = (
-                    line.replace(" ", "").replace("\n", "").split("=", maxsplit=1)
+                    line.replace(' ', '').replace('\n', '').split('=', maxsplit=1)
                 )
                 if not value:
                     continue
-                credentials[key] = value.replace("\n", "")
+                credentials[key] = value.replace('\n', '')
         if fields[0] not in credentials or fields[1] not in credentials:
             logging.error(
-                f"Error: The authentication file does not contains the expected '{fields[0]}' "
-                f"and '{fields[1]}' fields."
+                f'Error: The authentication file does not contains the expected "{fields[0]}" '
+                f'and "{fields[1]}" fields.'
             )
             sys.exit(1)
         return credentials[fields[0]], credentials[fields[1]]
     except ValueError:
         logging.error(
-            "Error: The authentication file format is not valid. "
-            "Make sure that it is composed of only 2 lines with 'field = value' format."
+            'Error: The authentication file format is not valid. '
+            'Make sure that it is composed of only 2 lines with "field = value" format.'
         )
         sys.exit(1)
     except OSError as e:
-        logging.error(f"Error: The authentication file could not be opened: {e}")
+        logging.error(f'Error: The authentication file could not be opened: {e}')
         sys.exit(1)
 
 
@@ -363,33 +363,33 @@ def get_token(client_id: str, secret: str, domain: str, scope: str):
         A valid token.
     """
     body = {
-        "client_id": client_id,
-        "client_secret": secret,
-        "scope": scope,
-        "grant_type": "client_credentials",
+        'client_id': client_id,
+        'client_secret': secret,
+        'scope': scope,
+        'grant_type': 'client_credentials',
     }
-    auth_url = f"{URL_LOGGING}/{domain}/oauth2/v2.0/token"
+    auth_url = f'{URL_LOGGING}/{domain}/oauth2/v2.0/token'
     token_response = {}
     try:
         token_response = post(auth_url, data=body).json()
-        return token_response["access_token"]
+        return token_response['access_token']
     except (ValueError, KeyError):
-        if token_response["error"] == "unauthorized_client":
-            err_msg = "The application id provided is not valid."
-        elif token_response["error"] == "invalid_client":
-            err_msg = "The application key provided is not valid."
+        if token_response['error'] == 'unauthorized_client':
+            err_msg = 'The application id provided is not valid.'
+        elif token_response['error'] == 'invalid_client':
+            err_msg = 'The application key provided is not valid.'
         elif (
-            token_response["error"] == "invalid_request"
-            and 90002 in token_response["error_codes"]
+            token_response['error'] == 'invalid_request'
+            and 90002 in token_response['error_codes']
         ):
-            err_msg = f"The '{domain}' tenant domain was not found."
+            err_msg = f'The "{domain}" tenant domain was not found.'
         else:
-            err_msg = "Couldn't get the token for authentication."
-        logging.error(f"Error: {err_msg}")
+            err_msg = 'Couldn\'t get the token for authentication.'
+        logging.error(f'Error: {err_msg}')
 
     except RequestException as e:
         logging.error(
-            f"Error: An error occurred while trying to obtain the authentication token: {e}"
+            f'Error: An error occurred while trying to obtain the authentication token: {e}'
         )
 
     sys.exit(1)
@@ -405,12 +405,12 @@ def send_message(message: str):
     """
     s = socket(AF_UNIX, SOCK_DGRAM)
 
-    encoded_msg = f"{SOCKET_HEADER}{message}".encode(errors="replace")
+    encoded_msg = f'{SOCKET_HEADER}{message}'.encode(errors='replace')
 
     # Logs warning if event is bigger than max size
     if len(encoded_msg) > MAX_EVENT_SIZE:
         logging.warning(
-            f"WARNING: Event size exceeds the maximum allowed limit of {MAX_EVENT_SIZE} bytes."
+            f'WARNING: Event size exceeds the maximum allowed limit of {MAX_EVENT_SIZE} bytes.'
         )
 
     try:
@@ -418,14 +418,14 @@ def send_message(message: str):
         s.send(encoded_msg)
     except socket_error as e:
         if e.errno == 111:
-            logging.error("ERROR: Wazuh must be running.")
+            logging.error('ERROR: Wazuh must be running.')
             sys.exit(1)
         elif e.errno == 90:
             logging.error(
-                "ERROR: Message too long to send to Wazuh.  Skipping message..."
+                'ERROR: Message too long to send to Wazuh.  Skipping message...'
             )
         else:
-            logging.error(f"ERROR: Error sending message to wazuh: {e}")
+            logging.error(f'ERROR: Error sending message to wazuh: {e}')
             sys.exit(1)
     finally:
         s.close()
@@ -445,16 +445,16 @@ def offset_to_datetime(offset: str):
     datetime
         The result of subtracting the offset value from the current datetime.
     """
-    offset = offset.replace(" ", "")
+    offset = offset.replace(' ', '')
     value = int(offset[: len(offset) - 1])
     unit = offset[len(offset) - 1 :]
 
-    if unit == "h":
+    if unit == 'h':
         return datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(hours=value)
-    if unit == "m":
+    if unit == 'm':
         return datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(minutes=value)
-    if unit == "d":
+    if unit == 'd':
         return datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(days=value)
 
-    logging.error("Invalid offset format. Use 'h', 'm' or 'd' time unit.")
+    logging.error('Invalid offset format. Use "h", "m" or "d" time unit.')
     exit(1)

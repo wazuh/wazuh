@@ -33,24 +33,24 @@ from db.utils import create_new_row, update_row_object
 
 def start_storage(args):
     """Get access and content of the storage accounts."""
-    logging.info("Azure Storage starting.")
+    logging.info('Azure Storage starting.')
 
     # Read credentials
-    logging.info("Storage: Authenticating.")
+    logging.info('Storage: Authenticating.')
     if args.storage_auth_path:
         name, key = read_auth_file(
-            auth_path=args.storage_auth_path, fields=("account_name", "account_key")
+            auth_path=args.storage_auth_path, fields=('account_name', 'account_key')
         )
     elif args.account_name and args.account_key:
         logging.warning(
             DEPRECATED_MESSAGE.format(
-                name="account_name and account_key", release="4.4", url=CREDENTIALS_URL
+                name='account_name and account_key', release='4.4', url=CREDENTIALS_URL
             )
         )
         name = args.account_name
         key = args.account_key
     else:
-        logging.error("Storage: No parameters have been provided for authentication.")
+        logging.error('Storage: No parameters have been provided for authentication.')
         sys.exit(1)
 
     block_blob_service = BlockBlobService(account_name=name, account_key=key)
@@ -60,37 +60,37 @@ def start_storage(args):
     block_blob_service.retry = no_retry
 
     # Verify if the credentials grant access to the specified container
-    if args.container != "*":
+    if args.container != '*':
         try:
             if not block_blob_service.exists(args.container):
                 logging.error(
-                    f"Storage: The '{args.container}' container does not exists."
+                    f'Storage: The "{args.container}" container does not exists.'
                 )
                 sys.exit(1)
             containers = [args.container]
         except AzureException:
             logging.error(
-                f"Storage: Invalid credentials for accessing the '{args.container}' container."
+                f'Storage: Invalid credentials for accessing the "{args.container}" container.'
             )
             sys.exit(1)
     else:
         try:
-            logging.info("Storage: Getting containers.")
+            logging.info('Storage: Getting containers.')
             containers = [
                 container.name for container in block_blob_service.list_containers()
             ]
         except AzureSigningError:
             logging.error(
-                "Storage: Unable to list the containers. Invalid credentials."
+                'Storage: Unable to list the containers. Invalid credentials.'
             )
             sys.exit(1)
         except AzureException as e:
-            logging.error(f"Storage: The containers could not be listed: '{e}'.")
+            logging.error(f'Storage: The containers could not be listed: "{e}".')
             sys.exit(1)
 
     # Restore the default max retry value
     block_blob_service.retry = old_retry_value
-    logging.info("Storage: Authenticated.")
+    logging.info('Storage: Authenticated.')
 
     # Get the blobs
     for container in containers:
@@ -104,7 +104,7 @@ def start_storage(args):
                 )
         except orm.AzureORMError as e:
             logging.error(
-                f"Error trying to obtain row object from '{orm.Storage.__tablename__}' using md5='{md5}': {e}"
+                f'Error trying to obtain row object from "{orm.Storage.__tablename__}" using md5="{md5}": {e}'
             )
             sys.exit(1)
 
@@ -125,7 +125,7 @@ def start_storage(args):
             json_inline=args.json_inline,
             blob_extension=args.blobs,
         )
-    logging.info("Storage: End")
+    logging.info('Storage: End')
 
 
 def get_blobs(
@@ -171,34 +171,34 @@ def get_blobs(
     """
     try:
         # Get the blob list
-        logging.info("Storage: Getting blobs.")
+        logging.info('Storage: Getting blobs.')
         blobs = blob_service.list_blobs(
             container_name, prefix=prefix, marker=next_marker
         )
     except AzureException as e:
-        logging.error(f"Storage: Error getting blobs from '{container_name}': '{e}'.")
+        logging.error(f'Storage: Error getting blobs from "{container_name}": "{e}".')
         raise e
     else:
 
         logging.info(
-            f"Storage: The search starts from the date: {desired_datetime} for blobs in "
-            f"container: '{container_name}' and prefix: '/{prefix if prefix is not None else ''}'"
+            f'Storage: The search starts from the date: {desired_datetime} for blobs in '
+            f'container: "{container_name}" and prefix: "/{prefix if prefix is not None else ""}"'
         )
         for blob in blobs:
             # Skip if the blob is empty
             if blob.properties.content_length == 0:
-                logging.debug(f"Empty blob {blob.name}, skipping")
+                logging.debug(f'Empty blob {blob.name}, skipping')
                 continue
             # Skip the blob if nested under the set prefix
-            if prefix is not None and len(blob.name.split("/")) > 2:
+            if prefix is not None and len(blob.name.split('/')) > 2:
                 logging.debug(
-                    f"Skipped blob {blob.name}, nested under set prefix {prefix}"
+                    f'Skipped blob {blob.name}, nested under set prefix {prefix}'
                 )
                 continue
             # Skip the blob if its name has not the expected format
             if blob_extension and blob_extension not in blob.name:
                 logging.debug(
-                    f"Skipped blob, name {blob.name} does not match with the format '{blob_extension}'"
+                    f'Skipped blob, name {blob.name} does not match with the format "{blob_extension}"'
                 )
                 continue
 
@@ -214,31 +214,31 @@ def get_blobs(
             try:
                 data = blob_service.get_blob_to_text(container_name, blob.name)
             except (ValueError, AzureException, AzureHttpError) as e:
-                logging.error(f"Storage: Error reading the blob data: '{e}'.")
+                logging.error(f'Storage: Error reading the blob data: "{e}".')
                 continue
             else:
                 # Process the data as a JSON
                 if json_file:
                     try:
                         content_list = loads(data.content)
-                        records = content_list["records"]
+                        records = content_list['records']
                     except (JSONDecodeError, TypeError) as e:
                         logging.error(
-                            f"Storage: Error reading the contents of the blob: '{e}'."
+                            f'Storage: Error reading the contents of the blob: "{e}".'
                         )
                         continue
                     except KeyError as e:
                         logging.error(
-                            f"Storage: No records found in the blob's contents: '{e}'."
+                            f'Storage: No records found in the blob\'s contents: "{e}".'
                         )
                         continue
                     else:
                         for log_record in records:
                             # Add azure tags
-                            log_record["azure_tag"] = "azure-storage"
+                            log_record['azure_tag'] = 'azure-storage'
                             if tag:
-                                log_record["azure_storage_tag"] = tag
-                            logging.info("Storage: Sending event by socket.")
+                                log_record['azure_storage_tag'] = tag
+                            logging.info('Storage: Sending event by socket.')
                             send_message(dumps(log_record))
                 # Process the data as plain text
                 else:
@@ -247,20 +247,20 @@ def get_blobs(
                             msg = '{"azure_tag": "azure-storage"'
                             if tag:
                                 msg = f'{msg}, "azure_storage_tag": "{tag}"'
-                            msg = f"{msg}, {line[1:]}"
+                            msg = f'{msg}, {line[1:]}'
                         else:
-                            msg = "azure_tag: azure-storage."
+                            msg = 'azure_tag: azure-storage.'
                             if tag:
-                                msg = f"{msg} azure_storage_tag: {tag}."
-                            msg = f"{msg} {line}"
-                        logging.info("Storage: Sending event by socket.")
+                                msg = f'{msg} azure_storage_tag: {tag}.'
+                            msg = f'{msg} {line}'
+                        logging.info('Storage: Sending event by socket.')
                         send_message(msg)
             update_row_object(
                 table=orm.Storage,
                 md5_hash=md5_hash,
                 query=container_name,
-                new_min=last_modified.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
-                new_max=last_modified.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+                new_min=last_modified.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
+                new_max=last_modified.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
             )
 
         # Continue until no marker is returned
