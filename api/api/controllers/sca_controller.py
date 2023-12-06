@@ -5,10 +5,11 @@
 
 import logging
 
-from aiohttp import web
+from connexion import request
+from connexion.lifecycle import ConnexionResponse
 
 import wazuh.sca as sca
-from api.encoder import dumps, prettify
+from api.controllers.util import json_response
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import DATABASE_LIMIT
@@ -16,15 +17,14 @@ from wazuh.core.common import DATABASE_LIMIT
 logger = logging.getLogger('wazuh-api')
 
 
-async def get_sca_agent(request, agent_id: str = None, pretty: bool = False, wait_for_complete: bool = False,
+async def get_sca_agent(agent_id: str = None, pretty: bool = False, wait_for_complete: bool = False,
                         name: str = None, description: str = None, references: str = None, offset: int = 0,
                         limit: int = DATABASE_LIMIT, sort: str = None, search: str = None, select: str = None,
-                        q: str = None, distinct: bool = False) -> web.Response:
+                        q: str = None, distinct: bool = False) -> ConnexionResponse:
     """Get security configuration assessment (SCA) database of an agent.
 
     Parameters
     ----------
-    request : connexion.request
     agent_id : str
         Agent ID. All possible values since 000 onwards.
     pretty : bool
@@ -56,7 +56,7 @@ async def get_sca_agent(request, agent_id: str = None, pretty: bool = False, wai
 
     Returns
     -------
-    web.Response
+    ConnexionResponse
         API response.
     """
     filters = {'name': name,
@@ -78,25 +78,24 @@ async def get_sca_agent(request, agent_id: str = None, pretty: bool = False, wai
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
 
 
-async def get_sca_checks(request, agent_id: str = None, pretty: bool = False, wait_for_complete: bool = False,
+async def get_sca_checks(agent_id: str = None, pretty: bool = False, wait_for_complete: bool = False,
                          policy_id: str = None, title: str = None, description: str = None, rationale: str = None,
                          remediation: str = None, command: str = None, reason: str = None,
                          file: str = None, process: str = None, directory: str = None, registry: str = None,
                          references: str = None, result: str = None, condition: str = None, offset: int = 0,
                          limit: int = DATABASE_LIMIT, sort: str = None, search: str = None, select: str = None,
-                         q: str = None, distinct: bool = False) -> web.Response:
+                         q: str = None, distinct: bool = False) -> ConnexionResponse:
     """Get policy monitoring alerts for a given policy.
 
     Parameters
     ----------
-    request : connexion.request
     agent_id : str
         Agent ID. All possible values since 000 onwards.
     pretty : bool
@@ -150,7 +149,7 @@ async def get_sca_checks(request, agent_id: str = None, pretty: bool = False, wa
 
     Returns
     -------
-    web.Response
+    ConnexionResponse
         API response.
     """
     filters = {'title': title,
@@ -184,8 +183,8 @@ async def get_sca_checks(request, agent_id: str = None, pretty: bool = False, wa
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)

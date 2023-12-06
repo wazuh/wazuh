@@ -5,28 +5,28 @@
 import logging
 from typing import List
 
-from aiohttp import web
+from connexion import request
+from connexion.lifecycle import ConnexionResponse
 
-import wazuh.ciscat as ciscat
-from api.encoder import dumps, prettify
+from api.controllers.util import json_response
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
+import wazuh.ciscat as ciscat
 
 logger = logging.getLogger('wazuh-api')
 
 
-async def get_agents_ciscat_results(request, agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
+async def get_agents_ciscat_results(agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
                                     offset: int = 0, limit: int = None, select: List[str] = None, sort: str = None,
                                     search: str = None, benchmark: str = None, profile: str = None, fail: int = None,
                                     error: int = None, notchecked: int = None, unknown: int = None, score: int = None,
-                                    q: str = None) -> web.Response:
+                                    q: str = None) -> ConnexionResponse:
     """Get CIS-CAT results from an agent
 
     Returns the agent's ciscat results info.
 
     Parameters
     ----------
-    request : connexion.request
     agent_id : str
         Agent ID. All posible values since 000 onwards.
     pretty : bool
@@ -63,7 +63,7 @@ async def get_agents_ciscat_results(request, agent_id: str, pretty: bool = False
 
     Returns
     -------
-    web.Response
+    ConnexionResponse
         API response.
     """
     f_kwargs = {
@@ -76,7 +76,7 @@ async def get_agents_ciscat_results(request, agent_id: str, pretty: bool = False
         'filters': {
             'benchmark': benchmark,
             'profile': profile,
-            'pass': request.query.get('pass', None),
+            'pass': request.query_params.get('pass', None),
             'fail': fail,
             'error': error,
             'notchecked': notchecked,
@@ -92,8 +92,8 @@ async def get_agents_ciscat_results(request, agent_id: str, pretty: bool = False
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
-    response = raise_if_exc(await dapi.distribute_function())
+    data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)

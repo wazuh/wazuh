@@ -9,7 +9,7 @@ import sys
 from copy import deepcopy
 from unittest.mock import patch, MagicMock, ANY, call
 
-from werkzeug.exceptions import Unauthorized
+from connexion.exceptions import Unauthorized
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
