@@ -324,11 +324,6 @@ endif()
 list(APPEND shared_tests_names "test_rwlock_op")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 
-if(${TARGET} STREQUAL "server")
-    list(APPEND shared_tests_names "test_flatcc_helpers")
-    list(APPEND shared_tests_flags "-Wl,--wrap,mdebug2 ${DEBUG_OP_WRAPPERS}")
-endif()
-
 # Compiling tests
 list(LENGTH shared_tests_names count)
 math(EXPR count "${count} - 1")
@@ -338,14 +333,6 @@ foreach(counter RANGE ${count})
 
     add_executable(${test_name} ${test_name}.c)
 
-    if(${test_name} STREQUAL "test_flatcc_helpers")
-        target_compile_definitions(${test_name} PRIVATE -DPORTABLE_UNALIGNED_ACCESS=0)
-        find_library(FLATCC_LIBRARY flatccrt HINTS ${SRC_FOLDER}/external/flatcc/lib)
-        target_link_libraries(
-            ${test_name}
-            ${FLATCC_LIBRARY}
-        )
-    endif()
     if(${TARGET} STREQUAL "server")
         target_link_libraries(
             ${test_name}

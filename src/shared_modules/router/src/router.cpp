@@ -10,6 +10,7 @@
  */
 
 #include "router.h"
+#include "flatbuffers/idl.h"
 #include "logging_helper.h"
 #include "routerFacade.hpp"
 #include "routerModule.hpp"
@@ -200,6 +201,41 @@ extern "C"
             else
             {
                 std::vector<char> data(message, message + message_size);
+                std::shared_lock<std::shared_mutex> lock(PROVIDERS_MUTEX);
+                PROVIDERS.at(handle)->send(data);
+                retVal = 0;
+            }
+        }
+        catch (const std::exception& e)
+        {
+            logMessage(modules_log_level_t::LOG_ERROR, std::string("Error sending message to provider: ") + e.what());
+        }
+        return retVal;
+    }
+
+    int router_provider_send_fb(ROUTER_PROVIDER_HANDLE handle, const char* message, const char *schema)
+    {
+        int retVal = -1;
+        try
+        {
+            if (!message)
+            {
+                throw std::runtime_error("Error sending message to provider. Message is empty");
+            }
+            else
+            {
+                flatbuffers::Parser parser;
+                if (!parser.Parse(schema))
+                {
+                    throw std::runtime_error("Error parsing schema, " + std::string(parser.error_));
+                }
+
+                if (!parser.Parse(message))
+                {
+                    throw std::runtime_error("Error parsing message, " + std::string(parser.error_));
+                }
+
+                std::vector<char> data(parser.builder_.GetBufferPointer(), parser.builder_.GetBufferPointer() + parser.builder_.GetSize());
                 std::shared_lock<std::shared_mutex> lock(PROVIDERS_MUTEX);
                 PROVIDERS.at(handle)->send(data);
                 retVal = 0;
