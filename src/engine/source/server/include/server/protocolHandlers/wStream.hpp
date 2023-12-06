@@ -39,7 +39,7 @@ public:
     /**
      * @brief Construct a new WStream object
      *
-     * @param m_onMessageCallback Callback to be called when a message is received
+     * @param onMessageCallback Callback to be called when a message is received
      * @param maxPayloadSize Maximum payload size in bytes (default 10 MB)
      */
     WStream(std::function<void(const std::string&, std::function<void(const std::string&)>)> onMessageCallback, int maxPayloadSize = 1024 * 1024 * 10)
@@ -97,6 +97,11 @@ public:
      * @copydoc ProtocolHandler::streamToSend
      */
     std::tuple<std::unique_ptr<char[]>, std::size_t> streamToSend(std::shared_ptr<std::string> message) override;
+
+    /**
+     * @copydoc ProtocolHandler::streamToSend
+     */
+    std::tuple<std::unique_ptr<char[]>, std::size_t> streamToSend(const std::string& message) override;
 
     /**
      * @copydoc ProtocolHandler::getBusyResponse

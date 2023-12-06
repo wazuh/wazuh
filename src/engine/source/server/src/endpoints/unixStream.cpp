@@ -214,9 +214,8 @@ void UnixStream::processMessages(std::weak_ptr<uvw::PipeHandle> wClient,
         if (0 == m_taskQueueSize)
         {
             auto callbackFn =
-                [wClient, address = m_address, protocolHandler, metric = m_metric](const std::string& res) -> void
+                [wClient, address = m_address, protocolHandler, metric = m_metric](const std::string& response) -> void
             {
-                auto response = std::make_shared<std::string>(res);
                 auto responseTimer = std::make_shared<base::chrono::Timer>();
 
                 // Check if client is closed
