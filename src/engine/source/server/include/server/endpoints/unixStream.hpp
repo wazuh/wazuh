@@ -79,7 +79,7 @@ private:
      * @param client Handle to the client that sent the message
      * @param asyncs Array of AsyncHandler instance that will be used to send the event using send()
      * @param protocolHandler Protocol handler to process the message
-     * @param message Message to be processed
+     * @param request Message to be processed
      */
     void createAndEnqueueTask(std::weak_ptr<uvw::PipeHandle> wClient,
                               std::shared_ptr<std::vector<std::weak_ptr<uvw::AsyncHandle>>> asyncs,

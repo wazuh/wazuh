@@ -68,6 +68,18 @@ public:
     virtual std::tuple<std::unique_ptr<char[]>, std::size_t> streamToSend(std::shared_ptr<std::string> message) = 0;
 
     /**
+     * @brief Generate the data to send to the client
+     *
+     * Generate the data to send to the client, it is used to generate the data to send to the client,
+     * The message is the response of processing the message received from the client.
+     * @param message Message to send to the client
+     * @return Data to send to the client, and the size of the data
+     *
+     * @note this method not throw any exception.
+     */
+    virtual std::tuple<std::unique_ptr<char[]>, std::size_t> streamToSend(const std::string& message) = 0;
+
+    /**
      * @brief Get busy response to send to the client (if the server is busy)
      *
      * Get busy response to send to the client (if the server is busy), it is used to generate the data to send to the
