@@ -238,6 +238,7 @@ api::Handler routeGet(const std::weak_ptr<::router::IRouterAPI>& router, const s
         ResponseType eResponse;
         const auto& entry = base::getResponse(getResult);
         eResponse.mutable_route()->CopyFrom(eRouteEntryFromEntry(entry, wPolicyManager));
+        eResponse.set_status(eEngine::ReturnStatus::OK);
 
         return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
     };
