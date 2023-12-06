@@ -24,7 +24,7 @@ namespace Components
      * @brief Possible components' status.
      *
      */
-    enum Status
+    enum class Status
     {
         STATUS_OK,
         STATUS_FAIL
