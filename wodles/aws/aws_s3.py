@@ -3860,7 +3860,7 @@ def arg_valid_regions(arg_string):
     final_regions = []
     regions = arg_string.split(',')
     for arg_region in regions:
-        if not re.match(r'^([a-z]{2}(-gov)?)-([a-z]{4,7})-\d$', arg_region):
+        if not re.match(r'^([a-z]{2}(-gov)?)-([a-z]+)-\d$', arg_region):
             raise argparse.ArgumentTypeError(
                 f"WARNING: The region '{arg_region}' has not a valid format.'"
             )
