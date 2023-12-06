@@ -22,6 +22,7 @@ from api.util import (deprecate_endpoint, parse_api_param, raise_if_exc,
 from wazuh import security, __version__
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.common import WAZUH_VERSION
 from wazuh.core.exception import WazuhException, WazuhPermissionError
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.security import revoke_tokens
