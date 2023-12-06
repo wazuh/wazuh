@@ -713,11 +713,11 @@ int DecodeWinevt(Eventinfo *lf){
 
     returned_event = cJSON_PrintUnformatted(final_event);
 
-    if (returned_event){
-        lf->full_log[strlen(returned_event)] = '\0';
-        memcpy(lf->full_log, returned_event, strlen(returned_event));
+    if (returned_event) {
+        free(lf->full_log);
+        lf->full_log = returned_event;
     } else {
-        lf->full_log = NULL;
+        lf->full_log[0] = '\0';
     }
 
     lf->log = lf->full_log;
@@ -734,7 +734,6 @@ cleanup:
     os_free(filtered_string);
     os_free(keywords);
     os_free(msg_from_prov);
-    os_free(returned_event);
     os_free(categoryId);
     os_free(subcategoryId);
     os_free(auditPolicyChangesId);
