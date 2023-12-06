@@ -424,7 +424,16 @@ api::Handler runPost(const std::weak_ptr<::router::ITesterAPI>& tester, const st
 
         // Run the test
         auto opt = ::router::test::Options(traceLevel, assetToTrace, eRequest.name());
-        auto result = tester->ingestTest(eventStr, opt);
+
+        std::future<base::RespOrError<router::test::Output>> result;
+        try
+        {
+            result = tester->ingestTest(eventStr, opt);
+        }
+        catch(const std::exception& e)
+        {
+            return genericError<ResponseType>(e.what());
+        }
 
         // Create the response
         auto r = result.wait_for(std::chrono::milliseconds(tester->getTestTimeout()));

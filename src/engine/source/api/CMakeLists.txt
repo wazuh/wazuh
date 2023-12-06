@@ -68,7 +68,7 @@ set(TEST_SRC_UNIT_DIR ${TEST_SRC_DIR}/unit)
 # Mocks
 add_library(api_mocks INTERFACE)
 target_include_directories(api_mocks INTERFACE ${TEST_MOCK_DIR})
-target_link_libraries(api_mocks INTERFACE gmock api::iapi)
+target_link_libraries(api_mocks INTERFACE gmock api::iapi router::router)
 add_library(api::mocks ALIAS api_mocks)
 
 add_executable(api_utest
@@ -80,7 +80,8 @@ add_executable(api_utest
   ${TEST_SRC_UNIT_DIR}/kvdb/kvdb_api_test.cpp
   ${TEST_SRC_UNIT_DIR}/policy/handlers_test.cpp
   ${TEST_SRC_UNIT_DIR}/policy/policy_test.cpp
-  # TODO: ${TEST_SRC_UNIT_DIR}/router/handlers_test.cpp
+  ${TEST_SRC_UNIT_DIR}/router/handlers_test.cpp
+  ${TEST_SRC_UNIT_DIR}/tester/handlers_test.cpp
   ${TEST_SRC_UNIT_DIR}/adapter_test.cpp
   ${TEST_SRC_UNIT_DIR}/api_test.cpp
   ${TEST_SRC_UNIT_DIR}/registry_test.cpp
