@@ -679,6 +679,47 @@ stages:
           total_failed_items: 0
 
 ---
+test_name: GET /manager/validation (KO)
+
+stages:
+
+  #### Upload corrupted rules file
+  # PUT /rules/files
+  - name: Upload corrupted
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new-rules_corrupted.xml"
+      method: PUT
+      data: "{corrupted_rules_file}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+
+  # GET /manager/configuration/validation
+  - name: Request validation
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/validation"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1908
+              id:
+                - !anystr
+          total_affected_items: 0
+          total_failed_items: 1
+
+---
 test_name: GET /manager/configuration/{component}/{configuration}
 
 stages:
@@ -1196,9 +1237,9 @@ stages:
         Authorization: "Bearer {test_login_token}"
         content-type: application/json
     response:
-      status_code: 406
+      status_code: 415
       json:
-        error: 6002
+        title: Unsupported Media Type
 
   # GET /manager/configuration/
   - name: Ensure the config didn't change

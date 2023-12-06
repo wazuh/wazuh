@@ -29,7 +29,7 @@
 #    enabled: False
 #    size: "1M"
 
-# Cross-origin resource sharing: https://github.com/aio-libs/aiohttp-cors#usage
+# Cross-origin resource sharing: https://www.starlette.io/middleware/#corsmiddleware
 # cors:
 #  enabled: no
 #  source_route: "*"
