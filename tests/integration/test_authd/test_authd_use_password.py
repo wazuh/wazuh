@@ -132,7 +132,7 @@ def reset_password(test_metadata):
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_authd_force_options(test_configuration, test_metadata, set_wazuh_configuration, configure_sockets_environment,
                              clean_client_keys_file_function, reset_password, restart_wazuh_daemon_function,
-                             wait_for_authd_startup_function, connect_to_sockets_function, tear_down):
+                             wait_for_authd_startup_function, connect_to_sockets, tear_down):
     '''
     description:
         Checks that every input message in authd port generates the adequate output.
@@ -167,7 +167,7 @@ def test_authd_force_options(test_configuration, test_metadata, set_wazuh_config
         - wait_for_authd_startup_function:
             type: fixture
             brief: Waits until Authd is accepting connections.
-        - connect_to_sockets_function:
+        - connect_to_sockets:
             type: fixture
             brief: Bind to the configured sockets at function scope.
         - tear_down:

@@ -105,7 +105,7 @@ receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_ossec_auth_messages(test_configuration, test_metadata, set_wazuh_configuration,
-                             configure_sockets_environment_function, connect_to_sockets_function, wait_for_authd_startup_module):
+                             configure_sockets_environment_function, connect_to_sockets, wait_for_authd_startup_module):
     '''
     description:
         Checks that every message from the agent is correctly formatted for master,
@@ -129,7 +129,7 @@ def test_ossec_auth_messages(test_configuration, test_metadata, set_wazuh_config
         - configure_sockets_environment_function:
             type: fixture
             brief: Configure the socket listener to receive and send messages on the sockets.
-        - connect_to_sockets_function:
+        - connect_to_sockets:
             type: fixture
             brief: Bind to the configured sockets at module scope.
         - wait_for_authd_startup_module:

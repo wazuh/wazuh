@@ -87,7 +87,7 @@ receiver_sockets, monitored_sockets = None, None
 
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_key_request_func(test_configuration, test_metadata, set_wazuh_configuration, connect_to_sockets_function,
+def test_key_request_func(test_configuration, test_metadata, set_wazuh_configuration, connect_to_sockets,
                           daemons_handler, configure_local_internal_options, tear_down,
                           copy_tmp_script, wait_for_authd_startup_function):
     '''
@@ -106,7 +106,7 @@ def test_key_request_func(test_configuration, test_metadata, set_wazuh_configura
         - set_wazuh_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
-        - connect_to_sockets_function:
+        - connect_to_sockets:
             type: fixture
             brief: Bind to the configured sockets at function scope.
         - daemons_handler:

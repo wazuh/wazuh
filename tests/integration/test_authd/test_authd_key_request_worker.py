@@ -115,7 +115,7 @@ receiver_sockets, monitored_sockets = None, None
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_authd_key_request_worker(test_configuration, test_metadata, set_wazuh_configuration,
                                   configure_sockets_environment_function, copy_tmp_script,
-                                  connect_to_sockets_function):
+                                  connect_to_sockets):
     '''
     description:
         Checks that every message from the worker is correctly formatted for master,
@@ -140,7 +140,7 @@ def test_authd_key_request_worker(test_configuration, test_metadata, set_wazuh_c
         - copy_tmp_script:
             type: fixture
             brief: Copy the script to a temporary folder for testing.
-        - connect_to_sockets_function:
+        - connect_to_sockets:
             type: fixture
             brief: Bind to the configured sockets at module scope.
 

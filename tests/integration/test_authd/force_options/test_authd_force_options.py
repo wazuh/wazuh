@@ -124,7 +124,7 @@ def check_options(test_metadata):
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration_t1, test_metadata_t1), ids=test_cases_ids_t1)
 def test_authd_force_options(test_configuration, test_metadata, set_wazuh_configuration,
                              configure_local_internal_options, insert_pre_existent_agents, restart_authd_function,
-                             wait_for_authd_startup_function, connect_to_sockets_function, tear_down):
+                             wait_for_authd_startup_function, connect_to_sockets, tear_down):
     '''
     description:
         Checks that every input message in authd port generates the adequate output.
@@ -156,7 +156,7 @@ def test_authd_force_options(test_configuration, test_metadata, set_wazuh_config
         - wait_for_authd_startup_function:
             type: fixture
             brief: Waits until Authd is accepting connections.
-        - connect_to_sockets_function:
+        - connect_to_sockets:
             type: fixture
             brief: Bind to the configured sockets at function scope.
         - tear_down:
@@ -182,7 +182,7 @@ def test_authd_force_options(test_configuration, test_metadata, set_wazuh_config
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration_t2, test_metadata_t2), ids=test_cases_ids_t2)
 def test_authd_force_insert(test_configuration, test_metadata, set_wazuh_configuration,
                              configure_local_internal_options, insert_pre_existent_agents, restart_authd_function,
-                             wait_for_authd_startup_function, connect_to_sockets_function, tear_down):
+                             wait_for_authd_startup_function, connect_to_sockets, tear_down):
     '''
     description:
         Checks that every input message in authd port generates the adequate output.
@@ -214,7 +214,7 @@ def test_authd_force_insert(test_configuration, test_metadata, set_wazuh_configu
         - wait_for_authd_startup_function:
             type: fixture
             brief: Waits until Authd is accepting connections.
-        - connect_to_sockets_function:
+        - connect_to_sockets:
             type: fixture
             brief: Bind to the configured sockets at function scope.
         - tear_down:
@@ -248,7 +248,7 @@ def test_authd_force_insert(test_configuration, test_metadata, set_wazuh_configu
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration_t3, test_metadata_t3), ids=test_cases_ids_t3)
 def test_authd_force_insert_only(test_configuration, test_metadata, set_wazuh_configuration,
                              configure_local_internal_options, insert_pre_existent_agents, restart_authd_function,
-                             wait_for_authd_startup_function, connect_to_sockets_function, tear_down):
+                             wait_for_authd_startup_function, connect_to_sockets, tear_down):
     '''
     description:
         Checks that every input message in authd port generates the adequate output.
@@ -280,7 +280,7 @@ def test_authd_force_insert_only(test_configuration, test_metadata, set_wazuh_co
         - wait_for_authd_startup_function:
             type: fixture
             brief: Waits until Authd is accepting connections.
-        - connect_to_sockets_function:
+        - connect_to_sockets:
             type: fixture
             brief: Bind to the configured sockets at function scope.
         - tear_down:

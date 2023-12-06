@@ -89,7 +89,7 @@ receiver_sockets, monitored_sockets = None, None
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_key_request_limits(test_configuration, test_metadata, set_wazuh_configuration, copy_tmp_script,
                             configure_local_internal_options, restart_authd_function,
-                            wait_for_authd_startup_function, connect_to_sockets_function, tear_down):
+                            wait_for_authd_startup_function, connect_to_sockets, tear_down):
     '''
     description:
         Checks that every input message on the key request port with different limits 'timeout' and 'queue_size'
@@ -119,7 +119,7 @@ def test_key_request_limits(test_configuration, test_metadata, set_wazuh_configu
         - wait_for_authd_startup_function:
             type: fixture
             brief: Waits until Authd is accepting connections.
-        - connect_to_sockets_function:
+        - connect_to_sockets:
             type: fixture
             brief: Bind to the configured sockets at function scope.
         - tear_down:

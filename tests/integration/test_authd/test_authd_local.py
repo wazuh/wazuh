@@ -92,7 +92,7 @@ def set_up_groups(test_metadata, request):
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_authd_local_messages(test_configuration, test_metadata, set_wazuh_configuration, configure_sockets_environment,
-                              connect_to_sockets_function, set_up_groups, insert_pre_existent_agents,
+                              connect_to_sockets, set_up_groups, insert_pre_existent_agents,
                               restart_wazuh_daemon_function, wait_for_authd_startup_function, tear_down):
     '''
     description:
@@ -116,7 +116,7 @@ def test_authd_local_messages(test_configuration, test_metadata, set_wazuh_confi
         - configure_sockets_environment:
             type: fixture
             brief: Configure the socket listener to receive and send messages on the sockets at function scope.
-        - connect_to_sockets_function:
+        - connect_to_sockets:
             type: fixture
             brief: Bind to the configured sockets at function scope.
         - set_up_groups:
