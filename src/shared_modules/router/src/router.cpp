@@ -213,7 +213,7 @@ extern "C"
         return retVal;
     }
 
-    int router_provider_send_fb(ROUTER_PROVIDER_HANDLE handle, const char* message, const char *schema)
+    int router_provider_send_fb(ROUTER_PROVIDER_HANDLE handle, const char* message, const char* schema)
     {
         int retVal = -1;
         try
@@ -235,7 +235,8 @@ extern "C"
                     throw std::runtime_error("Error parsing message, " + std::string(parser.error_));
                 }
 
-                std::vector<char> data(parser.builder_.GetBufferPointer(), parser.builder_.GetBufferPointer() + parser.builder_.GetSize());
+                std::vector<char> data(parser.builder_.GetBufferPointer(),
+                                       parser.builder_.GetBufferPointer() + parser.builder_.GetSize());
                 std::shared_lock<std::shared_mutex> lock(PROVIDERS_MUTEX);
                 PROVIDERS.at(handle)->send(data);
                 retVal = 0;
