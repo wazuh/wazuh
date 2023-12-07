@@ -24,11 +24,10 @@ static int wpk_verify_cert(X509 * cert, const char ** ca_store);
 int w_wpk_unsign(const char * source, const char * target, const char ** ca_store) {
     X509 * cert = NULL;
     EVP_PKEY * pkey = NULL;
-    RSA * rsa = NULL;
-    EVP_MD_CTX *hash = EVP_MD_CTX_new();
+    EVP_PKEY_CTX *verify_ctx = NULL;
+    EVP_MD_CTX *hash = NULL;
     FILE * filein = NULL;
     FILE * fileout = NULL;
-    unsigned long err;
     unsigned char signature[SIGNLEN];
     unsigned char digest[SHA256_DIGEST_LENGTH];
     unsigned char buffer[BUFLEN];
@@ -87,6 +86,7 @@ int w_wpk_unsign(const char * source, const char * target, const char ** ca_stor
         goto cleanup;
     }
 
+    hash = EVP_MD_CTX_new();
     EVP_DigestInit(hash, EVP_sha256());
 
     while (length = fread(buffer, 1, BUFLEN, filein), length > 0) {
@@ -107,25 +107,19 @@ int w_wpk_unsign(const char * source, const char * target, const char ** ca_stor
         goto cleanup;
     }
 
-    if (rsa = EVP_PKEY_get0_RSA(pkey), !rsa) {
-        merror("Couldn't get public RSA key from certificate.");
+    verify_ctx = EVP_PKEY_CTX_new(pkey, NULL);
+    if (!verify_ctx) {
+        merror("Couldn't create EVP_PKEY_CTX.");
         goto cleanup;
     }
 
-    if (RSA_verify(NID_sha256, digest, SHA256_DIGEST_LENGTH, signature, SIGNLEN, rsa) != 1) {
-        ERR_load_crypto_strings();
+    if (EVP_PKEY_verify_init(verify_ctx) <= 0) {
+        merror("Couldn't initialize verify context.");
+        goto cleanup;
+    }
 
-        while (err = ERR_get_error(), err) {
-            switch (ERR_GET_REASON(err)) {
-            case RSA_R_BAD_SIGNATURE:
-                merror("Bad WPK signature.");
-                break;
-
-            default:
-                merror("At RSA_verify(): %s (%lu)", ERR_reason_error_string(err), err);
-            }
-        }
-
+    if (EVP_PKEY_verify(verify_ctx, signature, SIGNLEN, digest, SHA256_DIGEST_LENGTH) <= 0) {
+        merror("Signature verification failed.");
         goto cleanup;
     }
 
@@ -169,9 +163,12 @@ cleanup:
         EVP_MD_CTX_free(hash);
     }
 
+    if (verify_ctx) {
+        EVP_PKEY_CTX_free(verify_ctx);
+    }
+
     X509_free(cert);
     EVP_PKEY_free(pkey);
-    RSA_free(rsa);
 
     return retval;
 }
