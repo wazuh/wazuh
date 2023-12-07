@@ -205,18 +205,10 @@ TEST_F(ActionTest, TestInstantiationAndRunActionOnDemand)
     const auto& fileName {m_parameters.at("configData").at("contentFileName").get_ref<const std::string&>()};
     const auto contentPath {outputFolder + "/" + CONTENTS_FOLDER + "/3-" + fileName};
     const auto downloadPath {outputFolder + "/" + DOWNLOAD_FOLDER + "/3-" + fileName};
-    const auto& interval {m_parameters.at("interval").get_ref<const size_t&>()};
 
     auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters)};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
-
-    // Start scheduler and wait for on-start execution to finish.
-    action->startActionScheduler(interval);
-    std::this_thread::sleep_for(std::chrono::seconds(interval + 1));
-
-    // Remove results from on-start action.
-    std::filesystem::remove(contentPath);
 
     EXPECT_NO_THROW(action->registerActionOnDemand());
 
@@ -226,8 +218,6 @@ TEST_F(ActionTest, TestInstantiationAndRunActionOnDemand)
 
     EXPECT_NO_THROW(action->unregisterActionOnDemand());
     EXPECT_NO_THROW(action->clearEndpoints());
-
-    action->stopActionScheduler();
 
     // This file shouldn't exist because it's a test for raw data
     EXPECT_FALSE(std::filesystem::exists(downloadPath));
