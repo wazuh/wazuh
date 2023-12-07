@@ -99,7 +99,7 @@ if (NOT ${TARGET} STREQUAL "")
 
       add_custom_command(
           OUTPUT "${RSYNC_OUTPUT_HEADER}"
-          COMMAND bash -c "echo -e '// This file was generated from ${FILE} , do not modify \\n#ifndef ${schema}_HEADER\\n#define ${schema}_HEADER\\nauto constexpr ${schema}_SCHEMA = R\"('`cat ${FILE}`')\" ;\\n#endif // ${schema}_HEADER\\n ' > ${FLATBUFFERS_FOLDER}/../include/${schema}_schema.h"
+          COMMAND bash -c "echo -e '// This file was generated from ${FILE} , do not modify \\n#ifndef ${schema}_HEADER\\n#define ${schema}_HEADER\\n#define ${schema}_SCHEMA \"'`cat ${FILE}`'\" \\n#endif // ${schema}_HEADER\\n ' > ${FLATBUFFERS_FOLDER}/../include/${schema}_schema.h"
           COMMENT "Creating header from schema file: '${schema}'"
           DEPENDS "${RSYNC_OUTPUT_HEADER_GENERATED}"
           WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
@@ -170,7 +170,7 @@ if (NOT ${TARGET} STREQUAL "")
 
       add_custom_command(
           OUTPUT "${RSYNC_OUTPUT_HEADER}"
-          COMMAND bash -c "echo -e '// This file was generated from ${FBS_FILE} , do not modify \\n#ifndef ${schema}_HEADER\\n#define ${schema}_HEADER\\nauto constexpr ${schema}_SCHEMA = R\"('`cat ${FBS_FILE}`')\" ;\\n#endif // ${schema}_HEADER\\n ' > ${FLATBUFFERS_FOLDER}/../include/${schema}_schema.h"
+          COMMAND bash -c "echo -e '// This file was generated from ${FBS_FILE} , do not modify \\n#ifndef ${schema}_HEADER\\n#define ${schema}_HEADER\\n#define ${schema}_SCHEMA \"'`cat ${FBS_FILE}`'\" \\n#endif // ${schema}_HEADER\\n ' > ${FLATBUFFERS_FOLDER}/../include/${schema}_schema.h"
           COMMENT "Creating header from schema file: '${schema}'"
           DEPENDS "${RSYNC_OUTPUT_HEADER_GENERATED}"
           WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}

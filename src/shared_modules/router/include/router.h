@@ -79,6 +79,17 @@ extern "C"
     EXPORTED int router_provider_send(ROUTER_PROVIDER_HANDLE handle, const char* message, unsigned int message_size);
 
     /**
+     * @brief Send a message to the router provider using flatbuffers.
+     *
+     * @param handle Handle to the router provider.
+     * @param message Message to send.
+     * @param schema Schema of the message.
+     * @return true if the message was sent successfully.
+     * @return false if the message was not sent successfully.
+     */
+    EXPORTED int router_provider_send_fb(ROUTER_PROVIDER_HANDLE handle, const char* message, const char* schema);
+
+    /**
      * @brief Destroy a router provider.
      *
      * @param handle Handle to the router provider.
@@ -100,6 +111,10 @@ typedef ROUTER_PROVIDER_HANDLE (*router_provider_create_func)(const char* name);
 typedef bool (*router_provider_send_func)(ROUTER_PROVIDER_HANDLE handle,
                                           const char* message,
                                           unsigned int message_size);
+typedef bool (*router_provider_send_fb_func)(ROUTER_PROVIDER_HANDLE handle,
+                                          const char* message,
+                                          const char* schema);
+
 
 typedef void (*router_provider_destroy_func)(ROUTER_PROVIDER_HANDLE handle);
 
