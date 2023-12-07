@@ -61,30 +61,36 @@ All the downloaded content will be stored in the filesystem, making it available
 
 The configuration above will make the Content Manager launch each `10` seconds an orchestration that will download the content offsets from the Wazuh CTI API (context: `test_context`, consumer: `test_consumer`). The Content Manager will store the offsets, by groups of 1000, into output files located in `/tmp/output_folder`.
 
-Executing the Content Manager for the first time, with a starting offset of `975000`, will download from offset `975000` to the last available offset (`978576` in this example).
+Executing the Content Manager for the first time, with a starting offset of `228000`, will download from offset `228000` to the last available offset (`230577` in this example).
 
 ```bash
 # ./content_manager_test_tool 
-ActionOrchestrator - Starting process
-API offset to be used: 975000
-Output folders created.
-FactoryContentUpdater - Starting process
-Creating 'cti-offset' downloader
-Creating 'raw' content decompressor
-Creating 'cti-api' version updater
-Downloaded content cleaner created
-FactoryContentUpdater - Finishing process
-ActionOrchestrator - Finishing process
-ActionOrchestrator - Running process
-CtiOffsetDownloader - Starting
-CtiOffsetDownloader - Request processed successfully.
-CtiOffsetDownloader - Request processed successfully.
-CtiOffsetDownloader - Request processed successfully.
-CtiOffsetDownloader - Request processed successfully.
-CtiOffsetDownloader - Request processed successfully.
-CtiOffsetDownloader - Finishing
-SkipStep - Executing
-PubSubPublisher - Data published
+[DEBUG]: Creating 'CTI API offset fetching' Content Updater orchestration
+[DEBUG]: ExecutionContext - Starting process
+[DEBUG_VERBOSE]: Creating output folders at '/tmp/output_folder'
+[DEBUG]: FactoryContentUpdater - Starting process
+[DEBUG]: Creating 'cti-offset' downloader
+[DEBUG]: Creating 'raw' decompressor
+[DEBUG]: Creating 'false' version updater
+[DEBUG]: Content cleaner created
+[DEBUG]: Content updater orchestration created
+[INFO]: Starting on-start action for 'CTI API offset fetching'
+[INFO]: Action for 'CTI API offset fetching' started
+[DEBUG_VERBOSE]: Running 'CTI API offset fetching' content update
+[DEBUG]: CtiOffsetDownloader - Starting process
+[DEBUG_VERBOSE]: Initial API offset: 228000
+[DEBUG_VERBOSE]: CTI last offset: '230577'
+[DEBUG_VERBOSE]: CTI last snapshot link: 'https://s3.us-east-1.amazonaws.com/cti-snapshots-pro/store/contexts/vd_1.0.0/consumers/vd_4.8.0/230577_1700904966.zip'
+[DEBUG_VERBOSE]: Downloading offsets from: 'https://cti.wazuh.com/api/v1/catalog/contexts/vd_1.0.0/consumers/vd_4.8.0//changes?from_offset=228000&to_offset=229000'
+[DEBUG_VERBOSE]: Downloading offsets from: 'https://cti.wazuh.com/api/v1/catalog/contexts/vd_1.0.0/consumers/vd_4.8.0//changes?from_offset=229000&to_offset=230000'
+[DEBUG_VERBOSE]: Downloading offsets from: 'https://cti.wazuh.com/api/v1/catalog/contexts/vd_1.0.0/consumers/vd_4.8.0//changes?from_offset=230000&to_offset=230577'
+[DEBUG]: SkipStep - Starting process
+[DEBUG]: PubSubPublisher - Starting process
+[DEBUG_VERBOSE]: Data to be published: '{"paths":["/tmp/output_folder/contents/229000-example.json","/tmp/output_folder/contents/230000-example.json","/tmp/output_folder/contents/230577-example.json"],"stageStatus":[{"stage":"CtiOffsetDownloader","status":"ok"}],"type":"offsets"}'
+[INFO]: Data published
+[DEBUG]: SkipStep - Starting process
+[DEBUG]: CleanUpContent - Starting process
+[INFO]: Action for 'CTI API offset fetching' finished
 ```
 
 The output files containing the downloaded offsets are available under `output_folder/contents/`, each of which contains 1000 offsets (the last one can contain fewer offsets if the total amount of offsets is not multiple of 1000).
@@ -93,13 +99,12 @@ The output files containing the downloaded offsets are available under `output_f
 # tree /tmp/output_folder/
 /tmp/output_folder/
 |-- contents
-|   |-- 976000-content.json
-|   |-- 977000-content.json
-|   |-- 978000-content.json
-|   `-- 978576-content.json
+|   |-- 229000-example.json
+|   |-- 230000-example.json
+|   `-- 230577-example.json
 `-- downloads
 
-2 directories, 4 files
+2 directories, 3 files
 ```
 
 > If the content was compressed, the output files would be stored in the _downloads_ folder.
@@ -109,25 +114,29 @@ The `/tmp/output_folder/contents/*-content.json` paths are published for the con
 Given that we are using the `cti-api` content versioner, the last offset fetched is stored and used in the next execution. This is useful to avoid downloading offsets that we have already downloaded. In the log below, we can see that the Content Manager is starting with the last offset from the first execution and, since there are no more offsets to download, nothing is downloaded nor published.
 
 ```bash
-# ./content_manager_test_tool
-ActionOrchestrator - Starting process
-API offset to be used: 978576
-The previous output folder: "/tmp/output_folder" will be removed.
-Output folders created.
-FactoryContentUpdater - Starting process
-Creating 'cti-offset' downloader
-Creating 'raw' content decompressor
-Creating 'cti-api' version updater
-Downloaded content cleaner created
-FactoryContentUpdater - Finishing process
-ActionOrchestrator - Finishing process
-ActionOrchestrator - Running process
-CtiOffsetDownloader - Starting
-CtiOffsetDownloader - Request processed successfully.
-CtiOffsetDownloader - Finishing
-SkipStep - Executing
-PubSubPublisher - No data to publish
-All files in the folder have been deleted.
+# ./content_manager_test_tool 
+[DEBUG]: Creating 'CTI API offset fetching' Content Updater orchestration
+[DEBUG]: ExecutionContext - Starting process
+[DEBUG_VERBOSE]: Creating output folders at '/tmp/output_folder'
+[DEBUG]: FactoryContentUpdater - Starting process
+[DEBUG]: Creating 'cti-offset' downloader
+[DEBUG]: Creating 'raw' decompressor
+[DEBUG]: Creating 'cti-api' version updater
+[DEBUG]: Content cleaner created
+[DEBUG]: Content updater orchestration created
+[INFO]: Starting on-start action for 'CTI API offset fetching'
+[INFO]: Action for 'CTI API offset fetching' started
+[DEBUG_VERBOSE]: Running 'CTI API offset fetching' content update
+[DEBUG]: CtiOffsetDownloader - Starting process
+[DEBUG_VERBOSE]: Initial API offset: 230577
+[DEBUG_VERBOSE]: CTI last offset: '230577'
+[DEBUG_VERBOSE]: CTI last snapshot link: 'https://s3.us-east-1.amazonaws.com/cti-snapshots-pro/store/contexts/vd_1.0.0/consumers/vd_4.8.0/230577_1700904966.zip'
+[DEBUG]: SkipStep - Starting process
+[DEBUG]: PubSubPublisher - Starting process
+[DEBUG_VERBOSE]: No data to publish
+[DEBUG]: UpdateCtiApiOffset - Starting process
+[DEBUG]: CleanUpContent - Starting process
+[INFO]: Action for 'CTI API offset fetching' finished
 ```
 
 ### Download snapshot from CTI API
@@ -156,6 +165,35 @@ The snapshot file will be decompressed and stored in the filesystem, making it a
 
 The configuration above will make the Content Manager launch each `10` seconds an orchestration that will download the content snapshot from the Wazuh CTI API (context: `test_context`, consumer: `test_consumer`). The Content Manager will decompress the snapshot and store its content into the output folder `/tmp/output_folder`.
 
+```bash
+# ./content_manager_test_tool 
+[DEBUG]: Creating 'CTI API snapshot fetching' Content Updater orchestration
+[DEBUG]: ExecutionContext - Starting process
+[DEBUG_VERBOSE]: Creating output folders at '/tmp/output_folder'
+[DEBUG]: FactoryContentUpdater - Starting process
+[DEBUG]: Creating 'cti-snapshot' downloader
+[DEBUG]: Creating 'zip' decompressor
+[DEBUG]: Creating 'false' version updater
+[DEBUG]: Content cleaner created
+[DEBUG]: Content updater orchestration created
+[INFO]: Starting on-start action for 'CTI API snapshot fetching'
+[INFO]: Action for 'CTI API snapshot fetching' started
+[DEBUG_VERBOSE]: Running 'CTI API snapshot fetching' content update
+[DEBUG]: CtiSnapshotDownloader - Starting process
+[DEBUG_VERBOSE]: CTI last offset: '230577'
+[DEBUG_VERBOSE]: CTI last snapshot link: 'https://s3.us-east-1.amazonaws.com/cti-snapshots-pro/store/contexts/vd_1.0.0/consumers/vd_4.8.0/230577_1700904966.zip'
+[DEBUG_VERBOSE]: Downloading snapshot from 'https://s3.us-east-1.amazonaws.com/cti-snapshots-pro/store/contexts/vd_1.0.0/consumers/vd_4.8.0/230577_1700904966.zip'
+[DEBUG]: Server stopped
+[DEBUG]: ZipDecompressor - Starting process
+[DEBUG_VERBOSE]: Decompressing '/tmp/output_folder/downloads/230577_1700904966.zip' into '/tmp/output_folder/contents'
+[DEBUG]: PubSubPublisher - Starting process
+[DEBUG_VERBOSE]: Data to be published: '{"paths":["/tmp/output_folder/contents/vd_1.0.0_vd_4.8.0_230577_1700904966.json"],"stageStatus":[{"stage":"CtiSnapshotDownloader","status":"ok"},{"stage":"ZipDecompressor","status":"ok"}],"type":"raw"}'
+[INFO]: Data published
+[DEBUG]: SkipStep - Starting process
+[DEBUG]: CleanUpContent - Starting process
+[INFO]: Action for 'CTI API snapshot fetching' finished
+```
+
 ### Download from regular API
 
 The Content Manager can also download content from a regular API. The functionality is quite straightforward: Download from a given URL and store the content in an output file. No API parameters are handled nor added by the module.
@@ -182,24 +220,29 @@ The configuration above will make the Content Manager launch each `5` seconds an
 
 
 ```bash
-# ./content_manager_test_tool
-ActionOrchestrator - Starting process
-API offset to be used: 0
-Output folders created.
-FactoryContentUpdater - Starting process
-Creating 'api' downloader
-Creating 'raw' content decompressor
-Version updater not needed
-Downloaded content cleaner created
-FactoryContentUpdater - Finishing process
-ActionOrchestrator - Finishing process
-ActionOrchestrator - Running process
-APIDownloader - Starting
-APIDownloader - Finishing - Download done successfully
-SkipStep - Executing
-PubSubPublisher - Data published
-SkipStep - Executing
-All files in the folder have been deleted.
+# ./content_manager_test_tool 
+[DEBUG]: Creating 'API content download' Content Updater orchestration
+[DEBUG]: ExecutionContext - Starting process
+[DEBUG_VERBOSE]: Creating output folders at '/tmp/output_folder'
+[DEBUG]: FactoryContentUpdater - Starting process
+[DEBUG]: Creating 'api' downloader
+[DEBUG]: Creating 'raw' decompressor
+[DEBUG]: Creating 'false' version updater
+[DEBUG]: Content cleaner created
+[DEBUG]: Content updater orchestration created
+[INFO]: Starting on-start action for 'API content download'
+[INFO]: Action for 'API content download' started
+[DEBUG_VERBOSE]: Running 'API content download' content update
+[DEBUG]: APIDownloader - Starting process
+[DEBUG_VERBOSE]: Downloading from API 'https://jsonplaceholder.typicode.com/todos/1'
+[DEBUG_VERBOSE]: APIDownloader - Finishing - Download done successfully
+[DEBUG]: SkipStep - Starting process
+[DEBUG]: PubSubPublisher - Starting process
+[DEBUG_VERBOSE]: Data to be published: '{"paths":["/tmp/output_folder/contents/content.json"],"stageStatus":[{"stage":"APIDownloader","status":"ok"}],"type":"raw"}'
+[INFO]: Data published
+[DEBUG]: SkipStep - Starting process
+[DEBUG]: CleanUpContent - Starting process
+[INFO]: Action for 'API content download' finished
 ```
 
 The downloaded content will be all stored in a unique file called `content.json`:
@@ -254,31 +297,30 @@ When downloading files, the Content Manager keeps track of the last downloaded f
 The configuration above will make the Content Manager launch each `5` seconds an orchestration that will download a compressed (ZIP) content file from a URL.
 
 ```bash
-# ./content_manager_test_tool
-ActionOrchestrator - Starting process
-API offset to be used: 0
-Output folders created.
-FactoryContentUpdater - Starting process
-Creating 'file' downloader
-Creating 'zip' content decompressor
-Version updater not needed
-Downloaded content cleaner not needed
-FactoryContentUpdater - Finishing process
-ActionOrchestrator - Finishing process
-ActionOrchestrator - Running process
-FileDownloader - Download done successfully
-ZipDecompressor - Finishing process
-PubSubPublisher - Data published
-SkipStep - Executing
-SkipStep - Executing
-Action: Initiating scheduling action for test
-ActionOrchestrator - Running process
-Content file didn't change from last download
-FileDownloader - Download done successfully
-ZipDecompressor - Finishing process
-PubSubPublisher - No data to publish
-SkipStep - Executing
-SkipStep - Executing
+# ./content_manager_test_tool 
+[DEBUG]: Creating 'File content download' Content Updater orchestration
+[DEBUG]: ExecutionContext - Starting process
+[DEBUG_VERBOSE]: Creating output folders at '/tmp/output_folder'
+[DEBUG]: FactoryContentUpdater - Starting process
+[DEBUG]: Creating 'file' downloader
+[DEBUG]: Creating 'zip' decompressor
+[DEBUG]: Creating 'false' version updater
+[DEBUG]: Content cleaner created
+[DEBUG]: Content updater orchestration created
+[INFO]: Starting on-start action for 'File content download'
+[INFO]: Action for 'File content download' started
+[DEBUG_VERBOSE]: Running 'File content download' content update
+[DEBUG]: FileDownloader - Starting process
+[DEBUG_VERBOSE]: Downloading file from 'https://s3.us-east-1.amazonaws.com/cti-snapshots-pro/store/contexts/vd_1.0.0/consumers/vd_4.8.0/230577_1700904966.zip'
+[DEBUG]: Server stopped
+[DEBUG]: ZipDecompressor - Starting process
+[DEBUG_VERBOSE]: Decompressing '/tmp/output_folder/downloads/230577_1700904966.zip' into '/tmp/output_folder/contents'
+[DEBUG]: PubSubPublisher - Starting process
+[DEBUG_VERBOSE]: Data to be published: '{"paths":["/tmp/output_folder/contents/vd_1.0.0_vd_4.8.0_230577_1700904966.json"],"stageStatus":[{"stage":"FileDownloader","status":"ok"},{"stage":"ZipDecompressor","status":"ok"}],"type":"raw"}'
+[INFO]: Data published
+[DEBUG]: SkipStep - Starting process
+[DEBUG]: CleanUpContent - Starting process
+[INFO]: Action for 'File content download' finished
 ```
 
 The content is downloaded and, since it's compressed, stored in the _downloads_ folder, and decompressed in the _contents_ folder. If `deleteDownloadedContent` was equal to `true`, the compressed file would be deleted after the decompression, just keeping the JSON data file.
@@ -343,22 +385,56 @@ The configurations above will make the Content Manager launch each `120` seconds
 The URL prefix is very important: If it's equal to `file://`, it will try to copy the file from the filesystem. If it's equal to `http://` of `https://`, it will try to download the file from a server. Any other prefix is not allowed.
 
 ```bash
-# ./content_manager_test_tool
-ActionOrchestrator - Starting process
-API offset to be used: 0
-Output folders created.
-FactoryContentUpdater - Starting process
-Creating 'offline' downloader
-Creating 'xz' content decompressor
-Version updater not needed
-Downloaded content cleaner not needed
-FactoryContentUpdater - Finishing process
-ActionOrchestrator - Finishing process
-ActionOrchestrator - Running process
-OfflineDownloader - Download done successfully
-PubSubPublisher - Data published
-SkipStep - Executing
-SkipStep - Executing
+# ./content_manager_test_tool 
+[DEBUG]: Creating 'Offline content download from filesystem' Content Updater orchestration
+[DEBUG]: ExecutionContext - Starting process
+[DEBUG_VERBOSE]: Creating output folders at '/tmp/output_folder'
+[DEBUG]: FactoryContentUpdater - Starting process
+[DEBUG]: Creating 'offline' downloader
+[DEBUG]: Creating 'xz' decompressor
+[DEBUG]: Creating 'false' version updater
+[DEBUG]: Content cleaner created
+[DEBUG]: Content updater orchestration created
+[INFO]: Starting on-start action for 'Offline content download from filesystem'
+[INFO]: Action for 'Offline content download from filesystem' started
+[DEBUG_VERBOSE]: Running 'Offline content download from filesystem' content update
+[DEBUG]: OfflineDownloader - Starting process
+[DEBUG_VERBOSE]: Copying file from 'file:///home/data/content.xz' into '/tmp/output_folder/downloads/content.xz'
+[DEBUG]: XZDecompressor - Starting process
+[DEBUG_VERBOSE]: Decompressing '/tmp/output_folder/downloads/content.xz' into '/tmp/output_folder/contents/content.json'
+[DEBUG]: PubSubPublisher - Starting process
+[DEBUG_VERBOSE]: Data to be published: '{"paths":["/tmp/output_folder/contents/content.json"],"stageStatus":[{"stage":"OfflineDownloader","status":"ok"},{"stage":"XZDecompressor","status":"ok"}],"type":"raw"}'
+[INFO]: Data published
+[DEBUG]: SkipStep - Starting process
+[DEBUG]: CleanUpContent - Starting process
+[INFO]: Action for 'Offline content download from filesystem' finished
+```
+
+```bash
+# ./content_manager_test_tool 
+[DEBUG]: Creating 'Offline content download from HTTP server' Content Updater orchestration
+[DEBUG]: ExecutionContext - Starting process
+[DEBUG_VERBOSE]: Removing previous output folder '/tmp/output_folder'
+[DEBUG_VERBOSE]: Creating output folders at '/tmp/output_folder'
+[DEBUG]: FactoryContentUpdater - Starting process
+[DEBUG]: Creating 'offline' downloader
+[DEBUG]: Creating 'xz' decompressor
+[DEBUG]: Creating 'false' version updater
+[DEBUG]: Content cleaner created
+[DEBUG]: Content updater orchestration created
+[INFO]: Starting on-start action for 'Offline content download from HTTP server'
+[INFO]: Action for 'Offline content download from HTTP server' started
+[DEBUG_VERBOSE]: Running 'Offline content download from HTTP server' content update
+[DEBUG]: OfflineDownloader - Starting process
+[DEBUG_VERBOSE]: Downloading file from 'http://localhost:8888/content.xz' into '/tmp/output_folder/downloads/content.xz'
+[DEBUG]: XZDecompressor - Starting process
+[DEBUG_VERBOSE]: Decompressing '/tmp/output_folder/downloads/content.xz' into '/tmp/output_folder/contents/content.json'
+[DEBUG]: PubSubPublisher - Starting process
+[DEBUG_VERBOSE]: Data to be published: '{"paths":["/tmp/output_folder/contents/content.json"],"stageStatus":[{"stage":"OfflineDownloader","status":"ok"},{"stage":"XZDecompressor","status":"ok"}],"type":"raw"}'
+[INFO]: Data published
+[DEBUG]: SkipStep - Starting process
+[DEBUG]: CleanUpContent - Starting process
+[INFO]: Action for 'Offline content download from HTTP server' finished
 ```
 
 ```bash
