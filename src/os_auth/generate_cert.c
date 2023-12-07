@@ -12,42 +12,37 @@
 
 #include "generate_cert.h"
 
+#include <openssl/evp.h>
+#include <openssl/rsa.h>
+
 EVP_PKEY* generate_key(int bits) {
     EVP_PKEY* key = EVP_PKEY_new();
-    BIGNUM* bn = BN_new();
-    RSA* rsa = RSA_new(); // This structure is free'd after EVP_PKEY_assign_RSA.
+    EVP_PKEY_CTX* ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, NULL);
 
-    if(key == NULL) {
-        merror("Cannot create EVP_PKEY structure.");
+    if (key == NULL || ctx == NULL) {
+        merror("Cannot create EVP_PKEY or EVP_PKEY_CTX structure.");
         goto error;
     }
 
-    if (bn == NULL) {
-        merror("Cannot create BN structure."); // LCOV_EXCL_LINE
-        goto error; // LCOV_EXCL_LINE
-    }
-
-    if (rsa == NULL) {
-        merror("Cannot create RSA structure.");
+    // Initialize the RSA key generation parameters
+    if (EVP_PKEY_keygen_init(ctx) <= 0 ||
+        EVP_PKEY_CTX_set_rsa_keygen_bits(ctx, bits) <= 0) {
+        merror("Cannot initialize RSA key generation parameters.");
         goto error;
     }
 
-    BN_set_word(bn, RSA_F4);
-    RSA_generate_key_ex(rsa, bits, bn, NULL);
-
-    if(!EVP_PKEY_assign_RSA(key, rsa)) {
-        merror("Cannot generate RSA key."); // LCOV_EXCL_LINE
-        goto error; // LCOV_EXCL_LINE
+    // Generate the RSA key pair
+    if (EVP_PKEY_keygen(ctx, &key) <= 0) {
+        merror("Cannot generate RSA key pair.");
+        goto error;
     }
 
-    BN_free(bn);
+    EVP_PKEY_CTX_free(ctx);
     return key;
 
 error:
-    RSA_free(rsa);
-    BN_free(bn);
     EVP_PKEY_free(key);
-
+    EVP_PKEY_CTX_free(ctx);
     return NULL;
 }
 
