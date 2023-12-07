@@ -6,7 +6,7 @@
 
 #include "tester.hpp"
 
-const std::string ENVIRONMENT_NAME = "Production";
+const std::string ENVIRONMENT_NAME = "Test";
 const std::string POLICY_NAME = "policy/name/0";
 const uint32_t LIFESPAM = 1234;
 
