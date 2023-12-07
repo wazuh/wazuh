@@ -5,8 +5,13 @@ All notable changes to this project will be documented in this file.
 
 ### Manager
 
+#### Changed
+- Improved WPK upgrade scripts to ensure safe execution and backup generation in various circumstances. ([#20616](https://github.com/wazuh/wazuh/pull/20616))
+
 #### Fixed
 
+- Fixed a bug causing the Canonical feed parser to fail in Vulnerability Detector. ([#20580](https://github.com/wazuh/wazuh/pull/20580))
+- Fixed a bug that allowed two simultaneous updates to occur through WPK. ([#20545](https://github.com/wazuh/wazuh/pull/20545))
 - Fixed a thread lock bug that slowed down wazuh-db performance. ([#20178](https://github.com/wazuh/wazuh/pull/20178))
 - Fixed a bug in Vulnerability detector that skipped vulnerabilities for Windows 11 21H2. ([#20386](https://github.com/wazuh/wazuh/pull/20386))
 - The installer now updates the merged.mg file permissions on upgrade. ([#5941](https://github.com/wazuh/wazuh/pull/5941))
