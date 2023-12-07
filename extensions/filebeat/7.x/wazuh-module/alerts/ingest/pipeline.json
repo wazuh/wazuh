@@ -3,6 +3,19 @@
   "processors": [
     { "json" : { "field" : "message", "add_to_root": true } },
     {
+      "script": {
+        "description": "Copy fields from data.status to a new azureSignInStatus field and overwrite the field data.status with a dummy value in order to match the pipeline and avoid possible parsing issues and naming issues",
+        "lang": "painless",
+        "source": "if(ctx.containsKey(params['dataKey']) && ctx.data.containsKey(params['azureSignInTag'])){Map azure_status = Collections.unmodifiableMap(new HashMap(ctx.data.status)); ctx.data.put('azureSignInStatus',azure_status);ctx.data.put(params['statusKey'],params['statusValue']);}",
+        "params": {
+          "dataKey": "data",
+          "statusKey": "status",
+          "statusValue": "SUCCESS",
+          "azureSignInTag": "appliedConditionalAccessPolicies"
+        }
+      }
+    },
+    {
       "set": {
         "field": "data.aws.region",
         "value": "{{data.aws.awsRegion}}",
