@@ -150,6 +150,9 @@
       "data.aws.userIdentity.accountId",
       "data.aws.userIdentity.userName",
       "data.aws.vpcEndpointId",
+      "data.azureSignInsStatus.additionalDetails",
+      "data.azureSignInsStatus.errorCode",
+      "data.azureSignInsStatus.failureReason",
       "data.command",
       "data.cis.group",
       "data.cis.rule_title",
@@ -191,7 +194,7 @@
       "data.ms-graph.classification",
       "data.ms-graph.detectionSource",
       "data.ms-graph.determination",
-      "data.ms-graph.remediationStatus",
+      "data.ms-graph.remediation",
       "data.ms-graph.roles",
       "data.ms-graph.verdict",
       "data.ms-graph.serviceSource",
@@ -210,7 +213,7 @@
       "data.ms-graph.mitreTechniques",
       "data.ms-graph.providerAlertId",
       "data.ms-graph.resource",
-      "data.ms-graph.status",
+      "data.ms-graph.",
       "data.ms-graph.tenantId",
       "data.ms-graph.threatDisplayName",
       "data.ms-graph.threatFamilyName",
@@ -319,7 +322,7 @@
       "data.srcip",
       "data.srcport",
       "data.srcuser",
-      "data.status",
+      "data.",
       "data.system_name",
       "data.title",
       "data.tty",
@@ -391,7 +394,7 @@
       "data.win.eventdata.providerName",
       "data.win.eventdata.returnCode",
       "data.win.eventdata.service",
-      "data.win.eventdata.status",
+      "data.win.eventdata.",
       "data.win.eventdata.subcategory",
       "data.win.eventdata.subcategoryGuid",
       "data.win.eventdata.subcategoryId",
@@ -1040,6 +1043,19 @@
           },
           "id": {
             "type": "keyword"
+          },
+          "azureSignInsStatus": {
+            "properties": {
+              "additionalDetails": {
+                "type": "keyword"
+              },
+              "errorCode": {
+                "type": "integer"
+              },
+              "failureReason": {
+                "type": "keyword"
+              }
+            }
           },
           "status": {
             "type": "keyword"
