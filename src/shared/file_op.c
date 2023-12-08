@@ -2696,8 +2696,7 @@ char ** wreaddir(const char * name) {
     return files;
 }
 
-
-FILE * wfopen(const char * pathname, const char * mode) {
+FILE * wfopen(const char * pathname, const char * modes) {
 #ifdef WIN32
     HANDLE hFile;
     DWORD dwDesiredAccess = 0;
@@ -2710,8 +2709,8 @@ FILE * wfopen(const char * pathname, const char * mode) {
     FILE * fp;
     int i;
 
-    for (i = 0; mode[i]; ++i) {
-        switch (mode[i]) {
+    for (i = 0; modes[i]; ++i) {
+        switch (modes[i]) {
         case '+':
             dwDesiredAccess |= GENERIC_WRITE | GENERIC_READ;
             flags &= ~_O_RDONLY;
@@ -2758,7 +2757,7 @@ FILE * wfopen(const char * pathname, const char * mode) {
         return NULL;
     }
 
-    if (fp = _fdopen(fd, mode), fp == NULL) {
+    if (fp = _fdopen(fd, modes), fp == NULL) {
         CloseHandle(hFile);
         return NULL;
     }
@@ -2766,7 +2765,7 @@ FILE * wfopen(const char * pathname, const char * mode) {
     return fp;
 
 #else
-    FILE *fp = fopen(pathname, mode);
+    FILE *fp = fopen(pathname, modes);
 
     if(fp) {
     	w_file_cloexec(fp);
@@ -2776,7 +2775,6 @@ FILE * wfopen(const char * pathname, const char * mode) {
 
 #endif
 }
-
 
 int w_compress_gzfile(const char *filesrc, const char *filedst) {
     FILE *fd;

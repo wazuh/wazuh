@@ -72,19 +72,19 @@ int __wrap_fgetpos (FILE *__restrict __stream, fpos_t * __pos) {
     }
 }
 
-extern FILE* __real_fopen(const char* path, const char* mode);
-FILE* __wrap_fopen(const char* path, const char* mode) {
+extern FILE* __real_fopen(const char* __filename, const char* __modes);
+FILE* __wrap_fopen(const char* __filename, const char* __modes) {
     if(test_mode) {
-        check_expected_ptr(path);
-        check_expected(mode);
+        check_expected_ptr(__filename);
+        check_expected(__modes);
         return mock_ptr_type(FILE*);
     } else {
-        return __real_fopen(path, mode);
+        return __real_fopen(__filename, __modes);
     }
 }
-void expect_fopen(const char* path, const char* mode, FILE *fp) {
-    expect_string(__wrap_fopen, path, path);
-    expect_string(__wrap_fopen, mode, mode);
+void expect_fopen(const char* __filename, const char* __modes, FILE *fp) {
+    expect_string(__wrap_fopen, __filename, __filename);
+    expect_string(__wrap_fopen, __modes, __modes);
     will_return(__wrap_fopen, fp);
 }
 

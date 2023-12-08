@@ -10,13 +10,14 @@
 #include "../os_auth/auth.h"
 
 #include "../wrappers/common.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
-#include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 #include "../wrappers/externals/openssl/bio_wrappers.h"
 #include "../wrappers/externals/openssl/ssl_lib_wrappers.h"
 #include "../wrappers/wazuh/os_auth/os_auth_wrappers.h"
+
 
 #define NEW_AGENT1      "Agent1"
 #define AGENT1_ID       "001"
@@ -38,7 +39,7 @@ extern void w_enrollment_load_pass(w_enrollment_cert *cert_cfg);
 /*************** WRAPS ************************/
 
 extern SSL *__real_SSL_new(SSL_CTX *ctx);
-
+/*
 extern FILE * __real_fopen ( const char * filename, const char * mode );
 FILE * __wrap_fopen ( const char * filename, const char * mode ) {
     if(!test_mode)
@@ -47,7 +48,8 @@ FILE * __wrap_fopen ( const char * filename, const char * mode ) {
     check_expected(mode);
     return mock_ptr_type(FILE *);
 }
-
+*/
+/*
 extern char * __real_fgets(char * buf, int size, FILE *stream);
 char * __wrap_fgets(char * buf, int size, FILE *stream) {
     if(!test_mode)
@@ -57,14 +59,15 @@ char * __wrap_fgets(char * buf, int size, FILE *stream) {
     check_expected(stream);
     return mock_ptr_type(char *);
 }
-
+*/
+/*
 extern int __real_fclose ( FILE * stream );
 int __wrap_fclose ( FILE * stream ) {
     if(!test_mode)
         return __real_fclose(stream);
     return 0;
 }
-
+*/
 int __wrap_TempFile(File *file, const char *source, int copy) {
     file->name = mock_type(char *);
     file->fp = mock_type(FILE *);
@@ -72,13 +75,13 @@ int __wrap_TempFile(File *file, const char *source, int copy) {
     check_expected(copy);
     return mock_type(int);
 }
-
+/*
 int __wrap_OS_MoveFile(const char *src, const char *dst) {
     check_expected(src);
     check_expected(dst);
     return mock_type(int);
-}
-
+}*/
+/*
 #ifndef WIN32
 extern int __real_fprintf ( FILE * stream, const char * format, ... );
 int __wrap_fprintf ( FILE * stream, const char * format, ... ) {
@@ -97,7 +100,7 @@ int __wrap_fprintf ( FILE * stream, const char * format, ... ) {
     return 0;
 }
 #endif
-
+*/
 void keyentry_init (keyentry *key, char *name, char *id, char *ip, char *raw_key) {
     os_calloc(1, sizeof(os_ip), key->ip);
     key->ip->ip = ip ? strdup(ip) : NULL;
@@ -795,9 +798,9 @@ void test_w_enrollment_store_key_entry_cannot_open(void **state) {
     const char* key_string = "KEY EXAMPLE STRING";
     char key_file[1024];
 #ifdef WIN32
-    expect_string(__wrap_fopen, filename, KEYS_FILE);
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 0);
+    expect_string(__wrap_wfopen, __filename, KEYS_FILE);
+    expect_string(__wrap_wfopen, __modes, "w");
+    will_return(__wrap_wfopen, 0);
 #else
     expect_string(__wrap_TempFile, source, KEYS_FILE);
     expect_value(__wrap_TempFile, copy, 0);
@@ -838,9 +841,9 @@ void test_w_enrollment_store_key_entry_success(void **state) {
     FILE file;
     const char* key_string = "KEY EXAMPLE STRING";
 #ifdef WIN32
-    expect_string(__wrap_fopen, filename, KEYS_FILE);
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, &file);
+    expect_string(__wrap_wfopen, __filename, KEYS_FILE);
+    expect_string(__wrap_wfopen, __modes, "w");
+    will_return(__wrap_wfopen, &file);
 
     expect_value(wrap_fprintf, __stream, &file);
     expect_string(wrap_fprintf, formatted_msg, "KEY EXAMPLE STRING\n");
@@ -898,9 +901,9 @@ void test_w_enrollment_process_agent_key_valid_key(void **state) {
     expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
     will_return(__wrap_OS_IsValidIP, 1);
 #ifdef WIN32
-    expect_string(__wrap_fopen, filename, KEYS_FILE);
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 4);
+    expect_string(__wrap_wfopen, __filename, KEYS_FILE);
+    expect_string(__wrap_wfopen, __modes, "w");
+    will_return(__wrap_wfopen, 4);
 
     expect_value(wrap_fprintf, __stream, 4);
     expect_string(wrap_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
@@ -996,9 +999,9 @@ void test_w_enrollment_process_response_success(void **state) {
         expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
         will_return(__wrap_OS_IsValidIP, 1);
 #ifdef WIN32
-        expect_string(__wrap_fopen, filename, KEYS_FILE);
-        expect_string(__wrap_fopen, mode, "w");
-        will_return(__wrap_fopen, 4);
+        expect_string(__wrap_wfopen, __filename, KEYS_FILE);
+        expect_string(__wrap_wfopen, __modes, "w");
+        will_return(__wrap_wfopen, 4);
 
         expect_value(wrap_fprintf, __stream, 4);
         expect_string(wrap_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
@@ -1110,9 +1113,9 @@ void test_w_enrollment_request_key(void **state) {
             expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
             will_return(__wrap_OS_IsValidIP, 1);
 #ifdef WIN32
-            expect_string(__wrap_fopen, filename, KEYS_FILE);
-            expect_string(__wrap_fopen, mode, "w");
-            will_return(__wrap_fopen, 4);
+            expect_string(__wrap_wfopen, __filename, KEYS_FILE);
+            expect_string(__wrap_wfopen, __modes, "w");
+            will_return(__wrap_wfopen, 4);
 
             expect_value(wrap_fprintf, __stream, 4);
             expect_string(wrap_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
@@ -1185,9 +1188,9 @@ void test_w_enrollment_load_pass_null_cert(void **state) {
 void test_w_enrollment_load_pass_empty_file(void **state) {
     w_enrollment_cert *cert = *state;
 
-    expect_string(__wrap_fopen, filename, AUTHD_PASS);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 4);
+    expect_string(__wrap_wfopen, __filename, AUTHD_PASS);
+    expect_string(__wrap_wfopen, __modes, "r");
+    will_return(__wrap_wfopen, 4);
 #ifdef WIN32
     expect_value(wrap_fgets, __stream, 4);
     will_return(wrap_fgets, "");
@@ -1209,9 +1212,9 @@ void test_w_enrollment_load_pass_empty_file(void **state) {
 void test_w_enrollment_load_pass_file_with_content(void **state) {
     w_enrollment_cert *cert = *state;
 
-    expect_string(__wrap_fopen, filename, AUTHD_PASS);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 4);
+    expect_string(__wrap_wfopen, __filename, AUTHD_PASS);
+    expect_string(__wrap_wfopen, __modes, "r");
+    will_return(__wrap_wfopen, 4);
 #ifdef WIN32
     expect_value(wrap_fgets, __stream, 4);
     will_return(wrap_fgets, "content_password");

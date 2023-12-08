@@ -19,7 +19,7 @@
 #include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/wazuh/shared/binaries_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
-#include "../headers/version_op.h"
+
 
 /* setup/teardowns */
 static int setup_group(void **state) {
@@ -49,8 +49,8 @@ void test_get_unix_version_Ubuntu1904(void **state)
     os_info *ret;
 
     // Open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 1);
 
     expect_value(__wrap_fgets, __stream, 1);
@@ -64,7 +64,7 @@ void test_get_unix_version_Ubuntu1904(void **state)
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, NULL);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     ret = get_unix_version();
@@ -86,13 +86,13 @@ void test_get_unix_version_centos(void **state)
     os_info *ret;
 
     // Fail to open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Open /usr/lib/os-release
-    expect_string(__wrap_wfopen, __filename, "/usr/lib/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/usr/lib/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 1);
 
     expect_value(__wrap_fgets, __stream, 1);
@@ -106,18 +106,18 @@ void test_get_unix_version_centos(void **state)
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, NULL);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     // Open /etc/centos-release
-    expect_string(__wrap_wfopen, __filename, "/etc/centos-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/centos-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 1);
 
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "CentOS Linux release 7.5.1804 (Core)");
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     ret = get_unix_version();
@@ -138,8 +138,8 @@ void test_get_unix_version_archlinux_distro_based(void **state)
     os_info *ret;
 
     // Open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 1);
 
     expect_value(__wrap_fgets, __stream, 1);
@@ -149,33 +149,33 @@ void test_get_unix_version_archlinux_distro_based(void **state)
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, NULL);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     // Attempt to open /etc/centos-release
-    expect_string(__wrap_wfopen, __filename, "/etc/centos-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/centos-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Attempt to open /etc/fedora-release
-    expect_string(__wrap_wfopen, __filename, "/etc/fedora-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/fedora-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Attempt to open /etc/redhat-release
-    expect_string(__wrap_wfopen, __filename, "/etc/redhat-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/redhat-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Open /etc/arch-release
-    expect_string(__wrap_wfopen, __filename, "/etc/arch-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/arch-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 1);
 
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, NULL);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     ret = get_unix_version();
@@ -194,8 +194,8 @@ void test_get_unix_version_archlinux_no_version_id(void **state)
     os_info *ret;
 
     // Open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 1);
 
     expect_value(__wrap_fgets, __stream, 1);
@@ -205,7 +205,7 @@ void test_get_unix_version_archlinux_no_version_id(void **state)
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, NULL);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     ret = get_unix_version();
@@ -224,8 +224,8 @@ void test_get_unix_version_archlinux(void **state)
     os_info *ret;
 
     // Open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 1);
 
     expect_value(__wrap_fgets, __stream, 1);
@@ -237,7 +237,7 @@ void test_get_unix_version_archlinux(void **state)
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, NULL);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     ret = get_unix_version();
@@ -256,8 +256,8 @@ void test_get_unix_version_opensuse_tumbleweed_no_version_id(void **state)
     os_info *ret;
 
     // Open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 1);
 
     expect_value(__wrap_fgets, __stream, 1);
@@ -267,7 +267,7 @@ void test_get_unix_version_opensuse_tumbleweed_no_version_id(void **state)
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, NULL);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     ret = get_unix_version();
@@ -286,8 +286,8 @@ void test_get_unix_version_opensuse_tumbleweed(void **state)
     os_info *ret;
 
     // Open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 1);
 
     expect_value(__wrap_fgets, __stream, 1);
@@ -299,7 +299,7 @@ void test_get_unix_version_opensuse_tumbleweed(void **state)
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, NULL);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     ret = get_unix_version();
@@ -318,8 +318,8 @@ void test_get_unix_version_alpine(void **state)
     os_info *ret;
 
     // Open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 1);
 
     expect_value(__wrap_fgets, __stream, 1);
@@ -337,7 +337,7 @@ void test_get_unix_version_alpine(void **state)
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, NULL);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     ret = get_unix_version();
@@ -359,24 +359,24 @@ void test_get_unix_version_fail_os_release_centos(void **state)
     os_info *ret;
 
     // Fail to open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /usr/lib/os-release
-    expect_string(__wrap_wfopen, __filename, "/usr/lib/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/usr/lib/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Open /etc/centos-release
-    expect_string(__wrap_wfopen, __filename, "/etc/centos-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/centos-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 1);
 
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "CentOS Linux release 6.2.1604 (Core)");
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     ret = get_unix_version();
@@ -397,29 +397,29 @@ void test_get_unix_version_fail_os_release_fedora(void **state)
     os_info *ret;
 
     // Fail to open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /usr/lib/os-release
-    expect_string(__wrap_wfopen, __filename, "/usr/lib/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/usr/lib/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/centos-release
-    expect_string(__wrap_wfopen, __filename, "/etc/centos-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/centos-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Open /etc/fedora-release
-    expect_string(__wrap_wfopen, __filename, "/etc/fedora-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/fedora-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 1);
 
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "Fedora release 7 (Moonshine)");
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     ret = get_unix_version();
@@ -439,34 +439,34 @@ void test_get_unix_version_fail_os_release_redhat_centos(void **state)
     os_info *ret;
 
     // Fail to open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /usr/lib/os-release
-    expect_string(__wrap_wfopen, __filename, "/usr/lib/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/usr/lib/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/centos-release
-    expect_string(__wrap_wfopen, __filename, "/etc/centos-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/centos-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/fedora-release
-    expect_string(__wrap_wfopen, __filename, "/etc/fedora-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/fedora-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Open /etc/redhat-release
-    expect_string(__wrap_wfopen, __filename, "/etc/redhat-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/redhat-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 1);
 
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "CentOS Linux Server release 7.2 (Maipo)");
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     ret = get_unix_version();
@@ -487,34 +487,34 @@ void test_get_unix_version_fail_os_release_redhat_fedora(void **state)
     os_info *ret;
 
     // Fail to open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /usr/lib/os-release
-    expect_string(__wrap_wfopen, __filename, "/usr/lib/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/usr/lib/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/centos-release
-    expect_string(__wrap_wfopen, __filename, "/etc/centos-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/centos-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/fedora-release
-    expect_string(__wrap_wfopen, __filename, "/etc/fedora-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/fedora-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Open /etc/redhat-release
-    expect_string(__wrap_wfopen, __filename, "/etc/redhat-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/redhat-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 1);
 
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "Fedora Linux Server release 7.2 (Maipo)");
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     ret = get_unix_version();
@@ -535,34 +535,34 @@ void test_get_unix_version_fail_os_release_redhat_rhel(void **state)
     os_info *ret;
 
     // Fail to open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /usr/lib/os-release
-    expect_string(__wrap_wfopen, __filename, "/usr/lib/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/usr/lib/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/centos-release
-    expect_string(__wrap_wfopen, __filename, "/etc/centos-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/centos-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/fedora-release
-    expect_string(__wrap_wfopen, __filename, "/etc/fedora-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/fedora-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Open /etc/redhat-release
-    expect_string(__wrap_wfopen, __filename, "/etc/redhat-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/redhat-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 1);
 
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "Red Hat Enterprise Linux release 7.2 (Maipo)");
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     ret = get_unix_version();
@@ -583,34 +583,34 @@ void test_get_unix_version_fail_os_release_redhat_rhel_server(void **state)
     os_info *ret;
 
     // Fail to open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /usr/lib/os-release
-    expect_string(__wrap_wfopen, __filename, "/usr/lib/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/usr/lib/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/centos-release
-    expect_string(__wrap_wfopen, __filename, "/etc/centos-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/centos-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/fedora-release
-    expect_string(__wrap_wfopen, __filename, "/etc/fedora-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/fedora-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Open /etc/redhat-release
-    expect_string(__wrap_wfopen, __filename, "/etc/redhat-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/redhat-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 1);
 
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "Red Hat Enterprise Linux Server release 7.2 (Maipo)");
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     ret = get_unix_version();
@@ -631,44 +631,44 @@ void test_get_unix_version_fail_os_release_ubuntu(void **state)
     os_info *ret;
 
     // Fail to open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /usr/lib/os-release
-    expect_string(__wrap_wfopen, __filename, "/usr/lib/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/usr/lib/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/centos-release
-    expect_string(__wrap_wfopen, __filename, "/etc/centos-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/centos-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/fedora-release
-    expect_string(__wrap_wfopen, __filename, "/etc/fedora-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/fedora-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/redhat-release
-    expect_string(__wrap_wfopen, __filename, "/etc/redhat-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/redhat-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/arch-release
-    expect_string(__wrap_wfopen, __filename, "/etc/arch-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/arch-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Open /etc/lsb-release
-    expect_string(__wrap_wfopen, __filename, "/etc/lsb-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/lsb-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 1);
 
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "DISTRIB_RELEASE=20.04");
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     ret = get_unix_version();
@@ -689,49 +689,49 @@ void test_get_unix_version_fail_os_release_gentoo(void **state)
     os_info *ret;
 
     // Fail to open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /usr/lib/os-release
-    expect_string(__wrap_wfopen, __filename, "/usr/lib/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/usr/lib/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/centos-release
-    expect_string(__wrap_wfopen, __filename, "/etc/centos-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/centos-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/fedora-release
-    expect_string(__wrap_wfopen, __filename, "/etc/fedora-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/fedora-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/redhat-release
-    expect_string(__wrap_wfopen, __filename, "/etc/redhat-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/redhat-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/arch-release
-    expect_string(__wrap_wfopen, __filename, "/etc/arch-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/arch-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/lsb-release
-    expect_string(__wrap_wfopen, __filename, "/etc/lsb-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/lsb-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Open /etc/gentoo-release
-    expect_string(__wrap_wfopen, __filename, "/etc/gentoo-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/gentoo-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 1);
 
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "Gentoo Base System version 1.6.12");
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     ret = get_unix_version();
@@ -752,54 +752,54 @@ void test_get_unix_version_fail_os_release_suse(void **state)
     os_info *ret;
 
     // Fail to open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /usr/lib/os-release
-    expect_string(__wrap_wfopen, __filename, "/usr/lib/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/usr/lib/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/centos-release
-    expect_string(__wrap_wfopen, __filename, "/etc/centos-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/centos-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/fedora-release
-    expect_string(__wrap_wfopen, __filename, "/etc/fedora-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/fedora-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/redhat-release
-    expect_string(__wrap_wfopen, __filename, "/etc/redhat-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/redhat-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/arch-release
-    expect_string(__wrap_wfopen, __filename, "/etc/arch-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/arch-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/lsb-release
-    expect_string(__wrap_wfopen, __filename, "/etc/lsb-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/lsb-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/gentoo-release
-    expect_string(__wrap_wfopen, __filename, "/etc/gentoo-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/gentoo-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Open /etc/SuSE-release
-    expect_string(__wrap_wfopen, __filename, "/etc/SuSE-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/SuSE-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 1);
 
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "VERSION = 3.5");
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     ret = get_unix_version();
@@ -819,39 +819,39 @@ void test_get_unix_version_fail_os_release_arch(void **state)
     os_info *ret;
 
     // Fail to open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /usr/lib/os-release
-    expect_string(__wrap_wfopen, __filename, "/usr/lib/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/usr/lib/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/centos-release
-    expect_string(__wrap_wfopen, __filename, "/etc/centos-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/centos-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/fedora-release
-    expect_string(__wrap_wfopen, __filename, "/etc/fedora-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/fedora-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/redhat-release
-    expect_string(__wrap_wfopen, __filename, "/etc/redhat-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/redhat-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Open /etc/arch-release
-    expect_string(__wrap_wfopen, __filename, "/etc/arch-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/arch-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 1);
 
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "3.5.14");
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     ret = get_unix_version();
@@ -872,59 +872,59 @@ void test_get_unix_version_fail_os_release_debian(void **state)
     os_info *ret;
 
     // Fail to open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /usr/lib/os-release
-    expect_string(__wrap_wfopen, __filename, "/usr/lib/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/usr/lib/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/centos-release
-    expect_string(__wrap_wfopen, __filename, "/etc/centos-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/centos-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/fedora-release
-    expect_string(__wrap_wfopen, __filename, "/etc/fedora-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/fedora-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/redhat-release
-    expect_string(__wrap_wfopen, __filename, "/etc/redhat-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/redhat-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/arch-release
-    expect_string(__wrap_wfopen, __filename, "/etc/arch-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/arch-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/lsb-release
-    expect_string(__wrap_wfopen, __filename, "/etc/lsb-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/lsb-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/gentoo-release
-    expect_string(__wrap_wfopen, __filename, "/etc/gentoo-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/gentoo-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/SuSE-release
-    expect_string(__wrap_wfopen, __filename, "/etc/SuSE-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/SuSE-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Open /etc/debian_version
-    expect_string(__wrap_wfopen, __filename, "/etc/debian_version");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/debian_version");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 1);
 
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "3.5.14");
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     ret = get_unix_version();
@@ -945,64 +945,64 @@ void test_get_unix_version_fail_os_release_slackware(void **state)
     os_info *ret;
 
     // Fail to open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /usr/lib/os-release
-    expect_string(__wrap_wfopen, __filename, "/usr/lib/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/usr/lib/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/centos-release
-    expect_string(__wrap_wfopen, __filename, "/etc/centos-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/centos-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/fedora-release
-    expect_string(__wrap_wfopen, __filename, "/etc/fedora-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/fedora-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/redhat-release
-    expect_string(__wrap_wfopen, __filename, "/etc/redhat-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/redhat-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/arch-release
-    expect_string(__wrap_wfopen, __filename, "/etc/arch-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/arch-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/lsb-release
-    expect_string(__wrap_wfopen, __filename, "/etc/lsb-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/lsb-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/gentoo-release
-    expect_string(__wrap_wfopen, __filename, "/etc/gentoo-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/gentoo-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/SuSE-release
-    expect_string(__wrap_wfopen, __filename, "/etc/SuSE-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/SuSE-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/debian_version
-    expect_string(__wrap_wfopen, __filename, "/etc/debian_version");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/debian_version");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Open /etc/slackware-version
-    expect_string(__wrap_wfopen, __filename, "/etc/slackware-version");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/slackware-version");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 1);
 
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "Slackware 14.2");
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     ret = get_unix_version();
@@ -1023,69 +1023,69 @@ void test_get_unix_version_fail_os_release_alpine(void **state)
     os_info *ret;
 
     // Fail to open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /usr/lib/os-release
-    expect_string(__wrap_wfopen, __filename, "/usr/lib/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/usr/lib/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/centos-release
-    expect_string(__wrap_wfopen, __filename, "/etc/centos-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/centos-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/fedora-release
-    expect_string(__wrap_wfopen, __filename, "/etc/fedora-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/fedora-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/redhat-release
-    expect_string(__wrap_wfopen, __filename, "/etc/redhat-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/redhat-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/arch-release
-    expect_string(__wrap_wfopen, __filename, "/etc/arch-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/arch-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/lsb-release
-    expect_string(__wrap_wfopen, __filename, "/etc/lsb-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/lsb-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/gentoo-release
-    expect_string(__wrap_wfopen, __filename, "/etc/gentoo-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/gentoo-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/SuSE-release
-    expect_string(__wrap_wfopen, __filename, "/etc/SuSE-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/SuSE-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/debian_version
-    expect_string(__wrap_wfopen, __filename, "/etc/debian_version");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/debian_version");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/slackware-version
-    expect_string(__wrap_wfopen, __filename, "/etc/slackware-version");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/slackware-version");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Open /etc/alpine-release
-    expect_string(__wrap_wfopen, __filename, "/etc/alpine-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/alpine-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 1);
 
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "3.17.1");
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     ret = get_unix_version();
@@ -1107,63 +1107,63 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
     os_info *ret;
 
     // Fail to open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /usr/lib/os-release
-    expect_string(__wrap_wfopen, __filename, "/usr/lib/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/usr/lib/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/centos-release
-    expect_string(__wrap_wfopen, __filename, "/etc/centos-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/centos-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/fedora-release
-    expect_string(__wrap_wfopen, __filename, "/etc/fedora-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/fedora-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/redhat-release
-    expect_string(__wrap_wfopen, __filename, "/etc/redhat-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/redhat-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/arch-release
-    expect_string(__wrap_wfopen, __filename, "/etc/arch-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/arch-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/lsb-release
-    expect_string(__wrap_wfopen, __filename, "/etc/lsb-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/lsb-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/gentoo-release
-    expect_string(__wrap_wfopen, __filename, "/etc/gentoo-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/gentoo-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/SuSE-release
-    expect_string(__wrap_wfopen, __filename, "/etc/SuSE-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/SuSE-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/debian_version
-    expect_string(__wrap_wfopen, __filename, "/etc/debian_version");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/debian_version");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/slackware-version
-    expect_string(__wrap_wfopen, __filename, "/etc/slackware-version");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/slackware-version");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/alpine-release
-    expect_string(__wrap_wfopen, __filename, "/etc/alpine-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/alpine-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // uname
@@ -1270,63 +1270,63 @@ void test_get_unix_version_fail_os_release_uname_darwin_no_key(void **state)
     os_info *ret;
 
     // Fail to open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /usr/lib/os-release
-    expect_string(__wrap_wfopen, __filename, "/usr/lib/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/usr/lib/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/centos-release
-    expect_string(__wrap_wfopen, __filename, "/etc/centos-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/centos-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/fedora-release
-    expect_string(__wrap_wfopen, __filename, "/etc/fedora-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/fedora-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/redhat-release
-    expect_string(__wrap_wfopen, __filename, "/etc/redhat-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/redhat-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/arch-release
-    expect_string(__wrap_wfopen, __filename, "/etc/arch-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/arch-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/lsb-release
-    expect_string(__wrap_wfopen, __filename, "/etc/lsb-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/lsb-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/gentoo-release
-    expect_string(__wrap_wfopen, __filename, "/etc/gentoo-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/gentoo-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/SuSE-release
-    expect_string(__wrap_wfopen, __filename, "/etc/SuSE-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/SuSE-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/debian_version
-    expect_string(__wrap_wfopen, __filename, "/etc/debian_version");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/debian_version");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/slackware-version
-    expect_string(__wrap_wfopen, __filename, "/etc/slackware-version");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/slackware-version");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/alpine-release
-    expect_string(__wrap_wfopen, __filename, "/etc/alpine-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/alpine-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // uname
@@ -1427,63 +1427,63 @@ void test_get_unix_version_fail_os_release_uname_sunos(void **state)
     os_info *ret;
 
     // Fail to open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /usr/lib/os-release
-    expect_string(__wrap_wfopen, __filename, "/usr/lib/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/usr/lib/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/centos-release
-    expect_string(__wrap_wfopen, __filename, "/etc/centos-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/centos-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/fedora-release
-    expect_string(__wrap_wfopen, __filename, "/etc/fedora-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/fedora-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/redhat-release
-    expect_string(__wrap_wfopen, __filename, "/etc/redhat-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/redhat-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/arch-release
-    expect_string(__wrap_wfopen, __filename, "/etc/arch-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/arch-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/lsb-release
-    expect_string(__wrap_wfopen, __filename, "/etc/lsb-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/lsb-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/gentoo-release
-    expect_string(__wrap_wfopen, __filename, "/etc/gentoo-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/gentoo-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/SuSE-release
-    expect_string(__wrap_wfopen, __filename, "/etc/SuSE-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/SuSE-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/debian_version
-    expect_string(__wrap_wfopen, __filename, "/etc/debian_version");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/debian_version");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/slackware-version
-    expect_string(__wrap_wfopen, __filename, "/etc/slackware-version");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/slackware-version");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/alpine-release
-    expect_string(__wrap_wfopen, __filename, "/etc/alpine-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/alpine-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // uname
@@ -1501,14 +1501,14 @@ void test_get_unix_version_fail_os_release_uname_sunos(void **state)
     will_return(__wrap_fgets, "SunOS\n");
 
     // Open /etc/release
-    expect_string(__wrap_wfopen, __filename, "/etc/release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 1);
 
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "Oracle Solaris 11.1 SPARC");
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
 
@@ -1534,63 +1534,63 @@ void test_get_unix_version_fail_os_release_uname_sunos_10_scenario_one(void **st
     os_info *ret;
 
     // Fail to open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /usr/lib/os-release
-    expect_string(__wrap_wfopen, __filename, "/usr/lib/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/usr/lib/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/centos-release
-    expect_string(__wrap_wfopen, __filename, "/etc/centos-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/centos-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/fedora-release
-    expect_string(__wrap_wfopen, __filename, "/etc/fedora-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/fedora-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/redhat-release
-    expect_string(__wrap_wfopen, __filename, "/etc/redhat-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/redhat-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/arch-release
-    expect_string(__wrap_wfopen, __filename, "/etc/arch-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/arch-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/lsb-release
-    expect_string(__wrap_wfopen, __filename, "/etc/lsb-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/lsb-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/gentoo-release
-    expect_string(__wrap_wfopen, __filename, "/etc/gentoo-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/gentoo-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/SuSE-release
-    expect_string(__wrap_wfopen, __filename, "/etc/SuSE-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/SuSE-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/debian_version
-    expect_string(__wrap_wfopen, __filename, "/etc/debian_version");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/debian_version");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/slackware-version
-    expect_string(__wrap_wfopen, __filename, "/etc/slackware-version");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/slackware-version");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/alpine-release
-    expect_string(__wrap_wfopen, __filename, "/etc/alpine-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/alpine-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // uname
@@ -1608,15 +1608,15 @@ void test_get_unix_version_fail_os_release_uname_sunos_10_scenario_one(void **st
     will_return(__wrap_fgets, "SunOS\n");
 
     // Open /etc/release
-    expect_string(__wrap_wfopen, __filename, "/etc/release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 1);
 
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "Solaris 10 1/13");
 
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
 
@@ -1641,63 +1641,63 @@ void test_get_unix_version_fail_os_release_uname_sunos_10_scenario_two(void **st
     os_info *ret;
 
     // Fail to open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /usr/lib/os-release
-    expect_string(__wrap_wfopen, __filename, "/usr/lib/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/usr/lib/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/centos-release
-    expect_string(__wrap_wfopen, __filename, "/etc/centos-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/centos-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/fedora-release
-    expect_string(__wrap_wfopen, __filename, "/etc/fedora-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/fedora-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/redhat-release
-    expect_string(__wrap_wfopen, __filename, "/etc/redhat-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/redhat-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/arch-release
-    expect_string(__wrap_wfopen, __filename, "/etc/arch-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/arch-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/lsb-release
-    expect_string(__wrap_wfopen, __filename, "/etc/lsb-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/lsb-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/gentoo-release
-    expect_string(__wrap_wfopen, __filename, "/etc/gentoo-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/gentoo-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/SuSE-release
-    expect_string(__wrap_wfopen, __filename, "/etc/SuSE-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/SuSE-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/debian_version
-    expect_string(__wrap_wfopen, __filename, "/etc/debian_version");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/debian_version");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/slackware-version
-    expect_string(__wrap_wfopen, __filename, "/etc/slackware-version");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/slackware-version");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/alpine-release
-    expect_string(__wrap_wfopen, __filename, "/etc/alpine-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/alpine-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // uname
@@ -1715,14 +1715,14 @@ void test_get_unix_version_fail_os_release_uname_sunos_10_scenario_two(void **st
     will_return(__wrap_fgets, "SunOS\n");
 
     // Open /etc/release
-    expect_string(__wrap_wfopen, __filename, "/etc/release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 1);
 
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "Oracle Solaris 10 1/13");
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
 
@@ -1746,63 +1746,63 @@ void test_get_unix_version_fail_os_release_uname_hp_ux(void **state)
     os_info *ret;
 
     // Fail to open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /usr/lib/os-release
-    expect_string(__wrap_wfopen, __filename, "/usr/lib/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/usr/lib/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/centos-release
-    expect_string(__wrap_wfopen, __filename, "/etc/centos-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/centos-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/fedora-release
-    expect_string(__wrap_wfopen, __filename, "/etc/fedora-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/fedora-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/redhat-release
-    expect_string(__wrap_wfopen, __filename, "/etc/redhat-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/redhat-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/arch-release
-    expect_string(__wrap_wfopen, __filename, "/etc/arch-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/arch-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/lsb-release
-    expect_string(__wrap_wfopen, __filename, "/etc/lsb-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/lsb-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/gentoo-release
-    expect_string(__wrap_wfopen, __filename, "/etc/gentoo-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/gentoo-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/SuSE-release
-    expect_string(__wrap_wfopen, __filename, "/etc/SuSE-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/SuSE-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/debian_version
-    expect_string(__wrap_wfopen, __filename, "/etc/debian_version");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/debian_version");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/slackware-version
-    expect_string(__wrap_wfopen, __filename, "/etc/slackware-version");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/slackware-version");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/alpine-release
-    expect_string(__wrap_wfopen, __filename, "/etc/alpine-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/alpine-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // uname
@@ -1852,63 +1852,63 @@ void test_get_unix_version_fail_os_release_uname_bsd(void **state)
     os_info *ret;
 
     // Fail to open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /usr/lib/os-release
-    expect_string(__wrap_wfopen, __filename, "/usr/lib/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/usr/lib/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/centos-release
-    expect_string(__wrap_wfopen, __filename, "/etc/centos-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/centos-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/fedora-release
-    expect_string(__wrap_wfopen, __filename, "/etc/fedora-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/fedora-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/redhat-release
-    expect_string(__wrap_wfopen, __filename, "/etc/redhat-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/redhat-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/arch-release
-    expect_string(__wrap_wfopen, __filename, "/etc/arch-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/arch-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/lsb-release
-    expect_string(__wrap_wfopen, __filename, "/etc/lsb-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/lsb-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/gentoo-release
-    expect_string(__wrap_wfopen, __filename, "/etc/gentoo-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/gentoo-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/SuSE-release
-    expect_string(__wrap_wfopen, __filename, "/etc/SuSE-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/SuSE-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/debian_version
-    expect_string(__wrap_wfopen, __filename, "/etc/debian_version");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/debian_version");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/slackware-version
-    expect_string(__wrap_wfopen, __filename, "/etc/slackware-version");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/slackware-version");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/alpine-release
-    expect_string(__wrap_wfopen, __filename, "/etc/alpine-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/alpine-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // uname
@@ -1958,63 +1958,63 @@ void test_get_unix_version_zscaler(void **state)
     os_info *ret;
 
     // Fail to open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /usr/lib/os-release
-    expect_string(__wrap_wfopen, __filename, "/usr/lib/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/usr/lib/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/centos-release
-    expect_string(__wrap_wfopen, __filename, "/etc/centos-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/centos-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/fedora-release
-    expect_string(__wrap_wfopen, __filename, "/etc/fedora-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/fedora-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/redhat-release
-    expect_string(__wrap_wfopen, __filename, "/etc/redhat-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/redhat-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/arch-release
-    expect_string(__wrap_wfopen, __filename, "/etc/arch-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/arch-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/lsb-release
-    expect_string(__wrap_wfopen, __filename, "/etc/lsb-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/lsb-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/gentoo-release
-    expect_string(__wrap_wfopen, __filename, "/etc/gentoo-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/gentoo-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/SuSE-release
-    expect_string(__wrap_wfopen, __filename, "/etc/SuSE-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/SuSE-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/debian_version
-    expect_string(__wrap_wfopen, __filename, "/etc/debian_version");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/debian_version");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/slackware-version
-    expect_string(__wrap_wfopen, __filename, "/etc/slackware-version");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/slackware-version");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/alpine-release
-    expect_string(__wrap_wfopen, __filename, "/etc/alpine-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/alpine-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // uname
@@ -2061,63 +2061,63 @@ void test_get_unix_version_fail_os_release_uname_aix(void **state)
     os_info *ret;
 
     // Fail to open /etc/os-release
-    expect_string(__wrap_wfopen, __filename, "/etc/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /usr/lib/os-release
-    expect_string(__wrap_wfopen, __filename, "/usr/lib/os-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/usr/lib/os-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/centos-release
-    expect_string(__wrap_wfopen, __filename, "/etc/centos-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/centos-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/fedora-release
-    expect_string(__wrap_wfopen, __filename, "/etc/fedora-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/fedora-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/redhat-release
-    expect_string(__wrap_wfopen, __filename, "/etc/redhat-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/redhat-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/arch-release
-    expect_string(__wrap_wfopen, __filename, "/etc/arch-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/arch-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/lsb-release
-    expect_string(__wrap_wfopen, __filename, "/etc/lsb-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/lsb-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/gentoo-release
-    expect_string(__wrap_wfopen, __filename, "/etc/gentoo-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/gentoo-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/SuSE-release
-    expect_string(__wrap_wfopen, __filename, "/etc/SuSE-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/SuSE-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/debian_version
-    expect_string(__wrap_wfopen, __filename, "/etc/debian_version");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/debian_version");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/slackware-version
-    expect_string(__wrap_wfopen, __filename, "/etc/slackware-version");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/slackware-version");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // Fail to open /etc/alpine-release
-    expect_string(__wrap_wfopen, __filename, "/etc/alpine-release");
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, "/etc/alpine-release");
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 0);
 
     // uname

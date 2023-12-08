@@ -46,8 +46,8 @@ int __wrap_w_compress_gzfile(const char *filesrc, const char *filedst);
 int __wrap_w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst);
 void expect_w_uncompress_gzfile(const char * gzfilesrc, const char * gzfiledst, FILE *ret);
 
-FILE *__wrap_wfopen(const char * __filename, const char * __modes);
-void expect_wfopen(const char * __filename, const char * __modes, FILE *ret);
+FILE *__wrap_wfopen(const char * filename, const char * modes);
+void expect_wfopen(const char * filename, const char * modes, FILE *ret);
 
 char ** __wrap_wreaddir(const char * name);
 

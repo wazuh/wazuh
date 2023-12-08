@@ -20,16 +20,15 @@ endif()
 
 list(APPEND shared_tests_names "test_file_op")
 if(NOT ${TARGET} STREQUAL "winagent")
-    set(FILE_OP_BASE_FLAGS "-Wl,--wrap,stat,--wrap,chmod,--wrap,getpid \
-                            -Wl,--wrap,wfopen,--wrap,fopen \
-                            -Wl,--wrap,unlink,--wrap,fflush,--wrap,fclose \
-                            -Wl,--wrap,fread,--wrap,ftell,--wrap,fseek,--wrap,fwrite,--wrap,remove \
-                            -Wl,--wrap,fprintf,--wrap,fgets,--wrap,File_DateofChange \
-                            -Wl,--wrap,bzip2_uncompress,--wrap,lstat,--wrap,popen \
-                            -Wl,--wrap,gzopen,--wrap,gzread,--wrap,gzclose,--wrap,fgetc \
-                            -Wl,--wrap,gzeof,--wrap,gzerror,--wrap,gzwrite,--wrap,fgetpos \
-                            -Wl,--wrap,realpath,--wrap,getenv,--wrap,atexit ${DEBUG_OP_WRAPPERS} \
-                            -Wl,--wrap,merror,--wrap,fseek")
+    set(FILE_OP_BASE_FLAGS "-Wl,--wrap,stat -Wl,--wrap,chmod -Wl,--wrap,getpid -Wl,--wrap,wfopen \
+                            -Wl,--wrap,unlink -Wl,--wrap,fflush -Wl,--wrap,fclose -Wl,--wrap,fopen \
+                            -Wl,--wrap,fread -Wl,--wrap,ftell -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove \
+                            -Wl,--wrap,fprintf -Wl,--wrap,fgets -Wl,--wrap,File_DateofChange \
+                            -Wl,--wrap,bzip2_uncompress -Wl,--wrap,lstat -Wl,--wrap,popen \
+                            -Wl,--wrap,gzopen -Wl,--wrap,gzread -Wl,--wrap,gzclose -Wl,--wrap,fgetc \
+                            -Wl,--wrap,gzeof -Wl,--wrap,gzerror -Wl,--wrap,gzwrite -Wl,--wrap,fgetpos \
+                            -Wl,--wrap,realpath -Wl,--wrap,getenv -Wl,--wrap,atexit ${DEBUG_OP_WRAPPERS} \
+                            -Wl,--wrap,merror -Wl,--wrap,fseek")
     list(APPEND shared_tests_flags "${FILE_OP_BASE_FLAGS}")
 else()
     list(APPEND shared_tests_flags "-Wl,--wrap,get_windows_file_time_epoch,--wrap,mdebug2 --wrap,wfopen, --wrap,fopen\
@@ -134,7 +133,9 @@ set(ENROLLMENT_OP_BASE_FLAGS  "-Wl,--wrap=OS_IsValidIP,--wrap=_merror,--wrap=_mw
                               -Wl,--wrap=SSL_new,--wrap=SSL_connect,--wrap=SSL_get_error,--wrap=SSL_set_bio \
                               -Wl,--wrap=SSL_write,--wrap=wfopen,--wrap=fclose,--wrap=SSL_read \
                               -Wl,--wrap=BIO_new_socket,--wrap=_merror_exit,--wrap=TempFile,--wrap=OS_MoveFile \
-                              -Wl,--wrap=fgets -Wl,--wrap,OS_CloseSocket")
+                              -Wl,--wrap=fgetpos -Wl,--wrap=fopen -Wl,--wrap=fread -Wl,--wrap=fseek -Wl,--wrap=fwrite \
+                              -Wl,--wrap=remove -Wl,--wrap=fgetc -Wl,--wrap=popen \
+                              -Wl,--wrap=fgets -Wl,--wrap=fflush -Wl,--wrap,OS_CloseSocket")
 
 if(${TARGET} STREQUAL "winagent")
     list(APPEND shared_tests_flags "${ENROLLMENT_OP_BASE_FLAGS} -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
