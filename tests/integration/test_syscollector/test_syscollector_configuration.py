@@ -45,12 +45,12 @@ import sys
 from pathlib import Path
 
 import pytest
-from wazuh_testing.constants.daemons import ANALYSISD_DAEMON, WAZUH_DB_DAEMON, MODULES_DAEMON, WAZUH_MANAGER
+from wazuh_testing.constants.daemons import ANALYSISD_DAEMON, WAZUH_DB_DAEMON, MODULES_DAEMON, WAZUH_MANAGER, AGENT_DAEMON
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.utils import services
 from wazuh_testing.tools.monitors import file_monitor
-from wazuh_testing.utils import callbacks, configuration, file
+from wazuh_testing.utils import callbacks, configuration
 from wazuh_testing.modules.syscollector import patterns
 from wazuh_testing.modules.modulesd.configuration import MODULESD_DEBUG
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
@@ -69,7 +69,7 @@ elif sys.platform == WINDOWS:
     daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
     local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}
 else:
-    daemons_handler_configuration = {'daemons': [MODULES_DAEMON], 'ignore_errors': True}
+    daemons_handler_configuration = {'daemons': [AGENT_DAEMON, MODULES_DAEMON], 'ignore_errors': True}
 
 # T1 Parameters: Check that Syscollector is disabled.
 t1_3_5_config_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_syscollector.yaml')
