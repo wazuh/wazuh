@@ -116,7 +116,7 @@ static int teardown_log_context(void **state) {
     }
     test_logcollector_t * test_struct = *state;
 
-    expect_any(__wrap_fclose, _File);
+    expect_any(__wrap_fclose, __stream);
     will_return_always(__wrap_fclose, 0);
     Free_Logreader(test_struct->log_reader);
 
@@ -366,7 +366,7 @@ void test_w_set_to_pos_fseek_error(void ** state) {
 
     expect_string(__wrap__merror, formatted_msg, "(1116): Could not set position in file 'test' due to [(0)-(Success)].");
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     int retval = w_set_to_pos(lf, pos, mode);
@@ -771,8 +771,8 @@ void test_w_save_file_status_wfopen_error(void ** state) {
 
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_wfopen, __filename, "queue/logcollector/file_status.json");
-    expect_string(__wrap_wfopen, __modes, "w");
+    expect_string(__wrap_wfopen, filename, "queue/logcollector/file_status.json");
+    expect_string(__wrap_wfopen, modes, "w");
     will_return(__wrap_wfopen, 0);
 
     expect_string(__wrap__merror_exit, formatted_msg, "(1103): Could not open file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
@@ -838,8 +838,8 @@ void test_w_save_file_status_fwrite_error(void ** state) {
 
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_wfopen, __filename, "queue/logcollector/file_status.json");
-    expect_string(__wrap_wfopen, __modes, "w");
+    expect_string(__wrap_wfopen, filename, "queue/logcollector/file_status.json");
+    expect_string(__wrap_wfopen, modes, "w");
     will_return(__wrap_wfopen, "test");
 
     will_return(__wrap_fwrite, 0);
@@ -849,7 +849,7 @@ void test_w_save_file_status_fwrite_error(void ** state) {
     expect_function_call(__wrap_clearerr);
     expect_string(__wrap_clearerr, __stream, "test");
 
-    expect_value(__wrap_fclose, _File, "test");
+    expect_value(__wrap_fclose, __stream, "test");
     will_return(__wrap_fclose, 1);
 
     w_save_file_status();
@@ -913,13 +913,13 @@ void test_w_save_file_status_OK(void ** state) {
 
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_wfopen, __filename, "queue/logcollector/file_status.json");
-    expect_string(__wrap_wfopen, __modes, "w");
+    expect_string(__wrap_wfopen, filename, "queue/logcollector/file_status.json");
+    expect_string(__wrap_wfopen, modes, "w");
     will_return(__wrap_wfopen, "test");
 
     will_return(__wrap_fwrite, 1);
 
-    expect_value(__wrap_fclose, _File, "test");
+    expect_value(__wrap_fclose, __stream, "test");
     will_return(__wrap_fclose, 1);
 
     w_save_file_status();
@@ -1619,8 +1619,8 @@ void test_w_initialize_file_status_fopen_fail(void ** state) {
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
 
-    expect_string(__wrap_wfopen, __filename, LOCALFILE_STATUS);
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, LOCALFILE_STATUS);
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
@@ -1637,8 +1637,8 @@ void test_w_initialize_file_status_fread_fail(void ** state) {
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
 
-    expect_string(__wrap_wfopen, __filename, LOCALFILE_STATUS);
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, LOCALFILE_STATUS);
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, "test");
 
     will_return(__wrap_fread, "test");
@@ -1649,7 +1649,7 @@ void test_w_initialize_file_status_fread_fail(void ** state) {
     expect_function_call(__wrap_clearerr);
     expect_string(__wrap_clearerr, __stream, "test");
 
-    expect_value(__wrap_fclose, _File, "test");
+    expect_value(__wrap_fclose, __stream, "test");
     will_return(__wrap_fclose, 1);
 
     w_initialize_file_status();
@@ -1672,8 +1672,8 @@ void test_w_initialize_file_status_OK(void ** state) {
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
 
-    expect_string(__wrap_wfopen, __filename, LOCALFILE_STATUS);
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, LOCALFILE_STATUS);
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, "test");
 
     will_return(__wrap_fread, "test");
@@ -1726,7 +1726,7 @@ void test_w_initialize_file_status_OK(void ** state) {
 
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_value(__wrap_fclose, _File, "test");
+    expect_value(__wrap_fclose, __stream, "test");
     will_return(__wrap_fclose, 1);
 
     w_initialize_file_status();
@@ -1965,7 +1965,7 @@ void test_w_set_to_last_line_read_diferent_file(void ** state) {
 
     expect_string(__wrap__merror, formatted_msg, "(1116): Could not set position in file 'test' due to [(0)-(Success)].");
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     int ret = w_set_to_last_line_read(&log_reader);
@@ -2004,7 +2004,7 @@ void test_w_set_to_last_line_read_same_file(void ** state) {
 
     expect_string(__wrap__merror, formatted_msg, "(1116): Could not set position in file 'test' due to [(0)-(Success)].");
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     int ret = w_set_to_last_line_read(&log_reader);
@@ -2041,7 +2041,7 @@ void test_w_set_to_last_line_read_same_file_rotate(void ** state) {
 
     expect_string(__wrap__merror, formatted_msg, "(1116): Could not set position in file 'test' due to [(0)-(Success)].");
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     int ret = w_set_to_last_line_read(&log_reader);

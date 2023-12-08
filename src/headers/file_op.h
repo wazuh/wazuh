@@ -380,8 +380,8 @@ char ** wreaddir(const char * name);
  * @param mode Open mode.
  * @return File pointer.
  */
-FILE * wfopen(const char * pathname, const char * mode);
 
+FILE * wfopen(const char * pathname, const char * modes);
 
 /**
  * @brief Compress a file in GZIP.

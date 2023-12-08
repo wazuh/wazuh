@@ -6,7 +6,6 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
-
 #include "file_op_wrappers.h"
 #include <stddef.h>
 #include <stdarg.h>
@@ -14,6 +13,7 @@
 #include <cmocka.h>
 #include <string.h>
 #include <errno.h>
+
 
 int __wrap_abspath(const char *path, char *buffer, size_t size) {
     check_expected(path);
@@ -97,15 +97,15 @@ void expect_w_uncompress_gzfile(const char * gzfilesrc, const char * gzfiledst, 
     will_return(__wrap_w_uncompress_gzfile, ret);
 }
 
-FILE *__wrap_wfopen(const char * __filename, const char * __modes) {
-    check_expected(__filename);
-    check_expected(__modes);
+FILE *__wrap_wfopen(const char * filename, const char * modes) {
+    check_expected(filename);
+    check_expected(modes);
     return mock_type(FILE *);
 }
 
-void expect_wfopen(const char * __filename, const char * __modes, FILE *ret) {
-    expect_string(__wrap_wfopen, __filename, __filename);
-    expect_string(__wrap_wfopen, __modes, __modes);
+void expect_wfopen(const char * filename, const char * modes, FILE *ret) {
+    expect_string(__wrap_wfopen, filename, filename);
+    expect_string(__wrap_wfopen, modes, modes);
     will_return(__wrap_wfopen, ret);
 }
 
