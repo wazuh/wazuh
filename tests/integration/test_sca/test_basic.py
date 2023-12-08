@@ -78,6 +78,65 @@ t2_configurations = configuration.load_configuration_template(configurations_pat
 daemons_handler_configuration = {'all_daemons': True}
 
 
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(t2_configurations, t2_configuration_metadata), ids=t2_case_ids)
+def test_sca_disabled(test_configuration, test_metadata, prepare_cis_policies_file, truncate_monitored_files,
+                      set_wazuh_configuration, configure_local_internal_options, daemons_handler):
+    '''
+    description: Check SCA behavior when enabled tag is set no.
+
+    test_phases:
+        - Set a custom Wazuh configuration.
+        - Copy cis_sca ruleset file into agent.
+        - Restart wazuh.
+        - Check that sca module is disabled if enabled tag is set to 'no'
+
+    wazuh_min_version: 4.6.0
+
+    tier: 0
+
+    parameters:
+        - configuration:
+            type: dict
+            brief: Wazuh configuration data. Needed for set_wazuh_configuration fixture.
+        - metadata:
+            type: dict
+            brief: Wazuh configuration metadata.
+        - prepare_cis_policies_file:
+            type: fixture
+            brief: copy test sca policy file. Delete it after test.
+        - set_wazuh_configuration:
+            type: fixture
+            brief: Set the wazuh configuration according to the configuration data.
+        - configure_local_internal_options_function:
+            type: fixture
+            brief: Configure the local_internal_options_file.
+        - truncate_monitored_files:
+            type: fixture
+            brief: Truncate all the log files and json alerts files before and after the test execution.
+        - restart_modulesd_function:
+            type: fixture
+            brief: Restart the wazuh-modulesd daemon.
+        - wait_for_sca_enabled:
+            type: fixture
+            brief: Wait for the sca Module to start before starting the test.
+
+    assertions:
+        - Verify that when the `enabled` option is set to `no`, the SCA module does not start.
+
+    input_description:
+        - The `cases_sca_disabled.yaml` file provides the module configuration for this test.
+        - the cis*.yaml files located in the policies folder provide the sca rules to check.
+
+    expected_output:
+        - r".*sca.*INFO: (Module disabled). Exiting."
+    '''
+
+    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
+
+    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCA_DISABLED), timeout=10)
+    assert log_monitor.callback_result
+
+
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t1_configurations, t1_configuration_metadata), ids=t1_case_ids)
 def test_sca_enabled(test_configuration, test_metadata, prepare_cis_policies_file, truncate_monitored_files,
                      set_wazuh_configuration, configure_local_internal_options, daemons_handler):
@@ -143,63 +202,4 @@ def test_sca_enabled(test_configuration, test_metadata, prepare_cis_policies_fil
     log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCA_SCAN_STARTED), timeout=10)
     assert log_monitor.callback_result
     log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCA_SCAN_ENDED), timeout=10)
-    assert log_monitor.callback_result
-
-
-@pytest.mark.parametrize('test_configuration, test_metadata', zip(t2_configurations, t2_configuration_metadata), ids=t2_case_ids)
-def test_sca_disabled(test_configuration, test_metadata, prepare_cis_policies_file, truncate_monitored_files,
-                      set_wazuh_configuration, configure_local_internal_options, daemons_handler):
-    '''
-    description: Check SCA behavior when enabled tag is set no.
-
-    test_phases:
-        - Set a custom Wazuh configuration.
-        - Copy cis_sca ruleset file into agent.
-        - Restart wazuh.
-        - Check that sca module is disabled if enabled tag is set to 'no'
-
-    wazuh_min_version: 4.6.0
-
-    tier: 0
-
-    parameters:
-        - configuration:
-            type: dict
-            brief: Wazuh configuration data. Needed for set_wazuh_configuration fixture.
-        - metadata:
-            type: dict
-            brief: Wazuh configuration metadata.
-        - prepare_cis_policies_file:
-            type: fixture
-            brief: copy test sca policy file. Delete it after test.
-        - set_wazuh_configuration:
-            type: fixture
-            brief: Set the wazuh configuration according to the configuration data.
-        - configure_local_internal_options_function:
-            type: fixture
-            brief: Configure the local_internal_options_file.
-        - truncate_monitored_files:
-            type: fixture
-            brief: Truncate all the log files and json alerts files before and after the test execution.
-        - restart_modulesd_function:
-            type: fixture
-            brief: Restart the wazuh-modulesd daemon.
-        - wait_for_sca_enabled:
-            type: fixture
-            brief: Wait for the sca Module to start before starting the test.
-
-    assertions:
-        - Verify that when the `enabled` option is set to `no`, the SCA module does not start.
-
-    input_description:
-        - The `cases_sca_disabled.yaml` file provides the module configuration for this test.
-        - the cis*.yaml files located in the policies folder provide the sca rules to check.
-
-    expected_output:
-        - r".*sca.*INFO: (Module disabled). Exiting."
-    '''
-
-    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCA_DISABLED), timeout=10)
     assert log_monitor.callback_result
