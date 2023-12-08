@@ -45,8 +45,9 @@ import sys
 from pathlib import Path
 
 import pytest
-from wazuh_testing.constants.daemons import ANALYSISD_DAEMON, WAZUH_DB_DAEMON, MODULES_DAEMON
+from wazuh_testing.constants.daemons import ANALYSISD_DAEMON, WAZUH_DB_DAEMON, MODULES_DAEMON, WAZUH_MANAGER
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.utils import services
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils import callbacks, configuration, file
@@ -61,9 +62,9 @@ pytestmark = [pytest.mark.tier(level=0), pytest.mark.server, pytest.mark.agent,
 
 # Variables
 local_internal_options = {MODULESD_DEBUG: '2'}
-if services.get_service() == 'wazuh-manager':
+if services.get_service() == WAZUH_MANAGER:
     daemons_handler_configuration = {'daemons': [ANALYSISD_DAEMON, WAZUH_DB_DAEMON, MODULES_DAEMON], 'ignore_errors': True}
-elif sys.platform == 'win32':
+elif sys.platform == WINDOWS:
     from wazuh_testing.modules.agentd.configuration import AGENTD_WINDOWS_DEBUG
     daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
     local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}
@@ -214,7 +215,7 @@ def test_syscollector_all_scans_disabled(test_configuration, test_metadata, set_
                        patterns.CB_NETWORK_SCAN_STARTED, patterns.CB_PACKAGES_SCAN_STARTED,
                        patterns.CB_PORTS_SCAN_STARTED, patterns.CB_PROCESSES_SCAN_STARTED]
     # Add the hotfixes check if the platform is Windows.
-    if sys.platform == 'win32':
+    if sys.platform == WINDOWS:
         check_callbacks.append(patterns.CB_HOTFIXES_SCAN_STARTED)
 
     # Check that no scan is triggered.
@@ -285,7 +286,7 @@ def test_syscollector_invalid_configurations(test_configuration, test_metadata, 
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
     # Skip test if the field is hotfixes and the platform is not Windows.
-    if field == 'hotfixes' and sys.platform != 'win32':
+    if field == 'hotfixes' and sys.platform != WINDOWS:
         pytest.skip('The hotfixes scan is exclusive of Windows agents.')
 
     # If the field has no value, it means that the test should search for the attribute error in the logs, not for the
@@ -378,7 +379,7 @@ def test_syscollector_default_values(test_configuration, test_metadata, set_wazu
     assert log_monitor.callback_result
 
     callback = patterns.CB_CHECK_CONFIG
-    if sys.platform == 'win32':
+    if sys.platform == WINDOWS:
         callback = patterns.CB_CHECK_CONFIG_WIN
 
     log_monitor.start(callback=callbacks.generate_callback(callback), timeout=5)
@@ -454,7 +455,7 @@ def test_syscollector_scanning(test_configuration, test_metadata, set_wazuh_conf
     check_callbacks = [patterns.CB_HARDWARE_SCAN_FINISHED, patterns.CB_OS_SCAN_FINISHED,
                     patterns.CB_NETWORK_SCAN_FINISHED, patterns.CB_PACKAGES_SCAN_FINISHED,
                     patterns.CB_PORTS_SCAN_FINISHED, patterns.CB_PROCESSES_SCAN_STARTED]
-    if sys.platform == 'win32':
+    if sys.platform == WINDOWS:
         check_callbacks.append(patterns.CB_HOTFIXES_SCAN_FINISHED)
 
     for callback in check_callbacks:
