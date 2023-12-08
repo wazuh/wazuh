@@ -10,7 +10,7 @@
         "params": {
           "dataKey": "data",
           "statusKey": "status",
-          "statusValue": "",
+          "statusValue": " ",
           "azureSignInTag": "appliedConditionalAccessPolicies"
         }
       }
