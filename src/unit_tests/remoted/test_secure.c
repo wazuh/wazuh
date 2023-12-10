@@ -33,7 +33,6 @@
 #include "../wrappers/wazuh/remoted/netcounter_wrappers.h"
 #include "../wrappers/wazuh/os_crypto/msgs_wrappers.h"
 #include "../wrappers/wazuh/remoted/state_wrappers.h"
-#include "../wrappers/wazuh/shared/flatcc_helpers_wrappers.h"
 #include "../wrappers/wazuh/shared_modules/router_wrappers.h"
 #include "../../remoted/secure.c"
 
@@ -2026,13 +2025,11 @@ void test_router_message_forward_invalid_sync_json_message(void **state)
     expect_string(__wrap_router_provider_create, name, "rsync-syscollector");
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
-    expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
-    expect_value(__wrap_w_flatcc_parse_json, parser, SyscollectorSynchronization_SyncMsg_parse_json_table);
-    will_return(__wrap_w_flatcc_parse_json, NULL);
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
+    expect_string(__wrap_router_provider_send_fb, schema, syscollector_synchronization_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, -1);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Unable to forward message for agent 001");
-
     router_message_forward(message, agent_id);
 }
 
@@ -2042,21 +2039,14 @@ void test_router_message_forward_valid_integrity_check_global(void **state)
     char* message = "5:syscollector:{\"component\":\"syscollector_hwinfo\",\"data\":{\"begin\":\"0\",\"checksum\":\"b66d0703ee882571cd1865f393bd34f7d5940339\","
                                 "\"end\":\"0\",\"id\":1691259777},\"type\":\"integrity_check_global\"}";
     char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"node_name\":\"test_node_name\"},\"data_type\":\"integrity_check_global\",\"data\":"
-                                                "{\"begin\":\"0\",\"checksum\":\"b66d0703ee882571cd1865f393bd34f7d5940339\",\"end\":\"0\",\"id\":1691259777,\"attributes_type\":"
-                                                "\"syscollector_hwinfo\"}}";
+                                                "{\"attributes_type\":\"syscollector_hwinfo\",\"begin\":\"0\",\"checksum\":\"b66d0703ee882571cd1865f393bd34f7d5940339\",\"end\":\"0\",\"id\":1691259777}}";
 
     expect_string(__wrap_router_provider_create, name, "rsync-syscollector");
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
-    expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
-    expect_value(__wrap_w_flatcc_parse_json, parser, SyscollectorSynchronization_SyncMsg_parse_json_table);
-    will_return(__wrap_w_flatcc_parse_json, (void*)1);
-
-    expect_function_call(__wrap_router_provider_send);
-    will_return(__wrap_router_provider_send, 0);
-
-    expect_function_call(__wrap_w_flatcc_free_buffer);
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
+    expect_string(__wrap_router_provider_send_fb, schema, syscollector_synchronization_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, 0);
 
     router_message_forward(message, agent_id);
 }
@@ -2067,21 +2057,14 @@ void test_router_message_forward_valid_integrity_check_left(void **state)
     char* message = "5:syscollector:{\"component\":\"syscollector_packages\",\"data\":{\"begin\":\"01113a00fcdafa43d111ecb669202119c946ebe5\",\"checksum\":\"54c13892eb9ee18b0012086b76a89f41e73d64a1\","
                                 "\"end\":\"40795337f16a208e4d0a2280fbd5c794c9877dcb\",\"id\":1693338981,\"tail\":\"408cb243d2d52ad6414ba602e375b3b6b5f5cd77\"},\"type\":\"integrity_check_global\"}";
     char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"node_name\":\"test_node_name\"},\"data_type\":\"integrity_check_global\",\"data\":"
-                                                "{\"begin\":\"01113a00fcdafa43d111ecb669202119c946ebe5\",\"checksum\":\"54c13892eb9ee18b0012086b76a89f41e73d64a1\",\"end\":\"40795337f16a208e4d0a2280fbd5c794c9877dcb\",\"id\":1693338981,\"tail\":\"408cb243d2d52ad6414ba602e375b3b6b5f5cd77\",\"attributes_type\":"
-                                                "\"syscollector_packages\"}}";
+                                                "{\"attributes_type\":\"syscollector_packages\",\"begin\":\"01113a00fcdafa43d111ecb669202119c946ebe5\",\"checksum\":\"54c13892eb9ee18b0012086b76a89f41e73d64a1\",\"end\":\"40795337f16a208e4d0a2280fbd5c794c9877dcb\",\"id\":1693338981,\"tail\":\"408cb243d2d52ad6414ba602e375b3b6b5f5cd77\"}}";
 
     expect_string(__wrap_router_provider_create, name, "rsync-syscollector");
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
-    expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
-    expect_value(__wrap_w_flatcc_parse_json, parser, SyscollectorSynchronization_SyncMsg_parse_json_table);
-    will_return(__wrap_w_flatcc_parse_json, (void*)1);
-
-    expect_function_call(__wrap_router_provider_send);
-    will_return(__wrap_router_provider_send, 0);
-
-    expect_function_call(__wrap_w_flatcc_free_buffer);
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
+    expect_string(__wrap_router_provider_send_fb, schema, syscollector_synchronization_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, 0);
 
     router_message_forward(message, agent_id);
 }
@@ -2092,21 +2075,14 @@ void test_router_message_forward_valid_integrity_check_right(void **state)
     char* message = "5:syscollector:{\"component\":\"syscollector_packages\",\"data\":{\"begin\":\"85c5676f6e5082ef99bba397b90559cd36fbbeca\",\"checksum\":\"d33c176f028188be38b394af5eed1e66bb8ad40e\","
                                 "\"end\":\"ffee8da05f37fa760fc5eee75dd0ea9e71228d05\",\"id\":1693338981},\"type\":\"integrity_check_right\"}";
     char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"node_name\":\"test_node_name\"},\"data_type\":\"integrity_check_right\",\"data\":"
-                                                "{\"begin\":\"85c5676f6e5082ef99bba397b90559cd36fbbeca\",\"checksum\":\"d33c176f028188be38b394af5eed1e66bb8ad40e\",\"end\":\"ffee8da05f37fa760fc5eee75dd0ea9e71228d05\",\"id\":1693338981,\"attributes_type\":"
-                                                "\"syscollector_packages\"}}";
+                                                "{\"attributes_type\":\"syscollector_packages\",\"begin\":\"85c5676f6e5082ef99bba397b90559cd36fbbeca\",\"checksum\":\"d33c176f028188be38b394af5eed1e66bb8ad40e\",\"end\":\"ffee8da05f37fa760fc5eee75dd0ea9e71228d05\",\"id\":1693338981}}";
 
     expect_string(__wrap_router_provider_create, name, "rsync-syscollector");
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
-    expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
-    expect_value(__wrap_w_flatcc_parse_json, parser, SyscollectorSynchronization_SyncMsg_parse_json_table);
-    will_return(__wrap_w_flatcc_parse_json, (void*)1);
-
-    expect_function_call(__wrap_router_provider_send);
-    will_return(__wrap_router_provider_send, 0);
-
-    expect_function_call(__wrap_w_flatcc_free_buffer);
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
+    expect_string(__wrap_router_provider_send_fb, schema, syscollector_synchronization_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, 0);
 
     router_message_forward(message, agent_id);
 }
@@ -2116,20 +2092,14 @@ void test_router_message_forward_valid_integrity_clear(void **state)
     char* agent_id = "001";
     char* message = "5:syscollector:{\"component\":\"syscollector_hwinfo\",\"data\":{\"id\":1693338619},\"type\":\"integrity_check_clear\"}";
     char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"node_name\":\"test_node_name\"},\"data_type\":\"integrity_check_clear\",\"data\":"
-                                                "{\"id\":1693338619,\"attributes_type\":\"syscollector_hwinfo\"}}";
+                                                "{\"attributes_type\":\"syscollector_hwinfo\",\"id\":1693338619}}";
 
     expect_string(__wrap_router_provider_create, name, "rsync-syscollector");
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
-    expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
-    expect_value(__wrap_w_flatcc_parse_json, parser, SyscollectorSynchronization_SyncMsg_parse_json_table);
-    will_return(__wrap_w_flatcc_parse_json, (void*)1);
-
-    expect_function_call(__wrap_router_provider_send);
-    will_return(__wrap_router_provider_send, 0);
-
-    expect_function_call(__wrap_w_flatcc_free_buffer);
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
+    expect_string(__wrap_router_provider_send_fb, schema, syscollector_synchronization_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, 0);
 
     router_message_forward(message, agent_id);
 }
@@ -2166,10 +2136,9 @@ void test_router_message_forward_invalid_delta_json_message(void **state)
     expect_string(__wrap_router_provider_create, name, "deltas-syscollector");
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
-    expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
-    expect_value(__wrap_w_flatcc_parse_json, parser, SyscollectorDeltas_Delta_parse_json_table);
-    will_return(__wrap_w_flatcc_parse_json, NULL);
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
+    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, -1);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Unable to forward message for agent 001");
 
@@ -2191,15 +2160,9 @@ void test_router_message_forward_valid_delta_packages_json_message(void **state)
     expect_string(__wrap_router_provider_create, name, "deltas-syscollector");
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
-    expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
-    expect_value(__wrap_w_flatcc_parse_json, parser, SyscollectorDeltas_Delta_parse_json_table);
-    will_return(__wrap_w_flatcc_parse_json, (void*)1);
-
-    expect_function_call(__wrap_router_provider_send);
-    will_return(__wrap_router_provider_send, 0);
-
-    expect_function_call(__wrap_w_flatcc_free_buffer);
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
+    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, 0);
 
     router_message_forward(message, agent_id);
 }
@@ -2219,15 +2182,9 @@ void test_router_message_forward_valid_delta_os_json_message(void **state)
     expect_string(__wrap_router_provider_create, name, "deltas-syscollector");
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
-    expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
-    expect_value(__wrap_w_flatcc_parse_json, parser, SyscollectorDeltas_Delta_parse_json_table);
-    will_return(__wrap_w_flatcc_parse_json, (void*)1);
-
-    expect_function_call(__wrap_router_provider_send);
-    will_return(__wrap_router_provider_send, 0);
-
-    expect_function_call(__wrap_w_flatcc_free_buffer);
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
+    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, 0);
 
     router_message_forward(message, agent_id);
 }
@@ -2247,15 +2204,9 @@ void test_router_message_forward_valid_delta_netiface_json_message(void **state)
     expect_string(__wrap_router_provider_create, name, "deltas-syscollector");
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
-    expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
-    expect_value(__wrap_w_flatcc_parse_json, parser, SyscollectorDeltas_Delta_parse_json_table);
-    will_return(__wrap_w_flatcc_parse_json, (void*)1);
-
-    expect_function_call(__wrap_router_provider_send);
-    will_return(__wrap_router_provider_send, 0);
-
-    expect_function_call(__wrap_w_flatcc_free_buffer);
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
+    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, 0);
 
     router_message_forward(message, agent_id);
 }
@@ -2273,15 +2224,9 @@ void test_router_message_forward_valid_delta_netproto_json_message(void **state)
     expect_string(__wrap_router_provider_create, name, "deltas-syscollector");
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
-    expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
-    expect_value(__wrap_w_flatcc_parse_json, parser, SyscollectorDeltas_Delta_parse_json_table);
-    will_return(__wrap_w_flatcc_parse_json, (void*)1);
-
-    expect_function_call(__wrap_router_provider_send);
-    will_return(__wrap_router_provider_send, 0);
-
-    expect_function_call(__wrap_w_flatcc_free_buffer);
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
+    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, 0);
 
     router_message_forward(message, agent_id);
 }
@@ -2299,15 +2244,9 @@ void test_router_message_forward_valid_delta_netaddr_json_message(void **state)
     expect_string(__wrap_router_provider_create, name, "deltas-syscollector");
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
-    expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
-    expect_value(__wrap_w_flatcc_parse_json, parser, SyscollectorDeltas_Delta_parse_json_table);
-    will_return(__wrap_w_flatcc_parse_json, (void*)1);
-
-    expect_function_call(__wrap_router_provider_send);
-    will_return(__wrap_router_provider_send, 0);
-
-    expect_function_call(__wrap_w_flatcc_free_buffer);
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
+    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, 0);
 
     router_message_forward(message, agent_id);
 }
@@ -2326,15 +2265,9 @@ void test_router_message_forward_valid_delta_hardware_json_message(void **state)
     expect_string(__wrap_router_provider_create, name, "deltas-syscollector");
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
-    expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
-    expect_value(__wrap_w_flatcc_parse_json, parser, SyscollectorDeltas_Delta_parse_json_table);
-    will_return(__wrap_w_flatcc_parse_json, (void*)1);
-
-    expect_function_call(__wrap_router_provider_send);
-    will_return(__wrap_router_provider_send, 0);
-
-    expect_function_call(__wrap_w_flatcc_free_buffer);
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
+    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, 0);
 
     router_message_forward(message, agent_id);
 }
@@ -2352,15 +2285,9 @@ void test_router_message_forward_valid_delta_ports_json_message(void **state)
     expect_string(__wrap_router_provider_create, name, "deltas-syscollector");
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
-    expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
-    expect_value(__wrap_w_flatcc_parse_json, parser, SyscollectorDeltas_Delta_parse_json_table);
-    will_return(__wrap_w_flatcc_parse_json, (void*)1);
-
-    expect_function_call(__wrap_router_provider_send);
-    will_return(__wrap_router_provider_send, 0);
-
-    expect_function_call(__wrap_w_flatcc_free_buffer);
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
+    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, 0);
 
     router_message_forward(message, agent_id);
 }
@@ -2378,15 +2305,9 @@ void test_router_message_forward_valid_delta_processes_json_message(void **state
     expect_string(__wrap_router_provider_create, name, "deltas-syscollector");
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
-    expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
-    expect_value(__wrap_w_flatcc_parse_json, parser, SyscollectorDeltas_Delta_parse_json_table);
-    will_return(__wrap_w_flatcc_parse_json, (void*)1);
-
-    expect_function_call(__wrap_router_provider_send);
-    will_return(__wrap_router_provider_send, 0);
-
-    expect_function_call(__wrap_w_flatcc_free_buffer);
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
+    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, 0);
 
     router_message_forward(message, agent_id);
 }
@@ -2402,15 +2323,9 @@ void test_router_message_forward_valid_delta_hotfixes_json_message(void **state)
     expect_string(__wrap_router_provider_create, name, "deltas-syscollector");
     will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
 
-    expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
-    expect_value(__wrap_w_flatcc_parse_json, parser, SyscollectorDeltas_Delta_parse_json_table);
-    will_return(__wrap_w_flatcc_parse_json, (void*)1);
-
-    expect_function_call(__wrap_router_provider_send);
-    will_return(__wrap_router_provider_send, 0);
-
-    expect_function_call(__wrap_w_flatcc_free_buffer);
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
+    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, 0);
 
     router_message_forward(message, agent_id);
 }

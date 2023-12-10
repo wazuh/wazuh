@@ -24,6 +24,14 @@ int __wrap_router_provider_send(__attribute__((unused)) ROUTER_PROVIDER_HANDLE h
     return mock();
 }
 
+int __wrap_router_provider_send_fb(__attribute__((unused)) ROUTER_PROVIDER_HANDLE handle,
+                                const char* msg,
+                                const char* schema) {
+    check_expected(msg);
+    check_expected(schema);
+    return mock();
+}
+
 ROUTER_PROVIDER_HANDLE __wrap_router_provider_create(const char* name) {
     check_expected(name);
     return mock_ptr_type(ROUTER_PROVIDER_HANDLE);

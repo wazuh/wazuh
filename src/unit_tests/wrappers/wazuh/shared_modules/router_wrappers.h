@@ -18,6 +18,8 @@
 
 int __wrap_router_provider_send(ROUTER_PROVIDER_HANDLE handle, const char* message, unsigned int message_size);
 
+int __wrap_router_provider_send_fb(ROUTER_PROVIDER_HANDLE handle, const char* message, const char* schema);
+
 ROUTER_PROVIDER_HANDLE __wrap_router_provider_create(const char* name);
 
 #endif // ROUTER_WRAPPERS_H

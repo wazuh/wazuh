@@ -59,6 +59,17 @@ table syscollector_network_iface
     type: string;
 }
 
+table syscollector_network_protocol {
+    scan_time:string;
+    iface:string;
+    type:string;
+    gateway:string;
+    dhcp:string;
+    metric:string;
+    checksum:string;
+    item_id:string;
+}
+
 table syscollector_osinfo
 {
     architecture: string;
@@ -117,7 +128,7 @@ table syscollector_ports
 
 table syscollector_processes
 {
-    argvs: [string];
+    argvs: string;
     checksum: string;
     cmd: string;
     egroup: string;
@@ -157,6 +168,7 @@ union AttributesUnion
     syscollector_hwinfo,
     syscollector_network_address,
     syscollector_network_iface,
+    syscollector_network_protocol,
     syscollector_osinfo,
     syscollector_packages,
     syscollector_ports,
@@ -198,12 +210,19 @@ table integrity_check_left
   checksum: string;
 }
 
+table integrity_clear
+{
+  attributes_type:string;
+  id: int;
+}
+
 union DataUnion
 {
     state,
     integrity_check_global,
     integrity_check_left,
-    integrity_check_right
+    integrity_check_right,
+    integrity_clear
 }
 
 table SyncMsg
