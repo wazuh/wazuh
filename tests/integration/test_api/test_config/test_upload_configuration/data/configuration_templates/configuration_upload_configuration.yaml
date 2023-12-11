@@ -1,0 +1,13 @@
+- blocks:
+    upload_configuration:
+      remote_commands:
+        localfile:
+          allow: yes
+        wodle_command:
+          allow: yes
+      limits:
+        eps:
+          allow: yes
+      agents:
+        allow_higher_versions:
+          allow: yes
