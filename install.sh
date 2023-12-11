@@ -144,6 +144,10 @@ Install()
     # If update, start Wazuh
     if [ "X${update_only}" = "Xyes" ]; then
         WazuhUpgrade $INSTYPE
+        # Update versions previous to Wazuh 4.8
+        OSSEC_CONFIGURATION_FILE="$USER_DIR/etc/ossec.conf"
+        . ./src/init/replace_vulnerability_detector.sh
+        updateVulnerabilityDetector $OSSEC_CONFIGURATION_FILE
         # Update versions previous to Wazuh 1.2
         UpdateOldVersions
         echo "Starting Wazuh..."
