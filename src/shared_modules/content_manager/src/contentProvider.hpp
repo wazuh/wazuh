@@ -17,7 +17,6 @@
 #include "routerSubscriber.hpp"
 #include <external/nlohmann/json.hpp>
 #include <filesystem>
-#include <iostream>
 #include <memory>
 #include <string>
 #include <utility>
@@ -48,8 +47,7 @@ public:
 
     ~ContentProvider()
     {
-        m_action->unregisterActionOnDemand();
-        m_action->stopActionScheduler();
+        m_action.reset();
         m_routerProvider.reset();
     }
 

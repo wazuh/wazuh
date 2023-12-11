@@ -42,7 +42,7 @@ void FileDownloaderTest::TearDownTestSuite()
 
 void FileDownloaderTest::SetUp()
 {
-    m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>();
+    m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_shouldRun);
     m_spUpdaterBaseContext->downloadsFolder = (m_outputFolder / "downloads").string();
     m_spUpdaterBaseContext->contentsFolder = (m_outputFolder / "contents").string();
 

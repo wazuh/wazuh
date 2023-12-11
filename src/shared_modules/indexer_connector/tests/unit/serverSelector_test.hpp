@@ -41,9 +41,9 @@ protected:
     void SetUp() override
     {
         // Register the host and port of the green server
-        m_servers.emplace_back("http://localhost:9201");
+        m_servers.emplace_back("http://localhost:9209");
         // Register the host and port of the red server
-        m_servers.emplace_back("http://localhost:9202");
+        m_servers.emplace_back("http://localhost:9210");
     }
 
     /**
@@ -56,12 +56,12 @@ protected:
 
         if (!m_fakeOpenSearchGreenServer)
         {
-            m_fakeOpenSearchGreenServer = std::make_unique<FakeOpenSearchServer>(host, 9201, "green");
+            m_fakeOpenSearchGreenServer = std::make_unique<FakeOpenSearchServer>(host, 9209, "green");
         }
 
         if (!m_fakeOpenSearchRedServer)
         {
-            m_fakeOpenSearchRedServer = std::make_unique<FakeOpenSearchServer>(host, 9202, "red");
+            m_fakeOpenSearchRedServer = std::make_unique<FakeOpenSearchServer>(host, 9210, "red");
         }
     }
 

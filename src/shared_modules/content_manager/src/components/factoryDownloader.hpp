@@ -12,15 +12,16 @@
 #ifndef _FACTORY_DOWNLOADER_HPP
 #define _FACTORY_DOWNLOADER_HPP
 
+#include "../sharedDefs.hpp"
 #include "APIDownloader.hpp"
-#include "CtiApiDownloader.hpp"
+#include "CtiOffsetDownloader.hpp"
+#include "CtiSnapshotDownloader.hpp"
 #include "HTTPRequest.hpp"
 #include "fileDownloader.hpp"
 #include "json.hpp"
 #include "offlineDownloader.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
-#include <iostream>
 #include <memory>
 #include <string>
 
@@ -41,16 +42,20 @@ public:
      */
     static std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> create(const nlohmann::json& config)
     {
-        auto const downloaderType {config.at("contentSource").get<std::string>()};
-        logDebug2(WM_CONTENTUPDATER, "Creating '%s' downloader", downloaderType.c_str());
+        auto const downloaderType {config.at("contentSource").get_ref<const std::string&>()};
+        logDebug1(WM_CONTENTUPDATER, "Creating '%s' downloader", downloaderType.c_str());
 
         if ("api" == downloaderType)
         {
             return std::make_shared<APIDownloader>(HTTPRequest::instance());
         }
-        if ("cti-api" == downloaderType)
+        if ("cti-offset" == downloaderType)
         {
-            return std::make_shared<CtiApiDownloader>(HTTPRequest::instance());
+            return std::make_shared<CtiOffsetDownloader>(HTTPRequest::instance());
+        }
+        if ("cti-snapshot" == downloaderType)
+        {
+            return std::make_shared<CtiSnapshotDownloader>(HTTPRequest::instance());
         }
         if ("file" == downloaderType)
         {

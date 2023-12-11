@@ -143,8 +143,20 @@ TEST_F(WazuhDBQueryBuilderTest, GlobalSelectCommand)
     EXPECT_EQ(message, "global select-agent-name 1 ");
 }
 
-TEST_F(WazuhDBQueryBuilderTest, AgentGetCommand)
+TEST_F(WazuhDBQueryBuilderTest, AgentGetOsInfoCommand)
 {
     std::string message = WazuhDBQueryBuilder::builder().agentGetOsInfoCommand("1").build();
     EXPECT_EQ(message, "agent 1 osinfo get ");
+}
+
+TEST_F(WazuhDBQueryBuilderTest, AgentGetHotfixesCommand)
+{
+    std::string message = WazuhDBQueryBuilder::builder().agentGetHotfixesCommand("1").build();
+    EXPECT_EQ(message, "agent 1 hotfix get ");
+}
+
+TEST_F(WazuhDBQueryBuilderTest, AgentGetPackagesCommand)
+{
+    std::string message = WazuhDBQueryBuilder::builder().agentGetPackagesCommand("1").build();
+    EXPECT_EQ(message, "agent 1 package get ");
 }

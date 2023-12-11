@@ -101,9 +101,9 @@ public:
         return m_socket->fileDescriptor();
     }
 
-    void connect(const std::function<void(const char*, uint32_t, const char*, uint32_t)>& onRead)
+    void connect(const std::function<void(const char*, uint32_t, const char*, uint32_t)>& onRead, int type = (SOCK_STREAM | SOCK_NONBLOCK))
     {
-        handleConnect();
+        handleConnect(type);
         m_mainLoopThread = std::thread(
             [&, onRead]()
             {
@@ -133,7 +133,7 @@ public:
                                 {
                                     if (event & EPOLLERR || event & EPOLLHUP)
                                     {
-                                        handleConnect();
+                                        handleConnect(type);
                                     }
 
                                     if (event & EPOLLOUT)
@@ -169,7 +169,7 @@ public:
             });
     }
 
-    void handleConnect()
+    void handleConnect(int type = (SOCK_STREAM | SOCK_NONBLOCK))
     {
         // Build the address.
         auto unixAddress {UnixAddress::builder().address(m_socketPath).build()};
@@ -181,7 +181,7 @@ public:
             try
             {
                 std::lock_guard<std::shared_mutex> lock(m_socketMutex);
-                m_socket->connect(unixAddress.data());
+                m_socket->connect(unixAddress.data(), type);
                 m_epoll->addDescriptor(m_socket->fileDescriptor(), EPOLLIN | EPOLLOUT);
                 break;
             }

@@ -12,12 +12,13 @@
 #ifndef _XZ_DECOMPRESSOR_HPP
 #define _XZ_DECOMPRESSOR_HPP
 
+#include "../sharedDefs.hpp"
+#include "componentsHelper.hpp"
 #include "json.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
 #include "utils/stringHelper.h"
 #include "utils/xzHelper.hpp"
-#include <iostream>
 #include <memory>
 
 /**
@@ -36,6 +37,8 @@ private:
      */
     void decompress(UpdaterContext& context) const
     {
+        constexpr auto COMPONENT_NAME {"XZDecompressor"};
+
         for (auto& path : context.data.at("paths"))
         {
             std::filesystem::path inputPath {path};
@@ -51,18 +54,23 @@ private:
                                   context.spUpdaterBaseContext->configData.at("dataFormat").get<std::string>());
                 std::filesystem::path outputPath {path};
 
+                logDebug2(WM_CONTENTUPDATER,
+                          "Decompressing '%s' into '%s'",
+                          inputPath.string().c_str(),
+                          outputPath.string().c_str());
                 Utils::XzHelper(inputPath, outputPath).decompress();
             }
             catch (const std::exception& e)
             {
                 // Set the status of the stage
-                context.data.at("stageStatus").push_back(R"({"stage": "XZDecompressor", "status": "fail"})"_json);
+                Components::pushStatus(COMPONENT_NAME, Components::Status::STATUS_FAIL, context);
 
                 throw std::runtime_error("XZDecompressor - Could not decompress the file " + inputPath.string() +
                                          " because: " + e.what());
             }
         }
-        context.data.at("stageStatus").push_back(R"({"stage": "XZDecompressor", "status": "ok"})"_json);
+
+        Components::pushStatus(COMPONENT_NAME, Components::Status::STATUS_OK, context);
     }
 
 public:
@@ -74,6 +82,8 @@ public:
      */
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
+        logDebug1(WM_CONTENTUPDATER, "XZDecompressor - Starting process");
+
         decompress(*context);
 
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(context);

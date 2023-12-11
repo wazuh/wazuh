@@ -19,7 +19,6 @@
 #include <chrono>
 #include <external/nlohmann/json.hpp>
 #include <filesystem>
-#include <iostream>
 #include <thread>
 #include <utility>
 
@@ -49,9 +48,23 @@ public:
         , m_cv {}
         , m_topicName {std::move(topicName)}
         , m_interval {0}
-        , m_orchestration {std::make_unique<ActionOrchestrator>(channel, parameters)}
+        , m_shouldRun {true}
+        , m_orchestration {std::make_unique<ActionOrchestrator>(channel, parameters, m_shouldRun)}
     {
         m_parameters = std::move(parameters);
+    }
+
+    /**
+     * @brief Class destructor. Stops the action execution if it's in progress.
+     *
+     */
+    ~Action()
+    {
+        // Stop running action, if any.
+        m_shouldRun = false;
+
+        unregisterActionOnDemand();
+        stopActionScheduler();
     }
 
     /**
@@ -70,6 +83,7 @@ public:
                 std::unique_lock<std::mutex> lock(m_mutex);
 
                 // Run action on start, independently of the interval time.
+                logInfo(WM_CONTENTUPDATER, "Starting on-start action for '%s'", m_topicName.c_str());
                 runAction(ActionID::SCHEDULED);
 
                 while (m_schedulerRunning)
@@ -80,14 +94,14 @@ public:
                         bool expected = false;
                         if (m_actionInProgress.compare_exchange_strong(expected, true))
                         {
-                            logInfo(WM_CONTENTUPDATER, "Initiating scheduling action for %s", m_topicName.c_str());
+                            logInfo(WM_CONTENTUPDATER, "Starting scheduled action for '%s'", m_topicName.c_str());
                             runAction(ActionID::SCHEDULED);
                         }
                         else
                         {
                             // LCOV_EXCL_START
                             logInfo(WM_CONTENTUPDATER,
-                                    "Request scheduling - Download in progress. The scheduling is ignored for %s",
+                                    "Action in progress for '%s', scheduled request ignored",
                                     m_topicName.c_str());
                             // LCOV_EXCL_STOP
                         }
@@ -109,7 +123,7 @@ public:
         {
             m_schedulerThread.join();
         }
-        logInfo(WM_CONTENTUPDATER, "Scheduler stopped for %s", m_topicName.c_str());
+        logInfo(WM_CONTENTUPDATER, "Scheduler stopped for '%s'", m_topicName.c_str());
     }
 
     /**
@@ -149,13 +163,13 @@ public:
         auto expected = false;
         if (m_actionInProgress.compare_exchange_strong(expected, true))
         {
-            logInfo(WM_CONTENTUPDATER, "Ondemand request - starting action for %s", m_topicName.c_str());
+            logInfo(WM_CONTENTUPDATER, "Starting on-demand action for '%s'", m_topicName.c_str());
             runAction(ActionID::ON_DEMAND, offset);
         }
         else
         {
             // LCOV_EXCL_START
-            logInfo(WM_CONTENTUPDATER, "Ondemand request - another action in progress for %s", m_topicName.c_str());
+            logInfo(WM_CONTENTUPDATER, "Action in progress for '%s', on-demand request ignored", m_topicName.c_str());
             // LCOV_EXCL_STOP
         }
     }
@@ -182,18 +196,22 @@ private:
     std::string m_topicName;
     nlohmann::json m_parameters;
     std::unique_ptr<ActionOrchestrator> m_orchestration;
+    std::atomic<bool> m_shouldRun;
 
     void runAction(const ActionID id, const int offset = -1)
     {
+        logInfo(WM_CONTENTUPDATER, "Action for '%s' started", m_topicName.c_str());
+
         try
         {
             m_orchestration->run(offset);
         }
         catch (const std::exception& e)
         {
-            logError("Action for '%s' failed: %s", m_topicName.c_str(), e.what());
+            logError(WM_CONTENTUPDATER, "Action for '%s' failed: %s", m_topicName.c_str(), e.what());
         }
 
+        logInfo(WM_CONTENTUPDATER, "Action for '%s' finished", m_topicName.c_str());
         m_actionInProgress = false;
     }
 };

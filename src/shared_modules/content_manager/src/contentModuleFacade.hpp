@@ -14,7 +14,6 @@
 
 #include "contentProvider.hpp"
 #include <filesystem>
-#include <iostream>
 
 constexpr auto CONTENT_MODULE_ENDPOINT_NAME {"content"};
 

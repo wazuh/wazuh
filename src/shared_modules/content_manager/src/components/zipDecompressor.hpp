@@ -13,12 +13,12 @@
 #define _ZIP_DECOMPRESSOR_HPP
 
 #include "../sharedDefs.hpp"
+#include "componentsHelper.hpp"
 #include "json.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
 #include "utils/zlibHelper.hpp"
 #include <filesystem>
-#include <iostream>
 #include <iterator>
 #include <memory>
 #include <string>
@@ -35,21 +35,6 @@ class ZipDecompressor final : public AbstractHandler<std::shared_ptr<UpdaterCont
 {
 private:
     /**
-     * @brief Pushes the state of the current stage into the data field of the context.
-     *
-     * @param contextData Reference to the context data.
-     * @param status Status to be pushed.
-     */
-    void pushStageStatus(nlohmann::json& contextData, const std::string& status) const
-    {
-        auto statusObject = nlohmann::json::object();
-        statusObject["stage"] = "ZipDecompressor";
-        statusObject["status"] = status;
-
-        contextData.at("stageStatus").push_back(std::move(statusObject));
-    }
-
-    /**
      * @brief Decompress the compressed content and update the context paths.
      *
      * @param context Updater context.
@@ -61,6 +46,11 @@ private:
 
         for (const auto& path : context.data.at("paths"))
         {
+            logDebug2(WM_CONTENTUPDATER,
+                      "Decompressing '%s' into '%s'",
+                      path.get_ref<const std::string&>().c_str(),
+                      outputFolder.string().c_str());
+
             // Decompress and move paths.
             auto decompressedFiles {Utils::ZlibHelper::zipDecompress(path, outputFolder)};
             newPaths.insert(newPaths.end(),
@@ -81,6 +71,9 @@ public:
      */
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
+        logDebug1(WM_CONTENTUPDATER, "ZipDecompressor - Starting process");
+        constexpr auto COMPONENT_NAME {"ZipDecompressor"};
+
         try
         {
             decompress(*context);
@@ -88,15 +81,13 @@ public:
         catch (const std::exception& e)
         {
             // Push error state.
-            pushStageStatus(context->data, "fail");
+            Components::pushStatus(COMPONENT_NAME, Components::Status::STATUS_FAIL, *context);
 
             throw std::runtime_error("Decompression failed: " + std::string(e.what()));
         }
 
         // Push success state.
-        pushStageStatus(context->data, "ok");
-
-        logDebug2(WM_CONTENTUPDATER, "ZipDecompressor - Finishing process");
+        Components::pushStatus(COMPONENT_NAME, Components::Status::STATUS_OK, *context);
 
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(context);
     }

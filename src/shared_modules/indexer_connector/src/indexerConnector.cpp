@@ -16,13 +16,14 @@
 #include "serverSelector.hpp"
 #include <fstream>
 
-#define IC_NAME "indexer-connnector"
 namespace Log
 {
     std::function<void(
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>
         GLOBAL_LOG_FUNCTION;
 };
+constexpr auto IC_NAME {"indexer-connnector"};
+constexpr auto MAX_WAIT_TIME {30};
 
 // TODO: remove the LCOV flags when the implementation of this class is completed
 // LCOV_EXCL_START
@@ -96,27 +97,21 @@ IndexerConnector::IndexerConnector(
     // Initialize publisher.
     auto selector {std::make_shared<ServerSelector>(config.at("hosts"), INTERVAL, secureCommunication)};
 
-    // Try to initialize data in the wazuh-indexer.
-    try
-    {
-        initialize(templateData, indexName, selector, secureCommunication);
-    }
-    catch (const std::exception& e)
-    {
-        logWarn(IC_NAME,
-                "Error initializing IndexerConnector: %s"
-                ", we will try again later.",
-                e.what());
-    }
-
     QUEUE_MAP[this] = std::make_unique<ThreadDispatchQueue>(
         [=](std::queue<std::string>& dataQueue)
         {
             try
             {
-                if (!m_initialized)
+                if (!m_initialized && m_initializeThread.joinable())
                 {
-                    initialize(templateData, indexName, selector, secureCommunication);
+                    logDebug2(IC_NAME, "Waiting for initialization thread to process events.");
+                    m_initializeThread.join();
+                }
+
+                if (m_stopping.load())
+                {
+                    logDebug2(IC_NAME, "IndexerConnector is stopping, event processing will be skipped.");
+                    return;
                 }
 
                 auto url = selector->getNext();
@@ -159,7 +154,7 @@ IndexerConnector::IndexerConnector(
                     [&](const std::string& error, const long statusCode)
                     {
                         // TODO: Need to handle the case when the index is not created yet, to avoid losing data.
-                        logError(IC_NAME, "Error: %s, status code: %ld", error.c_str(), statusCode);
+                        logError(IC_NAME, "%s, status code: %ld", error.c_str(), statusCode);
                     },
                     "",
                     DEFAULT_HEADERS,
@@ -167,16 +162,51 @@ IndexerConnector::IndexerConnector(
             }
             catch (const std::exception& e)
             {
-                logError(IC_NAME, "Error: %s", e.what());
+                logError(IC_NAME, "%s", e.what());
             }
         },
         DATABASE_BASE_PATH + indexName,
         DATABASE_WORKERS);
+
+    m_initializeThread = std::thread(
+        [=]()
+        {
+            auto sleepTime = std::chrono::seconds(1);
+            std::unique_lock<std::mutex> lock(m_mutex);
+            do
+            {
+                try
+                {
+                    sleepTime *= 2;
+                    if (sleepTime.count() > MAX_WAIT_TIME)
+                    {
+                        sleepTime = std::chrono::seconds(MAX_WAIT_TIME);
+                    }
+
+                    initialize(templateData, indexName, selector, secureCommunication);
+                }
+                catch (const std::exception& e)
+                {
+                    logDebug2(IC_NAME,
+                              "Error initializing IndexerConnector: %s, we will try again after %ld seconds.",
+                              e.what(),
+                              sleepTime.count());
+                }
+            } while (!m_initialized && !m_cv.wait_for(lock, sleepTime, [&]() { return m_stopping.load(); }));
+        });
 }
 
 IndexerConnector::~IndexerConnector()
 {
+    m_stopping.store(true);
+    m_cv.notify_all();
+
     QUEUE_MAP.erase(this);
+
+    if (m_initializeThread.joinable())
+    {
+        m_initializeThread.join();
+    }
 }
 
 void IndexerConnector::publish(const std::string& message)
@@ -216,5 +246,6 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
         secureCommunication);
 
     m_initialized = true;
+    logInfo(IC_NAME, "IndexerConnector initialized.");
 }
 // LCOV_EXCL_STOP

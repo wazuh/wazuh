@@ -14,6 +14,7 @@
 
 #include "../sharedDefs.hpp"
 #include "IURLRequest.hpp"
+#include "componentsHelper.hpp"
 #include "hashHelper.h"
 #include "json.hpp"
 #include "stringHelper.h"
@@ -40,49 +41,6 @@ private:
     IURLRequest& m_urlRequest; ///< HTTP driver instance.
 
     /**
-     * @brief Pushes the state of the current stage into the data field of the context.
-     *
-     * @param contextData Reference to the context data.
-     * @param status Status to be pushed.
-     */
-    void pushStageStatus(nlohmann::json& contextData, std::string status) const
-    {
-        auto statusObject = nlohmann::json::object();
-        statusObject["stage"] = "OfflineDownloader";
-        statusObject["status"] = std::move(status);
-
-        contextData.at("stageStatus").push_back(std::move(statusObject));
-    }
-
-    /**
-     * @brief Function to calculate the hash of a file.
-     *
-     * @param filepath Path to the file.
-     * @return std::string Digest vector.
-     */
-    std::string hashFile(const std::filesystem::path& filepath) const
-    {
-        if (std::ifstream inputFile(filepath, std::fstream::in); inputFile)
-        {
-            constexpr int BUFFER_SIZE {4096};
-            std::array<char, BUFFER_SIZE> buffer {};
-
-            Utils::HashData hash;
-            while (inputFile.read(buffer.data(), buffer.size()))
-            {
-                hash.update(buffer.data(), inputFile.gcount());
-            }
-            hash.update(buffer.data(), inputFile.gcount());
-
-            return Utils::asciiToHex(hash.hash());
-        }
-
-        // LCOV_EXCL_START
-        throw std::runtime_error {"Unable to open '" + filepath.string() + "' for hashing."};
-        // LCOV_EXCL_STOP
-    };
-
-    /**
      * @brief Copy a file from the localsystem.
      *
      * @param inputFilepath Input path from where to copy the file.
@@ -105,6 +63,10 @@ private:
         }
 
         // Copy file, overriding the output one if necessary.
+        logDebug2(WM_CONTENTUPDATER,
+                  "Copying file from '%s' into '%s'",
+                  inputFilepath.string().c_str(),
+                  outputFilepath.string().c_str());
         std::filesystem::copy(unprefixedUrl, outputFilepath, std::filesystem::copy_options::overwrite_existing);
         return true;
     }
@@ -127,6 +89,10 @@ private:
             }};
 
         // Download file from URL.
+        logDebug2(WM_CONTENTUPDATER,
+                  "Downloading file from '%s' into '%s'",
+                  inputFileURL.string().c_str(),
+                  outputFilepath.string().c_str());
         m_urlRequest.download(HttpURL(inputFileURL), outputFilepath, onError);
         return returnCode;
     }
@@ -180,7 +146,7 @@ private:
         }
 
         // Just process the new file if the hash is different from the last one.
-        auto inputFileHash {hashFile(outputFilePath)};
+        auto inputFileHash {Utils::asciiToHex(Utils::hashFile(outputFilePath))};
         if (context.spUpdaterBaseContext->downloadedFileHash != inputFileHash)
         {
             // Store new hash.
@@ -188,7 +154,12 @@ private:
 
             // Download finished: Insert path into context.
             context.data.at("paths").push_back(outputFilePath.string());
+            return;
         }
+
+        logDebug2(WM_CONTENTUPDATER,
+                  "File '%s' didn't change from last download so it won't be published",
+                  outputFilePath.string().c_str());
     }
 
 public:
@@ -209,6 +180,9 @@ public:
      */
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
+        logDebug1(WM_CONTENTUPDATER, "OfflineDownloader - Starting process");
+        constexpr auto COMPONENT_NAME {"OfflineDownloader"};
+
         try
         {
             download(*context);
@@ -216,15 +190,13 @@ public:
         catch (const std::exception& e)
         {
             // Push error state.
-            pushStageStatus(context->data, "fail");
+            Components::pushStatus(COMPONENT_NAME, Components::Status::STATUS_FAIL, *context);
 
             throw std::runtime_error("Download failed: " + std::string(e.what()));
         }
 
         // Push success state.
-        pushStageStatus(context->data, "ok");
-
-        logDebug2(WM_CONTENTUPDATER, "OfflineDownloader - Download done successfully");
+        Components::pushStatus(COMPONENT_NAME, Components::Status::STATUS_OK, *context);
 
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(context);
     }

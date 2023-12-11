@@ -4,7 +4,6 @@
   "hosts": ["https://0.0.0.0:9200"],
   "username": "admin",
   "password": "admin",
-  "api_key": "",
   "ssl": {
     "certificate_authorities": ["~/root-ca.pem"],
     "certificate": "~/indexer.pem",
