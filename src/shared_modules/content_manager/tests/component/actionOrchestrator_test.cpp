@@ -36,7 +36,7 @@ TEST_F(ActionOrchestratorTest, TestInstantiation)
 
     EXPECT_NO_THROW(routerProvider->start());
 
-    EXPECT_NO_THROW(std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_shouldRun));
+    EXPECT_NO_THROW(std::make_shared<ActionOrchestrator>(routerProvider, m_parameters));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -59,7 +59,7 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitoutConfigData)
 
     parameters.erase("configData");
 
-    EXPECT_THROW(std::make_shared<ActionOrchestrator>(routerProvider, parameters, m_shouldRun), std::invalid_argument);
+    EXPECT_THROW(std::make_shared<ActionOrchestrator>(routerProvider, parameters), std::invalid_argument);
 
     EXPECT_NO_THROW(routerProvider->stop());
 }
@@ -78,8 +78,7 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitoutContentSourceInConfigData
 
     m_parameters.at("configData").erase("contentSource");
 
-    EXPECT_THROW(std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_shouldRun),
-                 std::invalid_argument);
+    EXPECT_THROW(std::make_shared<ActionOrchestrator>(routerProvider, m_parameters), std::invalid_argument);
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -100,8 +99,7 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitoutCompressionTypeInConfigDa
 
     m_parameters.at("configData").erase("compressionType");
 
-    EXPECT_THROW(std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_shouldRun),
-                 std::invalid_argument);
+    EXPECT_THROW(std::make_shared<ActionOrchestrator>(routerProvider, m_parameters), std::invalid_argument);
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -122,7 +120,7 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitXZCompressionType)
 
     m_parameters["configData"]["compressionType"] = "xz";
 
-    EXPECT_NO_THROW(std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_shouldRun));
+    EXPECT_NO_THROW(std::make_shared<ActionOrchestrator>(routerProvider, m_parameters));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -143,8 +141,7 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitoutVersionedContentInConfigD
 
     m_parameters.at("configData").erase("versionedContent");
 
-    EXPECT_THROW(std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_shouldRun),
-                 std::invalid_argument);
+    EXPECT_THROW(std::make_shared<ActionOrchestrator>(routerProvider, m_parameters), std::invalid_argument);
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -165,8 +162,7 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitoutDeleteDownloadedContentIn
 
     m_parameters.at("configData").erase("deleteDownloadedContent");
 
-    EXPECT_THROW(std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_shouldRun),
-                 std::invalid_argument);
+    EXPECT_THROW(std::make_shared<ActionOrchestrator>(routerProvider, m_parameters), std::invalid_argument);
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -188,7 +184,7 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitRawCompressionTy
 
     EXPECT_NO_THROW(routerProvider->start());
 
-    auto actionOrchestrator {std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_shouldRun)};
+    auto actionOrchestrator {std::make_shared<ActionOrchestrator>(routerProvider, m_parameters)};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -223,7 +219,7 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionTyp
 
     EXPECT_NO_THROW(routerProvider->start());
 
-    auto actionOrchestrator {std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_shouldRun)};
+    auto actionOrchestrator {std::make_shared<ActionOrchestrator>(routerProvider, m_parameters)};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -259,7 +255,7 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionTyp
 
     EXPECT_NO_THROW(routerProvider->start());
 
-    auto actionOrchestrator {std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_shouldRun)};
+    auto actionOrchestrator {std::make_shared<ActionOrchestrator>(routerProvider, m_parameters)};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 

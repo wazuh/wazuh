@@ -14,7 +14,6 @@
 
 #include "iRouterProvider.hpp"
 #include "utils/rocksDBWrapper.hpp"
-#include <atomic>
 #include <external/nlohmann/json.hpp>
 #include <filesystem>
 #include <string>
@@ -77,27 +76,20 @@ struct UpdaterBaseContext
     std::string downloadedFileHash;
 
     /**
-     * @brief Variable to control the graceful shutdown of the orchestration.
-     *
+     * @brief For testing purposes. Delete it.
      */
-    const std::atomic<bool>& shouldRun;
-
-    /**
-     * @brief Struct constructor.
-     *
-     * @param shouldRun Reference to an interruption flag.
-     */
-    explicit UpdaterBaseContext(const std::atomic<bool>& shouldRun)
-        : shouldRun(shouldRun)
-    {
-    }
+    uint8_t download {1};      ///< download
+    uint8_t decompress {0};    ///< decompress
+    uint8_t publish {0};       ///< publish
+    uint8_t updateVersion {0}; ///< updateVersion
+    uint8_t clean {0};         ///< clean
 };
 
 /**
  * @brief Object created and handled on every execution of the updater chain.
  *
  */
-struct UpdaterContext
+struct UpdaterContext final : private UpdaterBaseContext
 {
     /**
      * @brief Pointer to the Updater context.

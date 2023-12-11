@@ -14,7 +14,6 @@
 
 #include "updaterContext.hpp"
 #include "gtest/gtest.h"
-#include <atomic>
 #include <filesystem>
 #include <memory>
 
@@ -35,7 +34,6 @@ protected:
     ~GzipDecompressorTest() override = default;
 
     std::shared_ptr<UpdaterContext> m_spContext; ///< Context used on tests.
-    const std::atomic<bool> m_shouldRun {true};  ///< Interruption flag.
 
     /**
      * @brief Setup routine for each test fixture. Context initialization.
@@ -44,7 +42,7 @@ protected:
     void SetUp() override
     {
         m_spContext = std::make_shared<UpdaterContext>();
-        m_spContext->spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_shouldRun);
+        m_spContext->spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>();
         m_spContext->spUpdaterBaseContext->outputFolder = WORKING_DIR;
     }
 

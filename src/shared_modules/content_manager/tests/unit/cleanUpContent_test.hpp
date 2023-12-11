@@ -14,7 +14,6 @@
 
 #include "cleanUpContent.hpp"
 #include "updaterContext.hpp"
-#include <atomic>
 #include <gtest/gtest.h>
 
 const std::string TEST_DIR {"/tmp/test"};
@@ -45,15 +44,13 @@ protected:
      */
     std::shared_ptr<CleanUpContent> m_spCleanUpContent;
 
-    const std::atomic<bool> m_shouldRun {true}; ///< Interruption flag.
-
     /**
      * @brief Sets up the test fixture.
      */
     void SetUp() override
     {
         // Initialize contexts
-        m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_shouldRun);
+        m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>();
 
         m_spUpdaterContext = std::make_shared<UpdaterContext>();
         m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;

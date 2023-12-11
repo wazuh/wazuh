@@ -15,7 +15,6 @@
 #include "fakes/fakeServer.hpp"
 #include "updaterContext.hpp"
 #include "gtest/gtest.h"
-#include <atomic>
 #include <memory>
 
 /**
@@ -30,7 +29,6 @@ protected:
 
     std::shared_ptr<UpdaterContext> m_spUpdaterContext;       ///< UpdaterContext used on the update orchestration.
     inline static std::unique_ptr<FakeServer> m_spFakeServer; ///< FakeServer used for tests.
-    const std::atomic<bool> m_shouldRun {true};               ///< Run flag.
 
     /**
      * @brief Setup routine for each test fixture.

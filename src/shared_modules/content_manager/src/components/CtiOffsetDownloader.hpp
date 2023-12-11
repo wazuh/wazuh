@@ -47,15 +47,8 @@ private:
         const auto consumerLastOffset {getCtiBaseParameters(m_url).lastOffset};
 
         // Iterate until the current offset is equal to the consumer offset.
-        auto pathsArray = nlohmann::json::array();
         while (context.currentOffset < consumerLastOffset)
         {
-            if (!context.spUpdaterBaseContext->shouldRun.load())
-            {
-                logWarn(WM_CONTENTUPDATER, "The offsets download has been interrupted");
-                return;
-            }
-
             // Amount of offsets to download on each query.
             constexpr auto OFFSETS_DELTA {1000};
 
@@ -73,12 +66,9 @@ private:
             // Update the current offset.
             context.currentOffset = toOffset;
 
-            // Save the path of the downloaded content in a temporary variable.
-            pathsArray.push_back(fullFilePath);
+            // Save the path of the downloaded content in the context.
+            context.data.at("paths").push_back(fullFilePath);
         }
-
-        // Commit changes.
-        context.data.at("paths") = std::move(pathsArray);
     }
 
     /**

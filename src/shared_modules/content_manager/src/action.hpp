@@ -48,23 +48,9 @@ public:
         , m_cv {}
         , m_topicName {std::move(topicName)}
         , m_interval {0}
-        , m_shouldRun {true}
-        , m_orchestration {std::make_unique<ActionOrchestrator>(channel, parameters, m_shouldRun)}
+        , m_orchestration {std::make_unique<ActionOrchestrator>(channel, parameters)}
     {
         m_parameters = std::move(parameters);
-    }
-
-    /**
-     * @brief Class destructor. Stops the action execution if it's in progress.
-     *
-     */
-    ~Action()
-    {
-        // Stop running action, if any.
-        m_shouldRun = false;
-
-        unregisterActionOnDemand();
-        stopActionScheduler();
     }
 
     /**
@@ -196,7 +182,6 @@ private:
     std::string m_topicName;
     nlohmann::json m_parameters;
     std::unique_ptr<ActionOrchestrator> m_orchestration;
-    std::atomic<bool> m_shouldRun;
 
     void runAction(const ActionID id, const int offset = -1)
     {

@@ -15,7 +15,6 @@
 #include "pubSubPublisher.hpp"
 #include "updaterContext.hpp"
 #include "gtest/gtest.h"
-#include <atomic>
 #include <memory>
 
 /**
@@ -32,7 +31,6 @@ protected:
     std::shared_ptr<UpdaterBaseContext> m_spUpdaterBaseContext; ///< UpdaterBaseContext used on the merge pipeline.
 
     std::shared_ptr<PubSubPublisher> m_spPubSubPublisher; ///< PubSubPublisher used to publish the content data.
-    const std::atomic<bool> m_shouldRun {true};           ///< Interruption flag.
 
     /**
      * @brief Sets initial conditions for each test case.
@@ -44,7 +42,7 @@ protected:
         m_spPubSubPublisher = std::make_shared<PubSubPublisher>();
         // Create a updater context
         m_spUpdaterContext = std::make_shared<UpdaterContext>();
-        m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_shouldRun);
+        m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>();
     }
 };
 

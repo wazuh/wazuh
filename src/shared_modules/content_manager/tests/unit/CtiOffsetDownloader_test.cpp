@@ -218,22 +218,3 @@ TEST_F(CtiOffsetDownloaderTest, DownloadClientAndServerErrorsRetryAndFail)
     ASSERT_THROW(m_spCtiOffsetDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 }
-
-/**
- * @brief Test the download interruption.
- *
- */
-TEST_F(CtiOffsetDownloaderTest, DownloadInterrupted)
-{
-    // Set interruption flag.
-    m_shouldRun = false;
-
-    ASSERT_NO_THROW(m_spCtiOffsetDownloader->handleRequest(m_spUpdaterContext));
-
-    // Set expected data.
-    nlohmann::json expectedData;
-    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
-    expectedData["stageStatus"] = OK_STATUS;
-    expectedData["type"] = DEFAULT_TYPE;
-    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
-}

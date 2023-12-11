@@ -16,7 +16,6 @@
 #include "offlineDownloader.hpp"
 #include "updaterContext.hpp"
 #include "gtest/gtest.h"
-#include <atomic>
 #include <filesystem>
 #include <fstream>
 #include <memory>
@@ -40,7 +39,6 @@ protected:
     std::shared_ptr<UpdaterBaseContext> m_spUpdaterBaseContext; ///< UpdaterBaseContext used on tests.
 
     inline static std::unique_ptr<FakeServer> m_spFakeServer; ///< Fake HTTP server used in tests.
-    const std::atomic<bool> m_shouldRun {true};               ///< Interruption flag.
 
     /**
      * @brief Set up routine for each test fixture.
@@ -61,7 +59,7 @@ protected:
         testFileStream.close();
 
         // Updater base context.
-        m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_shouldRun);
+        m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>();
         m_spUpdaterBaseContext->outputFolder = m_outputFolder;
         m_spUpdaterBaseContext->downloadsFolder = m_outputFolder / DOWNLOAD_FOLDER;
         m_spUpdaterBaseContext->contentsFolder = m_outputFolder / CONTENTS_FOLDER;
