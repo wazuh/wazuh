@@ -164,7 +164,7 @@ int DecodeWinevt(Eventinfo *lf){
                                         cJSON_AddStringToObject(json_system_in, "eventSourceName", child_attr[p]->values[l]);
                                     }
                                 }
-                            } else if (!strcmp(child_attr[p]->element, "TimeCreated")) {
+                            } else if (!strcmp(child_attr[p]->element, "TimeCreated") && child_attr[p]->attributes != NULL) {
                                 if(!strcmp(child_attr[p]->attributes[0], "SystemTime")){
                                     cJSON_AddStringToObject(json_system_in, "systemTime", child_attr[p]->values[0]);
                                 }
