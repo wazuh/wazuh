@@ -168,12 +168,14 @@ int DecodeWinevt(Eventinfo *lf){
                                 if(!strcmp(child_attr[p]->attributes[0], "SystemTime")){
                                     cJSON_AddStringToObject(json_system_in, "systemTime", child_attr[p]->values[0]);
                                 }
-                            } else if (!strcmp(child_attr[p]->element, "Execution")) {
-                                if(!strcmp(child_attr[p]->attributes[0], "ProcessID")){
-                                    cJSON_AddStringToObject(json_system_in, "processID", child_attr[p]->values[0]);
-                                }
-                                if(!strcmp(child_attr[p]->attributes[1], "ThreadID")){
-                                    cJSON_AddStringToObject(json_system_in, "threadID", child_attr[p]->values[1]);
+                            } else if (!strcmp(child_attr[p]->element, "Execution") && child_attr[p]->attributes != NULL) {
+                                for (int l = 0; child_attr[p]->attributes[l]; l++) {
+                                    if (!strcmp(child_attr[p]->attributes[l], "ProcessID")){
+                                        cJSON_AddStringToObject(json_system_in, "processID", child_attr[p]->values[l]);
+                                    }
+                                    if (!strcmp(child_attr[p]->attributes[l], "ThreadID")){
+                                        cJSON_AddStringToObject(json_system_in, "threadID", child_attr[p]->values[l]);
+                                    }
                                 }
                             } else if (!strcmp(child_attr[p]->element, "Channel")) {
                                 cJSON_AddStringToObject(json_system_in, "channel", child_attr[p]->content);
