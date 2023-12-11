@@ -143,22 +143,19 @@ int DecodeWinevt(Eventinfo *lf){
             }
         } else {
             node = OS_GetElementsbyNode(&xml, NULL);
-            int i = 0, l = 0;
-            if (node && node[i] && (child = OS_GetElementsbyNode(&xml, node[i]))) {
-                int j = 0;
 
-                while (child && child[j]){
+            if (node && node[0] && (child = OS_GetElementsbyNode(&xml, node[0]))) {
+                for (int j = 0; child && child[j]; j++){
 
                     XML_NODE child_attr = NULL;
                     child_attr = OS_GetElementsbyNode(&xml, child[j]);
-                    int p = 0;
 
-                    while (child_attr && child_attr[p]){
+                    for (int p = 0; child_attr && child_attr[p]; p++) {
 
                         if(child[j]->element && !strcmp(child[j]->element, "System") && child_attr[p]->element){
 
                             if (!strcmp(child_attr[p]->element, "Provider")) {
-                                while(child_attr[p]->attributes[l]){
+                                for (int l = 0; child_attr[p]->attributes[l]; l++) {
                                     if (!strcmp(child_attr[p]->attributes[l], "Name")){
                                         cJSON_AddStringToObject(json_system_in, "providerName", child_attr[p]->values[l]);
                                     } else if (!strcmp(child_attr[p]->attributes[l], "Guid")){
@@ -166,7 +163,6 @@ int DecodeWinevt(Eventinfo *lf){
                                     } else if (!strcmp(child_attr[p]->attributes[l], "EventSourceName")){
                                         cJSON_AddStringToObject(json_system_in, "eventSourceName", child_attr[p]->values[l]);
                                     }
-                                    l++;
                                 }
                             } else if (!strcmp(child_attr[p]->element, "TimeCreated")) {
                                 if(!strcmp(child_attr[p]->attributes[0], "SystemTime")){
@@ -209,7 +205,7 @@ int DecodeWinevt(Eventinfo *lf){
                             }
                         } else if (child[j]->element && !strcmp(child[j]->element, "EventData") && child_attr[p]->element){
                             if (!strcmp(child_attr[p]->element, "Data") && child_attr[p]->values && strlen(child_attr[p]->content) > 0){
-                                for (l = 0; child_attr[p]->attributes[l]; l++) {
+                                for (int l = 0; child_attr[p]->attributes[l]; l++) {
                                     if (!strcmp(child_attr[p]->attributes[l], "Name") && strcmp(child_attr[p]->content, "(NULL)") != 0
                                             && strcmp(child_attr[p]->content, "-") != 0) {
                                         filtered_string = replace_win_format(child_attr[p]->content, 0);
@@ -302,12 +298,9 @@ int DecodeWinevt(Eventinfo *lf){
                             }
                             OS_ClearNode(extra_data_child);
                         }
-                        p++;
                     }
 
                     OS_ClearNode(child_attr);
-
-                    j++;
                 }
 
                 OS_ClearNode(child);
@@ -628,14 +621,13 @@ int DecodeWinevt(Eventinfo *lf){
                 char **audit_split;
                 char *audit_pol_changes = NULL;
                 char *audit_final_field = NULL;
-                int i = 0;
 
                 char * filtered_changes = wstr_replace(auditPolicyChangesId, "%%", "");
                 os_free(auditPolicyChangesId);
 
                 audit_split = OS_StrBreak(',', filtered_changes, 4);
 
-                while (audit_split[i]) {
+                for (int i = 0; audit_split[i]; i++) {
                     audit_split_n = strtol(audit_split[i], NULL, 10);
 
                     switch (audit_split_n) {
@@ -654,8 +646,6 @@ int DecodeWinevt(Eventinfo *lf){
                         default:
                             break;
                     }
-
-                    i++;
                 }
                 audit_final_field = wstr_replace(audit_pol_changes, ",", ", ");
                 cJSON_AddStringToObject(json_eventdata_in, "auditPolicyChanges", audit_final_field);
