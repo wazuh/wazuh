@@ -77,7 +77,7 @@ rsa==4.7.2
 s3transfer==0.4.2
 secure==0.2.1
 six==1.16.0
-SQLAlchemy==2.0.0
+SQLAlchemy==2.0.23
 tabulate==0.8.9
 typing-extensions==4.5.0
 typing-inspect==0.7.1
