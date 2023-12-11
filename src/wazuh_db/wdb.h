@@ -52,6 +52,8 @@
 #define AGENT_CS_ACTIVE          "active"
 #define AGENT_CS_DISCONNECTED    "disconnected"
 
+#define WDB_ROUTER_DELETED_TOPIC "rsync-deleted"
+
 /// Enumeration of agents disconected status reasons.
 typedef enum agent_status_code_t {
         INVALID_VERSION = 1,    ///< Invalid agent version
@@ -110,9 +112,6 @@ typedef enum wdb_global_group_hash_operations_t {
 #define WDB_RESPONSE_OK_SIZE     3
 
 #define SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE "legacy"
-
-// Router provider variables
-extern ROUTER_PROVIDER_HANDLE router_handle;
 
 typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,

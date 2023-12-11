@@ -35,14 +35,14 @@ private:
      *
      * @param jsonMsg Message to be sent.
      */
-    static void sendRouterServerMessage(const nlohmann::json& jsonMsg, bool stopIfSocketRemoved)
+    static void sendRouterServerMessage(const nlohmann::json& jsonMsg)
     {
         try
         {
             std::promise<void> promiseObj;
             auto futureObj = promiseObj.get_future();
-            auto socketClient = std::make_shared<SocketClient<Socket<OSPrimitives>, EpollWrapper>>(
-                REMOTE_SUBSCRIPTION_ENDPOINT, stopIfSocketRemoved);
+            auto socketClient =
+                std::make_shared<SocketClient<Socket<OSPrimitives>, EpollWrapper>>(REMOTE_SUBSCRIPTION_ENDPOINT);
             socketClient->connect(
                 [&](const char* body, uint32_t bodySize, const char*, uint32_t)
                 {
@@ -80,7 +80,7 @@ public:
     static void sendInitProviderMessage(const std::string& endpointName)
     {
         nlohmann::json jsonMsg {{"EndpointName", endpointName}, {"MessageType", "InitProvider"}};
-        sendRouterServerMessage(jsonMsg, false);
+        sendRouterServerMessage(jsonMsg);
     }
 
     /**
@@ -91,7 +91,7 @@ public:
     static void sendRemoveProviderMessage(const std::string& endpointName)
     {
         nlohmann::json jsonMsg {{"EndpointName", endpointName}, {"MessageType", "RemoveProvider"}};
-        sendRouterServerMessage(jsonMsg, true);
+        sendRouterServerMessage(jsonMsg);
     }
 
     /**
@@ -104,7 +104,7 @@ public:
     {
         nlohmann::json jsonMsg {
             {"EndpointName", endpointName}, {"MessageType", "RemoveSubscriber"}, {"SubscriberId", subscriberId}};
-        sendRouterServerMessage(jsonMsg, true);
+        sendRouterServerMessage(jsonMsg);
     }
 };
 

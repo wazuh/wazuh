@@ -43,8 +43,6 @@ _Atomic (time_t) current_ts;
 OSHash *remoted_agents_state;
 
 extern remoted_state_t remoted_state;
-ROUTER_PROVIDER_HANDLE router_rsync_handle = NULL;
-ROUTER_PROVIDER_HANDLE router_syscollector_handle = NULL;
 STATIC void handle_outgoing_data_to_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_storage * peer_info);
@@ -56,13 +54,8 @@ STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storag
 #define DBSYNC_SYSCOLLECTOR_HEADER_SIZE 15
 #define SYSCOLLECTOR_HEADER_SIZE 15
 
-#define REMOTED_ROUTER_HANDLE_WAIT_TIME 10
-
 // Router message forwarder
 void router_message_forward(char* msg, const char* agent_id);
-
-// Router handle thread
-void * rem_router_handle(__attribute__((unused)) void * args);
 
 // Message handler thread
 static void * rem_handler_main(__attribute__((unused)) void * args);
@@ -186,9 +179,6 @@ void HandleSecure()
 
     // Router module logging initialization
     router_initialize(taggedLogFunction);
-
-    // Router handle thread
-    w_create_thread(rem_router_handle, NULL);
 
     // Create message handler thread pool
     {
@@ -405,28 +395,6 @@ void * rem_handler_main(__attribute__((unused)) void * args) {
         rem_msgfree(message);
     }
 
-    return NULL;
-}
-
-// Router handle thread
-void * rem_router_handle(__attribute__((unused)) void * args) {
-    mdebug2("Creating router handles for 'wazuh-remoted'.");
-    while (!router_syscollector_handle || !router_rsync_handle) {
-        if (!router_syscollector_handle) {
-            if (router_syscollector_handle = router_provider_create("deltas-syscollector"), !router_syscollector_handle) {
-                mdebug2("Failed to create router handle for 'syscollector'.");
-            }
-        }
-
-        if (!router_rsync_handle) {
-            if (router_rsync_handle = router_provider_create("rsync-syscollector"), !router_rsync_handle) {
-                mdebug2("Failed to create router handle for 'rsync'.");
-            }
-        }
-
-        sleep(REMOTED_ROUTER_HANDLE_WAIT_TIME);
-    }
-    mdebug2("Router handles for 'wazuh-remoted' created.");
     return NULL;
 }
 
@@ -827,29 +795,21 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
 
 void router_message_forward(char* msg, const char* agent_id) {
     // Both syscollector delta and sync messages are sent to the router
-    ROUTER_PROVIDER_HANDLE router_handle = NULL;
+    char* router_topic = NULL;
     int message_header_size = 0;
     flatcc_json_parser_table_f *parser = NULL;
 
     if(strncmp(msg, SYSCOLLECTOR_HEADER, SYSCOLLECTOR_HEADER_SIZE) == 0) {
-        if (!router_syscollector_handle) {
-            mdebug2("Router handle for 'syscollector' not available.");
-            return;
-        }
-        router_handle = router_syscollector_handle;
+        router_topic = ROUTER_SYSCOLLECTOR_TOPIC;
         message_header_size = SYSCOLLECTOR_HEADER_SIZE;
         parser = SyscollectorDeltas_Delta_parse_json_table;
     } else if(strncmp(msg, DBSYNC_SYSCOLLECTOR_HEADER, DBSYNC_SYSCOLLECTOR_HEADER_SIZE) == 0) {
-        if (!router_rsync_handle) {
-            mdebug2("Router handle for 'rsync' not available.");
-            return;
-        }
-        router_handle = router_rsync_handle;
+        router_topic = ROUTER_RSYNC_TOPIC;
         message_header_size = DBSYNC_SYSCOLLECTOR_HEADER_SIZE;
         parser = SyscollectorSynchronization_SyncMsg_parse_json_table;
     }
 
-    if (!router_handle) {
+    if (!router_topic) {
         return;
     }
 
@@ -893,7 +853,7 @@ void router_message_forward(char* msg, const char* agent_id) {
         void* flatbuffer = w_flatcc_parse_json(msg_to_send_len, msg_to_send, &flatbuffer_size, 0, parser);
 
         if (flatbuffer) {
-            router_provider_send(router_handle, flatbuffer, flatbuffer_size);
+            router_provider_send(router_topic, flatbuffer, flatbuffer_size);
             w_flatcc_free_buffer(flatbuffer);
         } else {
             mdebug2("Unable to forward message for agent %s", agent_id);

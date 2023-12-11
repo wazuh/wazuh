@@ -26,6 +26,9 @@
 #define AG_STOP_MSG REMOTED_MSG_HEADER OS_AG_STOPPED
 #define MAX_SHARED_PATH 200
 
+#define ROUTER_SYSCOLLECTOR_TOPIC "deltas-syscollector"
+#define ROUTER_RSYNC_TOPIC "rsync-syscollector"
+
 /* Pending data structure */
 
 typedef struct pending_data_t {

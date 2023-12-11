@@ -27,11 +27,6 @@ extern "C"
 {
 #endif
     /**
-     * @brief Represents the handle associated with router manipulation.
-     */
-    typedef void* ROUTER_PROVIDER_HANDLE;
-
-    /**
      * @brief Log callback function.
      *
      * @param level Log level.
@@ -60,30 +55,22 @@ extern "C"
     EXPORTED int router_stop();
 
     /**
-     * @brief Create a router provider.
-     *
-     * @param name Name of the router provider.
-     * @return ROUTER_PROVIDER_HANDLE Handle to the router provider.
-     */
-    EXPORTED ROUTER_PROVIDER_HANDLE router_provider_create(const char* name);
-
-    /**
      * @brief Send a message to the router provider.
      *
-     * @param handle Handle to the router provider.
+     * @param provider_name Name of the router provider.
      * @param message Message to send.
      * @param message_size Size of the message.
      * @return true if the message was sent successfully.
      * @return false if the message was not sent successfully.
      */
-    EXPORTED int router_provider_send(ROUTER_PROVIDER_HANDLE handle, const char* message, unsigned int message_size);
+    EXPORTED int router_provider_send(const char* provider_name, const char* message, unsigned int message_size);
 
     /**
      * @brief Destroy a router provider.
      *
-     * @param handle Handle to the router provider.
+     * @param provider_name Name of the router provider.
      */
-    EXPORTED void router_provider_destroy(ROUTER_PROVIDER_HANDLE handle);
+    EXPORTED void router_provider_destroy(const char* provider_name);
 
 #ifdef __cplusplus
 }
@@ -95,12 +82,10 @@ typedef int (*router_start_func)();
 
 typedef int (*router_stop_func)();
 
-typedef ROUTER_PROVIDER_HANDLE (*router_provider_create_func)(const char* name);
-
-typedef bool (*router_provider_send_func)(ROUTER_PROVIDER_HANDLE handle,
+typedef bool (*router_provider_send_func)(char* provider_name,
                                           const char* message,
                                           unsigned int message_size);
 
-typedef void (*router_provider_destroy_func)(ROUTER_PROVIDER_HANDLE handle);
+typedef void (*router_provider_destroy_func)(char* provider_name);
 
 #endif // _ROUTER_H

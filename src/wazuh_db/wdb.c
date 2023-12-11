@@ -30,9 +30,6 @@
 #define BUSY_SLEEP 1
 #define MAX_ATTEMPTS 1000
 
-// Router provider variables
-ROUTER_PROVIDER_HANDLE router_handle = NULL;
-
 static const char *SQL_CREATE_TEMP_TABLE = "CREATE TEMP TABLE IF NOT EXISTS s(rowid INTEGER PRIMARY KEY, pageno INT);";
 static const char *SQL_TRUNCATE_TEMP_TABLE = "DELETE FROM s;";
 static const char *SQL_INSERT_INTO_TEMP_TABLE = "INSERT INTO s(pageno) SELECT pageno FROM dbstat ORDER BY path;";

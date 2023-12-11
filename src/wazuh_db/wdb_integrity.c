@@ -59,11 +59,6 @@ extern void mock_assert(const int result, const char* const expression,
 #endif
 
 void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite3_stmt* stmt) {
-    if (!router_handle) {
-        mdebug2("Router handle not available.");
-        return;
-    }
-
     cJSON* j_msg_to_send = NULL;
     cJSON* j_agent_info = NULL;
     cJSON* j_data = NULL;
@@ -110,7 +105,7 @@ void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite
             void* flatbuffer = w_flatcc_parse_json(msg_to_send_len, msg_to_send, &flatbuffer_size, 0, SyscollectorDeltas_Delta_parse_json_table);
 
             if (flatbuffer) {
-                router_provider_send(router_handle, flatbuffer, flatbuffer_size);
+                router_provider_send(WDB_ROUTER_DELETED_TOPIC, flatbuffer, flatbuffer_size);
                 w_flatcc_free_buffer(flatbuffer);
             } else {
                 mdebug2("Unable to publish message for agent %s", agent_id);

@@ -41,7 +41,6 @@ private:
     std::mutex m_mutex;
     int m_stopFD[2] = {-1, -1};
     std::shared_mutex m_socketMutex;
-    bool m_stopIfSocketRemoved;
 
     void sendPendingMessages()
     {
@@ -58,12 +57,11 @@ private:
     }
 
 public:
-    explicit SocketClient(std::string socketPath, bool stopIfSocketRemoved = false)
+    explicit SocketClient(std::string socketPath)
         : m_socketPath {std::move(socketPath)}
         , m_epoll {std::make_shared<TEpoll>()}
         , m_socket {std::make_shared<TSocket>()}
         , m_shouldStop {false}
-        , m_stopIfSocketRemoved {stopIfSocketRemoved}
     {
         int result = ::pipe(m_stopFD);
         if (result == -1)
@@ -173,39 +171,10 @@ public:
     {
         // Build the address.
         auto unixAddress {UnixAddress::builder().address(m_socketPath).build()};
-        constexpr auto MAX_DELAY = 30;
-        auto delay = 1;
 
-        while (!m_shouldStop)
-        {
-            try
-            {
-                std::lock_guard<std::shared_mutex> lock(m_socketMutex);
-                m_socket->connect(unixAddress.data());
-                m_epoll->addDescriptor(m_socket->fileDescriptor(), EPOLLIN | EPOLLOUT);
-                break;
-            }
-            catch (const std::system_error& e)
-            {
-                if (m_stopIfSocketRemoved && ENOENT == e.code().value())
-                {
-                    m_shouldStop = true;
-                    throw std::runtime_error("Socket doesn't exist.");
-                }
-                else
-                {
-                    std::cerr << "Failed to connect to socket, system error: " << e.what() << std::endl;
-                    std::this_thread::sleep_for(std::chrono::seconds(delay));
-                    delay = std::min(delay * 2, MAX_DELAY);
-                }
-            }
-            catch (const std::exception& e)
-            {
-                std::cerr << "Failed to connect to socket: " << e.what() << std::endl;
-                std::this_thread::sleep_for(std::chrono::seconds(delay));
-                delay = std::min(delay * 2, MAX_DELAY);
-            }
-        }
+        std::lock_guard<std::shared_mutex> lock(m_socketMutex);
+        m_socket->connect(unixAddress.data());
+        m_epoll->addDescriptor(m_socket->fileDescriptor(), EPOLLIN | EPOLLOUT);
     }
 
     void send(const char* dataBody, size_t sizeBody, const char* dataHeader = nullptr, size_t sizeHeader = 0)

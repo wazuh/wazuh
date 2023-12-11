@@ -15,9 +15,7 @@
 #include "routerModule.hpp"
 #include "routerProvider.hpp"
 #include "routerSubscriber.hpp"
-
-std::map<ROUTER_PROVIDER_HANDLE, std::shared_ptr<RouterProvider>> PROVIDERS;
-std::shared_mutex PROVIDERS_MUTEX;
+#include "threadSafeQueue.h"
 
 static std::function<void(const modules_log_level_t, const std::string&)> GS_LOG_FUNCTION;
 
@@ -28,6 +26,90 @@ static void logMessage(const modules_log_level_t level, const std::string& msg)
         GS_LOG_FUNCTION(level, msg);
     }
 }
+
+auto constexpr ROUTER_INIT_WAIT_TIME {500};
+std::shared_mutex PROVIDERS_MUTEX;
+
+class providerHandler
+{
+private:
+    std::atomic<bool> m_shouldStop {false};
+    RouterProvider m_provider;
+    std::thread m_workingThread;
+    Utils::SafeQueue<std::vector<char>> m_queue;
+
+    void threadBody()
+    {
+        {
+            while (!m_shouldStop.load() && !m_provider.isReady())
+            {
+                try
+                {
+                    m_provider.start();
+                    break;
+                }
+                catch (const std::exception& e)
+                {
+                    logMessage(modules_log_level_t::LOG_DEBUG, std::string("Error starting provider: ") + e.what());
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(ROUTER_INIT_WAIT_TIME));
+            }
+
+            while (!m_shouldStop.load() && m_provider.isReady())
+            {
+                std::vector<char> tempData;
+                if (m_queue.pop(tempData))
+                {
+                    m_provider.send(tempData);
+                }
+            }
+        }
+    }
+
+public:
+    providerHandler(std::string providerName)
+        : m_provider(providerName, false)
+    {
+    }
+
+    ~providerHandler()
+    {
+        stop();
+    }
+
+    void start()
+    {
+        m_workingThread = std::thread {&providerHandler::threadBody, this};
+    }
+
+    void stop()
+    {
+        m_shouldStop.store(true);
+        m_queue.cancel();
+        if (m_workingThread.joinable())
+        {
+            m_workingThread.join();
+        }
+        m_provider.stop();
+    }
+
+    bool isReady()
+    {
+        return m_provider.isReady();
+    }
+
+    void send(const std::vector<char>& data)
+    {
+        m_provider.send(data);
+    }
+
+    void push(const std::vector<char>& data)
+    {
+        m_queue.push(data);
+    }
+};
+
+std::map<std::string, std::shared_ptr<providerHandler>> PROVIDERS;
 
 void RouterModule::initialize(const std::function<void(const modules_log_level_t, const std::string&)>& logFunction)
 {
@@ -59,6 +141,10 @@ void RouterProvider::send(const std::vector<char>& data)
 
 void RouterProvider::start()
 {
+    if (m_isReady.load())
+    {
+        return;
+    }
     // Add provider to the list.
     if (m_isLocal)
     {
@@ -68,6 +154,7 @@ void RouterProvider::start()
     {
         RouterFacade::instance().initProviderRemote(m_topicName);
     }
+    m_isReady.store(true);
 }
 
 void RouterProvider::stop()
@@ -81,6 +168,12 @@ void RouterProvider::stop()
     {
         RouterFacade::instance().removeProviderRemote(m_topicName);
     }
+    m_isReady.store(false);
+}
+
+bool RouterProvider::isReady()
+{
+    return m_isReady.load();
 }
 
 void RouterSubscriber::subscribe(const std::function<void(const std::vector<char>&)>& callback)
@@ -160,35 +253,7 @@ extern "C"
         return retVal;
     }
 
-    ROUTER_PROVIDER_HANDLE router_provider_create(const char* name)
-    {
-        ROUTER_PROVIDER_HANDLE retVal = nullptr;
-        try
-        {
-            std::string topicName(name);
-            if (topicName.empty())
-            {
-                logMessage(modules_log_level_t::LOG_ERROR, "Error creating provider. Topic name is empty");
-            }
-            else
-            {
-                // TO DO - Add parameter to control if the provider is local or remote.
-                std::shared_ptr<RouterProvider> provider = std::make_shared<RouterProvider>(name, false);
-                provider->start();
-                std::unique_lock<std::shared_mutex> lock(PROVIDERS_MUTEX);
-                PROVIDERS[provider.get()] = provider;
-                retVal = provider.get();
-            }
-        }
-        catch (...)
-        {
-            logMessage(modules_log_level_t::LOG_ERROR, "Error creating provider");
-        }
-
-        return retVal;
-    }
-
-    int router_provider_send(ROUTER_PROVIDER_HANDLE handle, const char* message, unsigned int message_size)
+    int router_provider_send(const char* provider_name, const char* message, unsigned int message_size)
     {
         int retVal = -1;
         try
@@ -199,9 +264,25 @@ extern "C"
             }
             else
             {
+                std::unique_lock<std::shared_mutex> lock(PROVIDERS_MUTEX);
+                if (PROVIDERS.find(provider_name) == PROVIDERS.end())
+                {
+                    // TO DO - Add parameter to control if the provider is local or remote.
+                    PROVIDERS[provider_name] = std::make_shared<providerHandler>(provider_name);
+                    PROVIDERS.at(provider_name)->start();
+                }
+
                 std::vector<char> data(message, message + message_size);
-                std::shared_lock<std::shared_mutex> lock(PROVIDERS_MUTEX);
-                PROVIDERS.at(handle)->send(data);
+
+                if (PROVIDERS.at(provider_name)->isReady())
+                {
+                    PROVIDERS.at(provider_name)->send(data);
+                }
+                else
+                {
+                    PROVIDERS.at(provider_name)->push(std::move(data));
+                }
+
                 retVal = 0;
             }
         }
@@ -212,12 +293,13 @@ extern "C"
         return retVal;
     }
 
-    void router_provider_destroy(ROUTER_PROVIDER_HANDLE handle)
+    void router_provider_destroy(const char* provider_name)
     {
         std::unique_lock<std::shared_mutex> lock(PROVIDERS_MUTEX);
-        auto it = PROVIDERS.find(handle);
+        auto it = PROVIDERS.find(provider_name);
         if (it != PROVIDERS.end())
         {
+            it->second->stop();
             PROVIDERS.erase(it);
         }
     }

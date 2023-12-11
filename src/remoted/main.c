@@ -39,6 +39,18 @@ static void help_remoted(char *home_path)
     exit(1);
 }
 
+/**
+ * @brief Cleanup method to run before exiting.
+ *
+ * @param sig Signal received number.
+ */
+void remoted_shutdown(int sig)
+{
+    router_provider_destroy(ROUTER_SYSCOLLECTOR_TOPIC);
+    router_provider_destroy(ROUTER_RSYNC_TOPIC);
+    HandleSIG(sig);
+}
+
 int main(int argc, char **argv)
 {
     int i = 0, c = 0;
@@ -199,7 +211,7 @@ int main(int argc, char **argv)
     os_free(home_path);
 
     /* Start the signal manipulation */
-    StartSIG(ARGV0);
+    StartSIG2(ARGV0, remoted_shutdown);
 
     /* Ignore SIGPIPE, it will be detected on recv */
     signal(SIGPIPE, SIG_IGN);

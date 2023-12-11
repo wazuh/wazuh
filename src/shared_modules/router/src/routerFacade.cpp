@@ -105,14 +105,12 @@ void RouterFacade::removeProviderLocal(const std::string& endpointName)
 void RouterFacade::initProviderRemote(const std::string& name)
 {
     std::lock_guard<std::mutex> lock {m_remoteProvidersMutex};
-    // If exist throw exception
-    if (m_remoteProviders.find(name) != m_remoteProviders.end())
-    {
-        throw std::runtime_error("initProviderRemote: Provider already exist");
-    }
 
-    // Send a message to the provider from the client side to add a remote provider
-    m_remoteProviders[name] = std::make_shared<RemoteProvider>(name, DEFAULT_SOCKET_PATH);
+    if (m_remoteProviders.find(name) == m_remoteProviders.end())
+    {
+        // Send a message to the provider from the client side to add a remote provider
+        m_remoteProviders[name] = std::make_shared<RemoteProvider>(name, DEFAULT_SOCKET_PATH);
+    }
 }
 
 void RouterFacade::removeProviderRemote(const std::string& name)

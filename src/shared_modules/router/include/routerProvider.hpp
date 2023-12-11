@@ -24,6 +24,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <atomic>
 
 /**
  * @brief RouterProvider class.
@@ -34,6 +35,7 @@ class EXPORTED RouterProvider final : public IRouterProvider
 private:
     const std::string m_topicName;
     const bool m_isLocal {false};
+    std::atomic<bool> m_isReady{false};
 
 public:
     /**
@@ -51,6 +53,7 @@ public:
     void stop();
     void start();
     void send(const std::vector<char>& data);
+    bool isReady();
 };
 
 #endif //_ROUTER_PROVIDER_HPP
