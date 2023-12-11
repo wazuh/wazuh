@@ -47,8 +47,7 @@ public:
 
     ~ContentProvider()
     {
-        m_action->unregisterActionOnDemand();
-        m_action->stopActionScheduler();
+        m_action.reset();
         m_routerProvider.reset();
     }
 
