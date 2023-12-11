@@ -156,4 +156,4 @@ def test_send_msg():
    with patch('requests.post', return_value=requests.Response) as request_post:
        pagerduty.send_msg(msg_template)
        url                = 'https://events.pagerduty.com/v2/enqueue'
-       request_post.assert_called_once_with(url, data=msg_template, headers=headers)
+       request_post.assert_called_once_with(url, data=msg_template, headers=headers, timeout=10)
