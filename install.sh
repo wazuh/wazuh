@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Copyright (C) 2015, Wazuh Inc.
 # Installation script for Wazuh
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
