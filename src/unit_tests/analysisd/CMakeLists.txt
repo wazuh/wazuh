@@ -143,6 +143,15 @@ LIST(APPEND analysisd_flags "-Wl,--wrap,send_rootcheck_log ${DEBUG_OP_WRAPPERS}"
 LIST(APPEND analysisd_names "test_decoder_syscollector")
 LIST(APPEND analysisd_flags "-Wl,--wrap,wdbc_query_ex ${DEBUG_OP_WRAPPERS}")
 
+LIST(APPEND analysisd_names "test_decoder_winevtchannel")
+LIST(APPEND analysisd_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,cJSON_ParseWithOpts -Wl,--wrap,cJSON_GetObjectItem        \
+                              -Wl,--wrap,cJSON_Delete -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_CreateObject \
+                              -Wl,--wrap,cJSON_PrintUnformatted -Wl,--wrap,cJSON_AddItemToObject -Wl,--wrap,cJSON_AddStringToObject                      \
+                              -Wl,--wrap,JSON_Decoder_Exec                                                             \
+                              -Wl,--wrap,OS_ReadXMLString -Wl,--wrap,OS_GetElementsbyNode -Wl,--wrap,OS_ClearXML       \
+                              -Wl,--wrap,w_get_attr_val_by_name")
+
+
 list(APPEND analysisd_names "test_analysis-state")
 list(APPEND analysisd_flags "-Wl,--wrap,time -Wl,--wrap,rem_get_qsize -Wl,--wrap,rem_get_tsize \
                             -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Add -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Begin \
