@@ -11,10 +11,9 @@
 
 #include "onDemandManager.hpp"
 #include "../sharedDefs.hpp"
+#include "contentManager.hpp"
 #include <filesystem>
 #include <utility>
-
-constexpr auto SOCKET_PATH {"/tmp/wazuh-ondemand.sock"};
 
 /**
  * @brief Start the server
@@ -30,21 +29,48 @@ void OnDemandManager::startServer()
                          [&](const httplib::Request& req, httplib::Response& res)
                          {
                              std::shared_lock<std::shared_mutex> lock {m_mutex};
-                             const auto& it {m_endpoints.find(req.matches[1].str())};
-                             if (it != m_endpoints.end())
+
+                             try
                              {
-                                 it->second();
-                                 res.status = 200;
+                                 // Default value. Do not replace current offset
+                                 int offset = -1;
+
+                                 if (auto offset_param = req.params.find("offset"); offset_param != req.params.end())
+                                 {
+                                     offset = std::stoi(offset_param->second);
+                                 }
+
+                                 if (offset != -1 && offset != 0)
+                                 {
+                                     throw std::invalid_argument("Invalid offset value. Use instead:\n"
+                                                                 "offset=0 (Start with offset 0)\n"
+                                                                 "offset=-1 (Do not replace current offset)");
+                                 }
+
+                                 const auto& it {m_endpoints.find(req.matches[1].str())};
+                                 if (it != m_endpoints.end())
+                                 {
+                                     it->second(offset);
+                                     res.status = 200;
+                                 }
+                                 else
+                                 {
+                                     res.status = 404;
+                                 }
                              }
-                             else
+                             catch (const std::exception& e)
                              {
-                                 res.status = 404;
+                                 res.status = 400;
+                                 res.body = e.what();
                              }
                          });
             m_server.set_address_family(AF_UNIX);
-            std::filesystem::remove(SOCKET_PATH);
 
-            runningTrigger = m_server.listen(SOCKET_PATH, true);
+            std::filesystem::remove(ONDEMAND_SOCK);
+            std::filesystem::path path {ONDEMAND_SOCK};
+            std::filesystem::create_directories(path.parent_path());
+
+            runningTrigger = m_server.listen(ONDEMAND_SOCK, true);
         });
 
     // Spin lock until server is ready
@@ -68,7 +94,7 @@ void OnDemandManager::stopServer()
     logDebug1(WM_CONTENTUPDATER, "Server stopped");
 }
 
-void OnDemandManager::addEndpoint(const std::string& endpoint, std::function<void()> func)
+void OnDemandManager::addEndpoint(const std::string& endpoint, std::function<void(int)> func)
 {
     std::unique_lock<std::shared_mutex> lock {m_mutex};
     // Check if the endpoint already exists

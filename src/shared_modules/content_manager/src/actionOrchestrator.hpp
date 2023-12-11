@@ -65,8 +65,10 @@ public:
 
     /**
      * @brief Run the content updater orchestration.
+     *
+     * @param offset Manually set current offset to process. Default -1
      */
-    void run() const
+    void run(const int offset = -1) const
     {
 
         try
@@ -82,6 +84,11 @@ public:
             {
                 spUpdaterContext->currentOffset =
                     std::stoi(m_spBaseContext->spRocksDB->getLastKeyValue().second.ToString());
+            }
+
+            if (offset == 0)
+            {
+                spUpdaterContext->currentOffset = 0;
             }
 
             // Run the updater chain
