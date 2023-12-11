@@ -39,6 +39,7 @@
       "data.audit.directory.inode",
       "data.audit.directory.mode",
       "data.audit.directory.name",
+      "data.audit.e_auid",
       "data.audit.egid",
       "data.audit.enforcing",
       "data.audit.euid",
