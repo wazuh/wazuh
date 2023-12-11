@@ -19,9 +19,7 @@
 #include "wdb.h"
 #include "os_crypto/sha1/sha1_op.h"
 #include "pthreads_op.h"
-#include "flatcc_helpers.h"
-#include "syscollector_deltas_builder.h"
-#include "syscollector_deltas_json_parser.h"
+#include "utils/flatbuffers/include/syscollector_deltas_schema.h"
 #include "router.h"
 #include <openssl/evp.h>
 #include <stdarg.h>
@@ -104,17 +102,7 @@ void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite
         msg_to_send = cJSON_PrintUnformatted(j_msg_to_send);
 
         if (msg_to_send) {
-            size_t msg_to_send_len = strlen(msg_to_send);
-            size_t flatbuffer_size;
-
-            void* flatbuffer = w_flatcc_parse_json(msg_to_send_len, msg_to_send, &flatbuffer_size, 0, SyscollectorDeltas_Delta_parse_json_table);
-
-            if (flatbuffer) {
-                router_provider_send(router_handle, flatbuffer, flatbuffer_size);
-                w_flatcc_free_buffer(flatbuffer);
-            } else {
-                mdebug2("Unable to publish message for agent %s", agent_id);
-            }
+            router_provider_send_fb(router_handle, msg_to_send, syscollector_deltas_SCHEMA);
         } else {
             mdebug2("Unable to dump delete message to publish agent %s", agent_id);
         }

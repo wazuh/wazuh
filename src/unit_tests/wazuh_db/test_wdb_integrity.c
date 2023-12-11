@@ -18,8 +18,7 @@
 #include "../headers/shared.h"
 #include "../os_crypto/sha1/sha1_op.h"
 #include "../external/sqlite/sqlite3.h"
-#include "syscollector_deltas_builder.h"
-#include "syscollector_deltas_json_parser.h"
+#include "utils/flatbuffers/include/syscollector_deltas_schema.h"
 
 #include "../wrappers/externals/openssl/digest_wrappers.h"
 #include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
@@ -1794,14 +1793,9 @@ void test_wdbi_report_removed_packages_success(void **state) {
     expect_value(__wrap_sqlite3_column_text, iCol, 4);
     will_return(__wrap_sqlite3_column_text, "location");
 
-    expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
-    expect_string(__wrap_w_flatcc_parse_json, parser, SyscollectorDeltas_Delta_parse_json_table);
-    will_return(__wrap_w_flatcc_parse_json, 1);
-
-    expect_function_call(__wrap_router_provider_send);
-    will_return(__wrap_router_provider_send, 0);
-    expect_function_call(__wrap_w_flatcc_free_buffer);
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
+    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, 0);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
@@ -1820,14 +1814,9 @@ void test_wdbi_report_removed_hotfixes_success(void **state) {
     expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, "hotfix");
 
-    expect_string(__wrap_w_flatcc_parse_json, msg, expected_message);
-    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
-    expect_string(__wrap_w_flatcc_parse_json, parser, SyscollectorDeltas_Delta_parse_json_table);
-    will_return(__wrap_w_flatcc_parse_json, 1);
-
-    expect_function_call(__wrap_router_provider_send);
-    will_return(__wrap_router_provider_send, 0);
-    expect_function_call(__wrap_w_flatcc_free_buffer);
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
+    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, 0);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
@@ -1850,14 +1839,9 @@ void test_wdbi_report_removed_hotfixes_success_multiple_steps(void **state) {
     expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, "hotfix1");
 
-    expect_string(__wrap_w_flatcc_parse_json, msg, expected_message_1);
-    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
-    expect_string(__wrap_w_flatcc_parse_json, parser, SyscollectorDeltas_Delta_parse_json_table);
-    will_return(__wrap_w_flatcc_parse_json, 1);
-
-    expect_function_call(__wrap_router_provider_send);
-    will_return(__wrap_router_provider_send, 0);
-    expect_function_call(__wrap_w_flatcc_free_buffer);
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message_1);
+    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, 0);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
@@ -1867,14 +1851,9 @@ void test_wdbi_report_removed_hotfixes_success_multiple_steps(void **state) {
     expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, "hotfix2");
 
-    expect_string(__wrap_w_flatcc_parse_json, msg, expected_message_2);
-    expect_value(__wrap_w_flatcc_parse_json, flags, 0);
-    expect_string(__wrap_w_flatcc_parse_json, parser, SyscollectorDeltas_Delta_parse_json_table);
-    will_return(__wrap_w_flatcc_parse_json, 1);
-
-    expect_function_call(__wrap_router_provider_send);
-    will_return(__wrap_router_provider_send, 0);
-    expect_function_call(__wrap_w_flatcc_free_buffer);
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message_2);
+    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, 0);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
