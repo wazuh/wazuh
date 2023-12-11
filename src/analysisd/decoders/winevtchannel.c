@@ -154,7 +154,7 @@ int DecodeWinevt(Eventinfo *lf){
 
                         if(child[j]->element && !strcmp(child[j]->element, "System") && child_attr[p]->element){
 
-                            if (!strcmp(child_attr[p]->element, "Provider")) {
+                            if (!strcmp(child_attr[p]->element, "Provider") && child_attr[p]->attributes != NULL) {
                                 for (int l = 0; child_attr[p]->attributes[l]; l++) {
                                     if (!strcmp(child_attr[p]->attributes[l], "Name")){
                                         cJSON_AddStringToObject(json_system_in, "providerName", child_attr[p]->values[l]);
