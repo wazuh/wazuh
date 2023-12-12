@@ -580,17 +580,17 @@ void fim_registry_get_checksum_value(fim_registry_value_data *data) {
  * @param sha1_ctx An uninitialized sha1 context.
  * @param sha256_ctx An uninitialized sha256 context.
  */
-void fim_registry_init_digests(int opts, MD5_CTX *md5_ctx, SHA_CTX *sha1_ctx, SHA256_CTX *sha256_ctx) {
+void fim_registry_init_digests(int opts, EVP_MD_CTX *md5_ctx, EVP_MD_CTX *sha1_ctx, EVP_MD_CTX *sha256_ctx) {
     if (opts & CHECK_MD5SUM) {
-        MD5_Init(md5_ctx);
+        EVP_DigestInit(md5_ctx, EVP_md5());
     }
 
     if (opts & CHECK_SHA1SUM) {
-        SHA1_Init(sha1_ctx);
+        EVP_DigestInit(sha1_ctx, EVP_sha1());
     }
 
     if (opts & CHECK_SHA256SUM) {
-        SHA256_Init(sha256_ctx);
+        EVP_DigestInit(sha256_ctx, EVP_sha256());
     }
 }
 
@@ -607,19 +607,19 @@ void fim_registry_init_digests(int opts, MD5_CTX *md5_ctx, SHA_CTX *sha1_ctx, SH
 void fim_registry_update_digests(const BYTE *buffer,
                                  size_t length,
                                  int opts,
-                                 MD5_CTX *md5_ctx,
-                                 SHA_CTX *sha1_ctx,
-                                 SHA256_CTX *sha256_ctx) {
+                                 EVP_MD_CTX *md5_ctx,
+                                 EVP_MD_CTX *sha1_ctx,
+                                 EVP_MD_CTX *sha256_ctx) {
     if (opts & CHECK_MD5SUM) {
-        MD5_Update(md5_ctx, buffer, length);
+        EVP_DigestUpdate(md5_ctx, buffer, length);
     }
 
     if (opts & CHECK_SHA1SUM) {
-        SHA1_Update(sha1_ctx, buffer, length);
+        EVP_DigestUpdate(sha1_ctx, buffer, length);
     }
 
     if (opts & CHECK_SHA256SUM) {
-        SHA256_Update(sha256_ctx, buffer, length);
+        EVP_DigestUpdate(sha256_ctx, buffer, length);
     }
 }
 
@@ -635,9 +635,9 @@ void fim_registry_update_digests(const BYTE *buffer,
  * @param sha256_output A buffer holding the SHA256 hash on exit.
  */
 void fim_registry_final_digests(int opts,
-                                MD5_CTX *md5_ctx,
-                                SHA_CTX *sha1_ctx,
-                                SHA256_CTX *sha256_ctx,
+                                EVP_MD_CTX *md5_ctx,
+                                EVP_MD_CTX *sha1_ctx,
+                                EVP_MD_CTX *sha256_ctx,
                                 os_md5 md5_output,
                                 os_sha1 sha1_output,
                                 os_sha256 sha256_output) {
@@ -647,7 +647,7 @@ void fim_registry_final_digests(int opts,
     int n;
 
     if (opts & CHECK_MD5SUM) {
-        MD5_Final(md5_digest, md5_ctx);
+        EVP_DigestFinal(md5_ctx, md5_digest, NULL);
         for (n = 0; n < MD5_DIGEST_LENGTH; n++) {
             snprintf(md5_output, 3, "%02x", md5_digest[n]);
             md5_output += 2;
@@ -655,7 +655,7 @@ void fim_registry_final_digests(int opts,
     }
 
     if (opts & CHECK_SHA1SUM) {
-        SHA1_Final(sha1_digest, sha1_ctx);
+        EVP_DigestFinal(sha1_ctx, sha1_digest, NULL);
         for (n = 0; n < SHA_DIGEST_LENGTH; n++) {
             snprintf(sha1_output, 3, "%02x", sha1_digest[n]);
             sha1_output += 2;
@@ -663,7 +663,7 @@ void fim_registry_final_digests(int opts,
     }
 
     if (opts & CHECK_SHA256SUM) {
-        SHA256_Final(sha256_digest, sha256_ctx);
+        EVP_DigestFinal(sha256_ctx, sha256_digest, NULL);
         for (n = 0; n < SHA256_DIGEST_LENGTH; n++) {
             snprintf(sha256_output, 3, "%02x", sha256_digest[n]);
             sha256_output += 2;
@@ -679,9 +679,9 @@ void fim_registry_final_digests(int opts,
  * @param data_buffer Raw buffer holding the value's contents.
  */
 void fim_registry_calculate_hashes(fim_entry *entry, registry_t *configuration, BYTE *data_buffer) {
-    MD5_CTX md5_ctx;
-    SHA_CTX sha1_ctx;
-    SHA256_CTX sha256_ctx;
+    EVP_MD_CTX *md5_ctx = EVP_MD_CTX_new();
+    EVP_MD_CTX *sha1_ctx = EVP_MD_CTX_new();
+    EVP_MD_CTX *sha256_ctx = EVP_MD_CTX_new();
 
     char *string_it;
     BYTE buffer[OS_SIZE_2048];
@@ -696,36 +696,40 @@ void fim_registry_calculate_hashes(fim_entry *entry, registry_t *configuration, 
     }
 
     /* Initialize configured hashes */
-    fim_registry_init_digests(configuration->opts, &md5_ctx, &sha1_ctx, &sha256_ctx);
+    fim_registry_init_digests(configuration->opts, md5_ctx, sha1_ctx, sha256_ctx);
 
     switch (entry->registry_entry.value->type) {
     case REG_SZ:
     case REG_EXPAND_SZ:
-        fim_registry_update_digests(data_buffer, strlen((char *)data_buffer), configuration->opts, &md5_ctx, &sha1_ctx,
-                                    &sha256_ctx);
+        fim_registry_update_digests(data_buffer, strlen((char *)data_buffer), configuration->opts, md5_ctx, sha1_ctx,
+                                    sha256_ctx);
         break;
     case REG_MULTI_SZ:
         /* Print multiple strings */
         for (string_it = (char *)data_buffer; *string_it; string_it += strlen(string_it) + 1) {
-            fim_registry_update_digests((BYTE *)string_it, strlen(string_it), configuration->opts, &md5_ctx, &sha1_ctx,
-                                        &sha256_ctx);
+            fim_registry_update_digests((BYTE *)string_it, strlen(string_it), configuration->opts, md5_ctx, sha1_ctx,
+                                        sha256_ctx);
         }
         break;
     case REG_DWORD:
         length = snprintf((char *)buffer, OS_SIZE_2048, "%08x", *((unsigned int *)data_buffer));
-        fim_registry_update_digests(buffer, length, configuration->opts, &md5_ctx, &sha1_ctx, &sha256_ctx);
+        fim_registry_update_digests(buffer, length, configuration->opts, md5_ctx, sha1_ctx, sha256_ctx);
         break;
     default:
         for (unsigned int i = 0; i < entry->registry_entry.value->size; i++) {
             length = snprintf((char *)buffer, 3, "%02x", (unsigned int)data_buffer[i] & 0xFF);
-            fim_registry_update_digests(buffer, length, configuration->opts, &md5_ctx, &sha1_ctx, &sha256_ctx);
+            fim_registry_update_digests(buffer, length, configuration->opts, md5_ctx, sha1_ctx, sha256_ctx);
         }
         break;
     }
 
-    fim_registry_final_digests(configuration->opts, &md5_ctx, &sha1_ctx, &sha256_ctx,
+    fim_registry_final_digests(configuration->opts, md5_ctx, sha1_ctx, sha256_ctx,
                                entry->registry_entry.value->hash_md5, entry->registry_entry.value->hash_sha1,
                                entry->registry_entry.value->hash_sha256);
+
+    EVP_MD_CTX_free(md5_ctx);
+    EVP_MD_CTX_free(sha1_ctx);
+    EVP_MD_CTX_free(sha256_ctx);
 }
 
 /**
