@@ -30,14 +30,8 @@
 #define BUSY_SLEEP 1
 #define MAX_ATTEMPTS 1000
 
-/// Strings used with wdbc_result.
-const char* WDBC_RESULT[] = {
-    [WDBC_OK]      = "ok",
-    [WDBC_DUE]     = "due",
-    [WDBC_ERROR]   = "err",
-    [WDBC_IGNORE]  = "ign",
-    [WDBC_UNKNOWN] = "unk"
-};
+// Router provider variables
+ROUTER_PROVIDER_HANDLE router_handle = NULL;
 
 static const char *SQL_CREATE_TEMP_TABLE = "CREATE TEMP TABLE IF NOT EXISTS s(rowid INTEGER PRIMARY KEY, pageno INT);";
 static const char *SQL_TRUNCATE_TEMP_TABLE = "DELETE FROM s;";
@@ -229,15 +223,15 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SYSCOLLECTOR_PROCESSES_CLEAR] = "DELETE FROM sys_processes;",
     [WDB_STMT_SYSCOLLECTOR_PACKAGES_SELECT_CHECKSUM] = "SELECT checksum FROM sys_programs WHERE checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
     [WDB_STMT_SYSCOLLECTOR_PACKAGES_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_programs WHERE item_id BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
-    [WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_AROUND] = "DELETE FROM sys_programs WHERE item_id < ? OR item_id > ? OR checksum = 'legacy' OR checksum = '';",
-    [WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_RANGE] = "DELETE FROM sys_programs WHERE item_id > ? AND item_id < ?;",
-    [WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_BY_PK] = "DELETE FROM sys_programs WHERE item_id = ?;",
+    [WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_AROUND] = "DELETE FROM sys_programs WHERE item_id < ? OR item_id > ? OR checksum = 'legacy' OR checksum = '' RETURNING name, version, architecture, format, location;",
+    [WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_RANGE] = "DELETE FROM sys_programs WHERE item_id > ? AND item_id < ? RETURNING name, version, architecture, format, location;",
+    [WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_BY_PK] = "DELETE FROM sys_programs WHERE item_id = ? RETURNING name, version, architecture, format, location;",
     [WDB_STMT_SYSCOLLECTOR_PACKAGES_CLEAR] = "DELETE FROM sys_programs;",
     [WDB_STMT_SYSCOLLECTOR_HOTFIXES_SELECT_CHECKSUM] = "SELECT checksum FROM sys_hotfixes WHERE checksum != 'legacy' AND checksum != '' ORDER BY hotfix;",
     [WDB_STMT_SYSCOLLECTOR_HOTFIXES_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_hotfixes WHERE hotfix BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY hotfix;",
-    [WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_AROUND] = "DELETE FROM sys_hotfixes WHERE hotfix < ? OR hotfix > ? OR checksum = 'legacy' OR checksum = '';",
-    [WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_RANGE] = "DELETE FROM sys_hotfixes WHERE hotfix > ? AND hotfix < ?;",
-    [WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_BY_PK] = "DELETE FROM sys_hotfixes WHERE hotfix = ?;",
+    [WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_AROUND] = "DELETE FROM sys_hotfixes WHERE hotfix < ? OR hotfix > ? OR checksum = 'legacy' OR checksum = '' RETURNING hotfix;",
+    [WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_RANGE] = "DELETE FROM sys_hotfixes WHERE hotfix > ? AND hotfix < ? RETURNING hotfix;",
+    [WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_BY_PK] = "DELETE FROM sys_hotfixes WHERE hotfix = ? RETURNING hotfix;",
     [WDB_STMT_SYSCOLLECTOR_HOTFIXES_CLEAR] = "DELETE FROM sys_hotfixes;",
     [WDB_STMT_SYSCOLLECTOR_PORTS_SELECT_CHECKSUM] = "SELECT checksum FROM sys_ports WHERE checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
     [WDB_STMT_SYSCOLLECTOR_PORTS_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_ports WHERE item_id BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
@@ -343,7 +337,6 @@ STATIC int wdb_any_transaction(wdb_t * wdb, const char* sql_transaction);
 */
 STATIC int wdb_write_state_transaction(wdb_t * wdb, uint8_t state, wdb_ptr_any_txn_t wdb_ptr_any_txn);
 
-wdb_config wconfig;
 pthread_mutex_t pool_mutex = PTHREAD_MUTEX_INITIALIZER;
 wdb_t * db_pool_begin;
 wdb_t * db_pool_last;
@@ -1724,39 +1717,6 @@ int wdb_enable_foreign_keys(sqlite3 *db) {
     }
 
     return 0;
-}
-
-/**
- * @brief Frees agent_info_data struct memory.
- *
- * @param[in] agent_data Pointer to the struct to be freed.
- */
-void wdb_free_agent_info_data(agent_info_data *agent_data) {
-    if (agent_data) {
-        os_free(agent_data->version);
-        os_free(agent_data->config_sum);
-        os_free(agent_data->merged_sum);
-        os_free(agent_data->manager_host);
-        os_free(agent_data->node_name);
-        os_free(agent_data->agent_ip);
-        os_free(agent_data->labels);
-        os_free(agent_data->connection_status);
-        os_free(agent_data->sync_status);
-        os_free(agent_data->group_config_status);
-        if (agent_data->osd) {
-            os_free(agent_data->osd->os_name);
-            os_free(agent_data->osd->os_version);
-            os_free(agent_data->osd->os_major);
-            os_free(agent_data->osd->os_minor);
-            os_free(agent_data->osd->os_codename);
-            os_free(agent_data->osd->os_platform);
-            os_free(agent_data->osd->os_build);
-            os_free(agent_data->osd->os_uname);
-            os_free(agent_data->osd->os_arch);
-            os_free(agent_data->osd);
-        }
-        os_free(agent_data);
-    }
 }
 
 sqlite3_stmt* wdb_init_stmt_in_cache(wdb_t * wdb, wdb_stmt statement_index) {

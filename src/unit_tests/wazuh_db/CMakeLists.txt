@@ -6,7 +6,8 @@ list(APPEND wdb_tests_names "test_wdb_integrity")
 list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug1 -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_errmsg \
                          -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,EVP_DigestInit_ex -Wl,--wrap,EVP_DigestUpdate -Wl,--wrap,_DigestFinal_ex \
                          -Wl,--wrap,sqlite3_bind_int64 -Wl,--wrap,sqlite3_column_text -Wl,--wrap,_mdebug2 -Wl,--wrap,wdb_exec_stmt \
-                         -Wl,--wrap,time -Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,wdb_init_stmt_in_cache ${DEBUG_OP_WRAPPERS}")
+                         -Wl,--wrap,time -Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,wdb_init_stmt_in_cache ${DEBUG_OP_WRAPPERS} \
+                         -Wl,--wrap,router_provider_send_fb")
 
 # Add server specific tests to the list
 list(APPEND wdb_tests_names "test_wdb_fim")
@@ -190,6 +191,11 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_create_state_json -Wl,--wrap,wdb_get
 
 # Add extra compiling flags
 add_compile_options(-Wall)
+link_directories(${SRC_FOLDER}/build/shared_modules/router)
+
+# Wazuh-DB objects
+FILE(GLOB wazuh_db_objects ${SRC_FOLDER}/wazuh_db/*.o)
+list(REMOVE_ITEM wazuh_db_objects ${SRC_FOLDER}/wazuh_db/main.o ${SRC_FOLDER}/wazuh_db/wdb_shared.o)
 
 # Compilig tests
 list(LENGTH wdb_tests_names count)
@@ -198,13 +204,14 @@ foreach(counter RANGE ${count})
     list(GET wdb_tests_names ${counter} test_name)
     list(GET wdb_tests_flags ${counter} test_flags)
 
-    add_executable(${test_name} ${test_name}.c)
+    add_executable(${test_name} ${test_name}.c ${wazuh_db_objects})
 
     target_link_libraries(
         ${test_name}
         ${WAZUHLIB}
         ${WAZUHEXT}
         ${TEST_DEPS}
+        router
     )
 
     if(NOT test_flags STREQUAL " ")

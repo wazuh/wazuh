@@ -20,6 +20,7 @@
 #include "rootcheck_op.h"
 #include "wazuhdb_op.h"
 #include "regex_op.h"
+#include "router.h"
 
 #define WDB_AGENT_EMPTY 0
 #define WDB_AGENT_PENDING 1
@@ -109,6 +110,9 @@ typedef enum wdb_global_group_hash_operations_t {
 #define WDB_RESPONSE_OK_SIZE     3
 
 #define SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE "legacy"
+
+// Router provider variables
+extern ROUTER_PROVIDER_HANDLE router_handle;
 
 typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,
@@ -1545,6 +1549,8 @@ int wdbi_checksum(wdb_t * wdb, wdb_component_t component, os_sha1 hexdigest);
 int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest);
 
 int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, const char * tail);
+
+void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite3_stmt* stmt);
 
 /**
  * @brief Updates the timestamps and counters of a component from sync_info table. It should be called when

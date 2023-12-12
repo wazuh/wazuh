@@ -18,6 +18,7 @@
 #include "../headers/shared.h"
 #include "../os_crypto/sha1/sha1_op.h"
 #include "../external/sqlite/sqlite3.h"
+#include "utils/flatbuffers/include/syscollector_deltas_schema.h"
 
 #include "../wrappers/externals/openssl/digest_wrappers.h"
 #include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
@@ -1760,6 +1761,106 @@ void wdb_get_global_group_hash_calculate_success(void **state)
     assert_int_equal(ret, OS_SUCCESS);
 }
 
+// Tests wdbi_report_removed
+
+void test_wdbi_report_removed_no_handle(void **state) {
+    const char* agent_id = "001";
+    wdb_component_t component = WDB_SYSCOLLECTOR_PACKAGES;
+    sqlite3_stmt* stmt = NULL;
+    router_handle = NULL;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Router handle not available.");
+
+    wdbi_report_removed(agent_id, component, stmt);
+}
+
+void test_wdbi_report_removed_packages_success(void **state) {
+    const char* agent_id = "001";
+    wdb_component_t component = WDB_SYSCOLLECTOR_PACKAGES;
+    sqlite3_stmt* stmt = NULL;
+    router_handle = (ROUTER_PROVIDER_HANDLE)1;
+    const char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\"},\"data_type\":\"dbsync_packages\","
+                                   "\"data\":{\"name\":\"name\",\"version\":\"version\",\"architecture\":\"architecture\",\"format\":\"format\",\"location\":\"location\"},\"operation\":\"DELETED\"}";
+
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "name");
+    expect_value(__wrap_sqlite3_column_text, iCol, 1);
+    will_return(__wrap_sqlite3_column_text, "version");
+    expect_value(__wrap_sqlite3_column_text, iCol, 2);
+    will_return(__wrap_sqlite3_column_text, "architecture");
+    expect_value(__wrap_sqlite3_column_text, iCol, 3);
+    will_return(__wrap_sqlite3_column_text, "format");
+    expect_value(__wrap_sqlite3_column_text, iCol, 4);
+    will_return(__wrap_sqlite3_column_text, "location");
+
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
+    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, 0);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    wdbi_report_removed(agent_id, component, stmt);
+}
+
+void test_wdbi_report_removed_hotfixes_success(void **state) {
+    const char* agent_id = "001";
+    wdb_component_t component = WDB_SYSCOLLECTOR_HOTFIXES;
+    sqlite3_stmt* stmt = NULL;
+    router_handle = (ROUTER_PROVIDER_HANDLE)1;
+    const char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\"},\"data_type\":\"dbsync_hotfixes\","
+                                   "\"data\":{\"hotfix\":\"hotfix\"},\"operation\":\"DELETED\"}";
+
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "hotfix");
+
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
+    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, 0);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    wdbi_report_removed(agent_id, component, stmt);
+}
+
+void test_wdbi_report_removed_hotfixes_success_multiple_steps(void **state) {
+    const char* agent_id = "001";
+    wdb_component_t component = WDB_SYSCOLLECTOR_HOTFIXES;
+    sqlite3_stmt* stmt = NULL;
+    router_handle = (ROUTER_PROVIDER_HANDLE)1;
+    const char* expected_message_1 = "{\"agent_info\":{\"agent_id\":\"001\"},\"data_type\":\"dbsync_hotfixes\","
+                                     "\"data\":{\"hotfix\":\"hotfix1\"},\"operation\":\"DELETED\"}";
+
+    const char* expected_message_2 = "{\"agent_info\":{\"agent_id\":\"001\"},\"data_type\":\"dbsync_hotfixes\","
+                                     "\"data\":{\"hotfix\":\"hotfix2\"},\"operation\":\"DELETED\"}";
+
+    // First hotfix
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "hotfix1");
+
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message_1);
+    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, 0);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    // Second hotfix
+
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "hotfix2");
+
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message_2);
+    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, 0);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    wdbi_report_removed(agent_id, component, stmt);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         //Test wdb_calculate_stmt_checksum
@@ -1863,6 +1964,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(wdb_get_global_group_hash_invalid_statement, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(wdb_get_global_group_hash_calculate_success_no_group_hash_information, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(wdb_get_global_group_hash_calculate_success, setup_wdb_t, teardown_wdb_t),
+
+        // Tests wdbi_report_removed
+        cmocka_unit_test(test_wdbi_report_removed_no_handle),
+        cmocka_unit_test(test_wdbi_report_removed_packages_success),
+        cmocka_unit_test(test_wdbi_report_removed_hotfixes_success),
+        cmocka_unit_test(test_wdbi_report_removed_hotfixes_success_multiple_steps),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

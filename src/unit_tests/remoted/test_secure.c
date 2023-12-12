@@ -2018,9 +2018,8 @@ void test_router_message_forward_create_sync_handle_fail(void **state)
     test_agent_info* data = (test_agent_info*)(*state);
     char* message = "5:syscollector:{\"message\":\"valid\"}";
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Failed to create router handle for 'rsync'.");
-    expect_string(__wrap_router_provider_create, name, "rsync-syscollector");
-    will_return(__wrap_router_provider_create, NULL);
+    expect_string(__wrap__mdebug2, formatted_msg, "Router handle for 'rsync' not available.");
+    router_rsync_handle = NULL;
 
     router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
 }
@@ -2030,8 +2029,7 @@ void test_router_message_forward_malformed_sync_json_message(void **state)
     test_agent_info* data = (test_agent_info*)(*state);
     char* message = "5:syscollector:{\"message\":fail";
 
-    expect_string(__wrap_router_provider_create, name, "rsync-syscollector");
-    will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
+    router_rsync_handle = (ROUTER_PROVIDER_HANDLE)(1);
 
     router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
 }
@@ -2042,8 +2040,7 @@ void test_router_message_forward_invalid_sync_json_message(void **state)
     char* message = "5:syscollector:{\"message\":\"not_valid\"}";
     char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":\"focal\",\"node_name\":\"test_node_name\"}}";
 
-    expect_string(__wrap_router_provider_create, name, "rsync-syscollector");
-    will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
+    router_rsync_handle = (ROUTER_PROVIDER_HANDLE)(1);
 
     expect_string(__wrap_router_provider_send_fb, msg, expected_message);
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_synchronization_SCHEMA);
@@ -2062,8 +2059,7 @@ void test_router_message_forward_valid_integrity_check_global(void **state)
     char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":\"focal\",\"node_name\":\"test_node_name\"},\"data_type\":\"integrity_check_global\",\"data\":"
                                                 "{\"attributes_type\":\"syscollector_hwinfo\",\"begin\":\"0\",\"checksum\":\"b66d0703ee882571cd1865f393bd34f7d5940339\",\"end\":\"0\",\"id\":1691259777}}";
 
-    expect_string(__wrap_router_provider_create, name, "rsync-syscollector");
-    will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
+    router_rsync_handle = (ROUTER_PROVIDER_HANDLE)(1);
 
     expect_string(__wrap_router_provider_send_fb, msg, expected_message);
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_synchronization_SCHEMA);
@@ -2080,8 +2076,7 @@ void test_router_message_forward_valid_integrity_check_left(void **state)
     char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":\"focal\",\"node_name\":\"test_node_name\"},\"data_type\":\"integrity_check_global\",\"data\":"
                                                 "{\"attributes_type\":\"syscollector_packages\",\"begin\":\"01113a00fcdafa43d111ecb669202119c946ebe5\",\"checksum\":\"54c13892eb9ee18b0012086b76a89f41e73d64a1\",\"end\":\"40795337f16a208e4d0a2280fbd5c794c9877dcb\",\"id\":1693338981,\"tail\":\"408cb243d2d52ad6414ba602e375b3b6b5f5cd77\"}}";
 
-    expect_string(__wrap_router_provider_create, name, "rsync-syscollector");
-    will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
+    router_rsync_handle = (ROUTER_PROVIDER_HANDLE)(1);
 
     expect_string(__wrap_router_provider_send_fb, msg, expected_message);
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_synchronization_SCHEMA);
@@ -2098,8 +2093,7 @@ void test_router_message_forward_valid_integrity_check_right(void **state)
     char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":\"focal\",\"node_name\":\"test_node_name\"},\"data_type\":\"integrity_check_right\",\"data\":"
                                                 "{\"attributes_type\":\"syscollector_packages\",\"begin\":\"85c5676f6e5082ef99bba397b90559cd36fbbeca\",\"checksum\":\"d33c176f028188be38b394af5eed1e66bb8ad40e\",\"end\":\"ffee8da05f37fa760fc5eee75dd0ea9e71228d05\",\"id\":1693338981}}";
 
-    expect_string(__wrap_router_provider_create, name, "rsync-syscollector");
-    will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
+    router_rsync_handle = (ROUTER_PROVIDER_HANDLE)(1);
 
     expect_string(__wrap_router_provider_send_fb, msg, expected_message);
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_synchronization_SCHEMA);
@@ -2115,8 +2109,7 @@ void test_router_message_forward_valid_integrity_clear(void **state)
     char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":\"focal\",\"node_name\":\"test_node_name\"},\"data_type\":\"integrity_check_clear\",\"data\":"
                                                 "{\"attributes_type\":\"syscollector_hwinfo\",\"id\":1693338619}}";
 
-    expect_string(__wrap_router_provider_create, name, "rsync-syscollector");
-    will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
+    router_rsync_handle = (ROUTER_PROVIDER_HANDLE)(1);
 
     expect_string(__wrap_router_provider_send_fb, msg, expected_message);
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_synchronization_SCHEMA);
@@ -2130,9 +2123,8 @@ void test_router_message_forward_create_delta_handle_fail(void **state)
     test_agent_info* data = (test_agent_info*)(*state);
     char* message = "d:syscollector:{\"message\":\"valid\"}";
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Failed to create router handle for 'syscollector'.");
-    expect_string(__wrap_router_provider_create, name, "deltas-syscollector");
-    will_return(__wrap_router_provider_create, NULL);
+    expect_string(__wrap__mdebug2, formatted_msg, "Router handle for 'syscollector' not available.");
+    router_syscollector_handle = NULL;
 
     router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
 }
@@ -2142,8 +2134,7 @@ void test_router_message_forward_malformed_delta_json_message(void **state)
     test_agent_info* data = (test_agent_info*)(*state);
     char* message = "d:syscollector:{\"message\":fail";
 
-    expect_string(__wrap_router_provider_create, name, "deltas-syscollector");
-    will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
+    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
 
     router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
 }
@@ -2154,8 +2145,7 @@ void test_router_message_forward_invalid_delta_json_message(void **state)
     char* message = "d:syscollector:{\"message\":\"not_valid\"}";
     char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":\"focal\",\"node_name\":\"test_node_name\"}}";
 
-    expect_string(__wrap_router_provider_create, name, "deltas-syscollector");
-    will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
+    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
 
     expect_string(__wrap_router_provider_send_fb, msg, expected_message);
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
@@ -2178,8 +2168,7 @@ void test_router_message_forward_valid_delta_packages_json_message(void **state)
                                                 ",\"multiarch\":\"same\",\"name\":\"libgif7\",\"priority\":\"optional\",\"scan_time\":\"2023/08/04 19:56:11\",\"size\":72,\"source\":\"giflib\""
                                                 ",\"vendor\":\"Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>\",\"version\":\"5.1.9-1\"},\"operation\":\"INSERTED\"}";
 
-    expect_string(__wrap_router_provider_create, name, "deltas-syscollector");
-    will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
+    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
 
     expect_string(__wrap_router_provider_send_fb, msg, expected_message);
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
@@ -2200,8 +2189,7 @@ void test_router_message_forward_valid_delta_os_json_message(void **state)
                                                 ",\"multiarch\":\"same\",\"name\":\"libgif7\",\"priority\":\"optional\",\"scan_time\":\"2023/08/04 19:56:11\",\"size\":72,\"source\":\"giflib\""
                                                 ",\"vendor\":\"Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>\",\"version\":\"5.1.9-1\"},\"operation\":\"INSERTED\"}";
 
-    expect_string(__wrap_router_provider_create, name, "deltas-syscollector");
-    will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
+    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
 
     expect_string(__wrap_router_provider_send_fb, msg, expected_message);
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
@@ -2222,8 +2210,7 @@ void test_router_message_forward_valid_delta_netiface_json_message(void **state)
                                                 ",\"rx_dropped\":0,\"rx_errors\":0,\"rx_packets\":670863,\"scan_time\":\"2023/08/04 19:56:11\",\"state\":\"up\",\"tx_bytes\":6151606,\"tx_dropped\":0"
                                                 ",\"tx_errors\":0,\"tx_packets\":84746,\"type\":\"ethernet\"},\"operation\":\"MODIFIED\"}";
 
-    expect_string(__wrap_router_provider_create, name, "deltas-syscollector");
-    will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
+    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
 
     expect_string(__wrap_router_provider_send_fb, msg, expected_message);
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
@@ -2242,8 +2229,7 @@ void test_router_message_forward_valid_delta_netproto_json_message(void **state)
                                                 ",\"gateway\":\" \",\"iface\":\"enp0s9\",\"item_id\":\"33228317ee8778628d0f2f4fde53b75b92f15f1d\",\"metric\":\"0\",\"scan_time\":\"2023/08/07 15:02:36\""
                                                 ",\"type\":\"ipv4\"},\"operation\":\"DELETED\"}";
 
-    expect_string(__wrap_router_provider_create, name, "deltas-syscollector");
-    will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
+    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
 
     expect_string(__wrap_router_provider_send_fb, msg, expected_message);
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
@@ -2262,8 +2248,7 @@ void test_router_message_forward_valid_delta_netaddr_json_message(void **state)
                                                 ",\"checksum\":\"c1f9511fa37815d19cee496f21524725ba84ab10\",\"iface\":\"enp0s9\",\"item_id\":\"b333013c47d28eb3878068dd59c42e00178bd475\""
                                                 ",\"netmask\":\"255.255.255.0\",\"proto\":0,\"scan_time\":\"2023/08/07 15:02:36\"},\"operation\":\"DELETED\"}";
 
-    expect_string(__wrap_router_provider_create, name, "deltas-syscollector");
-    will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
+    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
 
     expect_string(__wrap_router_provider_send_fb, msg, expected_message);
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
@@ -2283,8 +2268,7 @@ void test_router_message_forward_valid_delta_hardware_json_message(void **state)
                                                 ",\"cpu_mhz\":2592,\"cpu_name\":\"Intel(R) Core(TM) i7-10750H CPU @ 2.60GHz\",\"ram_free\":11547184,\"ram_total\":12251492,\"ram_usage\":6"
                                                 ",\"scan_time\":\"2023/08/04 19:56:11\"},\"operation\":\"MODIFIED\"}";
 
-    expect_string(__wrap_router_provider_create, name, "deltas-syscollector");
-    will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
+    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
 
     expect_string(__wrap_router_provider_send_fb, msg, expected_message);
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
@@ -2303,8 +2287,7 @@ void test_router_message_forward_valid_delta_ports_json_message(void **state)
                                                 ",\"item_id\":\"7f98c21162b40ca7871a8292d177a1812ca97547\",\"local_ip\":\"10.0.2.15\",\"local_port\":68,\"pid\":0,\"process\":null,\"protocol\":\"udp\""
                                                 ",\"remote_ip\":\"0.0.0.0\",\"remote_port\":0,\"rx_queue\":0,\"scan_time\":\"2023/08/07 12:42:41\",\"state\":null,\"tx_queue\":0},\"operation\":\"INSERTED\"}";
 
-    expect_string(__wrap_router_provider_create, name, "deltas-syscollector");
-    will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
+    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
 
     expect_string(__wrap_router_provider_send_fb, msg, expected_message);
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
@@ -2323,8 +2306,7 @@ void test_router_message_forward_valid_delta_processes_json_message(void **state
                                                 ",\"name\":\"winlogon.exe\",\"nlwp\":6,\"pid\":\"604\",\"ppid\":496,\"priority\":13,\"scan_time\":\"2023/08/07 15:01:57\",\"session\":1,\"size\":3387392"
                                                 ",\"start_time\":1691420428,\"stime\":0,\"utime\":0,\"vm_size\":14348288},\"operation\":\"MODIFIED\"}";
 
-    expect_string(__wrap_router_provider_create, name, "deltas-syscollector");
-    will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
+    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
 
     expect_string(__wrap_router_provider_send_fb, msg, expected_message);
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
@@ -2341,8 +2323,7 @@ void test_router_message_forward_valid_delta_hotfixes_json_message(void **state)
     char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":\"focal\",\"node_name\":\"test_node_name\"},\"data_type\":\"dbsync_hotfixes\",\"data\":{\"checksum\":\"f6eea592bc11465ecacc92ddaea188ef3faf0a1f\",\"hotfix\":\"KB4502496\""
                                                 ",\"scan_time\":\"2023/08/0419:56:11\"},\"operation\":\"MODIFIED\"}";
 
-    expect_string(__wrap_router_provider_create, name, "deltas-syscollector");
-    will_return(__wrap_router_provider_create, (ROUTER_PROVIDER_HANDLE)(1));
+    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
 
     expect_string(__wrap_router_provider_send_fb, msg, expected_message);
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
