@@ -63,7 +63,11 @@ private:
 
             const auto msg = jsonMsg.dump();
             socketClient->send(msg.data(), msg.size());
-            futureObj.wait();
+            if(futureObj.wait_for(std::chrono::seconds(1)) == std::future_status::timeout)
+            {
+                throw std::runtime_error("Timeout waiting for response");
+            }
+
         }
         catch (const std::exception& e)
         {

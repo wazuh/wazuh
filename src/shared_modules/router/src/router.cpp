@@ -67,6 +67,7 @@ private:
     }
 
 public:
+    // TO DO - Add parameter to control if the provider is local or remote.
     providerHandler(std::string providerName)
         : m_provider(providerName, false)
     {
@@ -85,12 +86,20 @@ public:
     void stop()
     {
         m_shouldStop.store(true);
-        m_queue.cancel();
+        if (!m_queue.cancelled())
+        {
+            m_queue.cancel();
+        }
+
         if (m_workingThread.joinable())
         {
             m_workingThread.join();
         }
-        m_provider.stop();
+
+        if (m_provider.isReady())
+        {
+            m_provider.stop();
+        }
     }
 
     bool isReady()
@@ -267,7 +276,6 @@ extern "C"
                 std::unique_lock<std::shared_mutex> lock(PROVIDERS_MUTEX);
                 if (PROVIDERS.find(provider_name) == PROVIDERS.end())
                 {
-                    // TO DO - Add parameter to control if the provider is local or remote.
                     PROVIDERS[provider_name] = std::make_shared<providerHandler>(provider_name);
                     PROVIDERS.at(provider_name)->start();
                 }
