@@ -1,8 +1,8 @@
 from datetime import datetime
 from enum import Enum
-import json
+import hashlib
 from api_communication.client import APIClient
-from api_communication.proto import test_pb2 as api_test
+from api_communication.proto import tester_pb2 as api_tester
 from api_communication.proto import engine_pb2 as api_engine
 from google.protobuf.json_format import ParseDict
 
@@ -13,7 +13,7 @@ class ApiConfig(Enum):
     Component = "test"
     SessionName = "engine_test"
     Lifespan = 0
-    Description = ""
+    Description = "Automatically created by engine-test"
 
 
 class ApiConnector:
@@ -27,22 +27,23 @@ class ApiConnector:
 
         self.config = config
 
-    def test_run(self, event):
+    def tester_run(self, event):
         try:
             # Create test request
-            request = api_test.RunPost_Request()
+            request = api_tester.RunPost_Request()
             request.name = self.session_name
-            request.protocol_queue = chr(self.config['queue'])
-            request.protocol_location = self.config['full_location']
-            request.event.string_value = event
+            request.queue = chr(self.config['queue'])
+            request.location = self.config['full_location']
+            request.message = event
 
             request.namespaces.extend(self.config['namespaces'])
 
             if (self.config['full_verbose'] == True):
-                request.debug_mode = 2
+                request.trace_level = api_tester.TraceLevel.ALL
+            elif (self.config['verbose'] == True):
+                request.trace_level = api_tester.TraceLevel.ASSET_ONLY
             else:
-                if self.config['verbose']:
-                    request.debug_mode = 1
+                request.trace_level = api_tester.TraceLevel.NONE
 
             if self.config['assets']:
                 request.asset_trace.extend(self.config['assets'])
@@ -51,12 +52,12 @@ class ApiConnector:
             if err:
                 print(err)
                 exit(1)
-            response_post = ParseDict(response, api_test.RunPost_Response())
+            response_post = ParseDict(response, api_tester.RunPost_Response())
             if response_post.status != api_engine.OK:
                 print("Run error: {}".format(response_post.error))
                 exit(1)
 
-            return response_post, (response['run']['output'])
+            return response_post
         except Exception as ex:
             print('Could not send event to TEST api. Error: {}'.format(ex))
             exit(1)
@@ -67,14 +68,14 @@ class ApiConnector:
             if self.config['session_name']:
                 # Connect to TEST with an existing session
                 self.session_name = self.config['session_name']
-                request_get = api_test.SessionGet_Request()
+                request_get = api_tester.SessionGet_Request()
                 request_get.name = self.session_name
                 err, response = self.api_client.send_recv(request_get)
                 if err:
                     print(err)
                     exit(1)
                 response_get = ParseDict(
-                    response, api_test.SessionGet_Response())
+                    response, api_tester.SessionGet_Response())
 
                 if response_get.status != api_engine.OK:
                     print("Session error: {}".format(response_get.error))
@@ -82,12 +83,16 @@ class ApiConnector:
 
             else:
                 # Connect to TEST with a temporal session with parametrized policy
-                request_post = api_test.SessionPost_Request()
+                session  = api_tester.SessionPost()
                 self.session_name = self.get_session_name()
-                request_post.name = self.session_name
-                request_post.policy = self.config['policy']
-                request_post.lifespan = ApiConfig.Lifespan.value
-                request_post.description = ApiConfig.Description.value
+                session.name = self.session_name
+                session.policy = self.config['policy']
+                session.lifetime = ApiConfig.Lifespan.value
+                session.description = ApiConfig.Description.value
+
+                request_post = api_tester.SessionPost_Request()
+                request_post.session.CopyFrom(session)
+
                 err, response = self.api_client.send_recv(request_post)
                 if err:
                     print(err)
@@ -104,7 +109,7 @@ class ApiConnector:
 
     def delete_session(self):
         if not self.config['session_name']:
-            request_delete = api_test.SessionsDelete_Request()
+            request_delete = api_tester.SessionDelete_Request()
             request_delete.name = self.session_name
             err, response = self.api_client.send_recv(request_delete)
             if err:
@@ -116,6 +121,7 @@ class ApiConnector:
                 print("Session error: {}".format(response_delete.error))
                 exit(1)
 
-    def get_session_name(self):
+    def get_session_name(self): #TODO Change to session_name
         now = datetime.now()
-        return '{}_{}'.format(self.session_name, now.strftime("%Y%m%d%H%M%S%f"))
+        hexa = hashlib.md5(now.strftime("%Y%m%d%H%M%S%f").encode('utf-8')).hexdigest()
+        return '{}_{}'.format(self.session_name, hexa[-5:])
