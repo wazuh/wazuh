@@ -61,7 +61,7 @@ STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storag
 #define REMOTED_ROUTER_HANDLE_WAIT_TIME 10
 
 // Router message forwarder
-void router_message_forward(char* msg, const char* agent_id);
+void router_message_forward(char* msg, const char* agent_id, const char* agent_ip, const char* agent_name);
 
 // Router handle thread
 void * rem_router_handle(__attribute__((unused)) void * args);
@@ -832,12 +832,14 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
         rem_inc_recv_evt(agentid_str);
     }
 
-    router_message_forward(tmp_msg, keys.keyentries[agentid]->id);
+    router_message_forward(tmp_msg, keys.keyentries[agentid]->id,
+                                            keys.keyentries[agentid]->ip->ip,
+                                            keys.keyentries[agentid]->name);
 
     os_free(agentid_str);
 }
 
-void router_message_forward(char* msg, const char* agent_id) {
+void router_message_forward(char* msg, const char* agent_id, const char* agent_ip, const char* agent_name) {
     // Both syscollector delta and sync messages are sent to the router
     ROUTER_PROVIDER_HANDLE router_handle = NULL;
     int message_header_size = 0;
@@ -883,6 +885,8 @@ void router_message_forward(char* msg, const char* agent_id) {
 
         j_agent_info = cJSON_CreateObject();
         cJSON_AddStringToObject(j_agent_info, "agent_id", agent_id);
+        cJSON_AddStringToObject(j_agent_info, "agent_ip", agent_ip);
+        cJSON_AddStringToObject(j_agent_info, "agent_name", agent_name);
         cJSON_AddStringToObject(j_agent_info, "node_name", node_name);
         cJSON_AddItemToObject(j_msg_to_send, "agent_info", j_agent_info);
 
