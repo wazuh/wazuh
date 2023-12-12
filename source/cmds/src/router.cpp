@@ -5,7 +5,7 @@
 #include "defaultSettings.hpp"
 #include "utils.hpp"
 #include <cmds/apiclnt/client.hpp>
-#include <router/route.hpp>
+#include <yml/yml.hpp>
 
 namespace
 {
@@ -14,6 +14,7 @@ struct Options
     std::string serverApiSock;
     std::string name;
     std::string filterName;
+    bool jsonFormat;
     int priority {};
     std::string policy;
     std::string event;
@@ -27,7 +28,7 @@ namespace cmd::router
 namespace eRouter = ::com::wazuh::api::engine::router;
 namespace eEngine = ::com::wazuh::api::engine;
 
-void runGetTable(std::shared_ptr<apiclnt::Client> client)
+void runGetTable(std::shared_ptr<apiclnt::Client> client, const bool jsonFormat)
 {
     using RequestType = eRouter::TableGet_Request;
     using ResponseType = eRouter::TableGet_Response;
@@ -44,14 +45,27 @@ void runGetTable(std::shared_ptr<apiclnt::Client> client)
     // Print the table as JSON array of objects (Entry)
     const auto& table = eResponse.table();
     const auto json = eMessage::eRepeatedFieldToJson<eRouter::Entry>(table);
-    std::cout << std::get<std::string>(json) << std::endl;
+
+    if (!jsonFormat)
+    {
+        rapidjson::Document doc;
+        doc.Parse(std::get<std::string>(json).c_str());
+        auto yaml = yml::Converter::jsonToYaml(doc);
+        YAML::Emitter out;
+        out << yaml;
+        std::cout << out.c_str() << std::endl;
+    }
+    else
+    {
+        std::cout << std::get<std::string>(json) << std::endl;
+    }
 }
 
-void runGet(std::shared_ptr<apiclnt::Client> client, const std::string& nameStr)
+void runGet(std::shared_ptr<apiclnt::Client> client, const std::string& nameStr, const bool jsonFormat)
 {
     if (nameStr.empty())
     {
-        runGetTable(client);
+        runGetTable(client, jsonFormat);
         return;
     }
     using RequestType = eRouter::RouteGet_Request;
@@ -71,7 +85,20 @@ void runGet(std::shared_ptr<apiclnt::Client> client, const std::string& nameStr)
     const auto& route = eResponse.route();
     const auto result = eMessage::eMessageToJson<eRouter::Entry>(route);
     const auto& json = std::get<std::string>(result);
-    std::cout << json << std::endl;
+
+    if (!jsonFormat)
+    {
+        rapidjson::Document doc;
+        doc.Parse(json.c_str());
+        auto yaml = yml::Converter::jsonToYaml(doc);
+        YAML::Emitter out;
+        out << yaml;
+        std::cout << out.c_str() << std::endl;
+    }
+    else
+    {
+        std::cout << json << std::endl;
+    }
 }
 
 void runAdd(std::shared_ptr<apiclnt::Client> client,
@@ -115,14 +142,30 @@ void runDelete(std::shared_ptr<apiclnt::Client> client, const std::string& nameS
 
 void runUpdate(std::shared_ptr<apiclnt::Client> client, const std::string& nameStr, int priority)
 {
-    using RequestType = eRouter::RoutePatch_Request;
+    using RequestType = eRouter::RoutePatchPriority_Request;
     using ResponseType = eEngine::GenericStatus_Response;
-    const std::string command = "router.route/patch";
+    const std::string command = "router.route/patchPriority";
 
     // Prepare the request
     RequestType eRequest;
-    eRequest.mutable_route()->set_name(nameStr);
-    eRequest.mutable_route()->set_priority(priority);
+    eRequest.set_name(nameStr);
+    eRequest.set_priority(priority);
+
+    // Call the API, any error will throw an cmd::exception
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto response = client->send(request);
+    utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
+}
+
+void runReload(std::shared_ptr<apiclnt::Client> client, const std::string& nameStr)
+{
+    using RequestType = eRouter::RouteReload_Request;
+    using ResponseType = eEngine::GenericStatus_Response;
+    const std::string command = "router.route/reload";
+
+    // Prepare the request
+    RequestType eRequest;
+    eRequest.set_name(nameStr);
 
     // Call the API, any error will throw an cmd::exception
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
@@ -154,12 +197,13 @@ void configure(CLI::App_p app)
     auto options = std::make_shared<Options>();
 
     // Endpoint
-    routerApp->add_option("-a, --api_socket", options->serverApiSock, "Sets the API server socket address.")
+    routerApp->add_option("-s, --api_socket", options->serverApiSock, "Sets the API server socket address.")
         ->default_val(ENGINE_SRV_API_SOCK)
         ->check(CLI::ExistingFile);
 
     // Client timeout
-    routerApp->add_option("--client_timeout", options->clientTimeout, "Sets the timeout for the client in miliseconds.")
+    routerApp
+        ->add_option("-t, --client_timeout", options->clientTimeout, "Sets the timeout for the client in miliseconds.")
         ->default_val(ENGINE_CLIENT_TIMEOUT)
         ->check(CLI::NonNegativeNumber);
 
@@ -168,11 +212,15 @@ void configure(CLI::App_p app)
         "get", "Get the information of an active route, or all active routes if no name is provided.");
     getSubcommand->add_option("name", options->name, "Name of the route to get, empty to list all routes.")
         ->default_val("");
+    getSubcommand
+        ->add_flag("-j, --json",
+                   options->jsonFormat,
+                   "Allows the output and trace generated by an event to be printed in Json format.");
     getSubcommand->callback(
         [options]()
         {
             const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
-            runGet(client, options->name);
+            runGet(client, options->name, options->jsonFormat);
         });
 
     // Add
@@ -180,9 +228,7 @@ void configure(CLI::App_p app)
         routerApp->add_subcommand("add", "Activate a new route, filter and policy asset must exist in the catalog");
     addSubcommand->add_option("name", options->name, "Name or identifier of the route.")->required();
     addSubcommand->add_option("filter", options->filterName, "Name of the filter to use.")->required();
-    addSubcommand->add_option("priority", options->priority, "Priority of the route.")
-        ->required()
-        ->check(CLI::Range(::router::USER_ROUTE_MAXIMUM_PRIORITY, ::router::USER_ROUTE_MINIMUM_PRIORITY));
+    addSubcommand->add_option("priority", options->priority, "Priority of the route.")->required();
     addSubcommand->add_option("policy", options->policy, "Target policy of the route.")->required();
     addSubcommand->callback(
         [options]()
@@ -204,14 +250,22 @@ void configure(CLI::App_p app)
     // Update
     auto updateSubcommand = routerApp->add_subcommand("update", "Modify an active route.");
     updateSubcommand->add_option("name", options->name, "Name of the route to modify.")->required();
-    updateSubcommand->add_option("priority", options->priority, "Priority of the route.")
-        ->required()
-        ->check(CLI::Range(::router::USER_ROUTE_MAXIMUM_PRIORITY, ::router::USER_ROUTE_MINIMUM_PRIORITY));
+    updateSubcommand->add_option("priority", options->priority, "Priority of the route.")->required();
     updateSubcommand->callback(
         [options]()
         {
             const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
             runUpdate(client, options->name, options->priority);
+        });
+
+    // Reload
+    auto reloadSubcommand = routerApp->add_subcommand("reload", "Try to reconstruct a route.");
+    reloadSubcommand->add_option("name", options->name, "Name of the route to modify.")->required();
+    reloadSubcommand->callback(
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
+            runReload(client, options->name);
         });
 
     // Ingest

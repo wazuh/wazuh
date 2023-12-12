@@ -1,4 +1,4 @@
-#include "cmds/test.hpp"
+#include "cmds/tester.hpp"
 
 #include "defaultSettings.hpp"
 #include "utils.hpp"
@@ -10,7 +10,7 @@
 // #include <api/test/handlers.hpp>
 #include <cmds/apiclnt/client.hpp>
 #include <cmds/details/stackExecutor.hpp>
-#include <eMessages/test.pb.h>
+#include <eMessages/tester.pb.h>
 #include <yml/yml.hpp>
 
 namespace
@@ -72,10 +72,10 @@ inline bool clearIcanon(const bool& doClearIcanon)
 
 } // namespace
 
-namespace cmd::test
+namespace cmd::tester
 {
 
-namespace eTest = ::com::wazuh::api::engine::test;
+namespace eTest = ::com::wazuh::api::engine::tester;
 namespace eEngine = ::com::wazuh::api::engine;
 
 void processEvent(const std::string& eventStr,
@@ -85,7 +85,7 @@ void processEvent(const std::string& eventStr,
 {
     using RequestType = eTest::RunPost_Request;
     using ResponseType = eTest::RunPost_Response;
-    const std::string command {api::test::handlers::TEST_RUN_API_CMD};
+    const std::string command {"tester.run/post"};
 
     // Set event
     json::Json jsonEvent {};
@@ -100,7 +100,7 @@ void processEvent(const std::string& eventStr,
     }
 
     const auto& event = std::get<google::protobuf::Value>(protoEvent);
-    eRequest.mutable_event()->CopyFrom(event);
+    eRequest.set_message(event.string_value());
 
     // Call the API
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
@@ -110,28 +110,28 @@ void processEvent(const std::string& eventStr,
     // Print results
     // TODO Check if eResponse.run().output() is empty and errroe in message to json string
     std::string jsonOutputAndTrace;
-    google::protobuf::util::MessageToJsonString(eResponse.run().output(), &jsonOutputAndTrace);
+    google::protobuf::util::MessageToJsonString(eResponse.result().output(), &jsonOutputAndTrace);
 
     if (parameters.jsonFormat)
     {
         json::Json jPrint {};
         auto jOutput =  json::Json{jsonOutputAndTrace.c_str()};
         jPrint.set("/output", jOutput);
-        for (const auto& data : eResponse.run().asset_traces())
+        for (const auto& data : eResponse.result().asset_traces())
         {
             std::string jdataStr {};
             google::protobuf::util::MessageToJsonString(data, &jdataStr);
             auto jTrace = json::Json{jdataStr.c_str()};
             jPrint.appendJson(jTrace, "/traces");
         }
-        std::cout << jPrint.str() << std::endl; 
+        std::cout << jPrint.str() << std::endl;
     }
     else
     {
-        if (eResponse.run().asset_traces_size() != 0) {
+        if (eResponse.result().asset_traces_size() != 0) {
             std::cout << "Traces:\n" ;
 
-            for (const auto& data : eResponse.run().asset_traces())
+            for (const auto& data : eResponse.result().asset_traces())
             {
 
                 std::cout << (data.success() ? std::string("[🟢] ") : std::string("[🔴] "));
@@ -152,7 +152,7 @@ void processEvent(const std::string& eventStr,
 
 void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
 {
-    const std::string commandGet {api::test::handlers::TEST_GET_SESSION_DATA_API_CMD};
+    const std::string commandGet {"tester.session/get"};
 
     // Set signal [SIGINT]: Crt+C handler
     {
@@ -180,36 +180,36 @@ void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
     const auto getRequest =
         utils::apiAdapter::toWazuhRequest<eTest::SessionGet_Request>(commandGet, details::ORIGIN_NAME, eGetRequest);
     const auto responseGet = client->send(getRequest);
-    const auto eResponseGet = utils::apiAdapter::fromWazuhResponse<eTest::SessionsGet_Response>(responseGet);
+    const auto eResponseGet = utils::apiAdapter::fromWazuhResponse<eTest::SessionGet_Response>(responseGet);
 
     // Call run command
 
     using RequestType = eTest::RunPost_Request;
     using ResponseType = eTest::RunPost_Response;
 
-    const std::string command {api::test::handlers::TEST_RUN_API_CMD};
+    const std::string command {"tester.run/post"};
 
     // Set policy name
     RequestType eRequest;
     eRequest.set_name(parameters.sessionName);
 
     // Set protocol queue
-    eRequest.set_protocol_queue(parameters.protocolQueue);
+    eRequest.set_queue(parameters.protocolQueue);
+
+    // Set location
+    eRequest.set_location(parameters.protocolLocation);
 
     // Set debug mode
     // TODO: Need to add one more debug level '-ddd'
-    eTest::DebugMode debugModeMap;
+    eTest::TraceLevel debugModeMap;
     switch (parameters.debugLevel)
     {
-        case OUTPUT_AND_TRACES: debugModeMap = eTest::DebugMode::OUTPUT_AND_TRACES; break;
-        case OUTPUT_AND_TRACES_WITH_DETAILS: debugModeMap = eTest::DebugMode::OUTPUT_AND_TRACES_WITH_DETAILS; break;
-        case OUTPUT_ONLY: debugModeMap = eTest::DebugMode::OUTPUT_ONLY; break;
+        case OUTPUT_AND_TRACES: debugModeMap = eTest::TraceLevel::ASSET_ONLY; break;
+        case OUTPUT_AND_TRACES_WITH_DETAILS: debugModeMap = eTest::TraceLevel::ALL; break;
+        case OUTPUT_ONLY: debugModeMap = eTest::TraceLevel::NONE; break;
         default: throw std::runtime_error {"Debug level greater than '-dd' is not supported."};
     }
-    eRequest.set_debug_mode(debugModeMap);
-
-    // Set location
-    eRequest.set_protocol_location(parameters.protocolLocation);
+    eRequest.set_trace_level(debugModeMap);
 
     // Set assets trace
     for (const auto& asset : parameters.assetTrace)
@@ -223,44 +223,37 @@ void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
         eRequest.add_namespaces(name);
     }
 
-    if (!parameters.event.empty())
+    std::cout << std::endl << std::endl << "Type one log per line (Crtl+C to exit):" << std::endl << std::endl;
+
+    // Only set non-canonical mode when connected to terminal
+    if (isatty(fileno(stdin)) && !clearIcanon(true))
     {
-        processEvent(parameters.event, parameters, client, eRequest);
+        std::cout << "WARNING: Failed to set non-canonical mode, only logs shorter than 4095 characters will be "
+                        "processed correctly."
+                    << std::endl
+                    << std::endl;
     }
-    else
+
+    // Stdin loop
+    std::string line;
+    while (gs_doRun && std::getline(std::cin, line))
     {
-        std::cout << std::endl << std::endl << "Type one log per line (Crtl+C to exit):" << std::endl << std::endl;
-
-        // Only set non-canonical mode when connected to terminal
-        if (isatty(fileno(stdin)) && !clearIcanon(true))
+        if (!line.empty())
         {
-            std::cout << "WARNING: Failed to set non-canonical mode, only logs shorter than 4095 characters will be "
-                         "processed correctly."
-                      << std::endl
-                      << std::endl;
+            processEvent(line, parameters, client, eRequest);
         }
-
-        // Stdin loop
-        std::string line;
-        while (gs_doRun && std::getline(std::cin, line))
+        else
         {
-            if (!line.empty())
-            {
-                processEvent(line, parameters, client, eRequest);
-            }
-            else
-            {
-                std::cout << std::endl
-                          << std::endl
-                          << "Enter a log in single line (Crtl+C to exit):" << std::endl
-                          << std::endl;
-            }
+            std::cout << std::endl
+                        << std::endl
+                        << "Enter a log in single line (Crtl+C to exit):" << std::endl
+                        << std::endl;
         }
+    }
 
-        if (isatty(fileno(stdin)))
-        {
-            clearIcanon(false);
-        }
+    if (isatty(fileno(stdin)))
+    {
+        clearIcanon(false);
     }
 }
 
@@ -268,28 +261,28 @@ void sessionCreate(std::shared_ptr<apiclnt::Client> client, const Parameters& pa
 {
     using RequestType = eTest::SessionPost_Request;
     using ResponseType = eEngine::GenericStatus_Response;
-    const std::string command {api::test::handlers::TEST_POST_SESSION_API_CMD};
+    const std::string command {"tester.session/post"};
 
     RequestType eRequest;
 
     // Set session name
-    eRequest.set_name(parameters.sessionName);
+    eRequest.mutable_session()->set_name(parameters.sessionName);
 
     // Set policy name
     if (!parameters.policy.empty())
     {
-        eRequest.set_policy(parameters.policy);
+        eRequest.mutable_session()->set_policy(parameters.policy);
     }
 
-    // Set lifespan
-    if (0 != parameters.lifespan)
+    // Set lifetime
+    if (0 != parameters.lifetime)
     {
-        eRequest.set_lifespan(parameters.lifespan);
+        eRequest.mutable_session()->set_lifetime(parameters.lifetime);
     }
 
     if (!parameters.description.empty())
     {
-        eRequest.set_description(parameters.description);
+        eRequest.mutable_session()->set_description(parameters.description);
     }
 
     // Call the API
@@ -300,18 +293,13 @@ void sessionCreate(std::shared_ptr<apiclnt::Client> client, const Parameters& pa
 
 void sessionDelete(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
 {
-    using RequestType = eTest::SessionsDelete_Request;
+    using RequestType = eTest::SessionDelete_Request;
     using ResponseType = eEngine::GenericStatus_Response;
-    const std::string command {api::test::handlers::TEST_DELETE_SESSIONS_API_CMD};
+    const std::string command {"tester.session/delete"};
 
     RequestType eRequest;
 
-    if (parameters.deleteAll)
-    {
-        // Set delete all flag
-        eRequest.set_delete_all(true);
-    }
-    else if (!parameters.sessionName.empty())
+    if (!parameters.sessionName.empty())
     {
         // Set session name
         eRequest.set_name(parameters.sessionName);
@@ -333,7 +321,7 @@ void sessionGet(std::shared_ptr<apiclnt::Client> client, const Parameters& param
 {
     using RequestType = eTest::SessionGet_Request;
     using ResponseType = eTest::SessionGet_Response;
-    const std::string command {api::test::handlers::TEST_GET_SESSION_DATA_API_CMD};
+    const std::string command {"tester.session/get"};
 
     RequestType eRequest;
 
@@ -349,14 +337,26 @@ void sessionGet(std::shared_ptr<apiclnt::Client> client, const Parameters& param
     const auto result = eMessage::eMessageToJson<eTest::Session>(session);
     const auto& json = std::get<std::string>(result);
 
-    std::cout << json << std::endl;
+    if (!parameters.jsonFormat)
+    {
+        rapidjson::Document doc;
+        doc.Parse(json.c_str());
+        auto yaml = yml::Converter::jsonToYaml(doc);
+        YAML::Emitter out;
+        out << yaml;
+        std::cout << out.c_str() << std::endl;
+    }
+    else
+    {
+        std::cout << json << std::endl;
+    }
 }
 
-void sessionList(std::shared_ptr<apiclnt::Client> client)
+void sessionList(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters)
 {
-    using RequestType = eTest::SessionsGet_Request;
-    using ResponseType = eTest::SessionsGet_Response;
-    const std::string command {api::test::handlers::TEST_GET_SESSIONS_LIST_API_CMD};
+    using RequestType = eTest::TableGet_Request;
+    using ResponseType = eTest::TableGet_Response;
+    const std::string command {"tester.table/get"};
 
     // Call the API
     RequestType eRequest;
@@ -364,30 +364,38 @@ void sessionList(std::shared_ptr<apiclnt::Client> client)
     const auto response = client->send(request);
     const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 
-    auto orderedList = eResponse.list();
-    // Sort the list by name
-    std::sort(orderedList.begin(), orderedList.end());
+    auto sessions = eResponse.sessions();
+    auto json = eMessage::eRepeatedFieldToJson<eTest::Session>(sessions);
 
-    for (const auto& str : orderedList)
+    if (!parameters.jsonFormat)
     {
-        std::cout << str << std::endl;
+        rapidjson::Document doc;
+        doc.Parse(std::get<std::string>(json).c_str());
+        auto yaml = yml::Converter::jsonToYaml(doc);
+        YAML::Emitter out;
+        out << yaml;
+        std::cout << out.c_str() << std::endl;
+    }
+    else
+    {
+        std::cout << std::get<std::string>(json) << std::endl;
     }
 }
 
 void configure(CLI::App_p app)
 {
-    auto testApp = app->add_subcommand("test", "Utility to test events.");
+    auto testApp = app->add_subcommand("tester", "Utility to test events.");
     testApp->require_subcommand(1);
     auto parameters = std::make_shared<Parameters>();
 
     // Endpoint
-    testApp->add_option("-a, --api_socket", parameters->apiEndpoint, "Set the API socket path.")
+    testApp->add_option("-s, --api_socket", parameters->apiEndpoint, "Set the API socket path.")
         ->default_val(ENGINE_SRV_API_SOCK)
         ->check(CLI::ExistingFile);
 
     // Client timeout
     testApp
-        ->add_option("--client_timeout", parameters->clientTimeout, "Sets the timeout for the client in miliseconds.")
+        ->add_option("-t, --client_timeout", parameters->clientTimeout, "Sets the timeout for the client in miliseconds.")
         ->default_val(ENGINE_CLIENT_TIMEOUT)
         ->check(CLI::NonNegativeNumber);
 
@@ -398,9 +406,8 @@ void configure(CLI::App_p app)
     // API test session create
     auto testSessionCreateApp = testSessionApp->add_subcommand("create", "Create a new session.");
     testSessionCreateApp->add_option("name", parameters->sessionName, "Name of the new session.")->required();
-    testSessionCreateApp->add_option("-p, --policy", parameters->policy, "Policy to be used.")
-        ->default_val(std::string {api::test::handlers::DEFAULT_POLICY_FULL_NAME});
-    testSessionCreateApp->add_option("-l, --lifespan", parameters->lifespan, "Lifespan of the session in minutes.");
+    testSessionCreateApp->add_option("policy", parameters->policy, "Policy to be used.")->required();
+    testSessionCreateApp->add_option("-l, --lifetime", parameters->lifetime, "lifetime of the session in minutes.");
     testSessionCreateApp->add_option("-d, --description", parameters->description, "Description of the session.");
     testSessionCreateApp->callback(
         [parameters]()
@@ -411,8 +418,7 @@ void configure(CLI::App_p app)
 
     // API test session delete
     auto testSessionDeleteApp = testSessionApp->add_subcommand("delete", "Delete sessions.");
-    testSessionDeleteApp->add_option("-n, --name", parameters->sessionName, "Name of the session to be deleted.");
-    testSessionDeleteApp->add_flag("--all", parameters->deleteAll, "Delete all the sessions.");
+    testSessionDeleteApp->add_option("name", parameters->sessionName, "Name of the session to be deleted.")->required();
     testSessionDeleteApp->callback(
         [parameters]()
         {
@@ -423,6 +429,9 @@ void configure(CLI::App_p app)
     // API test session data get
     auto testSessionGetApp = testSessionApp->add_subcommand("get", "Get a session data.");
     testSessionGetApp->add_option("name", parameters->sessionName, "Name of the session to be obtained.")->required();
+    testSessionGetApp->add_flag("-j, --json",
+                         parameters->jsonFormat,
+                         "Allows the output and trace generated by an event to be printed in Json format.");
     testSessionGetApp->callback(
         [parameters]()
         {
@@ -432,17 +441,19 @@ void configure(CLI::App_p app)
 
     // API test session list
     auto testSessionListApp = testSessionApp->add_subcommand("list", "List sessions.");
+    testSessionListApp->add_flag("-j, --json",
+                         parameters->jsonFormat,
+                         "Allows the output and trace generated by an event to be printed in Json format.");
     testSessionListApp->callback(
         [parameters]()
         {
             const auto client = std::make_shared<apiclnt::Client>(parameters->apiEndpoint, parameters->clientTimeout);
-            sessionList(client);
+            sessionList(client, *parameters);
         });
 
     // API test Run
     auto testRunApp = testApp->add_subcommand("run", "Utility to run a test.");
     testRunApp->add_option("name", parameters->sessionName, "Name of the session to be used.")->required();
-    testRunApp->add_option("-e, --event", parameters->event, "Event to be processed");
     testRunApp
         ->add_option(
             "-q, --protocol_queue", parameters->protocolQueue, "Event protocol queue identifier (a single character).")
@@ -459,7 +470,7 @@ void configure(CLI::App_p app)
                      "default traces every asset. This only works "
                      "when debug=2.")
         ->needs(debug);
-    testRunApp->add_option("--protocol_location", parameters->protocolLocation, "Protocol location.")
+    testRunApp->add_option("-l, --protocol_location", parameters->protocolLocation, "Protocol location.")
         ->default_val(ENGINE_PROTOCOL_LOCATION);
     testRunApp->add_flag("-j, --json",
                          parameters->jsonFormat,
