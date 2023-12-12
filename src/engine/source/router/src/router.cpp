@@ -119,6 +119,12 @@ base::OptError Router::changePriority(const std::string& name, size_t priority)
         return base::Error {"Priority of the route cannot be 0"};
     }
 
+    if (priority > prod::Entry::maxPriority())
+    {
+        return base::Error {"Priority of the route cannot be greater than "
+                            + std::to_string(prod::Entry::maxPriority())};
+    }
+
     std::unique_lock lock {m_mutex};
 
     if (!m_table.nameExists(name))
