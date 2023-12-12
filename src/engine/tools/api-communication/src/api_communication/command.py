@@ -10,7 +10,7 @@ import api_communication.proto.kvdb_pb2 as kvdb
 import api_communication.proto.metrics_pb2 as metrics
 import api_communication.proto.policy_pb2 as policy
 import api_communication.proto.router_pb2 as router
-import api_communication.proto.test_pb2 as test
+import api_communication.proto.tester_pb2 as tester
 
 
 def get_command(message: Message) -> Tuple[Optional[str], str]:
@@ -102,30 +102,34 @@ def get_command(message: Message) -> Tuple[Optional[str], str]:
         return None, 'policy.namespaces/get'
 
     # Router
-    elif isinstance(message, router.RouteGet_Request):
-        return None, 'router.route/get'
     elif isinstance(message, router.RoutePost_Request):
         return None, 'router.route/post'
-    elif isinstance(message, router.RoutePatch_Request):
-        return None, 'router.route/patch'
     elif isinstance(message, router.RouteDelete_Request):
         return None, 'router.route/delete'
+    elif isinstance(message, router.RouteGet_Request):
+        return None, 'router.route/get'
+    elif isinstance(message, router.RouteReload_Request):
+        return None, 'router.route/reload'
+    elif isinstance(message, router.RoutePatchPriority_Request):
+        return None, 'router.route/patchPriority'
     elif isinstance(message, router.TableGet_Request):
         return None, 'router.table/get'
     elif isinstance(message, router.QueuePost_Request):
         return None, 'router.queue/post'
 
-    # Test
-    elif isinstance(message, test.SessionGet_Request):
-        return None, 'test.session/get'
-    elif isinstance(message, test.SessionPost_Request):
-        return None, 'test.session/post'
-    elif isinstance(message, test.SessionsGet_Request):
-        return None, 'test.sessions/get'
-    elif isinstance(message, test.SessionsDelete_Request):
-        return None, 'test.sessions/delete'
-    elif isinstance(message, test.RunPost_Request):
-        return None, 'test.run/post'
+    # Tester
+    elif isinstance(message, tester.SessionPost_Request):
+        return None, 'tester.session/post'
+    elif isinstance(message, tester.SessionDelete_Request):
+        return None, 'tester.session/delete'
+    elif isinstance(message, tester.SessionGet_Request):
+        return None, 'tester.session/get'
+    elif isinstance(message, tester.SessionReload_Request):
+        return None, 'tester.session/reload'
+    elif isinstance(message, tester.TableGet_Request):
+        return None, 'tester.table/get'
+    elif isinstance(message, tester.RunPost_Request):
+        return None, 'tester.run/post'
 
     else:
         return 'Unknown message type', ''
