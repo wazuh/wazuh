@@ -133,7 +133,7 @@ class APIClient:
             return err, {}
 
         client_socket.close()
-        
+
         if 'code' in response and response['code'] != 0:
             return f'Protocol Error {response["code"]}', {}
 
