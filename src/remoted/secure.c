@@ -15,12 +15,14 @@
 #include "../wazuh_db/helpers/wdb_global_helpers.h"
 #include "router.h"
 #include "sym_load.h"
-#include "flatcc_helpers.h"
-#include "syscollector_synchronization_builder.h"
-#include "syscollector_synchronization_json_parser.h"
-#include "syscollector_deltas_builder.h"
-#include "syscollector_deltas_json_parser.h"
+#include "utils/flatbuffers/include/syscollector_synchronization_schema.h"
+#include "utils/flatbuffers/include/syscollector_deltas_schema.h"
 
+enum msg_type {
+    MT_INVALID,
+    MT_SYS_DELTAS,
+    MT_SYS_SYNC,
+} msg_type_t;
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
 #define STATIC
@@ -61,7 +63,7 @@ static pthread_mutex_t router_syscollector_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define SYSCOLLECTOR_HEADER_SIZE 15
 
 // Router message forwarder
-void router_message_forward(char* msg, const char* agent_id);
+void router_message_forward(char* msg, const char* agent_id, const char* agent_ip, const char* agent_name);
 
 // Message handler thread
 static void * rem_handler_main(__attribute__((unused)) void * args);
@@ -467,6 +469,16 @@ STATIC void * close_fp_main(void * args) {
     return NULL;
 }
 
+STATIC const char * get_schema(const int type)
+{
+    if (type == MT_SYS_DELTAS) {
+        return syscollector_deltas_SCHEMA;
+    } else if (type == MT_SYS_SYNC) {
+        return syscollector_synchronization_SCHEMA;
+    }
+    return NULL;
+
+}
 STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
     int agentid;
     const int protocol = (message->sock == USING_UDP_NO_CLIENT_SOCKET) ? REMOTED_NET_PROTOCOL_UDP : REMOTED_NET_PROTOCOL_TCP;
@@ -794,16 +806,18 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
         rem_inc_recv_evt(agentid_str);
     }
 
-    router_message_forward(tmp_msg, keys.keyentries[agentid]->id);
+    router_message_forward(tmp_msg, keys.keyentries[agentid]->id,
+                                            keys.keyentries[agentid]->ip->ip,
+                                            keys.keyentries[agentid]->name);
 
     os_free(agentid_str);
 }
 
-void router_message_forward(char* msg, const char* agent_id) {
+void router_message_forward(char* msg, const char* agent_id, const char* agent_ip, const char* agent_name) {
     // Both syscollector delta and sync messages are sent to the router
     ROUTER_PROVIDER_HANDLE router_handle = NULL;
     int message_header_size = 0;
-    flatcc_json_parser_table_f *parser = NULL;
+    int schema_type = -1;
 
     if(strncmp(msg, SYSCOLLECTOR_HEADER, SYSCOLLECTOR_HEADER_SIZE) == 0) {
         w_mutex_lock(&router_syscollector_mutex);
@@ -816,7 +830,7 @@ void router_message_forward(char* msg, const char* agent_id) {
         }
         router_handle = router_syscollector_handle;
         message_header_size = SYSCOLLECTOR_HEADER_SIZE;
-        parser = SyscollectorDeltas_Delta_parse_json_table;
+        schema_type = MT_SYS_DELTAS;
         w_mutex_unlock(&router_syscollector_mutex);
     } else if(strncmp(msg, DBSYNC_SYSCOLLECTOR_HEADER, DBSYNC_SYSCOLLECTOR_HEADER_SIZE) == 0) {
         w_mutex_lock(&router_rsync_mutex);
@@ -829,7 +843,7 @@ void router_message_forward(char* msg, const char* agent_id) {
         }
         router_handle = router_rsync_handle;
         message_header_size = DBSYNC_SYSCOLLECTOR_HEADER_SIZE;
-        parser = SyscollectorSynchronization_SyncMsg_parse_json_table;
+        schema_type = MT_SYS_SYNC;
         w_mutex_unlock(&router_rsync_mutex);
     }
 
@@ -840,6 +854,7 @@ void router_message_forward(char* msg, const char* agent_id) {
     cJSON* j_msg_to_send = NULL;
     cJSON* j_agent_info = NULL;
     cJSON* j_msg = NULL;
+    cJSON* j_data = NULL;
     char* msg_to_send = NULL;
 
     char* msg_start = msg + message_header_size;
@@ -854,16 +869,26 @@ void router_message_forward(char* msg, const char* agent_id) {
 
         j_agent_info = cJSON_CreateObject();
         cJSON_AddStringToObject(j_agent_info, "agent_id", agent_id);
+        cJSON_AddStringToObject(j_agent_info, "agent_ip", agent_ip);
+        cJSON_AddStringToObject(j_agent_info, "agent_name", agent_name);
         cJSON_AddStringToObject(j_agent_info, "node_name", node_name);
         cJSON_AddItemToObject(j_msg_to_send, "agent_info", j_agent_info);
 
         cJSON_AddItemToObject(j_msg_to_send, "data_type", cJSON_DetachItemFromObject(j_msg, "type"));
-        cJSON_AddItemToObject(j_msg_to_send, "data", cJSON_DetachItemFromObject(j_msg, "data"));
 
-        if (parser == SyscollectorDeltas_Delta_parse_json_table) {
+        if (schema_type == MT_SYS_DELTAS) {
+            cJSON_AddItemToObject(j_msg_to_send, "data", cJSON_DetachItemFromObject(j_msg, "data"));
             cJSON_AddItemToObject(j_msg_to_send, "operation", cJSON_DetachItemFromObject(j_msg, "operation"));
-        } else if (parser == SyscollectorSynchronization_SyncMsg_parse_json_table) {
-            cJSON_AddItemToObject(cJSON_GetObjectItem(j_msg_to_send, "data"), "attributes_type", cJSON_DetachItemFromObject(j_msg, "component"));
+        } else if (schema_type == MT_SYS_SYNC) {
+            cJSON* j_data_msg = cJSON_GetObjectItem(j_msg, "data");
+            if (j_data_msg) {
+                j_data = cJSON_CreateObject();
+                cJSON_AddItemToObject(j_data, "attributes_type", cJSON_DetachItemFromObject(j_msg, "component"));
+                for (cJSON* j_item = j_data_msg->child; j_item; j_item = j_item->next) {
+                    cJSON_AddItemToObject(j_data, j_item->string, cJSON_Duplicate(cJSON_GetObjectItem(j_data_msg, j_item->string), true));
+                }
+                cJSON_AddItemToObject(j_msg_to_send, "data", j_data);
+            }
         }
 
         msg_to_send = cJSON_PrintUnformatted(j_msg_to_send);
@@ -871,15 +896,7 @@ void router_message_forward(char* msg, const char* agent_id) {
             goto clean_and_exit;
         }
 
-        size_t msg_to_send_len = strlen(msg_to_send);
-        size_t flatbuffer_size;
-
-        void* flatbuffer = w_flatcc_parse_json(msg_to_send_len, msg_to_send, &flatbuffer_size, 0, parser);
-
-        if (flatbuffer) {
-            router_provider_send(router_handle, flatbuffer, flatbuffer_size);
-            w_flatcc_free_buffer(flatbuffer);
-        } else {
+        if (router_provider_send_fb(router_handle, msg_to_send, get_schema(schema_type)) != 0) {
             mdebug2("Unable to forward message for agent %s", agent_id);
         }
     }

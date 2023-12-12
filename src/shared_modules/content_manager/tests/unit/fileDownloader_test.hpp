@@ -15,6 +15,7 @@
 #include "fakes/fakeServer.hpp"
 #include "updaterContext.hpp"
 #include "gtest/gtest.h"
+#include <atomic>
 #include <filesystem>
 #include <memory>
 
@@ -33,6 +34,7 @@ protected:
     const std::filesystem::path m_outputFolder {std::filesystem::temp_directory_path() /
                                                 "FileDownloaderTest"}; ///< Output folder for tests.
     inline static std::unique_ptr<FakeServer> m_spFakeServer;          ///< Fake HTTP server used in tests.
+    const std::atomic<bool> m_shouldRun {true};                        ///< Interruption flag.
 
     /**
      * @brief Setup routine for the test suite.

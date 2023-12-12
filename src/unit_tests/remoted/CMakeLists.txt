@@ -21,10 +21,7 @@ set_target_properties(
 
 link_directories(${SRC_FOLDER}/build/shared_modules/router)
 include_directories(${SRC_FOLDER}/shared_modules/router/include)
-include_directories(${SRC_FOLDER}/external/flatcc/include)
-include_directories(${SRC_FOLDER}/generated_headers)
-link_directories(${SRC_FOLDER}/external/flatcc/lib)
-target_link_libraries(REMOTED_O ${WAZUHLIB} ${WAZUHEXT} -lpthread -lrouter -lflatccrt)
+target_link_libraries(REMOTED_O ${WAZUHLIB} ${WAZUHEXT} -lpthread -lrouter)
 
 #include wrappers
 include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
@@ -76,8 +73,7 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,w_mutex_lock -Wl,--wrap,w_mutex_unlock \
                             -Wl,--wrap,wnotify_add -Wl,--wrap,SendMSG -Wl,--wrap,rem_inc_recv_evt \
                             -Wl,--wrap,OS_DupKeyEntry -Wl,--wrap,OS_FreeKey ${DEBUG_OP_WRAPPERS} \
-                            -Wl,--wrap,router_provider_send -Wl,--wrap,router_provider_create \
-                            -Wl,--wrap,w_flatcc_parse_json -Wl,--wrap,w_flatcc_free_buffer")
+                            -Wl,--wrap,router_provider_send_fb -Wl,--wrap,router_provider_create")
 
 list(APPEND remoted_names "test_netbuffer")
 list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,wnet_order -Wl,--wrap,wnotify_modify \

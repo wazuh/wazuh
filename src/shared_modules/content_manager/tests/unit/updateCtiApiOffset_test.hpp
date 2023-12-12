@@ -17,6 +17,7 @@
 #include "utils/rocksDBWrapper.hpp"
 #include "utils/timeHelper.h"
 #include "gtest/gtest.h"
+#include <atomic>
 
 static const std::string DATABASE_NAME {"test.db"};
 
@@ -44,13 +45,15 @@ protected:
      */
     std::shared_ptr<UpdateCtiApiOffset> m_spUpdateCtiApiOffset;
 
+    const std::atomic<bool> m_shouldRun {true}; ///< Interruption flag.
+
     /**
      * @brief Sets up the test fixture.
      */
     void SetUp() override
     {
         // Initialize contexts
-        m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>();
+        m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_shouldRun);
         m_spUpdaterBaseContext->spRocksDB = std::make_unique<Utils::RocksDBWrapper>(DATABASE_NAME);
         m_spUpdaterBaseContext->spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)), "0");
 

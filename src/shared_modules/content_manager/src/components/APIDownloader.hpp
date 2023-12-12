@@ -13,6 +13,7 @@
 
 #include "../sharedDefs.hpp"
 #include "IURLRequest.hpp"
+#include "componentsHelper.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
 #include <memory>
@@ -42,8 +43,7 @@ private:
         // Save the path of the downloaded content in the context
         m_context->data.at("paths").push_back(m_fullFilePath);
 
-        // Set the status of the stage
-        m_context->data.at("stageStatus").push_back(R"({"stage": "APIDownloader", "status": "ok"})"_json);
+        logDebug2(WM_CONTENTUPDATER, "APIDownloader - Finishing - Download done successfully");
     }
 
     /**
@@ -75,11 +75,8 @@ private:
         logDebug2(WM_CONTENTUPDATER, "Downloading from API '%s'", m_url.c_str());
 
         const auto onError {
-            [this](const std::string& message, [[maybe_unused]] const long statusCode)
+            [](const std::string& message, [[maybe_unused]] const long statusCode)
             {
-                // Set the status of the stage
-                m_context->data.at("stageStatus").push_back(R"({"stage": "APIDownloader", "status": "fail"})"_json);
-
                 throw std::runtime_error("APIDownloader - Could not get response from API because: " + message);
             }};
 
@@ -116,9 +113,24 @@ public:
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
         logDebug1(WM_CONTENTUPDATER, "APIDownloader - Starting process");
+        constexpr auto COMPONENT_NAME {"APIDownloader"};
 
         m_context = context;
-        download();
+
+        try
+        {
+            download();
+        }
+        catch (const std::exception& e)
+        {
+            // Push error state.
+            Components::pushStatus(COMPONENT_NAME, Components::Status::STATUS_FAIL, *context);
+
+            throw std::runtime_error("Download failed: " + std::string(e.what()));
+        }
+
+        // Push success state.
+        Components::pushStatus(COMPONENT_NAME, Components::Status::STATUS_OK, *context);
 
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(context);
     }

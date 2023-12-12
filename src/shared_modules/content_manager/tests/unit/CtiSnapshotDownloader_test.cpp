@@ -29,7 +29,7 @@ const auto OUTPUT_DIR {std::filesystem::temp_directory_path() / "CtiSnapshotDown
 void CtiSnapshotDownloaderTest::SetUp()
 {
     // Create base context.
-    auto spBaseContext {std::make_shared<UpdaterBaseContext>()};
+    auto spBaseContext {std::make_shared<UpdaterBaseContext>(m_shouldRun)};
     spBaseContext->downloadsFolder = OUTPUT_DIR;
     spBaseContext->configData["url"] = FAKE_CTI_URL;
 

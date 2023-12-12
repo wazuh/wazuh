@@ -14,6 +14,7 @@
 
 #include "../sharedDefs.hpp"
 #include "IURLRequest.hpp"
+#include "componentsHelper.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
 #include <algorithm>
@@ -64,22 +65,6 @@ public:
  */
 class CtiDownloader : public AbstractHandler<std::shared_ptr<UpdaterContext>>
 {
-private:
-    /**
-     * @brief Pushes the state of the current stage into the data field of the context.
-     *
-     * @param context Reference to the context.
-     * @param status Status to be pushed.
-     */
-    void pushStageStatus(UpdaterContext& context, const std::string& status) const
-    {
-        auto statusObject = nlohmann::json::object();
-        statusObject["stage"] = m_componentName;
-        statusObject["status"] = status;
-
-        context.data.at("stageStatus").push_back(statusObject);
-    }
-
 protected:
     /**
      * @brief Struct that represents the parameters needed by the downloaders for starting its tasks.
@@ -121,8 +106,8 @@ protected:
     }
 
     /**
-     * @brief Loop for retrying the downloads from the server until the download is successful or there is an HTTP error
-     * different from 5xx.
+     * @brief Loop for retrying the downloads from the server until the download is successful, there is an HTTP error
+     * different from 5xx, or in case of an interruption.
      *
      * @param URL URL to download from.
      * @param onSuccess Callback on success download.
@@ -152,7 +137,7 @@ protected:
         auto sleepTime {INITIAL_SLEEP_TIME};
         auto retryAttempt {1};
         auto retry {true};
-        while (retry)
+        while (retry && m_spUpdaterContext->spUpdaterBaseContext->shouldRun.load())
         {
             try
             {
@@ -183,8 +168,9 @@ protected:
      */
     virtual void download(UpdaterContext& context) = 0;
 
-    IURLRequest& m_urlRequest;         ///< Interface to perform HTTP requests.
-    const std::string m_componentName; ///< Stage name.
+    IURLRequest& m_urlRequest;                          ///< Interface to perform HTTP requests.
+    const std::string m_componentName;                  ///< Stage name.
+    std::shared_ptr<UpdaterContext> m_spUpdaterContext; ///< Updater context.
 
 public:
     // LCOV_EXCL_START
@@ -213,6 +199,8 @@ public:
     {
         logDebug1(WM_CONTENTUPDATER, "%s - Starting process", m_componentName.c_str());
 
+        m_spUpdaterContext = context;
+
         try
         {
             download(*context);
@@ -220,12 +208,12 @@ public:
         catch ([[maybe_unused]] const std::exception& e)
         {
             // Push fail status.
-            pushStageStatus(*context, "fail");
+            Components::pushStatus(m_componentName, Components::Status::STATUS_FAIL, *context);
             throw;
         }
 
         // Push success status.
-        pushStageStatus(*context, "ok");
+        Components::pushStatus(m_componentName, Components::Status::STATUS_OK, *context);
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(context);
     }
 };

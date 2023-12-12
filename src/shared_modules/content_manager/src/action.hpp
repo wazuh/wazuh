@@ -48,9 +48,23 @@ public:
         , m_cv {}
         , m_topicName {std::move(topicName)}
         , m_interval {0}
-        , m_orchestration {std::make_unique<ActionOrchestrator>(channel, parameters)}
+        , m_shouldRun {true}
+        , m_orchestration {std::make_unique<ActionOrchestrator>(channel, parameters, m_shouldRun)}
     {
         m_parameters = std::move(parameters);
+    }
+
+    /**
+     * @brief Class destructor. Stops the action execution if it's in progress.
+     *
+     */
+    ~Action()
+    {
+        // Stop running action, if any.
+        m_shouldRun = false;
+
+        unregisterActionOnDemand();
+        stopActionScheduler();
     }
 
     /**
@@ -118,7 +132,7 @@ public:
      */
     void registerActionOnDemand()
     {
-        OnDemandManager::instance().addEndpoint(m_topicName, [this]() { this->runActionOnDemand(); });
+        OnDemandManager::instance().addEndpoint(m_topicName, [this](int offset) { this->runActionOnDemand(offset); });
     }
 
     /**
@@ -142,14 +156,15 @@ public:
     /**
      * @brief Runs ondemand action.
      *
+     * @param offset Manually set current offset to process. Default -1
      */
-    void runActionOnDemand()
+    void runActionOnDemand(const int offset = -1)
     {
         auto expected = false;
         if (m_actionInProgress.compare_exchange_strong(expected, true))
         {
             logInfo(WM_CONTENTUPDATER, "Starting on-demand action for '%s'", m_topicName.c_str());
-            runAction(ActionID::ON_DEMAND);
+            runAction(ActionID::ON_DEMAND, offset);
         }
         else
         {
@@ -181,14 +196,15 @@ private:
     std::string m_topicName;
     nlohmann::json m_parameters;
     std::unique_ptr<ActionOrchestrator> m_orchestration;
+    std::atomic<bool> m_shouldRun;
 
-    void runAction(const ActionID id)
+    void runAction(const ActionID id, const int offset = -1)
     {
         logInfo(WM_CONTENTUPDATER, "Action for '%s' started", m_topicName.c_str());
 
         try
         {
-            m_orchestration->run();
+            m_orchestration->run(offset);
         }
         catch (const std::exception& e)
         {
