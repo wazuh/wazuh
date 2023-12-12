@@ -4,26 +4,19 @@ metadata:
   module: apache-http
   title: Apache HTTP Server access logs decoder
   description: Decoder for Apache HTTP Server access logs.
+  versions: ["2.2.31", "2.4.16"]
   compatibility: The Apache datasets were tested with Apache 2.4.12 and 2.4.46 and are expected to work with all versions >= 2.2.31 and >= 2.4.16 (independent from operating system).
-  versions:
-    - "2.2.31"
-    - "2.4.16"
   author:
     name: Wazuh Inc.
-    email: info@wazuh.com
-    date: 2022-11-15
+    date: 2023-11-29
   references:
     - https://httpd.apache.org/docs/2.4/logs.html
 
 check:
-  - event.original: regex_match(\\S+\\s-\\s\\S+\\s\\[)
+  - wazuh.location: /var/log/apache2/access.log
 #TODO: Once the events arrive tagged, uncomment these lines below and remove the above `event.original`
 # - event.module: apache-http
 # - event.dataset: apache-access
-
-definitions:
-  isSuccess: is_not_null($http.response.status_code) AND int_less($http.response.status_code,400)
-  isFailed: is_not_null($http.response.status_code) AND int_greater_or_equal($http.response.status_code,400)
 
 parse|event.original:
   - <source.address> - <user.name> [<event.created/26\/Dec\/2016:18:23:35 +0200>] "<_http_request/text>" <http.response.status_code> <_ignore/literal/->?<http.response.body.bytes>(? "<http.request.referrer>" "<user_agent.original>")
@@ -34,6 +27,17 @@ parse|event.original:
   - <source.address> - <user.name> [<event.created/%a %b %d %T %Y/en_US.UTF-8>] "<http.request.method> <_url_orig> <http.version>?<_dash>" <http.response.status_code> <http.response.body.bytes>?<_dash> "<http.request.referrer>" "<user_agent.original>"
   - '[<event.created/%a %b %d %T %Y/en_US.UTF-8>] <source.address> <network.protocol> <tls.cipher> "<http.request.method> <_url_orig> <http.version>" <http.response.body.bytes>?<_dash>'
 
+  # [10/Aug/2018:09:45:56 +0200] 172.30.0.119 TLSv1.2 ECDHE-RSA-AES128-GCM-SHA256 "GET /nagiosxi/ajaxhelper.php?cmd=getxicoreajax&amp;opts=%7B%22func%22%3A%22get_admin_tasks_html%22%2C%22args%22%3A%22%22%7D&amp;nsp=b5c7d5d4b6f7d0cf0c92f9cbdf737f6a5c838218425e6ae21 HTTP/1.1" 1375
+  - '[<event.created/26\/Dec\/2016:18:23:35 +0200>] <source.address> <network.protocol> <tls.cipher> "<http.request.method> <_url_orig> <http.version>" <http.response.body.bytes>?<_dash>'
+
+  # monitoring-server - - [29/May/2017:19:02:48 +0000] "GET /status HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2" "-"
+  # 172.17.0.1 - - [29/May/2017:19:02:48 +0000] "GET /stringpatch HTTP/1.1" 404 612 "-" "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2" "-"
+  - <source.address> - - [<event.created/26\/Dec\/2016:18:23:35 +0200>] "<http.request.method> <_url_orig> <http.version>?<_dash>" <http.response.status_code> <http.response.body.bytes>?<_dash> "-" "<http.request.referrer>" "<user_agent.original>"
+
+  # 2a02:cf40:add:4002:91f2:a9b2:e09a:6fc6 - - [29/May/2017:19:02:48 +0000] "GET /A%20Beka%20G1%20Howe/029_AND_30/15%20reading%20elephants.mp4 HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2" X-Forwarded-For="10.225.192.17, 10.2.2.121"
+  # monitoring-server - - [17/May/2022:21:41:43 +0000] "GET / HTTP/1.1" 200 45 "-" "curl/7.79.1" X-Forwarded-For="192.168.0.2"
+  - <source.address> - - [<event.created/26\/Dec\/2016:18:23:35 +0200>] "<http.request.method> <_url_orig> <http.version>?<_dash>" <http.response.status_code> <http.response.body.bytes>?<_dash> "-" "<http.request.referrer>" X-Forwarded-For=<forwarded_for>
+
 normalize:
   - map:
       - event.category: array_append(web)
@@ -43,7 +47,7 @@ normalize:
       - service.type: apache
       - wazuh.decoders: array_append(apache-access)
 
-      - source.ip: parse_ip($source.address)
+      - source.ip: $source.address
       - _tls: split($network.protocol, v)
       - _tls-1: $_tls/1
       - tls.version_protocol: $_tls/0
@@ -62,10 +66,11 @@ normalize:
     map:
       - tls.version: concat($_tls-1, .0)
 
-  - check: $isSuccess
+  - check: int_less($http.response.status_code, 400)
     map:
       - event.outcome: success
-  - check: $isFailed
+
+  - check: int_greater_or_equal($http.response.status_code, 400)
     map:
       - event.outcome: failure
 
