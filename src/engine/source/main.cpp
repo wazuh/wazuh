@@ -11,7 +11,7 @@
 #include <cmds/policy.hpp>
 #include <cmds/router.hpp>
 #include <cmds/start.hpp>
-#include <cmds/test.hpp>
+#include <cmds/tester.hpp>
 
 namespace
 {
@@ -39,12 +39,12 @@ int main(int argc, char* argv[])
 
     // Configure each subcommand
     cmd::server::configure(app);
-    // cmd::test::configure(app);
+    cmd::tester::configure(app);
     cmd::graph::configure(app);
     cmd::kvdb::configure(app);
     cmd::catalog::configure(app);
     cmd::config::configure(app);
-    // cmd::router::configure(app);
+    cmd::router::configure(app);
     cmd::metrics::configure(app);
     cmd::policy::configure(app);
 

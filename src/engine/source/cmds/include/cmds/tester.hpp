@@ -8,16 +8,13 @@
 #include <base/utils/wazuhProtocol/wazuhProtocol.hpp>
 #include <cmds/apiclnt/client.hpp>
 
-namespace cmd::test
+namespace cmd::tester
 {
 
 namespace details
 {
 constexpr auto ORIGIN_NAME {"engine_integrated_test_api"};
 } // namespace details
-
-constexpr auto SESSION_GET_DATA_FORMAT = R"({{"id":"{}","creation_date":"{}","policy":"{}","filter":"{}",)"
-                                         R"("route":"{}","lifespan":{},"description":"{}"}})"; ///< Session data format
 
 constexpr auto OUTPUT_ONLY {0};
 constexpr auto OUTPUT_AND_TRACES {1};
@@ -30,7 +27,6 @@ constexpr auto OUTPUT_AND_TRACES_WITH_DETAILS {2};
  */
 struct Parameters
 {
-    bool deleteAll;                       /**< Perform deletion of all items. */
     bool jsonFormat;                      /**< Output data in JSON format. */
     int32_t debugLevel;                   /**< Debug level value. */
     std::string apiEndpoint;              /**< API endpoint to connect to. */
@@ -42,9 +38,48 @@ struct Parameters
     std::string protocolLocation;         /**< Protocol location. */
     std::string protocolQueue;            /**< Protocol queue. */
     std::string sessionName;              /**< Session name. */
-    uint32_t lifespan;                    /**< Lifespan duration. */
+    uint32_t lifetime;                    /**< Lifetime duration. */
     int clientTimeout;                    /**< Client timeout duration. */
 };
+
+/**
+ * @brief Creates a new testing session based on the provided parameters.
+ *
+ * This function connects to the provided API client and creates a new testing session using the specified parameters.
+ *
+ * @param client A shared pointer to the apiclnt::Client instance.
+ * @param parameters The configuration parameters for creating the testing session.
+ */
+void sessionCreate(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters);
+
+/**
+ * @brief Deletes an existing testing session based on the provided parameters.
+ *
+ * This function connects to the provided API client and deletes an existing testing session using the specified parameters.
+ *
+ * @param client A shared pointer to the apiclnt::Client instance.
+ * @param parameters The configuration parameters for deleting the testing session.
+ */
+void sessionDelete(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters);
+
+/**
+ * @brief Retrieves information about a specific testing session based on the provided parameters.
+ *
+ * This function connects to the provided API client and retrieves information about a specific testing session using the specified parameters.
+ *
+ * @param client A shared pointer to the apiclnt::Client instance.
+ * @param parameters The configuration parameters for getting information about the testing session.
+ */
+void sessionGet(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters);
+
+/**
+ * @brief Retrieves a list of all existing testing sessions.
+ *
+ * This function connects to the provided API client and retrieves a list of all existing testing sessions.
+ *
+ * @param client A shared pointer to the apiclnt::Client instance.
+ */
+void sessionList(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters);
 
 /**
  * @brief Command handler to test an event in a certain session.
