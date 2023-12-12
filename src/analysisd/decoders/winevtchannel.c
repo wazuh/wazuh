@@ -173,7 +173,7 @@ int DecodeWinevt(Eventinfo *lf){
                                     if (!strcmp(child_attr[p]->attributes[l], "ProcessID")){
                                         cJSON_AddStringToObject(json_system_in, "processID", child_attr[p]->values[l]);
                                     }
-                                    if (!strcmp(child_attr[p]->attributes[l], "ThreadID")){
+                                    else if (!strcmp(child_attr[p]->attributes[l], "ThreadID")){
                                         cJSON_AddStringToObject(json_system_in, "threadID", child_attr[p]->values[l]);
                                     }
                                 }
@@ -188,14 +188,14 @@ int DecodeWinevt(Eventinfo *lf){
                                 }
                             } else if (!strcmp(child_attr[p]->element, "Level")) {
                                 if (level){
-                                    os_free(level);
+                                    free(level);
                                 }
                                 os_strdup(child_attr[p]->content, level);
                                 *child_attr[p]->element = tolower(*child_attr[p]->element);
                                 cJSON_AddStringToObject(json_system_in, child_attr[p]->element, child_attr[p]->content);
                             } else if (!strcmp(child_attr[p]->element, "Keywords")) {
                                 if (keywords){
-                                    os_free(keywords);
+                                    free(keywords);
                                 }
                                 os_strdup(child_attr[p]->content, keywords);
                                 *child_attr[p]->element = tolower(*child_attr[p]->element);
@@ -216,14 +216,14 @@ int DecodeWinevt(Eventinfo *lf){
                                         // Save category ID
                                         if (!strcmp(child_attr[p]->values[l], "categoryId")){
                                             if (categoryId){
-                                                os_free(categoryId);
+                                                free(categoryId);
                                             }
                                             os_strdup(filtered_string, categoryId);
 
                                         // Save subcategory ID
                                         } else if (!strcmp(child_attr[p]->values[l], "subcategoryId")){
                                             if (subcategoryId){
-                                                os_free(subcategoryId);
+                                                free(subcategoryId);
                                             }
                                             os_strdup(filtered_string, subcategoryId);
                                         }
@@ -231,7 +231,7 @@ int DecodeWinevt(Eventinfo *lf){
                                         // Save Audit Policy Changes
                                         if (!strcmp(child_attr[p]->values[l], "auditPolicyChanges")){
                                             if (auditPolicyChangesId){
-                                                os_free(auditPolicyChangesId);
+                                                free(auditPolicyChangesId);
                                             }
                                             os_strdup(filtered_string, auditPolicyChangesId);
                                             cJSON_AddStringToObject(json_eventdata_in, "auditPolicyChangesId", filtered_string);
@@ -262,7 +262,7 @@ int DecodeWinevt(Eventinfo *lf){
                                         snprintf(join_data, strlen(filtered_string) + 1, "%s", filtered_string);
                                     }
                                     if (join_data2){
-                                        os_free(join_data2);
+                                        free(join_data2);
                                     }
                                     os_strdup(join_data,join_data2);
                                 } else if (strcmp(child_attr[p]->element, "Data")){
