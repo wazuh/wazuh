@@ -151,6 +151,9 @@ LIST(APPEND analysisd_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,cJSON_ParseWithOpts
                               -Wl,--wrap,OS_ReadXMLString -Wl,--wrap,OS_GetElementsbyNode -Wl,--wrap,OS_ClearXML       \
                               -Wl,--wrap,w_get_attr_val_by_name")
 
+LIST(APPEND analysisd_names "test_decoder_winevtchannel_input")
+LIST(APPEND analysisd_flags "${DEBUG_OP_WRAPPERS}")
+
 
 list(APPEND analysisd_names "test_analysis-state")
 list(APPEND analysisd_flags "-Wl,--wrap,time -Wl,--wrap,rem_get_qsize -Wl,--wrap,rem_get_tsize \
