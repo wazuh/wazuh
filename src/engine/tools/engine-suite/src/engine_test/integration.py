@@ -6,6 +6,8 @@ try:
 except ImportError:
     from yaml import Dumper as BaseDumper
 
+from google.protobuf.json_format import MessageToDict
+
 from engine_test.events_collector import EventsCollector
 from engine_test.formats.syslog import SyslogFormat
 from engine_test.formats.json import JsonFormat
@@ -21,7 +23,7 @@ from engine_test.crud_integration import CrudIntegration
 
 from engine_test.api_connector import ApiConnector
 
-from api_communication.proto import test_pb2 as api_test
+from api_communication.proto import tester_pb2 as api_tester
 
 class EngineDumper(BaseDumper):
     def represent_scalar(self, tag, value, style=None):
@@ -97,11 +99,12 @@ class Integration(CrudIntegration):
     def process_event(self, event, format):
 
         # Get the values to send
-        result : api_test.RunPost_Response
-        result, rawOutput = self.api_client.test_run(event)
+        response : api_tester.RunPost_Response()
+        response = self.api_client.tester_run(event)
+        rawOutput = MessageToDict(response.result.output)
 
-        hasTrace : bool = len(result.run.asset_traces) > 0
-        rawTraces = result.run.asset_traces if hasTrace else []
+        hasTrace : bool = len(response.result.asset_traces) > 0
+        rawTraces = response.result.asset_traces if hasTrace else []
 
         # TODO: Move to centralize integration configuration
         # Get the conditions to print the output
@@ -114,6 +117,7 @@ class Integration(CrudIntegration):
         response = ""
         if isJsonOutput:
             if showTrace:
+                rawTraces = [MessageToDict(trace) for trace in rawTraces]
                 response = json.dumps({keyOutput: rawOutput, keyTraces: rawTraces}, separators=(',',':'))
             else:
                 response = json.dumps(rawOutput, separators=(',',':'), sort_keys=True)
