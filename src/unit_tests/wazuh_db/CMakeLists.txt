@@ -191,9 +191,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_create_state_json -Wl,--wrap,wdb_get
 
 # Add extra compiling flags
 add_compile_options(-Wall)
-link_directories(${SRC_FOLDER}/build/shared_modules/router ${SRC_FOLDER}/external/flatcc/lib/)
-include_directories(${SRC_FOLDER}/generated_headers/)
-include_directories(${SRC_FOLDER}/external/flatcc/include)
+link_directories(${SRC_FOLDER}/build/shared_modules/router)
 
 # Wazuh-DB objects
 FILE(GLOB wazuh_db_objects ${SRC_FOLDER}/wazuh_db/*.o)
@@ -214,7 +212,6 @@ foreach(counter RANGE ${count})
         ${WAZUHEXT}
         ${TEST_DEPS}
         router
-        flatccrt
     )
 
     if(NOT test_flags STREQUAL " ")

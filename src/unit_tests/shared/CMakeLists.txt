@@ -5,9 +5,6 @@ if(${TARGET} STREQUAL "winagent")
     link_directories(${SRC_FOLDER}/syscheckd/build/bin)
 endif(${TARGET} STREQUAL "winagent")
 
-#include flatcc definitions
-include_directories(${SRC_FOLDER}/external/flatcc/include/)
-
 # Tests list and flags
 list(APPEND shared_tests_names "test_list_op")
 set(LIST_OP_BASE_FLAGS "-Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,pthread_mutex_lock \
