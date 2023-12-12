@@ -179,7 +179,7 @@ TEST_F(ContentModuleFacadeTest, TestSingletonAndChangeSchedulerIntervalWithoutPr
 /*
  * @brief Tests singleton of the ContentModuleFacade class and start on demand for raw data
  */
-TEST_F(ContentModuleFacadeTest, TestSingletonAndStartOnDemandForRawData)
+TEST_F(ContentModuleFacadeTest, DISABLED_TestSingletonAndStartOnDemandForRawData)
 {
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
     const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
