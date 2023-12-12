@@ -45,14 +45,6 @@ TEST_F(RouterCInterfaceTest, TestProviderSubscriberSimple)
     // TODO - Add C interface for subscribers.
 }
 
-TEST_F(RouterCInterfaceTest, DISABLED_TestDoubleProviderInit)
-{
-    auto handle {router_provider_create("test")};
-    EXPECT_NE(handle, nullptr);
-
-    EXPECT_EQ(router_provider_create("test"), nullptr);
-}
-
 TEST_F(RouterCInterfaceTest, TestDoubleSubscriberInit)
 {
     // TODO - Add C interface for subscribers.
@@ -60,65 +52,30 @@ TEST_F(RouterCInterfaceTest, TestDoubleSubscriberInit)
 
 TEST_F(RouterCInterfaceTest, TestProviderSend)
 {
-    auto handle {router_provider_create("test")};
-    EXPECT_NE(handle, nullptr);
-
-    EXPECT_EQ(router_provider_send(handle, "test", 4), 0);
+    EXPECT_EQ(router_provider_send("test", "test", 4), 0);
 
     // TODO - Add C interface for subscribers.
 }
 
 TEST_F(RouterCInterfaceTest, TestProviderSendNull)
 {
-    auto handle {router_provider_create("test")};
-    EXPECT_NE(handle, nullptr);
-
-    EXPECT_EQ(router_provider_send(handle, nullptr, 4), -1);
+    EXPECT_EQ(router_provider_send("test", nullptr, 4), -1);
 
     // TODO - Add C interface for subscribers.
 }
 
 TEST_F(RouterCInterfaceTest, TestProviderSendZero)
 {
-    auto handle {router_provider_create("test")};
-    EXPECT_NE(handle, nullptr);
-
-    EXPECT_EQ(router_provider_send(handle, "test", 0), -1);
+    EXPECT_EQ(router_provider_send("test", "test", 0), -1);
 
     // TODO - Add C interface for subscribers.
 }
 
 TEST_F(RouterCInterfaceTest, TestProviderSendAndDestroy)
 {
-    auto handle {router_provider_create("test")};
+    EXPECT_EQ(router_provider_send("test", "test", 4), 0);
 
-    EXPECT_NE(handle, nullptr);
-
-    EXPECT_EQ(router_provider_send(handle, "test", 4), 0);
-
-    EXPECT_NO_THROW(router_provider_destroy(handle));
-
-    // TODO - Add C interface for subscribers.
-}
-
-TEST_F(RouterCInterfaceTest, TestProviderWithEmptyTopicName)
-{
-    auto handle {router_provider_create("")};
-
-    EXPECT_EQ(handle, nullptr);
-
-    // TODO - Add C interface for subscribers.
-}
-
-TEST_F(RouterCInterfaceTest, TestTwoProvidersWithTheSameTopicName)
-{
-    auto handle1 {router_provider_create("test-provider")};
-
-    EXPECT_NE(handle1, nullptr);
-
-    auto handle2 {router_provider_create("test-provider")};
-
-    EXPECT_EQ(handle2, nullptr);
+    EXPECT_NO_THROW(router_provider_destroy("test"));
 
     // TODO - Add C interface for subscribers.
 }
@@ -131,16 +88,12 @@ TEST_F(RouterCInterfaceTestNoSetUp, TestRemoveProviderWithServerDown)
 {
     router_start();
 
-    ROUTER_PROVIDER_HANDLE provider = router_provider_create("test");
-    if (nullptr == provider)
-    {
-        FAIL() << "The provider wasn't created";
-    }
+    EXPECT_EQ(router_provider_send("test", "test", 4), 0);
 
     // Simulating the broker crash
     std::filesystem::remove(std::filesystem::path(REMOTE_SUBSCRIPTION_ENDPOINT));
 
-    EXPECT_NO_THROW(router_provider_destroy(provider));
+    EXPECT_NO_THROW(router_provider_destroy("test"));
 
     // It shouldn't hang here
 }

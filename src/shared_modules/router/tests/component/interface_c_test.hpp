@@ -36,12 +36,6 @@ protected:
      *
      */
     void TearDown() override;
-
-    /**
-     * @brief Router provider handle.
-     *
-     */
-    ROUTER_PROVIDER_HANDLE m_routerProviderHandle {};
 };
 
 /**

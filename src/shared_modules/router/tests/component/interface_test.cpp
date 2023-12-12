@@ -213,7 +213,7 @@ TEST_F(RouterInterfaceTest, TestRemoteDoubleProviderInit)
 {
     auto provider {std::make_unique<RouterProvider>("test", false)};
     EXPECT_NO_THROW({ provider->start(); });
-    EXPECT_THROW({ provider->start(); }, std::runtime_error);
+    EXPECT_NO_THROW({ provider->start(); });
 }
 
 TEST_F(RouterInterfaceTest, TestRemoteDoubleSubscriberInit)
