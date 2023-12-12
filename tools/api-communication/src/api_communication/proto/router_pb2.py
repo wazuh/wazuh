@@ -14,29 +14,37 @@ _sym_db = _symbol_database.Default()
 import api_communication.proto.engine_pb2 as _engine_pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0crouter.proto\x12\x1b\x63om.wazuh.api.engine.router\x1a\x0c\x65ngine.proto\"\xb1\x01\n\x05\x45ntry\x12\x11\n\x04name\x18\x01 \x01(\tH\x00\x88\x01\x01\x12\x13\n\x06\x66ilter\x18\x02 \x01(\tH\x01\x88\x01\x01\x12\x13\n\x06policy\x18\x03 \x01(\tH\x02\x88\x01\x01\x12\x15\n\x08priority\x18\x04 \x01(\x05H\x03\x88\x01\x01\x12\x18\n\x0bpolicy_sync\x18\x05 \x01(\tH\x04\x88\x01\x01\x42\x07\n\x05_nameB\t\n\x07_filterB\t\n\x07_policyB\x0b\n\t_priorityB\x0e\n\x0c_policy_sync\".\n\x10RouteGet_Request\x12\x11\n\x04name\x18\x01 \x01(\tH\x00\x88\x01\x01\x42\x07\n\x05_name\"\xa7\x01\n\x11RouteGet_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x36\n\x05route\x18\x03 \x01(\x0b\x32\".com.wazuh.api.engine.router.EntryH\x01\x88\x01\x01\x42\x08\n\x06_errorB\x08\n\x06_route\"U\n\x11RoutePost_Request\x12\x36\n\x05route\x18\x01 \x01(\x0b\x32\".com.wazuh.api.engine.router.EntryH\x00\x88\x01\x01\x42\x08\n\x06_route\"V\n\x12RoutePatch_Request\x12\x36\n\x05route\x18\x01 \x01(\x0b\x32\".com.wazuh.api.engine.router.EntryH\x00\x88\x01\x01\x42\x08\n\x06_route\"1\n\x13RouteDelete_Request\x12\x11\n\x04name\x18\x01 \x01(\tH\x00\x88\x01\x01\x42\x07\n\x05_name\"\x12\n\x10TableGet_Request\"\x98\x01\n\x11TableGet_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x31\n\x05table\x18\x03 \x03(\x0b\x32\".com.wazuh.api.engine.router.EntryB\x08\n\x06_error\"J\n\x11QueuePost_Request\x12\x18\n\x0bwazuh_event\x18\x01 \x01(\tH\x00\x88\x01\x01\x42\x0e\n\x0c_wazuh_eventJ\x04\x08\x02\x10\x03R\x05\x65ventb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0crouter.proto\x12\x1b\x63om.wazuh.api.engine.router\x1a\x0c\x65ngine.proto\"u\n\tEntryPost\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0e\n\x06policy\x18\x02 \x01(\t\x12\x0e\n\x06\x66ilter\x18\x03 \x01(\t\x12\x10\n\x08priority\x18\x04 \x01(\r\x12\x18\n\x0b\x64\x65scription\x18\x05 \x01(\tH\x00\x88\x01\x01\x42\x0e\n\x0c_description\"\xf3\x01\n\x05\x45ntry\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0e\n\x06policy\x18\x02 \x01(\t\x12\x0e\n\x06\x66ilter\x18\x03 \x01(\t\x12\x10\n\x08priority\x18\x04 \x01(\r\x12\x18\n\x0b\x64\x65scription\x18\x05 \x01(\tH\x00\x88\x01\x01\x12\x36\n\x0bpolicy_sync\x18\x06 \x01(\x0e\x32!.com.wazuh.api.engine.router.Sync\x12\x38\n\x0c\x65ntry_status\x18\x07 \x01(\x0e\x32\".com.wazuh.api.engine.router.State\x12\x0e\n\x06uptime\x18\x08 \x01(\rB\x0e\n\x0c_description\"Y\n\x11RoutePost_Request\x12:\n\x05route\x18\x01 \x01(\x0b\x32&.com.wazuh.api.engine.router.EntryPostH\x00\x88\x01\x01\x42\x08\n\x06_route\"#\n\x13RouteDelete_Request\x12\x0c\n\x04name\x18\x01 \x01(\t\" \n\x10RouteGet_Request\x12\x0c\n\x04name\x18\x01 \x01(\t\"\xa7\x01\n\x11RouteGet_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x36\n\x05route\x18\x03 \x01(\x0b\x32\".com.wazuh.api.engine.router.EntryH\x01\x88\x01\x01\x42\x08\n\x06_errorB\x08\n\x06_route\"#\n\x13RouteReload_Request\x12\x0c\n\x04name\x18\x01 \x01(\t\"<\n\x1aRoutePatchPriority_Request\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x10\n\x08priority\x18\x02 \x01(\r\"\x12\n\x10TableGet_Request\"\x98\x01\n\x11TableGet_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x31\n\x05table\x18\x03 \x03(\x0b\x32\".com.wazuh.api.engine.router.EntryB\x08\n\x06_error\"5\n\x11QueuePost_Request\x12\x13\n\x0bwazuh_event\x18\x01 \x01(\tJ\x04\x08\x02\x10\x03R\x05\x65vent*5\n\x05State\x12\x11\n\rSTATE_UNKNOWN\x10\x00\x12\x0c\n\x08\x44ISABLED\x10\x01\x12\x0b\n\x07\x45NABLED\x10\x02*>\n\x04Sync\x12\x10\n\x0cSYNC_UNKNOWN\x10\x00\x12\x0b\n\x07UPDATED\x10\x01\x12\x0c\n\x08OUTDATED\x10\x02\x12\t\n\x05\x45RROR\x10\x03\x62\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'router_pb2', globals())
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
-  _ENTRY._serialized_start=60
-  _ENTRY._serialized_end=237
-  _ROUTEGET_REQUEST._serialized_start=239
-  _ROUTEGET_REQUEST._serialized_end=285
-  _ROUTEGET_RESPONSE._serialized_start=288
-  _ROUTEGET_RESPONSE._serialized_end=455
-  _ROUTEPOST_REQUEST._serialized_start=457
-  _ROUTEPOST_REQUEST._serialized_end=542
-  _ROUTEPATCH_REQUEST._serialized_start=544
-  _ROUTEPATCH_REQUEST._serialized_end=630
-  _ROUTEDELETE_REQUEST._serialized_start=632
-  _ROUTEDELETE_REQUEST._serialized_end=681
-  _TABLEGET_REQUEST._serialized_start=683
-  _TABLEGET_REQUEST._serialized_end=701
-  _TABLEGET_RESPONSE._serialized_start=704
-  _TABLEGET_RESPONSE._serialized_end=856
-  _QUEUEPOST_REQUEST._serialized_start=858
-  _QUEUEPOST_REQUEST._serialized_end=932
+  _STATE._serialized_start=1085
+  _STATE._serialized_end=1138
+  _SYNC._serialized_start=1140
+  _SYNC._serialized_end=1202
+  _ENTRYPOST._serialized_start=59
+  _ENTRYPOST._serialized_end=176
+  _ENTRY._serialized_start=179
+  _ENTRY._serialized_end=422
+  _ROUTEPOST_REQUEST._serialized_start=424
+  _ROUTEPOST_REQUEST._serialized_end=513
+  _ROUTEDELETE_REQUEST._serialized_start=515
+  _ROUTEDELETE_REQUEST._serialized_end=550
+  _ROUTEGET_REQUEST._serialized_start=552
+  _ROUTEGET_REQUEST._serialized_end=584
+  _ROUTEGET_RESPONSE._serialized_start=587
+  _ROUTEGET_RESPONSE._serialized_end=754
+  _ROUTERELOAD_REQUEST._serialized_start=756
+  _ROUTERELOAD_REQUEST._serialized_end=791
+  _ROUTEPATCHPRIORITY_REQUEST._serialized_start=793
+  _ROUTEPATCHPRIORITY_REQUEST._serialized_end=853
+  _TABLEGET_REQUEST._serialized_start=855
+  _TABLEGET_REQUEST._serialized_end=873
+  _TABLEGET_RESPONSE._serialized_start=876
+  _TABLEGET_RESPONSE._serialized_end=1028
+  _QUEUEPOST_REQUEST._serialized_start=1030
+  _QUEUEPOST_REQUEST._serialized_end=1083
 # @@protoc_insertion_point(module_scope)
