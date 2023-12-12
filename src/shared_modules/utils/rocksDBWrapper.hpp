@@ -430,6 +430,18 @@ namespace Utils
         }
 
         /**
+         * @brief Get an iterator to the database for a column family.
+         * @param columnFamily Column family to seek.
+         * @return RocksDBIterator Iterator to the database.
+         */
+        RocksDBIterator begin(const std::string& columnFamily)
+        {
+            return RocksDBIterator {std::shared_ptr<rocksdb::Iterator>(m_db->NewIterator(
+                                        rocksdb::ReadOptions(), m_columnFamiliesHandlesMap.at(columnFamily))),
+                                    ""};
+        }
+
+        /**
          * @brief Get an iterator to the end of the database.
          * @return const RocksDBIterator Iterator to the end of the database.
          */

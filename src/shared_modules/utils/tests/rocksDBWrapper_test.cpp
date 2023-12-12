@@ -254,6 +254,17 @@ TEST_F(RocksDBWrapperTest, TestRangeForLoop)
     }
 
     EXPECT_EQ(counter, NUM_ELEMENTS);
+
+    counter = 0;
+
+    for (const auto& [key, value] : db_wrapper->begin())
+    {
+        EXPECT_EQ(key, elements[counter].first);
+        EXPECT_EQ(value, elements[counter].second);
+        ++counter;
+    }
+
+    EXPECT_EQ(counter, NUM_ELEMENTS);
 }
 
 /**
@@ -466,6 +477,15 @@ TEST_F(RocksDBWrapperTest, TestColumFamilyDBSeek)
     {
         auto counter {0};
         for (const auto& [key, value] : cfDb->seek(prefix, "key_" + prefix + "_"))
+        {
+            EXPECT_EQ(key, "key_" + prefix + "_" + std::to_string(counter));
+            EXPECT_EQ(value, "value_" + prefix + "_" + std::to_string(counter));
+            ++counter;
+        }
+        EXPECT_EQ(counter, 3);
+
+        counter = 0;
+        for (const auto& [key, value] : cfDb->begin(prefix))
         {
             EXPECT_EQ(key, "key_" + prefix + "_" + std::to_string(counter));
             EXPECT_EQ(value, "value_" + prefix + "_" + std::to_string(counter));
