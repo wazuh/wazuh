@@ -4,20 +4,17 @@ metadata:
   module: apache-http
   title: Apache HTTP Server error logs decoder
   description: Decoder for Apache HTTP Server error logs.
+  versions: ["2.2.31", "2.4.16"]
   compatibility: The Apache datasets were tested with Apache 2.4.12 and 2.4.46 and are expected to work with all versions >= 2.2.31 and >= 2.4.16 (independent from operating system).
-  versions:
-    - "2.4.12"
-    - "2.4.46"
   author:
     name: Wazuh Inc.
-    email: info@wazuh.com
-    date: 2022-11-15
+    date: 2023-11-29
   references:
     - https://httpd.apache.org/docs/2.4/logs.html
     - https://httpd.apache.org/docs/2.4/custom-error.html
 
 check:
-  - event.original: starts_with([)
+  - wazuh.location: /var/log/apache2/access.log
 #TODO: Once the events arrive tagged, uncomment these lines below and remove the above regex
 # - event.module: apache-http
 # - event.dataset: apache-error
