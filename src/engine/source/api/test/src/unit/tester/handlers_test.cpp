@@ -16,6 +16,8 @@
 #include <api/tester/mockTester.hpp>
 #include <store/mockStore.hpp>
 
+#include "../../apiAuxiliarFunctions.hpp"
+
 using namespace api::policy::mocks;
 using namespace api::tester::mocks;
 using namespace api::tester::handlers;
@@ -368,11 +370,11 @@ struct JParams
         }
         if (m_policySync)
         {
-            j.setString(::router::env::syncToString(m_policySync.value()), path + "policySync");
+            j.setString(syncToString(m_policySync.value()), path + "policySync");
         }
         if (m_entryState)
         {
-            j.setString(::router::env::stateToString(m_entryState.value()), path + "entrySync");
+            j.setString(stateToString(m_entryState.value()), path + "entrySync");
         }
         if (m_lastUse)
         {

@@ -33,32 +33,6 @@ enum class Sync : std::uint8_t
     OUTDATED, ///< Policy is outdated respect to the store
     ERROR     ///< Error, can't get the policy status
 };
-
-static const std::string stateToString(State state)
-{
-    static const std::unordered_map<State, std::string> stateStrings{
-        {State::UNKNOWN, "UNKNOWN"},
-        {State::DISABLED, "DISABLED"},
-        {State::ENABLED, "ENABLED"}
-    };
-
-    auto it = stateStrings.find(state);
-    return (it != stateStrings.end()) ? it->second : "InvalidState";
-}
-
-static const std::string syncToString(Sync sync)
-{
-    static const std::unordered_map<Sync, std::string> syncStrings{
-        {Sync::UNKNOWN, "UNKNOWN"},
-        {Sync::UPDATED, "UPDATED"},
-        {Sync::OUTDATED, "OUTDATED"},
-        {Sync::ERROR, "ERROR"}
-    };
-
-    auto it = syncStrings.find(sync);
-    return (it != syncStrings.end()) ? it->second : "InvalidSync";
-}
-
 } // namespace env
 
 /**************************************************************************
