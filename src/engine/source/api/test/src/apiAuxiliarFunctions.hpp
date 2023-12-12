@@ -11,6 +11,7 @@
 #include <logging/logging.hpp>
 #include <register.hpp>
 #include <registry.hpp>
+#include <router/types.hpp>
 #include <schemf/emptySchema.hpp>
 #include <store/mockStore.hpp>
 
@@ -89,5 +90,31 @@ std::shared_ptr<builder::Builder> inline fakeBuilder(std::shared_ptr<store::mock
 
     return builder;
 };
+
+using namespace router::env;
+const std::string inline stateToString(State state)
+{
+    const std::unordered_map<State, std::string> stateStrings{
+        {State::UNKNOWN, "UNKNOWN"},
+        {State::DISABLED, "DISABLED"},
+        {State::ENABLED, "ENABLED"}
+    };
+
+    auto it = stateStrings.find(state);
+    return (it != stateStrings.end()) ? it->second : "InvalidState";
+}
+
+const std::string inline syncToString(Sync sync)
+{
+    const std::unordered_map<Sync, std::string> syncStrings{
+        {Sync::UNKNOWN, "UNKNOWN"},
+        {Sync::UPDATED, "UPDATED"},
+        {Sync::OUTDATED, "OUTDATED"},
+        {Sync::ERROR, "ERROR"}
+    };
+
+    auto it = syncStrings.find(sync);
+    return (it != syncStrings.end()) ? it->second : "InvalidSync";
+}
 
 #endif // _API_AUXILIAR_FUNCTIONS_H
