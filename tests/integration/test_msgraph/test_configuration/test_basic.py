@@ -128,7 +128,7 @@ def test_enabled(test_configuration, test_metadata, set_wazuh_configuration, con
 
     wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*INFO: Started module"))
     assert (wazuh_log_monitor.callback_result != None), f'Error module enabled event not detected'
-    
+
     wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*{msg}", {
                               'msg': str(test_metadata['msg'])}))
     assert (wazuh_log_monitor.callback_result != None), f'Error module started or delayed event not detected'
