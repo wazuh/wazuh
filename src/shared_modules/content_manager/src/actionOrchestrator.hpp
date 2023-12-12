@@ -91,6 +91,22 @@ public:
                 spUpdaterContext->currentOffset = 0;
             }
 
+            // If the content source is 'cti-offset' and the current offset is '0', a snapshot must be downloaded with
+            // the full content.
+            const auto& contentSource {m_spBaseContext->configData.at("contentSource").get_ref<const std::string&>()};
+            if (0 == spUpdaterContext->currentOffset && "cti-offset" == contentSource)
+            {
+                logDebug1(WM_CONTENTUPDATER, "Performing full-content download");
+
+                // Prepare configuration.
+                auto fullContentConfig = m_spBaseContext->configData;
+                fullContentConfig.at("contentSource") = "cti-snapshot";
+                fullContentConfig.at("compressionType") = "zip";
+
+                // Download full content.
+                FactoryContentUpdater::create(fullContentConfig)->handleRequest(spUpdaterContext);
+            }
+
             // Run the updater chain
             m_spUpdaterOrchestration->handleRequest(spUpdaterContext);
         }
