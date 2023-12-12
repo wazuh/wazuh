@@ -44,7 +44,6 @@ references:
 tags:
     - enrollment
 '''
-from datetime import timedelta
 import pytest
 from pathlib import Path
 import sys
@@ -52,14 +51,15 @@ import sys
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG, AGENTD_TIMEOUT
-from wazuh_testing.modules.agentd.patterns import AGENTD_TRYING_CONNECT, AGENTD_CONNECTED_TO_SERVER 
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
+from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils import callbacks
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
+from wazuh_testing.utils.services import control_service
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from .. import parse_time_from_log_line, wait_connect, wait_server_rollback, add_custom_key, check_connection_try, kill_server
+from .. import get_regex, kill_server, add_custom_key
 
 # Marks
 pytestmark = pytest.mark.tier(level=0)
@@ -78,118 +78,20 @@ else:
     local_internal_options = {AGENTD_DEBUG: '2'}
 local_internal_options.update({AGENTD_TIMEOUT: '5'})
 
-daemons_handler_configuration = {'all_daemons': True}
-
 # Tests
 """
 How does this test work:
-
     - PROTOCOL: tcp/udp
     - CLEAN_KEYS: whatever start with an empty client.keys file or not
-    - SIMULATOR_NUMBERS: Number of simulator to be instantiated, this should match wazuh_conf.yaml
-    - SIMULATOR MODES: for each number of simulator will define a list of "stages"
-    that defines the state that remoted simulator should have in that state
-    Length of the stages should be the same for all simulators.
-    Authd simulator will only accept one enrollment for stage
-    - LOG_MONITOR_STR: (list of lists) Expected string to be monitored in all stages
+    - SIMULATOR MODES: for each simulator will define a mode
+    - AUTHD_PREV_MODE: represents the previous state of the authd daemon,
+        - ACCEPT means it already has keys, REJECT means no keys
+    - AUTHD: mode for the authd simulator
+    - LOG_MONITOR_STR: (list of lists) Expected string to be monitored for each simulator
 """
-# fixtures
-@pytest.fixture(scope="module", params=configurations, ids=case_ids)
-def get_configuration(request):
-    """Get configurations from the module"""
-    return request.param
-
-
-@pytest.fixture(scope="module")
-def add_hostnames(request):
-    """Add to OS hosts file, names and IP's of test servers."""
-    HOSTFILE_PATH = os.path.join(os.environ['SystemRoot'], 'system32', 'drivers', 'etc', 'hosts') \
-        if os.sys.platform == 'win32' else '/etc/hosts'
-    hostfile = None
-    with open(HOSTFILE_PATH, "r") as f:
-        hostfile = f.read()
-    for server in SERVER_HOSTS:
-        if server not in hostfile:
-            with open(HOSTFILE_PATH, "a") as f:
-                f.write(f'{SERVER_ADDRESS}  {server}\n')
-    yield
-
-    with open(HOSTFILE_PATH, "w") as f:
-        f.write(hostfile)
-
-
-@pytest.fixture(scope="module")
-def configure_authd_server(request, get_configuration):
-    """Initialize multiple simulated remoted connections.
-
-    Args:
-        get_configuration (fixture): Get configurations from the module.
-    """
-    global monitored_sockets
-    monitored_sockets = QueueMonitor(authd_server.queue)
-    authd_server.start()
-    authd_server.set_mode('REJECT')
-    global remoted_servers
-    for i in range(0, get_configuration['metadata']['SIMULATOR_NUMBER']):
-        remoted_servers.append(RemotedSimulator(server_address=SERVER_ADDRESS, remoted_port=REMOTED_PORTS[i],
-                                                protocol=get_configuration['metadata']['PROTOCOL'],
-                                                mode='CONTROLLED_ACK', client_keys=CLIENT_KEYS_PATH))
-        # Set simulator mode for that stage
-        if get_configuration['metadata']['SIMULATOR_MODES'][i][0] != 'CLOSE':
-            remoted_servers[i].set_mode(get_configuration['metadata']['SIMULATOR_MODES'][i][0])
-
-    yield
-    # hearing on enrollment server
-    for i in range(0, get_configuration['metadata']['SIMULATOR_NUMBER']):
-        remoted_servers[i].stop()
-    remoted_servers = []
-    authd_server.shutdown()
-
-
-@pytest.fixture(scope="function")
-def set_authd_id(request):
-    """Set agent id to 101 in the authd simulated connection."""
-    authd_server.agent_id = 101
-
-
-@pytest.fixture(scope="function")
-def clean_keys(request, get_configuration):
-    """Clear the client.key file used by the simulated remoted connections.
-
-    Args:
-        get_configuration (fixture): Get configurations from the module.
-    """
-    if get_configuration['metadata'].get('CLEAN_KEYS', True):
-        truncate_file(CLIENT_KEYS_PATH)
-        sleep(1)
-    else:
-        with open(CLIENT_KEYS_PATH, 'w') as f:
-            f.write("100 ubuntu-agent any TopSecret")
-        sleep(1)
-
-
-def restart_agentd():
-    """Restart agentd daemon with debug mode active."""
-    control_service('stop', daemon="wazuh-agentd")
-    truncate_file(LOG_FILE_PATH)
-    control_service('start', daemon="wazuh-agentd", debug_mode=True)
-
-
-# Tests
-def wait_until(x, log_str):
-    """Callback function to wait for a message in a log file.
-
-    Args:
-        x (str): String containing message.
-        log_str (str): Log file string.
-    """
-    return x if log_str in x else None
-
-
-# @pytest.mark.parametrize('test_case', [case for case in tests])
-@pytest.mark.skip(reason='https://github.com/wazuh/wazuh-qa/issues/3536')
-def test_agentd_multi_server(add_hostnames, configure_authd_server, set_authd_id, clean_keys, configure_environment,
-                             get_configuration):
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
+def test_agentd_multi_server(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options, truncate_monitored_files, 
+                             remove_keys_file):
     '''
     description: Check the agent's enrollment and connection to a manager in a multi-server environment.
                  Initialize an environment with multiple simulated servers in which the agent is forced to enroll
@@ -200,24 +102,24 @@ def test_agentd_multi_server(add_hostnames, configure_authd_server, set_authd_id
     tier: 0
 
     parameters:
-        - add_hostnames:
-            type: fixture
-            brief: Adds to the 'hosts' file the names and the IP addresses of the testing servers.
-        - configure_authd_server:
-            type: fixture
-            brief: Initializes a simulated 'wazuh-authd' connection.
-        - set_authd_id:
-            type: fixture
-            brief: Sets the agent id to '101' in the 'wazuh-authd' simulated connection.
-        - clean_keys:
-            type: fixture
-            brief: Clears the 'client.keys' file used by the simulated remote connections.
-        - configure_environment:
+        - test_configuration:
+            type: data
+            brief: Configuration used in the test.
+        - test_metadata:
+            type: data
+            brief: Configuration cases.
+        - set_wazuh_configuration:
             type: fixture
             brief: Configure a custom environment for testing.
-        - get_configuration:
+        - configure_local_internal_options:
             type: fixture
-            brief: Get configurations from the module.
+            brief: Set internal configuration for testing.
+        - truncate_monitored_files:
+            type: fixture
+            brief: Reset the 'ossec.log' file and start a new monitor.
+        - remove_keys_file:
+            type: fixture
+            brief: Deletes keys file if test configuration request it    
 
     assertions:
         - Agent without keys. Verify that all servers will refuse the connection to the 'wazuh-remoted' daemon
@@ -245,7 +147,6 @@ def test_agentd_multi_server(add_hostnames, configure_authd_server, set_authd_id
         - r'Trying to connect to server'
         - r'Connected to enrollment service'
         - r'Received message'
-        - r'Server responded. Releasing lock.'
         - r'Unable to connect to enrollment service at'
 
     tags:
@@ -253,34 +154,50 @@ def test_agentd_multi_server(add_hostnames, configure_authd_server, set_authd_id
         - ssl
         - keys
     '''
-    log_monitor = FileMonitor(LOG_FILE_PATH)
 
-    for stage in range(0, len(get_configuration['metadata']['LOG_MONITOR_STR'])):
+    # Servers paremeters
+    remoted_server_addresses = ["127.0.0.0","127.0.0.1","127.0.0.2"]
+    remoted_server_ports = [1514,1516,1517]
+    remoted_servers = [None,None,None]
+    
+    # Stop target Agent
+    control_service('stop')
 
-        authd_server.set_mode(get_configuration['metadata']['SIMULATOR_MODES']['AUTHD'][stage])
-        authd_server.clear()
+    # Configure keys
+    if(test_metadata['SIMULATOR_MODES']['AUTHD'] == 'ACCEPT'):
+        authd_server = AuthdSimulator(server_ip = remoted_server_addresses[0], mode = test_metadata['SIMULATOR_MODES']['AUTHD'])
+        authd_server.start()
+    else:
+        if(test_metadata['SIMULATOR_MODES']['AUTHD_PREV_MODE'] == 'ACCEPT'):
+            authd_server = None
+            add_custom_key()
 
-        for i in range(0, get_configuration['metadata']['SIMULATOR_NUMBER']):
-            # Set simulator mode for that stage
-            if get_configuration['metadata']['SIMULATOR_MODES'][i][stage] != 'CLOSE':
-                remoted_servers[i].set_mode(get_configuration['metadata']['SIMULATOR_MODES'][i][stage])
-            else:
-                remoted_servers[i].stop()
+    # Start target Agent
+    control_service('start')
+    
+    # Start Remoted Simulators
+    for i in range(len(remoted_server_addresses)):
+        if(test_metadata['SIMULATOR_MODES'][i] != 'CLOSE'):
+            remoted_servers[i] = RemotedSimulator(protocol = test_metadata['PROTOCOL'], server_ip = remoted_server_addresses[i], 
+                                        port = remoted_server_ports[i], mode = test_metadata['SIMULATOR_MODES'][i])
+            remoted_servers[i].start()
 
-        if stage == 0:
-            # Restart at beginning of test
-            restart_agentd()
+    # Start FileMonitor
+    log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
-        for index, log_str in enumerate(get_configuration['metadata']['LOG_MONITOR_STR'][stage]):
-            try:
-                log_monitor.start(timeout=tcase_timeout, callback=lambda x: wait_until(x, log_str))
-            except TimeoutError:
-                assert False, f"Expected message '{log_str}' never arrived! Stage: {stage+1}, message number: {index+1}"
+    # Iterate the servers from which we are expecting logs
+    for server in range(len(test_metadata['LOG_MONITOR_STR'])):
+        # Iterate the patterns expected for server
+        for pattern in range(len(test_metadata['LOG_MONITOR_STR'][server])):
+            # Build regex from expected pattern
+            regex, values = get_regex(test_metadata['LOG_MONITOR_STR'][server][pattern],
+                              remoted_server_addresses[server],
+                              remoted_server_ports[server])
+            # Look for expected log
+            log_monitor.start(callback=callbacks.generate_callback(regex,values))
+            assert (log_monitor.callback_result != None), regex
 
-        for i in range(0, get_configuration['metadata']['SIMULATOR_NUMBER']):
-            # Clean after every stage
-            if get_configuration['metadata']['SIMULATOR_MODES'][i][stage] == 'CLOSE':
-                remoted_servers[i].start()
-
-        authd_server.clear()
-    return
+    # Shutdown simulators
+    for i in range(len(remoted_servers)):
+        kill_server(remoted_servers[i])
+    kill_server(authd_server)

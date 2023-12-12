@@ -9,7 +9,7 @@ from wazuh_testing.utils import callbacks
 def add_custom_key() -> None:
     """Set test client.keys file"""
     with open(WAZUH_CLIENT_KEYS_PATH, 'w+') as client_keys:
-        client_keys.write("100 ubuntu-agent any TopSecret")
+        client_keys.write("001 ubuntu-agent any SuperSecretKey")
 
 def kill_server(server):
     if server:
@@ -33,7 +33,7 @@ def parse_time_from_log_line(log_line):
     return log_time
 
 def get_regex(pattern, server_address, server_port):
-    if(pattern == 'AGENTD_TRYING_CONNECT'):
+    if(pattern == 'AGENTD_TRYING_CONNECT' or pattern == 'AGENTD_UNABLE_TO_CONNECT'):
         regex = globals()[pattern]
         values = {'IP': str(server_address), 'PORT':str(server_port)}
     elif (pattern == 'AGENTD_REQUESTING_KEY'):
@@ -42,8 +42,7 @@ def get_regex(pattern, server_address, server_port):
     elif (pattern == 'AGENTD_CONNECTED_TO_ENROLLMENT'):
         regex = globals()[pattern]
         values = {'IP': '', 'PORT': ''}
-    elif (pattern == 'AGENTD_RECEIVED_VALID_KEY' or pattern == 'AGENTD_RECEIVED_ACK' or 
-          pattern == 'AGENTD_SERVER_RESPONDED' or pattern == 'AGENTD_RECEIVED_ACK'):
+    else:
         regex = globals()[pattern]
         values = {}
     return regex, values
@@ -109,7 +108,7 @@ def wait_server_rollback():
         Watch ossec.log until "Unable to connect to any server" message is found'
     """
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_UNABLE_TO_CONNECT))
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_UNABLE_TO_CONNECT_TO_ANY))
     assert (wazuh_log_monitor.callback_result != None), f'Unable to connect to any server message not found'
 
 def check_module_stop():
