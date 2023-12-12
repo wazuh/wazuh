@@ -78,6 +78,8 @@ private:
     std::size_t m_priority;                   ///< Priority of the environment
     std::optional<std::string> m_description; ///< Description of the environment
 
+    static constexpr std::size_t MAX_PRIORITY = 1000; ///< Max priority of the environment
+
 public:
     EntryPost() = delete;
 
@@ -121,7 +123,7 @@ public:
         {
             return base::Error {"Priority cannot be 0"};
         }
-        if (m_priority > 1000)
+        if (m_priority > MAX_PRIORITY)
         {
             return base::Error {"Priority cannot be greater than 1000"};
         }
@@ -140,6 +142,8 @@ public:
 
     std::size_t priority() const { return m_priority; }
     void priority(std::size_t priority) { m_priority = priority; }
+
+    static std::size_t maxPriority() { return MAX_PRIORITY; }
 };
 
 /**
