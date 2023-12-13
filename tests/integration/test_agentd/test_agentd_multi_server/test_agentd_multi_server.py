@@ -201,3 +201,4 @@ def test_agentd_multi_server(test_configuration, test_metadata, set_wazuh_config
     for i in range(len(remoted_servers)):
         kill_server(remoted_servers[i])
     kill_server(authd_server)
+    

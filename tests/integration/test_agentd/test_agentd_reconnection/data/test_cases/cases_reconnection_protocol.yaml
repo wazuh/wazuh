@@ -3,6 +3,7 @@
   configuration_parameters:
     PROTOCOL: 'tcp'
   metadata:
+    PROTOCOL: 'tcp'
     CLEAN_KEYS: true
 
 - name: UDP protocol
@@ -10,4 +11,5 @@
   configuration_parameters:
     PROTOCOL: 'udp'
   metadata:
+    PROTOCOL: 'udp'
     CLEAN_KEYS: true

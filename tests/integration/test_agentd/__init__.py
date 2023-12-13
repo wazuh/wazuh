@@ -12,6 +12,11 @@ def add_custom_key() -> None:
         client_keys.write("001 ubuntu-agent any SuperSecretKey")
 
 def kill_server(server):
+    """Cleans and shutdown given server.
+
+    Args:
+        server (remoted/authd server): server to be shutdown.
+    """
     if server:
         server.clear()
         server.shutdown()
@@ -33,6 +38,17 @@ def parse_time_from_log_line(log_line):
     return log_time
 
 def get_regex(pattern, server_address, server_port):
+    """Return a regex and the values to complete it
+
+    Args:
+        pattern (str): String refering to the framework patterns.
+        server_address (str): String with server ip.
+        server_port (str): String with server port.
+
+    Returns:
+        regex (regex): refered by framework patter.
+        values (dict): values to complete regex 
+    """
     if(pattern == 'AGENTD_TRYING_CONNECT' or pattern == 'AGENTD_UNABLE_TO_CONNECT'):
         regex = globals()[pattern]
         values = {'IP': str(server_address), 'PORT':str(server_port)}

@@ -150,7 +150,6 @@ def test_agentd_parametrized_reconnections(test_metadata, set_wazuh_configuratio
     '''
     DELTA = 1
 
-    # 1 Check for unsuccessful connection retries in Agentd initialization
     interval = test_metadata['RETRY_INTERVAL']
 
     # Get first connection try log timestamp
@@ -172,7 +171,7 @@ def test_agentd_parametrized_reconnections(test_metadata, set_wazuh_configuratio
         # Second log becomes the first for next cycle
         log_timestamp = actual_retry
         
-    # 3 If auto enrollment is enabled, retry check enrollment
+    # If auto enrollment is enabled, retry check enrollment
     if test_metadata['ENROLL'] == 'yes':
         # Add dummy key in order to communicate with RemotedSimulator
         add_custom_key()
@@ -185,7 +184,7 @@ def test_agentd_parametrized_reconnections(test_metadata, set_wazuh_configuratio
         # Shutdown RemotedSimulator
         kill_server(remoted_server)
 
-    # 4 Wait for server rollback
+    # Wait for server rollback
     wait_server_rollback()
 
     #Check number of retries messages is the expected

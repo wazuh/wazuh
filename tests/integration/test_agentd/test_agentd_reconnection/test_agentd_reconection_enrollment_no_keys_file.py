@@ -107,7 +107,10 @@ def test_agentd_reconection_enrollment_no_keys_file(test_metadata, set_wazuh_con
         - truncate_monitored_files:
             type: fixture
             brief: Reset the 'ossec.log' file and start a new monitor.
-
+        - remove_keys_file:
+            type: fixture
+            brief: Deletes keys file if test configuration request it 
+            
     assertions:
         - Verify that the agent enrollment is successful.
 
