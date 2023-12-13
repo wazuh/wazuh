@@ -275,6 +275,10 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionTyp
     EXPECT_NO_THROW(routerProvider->stop());
 }
 
+/**
+ * @brief Tests the execution of the orchestration forcing the download of the snapshot before downloading the offsets.
+ *
+ */
 TEST_F(ActionOrchestratorTest, RunWithFullContentDownload)
 {
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
