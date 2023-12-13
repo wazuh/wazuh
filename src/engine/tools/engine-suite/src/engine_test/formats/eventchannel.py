@@ -1,5 +1,5 @@
 import re
-import xml.etree.ElementTree as ET
+from lxml import etree as ET
 
 from engine_test.event_format import EventFormat, Formats
 
@@ -22,7 +22,7 @@ class EventChannelFormat(EventFormat):
 
         try:
             return ET.fromstring(xml)
-        except ET.ParseError as ex:
+        except ET.XMLSyntaxError as ex:
             print("XML ParseError: {}. The event will be ignored.".format(ex))
             return None
 
@@ -30,9 +30,9 @@ class EventChannelFormat(EventFormat):
         event_list = []
         # to remove the XML header if it exists
         xml_header_regex = re.compile(r'<\?xml.*?\?>\s*')
+        # TODO: check if namespace needs to be added
         # if namespace is not registered, register it
-        if not ET._namespace_map.get(''):
-            ET.register_namespace('', "http://schemas.microsoft.com/win/2004/08/events/event")
+        # etree.register_namespace('xmlns', 'http://schemas.microsoft.com/win/2004/08/events/event')
 
         # Extract the XML from the event
         for raw_input in raw_inputs:
@@ -42,17 +42,16 @@ class EventChannelFormat(EventFormat):
             tag_name = root.tag.split('}')[-1]
             if tag_name == 'Events':
                 for event in root:
-                    event_string = ET.tostring(event, encoding='utf-8').decode('utf-8')
+                    event_string = ET.tostring(event, method='xml', encoding='utf-8').decode('utf-8')
                     event_string = xml_header_regex.sub('', event_string)
                     event_list.append(event_string)
             # Si el XML representa un solo evento
             elif tag_name == 'Event':
-                event_string = ET.tostring(root, encoding='utf-8').decode('utf-8')
+                event_string = ET.tostring(root, method='xml', encoding='utf-8').decode('utf-8')
                 event_string = xml_header_regex.sub('', event_string)
                 event_list.append(event_string)
             else:
                 print("XML root tag is not 'Events' or 'Event'")
-
 
         return event_list
 
