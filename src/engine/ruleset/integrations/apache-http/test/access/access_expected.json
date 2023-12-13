@@ -1,0 +1,875 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "ecs": {
+      "version": "8.8"
+    },
+    "event": {
+      "category": [
+        "web"
+      ],
+      "created": "2023-03-14T10:58:26.000Z",
+      "dataset": "apache-access",
+      "kind": "event",
+      "module": "apache-http",
+      "original": "192.168.56.1 - - [14/Mar/2023:10:58:26 +0000] \"GET / HTTP/1.1\" 200 3477 \"-\" \"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36\"",
+      "outcome": "success"
+    },
+    "host": {
+      "id": "001"
+    },
+    "http": {
+      "request": {
+        "method": "GET",
+        "referrer": "-"
+      },
+      "response": {
+        "body": {
+          "bytes": 3477
+        },
+        "status_code": 200
+      },
+      "version": "1.1"
+    },
+    "service": {
+      "type": "apache"
+    },
+    "source": {
+      "address": "192.168.56.1",
+      "ip": "192.168.56.1"
+    },
+    "url": {
+      "original": "/"
+    },
+    "user": {
+      "name": "-"
+    },
+    "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36"
+    },
+    "wazuh": {
+      "decoders": [
+        "apache-access"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/apache2/access.log",
+      "origin": "/test/apache2/access.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "ecs": {
+      "version": "8.8"
+    },
+    "event": {
+      "category": [
+        "web"
+      ],
+      "created": "2023-03-14T11:00:59.000Z",
+      "dataset": "apache-access",
+      "kind": "event",
+      "module": "apache-http",
+      "original": "192.168.56.1 - - [14/Mar/2023:11:00:59 +0000] \"GET /asdf HTTP/1.1\" 404 491 \"-\" \"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36\"",
+      "outcome": "failure"
+    },
+    "host": {
+      "id": "001"
+    },
+    "http": {
+      "request": {
+        "method": "GET",
+        "referrer": "-"
+      },
+      "response": {
+        "body": {
+          "bytes": 491
+        },
+        "status_code": 404
+      },
+      "version": "1.1"
+    },
+    "service": {
+      "type": "apache"
+    },
+    "source": {
+      "address": "192.168.56.1",
+      "ip": "192.168.56.1"
+    },
+    "url": {
+      "original": "/asdf"
+    },
+    "user": {
+      "name": "-"
+    },
+    "user_agent": {
+      "original": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36"
+    },
+    "wazuh": {
+      "decoders": [
+        "apache-access"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/apache2/access.log",
+      "origin": "/test/apache2/access.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "event": {
+      "category": [
+        "web"
+      ],
+      "created": "2023-12-01T10:05:10.000Z",
+      "kind": "event",
+      "module": "apache-http",
+      "outcome": "failure",
+      "dataset": "apache-access",
+      "original": "::1 - - [01/Dec/2023:10:05:10 +0000] \"-\" 400 -"
+    },
+    "user": {
+      "name": "-"
+    },
+    "ecs": {
+      "version": "8.8"
+    },
+    "source": {
+      "ip": "::1",
+      "address": "::1"
+    },
+    "TestSessionID": 1,
+    "wazuh": {
+      "location": "/var/log/apache2/access.log",
+      "source": "logcollector",
+      "queue": 49,
+      "decoders": [
+        "apache-access"
+      ]
+    },
+    "http": {
+      "response": {
+        "status_code": 400
+      }
+    },
+    "service": {
+      "type": "apache"
+    }
+  },
+  {
+    "source": {
+      "address": "127.0.0.1",
+      "ip": "127.0.0.1"
+    },
+    "url": {
+      "original": "/test",
+      "path": "/test"
+    },
+    "service": {
+      "type": "apache"
+    },
+    "wazuh": {
+      "location": "/var/log/apache2/access.log",
+      "source": "logcollector",
+      "decoders": [
+        "apache-access"
+      ],
+      "queue": 49
+    },
+    "http": {
+      "response": {
+        "body": {
+          "bytes": 512
+        },
+        "status_code": 401
+      },
+      "request": {
+        "referrer": "-",
+        "method": "GET"
+      },
+      "version": "1.1"
+    },
+    "ecs": {
+      "version": "8.8"
+    },
+    "user_agent": {
+      "original": "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2"
+    },
+    "TestSessionID": 1,
+    "event": {
+      "module": "apache-http",
+      "category": [
+        "web"
+      ],
+      "dataset": "apache-access",
+      "outcome": "failure",
+      "kind": "event",
+      "original": "127.0.0.1 - - [01/May/2020:08:01:18 +0002] \"GET /test HTTP/1.1\" 401 512 \"-\" \"Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2\" \"-\"",
+      "created": "2020-05-01T07:59:18.000Z"
+    }
+  },
+  {
+    "ecs": {
+      "version": "8.8"
+    },
+    "source": {
+      "address": "::1",
+      "ip": "::1"
+    },
+    "event": {
+      "outcome": "failure",
+      "kind": "event",
+      "original": "::1 - - [16/Dec/2019:10:11:08 +0000] \"-\" 409 -",
+      "created": "2019-12-16T10:11:08.000Z",
+      "category": [
+        "web"
+      ],
+      "dataset": "apache-access",
+      "module": "apache-http"
+    },
+    "TestSessionID": 1,
+    "user": {
+      "name": "-"
+    },
+    "wazuh": {
+      "queue": 49,
+      "location": "/var/log/apache2/access.log",
+      "decoders": [
+        "apache-access"
+      ],
+      "source": "logcollector"
+    },
+    "service": {
+      "type": "apache"
+    },
+    "http": {
+      "response": {
+        "status_code": 409
+      }
+    }
+  },
+  {
+    "url": {
+      "original": "/test",
+      "path": "/test"
+    },
+    "event": {
+      "created": "2023-05-01T08:00:22.000Z",
+      "category": [
+        "web"
+      ],
+      "module": "apache-http",
+      "kind": "event",
+      "outcome": "failure",
+      "original": "127.0.0.1 - - [01/May/2023:10:00:22 +0200] \"GET /test HTTP/1.1\" 404 512 \"-\" \"Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2\" \"-\"",
+      "dataset": "apache-access"
+    },
+    "user_agent": {
+      "original": "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2"
+    },
+    "service": {
+      "type": "apache"
+    },
+    "source": {
+      "address": "127.0.0.1",
+      "ip": "127.0.0.1"
+    },
+    "http": {
+      "version": "1.1",
+      "request": {
+        "referrer": "-",
+        "method": "GET"
+      },
+      "response": {
+        "status_code": 404,
+        "body": {
+          "bytes": 512
+        }
+      }
+    },
+    "ecs": {
+      "version": "8.8"
+    },
+    "wazuh": {
+      "location": "/var/log/apache2/access.log",
+      "source": "logcollector",
+      "decoders": [
+        "apache-access"
+      ],
+      "queue": 49
+    },
+    "TestSessionID": 1
+  },
+  {
+    "http": {
+      "request": {
+        "referrer": "-",
+        "method": "GET"
+      },
+      "response": {
+        "body": {
+          "bytes": 512
+        },
+        "status_code": 200
+      },
+      "version": "1.1"
+    },
+    "event": {
+      "module": "apache-http",
+      "created": "2023-05-01T08:00:22.000Z",
+      "kind": "event",
+      "category": [
+        "web"
+      ],
+      "original": "localhost - - [01/May/2023:10:00:22 +0200] \"GET /status HTTP/1.1\" 200 512 \"-\" \"Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2\" \"-\"",
+      "outcome": "success",
+      "dataset": "apache-access"
+    },
+    "wazuh": {
+      "decoders": [
+        "apache-access"
+      ],
+      "source": "logcollector",
+      "location": "/var/log/apache2/access.log",
+      "queue": 49
+    },
+    "user_agent": {
+      "original": "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2"
+    },
+    "source": {
+      "address": "localhost",
+      "ip": "localhost"
+    },
+    "url": {
+      "path": "/status",
+      "original": "/status"
+    },
+    "service": {
+      "type": "apache"
+    },
+    "TestSessionID": 1,
+    "ecs": {
+      "version": "8.8"
+    }
+  },
+  {
+    "wazuh": {
+      "queue": 49,
+      "decoders": [
+        "apache-access"
+      ],
+      "location": "/var/log/apache2/access.log",
+      "source": "logcollector"
+    },
+    "user_agent": {
+      "original": "-"
+    },
+    "TestSessionID": 1,
+    "event": {
+      "kind": "event",
+      "created": "2019-02-02T04:38:45.000Z",
+      "original": "127.0.0.1 - - [02/Feb/2019:05:38:45 +0100] \"-\" 408 152 \"-\" \"-\"",
+      "category": [
+        "web"
+      ],
+      "outcome": "failure",
+      "dataset": "apache-access",
+      "module": "apache-http"
+    },
+    "service": {
+      "type": "apache"
+    },
+    "http": {
+      "request": {
+        "referrer": "-"
+      },
+      "response": {
+        "status_code": 408,
+        "body": {
+          "bytes": 152
+        }
+      }
+    },
+    "source": {
+      "ip": "127.0.0.1",
+      "address": "127.0.0.1"
+    },
+    "ecs": {
+      "version": "8.8"
+    },
+    "user": {
+      "name": "-"
+    }
+  },
+  {
+    "user": {
+      "name": "-"
+    },
+    "network": {
+      "forwarded_ip": "-"
+    },
+    "user_agent": {
+      "original": "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2"
+    },
+    "TestSessionID": 1,
+    "event": {
+      "category": [
+        "web"
+      ],
+      "dataset": "apache-access",
+      "original": "localhost - - [02/Feb/2019:05:38:45 +0100] \"GET /A%20Beka%20G1%20Howe/029_AND_30/15%20reading%20test.mp4 HTTP/1.1\" 200 512 \"-\" \"Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2\" X-Forwarded-For=\"-\"",
+      "created": "2019-02-02T04:38:45.000Z",
+      "module": "apache-http",
+      "outcome": "success",
+      "kind": "event"
+    },
+    "source": {
+      "address": "localhost",
+      "ip": "localhost"
+    },
+    "client": {
+      "ip": "-"
+    },
+    "url": {
+      "path": "/A%20Beka%20G1%20Howe/029_AND_30/15%20reading%20test.mp4",
+      "extension": "mp4",
+      "original": "/A%20Beka%20G1%20Howe/029_AND_30/15%20reading%20test.mp4"
+    },
+    "ecs": {
+      "version": "8.8"
+    },
+    "wazuh": {
+      "source": "logcollector",
+      "location": "/var/log/apache2/access.log",
+      "queue": 49,
+      "decoders": [
+        "apache-access"
+      ]
+    },
+    "http": {
+      "version": "1.1",
+      "response": {
+        "body": {
+          "bytes": 512
+        },
+        "status_code": 200
+      },
+      "request": {
+        "referrer": "-",
+        "method": "GET"
+      }
+    },
+    "service": {
+      "type": "apache"
+    }
+  },
+  {
+    "network": {
+      "forwarded_ip": "10.0.0.1"
+    },
+    "user_agent": {
+      "original": "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2"
+    },
+    "source": {
+      "ip": "127.0.0.1",
+      "address": "127.0.0.1"
+    },
+    "http": {
+      "response": {
+        "status_code": 200,
+        "body": {
+          "bytes": 512
+        }
+      },
+      "request": {
+        "method": "GET",
+        "referrer": "-"
+      },
+      "version": "1.1"
+    },
+    "TestSessionID": 1,
+    "service": {
+      "type": "apache"
+    },
+    "client": {
+      "ip": "10.0.0.1"
+    },
+    "ecs": {
+      "version": "8.8"
+    },
+    "url": {
+      "path": "/A%20Beka%20G1%20Howe/029_AND_30/15%20reading%20test.mp4",
+      "extension": "mp4",
+      "original": "/A%20Beka%20G1%20Howe/029_AND_30/15%20reading%20test.mp4"
+    },
+    "event": {
+      "outcome": "success",
+      "original": "127.0.0.1 - - [01/May/2020:08:01:18 +0002] \"GET /A%20Beka%20G1%20Howe/029_AND_30/15%20reading%20test.mp4 HTTP/1.1\" 200 512 \"-\" \"Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2\" X-Forwarded-For=\"10.0.0.1,10.0.0.2\"",
+      "kind": "event",
+      "module": "apache-http",
+      "category": [
+        "web"
+      ],
+      "created": "2020-05-01T07:59:18.000Z",
+      "dataset": "apache-access"
+    },
+    "wazuh": {
+      "source": "logcollector",
+      "queue": 49,
+      "location": "/var/log/apache2/access.log",
+      "decoders": [
+        "apache-access"
+      ]
+    },
+    "user": {
+      "name": "-"
+    }
+  },
+  {
+    "TestSessionID": 1,
+    "url": {
+      "original": "/A%20Beka%20G1%20Howe/test/15%20reading%20test.mp4",
+      "extension": "mp4",
+      "path": "/A%20Beka%20G1%20Howe/test/15%20reading%20test.mp4"
+    },
+    "ecs": {
+      "version": "8.8"
+    },
+    "wazuh": {
+      "location": "/var/log/apache2/access.log",
+      "decoders": [
+        "apache-access"
+      ],
+      "source": "logcollector",
+      "queue": 49
+    },
+    "user_agent": {
+      "original": "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2"
+    },
+    "event": {
+      "outcome": "success",
+      "created": "2019-02-02T04:38:45.000Z",
+      "kind": "event",
+      "dataset": "apache-access",
+      "category": [
+        "web"
+      ],
+      "module": "apache-http",
+      "original": "2800:2124:3200:6c5:737a:7526:fe08:1e04 - - [02/Feb/2019:05:38:45 +0100] \"GET /A%20Beka%20G1%20Howe/test/15%20reading%20test.mp4 HTTP/1.1\" 200 612 \"-\" \"Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2\" X-Forwarded-For=\"192.168.10.1, 192.168.10.2\""
+    },
+    "network": {
+      "forwarded_ip": "192.168.10.1"
+    },
+    "source": {
+      "ip": "2800:2124:3200:6c5:737a:7526:fe08:1e04",
+      "address": "2800:2124:3200:6c5:737a:7526:fe08:1e04"
+    },
+    "client": {
+      "ip": "192.168.10.1"
+    },
+    "http": {
+      "version": "1.1",
+      "request": {
+        "method": "GET",
+        "referrer": "-"
+      },
+      "response": {
+        "body": {
+          "bytes": 612
+        },
+        "status_code": 200
+      }
+    },
+    "service": {
+      "type": "apache"
+    },
+    "user": {
+      "name": "-"
+    }
+  },
+  {
+    "url": {
+      "original": "/",
+      "path": "/"
+    },
+    "user": {
+      "name": "-"
+    },
+    "user_agent": {
+      "original": "curl/7.79.1"
+    },
+    "source": {
+      "address": "localhost",
+      "ip": "localhost"
+    },
+    "http": {
+      "request": {
+        "referrer": "-",
+        "method": "GET"
+      },
+      "version": "1.1",
+      "response": {
+        "status_code": 200,
+        "body": {
+          "bytes": 50
+        }
+      }
+    },
+    "wazuh": {
+      "decoders": [
+        "apache-access"
+      ],
+      "source": "logcollector",
+      "queue": 49,
+      "location": "/var/log/apache2/access.log"
+    },
+    "client": {
+      "ip": "192.168.0.1"
+    },
+    "event": {
+      "created": "2020-05-01T07:59:18.000Z",
+      "category": [
+        "web"
+      ],
+      "outcome": "success",
+      "dataset": "apache-access",
+      "module": "apache-http",
+      "original": "localhost - - [01/May/2020:08:01:18 +0002] \"GET / HTTP/1.1\" 200 50 \"-\" \"curl/7.79.1\" X-Forwarded-For=\"192.168.0.1\"",
+      "kind": "event"
+    },
+    "ecs": {
+      "version": "8.8"
+    },
+    "network": {
+      "forwarded_ip": "192.168.0.1"
+    },
+    "service": {
+      "type": "apache"
+    },
+    "TestSessionID": 1
+  },
+  {
+    "http": {
+      "response": {
+        "status_code": 402,
+        "body": {
+          "bytes": 209
+        }
+      },
+      "request": {
+        "method": "GET"
+      },
+      "version": "1.1"
+    },
+    "service": {
+      "type": "apache"
+    },
+    "TestSessionID": 1,
+    "wazuh": {
+      "location": "/var/log/apache2/access.log",
+      "queue": 49,
+      "source": "logcollector",
+      "decoders": [
+        "apache-access"
+      ]
+    },
+    "url": {
+      "original": "/home.ico",
+      "path": "/home.ico",
+      "extension": "ico"
+    },
+    "event": {
+      "kind": "event",
+      "outcome": "failure",
+      "category": [
+        "web"
+      ],
+      "module": "apache-http",
+      "original": "::1 - - [01/May/2020:08:01:18 +0002] \"GET /home.ico HTTP/1.1\" 402 209",
+      "dataset": "apache-access",
+      "created": "2020-05-01T07:59:18.000Z"
+    },
+    "ecs": {
+      "version": "8.8"
+    },
+    "source": {
+      "ip": "::1",
+      "address": "::1"
+    },
+    "user": {
+      "name": "-"
+    }
+  },
+  {
+    "event": {
+      "kind": "event",
+      "original": "[01/May/2023:10:00:22 +0200] 127.0.0.1 TLSv1.2 TEST \"GET /nodejs/test.php?cmd=test&amp; HTTP/1.1\" 1375",
+      "created": "2023-05-01T08:00:22.000Z",
+      "module": "apache-http",
+      "dataset": "apache-access",
+      "category": [
+        "web"
+      ]
+    },
+    "source": {
+      "address": "127.0.0.1",
+      "ip": "127.0.0.1"
+    },
+    "service": {
+      "type": "apache"
+    },
+    "ecs": {
+      "version": "8.8"
+    },
+    "url": {
+      "path": "/nodejs/test.php?cmd=test&amp;",
+      "original": "/nodejs/test.php?cmd=test&amp;",
+      "extension": "php"
+    },
+    "network": {
+      "protocol": "TLSv1.2"
+    },
+    "http": {
+      "version": "1.1",
+      "request": {
+        "method": "GET"
+      },
+      "response": {
+        "body": {
+          "bytes": 1375
+        }
+      }
+    },
+    "tls": {
+      "version": "1.2",
+      "version_protocol": "TLS",
+      "cipher": "TEST"
+    },
+    "wazuh": {
+      "queue": 49,
+      "source": "logcollector",
+      "location": "/var/log/apache2/access.log",
+      "decoders": [
+        "apache-access"
+      ]
+    },
+    "TestSessionID": 1
+  },
+  {
+    "ecs": {
+      "version": "8.8"
+    },
+    "TestSessionID": 1,
+    "source": {
+      "address": "127.0.0.1",
+      "ip": "127.0.0.1"
+    },
+    "wazuh": {
+      "source": "logcollector",
+      "queue": 49,
+      "location": "/var/log/apache2/access.log",
+      "decoders": [
+        "apache-access"
+      ]
+    },
+    "event": {
+      "module": "apache-http",
+      "kind": "event",
+      "dataset": "apache-access",
+      "category": [
+        "web"
+      ],
+      "created": "2023-05-01T08:00:22.000Z",
+      "original": "[01/May/2023:10:00:22 +0200] 127.0.0.1 TLSv1.2 TEST \"GET /nodejs/test.php?cmd=other& HTTP/1.1\" -"
+    },
+    "tls": {
+      "version": "1.2",
+      "cipher": "TEST",
+      "version_protocol": "TLS"
+    },
+    "url": {
+      "extension": "php",
+      "original": "/nodejs/test.php?cmd=other&",
+      "path": "/nodejs/test.php?cmd=other&"
+    },
+    "http": {
+      "version": "1.1",
+      "request": {
+        "method": "GET"
+      }
+    },
+    "service": {
+      "type": "apache"
+    },
+    "network": {
+      "protocol": "TLSv1.2"
+    }
+  },
+  {
+    "TestSessionID": 1,
+    "user": {
+      "name": "-"
+    },
+    "http": {
+      "version": "1.1",
+      "request": {
+        "referrer": "-",
+        "method": "GET"
+      },
+      "response": {
+        "body": {
+          "bytes": 500
+        },
+        "status_code": 401
+      }
+    },
+    "url": {
+      "path": "/test",
+      "original": "/test"
+    },
+    "ecs": {
+      "version": "8.8"
+    },
+    "event": {
+      "kind": "event",
+      "outcome": "failure",
+      "original": "localhost 127.0.0.1 - - [01/Dec/2023:10:05:10 +0000] \"GET /test HTTP/1.1\" 401 500 \"-\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:50.0) Gecko/20100101 Firefox/50.0\"",
+      "module": "apache-http",
+      "category": [
+        "web"
+      ],
+      "created": "2023-12-01T10:05:10.000Z",
+      "dataset": "apache-access"
+    },
+    "source": {
+      "ip": "127.0.0.1",
+      "address": "127.0.0.1"
+    },
+    "destination": {
+      "domain": "localhost"
+    },
+    "wazuh": {
+      "decoders": [
+        "apache-access"
+      ],
+      "location": "/var/log/apache2/access.log",
+      "source": "logcollector",
+      "queue": 49
+    },
+    "user_agent": {
+      "original": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:50.0) Gecko/20100101 Firefox/50.0"
+    },
+    "service": {
+      "type": "apache"
+    }
+  }
+]
