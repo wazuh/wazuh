@@ -19,24 +19,17 @@ check:
 # - event.dataset: apache-access
 
 parse|event.original:
+  - <destination.domain> <source.address> - <user.name> [<event.created/%a %b %d %T %Y/en_US.UTF-8>] "<_http_request/text>?<_dash>" <http.response.status_code> <http.response.body.bytes>?<_dash> "<http.request.referrer>" "<user_agent.original>"
+  - <destination.domain> <source.address> - <user.name> [<event.created/26\/Dec\/2016:18:23:35 +0200>] "<_http_request/text>?<_dash>" <http.response.status_code> <http.response.body.bytes>?<_dash> "<http.request.referrer>" "<user_agent.original>"
   - <source.address> - <user.name> [<event.created/26\/Dec\/2016:18:23:35 +0200>] "<_http_request/text>" <http.response.status_code> <_ignore/literal/->?<http.response.body.bytes>(? "<http.request.referrer>" "<user_agent.original>")
   - <source.address> - <user.name> [<event.created/26\/Dec\/2016:18:23:35 +0200>] "-" <http.response.status_code> -
   - <source.address> - - [<event.created/%a %b %d %T %Y/en_US.UTF-8>] "-" <http.response.status_code> -
-  - <destination.domain> <source.address> - <user.name> [<event.created/%a %b %d %T %Y/en_US.UTF-8>] "<http.request.method> <_url_orig> <http.version>?<_dash>" <http.response.status_code> <http.response.body.bytes>?<_dash> "<http.request.referrer>" "<user_agent.original>"
-  - <source.address> - - [<event.created/%a %b %d %T %Y/en_US.UTF-8>] "<http.request.method> <_url_orig> <http.version>?<_dash>" <http.response.status_code> <http.response.body.bytes>?<_dash> "<http.request.referrer>" "<user_agent.original>"
-  - <source.address> - <user.name> [<event.created/%a %b %d %T %Y/en_US.UTF-8>] "<http.request.method> <_url_orig> <http.version>?<_dash>" <http.response.status_code> <http.response.body.bytes>?<_dash> "<http.request.referrer>" "<user_agent.original>"
-  - '[<event.created/%a %b %d %T %Y/en_US.UTF-8>] <source.address> <network.protocol> <tls.cipher> "<http.request.method> <_url_orig> <http.version>" <http.response.body.bytes>?<_dash>'
-
-  # [10/Aug/2018:09:45:56 +0200] 172.30.0.119 TLSv1.2 ECDHE-RSA-AES128-GCM-SHA256 "GET /nagiosxi/ajaxhelper.php?cmd=getxicoreajax&amp;opts=%7B%22func%22%3A%22get_admin_tasks_html%22%2C%22args%22%3A%22%22%7D&amp;nsp=b5c7d5d4b6f7d0cf0c92f9cbdf737f6a5c838218425e6ae21 HTTP/1.1" 1375
-  - '[<event.created/26\/Dec\/2016:18:23:35 +0200>] <source.address> <network.protocol> <tls.cipher> "<http.request.method> <_url_orig> <http.version>" <http.response.body.bytes>?<_dash>'
-
-  # monitoring-server - - [29/May/2017:19:02:48 +0000] "GET /status HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2" "-"
-  # 172.17.0.1 - - [29/May/2017:19:02:48 +0000] "GET /stringpatch HTTP/1.1" 404 612 "-" "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2" "-"
-  - <source.address> - - [<event.created/26\/Dec\/2016:18:23:35 +0200>] "<http.request.method> <_url_orig> <http.version>?<_dash>" <http.response.status_code> <http.response.body.bytes>?<_dash> "-" "<http.request.referrer>" "<user_agent.original>"
-
-  # 2a02:cf40:add:4002:91f2:a9b2:e09a:6fc6 - - [29/May/2017:19:02:48 +0000] "GET /A%20Beka%20G1%20Howe/029_AND_30/15%20reading%20elephants.mp4 HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2" X-Forwarded-For="10.225.192.17, 10.2.2.121"
-  # monitoring-server - - [17/May/2022:21:41:43 +0000] "GET / HTTP/1.1" 200 45 "-" "curl/7.79.1" X-Forwarded-For="192.168.0.2"
-  - <source.address> - - [<event.created/26\/Dec\/2016:18:23:35 +0200>] "<http.request.method> <_url_orig> <http.version>?<_dash>" <http.response.status_code> <http.response.body.bytes>?<_dash> "-" "<http.request.referrer>" X-Forwarded-For=<forwarded_for>
+  - <source.address> - - [<event.created/%a %b %d %T %Y/en_US.UTF-8>] "<_http_request/text>?<_dash>" <http.response.status_code> <http.response.body.bytes>?<_dash> "<http.request.referrer>" "<user_agent.original>"
+  - <source.address> - <user.name> [<event.created/%a %b %d %T %Y/en_US.UTF-8>] "<_http_request/text>?<_dash>" <http.response.status_code> <http.response.body.bytes>?<_dash> "<http.request.referrer>" "<user_agent.original>"
+  - '[<event.created/%a %b %d %T %Y/en_US.UTF-8>] <source.address> <network.protocol> <tls.cipher> "<_http_request/text>" <http.response.body.bytes>?<_dash>'
+  - '[<event.created/26\/Dec\/2016:18:23:35 +0200>] <source.address> <network.protocol> <tls.cipher> "<_http_request/text>" <http.response.body.bytes>?<_dash>'
+  - <source.address> - - [<event.created/26\/Dec\/2016:18:23:35 +0200>] "<_http_request/text>?<_dash>" <http.response.status_code> <http.response.body.bytes>?<_dash> "<http.request.referrer>" "<user_agent.original>" "-"
+  - <source.address> - <user.name> [<event.created/26\/Dec\/2016:18:23:35 +0200>] "<_http_request/text>?<_dash>" <http.response.status_code> <http.response.body.bytes>?<_dash> "<http.request.referrer>" "<user_agent.original>" X-Forwarded-For="<_forwarded_for>"
 
 normalize:
   - map:
@@ -48,9 +41,12 @@ normalize:
       - wazuh.decoders: array_append(apache-access)
 
       - source.ip: $source.address
-      - _tls: split($network.protocol, v)
-      - _tls-1: $_tls/1
-      - tls.version_protocol: $_tls/0
+      - _tls: split($network.protocol, 'v')
+      - _tls-1: $_tls.1
+      - _client_ip: split($_forwarded_for, ',')
+      - client.ip: $_client_ip.0
+      - network.forwarded_ip: $_client_ip.0
+      - tls.version_protocol: $_tls.0
       - tls.cipher: $tls.cipher
 
     parse|_http_request:
@@ -80,4 +76,5 @@ normalize:
       - source.domain: parse_fqdn($source.address)
 
   - map:
-      - url.extension: regex_extract($url.original, .*\\.([^.]+\)$)
+      - url.extension: regex_extract($url.original, .*\\.([a-zA-Z0-9]+\)(?:\\?|$\))
+      - url.path: $url.original
