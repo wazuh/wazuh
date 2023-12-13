@@ -11,18 +11,15 @@
 #include <router/types.hpp>
 
 #include "environmentBuilder.hpp"
+#include "itester.hpp"
 
 namespace router
 {
 
 /**
- * @brief Represents a tester instance, for testing events
- *
- * This instance should have a all testing controllers used for testing, and provide a way to manipulate them
- * and test the events with a specific configuration in particular controller.
- *
+ * @copydoc ITester
  */
-class Tester
+class Tester : public ITester
 {
 private:
     class RuntimeEntry : public test::Entry
@@ -75,73 +72,51 @@ private:
 public:
     Tester(const std::shared_ptr<EnvironmentBuilder>& envBuilder)
         : m_envBuilder(envBuilder) {};
-    /**
-     * @brief Add a new entry (policy) to the tester
-     * @param entryPost The entry information for testing policy
-     * @param ignoreFail If true, if the operation fails the entry is added in disabled state.
-     * @return An optional error if the operation failed.
-     */
-    base::OptError addEntry(const test::EntryPost& entryPost, bool ignoreFail = false);
 
     /**
-     * @brief Removes a entry (testing policy) from the tester
-     * @param name The name of the environment to be removed.
-     * @return An optional error if the operation failed.
+     * @copydoc ITester::addEntry
      */
-    base::OptError removeEntry(const std::string& name);
+    base::OptError addEntry(const test::EntryPost& entryPost, bool ignoreFail = false) override;
 
     /**
-     * @brief Rebuilds the entry (testing policy) with the specified entry name.
-     *
-     * @note State of the environment is not changed.
-     * @param name The name of the environment to be reloaded.
-     * @return An optional error if the operation failed.
+     * @copydoc ITester::removeEntry
      */
-    base::OptError rebuildEntry(const std::string& name);
+    base::OptError removeEntry(const std::string& name) override;
 
     /**
-     * @brief Enables the environment if it is builded.
-     *
-     * @param name
-     * @return base::OptError
+     * @copydoc ITester::rebuildEntry
      */
-    base::OptError enableEntry(const std::string& name);
+    base::OptError rebuildEntry(const std::string& name) override;
 
     /**
-     * @brief dumps the router table.
-     *
-     * @return std::list<Entry> The list of entries in the router table.
+     * @copydoc ITester::enableEntry
      */
-    std::list<test::Entry> getEntries() const;
+    base::OptError enableEntry(const std::string& name) override;
 
     /**
-     * @brief Get an environment by name.
-     *
+     * @copydoc ITester::getEntries
      */
-    base::RespOrError<test::Entry> getEntry(const std::string& name) const;
+    std::list<test::Entry> getEntries() const override;
 
     /**
-     * @brief Ingests an event into the router for processing and returns the result.
-     *
-     * @param event The event to be ingested.
-     * @param opt The parameters for the ingest operation.
-     * @return test::Output The result
+     * @copydoc ITester::getEntry
      */
-    base::RespOrError<test::Output> ingestTest(base::Event&& event, const test::Options& opt);
+    base::RespOrError<test::Entry> getEntry(const std::string& name) const override;
 
     /**
-     * @brief get the assets of the policy of the entry.
-     * @param name The name of the entry.
-     * @return base::RespOrError<std::unordered_set<std::string>> The assets of the policy.
+     * @copydoc ITester::ingestTest
      */
-    base::RespOrError<std::unordered_set<std::string>> getAssets(const std::string& name) const;
+    base::RespOrError<test::Output> ingestTest(base::Event&& event, const test::Options& opt) override;
 
     /**
-     * @brief Update the last time the entry was used.
-     * @param name The name of the entry.
-     * @return false if the entry does not exist.
+     * @copydoc ITester::getAssets
      */
-    bool updateLastUsed(const std::string& name, uint64_t lastUsed = std::numeric_limits<uint64_t>::max());
+    base::RespOrError<std::unordered_set<std::string>> getAssets(const std::string& name) const override;
+
+    /**
+     * @copydoc ITester::updateLastUsed
+     */
+    bool updateLastUsed(const std::string& name, uint64_t lastUsed = std::numeric_limits<uint64_t>::max()) override;
 };
 } // namespace router
 
