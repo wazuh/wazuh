@@ -34,7 +34,7 @@ TEST_F(ContentRegisterTest, TestInstantiation)
 /*
  * @brief Tests instantiation of the ContentRegister class with ondemand enabled
  */
-TEST_F(ContentRegisterTest, DISABLED_TestInstantiationWithOnDemandEnabled)
+TEST_F(ContentRegisterTest, TestInstantiationWithOnDemandEnabled)
 {
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
 
