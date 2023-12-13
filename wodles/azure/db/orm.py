@@ -7,8 +7,9 @@
 
 import json
 import logging
-import os
 from datetime import datetime, timezone
+from os import remove
+from os.path import abspath, dirname, exists, getsize, join
 from typing import Dict, Optional, Union
 
 from dateutil.parser import ParserError, parse
@@ -17,12 +18,11 @@ from sqlalchemy.exc import IntegrityError, OperationalError, StatementError
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.sql.expression import select
 
+MODULE_ROOT_DIR = dirname(dirname(abspath(__file__)))
 DATABASE_NAME = 'azure.db'
-database_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), DATABASE_NAME)
+database_path = join(MODULE_ROOT_DIR, DATABASE_NAME)
 LAST_DATES_NAME = 'last_dates.json'
-last_dates_path = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), LAST_DATES_NAME
-)
+last_dates_path = join(MODULE_ROOT_DIR, LAST_DATES_NAME)
 last_dates_default_contents = {'log_analytics': {}, 'graph': {}, 'storage': {}}
 
 LAST_DATES_MAX_FIELD_NAME = 'max'
@@ -99,14 +99,14 @@ def check_database_integrity() -> bool:
     create_db()
 
     # Check if a migration from an old last_dates_file is required
-    if os.path.exists(last_dates_path) and os.path.getsize(last_dates_path) > 0:
+    if exists(last_dates_path) and getsize(last_dates_path) > 0:
         try:
             migrate_from_last_dates_file()
         except Exception as e:
             logging.error(f'Error during last_dates file migration process: {e}')
             return False
         try:
-            os.remove(last_dates_path)
+            remove(last_dates_path)
         except OSError:
             logging.warning(
                 f'It was not possible to remove the old last_dates file at {last_dates_path}'
@@ -227,7 +227,7 @@ def load_dates_json() -> dict:
     """
     logging.info(f'Getting the data from {last_dates_path}.')
     try:
-        if os.path.exists(last_dates_path):
+        if exists(last_dates_path):
             with open(last_dates_path) as file:
                 contents = json.load(file)
                 # This adds compatibility with "last_dates_files" from previous releases as the format was different

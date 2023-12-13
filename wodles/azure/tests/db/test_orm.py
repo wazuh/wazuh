@@ -162,7 +162,7 @@ def test_load_dates_json(last_dates_file_path):
                 assert set(last_dates_dict[key][md5].keys()) == {"min", "max"}
 
 
-@patch("os.path.exists", return_value=False)
+@patch("db.orm.exists", return_value=False)
 @patch("builtins.open")
 def test_load_dates_json_no_file(mock_open, mock_exists):
     """Check the load_dates_json handles exception as expected when no file is provided."""
@@ -195,8 +195,8 @@ def test_check_integrity(
     mock_migrate, mock_create_db, create_and_teardown_db, file_exists, file_size
 ):
     """Ensure that the check_integrity functions is able to create a new database file."""
-    with patch("os.path.exists", return_value=file_exists):
-        with patch("os.path.getsize", return_value=file_size):
+    with patch("db.orm.exists", return_value=file_exists):
+        with patch("db.orm.getsize", return_value=file_size):
             orm.check_database_integrity()
             mock_create_db.assert_called()
             if file_exists and file_size > 0:
@@ -207,8 +207,8 @@ def test_check_integrity(
 
 def test_check_integrity_ko(teardown_db):
     """Ensure the check_integrity function returns a False value when the migration process fails."""
-    with patch("os.path.exists"):
-        with patch("os.path.getsize", return_value=100):
+    with patch("db.orm.exists"):
+        with patch("db.orm.getsize", return_value=100):
             with patch(
                 "db.orm.migrate_from_last_dates_file",
                 side_effect=Exception,
