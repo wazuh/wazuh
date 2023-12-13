@@ -1,0 +1,16 @@
+192.168.56.1 - - [14/Mar/2023:10:58:26 +0000] "GET / HTTP/1.1" 200 3477 "-" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36"
+192.168.56.1 - - [14/Mar/2023:11:00:59 +0000] "GET /asdf HTTP/1.1" 404 491 "-" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36"
+::1 - - [01/Dec/2023:10:05:10 +0000] "-" 400 -
+127.0.0.1 - - [01/May/2020:08:01:18 +0002] "GET /test HTTP/1.1" 401 512 "-" "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2" "-"
+::1 - - [16/Dec/2019:10:11:08 +0000] "-" 409 -
+127.0.0.1 - - [01/May/2023:10:00:22 +0200] "GET /test HTTP/1.1" 404 512 "-" "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2" "-"
+localhost - - [01/May/2023:10:00:22 +0200] "GET /status HTTP/1.1" 200 512 "-" "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2" "-"
+127.0.0.1 - - [02/Feb/2019:05:38:45 +0100] "-" 408 152 "-" "-"
+localhost - - [02/Feb/2019:05:38:45 +0100] "GET /A%20Beka%20G1%20Howe/029_AND_30/15%20reading%20test.mp4 HTTP/1.1" 200 512 "-" "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2" X-Forwarded-For="-"
+127.0.0.1 - - [01/May/2020:08:01:18 +0002] "GET /A%20Beka%20G1%20Howe/029_AND_30/15%20reading%20test.mp4 HTTP/1.1" 200 512 "-" "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2" X-Forwarded-For="10.0.0.1,10.0.0.2"
+2800:2124:3200:6c5:737a:7526:fe08:1e04 - - [02/Feb/2019:05:38:45 +0100] "GET /A%20Beka%20G1%20Howe/test/15%20reading%20test.mp4 HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2" X-Forwarded-For="192.168.10.1, 192.168.10.2"
+localhost - - [01/May/2020:08:01:18 +0002] "GET / HTTP/1.1" 200 50 "-" "curl/7.79.1" X-Forwarded-For="192.168.0.1"
+::1 - - [01/May/2020:08:01:18 +0002] "GET /home.ico HTTP/1.1" 402 209
+[01/May/2023:10:00:22 +0200] 127.0.0.1 TLSv1.2 TEST "GET /nodejs/test.php?cmd=test&amp; HTTP/1.1" 1375
+[01/May/2023:10:00:22 +0200] 127.0.0.1 TLSv1.2 TEST "GET /nodejs/test.php?cmd=other& HTTP/1.1" -
+localhost 127.0.0.1 - - [01/Dec/2023:10:05:10 +0000] "GET /test HTTP/1.1" 401 500 "-" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:50.0) Gecko/20100101 Firefox/50.0"
