@@ -21,6 +21,10 @@
 #include <thread>
 #include <utility>
 
+const std::string SNAPSHOT_FILE_NAME {"snapshot_0_3.zip"};
+const std::string SNAPSHOT_CONTENT_FILE_NAME {"content.json"};
+const std::filesystem::path INPUT_FILES_DIR {std::filesystem::current_path() / "input_files"};
+
 /**
  * @brief This class is a simple HTTP server that provides a fake server.
  */
@@ -172,6 +176,45 @@ public:
                         })"_json;
                          res.set_content(response.dump(), "text/plain");
                      });
+
+        // Endpoint that returns the link to a dummy snapshot file.
+        m_server.Get("/snapshot/consumers",
+                     [this](const httplib::Request& req, httplib::Response& res)
+                     {
+                         auto response = R"(
+                            {
+                                "data": 
+                                {
+                                    "last_offset": 3
+                                }
+                            }
+                         )"_json;
+                         response["data"]["last_snapshot_link"] =
+                             "localhost:" + std::to_string(m_port) + "/" + SNAPSHOT_FILE_NAME;
+
+                         res.set_content(response.dump(), "text/plain");
+                     });
+
+        // Endpoint that responses with a snapshot file.
+        m_server.Get(
+            "/" + SNAPSHOT_FILE_NAME,
+            [this](const httplib::Request& req, httplib::Response& res)
+            {
+                // Read and file.
+                std::ifstream inputFile {INPUT_FILES_DIR / SNAPSHOT_FILE_NAME, std::ios::in | std::ios::binary};
+                if (inputFile)
+                {
+                    std::ostringstream response;
+                    response << inputFile.rdbuf();
+                    inputFile.close();
+                    res.set_content(response.str(), "application/octet-stream");
+                }
+                else
+                {
+                    res.status = 404;
+                    res.set_content("File not found", "text/plain");
+                }
+            });
         m_server.set_keep_alive_max_count(1);
         m_server.listen(m_host.c_str(), m_port);
     }

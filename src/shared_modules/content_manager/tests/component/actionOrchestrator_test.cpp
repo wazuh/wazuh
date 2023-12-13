@@ -274,3 +274,28 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionTyp
 
     EXPECT_NO_THROW(routerProvider->stop());
 }
+
+TEST_F(ActionOrchestratorTest, RunWithFullContentDownload)
+{
+    const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
+    auto routerProvider {std::make_shared<RouterProvider>(topicName)};
+    routerProvider->start();
+
+    m_parameters["configData"]["url"] = "http://localhost:4444/snapshot/consumers";
+    auto actionOrchestrator {std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_shouldRun)};
+
+    // Trigger orchestration with an offset of zero.
+    ASSERT_NO_THROW(actionOrchestrator->run(0));
+
+    const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
+
+    // Check for snapshot existence.
+    const auto snapshotPath {outputFolder + "/" + DOWNLOAD_FOLDER + "/" + SNAPSHOT_FILE_NAME};
+    EXPECT_TRUE(std::filesystem::exists(snapshotPath));
+
+    // Check for snapshot content existence.
+    const auto contentPath {outputFolder + "/" + CONTENTS_FOLDER + "/" + SNAPSHOT_CONTENT_FILE_NAME};
+    EXPECT_TRUE(std::filesystem::exists(contentPath));
+
+    routerProvider->stop();
+}

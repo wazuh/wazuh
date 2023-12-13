@@ -34,6 +34,7 @@ protected:
     inline static std::unique_ptr<FakeServer> m_spFakeServer; ///< Pointer to FakeServer class
 
     std::shared_ptr<RouterProvider> m_spRouterProvider; ///< Router provider used on tests.
+    const unsigned int INITIAL_OFFSET {1};              ///< Initial offset to be inserted on the database.
 
     /**
      * @brief Sets initial conditions for each test case.
@@ -55,8 +56,7 @@ protected:
                     "outputFolder": "/tmp/action-tests",
                     "dataFormat": "json",
                     "contentFileName": "sample.json",
-                    "databasePath": "/tmp/action-tests/rocksdb",
-                    "offset": 0
+                    "databasePath": "/tmp/action-tests/rocksdb"
                 }
             }
         )"_json;
@@ -65,6 +65,9 @@ protected:
         const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
         m_spRouterProvider = std::make_shared<RouterProvider>(topicName);
         m_spRouterProvider->start();
+
+        // An initial offset different from zero is inserted in order to avoid the snapshot download.
+        m_parameters.at("configData")["offset"] = INITIAL_OFFSET;
     }
 
     /**
