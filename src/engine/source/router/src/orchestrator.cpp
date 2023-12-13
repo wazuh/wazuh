@@ -10,7 +10,7 @@ namespace
 {
 /**
  * @brief Validates that the pointer is not empty
-*/
+ */
 template<typename T>
 void validatePointer(const T& ptr, const std::string& name)
 {
@@ -40,7 +40,7 @@ base::OptError Orchestrator::forEachWorker(const WorkerOp& f)
 /**************************************************************************
  * Manage configuration - Dump
  *************************************************************************/
-base::OptError loadTesterOnWorker(const std::vector<EntryConverter>& entries, const std::shared_ptr<Worker>& worker)
+base::OptError loadTesterOnWorker(const std::vector<EntryConverter>& entries, const std::shared_ptr<IWorker>& worker)
 {
     for (const auto& entry : entries)
     {
@@ -55,7 +55,7 @@ base::OptError loadTesterOnWorker(const std::vector<EntryConverter>& entries, co
     return std::nullopt;
 }
 
-base::OptError loadRouterOnWoker(const std::vector<EntryConverter>& entries, const std::shared_ptr<Worker>& worker)
+base::OptError loadRouterOnWoker(const std::vector<EntryConverter>& entries, const std::shared_ptr<IWorker>& worker)
 {
     for (const auto& entry : entries)
     {
@@ -96,8 +96,8 @@ void Orchestrator::dumpRouters() const
 /**************************************************************************
  * Manage configuration - Loader
  *************************************************************************/
-std::vector<EntryConverter> getEntryFromStore(const std::shared_ptr<store::IStoreInternal>& store,
-                                              const base::Name& tableName)
+std::vector<EntryConverter> getEntriesFromStore(const std::shared_ptr<store::IStoreInternal>& store,
+                                                const base::Name& tableName)
 {
     const auto jsonEntry = store->readInternalDoc(tableName);
     if (base::isError(jsonEntry))
@@ -112,27 +112,28 @@ std::vector<EntryConverter> getEntryFromStore(const std::shared_ptr<store::IStor
     return EntryConverter::fromJsonArray(base::getResponse(jsonEntry));
 }
 
-void Orchestrator::initWorkers()
+base::OptError Orchestrator::initWorker(const std::shared_ptr<IWorker>& worker,
+                              const std::vector<EntryConverter>& routerEntries,
+                              const std::vector<EntryConverter>& testerEntries)
 {
-    auto store = m_wStore.lock();
-    if (!store)
+    auto error = loadRouterOnWoker(routerEntries, worker);
+    auto error2 = loadTesterOnWorker(testerEntries, worker);
+
+    if (error && error2)
     {
-        throw std::runtime_error {"Store is unavailable for loading the initial states"};
+        return base::Error {error->message + ". " + error2->message};
+    }
+    else if (error)
+    {
+        return error;
+    }
+    else if (error2)
+    {
+        return error2;
     }
 
-    auto error = forEachWorker([entries = getEntryFromStore(store, m_storeTesterName)](const auto& worker)
-                               { return loadTesterOnWorker(entries, worker); });
-    if (error)
-    {
-        LOG_ERROR("Router: Cannot load testers from store: {}", error->message);
-    }
+    return std::nullopt;
 
-    error = forEachWorker([entries = getEntryFromStore(store, m_storeRouterName)](const auto& worker)
-                          { return loadRouterOnWoker(entries, worker); });
-    if (error)
-    {
-        LOG_ERROR("Router: Cannot load routers from store: {}", error->message);
-    }
 }
 
 // Public
@@ -152,6 +153,32 @@ void Orchestrator::Options::validate() const
         throw std::runtime_error {"Configuration error: testTimeout must be greater than 0"};
     }
 }
+
+base::OptError Orchestrator::addWorker(std::shared_ptr<IWorker> worker)
+{
+    if (!worker)
+    {
+        return base::Error {"Worker cannot be empty"};
+    }
+
+    std::unique_lock lock {m_syncMutex};
+    m_workers.emplace_back(std::move(worker));
+
+    return std::nullopt;
+}
+
+base::OptError Orchestrator::removeWorker()
+{
+    std::unique_lock lock {m_syncMutex};
+    if (m_workers.size() == 1)
+    {
+        return base::Error {"Cannot remove the last worker"};
+    }
+
+    m_workers.pop_back();
+    return std::nullopt;
+}
+
 Orchestrator::Orchestrator(const Options& opt)
     : m_workers()
     , m_eventQueue(opt.m_prodQueue)
@@ -170,15 +197,27 @@ Orchestrator::Orchestrator(const Options& opt)
     m_testTimeout = opt.m_testTimeout;
     m_wStore = opt.m_wStore;
 
-    // Create empty workers
+    // Get the initial states from the store
+    auto store = m_wStore.lock();
+    if (!store)
+    {
+        throw std::runtime_error {"Store is unavailable for loading the initial states"};
+    }
+
+    auto routerEntries = getEntriesFromStore(store, m_storeRouterName);
+    auto testerEntries = getEntriesFromStore(store, m_storeTesterName);
+
+    // Create the workers
     for (std::size_t i = 0; i < opt.m_numThreads; ++i)
     {
         auto worker = std::make_shared<Worker>(m_envBuilder, m_eventQueue, m_testQueue);
+        auto error = initWorker(worker, routerEntries, testerEntries);
+        if (error)
+        {
+            LOG_ERROR("Router: Cannot load initial states from store: {}", error->message);
+        }
         m_workers.emplace_back(std::move(worker));
     }
-
-    // Configure the workers
-    initWorkers();
 }
 
 void Orchestrator::start()

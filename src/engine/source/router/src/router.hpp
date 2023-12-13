@@ -4,22 +4,16 @@
 #include <memory>
 #include <shared_mutex>
 
-#include <router/types.hpp>
-
-#include "environmentBuilder.hpp"
 #include "table.hpp"
+#include "irouter.hpp"
 
 namespace router
 {
 
 /**
- * @class Router
- * @brief Manages the routing of events through a dynamic environment and policies configuration.
- *
- * An environment is a policy + filter combination.
- * A filter is a set of rules that determine which events are processed by a policy
+ * @copydoc IRouter
  */
-class Router
+class Router : public IRouter
 {
 private:
     class RuntimeEntry : public prod::Entry
@@ -60,63 +54,44 @@ public:
         , m_envBuilder(std::make_shared<EnvironmentBuilder>(builder, controllerMaker)) {};
 
     /**
-     * @brief Add a new environment to the router. The environment is disabled by default.
-     * @param entryPost The entry information for the environment.
-     * @paran ignoreFail
-     * @return An optional error if the operation failed.
+     * @copydoc IRouter::addEntry
      */
-    base::OptError addEntry(const prod::EntryPost& entryPost, bool ignoreFail = false);
+    base::OptError addEntry(const prod::EntryPost& entryPost, bool ignoreFail = false) override;
 
     /**
-     * @brief Removes the environment
-     * @param name The name of the environment to be removed.
-     * @return An optional error if the operation failed.
+     * @copydoc IRouter::removeEntry
      */
-    base::OptError removeEntry(const std::string& name);
+    base::OptError removeEntry(const std::string& name) override;
 
     /**
-     * @brief Rebuilds the environment with the specified name.
-     *
-     * @note state of the environment is not changed.
-     * @param name The name of the environment to be reloaded.
-     * @return An optional error if the operation failed.
+     * @copydoc IRouter::rebuildEntry
      */
-    base::OptError rebuildEntry(const std::string& name);
+    base::OptError rebuildEntry(const std::string& name) override;
 
     /**
-     * @brief Enables the environment if it is builded.
-     *
-     * @param name
-     * @return base::OptError
+     * @copydoc IRouter::enableEntry
      */
-    base::OptError enableEntry(const std::string& name);
+    base::OptError enableEntry(const std::string& name) override;
 
     /**
-     * @brief Changes the priority of the environment with the specified name.
-     * @param name The name of the environment to change the priority for.
-     * @param priority The new priority value.
-     * @return An optional error indicating the success or failure of the operation.
+     * @copydoc IRouter::changePriority
      */
-    base::OptError changePriority(const std::string& name, size_t priority);
+    base::OptError changePriority(const std::string& name, size_t priority) override;
 
     /**
-     * @brief dumps the router table.
-     *
-     * @return std::list<Entry> The list of entries in the router table.
+     * @copydoc IRouter::getEntries
      */
-    std::list<prod::Entry> getEntries() const;
+    std::list<prod::Entry> getEntries() const override;
 
     /**
-     * @brief Get an environment by name.
-     *
+     * @copydoc IRouter::getEntry
      */
-    base::RespOrError<prod::Entry> getEntry(const std::string& name) const;
+    base::RespOrError<prod::Entry> getEntry(const std::string& name) const override;
 
     /**
-     * @brief Ingests an event into the router for processing.
-     * @param event The event to be ingested.
+     * @copydoc IRouter::ingest
      */
-    void ingest(base::Event&& event);
+    void ingest(base::Event&& event) override;
 };
 
 } // namespace router

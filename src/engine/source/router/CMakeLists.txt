@@ -49,19 +49,16 @@ if(ENGINE_BUILD_TEST)
     set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
     set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
 
-    # # Mocks
+    # Mocks
     add_library(router_mocks INTERFACE)
     target_include_directories(router_mocks INTERFACE ${TEST_MOCK_DIR})
     target_link_libraries(router_mocks INTERFACE gmock router::irouter)
     add_library(router::mocks ALIAS router_mocks)
 
-    # # Router component test
-    # add_executable(router_ctest
-    # ${COMPONENT_SRC_DIR}/router_test.cpp
-    # )
-    # target_link_libraries(router_ctest gtest_main router::irouter router::router)
-    # gtest_discover_tests(router_ctest)
+    # Router component test
+    # TODO Create the component test
 
+    
     # Router unit test
     add_executable(router_utest
         ${UNIT_SRC_DIR}/entryConverter_test.cpp
@@ -70,6 +67,7 @@ if(ENGINE_BUILD_TEST)
         ${UNIT_SRC_DIR}/router_test.cpp
         ${UNIT_SRC_DIR}/tester_test.cpp
         ${UNIT_SRC_DIR}/table_test.cpp
+        ${UNIT_SRC_DIR}/orchestrator_test.cpp
     )
     target_include_directories(router_utest PRIVATE ${SRC_DIR})
     target_link_libraries(router_utest
