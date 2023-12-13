@@ -40,7 +40,7 @@ private:
         // Get and use the CTI base parameters.
         const auto baseParameters {getCtiBaseParameters(baseURL)};
         const auto lastSnapshotURL {std::filesystem::path(baseParameters.lastSnapshotLink)};
-        context.currentOffset = baseParameters.lastOffset;
+        context.currentOffset = baseParameters.lastSnapshotOffset;
 
         // Set output path. The snapshot is always compressed, so the output folder is the downloads folder.
         const auto outputFilepath {context.spUpdaterBaseContext->downloadsFolder / lastSnapshotURL.filename()};

@@ -141,7 +141,8 @@ public:
                             {
                                 "data": 
                                 {
-                                    "last_offset": 3
+                                    "last_offset": 3,
+                                    "last_snapshot_offset": 3
                                 }
                             }
                          )"_json;
@@ -175,7 +176,8 @@ public:
                             {
                                 "data": 
                                 {
-                                    "last_offset": 3
+                                    "last_offset": 3,
+                                    "last_snapshot_offset": 3
                                 }
                             }
                          )"_json;
@@ -263,7 +265,8 @@ public:
                             {
                                 "data": 
                                 {
-                                    "last_offset": 3
+                                    "last_offset": 3,
+                                    "last_snapshot_offset": 3
                                 }
                             }
                          )"_json;
