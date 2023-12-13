@@ -39,9 +39,7 @@ class AzureTable:
     min_processed_date = Column(String(28), nullable=False)
     max_processed_date = Column(String(28), nullable=False)
 
-    def __init__(
-        self, md5: str, query: str, min_processed_date: str, max_processed_date: str
-    ):
+    def __init__(self, md5: str, query: str, min_processed_date: str, max_processed_date: str):
         self.md5 = md5
         self.query = query
         self.min_processed_date = min_processed_date
@@ -108,9 +106,7 @@ def check_database_integrity() -> bool:
         try:
             remove(last_dates_path)
         except OSError:
-            logging.warning(
-                f'It was not possible to remove the old last_dates file at {last_dates_path}'
-            )
+            logging.warning(f'It was not possible to remove the old last_dates file at {last_dates_path}')
     logging.info('Database integrity check finished')
     return True
 
@@ -164,12 +160,8 @@ def migrate_from_last_dates_file():
     for service in [Graph, LogAnalytics, Storage]:
         if service.__tablename__ in keys:
             for md5_hash in last_dates_content[service.__tablename__].keys():
-                min_value = last_dates_content[service.__tablename__][md5_hash][
-                    LAST_DATES_MIN_FIELD_NAME
-                ]
-                max_value = last_dates_content[service.__tablename__][md5_hash][
-                    LAST_DATES_MAX_FIELD_NAME
-                ]
+                min_value = last_dates_content[service.__tablename__][md5_hash][LAST_DATES_MIN_FIELD_NAME]
+                max_value = last_dates_content[service.__tablename__][md5_hash][LAST_DATES_MAX_FIELD_NAME]
                 row = service(
                     md5=md5_hash,
                     query='',
@@ -233,9 +225,7 @@ def load_dates_json() -> dict:
                 # This adds compatibility with "last_dates_files" from previous releases as the format was different
                 for key in contents.keys():
                     for md5_hash in contents[key].keys():
-                        contents[key][md5_hash] = get_min_max_values(
-                            contents[key][md5_hash]
-                        )
+                        contents[key][md5_hash] = get_min_max_values(contents[key][md5_hash])
         else:
             contents = last_dates_default_contents
         return contents
@@ -348,6 +338,4 @@ def get_default_min_max_values() -> str:
     str
         Execution date as a string with format %Y-%m-%dT%H:%M:%S.%fZ
     """
-    return (
-        datetime.utcnow().replace(tzinfo=timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
-    )
+    return datetime.utcnow().replace(tzinfo=timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')

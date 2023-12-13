@@ -21,19 +21,17 @@ from dateutil.parser import parse
 
 sys.path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
 
-from db import orm
 from azure_services.storage import get_blobs, start_storage
+from db import orm
 
-PAST_DATE = "2022-01-01T12:00:00.000000Z"
-PRESENT_DATE = "2022-06-15T12:00:00.000000Z"
-FUTURE_DATE = "2022-12-31T12:00:00.000000Z"
+PAST_DATE = '2022-01-01T12:00:00.000000Z'
+PRESENT_DATE = '2022-06-15T12:00:00.000000Z'
+FUTURE_DATE = '2022-12-31T12:00:00.000000Z'
 
-TEST_DATA_PATH = join(dirname(dirname(realpath(__file__))), "data")
+TEST_DATA_PATH = join(dirname(dirname(realpath(__file__))), 'data')
 
 
-def create_mocked_blob(
-    blob_name: str, last_modified: datetime = None, content_length: Optional[int] = None
-):
+def create_mocked_blob(blob_name: str, last_modified: datetime = None, content_length: Optional[int] = None):
     """Return a fake blob with name and creation time.
 
     Parameters:
@@ -52,29 +50,27 @@ def create_mocked_blob(
     """
     blob = MagicMock()
     blob.name = blob_name
-    blob.properties.last_modified = (
-        last_modified if last_modified else datetime.now()
-    ).replace(tzinfo=pytz.UTC)
+    blob.properties.last_modified = (last_modified if last_modified else datetime.now()).replace(tzinfo=pytz.UTC)
 
     # Add Blob length property
-    if not (content_length is None):
+    if content_length is not None:
         type(blob.properties).content_length = PropertyMock(return_value=content_length)
 
     return blob
 
 
 @pytest.mark.parametrize(
-    "auth_path, name, key, container_name",
+    'auth_path, name, key, container_name',
     [
-        (None, "name", "key", "container"),
-        ("/var/ossec/", "", "", "*"),
+        (None, 'name', 'key', 'container'),
+        ('/var/ossec/', '', '', '*'),
     ],
 )
-@patch("azure_services.storage.get_blobs")
-@patch("azure_services.storage.create_new_row")
-@patch("azure_services.storage.orm.get_row", return_value=None)
-@patch("azure_services.storage.BlockBlobService")
-@patch("azure_services.storage.read_auth_file")
+@patch('azure_services.storage.get_blobs')
+@patch('azure_services.storage.create_new_row')
+@patch('azure_services.storage.orm.get_row', return_value=None)
+@patch('azure_services.storage.BlockBlobService')
+@patch('azure_services.storage.read_auth_file')
 def test_start_storage(
     mock_auth,
     mock_blob,
@@ -87,7 +83,7 @@ def test_start_storage(
     container_name,
 ):
     """Test start_storage process blobs in bucket as expected."""
-    offset = "1d"
+    offset = '1d'
     args = MagicMock(
         storage_auth_path=auth_path,
         account_name=name,
@@ -95,9 +91,7 @@ def test_start_storage(
         container=container_name,
         storage_time_offset=offset,
     )
-    mock_create.return_value = MagicMock(
-        min_processed_date=PRESENT_DATE, max_processed_date=PRESENT_DATE
-    )
+    mock_create.return_value = MagicMock(min_processed_date=PRESENT_DATE, max_processed_date=PRESENT_DATE)
     mock_auth.return_value = (name, key)
     m = MagicMock()
     m.list_containers.return_value = [MagicMock(name=container_name)]
@@ -105,48 +99,42 @@ def test_start_storage(
     start_storage(args)
 
     if auth_path:
-        mock_auth.assert_called_with(
-            auth_path=auth_path, fields=("account_name", "account_key")
-        )
+        mock_auth.assert_called_with(auth_path=auth_path, fields=('account_name', 'account_key'))
     else:
         mock_auth.assert_not_called()
 
     md5_hash = md5(name.encode()).hexdigest()
     mock_blob.assert_called_with(account_name=name, account_key=key)
     mock_get_row.assert_called_with(orm.Storage, md5=md5_hash)
-    mock_create.assert_called_with(
-        table=orm.Storage, query=name, md5_hash=md5_hash, offset=offset
-    )
+    mock_create.assert_called_with(table=orm.Storage, query=name, md5_hash=md5_hash, offset=offset)
     mock_get_blobs.assert_called_once()
 
 
 @pytest.mark.parametrize(
-    "container_name, exception",
+    'container_name, exception',
     [
-        ("", None),
-        ("", AzureException),
-        ("*", AzureSigningError),
-        ("*", AzureException),
-        ("*", None),
+        ('', None),
+        ('', AzureException),
+        ('*', AzureSigningError),
+        ('*', AzureException),
+        ('*', None),
     ],
 )
-@patch("azure_utils.logging.error")
-@patch("azure_services.storage.create_new_row", side_effect=orm.AzureORMError)
-@patch("db.orm.get_row", return_value=None)
-@patch("azure_services.storage.BlockBlobService")
-def test_start_storage_ko(
-    mock_blob, mock_get, mock_create, mock_logging, container_name, exception
-):
+@patch('azure_utils.logging.error')
+@patch('azure_services.storage.create_new_row', side_effect=orm.AzureORMError)
+@patch('db.orm.get_row', return_value=None)
+@patch('azure_services.storage.BlockBlobService')
+def test_start_storage_ko(mock_blob, mock_get, mock_create, mock_logging, container_name, exception):
     """Test start_log_analytics shows error message if get_log_analytics_events returns an HTTP error."""
     args = MagicMock(
         storage_auth_path=None,
-        account_name="test",
-        account_key="test",
+        account_name='test',
+        account_key='test',
         container=container_name,
-        storage_time_offset="",
+        storage_time_offset='',
     )
     m = MagicMock()
-    if container_name == "*":
+    if container_name == '*':
         m.list_containers.return_value = [MagicMock(name=container_name)]
         m.list_containers.side_effect = exception
     else:
@@ -160,7 +148,7 @@ def test_start_storage_ko(
     mock_logging.assert_called_once()
 
 
-@patch("azure_utils.logging.error")
+@patch('azure_utils.logging.error')
 def test_start_storage_ko_credentials(mock_logging):
     """Test start_storage stops its execution if no valid credentials are provided."""
     args = MagicMock(storage_auth_path=None, account_name=None, account_key=None)
@@ -171,7 +159,7 @@ def test_start_storage_ko_credentials(mock_logging):
 
 
 @pytest.mark.parametrize(
-    "blob_date, min_date, max_date, desired_date, extension, reparse, json_file, inline, send_events",
+    'blob_date, min_date, max_date, desired_date, extension, reparse, json_file, inline, send_events',
     [
         # blob_date < desired_date - Blobs should be skipped
         (
@@ -263,7 +251,7 @@ def test_start_storage_ko_credentials(mock_logging):
             PAST_DATE,
             PRESENT_DATE,
             FUTURE_DATE,
-            ".json",
+            '.json',
             False,
             False,
             False,
@@ -274,7 +262,7 @@ def test_start_storage_ko_credentials(mock_logging):
             PAST_DATE,
             PRESENT_DATE,
             FUTURE_DATE,
-            ".json",
+            '.json',
             False,
             False,
             True,
@@ -285,7 +273,7 @@ def test_start_storage_ko_credentials(mock_logging):
             PAST_DATE,
             PRESENT_DATE,
             FUTURE_DATE,
-            ".json",
+            '.json',
             False,
             True,
             False,
@@ -293,8 +281,8 @@ def test_start_storage_ko_credentials(mock_logging):
         ),
     ],
 )
-@patch("azure_services.storage.update_row_object")
-@patch("azure_services.storage.send_message")
+@patch('azure_services.storage.update_row_object')
+@patch('azure_services.storage.send_message')
 def test_get_blobs(
     mock_send,
     mock_update,
@@ -310,18 +298,12 @@ def test_get_blobs(
 ):
     """Test get_blobs obtains the blobs from a container and send their content to the socket."""
     blob_date_str = parse(blob_date)
-    blob_list = [
-        create_mocked_blob(blob_name=f"blob_{i}", last_modified=blob_date_str)
-        for i in range(5)
-    ] + [
-        create_mocked_blob(
-            blob_name=f"blob_{i}{extension}", last_modified=blob_date_str
-        )
-        for i in range(5)
+    blob_list = [create_mocked_blob(blob_name=f'blob_{i}', last_modified=blob_date_str) for i in range(5)] + [
+        create_mocked_blob(blob_name=f'blob_{i}{extension}', last_modified=blob_date_str) for i in range(5)
     ]
 
     # The first iteration will contain a full blob list and a next_marker value
-    blob_service_iter_1 = MagicMock(next_marker="marker")
+    blob_service_iter_1 = MagicMock(next_marker='marker')
     blob_service_iter_1.__iter__ = MagicMock(return_value=iter(blob_list))
     # The second and last iteration won't contain blob list nor next_marker
     blob_service_iter_2 = MagicMock(next_marker=None)
@@ -329,20 +311,20 @@ def test_get_blobs(
     blob_service.list_blobs.side_effect = [blob_service_iter_1, blob_service_iter_2]
 
     if json_file:
-        test_file = "storage_events_json"
+        test_file = 'storage_events_json'
     elif inline:
-        test_file = "storage_events_inline"
+        test_file = 'storage_events_inline'
     else:
-        test_file = "storage_events_plain"
+        test_file = 'storage_events_plain'
 
     with open(join(TEST_DATA_PATH, test_file)) as f:
         contents = f.read()
         blob_service.get_blob_to_text.return_value = MagicMock(content=contents)
 
-    container_name = "container"
-    marker = "marker"
-    md5_hash = "hash"
-    tag = "tag"
+    container_name = 'container'
+    marker = 'marker'
+    md5_hash = 'hash'
+    tag = 'tag'
     get_blobs(
         container_name=container_name,
         blob_service=blob_service,
@@ -358,40 +340,28 @@ def test_get_blobs(
         blob_extension=extension,
     )
 
-    blob_service.list_blobs.assert_called_with(
-        container_name, prefix=None, marker=marker
-    )
+    blob_service.list_blobs.assert_called_with(container_name, prefix=None, marker=marker)
     blob_service.get_blob_to_text.assert_has_calls(
-        [
-            call(container_name, blob.name)
-            for blob in blob_list
-            if extension and extension in blob.name
-        ]
+        [call(container_name, blob.name) for blob in blob_list if extension and extension in blob.name]
     )
     if send_events:
         calls = list()
-        extension = extension if extension else ""
+        extension = extension if extension else ''
         for blob in blob_list:
             if extension in blob.name:
                 if json_file:
-                    for record in json.loads(contents)["records"]:
-                        record["azure_tag"] = "azure-storage"
-                        record["azure_storage_tag"] = tag
+                    for record in json.loads(contents)['records']:
+                        record['azure_tag'] = 'azure-storage'
+                        record['azure_storage_tag'] = tag
                         calls.append(call(json.dumps(record)))
                 else:
                     for line in [s for s in str(contents).splitlines() if s]:
                         if inline:
                             calls.append(
-                                call(
-                                    f'{{"azure_tag": "azure-storage", "azure_storage_tag": "{tag}", {line[1:]}'
-                                )
+                                call(f'{{"azure_tag": "azure-storage", "azure_storage_tag": "{tag}", {line[1:]}')
                             )
                         else:
-                            calls.append(
-                                call(
-                                    f"azure_tag: azure-storage. azure_storage_tag: {tag}. {line}"
-                                )
-                            )
+                            calls.append(call(f'azure_tag: azure-storage. azure_storage_tag: {tag}. {line}'))
         mock_send.assert_has_calls(calls)
         assert (
             mock_update.call_count == len(blob_list)
@@ -400,13 +370,13 @@ def test_get_blobs(
         )
 
 
-@patch("azure_utils.logging.debug")
+@patch('azure_utils.logging.debug')
 def test_that_empty_blobs_are_omitted(mock_logging):
     """Test get_blobs checks the size of the blob and omits it if is is empty"""
     # List of empty blobs to use
     list_of_empty_blobs = [
-        create_mocked_blob("Example1", content_length=0),
-        create_mocked_blob("Example2", content_length=0),
+        create_mocked_blob('Example1', content_length=0),
+        create_mocked_blob('Example2', content_length=0),
     ]
 
     iterator_with_marker = MagicMock(next_marker=None)
@@ -416,9 +386,9 @@ def test_that_empty_blobs_are_omitted(mock_logging):
     blob_service = MagicMock()
     blob_service.list_blobs.return_value = iterator_with_marker
 
-    container_name = "container"
-    marker = "marker"
-    md5_hash = "hash"
+    container_name = 'container'
+    marker = 'marker'
+    md5_hash = 'hash'
     get_blobs(
         container_name=container_name,
         blob_service=blob_service,
@@ -427,7 +397,7 @@ def test_that_empty_blobs_are_omitted(mock_logging):
         min_datetime=parse(PRESENT_DATE),
         max_datetime=parse(FUTURE_DATE),
         desired_datetime=parse(FUTURE_DATE),
-        tag="storage_tag",
+        tag='storage_tag',
         reparse=False,
         json_file=False,
         json_inline=False,
@@ -437,39 +407,26 @@ def test_that_empty_blobs_are_omitted(mock_logging):
     # for blob in list_of_empty_blobs:
     #     blob.properties.content_length.assert_called()
     expected_calls = [
-        call("Empty blob Example1, skipping"),
-        call("Empty blob Example2, skipping"),
+        call('Empty blob Example1, skipping'),
+        call('Empty blob Example2, skipping'),
     ]
     mock_logging.assert_has_calls(expected_calls, any_order=False)
     blob_service.get_blob_to_text.assert_not_called()
 
 
-@patch("azure_services.storage.update_row_object")
-@patch("azure_services.storage.send_message")
+@patch('azure_services.storage.update_row_object')
+@patch('azure_services.storage.send_message')
 def test_get_blobs_only_with_prefix(mock_send, mock_update):
     """Test get_blobs process only the blobs corresponding to a specific prefix, ignoring the rest."""
-    args = MagicMock(blobs=None, json_file=False, json_inline=False, reparse=False)
+    MagicMock(blobs=None, json_file=False, json_inline=False, reparse=False)
 
-    prefix = "test_prefix"
+    prefix = 'test_prefix'
     blob_date_str = parse(FUTURE_DATE)
 
     blob_list = (
-        [
-            create_mocked_blob(blob_name=f"blob_{i}", last_modified=blob_date_str)
-            for i in range(5)
-        ]
-        + [
-            create_mocked_blob(
-                blob_name=f"{prefix}/blob_{i}", last_modified=blob_date_str
-            )
-            for i in range(5)
-        ]
-        + [
-            create_mocked_blob(
-                blob_name=f"other_prefix/blob_{i}", last_modified=blob_date_str
-            )
-            for i in range(5)
-        ]
+        [create_mocked_blob(blob_name=f'blob_{i}', last_modified=blob_date_str) for i in range(5)]
+        + [create_mocked_blob(blob_name=f'{prefix}/blob_{i}', last_modified=blob_date_str) for i in range(5)]
+        + [create_mocked_blob(blob_name=f'other_prefix/blob_{i}', last_modified=blob_date_str) for i in range(5)]
     )
 
     # The first iteration will contain a full blob list and a none next_marker
@@ -477,10 +434,10 @@ def test_get_blobs_only_with_prefix(mock_send, mock_update):
     blob_service_iter_1.__iter__ = MagicMock(return_value=iter(blob_list))
     blob_service = MagicMock()
     blob_service.list_blobs.return_value = blob_service_iter_1
-    blob_service.get_blob_to_text.return_value = MagicMock(content="")
+    blob_service.get_blob_to_text.return_value = MagicMock(content='')
 
-    container_name = "container"
-    md5_hash = "hash"
+    container_name = 'container'
+    md5_hash = 'hash'
 
     get_blobs(
         container_name=container_name,
@@ -490,22 +447,20 @@ def test_get_blobs_only_with_prefix(mock_send, mock_update):
         max_datetime=parse(PRESENT_DATE),
         desired_datetime=parse(FUTURE_DATE),
         prefix=prefix,
-        tag="storage_tag",
+        tag='storage_tag',
         reparse=False,
         json_file=False,
         json_inline=False,
         blob_extension=None,
     )
 
-    blob_service.list_blobs.assert_called_with(
-        container_name, prefix=prefix, marker=None
-    )
+    blob_service.list_blobs.assert_called_with(container_name, prefix=prefix, marker=None)
     blob_service.get_blob_to_text.assert_has_calls(
         [call(container_name, blob.name) for blob in blob_list if prefix in blob.name]
     )
 
 
-@patch("azure_utils.logging.error")
+@patch('azure_utils.logging.error')
 def test_get_blobs_list_blobs_ko(mock_logging):
     """Test get_blobs_list_blobs handles exceptions from 'list_blobs'."""
     m = MagicMock()
@@ -519,7 +474,7 @@ def test_get_blobs_list_blobs_ko(mock_logging):
             min_datetime=None,
             max_datetime=None,
             desired_datetime=None,
-            tag="storage_tag",
+            tag='storage_tag',
             reparse=False,
             json_file=False,
             json_inline=False,
@@ -529,19 +484,19 @@ def test_get_blobs_list_blobs_ko(mock_logging):
 
 
 @pytest.mark.parametrize(
-    "exception",
+    'exception',
     [
         ValueError,
         AzureException,
-        AzureHttpError(message="", status_code=""),
+        AzureHttpError(message='', status_code=''),
     ],
 )
-@patch("azure_services.storage.logging.error")
-@patch("azure_services.storage.update_row_object")
+@patch('azure_services.storage.logging.error')
+@patch('azure_services.storage.update_row_object')
 def test_get_blobs_blob_data_ko(mock_update, mock_logging, exception):
     """Test get_blobs_list_blobs handles exceptions from 'get_blob_to_text'."""
     num_blobs = 5
-    blob_list = [create_mocked_blob(blob_name=f"blob_{i}") for i in range(num_blobs)]
+    blob_list = [create_mocked_blob(blob_name=f'blob_{i}') for i in range(num_blobs)]
     blob_service_iter = MagicMock(next_marker=None)
     blob_service_iter.__iter__ = MagicMock(return_value=iter(blob_list))
     blob_service = MagicMock()
@@ -555,7 +510,7 @@ def test_get_blobs_blob_data_ko(mock_update, mock_logging, exception):
         min_datetime=None,
         max_datetime=None,
         desired_datetime=None,
-        tag="storage_tag",
+        tag='storage_tag',
         reparse=True,
         json_file=False,
         json_inline=False,
@@ -565,19 +520,19 @@ def test_get_blobs_blob_data_ko(mock_update, mock_logging, exception):
     mock_update.assert_not_called()
 
 
-@pytest.mark.parametrize("exception", [json.JSONDecodeError, TypeError, KeyError])
-@patch("azure_services.storage.logging.error")
-@patch("azure_services.storage.loads")
-@patch("azure_services.storage.update_row_object")
+@pytest.mark.parametrize('exception', [json.JSONDecodeError, TypeError, KeyError])
+@patch('azure_services.storage.logging.error')
+@patch('azure_services.storage.loads')
+@patch('azure_services.storage.update_row_object')
 def test_get_blobs_json_ko(mock_update, mock_loads, mock_logging, exception):
     """Test get_blobs_list_blobs handles exceptions from 'json.loads'."""
     num_blobs = 5
-    blob_list = [create_mocked_blob(blob_name=f"blob_{i}") for i in range(num_blobs)]
+    blob_list = [create_mocked_blob(blob_name=f'blob_{i}') for i in range(num_blobs)]
     blob_service_iter = MagicMock(next_marker=None)
     blob_service_iter.__iter__ = MagicMock(return_value=iter(blob_list))
     blob_service = MagicMock()
     blob_service.list_blobs.return_value = blob_service_iter
-    blob_service.get_blob_to_text.return_value = MagicMock(content="invalid")
+    blob_service.get_blob_to_text.return_value = MagicMock(content='invalid')
     mock_loads.side_effect = exception
 
     get_blobs(
@@ -587,7 +542,7 @@ def test_get_blobs_json_ko(mock_update, mock_loads, mock_logging, exception):
         min_datetime=None,
         max_datetime=None,
         desired_datetime=None,
-        tag="storage_tag",
+        tag='storage_tag',
         reparse=True,
         json_file=True,
         json_inline=False,
