@@ -51,5 +51,4 @@ normalize:
   - check:
       - source.ip: not_exists()
     map:
-    # TODO: Is it necessary to perform the parse?
-      - source.domain: parse_fqdn($source.address)
+      - source.domain: $source.address
