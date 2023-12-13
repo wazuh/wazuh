@@ -1,0 +1,5 @@
+[Tue Mar 14 10:50:33.260617 2023] [mpm_event:notice] [pid 3651:tid 139732022373440] AH00489: Apache/2.4.41 (Ubuntu) configured -- resuming normal operations
+[Tue Mar 14 10:50:33.261185 2023] [core:notice] [pid 3651:tid 139732022373440] AH00094: Command line: '/usr/sbin/apache2'
+[Tue Mar 14 10:50:33.261185 2023] [core:notice] [pid 11379] AH00094: Command line: '/usr/local/apache/httpd'
+[Tue Mar 14 10:50:33.261185 2023] [rewrite:trace1] [pid 11379:tid 12312312313231] mod_rewrite.c(470): [client 127.0.0.1:8999] 192.168.0.1 - - [dev.test/sid#123456789][rid#ASD123485/test] applying pattern '^/import/?(.*)$' to uri '/'
+[Tue Mar 14 10:50:33.261185 2023] [error] [client 192.168.10.1] File does not exist: /var/www/favicon.ico, referer: http://192.168.10.1/

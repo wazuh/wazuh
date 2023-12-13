@@ -1,0 +1,227 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "ecs": {
+      "version": "8.8"
+    },
+    "event": {
+      "category": [
+        "web"
+      ],
+      "created": "2023-03-14T10:50:33.260Z",
+      "dataset": "apache-error",
+      "kind": "event",
+      "module": "apache-http",
+      "original": "[Tue Mar 14 10:50:33.260617 2023] [mpm_event:notice] [pid 3651:tid 139732022373440] AH00489: Apache/2.4.41 (Ubuntu) configured -- resuming normal operations",
+      "type": [
+        "info"
+      ]
+    },
+    "host": {
+      "id": "001"
+    },
+    "log": {
+      "level": "notice",
+      "logger": "mpm_event"
+    },
+    "message": "AH00489: Apache/2.4.41 (Ubuntu) configured -- resuming normal operations",
+    "process": {
+      "pid": 3651,
+      "thread": {
+        "id": 139732022373440
+      }
+    },
+    "service": {
+      "type": "apache"
+    },
+    "wazuh": {
+      "decoders": [
+        "apache-error"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/apache2/error.log",
+      "origin": "/test/apache2/error.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "ecs": {
+      "version": "8.8"
+    },
+    "event": {
+      "category": [
+        "web"
+      ],
+      "created": "2023-03-14T10:50:33.261Z",
+      "dataset": "apache-error",
+      "kind": "event",
+      "module": "apache-http",
+      "original": "[Tue Mar 14 10:50:33.261185 2023] [core:notice] [pid 3651:tid 139732022373440] AH00094: Command line: '/usr/sbin/apache2'",
+      "type": [
+        "info"
+      ]
+    },
+    "host": {
+      "id": "001"
+    },
+    "log": {
+      "level": "notice",
+      "logger": "core"
+    },
+    "message": "AH00094: Command line: '/usr/sbin/apache2'",
+    "process": {
+      "pid": 3651,
+      "thread": {
+        "id": 139732022373440
+      }
+    },
+    "service": {
+      "type": "apache"
+    },
+    "wazuh": {
+      "decoders": [
+        "apache-error"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/apache2/error.log",
+      "origin": "/test/apache2/error.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "message": "AH00094: Command line: '/usr/local/apache/httpd'",
+    "process": {
+      "pid": 11379
+    },
+    "ecs": {
+      "version": "8.8"
+    },
+    "event": {
+      "created": "2023-03-14T10:50:33.261Z",
+      "module": "apache-http",
+      "dataset": "apache-error",
+      "type": [
+        "info"
+      ],
+      "kind": "event",
+      "original": "[Tue Mar 14 10:50:33.261185 2023] [core:notice] [pid 11379] AH00094: Command line: '/usr/local/apache/httpd'",
+      "category": [
+        "web"
+      ]
+    },
+    "service": {
+      "type": "apache"
+    },
+    "wazuh": {
+      "location": "/var/log/apache2/access.log",
+      "queue": 49,
+      "source": "logcollector",
+      "decoders": [
+        "apache-error"
+      ]
+    },
+    "log": {
+      "level": "notice",
+      "logger": "core"
+    },
+    "TestSessionID": 1
+  },
+  {
+    "TestSessionID": 1,
+    "log": {
+      "logger": "rewrite",
+      "level": "trace1"
+    },
+    "wazuh": {
+      "queue": 49,
+      "source": "logcollector",
+      "location": "/var/log/apache2/access.log",
+      "decoders": [
+        "apache-error"
+      ]
+    },
+    "service": {
+      "type": "apache"
+    },
+    "message": "mod_rewrite.c(470): [client 127.0.0.1:8999] 192.168.0.1 - - [dev.test/sid#123456789][rid#ASD123485/test] applying pattern '^/import/?(.*)$' to uri '/'",
+    "process": {
+      "pid": 11379,
+      "thread": {
+        "id": 12312312313231
+      }
+    },
+    "ecs": {
+      "version": "8.8"
+    },
+    "event": {
+      "original": "[Tue Mar 14 10:50:33.261185 2023] [rewrite:trace1] [pid 11379:tid 12312312313231] mod_rewrite.c(470): [client 127.0.0.1:8999] 192.168.0.1 - - [dev.test/sid#123456789][rid#ASD123485/test] applying pattern '^/import/?(.*)$' to uri '/'",
+      "module": "apache-http",
+      "category": [
+        "web"
+      ],
+      "type": [
+        "info"
+      ],
+      "dataset": "apache-error",
+      "created": "2023-03-14T10:50:33.261Z",
+      "kind": "event"
+    },
+    {
+      "service": {
+        "type": "apache"
+      },
+      "message": "File does not exist: /var/www/favicon.ico, referer: http://192.168.10.1/",
+      "source": {
+        "ip": "192.168.10.1",
+        "address": "192.168.10.1"
+      },
+      "http": {
+        "request": {
+          "referrer": "http://192.168.10.1/"
+        }
+      },
+      "TestSessionID": 1,
+      "file": {
+        "path": "/var/www/favicon.ico"
+      },
+      "event": {
+        "created": "2023-03-14T10:50:33.261Z",
+        "dataset": "apache-error",
+        "category": [
+          "web"
+        ],
+        "module": "apache-http",
+        "kind": "event",
+        "type": [
+          "error"
+        ],
+        "original": "[Tue Mar 14 10:50:33.261185 2023] [error] [client 192.168.10.1] File does not exist: /var/www/favicon.ico, referer: http://192.168.10.1/"
+      },
+      "log": {
+        "level": "error"
+      },
+      "wazuh": {
+        "location": "/var/log/apache2/access.log",
+        "queue": 49,
+        "decoders": [
+          "apache-error"
+        ],
+        "source": "logcollector"
+      },
+      "ecs": {
+        "version": "8.8"
+      }
+    }
+  }
+]
