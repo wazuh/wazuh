@@ -4,13 +4,11 @@
         - connection:
             value: 'syslog'
         - allowed-ips:
-            value: any
+            value: "127.0.0.1"
         - port:
             value: PORT
         - protocol:
             value: PROTOCOL
-        - ipv6:
-            value: "yes"
     - section: global
       elements:
         - logall:
