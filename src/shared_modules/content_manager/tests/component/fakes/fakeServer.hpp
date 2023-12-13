@@ -21,7 +21,7 @@
 #include <thread>
 #include <utility>
 
-const std::string SNAPSHOT_FILE_NAME {"snapshot_0_3.zip"};
+const std::string SNAPSHOT_FILE_NAME {"3_3.zip"};
 const std::string SNAPSHOT_CONTENT_FILE_NAME {"content.json"};
 const std::filesystem::path INPUT_FILES_DIR {std::filesystem::current_path() / "input_files"};
 
