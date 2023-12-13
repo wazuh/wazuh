@@ -3091,7 +3091,7 @@ checks:
     condition: all
     rules:
       - 'c:sshd -T -> n:^\s*maxsessions\s+(\d+) compare <= 10'
-      - 'not f:/etc/ssh/sshd_config -> r:^\s*MaxSessions\s+(1[1-9]|[2-9][0-9]|[1-9][0-9][0-9]+)'
+      - 'not f:/etc/ssh/sshd_config -> n:^MaxSessions\s+(\d+) compare > 10'
 
   # 4.2.22 Ensure SSH Idle Timeout Interval is configured. (Automated)
   - id: 40322
@@ -3225,8 +3225,8 @@ checks:
       - soc_2: ["CC6.1", "CC6.3"]
     condition: none
     rules:
-      - 'f:/usr/local/etc/sudoers -> !r:^# && r:*\!authenticate'
-      - 'd:/usr/local/etc/sudoers.d -> r:\.* -> !r:^# && r:*\!authenticate'
+      - 'f:/usr/local/etc/sudoers -> !r:^# && r:!authenticate'
+      - 'd:/usr/local/etc/sudoers.d -> r:\.* -> !r:^# && r:!authenticate'
 
   # 4.3.6 Ensure sudo authentication timeout is configured correctly. (Automated)
   - id: 40328
