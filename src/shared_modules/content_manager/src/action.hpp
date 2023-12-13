@@ -188,7 +188,7 @@ public:
 private:
     std::shared_ptr<RouterProvider> m_channel;
     std::thread m_schedulerThread;
-    bool m_schedulerRunning = false;
+    std::atomic<bool> m_schedulerRunning = false;
     std::atomic<bool> m_actionInProgress;
     std::atomic<size_t> m_interval;
     std::mutex m_mutex;

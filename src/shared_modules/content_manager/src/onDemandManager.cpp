@@ -20,7 +20,6 @@
  */
 void OnDemandManager::startServer()
 {
-    std::atomic<bool> runningTrigger {true};
     m_serverThread = std::thread(
         [&]()
         {
@@ -70,11 +69,11 @@ void OnDemandManager::startServer()
             std::filesystem::path path {ONDEMAND_SOCK};
             std::filesystem::create_directories(path.parent_path());
 
-            runningTrigger = m_server.listen(ONDEMAND_SOCK, true);
+            m_runningTrigger = m_server.listen(ONDEMAND_SOCK, true);
         });
 
     // Spin lock until server is ready
-    while (!m_server.is_running() && runningTrigger)
+    while (!m_server.is_running() && m_runningTrigger)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }

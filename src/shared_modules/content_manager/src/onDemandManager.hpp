@@ -28,6 +28,7 @@ private:
     std::map<std::string, std::function<void(int)>> m_endpoints {};
     std::shared_mutex m_mutex {};
     std::thread m_serverThread {};
+    std::atomic<bool> m_runningTrigger {true};
     void startServer();
     void stopServer();
 
