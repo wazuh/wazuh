@@ -112,8 +112,8 @@ def step_impl(context, name: str):
             assert False
 
 
-@when('I send a request {request} to the router to add a new route called "{route}" with the data from policy:"{policy}" filter:"{filter}" priority:"{priority}"')
-def step_impl(context, request: str, route: str, policy: str, filter: str, priority: str):
+@when('I send a request to the router to add a new route called "{route}" with the data from policy:"{policy}" filter:"{filter}" priority:"{priority}"')
+def step_impl(context, route: str, policy: str, filter: str, priority: str):
     post = api_router.RoutePost_Request()
     post.route.name = route
     post.route.filter = filter
@@ -132,11 +132,11 @@ def step_impl(context, response: str):
 
 
 # Second Scenario
-@when('I send a {request} request to update the priority from route "{name}" to value of "{priority}"')
-def step_impl(context, request: str, name: str, priority: str):
-    patch = api_router.RoutePatch_Request()
-    patch.route.name = name
-    patch.route.priority = int(priority)
+@when('I send a request to update the priority from route "{name}" to value of "{priority}"')
+def step_impl(context, name: str, priority: str):
+    patch = api_router.RoutePatchPriority_Request()
+    patch.name = name
+    patch.priority = int(priority)
     err, response = api_client.send_recv(patch)
     assert err is None, f"{err}"
     context.result = ParseDict(response, api_engine.GenericStatus_Response())
@@ -161,8 +161,8 @@ def step_impl(context, priority: str):
 
 
 # Third Scenario
-@when('I send a {request} request to the route "{name}"')
-def step_impl(context, request: str, name: str):
+@when('I send a request to delete the route "{name}"')
+def step_impl(context, name: str):
     delete = api_router.RouteDelete_Request()
     delete.name = name
     err, response = api_client.send_recv(delete)
@@ -178,8 +178,8 @@ def step_impl(context, response: str):
 
 
 # Fourth Scenario
-@when('I send a {request} request to get the route "{name}"')
-def step_impl(context, request: str, name: str):
+@when('I send a request to get the route "{name}"')
+def step_impl(context, name: str):
     get = api_router.RouteGet_Request()
     get.name = name
     err, response = api_client.send_recv(get)
