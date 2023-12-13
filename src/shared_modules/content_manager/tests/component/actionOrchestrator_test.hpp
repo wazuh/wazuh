@@ -33,6 +33,9 @@ protected:
 
     inline static std::unique_ptr<FakeServer> m_spFakeServer; ///< Pointer to FakeServer class
     const std::atomic<bool> m_shouldRun {true};               ///< Interruption flag.
+    const std::filesystem::path DATABASE_PATH {std::filesystem::temp_directory_path() /
+                                               "ActionOrchestratorTest"}; ///< Path used to store the RocksDB database.
+    const unsigned int INITIAL_OFFSET {1}; ///< Initial offset to be inserted on the database.
 
     /**
      * @brief Sets initial conditions for each test case.
@@ -57,6 +60,10 @@ protected:
                 }
             }
         )"_json;
+
+        // An initial offset different from zero is inserted in order to avoid the snapshot download.
+        m_parameters.at("configData")["databasePath"] = DATABASE_PATH;
+        m_parameters.at("configData")["offset"] = INITIAL_OFFSET;
     }
     /**
      * @brief Tear down routine for tests
@@ -72,6 +79,9 @@ protected:
             // Delete the output folder.
             std::filesystem::remove_all(outputFolder);
         }
+
+        // Remove database files.
+        std::filesystem::remove_all(DATABASE_PATH);
     }
 
     /**

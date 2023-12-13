@@ -92,19 +92,11 @@ public:
             }
 
             // If the content source is 'cti-offset' and the current offset is '0', a snapshot must be downloaded with
-            // the full content.
+            // the full content to avoid downloading many offsets at once.
             const auto& contentSource {m_spBaseContext->configData.at("contentSource").get_ref<const std::string&>()};
             if (0 == spUpdaterContext->currentOffset && "cti-offset" == contentSource)
             {
-                logDebug1(WM_CONTENTUPDATER, "Performing full-content download");
-
-                // Prepare configuration.
-                auto fullContentConfig = m_spBaseContext->configData;
-                fullContentConfig.at("contentSource") = "cti-snapshot";
-                fullContentConfig.at("compressionType") = "zip";
-
-                // Download full content.
-                FactoryContentUpdater::create(fullContentConfig)->handleRequest(spUpdaterContext);
+                runFullContentDownload(spUpdaterContext);
             }
 
             // Run the updater chain
@@ -135,6 +127,24 @@ private:
     void cleanContext() const
     {
         m_spBaseContext->downloadedFileHash.clear();
+    }
+
+    /**
+     * @brief Creates and triggers a new orchestration that downloads a snapshot from CTI.
+     *
+     * @param spUpdaterContext Updater context.
+     */
+    void runFullContentDownload(std::shared_ptr<UpdaterContext> spUpdaterContext) const
+    {
+        logDebug1(WM_CONTENTUPDATER, "Performing full-content download");
+
+        // Prepare configuration.
+        auto fullContentConfig = m_spBaseContext->configData;
+        fullContentConfig.at("contentSource") = "cti-snapshot";
+        fullContentConfig.at("compressionType") = "zip";
+
+        // Download full content.
+        FactoryContentUpdater::create(fullContentConfig)->handleRequest(spUpdaterContext);
     }
 };
 
