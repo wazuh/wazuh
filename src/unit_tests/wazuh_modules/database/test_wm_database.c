@@ -63,20 +63,22 @@ int setup_keys_to_db(void **state) {
     key->ip = (os_ip *)1;
     key->raw_key = strdup("1234567890abcdef");
 
-    *state = &keys;
+    os_calloc(1, sizeof(keystore), *state);
+    memcpy(*state, &keys, sizeof(keystore));
 
     test_mode = 1;
     return OS_SUCCESS;
 }
 
 int teardown_keys_to_db(void **state) {
-    keystore keys = *((keystore *)*state);
+    keystore * keys = (keystore *)*state;
 
-    os_free(keys.keyentries[0]->id);
-    os_free(keys.keyentries[0]->name);
-    os_free(keys.keyentries[0]->raw_key);
-    os_free(keys.keyentries[0]);
-    os_free(keys.keyentries);
+    os_free(keys->keyentries[0]->id);
+    os_free(keys->keyentries[0]->name);
+    os_free(keys->keyentries[0]->raw_key);
+    os_free(keys->keyentries[0]);
+    os_free(keys->keyentries);
+    os_free(keys);
 
     test_mode = 0;
     return OS_SUCCESS;
