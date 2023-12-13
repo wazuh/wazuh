@@ -12,17 +12,18 @@
 #include "environmentBuilder.hpp"
 #include "router.hpp"
 #include "tester.hpp"
+#include "iworker.hpp"
 
 namespace router
 {
 
 constexpr auto WAIT_DEQUEUE_TIMEOUT_USEC = 1 * 100000;
 
-class Worker
+class Worker : public IWorker
 {
 private:
-    std::shared_ptr<Router> m_router; ///< The router instance
-    std::shared_ptr<Tester> m_tester; ///< The tester instance
+    std::shared_ptr<IRouter> m_router; ///< The router instance
+    std::shared_ptr<ITester> m_tester; ///< The tester instance
     std::atomic_bool m_isRunning;     ///< Flag to know if the worker is running
     std::thread m_thread;             ///< The thread for the worker
 
@@ -50,26 +51,20 @@ public:
         }
     }
 
-    /**
-     * @brief Destroy the Worker object
-     *
-     */
     ~Worker() { stop(); }
 
     /**
-     * @brief Start the worker
-     *
+     * @copydoc IWorker::start
      */
-    void start();
+    void start() override;
 
     /**
-     * @brief Stop the worker
-     *
+     * @copydoc IWorker::stop
      */
-    void stop();
+    void stop() override;
 
-    const std::shared_ptr<Router>& getRouter() const { return m_router; }
-    const std::shared_ptr<Tester>& getTester() const { return m_tester; }
+    const std::shared_ptr<IRouter>& getRouter() const { return m_router; }
+    const std::shared_ptr<ITester>& getTester() const { return m_tester; }
 };
 
 } // namespace router
