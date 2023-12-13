@@ -48,6 +48,17 @@ namespace Utils
     {
         return getTimestamp(std::time(nullptr));
     }
+
+    static std::string timeToSeconds(std::string& str) {
+        int seconds;
+        std::tm t;
+        std::istringstream ss(str);
+
+        ss >> std::get_time(&t, "%H:%M.%S");
+        seconds = t.tm_hour * 3600 + t.tm_min * 60 + t.tm_sec;
+
+        return std::to_string(seconds);
+    }
 };
 
 #pragma GCC diagnostic pop

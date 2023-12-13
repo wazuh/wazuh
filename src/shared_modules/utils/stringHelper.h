@@ -234,6 +234,17 @@ namespace Utils
         return ret;
     }
 
+    static std::string trimToOneSpace(const std::string& str)
+    {
+        std::string str_output;
+
+        str_output.clear();
+        std::unique_copy (str.begin(), str.end(), std::back_insert_iterator<std::string>(str_output),
+                                     [](char a,char b){ return std::isspace(a) && std::isspace(b);});
+
+        return str_output;
+    }
+
     static std::string toUpperCase(const std::string& str)
     {
         std::string temp{ str };
@@ -243,6 +254,19 @@ namespace Utils
                        [](std::string::value_type character)
         {
             return std::toupper(character);
+        });
+        return temp;
+    }
+
+    static std::string toLowerCase(const std::string& str)
+    {
+        std::string temp{ str };
+        std::transform(std::begin(temp),
+                       std::end(temp),
+                       std::begin(temp),
+                       [](std::string::value_type character)
+        {
+            return std::tolower(character);
         });
         return temp;
     }
