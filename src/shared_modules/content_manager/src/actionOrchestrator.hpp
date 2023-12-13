@@ -18,6 +18,7 @@
 #include "routerProvider.hpp"
 #include "utils/rocksDBWrapper.hpp"
 #include <memory>
+#include <utility>
 
 /**
  * @brief In charge of initializing the content updater orchestration.
@@ -138,13 +139,19 @@ private:
     {
         logDebug1(WM_CONTENTUPDATER, "Performing full-content download");
 
-        // Prepare configuration.
-        auto fullContentConfig = m_spBaseContext->configData;
+        // Set new configuration.
+        auto fullContentConfig = spUpdaterContext->spUpdaterBaseContext->configData;
         fullContentConfig.at("contentSource") = "cti-snapshot";
         fullContentConfig.at("compressionType") = "zip";
 
-        // Download full content.
+        // Copy original data.
+        auto originalData = spUpdaterContext->data;
+
+        // Trigger orchestration.
         FactoryContentUpdater::create(fullContentConfig)->handleRequest(spUpdaterContext);
+
+        // Restore original data.
+        spUpdaterContext->data = std::move(originalData);
     }
 };
 
