@@ -136,6 +136,14 @@ def db_query(agent_id, path):
         length = unpack("<I", sock.recv(4))[0]
         pretty(sock.recv(length).decode(errors='ignore'))
 
+    finalQuery = "agent " + agent_id_text + " sql UPDATE sync_info SET last_attempt = 1, last_completion = 1, last_agent_checksum = 1, last_manager_checksum = 1, n_attempts = 1, n_completions = 1 WHERE component = 'syscollector-packages';"
+    print(finalQuery)
+    msg = finalQuery.encode()
+    sock.send(pack("<I{0}s".format(len(msg)), len(msg), msg))
+
+    length = unpack("<I", sock.recv(4))[0]
+    pretty(sock.recv(length).decode(errors='ignore'))
+
 def pretty(response):
     if response.startswith('ok '):
         try:
