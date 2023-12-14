@@ -47,7 +47,6 @@ ERROR_MESSAGE = {
 }
 
 TIMEOUT = {
-
     10: 10,
     20: 20
 }
