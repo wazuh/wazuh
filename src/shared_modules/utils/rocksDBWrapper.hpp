@@ -95,6 +95,28 @@ namespace Utils
         }
 
         /**
+         * @brief Checks whether a column exists in the database or not.
+         *
+         * @param columnName Name of the column.
+         * @return true If the column exists.
+         * @return false If the column doesn't exists.
+         */
+        bool columnExists(const std::string& columnName) const
+        {
+            if (columnName.empty())
+            {
+                throw std::invalid_argument {"Column name is empty"};
+            }
+
+            const auto columnMatch {[&columnName](const rocksdb::ColumnFamilyHandle* handle)
+                                    {
+                                        return columnName == handle->GetName();
+                                    }};
+
+            return std::find_if(m_handles.begin(), m_handles.end(), columnMatch) != m_handles.end();
+        }
+
+        /**
          * @brief Move assignment operator.
          *
          * @param other Other instance.

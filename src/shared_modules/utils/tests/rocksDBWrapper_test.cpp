@@ -349,6 +349,52 @@ TEST_F(RocksDBWrapperTest, CreateColumn)
 }
 
 /**
+ * @brief Tests the creation of one column twice.
+ *
+ */
+TEST_F(RocksDBWrapperTest, CreateColumnTwiceThrows)
+{
+    constexpr auto COLUMN_NAME {"column_A"};
+
+    db_wrapper->createColumn(COLUMN_NAME);
+    EXPECT_THROW(db_wrapper->createColumn(COLUMN_NAME), std::runtime_error);
+}
+
+/**
+ * @brief Tests the column existence for a column that does exist.
+ *
+ */
+TEST_F(RocksDBWrapperTest, ColumnExistPositive)
+{
+    constexpr auto COLUMN_NAME {"column_A"};
+
+    db_wrapper->createColumn(COLUMN_NAME);
+    EXPECT_TRUE(db_wrapper->columnExists(COLUMN_NAME));
+}
+
+/**
+ * @brief Tests the column existence for a column that doesn't exist.
+ *
+ */
+TEST_F(RocksDBWrapperTest, ColumnExistNegative)
+{
+    constexpr auto COLUMN_NAME {"column_A"};
+
+    EXPECT_FALSE(db_wrapper->columnExists(COLUMN_NAME));
+}
+
+/**
+ * @brief Tests the column existence for a empty column name.
+ *
+ */
+TEST_F(RocksDBWrapperTest, ColumnExistEmptyThrows)
+{
+    constexpr auto COLUMN_NAME {""};
+
+    EXPECT_THROW(db_wrapper->columnExists(COLUMN_NAME), std::invalid_argument);
+}
+
+/**
  * @brief Tests the creation of various columns.
  *
  */
