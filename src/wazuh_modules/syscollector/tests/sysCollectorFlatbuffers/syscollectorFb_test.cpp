@@ -48,7 +48,7 @@ TEST(SyscollectorFbTest, JSONParsePackageUnix)
 TEST(SyscollectorFbTest, JSONParsePackageWin)
 {
     const std::string alert_json =
-        "{\n  agent_info: {\n    agent_id: \"001\",\n    node_name: \"node01\"\n  },\n  data_type: \"state\",\n  data: {\n    attributes_type: \"syscollector_packages\",\n    attributes: {\n      checksum: \"9141d4744f95aad5db1cf8cf17c33c2f7dffed40\",\n      format: \"win\",\n      install_time: \"20230804\",\n      item_id: \"e8cc756531b3adaae0e8a51c6800a681f4e903aa\",\n      name: \"Microsoft Application Amazing Runtime\",\n      location: \"C:\\\\Users\\\\winuser\\\\AppData\\\\Local\\\\Microsoft\\\\Amazing\\\\Application\",\n      scan_time: \"0000/00/00 00:00:00\",\n      vendor: \"Microsoft Application Amazing\",\n      version: \"110.110.110.10.10\"\n    },\n    index: \"e8cc756531b3adaae0e8a51c6800a681f4e903aa\",\n    timestamp: \"\"\n  }\n}\n";
+        "{\n  agent_info: {\n    agent_id: \"001\",\n    node_name: \"node01\"\n  },\n  data_type: \"state\",\n  data: {\n    attributes_type: \"syscollector_packages\",\n    attributes: {\n      checksum: \"9141d4744f95aad5db1cf8cf17c33c2f7dffed40\",\n      format: \"win\",\n      install_time: \"20230804\",\n      item_id: \"e8cc756531b3adaae0e8a51c6800a681f4e903aa\",\n      location: \"C:\\\\Users\\\\winuser\\\\AppData\\\\Local\\\\Microsoft\\\\Amazing\\\\Application\",\n      name: \"Microsoft Application Amazing Runtime\",\n      scan_time: \"0000/00/00 00:00:00\",\n      vendor: \"Microsoft Application Amazing\",\n      version: \"110.110.110.10.10\"\n    },\n    index: \"e8cc756531b3adaae0e8a51c6800a681f4e903aa\",\n    timestamp: \"\"\n  }\n}\n";
 
     flatbuffers::Parser parser;
     std::string schemaFile;
