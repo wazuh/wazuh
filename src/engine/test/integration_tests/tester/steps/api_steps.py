@@ -255,7 +255,7 @@ def step_impl(context, policySync: str):
     tester_response: api_engine.GenericStatus_Response = context.result
     assert policySyncToString[tester_response.session.policy_sync] == policySync, f"{tester_response.session.policy_sync}"
 
-@then('I send a request to the tester to rebuild the "{sessionName}" session and the sync change to "{policySync}" again')
+@then('I send a request to the tester to reload the "{sessionName}" session and the sync change to "{policySync}" again')
 def step_impl(context, sessionName: str, policySync: str):
     request = api_tester.SessionReload_Request()
     request.name = sessionName
