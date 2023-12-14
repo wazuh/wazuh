@@ -28,6 +28,8 @@ debian/cis_debian7.yml
 debian/cis_debian8.yml
 debian/cis_debian9.yml
 debian/cis_debian10.yml
+debian/cis_debian11.yml
+debian/cis_debian12.yml
 mongodb/cis_mongodb_36.yml
 nginx/cis_nginx_1.yml
 oracledb/cis_oracle_database_19c.yml
