@@ -349,8 +349,7 @@ namespace Utils
                                         return columnName == handle->GetName();
                                     }};
 
-            auto it {std::find_if(m_handles.begin(), m_handles.end(), columnMatch)};
-            if (it != m_handles.end())
+            if (const auto it {std::find_if(m_handles.begin(), m_handles.end(), columnMatch)}; it != m_handles.end())
             {
                 return *it;
             }
