@@ -204,3 +204,77 @@ def step_impl(context, response: str, message: str):
         route_response: api_engine.GenericStatus_Response = context.result
         assert route_response.status == api_engine.ERROR, f"{route_response}"
         assert route_response.error == message
+
+# Sixth Scenario
+@when('I send a request to the policy "{policyName}" to add an integration called "{integrationName}"')
+def step_impl(context, policyName: str, integrationName: str):
+    # Query if the integration already exist
+    request = api_policy.AssetGet_Request()
+    request.policy = policyName
+    request.namespace = "system"
+    err, response = api_client.send_recv(request)
+    assert err is None, f"{err}"
+    context.result = ParseDict(response, api_policy.AssetGet_Response())
+    policy_response: api_engine.GenericStatus_Response = context.result
+
+    if integrationName in policy_response.data:
+        request = api_policy.AssetDelete_Request()
+        request.policy = policyName
+        request.asset = integrationName
+        request.namespace = "system"
+        err, response = api_client.send_recv(request)
+        if err:
+            context.result = err
+            print(err)
+            assert False
+    else:
+        # Add new integration
+        command = f"engine-integration add -a {SOCKET_PATH} -n system {RULESET_DIR}/other-wazuh-core-test/"
+        result = subprocess.run(
+            command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        assert result.returncode == 0, f"{result.stderr}"
+
+        # Add integration to policy
+        request = api_policy.AssetPost_Request()
+        request.policy = policyName
+        request.asset = "integration/other-wazuh-core-test/0"
+        request.namespace = "system"
+        err, response = api_client.send_recv(request)
+        if err:
+            context.result = err
+            print(err)
+            assert False
+
+@then('I should receive a route with sync "{policySync}"')
+def step_impl(context, policySync: str):
+    policySyncToString = {
+        0: "SYNC_UNKNOWN",
+        1: "UPDATED",
+        2: "OUTDATED",
+        3: "ERROR"
+    }
+    router_response: api_engine.GenericStatus_Response = context.result
+    assert policySyncToString[router_response.route.policy_sync] == policySync, f"{router_response.route.policy_sync}"
+
+@then('I send a request to the router to reload the "{routeName}" route and the sync change to "{policySync}" again')
+def step_impl(context, routeName: str, policySync: str):
+    request = api_router.RouteReload_Request()
+    request.name = routeName
+    err, response = api_client.send_recv(request)
+    assert err is None, f"{err}"
+    context.result = ParseDict(response, api_engine.GenericStatus_Response())
+
+    request = api_router.RouteGet_Request()
+    request.name = routeName
+    err, response = api_client.send_recv(request)
+    assert err is None, f"{err}"
+    context.result = ParseDict(response, api_router.RouteGet_Response())
+
+    policySyncToString = {
+        0: "SYNC_UNKNOWN",
+        1: "UPDATED",
+        2: "OUTDATED",
+        3: "ERROR"
+    }
+    router_response: api_engine.GenericStatus_Response = context.result
+    assert policySyncToString[router_response.route.policy_sync] == policySync, f"{router_response.route.policy_sync}"
