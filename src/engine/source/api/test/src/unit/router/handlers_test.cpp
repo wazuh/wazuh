@@ -13,13 +13,13 @@
 #include <api/router/handlers.hpp>
 
 #include <api/policy/mockPolicy.hpp>
-#include <api/router/mockRouter.hpp>
+#include <router/mockRouter.hpp>
 
 #include "../../apiAuxiliarFunctions.hpp"
 
 using namespace api::policy::mocks;
-using namespace api::router::mocks;
 using namespace api::router::handlers;
+using namespace router::mocks;
 
 /***
  * @brief Represent the type signature of the all function to test
