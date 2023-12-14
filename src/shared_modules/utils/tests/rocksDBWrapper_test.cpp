@@ -338,3 +338,146 @@ TEST_F(RocksDBWrapperTest, TestCreateFolderRecursively)
     db_wrapper->deleteAll();
     std::filesystem::remove_all(DATABASE_NAME);
 }
+
+/**
+ * @brief Tests the creation of one column.
+ * 
+ */
+TEST_F(RocksDBWrapperTest, CreateColumn)
+{
+    constexpr auto COLUMN_NAME {"column_A"};
+
+    EXPECT_NO_THROW(db_wrapper->createColumn(COLUMN_NAME));
+}
+
+/**
+ * @brief Tests the creation of various columns.
+ * 
+ */
+TEST_F(RocksDBWrapperTest, CreateMultipleColumns)
+{
+    constexpr auto COLUMN_NAME_A {"column_A"};
+    constexpr auto COLUMN_NAME_B {"column_B"};
+    constexpr auto COLUMN_NAME_C {"column_C"};
+
+    EXPECT_NO_THROW(db_wrapper->createColumn(COLUMN_NAME_A));
+    EXPECT_NO_THROW(db_wrapper->createColumn(COLUMN_NAME_B));
+    EXPECT_NO_THROW(db_wrapper->createColumn(COLUMN_NAME_C));
+}
+
+/**
+ * @brief Tests the creation of a column with empty name.
+ * 
+ */
+TEST_F(RocksDBWrapperTest, CreateColumnEmptyNameThrows)
+{
+    constexpr auto COLUMN_NAME {""};
+    EXPECT_THROW(db_wrapper->createColumn(COLUMN_NAME), std::runtime_error);
+}
+
+/**
+ * @brief Test put data into a created column.
+ * 
+ */
+TEST_F(RocksDBWrapperTest, PutIntoColumn)
+{
+    constexpr auto COLUMN_NAME {"column_A"};
+    constexpr auto KEY {"key_A"};
+    constexpr auto VALUE {"value_A"};
+
+    db_wrapper->createColumn(COLUMN_NAME);
+
+    EXPECT_NO_THROW(db_wrapper->put(KEY, VALUE, COLUMN_NAME));
+}
+
+/**
+ * @brief Test put data into an inexistent column.
+ * 
+ */
+TEST_F(RocksDBWrapperTest, PutIntoInexistentColumnThrows)
+{
+    constexpr auto COLUMN_NAME {"column_A"};
+    constexpr auto KEY {"key_A"};
+    constexpr auto VALUE {"value_A"};
+
+    EXPECT_THROW(db_wrapper->put(KEY, VALUE, COLUMN_NAME), std::runtime_error);
+}
+
+/**
+ * @brief Test get data into an inexisten column.
+ * 
+ */
+TEST_F(RocksDBWrapperTest, GetFromInexistentColumnThrows)
+{
+    constexpr auto COLUMN_NAME {"column_A"};
+    constexpr auto KEY {"key_A"};
+    std::string readValue;
+
+    EXPECT_THROW(db_wrapper->get(KEY, readValue, COLUMN_NAME), std::runtime_error);
+}
+
+/**
+ * @brief Test put and get data from a created column.
+ * 
+ */
+TEST_F(RocksDBWrapperTest, PutAndGetFromColumn)
+{
+    constexpr auto COLUMN_NAME {"column_A"};
+    constexpr auto KEY {"key_A"};
+    constexpr auto VALUE {"value_A"};
+    std::string readValue;
+
+    db_wrapper->createColumn(COLUMN_NAME);
+
+    ASSERT_NO_THROW(db_wrapper->put(KEY, VALUE, COLUMN_NAME));
+    ASSERT_TRUE(db_wrapper->get(KEY, readValue, COLUMN_NAME));
+    EXPECT_EQ(readValue, VALUE);
+}
+
+/**
+ * @brief Test put and get data from various created columns.
+ * 
+ */
+TEST_F(RocksDBWrapperTest, PutAndGetFromMultipleColumns)
+{
+    constexpr auto COLUMN_NAME_A {"column_A"};
+    constexpr auto KEY_A {"key_A"};
+    constexpr auto VALUE_A {"value_A"};
+    constexpr auto COLUMN_NAME_B {"column_B"};
+    constexpr auto KEY_B {"key_B"};
+    constexpr auto VALUE_B {"value_B"};
+    std::string readValue;
+
+    db_wrapper->createColumn(COLUMN_NAME_A);
+    db_wrapper->createColumn(COLUMN_NAME_B);
+
+    ASSERT_NO_THROW(db_wrapper->put(KEY_A, VALUE_A, COLUMN_NAME_A));
+    ASSERT_NO_THROW(db_wrapper->put(KEY_B, VALUE_B, COLUMN_NAME_B));
+
+    ASSERT_TRUE(db_wrapper->get(KEY_A, readValue, COLUMN_NAME_A));
+    EXPECT_EQ(readValue, VALUE_A);
+
+    ASSERT_TRUE(db_wrapper->get(KEY_B, readValue, COLUMN_NAME_B));
+    EXPECT_EQ(readValue, VALUE_B);
+}
+
+/**
+ * @brief Test put and get last key value from a created column.
+ * 
+ */
+TEST_F(RocksDBWrapperTest, PutAndGetLastKeyValueFromColumn)
+{
+    constexpr auto COLUMN_NAME {"column_A"};
+    constexpr auto KEY_A {"key_A"};
+    constexpr auto VALUE_A {"value_A"};
+    constexpr auto KEY_B {"key_B"};
+    constexpr auto VALUE_B {"value_B"};
+
+    db_wrapper->createColumn(COLUMN_NAME);
+    db_wrapper->put(KEY_A, VALUE_A, COLUMN_NAME);
+    db_wrapper->put(KEY_B, VALUE_B, COLUMN_NAME);
+
+    const auto lastPair {db_wrapper->getLastKeyValue(COLUMN_NAME)};
+    EXPECT_EQ(lastPair.first, KEY_B);
+    EXPECT_EQ(lastPair.second, VALUE_B);
+}
