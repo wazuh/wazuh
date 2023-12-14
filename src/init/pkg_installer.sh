@@ -8,11 +8,9 @@ if [ "${WAZUH_HOME}" = "/" ]; then
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Execution path is wrong, interrupting upgrade." >> ./logs/upgrade.log
     exit 1
 fi
-TMP_DIR_BACKUP=./tmp_bkp
 
 # Check if there is an upgrade in progress
 declare -a BACKUP_FOLDERS
-[ -d "${TMP_DIR_BACKUP}" ] && BACKUP_FOLDERS+=("${TMP_DIR_BACKUP}")
 [ -d "./backup" ] && BACKUP_FOLDERS+=("./backup")
 for dir in "${BACKUP_FOLDERS[@]}"; do
     ATTEMPTS=5
@@ -25,9 +23,6 @@ for dir in "${BACKUP_FOLDERS[@]}"; do
         fi
     done
 done
-
-# Clean before backup
-rm -rf ${TMP_DIR_BACKUP}/
 
 WAZUH_REVISION=0
 OSSEC_LIST_FILES=""
@@ -116,7 +111,6 @@ function restore_selinux_policy {
     fi
 }
 
-
 # Search for Agent version
 # Agent >= 4.2
 eval $(./bin/wazuh-control info 2>/dev/null)
@@ -129,86 +123,46 @@ if [ -z "${WAZUH_REVISION}" ] ; then
     fi
 fi
 
-
-# Backup start
-BDATE=$(date +"%m-%d-%Y_%H-%M-%S")
-declare -a FOLDERS_TO_BACKUP
-
-echo "$(date +"%Y/%m/%d %H:%M:%S") - Generating Backup." >> ./logs/upgrade.log
-
-# Generate wazuh home directory tree to backup
-[ -d "./active-response" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/active-response)
-[ -d "./bin" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/bin)
-[ -d "./etc" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/etc)
-[ -d "./lib" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/lib)
-[ -d "./queue" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/queue)
-[ -d "./ruleset" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/ruleset)
-[ -d "./wodles" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/wodles)
-[ -d "./agentless" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/agentless)
-[ -d "./logs/ossec" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/logs/ossec)
-[ -d "./var/selinux" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/var/selinux)
-
-for dir in "${FOLDERS_TO_BACKUP[@]}"; do
-    mkdir -p "${TMP_DIR_BACKUP}${dir}"
-    rsync -a --exclude "diff" ${dir}/* "${TMP_DIR_BACKUP}${dir}"
-done
-
-if [ -f $OSSEC_INIT_FILE ]; then
-    mkdir -p "${TMP_DIR_BACKUP}/etc"
-    cp -p $OSSEC_INIT_FILE "${TMP_DIR_BACKUP}/etc"
-fi
-
 # Check if systemd is used
 # RHEL 8 >= services must must be installed in /usr/lib/systemd/system/
 if [ -f /usr/lib/systemd/system/${SERVICE}.service ] && [ ! -h /usr/lib/systemd/system ]; then
     SYSTEMD_SERVICE_UNIT_PATH=/usr/lib/systemd/system/${SERVICE}.service
-    mkdir -p "${TMP_DIR_BACKUP}/usr/lib/systemd/system/"
-    cp -a "${SYSTEMD_SERVICE_UNIT_PATH}" "${TMP_DIR_BACKUP}${SYSTEMD_SERVICE_UNIT_PATH}"
 fi
 # Others
 if [ -f /etc/systemd/system/${SERVICE}.service ] && [ ! -h /etc/systemd/system ]; then
     SYSTEMD_SERVICE_UNIT_PATH=/etc/systemd/system/${SERVICE}.service
-    mkdir -p "${TMP_DIR_BACKUP}/etc/systemd/system/"
-    cp -a "${SYSTEMD_SERVICE_UNIT_PATH}" "${TMP_DIR_BACKUP}${SYSTEMD_SERVICE_UNIT_PATH}"
 fi
 
 # Init backup
 # REHL <= 6 / Amazon linux
 if [ -f "/etc/rc.d/init.d/${SERVICE}" ] && [ ! -h /etc/rc.d/init.d ]; then
     INIT_PATH="/etc/rc.d/init.d/${SERVICE}"
-    mkdir -p "${TMP_DIR_BACKUP}/etc/rc.d/init.d/"
-    cp -a "${INIT_PATH}" "${TMP_DIR_BACKUP}${INIT_PATH}"
 fi
 
 if [ -f "/etc/init.d/${SERVICE}" ] && [ ! -h /etc/init.d ]; then
     INIT_PATH="/etc/init.d/${SERVICE}"
-    mkdir -p "${TMP_DIR_BACKUP}/etc/init.d/"
-    cp -a "${INIT_PATH}" "${TMP_DIR_BACKUP}${INIT_PATH}"
 fi
-
-# Saves modes and owners of the directories
-BACKUP_LIST_FILES=$(find "${TMP_DIR_BACKUP}/" -type d)
-
-while read -r line; do
-    org=$(echo "${line}" | awk "sub(\"${TMP_DIR_BACKUP}\",\"\")")
-    chown --reference=$org $line >> ./logs/upgrade.log 2>&1
-    chmod --reference=$org $line >> ./logs/upgrade.log 2>&1
-done <<< "$BACKUP_LIST_FILES"
-
 
 # Generate Backup
+BDATE=$(date +"%m-%d-%Y_%H-%M-%S")
 mkdir -p ./backup
-if [ "$(ls -A ${TMP_DIR_BACKUP})" ]; then
-    tar czf ./backup/backup_[${BDATE}].tar.gz -C ${TMP_DIR_BACKUP} . >> ./logs/upgrade.log 2>&1
-else
-    echo "$(date +"%Y/%m/%d %H:%M:%S") - Nothing to compress while creating the Backup, interrupting upgrade." >> ./logs/upgrade.log
-    exit 1
-fi
 
-RESULT=$?
-rm -rf ${TMP_DIR_BACKUP}/
+echo "$(date +"%Y/%m/%d %H:%M:%S") - Generating Backup." >> ./logs/upgrade.log
+
+FOLDERS_TO_BACKUP=($WAZUH_HOME/{active-response,bin,etc,lib,queue,ruleset,wodles,agentless,logs/{ossec,wazuh},var/selinux} \
+                   $OSSEC_INIT_FILE \
+                   $SYSTEMD_SERVICE_UNIT_PATH \
+                   $INIT_PATH)
+FOLDERS_TO_EXCLUDE=($WAZUH_HOME/{queue/diff,logs/upgrade.log})
+
+for i in ${FOLDERS_TO_BACKUP[@]}
+do
+    [ -e $i ] && echo $i
+done | xargs tar -C / --exclude=$FOLDERS_TO_EXCLUDE -zcvf ./backup/backup_[${BDATE}].tar.gz >> ./logs/upgrade.log 2>&1
 
 # Check Backup creation
+RESULT=$?
+
 if [ $RESULT -eq 0 ]; then
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Backup generated in ${WAZUH_HOME}/backup/backup_[${BDATE}].tar.gz" >> ./logs/upgrade.log
 else
@@ -222,7 +176,6 @@ if [ "${WAZUH_REVISION}" -lt "40300" ]; then
     RESTORE_OSSEC_OWN=1
     OSSEC_LIST_FILES=$(find ./ -printf '%u:%g ./%P\n' | grep ':ossec\|^ossec')
 fi
-
 
 # Installing upgrade
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade started." >> ./logs/upgrade.log
@@ -263,7 +216,7 @@ else
 
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Deleting upgrade files..." >> ./logs/upgrade.log
     for dir in "${FOLDERS_TO_BACKUP[@]}"; do
-        rm -rf ${dir} >> ./logs/upgrade.log 2>&1
+        rm -rf "${dir}" >> ./logs/upgrade.log 2>&1
     done
 
     # Cleaning for old versions
@@ -284,13 +237,16 @@ else
 
     # Restore backup
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Restoring backup...." >> ./logs/upgrade.log
-    tar xzf ./backup/backup_[${BDATE}].tar.gz -C / >> ./logs/upgrade.log 2>&1
+    tar -xvf ./backup/backup_[${BDATE}].tar.gz -C / >> ./logs/upgrade.log 2>&1
     RESULT=$?
 
     if [ $RESULT -ne 0 ]; then
         echo "$(date +"%Y/%m/%d %H:%M:%S") - Error uncompressing the Backup, it has not been possible to restore the installation." >> ./logs/upgrade.log
         exit 1
     fi
+
+    # Restore diff folder
+    install -d -m 0750 -o wazuh -g wazuh $WAZUH_HOME/queue/diff
 
     # Assign the ossec ownership, if appropriate
     if [ $RESTORE_OSSEC_OWN -eq 1 ]; then
