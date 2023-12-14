@@ -22,7 +22,7 @@ Feature: Router Routes API Management
     When I send a request to get the route "default"
     Then I should receive a list of routes with their filters, priorities, and security policies
 
-  Scenario: Check invalid priorities -Sessions- via API
+  Scenario: Check invalid priorities via API
     Given I am authenticated with the router API "default"
     When I send a request to update the priority from route "default" to value of "0"
     Then I should receive an error response indicating that "Priority of the route cannot be 0"
@@ -31,3 +31,10 @@ Feature: Router Routes API Management
     Given I am authenticated with the router API "default"
     When I send a request to update the priority from route "default" to value of "1001"
     Then I should receive an error response indicating that "Priority of the route cannot be greater than 1000"
+
+  Scenario: Change sync of specific route via API
+    Given I am authenticated with the router API "default"
+    When I send a request to the policy "policy/wazuh/0" to add an integration called "integration/other-wazuh-core-test/0"
+    And I send a request to get the route "default"
+    Then I should receive a route with sync "OUTDATED"
+    And I send a request to the router to reload the "default" route and the sync change to "UPDATED" again
