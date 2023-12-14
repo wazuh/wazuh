@@ -146,13 +146,15 @@ Install()
         WazuhUpgrade $INSTYPE
 
         # Update versions previous to Wazuh 4.8
-        local OSSEC_CONFIGURATION_FILE="$USER_DIR/etc/ossec.conf"
-        local VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detection.manager.template"
-        local INDEXER_TEMPLATE="./etc/templates/config/generic/wodle-indexer.manager.template"
+        if [ "X$INSTYPE" = "Xserver" ]; then
+            local OSSEC_CONFIGURATION_FILE="$USER_DIR/etc/ossec.conf"
+            local VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detection.manager.template"
+            local INDEXER_TEMPLATE="./etc/templates/config/generic/wodle-indexer.manager.template"
 
-        # Load vulnerability detector replacer commands
-        . ./src/init/replace_vulnerability_detector.sh
-        updateVulnerabilityDetector $OSSEC_CONFIGURATION_FILE $VULN_TEMPLATE $INDEXER_TEMPLATE
+            # Load vulnerability detector replacer commands
+            . ./src/init/replace_vulnerability_detector.sh
+            updateVulnerabilityDetector $OSSEC_CONFIGURATION_FILE $VULN_TEMPLATE $INDEXER_TEMPLATE
+        fi
 
         # Update versions previous to Wazuh 1.2
         UpdateOldVersions
