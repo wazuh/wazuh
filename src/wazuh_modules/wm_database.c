@@ -119,17 +119,21 @@ void* wm_database_main(wm_database *data) {
     // agents synchronization with the database using the keys. In advance,
     // the agent addition and removal from the database will be held by authd
     // in the master.
+#ifndef LOCAL
     wm_sync_agents();
+#endif
 
     // Groups synchronization with the database
     wdb_update_groups(SHAREDCFG_DIR, &wdb_wmdb_sock);
 
     // Legacy agent-group files need to be synchronized with the database
     // and then removed in case an upgrade has just been performed.
+#ifndef LOCAL
     wm_sync_legacy_groups_files();
 
     // Remove dangling agent databases
     wm_clean_dangling_wdb_dbs();
+#endif
 
 #ifdef INOTIFY_ENABLED
     if (data->real_time) {
