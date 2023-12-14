@@ -370,7 +370,7 @@ TEST_F(RocksDBWrapperTest, CreateMultipleColumns)
 TEST_F(RocksDBWrapperTest, CreateColumnEmptyNameThrows)
 {
     constexpr auto COLUMN_NAME {""};
-    EXPECT_THROW(db_wrapper->createColumn(COLUMN_NAME), std::runtime_error);
+    EXPECT_THROW(db_wrapper->createColumn(COLUMN_NAME), std::invalid_argument);
 }
 
 /**

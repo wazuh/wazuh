@@ -73,13 +73,15 @@ namespace Utils
         /**
          * @brief Creates a new column family in the database.
          *
+         * @note The column handle created is also added to the handles list to be then accessible by other methods.
+         *
          * @param columnName Name of the new column.
          */
         void createColumn(const std::string& columnName)
         {
             if (columnName.empty())
             {
-                throw std::runtime_error {"Column name is empty"};
+                throw std::invalid_argument {"Column name is empty"};
             }
 
             rocksdb::ColumnFamilyHandle* pColumnFamily;
