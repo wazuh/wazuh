@@ -34,7 +34,7 @@ Feature: Tester API Management
     When I send a request to the policy "policy/wazuh/0" to add an integration called "integration/other-wazuh-core-test/0"
     And I send a request to get the session "test"
     Then I should receive a session with sync "OUTDATED"
-    And I send a request to the tester to rebuild the "test" session and the sync change to "UPDATED" again
+    And I send a request to the tester to reload the "test" session and the sync change to "UPDATED" again
 
   Scenario: Send events to specific session without debug session via API
     Given I want create a session called "test" with a policy "policy/wazuh/0"
