@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Copyright (C) 2015, Wazuh Inc.
 # Installation script for Wazuh
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
@@ -144,10 +144,14 @@ Install()
     # If update, start Wazuh
     if [ "X${update_only}" = "Xyes" ]; then
         WazuhUpgrade $INSTYPE
+        
         # Update versions previous to Wazuh 4.8
         OSSEC_CONFIGURATION_FILE="$USER_DIR/etc/ossec.conf"
-        source ./src/init/replace_vulnerability_detector.sh
+        
+        # Load vulnerability detector replacer commands
+        . ./src/init/replace_vulnerability_detector.sh
         updateVulnerabilityDetector $OSSEC_CONFIGURATION_FILE
+
         # Update versions previous to Wazuh 1.2
         UpdateOldVersions
         echo "Starting Wazuh..."
