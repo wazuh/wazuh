@@ -68,7 +68,7 @@ set(TEST_SRC_UNIT_DIR ${TEST_SRC_DIR}/unit)
 # Mocks
 add_library(api_mocks INTERFACE)
 target_include_directories(api_mocks INTERFACE ${TEST_MOCK_DIR})
-target_link_libraries(api_mocks INTERFACE gmock api::iapi router::router)
+target_link_libraries(api_mocks INTERFACE gmock api::iapi)
 add_library(api::mocks ALIAS api_mocks)
 
 add_executable(api_utest
@@ -88,6 +88,6 @@ add_executable(api_utest
 
 )
 
-target_link_libraries(api_utest gtest_main base api schemf::mocks test_mocks store::mocks rbac::mocks api::mocks builder::mocks kvdb::mocks)
+target_link_libraries(api_utest gtest_main base api schemf::mocks test_mocks store::mocks rbac::mocks api::mocks builder::mocks kvdb::mocks router::mocks)
 gtest_discover_tests(api_utest)
 endif(ENGINE_BUILD_TEST)

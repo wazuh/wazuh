@@ -39,6 +39,18 @@ decoders:
 EOM
 }
 
+create_other_dummy_integration() {
+    local other_wazuh_core_test="$ENVIRONMENT_DIR/engine/other-wazuh-core-test"
+    mkdir -p "$other_wazuh_core_test/decoders" "$other_wazuh_core_test/filters"
+    echo "name: decoder/other-test-message/0" > "$other_wazuh_core_test/decoders/other-test-message.yml"
+    echo "name: filter/allow-all/0" > "$other_wazuh_core_test/filters/allow-all.yml"
+    cat <<- EOM > "$other_wazuh_core_test/manifest.yml"
+name: integration/other-wazuh-core-test/0
+decoders:
+- decoder/other-test-message/0
+EOM
+}
+
 main() {
     if [ -z "$environment_directory" ]; then
         echo "environment_directory is optional. For default is wazuh directory. Usage: $0 -e <environment_directory>"
@@ -51,5 +63,6 @@ main() {
     update_conf
 
     create_dummy_integration
+    create_other_dummy_integration
 }
 main "$@"

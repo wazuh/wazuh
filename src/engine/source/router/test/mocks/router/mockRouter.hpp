@@ -5,7 +5,7 @@
 
 #include <router/iapi.hpp>
 
-namespace api::router::mocks
+namespace router::mocks
 {
 
 class MockRouterAPI : public ::router::IRouterAPI

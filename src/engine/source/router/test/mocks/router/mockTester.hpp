@@ -5,7 +5,7 @@
 
 #include <router/iapi.hpp>
 
-namespace api::tester::mocks
+namespace tester::mocks
 {
 
 class MockTesterAPI : public ::router::ITesterAPI
