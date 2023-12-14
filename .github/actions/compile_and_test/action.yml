@@ -19,7 +19,7 @@ runs:
       - name: Install dependencies
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          packages: valgrind
+          packages: valgrind libc6-dbg
           version: 1.0
 
       # Dependencies for coverage:
