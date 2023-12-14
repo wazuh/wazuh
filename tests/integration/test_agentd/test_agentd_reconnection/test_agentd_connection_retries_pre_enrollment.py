@@ -56,7 +56,6 @@ from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WIND
 from wazuh_testing.modules.agentd.patterns import * 
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
-from wazuh_testing.utils.services import control_service
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
 from .. import wait_keepalive, add_custom_key, kill_server
@@ -78,9 +77,11 @@ else:
     local_internal_options = {AGENTD_DEBUG: '2'}
 local_internal_options.update({AGENTD_TIMEOUT: '5'})
 
+daemons_handler_configuration = {'all_daemons': True}
+
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_agentd_connection_retries_pre_enrollment(test_metadata, set_wazuh_configuration, configure_local_internal_options, truncate_monitored_files):
+def test_agentd_connection_retries_pre_enrollment(test_metadata, set_wazuh_configuration, configure_local_internal_options, truncate_monitored_files, daemons_handler):
     '''
     description: Check how the agent behaves when the 'wazuh-remoted' daemon is not available
                  and performs multiple connection attempts to it. For this, the agent starts
@@ -108,6 +109,9 @@ def test_agentd_connection_retries_pre_enrollment(test_metadata, set_wazuh_confi
         - truncate_monitored_files:
             type: fixture
             brief: Reset the 'ossec.log' file and start a new monitor.
+        - daemons_handler:
+            type: fixture
+            brief: Handler of Wazuh daemons.  
 
     assertions:
         - Verify that the agent enrollment is successful.
@@ -124,14 +128,8 @@ def test_agentd_connection_retries_pre_enrollment(test_metadata, set_wazuh_confi
         - ssl
         - keys
     '''
-    # Stop target Agent
-    control_service('stop')
-
     # Add dummy key in order to communicate with RemotedSimulator
     add_custom_key()
-    
-    # Start service
-    control_service('start')
 
     # Start RemotedSimulator
     remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])

@@ -59,7 +59,6 @@ from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
-from wazuh_testing.utils.services import control_service
 from wazuh_testing.utils import callbacks
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
@@ -82,9 +81,11 @@ else:
     local_internal_options = {AGENTD_DEBUG: '2'}
 local_internal_options.update({AGENTD_TIMEOUT: '5'})
 
+daemons_handler_configuration = {'all_daemons': True}
+
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuration, configure_local_internal_options, truncate_monitored_files, remove_keys_file):
+def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuration, configure_local_internal_options, truncate_monitored_files, remove_keys_file, daemons_handler):
     '''
     description: Check how the agent behaves when it makes multiple enrollment attempts
                  before getting its key. For this, the agent starts without keys and
@@ -112,6 +113,12 @@ def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuratio
         - truncate_monitored_files:
             type: fixture
             brief: Reset the 'ossec.log' file and start a new monitor.
+        - remove_keys_file:
+            type: fixture
+            brief: Deletes keys file if test configuration request it
+        - daemons_handler:
+            type: fixture
+            brief: Handler of Wazuh daemons.    
 
     assertions:
         - Verify that the agent enrollment is successful.
@@ -130,25 +137,20 @@ def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuratio
         - ssl
         - keys
     '''
-    # Stop target Agent
-    control_service('stop')
-
-    # Preapre test
-    authd_server = AuthdSimulator()
-    authd_server.start()
-
-    # Start whole Agent service to check other daemons status after initialization
-    control_service('start')
-
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_REQUESTING_KEY), timeout = 300, accumulations = 4)
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_REQUESTING_KEY,{'IP':''}), timeout = 300, accumulations = 4)
     assert (wazuh_log_monitor.callback_result != None), f'Enrollment retries was not sent'
 
-    remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
-    remoted_server.start()
-
+    # Start Authd simulador
+    authd_server = AuthdSimulator()
+    authd_server.start()
+    
     # Wait succesfull enrollment
     wait_enrollment()
+
+    # Start Remoted simulador
+    remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
+    remoted_server.start()
     
     # Wait until Agent is notifying Manager
     wait_keepalive()

@@ -4,7 +4,7 @@
     PROTOCOL: tcp
   metadata:
     PROTOCOL: tcp
-    CLEAN_KEYS: true
+    DELETE_KEYS_FILE: true
     SIMULATOR_MODES:
       0: INVALID_MSG
       1: INVALID_MSG
@@ -22,7 +22,7 @@
     PROTOCOL: tcp
   metadata:
     PROTOCOL: tcp
-    CLEAN_KEYS: true
+    DELETE_KEYS_FILE: true
     SIMULATOR_MODES:
       0: INVALID_MSG
       1: INVALID_MSG
@@ -40,7 +40,7 @@
     PROTOCOL: tcp
   metadata:
     PROTOCOL: tcp
-    CLEAN_KEYS: true
+    DELETE_KEYS_FILE: true
     SIMULATOR_MODES:
       0: INVALID_MSG
       1: INVALID_MSG
@@ -58,7 +58,7 @@
     PROTOCOL: tcp
   metadata:
     PROTOCOL: tcp
-    CLEAN_KEYS: true
+    DELETE_KEYS_FILE: true
     SIMULATOR_MODES:
       0: ACCEPT
       1: ACCEPT
@@ -76,7 +76,7 @@
     PROTOCOL: tcp
   metadata:
     PROTOCOL: tcp
-    CLEAN_KEYS: true
+    DELETE_KEYS_FILE: true
     SIMULATOR_MODES:
       0: CLOSE
       1: ACCEPT
@@ -94,7 +94,7 @@
     PROTOCOL: tcp
   metadata:
     PROTOCOL: tcp
-    CLEAN_KEYS: true
+    DELETE_KEYS_FILE: true
     SIMULATOR_MODES:
       0: CLOSE
       1: CLOSE
@@ -112,7 +112,7 @@
     PROTOCOL: tcp
   metadata:
     PROTOCOL: tcp
-    CLEAN_KEYS: true
+    DELETE_KEYS_FILE: true
     SIMULATOR_MODES:
       0: CLOSE
       1: CLOSE
@@ -130,7 +130,7 @@
     PROTOCOL: udp
   metadata:
     PROTOCOL: udp
-    CLEAN_KEYS: true
+    DELETE_KEYS_FILE: true
     SIMULATOR_MODES:
       0: ACCEPT
       1: ACCEPT
@@ -148,7 +148,7 @@
     PROTOCOL: udp
   metadata:
     PROTOCOL: udp
-    CLEAN_KEYS: true
+    DELETE_KEYS_FILE: true
     SIMULATOR_MODES:
       0: WRONG_KEY
       1: ACCEPT

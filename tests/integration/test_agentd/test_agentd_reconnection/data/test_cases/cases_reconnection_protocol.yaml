@@ -4,7 +4,7 @@
     PROTOCOL: 'tcp'
   metadata:
     PROTOCOL: 'tcp'
-    CLEAN_KEYS: true
+    DELETE_KEYS_FILE: true
 
 - name: UDP protocol
   description: Check connection via UDP
@@ -12,4 +12,4 @@
     PROTOCOL: 'udp'
   metadata:
     PROTOCOL: 'udp'
-    CLEAN_KEYS: true
+    DELETE_KEYS_FILE: true

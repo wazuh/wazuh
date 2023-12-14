@@ -56,7 +56,6 @@ from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WIND
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
-from wazuh_testing.utils.services import control_service
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
 from .. import wait_keepalive, wait_enrollment, kill_server, wait_enrollment_try
@@ -78,38 +77,40 @@ else:
     local_internal_options = {AGENTD_DEBUG: '2'}
 local_internal_options.update({AGENTD_TIMEOUT: '5'})
 
+daemons_handler_configuration = {'all_daemons': True}
+
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_agentd_reconection_enrollment_no_keys(test_metadata, set_wazuh_configuration, configure_local_internal_options, truncate_monitored_files, remove_keys_file):
+def test_agentd_reconection_enrollment_no_keys(test_metadata, set_wazuh_configuration, configure_local_internal_options, truncate_monitored_files, clean_keys, daemons_handler):
     '''
-    description: Check how the agent behaves when losing communication with
+        description: Check how the agent behaves when losing communication with
                  the 'wazuh-remoted' daemon and a new enrollment is sent to
                  the 'wazuh-authd' daemon.
-                 In this case, the agent has its 'client.keys' file empty.
-
-                 This test covers the scenario of Agent starting without keys in client.keys file
-                 and an enrollment is sent to Authd to start communicating with Remoted
+                 In this case, the agent has its 'client.keys' file empty
 
     wazuh_min_version: 4.2.0
 
     tier: 0
 
-    parameters:
-        - configure_authd_server:
-            type: fixture
-            brief: Initializes a simulated 'wazuh-authd' connection.
-        - configure_environment:
+   parameters:
+        - test_metadata:
+            type: data
+            brief: Configuration cases.
+        - set_wazuh_configuration:
             type: fixture
             brief: Configure a custom environment for testing.
-        - get_configuration:
+        - configure_local_internal_options:
             type: fixture
-            brief: Get configurations from the module.
-        - teardown:
+            brief: Set internal configuration for testing.
+        - truncate_monitored_files:
             type: fixture
-            brief: Stop the Remoted server
-        - remove_keys_file:
+            brief: Reset the 'ossec.log' file and start a new monitor.
+        - clean_keys:
             type: fixture
-            brief: Deletes keys file if test configuration request it 
+            brief: Cleans keys file content
+        - daemons_handler:
+            type: fixture
+            brief: Handler of Wazuh daemons. 
 
     assertions:
         - Verify that the agent enrollment is successful.
@@ -127,15 +128,9 @@ def test_agentd_reconection_enrollment_no_keys(test_metadata, set_wazuh_configur
         - ssl
         - keys
     '''
-    # Stop target Agent
-    control_service('stop')
-
     # Prepare test
     authd_server = AuthdSimulator()
     authd_server.start()
-
-    # Start target Agent
-    control_service('start')
 
     # Wait until Agent asks keys for the first time
     wait_enrollment()

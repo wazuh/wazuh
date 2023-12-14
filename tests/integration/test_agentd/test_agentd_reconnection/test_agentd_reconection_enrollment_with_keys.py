@@ -53,9 +53,9 @@ import sys
 
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG, AGENTD_TIMEOUT
+from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
-from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template, change_internal_options
-from wazuh_testing.utils.services import control_service
+from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
 from .. import wait_keepalive, add_custom_key, wait_enrollment_try, kill_server
@@ -77,35 +77,40 @@ else:
     local_internal_options = {AGENTD_DEBUG: '2'}
 local_internal_options.update({AGENTD_TIMEOUT: '5'})
 
+daemons_handler_configuration = {'all_daemons': True}
+
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_agentd_reconection_enrollment_with_keys(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options, truncate_monitored_files):
+def test_agentd_reconection_enrollment_with_keys(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options, truncate_monitored_files, daemons_handler):
     '''
-    description: Check how the agent behaves when losing communication with
+       description: Check how the agent behaves when losing communication with
                  the 'wazuh-remoted' daemon and a new enrollment is sent to
                  the 'wazuh-authd' daemon.
                  In this case, the agent starts with keys.
-                 
-                 This test covers the scenario of Agent starting with keys,
-                 when misses communication with Remoted and a new enrollment is sent to Authd.
 
     wazuh_min_version: 4.2.0
 
     tier: 0
 
     parameters:
-        - configure_authd_server:
-            type: fixture
-            brief: Initializes a simulated wazuh-authd connection.
-        - configure_environment:
+        - test_metadata:
+            type: data
+            brief: Configuration cases.
+        - set_wazuh_configuration:
             type: fixture
             brief: Configure a custom environment for testing.
-        - get_configuration:
+        - configure_local_internal_options:
             type: fixture
-            brief: Get configurations from the module.
-        - teardown:
+            brief: Set internal configuration for testing.
+        - truncate_monitored_files:
             type: fixture
-            brief: Stop the Remoted server
+            brief: Reset the 'ossec.log' file and start a new monitor.
+        - remove_keys_file:
+            type: fixture
+            brief: Deletes keys file if test configuration request it
+        - daemons_handler:
+            type: fixture
+            brief: Handler of Wazuh daemons.
 
     assertions:
         - Verify that the agent enrollment is successful.
@@ -123,18 +128,12 @@ def test_agentd_reconection_enrollment_with_keys(test_configuration, test_metada
         - ssl
         - keys
     '''
-    # Stop target Agent
-    control_service('stop')
+    #Prepare test
+    add_custom_key()
 
     # Start RemotedSimulator
     remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
     remoted_server.start()
-
-    #Prepare test
-    add_custom_key()
-
-    # Start target Agent
-    control_service('start')
 
     # Wait until Agent is notifying Manager
     wait_keepalive()
@@ -145,6 +144,10 @@ def test_agentd_reconection_enrollment_with_keys(test_configuration, test_metada
     # Start rejecting Agent
     remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'], mode = 'WRONG_KEY')
     remoted_server.start()
+
+    # Start AuthdSimulator
+    authd_server = AuthdSimulator()
+    authd_server.start()
 
     # Wait until Agent asks a new key to enrollment
     wait_enrollment_try()
@@ -158,3 +161,7 @@ def test_agentd_reconection_enrollment_with_keys(test_configuration, test_metada
 
     # Wait until Agent is notifying Manager
     wait_keepalive()
+
+    # Reset simulator
+    kill_server(remoted_server)
+    kill_server(authd_server)

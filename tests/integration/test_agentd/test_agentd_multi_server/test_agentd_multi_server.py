@@ -82,7 +82,7 @@ local_internal_options.update({AGENTD_TIMEOUT: '5'})
 """
 How does this test work:
     - PROTOCOL: tcp/udp
-    - CLEAN_KEYS: whatever start with an empty client.keys file or not
+    - DELETE_KEYS_FILE: whatever start with an empty client.keys file or not
     - SIMULATOR MODES: for each simulator will define a mode
     - AUTHD_PREV_MODE: represents the previous state of the authd daemon,
         - ACCEPT means it already has keys, REJECT means no keys
