@@ -74,6 +74,7 @@ protected:
     {
         int lastOffset {};               ///< Last available offset from CTI.
         std::string lastSnapshotLink {}; ///< Last snapshot URL from CTI.
+        int lastSnapshotOffset {};       ///< Last offset within the last snapshot.
     };
 
     /**
@@ -94,6 +95,7 @@ protected:
                                   parameters.lastOffset = responseData.at("last_offset").get<int>();
                                   parameters.lastSnapshotLink =
                                       responseData.at("last_snapshot_link").get<std::string>();
+                                  parameters.lastSnapshotOffset = responseData.at("last_snapshot_offset").get<int>();
                               }};
 
         // Make a get request to the API to get the consumer offset.
@@ -101,6 +103,7 @@ protected:
 
         logDebug2(WM_CONTENTUPDATER, "CTI last offset: '%d'", parameters.lastOffset);
         logDebug2(WM_CONTENTUPDATER, "CTI last snapshot link: '%s'", parameters.lastSnapshotLink.c_str());
+        logDebug2(WM_CONTENTUPDATER, "CTI snapshot last offset: '%d'", parameters.lastSnapshotOffset);
 
         return parameters;
     }

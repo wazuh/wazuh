@@ -87,6 +87,8 @@ TEST_F(CtiSnapshotDownloaderTest, SnapshotDownload)
     expectedData["stageStatus"] = OK_STATUS;
     expectedData["type"] = CONTENT_TYPE;
 
+    constexpr auto EXPECTED_CURRENT_OFFSET {3};
+    EXPECT_EQ(m_spUpdaterContext->currentOffset, EXPECTED_CURRENT_OFFSET);
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
     EXPECT_TRUE(std::filesystem::exists(expectedContentPath));
 }
@@ -110,6 +112,8 @@ TEST_F(CtiSnapshotDownloaderTest, SnapshotDownloadWithRetry)
     expectedData["stageStatus"] = OK_STATUS;
     expectedData["type"] = CONTENT_TYPE;
 
+    constexpr auto EXPECTED_CURRENT_OFFSET {3};
+    EXPECT_EQ(m_spUpdaterContext->currentOffset, EXPECTED_CURRENT_OFFSET);
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
     EXPECT_TRUE(std::filesystem::exists(expectedContentPath));
 }

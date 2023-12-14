@@ -18,6 +18,7 @@
 #include "routerProvider.hpp"
 #include "utils/rocksDBWrapper.hpp"
 #include <memory>
+#include <utility>
 
 /**
  * @brief In charge of initializing the content updater orchestration.
@@ -91,6 +92,14 @@ public:
                 spUpdaterContext->currentOffset = 0;
             }
 
+            // If an offset download is requested and the current offset is '0', a snapshot will be downloaded with
+            // the full content to avoid downloading many offsets at once.
+            const auto& contentSource {m_spBaseContext->configData.at("contentSource").get_ref<const std::string&>()};
+            if (0 == spUpdaterContext->currentOffset && "cti-offset" == contentSource)
+            {
+                runFullContentDownload(spUpdaterContext);
+            }
+
             // Run the updater chain
             m_spUpdaterOrchestration->handleRequest(spUpdaterContext);
         }
@@ -119,6 +128,30 @@ private:
     void cleanContext() const
     {
         m_spBaseContext->downloadedFileHash.clear();
+    }
+
+    /**
+     * @brief Creates and triggers a new orchestration that downloads a snapshot from CTI.
+     *
+     * @param spUpdaterContext Updater context.
+     */
+    void runFullContentDownload(std::shared_ptr<UpdaterContext> spUpdaterContext) const
+    {
+        logDebug1(WM_CONTENTUPDATER, "Performing full-content download");
+
+        // Set new configuration.
+        auto fullContentConfig = spUpdaterContext->spUpdaterBaseContext->configData;
+        fullContentConfig.at("contentSource") = "cti-snapshot";
+        fullContentConfig.at("compressionType") = "zip";
+
+        // Copy original data.
+        auto originalData = spUpdaterContext->data;
+
+        // Trigger orchestration.
+        FactoryContentUpdater::create(fullContentConfig)->handleRequest(spUpdaterContext);
+
+        // Restore original data.
+        spUpdaterContext->data = std::move(originalData);
     }
 };
 

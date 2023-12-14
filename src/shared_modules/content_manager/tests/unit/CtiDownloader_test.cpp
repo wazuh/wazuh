@@ -47,10 +47,12 @@ private:
             getCtiBaseParameters(context.spUpdaterBaseContext->configData.at("url").get_ref<const std::string&>())};
         m_lastOffset = parameters.lastOffset;
         m_lastSnapshotLink = parameters.lastSnapshotLink;
+        m_lastSnapshotOffset = parameters.lastSnapshotOffset;
     }
 
     int m_lastOffset {DEFAULT_LAST_OFFSET};                      ///< Last offset downloaded from CTI.
     std::string m_lastSnapshotLink {DEFAULT_LAST_SNAPSHOT_LINK}; ///< Last snapshot link downloaded from CTI.
+    int m_lastSnapshotOffset {DEFAULT_LAST_OFFSET};              ///< Last offset within the snapshot.
 
 public:
     /**
@@ -71,6 +73,16 @@ public:
     int getLastOffset() const
     {
         return m_lastOffset;
+    }
+
+    /**
+     * @brief Returns the snapshot last offset.
+     *
+     * @return int Last snapshot offset.
+     */
+    int getLastSnapshotOffset() const
+    {
+        return m_lastSnapshotOffset;
     }
 
     /**
@@ -146,6 +158,7 @@ TEST_F(CtiDownloaderTest, BaseParametersDownload)
     // Check expected base parameters.
     EXPECT_EQ(downloader.getLastOffset(), 3);
     EXPECT_EQ(downloader.getLastSnapshotLink(), "localhost:4444/" + SNAPSHOT_FILE_NAME);
+    EXPECT_EQ(downloader.getLastSnapshotOffset(), 3);
 }
 
 /**
@@ -172,6 +185,7 @@ TEST_F(CtiDownloaderTest, BaseParametersDownloadWithRetry)
     // Check expected base parameters.
     EXPECT_EQ(downloader.getLastOffset(), 3);
     EXPECT_EQ(downloader.getLastSnapshotLink(), "localhost:4444/" + SNAPSHOT_FILE_NAME);
+    EXPECT_EQ(downloader.getLastSnapshotOffset(), 3);
 }
 
 /**
@@ -235,4 +249,5 @@ TEST_F(CtiDownloaderTest, BaseParametersDownloadInterrupted)
     // Check expected base parameters.
     EXPECT_EQ(downloader.getLastOffset(), DEFAULT_LAST_OFFSET);
     EXPECT_EQ(downloader.getLastSnapshotLink(), DEFAULT_LAST_SNAPSHOT_LINK);
+    EXPECT_EQ(downloader.getLastSnapshotOffset(), DEFAULT_LAST_OFFSET);
 }
