@@ -13,13 +13,13 @@
 #define _ROCKS_DB_WRAPPER_HPP
 
 #include "rocksDBIterator.hpp"
-#include <filesystem>
-#include <rocksdb/db.h>
-#include <string>
-#include <memory>
-#include <vector>
 #include <algorithm>
+#include <filesystem>
+#include <memory>
+#include <rocksdb/db.h>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 namespace Utils
 {
@@ -61,19 +61,18 @@ namespace Utils
 
         /**
          * @brief Class destructor. Frees column family handles.
-         * 
+         *
          */
         ~RocksDBWrapper()
         {
-            std::for_each(m_handles.begin(), m_handles.end(), [this](rocksdb::ColumnFamilyHandle* handle)
-            {
-                m_db->DestroyColumnFamilyHandle(handle);
-            });
+            std::for_each(m_handles.begin(),
+                          m_handles.end(),
+                          [this](rocksdb::ColumnFamilyHandle* handle) { m_db->DestroyColumnFamilyHandle(handle); });
         }
 
         /**
          * @brief Creates a new column family in the database.
-         * 
+         *
          * @param columnName Name of the new column.
          */
         void createColumn(const std::string& columnName)
@@ -87,7 +86,7 @@ namespace Utils
             const auto status {m_db->CreateColumnFamily(rocksdb::ColumnFamilyOptions(), columnName, &pColumnFamily)};
             if (!status.ok())
             {
-                throw std::runtime_error {"Couldn't create column family: " + std::string{status.getState()}};
+                throw std::runtime_error {"Couldn't create column family: " + std::string {status.getState()}};
             }
 
             m_handles.push_back(pColumnFamily);
@@ -113,7 +112,7 @@ namespace Utils
          * @param key Key to put.
          * @param value Value to put.
          * @param columnName Column name where the put will be performed. If empty, the default column will be used.
-         * 
+         *
          * @note If the key already exists, the value will be overwritten.
          */
         void put(const std::string& key, const rocksdb::Slice& value, const std::string& columnName = "")
@@ -210,7 +209,7 @@ namespace Utils
 
         /**
          * @brief Get the last key-value pair from the database.
-         * 
+         *
          * @param columnName Column name from where to get. If empty, the default column will be used.
          *
          * @return std::pair<std::string, rocksdb::Slice> Last key-value pair.
@@ -219,7 +218,8 @@ namespace Utils
          */
         std::pair<std::string, rocksdb::Slice> getLastKeyValue(const std::string& columnName = "")
         {
-            std::unique_ptr<rocksdb::Iterator> it(m_db->NewIterator(rocksdb::ReadOptions(), getColumnFamilyHandle(columnName)));
+            std::unique_ptr<rocksdb::Iterator> it(
+                m_db->NewIterator(rocksdb::ReadOptions(), getColumnFamilyHandle(columnName)));
 
             it->SeekToLast();
             if (it->Valid())
@@ -333,7 +333,7 @@ namespace Utils
 
         /**
          * @brief Returns the column family handle identified by its name.
-         * 
+         *
          * @param columnName Name of the column family. If empty, the default handle is returned.
          * @return rocksdb::ColumnFamilyHandle* Column family handle pointer.
          */
@@ -341,21 +341,20 @@ namespace Utils
         {
             if (columnName.empty())
             {
-                return m_db->DefaultColumnFamily();  
+                return m_db->DefaultColumnFamily();
             }
 
             const auto columnMatch {[&columnName](const rocksdb::ColumnFamilyHandle* handle)
-                {
-                    return columnName == handle->GetName();      
-                }
-            };
+                                    {
+                                        return columnName == handle->GetName();
+                                    }};
 
             auto it {std::find_if(m_handles.begin(), m_handles.end(), columnMatch)};
             if (it != m_handles.end())
             {
                 return *it;
             }
-            
+
             throw std::runtime_error {"Couldn't find column family: '" + columnName + "'"};
         }
     };

@@ -331,9 +331,7 @@ TEST_F(RocksDBWrapperTest, TestCreateFolderRecursively)
 
     std::optional<Utils::RocksDBWrapper> db_wrapper;
 
-    EXPECT_NO_THROW({
-        db_wrapper = Utils::RocksDBWrapper(DATABASE_NAME);
-    });
+    EXPECT_NO_THROW({ db_wrapper = Utils::RocksDBWrapper(DATABASE_NAME); });
 
     db_wrapper->deleteAll();
     std::filesystem::remove_all(DATABASE_NAME);
@@ -341,7 +339,7 @@ TEST_F(RocksDBWrapperTest, TestCreateFolderRecursively)
 
 /**
  * @brief Tests the creation of one column.
- * 
+ *
  */
 TEST_F(RocksDBWrapperTest, CreateColumn)
 {
@@ -352,7 +350,7 @@ TEST_F(RocksDBWrapperTest, CreateColumn)
 
 /**
  * @brief Tests the creation of various columns.
- * 
+ *
  */
 TEST_F(RocksDBWrapperTest, CreateMultipleColumns)
 {
@@ -367,7 +365,7 @@ TEST_F(RocksDBWrapperTest, CreateMultipleColumns)
 
 /**
  * @brief Tests the creation of a column with empty name.
- * 
+ *
  */
 TEST_F(RocksDBWrapperTest, CreateColumnEmptyNameThrows)
 {
@@ -377,7 +375,7 @@ TEST_F(RocksDBWrapperTest, CreateColumnEmptyNameThrows)
 
 /**
  * @brief Test put data into a created column.
- * 
+ *
  */
 TEST_F(RocksDBWrapperTest, PutIntoColumn)
 {
@@ -392,7 +390,7 @@ TEST_F(RocksDBWrapperTest, PutIntoColumn)
 
 /**
  * @brief Test put data into an inexistent column.
- * 
+ *
  */
 TEST_F(RocksDBWrapperTest, PutIntoInexistentColumnThrows)
 {
@@ -405,7 +403,7 @@ TEST_F(RocksDBWrapperTest, PutIntoInexistentColumnThrows)
 
 /**
  * @brief Test get data into an inexisten column.
- * 
+ *
  */
 TEST_F(RocksDBWrapperTest, GetFromInexistentColumnThrows)
 {
@@ -418,7 +416,7 @@ TEST_F(RocksDBWrapperTest, GetFromInexistentColumnThrows)
 
 /**
  * @brief Test put and get data from a created column.
- * 
+ *
  */
 TEST_F(RocksDBWrapperTest, PutAndGetFromColumn)
 {
@@ -436,7 +434,7 @@ TEST_F(RocksDBWrapperTest, PutAndGetFromColumn)
 
 /**
  * @brief Test put and get data from various created columns.
- * 
+ *
  */
 TEST_F(RocksDBWrapperTest, PutAndGetFromMultipleColumns)
 {
@@ -463,7 +461,7 @@ TEST_F(RocksDBWrapperTest, PutAndGetFromMultipleColumns)
 
 /**
  * @brief Test put and get last key value from a created column.
- * 
+ *
  */
 TEST_F(RocksDBWrapperTest, PutAndGetLastKeyValueFromColumn)
 {
