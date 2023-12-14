@@ -3,7 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 """
-This module contain all necessary components (fixtures, classes, methods)to configure the test for its execution.
+This module contains all necessary components (fixtures, classes, methods)to configure the test for its execution.
 """
 
 import pytest

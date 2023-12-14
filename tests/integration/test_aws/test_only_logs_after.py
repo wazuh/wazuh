@@ -232,7 +232,6 @@ def test_service_without_only_logs_after(
     """
     service_type = metadata['service_type']
     log_group_name = metadata['log_group_name']
-    expected_results = metadata['expected_results']
 
     parameters = [
         'wodles/aws/aws-s3',
