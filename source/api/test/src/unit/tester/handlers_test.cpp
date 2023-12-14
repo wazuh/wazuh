@@ -13,15 +13,15 @@
 #include <api/tester/handlers.hpp>
 
 #include <api/policy/mockPolicy.hpp>
-#include <api/tester/mockTester.hpp>
+#include <router/mockTester.hpp>
 #include <store/mockStore.hpp>
 
 #include "../../apiAuxiliarFunctions.hpp"
 
 using namespace api::policy::mocks;
-using namespace api::tester::mocks;
 using namespace api::tester::handlers;
 using namespace store::mocks;
+using namespace tester::mocks;
 
 /***
  * @brief Represent the type signature of the all function to test
