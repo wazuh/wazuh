@@ -328,11 +328,7 @@ TEST_F(RocksDBWrapperTest, TestRangeForLoopWithBinaryBuffers)
 TEST_F(RocksDBWrapperTest, TestCreateFolderRecursively)
 {
     const auto DATABASE_FOLDER {OUTPUT_FOLDER / "folder1" / "folder2" / "test_db"};
-    std::optional<Utils::RocksDBWrapper> wrapper;
-
-    EXPECT_NO_THROW({ wrapper = Utils::RocksDBWrapper(DATABASE_FOLDER); });
-
-    db_wrapper->deleteAll();
+    EXPECT_NO_THROW(std::make_unique<Utils::RocksDBWrapper>(DATABASE_FOLDER));
 }
 
 /**

@@ -91,6 +91,9 @@ namespace Utils
         /**
          * @brief Class destructor. Frees column family handles.
          *
+         * @note The documentation of the lib clearly states that we should not free the default column family handler
+         * but not freeing it ends up on memory leaks and ASAN errors. OTOH, no problems seem to appear freeing it.
+         *
          */
         ~RocksDBWrapper()
         {
@@ -98,15 +101,11 @@ namespace Utils
                           m_columnsHandles.end(),
                           [this](rocksdb::ColumnFamilyHandle* handle)
                           {
-                              // Default column should not be freed.
-                              if (rocksdb::kDefaultColumnFamilyName != handle->GetName())
+                              const auto status {m_db->DestroyColumnFamilyHandle(handle)};
+                              if (!status.ok())
                               {
-                                  const auto status {m_db->DestroyColumnFamilyHandle(handle)};
-                                  if (!status.ok())
-                                  {
-                                      throw std::runtime_error {"Failed to free RocksDB column family: " +
-                                                                std::string {status.getState()}};
-                                  }
+                                  throw std::runtime_error {"Failed to free RocksDB column family: " +
+                                                            std::string {status.getState()}};
                               }
                           });
         }
