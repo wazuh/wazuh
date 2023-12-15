@@ -12,6 +12,11 @@
 #ifndef _ONDEMAND_MANAGER_HPP
 #define _ONDEMAND_MANAGER_HPP
 
+// Define the number of threads in the thread pool for httplib.
+#ifndef CPPHTTPLIB_THREAD_POOL_COUNT
+#define CPPHTTPLIB_THREAD_POOL_COUNT 2
+#endif
+
 #include "singleton.hpp"
 #include <external/cpp-httplib/httplib.h>
 #include <functional>

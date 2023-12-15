@@ -166,6 +166,7 @@ IndexerConnector::IndexerConnector(
             }
         },
         DATABASE_BASE_PATH + indexName,
+        ELEMENTS_PER_BULK,
         DATABASE_WORKERS);
 
     m_initializeThread = std::thread(
