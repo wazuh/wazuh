@@ -15,6 +15,7 @@
 #include "components/executionContext.hpp"
 #include "components/factoryContentUpdater.hpp"
 #include "components/updaterContext.hpp"
+#include "componentsHelper.hpp"
 #include "routerProvider.hpp"
 #include "utils/rocksDBWrapper.hpp"
 #include <memory>
@@ -80,7 +81,7 @@ public:
 
             logDebug2(WM_CONTENTUPDATER, "Running '%s' content update", m_spBaseContext->topicName.c_str());
 
-            // If the database exists, get the last offset and file hash.
+            // If the database exists, get the last offset
             if (m_spBaseContext->spRocksDB)
             {
                 spUpdaterContext->currentOffset =
@@ -107,7 +108,7 @@ public:
             // Run the updater chain
             m_spUpdaterOrchestration->handleRequest(spUpdaterContext);
 
-            // Update filehash.
+            // Update filehash if it has changed.
             if (m_spBaseContext->spRocksDB && m_spBaseContext->downloadedFileHash != lastDownloadedFileHash)
             {
                 m_spBaseContext->spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)),
