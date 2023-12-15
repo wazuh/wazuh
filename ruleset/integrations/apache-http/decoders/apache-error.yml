@@ -22,8 +22,8 @@ check:
 parse|event.original:
   - "[<event.created/%a %b %d %T %Y/en_US.UTF-8>] [<log.logger>:<log.level>] [pid <process.pid>(?:tid <process.thread.id>)] [client <source.address>(?:<source.port>)] <message>"
   - "[<event.created/%a %b %d %T %Y/en_US.UTF-8>] [<log.logger>:<log.level>] [pid <process.pid>(?:tid <process.thread.id>)] <message>"
-  - "[<event.created/Mon Dec 26 16:22:00 2016>] [<log.level>] [client <source.address>(?:<source.port>)] <message>"
-  - "[<event.created/Mon Dec 26 16:22:00 2016>] [<log.level>] <message>"
+  - "[<event.created/%a %b %d %T %Y/en_US.UTF-8>] [<log.level>] [client <source.address>(?:<source.port>)] <message>"
+  - "[<event.created/%a %b %d %T %Y/en_US.UTF-8>] [<log.level>] <message>"
 
 normalize:
   - map:
