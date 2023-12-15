@@ -153,12 +153,13 @@ FOLDERS_TO_BACKUP=($WAZUH_HOME/{active-response,bin,etc,lib,queue,ruleset,wodles
                    $OSSEC_INIT_FILE \
                    $SYSTEMD_SERVICE_UNIT_PATH \
                    $INIT_PATH)
-FOLDERS_TO_EXCLUDE=($WAZUH_HOME/{queue/diff,logs/upgrade.log})
+FOLDERS_TO_EXCLUDE=($WAZUH_HOME/queue/diff)
+EXCLUDE_ARGUMENT="$(for i in ${FOLDERS_TO_EXCLUDE[@]}; do echo -n "--exclude $i "; done)"
 
 for i in ${FOLDERS_TO_BACKUP[@]}
 do
     [ -e $i ] && echo $i
-done | xargs tar -C / --exclude=$FOLDERS_TO_EXCLUDE -zcvf ./backup/backup_[${BDATE}].tar.gz >> ./logs/upgrade.log 2>&1
+done | xargs tar -C / $EXCLUDE_ARGUMENT -zcvf ./backup/backup_[${BDATE}].tar.gz >> ./logs/upgrade.log 2>&1
 
 # Check Backup creation
 RESULT=$?

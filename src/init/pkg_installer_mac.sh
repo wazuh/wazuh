@@ -31,12 +31,13 @@ echo "$(date +"%Y/%m/%d %H:%M:%S") - Generating Backup." >> ./logs/upgrade.log
 FOLDERS_TO_BACKUP=($CURRENT_DIR/{active-response,bin,etc,lib,queue,ruleset,wodles,agentless,logs/{ossec,wazuh},var/selinux} \
                    /Library/LaunchDaemons/com.wazuh.agent.plist \
                    /Library/StartupItems/WAZUH)
-FOLDERS_TO_EXCLUDE=($CURRENT_DIR/{queue/diff,logs/upgrade.log})
+FOLDERS_TO_EXCLUDE=($CURRENT_DIR/queue/diff)
+EXCLUDE_ARGUMENT="$(for i in ${FOLDERS_TO_EXCLUDE[@]}; do echo -n "--exclude $i "; done)"
 
 for i in ${FOLDERS_TO_BACKUP[@]}
 do
     [ -e $i ] && echo $i
-done | xargs tar -C / --exclude=$FOLDERS_TO_EXCLUDE -zcvf ./backup/backup_[${BDATE}].tar.gz >> ./logs/upgrade.log 2>&1
+done | xargs tar -C / $EXCLUDE_ARGUMENT -zcvf ./backup/backup_[${BDATE}].tar.gz >> ./logs/upgrade.log 2>&1
 
 # Check Backup creation
 RESULT=$?
