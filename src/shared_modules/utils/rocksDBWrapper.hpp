@@ -35,11 +35,40 @@ namespace Utils
             rocksdb::Options options;
             options.create_if_missing = true;
             rocksdb::DB* dbRawPtr;
+            std::vector<rocksdb::ColumnFamilyDescriptor> columnsDescriptors;
+            const std::filesystem::path databasePath {dbPath};
 
             // Create directories recursively if they do not exist
-            std::filesystem::create_directories(std::filesystem::path(dbPath));
+            std::filesystem::create_directories(databasePath);
 
-            const auto status {rocksdb::DB::Open(options, dbPath, &dbRawPtr)};
+            // Get a list of the existing columns descriptors.
+            const auto DB_FILE {databasePath / "CURRENT"};
+            if (std::filesystem::exists(DB_FILE))
+            {
+                // Read columns names.
+                std::vector<std::string> columnsNames;
+                const auto listStatus {rocksdb::DB::ListColumnFamilies(options, dbPath, &columnsNames)};
+                if (!listStatus.ok())
+                {
+                    throw std::runtime_error("Failed to list columns: " + std::string {listStatus.getState()});
+                }
+
+                // Create a set of column descriptors. This includes the default column.
+                for (auto& columnName : columnsNames)
+                {
+                    columnsDescriptors.push_back(
+                        rocksdb::ColumnFamilyDescriptor(std::move(columnName), rocksdb::ColumnFamilyOptions()));
+                }
+            }
+            else
+            {
+                // Database doesn't exist: Set just the default column descriptor.
+                columnsDescriptors.push_back(
+                    rocksdb::ColumnFamilyDescriptor(rocksdb::kDefaultColumnFamilyName, rocksdb::ColumnFamilyOptions()));
+            }
+
+            // Open database with a list of columns descriptors.
+            const auto status {rocksdb::DB::Open(options, dbPath, columnsDescriptors, &m_columnsHandles, &dbRawPtr)};
             if (!status.ok())
             {
                 throw std::runtime_error("Failed to open RocksDB database. Reason: " + std::string {status.getState()});
@@ -65,9 +94,21 @@ namespace Utils
          */
         ~RocksDBWrapper()
         {
-            std::for_each(m_handles.begin(),
-                          m_handles.end(),
-                          [this](rocksdb::ColumnFamilyHandle* handle) { m_db->DestroyColumnFamilyHandle(handle); });
+            std::for_each(m_columnsHandles.begin(),
+                          m_columnsHandles.end(),
+                          [this](rocksdb::ColumnFamilyHandle* handle)
+                          {
+                              // Default column should not be freed.
+                              if (rocksdb::kDefaultColumnFamilyName != handle->GetName())
+                              {
+                                  const auto status {m_db->DestroyColumnFamilyHandle(handle)};
+                                  if (!status.ok())
+                                  {
+                                      throw std::runtime_error {"Failed to free RocksDB column family: " +
+                                                                std::string {status.getState()}};
+                                  }
+                              }
+                          });
         }
 
         /**
@@ -91,7 +132,7 @@ namespace Utils
                 throw std::runtime_error {"Couldn't create column family: " + std::string {status.getState()}};
             }
 
-            m_handles.push_back(pColumnFamily);
+            m_columnsHandles.push_back(pColumnFamily);
         }
 
         /**
@@ -113,7 +154,8 @@ namespace Utils
                                         return columnName == handle->GetName();
                                     }};
 
-            return std::find_if(m_handles.begin(), m_handles.end(), columnMatch) != m_handles.end();
+            return std::find_if(m_columnsHandles.begin(), m_columnsHandles.end(), columnMatch) !=
+                   m_columnsHandles.end();
         }
 
         /**
@@ -353,7 +395,7 @@ namespace Utils
 
     private:
         std::unique_ptr<rocksdb::DB> m_db {};
-        std::vector<rocksdb::ColumnFamilyHandle*> m_handles {}; ///< List of column handles.
+        std::vector<rocksdb::ColumnFamilyHandle*> m_columnsHandles {}; ///< List of column handles.
 
         /**
          * @brief Returns the column family handle identified by its name.
@@ -373,7 +415,8 @@ namespace Utils
                                         return columnName == handle->GetName();
                                     }};
 
-            if (const auto it {std::find_if(m_handles.begin(), m_handles.end(), columnMatch)}; it != m_handles.end())
+            if (const auto it {std::find_if(m_columnsHandles.begin(), m_columnsHandles.end(), columnMatch)};
+                it != m_columnsHandles.end())
             {
                 return *it;
             }

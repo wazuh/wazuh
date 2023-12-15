@@ -327,14 +327,12 @@ TEST_F(RocksDBWrapperTest, TestRangeForLoopWithBinaryBuffers)
  */
 TEST_F(RocksDBWrapperTest, TestCreateFolderRecursively)
 {
-    const std::string DATABASE_NAME {"folder1/folder2/test.db"};
+    const auto DATABASE_FOLDER {OUTPUT_FOLDER / "folder1" / "folder2" / "test_db"};
+    std::optional<Utils::RocksDBWrapper> wrapper;
 
-    std::optional<Utils::RocksDBWrapper> db_wrapper;
-
-    EXPECT_NO_THROW({ db_wrapper = Utils::RocksDBWrapper(DATABASE_NAME); });
+    EXPECT_NO_THROW({ wrapper = Utils::RocksDBWrapper(DATABASE_FOLDER); });
 
     db_wrapper->deleteAll();
-    std::filesystem::remove_all(DATABASE_NAME);
 }
 
 /**
@@ -370,6 +368,36 @@ TEST_F(RocksDBWrapperTest, ColumnExistPositive)
 
     db_wrapper->createColumn(COLUMN_NAME);
     EXPECT_TRUE(db_wrapper->columnExists(COLUMN_NAME));
+}
+
+/**
+ * @brief Tests the column load when there are already created columns.
+ *
+ */
+TEST_F(RocksDBWrapperTest, ColumnsSetup)
+{
+    constexpr auto COLUMN_NAME_A {"column_A"};
+    constexpr auto COLUMN_NAME_B {"column_B"};
+    constexpr auto KEY_A {"key_A"};
+    constexpr auto VALUE_A {"value_A"};
+    constexpr auto KEY_B {"key_B"};
+    constexpr auto VALUE_B {"value_B"};
+
+    db_wrapper->createColumn(COLUMN_NAME_A);
+    db_wrapper->createColumn(COLUMN_NAME_B);
+    db_wrapper->put(KEY_A, VALUE_A, COLUMN_NAME_A);
+    db_wrapper->put(KEY_B, VALUE_B, COLUMN_NAME_B);
+
+    // Reset wrapper. This will call the destructor and then the constructor again.
+    db_wrapper.reset();
+    ASSERT_NO_THROW({ db_wrapper = std::make_unique<Utils::RocksDBWrapper>(DATABASE_FOLDER); });
+
+    EXPECT_TRUE(db_wrapper->columnExists(COLUMN_NAME_A));
+    EXPECT_TRUE(db_wrapper->columnExists(COLUMN_NAME_B));
+
+    std::string readValue;
+    EXPECT_TRUE(db_wrapper->get(KEY_A, readValue, COLUMN_NAME_A));
+    EXPECT_TRUE(db_wrapper->get(KEY_B, readValue, COLUMN_NAME_B));
 }
 
 /**
@@ -448,7 +476,7 @@ TEST_F(RocksDBWrapperTest, PutIntoInexistentColumnThrows)
 }
 
 /**
- * @brief Test get data into an inexisten column.
+ * @brief Test get data into an inexistent column.
  *
  */
 TEST_F(RocksDBWrapperTest, GetFromInexistentColumnThrows)
