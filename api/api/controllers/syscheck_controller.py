@@ -7,7 +7,7 @@ import logging
 from aiohttp import web
 
 from api.encoder import dumps, prettify
-from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
+from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deprecate_endpoint
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.syscheck import run, clear, files, last_scan
 
@@ -49,6 +49,7 @@ async def put_syscheck(request, agents_list: str = '*', pretty: bool = False,
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
+@deprecate_endpoint()
 async def get_syscheck_agent(request, agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
                              offset: int = 0, limit: int = None, select: str = None, sort: str = None,
                              search: str = None, distinct: bool = False, summary: bool = False, md5: str = None,
@@ -123,6 +124,7 @@ async def get_syscheck_agent(request, agent_id: str, pretty: bool = False, wait_
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
+@deprecate_endpoint()
 async def delete_syscheck_agent(request, agent_id: str = '*', pretty: bool = False,
                                 wait_for_complete: bool = False) -> web.Response:
     """Clear file integrity monitoring scan results for a specified agent.
