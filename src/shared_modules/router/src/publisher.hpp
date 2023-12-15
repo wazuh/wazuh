@@ -20,7 +20,7 @@
 #include <memory>
 #include <vector>
 
-constexpr auto PUBLISHER_DISPATCH_THREAD_COUNT { 1 };
+constexpr auto PUBLISHER_DISPATCH_THREAD_COUNT {1};
 
 /**
  * @brief Publisher class.
@@ -43,7 +43,9 @@ public:
     explicit Publisher(const std::string& endpointName, const std::string& socketPath)
         : m_socketServer(std::make_unique<SocketServer<Socket<OSPrimitives>, EpollWrapper>>(socketPath + endpointName))
         , m_msgDispatcher(std::make_unique<MsgDispatcher>([this, endpointName](const std::vector<char>& data)
-                                                          { this->call(data); }, nullptr, PUBLISHER_DISPATCH_THREAD_COUNT))
+                                                          { this->call(data); },
+                                                          nullptr,
+                                                          PUBLISHER_DISPATCH_THREAD_COUNT))
     {
         m_socketServer->listen(
             [&](const int fd, const char* body, const size_t bodySize, const char* header, const size_t headerSize)
