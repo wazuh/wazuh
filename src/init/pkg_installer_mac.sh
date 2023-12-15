@@ -1,18 +1,14 @@
 #!/bin/bash
-
 # Copyright (C) 2015, Wazuh Inc.
 
-# Generating Backup
 CURRENT_DIR=`pwd`
 if [ "${CURRENT_DIR}" = "/" ]; then
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Execution path is wrong, interrupting upgrade." >> ./logs/upgrade.log
     exit 1
 fi
-TMP_DIR_BACKUP=./tmp_bkp
 
 # Check if there is an upgrade in progress
 declare -a BACKUP_FOLDERS
-[ -d "${TMP_DIR_BACKUP}" ] && BACKUP_FOLDERS+=("${TMP_DIR_BACKUP}")
 [ -d "./backup" ] && BACKUP_FOLDERS+=("./backup")
 for dir in "${BACKUP_FOLDERS[@]}"; do
     ATTEMPTS=5
@@ -26,63 +22,26 @@ for dir in "${BACKUP_FOLDERS[@]}"; do
     done
 done
 
-# Clean before backup
-rm -rf ${TMP_DIR_BACKUP}/
-
+# Generate Backup
 BDATE=$(date +"%m-%d-%Y_%H-%M-%S")
-declare -a FOLDERS_TO_BACKUP
+mkdir -p ./backup
 
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Generating Backup." >> ./logs/upgrade.log
 
-# Generate wazuh home directory tree to backup
-FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/active-response)
-FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/bin)
-FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/etc)
-FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/lib)
-FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/queue)
-[ -d "./ruleset" ] && FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/ruleset)
-[ -d "./wodles" ] && FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/wodles)
-[ -d "./agentless" ] && FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/agentless)
-[ -d "./logs/ossec" ] && FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/logs/ossec)
-[ -d "./var/selinux" ] && FOLDERS_TO_BACKUP+=(${CURRENT_DIR}/var/selinux)
+FOLDERS_TO_BACKUP=($CURRENT_DIR/{active-response,bin,etc,lib,queue,ruleset,wodles,agentless,logs/{ossec,wazuh},var/selinux} \
+                   /Library/LaunchDaemons/com.wazuh.agent.plist \
+                   /Library/StartupItems/WAZUH)
+FOLDERS_TO_EXCLUDE=($CURRENT_DIR/queue/diff)
+EXCLUDE_ARGUMENT="$(for i in ${FOLDERS_TO_EXCLUDE[@]}; do echo -n "--exclude $i "; done)"
 
-for dir in "${FOLDERS_TO_BACKUP[@]}"; do
-    mkdir -p "${TMP_DIR_BACKUP}${dir}"
-    rsync -a --exclude "diff" ${dir}/* "${TMP_DIR_BACKUP}${dir}"
-done
-
-# Save service file
-mkdir -p "${TMP_DIR_BACKUP}/Library/LaunchDaemons"
-cp -a /Library/LaunchDaemons/com.wazuh.agent.plist "${TMP_DIR_BACKUP}/Library/LaunchDaemons"
-
-mkdir -p "${TMP_DIR_BACKUP}/Library/StartupItems/WAZUH"
-cp -a /Library/StartupItems/WAZUH/* ${TMP_DIR_BACKUP}/Library/StartupItems/WAZUH
-
-# Saves modes and owners of the directories
-BACKUP_LIST_FILES=$(find "${TMP_DIR_BACKUP}/" -type d)
-
-while read -r line; do
-    org=$(echo "${line}" | awk "sub(\"${TMP_DIR_BACKUP}\",\"\")")
-    owner=$(stat -f %Su ${org})
-    group=$(stat -f %Sg ${org})
-    mode=$(stat -f %A ${org})
-    chown $owner:$group $line
-    chmod $mode $line
-done <<< "$BACKUP_LIST_FILES"
-
-# Generate Backup
-mkdir -p ./backup
-if [ "$(ls -A ${TMP_DIR_BACKUP})" ]; then
-    tar czf ./backup/backup_[${BDATE}].tar.gz -C ${TMP_DIR_BACKUP} . >> ./logs/upgrade.log 2>&1
-else
-    echo "$(date +"%Y/%m/%d %H:%M:%S") - Nothing to compress while creating the Backup, interrupting upgrade." >> ./logs/upgrade.log
-    exit 1
-fi
-
-RESULT=$?
-rm -rf ${TMP_DIR_BACKUP}/
+for i in ${FOLDERS_TO_BACKUP[@]}
+do
+    [ -e $i ] && echo $i
+done | xargs tar -C / $EXCLUDE_ARGUMENT -zcvf ./backup/backup_[${BDATE}].tar.gz >> ./logs/upgrade.log 2>&1
 
 # Check Backup creation
+RESULT=$?
+
 if [ $RESULT -eq 0 ]; then
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Backup generated in ${CURRENT_DIR}/backup/backup_[${BDATE}].tar.gz" >> ./logs/upgrade.log
 else
@@ -141,7 +100,7 @@ else
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Restoring backup...." >> ./logs/upgrade.log
     rm -rf ./backup/restore
     mkdir -p ./backup/restore
-    tar xzf ./backup/backup_[${BDATE}].tar.gz -C ./backup/restore >> ./logs/upgrade.log 2>&1
+    tar -xvf ./backup/backup_[${BDATE}].tar.gz -C ./backup/restore >> ./logs/upgrade.log 2>&1
     RESULT=$?
 
     if [ $RESULT -eq 0 ] && [ "$(ls -A ./backup/restore/)" ]; then
@@ -155,6 +114,9 @@ else
     fi
 
     rm -rf ./backup/restore
+
+    # Restore diff folder
+    install -d -m 0750 -o wazuh -g wazuh $CURRENT_DIR/queue/diff
 
     echo -ne "2" > ./var/upgrade/upgrade_result
 
