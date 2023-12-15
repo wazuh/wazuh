@@ -13,6 +13,7 @@
 #define _UPDATE_CTI_API_OFFSET_HPP
 
 #include "../sharedDefs.hpp"
+#include "componentsHelper.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
 #include "utils/timeHelper.h"
@@ -39,7 +40,8 @@ private:
             if (context.spUpdaterBaseContext->spRocksDB)
             {
                 context.spUpdaterBaseContext->spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)),
-                                                             std::to_string(context.currentOffset));
+                                                             std::to_string(context.currentOffset),
+                                                             Components::COLUMN_NAME_CURRENT_OFFSET);
             }
             else
             {

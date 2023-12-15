@@ -303,3 +303,33 @@ TEST_F(ActionOrchestratorTest, RunWithFullContentDownload)
 
     routerProvider->stop();
 }
+
+/**
+ * @brief Tests the execution of the orchestration and correct store of the downloaded file hash.
+ *
+ */
+TEST_F(ActionOrchestratorTest, DownloadedFileHashStore)
+{
+    const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
+    auto routerProvider {std::make_shared<RouterProvider>(topicName)};
+    routerProvider->start();
+
+    // Configure the action to download a snapshot in offline mode.
+    const auto INPUT_FILE_PATH {std::filesystem::current_path() / "input_files" / SNAPSHOT_FILE_NAME};
+    m_parameters["configData"]["contentSource"] = "offline";
+    m_parameters["configData"]["compressionType"] = "zip";
+    m_parameters["configData"]["url"] = "file://" + INPUT_FILE_PATH.string();
+
+    {
+        // Trigger orchestration in a reduced scope so that the database is closed.
+        auto actionOrchestrator {std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_shouldRun)};
+        ASSERT_NO_THROW(actionOrchestrator->run());
+    }
+
+    routerProvider->stop();
+
+    const auto EXPECTED_DB_PATH {DATABASE_PATH / ("updater_" + topicName + "_metadata")};
+    constexpr auto EXPECTED_HASH {"83f5b8992df285cdd0235bb0304e236047614d60"};
+    auto wrapper {Utils::RocksDBWrapper(EXPECTED_DB_PATH)};
+    EXPECT_EQ(wrapper.getLastKeyValue(Components::COLUMN_NAME_FILE_HASH).second.ToString(), EXPECTED_HASH);
+}

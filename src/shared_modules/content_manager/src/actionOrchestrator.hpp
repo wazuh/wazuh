@@ -80,11 +80,12 @@ public:
 
             logDebug2(WM_CONTENTUPDATER, "Running '%s' content update", m_spBaseContext->topicName.c_str());
 
-            // If the database exists, get the last offset
+            // If the database exists, get the last offset and file hash.
             if (m_spBaseContext->spRocksDB)
             {
                 spUpdaterContext->currentOffset =
-                    std::stoi(m_spBaseContext->spRocksDB->getLastKeyValue().second.ToString());
+                    std::stoi(m_spBaseContext->spRocksDB->getLastKeyValue(Components::COLUMN_NAME_CURRENT_OFFSET)
+                                  .second.ToString());
             }
 
             if (offset == 0)
@@ -100,8 +101,19 @@ public:
                 runFullContentDownload(spUpdaterContext);
             }
 
+            // Store last file hash.
+            const auto lastDownloadedFileHash {m_spBaseContext->downloadedFileHash};
+
             // Run the updater chain
             m_spUpdaterOrchestration->handleRequest(spUpdaterContext);
+
+            // Update filehash.
+            if (m_spBaseContext->spRocksDB && m_spBaseContext->downloadedFileHash != lastDownloadedFileHash)
+            {
+                m_spBaseContext->spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)),
+                                                m_spBaseContext->downloadedFileHash,
+                                                Components::COLUMN_NAME_FILE_HASH);
+            }
         }
         catch (const std::exception& e)
         {

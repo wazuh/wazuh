@@ -18,8 +18,9 @@
 #include "utils/timeHelper.h"
 #include "gtest/gtest.h"
 #include <atomic>
+#include <filesystem>
 
-static const std::string DATABASE_NAME {"test.db"};
+const auto DATABASE_FOLDER {std::filesystem::temp_directory_path() / "test_db"};
 
 /**
  * @brief Runs unit tests for UpdateCtiApiOffset
@@ -54,8 +55,10 @@ protected:
     {
         // Initialize contexts
         m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_shouldRun);
-        m_spUpdaterBaseContext->spRocksDB = std::make_unique<Utils::RocksDBWrapper>(DATABASE_NAME);
-        m_spUpdaterBaseContext->spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)), "0");
+        m_spUpdaterBaseContext->spRocksDB = std::make_unique<Utils::RocksDBWrapper>(DATABASE_FOLDER);
+        m_spUpdaterBaseContext->spRocksDB->createColumn(Components::COLUMN_NAME_CURRENT_OFFSET);
+        m_spUpdaterBaseContext->spRocksDB->put(
+            Utils::getCompactTimestamp(std::time(nullptr)), "0", Components::COLUMN_NAME_CURRENT_OFFSET);
 
         m_spUpdaterContext = std::make_shared<UpdaterContext>();
         m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
@@ -74,7 +77,7 @@ protected:
             m_spUpdaterBaseContext->spRocksDB->deleteAll();
         }
 
-        std::filesystem::remove_all(DATABASE_NAME);
+        std::filesystem::remove_all(DATABASE_FOLDER);
     }
 };
 

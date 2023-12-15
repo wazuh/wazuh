@@ -30,6 +30,9 @@ namespace Components
         STATUS_FAIL
     };
 
+    static const std::string COLUMN_NAME_CURRENT_OFFSET {"current_offset"}; ///< Database column name for offsets.
+    static const std::string COLUMN_NAME_FILE_HASH {"file_hash"};           ///< Database column name for hashes.
+
     /**
      * @brief Pushes the state of the current component into the data field of the context.
      *

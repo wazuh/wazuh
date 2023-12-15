@@ -10,6 +10,7 @@
  */
 
 #include "executionContext_test.hpp"
+#include "componentsHelper.hpp"
 #include "executionContext.hpp"
 #include "updaterContext.hpp"
 #include <filesystem>
@@ -124,7 +125,9 @@ TEST_F(ExecutionContextTest, DatabaseGeneration)
 
     EXPECT_NO_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext));
     EXPECT_TRUE(std::filesystem::exists(m_databasePath));
-    EXPECT_EQ(m_spUpdaterBaseContext->spRocksDB->getLastKeyValue().second.ToString(), std::to_string(OFFSET));
+    EXPECT_EQ(
+        m_spUpdaterBaseContext->spRocksDB->getLastKeyValue(Components::COLUMN_NAME_CURRENT_OFFSET).second.ToString(),
+        std::to_string(OFFSET));
 }
 
 /**
@@ -155,7 +158,9 @@ TEST_F(ExecutionContextTest, DatabaseGenerationPositiveOffset)
 
     EXPECT_NO_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext));
     EXPECT_TRUE(std::filesystem::exists(m_databasePath));
-    EXPECT_EQ(m_spUpdaterBaseContext->spRocksDB->getLastKeyValue().second.ToString(), std::to_string(OFFSET));
+    EXPECT_EQ(
+        m_spUpdaterBaseContext->spRocksDB->getLastKeyValue(Components::COLUMN_NAME_CURRENT_OFFSET).second.ToString(),
+        std::to_string(OFFSET));
 }
 
 /**
@@ -174,7 +179,9 @@ TEST_F(ExecutionContextTest, DatabaseGenerationConfigOffsetLessThanDatabaseOffse
     m_spUpdaterBaseContext->configData["offset"] = FIRST_OFFSET;
     EXPECT_NO_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext));
     EXPECT_TRUE(std::filesystem::exists(m_databasePath));
-    EXPECT_EQ(m_spUpdaterBaseContext->spRocksDB->getLastKeyValue().second.ToString(), std::to_string(FIRST_OFFSET));
+    EXPECT_EQ(
+        m_spUpdaterBaseContext->spRocksDB->getLastKeyValue(Components::COLUMN_NAME_CURRENT_OFFSET).second.ToString(),
+        std::to_string(FIRST_OFFSET));
 
     // Call RocksDBWrapper destructor.
     m_spUpdaterBaseContext->spRocksDB.reset();
@@ -183,7 +190,9 @@ TEST_F(ExecutionContextTest, DatabaseGenerationConfigOffsetLessThanDatabaseOffse
     m_spUpdaterBaseContext->configData["offset"] = SECOND_OFFSET;
     EXPECT_NO_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext));
     EXPECT_TRUE(std::filesystem::exists(m_databasePath));
-    EXPECT_EQ(m_spUpdaterBaseContext->spRocksDB->getLastKeyValue().second.ToString(), std::to_string(FIRST_OFFSET));
+    EXPECT_EQ(
+        m_spUpdaterBaseContext->spRocksDB->getLastKeyValue(Components::COLUMN_NAME_CURRENT_OFFSET).second.ToString(),
+        std::to_string(FIRST_OFFSET));
 }
 
 /**
@@ -202,7 +211,9 @@ TEST_F(ExecutionContextTest, DatabaseGenerationConfigOffsetGreaterThanDatabaseOf
     m_spUpdaterBaseContext->configData["offset"] = FIRST_OFFSET;
     EXPECT_NO_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext));
     EXPECT_TRUE(std::filesystem::exists(m_databasePath));
-    EXPECT_EQ(m_spUpdaterBaseContext->spRocksDB->getLastKeyValue().second.ToString(), std::to_string(FIRST_OFFSET));
+    EXPECT_EQ(
+        m_spUpdaterBaseContext->spRocksDB->getLastKeyValue(Components::COLUMN_NAME_CURRENT_OFFSET).second.ToString(),
+        std::to_string(FIRST_OFFSET));
 
     // Call RocksDBWrapper destructor.
     m_spUpdaterBaseContext->spRocksDB.reset();
@@ -211,7 +222,9 @@ TEST_F(ExecutionContextTest, DatabaseGenerationConfigOffsetGreaterThanDatabaseOf
     m_spUpdaterBaseContext->configData["offset"] = SECOND_OFFSET;
     EXPECT_NO_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext));
     EXPECT_TRUE(std::filesystem::exists(m_databasePath));
-    EXPECT_EQ(m_spUpdaterBaseContext->spRocksDB->getLastKeyValue().second.ToString(), std::to_string(SECOND_OFFSET));
+    EXPECT_EQ(
+        m_spUpdaterBaseContext->spRocksDB->getLastKeyValue(Components::COLUMN_NAME_CURRENT_OFFSET).second.ToString(),
+        std::to_string(SECOND_OFFSET));
 }
 
 /**
@@ -228,7 +241,9 @@ TEST_F(ExecutionContextTest, DatabaseGenerationConfigOffsetEqualToDatabaseOffset
     m_spUpdaterBaseContext->configData["offset"] = OFFSET;
     EXPECT_NO_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext));
     EXPECT_TRUE(std::filesystem::exists(m_databasePath));
-    EXPECT_EQ(m_spUpdaterBaseContext->spRocksDB->getLastKeyValue().second.ToString(), std::to_string(OFFSET));
+    EXPECT_EQ(
+        m_spUpdaterBaseContext->spRocksDB->getLastKeyValue(Components::COLUMN_NAME_CURRENT_OFFSET).second.ToString(),
+        std::to_string(OFFSET));
 
     // Call RocksDBWrapper destructor.
     m_spUpdaterBaseContext->spRocksDB.reset();
@@ -236,5 +251,46 @@ TEST_F(ExecutionContextTest, DatabaseGenerationConfigOffsetEqualToDatabaseOffset
     // Second execution.
     EXPECT_NO_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext));
     EXPECT_TRUE(std::filesystem::exists(m_databasePath));
-    EXPECT_EQ(m_spUpdaterBaseContext->spRocksDB->getLastKeyValue().second.ToString(), std::to_string(OFFSET));
+    EXPECT_EQ(
+        m_spUpdaterBaseContext->spRocksDB->getLastKeyValue(Components::COLUMN_NAME_CURRENT_OFFSET).second.ToString(),
+        std::to_string(OFFSET));
+}
+
+/**
+ * @brief Test the correct set of the downloaded file hash when there is no data on the DB.
+ *
+ */
+TEST_F(ExecutionContextTest, ReadLastDownloadedFileHashInexistant)
+{
+    m_spUpdaterBaseContext->configData["databasePath"] = m_databasePath;
+    m_spUpdaterBaseContext->configData["offset"] = 0;
+    m_spExecutionContext->handleRequest(m_spUpdaterBaseContext);
+
+    EXPECT_TRUE(m_spUpdaterBaseContext->downloadedFileHash.empty());
+}
+
+/**
+ * @brief Test the correct set of the downloaded file hash from the DB.
+ *
+ */
+TEST_F(ExecutionContextTest, ReadLastDownloadedFileHash)
+{
+    constexpr auto TOPIC_NAME {"topic"};
+
+    m_spUpdaterBaseContext->configData["databasePath"] = m_databasePath;
+    m_spUpdaterBaseContext->configData["offset"] = 0;
+    m_spUpdaterBaseContext->topicName = TOPIC_NAME;
+
+    // Insert file hash on DB.
+    constexpr auto FILE_HASH {"hash"};
+    {
+        const auto EXPECTED_DB_PATH {m_databasePath / (std::string("updater_") + TOPIC_NAME + "_metadata")};
+        auto wrapper {Utils::RocksDBWrapper(EXPECTED_DB_PATH)};
+        wrapper.createColumn(Components::COLUMN_NAME_FILE_HASH);
+        wrapper.put("test_key", FILE_HASH, Components::COLUMN_NAME_FILE_HASH);
+    }
+
+    m_spExecutionContext->handleRequest(m_spUpdaterBaseContext);
+
+    EXPECT_EQ(m_spUpdaterBaseContext->downloadedFileHash, FILE_HASH);
 }
