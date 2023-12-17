@@ -10,14 +10,13 @@
 #include "../os_auth/auth.h"
 
 #include "../wrappers/common.h"
-#include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 #include "../wrappers/externals/openssl/bio_wrappers.h"
 #include "../wrappers/externals/openssl/ssl_lib_wrappers.h"
 #include "../wrappers/wazuh/os_auth/os_auth_wrappers.h"
-
 
 #define NEW_AGENT1      "Agent1"
 #define AGENT1_ID       "001"
@@ -59,8 +58,7 @@ char * __wrap_fgets(char * buf, int size, FILE *stream) {
     check_expected(stream);
     return mock_ptr_type(char *);
 }
-*/
-/*
+
 extern int __real_fclose ( FILE * stream );
 int __wrap_fclose ( FILE * stream ) {
     if(!test_mode)
@@ -80,7 +78,8 @@ int __wrap_OS_MoveFile(const char *src, const char *dst) {
     check_expected(src);
     check_expected(dst);
     return mock_type(int);
-}*/
+}
+*/
 /*
 #ifndef WIN32
 extern int __real_fprintf ( FILE * stream, const char * format, ... );
