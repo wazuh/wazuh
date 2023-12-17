@@ -28,6 +28,8 @@
 #include <libproc.h>
 #endif
 
+#include "wfopen_op.h"
+
 #define OS_PIDFILE  "var/run"
 #define UCS2_LE 1
 #define UCS2_BE 2
@@ -372,16 +374,11 @@ int w_ref_parent_folder(const char * path);
  */
 char ** wreaddir(const char * name);
 
-
 /**
- * @brief Open file normally in Linux, allow read/write/delete in Windows.
+ * Prevent children processes from inheriting a file pointer
  *
- * @param pathname Path of the file.
- * @param mode Open mode.
- * @return File pointer.
  */
-
-FILE * wfopen(const char * pathname, const char * modes);
+void w_file_cloexec(__attribute__((unused)) FILE * fp);
 
 /**
  * @brief Compress a file in GZIP.
