@@ -62,8 +62,7 @@ pathlib==1.0.1
 protobuf==3.19.6
 proto-plus==1.19.0
 psutil==5.9.0
-pyarrow==13.0.0
-pyarrow_hotfix==0.5
+pyarrow==14.0.1
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
 pycparser==2.21
