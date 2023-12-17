@@ -41,18 +41,18 @@ table syscollector_network_iface {
     checksum:string;
     item_id:string;
     mac:string;
-    mtu:int;
+    mtu:uint32;
     name:string;
-    rx_bytes:int;
-    rx_dropped:int;
-    rx_errors:int;
-    rx_packets:int;
+    rx_bytes:uint;
+    rx_dropped:uint;
+    rx_errors:uint;
+    rx_packets:uint;
     scan_time:string;
     state:string;
-    tx_bytes:int;
-    tx_dropped:int;
-    tx_errors:int;
-    tx_packets:int;
+    tx_bytes:uint;
+    tx_dropped:uint;
+    tx_errors:uint;
+    tx_packets:uint;
     type:string;
 }
 
