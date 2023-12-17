@@ -227,7 +227,7 @@ void test_w_is_compressed_bz2_file_compressed(void **state) {
     char * path = "/test/file.bz2";
     int ret = 0;
 
-    expect_string(__wrap_wfopen,filename, "/test/file.bz2");
+    expect_string(__wrap_wfopen, filename, "/test/file.bz2");
     expect_string(__wrap_wfopen, modes, "rb");
     will_return(__wrap_wfopen, 1);
 
@@ -246,7 +246,7 @@ void test_w_is_compressed_bz2_file_uncompressed(void **state) {
     char * path = "/test/file.bz2";
     int ret = 0;
 
-    expect_string(__wrap_wfopen,filename, "/test/file.bz2");
+    expect_string(__wrap_wfopen, filename, "/test/file.bz2");
     expect_string(__wrap_wfopen, modes, "rb");
     will_return(__wrap_wfopen, 1);
 
@@ -527,7 +527,7 @@ void test_w_compress_gzfile_success(void **state){
     char *dstfile = "testfiledst.gz";
 
     expect_string(__wrap_wfopen, filename, srcfile);
-    expect_string(__wrap_wfopen, __mode, "rb");
+    expect_string(__wrap_wfopen, modes, "rb");
     will_return(__wrap_wfopen, 1);
 
     expect_string(__wrap_gzopen, path, dstfile);
