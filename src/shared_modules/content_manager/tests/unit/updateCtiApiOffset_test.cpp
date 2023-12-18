@@ -19,7 +19,7 @@ TEST_F(UpdateCtiApiOffsetTest, updateOffset)
 {
     // Get the last offset in the database.
     const auto lastOffset =
-        m_spUpdaterBaseContext->spRocksDB->getLastKeyValue(Components::COLUMN_NAME_CURRENT_OFFSET).second.ToString();
+        m_spUpdaterBaseContext->spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString();
 
     // Set the current offset to a value different from the last offset.
     m_spUpdaterContext->currentOffset = 10;
@@ -29,7 +29,7 @@ TEST_F(UpdateCtiApiOffsetTest, updateOffset)
 
     // Get the new last offset in the database.
     const auto newLastOffset =
-        m_spUpdaterBaseContext->spRocksDB->getLastKeyValue(Components::COLUMN_NAME_CURRENT_OFFSET).second.ToString();
+        m_spUpdaterBaseContext->spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString();
 
     // Check that the last offset has been updated.
     EXPECT_NE(lastOffset, newLastOffset);
@@ -43,7 +43,7 @@ TEST_F(UpdateCtiApiOffsetTest, notUpdateOffset)
 {
     // Get the last offset in the database.
     const auto lastOffset =
-        m_spUpdaterBaseContext->spRocksDB->getLastKeyValue(Components::COLUMN_NAME_CURRENT_OFFSET).second.ToString();
+        m_spUpdaterBaseContext->spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString();
 
     // Set the current offset to a value equal to the last offset.
     m_spUpdaterContext->currentOffset = std::stoi(lastOffset);
@@ -53,7 +53,7 @@ TEST_F(UpdateCtiApiOffsetTest, notUpdateOffset)
 
     // Get the new last offset in the database.
     const auto newLastOffset =
-        m_spUpdaterBaseContext->spRocksDB->getLastKeyValue(Components::COLUMN_NAME_CURRENT_OFFSET).second.ToString();
+        m_spUpdaterBaseContext->spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString();
 
     // Check that the last offset has not been updated.
     EXPECT_EQ(lastOffset, newLastOffset);

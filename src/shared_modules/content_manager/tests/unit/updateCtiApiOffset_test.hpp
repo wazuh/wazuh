@@ -56,9 +56,9 @@ protected:
         // Initialize contexts
         m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_shouldRun);
         m_spUpdaterBaseContext->spRocksDB = std::make_unique<Utils::RocksDBWrapper>(DATABASE_FOLDER);
-        m_spUpdaterBaseContext->spRocksDB->createColumn(Components::COLUMN_NAME_CURRENT_OFFSET);
+        m_spUpdaterBaseContext->spRocksDB->createColumn(Components::Columns::CURRENT_OFFSET);
         m_spUpdaterBaseContext->spRocksDB->put(
-            Utils::getCompactTimestamp(std::time(nullptr)), "0", Components::COLUMN_NAME_CURRENT_OFFSET);
+            Utils::getCompactTimestamp(std::time(nullptr)), "0", Components::Columns::CURRENT_OFFSET);
 
         m_spUpdaterContext = std::make_shared<UpdaterContext>();
         m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;

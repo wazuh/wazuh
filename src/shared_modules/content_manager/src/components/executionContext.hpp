@@ -48,14 +48,14 @@ private:
         try
         {
             databaseOffset =
-                std::stoi(context.spRocksDB->getLastKeyValue(Components::COLUMN_NAME_CURRENT_OFFSET).second.ToString());
+                std::stoi(context.spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString());
         }
         catch (const std::runtime_error&)
         {
             // First execution. Set offset to zero.
             databaseOffset = 0;
             context.spRocksDB->put(
-                Utils::getCompactTimestamp(std::time(nullptr)), "0", Components::COLUMN_NAME_CURRENT_OFFSET);
+                Utils::getCompactTimestamp(std::time(nullptr)), "0", Components::Columns::CURRENT_OFFSET);
         }
 
         return databaseOffset;
@@ -71,7 +71,7 @@ private:
     {
         try
         {
-            return context.spRocksDB->getLastKeyValue(Components::COLUMN_NAME_FILE_HASH).second.ToString();
+            return context.spRocksDB->getLastKeyValue(Components::Columns::DOWNLOADED_FILE_HASH).second.ToString();
         }
         catch (const std::runtime_error& e)
         {
@@ -119,8 +119,8 @@ private:
         context.spRocksDB = std::make_unique<Utils::RocksDBWrapper>(databasePath + databaseName);
 
         // Create database columns if necessary.
-        const std::vector<std::string> COLUMNS {Components::COLUMN_NAME_CURRENT_OFFSET,
-                                                Components::COLUMN_NAME_FILE_HASH};
+        const std::vector<std::string> COLUMNS {Components::Columns::CURRENT_OFFSET,
+                                                Components::Columns::DOWNLOADED_FILE_HASH};
         for (const auto& columnName : COLUMNS)
         {
             if (!context.spRocksDB->columnExists(columnName))
@@ -145,7 +145,7 @@ private:
             // Put the current offset in the database.
             context.spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)),
                                    std::to_string(currentOffset),
-                                   Components::COLUMN_NAME_CURRENT_OFFSET);
+                                   Components::Columns::CURRENT_OFFSET);
         }
     }
 

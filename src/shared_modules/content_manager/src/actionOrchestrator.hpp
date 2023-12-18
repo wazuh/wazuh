@@ -84,9 +84,8 @@ public:
             // If the database exists, get the last offset
             if (m_spBaseContext->spRocksDB)
             {
-                spUpdaterContext->currentOffset =
-                    std::stoi(m_spBaseContext->spRocksDB->getLastKeyValue(Components::COLUMN_NAME_CURRENT_OFFSET)
-                                  .second.ToString());
+                spUpdaterContext->currentOffset = std::stoi(
+                    m_spBaseContext->spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString());
             }
 
             if (offset == 0)
@@ -113,7 +112,7 @@ public:
             {
                 m_spBaseContext->spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)),
                                                 m_spBaseContext->downloadedFileHash,
-                                                Components::COLUMN_NAME_FILE_HASH);
+                                                Components::Columns::DOWNLOADED_FILE_HASH);
             }
         }
         catch (const std::exception& e)

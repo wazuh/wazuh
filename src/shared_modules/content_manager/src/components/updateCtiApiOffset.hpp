@@ -41,7 +41,7 @@ private:
             {
                 context.spUpdaterBaseContext->spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)),
                                                              std::to_string(context.currentOffset),
-                                                             Components::COLUMN_NAME_CURRENT_OFFSET);
+                                                             Components::Columns::CURRENT_OFFSET);
             }
             else
             {
