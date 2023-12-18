@@ -1,7 +1,6 @@
 #include <api/test/sessionManager.hpp>
 #include <gtest/gtest.h>
 
-#include "../../apiAuxiliarFunctions.hpp"
 
 using namespace api::sessionManager;
 

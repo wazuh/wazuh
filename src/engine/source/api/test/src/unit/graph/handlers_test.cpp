@@ -10,7 +10,6 @@
 
 #include <gtest/gtest.h>
 
-#include "../../apiAuxiliarFunctions.hpp"
 #include "fakeAssets.hpp"
 
 using namespace api::graph::handlers;
@@ -36,7 +35,7 @@ protected:
 
     void SetUp() override
     {
-        initLogging();
+        logging::testInit();
 
         std::filesystem::path currentPath = std::filesystem::current_path();
 

@@ -8,8 +8,6 @@
 #include <kvdb/mockKvdbManager.hpp>
 #include <metrics/metricsManager.hpp>
 
-#include "../../apiAuxiliarFunctions.hpp"
-
 using namespace api::kvdb::handlers;
 using namespace metricsManager;
 using namespace kvdb::mocks;
@@ -47,7 +45,7 @@ const std::string rOrigin {"Dummy org module"};
 
 void Setup()
 {
-    initLogging();
+    logging::testInit();
 }
 
 void TearDown() {}

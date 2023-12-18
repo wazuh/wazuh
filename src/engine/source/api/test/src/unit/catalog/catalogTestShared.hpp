@@ -8,6 +8,7 @@
 #include <api/catalog/catalog.hpp>
 #include <store/mockStore.hpp>
 #include <rbac/mockRbac.hpp>
+#include <builder/mockValidator.hpp>
 
 using namespace store::mocks;
 
@@ -51,48 +52,12 @@ const api::catalog::Resource successCollectionAssetYml {
     base::Name({api::catalog::Resource::typeToStr(api::catalog::Resource::Type::decoder)}),
     api::catalog::Resource::Format::yaml};
 
-class FakeValidator : public builder::IValidator
-{
-public:
-    ~FakeValidator() = default;
-
-    std::optional<base::Error> validatePolicy(const json::Json& json) const override
-    {
-        if (json.isObject())
-        {
-            return std::nullopt;
-        }
-
-        return base::Error {"error"};
-    }
-
-    std::optional<base::Error> validateIntegration(const json::Json& json) const override
-    {
-        if (json.isObject())
-        {
-            return std::nullopt;
-        }
-
-        return base::Error {"error"};
-    }
-
-    std::optional<base::Error> validateAsset(const json::Json& json) const override
-    {
-        if (json.isObject())
-        {
-            return std::nullopt;
-        }
-
-        return base::Error {"error"};
-    }
-};
-
 inline api::catalog::Config getConfig(bool schemaOk = true)
 {
     api::catalog::Config config;
     auto mockStore = std::make_shared<MockStore>();
     config.store = mockStore;
-    config.validator = std::make_shared<FakeValidator>();
+    config.validator = std::make_shared<builder::mocks::MockValidator>();
 
     EXPECT_CALL(*mockStore, readDoc(testing::_))
         .WillRepeatedly(testing::Invoke(
