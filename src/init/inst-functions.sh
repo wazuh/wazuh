@@ -1117,6 +1117,26 @@ TransferShared()
     find ${INSTALLDIR}/etc/shared -maxdepth 1 -type f -not -name ar.conf -not -name files.yml -exec mv -f {} ${INSTALLDIR}/etc/shared/default \;
 }
 
+checkDownloadContent()
+{
+    DOWNLOAD_CONTENT=${DOWNLOAD_CONTENT_ENABLED}
+
+    if [ "$DOWNLOAD_CONTENT" = "yes" ]; then
+        ./build/wazuh_modules/vulnerability_scanner/testtool/scanner/vd_scanner_testtool \
+        -c wazuh_modules/vulnerability_scanner/testtool/scanner/config.json \
+        -t wazuh_modules/vulnerability_scanner/indexer/template/legacy-template.json \
+        -d
+
+        rm -rf queue/vd_updater
+        rm -rf queue/indexer
+        rm -rf queue/sockets
+        rm -rf queue/router
+
+        tar -cJf vd.tar.xz queue
+        ${INSTALL} -m 0640 -o ${WAZUH_USER} -g ${WAZUH_GROUP} vd.tar.xz ${INSTALLDIR}/
+    fi
+}
+
 InstallServer()
 {
 
@@ -1169,6 +1189,9 @@ InstallServer()
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/librocksdb.so.8
         fi
     fi
+
+    # Check if the content needs to be downloaded.
+    checkDownloadContent
 
     # Install cluster files
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/cluster
