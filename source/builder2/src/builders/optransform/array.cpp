@@ -39,11 +39,11 @@ TransformBuilder getArrayAppendBuilder(bool unique)
             {
                 // Validate items with the ignoreArray flag set to true
                 auto runValidator = validator.getRuntimeValidator(targetField.dotPath(), true);
-                if (base::isError(runValidator))
+                if (!base::isError(runValidator))
                 {
-                    throw std::runtime_error(base::getError(runValidator).message);
+                    runValidators.emplace(i, base::getResponse<schemval::RuntimeValidator>(runValidator));
                 }
-                runValidators.emplace(i, base::getResponse<schemval::RuntimeValidator>(runValidator));
+                runValidators.emplace(i, nullptr);
             }
             else
             {

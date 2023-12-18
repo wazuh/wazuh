@@ -16,18 +16,18 @@ using namespace kvdbManager;
  * This builder is not intended to be used directly, i.e. it is not registered. It is exposed for testing purposes.
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
+ *
+ * @param opArgs vector of parameters as present in the raw definition
  * @param merge
  * @return base::Expression
  */
-base::Expression KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
-                         const std::string& kvdbScopeName,
-                         const std::string& targetField,
-                         const std::string& rawName,
-                         const std::vector<std::string>& rawParameters,
-                         std::shared_ptr<defs::IDefinitions> definitions,
-                         bool merge);
+TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
+                    const std::string& kvdbScopeName,
+                    const Reference& targetField,
+
+                    const std::vector<OpArg>& opArgs,
+                    const std::shared_ptr<const IBuildCtx>& buildCtx,
+                    bool merge);
 
 /**
  * @brief Builder for KVDB set operation
@@ -35,16 +35,15 @@ base::Expression KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
  * This builder is not intended to be used directly, i.e. it is not registered. It is exposed for testing purposes.
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @return base::Expression
+ *
+ * @param opArgs vector of parameters as present in the raw definition
+ * @return TransformOp
  */
-base::Expression KVDBSet(std::shared_ptr<IKVDBManager> kvdbManager,
-                         const std::string& kvdbScopeName,
-                         const std::string& targetField,
-                         const std::string& rawName,
-                         const std::vector<std::string>& rawParameters,
-                         std::shared_ptr<defs::IDefinitions> definitions);
+TransformOp KVDBSet(std::shared_ptr<IKVDBManager> kvdbManager,
+                    const std::string& kvdbScopeName,
+                    const Reference& targetField,
+                    const std::vector<OpArg>& opArgs,
+                    const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
  * @brief Builder for KVDB delete operation
@@ -52,17 +51,15 @@ base::Expression KVDBSet(std::shared_ptr<IKVDBManager> kvdbManager,
  * This builder is not intended to be used directly, i.e. it is not registered. It is exposed for testing purposes.
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
- * @return base::Expression
+ * @param opArgs vector of parameters as present in the raw definition
+ * @param buildCtx Build context
+ * @return TransformOp
  */
-base::Expression KVDBDelete(std::shared_ptr<IKVDBManager> kvdbManager,
-                            const std::string& kvdbScopeName,
-                            const std::string& targetField,
-                            const std::string& rawName,
-                            const std::vector<std::string>& rawParameters,
-                            std::shared_ptr<defs::IDefinitions> definitions);
+TransformOp KVDBDelete(std::shared_ptr<IKVDBManager> kvdbManager,
+                       const std::string& kvdbScopeName,
+                       const Reference& targetField,
+                       const std::vector<OpArg>& opArgs,
+                       const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
  * @brief Builds KVDB extract function helper
@@ -70,7 +67,7 @@ base::Expression KVDBDelete(std::shared_ptr<IKVDBManager> kvdbManager,
  * @param kvdbScope KVDB Scope
  * @return Builder
  */
-MapOp getOpBuilderKVDBGet(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName);
+TransformBuilder getOpBuilderKVDBGet(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName);
 
 /**
  * @brief Builds KVDB extract and merge function helper
@@ -78,7 +75,7 @@ MapOp getOpBuilderKVDBGet(std::shared_ptr<IKVDBManager> kvdbManager, const std::
  * @param kvdbScope KVDB Scope
  * @return Builder
  */
-TransformOp getOpBuilderKVDBGetMerge(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName);
+TransformBuilder getOpBuilderKVDBGetMerge(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName);
 
 /**
  * @brief get the KVDB match function helper builder
@@ -86,7 +83,7 @@ TransformOp getOpBuilderKVDBGetMerge(std::shared_ptr<IKVDBManager> kvdbManager, 
  * @param kvdbScope KVDB Scope
  * @return Builder
  */
-FilterOp getOpBuilderKVDBMatch(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName);
+FilterBuilder getOpBuilderKVDBMatch(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName);
 
 /**
  * @brief Get the KVDB not-match function helper builder
@@ -94,7 +91,7 @@ FilterOp getOpBuilderKVDBMatch(std::shared_ptr<IKVDBManager> kvdbManager, const 
  * @param kvdbScope KVDB Scope
  * @return Builder
  */
-FilterOp getOpBuilderKVDBNotMatch(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName);
+FilterBuilder getOpBuilderKVDBNotMatch(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName);
 
 /**
  * @brief Get the KVDB Set function helper builder
@@ -102,7 +99,7 @@ FilterOp getOpBuilderKVDBNotMatch(std::shared_ptr<IKVDBManager> kvdbManager, con
  * @param kvdbScope KVDB Scope
  * @return Builder
  */
-MapOp getOpBuilderKVDBSet(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName);
+TransformBuilder getOpBuilderKVDBSet(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName);
 
 /**
  * @brief Delete a KVDB function helper builder
@@ -110,7 +107,7 @@ MapOp getOpBuilderKVDBSet(std::shared_ptr<IKVDBManager> kvdbManager, const std::
  * @param kvdbScope KVDB Scope
  * @return Builder
  */
-HelperBuilder getOpBuilderKVDBDelete(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName);
+TransformBuilder getOpBuilderKVDBDelete(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName);
 
 /**
  * @brief Get the KVDB Get Array function helper builder
@@ -121,9 +118,8 @@ HelperBuilder getOpBuilderKVDBDelete(std::shared_ptr<IKVDBManager> kvdbManager, 
  *
  * @return Builder
  */
-HelperBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbManager,
-                                       const std::string& kvdbScopeName,
-                                       std::shared_ptr<schemf::ISchema> schema);
+TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbManager,
+                                       const std::string& kvdbScopeName);
 
 /**
  * @brief Builds helper BitmaskToTable, that maps a bitmask to a table of values.
@@ -144,22 +140,20 @@ HelperBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbManager
  *
  * If the bit position is not set, it will be ignored.
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition.
- * @param definitions handler with definitions
+ *
+ * @param opArgs vector of parameters as present in the raw definition.
+ * @param buildCtx Build context
  * @param kvdbManager KVDB Manager
  * @param kvdbScopeName KVDB Scope Name
  * @param schema schema to validate fields
- * @return base::Expression The Lifter with the SHA1 hash.
+ * @return TransformOp The Lifter with the SHA1 hash.
  * @throw std::runtime_error if the parameter size is not one.
  */
-base::Expression OpBuilderHelperKVDBDecodeBitmask(const std::string& targetField,
-                                                  const std::string& rawName,
-                                                  const std::vector<std::string>& rawParameters,
-                                                  std::shared_ptr<defs::IDefinitions> definitions,
+TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
+                                                  const std::vector<OpArg>& opArgs,
+                                                  const std::shared_ptr<const IBuildCtx>& buildCtx,
                                                   std::shared_ptr<IKVDBManager> kvdbManager,
-                                                  const std::string& kvdbScopeName,
-                                                  std::shared_ptr<schemf::ISchema> schema);
+                                                  const std::string& kvdbScopeName);
 
 /**
  * @brief Get the 'kvdb_decode_bitmask' function helper builder
@@ -167,13 +161,12 @@ base::Expression OpBuilderHelperKVDBDecodeBitmask(const std::string& targetField
  * @param kvdbManager KVDB Manager
  * @param kvdbScopeName KVDB Scope
  * @param schema schema to validate fields
- * @return HelperBuilder The builder of the helper.
+ * @return TransformBuilder The builder of the helper.
  */
-HelperBuilder getOpBuilderHelperKVDBDecodeBitmask(std::shared_ptr<IKVDBManager> kvdbManager,
-                                                  const std::string& kvdbScopeName,
-                                                  std::shared_ptr<schemf::ISchema> schema);
+TransformBuilder getOpBuilderHelperKVDBDecodeBitmask(std::shared_ptr<IKVDBManager> kvdbManager,
+                                                  const std::string& kvdbScopeName);
 
-} // namespace builder::internals::builders
+} // namespace builder::builders
 
 // namespace builder::internals::builders
 

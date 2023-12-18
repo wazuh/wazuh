@@ -290,8 +290,6 @@ void runStart(ConfHandler confManager)
             // builder::internals::dependencies deps;
             // deps.logparDebugLvl = 0;
             // deps.logpar = logpar;
-            // deps.kvdbScopeName = "builder";
-            // deps.kvdbManager = kvdbManager;
             // deps.helperRegistry =
             // std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>(); deps.schema =
             // schema; deps.forceFieldNaming = false; deps.sockFactory =
@@ -303,6 +301,8 @@ void runStart(ConfHandler confManager)
             builder::BuilderDeps builderDeps;
             builderDeps.logparDebugLvl = 0;
             builderDeps.logpar = logpar;
+            builderDeps.kvdbScopeName = "builder";
+            builderDeps.kvdbManager = kvdbManager;
             auto defs = std::make_shared<defs::DefinitionsBuilder>();
             auto schemaValidator = std::make_shared<schemval::Validator>(schema);
             builder = std::make_shared<builder::Builder>(store, schema, defs, schemaValidator, builderDeps);
