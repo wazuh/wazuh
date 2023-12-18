@@ -6,6 +6,7 @@
 #include <builder/ibuilder.hpp>
 #include <builder/ivalidator.hpp>
 #include <defs/idefinitions.hpp>
+#include <kvdb/ikvdbmanager.hpp>
 #include <schemf/ischema.hpp>
 #include <schemval/ivalidator.hpp>
 #include <store/istore.hpp>
@@ -20,8 +21,8 @@ struct BuilderDeps
     size_t logparDebugLvl = 0;
     std::shared_ptr<hlp::logpar::Logpar> logpar = nullptr;
     // TODO: add other dependencies
-    // std::string kvdbScopeName;
-    // std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager;
+    std::string kvdbScopeName;
+    std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager;
     // std::shared_ptr<Registry<HelperBuilder>> helperRegistry;
     // std::shared_ptr<schemf::ISchema> schema;
     // bool forceFieldNaming = false;
