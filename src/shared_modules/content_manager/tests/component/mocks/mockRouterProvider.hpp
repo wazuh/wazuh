@@ -30,10 +30,10 @@ public:
      * @brief Mock class constructor.
      *
      */
-    explicit MockRouterProvider(const std::string&) {};
+    MockRouterProvider() = default;
 
     /**
-     * @brief Mock class destructor.
+     * @brief Destroy the Mock Router Provider object
      *
      */
     virtual ~MockRouterProvider() = default;

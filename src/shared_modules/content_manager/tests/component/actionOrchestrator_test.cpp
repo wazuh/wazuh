@@ -342,8 +342,6 @@ TEST_F(ActionOrchestratorTest, OfflineDownloadDownloadedFileHashStore)
  */
 TEST_F(ActionOrchestratorTest, OfflineDownloadSameAndModifiedFileDifferentInstances)
 {
-    const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
-
     // Create temp test file with dummy data.
     const auto testName {::testing::UnitTest::GetInstance()->current_test_info()->name()};
     const auto inputFilePath {std::filesystem::current_path() / testName};
@@ -361,14 +359,14 @@ TEST_F(ActionOrchestratorTest, OfflineDownloadSameAndModifiedFileDifferentInstan
 
     {
         // Run first orchestration. File should be published.
-        auto mockRouterProvider {std::make_shared<MockRouterProvider>(topicName)};
+        auto mockRouterProvider {std::make_shared<MockRouterProvider>()};
         EXPECT_CALL(*mockRouterProvider, send(::testing::_)).Times(1);
         ASSERT_NO_THROW(std::make_shared<ActionOrchestrator>(mockRouterProvider, m_parameters, m_shouldRun)->run());
     }
 
     {
         // Run second orchestration. File should not be published since it didn't change.
-        auto mockRouterProvider {std::make_shared<MockRouterProvider>(topicName)};
+        auto mockRouterProvider {std::make_shared<MockRouterProvider>()};
         EXPECT_CALL(*mockRouterProvider, send(::testing::_)).Times(0);
         ASSERT_NO_THROW(std::make_shared<ActionOrchestrator>(mockRouterProvider, m_parameters, m_shouldRun)->run());
     }
@@ -380,7 +378,7 @@ TEST_F(ActionOrchestratorTest, OfflineDownloadSameAndModifiedFileDifferentInstan
 
     {
         // Run third orchestration. File should be published since it has changed.
-        auto mockRouterProvider {std::make_shared<MockRouterProvider>(topicName)};
+        auto mockRouterProvider {std::make_shared<MockRouterProvider>()};
         EXPECT_CALL(*mockRouterProvider, send(::testing::_)).Times(1);
         ASSERT_NO_THROW(std::make_shared<ActionOrchestrator>(mockRouterProvider, m_parameters, m_shouldRun)->run());
     }
