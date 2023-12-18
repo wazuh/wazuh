@@ -53,7 +53,7 @@ add_library(builder2 STATIC
     ${SRC_DIR}/builders/opmap/map.cpp
     # TODO: Move to separate files
     ${SRC_DIR}/builders/opmap/opBuilderHelperMap.cpp
-    # ${SRC_DIR}/builders/opmap/kvdb.cpp
+    ${SRC_DIR}/builders/opmap/kvdb.cpp
 
     # Filter
     ${SRC_DIR}/builders/opfilter/filter.cpp
