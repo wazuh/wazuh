@@ -1123,24 +1123,23 @@ checkDownloadContent()
     sleep 10
 
     if [ "${DOWNLOAD_CONTENT}" = "yes" ]; then
-        echo "Ejecutando vd_scanner_testtool ¿continuar? (y/n): "
-        sleep 10
-
-        ./build/wazuh_modules/vulnerability_scanner/testtool/scanner/vd_scanner_testtool \
-        -c wazuh_modules/vulnerability_scanner/testtool/scanner/config.json \
-        -t wazuh_modules/vulnerability_scanner/indexer/template/legacy-template.json \
-        -d
-
-        echo "Borrando data innecesaria ¿continuar? (y/n): "
-        sleep 10
-        rm -rf queue/vd_updater
-        rm -rf queue/indexer
-        rm -rf queue/sockets
-        rm -rf queue/router
-
-        echo "Comprimiendo ¿continuar? (y/n): "
-        sleep 10
-        tar -cJf vd.tar.xz queue
+#        echo "Ejecutando vd_scanner_testtool ¿continuar? (y/n): "
+#        sleep 10
+#
+#        ./build/wazuh_modules/vulnerability_scanner/testtool/scanner/vd_scanner_testtool \
+#        -c wazuh_modules/vulnerability_scanner/testtool/scanner/config.json \
+#        -t wazuh_modules/vulnerability_scanner/indexer/template/legacy-template.json \
+#        -d
+#
+#        echo "Borrando data innecesaria ¿continuar? (y/n): "
+#        sleep 10
+#        rm -rf queue/indexer
+#        rm -rf queue/sockets
+#        rm -rf queue/router
+#
+#        echo "Comprimiendo ¿continuar? (y/n): "
+#        sleep 10
+#        tar -cJf vd.tar.xz queue
 
         echo "Instalando ¿continuar? (y/n): "
         sleep 10
