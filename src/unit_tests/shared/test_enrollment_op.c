@@ -48,7 +48,6 @@ FILE * __wrap_fopen ( const char * filename, const char * mode ) {
     return mock_ptr_type(FILE *);
 }
 */
-/*
 extern char * __real_fgets(char * buf, int size, FILE *stream);
 char * __wrap_fgets(char * buf, int size, FILE *stream) {
     if(!test_mode)
@@ -65,7 +64,7 @@ int __wrap_fclose ( FILE * stream ) {
         return __real_fclose(stream);
     return 0;
 }
-*/
+
 int __wrap_TempFile(File *file, const char *source, int copy) {
     file->name = mock_type(char *);
     file->fp = mock_type(FILE *);
@@ -80,7 +79,6 @@ int __wrap_OS_MoveFile(const char *src, const char *dst) {
     return mock_type(int);
 }
 */
-/*
 #ifndef WIN32
 extern int __real_fprintf ( FILE * stream, const char * format, ... );
 int __wrap_fprintf ( FILE * stream, const char * format, ... ) {
@@ -99,7 +97,7 @@ int __wrap_fprintf ( FILE * stream, const char * format, ... ) {
     return 0;
 }
 #endif
-*/
+
 void keyentry_init (keyentry *key, char *name, char *id, char *ip, char *raw_key) {
     os_calloc(1, sizeof(os_ip), key->ip);
     key->ip->ip = ip ? strdup(ip) : NULL;
@@ -1187,8 +1185,8 @@ void test_w_enrollment_load_pass_null_cert(void **state) {
 void test_w_enrollment_load_pass_empty_file(void **state) {
     w_enrollment_cert *cert = *state;
 
-    expect_string(__wrap_wfopen, __filename, AUTHD_PASS);
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, AUTHD_PASS);
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 4);
 #ifdef WIN32
     expect_value(wrap_fgets, __stream, 4);
@@ -1211,8 +1209,8 @@ void test_w_enrollment_load_pass_empty_file(void **state) {
 void test_w_enrollment_load_pass_file_with_content(void **state) {
     w_enrollment_cert *cert = *state;
 
-    expect_string(__wrap_wfopen, __filename, AUTHD_PASS);
-    expect_string(__wrap_wfopen, __modes, "r");
+    expect_string(__wrap_wfopen, filename, AUTHD_PASS);
+    expect_string(__wrap_wfopen, modes, "r");
     will_return(__wrap_wfopen, 4);
 #ifdef WIN32
     expect_value(wrap_fgets, __stream, 4);
