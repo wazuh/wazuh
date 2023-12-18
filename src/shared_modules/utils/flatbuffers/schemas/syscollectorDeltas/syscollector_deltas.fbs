@@ -35,16 +35,16 @@ table dbsync_network_iface {
     adapter:string;
     type:string;
     state:string;
-    mtu:int;
+    mtu:uint32;
     mac:string;
-    tx_packets:int;
-    rx_packets:int;
-    tx_bytes:int;
-    rx_bytes:int;
-    tx_errors:int;
-    rx_errors:int;
-    tx_dropped:int;
-    rx_dropped:int;
+    tx_packets:uint;
+    rx_packets:uint;
+    tx_bytes:uint;
+    rx_bytes:uint;
+    tx_errors:uint;
+    rx_errors:uint;
+    tx_dropped:uint;
+    rx_dropped:uint;
     checksum:string;
     item_id:string;
 }
