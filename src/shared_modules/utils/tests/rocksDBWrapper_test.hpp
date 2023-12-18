@@ -15,8 +15,9 @@
 #include "rocksDBWrapper.hpp"
 #include "gtest/gtest.h"
 #include <filesystem>
+#include <memory>
 
-static const std::string DATABASE_NAME {"test.db"};
+const auto OUTPUT_FOLDER {std::filesystem::temp_directory_path() / "RocksDBWrapperTest"};
 
 /**
  * @brief Tests the RocksDBWrapper class
@@ -32,7 +33,9 @@ protected:
      * @brief RocksDBWrapper object
      *
      */
-    std::optional<Utils::RocksDBWrapper> db_wrapper;
+    std::unique_ptr<Utils::RocksDBWrapper> db_wrapper;
+
+    const std::filesystem::path m_databaseFolder {OUTPUT_FOLDER / "test_db"}; ///< Database folder.
 
     /**
      * @brief Initial conditions for tests
@@ -41,7 +44,7 @@ protected:
     // cppcheck-suppress unusedFunction
     void SetUp() override
     {
-        db_wrapper = Utils::RocksDBWrapper(DATABASE_NAME);
+        db_wrapper = std::make_unique<Utils::RocksDBWrapper>(m_databaseFolder);
     }
 
     /**
@@ -52,7 +55,8 @@ protected:
     void TearDown() override
     {
         db_wrapper->deleteAll();
-        std::filesystem::remove_all(DATABASE_NAME);
+        db_wrapper.reset();
+        std::filesystem::remove_all(OUTPUT_FOLDER);
     }
 };
 

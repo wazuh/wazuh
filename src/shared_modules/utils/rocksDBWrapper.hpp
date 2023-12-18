@@ -13,10 +13,13 @@
 #define _ROCKS_DB_WRAPPER_HPP
 
 #include "rocksDBIterator.hpp"
+#include <algorithm>
 #include <filesystem>
-#include <iostream>
+#include <memory>
 #include <rocksdb/db.h>
+#include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace Utils
 {
@@ -32,11 +35,40 @@ namespace Utils
             rocksdb::Options options;
             options.create_if_missing = true;
             rocksdb::DB* dbRawPtr;
+            std::vector<rocksdb::ColumnFamilyDescriptor> columnsDescriptors;
+            const std::filesystem::path databasePath {dbPath};
 
             // Create directories recursively if they do not exist
-            std::filesystem::create_directories(std::filesystem::path(dbPath));
+            std::filesystem::create_directories(databasePath);
 
-            const auto status {rocksdb::DB::Open(options, dbPath, &dbRawPtr)};
+            // Get a list of the existing columns descriptors.
+            const auto databaseFile {databasePath / "CURRENT"};
+            if (std::filesystem::exists(databaseFile))
+            {
+                // Read columns names.
+                std::vector<std::string> columnsNames;
+                const auto listStatus {rocksdb::DB::ListColumnFamilies(options, dbPath, &columnsNames)};
+                if (!listStatus.ok())
+                {
+                    throw std::runtime_error("Failed to list columns: " + std::string {listStatus.getState()});
+                }
+
+                // Create a set of column descriptors. This includes the default column.
+                for (auto& columnName : columnsNames)
+                {
+                    columnsDescriptors.push_back(
+                        rocksdb::ColumnFamilyDescriptor(std::move(columnName), rocksdb::ColumnFamilyOptions()));
+                }
+            }
+            else
+            {
+                // Database doesn't exist: Set just the default column descriptor.
+                columnsDescriptors.push_back(
+                    rocksdb::ColumnFamilyDescriptor(rocksdb::kDefaultColumnFamilyName, rocksdb::ColumnFamilyOptions()));
+            }
+
+            // Open database with a list of columns descriptors.
+            const auto status {rocksdb::DB::Open(options, dbPath, columnsDescriptors, &m_columnsHandles, &dbRawPtr)};
             if (!status.ok())
             {
                 throw std::runtime_error("Failed to open RocksDB database. Reason: " + std::string {status.getState()});
@@ -54,6 +86,75 @@ namespace Utils
         RocksDBWrapper(RocksDBWrapper&& other) noexcept
             : m_db {std::move(other.m_db)}
         {
+        }
+
+        /**
+         * @brief Class destructor. Frees column family handles.
+         *
+         * @note The documentation of the lib clearly states that we should not free the default column family handler
+         * but not freeing it ends up on memory leaks and ASAN errors. OTOH, no problems seem to appear freeing it.
+         *
+         */
+        ~RocksDBWrapper()
+        {
+            std::for_each(m_columnsHandles.begin(),
+                          m_columnsHandles.end(),
+                          [this](rocksdb::ColumnFamilyHandle* handle)
+                          {
+                              const auto status {m_db->DestroyColumnFamilyHandle(handle)};
+                              if (!status.ok())
+                              {
+                                  throw std::runtime_error {"Failed to free RocksDB column family: " +
+                                                            std::string {status.getState()}};
+                              }
+                          });
+        }
+
+        /**
+         * @brief Creates a new column family in the database.
+         *
+         * @note The column handle created is also added to the handles list to be then accessible by other methods.
+         *
+         * @param columnName Name of the new column.
+         */
+        void createColumn(const std::string& columnName)
+        {
+            if (columnName.empty())
+            {
+                throw std::invalid_argument {"Column name is empty"};
+            }
+
+            rocksdb::ColumnFamilyHandle* pColumnFamily;
+            const auto status {m_db->CreateColumnFamily(rocksdb::ColumnFamilyOptions(), columnName, &pColumnFamily)};
+            if (!status.ok())
+            {
+                throw std::runtime_error {"Couldn't create column family: " + std::string {status.getState()}};
+            }
+
+            m_columnsHandles.push_back(pColumnFamily);
+        }
+
+        /**
+         * @brief Checks whether a column exists in the database or not.
+         *
+         * @param columnName Name of the column.
+         * @return true If the column exists.
+         * @return false If the column doesn't exists.
+         */
+        bool columnExists(const std::string& columnName) const
+        {
+            if (columnName.empty())
+            {
+                throw std::invalid_argument {"Column name is empty"};
+            }
+
+            const auto columnMatch {[&columnName](const rocksdb::ColumnFamilyHandle* handle)
+                                    {
+                                        return columnName == handle->GetName();
+                                    }};
+
+            return std::find_if(m_columnsHandles.begin(), m_columnsHandles.end(), columnMatch) !=
+                   m_columnsHandles.end();
         }
 
         /**
@@ -75,16 +176,18 @@ namespace Utils
          * @brief Put a key-value pair in the database.
          * @param key Key to put.
          * @param value Value to put.
+         * @param columnName Column name where the put will be performed. If empty, the default column will be used.
+         *
          * @note If the key already exists, the value will be overwritten.
          */
-        void put(const std::string& key, const rocksdb::Slice& value)
+        void put(const std::string& key, const rocksdb::Slice& value, const std::string& columnName = "")
         {
             if (key.empty())
             {
                 throw std::invalid_argument("Key is empty");
             }
 
-            const auto status {m_db->Put(rocksdb::WriteOptions(), key, value)};
+            const auto status {m_db->Put(rocksdb::WriteOptions(), getColumnFamilyHandle(columnName), key, value)};
             if (!status.ok())
             {
                 throw std::runtime_error("Error putting data: " + status.ToString());
@@ -96,19 +199,20 @@ namespace Utils
          *
          * @param key Key to get.
          * @param value Value to get (std::string).
+         * @param columnName Column name from where to get. If empty, the default column will be used.
          *
          * @return bool True if the operation was successful.
          * @return bool False if the key was not found.
          *
          */
-        bool get(const std::string& key, std::string& value)
+        bool get(const std::string& key, std::string& value, const std::string& columnName = "")
         {
             if (key.empty())
             {
                 throw std::invalid_argument("Key is empty");
             }
 
-            const auto status {m_db->Get(rocksdb::ReadOptions(), key, &value)};
+            const auto status {m_db->Get(rocksdb::ReadOptions(), getColumnFamilyHandle(columnName), key, &value)};
             if (status.IsNotFound())
             {
                 return false;
@@ -171,13 +275,16 @@ namespace Utils
         /**
          * @brief Get the last key-value pair from the database.
          *
+         * @param columnName Column name from where to get. If empty, the default column will be used.
+         *
          * @return std::pair<std::string, rocksdb::Slice> Last key-value pair.
          *
          * @note The first element of the pair is the key, the second element is the value.
          */
-        std::pair<std::string, rocksdb::Slice> getLastKeyValue()
+        std::pair<std::string, rocksdb::Slice> getLastKeyValue(const std::string& columnName = "")
         {
-            std::unique_ptr<rocksdb::Iterator> it(m_db->NewIterator(rocksdb::ReadOptions()));
+            std::unique_ptr<rocksdb::Iterator> it(
+                m_db->NewIterator(rocksdb::ReadOptions(), getColumnFamilyHandle(columnName)));
 
             it->SeekToLast();
             if (it->Valid())
@@ -287,6 +394,34 @@ namespace Utils
 
     private:
         std::unique_ptr<rocksdb::DB> m_db {};
+        std::vector<rocksdb::ColumnFamilyHandle*> m_columnsHandles {}; ///< List of column handles.
+
+        /**
+         * @brief Returns the column family handle identified by its name.
+         *
+         * @param columnName Name of the column family. If empty, the default handle is returned.
+         * @return rocksdb::ColumnFamilyHandle* Column family handle pointer.
+         */
+        rocksdb::ColumnFamilyHandle* getColumnFamilyHandle(const std::string& columnName)
+        {
+            if (columnName.empty())
+            {
+                return m_db->DefaultColumnFamily();
+            }
+
+            const auto columnMatch {[&columnName](const rocksdb::ColumnFamilyHandle* handle)
+                                    {
+                                        return columnName == handle->GetName();
+                                    }};
+
+            if (const auto it {std::find_if(m_columnsHandles.begin(), m_columnsHandles.end(), columnMatch)};
+                it != m_columnsHandles.end())
+            {
+                return *it;
+            }
+
+            throw std::runtime_error {"Couldn't find column family: '" + columnName + "'"};
+        }
     };
 } // namespace Utils
 
