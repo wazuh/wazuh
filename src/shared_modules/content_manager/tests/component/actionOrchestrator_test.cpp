@@ -11,7 +11,6 @@
 
 #include "actionOrchestrator_test.hpp"
 #include "actionOrchestrator.hpp"
-#include "mocks/mockRouterProvider.hpp"
 #include "routerProvider.hpp"
 #include <filesystem>
 #include <memory>
@@ -312,8 +311,6 @@ TEST_F(ActionOrchestratorTest, RunWithFullContentDownload)
 TEST_F(ActionOrchestratorTest, OfflineDownloadDownloadedFileHashStore)
 {
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
-    auto routerProvider {std::make_shared<RouterProvider>(topicName)};
-    routerProvider->start();
 
     // Configure the action to download a snapshot in offline mode.
     const auto inputFile {m_inputFilesDir / SNAPSHOT_FILE_NAME};
@@ -323,11 +320,9 @@ TEST_F(ActionOrchestratorTest, OfflineDownloadDownloadedFileHashStore)
 
     {
         // Trigger orchestration in a reduced scope so that the database is closed.
-        auto actionOrchestrator {std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_shouldRun)};
-        ASSERT_NO_THROW(actionOrchestrator->run());
+        EXPECT_CALL(*m_spMockRouterProvider, send(::testing::_)).Times(1);
+        ASSERT_NO_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_shouldRun).run());
     }
-
-    routerProvider->stop();
 
     const auto EXPECTED_DB_PATH {DATABASE_PATH / ("updater_" + topicName + "_metadata")};
     constexpr auto EXPECTED_HASH {"83f5b8992df285cdd0235bb0304e236047614d60"};
@@ -359,16 +354,14 @@ TEST_F(ActionOrchestratorTest, OfflineDownloadSameAndModifiedFileDifferentInstan
 
     {
         // Run first orchestration. File should be published.
-        auto mockRouterProvider {std::make_shared<MockRouterProvider>()};
-        EXPECT_CALL(*mockRouterProvider, send(::testing::_)).Times(1);
-        ASSERT_NO_THROW(std::make_shared<ActionOrchestrator>(mockRouterProvider, m_parameters, m_shouldRun)->run());
+        EXPECT_CALL(*m_spMockRouterProvider, send(::testing::_)).Times(1);
+        ASSERT_NO_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_shouldRun).run());
     }
 
     {
         // Run second orchestration. File should not be published since it didn't change.
-        auto mockRouterProvider {std::make_shared<MockRouterProvider>()};
-        EXPECT_CALL(*mockRouterProvider, send(::testing::_)).Times(0);
-        ASSERT_NO_THROW(std::make_shared<ActionOrchestrator>(mockRouterProvider, m_parameters, m_shouldRun)->run());
+        EXPECT_CALL(*m_spMockRouterProvider, send(::testing::_)).Times(0);
+        ASSERT_NO_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_shouldRun).run());
     }
 
     // Modify input file.
@@ -378,9 +371,8 @@ TEST_F(ActionOrchestratorTest, OfflineDownloadSameAndModifiedFileDifferentInstan
 
     {
         // Run third orchestration. File should be published since it has changed.
-        auto mockRouterProvider {std::make_shared<MockRouterProvider>()};
-        EXPECT_CALL(*mockRouterProvider, send(::testing::_)).Times(1);
-        ASSERT_NO_THROW(std::make_shared<ActionOrchestrator>(mockRouterProvider, m_parameters, m_shouldRun)->run());
+        EXPECT_CALL(*m_spMockRouterProvider, send(::testing::_)).Times(1);
+        ASSERT_NO_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_shouldRun).run());
     }
 
     // Remove input test file.
