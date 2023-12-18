@@ -11,8 +11,15 @@ namespace schemval::mocks
 class MockValidator : public IValidator
 {
 public:
-    MOCK_METHOD(const hlp::ParserBuilder&, getParser, (schemf::Type), (const, override));
     MOCK_METHOD(json::Json::Type, getJsonType, (schemf::Type), (const, override));
+    MOCK_METHOD(base::OptError, validate, (const DotPath&, const ValidationToken&), (const, override));
+    MOCK_METHOD(base::OptError, validateArray, (const DotPath&, const ValidationToken&), (const, override));
+    MOCK_METHOD(base::RespOrError<RuntimeValidator>, getRuntimeValidator, (const DotPath&, bool), (const, override));
+    MOCK_METHOD(ValidationToken, createToken, (json::Json::Type), (const, override));
+    MOCK_METHOD(ValidationToken, createToken, (schemf::Type), (const, override));
+    MOCK_METHOD(ValidationToken, createToken, (const json::Json&), (const, override));
+    MOCK_METHOD(ValidationToken, createToken, (const DotPath&), (const, override));
+    MOCK_METHOD(ValidationToken, createToken, (), (const, override));
 };
 
 } // namespace schemval::mocks

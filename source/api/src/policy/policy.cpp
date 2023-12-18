@@ -45,7 +45,7 @@ base::RespOrError<Policy::PolicyRep> Policy::read(const base::Name& policyName) 
     return PolicyRep::fromDoc(base::getResponse<store::Doc>(resp), m_store);
 }
 
-base::OptError Policy::upsert(PolicyRep policy)
+base::OptError Policy::upsert(const PolicyRep& policy)
 {
 
     if (auto error = vaidateNsName(policy.name()); base::isError(error))

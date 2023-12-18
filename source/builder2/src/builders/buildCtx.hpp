@@ -20,6 +20,8 @@ private:
 
     std::shared_ptr<const schemval::IValidator> m_schemaValidator; // Schema validator
 
+    std::shared_ptr<const schemf::ISchema> m_schema; // Schema
+
 public:
     BuildCtx()
     {
@@ -63,6 +65,10 @@ public:
     {
         m_schemaValidator = validator;
     }
+
+    inline const schemf::ISchema& schema() const override { return *m_schema; }
+    inline std::shared_ptr<const schemf::ISchema> schemaPtr() const override { return m_schema; }
+    inline void setSchema(const std::shared_ptr<const schemf::ISchema>& schema) override { m_schema = schema; }
 
     inline const Context& context() const override { return m_context; }
     inline Context& context() override { return m_context; }

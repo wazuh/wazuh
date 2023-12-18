@@ -3,7 +3,7 @@
 #include <base/utils/stringUtils.hpp>
 #include <fmt/format.h>
 
-#include "builders/utils.hpp"
+#include "builders/types.hpp"
 #include "helperParser.hpp"
 
 namespace builder::builders
@@ -11,87 +11,37 @@ namespace builder::builders
 
 OpBuilder buildType(const OpBuilder& builder,
                     const Reference& targetField,
-                    std::shared_ptr<ValidationToken> validatorToken,
-                    const std::shared_ptr<const IBuildCtx>& buildCtx)
+                    const schemval::ValidationToken& validationToken,
+                    const schemval::IValidator& validator)
 {
-    if (validatorToken->isFull())
+    auto res = validator.validate(targetField.dotPath(), validationToken);
+    if (base::isError(res))
     {
-        if (validatorToken->hasValue())
-        {
-            auto resp = buildCtx->validator().getRuntimeValidator(targetField.dotPath());
-            if (base::isError(resp))
-            {
-                return builder;
-            }
-
-            auto runValidator = base::getResponse<schemval::RuntimeValidator>(resp);
-            if (runValidator(validatorToken->jValue()))
-            {
-                return builder;
-            }
-
-            throw std::runtime_error(fmt::format(
-                "Value '{}' fails validation for field '{}'", validatorToken->jValue().str(), targetField.dotPath()));
-        }
-        else if (validatorToken->hasType())
-        {
-            // TODO add overloaded validate method
-            // auto resp = buildCtx->validator().validate(targetField.dotPath(), validatorToken->sType());
-            // if (base::isError(resp))
-            // {
-            //     throw std::runtime_error(base::getResponse<std::string>(resp));
-            // }
-
-            return builder;
-        }
-        else
-        {
-            // TODO: this should be unreachable
-            throw std::runtime_error("Validation token is full but has no type or value");
-        }
-    }
-    else if (validatorToken->isPartial())
-    {
-        auto resp = buildCtx->validator().validate(targetField.dotPath(), validatorToken->jType());
-        if (base::isError(resp))
-        {
-            throw std::runtime_error(base::getError(resp).message);
-        }
-
-        return builder;
+        throw std::runtime_error(base::getError(res).message);
     }
 
-    // Default case, no validation can be done
     return builder;
 }
 
 OpBuilder runType(const OpBuilder& builder,
                   const Reference& targetField,
-                  const std::shared_ptr<ValidationToken>& validatorToken,
-                  const std::shared_ptr<const IBuildCtx>& buildCtx)
+                  const schemval::ValidationToken& validationToken,
+                  const schemval::IValidator& validator)
 {
-    // If the builder is not a MapBuilder, do not wrap it
-    if (builder.index() != 0)
-    {
-        return builder;
-    }
-
-    // If the builder does not need runtime validation, do not wrap it
-    if (!validatorToken->needsRuntimeValidation())
+    if (!std::holds_alternative<MapBuilder>(builder) || !validationToken.needsRuntimeValidation())
     {
         return builder;
     }
 
     // Get runtime validator for target field if has any
-    auto runValidator = buildCtx->validator().getRuntimeValidator(targetField.dotPath());
+    auto runValidator = validator.getRuntimeValidator(targetField.dotPath());
     if (base::isError(runValidator))
     {
         return builder;
     }
 
     // Wrapper Builder
-    return [builder = std::get<0>(builder),
-            targetField,
+    return [builder = std::get<MapBuilder>(builder),
             runValidator = base::getResponse<schemval::RuntimeValidator>(runValidator)](
                const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx) -> MapOp
     {
@@ -194,11 +144,17 @@ base::Expression baseHelperBuilder(const std::string& helperName,
         throw std::runtime_error(fmt::format("Operation builder '{}' not found", helperName));
     }
 
-    auto [validatorToken, builder] = base::getResponse<OpBuilderEntry>(resp);
+    const auto& [validationInfo, builder] = base::getResponse<OpBuilderEntry>(resp);
+    schemval::ValidationToken validationToken;
     // Resolve validator if needed
-    if (validatorToken->isDynamic())
+    if (std::holds_alternative<DynamicValToken>(validationInfo))
     {
-        validatorToken = validatorToken->resolve(opArgs);
+        auto& dynamicValToken = std::get<DynamicValToken>(validationInfo);
+        validationToken = dynamicValToken(opArgs, buildCtx->validator());
+    }
+    else
+    {
+        validationToken = std::get<schemval::ValidationToken>(validationInfo);
     }
 
     // Set operation name
@@ -220,10 +176,12 @@ base::Expression baseHelperBuilder(const std::string& helperName,
     base::Expression op;
     try
     {
-        auto finalBuilder = toTransform(
-            buildType(
-                runType(builder, targetField, validatorToken, newBuildCtx), targetField, validatorToken, newBuildCtx),
-            targetField);
+        auto finalBuilder =
+            toTransform(buildType(runType(builder, targetField, validationToken, newBuildCtx->validator()),
+                                  targetField,
+                                  validationToken,
+                                  newBuildCtx->validator()),
+                        targetField);
 
         op = toExpression(finalBuilder(targetField, opArgs, newBuildCtx), name);
     }
@@ -271,7 +229,7 @@ baseHelperBuiler(const json::Json& definition, const std::shared_ptr<const IBuil
     }
     else if (jValue.isString())
     {
-        auto parser = internals::getHelperParser(true);
+        auto parser = detail::getHelperParser(true);
         auto parseRes = parser(jValue.getString().value(), 0);
 
         if (parseRes.failure())

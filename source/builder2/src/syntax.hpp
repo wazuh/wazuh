@@ -24,6 +24,9 @@ constexpr auto PARSE_KEY = "parse";             ///< Key for the parse stage in 
 constexpr auto NORMALIZE_KEY = "normalize";     ///< Key for the normalize stage in an asset.
 constexpr auto MAP_KEY = "map";                 ///< Key for the map stage in an asset.
 constexpr auto DEFINITIONS_KEY = "definitions"; ///< Key for the definitions stage in an asset.
+constexpr auto OUTPUTS_KEY = "outputs";         ///< Key for the outputs stage in an asset.
+constexpr auto FILE_OUTPUT_KEY = "file";        ///< Key for the file output stage in an asset.
+constexpr auto FILE_OUTPUT_PATH_KEY = "path";   ///< Key for the file output path in an asset.
 
 constexpr auto CONDITION_NAME =
     "condition"; ///< Name of the condition expression in the asset to be displayed in traces.
