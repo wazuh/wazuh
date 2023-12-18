@@ -223,4 +223,15 @@ WazuhUpgrade()
     if [ -f "$DIRECTORY/queue/alerts/execa" ]; then
         rm -f $DIRECTORY/queue/alerts/execa
     fi
+
+    # Update versions previous to Wazuh 4.8
+    if [ "X$1" = "Xserver" ]; then
+        local OSSEC_CONF_PATH="$PREINSTALLEDDIR/etc/ossec.conf"
+        local VULN_TEMPLATE_PATH="./etc/templates/config/generic/wodle-vulnerability-detection.manager.template"
+        local INDEXER_TEMPLATE_PATH="./etc/templates/config/generic/wodle-indexer.manager.template"
+
+        # Load vulnerability detector replacer commands
+        . ./src/init/replace_vulnerability_detector.sh
+        updateVulnerabilityDetector $OSSEC_CONF_PATH $VULN_TEMPLATE_PATH $INDEXER_TEMPLATE_PATH
+    fi
 }
