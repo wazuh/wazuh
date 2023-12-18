@@ -229,7 +229,7 @@ Asset AssetBuilder::operator()(const store::Doc& document) const
         }
     }
 
-    // Get expression (rest of stages)(optional)
+    // Build the expression (rest of keys if any)
     auto expression = buildExpression(name, objDoc);
 
     return Asset {std::move(name), std::move(expression), std::move(parents)};

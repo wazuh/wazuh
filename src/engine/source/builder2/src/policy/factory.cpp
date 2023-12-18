@@ -226,11 +226,6 @@ PolicyData readData(const store::Doc& doc, const std::shared_ptr<store::IStoreRe
     auto assets = doc.getArray(syntax::policy::PATH_ASSETS);
     if (assets)
     {
-        if (assets.value().empty())
-        {
-            throw std::runtime_error(fmt::format("Empty assets array at '{}'", syntax::policy::PATH_ASSETS));
-        }
-
         for (const auto& asset : assets.value())
         {
             auto assetNameStr = asset.getString();
@@ -294,10 +289,6 @@ PolicyData readData(const store::Doc& doc, const std::shared_ptr<store::IStoreRe
                 throw std::runtime_error(fmt::format("Asset '{}' is duplicated", assetName));
             }
         }
-    }
-    else
-    {
-        throw std::runtime_error(fmt::format("Could not find assets array at '{}'", syntax::policy::PATH_ASSETS));
     }
 
     return data;

@@ -1,3 +1,4 @@
+# TODO: QoL keep an eye on exposing linked libraries to the user
 # Defs
 set(IFACE_DIR ${CMAKE_CURRENT_LIST_DIR}/interface)
 set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
@@ -38,14 +39,32 @@ add_library(builder2 STATIC
     ${SRC_DIR}/policy/factory.cpp
     ${SRC_DIR}/policy/policy.cpp
     ${SRC_DIR}/policy/assetBuilder.cpp
-    ${SRC_DIR}/filterBuilder.cpp
+    ${SRC_DIR}/builders/baseHelper.cpp
+
+    # Stage
     ${SRC_DIR}/builders/stage/check.cpp
     ${SRC_DIR}/builders/stage/map.cpp
     ${SRC_DIR}/builders/stage/parse.cpp
     ${SRC_DIR}/builders/stage/normalize.cpp
-    ${SRC_DIR}/builders/baseHelper.cpp
+    ${SRC_DIR}/builders/stage/outputs.cpp
+    ${SRC_DIR}/builders/stage/fileOutput.cpp
+
+    # Map
     ${SRC_DIR}/builders/opmap/map.cpp
+    # TODO: Move to separate files
+    ${SRC_DIR}/builders/opmap/opBuilderHelperMap.cpp
+    # ${SRC_DIR}/builders/opmap/kvdb.cpp
+
+    # Filter
     ${SRC_DIR}/builders/opfilter/filter.cpp
+    # ${SRC_DIR}/builders/opfilter/startsWith.cpp
+    ${SRC_DIR}/builders/opfilter/exists.cpp
+    # TODO: Move to separate files
+    ${SRC_DIR}/builders/opfilter/opBuilderHelperFilter.cpp
+
+    # Transform
+    ${SRC_DIR}/builders/optransform/array.cpp
+    ${SRC_DIR}/builders/optransform/hlp.cpp
 )
 target_include_directories(builder2 PUBLIC ${BUILDER_PUB_INCS} PRIVATE ${BUILDER_PRI_INCS})
 # TODO make variables so we can use them in the tests and make private the dependencies
@@ -59,6 +78,8 @@ target_link_libraries(builder2
     re2
     logicexpr
     logpar
+    date::date
+    kvdb::ikvdb
 
     PRIVATE
 
@@ -90,15 +111,13 @@ gtest_discover_tests(builder2_ctest)
 
 ## Unit tests
 add_executable(builder2_utest
-    ${UNIT_SRC_DIR}/builders/registry_test.cpp
+    ${UNIT_SRC_DIR}/registry_test.cpp
     ${UNIT_SRC_DIR}/policy/factory_test.cpp
     ${UNIT_SRC_DIR}/policy/assetBuilder_test.cpp
-    ${UNIT_SRC_DIR}/filterBuilder_test.cpp
-    # TODO update
-    # ${UNIT_SRC_DIR}/builders/helperParser_test.cpp
+    ${UNIT_SRC_DIR}/builders/helperParser_test.cpp
     ${UNIT_SRC_DIR}/exploratory_test.cpp # TODO: delete
 )
-target_include_directories(builder2_utest PUBLIC ${BUILDER_PUB_INCS} PRIVATE ${BUILDER_PRI_INCS} ${UNIT_SRC_DIR})
+target_include_directories(builder2_utest PUBLIC ${BUILDER_PUB_INCS} PRIVATE ${BUILDER_PRI_INCS} ${TEST_SRC_DIR} ${UNIT_SRC_DIR})
 target_link_libraries(builder2_utest
     PRIVATE
     builder2

@@ -5,15 +5,16 @@
 #include <store/mockStore.hpp>
 #include <test/behaviour.hpp>
 
-#include "builders/mockRegistry.hpp"
+#include "expressionCmp.hpp"
 #include "factory_test.hpp"
+#include "mockRegistry.hpp"
 #include "policy/factory.hpp"
 #include "policy/mockAssetBuilder.hpp"
 
 using namespace builder::policy;
 using namespace base::test;
 using namespace store::mocks;
-using namespace builder::builders::mocks;
+using namespace builder::mocks;
 using namespace builder::policy::mocks;
 
 namespace readtest
@@ -72,8 +73,6 @@ INSTANTIATE_TEST_SUITE_P(
         ReadT(R"({"name": "test", "hash": "test", "default_parents": {"asset": ""}})", Failure()),
         ReadT(R"({"name": "test", "hash": "test", "default_parents": {"asset": "name"}})", Failure()),
         // Invalid assets
-        ReadT(R"({"name": "test", "hash": "test"})", Failure()),
-        ReadT(R"({"name": "test", "hash": "test", "assets": []})", Failure()),
         ReadT(R"({"name": "test", "hash": "test", "assets": [1]})", Failure()),
         ReadT(R"({"name": "test", "hash": "test", "assets": [""]})", Failure()),
         ReadT(R"({"name": "test", "hash": "test", "assets": ["rule/asset"]})",
@@ -121,6 +120,10 @@ INSTANTIATE_TEST_SUITE_P(
                       return None {};
                   })),
         // Success cases
+        ReadT(R"({"name": "test", "hash": "test"})",
+              Success([](const std::shared_ptr<MockStoreRead>& store) { return D {.name = "test", .hash = "test"}; })),
+        ReadT(R"({"name": "test", "hash": "test", "assets": []})",
+              Success([](const std::shared_ptr<MockStoreRead>& store) { return D {.name = "test", .hash = "test"}; })),
         ReadT(
             R"({"name": "test", "hash": "test", "default_parents": {"ns": "decoder/asset"}, "assets": ["decoder/asset"]})",
             Success(
@@ -493,6 +496,7 @@ auto Success = Expc::success();
 auto Failure = Expc::failure();
 
 using AD = buildgraphtest::AssetData;
+using buildgraphtest::assetExpr;
 using BuildT = std::tuple<AD, Expc>;
 class BuildExpression : public testing::TestWithParam<BuildT>
 {
@@ -509,7 +513,7 @@ TEST_P(BuildExpression, GraphAndData)
         base::Expression got;
         ASSERT_NO_THROW(got = factory::buildExpression(policyGraph, policyData));
 
-        // TODO manual comparison through visitor and test cases;
+        builder::test::assertEqualExpr(got, expectedExpr);
     }
     else
     {
@@ -520,10 +524,269 @@ TEST_P(BuildExpression, GraphAndData)
 }
 
 using AT = factory::PolicyData::AssetType;
-INSTANTIATE_TEST_SUITE_P(PolicyFactory,
-                         BuildExpression,
-                         testing::Values(BuildT(AD(), Success())
+using namespace base;
+INSTANTIATE_TEST_SUITE_P(
+    PolicyFactory,
+    BuildExpression,
+    testing::Values(
+        // Empty graph
+        BuildT(AD(), Success(Chain::create("policy/testname", {}))),
+        // Single assets
+        BuildT(AD()(AT::DECODER, "decoder/asset", "decoder/Input"),
+               Success(Chain::create("policy/testname", {Or::create("decoder/Input", {assetExpr("decoder/asset")})}))),
+        BuildT(AD()(AT::RULE, "rule/asset", "rule/Input"),
+               Success(Chain::create("policy/testname", {Broadcast::create("rule/Input", {assetExpr("rule/asset")})}))),
+        BuildT(AD()(AT::OUTPUT, "output/asset", "output/Input"),
+               Success(Chain::create("policy/testname",
+                                     {Broadcast::create("output/Input", {assetExpr("output/asset")})}))),
+        // One of each asset
+        BuildT(AD()(AT::DECODER, "decoder/asset", "decoder/Input")(AT::RULE, "rule/asset", "rule/Input")(
+                   AT::OUTPUT, "output/asset", "output/Input"),
+               Success(Chain::create("policy/testname",
+                                     {Or::create("decoder/Input", {assetExpr("decoder/asset")}),
+                                      Broadcast::create("rule/Input", {assetExpr("rule/asset")}),
+                                      Broadcast::create("output/Input", {assetExpr("output/asset")})}))),
+        // One parent
+        BuildT(AD()(AT::DECODER, "decoder/asset", "decoder/parent")(AT::DECODER, "decoder/parent", "decoder/Input"),
+               Success(Chain::create("policy/testname",
+                                     {Or::create("decoder/Input",
+                                                 {Implication::create("decoder/parent/Node",
+                                                                      assetExpr("decoder/parent"),
+                                                                      Or::create("decoder/parent/Children",
+                                                                                 {assetExpr("decoder/asset")}))})}))),
+        BuildT(AD()(AT::RULE, "rule/asset", "rule/parent")(AT::RULE, "rule/parent", "rule/Input"),
+               Success(Chain::create(
+                   "policy/testname",
+                   {Broadcast::create("rule/Input",
+                                      {Implication::create("rule/parent/Node",
+                                                           assetExpr("rule/parent"),
+                                                           Broadcast::create("rule/parent/Children",
+                                                                             {assetExpr("rule/asset")}))})}))),
+        BuildT(AD()(AT::OUTPUT, "output/asset", "output/parent")(AT::OUTPUT, "output/parent", "output/Input"),
+               Success(Chain::create(
+                   "policy/testname",
+                   {Broadcast::create("output/Input",
+                                      {Implication::create("output/parent/Node",
+                                                           assetExpr("output/parent"),
+                                                           Broadcast::create("output/parent/Children",
+                                                                             {assetExpr("output/asset")}))})}))),
+        // One parent for each asset
+        BuildT(
+            AD()(AT::DECODER, "decoder/asset", "decoder/parent")(AT::DECODER, "decoder/parent", "decoder/Input")(
+                AT::RULE, "rule/asset", "rule/parent")(AT::RULE, "rule/parent", "rule/Input")(
+                AT::OUTPUT, "output/asset", "output/parent")(AT::OUTPUT, "output/parent", "output/Input"),
+            Success(Chain::create(
+                "policy/testname",
+                {Or::create("decoder/Input",
+                            {Implication::create("decoder/parent/Node",
+                                                 assetExpr("decoder/parent"),
+                                                 Or::create("decoder/parent/Children", {assetExpr("decoder/asset")}))}),
+                 Broadcast::create("rule/Input",
+                                   {Implication::create("rule/parent/Node",
+                                                        assetExpr("rule/parent"),
+                                                        Broadcast::create("rule/parent/Children",
+                                                                          {assetExpr("rule/asset")}))}),
+                 Broadcast::create("output/Input",
+                                   {Implication::create("output/parent/Node",
+                                                        assetExpr("output/parent"),
+                                                        Broadcast::create("output/parent/Children",
+                                                                          {assetExpr("output/asset")}))})}))),
+        // Two parents
+        BuildT(AD()(AT::DECODER, "decoder/asset", "decoder/parent1", "decoder/parent2")(
+                   AT::DECODER, "decoder/parent1", "decoder/Input")(AT::DECODER, "decoder/parent2", "decoder/Input"),
+               Success(Chain::create("policy/testname",
+                                     {Or::create("decoder/Input",
+                                                 {Implication::create("decoder/parent1/Node",
+                                                                      assetExpr("decoder/parent1"),
+                                                                      Or::create("decoder/parent1/Children",
+                                                                                 {assetExpr("decoder/asset")})),
+                                                  Implication::create("decoder/parent2/Node",
+                                                                      assetExpr("decoder/parent2"),
+                                                                      Or::create("decoder/parent2/Children",
+                                                                                 {assetExpr("decoder/asset")}))})}))),
+        BuildT(
+            AD()(AT::RULE, "rule/asset", "rule/parent1", "rule/parent2")(AT::RULE, "rule/parent1", "rule/Input")(
+                AT::RULE, "rule/parent2", "rule/Input"),
+            Success(Chain::create(
+                "policy/testname",
+                {Broadcast::create(
+                    "rule/Input",
+                    {Implication::create("rule/parent1/Node",
+                                         assetExpr("rule/parent1"),
+                                         Broadcast::create("rule/parent1/Children", {assetExpr("rule/asset")})),
+                     Implication::create("rule/parent2/Node",
+                                         assetExpr("rule/parent2"),
+                                         Broadcast::create("rule/parent2/Children", {assetExpr("rule/asset")}))})}))),
+        BuildT(AD()(AT::OUTPUT, "output/asset", "output/parent1", "output/parent2")(
+                   AT::OUTPUT, "output/parent1", "output/Input")(AT::OUTPUT, "output/parent2", "output/Input"),
+               Success(Chain::create(
+                   "policy/testname",
+                   {Broadcast::create("output/Input",
+                                      {Implication::create("output/parent1/Node",
+                                                           assetExpr("output/parent1"),
+                                                           Broadcast::create("output/parent1/Children",
+                                                                             {assetExpr("output/asset")})),
+                                       Implication::create("output/parent2/Node",
+                                                           assetExpr("output/parent2"),
+                                                           Broadcast::create("output/parent2/Children",
+                                                                             {assetExpr("output/asset")}))})}))),
+        // Two parents for each asset type
+        BuildT(
+            AD()(AT::DECODER, "decoder/asset", "decoder/parent1", "decoder/parent2")(
+                AT::DECODER, "decoder/parent1", "decoder/Input")(AT::DECODER, "decoder/parent2", "decoder/Input")(
+                AT::RULE, "rule/asset", "rule/parent1", "rule/parent2")(AT::RULE, "rule/parent1", "rule/Input")(
+                AT::RULE, "rule/parent2", "rule/Input")(AT::OUTPUT, "output/asset", "output/parent1", "output/parent2")(
+                AT::OUTPUT, "output/parent1", "output/Input")(AT::OUTPUT, "output/parent2", "output/Input"),
+            Success(Chain::create(
+                "policy/testname",
+                {Or::create("decoder/Input",
+                            {Implication::create("decoder/parent1/Node",
+                                                 assetExpr("decoder/parent1"),
+                                                 Or::create("decoder/parent1/Children", {assetExpr("decoder/asset")})),
+                             Implication::create("decoder/parent2/Node",
+                                                 assetExpr("decoder/parent2"),
+                                                 Or::create("decoder/parent2/Children",
+                                                            {assetExpr("decoder/asset")}))}),
+                 Broadcast::create(
+                     "rule/Input",
+                     {Implication::create("rule/parent1/Node",
+                                          assetExpr("rule/parent1"),
+                                          Broadcast::create("rule/parent1/Children", {assetExpr("rule/asset")})),
+                      Implication::create("rule/parent2/Node",
+                                          assetExpr("rule/parent2"),
+                                          Broadcast::create("rule/parent2/Children", {assetExpr("rule/asset")}))}),
+                 Broadcast::create("output/Input",
+                                   {Implication::create("output/parent1/Node",
+                                                        assetExpr("output/parent1"),
+                                                        Broadcast::create("output/parent1/Children",
+                                                                          {assetExpr("output/asset")})),
+                                    Implication::create("output/parent2/Node",
+                                                        assetExpr("output/parent2"),
+                                                        Broadcast::create("output/parent2/Children",
+                                                                          {assetExpr("output/asset")}))})}))),
+        // One asset with one parent, one asset with two parents (sharing one parent), one asset child of the first
+        // and one asset child of root
+        BuildT(AD()(AT::DECODER, "decoder/child1", "decoder/parent1")(
+                   AT::DECODER, "decoder/child2", "decoder/parent1", "decoder/parent2")(
+                   AT::DECODER, "decoder/child3", "decoder/child1")(AT::DECODER, "decoder/parent1", "decoder/Input")(
+                   AT::DECODER, "decoder/parent2", "decoder/Input")(AT::DECODER, "decoder/child4", "decoder/Input"),
+               Success(Chain::create(
+                   "policy/testname",
+                   {Or::create(
+                       "decoder/Input",
+                       {Implication::create("decoder/parent1/Node",
+                                            assetExpr("decoder/parent1"),
+                                            Or::create("decoder/parent1/Children",
+                                                       {Implication::create("decoder/child1/Node",
+                                                                            assetExpr("decoder/child1"),
+                                                                            Or::create("decoder/child1/Children",
+                                                                                       {assetExpr("decoder/child3")})),
+                                                        assetExpr("decoder/child2")})),
+                        Implication::create("decoder/parent2/Node",
+                                            assetExpr("decoder/parent2"),
+                                            Or::create("decoder/parent2/Children", {assetExpr("decoder/child2")})),
+                        assetExpr("decoder/child4")})}))),
+        BuildT(AD()(AT::RULE, "rule/child1", "rule/parent1")(AT::RULE, "rule/child2", "rule/parent1", "rule/parent2")(
+                   AT::RULE, "rule/child3", "rule/child1")(AT::RULE, "rule/parent1", "rule/Input")(
+                   AT::RULE, "rule/parent2", "rule/Input")(AT::RULE, "rule/child4", "rule/Input"),
+               Success(Chain::create(
+                   "policy/testname",
+                   {Broadcast::create(
+                       "rule/Input",
+                       {Implication::create(
+                            "rule/parent1/Node",
+                            assetExpr("rule/parent1"),
+                            Broadcast::create("rule/parent1/Children",
+                                              {Implication::create("rule/child1/Node",
+                                                                   assetExpr("rule/child1"),
+                                                                   Broadcast::create("rule/child1/Children",
+                                                                                     {assetExpr("rule/child3")})),
+                                               assetExpr("rule/child2")})),
+                        Implication::create("rule/parent2/Node",
+                                            assetExpr("rule/parent2"),
+                                            Broadcast::create("rule/parent2/Children", {assetExpr("rule/child2")})),
+                        assetExpr("rule/child4")})}))),
+        BuildT(AD()(AT::OUTPUT, "output/child1", "output/parent1")(
+                   AT::OUTPUT, "output/child2", "output/parent1", "output/parent2")(
+                   AT::OUTPUT, "output/child3", "output/child1")(AT::OUTPUT, "output/parent1", "output/Input")(
+                   AT::OUTPUT, "output/parent2", "output/Input")(AT::OUTPUT, "output/child4", "output/Input"),
+               Success(Chain::create(
+                   "policy/testname",
+                   {Broadcast::create(
+                       "output/Input",
+                       {Implication::create(
+                            "output/parent1/Node",
+                            assetExpr("output/parent1"),
+                            Broadcast::create("output/parent1/Children",
+                                              {Implication::create("output/child1/Node",
+                                                                   assetExpr("output/child1"),
+                                                                   Broadcast::create("output/child1/Children",
+                                                                                     {assetExpr("output/child3")})),
+                                               assetExpr("output/child2")})),
+                        Implication::create("output/parent2/Node",
+                                            assetExpr("output/parent2"),
+                                            Broadcast::create("output/parent2/Children", {assetExpr("output/child2")})),
+                        assetExpr("output/child4")})}))),
+        // complex graph (last use case for each asset type)
+        BuildT(
+            AD()(AT::DECODER, "decoder/child1", "decoder/parent1")(
+                AT::DECODER, "decoder/child2", "decoder/parent1", "decoder/parent2")(
+                AT::DECODER, "decoder/child3", "decoder/child1")(AT::DECODER, "decoder/parent1", "decoder/Input")(
+                AT::DECODER, "decoder/parent2", "decoder/Input")(AT::DECODER, "decoder/child4", "decoder/Input")(
+                AT::RULE, "rule/child1", "rule/parent1")(AT::RULE, "rule/child2", "rule/parent1", "rule/parent2")(
+                AT::RULE, "rule/child3", "rule/child1")(AT::RULE, "rule/parent1", "rule/Input")(
+                AT::RULE, "rule/parent2", "rule/Input")(AT::RULE, "rule/child4", "rule/Input")(
+                AT::OUTPUT, "output/child1", "output/parent1")(
+                AT::OUTPUT, "output/child2", "output/parent1", "output/parent2")(
+                AT::OUTPUT, "output/child3", "output/child1")(AT::OUTPUT, "output/parent1", "output/Input")(
+                AT::OUTPUT, "output/parent2", "output/Input")(AT::OUTPUT, "output/child4", "output/Input"),
+            Success(Chain::create(
+                "policy/testname",
+                {Or::create(
+                     "decoder/Input",
+                     {Implication::create("decoder/parent1/Node",
+                                          assetExpr("decoder/parent1"),
+                                          Or::create("decoder/parent1/Children",
+                                                     {Implication::create("decoder/child1/Node",
+                                                                          assetExpr("decoder/child1"),
+                                                                          Or::create("decoder/child1/Children",
+                                                                                     {assetExpr("decoder/child3")})),
+                                                      assetExpr("decoder/child2")})),
+                      Implication::create("decoder/parent2/Node",
+                                          assetExpr("decoder/parent2"),
+                                          Or::create("decoder/parent2/Children", {assetExpr("decoder/child2")})),
+                      assetExpr("decoder/child4")}),
+                 Broadcast::create(
+                     "rule/Input",
+                     {Implication::create(
+                          "rule/parent1/Node",
+                          assetExpr("rule/parent1"),
+                          Broadcast::create("rule/parent1/Children",
+                                            {Implication::create("rule/child1/Node",
+                                                                 assetExpr("rule/child1"),
+                                                                 Broadcast::create("rule/child1/Children",
+                                                                                   {assetExpr("rule/child3")})),
+                                             assetExpr("rule/child2")})),
+                      Implication::create("rule/parent2/Node",
+                                          assetExpr("rule/parent2"),
+                                          Broadcast::create("rule/parent2/Children", {assetExpr("rule/child2")})),
+                      assetExpr("rule/child4")}),
+                 Broadcast::create(
+                     "output/Input",
+                     {Implication::create(
+                          "output/parent1/Node",
+                          assetExpr("output/parent1"),
+                          Broadcast::create("output/parent1/Children",
+                                            {Implication::create("output/child1/Node",
+                                                                 assetExpr("output/child1"),
+                                                                 Broadcast::create("output/child1/Children",
+                                                                                   {assetExpr("output/child3")})),
+                                             assetExpr("output/child2")})),
+                      Implication::create("output/parent2/Node",
+                                          assetExpr("output/parent2"),
+                                          Broadcast::create("output/parent2/Children", {assetExpr("output/child2")})),
+                      assetExpr("output/child4")})})))
 
-                                             ));
+            ));
 
 } // namespace buildexpressiontest

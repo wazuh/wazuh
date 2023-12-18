@@ -5,10 +5,11 @@
 #include <store/utils.hpp>
 
 #include "builders/ibuildCtx.hpp"
-#include "builders/registry.hpp"
 #include "policy/assetBuilder.hpp"
+#include "policy/factory.hpp" // TODO: remove, this is needed by validateIntegration
 #include "policy/policy.hpp"
 #include "register.hpp"
+#include "registry.hpp"
 
 namespace builder
 {
@@ -48,7 +49,7 @@ Builder::Builder(const std::shared_ptr<store::IStore>& storeRead,
     }
 
     // Registry
-    m_registry = std::static_pointer_cast<Registry>(Registry::create<builders::Registry>());
+    m_registry = std::static_pointer_cast<Registry>(Registry::create<builder::Registry>());
 
     detail::registerStageBuilders<Registry>(m_registry, builderDeps);
     detail::registerOpBuilders<Registry>(m_registry, builderDeps);
@@ -89,7 +90,55 @@ base::Expression Builder::buildAsset(const base::Name& name) const
 
 base::OptError Builder::validateIntegration(const json::Json& json) const
 {
-    return base::Error {"Not implemented"};
+    // TODO: Make factory so this can be implemented without duplicating code
+    policy::factory::PolicyData policyData({.name = "policy/fake/0", .hash = "fakehash"});
+    auto integrationName = json.getString(syntax::asset::NAME_KEY).value();
+    try
+    {
+        policy::factory::addIntegrationSubgraph(policy::factory::PolicyData::AssetType::DECODER,
+                                                syntax::integration::DECODER_PATH,
+                                                json,
+                                                m_storeRead,
+                                                integrationName,
+                                                "fakeNs",
+                                                policyData);
+        policy::factory::addIntegrationSubgraph(policy::factory::PolicyData::AssetType::RULE,
+                                                syntax::integration::RULE_PATH,
+                                                json,
+                                                m_storeRead,
+                                                integrationName,
+                                                "fakeNs",
+                                                policyData);
+        policy::factory::addIntegrationSubgraph(policy::factory::PolicyData::AssetType::OUTPUT,
+                                                syntax::integration::OUTPUT_PATH,
+                                                json,
+                                                m_storeRead,
+                                                integrationName,
+                                                "fakeNs",
+                                                policyData);
+    }
+    catch (const std::exception& e)
+    {
+        return base::Error {e.what()};
+    }
+
+    auto buildCtx = std::make_shared<builders::BuildCtx>();
+    buildCtx->setRegistry(m_registry);
+    buildCtx->setValidator(m_validator);
+    buildCtx->runState().trace = true;
+
+    auto assetBuilder = std::make_shared<policy::AssetBuilder>(buildCtx, m_definitionsBuilder);
+
+    try
+    {
+        policy::factory::buildAssets(policyData, m_storeRead, assetBuilder);
+    }
+    catch (const std::exception& e)
+    {
+        return base::Error {e.what()};
+    }
+
+    return base::noError();
 }
 
 base::OptError Builder::validateAsset(const json::Json& json) const
@@ -112,15 +161,15 @@ base::OptError Builder::validateAsset(const json::Json& json) const
 
 base::OptError Builder::validatePolicy(const json::Json& json) const
 {
-    // TODO: handle empty policies and missing assets
-    // try
-    // {
-    //     auto policy = std::make_shared<policy::Policy>(json, m_storeRead, m_definitionsBuilder, m_registry);
-    // }
-    // catch (const std::exception& e)
-    // {
-    //     return base::Error {e.what()};
-    // }
+    try
+    {
+        auto policy =
+            std::make_shared<policy::Policy>(json, m_storeRead, m_definitionsBuilder, m_registry, m_validator);
+    }
+    catch (const std::exception& e)
+    {
+        return base::Error {e.what()};
+    }
 
     return base::noError();
 }

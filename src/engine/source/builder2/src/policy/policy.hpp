@@ -10,6 +10,10 @@
 
 namespace builder::policy
 {
+/**
+ * @brief Class representing a built policy
+ *
+ */
 class Policy : public IPolicy
 {
 private:
@@ -22,6 +26,15 @@ public:
     Policy() = default;
     ~Policy() = default;
 
+    /**
+     * @brief Construct a new Policy object
+     *
+     * @param doc Store document with the policy data
+     * @param store Store reader instance
+     * @param definitionsBuilder Definitions builder
+     * @param registry Registry instance
+     * @param validator Schema validator instance
+     */
     Policy(const store::Doc& doc,
            const std::shared_ptr<store::IStoreReader>& store,
            const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,

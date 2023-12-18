@@ -13,11 +13,11 @@
 #include <json/json.hpp>
 #include <parsec/parsec.hpp>
 
-#include "builders/ibuildCtx.hpp"
 #include "syntax.hpp"
+#include "types.hpp"
 #include "utils/stringUtils.hpp"
 
-namespace builder::internals
+namespace builder::builders::detail
 {
 
 /**
@@ -184,6 +184,8 @@ inline parsec::Parser<HelperToken> getHelperParser(bool eraseScapeChars = false)
 
         return parsec::makeSuccess(std::string(1, syntax::helper::ARG_START), next);
     };
+
+    auto helperStartParser = helperNameParser & parenthOpenParser;
 
     parsec::Parser<std::string> parenthCloseParser = [](auto sv, auto pos) -> parsec::Result<std::string>
     {
@@ -452,15 +454,40 @@ inline parsec::Parser<HelperToken> getHelperParser(bool eraseScapeChars = false)
         }
         catch (const std::exception&)
         {
+            // If empty error
+            if (sv.size() <= pos)
+            {
+                return parsec::makeError<HelperToken>("Empty value", pos);
+            }
+
             auto strValue = json::Json();
-            strValue.setString(sv.substr(pos));
+            // Check for escape helper syntax 'helperName()'
+            if (sv[pos] == '\'')
+            {
+                if (sv[sv.size() - 1] != '\'')
+                {
+                    return parsec::makeError<HelperToken>("Missing end quote", pos);
+                }
+
+                strValue.setString(sv.substr(pos + 1, sv.size() - pos - 2));
+            }
+            // Check for escaped quote
+            else if (sv[pos] == syntax::helper::DEFAULT_ESCAPE && sv[pos + 1] == '\'')
+            {
+                strValue.setString(sv.substr(pos + 1, sv.size() - pos - 1));
+            }
+            else
+            {
+                strValue.setString(sv.substr(pos));
+            }
+
             helperToken.args.emplace_back(std::make_shared<builders::Value>(std::move(strValue)));
         }
 
         return parsec::makeSuccess(std::move(helperToken), sv.size());
     };
 
-    auto finalParser = helperParser | refParser | valueParser;
+    auto finalParser = helperParser | (parsec::negativeLook(helperStartParser) >> (refParser | valueParser));
     return finalParser;
 }
 
@@ -657,13 +684,41 @@ inline parsec::Parser<ExpressionToken> getExpressionParser()
  *
  * @return parsec::Parser<BuildToken>
  */
+// TODO remove ExpressionToken, as it can directly be converted to HelperToken
 inline parsec::Parser<BuildToken> getTermParser()
 {
-    auto helperParser = getHelperParser();
+    auto helperParser = getHelperParser(true);
     auto expressionParser = getExpressionParser();
 
+    parsec::M<HelperToken, HelperToken> f = [](const HelperToken& token) -> parsec::Parser<HelperToken>
+    {
+        parsec::Parser<HelperToken> parser = [token](auto sv, auto pos) -> parsec::Result<HelperToken>
+        {
+            if (token.name.empty())
+            {
+                return parsec::makeError<HelperToken>("Helper function syntax error", pos);
+            }
+
+            if (token.args.size() < 1 || token.args[0]->isValue())
+            {
+                return parsec::makeError<HelperToken>(
+                    "Helper function requires at least one argument referencing target field", pos);
+            }
+
+            HelperToken newToken;
+            newToken.name = token.name;
+            newToken.targetField = *std::static_pointer_cast<builders::Reference>(token.args[0]);
+            newToken.args = std::vector<std::shared_ptr<builders::Argument>>(token.args.begin() + 1, token.args.end());
+
+            return parsec::makeSuccess<HelperToken>(std::move(newToken), pos);
+        };
+
+        return parser;
+    };
+    parsec::Parser<HelperToken> finalHelperParser = helperParser >>= f;
+
     parsec::Parser<BuildToken> helperParserToken = parsec::fmap<BuildToken, HelperToken>(
-        [](auto&& helperToken) -> BuildToken { return std::move(helperToken); }, helperParser);
+        [](auto&& helperToken) -> BuildToken { return std::move(helperToken); }, finalHelperParser);
     parsec::Parser<BuildToken> expressionParserToken = parsec::fmap<BuildToken, ExpressionToken>(
         [](auto&& expressionToken) -> BuildToken { return std::move(expressionToken); }, expressionParser);
 
@@ -695,6 +750,6 @@ inline std::variant<HelperToken, base::Error> parseHelper(std::string_view sv)
 
     return result.value();
 }
-} // namespace builder::internals
+} // namespace builder::builders::detail
 
 #endif // _BUILDER_HELPER_PARSER_HPP

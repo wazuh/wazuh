@@ -77,6 +77,11 @@ base::Expression normalizeBuilder(const json::Json& definition, const std::share
                     }
                     else
                     {
+                        if (key != syntax::asset::CHECK_KEY && key != syntax::asset::MAP_KEY)
+                        {
+                            throw std::runtime_error(fmt::format(
+                                "In stage '{}' block '{}' is not supported", syntax::asset::NORMALIZE_KEY, key));
+                        }
                         builderResp = buildCtx->registry().get<StageBuilder>(key);
                     }
 

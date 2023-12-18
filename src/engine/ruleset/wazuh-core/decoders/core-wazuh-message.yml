@@ -21,7 +21,7 @@ definitions:
 
 normalize:
   - map:
-      - ecs.version: "8.8"
+      - ecs.version: "'8.8'"
       - wazuh.isInternal: true
 
   #### Full location ####

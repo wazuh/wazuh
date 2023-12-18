@@ -23,7 +23,7 @@ private:
     struct Entry
     {
         RuntimeValidator validator; ///< Parser builder for the schema type.
-        json::Json::Type jsonType; ///< Json type for the schema type.
+        json::Json::Type jsonType;  ///< Json type for the schema type.
     };
 
     std::unordered_map<schemf::Type, Entry> m_entries; ///< Map of schema types to their parser and json type.
@@ -49,6 +49,16 @@ private:
         return it->second;
     }
 
+    /**
+     * @brief Validates if dest path is compatible with the given token, ignoring the array flag.
+     *
+     * @param destPath Destination path.
+     * @param token Token to validate.
+     * @param ignoreArray If set to true, the validator will validate the field as if it was not an array.
+     * @return base::OptError Error if the token is not compatible with the field.
+     */
+    base::OptError validateItem(const DotPath& destPath, const ValidationToken& token, bool ignoreArray) const;
+
 public:
     explicit Validator(const std::shared_ptr<schemf::ISchema>& schema);
     ~Validator() = default;
@@ -61,7 +71,10 @@ public:
      * @return true
      * @return false
      */
-    inline bool isCompatible(schemf::Type sType, json::Json::Type jType) const { return getEntry(sType).jsonType == jType; }
+    inline bool isCompatible(schemf::Type sType, json::Json::Type jType) const
+    {
+        return getEntry(sType).jsonType == jType;
+    }
 
     /**
      * @copydoc IValidator::getJsonType
@@ -71,17 +84,38 @@ public:
     /**
      * @copydoc IValidator::validate
      */
-    base::OptError validate(const DotPath& destPath, const json::Json::Type& type) const override;
+    base::OptError validate(const DotPath& destPath, const ValidationToken& token) const override;
 
     /**
-     * @copydoc IValidator::validate
+     * @copydoc IValidator::validateArray
      */
-    base::OptError validate(const DotPath& destPath, const DotPath& sourcePath) const override;
+    base::OptError validateArray(const DotPath& destPath, const ValidationToken& token) const override;
 
     /**
      * @copydoc IValidator::getRuntimeValidator
      */
-    base::RespOrError<RuntimeValidator> getRuntimeValidator(const DotPath& destPath) const override;
+    base::RespOrError<RuntimeValidator> getRuntimeValidator(const DotPath& destPath, bool ignoreArray) const override;
+
+    /**
+     * @copydoc IValidator::createToken
+     */
+    ValidationToken createToken(json::Json::Type type) const override;
+    /**
+     * @copydoc IValidator::createToken
+     */
+    ValidationToken createToken(schemf::Type type) const override;
+    /**
+     * @copydoc IValidator::createToken
+     */
+    ValidationToken createToken(const json::Json& value) const override;
+    /**
+     * @copydoc IValidator::createToken
+     */
+    ValidationToken createToken(const DotPath& path) const override;
+    /**
+     * @copydoc IValidator::createToken
+     */
+    ValidationToken createToken() const override;
 };
 
 } // namespace schemval
