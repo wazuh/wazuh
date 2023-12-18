@@ -81,12 +81,23 @@ add_executable(api_utest
   ${TEST_SRC_UNIT_DIR}/kvdb/kvdb_api_test.cpp
   ${TEST_SRC_UNIT_DIR}/policy/handlers_test.cpp
   ${TEST_SRC_UNIT_DIR}/policy/policy_test.cpp
-  ${TEST_SRC_UNIT_DIR}/test/session_test.cpp
+  # ${TEST_SRC_UNIT_DIR}/test/session_test.cpp TODO: Delete this after merge router
   ${TEST_SRC_UNIT_DIR}/adapter_test.cpp
   ${TEST_SRC_UNIT_DIR}/api_test.cpp
   ${TEST_SRC_UNIT_DIR}/registry_test.cpp
 )
 
-target_link_libraries(api_utest gtest_main base api schemf::mocks test_mocks store::mocks rbac::mocks api::mocks kvdb::mocks)
+target_link_libraries(api_utest
+    gtest_main
+    base
+    api
+    schemf::mocks
+    test_mocks
+    store::mocks
+    rbac::mocks
+    api::mocks
+    kvdb::mocks
+    builder2::mocks
+)
 gtest_discover_tests(api_utest)
 endif(ENGINE_BUILD_TEST)

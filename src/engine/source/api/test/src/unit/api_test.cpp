@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 
 #include <api/api.hpp>
-#include "../apiAuxiliarFunctions.hpp"
 
 
 using namespace api;
@@ -20,7 +19,7 @@ protected:
     Api m_api;
 
     void SetUp() override {
-        initLogging();
+        
         m_api.registerHandler("testCommand", testHandler);
         m_api.registerHandler("testCommandException", testHandlerExeption);
 

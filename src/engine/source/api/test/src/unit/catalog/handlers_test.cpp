@@ -1,7 +1,6 @@
 #include <api/catalog/handlers.hpp>
 #include <gtest/gtest.h>
 
-#include "../../apiAuxiliarFunctions.hpp"
 #include "catalogTestShared.hpp"
 
 const std::string rCommand {"dummy cmd"};
@@ -19,7 +18,7 @@ class CatalogGetApiTest : public ::testing::TestWithParam<std::tuple<std::string
 protected:
     void SetUp() override
     {
-        initLogging();
+        logging::testInit();
         m_spCatalog = std::make_shared<api::catalog::Catalog>(getConfig());
     }
     std::shared_ptr<api::catalog::Catalog> m_spCatalog;
@@ -72,7 +71,7 @@ class CatalogPostApiTest
 protected:
     void SetUp() override
     {
-        initLogging();
+        logging::testInit();
         m_spCatalog = std::make_shared<api::catalog::Catalog>(getConfig());
     }
     std::shared_ptr<api::catalog::Catalog> m_spCatalog;
@@ -148,7 +147,7 @@ class CatalogPutApiTest
 protected:
     void SetUp() override
     {
-        initLogging();
+        logging::testInit();
         m_spCatalog = std::make_shared<api::catalog::Catalog>(getConfig());
     }
     std::shared_ptr<api::catalog::Catalog> m_spCatalog;
@@ -222,7 +221,7 @@ class CatalogDeleteApiTest : public ::testing::TestWithParam<std::tuple<int, std
 protected:
     void SetUp() override
     {
-        initLogging();
+        logging::testInit();
         m_spCatalog = std::make_shared<api::catalog::Catalog>(getConfig());
     }
     std::shared_ptr<api::catalog::Catalog> m_spCatalog;
