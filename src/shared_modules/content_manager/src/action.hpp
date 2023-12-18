@@ -83,8 +83,7 @@ public:
                 std::unique_lock<std::mutex> lock(m_mutex);
 
                 // Run action on start, independently of the interval time.
-                logInfo(WM_CONTENTUPDATER, "Starting on-start action for '%s'", m_topicName.c_str());
-                runAction(ActionID::SCHEDULED);
+                runActionOnDemand();
 
                 while (m_schedulerRunning)
                 {
