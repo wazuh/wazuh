@@ -8,6 +8,10 @@
 namespace builder::policy
 {
 
+/**
+ * @brief Class representing a built asset
+ *
+ */
 class Asset
 {
 private:
@@ -17,6 +21,14 @@ private:
 
 public:
     Asset() = default;
+
+    /**
+     * @brief Construct a new Asset object
+     *
+     * @param name Name of the asset
+     * @param expression Expression of the asset
+     * @param parents Parents of the asset
+     */
     Asset(base::Name&& name, base::Expression&& expression, std::vector<base::Name>&& parents)
         : m_name(std::move(name))
         , m_expression(std::move(expression))
@@ -24,9 +36,25 @@ public:
     {
     }
 
+    /**
+     * @brief Get the name of the asset
+     *
+     * @return const base::Name&
+     */
     inline const base::Name& name() const { return m_name; }
+
+    /**
+     * @brief Get the expression of the asset
+     *
+     * @return const base::Expression&
+     */
     inline const base::Expression& expression() const { return m_expression; }
 
+    /**
+     * @brief Get the parents of the asset
+     *
+     * @return const std::vector<base::Name>&
+     */
     inline const std::vector<base::Name>& parents() const { return m_parents; }
     std::vector<base::Name>& parents() { return m_parents; }
 

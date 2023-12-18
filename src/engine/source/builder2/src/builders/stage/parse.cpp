@@ -6,12 +6,17 @@
 
 namespace builder::builders
 {
-
+// TODO: QoL error messages
 StageBuilder getParseBuilder(std::shared_ptr<hlp::logpar::Logpar> logpar, size_t debugLvl)
 {
     if (debugLvl != 0 && debugLvl != 1)
     {
         throw std::runtime_error("[builder::opBuilderLogParser] Invalid debug level: expected 0 or 1");
+    }
+
+    if (!logpar)
+    {
+        throw std::runtime_error("[builder::opBuilderLogParser] Invalid logpar");
     }
 
     return [logpar, debugLvl](const json::Json& definition,

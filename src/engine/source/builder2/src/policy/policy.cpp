@@ -24,7 +24,8 @@ Policy::Policy(const store::Doc& doc,
 
     // Build the assets
     // We need to build the assets before the graph because the parents are defined in the assets
-    // TODO: set state
+    // TODO: expose state of buildCtx to the user of the policy
+    // TODO: abstract this buildCtx code as it is needed by builder::Builder
     auto buildCtx = std::make_shared<builders::BuildCtx>();
     buildCtx->setRegistry(registry);
     buildCtx->setValidator(validator);

@@ -1,7 +1,5 @@
 #include "builders/opmap/map.hpp"
 
-#include "builders/utils.hpp"
-
 namespace builder::builders::opmap
 {
 
@@ -46,14 +44,24 @@ MapOp mapBuilder(const std::vector<OpArg>& opArgs, const std::shared_ptr<const I
     {
         return mapValue(*std::static_pointer_cast<Value>(opArgs[0]), buildCtx);
     }
-    else
-    {
-        return mapReference(*std::static_pointer_cast<Reference>(opArgs[0]), buildCtx);
-    }
+    return mapReference(*std::static_pointer_cast<Reference>(opArgs[0]), buildCtx);
 }
 
-std::shared_ptr<ValidationToken> mapValidator()
+DynamicValToken mapValidator()
 {
+    auto resolver = [](const std::vector<OpArg>& opArgs,
+                       const schemval::IValidator& validator) -> schemval::ValidationToken
+    {
+        utils::assertSize(opArgs, 1);
 
+        if (opArgs[0]->isValue())
+        {
+            return schemval::ValidationToken(std::static_pointer_cast<Value>(opArgs[0])->value());
+        }
+
+        return validator.createToken(std::static_pointer_cast<Reference>(opArgs[0])->dotPath());
+    };
+
+    return resolver;
 }
 } // namespace builder::builders::opmap
