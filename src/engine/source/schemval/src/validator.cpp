@@ -39,41 +39,110 @@ Validator::Validator(const std::shared_ptr<schemf::ISchema>& schema)
     m_entries.emplace(SType::NESTED, Entry {nullptr, JType::Object});
 }
 
-base::OptError Validator::validate(const DotPath& destPath, const json::Json::Type& type) const
+base::OptError Validator::validateItem(const DotPath& destPath, const ValidationToken& token, bool ignoreArray) const
 {
-    if (m_schema->hasField(destPath))
+    auto destType = m_schema->getType(destPath);
+
+    switch (token.which())
     {
-        auto sType = m_schema->getType(destPath);
-        if (!isCompatible(sType, type))
+        case IS_JTYPE:
+            if (!isCompatible(destType, std::get<JType>(token.getToken())))
+            {
+                return base::Error {fmt::format("Field '{}' of type '{}' is not compatible with the given type '{}'",
+                                                destPath,
+                                                schemf::typeToStr(destType),
+                                                json::Json::typeToStr(std::get<JType>(token.getToken())))};
+            }
+            break;
+        case IS_STYPE:
+            // if destType is keyword or text, all string types are compatible
+            if ((destType == SType::KEYWORD || destType == SType::TEXT)
+                && std::get<JType>(token.getToken()) == JType::String)
+            {
+                break;
+            }
+
+            if (destType != std::get<SType>(token.getToken()))
+            {
+                return base::Error {fmt::format("Field '{}' of type '{}' is not compatible with the given type '{}'",
+                                                destPath,
+                                                schemf::typeToStr(destType),
+                                                schemf::typeToStr(std::get<SType>(token.getToken())))};
+            }
+            break;
+        case IS_VALUE:
         {
-            return base::Error {fmt::format("Field '{}' is of type '{}', but the given value is of type '{}'",
-                                            destPath,
-                                            schemf::typeToStr(sType),
-                                            json::Json::typeToStr(type))};
+            auto runtimeValidator = getRuntimeValidator(destPath, ignoreArray);
+            if (!base::isError(runtimeValidator))
+            {
+                if (!base::getResponse<RuntimeValidator>(runtimeValidator)(std::get<json::Json>(token.getToken())))
+                {
+                    return base::Error {
+                        fmt::format("Field '{}' of type '{}' is not compatible with the given value '{}'",
+                                    destPath,
+                                    schemf::typeToStr(destType),
+                                    std::get<json::Json>(token.getToken()).str())};
+                }
+            }
+            break;
         }
+        default: break;
     }
+
     return base::noError();
 }
 
-base::OptError Validator::validate(const DotPath& destPath, const DotPath& sourcePath) const
+base::OptError Validator::validate(const DotPath& destPath, const ValidationToken& token) const
 {
-    if (m_schema->hasField(destPath) && m_schema->hasField(sourcePath))
+    if (token.which() == IS_NONE)
     {
-        auto sType = m_schema->getType(destPath);
-        auto jType = getEntry(m_schema->getType(sourcePath)).jsonType;
-        if (!isCompatible(sType, jType))
-        {
-            return base::Error {fmt::format("Field '{}' is of type '{}', but field '{}' is of type '{}'",
-                                            destPath,
-                                            schemf::typeToStr(sType),
-                                            sourcePath,
-                                            json::Json::typeToStr(jType))};
-        }
+        return base::noError();
     }
-    return base::noError();
+
+    if (!m_schema->hasField(destPath))
+    {
+        return base::noError();
+    }
+
+    if (m_schema->isArray(destPath) && !token.isArray())
+    {
+        return base::Error {fmt::format("Field '{}' is an array", destPath)};
+    }
+
+    if (!m_schema->isArray(destPath) && token.isArray())
+    {
+        return base::Error {fmt::format("Field '{}' is not an array", destPath)};
+    }
+
+    return validateItem(destPath, token, false);
 }
 
-base::RespOrError<RuntimeValidator> Validator::getRuntimeValidator(const DotPath& destPath) const
+base::OptError Validator::validateArray(const DotPath& destPath, const ValidationToken& token) const
+{
+    if (token.which() == IS_NONE)
+    {
+        return base::noError();
+    }
+
+    if (!m_schema->hasField(destPath))
+    {
+        return base::noError();
+    }
+
+    if (!m_schema->isArray(destPath))
+    {
+        return base::Error {fmt::format("Field '{}' is not an array", destPath)};
+    }
+
+    if (token.isArray())
+    {
+        return base::Error {fmt::format("Array of arrays is not supported for field '{}'", destPath)};
+    }
+
+    return validateItem(destPath, token, true);
+}
+
+base::RespOrError<RuntimeValidator> Validator::getRuntimeValidator(const DotPath& destPath, bool ignoreArray) const
 {
     if (!m_schema->hasField(destPath))
     {
@@ -88,7 +157,53 @@ base::RespOrError<RuntimeValidator> Validator::getRuntimeValidator(const DotPath
         return base::Error {fmt::format("Field '{}' does not have a runtime validator", destPath)};
     }
 
+    if (!ignoreArray && m_schema->isArray(destPath))
+    {
+        validator = [validator](const json::Json& value) -> bool
+        {
+            if (!value.isArray())
+            {
+                return false;
+            }
+
+            for (const auto& item : value.getArray().value())
+            {
+                if (!validator(item))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        };
+    }
+
     return validator;
+}
+
+ValidationToken Validator::createToken(json::Json::Type type) const
+{
+    return ValidationToken(type);
+}
+ValidationToken Validator::createToken(schemf::Type type) const
+{
+    return ValidationToken(type);
+}
+ValidationToken Validator::createToken(const json::Json& value) const
+{
+    return ValidationToken(value);
+}
+ValidationToken Validator::createToken(const DotPath& path) const
+{
+    if (m_schema->hasField(path))
+    {
+        return ValidationToken(m_schema->getType(path), m_schema->isArray(path));
+    }
+    return ValidationToken {};
+}
+ValidationToken Validator::createToken() const
+{
+    return ValidationToken {};
 }
 
 } // namespace schemval

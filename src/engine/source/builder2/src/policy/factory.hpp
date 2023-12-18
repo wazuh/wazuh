@@ -12,7 +12,7 @@
 #include <graph.hpp>
 #include <store/istore.hpp>
 
-#include "builders/iregistry.hpp"
+#include "iregistry.hpp"
 #include "iassetBuilder.hpp"
 
 namespace builder::policy::factory
@@ -103,6 +103,7 @@ public:
      * @param assetType Type of the asset.
      * @param ns Namespace of the asset.
      * @param name Name of the asset.
+     *
      * @return true if the asset was added.
      * @return false if the asset was already present.
      */
@@ -138,8 +139,10 @@ public:
      * @param assetType Type of the asset.
      * @param ns Namespace of the asset.
      * @param name Name of the asset.
+     *
      * @return true if the default parent was added.
      * @return false if the default parent was already present.
+     *
      */
     bool addDefaultParent(AssetType assetType, const store::NamespaceId& ns, const base::Name& name)
     {
@@ -196,6 +199,8 @@ void addIntegrationSubgraph(PolicyData::AssetType assetType,
  * @param name Name of the integration.
  * @param data Policy data to add the assets.
  * @param store The store interface to query assets and namespaces.
+ *
+ * @throw std::runtime_error If any error occurs.
  */
 void addIntegrationAssets(const store::NamespaceId& integrationNs,
                           const base::Name& name,
@@ -207,6 +212,7 @@ void addIntegrationAssets(const store::NamespaceId& integrationNs,
  *
  * @param doc The policy document.
  * @param store The store interface to query asset namespace.
+ *
  * @return PolicyData The policy data.
  *
  * @throw std::runtime_error If the policy data is invalid.
@@ -219,27 +225,81 @@ PolicyData readData(const store::Doc& doc, const std::shared_ptr<store::IStoreRe
  */
 using BuiltAssets = std::unordered_map<PolicyData::AssetType, std::unordered_map<base::Name, Asset>>;
 
+/**
+ * @brief Build the assets of the policy.
+ *
+ * @param data Policy data.
+ * @param store The store interface to query assets and namespaces.
+ * @param assetBuilder The asset builder instance to build each asset.
+ *
+ * @return BuiltAssets
+ *
+ * @throw std::runtime_error If any error occurs.
+ */
 BuiltAssets buildAssets(const PolicyData& data,
                         const std::shared_ptr<store::IStoreReader> store,
                         const std::shared_ptr<IAssetBuilder>& assetBuilder);
 
+/**
+ * @brief This struct contains the policy graphs by type.
+ *
+ */
 struct PolicyGraph
 {
-    std::map<PolicyData::AssetType, Graph<base::Name, Asset>> subgraphs;
+    std::map<PolicyData::AssetType, Graph<base::Name, Asset>> subgraphs; ///< Subgraphs by type
+
     // TODO: Implement
+    /**
+     * @brief Get the Graphivz string of the policy graph.
+     *
+     * @return std::string
+     */
     inline std::string getGraphivzStr() const { throw std::runtime_error("Not implemented"); }
 
     friend bool operator==(const PolicyGraph& lhs, const PolicyGraph& rhs) { return lhs.subgraphs == rhs.subgraphs; }
 };
 
+/**
+ * @brief Build a subgraph of the policy.
+ *
+ * @param subgraphName Name of the subgraph.
+ * @param subgraphData Asset names of the subgraph.
+ * @param filtersData Filter names of the policy.
+ * @param assets Assets of the subgraph.
+ * @param filters Filters of the policy.
+ *
+ * @return Graph<base::Name, Asset>
+ *
+ * @throw std::runtime_error If any error occurs.
+ */
 Graph<base::Name, Asset> buildSubgraph(const std::string& subgraphName,
                                        const SubgraphData& subgraphData,
                                        const SubgraphData& filtersData,
                                        const std::unordered_map<base::Name, Asset>& assets,
                                        const std::unordered_map<base::Name, Asset>& filters);
 
+/**
+ * @brief Build the policy graph from the built assets and the relations defined in the policy data.
+ *
+ * @param assets Assets of the policy.
+ * @param data Policy data.
+ *
+ * @return PolicyGraph
+ *
+ * @throw std::runtime_error If any error occurs.
+ */
 PolicyGraph buildGraph(const BuiltAssets& assets, const PolicyData& data);
 
+/**
+ * @brief Generates the expression of a subgraph.
+ *
+ * @tparam ChildOperator Expression type of the children nodes and the root node.
+ * @param subgraph Subgraph to generate the expression from.
+ *
+ * @return base::Expression
+ *
+ * @throw std::runtime_error If any error occurs.
+ */
 template<typename ChildOperator>
 base::Expression buildSubgraphExpression(const Graph<base::Name, Asset>& subgraph)
 {
@@ -305,6 +365,16 @@ base::Expression buildSubgraphExpression(const Graph<base::Name, Asset>& subgrap
     return root;
 }
 
+/**
+ * @brief Generates the expression of the policy from the policy graph and the policy data.
+ *
+ * @param graph Policy graph.
+ * @param data Policy data.
+ *
+ * @return base::Expression
+ *
+ * @throw std::runtime_error If any error occurs.
+ */
 base::Expression buildExpression(const PolicyGraph& graph, const PolicyData& data);
 
 } // namespace builder::policy::factory

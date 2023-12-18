@@ -32,7 +32,7 @@ private:
      * @param policy Policy representation
      * @return base::OptError
      */
-    base::OptError upsert(PolicyRep policy);
+    base::OptError upsert(const PolicyRep& policy);
 
 public:
     Policy(std::shared_ptr<store::IStore> store, std::shared_ptr<builder::IValidator> validator)

@@ -15,7 +15,7 @@ namespace builder::builders
 {
 namespace
 {
-using namespace builder::internals;
+using namespace builder::builders::detail;
 
 base::Expression checkListBuilder(const std::vector<json::Json>& list, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {

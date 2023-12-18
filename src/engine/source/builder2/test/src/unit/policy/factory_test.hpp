@@ -9,6 +9,11 @@ using namespace builder::policy;
 namespace buildgraphtest
 {
 
+inline base::Expression assetExpr(const base::Name& name)
+{
+    return base::And::create(name,  {base::Term<int>::create("fake", 0)});
+}
+
 class AssetData
 {
 public:
@@ -27,12 +32,12 @@ public:
     AssetData& operator()(factory::PolicyData::AssetType type, const base::Name& name, Parents&&... parents)
     {
         auto nameCpy = name;
-        auto asset = Asset {std::move(nameCpy), base::And::create("fakeAssetExpr", {}), {parents...}};
+        auto asset = Asset {std::move(nameCpy), assetExpr(name), {parents...}};
         if (builtAssets.find(type) == builtAssets.end())
         {
             builtAssets.emplace(type, std::unordered_map<base::Name, Asset> {});
         }
-        builtAssets.at(type).emplace(name, std::move(asset));
+        builtAssets.at(type).emplace(name, asset);
         policyData.add(type, "fakeNs", name);
 
         if (type != factory::PolicyData::AssetType::FILTER)

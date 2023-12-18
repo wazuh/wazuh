@@ -94,22 +94,23 @@ FilterOp filterBuilder(const Reference& targetField,
     }
 }
 
-std::shared_ptr<ValidationToken> filterValidator()
+DynamicValToken filterValidator()
 {
-    auto resolver = [](const std::vector<OpArg>& opArgs) -> std::shared_ptr<ValidationToken>
+    auto resolver = [](const std::vector<OpArg>& opArgs,
+                       const schemval::IValidator& validator) -> schemval::ValidationToken
     {
         utils::assertSize(opArgs, 1);
 
         if (opArgs[0]->isValue())
         {
-            return std::make_shared<StaticValueFull>(std::static_pointer_cast<Value>(opArgs[0])->value());
+            return schemval::ValidationToken(std::static_pointer_cast<Value>(opArgs[0])->value());
         }
         else
         {
-            return std::make_shared<ValidationToken>();
+            return validator.createToken(std::static_pointer_cast<Reference>(opArgs[0])->dotPath());
         }
     };
 
-    return std::make_shared<Dynamic>(resolver);
+    return resolver;
 }
 } // namespace builder::builders::opfilter
