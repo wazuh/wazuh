@@ -90,7 +90,7 @@ IndexerConnector::IndexerConnector(
     std::ifstream templateFile(templatePath);
     if (!templateFile.is_open())
     {
-        throw std::runtime_error("Could not open template file.");
+        throw std::runtime_error("Could not open template file: " + templatePath);
     }
     nlohmann::json templateData = nlohmann::json::parse(templateFile);
 
