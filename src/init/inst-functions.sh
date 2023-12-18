@@ -1137,9 +1137,16 @@ checkDownloadContent()
 #        rm -rf queue/sockets
 #        rm -rf queue/router
 #
-#        echo "Comprimiendo ¿continuar? (y/n): "
-#        sleep 10
-#        tar -cJf vd.tar.xz queue
+        mkdir -p queue/vd
+        mkdir -p queue/vd-updater
+        touch queue/vd/file1
+        touch queue/vd-updater/file1
+        echo "content vd" >> queue/vd/file1
+        echo "content updater" >> queue/vd-updater/file1
+
+        echo "Comprimiendo ¿continuar? (y/n): "
+        sleep 10
+        tar -cJf vd.tar.xz queue
 
         echo "Instalando ¿continuar? (y/n): "
         sleep 10
