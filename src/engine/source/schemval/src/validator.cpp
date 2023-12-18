@@ -56,10 +56,13 @@ base::OptError Validator::validateItem(const DotPath& destPath, const Validation
             break;
         case IS_STYPE:
             // if destType is keyword or text, all string types are compatible
-            if ((destType == SType::KEYWORD || destType == SType::TEXT)
-                && std::get<JType>(token.getToken()) == JType::String)
+            if (destType == SType::KEYWORD || destType == SType::TEXT)
             {
-                break;
+                auto jType = getEntry(std::get<SType>(token.getToken())).jsonType;
+                if (jType == json::Json::Type::String)
+                {
+                    break;
+                }
             }
 
             if (destType != std::get<SType>(token.getToken()))
