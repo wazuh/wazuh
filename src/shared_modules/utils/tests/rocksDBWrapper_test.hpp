@@ -18,7 +18,6 @@
 #include <memory>
 
 const auto OUTPUT_FOLDER {std::filesystem::temp_directory_path() / "RocksDBWrapperTest"};
-const auto DATABASE_FOLDER {OUTPUT_FOLDER / "test_db"};
 
 /**
  * @brief Tests the RocksDBWrapper class
@@ -36,6 +35,8 @@ protected:
      */
     std::unique_ptr<Utils::RocksDBWrapper> db_wrapper;
 
+    const std::filesystem::path m_databaseFolder {OUTPUT_FOLDER / "test_db"}; ///< Database folder.
+
     /**
      * @brief Initial conditions for tests
      *
@@ -43,7 +44,7 @@ protected:
     // cppcheck-suppress unusedFunction
     void SetUp() override
     {
-        db_wrapper = std::make_unique<Utils::RocksDBWrapper>(DATABASE_FOLDER);
+        db_wrapper = std::make_unique<Utils::RocksDBWrapper>(m_databaseFolder);
     }
 
     /**

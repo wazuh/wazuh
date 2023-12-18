@@ -327,8 +327,8 @@ TEST_F(RocksDBWrapperTest, TestRangeForLoopWithBinaryBuffers)
  */
 TEST_F(RocksDBWrapperTest, TestCreateFolderRecursively)
 {
-    const auto DATABASE_FOLDER {OUTPUT_FOLDER / "folder1" / "folder2" / "test_db"};
-    EXPECT_NO_THROW(std::make_unique<Utils::RocksDBWrapper>(DATABASE_FOLDER));
+    const auto databaseFolder {OUTPUT_FOLDER / "folder1" / "folder2" / "test_db"};
+    EXPECT_NO_THROW(std::make_unique<Utils::RocksDBWrapper>(databaseFolder));
 }
 
 /**
@@ -386,7 +386,7 @@ TEST_F(RocksDBWrapperTest, ColumnsSetup)
 
     // Reset wrapper. This will call the destructor and then the constructor again.
     db_wrapper.reset();
-    ASSERT_NO_THROW({ db_wrapper = std::make_unique<Utils::RocksDBWrapper>(DATABASE_FOLDER); });
+    ASSERT_NO_THROW({ db_wrapper = std::make_unique<Utils::RocksDBWrapper>(m_databaseFolder); });
 
     EXPECT_TRUE(db_wrapper->columnExists(COLUMN_NAME_A));
     EXPECT_TRUE(db_wrapper->columnExists(COLUMN_NAME_B));

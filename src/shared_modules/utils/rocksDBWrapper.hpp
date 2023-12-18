@@ -42,8 +42,8 @@ namespace Utils
             std::filesystem::create_directories(databasePath);
 
             // Get a list of the existing columns descriptors.
-            const auto DB_FILE {databasePath / "CURRENT"};
-            if (std::filesystem::exists(DB_FILE))
+            const auto databaseFile {databasePath / "CURRENT"};
+            if (std::filesystem::exists(databaseFile))
             {
                 // Read columns names.
                 std::vector<std::string> columnsNames;
