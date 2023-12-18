@@ -74,7 +74,7 @@ receiver_sockets, monitored_sockets = None, None
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_ossec_auth_configurations(test_configuration, test_metadata, set_wazuh_configuration,
                                    restart_authd_function, wait_for_authd_startup_function,
-                                   configure_sockets_environment):
+                                   configure_sockets_environment_module):
     '''
     description:
         Checks if the 'SSL' settings of the 'wazuh-authd' daemon work correctly by enrolling agents
@@ -103,7 +103,7 @@ def test_ossec_auth_configurations(test_configuration, test_metadata, set_wazuh_
         - wait_for_authd_startup_function:
             type: fixture
             brief: Waits until Authd is accepting connections.
-        - configure_sockets_environment:
+        - configure_sockets_environment_module:
             type: fixture
             brief: Configure environment for sockets and MITM.
 

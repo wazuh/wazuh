@@ -91,7 +91,7 @@ def set_up_groups(test_metadata, request):
 
 
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_ossec_auth_messages(test_configuration, test_metadata, set_wazuh_configuration, set_up_groups, configure_sockets_environment,
+def test_ossec_auth_messages(test_configuration, test_metadata, set_wazuh_configuration, set_up_groups, configure_sockets_environment_module,
                              clean_client_keys_file_module, restart_wazuh_daemon, wait_for_authd_startup_module,
                              connect_to_sockets_module):
     '''
@@ -118,7 +118,7 @@ def test_ossec_auth_messages(test_configuration, test_metadata, set_wazuh_config
         - set_up_groups:
             type: fixture
             brief: Create a testing group for agents and provide the test case list.
-        - configure_sockets_environment:
+        - configure_sockets_environment_module:
             type: fixture
             brief: Configure environment for sockets and MITM.
         - clean_client_keys_file_module:

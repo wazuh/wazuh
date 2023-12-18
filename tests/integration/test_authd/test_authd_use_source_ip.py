@@ -82,7 +82,7 @@ def configure_receiver_sockets(request, test_metadata):
 # Test
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_authd_use_source_ip(test_configuration, test_metadata, set_wazuh_configuration, configure_receiver_sockets,
-                             configure_sockets_environment, clean_client_keys_file_function, daemons_handler,
+                             configure_sockets_environment_module, clean_client_keys_file, daemons_handler,
                              wait_for_authd_startup_function, connect_to_sockets, tear_down):
     '''
     description:
@@ -103,10 +103,10 @@ def test_authd_use_source_ip(test_configuration, test_metadata, set_wazuh_config
         - set_wazuh_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
-        - configure_sockets_environment:
+        - configure_sockets_environment_module:
             type: fixture
             brief: Configure the socket listener to receive and send messages on the sockets.
-        - clean_client_keys_file_function:
+        - clean_client_keys_file:
             type: fixture
             brief: Cleans any previous key in client.keys file at function scope.
         - daemons_handler:

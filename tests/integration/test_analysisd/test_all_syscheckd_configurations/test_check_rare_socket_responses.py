@@ -82,7 +82,7 @@ receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 
 # Test function.
 @pytest.mark.parametrize('test_metadata', test_metadata, ids=test_cases_ids)
-def test_validate_rare_socket_responses(test_metadata, configure_local_internal_options, configure_sockets_environment,
+def test_validate_rare_socket_responses(test_metadata, configure_local_internal_options, configure_sockets_environment_module,
                                         connect_to_sockets_module, wait_for_analysisd_startup):
     '''
     description: Validate each response from the 'wazuh-analysisd' daemon socket
@@ -100,7 +100,7 @@ def test_validate_rare_socket_responses(test_metadata, configure_local_internal_
         - configure_local_internal_options:
             type: fixture
             brief: Configure the Wazuh local internal options.
-        - configure_sockets_environment:
+        - configure_sockets_environment_module:
             type: fixture
             brief: Configure environment for sockets and MITM.
         - connect_to_sockets_module:

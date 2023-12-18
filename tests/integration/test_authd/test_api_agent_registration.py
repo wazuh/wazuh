@@ -151,7 +151,7 @@ def check_api_data_response(api_response, expected_response):
 
 @pytest.mark.filterwarnings('ignore::urllib3.exceptions.InsecureRequestWarning')
 @pytest.mark.parametrize('test_metadata', test_metadata, ids=test_cases_ids)
-def test_agentd_server_configuration(test_metadata, truncate_api_log, clean_registered_agents, wait_for_start_module):
+def test_agentd_server_configuration(test_metadata, truncate_api_log, clean_registered_agents, wait_for_api_startup_module):
     '''
     description:
         Checks `wazuh-api` responds correctly to agent registration requests. Also, ensure client.keys is update
@@ -170,7 +170,7 @@ def test_agentd_server_configuration(test_metadata, truncate_api_log, clean_regi
         - clean_registered_agents:
             type: fixture
             brief: Remove current registered agents in the environment.
-        - wait_for_start_module:
+        - wait_for_api_startup_module:
             type: fixture
             brief: Wait for api starts.
 

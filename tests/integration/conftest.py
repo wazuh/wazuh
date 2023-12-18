@@ -387,8 +387,8 @@ def configure_sockets_environment_implementation(request: pytest.FixtureRequest)
 
 
 @pytest.fixture(scope='module')
-def configure_sockets_environment(request: pytest.FixtureRequest) -> None:
-    """Wrapper of `configure_sockets_environment_function` which contains the general implementation.
+def configure_sockets_environment_module(request: pytest.FixtureRequest) -> None:
+    """Wrapper of `configure_sockets_environment_implementation` which contains the general implementation.
 
     Args:
         request (pytest.FixtureRequest): Provide information about the current test function which made the request.
@@ -397,8 +397,8 @@ def configure_sockets_environment(request: pytest.FixtureRequest) -> None:
 
 
 @pytest.fixture(scope='function')
-def configure_sockets_environment_function(request: pytest.FixtureRequest) -> None:
-    """Wrapper of `configure_sockets_environment_function` which contains the general implementation.
+def configure_sockets_environment(request: pytest.FixtureRequest) -> None:
+    """Wrapper of `configure_sockets_environment_implementation` which contains the general implementation.
 
     Args:
         request (pytest.FixtureRequest): Provide information about the current test function which made the request.

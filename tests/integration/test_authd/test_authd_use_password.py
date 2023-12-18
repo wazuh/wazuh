@@ -130,8 +130,8 @@ def reset_password(test_metadata):
 
 # Test
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_authd_force_options(test_configuration, test_metadata, set_wazuh_configuration, configure_sockets_environment,
-                             clean_client_keys_file_function, reset_password, restart_wazuh_daemon_function,
+def test_authd_force_options(test_configuration, test_metadata, set_wazuh_configuration, configure_sockets_environment_module,
+                             clean_client_keys_file, reset_password, restart_wazuh_daemon_function,
                              wait_for_authd_startup_function, connect_to_sockets, tear_down):
     '''
     description:
@@ -152,10 +152,10 @@ def test_authd_force_options(test_configuration, test_metadata, set_wazuh_config
         - set_wazuh_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
-        - configure_sockets_environment:
+        - configure_sockets_environment_module:
             type: fixture
             brief: Configure the socket listener to receive and send messages on the sockets.
-        - clean_client_keys_file_function:
+        - clean_client_keys_file:
             type: fixture
             brief: Cleans any previous key in client.keys file at function scope.
         - reset_password:

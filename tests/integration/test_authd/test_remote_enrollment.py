@@ -55,7 +55,7 @@ from wazuh_testing.tools.socket_controller import SocketController
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils.wazuh import DEFAULT_SSL_REMOTE_ENROLLMENT_PORT
 from wazuh_testing.utils.configuration import load_configuration_template, get_test_cases_data
-from contextlib import contextmanager
+from contextlib import nullcontext as does_not_raise
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
@@ -108,13 +108,6 @@ def wait_for_tcp_port(port, host='localhost', timeout=10):
 
     raise TimeoutError(f'Waited too long for the port {port} on host {host} to start accepting messages')
 
-@contextmanager
-def not_raises(exception):
-    try:
-        yield
-    except exception:
-        raise pytest.fail("DID RAISE {0}".format(exception))
-
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_remote_enrollment(test_configuration, test_metadata, set_wazuh_configuration, restart_wazuh_daemon_function, tear_down):
     '''
@@ -165,7 +158,7 @@ def test_remote_enrollment(test_configuration, test_metadata, set_wazuh_configur
         - keys
         - ssl
     '''
-    expectation = not_raises(ConnectionRefusedError)
+    expectation = does_not_raise()
     expected_answer = 'OSSEC K:'
 
     remote_enrollment_enabled = test_metadata['remote_enrollment'] == 'yes'

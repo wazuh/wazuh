@@ -90,7 +90,7 @@ def set_up_groups(test_metadata, request):
 
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_ossec_auth_messages_with_key_hash(test_configuration, test_metadata, set_wazuh_configuration,
-                                           configure_sockets_environment, connect_to_sockets_module,
+                                           configure_sockets_environment_module, connect_to_sockets_module,
                                            set_up_groups, insert_pre_existent_agents, restart_wazuh_daemon_function,
                                            wait_for_authd_startup_function, tear_down):
     '''
@@ -112,7 +112,7 @@ def test_ossec_auth_messages_with_key_hash(test_configuration, test_metadata, se
         - set_wazuh_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
-        - configure_sockets_environment:
+        - configure_sockets_environment_module:
             type: fixture
             brief: Configure the socket listener to receive and send messages on the sockets.
         - connect_to_sockets_module:

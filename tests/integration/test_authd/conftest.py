@@ -21,7 +21,7 @@ from wazuh_testing.modules.api.patterns import API_STARTED_MSG
 AUTHD_STARTUP_TIMEOUT = 30
 
 
-def truncate_client_keys_file():
+def truncate_client_keys_file_implementation():
     """
     Cleans any previous key in client.keys file.
     """
@@ -32,12 +32,12 @@ def truncate_client_keys_file():
     file.truncate_file(WAZUH_CLIENT_KEYS_PATH)
 
 
-@pytest.fixture(scope='function')
-def clean_client_keys_file_function():
+@pytest.fixture()
+def clean_client_keys_file():
     """
     Cleans any previous key in client.keys file at function scope.
     """
-    truncate_client_keys_file()
+    truncate_client_keys_file_implementation()
 
 
 @pytest.fixture(scope='module')
@@ -45,7 +45,7 @@ def clean_client_keys_file_module():
     """
     Cleans any previous key in client.keys file at module scope.
     """
-    truncate_client_keys_file()
+    truncate_client_keys_file_implementation()
 
 
 @pytest.fixture(scope='module')
@@ -82,7 +82,7 @@ def wait_for_authd_startup_module():
                       callback=generate_callback(rf'{PREFIX}Accepting connections on port 1515'))
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture()
 def wait_for_authd_startup_function():
     """Wait until authd has begun with function scope"""
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
@@ -103,7 +103,7 @@ def tear_down():
 
 
 @pytest.fixture(scope='module')
-def wait_for_start_module():
+def wait_for_api_startup_module():
     """Monitor the API log file to detect whether it has been started or not.
 
     Raises:
@@ -128,7 +128,7 @@ def wait_for_start_module():
         raise RuntimeError('The API was not started as expected.')
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture()
 def insert_pre_existent_agents(test_metadata, stop_authd_function):
     agents = test_metadata['pre_existent_agents']
     time_now = int(time.time())
@@ -168,7 +168,7 @@ def insert_pre_existent_agents(test_metadata, stop_authd_function):
     keys_file.close()
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture()
 def copy_tmp_script(request):
     """
     Copy the script named 'script_filename' and found in 'script_path' to a temporary folder for use in the test.
