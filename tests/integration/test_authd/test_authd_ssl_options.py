@@ -50,6 +50,8 @@ from pathlib import Path
 import pytest
 
 from wazuh_testing.utils.configuration import load_configuration_template, get_test_cases_data
+from wazuh_testing.constants.ports import DEFAULT_SSL_REMOTE_ENROLLMENT_PORT
+from wazuh_testing.constants.daemons import AUTHD_DAEMON, WAZUH_DB_DAEMON, MODULES_DAEMON
 from wazuh_testing.tools.socket_controller import SocketController
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
@@ -65,15 +67,15 @@ test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cas
 test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 
 # Variables
-receiver_sockets_params = [(("localhost", 1515), 'AF_INET', 'SSL_TLSv1_2')]
-monitored_sockets_params = [('wazuh-modulesd', None, True), ('wazuh-db', None, True), ('wazuh-authd', None, True)]
+receiver_sockets_params = [(("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET', 'SSL_TLSv1_2')]
+monitored_sockets_params = [(MODULES_DAEMON, None, True), (WAZUH_DB_DAEMON, None, True), (AUTHD_DAEMON, None, True)]
 receiver_sockets, monitored_sockets = None, None
 
 
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_ossec_auth_configurations(test_configuration, test_metadata, set_wazuh_configuration,
-                                   restart_authd_function, wait_for_authd_startup_function,
+                                   restart_authd_function, wait_for_authd_startup,
                                    configure_sockets_environment_module):
     '''
     description:
@@ -100,7 +102,7 @@ def test_ossec_auth_configurations(test_configuration, test_metadata, set_wazuh_
         - restart_authd_function:
             type: fixture
             brief: stops the wazuh-authd daemon
-        - wait_for_authd_startup_function:
+        - wait_for_authd_startup:
             type: fixture
             brief: Waits until Authd is accepting connections.
         - configure_sockets_environment_module:

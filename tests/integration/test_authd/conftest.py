@@ -6,7 +6,7 @@ import yaml
 
 from wazuh_testing import logger
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, WAZUH_API_LOG_FILE_PATH, WAZUH_API_JSON_LOG_FILE_PATH
-from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH
+from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH, DEFAULT_AUTHD_PASS_PATH, DEFAULT_AUTHD_PASS_PATH
 from wazuh_testing.utils.db_queries.global_db import insert_agent_in_db, clean_agents_from_db
 from wazuh_testing.utils import file
 from wazuh_testing.utils.callbacks import generate_callback
@@ -15,7 +15,9 @@ from wazuh_testing.modules.authd.patterns import PREFIX
 from wazuh_testing.constants.daemons import AUTHD_DAEMON
 from wazuh_testing.utils.services import control_service
 from wazuh_testing.constants.api import WAZUH_API_PORT
+from wazuh_testing.constants.ports import DEFAULT_SSL_REMOTE_ENROLLMENT_PORT
 from wazuh_testing.modules.api.patterns import API_STARTED_MSG
+from wazuh_testing.tools.certificate_controller import CertificateController
 
 
 AUTHD_STARTUP_TIMEOUT = 30
@@ -83,7 +85,7 @@ def wait_for_authd_startup_module():
 
 
 @pytest.fixture()
-def wait_for_authd_startup_function():
+def wait_for_authd_startup():
     """Wait until authd has begun with function scope"""
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
     log_monitor.start(timeout=AUTHD_STARTUP_TIMEOUT, encoding="utf-8",
@@ -186,3 +188,82 @@ def copy_tmp_script(request):
         raise script_path_not_set
 
     shutil.copy(os.path.join(script_path, script_filename), os.path.join("/tmp", script_filename))
+
+
+@pytest.fixture(scope='function')
+def configure_receiver_sockets(request, test_metadata):
+    """
+    Get configurations from the module
+    """
+    global receiver_sockets_params
+    if test_metadata['ipv6'] == 'yes':
+        receiver_sockets_params = [(("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET6', 'SSL_TLSv1_2')]
+    else:
+        receiver_sockets_params = [(("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET', 'SSL_TLSv1_2')]
+    return receiver_sockets_params
+
+
+@pytest.fixture()
+def set_authd_pass(test_metadata):
+    """Configure the file 'authd.pass' as needed for the test."""
+    # Write the content in the authd.pass file.
+    file.write_file(DEFAULT_AUTHD_PASS_PATH, test_metadata['password'])
+
+    yield
+
+    # Delete the file as by default it doesn't exist.
+    file.remove_file(DEFAULT_AUTHD_PASS_PATH)
+
+
+@pytest.fixture(scope='function')
+def reset_password(test_metadata):
+    """
+    Write the password file.
+    """
+    DEFAULT_TEST_PASSWORD = 'TopSecret'
+    set_password = None
+    try:
+        if test_metadata['use_password'] == 'yes':
+            set_password = 'defined'
+            if test_metadata['random_pass'] == 'yes':
+                set_password = 'random'
+        else:
+            set_password = 'undefined'
+    except KeyError:
+        pass
+
+    # in case of random pass, remove /etc/authd.pass
+    if set_password == 'random' or set_password == 'undefined':
+        try:
+            os.remove(DEFAULT_AUTHD_PASS_PATH)
+        except FileNotFoundError:
+            pass
+        except IOError:
+            raise
+    # in case of defined pass, set predefined pass in  /etc/authd.pass
+    elif set_password == 'defined':
+        # Write authd.pass
+        try:
+            with open(DEFAULT_AUTHD_PASS_PATH, 'w') as pass_file:
+                pass_file.write(DEFAULT_TEST_PASSWORD)
+                pass_file.close()
+        except IOError as exception:
+            raise
+
+
+@pytest.fixture(scope="function")
+def generate_ca_certificate(test_metadata):
+    SSL_AGENT_CA = '/var/ossec/etc/test_rootCA.pem'
+    SSL_AGENT_CERT = '/tmp/test_sslagent.cert'
+    SSL_AGENT_PRIVATE_KEY = '/tmp/test_sslagent.key'
+    AGENT_IP = '127.0.0.1'
+    WRONG_IP = '10.0.0.240'
+    # Generate root key and certificate
+    controller = CertificateController()
+    option = test_metadata['sim_option']
+    if option not in ['NO_CERT']:
+        # Wheter manager will recognize or not this key
+        will_sign = True if option in ['VALID CERT', 'INCORRECT HOST'] else False
+        controller.generate_agent_certificates(SSL_AGENT_PRIVATE_KEY, SSL_AGENT_CERT,
+                                               WRONG_IP if option == 'INCORRECT HOST' else AGENT_IP, signed=will_sign)
+    controller.store_ca_certificate(controller.get_root_ca_cert(), SSL_AGENT_CA)

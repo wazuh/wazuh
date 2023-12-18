@@ -55,20 +55,22 @@ import re
 from pathlib import Path
 
 import pytest
-from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, WAZUH_PATH
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.constants.paths.sockets import MODULESD_KREQUEST_SOCKET_PATH
 from wazuh_testing.utils.configuration import load_configuration_template, get_test_cases_data
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils import callbacks
 from wazuh_testing.modules.authd import PREFIX
+from wazuh_testing.modules.authd.configuration import AUTHD_DEBUG_CONFIG
 
-from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH, SCRIPTS_FOLDER_PATH
 
 # Marks
 
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
 # Test configurations
-local_internal_options = {'authd.debug': '2'}
+local_internal_options = {AUTHD_DEBUG_CONFIG: '2'}
 
 # Configurations
 test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'config_authd_key_request_func.yaml')
@@ -77,10 +79,9 @@ test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cas
 test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 
 # Variables
-script_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'files')
+script_path = SCRIPTS_FOLDER_PATH
 script_filename = 'fetch_keys.py'
-kreq_sock_path = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'krequest')
-receiver_sockets_params = [(kreq_sock_path, 'AF_UNIX', 'UDP')]
+receiver_sockets_params = [(MODULESD_KREQUEST_SOCKET_PATH, 'AF_UNIX', 'UDP')]
 
 daemons_handler_configuration = {'all_daemons': True}
 receiver_sockets, monitored_sockets = None, None
@@ -89,7 +90,7 @@ receiver_sockets, monitored_sockets = None, None
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_key_request_func(test_configuration, test_metadata, set_wazuh_configuration, connect_to_sockets,
                           daemons_handler, configure_local_internal_options, tear_down,
-                          copy_tmp_script, wait_for_authd_startup_function):
+                          copy_tmp_script, wait_for_authd_startup):
     '''
     description:
         Checks that every input message on the key request port generates the appropiate response to the manager.
@@ -121,7 +122,7 @@ def test_key_request_func(test_configuration, test_metadata, set_wazuh_configura
         - copy_tmp_script:
             type: fixture
             brief: Copy the script to a temporary folder for testing.
-        - wait_for_authd_startup_function:
+        - wait_for_authd_startup:
             type: fixture
             brief: Waits until Authd is accepting connections.
 

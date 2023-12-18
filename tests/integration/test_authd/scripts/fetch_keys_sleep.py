@@ -4,29 +4,6 @@ import json
 import sys
 import time
 
-keys_db = [
-    {
-        # Agent 001 id configuration
-        'id': '001',
-        'ip': 'any',
-        'name': 'wazuh_agent1',
-        'key': '675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c911'
-    },
-    {
-        # Agent 002 ip/id configuration
-        'id': '002',
-        'ip': '10.10.10.10',
-        'name': 'wazuh_agent2',
-        'key': '675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c912'
-    },
-    {
-        # Agent 003 basic conf
-        'id': '003',
-        'ip': 'any',
-        'name': 'wazuh_agent3',
-        'key': '3333333333333333333333333333333333333333333333333333333333333333'
-    }
-]
 
 
 def main():

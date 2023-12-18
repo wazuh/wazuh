@@ -2,6 +2,7 @@
 
 import json
 import sys
+import time
 
 keys_db = [
     {
@@ -53,11 +54,35 @@ keys_db = [
         'name': 'wazuh_agent7',
         'key': '7777777777777777777777777777777777777777777777777777777777777777'
     }
-        # Agent 004 - Error 4
 ]
 
 
-def main():
+keys_db_sleep = [
+    {
+        # Agent 001 id configuration
+        'id': '001',
+        'ip': 'any',
+        'name': 'wazuh_agent1',
+        'key': '675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c911'
+    },
+    {
+        # Agent 002 ip/id configuration
+        'id': '002',
+        'ip': '10.10.10.10',
+        'name': 'wazuh_agent2',
+        'key': '675aaf366e6827ee7a77b2f7b4d89e603a21333c09afbb02c40191f199d7c912'
+    },
+    {
+        # Agent 003 basic conf
+        'id': '003',
+        'ip': 'any',
+        'name': 'wazuh_agent3',
+        'key': '3333333333333333333333333333333333333333333333333333333333333333'
+    }
+]
+
+
+def main(keys):
     """This file regenerate the agent key after a manipulation of it
     Print the legacy key of the agent, this way the agent key polling module can set the correct key again.
     """
@@ -68,7 +93,7 @@ def main():
     try:
         value = sys.argv[2]
         data = list(
-            (filter(lambda agent: agent[sys.argv[1]] == value, keys_db)))
+            (filter(lambda agent: agent[sys.argv[1]] == value, keys)))
         if len(data) == 1:
             print(json.dumps({"error": 0, "data": data[0]}))
         elif len(data) > 1:
@@ -85,4 +110,9 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) > 1 and sys.argv[1] == "-s":
+        del sys.argv[1]
+        time.sleep(5)
+        main(keys_db_sleep)
+    else:
+        main(keys_db)

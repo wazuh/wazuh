@@ -37,14 +37,13 @@ os_version:
 tags:
     - enrollment
 '''
-import os
 import time
 import pytest
 from pathlib import Path
-import re
 
-from wazuh_testing.constants.paths.configurations import DEFAULT_AUTHD_PASS_PATH
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.constants.ports import DEFAULT_SSL_REMOTE_ENROLLMENT_PORT
+from wazuh_testing.constants.daemons import AUTHD_DAEMON, WAZUH_DB_DAEMON, MODULES_DAEMON
 from wazuh_testing.utils.configuration import load_configuration_template, get_test_cases_data
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
@@ -67,8 +66,8 @@ INVALID_REQUEST_MESSAGE = 'ERROR: Invalid request for new agent'
 INVALID_PASSWORD_MESSAGE = 'ERROR: Invalid password'
 SUCCESS_MESSAGE = "OSSEC K:'001 {} any "
 
-receiver_sockets_params = [(("localhost", 1515), 'AF_INET', 'SSL_TLSv1_2')]
-monitored_sockets_params = [('wazuh-modulesd', None, True), ('wazuh-db', None, True), ('wazuh-authd', None, True)]
+receiver_sockets_params = [(("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET', 'SSL_TLSv1_2')]
+monitored_sockets_params = [(MODULES_DAEMON, None, True), (WAZUH_DB_DAEMON, None, True), (AUTHD_DAEMON, None, True)]
 receiver_sockets, monitored_sockets = None, None
 
 
@@ -90,49 +89,12 @@ def read_random_pass():
         raise
     return passw
 
-# Fixtures
-
-
-@pytest.fixture(scope='function')
-def reset_password(test_metadata):
-    """
-    Write the password file.
-    """
-    set_password = None
-    try:
-        if test_metadata['use_password'] == 'yes':
-            set_password = 'defined'
-            if test_metadata['random_pass'] == 'yes':
-                set_password = 'random'
-        else:
-            set_password = 'undefined'
-    except KeyError:
-        pass
-
-    # in case of random pass, remove /etc/authd.pass
-    if set_password == 'random' or set_password == 'undefined':
-        try:
-            os.remove(DEFAULT_AUTHD_PASS_PATH)
-        except FileNotFoundError:
-            pass
-        except IOError:
-            raise
-    # in case of defined pass, set predefined pass in  /etc/authd.pass
-    elif set_password == 'defined':
-        # Write authd.pass
-        try:
-            with open(DEFAULT_AUTHD_PASS_PATH, 'w') as pass_file:
-                pass_file.write(DEFAULT_TEST_PASSWORD)
-                pass_file.close()
-        except IOError as exception:
-            raise
-
 
 # Test
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_authd_force_options(test_configuration, test_metadata, set_wazuh_configuration, configure_sockets_environment_module,
                              clean_client_keys_file, reset_password, restart_wazuh_daemon_function,
-                             wait_for_authd_startup_function, connect_to_sockets, tear_down):
+                             wait_for_authd_startup, connect_to_sockets, tear_down):
     '''
     description:
         Checks that every input message in authd port generates the adequate output.
@@ -164,7 +126,7 @@ def test_authd_force_options(test_configuration, test_metadata, set_wazuh_config
         - restart_wazuh_daemon_function:
             type: fixture
             brief: Restarts wazuh or a specific daemon passed.
-        - wait_for_authd_startup_function:
+        - wait_for_authd_startup:
             type: fixture
             brief: Waits until Authd is accepting connections.
         - connect_to_sockets:

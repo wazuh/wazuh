@@ -51,49 +51,15 @@ import os
 from pathlib import Path
 
 import pytest
-from wazuh_testing.modules.authd.utils import CLUSTER_DATA_HEADER_SIZE, cluster_msg_build
+from wazuh_testing.modules.authd.utils import CLUSTER_DATA_HEADER_SIZE
 from wazuh_testing.constants.paths.sockets import MODULESD_C_INTERNAL_SOCKET_PATH, MODULESD_KREQUEST_SOCKET_PATH
-from wazuh_testing.tools import mitm
+from wazuh_testing.tools import WorkerMID
 from wazuh_testing.utils.configuration import load_configuration_template, get_test_cases_data
 
-from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH, SCRIPTS_FOLDER_PATH
 
 # Marks
-
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
-
-
-# Configurations
-
-class WorkerMID(mitm.ManInTheMiddle):
-
-    def __init__(self, address, family='AF_UNIX', connection_protocol='TCP', func: callable = None):
-        self.cluster_input = None
-        self.cluster_output = None
-        super().__init__(address, family, connection_protocol, self.verify_message)
-
-    def set_cluster_messages(self, cluster_input, cluster_output):
-        self.cluster_input = cluster_input
-        self.cluster_output = cluster_output
-
-    def verify_message(self, data: bytes):
-        if len(data) > CLUSTER_DATA_HEADER_SIZE:
-            message = data[CLUSTER_DATA_HEADER_SIZE:]
-            response = cluster_msg_build(cmd=b'send_sync', counter=2, payload=bytes(self.cluster_output.encode()),
-                                         encrypt=False)
-            print(f'Received message from wazuh-authd: {message}')
-            print(f'Response to send: {self.cluster_output}')
-            self.pause()
-            return response
-        else:
-            raise ConnectionResetError('Invalid cluster message!')
-
-    def pause(self):
-        self.event.set()
-
-    def restart(self):
-        self.event.clear()
-
 
 # Configurations
 test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'config_authd_key_request_worker.yaml')
@@ -101,7 +67,7 @@ test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_authd_key_request_worker.y
 test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
 test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 
-script_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'files')
+script_path = SCRIPTS_FOLDER_PATH
 script_filename = 'fetch_keys.py'
 
 # Variables

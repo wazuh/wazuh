@@ -51,6 +51,7 @@ from wazuh_testing.constants.daemons import AUTHD_DAEMON
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils import callbacks
 from wazuh_testing.modules.authd import PREFIX
+from wazuh_testing.modules.authd.configuration import AUTHD_DEBUG_CONFIG
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
@@ -63,7 +64,7 @@ test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_authd_force_options_invali
 test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
 test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 
-local_internal_options = {'authd.debug': '2'}
+local_internal_options = {AUTHD_DEBUG_CONFIG: '2'}
 
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)

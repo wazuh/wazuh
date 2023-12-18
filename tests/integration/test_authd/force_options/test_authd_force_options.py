@@ -46,11 +46,14 @@ import re
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.constants.ports import DEFAULT_SSL_REMOTE_ENROLLMENT_PORT
+from wazuh_testing.constants.daemons import AUTHD_DAEMON, WAZUH_DB_DAEMON
 from wazuh_testing.utils.configuration import load_configuration_template, get_test_cases_data
 from wazuh_testing.modules.authd.utils import create_authd_request, validate_authd_response
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils import callbacks
 from wazuh_testing.modules.authd import PREFIX
+from wazuh_testing.modules.authd.configuration import AUTHD_DEBUG_CONFIG
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
@@ -91,9 +94,9 @@ test_configuration_t3, test_metadata_t3, test_cases_ids_t3 = get_test_cases_data
 test_configuration_t3 = load_configuration_template(test_configuration_path_t3, test_configuration_t3, test_metadata_t3)
 
 # Variables
-local_internal_options = {'authd.debug': '2'}
-receiver_sockets_params = [(('localhost', 1515), 'AF_INET', 'SSL_TLSv1_2')]
-monitored_sockets_params = [('wazuh-authd', None, True), ('wazuh-db', None, True)]
+local_internal_options = {AUTHD_DEBUG_CONFIG: '2'}
+receiver_sockets_params = [(('localhost', DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET', 'SSL_TLSv1_2')]
+monitored_sockets_params = [(AUTHD_DAEMON, None, True), (WAZUH_DB_DAEMON, None, True)]
 receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 
 # Functions
@@ -124,7 +127,7 @@ def check_options(test_metadata):
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration_t1, test_metadata_t1), ids=test_cases_ids_t1)
 def test_authd_force_options(test_configuration, test_metadata, set_wazuh_configuration,
                              configure_local_internal_options, insert_pre_existent_agents, restart_authd_function,
-                             wait_for_authd_startup_function, connect_to_sockets, tear_down):
+                             wait_for_authd_startup, connect_to_sockets, tear_down):
     '''
     description:
         Checks that every input message in authd port generates the adequate output.
@@ -153,7 +156,7 @@ def test_authd_force_options(test_configuration, test_metadata, set_wazuh_config
         - restart_authd_function:
             type: fixture
             brief: stops the wazuh-authd daemon.
-        - wait_for_authd_startup_function:
+        - wait_for_authd_startup:
             type: fixture
             brief: Waits until Authd is accepting connections.
         - connect_to_sockets:
@@ -182,7 +185,7 @@ def test_authd_force_options(test_configuration, test_metadata, set_wazuh_config
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration_t2, test_metadata_t2), ids=test_cases_ids_t2)
 def test_authd_force_insert(test_configuration, test_metadata, set_wazuh_configuration,
                              configure_local_internal_options, insert_pre_existent_agents, restart_authd_function,
-                             wait_for_authd_startup_function, connect_to_sockets, tear_down):
+                             wait_for_authd_startup, connect_to_sockets, tear_down):
     '''
     description:
         Checks that every input message in authd port generates the adequate output.
@@ -211,7 +214,7 @@ def test_authd_force_insert(test_configuration, test_metadata, set_wazuh_configu
         - restart_authd_function:
             type: fixture
             brief: stops the wazuh-authd daemon.
-        - wait_for_authd_startup_function:
+        - wait_for_authd_startup:
             type: fixture
             brief: Waits until Authd is accepting connections.
         - connect_to_sockets:
@@ -248,7 +251,7 @@ def test_authd_force_insert(test_configuration, test_metadata, set_wazuh_configu
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration_t3, test_metadata_t3), ids=test_cases_ids_t3)
 def test_authd_force_insert_only(test_configuration, test_metadata, set_wazuh_configuration,
                              configure_local_internal_options, insert_pre_existent_agents, restart_authd_function,
-                             wait_for_authd_startup_function, connect_to_sockets, tear_down):
+                             wait_for_authd_startup, connect_to_sockets, tear_down):
     '''
     description:
         Checks that every input message in authd port generates the adequate output.
@@ -277,7 +280,7 @@ def test_authd_force_insert_only(test_configuration, test_metadata, set_wazuh_co
         - restart_authd_function:
             type: fixture
             brief: stops the wazuh-authd daemon.
-        - wait_for_authd_startup_function:
+        - wait_for_authd_startup:
             type: fixture
             brief: Waits until Authd is accepting connections.
         - connect_to_sockets:

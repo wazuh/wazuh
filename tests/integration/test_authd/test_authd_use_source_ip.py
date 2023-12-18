@@ -37,13 +37,11 @@ os_version:
 tags:
     - enrollment
 '''
-import os
-import ssl
 import time
 import pytest
 from pathlib import Path
 
-from wazuh_testing.constants.paths.logs import WAZUH_PATH
+from wazuh_testing.constants.daemons import AUTHD_DAEMON, WAZUH_DB_DAEMON, MODULES_DAEMON
 from wazuh_testing.utils.configuration import load_configuration_template, get_test_cases_data
 from wazuh_testing.modules.authd.utils import validate_authd_response
 
@@ -62,28 +60,15 @@ test_configuration = load_configuration_template(test_configuration_path, test_c
 # Variables
 
 log_monitor_paths = []
-monitored_sockets_params = [('wazuh-modulesd', None, True), ('wazuh-db', None, True), ('wazuh-authd', None, True)]
+monitored_sockets_params = [(MODULES_DAEMON, None, True), (WAZUH_DB_DAEMON, None, True), (AUTHD_DAEMON, None, True)]
 receiver_sockets, monitored_sockets, log_monitors = None, None, None  # Set in the fixtures
 daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
-
-# Fixtures
-@pytest.fixture(scope='function')
-def configure_receiver_sockets(request, test_metadata):
-    """
-    Get configurations from the module
-    """
-    global receiver_sockets_params
-    if test_metadata['ipv6'] == 'yes':
-        receiver_sockets_params = [(("localhost", 1515), 'AF_INET6', 'SSL_TLSv1_2')]
-    else:
-        receiver_sockets_params = [(("localhost", 1515), 'AF_INET', 'SSL_TLSv1_2')]
-    return receiver_sockets_params
 
 # Test
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_authd_use_source_ip(test_configuration, test_metadata, set_wazuh_configuration, configure_receiver_sockets,
                              configure_sockets_environment_module, clean_client_keys_file, daemons_handler,
-                             wait_for_authd_startup_function, connect_to_sockets, tear_down):
+                             wait_for_authd_startup, connect_to_sockets, tear_down):
     '''
     description:
         Checks that every input message in authd port generates the adequate output
@@ -112,7 +97,7 @@ def test_authd_use_source_ip(test_configuration, test_metadata, set_wazuh_config
         - daemons_handler:
             type: fixture
             brief: Handler of Wazuh daemons.
-        - wait_for_authd_startup_function:
+        - wait_for_authd_startup:
             type: fixture
             brief: Waits until Authd is accepting connections.
         - connect_to_sockets:

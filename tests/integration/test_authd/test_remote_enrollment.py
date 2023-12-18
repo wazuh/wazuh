@@ -53,7 +53,8 @@ from wazuh_testing.utils import callbacks
 from wazuh_testing.modules.authd import PREFIX
 from wazuh_testing.tools.socket_controller import SocketController
 from wazuh_testing.tools.monitors import file_monitor
-from wazuh_testing.utils.wazuh import DEFAULT_SSL_REMOTE_ENROLLMENT_PORT
+from wazuh_testing.constants.ports import DEFAULT_SSL_REMOTE_ENROLLMENT_PORT
+from wazuh_testing.constants.daemons import AUTHD_DAEMON, WAZUH_DB_DAEMON, MODULES_DAEMON
 from wazuh_testing.utils.configuration import load_configuration_template, get_test_cases_data
 from contextlib import nullcontext as does_not_raise
 
@@ -74,12 +75,12 @@ log_monitor_paths = []
 
 receiver_sockets_params = [(("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET', 'SSL_TLSv1_2')]
 
-monitored_sockets_params = [('wazuh-modulesd', None, True), ('wazuh-db', None, True), ('wazuh-authd', None, True)]
+monitored_sockets_params = [(MODULES_DAEMON, None, True), (WAZUH_DB_DAEMON, None, True), (AUTHD_DAEMON, None, True)]
 
 receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 
 cluster_socket_address = ('localhost', 1516)
-remote_enrollment_address = ('localhost', 1515)
+remote_enrollment_address = ('localhost', DEFAULT_SSL_REMOTE_ENROLLMENT_PORT)
 
 AGENT_ID = 0
 AGENT_NAME = 'test_agent'
@@ -165,7 +166,7 @@ def test_remote_enrollment(test_configuration, test_metadata, set_wazuh_configur
 
     if remote_enrollment_enabled:
         expected_log = "Accepting connections on port 1515. No password required."
-        wait_for_tcp_port(1515)
+        wait_for_tcp_port(DEFAULT_SSL_REMOTE_ENROLLMENT_PORT)
     else:
         expected_log = ".*Port 1515 was set as disabled.*"
         expectation = pytest.raises(ConnectionRefusedError)

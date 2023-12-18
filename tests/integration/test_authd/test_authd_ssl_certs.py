@@ -44,7 +44,6 @@ references:
 tags:
     - enrollment
 '''
-import os
 import ssl
 import time
 from pathlib import Path
@@ -53,10 +52,11 @@ import pytest
 
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 from wazuh_testing.tools.socket_controller import SocketController
-from wazuh_testing.tools.certificate_controller import CertificateController
 from wazuh_testing.utils import services
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.constants.ports import DEFAULT_SSL_REMOTE_ENROLLMENT_PORT
+from wazuh_testing.constants.daemons import AUTHD_DAEMON, WAZUH_DB_DAEMON, MODULES_DAEMON
 from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.modules.authd.patterns import PREFIX
 
@@ -74,14 +74,12 @@ test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_authd_ssl_certs.yaml')
 test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
 test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 
-SSL_AGENT_CA = '/var/ossec/etc/test_rootCA.pem'
 SSL_AGENT_CERT = '/tmp/test_sslagent.cert'
 SSL_AGENT_PRIVATE_KEY = '/tmp/test_sslagent.key'
 
 AGENT_ID = 0
 AGENT_NAME = 'test_agent'
 AGENT_IP = '127.0.0.1'
-WRONG_IP = '10.0.0.240'
 INPUT_MESSAGE = "OSSEC A:'{}_{}'"
 OUPUT_MESSAGE = "OSSEC K:'"
 
@@ -98,40 +96,27 @@ OUPUT_MESSAGE = "OSSEC K:'"
 # - Valid certificate, Incorrect Host
 # Variables
 
-receiver_sockets_params = [((AGENT_IP, 1515), 'AF_INET', 'SSL_TLSv1_2')]
+receiver_sockets_params = [((AGENT_IP, DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET', 'SSL_TLSv1_2')]
 
-monitored_sockets_params = [('wazuh-modulesd', None, True), ('wazuh-db', None, True), ('wazuh-authd', None, True)]
+monitored_sockets_params = [(MODULES_DAEMON, None, True), (WAZUH_DB_DAEMON, None, True), (AUTHD_DAEMON, None, True)]
 
 receiver_sockets, monitored_sockets = None, None
 
 
 def restart_wazuh_authd():
     # Stop Wazuh
-    services.control_service('stop', daemon='wazuh-authd')
+    services.control_service('stop', daemon=AUTHD_DAEMON)
     time.sleep(1)
-    services.check_daemon_status(running_condition=False, target_daemon='wazuh-authd')
+    services.check_daemon_status(running_condition=False, target_daemon=AUTHD_DAEMON)
     # Start Wazuh daemons
     time.sleep(1)
-    services.control_service('start', daemon='wazuh-authd')
+    services.control_service('start', daemon=AUTHD_DAEMON)
     """Wait until agentd has begun"""
 
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
     log_monitor.start(timeout=30, encoding="utf-8",
                       callback=generate_callback(rf'{PREFIX}Accepting connections on port 1515'))
     time.sleep(1)
-
-# fixtures
-@pytest.fixture(scope="function")
-def generate_ca_certificate(test_metadata):
-    # Generate root key and certificate
-    controller = CertificateController()
-    option = test_metadata['sim_option']
-    if option not in ['NO_CERT']:
-        # Wheter manager will recognize or not this key
-        will_sign = True if option in ['VALID CERT', 'INCORRECT HOST'] else False
-        controller.generate_agent_certificates(SSL_AGENT_PRIVATE_KEY, SSL_AGENT_CERT,
-                                               WRONG_IP if option == 'INCORRECT HOST' else AGENT_IP, signed=will_sign)
-    controller.store_ca_certificate(controller.get_root_ca_cert(), SSL_AGENT_CA)
 
 
 # Tests

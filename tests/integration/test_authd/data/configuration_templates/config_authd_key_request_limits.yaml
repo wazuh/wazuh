@@ -40,7 +40,7 @@
         - enabled:
             value: 'yes'
         - exec_path:
-            value: '/var/ossec/framework/python/bin/python3 /tmp/fetch_keys_sleep.py'
+            value: '/var/ossec/framework/python/bin/python3 /tmp/fetch_keys.py -s'
         - timeout:
             value: TIMEOUT
         - threads:

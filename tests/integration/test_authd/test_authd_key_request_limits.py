@@ -54,13 +54,15 @@ import re
 from pathlib import Path
 
 import pytest
-from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, WAZUH_PATH
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.constants.paths.sockets import MODULESD_KREQUEST_SOCKET_PATH
 from wazuh_testing.utils.configuration import load_configuration_template, get_test_cases_data
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils import callbacks
 from wazuh_testing.modules.authd import PREFIX
+from wazuh_testing.modules.authd.configuration import AUTHD_DEBUG_CONFIG
 
-from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH, SCRIPTS_FOLDER_PATH
 
 # Marks
 
@@ -68,7 +70,7 @@ pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
 
 # Configurations
-local_internal_options = {'authd.debug': '2'}
+local_internal_options = {AUTHD_DEBUG_CONFIG: '2'}
 
 test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'config_authd_key_request_limits.yaml')
 test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_authd_key_request_limits.yaml')
@@ -77,10 +79,9 @@ test_configuration = load_configuration_template(test_configuration_path, test_c
 
 
 # Variables
-kreq_sock_path = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'krequest')
-receiver_sockets_params = [(kreq_sock_path, 'AF_UNIX', 'UDP')]
-script_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'files')
-script_filename = 'fetch_keys_sleep.py'
+receiver_sockets_params = [(MODULESD_KREQUEST_SOCKET_PATH, 'AF_UNIX', 'UDP')]
+script_path = SCRIPTS_FOLDER_PATH
+script_filename = 'fetch_keys.py'
 
 monitored_sockets_params = [('wazuh-authd', None, True)]
 receiver_sockets, monitored_sockets = None, None
@@ -89,7 +90,7 @@ receiver_sockets, monitored_sockets = None, None
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_key_request_limits(test_configuration, test_metadata, set_wazuh_configuration, copy_tmp_script,
                             configure_local_internal_options, restart_authd_function,
-                            wait_for_authd_startup_function, connect_to_sockets, tear_down):
+                            wait_for_authd_startup, connect_to_sockets, tear_down):
     '''
     description:
         Checks that every input message on the key request port with different limits 'timeout' and 'queue_size'
@@ -116,7 +117,7 @@ def test_key_request_limits(test_configuration, test_metadata, set_wazuh_configu
         - restart_authd_function:
             type: fixture
             brief: Stops the wazuh-authd daemon.
-        - wait_for_authd_startup_function:
+        - wait_for_authd_startup:
             type: fixture
             brief: Waits until Authd is accepting connections.
         - connect_to_sockets:

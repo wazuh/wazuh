@@ -50,9 +50,10 @@ import time
 from pathlib import Path
 
 import pytest
-from wazuh_testing.constants.paths.logs import WAZUH_PATH, WAZUH_LOG_PATH
-from wazuh_testing.constants.paths.sockets import AUTHD_SOCKET_PATH
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.constants.paths.sockets import AUTHD_SOCKET_PATH, QUEUE_AGENTS_TIMESTAMP_PATH, QUEUE_DIFF_PATH, QUEUE_RIDS_PATH
 from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH
+from wazuh_testing.constants.ports import DEFAULT_SSL_REMOTE_ENROLLMENT_PORT
 from wazuh_testing.utils.file import truncate_file, remove_file, recursive_directory_creation
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils.services import control_service, check_daemon_status
@@ -77,7 +78,7 @@ test_configuration = load_configuration_template(test_configuration_path, test_c
 # Variables
 daemons_handler_configuration = {'all_daemons': True}
 
-receiver_sockets_params = [(("localhost", 1515), 'AF_INET', 'SSL_TLSv1_2'), (AUTHD_SOCKET_PATH, 'AF_UNIX', 'TCP')]
+receiver_sockets_params = [(("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET', 'SSL_TLSv1_2'), (AUTHD_SOCKET_PATH, 'AF_UNIX', 'TCP')]
 
 receiver_sockets = None  # Set in the fixtures
 groups_infra = ['001','002', '003', '004']
@@ -114,19 +115,17 @@ def clean_keys():
 
 
 def clean_diff():
-    diff_folder = os.path.join(WAZUH_PATH, 'queue', 'diff')
     try:
-        remove_file(diff_folder)
-        recursive_directory_creation(diff_folder)
-        os.chmod(diff_folder, 0o777)
+        remove_file(QUEUE_DIFF_PATH)
+        recursive_directory_creation(QUEUE_DIFF_PATH)
+        os.chmod(QUEUE_DIFF_PATH, 0o777)
     except Exception as e:
-        print('Failed to delete %s. Reason: %s' % (diff_folder, e))
+        print('Failed to delete %s. Reason: %s' % (QUEUE_DIFF_PATH, e))
 
 
 def clean_rids():
-    rids_folder = os.path.join(WAZUH_PATH, 'queue', 'rids')
-    for filename in os.listdir(rids_folder):
-        file_path = os.path.join(rids_folder, filename)
+    for filename in os.listdir(QUEUE_RIDS_PATH):
+        file_path = os.path.join(QUEUE_RIDS_PATH, filename)
         if "sender_counter" not in file_path:
             try:
                 os.unlink(file_path)
@@ -135,8 +134,7 @@ def clean_rids():
 
 
 def clean_agents_timestamp():
-    timestamp_path = os.path.join(WAZUH_PATH, 'queue', 'agents-timestamp')
-    truncate_file(timestamp_path)
+    truncate_file(QUEUE_AGENTS_TIMESTAMP_PATH)
 
 
 def check_agent_groups(id, expected, timeout=30):
@@ -150,7 +148,7 @@ def check_agent_groups(id, expected, timeout=30):
 
 
 def check_diff(name, expected, timeout=30):
-    diff_path = os.path.join(WAZUH_PATH, 'queue', 'diff', name)
+    diff_path = os.path.join(QUEUE_DIFF_PATH, name)
     wait = time.time() + timeout
     while time.time() < wait:
         ret = os.path.exists(diff_path)
@@ -179,11 +177,10 @@ def check_client_keys(id, expected):
 
 
 def check_agent_timestamp(id, name, ip, expected):
-    timestamp_path = os.path.join(WAZUH_PATH, 'queue', 'agents-timestamp')
     line = "{} {} {}".format(id, name, ip)
     found = False
     try:
-        with open(timestamp_path) as file:
+        with open(QUEUE_AGENTS_TIMESTAMP_PATH) as file:
             file_lines = file.read().splitlines()
             for file_line in file_lines:
                 if line in file_line:
@@ -198,7 +195,7 @@ def check_agent_timestamp(id, name, ip, expected):
 
 
 def check_rids(id, expected):
-    agent_info_path = os.path.join(WAZUH_PATH, 'queue', 'rids', id)
+    agent_info_path = os.path.join(QUEUE_RIDS_PATH, id)
     if expected == os.path.exists(agent_info_path):
         return True
     else:
@@ -206,7 +203,7 @@ def check_rids(id, expected):
 
 
 def create_rids(id):
-    rids_path = os.path.join(WAZUH_PATH, 'queue', 'rids', id)
+    rids_path = os.path.join(QUEUE_RIDS_PATH, id)
     try:
         file = open(rids_path, 'w')
         file.close()
@@ -217,7 +214,7 @@ def create_rids(id):
 
 def create_diff(name):
     SIGID = '533'
-    diff_folder = os.path.join(WAZUH_PATH, 'queue', 'diff', name)
+    diff_folder = os.path.join(QUEUE_DIFF_PATH, name)
     try:
         os.mkdir(diff_folder)
     except IOError:

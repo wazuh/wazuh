@@ -38,7 +38,6 @@ tags:
     - enrollment
 '''
 
-import os
 import subprocess
 import time
 
@@ -47,6 +46,8 @@ from pathlib import Path
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 from wazuh_testing.constants.paths.sockets import WAZUH_DB_SOCKET_PATH
+from wazuh_testing.constants.ports import DEFAULT_SSL_REMOTE_ENROLLMENT_PORT
+from wazuh_testing.constants.daemons import AUTHD_DAEMON, WAZUH_DB_DAEMON, MODULES_DAEMON
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 
@@ -64,8 +65,8 @@ test_configuration = load_configuration_template(test_configuration_path, test_c
 
 
 # Variables
-receiver_sockets_params = [(("localhost", 1515), 'AF_INET', 'SSL_TLSv1_2'), (WAZUH_DB_SOCKET_PATH, 'AF_UNIX', 'TCP')]
-monitored_sockets_params = [('wazuh-modulesd', None, True), ('wazuh-db', None, True), ('wazuh-authd', None, True)]
+receiver_sockets_params = [(("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET', 'SSL_TLSv1_2'), (WAZUH_DB_SOCKET_PATH, 'AF_UNIX', 'TCP')]
+monitored_sockets_params = [(MODULES_DAEMON, None, True), (WAZUH_DB_DAEMON, None, True), (AUTHD_DAEMON, None, True)]
 receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 
 # Tests
@@ -92,7 +93,7 @@ def set_up_groups(test_metadata, request):
 def test_ossec_auth_messages_with_key_hash(test_configuration, test_metadata, set_wazuh_configuration,
                                            configure_sockets_environment_module, connect_to_sockets_module,
                                            set_up_groups, insert_pre_existent_agents, restart_wazuh_daemon_function,
-                                           wait_for_authd_startup_function, tear_down):
+                                           wait_for_authd_startup, tear_down):
     '''
     description:
         Checks that every input message in authd port generates the adequate output.
@@ -127,7 +128,7 @@ def test_ossec_auth_messages_with_key_hash(test_configuration, test_metadata, se
         - restart_wazuh_daemon_function:
             type: fixture
             brief: Restarts wazuh or a specific daemon passed.
-        - wait_for_authd_startup_function:
+        - wait_for_authd_startup:
             type: fixture
             brief: Waits until Authd is accepting connections.
         - get_current_test_case:
