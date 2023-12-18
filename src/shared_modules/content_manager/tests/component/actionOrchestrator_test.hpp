@@ -36,6 +36,7 @@ protected:
     const std::filesystem::path DATABASE_PATH {std::filesystem::temp_directory_path() /
                                                "ActionOrchestratorTest"}; ///< Path used to store the RocksDB database.
     const unsigned int INITIAL_OFFSET {1}; ///< Initial offset to be inserted on the database.
+    const std::filesystem::path m_inputFilesDir {std::filesystem::current_path() / "input_files"};
 
     /**
      * @brief Sets initial conditions for each test case.

@@ -11,6 +11,7 @@
 
 #include "actionOrchestrator_test.hpp"
 #include "actionOrchestrator.hpp"
+#include "mocks/mockRouterProvider.hpp"
 #include "routerProvider.hpp"
 #include <filesystem>
 #include <memory>
@@ -308,17 +309,17 @@ TEST_F(ActionOrchestratorTest, RunWithFullContentDownload)
  * @brief Tests the execution of the orchestration and correct store of the downloaded file hash.
  *
  */
-TEST_F(ActionOrchestratorTest, DownloadedFileHashStore)
+TEST_F(ActionOrchestratorTest, OfflineDownloadDownloadedFileHashStore)
 {
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
     auto routerProvider {std::make_shared<RouterProvider>(topicName)};
     routerProvider->start();
 
     // Configure the action to download a snapshot in offline mode.
-    const auto INPUT_FILE_PATH {std::filesystem::current_path() / "input_files" / SNAPSHOT_FILE_NAME};
+    const auto inputFile {m_inputFilesDir / SNAPSHOT_FILE_NAME};
     m_parameters["configData"]["contentSource"] = "offline";
     m_parameters["configData"]["compressionType"] = "zip";
-    m_parameters["configData"]["url"] = "file://" + INPUT_FILE_PATH.string();
+    m_parameters["configData"]["url"] = "file://" + inputFile.string();
 
     {
         // Trigger orchestration in a reduced scope so that the database is closed.
@@ -332,4 +333,58 @@ TEST_F(ActionOrchestratorTest, DownloadedFileHashStore)
     constexpr auto EXPECTED_HASH {"83f5b8992df285cdd0235bb0304e236047614d60"};
     auto wrapper {Utils::RocksDBWrapper(EXPECTED_DB_PATH)};
     EXPECT_EQ(wrapper.getLastKeyValue(Components::COLUMN_NAME_FILE_HASH).second.ToString(), EXPECTED_HASH);
+}
+
+/**
+ * @brief Tests the execution of the orchestration three times on different instances: The first two with the same input
+ * file and the third one with the same file but modified.
+ *
+ */
+TEST_F(ActionOrchestratorTest, OfflineDownloadSameAndModifiedFileDifferentInstances)
+{
+    const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
+
+    // Create temp test file with dummy data.
+    const auto testName {::testing::UnitTest::GetInstance()->current_test_info()->name()};
+    const auto inputFilePath {std::filesystem::current_path() / testName};
+    std::ofstream testFileStream {inputFilePath};
+    if (testFileStream.good())
+    {
+        testFileStream << testName << std::endl;
+    }
+    testFileStream.close();
+
+    // Set config.
+    m_parameters["configData"]["contentSource"] = "offline";
+    m_parameters["configData"]["compressionType"] = "raw";
+    m_parameters["configData"]["url"] = "file://" + inputFilePath.string();
+
+    {
+        // Run first orchestration. File should be published.
+        auto mockRouterProvider {std::make_shared<MockRouterProvider>(topicName)};
+        EXPECT_CALL(*mockRouterProvider, send(::testing::_)).Times(1);
+        ASSERT_NO_THROW(std::make_shared<ActionOrchestrator>(mockRouterProvider, m_parameters, m_shouldRun)->run());
+    }
+
+    {
+        // Run second orchestration. File should not be published since it didn't change.
+        auto mockRouterProvider {std::make_shared<MockRouterProvider>(topicName)};
+        EXPECT_CALL(*mockRouterProvider, send(::testing::_)).Times(0);
+        ASSERT_NO_THROW(std::make_shared<ActionOrchestrator>(mockRouterProvider, m_parameters, m_shouldRun)->run());
+    }
+
+    // Modify input file.
+    testFileStream.open(inputFilePath, std::ios_base::app);
+    testFileStream << testName << std::endl;
+    testFileStream.close();
+
+    {
+        // Run third orchestration. File should be published since it has changed.
+        auto mockRouterProvider {std::make_shared<MockRouterProvider>(topicName)};
+        EXPECT_CALL(*mockRouterProvider, send(::testing::_)).Times(1);
+        ASSERT_NO_THROW(std::make_shared<ActionOrchestrator>(mockRouterProvider, m_parameters, m_shouldRun)->run());
+    }
+
+    // Remove input test file.
+    std::filesystem::remove(inputFilePath);
 }

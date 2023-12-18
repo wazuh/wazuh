@@ -16,7 +16,7 @@
 #include "components/factoryContentUpdater.hpp"
 #include "components/updaterContext.hpp"
 #include "componentsHelper.hpp"
-#include "routerProvider.hpp"
+#include "iRouterProvider.hpp"
 #include "utils/rocksDBWrapper.hpp"
 #include <memory>
 #include <utility>
@@ -35,7 +35,7 @@ public:
      * @param parameters Parameters used to create the orchestration.
      * @param shouldRun Flag used to interrupt the orchestration stages.
      */
-    explicit ActionOrchestrator(const std::shared_ptr<RouterProvider> channel,
+    explicit ActionOrchestrator(const std::shared_ptr<IRouterProvider> channel,
                                 const nlohmann::json& parameters,
                                 const std::atomic<bool>& shouldRun)
     {
