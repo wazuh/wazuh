@@ -193,7 +193,7 @@ def get_decoders_files(status: str = None, relative_dirname: str = None, filenam
 
 
 def get_decoder_file_path(filename: str,
-                     relative_dirname: str = None) -> str:
+                          relative_dirname: str = None) -> str:
     """Find decoder file with or without relative directory name.
 
     Parameters
@@ -212,7 +212,7 @@ def get_decoder_file_path(filename: str,
     # if the filename doesn't have a relative path, the search is only by name
     # relative_dirname parameter is set to None.
     relative_dirname = relative_dirname.rstrip('/') if relative_dirname else None
-    decoders = get_decoders_files(filename=filename, 
+    decoders = get_decoders_files(filename=filename,
                                   relative_dirname=relative_dirname).affected_items
     if len(decoders) == 0:
         return ''
@@ -227,10 +227,10 @@ def get_decoder_file_path(filename: str,
         decoder = min(decoders, key=lambda x: len(x['relative_dirname']))
         return join(common.WAZUH_PATH, decoder['relative_dirname'], filename)
     else:
-        return normpath(join(common.WAZUH_PATH,  decoders[0]['relative_dirname'], filename))
+        return normpath(join(common.WAZUH_PATH, decoders[0]['relative_dirname'], filename))
 
 
-def get_decoder_file(filename: str, raw: bool = False, 
+def get_decoder_file(filename: str, raw: bool = False,
                      relative_dirname: str = None) -> Union[str, AffectedItemsWazuhResult]:
     """Read content of a specified file.
 
@@ -253,8 +253,8 @@ def get_decoder_file(filename: str, raw: bool = False,
 
     full_path = get_decoder_file_path(filename, relative_dirname)
     if not full_path:
-        result.add_failed_item(id_=filename, 
-                                error=WazuhError(1503, extra_message=f"{filename}"))
+        result.add_failed_item(id_=filename,
+                               error=WazuhError(1503, extra_message=f"{filename}"))
         return result
 
     try:
@@ -267,10 +267,10 @@ def get_decoder_file(filename: str, raw: bool = False,
             result.affected_items.append(xmltodict.parse(f'<root>{file_content}</root>')['root'])
             result.total_affected_items = 1
     except ExpatError as exc:
-        result.add_failed_item(id_=filename, 
+        result.add_failed_item(id_=filename,
                                error=WazuhError(1501, extra_message=f"{filename}: {str(exc)}"))
     except OSError:
-        result.add_failed_item(id_=filename, 
+        result.add_failed_item(id_=filename,
                                error=WazuhError(1502, extra_message=f"{filename}"))
 
     return result
@@ -345,10 +345,10 @@ def upload_decoder_file(filename: str, content: str, relative_dirname: str = Non
         full_path = join(common.WAZUH_PATH, relative_dirname, filename)
         if wazuh_error:
             raise wazuh_error
-        
+
         if len(content) == 0:
             raise WazuhError(1112)
-        
+
         validate_wazuh_xml(content)
         # If file already exists and overwrite is False, raise exception
         if not overwrite and exists(full_path):
@@ -371,7 +371,8 @@ def upload_decoder_file(filename: str, content: str, relative_dirname: str = Non
         except WazuhError as exc:
             if not overwrite and exists(full_path):
                 delete_decoder_file(filename=filename, relative_dirname=relative_dirname)
-                raise exc
+
+            raise exc
 
         result.affected_items.append(to_relative_path(full_path))
         result.total_affected_items = len(result.affected_items)
