@@ -26,7 +26,16 @@
 class MockRouterProvider : public IRouterProvider
 {
 public:
+    /**
+     * @brief Mock class constructor.
+     *
+     */
     explicit MockRouterProvider(const std::string&) {};
+
+    /**
+     * @brief Mock class destructor.
+     *
+     */
     virtual ~MockRouterProvider() = default;
 
     /**
