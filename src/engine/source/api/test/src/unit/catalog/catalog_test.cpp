@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
-#include "../../apiAuxiliarFunctions.hpp"
+#include <logging/logging.hpp>
+
 #include "catalogTestShared.hpp"
 
 constexpr auto COMMAND_FAILED_CASE {3};
@@ -10,7 +11,7 @@ class CatalogGetTest : public ::testing::TestWithParam<std::tuple<int, api::cata
 protected:
     void SetUp() override
     {
-        initLogging();
+        logging::testInit();
         m_spCatalog = std::make_unique<api::catalog::Catalog>(getConfig());
     }
     std::unique_ptr<api::catalog::Catalog> m_spCatalog;
@@ -44,7 +45,7 @@ class CatalogPostTest : public ::testing::TestWithParam<std::tuple<int, api::cat
 protected:
     void SetUp() override
     {
-        initLogging();
+    logging::testInit();
         m_spCatalog = std::make_unique<api::catalog::Catalog>(getConfig());
     }
     std::unique_ptr<api::catalog::Catalog> m_spCatalog;
@@ -78,7 +79,7 @@ class CatalogDeleteTest : public ::testing::TestWithParam<std::tuple<int, api::c
 protected:
     void SetUp() override
     {
-        initLogging();
+        logging::testInit();
         m_spCatalog = std::make_unique<api::catalog::Catalog>(getConfig());
     }
     std::unique_ptr<api::catalog::Catalog> m_spCatalog;
@@ -111,7 +112,7 @@ class CatalogValidateTest : public ::testing::TestWithParam<std::tuple<int, api:
 protected:
     void SetUp() override
     {
-        initLogging();
+        logging::testInit();
         m_spCatalog = std::make_unique<api::catalog::Catalog>(getConfig());
     }
     std::unique_ptr<api::catalog::Catalog> m_spCatalog;
