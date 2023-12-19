@@ -8,7 +8,7 @@
 cmake_minimum_required(VERSION 3.10)
 
 list(APPEND hmac_tests_names "test_hmac_op")
-list(APPEND hmac_tests_flags "-Wl,--wrap,wfopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fread \
+list(APPEND hmac_tests_flags "-Wl,--wrap,wfopen -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fread \
                                 -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fprintf \
                                 -Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fgetc -Wl,--wrap,popen")
 
