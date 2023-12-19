@@ -26,8 +26,8 @@ normalize:
       - _time: system_epoch()
       - _query: concat(agent , $agent.id,  rootcheck save , $_time,  , $event.original)
       - _result: wdb_query($_query)
-      - wazuh.rootcheck.file: "regex_extract($event.original, (?:f|F)ile '(.*?)')"
-      - _title: "regex_extract($event.original, (.*?)(?:(?: {)|$))"
+      - wazuh.rootcheck.file: "regex_extract($event.original, (?:f|F\\)ile '(.*?\\)')"
+      - _title: "regex_extract($event.original, (.*?\\)(?:(?: {\\)|$\\))"
 
   - check:
       - _result: "1"
@@ -42,19 +42,20 @@ normalize:
   - check:
       - wazuh.rootcheck.file: not_exists()
     map:
-      - wazuh.rootcheck.file: "regex_extract($event.original, File: (.*?)(?:(?:\\. )|(?:\\.$)))"
+      - wazuh.rootcheck.file: >-
+          regex_extract($event.original, File: (.*?\)(?:(?:\\. \)|(?:\\.$\)\))
 
   - map:
-      - _title: "regex_extract($_title, System Audit: (.*? - .*))"
+      - _title: "regex_extract($_title, System Audit: (.*? - .*\\))"
 
   - map:
-      - _title: regex_extract($_title, ^(.*\\.) )
+      - _title: regex_extract($_title, ^(.*\\.\) )
 
   - check:
-      - _title: "regex_match((?:f|F)ile )"
+      - _title: "regex_match((?:f|F\\)ile )"
     map:
-      - _pre_file: "regex_extract($_title, (.*?(?:f|F)ile) )"
-      - _pos_file: "regex_extract($_title, (?:f|F)ile '(?:.*?)'(.*))"
+      - _pre_file: "regex_extract($_title, (.*?(?:f|F\\)ile\\) )"
+      - _pos_file: "regex_extract($_title, (?:f|F\\)ile '(?:.*?\\)'(.*\\))"
       - _title: concat($_pre_file, $_pos_file)
 
   - check:

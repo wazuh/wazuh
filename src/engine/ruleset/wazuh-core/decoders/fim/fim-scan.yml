@@ -1,9 +1,6 @@
 ---
 name: decoder/fim-scan/0
 
-parents:
-  - decoder/fim/0
-
 metadata:
   module: wazuh-agent/fim/fim-scan
   title: FIM Decoder event
@@ -23,6 +20,9 @@ metadata:
     - https://github.com/wazuh/wazuh/issues/13521
   versions:
     - ""
+
+parents:
+  - decoder/fim/0
 
 check:
   - json_event.type: starts_with(scan)

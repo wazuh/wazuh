@@ -504,7 +504,7 @@ TransformOp opBuilderHelperStringTrim(const Reference& targetField,
 MapOp opBuilderHelperStringConcat(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     // Assert expected number of parameters
-    builder::builders::utils::assertSize(opArgs, 2);
+    builder::builders::utils::assertSize(opArgs, 2, builder::builders::utils::MAX_OP_ARGS);
     // Format name for the tracer
     const auto name = buildCtx->context().opName;
 

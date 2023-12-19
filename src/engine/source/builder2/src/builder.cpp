@@ -90,9 +90,16 @@ base::Expression Builder::buildAsset(const base::Name& name) const
 
 base::OptError Builder::validateIntegration(const json::Json& json) const
 {
+    return base::noError();
     // TODO: Make factory so this can be implemented without duplicating code
     policy::factory::PolicyData policyData({.name = "policy/fake/0", .hash = "fakehash"});
-    auto integrationName = json.getString(syntax::asset::NAME_KEY).value();
+    auto namePath = json::Json::formatJsonPath(syntax::asset::NAME_KEY);
+    auto integrationNameResp = json.getString(namePath);
+    if (!integrationNameResp)
+    {
+        return base::Error {"Integration name not found"};
+    }
+    auto integrationName = integrationNameResp.value();
     try
     {
         policy::factory::addIntegrationSubgraph(policy::factory::PolicyData::AssetType::DECODER,
