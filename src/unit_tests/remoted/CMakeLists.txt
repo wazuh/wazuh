@@ -37,7 +37,7 @@ list(APPEND remoted_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,w_
                             -Wl,--wrap,opendir -Wl,--wrap,cldir_ex_ignore -Wl,--wrap,wreaddir -Wl,--wrap=_mwarn \
                             -Wl,--wrap,closedir -Wl,--wrap,OSHash_Clean -Wl,--wrap,rmdir_ex -Wl,--wrap,mkdir -Wl,--wrap,stat\
                             -Wl,--wrap,OS_SHA256_String -Wl,--wrap,readdir -Wl,--wrap,strerror \
-                            -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,fclose -Wl,--wrap,remove \
+                            -Wl,--wrap,fopen -Wl,--wrap,wfopen -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,fclose -Wl,--wrap,remove \
                             -Wl,--wrap,fgets -Wl,--wrap,fflush -Wl,--wrap,fseek -Wl,--wrap,fgetpos -Wl,--wrap=fgetc \
                             -Wl,--wrap,w_copy_file -Wl,--wrap,OSHash_Begin -Wl,--wrap,req_save -Wl,--wrap,send_msg \
                             -Wl,--wrap,wdb_update_agent_keepalive -Wl,--wrap,parse_agent_update_msg \
