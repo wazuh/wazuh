@@ -189,7 +189,7 @@ Vagrant.configure("2") do |config|
         echo "$($ENGINE_DIR/wazuh-engine policy get -n wazuh system user)"
 
         echo "Enabling default environment..."
-        $ENGINE_DIR/wazuh-engine router add default filter/allow-all/0 255 policy/wazuh/0
+        $ENGINE_DIR/wazuh-engine router add default filter/allow-all/0 1000 policy/wazuh/0
         echo
 
         echo "Creating integrations of engine-test..."
