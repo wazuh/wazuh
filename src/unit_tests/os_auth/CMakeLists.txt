@@ -51,7 +51,7 @@ list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} \
 list(APPEND os_auth_names "test_generate_cert")
 list (APPEND os_auth_flags "-Wl,--wrap,PEM_write_PrivateKey -Wl,--wrap,PEM_write_X509 -Wl,--wrap,RSA_generate_key_ex \
                             -Wl,--wrap,X509_sign -Wl,--wrap,_merror -Wl,--wrap,popen \
-                            -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgetpos -Wl,--wrap,fread \
+                            -Wl,--wrap,fopen -Wl,--wrap,wfopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgetpos -Wl,--wrap,fread \
                             -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,fgets \
                             -Wl,--wrap,RSA_new -Wl,--wrap,EVP_PKEY_new -Wl,--wrap,X509_new")
 list(APPEND os_auth_names "test_authd-config")

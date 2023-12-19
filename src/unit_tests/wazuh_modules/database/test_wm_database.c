@@ -129,9 +129,9 @@ void test_wm_sync_group_file_error_opening_file(void **state) {
     const char *group_file_path = "invalid_path";
 
     // Error opening agent groups file specified by 'group_file_path'
-    expect_string(__wrap_fopen, path, group_file_path);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, filename, group_file_path);
+    expect_string(__wrap_wfopen, modes, "r");
+    will_return(__wrap_wfopen, NULL);
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:database");
     expect_string(__wrap__mtdebug1, formatted_msg, "Groups file 'invalid_path' could not be opened for syncronization.");
 
@@ -148,16 +148,16 @@ void test_wm_sync_group_file_success_empty_file(void **state) {
     const char *groups_in_file = NULL;
 
     // Agent groups file opened succesfully
-    expect_string(__wrap_fopen, path, group_file_path);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, fp_group_file);
+    expect_string(__wrap_wfopen, filename, group_file_path);
+    expect_string(__wrap_wfopen, modes, "r");
+    will_return(__wrap_wfopen, fp_group_file);
     // No data when reading the file
     will_return(__wrap_fgets, groups_in_file);
     expect_value(__wrap_fgets, __stream, fp_group_file);
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:database");
     expect_string(__wrap__mtdebug1, formatted_msg, "Empty group file 'queue/agent-groups/001'.");
     // Closing group file
-    expect_value(__wrap_fclose, _File, fp_group_file);
+    expect_value(__wrap_fclose, __stream, fp_group_file);
     will_return(__wrap_fclose, OS_SUCCESS);
 
     ret = wm_sync_group_file(group_file, group_file_path);
@@ -176,9 +176,9 @@ void test_wm_sync_group_file_success_more_than_max_groups(void **state) {
     char *groups_in_file = generate_groups_csv_string(MAX_GROUPS_PER_MULTIGROUP+1);
 
     // Agent groups file opened succesfully
-    expect_string(__wrap_fopen, path, group_file_path);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, fp_group_file);
+    expect_string(__wrap_wfopen, filename, group_file_path);
+    expect_string(__wrap_wfopen, modes, "r");
+    will_return(__wrap_wfopen, fp_group_file);
     // Reading the file
     will_return(__wrap_fgets, groups_in_file);
     expect_value(__wrap_fgets, __stream, fp_group_file);
@@ -189,7 +189,7 @@ void test_wm_sync_group_file_success_more_than_max_groups(void **state) {
     expect_string(__wrap_wdb_set_agent_groups, sync_status, "synced");
     will_return(__wrap_wdb_set_agent_groups, OS_SUCCESS);
     // Closing group file
-    expect_value(__wrap_fclose, _File, fp_group_file);
+    expect_value(__wrap_fclose, __stream, fp_group_file);
     will_return(__wrap_fclose, OS_SUCCESS);
 
     ret = wm_sync_group_file(group_file, group_file_path);
@@ -209,9 +209,9 @@ void test_wm_sync_group_file_success_max_groups(void **state) {
     char *groups_in_file = generate_groups_csv_string(MAX_GROUPS_PER_MULTIGROUP);
 
     // Agent groups file opened succesfully
-    expect_string(__wrap_fopen, path, group_file_path);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, fp_group_file);
+    expect_string(__wrap_wfopen, filename, group_file_path);
+    expect_string(__wrap_wfopen, modes, "r");
+    will_return(__wrap_wfopen, fp_group_file);
     // Reading the file
     will_return(__wrap_fgets, groups_in_file);
     expect_value(__wrap_fgets, __stream, fp_group_file);
@@ -222,7 +222,7 @@ void test_wm_sync_group_file_success_max_groups(void **state) {
     expect_string(__wrap_wdb_set_agent_groups, sync_status, "synced");
     will_return(__wrap_wdb_set_agent_groups, OS_SUCCESS);
     // Closing group file
-    expect_value(__wrap_fclose, _File, fp_group_file);
+    expect_value(__wrap_fclose, __stream, fp_group_file);
     will_return(__wrap_fclose, OS_SUCCESS);
 
     ret = wm_sync_group_file(group_file, group_file_path);
@@ -297,9 +297,9 @@ void test_wm_sync_legacy_groups_files_success_files_success_dir(void **state) {
     char *groups_in_file = generate_groups_csv_string(MAX_GROUPS_PER_MULTIGROUP);
     // Calling wm_sync_group_file
     // Agent groups file opened succesfully
-    expect_string(__wrap_fopen, path, group_file_path);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, fp_group_file);
+    expect_string(__wrap_wfopen, filename, group_file_path);
+    expect_string(__wrap_wfopen, modes, "r");
+    will_return(__wrap_wfopen, fp_group_file);
     // Reading the file
     will_return(__wrap_fgets, groups_in_file);
     expect_value(__wrap_fgets, __stream, fp_group_file);
@@ -310,7 +310,7 @@ void test_wm_sync_legacy_groups_files_success_files_success_dir(void **state) {
     expect_string(__wrap_wdb_set_agent_groups, sync_status, "synced");
     will_return(__wrap_wdb_set_agent_groups, OS_SUCCESS);
     // Closing group file
-    expect_value(__wrap_fclose, _File, fp_group_file);
+    expect_value(__wrap_fclose, __stream, fp_group_file);
     will_return(__wrap_fclose, OS_SUCCESS);
 
     // Logging result, removing agent groups file, and finalizing the dir iteration
@@ -347,9 +347,9 @@ void test_wm_sync_legacy_groups_files_error_files(void **state) {
     const char *group_file_path = GROUPS_DIR "/001";
     // Calling wm_sync_group_file
     // Error opening agent groups file specified by 'group_file_path'
-    expect_string(__wrap_fopen, path, group_file_path);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, filename, group_file_path);
+    expect_string(__wrap_wfopen, modes, "r");
+    will_return(__wrap_wfopen, NULL);
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:database");
     expect_string(__wrap__mtdebug1, formatted_msg, "Groups file 'queue/agent-groups/001' could not be opened for syncronization.");
 
@@ -506,9 +506,9 @@ void test_sync_keys_with_wdb_insert_delete(void **state) {
     expect_string(__wrap_unlink, file, "queue/rids/001");
     will_return(__wrap_unlink, 0);
 
-    expect_string(__wrap_fopen, path, "queue/agents-timestamp");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, filename, "queue/agents-timestamp");
+    expect_string(__wrap_wfopen, modes, "r");
+    will_return(__wrap_wfopen, NULL);
 
     sync_keys_with_wdb(&keys);
 }

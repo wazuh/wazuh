@@ -415,7 +415,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 snprintf(opt_tmp_file, 2048, "/tmp/%s-%d-%ld.options",
                             integrator_config[s]->name, (int)time(0), (long int) os_random());
 
-                fp = fopen(opt_tmp_file, "w");
+                fp = wfopen(opt_tmp_file, "w");
                 if (!fp) {
                     mdebug2("File %s couldn't be created.", opt_tmp_file);
                     opt_tmp_file[0] = '\0';

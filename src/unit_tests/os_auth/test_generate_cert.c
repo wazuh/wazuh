@@ -13,7 +13,7 @@
 #include <cmocka.h>
 #include <stdio.h>
 #include <string.h>
-
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "generate_cert.h"
 
 static int setup_group(void **state) {
@@ -36,21 +36,21 @@ static void test_generate_cert_success(void **state) {
     will_return(__wrap_X509_new, 1);
     will_return(__wrap_X509_sign, 1);
 
-    expect_string(__wrap_fopen, path, "key_path");
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, &key_file);
+    expect_string(__wrap_wfopen, filename, "key_path");
+    expect_string(__wrap_wfopen, modes, "wb");
+    will_return(__wrap_wfopen, &key_file);
 
     will_return(__wrap_PEM_write_PrivateKey, 1);
 
-    expect_value(__wrap_fclose, _File, &key_file);
+    expect_value(__wrap_fclose, __stream, &key_file);
     will_return(__wrap_fclose, 0);
 
-    expect_string(__wrap_fopen, path, "cert_path");
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, &cert_file);
+    expect_string(__wrap_wfopen, filename, "cert_path");
+    expect_string(__wrap_wfopen, modes, "wb");
+    will_return(__wrap_wfopen, &cert_file);
 
     will_return(__wrap_PEM_write_X509, 1);
-    expect_value(__wrap_fclose, _File, &cert_file);
+    expect_value(__wrap_fclose, __stream, &cert_file);
 
     will_return(__wrap_fclose, 0);
 
@@ -67,21 +67,21 @@ static void test_generate_cert_success_typo(void **state) {
     will_return(__wrap_X509_new, 1);
     will_return(__wrap_X509_sign, 1);
 
-    expect_string(__wrap_fopen, mode, "wb");
-    expect_string(__wrap_fopen, path, "key_path");
-    will_return(__wrap_fopen, &key_file);
+    expect_string(__wrap_wfopen, modes, "wb");
+    expect_string(__wrap_wfopen, filename, "key_path");
+    will_return(__wrap_wfopen, &key_file);
 
     will_return(__wrap_PEM_write_PrivateKey, 1);
 
-    expect_value(__wrap_fclose, _File, &key_file);
+    expect_value(__wrap_fclose, __stream, &key_file);
     will_return(__wrap_fclose, 0);
 
-    expect_string(__wrap_fopen, path, "cert_path");
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, &cert_file);
+    expect_string(__wrap_wfopen, filename, "cert_path");
+    expect_string(__wrap_wfopen, modes, "wb");
+    will_return(__wrap_wfopen, &cert_file);
 
     will_return(__wrap_PEM_write_X509, 1);
-    expect_value(__wrap_fclose, _File, &cert_file);
+    expect_value(__wrap_fclose, __stream, &cert_file);
 
     will_return(__wrap_fclose, 0);
 
@@ -98,14 +98,14 @@ static void test_save_key_fail(void **state) {
     will_return(__wrap_X509_new, 1);
     will_return(__wrap_X509_sign, 1);
 
-    expect_string(__wrap_fopen, path, "key_path");
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, &key_file);
+    expect_string(__wrap_wfopen, filename, "key_path");
+    expect_string(__wrap_wfopen, modes, "wb");
+    will_return(__wrap_wfopen, &key_file);
 
     will_return(__wrap_PEM_write_PrivateKey, 0);
     expect_string(__wrap__merror, formatted_msg, "Cannot dump private key.");
 
-    expect_value(__wrap_fclose, _File, &key_file);
+    expect_value(__wrap_fclose, __stream, &key_file);
     will_return(__wrap_fclose, 0);
 
     int ret_value = generate_cert(1024, 2048, "key_path", "cert_path", "/C=US/ST=California/CN=Wazuh/");
@@ -121,9 +121,9 @@ static void test_save_key_fail_fopen(void **state) {
     will_return(__wrap_X509_new, 1);
     will_return(__wrap_X509_sign, 1);
 
-    expect_string(__wrap_fopen, path, "key_path");
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, filename, "key_path");
+    expect_string(__wrap_wfopen, modes, "wb");
+    will_return(__wrap_wfopen, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "Cannot open key_path.");
 
@@ -141,22 +141,22 @@ static void test_save_cert_fail(void **state) {
     will_return(__wrap_X509_new, 1);
     will_return(__wrap_X509_sign, 1);
 
-    expect_string(__wrap_fopen, path, "key_path");
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, &key_file);
+    expect_string(__wrap_wfopen, filename, "key_path");
+    expect_string(__wrap_wfopen, modes, "wb");
+    will_return(__wrap_wfopen, &key_file);
 
     will_return(__wrap_PEM_write_PrivateKey, 1);
 
-    expect_value(__wrap_fclose, _File, &key_file);
+    expect_value(__wrap_fclose, __stream, &key_file);
     will_return(__wrap_fclose, 0);
 
-    expect_string(__wrap_fopen, path, "cert_path");
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, &cert_file);
+    expect_string(__wrap_wfopen, filename, "cert_path");
+    expect_string(__wrap_wfopen, modes, "wb");
+    will_return(__wrap_wfopen, &cert_file);
 
     will_return(__wrap_PEM_write_X509, 0);
     expect_string(__wrap__merror, formatted_msg, "Cannot dump certificate.");
-    expect_value(__wrap_fclose, _File, &cert_file);
+    expect_value(__wrap_fclose, __stream, &cert_file);
     will_return(__wrap_fclose, 0);
 
     int ret_value = generate_cert(1024, 2048, "key_path", "cert_path", "/C=US/ST=California/CN=Wazuh/");
@@ -172,18 +172,18 @@ static void test_save_cert_fail_fopen(void **state) {
     will_return(__wrap_X509_new, 1);
     will_return(__wrap_X509_sign, 1);
 
-    expect_string(__wrap_fopen, path, "key_path");
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, &key_file);
+    expect_string(__wrap_wfopen, filename, "key_path");
+    expect_string(__wrap_wfopen, modes, "wb");
+    will_return(__wrap_wfopen, &key_file);
 
     will_return(__wrap_PEM_write_PrivateKey, 1);
 
-    expect_value(__wrap_fclose, _File, &key_file);
+    expect_value(__wrap_fclose, __stream, &key_file);
     will_return(__wrap_fclose, 0);
 
-    expect_string(__wrap_fopen, path, "cert_path");
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, filename, "cert_path");
+    expect_string(__wrap_wfopen, modes, "wb");
+    will_return(__wrap_wfopen, NULL);
     expect_string(__wrap__merror, formatted_msg, "Cannot open cert_path.");
 
     int ret_value = generate_cert(1024, 2048, "key_path", "cert_path", "/C=US/ST=California/CN=Wazuh/");

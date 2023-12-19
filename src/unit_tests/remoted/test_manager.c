@@ -14,6 +14,7 @@
 #include <stdio.h>
 
 #include "../wrappers/common.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/os_crypto/sha256_op_wrappers.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 #include "../wrappers/wazuh/shared/agent_op_wrappers.h"
@@ -792,7 +793,7 @@ void test_c_group_no_changes(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
     // End validate_shared_files function
 
-    expect_value(__wrap_fclose, _File, (FILE *)1);
+    expect_value(__wrap_fclose, __stream, (FILE *)1);
     will_return(__wrap_fclose, 0);
 
     expect_string(__wrap_OS_MD5_Str, str, "buffer stream");
@@ -842,9 +843,9 @@ void test_c_group_no_changes_disk(void **state)
     expect_string(__wrap_w_parser_get_group, name, group->name);
     will_return(__wrap_w_parser_get_group, NULL);
 
-    expect_string(__wrap_fopen, path, "etc/shared/test_default/merged.mg.tmp");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, (FILE *)1);
+    expect_string(__wrap_wfopen, filename, "etc/shared/test_default/merged.mg.tmp");
+    expect_string(__wrap_wfopen, modes, "w");
+    will_return(__wrap_wfopen, (FILE *)1);
 
     expect_value(__wrap_fprintf, __stream, (FILE *)1);
     expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
@@ -861,7 +862,7 @@ void test_c_group_no_changes_disk(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
     // End validate_shared_files function
 
-    expect_value(__wrap_fclose, _File, (FILE *)1);
+    expect_value(__wrap_fclose, __stream, (FILE *)1);
     will_return(__wrap_fclose, 0);
 
     expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg.tmp");
@@ -933,7 +934,7 @@ void test_c_group_changes(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
     // End validate_shared_files function
 
-    expect_value(__wrap_fclose, _File, (FILE *)1);
+    expect_value(__wrap_fclose, __stream, (FILE *)1);
     will_return(__wrap_fclose, 0);
 
     expect_string(__wrap_OS_MD5_Str, str, "buffer stream");
@@ -946,13 +947,13 @@ void test_c_group_changes(void **state)
     will_return(__wrap_OS_MD5_File, "md5_test2");
     will_return(__wrap_OS_MD5_File, 0);
 
-    expect_string(__wrap_fopen, path, "etc/shared/test_default/merged.mg");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, (FILE *)2);
+    expect_string(__wrap_wfopen, filename, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_wfopen, modes, "w");
+    will_return(__wrap_wfopen, (FILE *)2);
 
     will_return(__wrap_fwrite, 1);
 
-    expect_value(__wrap_fclose, _File, (FILE *)2);
+    expect_value(__wrap_fclose, __stream, (FILE *)2);
     will_return(__wrap_fclose, 0);
 
     expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
@@ -987,9 +988,9 @@ void test_c_group_changes_disk(void **state)
     expect_string(__wrap_w_parser_get_group, name, group->name);
     will_return(__wrap_w_parser_get_group, NULL);
 
-    expect_string(__wrap_fopen, path, "etc/shared/test_default/merged.mg.tmp");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, (FILE *)1);
+    expect_string(__wrap_wfopen, filename, "etc/shared/test_default/merged.mg.tmp");
+    expect_string(__wrap_wfopen, modes, "w");
+    will_return(__wrap_wfopen, (FILE *)1);
 
     expect_value(__wrap_fprintf, __stream, (FILE *)1);
     expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
@@ -1006,7 +1007,7 @@ void test_c_group_changes_disk(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
     // End validate_shared_files function
 
-    expect_value(__wrap_fclose, _File, (FILE *)1);
+    expect_value(__wrap_fclose, __stream, (FILE *)1);
     will_return(__wrap_fclose, 0);
 
     expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg.tmp");
@@ -1074,7 +1075,7 @@ void test_c_group_fail(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
     // End validate_shared_files function
 
-    expect_value(__wrap_fclose, _File, (FILE *)1);
+    expect_value(__wrap_fclose, __stream, (FILE *)1);
     will_return(__wrap_fclose, 0);
 
     expect_string(__wrap_OS_MD5_Str, str, "buffer stream");
@@ -1087,13 +1088,13 @@ void test_c_group_fail(void **state)
     will_return(__wrap_OS_MD5_File, "md5_test");
     will_return(__wrap_OS_MD5_File, -1);
 
-    expect_string(__wrap_fopen, path, "etc/shared/test_default/merged.mg");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, (FILE *)2);
+    expect_string(__wrap_wfopen, filename, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_wfopen, modes, "w");
+    will_return(__wrap_wfopen, (FILE *)2);
 
     will_return(__wrap_fwrite, 1);
 
-    expect_value(__wrap_fclose, _File, (FILE *)2);
+    expect_value(__wrap_fclose, __stream, (FILE *)2);
     will_return(__wrap_fclose, 0);
 
     expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
@@ -1124,9 +1125,9 @@ void test_c_group_fail_disk(void **state)
     expect_string(__wrap_w_parser_get_group, name, group->name);
     will_return(__wrap_w_parser_get_group, NULL);
 
-    expect_string(__wrap_fopen, path, "etc/shared/test_default/merged.mg.tmp");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, (FILE *)1);
+    expect_string(__wrap_wfopen, filename, "etc/shared/test_default/merged.mg.tmp");
+    expect_string(__wrap_wfopen, modes, "w");
+    will_return(__wrap_wfopen, (FILE *)1);
 
     expect_value(__wrap_fprintf, __stream, (FILE *)1);
     expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
@@ -1143,7 +1144,7 @@ void test_c_group_fail_disk(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
     // End validate_shared_files function
 
-    expect_value(__wrap_fclose, _File, (FILE *)1);
+    expect_value(__wrap_fclose, __stream, (FILE *)1);
     will_return(__wrap_fclose, 0);
 
     expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg.tmp");
@@ -1467,7 +1468,7 @@ void test_c_group_invalid_share_file(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
     // End validate_shared_files function
 
-    expect_value(__wrap_fclose, _File, (FILE *)1);
+    expect_value(__wrap_fclose, __stream, (FILE *)1);
     will_return(__wrap_fclose, 0);
 
     expect_string(__wrap_OS_MD5_Str, str, "buffer stream");
@@ -1480,9 +1481,9 @@ void test_c_group_invalid_share_file(void **state)
     will_return(__wrap_OS_MD5_File, "md5_test");
     will_return(__wrap_OS_MD5_File, -1);
 
-    expect_string(__wrap_fopen, path, "etc/shared/test_default/merged.mg");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, filename, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_wfopen, modes, "w");
+    will_return(__wrap_wfopen, NULL);
 
     will_return(__wrap_strerror, "No such file or directory");
 
@@ -1578,7 +1579,7 @@ void test_c_group_append_file_error(void **state)
     will_return(__wrap_MergeAppendFile, 0);
     // End validate_shared_files function
 
-    expect_value(__wrap_fclose, _File, (FILE *)1);
+    expect_value(__wrap_fclose, __stream, (FILE *)1);
     will_return(__wrap_fclose, 0);
 
     c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
@@ -1634,7 +1635,7 @@ void test_c_group_append_ar_error(void **state)
     expect_value(__wrap_MergeAppendFile, path_offset, -1);
     will_return(__wrap_MergeAppendFile, 0);
 
-    expect_value(__wrap_fclose, _File, (FILE *)1);
+    expect_value(__wrap_fclose, __stream, (FILE *)1);
     will_return(__wrap_fclose, 0);
 
     c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
@@ -1717,9 +1718,9 @@ void test_c_group_truncate_error_disk(void **state)
     expect_string(__wrap_w_parser_get_group, name, group->name);
     will_return(__wrap_w_parser_get_group, NULL);
 
-    expect_string(__wrap_fopen, path, "etc/shared/test_default/merged.mg.tmp");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, filename, "etc/shared/test_default/merged.mg.tmp");
+    expect_string(__wrap_wfopen, modes, "w");
+    will_return(__wrap_wfopen, NULL);
 
     will_return(__wrap_strerror, "No such file or directory");
 
@@ -2706,7 +2707,7 @@ void test_process_groups_find_group_null(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test'");
     // End validate_shared_files function
 
-    expect_value(__wrap_fclose, _File, (FILE *)1);
+    expect_value(__wrap_fclose, __stream, (FILE *)1);
     will_return(__wrap_fclose, 0);
 
     expect_string(__wrap_OS_MD5_Str, str, "buffer stream");
@@ -2719,9 +2720,9 @@ void test_process_groups_find_group_null(void **state)
     will_return(__wrap_OS_MD5_File, "md5_test");
     will_return(__wrap_OS_MD5_File, -1);
 
-    expect_string(__wrap_fopen, path, "etc/shared/test/merged.mg");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, filename, "etc/shared/test/merged.mg");
+    expect_string(__wrap_wfopen, modes, "w");
+    will_return(__wrap_wfopen, NULL);
 
     will_return(__wrap_strerror, "No such file or directory");
 
@@ -2818,7 +2819,7 @@ void test_process_groups_find_group_changed(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
     // End validate_shared_files function
 
-    expect_value(__wrap_fclose, _File, (FILE *)1);
+    expect_value(__wrap_fclose, __stream, (FILE *)1);
     will_return(__wrap_fclose, 0);
 
     expect_string(__wrap_OS_MD5_Str, str, "buffer stream");
@@ -2831,9 +2832,9 @@ void test_process_groups_find_group_changed(void **state)
     will_return(__wrap_OS_MD5_File, "md5_test");
     will_return(__wrap_OS_MD5_File, -1);
 
-    expect_string(__wrap_fopen, path, "etc/shared/test_default/merged.mg");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, filename, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_wfopen, modes, "w");
+    will_return(__wrap_wfopen, NULL);
 
     will_return(__wrap_strerror, "No such file or directory");
 

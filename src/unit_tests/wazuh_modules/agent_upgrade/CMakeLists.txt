@@ -42,7 +42,7 @@ if(${TARGET} STREQUAL "server")
     list(APPEND upgrade_flags "-Wl,--wrap,OS_ReadXML -Wl,--wrap,OS_GetOneContentforElement -Wl,--wrap,OS_ClearXML ${DEBUG_OP_WRAPPERS}")
 
     list(APPEND upgrade_names "test_wm_agent_upgrade_validate")
-    list(APPEND upgrade_flags "-Wl,--wrap,wurl_http_get -Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,fclose -Wl,--wrap,OS_SHA1_File -Wl,--wrap,wurl_request -Wl,--wrap,sleep \
+    list(APPEND upgrade_flags "-Wl,--wrap,wurl_http_get -Wl,--wrap,fopen -Wl,--wrap,wfopen -Wl,--wrap,popen -Wl,--wrap,fclose -Wl,--wrap,OS_SHA1_File -Wl,--wrap,wurl_request -Wl,--wrap,sleep \
                                -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,getpid -Wl,--wrap,fgetpos -Wl,--wrap=fgetc \
                                ${DEBUG_OP_WRAPPERS}")
 
