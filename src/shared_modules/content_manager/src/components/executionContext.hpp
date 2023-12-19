@@ -40,7 +40,7 @@ private:
      * @brief Reads and returns the last offset from the database.
      *
      * @param context Updater context configured with the database driver.
-     * @return unsigned int Last offset from the database.
+     * @return unsigned int Last offset from the database. If there is no available data, cero is returned.
      */
     unsigned int getDatabaseOffset(const UpdaterBaseContext& context) const
     {
@@ -65,7 +65,7 @@ private:
      * @brief Reads and returns the file hash from the database.
      *
      * @param context Updater context configured with the database driver.
-     * @return unsigned int Last file hash from the database.
+     * @return std::string Last file hash from the database. If there is no available data, an empty string is returned.
      */
     std::string getDatabaseFileHash(const UpdaterBaseContext& context) const
     {
