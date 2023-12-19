@@ -13,14 +13,18 @@
 #include "builders/opfilter/opBuilderHelperFilter.hpp"
 
 // Map builders
+#include "builders/opmap/activeResponse.hpp"
 #include "builders/opmap/map.hpp"
 #include "builders/opmap/opBuilderHelperMap.hpp"
-#include "builders/opmap/activeResponse.hpp"
+#include "builders/opmap/upgradeConfirmation.hpp"
+#include "builders/opmap/wdb.hpp"
 
 // Transform builders
 #include "builders/opmap/kvdb.hpp"
 #include "builders/optransform/array.hpp"
 #include "builders/optransform/hlp.hpp"
+#include "builders/optransform/netinfoAddress.hpp"
+#include "builders/optransform/sca.hpp"
 
 // Stage builders
 #include "builders/stage/check.hpp"
@@ -178,8 +182,9 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
     // Transform helpers: Event Field functions
     registry->template add<builders::OpBuilderEntry>(
         "delete", {schemval::ValidationToken {}, builders::opBuilderHelperDeleteField});
+    // TODO: this builders should check that the field is an array or an object
     registry->template add<builders::OpBuilderEntry>(
-        "merge", {schemval::ValidationToken {schemf::Type::OBJECT}, builders::opBuilderHelperMerge});
+        "merge", {schemval::ValidationToken {}, builders::opBuilderHelperMerge});
     registry->template add<builders::OpBuilderEntry>(
         "merge_recursive",
         {schemval::ValidationToken {schemf::Type::OBJECT}, builders::opBuilderHelperMergeRecursively});
@@ -277,12 +282,35 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
          builders::getOpBuilderHelperKVDBDecodeBitmask(deps.kvdbManager, deps.kvdbScopeName)});
 
     // Active Response builders
-     registry->template add<builders::OpBuilderEntry>(
-        "active_response_send",
-        {schemval::ValidationToken {}, builders::getOpBuilderSendAr(deps.sockFactory)});
     registry->template add<builders::OpBuilderEntry>(
-        "active_response_create",
-        {schemval::ValidationToken {}, builders::CreateARBuilder});
+        "active_response_send", {schemval::ValidationToken {}, builders::getOpBuilderSendAr(deps.sockFactory)});
+    registry->template add<builders::OpBuilderEntry>("active_response_create",
+                                                     {schemval::ValidationToken {}, builders::CreateARBuilder});
+
+    // Upgrade confirmation builder
+    registry->template add<builders::OpBuilderEntry>(
+        "send_upgrade_confirmation",
+        {schemval::ValidationToken {json::Json::Type::Boolean},
+         builders::opmap::getUpgradeConfirmationBUilder(deps.sockFactory)});
+
+    // Netinfo address builder
+    registry->template add<builders::OpBuilderEntry>(
+        "sysc_ni_save_ipv4",
+        {schemval::ValidationToken {}, builders::optransform::getSaveNetInfoIPv4Builder(deps.wdbManager)});
+    registry->template add<builders::OpBuilderEntry>(
+        "sysc_ni_save_ipv6",
+        {schemval::ValidationToken {}, builders::optransform::getSaveNetInfoIPv6Builder(deps.wdbManager)});
+
+    // WDB builders
+    registry->template add<builders::OpBuilderEntry>(
+        "wdb_update", {schemval::ValidationToken {}, builders::opmap::getWdbUpdateBuilder(deps.wdbManager)});
+    registry->template add<builders::OpBuilderEntry>(
+        "wdb_query", {schemval::ValidationToken {}, builders::opmap::getWdbQueryBuilder(deps.wdbManager)});
+
+    // SCA builders
+    registry->template add<builders::OpBuilderEntry>(
+        "sca_decoder",
+        {schemval::ValidationToken {}, builders::optransform::getBuilderSCAdecoder(deps.wdbManager, deps.sockFactory)});
 }
 
 /**

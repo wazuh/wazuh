@@ -150,11 +150,11 @@ inline bool isPolicy(const base::Name& name)
 namespace integration
 {
 // Integration sections
-constexpr auto DECODER_PATH = "decoders";         ///< The name of the decoders section in an integration.
-constexpr auto RULE_PATH = "rules";               ///< The name of the rules section in an integration.
-constexpr auto OUTPUT_PATH = "outputs";           ///< The name of the outputs section in an integration.
-constexpr auto FILTER_PATH = "filters";           ///< The name of the filters section in an integration.
-constexpr auto INTEGRATION_PATH = "integrations"; ///< The name of the integrations section in an integration.
+constexpr auto DECODER_PATH = "/decoders";         ///< The name of the decoders section in an integration.
+constexpr auto RULE_PATH = "/rules";               ///< The name of the rules section in an integration.
+constexpr auto OUTPUT_PATH = "/outputs";           ///< The name of the outputs section in an integration.
+constexpr auto FILTER_PATH = "/filters";           ///< The name of the filters section in an integration.
+constexpr auto INTEGRATION_PATH = "/integrations"; ///< The name of the integrations section in an integration.
 } // namespace integration
 
 /**

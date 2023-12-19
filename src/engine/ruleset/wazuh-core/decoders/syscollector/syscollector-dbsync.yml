@@ -52,7 +52,7 @@ normalize:
       - wazuh.decoders: array_append(syscollector-dbsync)
 
       - do_update_kvdb: false
-      - _empty: ""
+      - _empty: "''"
 
   - check: exists($json_event.data.address) OR exists($json_event.data.mac) OR exists($json_event.data.os_version) OR exists($json_event.data.release) OR string_not_equal($json_event.data.hostname,$_empty) OR string_not_equal($json_event.data.os_name,$_empty) OR string_not_equal($json_event.data.os_platform,$_empty) OR string_not_equal($json_event.data.sysname,$_empty)
     map:
