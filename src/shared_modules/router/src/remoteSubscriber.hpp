@@ -36,10 +36,11 @@ public:
     /**
      * @brief Class constructor.
      *
-     * @param endpoint
-     * @param subscriberId
-     * @param callback
-     * @param socketPath
+     * @param endpoint Endpoint name.
+     * @param subscriberId Subscriber ID.
+     * @param callback Subscriber update callback.
+     * @param socketPath Client socket path.
+     * @param onConnect Callback to be called when the subscriber is connected.
      */
     explicit RemoteSubscriber(
         std::string endpoint,

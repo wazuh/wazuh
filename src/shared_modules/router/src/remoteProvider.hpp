@@ -37,6 +37,7 @@ public:
      *
      * @param endpoint Endpoint name.
      * @param socketPath Client socket path.
+     * @param onConnect Callback to be called when the provider is connected.
      */
     // LCOV_EXCL_START
     explicit RemoteProvider(std::string endpoint,

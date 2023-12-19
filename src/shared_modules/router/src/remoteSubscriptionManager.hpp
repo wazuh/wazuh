@@ -33,6 +33,7 @@ private:
      * @brief Registration message process.
      *
      * @param jsonMsg Message to be sent.
+     * @param onSuccess Callback to be called when the message is sent.
      */
     void sendRouterServerMessage(const nlohmann::json& jsonMsg, const std::function<void()>& onSuccess)
     {
@@ -85,6 +86,7 @@ public:
      * @brief Creates and sends the init provider message.
      *
      * @param endpointName Name of the endpoint.
+     * @param onSuccess Callback to be called when the message is sent.
      */
     void sendInitProviderMessage(const std::string& endpointName, const std::function<void()>& onSuccess)
     {
