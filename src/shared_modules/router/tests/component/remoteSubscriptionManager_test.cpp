@@ -29,4 +29,3 @@ TEST_F(RemoteSubscriptionManagerTest, sendInitProviderMessageTest)
         FAIL() << "Timeout waiting for provider initialization";
     }
 }
-
