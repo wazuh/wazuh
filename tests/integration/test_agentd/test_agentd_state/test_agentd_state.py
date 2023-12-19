@@ -56,11 +56,12 @@ from wazuh_testing.constants.paths.variables import AGENTD_STATE
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
+from wazuh_testing.utils.client_keys import add_client_keys_entry
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 from wazuh_testing.utils.services import control_service
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from .. import wait_keepalive, wait_ack, wait_state_update, add_custom_key, wait_agent_notification
+from .. import wait_keepalive, wait_ack, wait_state_update, wait_agent_notification
 
 # Marks
 pytestmark = pytest.mark.tier(level=0)
@@ -138,7 +139,7 @@ def test_agentd_state(test_configuration, test_metadata, set_wazuh_configuration
     remoted_server = start_remoted_server(test_metadata) 
 
     # Add dummy key in order to communicate with RemotedSimulator
-    add_custom_key()
+    add_client_keys_entry("001", "ubuntu-agent", "any", "SuperSecretKey")
 
     # Start service
     control_service('start')

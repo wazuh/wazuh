@@ -55,11 +55,12 @@ from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils import callbacks
+from wazuh_testing.utils.client_keys import add_client_keys_entry
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 from wazuh_testing.utils.services import control_service
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from .. import get_regex, kill_server, add_custom_key
+from .. import get_regex, kill_server
 
 # Marks
 pytestmark = pytest.mark.tier(level=0)
@@ -170,7 +171,7 @@ def test_agentd_multi_server(test_configuration, test_metadata, set_wazuh_config
     else:
         if(test_metadata['SIMULATOR_MODES']['AUTHD_PREV_MODE'] == 'ACCEPT'):
             authd_server = None
-            add_custom_key()
+            add_client_keys_entry("001", "ubuntu-agent", "any", "SuperSecretKey")
 
     # Start target Agent
     control_service('start')
@@ -194,7 +195,7 @@ def test_agentd_multi_server(test_configuration, test_metadata, set_wazuh_config
                               remoted_server_addresses[server],
                               remoted_server_ports[server])
             # Look for expected log
-            log_monitor.start(callback=callbacks.generate_callback(regex,values))
+            log_monitor.start(callback=callbacks.generate_callback(regex,values), timeout = 45)
             assert (log_monitor.callback_result != None), regex
 
     # Shutdown simulators

@@ -8,6 +8,7 @@ import time
 
 from wazuh_testing.constants.paths.variables import AGENTD_STATE
 from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH
+from wazuh_testing.utils.client_keys import add_client_keys_entry
 
 @pytest.fixture()
 def remove_state_file() -> None:
@@ -22,7 +23,17 @@ def clean_keys() -> None:
     time.sleep(1)
 
 @pytest.fixture()
-def remove_keys_file(request: pytest.FixtureRequest, test_metadata) -> None:
+def add_keys() -> None:
+    # Add content of client.keys file
+    add_client_keys_entry("001", "ubuntu-agent", "any", "SuperSecretKey")
+
+
+@pytest.fixture()
+def remove_keys_file(test_metadata) -> None:
     # Remove keys file if needed
     if(test_metadata['DELETE_KEYS_FILE']):
         os.remove(WAZUH_CLIENT_KEYS_PATH) if os.path.exists(WAZUH_CLIENT_KEYS_PATH) else None
+
+@pytest.fixture(autouse=True)
+def autostart_simulators(request: pytest.FixtureRequest) -> None:
+    yield

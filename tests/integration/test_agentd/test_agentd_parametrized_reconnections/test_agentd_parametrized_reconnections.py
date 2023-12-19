@@ -67,10 +67,11 @@ from wazuh_testing.modules.agentd.patterns import AGENTD_TRYING_CONNECT, AGENTD_
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils import callbacks
+from wazuh_testing.utils.client_keys import add_client_keys_entry
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from .. import parse_time_from_log_line, wait_connect, wait_server_rollback, add_custom_key, check_connection_try, kill_server
+from .. import parse_time_from_log_line, wait_connect, wait_server_rollback, check_connection_try, kill_server
 
 # Marks
 pytestmark = pytest.mark.tier(level=0)
@@ -101,8 +102,8 @@ This test covers different options of delays between server connection attempts:
 """
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_agentd_parametrized_reconnections(test_metadata, set_wazuh_configuration, configure_local_internal_options,
-                             truncate_monitored_files, daemons_handler):
+def test_agentd_parametrized_reconnections(test_metadata, set_wazuh_configuration, configure_local_internal_options, 
+                                           truncate_monitored_files, clean_keys, add_keys, daemons_handler):
     '''
     description: Check how the agent behaves when there are delays between connection
                  attempts to the server. For this purpose, different values for
@@ -125,6 +126,12 @@ def test_agentd_parametrized_reconnections(test_metadata, set_wazuh_configuratio
         - truncate_monitored_files:
             type: fixture
             brief: Reset the 'ossec.log' file and start a new monitor.
+        - clean_keys:
+            type: fixture
+            brief: Cleans keys file content
+        - add_keys:
+            type: fixture
+            brief: Adds keys to keys file
         - daemons_handler:
             type: fixture
             brief: Handler of Wazuh daemons.
@@ -173,9 +180,6 @@ def test_agentd_parametrized_reconnections(test_metadata, set_wazuh_configuratio
         
     # If auto enrollment is enabled, retry check enrollment
     if test_metadata['ENROLL'] == 'yes':
-        # Add dummy key in order to communicate with RemotedSimulator
-        add_custom_key()
-        
         # Start RemotedSimulator for successfully enrollment 
         remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
         remoted_server.start()
@@ -189,7 +193,7 @@ def test_agentd_parametrized_reconnections(test_metadata, set_wazuh_configuratio
 
     #Check number of retries messages is the expected
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(accumulations = test_metadata['MAX_RETRIES'], callback=callbacks.generate_callback(AGENTD_TRYING_CONNECT))
+    wazuh_log_monitor.start(accumulations = test_metadata['MAX_RETRIES'], callback=callbacks.generate_callback(AGENTD_TRYING_CONNECT,{'IP':'','PORT':''}))
     assert (wazuh_log_monitor.callback_result != None), f'Trying to connect to server message not found expected times'
 
     #Check number of connected message is the expected

@@ -55,10 +55,11 @@ from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG, AGENTD_TIMEOUT
 from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
+from wazuh_testing.utils.client_keys import add_client_keys_entry
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from .. import wait_keepalive, add_custom_key, wait_enrollment_try, kill_server
+from .. import wait_keepalive, wait_enrollment_try, kill_server
 
 # Marks
 pytestmark = pytest.mark.tier(level=0)
@@ -81,7 +82,8 @@ daemons_handler_configuration = {'all_daemons': True}
 
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_agentd_reconection_enrollment_with_keys(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options, truncate_monitored_files, daemons_handler):
+def test_agentd_reconection_enrollment_with_keys(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options, 
+                                                 truncate_monitored_files, clean_keys, add_keys, daemons_handler):
     '''
        description: Check how the agent behaves when losing communication with
                  the 'wazuh-remoted' daemon and a new enrollment is sent to
@@ -105,9 +107,12 @@ def test_agentd_reconection_enrollment_with_keys(test_configuration, test_metada
         - truncate_monitored_files:
             type: fixture
             brief: Reset the 'ossec.log' file and start a new monitor.
-        - remove_keys_file:
+        - clean_keys:
             type: fixture
-            brief: Deletes keys file if test configuration request it
+            brief: Cleans keys file content
+        - add_keys:
+            type: fixture
+            brief: Adds keys to keys file
         - daemons_handler:
             type: fixture
             brief: Handler of Wazuh daemons.
@@ -128,9 +133,6 @@ def test_agentd_reconection_enrollment_with_keys(test_configuration, test_metada
         - ssl
         - keys
     '''
-    #Prepare test
-    add_custom_key()
-
     # Start RemotedSimulator
     remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
     remoted_server.start()

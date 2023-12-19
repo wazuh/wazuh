@@ -1,15 +1,9 @@
 from datetime import datetime
 
-from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.agentd.patterns import * 
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils import callbacks
-
-def add_custom_key() -> None:
-    """Set test client.keys file"""
-    with open(WAZUH_CLIENT_KEYS_PATH, 'w+') as client_keys:
-        client_keys.write("001 ubuntu-agent any SuperSecretKey")
 
 def kill_server(server):
     """Cleans and shutdown given server.
@@ -129,7 +123,7 @@ def wait_server_rollback():
 
 def check_module_stop():
     """
-        Watch ossec.log until "Unable to access queue" message is found
+        Watch ossec.log until "Unable to access queue" message is not found
     """
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_MODULE_STOPPED))
@@ -140,6 +134,6 @@ def check_connection_try():
         Watch ossec.log until "Trying to connect to server" message is found
     """
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    matched_line = wazuh_log_monitor.start(only_new_events = True, callback=callbacks.generate_callback(AGENTD_TRYING_CONNECT), return_matched_line = True)
+    matched_line = wazuh_log_monitor.start(only_new_events = True, callback=callbacks.generate_callback(AGENTD_TRYING_CONNECT,{'IP':'','PORT':''}), return_matched_line = True)
     assert (wazuh_log_monitor.callback_result != None), f'Trying to connect to server message not found'
     return matched_line

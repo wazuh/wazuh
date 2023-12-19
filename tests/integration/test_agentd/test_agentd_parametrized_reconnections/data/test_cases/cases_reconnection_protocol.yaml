@@ -5,6 +5,7 @@
     MAX_RETRIES: 3
     RETRY_INTERVAL: 3
     ENROLL: 'no'
+    DELETE_KEYS_FILE: false
   metadata:
 
 - name: Test_case_1
@@ -14,6 +15,7 @@
     MAX_RETRIES: 5
     RETRY_INTERVAL: 5
     ENROLL: 'no'
+    DELETE_KEYS_FILE: true
   metadata:
 
 - name: Test_case_2
@@ -23,6 +25,7 @@
     MAX_RETRIES: 10
     RETRY_INTERVAL: 10
     ENROLL: 'no'
+    DELETE_KEYS_FILE: true
   metadata:
 
 - name: Test_case_3
@@ -32,6 +35,7 @@
     MAX_RETRIES: 5
     RETRY_INTERVAL: 5
     ENROLL: 'yes'
+    DELETE_KEYS_FILE: true
   metadata:
 
 - name: Test_case_4
@@ -41,6 +45,7 @@
     MAX_RETRIES: 2
     RETRY_INTERVAL: 2
     ENROLL: 'yes'
+    DELETE_KEYS_FILE: true
   metadata:
 
 - name: Test_case_5
@@ -50,6 +55,7 @@
     MAX_RETRIES: 1
     RETRY_INTERVAL: 1
     ENROLL: 'no'
+    DELETE_KEYS_FILE: true
   metadata:
 
 - name: Test_case_6
@@ -59,6 +65,7 @@
     MAX_RETRIES: 5
     RETRY_INTERVAL: 5
     ENROLL: 'no'
+    DELETE_KEYS_FILE: true
   metadata:
 
 - name: Test_case_7
@@ -68,6 +75,7 @@
     MAX_RETRIES: 10
     RETRY_INTERVAL: 4
     ENROLL: 'no'
+    DELETE_KEYS_FILE: true
   metadata:
 
 - name: Test_case_8
@@ -77,4 +85,5 @@
     MAX_RETRIES: 3
     RETRY_INTERVAL: 12
     ENROLL: 'no'
+    DELETE_KEYS_FILE: true
   metadata:
