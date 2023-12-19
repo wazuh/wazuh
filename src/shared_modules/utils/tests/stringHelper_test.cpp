@@ -124,18 +124,28 @@ TEST_F(StringUtilsTest, Trim)
     EXPECT_EQ("Hello", Utils::trim(" \t\nHello\t\n ", " \t\n"));
 }
 
-TEST_F(StringUtilsTest, ToUpper)
+TEST_F(StringUtilsTest, ToUpperCase)
 {
     EXPECT_EQ("", Utils::toUpperCase(""));
     EXPECT_EQ("HELLO WORLD", Utils::toUpperCase("HeLlO WoRlD"));
     EXPECT_EQ("123", Utils::toUpperCase("123"));
 }
 
-TEST_F(StringUtilsTest, ToLower)
+TEST_F(StringUtilsTest, ToLowerCase)
 {
     EXPECT_EQ("", Utils::toLowerCase(""));
     EXPECT_EQ("hello world", Utils::toLowerCase("HeLlO WoRlD"));
     EXPECT_EQ("123", Utils::toLowerCase("123"));
+}
+
+TEST_F(StringUtilsTest, ToSentenceCase)
+{
+    EXPECT_EQ("", Utils::toSentenceCase(""));
+    EXPECT_EQ("H", Utils::toSentenceCase("h"));
+    EXPECT_EQ("Hello", Utils::toSentenceCase("hello"));
+    EXPECT_EQ("Hello", Utils::toSentenceCase("HELLO"));
+    EXPECT_EQ("Hello world", Utils::toSentenceCase("HeLlO WoRlD"));
+    EXPECT_EQ("123", Utils::toSentenceCase("123"));
 }
 
 TEST_F(StringUtilsTest, StartsWith)

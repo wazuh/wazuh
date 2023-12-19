@@ -253,6 +253,20 @@ namespace Utils
         return temp;
     }
 
+    static std::string toSentenceCase(const std::string& str)
+    {
+        std::string temp {str};
+        if(!str.empty())
+        {
+            temp[0] = std::toupper(temp[0]);
+            std::transform(std::begin(temp) + 1,
+                        std::end(temp),
+                        std::begin(temp) + 1,
+                        [](std::string::value_type character) { return std::tolower(character); });
+        }
+        return temp;
+    }
+
     static bool startsWith(const std::string& str, const std::string& start)
     {
         if (!str.empty() && str.length() >= start.length())
