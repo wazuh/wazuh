@@ -1,5 +1,5 @@
 /*
- * Wazuh router - RemoteStateHelper tests
+ * Wazuh router - RemoteSubscriptionManager tests
  * Copyright (C) 2015, Wazuh Inc.
  * September 06, 2023.
  *
@@ -16,13 +16,13 @@
 #include <gtest/gtest.h>
 
 /**
- * @brief Runs unit tests for RemoteStateHelper class
+ * @brief Runs unit tests for RemoteSubscriptionManager class
  */
-class RemoteStateHelperTest : public ::testing::Test
+class RemoteSubscriptionManagerTest : public ::testing::Test
 {
 protected:
-    RemoteStateHelperTest() = default;
-    ~RemoteStateHelperTest() override = default;
+    RemoteSubscriptionManagerTest() = default;
+    ~RemoteSubscriptionManagerTest() override = default;
 
     /**
      * @brief Test setup routine.

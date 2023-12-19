@@ -51,7 +51,6 @@ private:
                         {
                             throw std::runtime_error(result.at("Result"));
                         }
-                        std::cout << "RemoteProvider: " << result.at("Result") << std::endl;
                         onSuccess();
                     }
                     catch (const std::exception& e)
@@ -91,22 +90,6 @@ public:
     void sendInitProviderMessage(const std::string& endpointName, const std::function<void()>& onSuccess)
     {
         nlohmann::json jsonMsg {{"EndpointName", endpointName}, {"MessageType", "InitProvider"}};
-        sendRouterServerMessage(jsonMsg, onSuccess);
-    }
-
-    /**
-     * @brief Creates and sends the remove subscriber message.
-     *
-     * @param endpointName Name of the endpoint.
-     * @param subscriberId Id of the subscriber.
-     * @param onSuccess Callback to be called when the subscriber is removed.
-     */
-    void sendRemoveSubscriberMessage(const std::string& endpointName,
-                                     const std::string& subscriberId,
-                                     std::function<void()>& onSuccess)
-    {
-        nlohmann::json jsonMsg {
-            {"EndpointName", endpointName}, {"MessageType", "RemoveSubscriber"}, {"SubscriberId", subscriberId}};
         sendRouterServerMessage(jsonMsg, onSuccess);
     }
 };

@@ -17,19 +17,16 @@
  * @brief Tests sendInitProviderMessage method.
  *
  */
-TEST_F(RemoteStateHelperTest, sendInitProviderMessageTest)
+TEST_F(RemoteSubscriptionManagerTest, sendInitProviderMessageTest)
 {
     auto endpointName {"test-remote"};
-    // EXPECT_NO_THROW(RemoteStateHelper::sendInitProviderMessage(endpointName));
+    RemoteSubscriptionManager remoteSubscriptionManager {};
+    std::promise<void> promise;
+    EXPECT_NO_THROW(remoteSubscriptionManager.sendInitProviderMessage(endpointName, [&]() { promise.set_value(); }));
+
+    if (promise.get_future().wait_for(std::chrono::seconds(5)) == std::future_status::timeout)
+    {
+        FAIL() << "Timeout waiting for provider initialization";
+    }
 }
 
-/**
- * @brief Tests sendRemoveSubscriberMessage method.
- *
- */
-TEST_F(RemoteStateHelperTest, sendRemoveSubscriberMessageTest)
-{
-    auto endpointName {"test-remote"};
-    auto subscriberId {"test-subscriber"};
-    // EXPECT_NO_THROW(RemoteStateHelper::sendRemoveSubscriberMessage(endpointName, subscriberId));
-}

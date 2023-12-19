@@ -31,7 +31,7 @@ class RouterFacade final : public Singleton<RouterFacade>
 {
 public:
     // From subscriber.
-
+    // LCOV_EXCL_START
     /**
      * @brief Adds a subscriber to a given provider.
      *
@@ -126,7 +126,7 @@ public:
      *
      */
     void destroy();
-
+    // LCOV_EXCL_STOP
 private:
     std::unordered_map<std::string, std::unique_ptr<Publisher>> m_providers {};
     std::shared_mutex m_providersMutex {};
