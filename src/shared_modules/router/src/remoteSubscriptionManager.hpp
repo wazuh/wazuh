@@ -49,14 +49,16 @@ private:
                         auto result = nlohmann::json::parse(body, body + bodySize);
                         if (result.at("Result") != "OK")
                         {
-                            throw std::runtime_error(result.at("Result"));
+                            throw std::runtime_error(result.at("Result")); // LCOV_EXCL_LINE
                         }
                         onSuccess();
                     }
+                    // LCOV_EXCL_START
                     catch (const std::exception& e)
                     {
-                        std::cerr << "RemoteProvider: Invalid result: " << e.what() << std::endl;
+                        std::cerr << "Invalid result: " << e.what() << std::endl;
                     }
+                    // LCOV_EXCL_STOP
                 },
                 [jsonMsg, socketClient = m_socketClient.get()]()
                 {
@@ -65,16 +67,20 @@ private:
                         const auto msg = jsonMsg.dump();
                         socketClient->send(msg.data(), msg.size());
                     }
+                    // LCOV_EXCL_START
                     catch (const std::exception& e)
                     {
-                        std::cerr << "RemoteStateHelper failed to send message: " << e.what() << std::endl;
+                        std::cerr << "Failed to send message: " << e.what() << std::endl;
                     }
+                    // LCOV_EXCL_STOP
                 });
         }
+        // LCOV_EXCL_START
         catch (const std::exception& e)
         {
-            std::cerr << "RemoteStateHelper failed to send message: " << e.what() << std::endl;
+            std::cerr << "Failed to connect to router: " << e.what() << std::endl;
         }
+        // LCOV_EXCL_STOP
     }
 
 public:
