@@ -145,6 +145,45 @@ inline HelperToken toBuilderInput(ExpressionToken& expressionToken)
 
 using BuildToken = std::variant<HelperToken, ExpressionToken>;
 
+inline parsec::Parser<std::string> getHelperStartParser() {
+    std::string helperExtended = syntax::helper::NAME_EXTENDED;
+    parsec::Parser<std::string> helperNameParser = [helperExtended](auto sv, auto pos) -> parsec::Result<std::string>
+    {
+        auto next = pos;
+        while (next < sv.size() && (std::isalnum(sv[next]) || helperExtended.find(sv[next]) != std::string::npos))
+        {
+            ++next;
+        }
+
+        if (next == pos)
+        {
+            return parsec::makeError<std::string>("Empty helper name", pos);
+        }
+
+        return parsec::makeSuccess(std::string(sv.substr(pos, next - pos)), next);
+    };
+
+    parsec::Parser<std::string> parenthOpenParser = [](auto sv, auto pos) -> parsec::Result<std::string>
+    {
+        if (sv[pos] != syntax::helper::ARG_START)
+        {
+            return parsec::makeError<std::string>("Parenthesis open expected", pos);
+        }
+        // Skip whitespace
+        auto next = pos + 1;
+        while (next < sv.size() && std::isspace(sv[next]))
+        {
+            ++next;
+        }
+
+        return parsec::makeSuccess(std::string(1, syntax::helper::ARG_START), next);
+    };
+
+    auto helperStartParser = helperNameParser >> parenthOpenParser;
+
+    return helperStartParser;
+}
+
 /**
  * @brief Get a parser that parses a helper function
  *
@@ -487,8 +526,9 @@ inline parsec::Parser<HelperToken> getHelperParser(bool eraseScapeChars = false)
         return parsec::makeSuccess(std::move(helperToken), sv.size());
     };
 
-    auto finalParser = helperParser | (parsec::negativeLook(helperStartParser) >> (refParser | valueParser));
-    return finalParser;
+    // auto finalParser = helperParser | (parsec::negativeLook(helperStartParser) >> (refParser | valueParser));
+    // return finalParser;
+    return helperParser;
 }
 
 /**

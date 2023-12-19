@@ -1,8 +1,5 @@
 name: decoder/sysmon-linux/0
 
-parents:
-  - decoder/syslog/0
-
 metadata:
   module: sysmon-linux
   dataset: sysmon
@@ -19,6 +16,9 @@ metadata:
     - https://github.com/Sysinternals/SysmonForLinux
     - https://github.com/OTRF/OSSEM-DD/tree/main/linux/sysmon
     - https://learn.microsoft.com/en-us/sysinternals/downloads/sysmon
+
+parents:
+  - decoder/syslog/0
 
 check:
   - process.name: sysmon

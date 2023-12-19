@@ -229,17 +229,10 @@ baseHelperBuiler(const json::Json& definition, const std::shared_ptr<const IBuil
     }
     else if (jValue.isString())
     {
-        auto parser = detail::getHelperParser(true);
+        auto startHelperParser = detail::getHelperStartParser();
         auto strValue = jValue.getString().value();
-        auto parseRes = parser(strValue, 0);
 
-        if (parseRes.failure())
-        {
-            throw std::runtime_error(fmt::format("Failed to parse helper definition '{}'", strValue));
-        }
-
-        auto helperToken = parseRes.value();
-        if (helperToken.name.empty())
+        if (startHelperParser(strValue, 0).failure())
         {
             // Default helper names
             switch (helperType)
@@ -248,12 +241,31 @@ baseHelperBuiler(const json::Json& definition, const std::shared_ptr<const IBuil
                 case HelperType::FILTER: helperName = "filter"; break;
                 default: throw std::runtime_error("Invalid helper type");
             }
+            if (strValue[0] == syntax::field::REF_ANCHOR)
+            {
+                opArgs.emplace_back(std::make_shared<Reference>(strValue.substr(1)));
+            }
+            else
+            {
+                json::Json argValue {};
+                argValue.setString(strValue);
+                opArgs.emplace_back(std::make_shared<Value>(argValue));
+            }
         }
         else
         {
+            auto parser = detail::getHelperParser(true);
+            auto parseRes = parser(strValue, 0);
+
+            if (parseRes.failure())
+            {
+                throw std::runtime_error(fmt::format("Failed to parse helper definition '{}'", strValue));
+            }
+
+            auto helperToken = parseRes.value();
             helperName = helperToken.name;
+            opArgs = helperToken.args;
         }
-        opArgs = helperToken.args;
     }
     else if (jValue.isArray() || jValue.isObject())
     {

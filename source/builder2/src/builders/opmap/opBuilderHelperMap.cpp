@@ -1512,15 +1512,6 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
                         keyRef.dotPath()));
     }
 
-    // Verify target field is an object
-    if (schema.hasField(targetField.dotPath()) && (schema.getType(targetField.dotPath()) != schemf::Type::OBJECT))
-    {
-        throw std::runtime_error(
-            fmt::format("Engine helper builder: [{}] failed schema validation: Field '{}' value is not an object",
-                        name,
-                        targetField.dotPath()));
-    }
-
     // Tracing
     const std::string successTrace {fmt::format("[{}] -> Success", name)};
 

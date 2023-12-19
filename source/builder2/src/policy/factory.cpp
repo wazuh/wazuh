@@ -397,30 +397,29 @@ Graph<base::Name, Asset> buildSubgraph(const std::string& subgraphName,
             }
         }
 
-        // 4. Check integrity
-        for (auto& [parent, children] : subgraph.edges())
+    }
+
+    // 4. Check integrity
+    for (auto& [parent, children] : subgraph.edges())
+    {
+        if (!subgraph.hasNode(parent))
         {
-            if (!subgraph.hasNode(parent))
+            auto childrenNames = std::string("[");
+            childrenNames += std::accumulate(children.cbegin() + 1,
+                                             children.cend(),
+                                             children.front(),
+                                             [](auto& acc, auto& child) { return acc.toStr() + ", " + child.toStr(); });
+            childrenNames += "]";
+            throw std::runtime_error(fmt::format("Parent '{}' does not exist, required by {}", parent, childrenNames));
+        }
+        // TODO: this code is unreachable??
+        // We declare always the child with the parent relationship
+        // so the child should always exist
+        for (auto& child : children)
+        {
+            if (!subgraph.hasNode(child))
             {
-                auto childrenNames = std::string("[");
-                childrenNames +=
-                    std::accumulate(children.cbegin() + 1,
-                                    children.cend(),
-                                    children.front(),
-                                    [](auto& acc, auto& child) { return acc.toStr() + ", " + child.toStr(); });
-                childrenNames += "]";
-                throw std::runtime_error(
-                    fmt::format("Parent '{}' does not exist, required by {}", parent, childrenNames));
-            }
-            // TODO: this code is unreachable??
-            // We declare always the child with the parent relationship
-            // so the child should always exist
-            for (auto& child : children)
-            {
-                if (!subgraph.hasNode(child))
-                {
-                    throw std::runtime_error(fmt::format("Child '{}' does not exist, required by {}", child, parent));
-                }
+                throw std::runtime_error(fmt::format("Child '{}' does not exist, required by {}", child, parent));
             }
         }
     }
