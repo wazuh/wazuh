@@ -10,6 +10,7 @@
 #include <schemval/ivalidator.hpp>
 #include <sockiface/isockFactory.hpp>
 #include <store/istore.hpp>
+#include <wdb/iwdbManager.hpp>
 
 #include <builder/ibuilder.hpp>
 #include <builder/ivalidator.hpp>
@@ -25,10 +26,10 @@ struct BuilderDeps
     std::string kvdbScopeName;
     std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager;
     std::shared_ptr<sockiface::ISockFactory> sockFactory;
+    std::shared_ptr<wazuhdb::IWDBManager> wdbManager;
     // std::shared_ptr<Registry<HelperBuilder>> helperRegistry;
     // std::shared_ptr<schemf::ISchema> schema;
     // bool forceFieldNaming = false;
-    // std::shared_ptr<wazuhdb::IWDBManager> wdbManager;
 };
 
 class Builder final

@@ -210,7 +210,7 @@ baseHelperBuiler(const json::Json& definition, const std::shared_ptr<const IBuil
 
     auto defObj = definition.getObject().value();
 
-    const auto& [targetStr, jValue] = defObj[0];
+    auto [targetStr, jValue] = defObj[0];
     Reference targetField(targetStr);
     std::vector<OpArg> opArgs;
     std::string helperName;
@@ -230,11 +230,12 @@ baseHelperBuiler(const json::Json& definition, const std::shared_ptr<const IBuil
     else if (jValue.isString())
     {
         auto parser = detail::getHelperParser(true);
-        auto parseRes = parser(jValue.getString().value(), 0);
+        auto strValue = jValue.getString().value();
+        auto parseRes = parser(strValue, 0);
 
         if (parseRes.failure())
         {
-            throw std::runtime_error(fmt::format("Failed to parse helper definition '{}'", jValue.getString().value()));
+            throw std::runtime_error(fmt::format("Failed to parse helper definition '{}'", strValue));
         }
 
         auto helperToken = parseRes.value();
@@ -257,6 +258,7 @@ baseHelperBuiler(const json::Json& definition, const std::shared_ptr<const IBuil
     else if (jValue.isArray() || jValue.isObject())
     {
         // TODO: recursive call
+        throw std::runtime_error("Not implemented");
     }
     else // Null
     {

@@ -38,7 +38,7 @@ void addIntegrationSubgraph(PolicyData::AssetType assetType,
             if (!assetNameStr)
             {
                 throw std::runtime_error(fmt::format("Invalid not string entry in '{}' array for integration '{}'",
-                                                     syntax::integration::DECODER_PATH,
+                                                     path,
                                                      integrationName));
             }
 
@@ -218,7 +218,13 @@ PolicyData readData(const store::Doc& doc, const std::shared_ptr<store::IStoreRe
                     fmt::format("Default parent decoder '{}' in namespace '{}' is not a decoder", ns, decoderName));
             }
 
-            auto adde = data.addDefaultParent(PolicyData::AssetType::DECODER, ns, decoderName);
+            auto added = data.addDefaultParent(PolicyData::AssetType::DECODER, ns, decoderName);
+            if (!added)
+            {
+                throw std::runtime_error(fmt::format("Default parent decoder '{}' in namespace '{}' is duplicated",
+                                                     ns,
+                                                     decoderName));
+            }
         }
     }
 

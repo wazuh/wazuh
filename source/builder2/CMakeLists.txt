@@ -54,9 +54,9 @@ add_library(builder2 STATIC
     # TODO: Move to separate files
     ${SRC_DIR}/builders/opmap/opBuilderHelperMap.cpp
     ${SRC_DIR}/builders/opmap/kvdb.cpp
-
-    # Map: AR
     ${SRC_DIR}/builders/opmap/activeResponse.cpp
+    ${SRC_DIR}/builders/opmap/upgradeConfirmation.cpp
+    ${SRC_DIR}/builders/opmap/wdb.cpp
 
     # Filter
     ${SRC_DIR}/builders/opfilter/filter.cpp
@@ -68,6 +68,8 @@ add_library(builder2 STATIC
     # Transform
     ${SRC_DIR}/builders/optransform/array.cpp
     ${SRC_DIR}/builders/optransform/hlp.cpp
+    ${SRC_DIR}/builders/optransform/netinfoAddress.cpp
+    ${SRC_DIR}/builders/optransform/sca.cpp
 )
 target_include_directories(builder2 PUBLIC ${BUILDER_PUB_INCS} PRIVATE ${BUILDER_PRI_INCS})
 # TODO make variables so we can use them in the tests and make private the dependencies
@@ -83,11 +85,12 @@ target_link_libraries(builder2
     logpar
     date::date
     kvdb::ikvdb
+    sockiface::isock
+    wdb::iwdb
 
     PRIVATE
 
     schemf::ischema
-    sockiface::isock
 
 )
 

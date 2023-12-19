@@ -25,4 +25,4 @@ normalize:
   - map:
       - wazuh.source: remote
       - client.ip: $wazuh.origin
-      - related.ip: array_append($wazuh.origin)
+      - related.ip: array_append($client.ip)

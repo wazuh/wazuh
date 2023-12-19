@@ -304,6 +304,8 @@ void runStart(ConfHandler confManager)
             builderDeps.kvdbScopeName = "builder";
             builderDeps.kvdbManager = kvdbManager;
             builderDeps.sockFactory = std::make_shared<sockiface::UnixSocketFactory>();
+            builderDeps.wdbManager =
+                std::make_shared<wazuhdb::WDBManager>(std::string(wazuhdb::WDB_SOCK_PATH), builderDeps.sockFactory);
             auto defs = std::make_shared<defs::DefinitionsBuilder>();
             auto schemaValidator = std::make_shared<schemval::Validator>(schema);
             builder = std::make_shared<builder::Builder>(store, schema, defs, schemaValidator, builderDeps);
