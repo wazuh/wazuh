@@ -58,6 +58,7 @@ if(ENGINE_BUILD_TEST)
     # Router component test
     add_executable(router_ctest
     ${COMPONENT_SRC_DIR}/router_test.cpp
+    ${COMPONENT_SRC_DIR}/tester_test.cpp
     )
     target_include_directories(router_ctest PRIVATE ${SRC_DIR})
     target_link_libraries(router_ctest
