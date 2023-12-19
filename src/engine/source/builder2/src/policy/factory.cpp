@@ -441,7 +441,7 @@ PolicyGraph buildGraph(const BuiltAssets& assets, const PolicyData& data)
     // Build subgraph for each type
     for (const auto& [assetType, subgraphData] : data.subgraphs())
     {
-        if (assetType == PolicyData::AssetType::FILTER)
+        if (assetType == PolicyData::AssetType::FILTER || assets.empty())
         {
             continue;
         }
