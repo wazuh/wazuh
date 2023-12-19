@@ -421,4 +421,3 @@ TEST_F(RouterInterfaceTestNoBroker, ShutdownWithoutBrokerSubscriber)
 
     subscriptor.reset();
 }
-
