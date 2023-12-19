@@ -36,4 +36,28 @@ protected:
      */
     void TearDown() override;
 };
+
+/**
+ * @brief RouterInterfaceTestNoBroker class with no SetUp.
+ *
+ */
+class RouterInterfaceTestNoBroker : public ::testing::Test
+{
+protected:
+    RouterInterfaceTestNoBroker() = default;
+    ~RouterInterfaceTestNoBroker() override = default;
+
+    /**
+     * @brief Test setup routine.
+     *
+     */
+    void SetUp() override {};
+
+    /**
+     * @brief Test teardown routine.
+     *
+     */
+    void TearDown() override {};
+};
+
 #endif //_ROUTER_INTERFACE_TESTS_HPP

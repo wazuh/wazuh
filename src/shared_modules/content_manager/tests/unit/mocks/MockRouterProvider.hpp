@@ -36,6 +36,12 @@ public:
     MOCK_METHOD(void, start, ());
 
     /**
+     * @brief Mock implementation of function IRouterProvider::start
+     * @param onConnect Callback to be called when the provider is connected.
+     */
+    MOCK_METHOD(void, start, (const std::function<void()>& onConnect));
+
+    /**
      * @brief Mock implementation of function IRouterProvider::send
      */
     MOCK_METHOD(void, send, (const std::vector<char>& data));

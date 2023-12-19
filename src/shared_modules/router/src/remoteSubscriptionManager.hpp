@@ -21,30 +21,27 @@
 constexpr auto REMOTE_SUBSCRIPTION_ENDPOINT {"queue/router/subscription.sock"};
 
 /**
- * @brief RemoteStateHelper class.
+ * @brief RemoteSubscriptionsManager class.
  *
  */
-class RemoteStateHelper final
+class RemoteSubscriptionManager final
 {
 private:
-    RemoteStateHelper() = default;
-    ~RemoteStateHelper() = default;
+    std::unique_ptr<SocketClient<Socket<OSPrimitives>, EpollWrapper>> m_socketClient {};
 
     /**
      * @brief Registration message process.
      *
      * @param jsonMsg Message to be sent.
      */
-    static void sendRouterServerMessage(const nlohmann::json& jsonMsg, bool stopIfSocketRemoved)
+    void sendRouterServerMessage(const nlohmann::json& jsonMsg, const std::function<void()>& onSuccess)
     {
         try
         {
-            std::promise<void> promiseObj;
-            auto futureObj = promiseObj.get_future();
-            auto socketClient = std::make_shared<SocketClient<Socket<OSPrimitives>, EpollWrapper>>(
-                REMOTE_SUBSCRIPTION_ENDPOINT, stopIfSocketRemoved);
-            socketClient->connect(
-                [&](const char* body, uint32_t bodySize, const char*, uint32_t)
+            m_socketClient =
+                std::make_unique<SocketClient<Socket<OSPrimitives>, EpollWrapper>>(REMOTE_SUBSCRIPTION_ENDPOINT);
+            m_socketClient->connect(
+                [onSuccess](const char* body, uint32_t bodySize, const char*, uint32_t)
                 {
                     try
                     {
@@ -53,17 +50,26 @@ private:
                         {
                             throw std::runtime_error(result.at("Result"));
                         }
+                        std::cout << "RemoteProvider: " << result.at("Result") << std::endl;
+                        onSuccess();
                     }
                     catch (const std::exception& e)
                     {
                         std::cerr << "RemoteProvider: Invalid result: " << e.what() << std::endl;
                     }
-                    promiseObj.set_value();
+                },
+                [jsonMsg, socketClient = m_socketClient.get()]()
+                {
+                    try
+                    {
+                        const auto msg = jsonMsg.dump();
+                        socketClient->send(msg.data(), msg.size());
+                    }
+                    catch (const std::exception& e)
+                    {
+                        std::cerr << "RemoteStateHelper failed to send message: " << e.what() << std::endl;
+                    }
                 });
-
-            const auto msg = jsonMsg.dump();
-            socketClient->send(msg.data(), msg.size());
-            futureObj.wait();
         }
         catch (const std::exception& e)
         {
@@ -72,26 +78,18 @@ private:
     }
 
 public:
+    RemoteSubscriptionManager() = default;
+    ~RemoteSubscriptionManager() = default;
+
     /**
      * @brief Creates and sends the init provider message.
      *
      * @param endpointName Name of the endpoint.
      */
-    static void sendInitProviderMessage(const std::string& endpointName)
+    void sendInitProviderMessage(const std::string& endpointName, const std::function<void()>& onSuccess)
     {
         nlohmann::json jsonMsg {{"EndpointName", endpointName}, {"MessageType", "InitProvider"}};
-        sendRouterServerMessage(jsonMsg, false);
-    }
-
-    /**
-     * @brief Creates and sends the remove provider message.
-     *
-     * @param endpointName Name of the endpoint.
-     */
-    static void sendRemoveProviderMessage(const std::string& endpointName)
-    {
-        nlohmann::json jsonMsg {{"EndpointName", endpointName}, {"MessageType", "RemoveProvider"}};
-        sendRouterServerMessage(jsonMsg, true);
+        sendRouterServerMessage(jsonMsg, onSuccess);
     }
 
     /**
@@ -100,11 +98,13 @@ public:
      * @param endpointName Name of the endpoint.
      * @param subscriberId Id of the subscriber.
      */
-    static void sendRemoveSubscriberMessage(const std::string& endpointName, const std::string& subscriberId)
+    void sendRemoveSubscriberMessage(const std::string& endpointName,
+                                     const std::string& subscriberId,
+                                     std::function<void()>& onSuccess)
     {
         nlohmann::json jsonMsg {
             {"EndpointName", endpointName}, {"MessageType", "RemoveSubscriber"}, {"SubscriberId", subscriberId}};
-        sendRouterServerMessage(jsonMsg, true);
+        sendRouterServerMessage(jsonMsg, onSuccess);
     }
 };
 

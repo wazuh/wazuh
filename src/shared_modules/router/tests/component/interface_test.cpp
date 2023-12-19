@@ -14,6 +14,7 @@
 #include "routerProvider.hpp"
 #include "routerSubscriber.hpp"
 #include <chrono>
+#include <future>
 #include <thread>
 
 void RouterInterfaceTest::SetUp()
@@ -87,7 +88,7 @@ TEST_F(RouterInterfaceTest, TestSendMessage)
     auto provider {std::make_unique<RouterProvider>("test")};
     auto subscriptor = std::make_unique<RouterSubscriber>("test", "subscriberTest");
 
-    static std::atomic<int> count = 0;
+    std::atomic<int> count = 0;
     constexpr auto MESSAGE_COUNT = 5;
 
     EXPECT_NO_THROW({ provider->start(); });
@@ -124,7 +125,7 @@ TEST_F(RouterInterfaceTest, TestSendMessageAfterSubscribeRemove)
     auto provider {std::make_unique<RouterProvider>("test")};
     auto subscriptor = std::make_unique<RouterSubscriber>("test", "subscriberTest");
 
-    static std::atomic<int> count = 0;
+    std::atomic<int> count = 0;
     constexpr auto MESSAGE_COUNT = 5;
 
     EXPECT_NO_THROW({ provider->start(); });
@@ -159,7 +160,7 @@ TEST_F(RouterInterfaceTest, TestSendMessageAfterProviderShutdown)
     auto provider {std::make_unique<RouterProvider>("test")};
     auto subscriptor = std::make_unique<RouterSubscriber>("test", "subscriberTest");
 
-    static std::atomic<int> count = 0;
+    std::atomic<int> count = 0;
     constexpr auto MESSAGE_COUNT = 5;
 
     EXPECT_NO_THROW({ provider->start(); });
@@ -230,16 +231,20 @@ TEST_F(RouterInterfaceTest, TestRemoteDoubleSubscriberInit)
     EXPECT_NO_THROW({ subscriptor = std::make_unique<RouterSubscriber>("test", "subscriberTest", false); });
 }
 
-TEST_F(RouterInterfaceTest, TestRemoteSendMessage)
+TEST_F(RouterInterfaceTest, TestRemoteSendMessageFirstSubscribe)
 {
     auto provider {std::make_unique<RouterProvider>("test", false)};
     auto subscriptor = std::make_unique<RouterSubscriber>("test", "subscriberTest", false);
 
-    static std::atomic<int> count = 0;
+    std::atomic<int> count = 0;
     constexpr auto MESSAGE_COUNT = 5;
 
+    auto payloadString = std::string("abc");
+    auto payload = std::vector<char> {payloadString.begin(), payloadString.end()};
+    std::promise<void> promiseSubscriber;
+    std::promise<void> promiseSubscriberConnected;
+
     EXPECT_NO_THROW({
-        provider->start();
         subscriptor->subscribe(
             [&](const std::vector<char>& message)
             {
@@ -249,15 +254,72 @@ TEST_F(RouterInterfaceTest, TestRemoteSendMessage)
                 EXPECT_EQ(str, "abc");
                 //  Count messages
                 count++;
-            });
+                if (count == MESSAGE_COUNT)
+                {
+                    promiseSubscriber.set_value();
+                }
+            },
+            [&]() { promiseSubscriberConnected.set_value(); });
+
+        promiseSubscriberConnected.get_future().wait();
+
+        provider->start();
+
+        for (int i = 0; i < MESSAGE_COUNT; i++)
+        {
+            EXPECT_NO_THROW({ provider->send(payload); });
+        }
     });
+
+    promiseSubscriber.get_future().wait_for(std::chrono::milliseconds(5000));
+
+    provider->stop();
+    provider.reset();
+
+    EXPECT_EQ(count, MESSAGE_COUNT);
+}
+
+TEST_F(RouterInterfaceTest, TestRemoteSendMessageFirstProvider)
+{
+    auto provider {std::make_unique<RouterProvider>("test", false)};
+    auto subscriptor = std::make_unique<RouterSubscriber>("test", "subscriberTest", false);
+
+    std::atomic<int> count = 0;
+    constexpr auto MESSAGE_COUNT = 5;
+
     auto payloadString = std::string("abc");
     auto payload = std::vector<char> {payloadString.begin(), payloadString.end()};
+    std::promise<void> promiseSubscriber;
+    std::promise<void> promiseSubscriberConnected;
+
+    EXPECT_NO_THROW({
+        std::promise<void> promise;
+        provider->start([&]() { promise.set_value(); });
+        promise.get_future().wait();
+        subscriptor->subscribe(
+            [&](const std::vector<char>& message)
+            {
+                // Validate payload
+                EXPECT_EQ(message.size(), 3);
+                std::string str(message.begin(), message.end());
+                EXPECT_EQ(str, "abc");
+                //  Count messages
+                count++;
+
+                if (count == MESSAGE_COUNT)
+                {
+                    promiseSubscriber.set_value();
+                }
+            },
+            [&]() { promiseSubscriberConnected.set_value(); });
+    });
+    promiseSubscriberConnected.get_future().wait();
 
     for (int i = 0; i < MESSAGE_COUNT; i++)
     {
         EXPECT_NO_THROW({ provider->send(payload); });
     }
+    promiseSubscriber.get_future().wait();
 
     provider->stop();
     provider.reset();
@@ -269,7 +331,7 @@ TEST_F(RouterInterfaceTest, TestRemoteSendMessageAfterSubscribeRemove)
 {
     auto provider {std::make_unique<RouterProvider>("test", false)};
     auto subscriptor = std::make_unique<RouterSubscriber>("test", "subscriberTest", false);
-    static std::atomic<int> count = 0;
+    std::atomic<int> count = 0;
     constexpr auto MESSAGE_COUNT = 5;
 
     EXPECT_NO_THROW({
@@ -301,7 +363,7 @@ TEST_F(RouterInterfaceTest, TestRemoteSendMessageAfterProviderShutdown)
 {
     auto provider {std::make_unique<RouterProvider>("test", false)};
     auto subscriptor = std::make_unique<RouterSubscriber>("test", "subscriberTest", false);
-    static std::atomic<int> count = 0;
+    std::atomic<int> count = 0;
     constexpr auto MESSAGE_COUNT = 5;
 
     EXPECT_NO_THROW({
@@ -329,3 +391,34 @@ TEST_F(RouterInterfaceTest, TestRemoteSendMessageAfterProviderShutdown)
 
     EXPECT_EQ(count, 0);
 }
+
+TEST_F(RouterInterfaceTestNoBroker, ShutdownWithoutBrokerProvider)
+{
+    auto provider {std::make_unique<RouterProvider>("test", false)};
+
+    std::atomic<int> count = 0;
+    constexpr auto MESSAGE_COUNT = 5;
+
+    auto payloadString = std::string("abc");
+    auto payload = std::vector<char> {payloadString.begin(), payloadString.end()};
+
+    EXPECT_NO_THROW({ provider->start(); });
+
+    for (int i = 0; i < MESSAGE_COUNT; i++)
+    {
+        EXPECT_NO_THROW({ provider->send(payload); });
+    }
+
+    provider->stop();
+    provider.reset();
+}
+
+TEST_F(RouterInterfaceTestNoBroker, ShutdownWithoutBrokerSubscriber)
+{
+    auto subscriptor = std::make_unique<RouterSubscriber>("test", "subscriberTest", false);
+
+    EXPECT_NO_THROW({ subscriptor->subscribe([&](const std::vector<char>& message) {}); });
+
+    subscriptor.reset();
+}
+

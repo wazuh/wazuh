@@ -12,6 +12,7 @@
 #ifndef _IROUTER_PROVIDER_HPP
 #define _IROUTER_PROVIDER_HPP
 
+#include <functional>
 #include <vector>
 
 /**
@@ -30,6 +31,12 @@ public:
      * @brief Starts the local or remote provider.
      */
     virtual void start() = 0;
+
+    /**
+     * @brief Starts the local or remote provider.
+     * @param onConnect Callback to be called when the provider is connected.
+     */
+    virtual void start(const std::function<void()>& onConnect) = 0;
 
     /**
      * @brief Sends the data to the provider.

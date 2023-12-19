@@ -25,9 +25,10 @@ void RouterFacade::initialize()
     }
     // This is a server that will listen for new provider.
     m_providerRegistrationServer =
-        std::make_shared<SocketServer<Socket<OSPrimitives>, EpollWrapper>>(REMOTE_SUBSCRIPTION_ENDPOINT);
+        std::make_unique<SocketServer<Socket<OSPrimitives>, EpollWrapper>>(REMOTE_SUBSCRIPTION_ENDPOINT);
     m_providerRegistrationServer->listen(
-        [&](const int fd, const char* body, const uint32_t bodySize, const char*, const uint32_t)
+        [providerRegistrationServer = m_providerRegistrationServer.get()](
+            const int fd, const char* body, const uint32_t bodySize, const char*, const uint32_t)
         {
             auto message = nlohmann::json::parse(body, body + bodySize);
             nlohmann::json result;
@@ -39,12 +40,6 @@ void RouterFacade::initialize()
                 {
                     RouterFacade::instance().initProviderLocal(
                         message.at("EndpointName").get_ref<const std::string&>());
-                }
-                else if (messageType.compare("RemoveProvider") == 0)
-                {
-                    // TO DO - Control the shutdown of the provider.
-                    // RouterFacade::instance().removeProviderLocal(
-                    //     message.at("EndpointName").get_ref<const std::string&>());
                 }
                 else if (messageType.compare("RemoveSubscriber") == 0)
                 {
@@ -64,7 +59,7 @@ void RouterFacade::initialize()
             }
 
             const auto resultStr {result.dump()};
-            m_providerRegistrationServer->send(fd, resultStr.data(), resultStr.size());
+            providerRegistrationServer->send(fd, resultStr.data(), resultStr.size());
         });
 }
 
@@ -102,7 +97,7 @@ void RouterFacade::removeProviderLocal(const std::string& endpointName)
     m_providers.erase(endpointName);
 }
 
-void RouterFacade::initProviderRemote(const std::string& name)
+void RouterFacade::initProviderRemote(const std::string& name, const std::function<void()>& onConnect)
 {
     std::lock_guard<std::mutex> lock {m_remoteProvidersMutex};
     // If exist throw exception
@@ -112,7 +107,7 @@ void RouterFacade::initProviderRemote(const std::string& name)
     }
 
     // Send a message to the provider from the client side to add a remote provider
-    m_remoteProviders[name] = std::make_shared<RemoteProvider>(name, DEFAULT_SOCKET_PATH);
+    m_remoteProviders[name] = std::make_shared<RemoteProvider>(name, DEFAULT_SOCKET_PATH, onConnect);
 }
 
 void RouterFacade::removeProviderRemote(const std::string& name)
@@ -143,7 +138,8 @@ void RouterFacade::addSubscriber(const std::string& name,
 
 void RouterFacade::addSubscriberRemote(const std::string& name,
                                        const std::string& subscriberId,
-                                       const std::function<void(const std::vector<char>&)>& callback)
+                                       const std::function<void(const std::vector<char>&)>& callback,
+                                       const std::function<void()>& onConnect)
 {
     std::lock_guard<std::mutex> lock {m_remoteSubscribersMutex};
     // If exist throw exception
@@ -153,7 +149,8 @@ void RouterFacade::addSubscriberRemote(const std::string& name,
     }
 
     // Send a message to the provider from the client side to add a remote subscriber
-    m_remoteSubscribers[name] = std::make_shared<RemoteSubscriber>(name, subscriberId, callback, DEFAULT_SOCKET_PATH);
+    m_remoteSubscribers[name] =
+        std::make_shared<RemoteSubscriber>(name, subscriberId, callback, DEFAULT_SOCKET_PATH, onConnect);
 }
 
 void RouterFacade::removeSubscriberRemote(const std::string& name, const std::string& subscriberId)
@@ -178,17 +175,25 @@ void RouterFacade::removeSubscriberLocal(const std::string& name, const std::str
 
 void RouterFacade::push(const std::string& name, const std::vector<char>& data)
 {
-    std::shared_lock<std::shared_mutex> lock {m_providersMutex};
-    if (m_remoteProviders.find(name) != m_remoteProviders.end())
+    std::unique_lock<std::mutex> lockRemoteProviders {m_remoteProvidersMutex};
+    const auto itRemoteProvider {m_remoteProviders.find(name)};
+
+    if (itRemoteProvider != m_remoteProviders.end())
     {
-        m_remoteProviders[name]->push(data);
-    }
-    else if (m_providers.find(name) != m_providers.end())
-    {
-        m_providers[name]->push(data);
+        itRemoteProvider->second->push(data);
     }
     else
     {
-        throw std::runtime_error("Push: Provider not exist");
+        std::shared_lock<std::shared_mutex> lockLocalProviders {m_providersMutex};
+        const auto itLocalProvider {m_providers.find(name)};
+
+        if (itLocalProvider != m_providers.end())
+        {
+            itLocalProvider->second->push(data);
+        }
+        else
+        {
+            throw std::runtime_error("Push: Provider not exist");
+        }
     }
 }

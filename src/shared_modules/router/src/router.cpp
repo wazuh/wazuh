@@ -71,6 +71,20 @@ void RouterProvider::start()
     }
 }
 
+void RouterProvider::start(const std::function<void()>& onConnect)
+{
+    // Add provider to the list.
+    if (m_isLocal)
+    {
+        this->start();
+        onConnect();
+    }
+    else
+    {
+        RouterFacade::instance().initProviderRemote(m_topicName, onConnect);
+    }
+}
+
 void RouterProvider::stop()
 {
     // Add subscriber to the list.
@@ -94,6 +108,21 @@ void RouterSubscriber::subscribe(const std::function<void(const std::vector<char
     else
     {
         RouterFacade::instance().addSubscriberRemote(m_topicName, m_subscriberId, callback);
+    }
+}
+
+void RouterSubscriber::subscribe(const std::function<void(const std::vector<char>&)>& callback,
+                                 const std::function<void()>& onConnect)
+{
+    // Add subscriber to the list.
+    if (m_isLocal)
+    {
+        this->subscribe(callback);
+        onConnect();
+    }
+    else
+    {
+        RouterFacade::instance().addSubscriberRemote(m_topicName, m_subscriberId, callback, onConnect);
     }
 }
 

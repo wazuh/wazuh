@@ -24,7 +24,7 @@ class SocketDBWrapperTest : public ::testing::Test
 protected:
     SocketDBWrapperTest()
         : m_sleepTime {0} {};
-    virtual ~SocketDBWrapperTest() = default;
+    ~SocketDBWrapperTest() override = default;
 
     void SetUp() override
     {
@@ -42,7 +42,7 @@ protected:
 
                 std::this_thread::sleep_for(std::chrono::milliseconds(m_sleepTime));
 
-                for(const auto& response : m_responses)
+                for (const auto& response : m_responses)
                 {
                     m_socketServer->send(fd, response.c_str(), response.size());
                 }
