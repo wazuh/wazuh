@@ -375,7 +375,8 @@ std::optional<base::Error> addTestPolicy(const std::weak_ptr<policy::IPolicy>& p
     auto error = policyManagerPtr->copy(policySrc, policyDst);
     if (base::isError(error))
     {
-        return base::Error {base::Error {fmt::format("The policy '{}' could not be copied", policySrcStr)}};
+        return base::Error {base::Error {
+            fmt::format("The policy '{}' could not be copied: {}", policySrcStr, base::getError(error).message)}};
     }
 
     return std::nullopt;

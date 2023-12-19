@@ -55,6 +55,9 @@ add_library(builder2 STATIC
     ${SRC_DIR}/builders/opmap/opBuilderHelperMap.cpp
     ${SRC_DIR}/builders/opmap/kvdb.cpp
 
+    # Map: AR
+    ${SRC_DIR}/builders/opmap/activeResponse.cpp
+
     # Filter
     ${SRC_DIR}/builders/opfilter/filter.cpp
     # ${SRC_DIR}/builders/opfilter/startsWith.cpp
@@ -84,7 +87,7 @@ target_link_libraries(builder2
     PRIVATE
 
     schemf::ischema
-
+    sockiface::isock
 
 )
 
