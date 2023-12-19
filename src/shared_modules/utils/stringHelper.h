@@ -255,14 +255,11 @@ namespace Utils
 
     static std::string toSentenceCase(const std::string& str)
     {
-        std::string temp {str};
-        if(!str.empty())
+        std::string temp;
+        if (!str.empty())
         {
-            temp[0] = std::toupper(temp[0]);
-            std::transform(std::begin(temp) + 1,
-                        std::end(temp),
-                        std::begin(temp) + 1,
-                        [](std::string::value_type character) { return std::tolower(character); });
+            temp = toLowerCase(str);
+            *temp.begin() = static_cast<char>(std::toupper(*str.begin()));
         }
         return temp;
     }
