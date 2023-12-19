@@ -1,8 +1,5 @@
 name: decoder/system-auth/0
 
-parents:
-  - decoder/syslog/0
-
 metadata:
   module: system
   dataset: system-auth
@@ -17,6 +14,9 @@ metadata:
     date: 2023-05-15
   references:
     - https://www.loggly.com/ultimate-guide/linux-logging-basics/
+
+parents:
+  - decoder/syslog/0
 
 definitions:
   isAuthProcess: >-

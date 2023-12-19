@@ -1,8 +1,5 @@
 name: decoder/suricata-alert/0
 
-parents:
-  - decoder/suricata/0
-
 metadata:
   module: suricata
   compatibility: v6.0.0 and higher
@@ -17,6 +14,9 @@ metadata:
     - https://suricata.readthedocs.io/en/suricata-6.0.8/output/eve/eve-json-format.html?highlight=eve%20format
   title: Suricata decoder
   description: Decoder for Suricata solution
+
+parents:
+  - decoder/suricata/0
 
 check:
   - json_event.event_type: string_equal(alert)
