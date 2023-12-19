@@ -56,9 +56,26 @@ if(ENGINE_BUILD_TEST)
     add_library(router::mocks ALIAS router_mocks)
 
     # Router component test
-    # TODO Create the component test
+    add_executable(router_ctest
+    ${COMPONENT_SRC_DIR}/router_test.cpp
+    )
+    target_include_directories(router_ctest PRIVATE ${SRC_DIR})
+    target_link_libraries(router_ctest
+        gtest_main
+        base
+        router::router
+        builders # Todo delete after refactoring to builder
+        builder::mocks
+        store::mocks
+        bk::mocks
+        queue::mocks
+        schemf::mocks
+        sockiface::mocks
+        wdb::mocks
+        kvdb::mocks
+        logpar
+    )
 
-    
     # Router unit test
     add_executable(router_utest
         ${UNIT_SRC_DIR}/entryConverter_test.cpp
@@ -81,5 +98,5 @@ if(ENGINE_BUILD_TEST)
         bk::mocks
         bk::rx
     )
-    gtest_discover_tests(router_utest)
+    gtest_discover_tests(router_utest router_ctest)
 endif(ENGINE_BUILD_TEST)
