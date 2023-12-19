@@ -193,7 +193,7 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
         "rename", {schemval::ValidationToken {}, builders::opBuilderHelperRenameField});
     // Transform helpers: String functions
     registry->template add<builders::OpBuilderEntry>(
-        "split", {schemval::ValidationToken {json::Json::Type::String}, builders::opBuilderHelperAppendSplitString});
+        "split", {schemval::ValidationToken {json::Json::Type::String, true}, builders::opBuilderHelperAppendSplitString});
     registry->template add<builders::OpBuilderEntry>(
         "concat", {schemval::ValidationToken {json::Json::Type::String}, builders::opBuilderHelperStringConcat});
     registry->template add<builders::OpBuilderEntry>(
@@ -202,7 +202,7 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
         "trim", {schemval::ValidationToken {json::Json::Type::String}, builders::opBuilderHelperStringTrim});
     // Transform helpers: Definition functions
     registry->template add<builders::OpBuilderEntry>(
-        "get_value", {schemval::ValidationToken {schemf::Type::OBJECT}, builders::opBuilderHelperGetValue});
+        "get_value", {schemval::ValidationToken {}, builders::opBuilderHelperGetValue}); // TODO: add validation
     registry->template add<builders::OpBuilderEntry>(
         "merge_value", {schemval::ValidationToken {schemf::Type::OBJECT}, builders::opBuilderHelperMergeValue});
     // Global event helpers
