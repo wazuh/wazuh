@@ -150,9 +150,9 @@
       "data.aws.userIdentity.accountId",
       "data.aws.userIdentity.userName",
       "data.aws.vpcEndpointId",
-      "data.azureSignInsStatus.additionalDetails",
-      "data.azureSignInsStatus.errorCode",
-      "data.azureSignInsStatus.failureReason",
+      "data.azureSignInStatus.additionalDetails",
+      "data.azureSignInStatus.errorCode",
+      "data.azureSignInStatus.failureReason",
       "data.command",
       "data.cis.group",
       "data.cis.rule_title",
@@ -1044,7 +1044,7 @@
           "id": {
             "type": "keyword"
           },
-          "azureSignInsStatus": {
+          "azureSignInStatus": {
             "properties": {
               "additionalDetails": {
                 "type": "keyword"
