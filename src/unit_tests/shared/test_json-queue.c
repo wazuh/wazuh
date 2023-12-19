@@ -220,7 +220,7 @@ void test_jqueue_parse_json_stat_fail_and_retry(void ** state) {
 
     expect_string(__wrap__mwarn, formatted_msg, "(1118): Could not retrieve information of file '/home/test' due to [(2)-(No such file or directory)].");
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return_always(__wrap_fclose, 0);
 
     object = jqueue_next(queue);
