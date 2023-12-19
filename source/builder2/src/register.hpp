@@ -15,6 +15,7 @@
 // Map builders
 #include "builders/opmap/map.hpp"
 #include "builders/opmap/opBuilderHelperMap.hpp"
+#include "builders/opmap/activeResponse.hpp"
 
 // Transform builders
 #include "builders/opmap/kvdb.hpp"
@@ -274,6 +275,14 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
         "kvdb_decode_bitmask",
         {schemval::ValidationToken {json::Json::Type::Array},
          builders::getOpBuilderHelperKVDBDecodeBitmask(deps.kvdbManager, deps.kvdbScopeName)});
+
+    // Active Response builders
+     registry->template add<builders::OpBuilderEntry>(
+        "active_response_send",
+        {schemval::ValidationToken {}, builders::getOpBuilderSendAr(deps.sockFactory)});
+    registry->template add<builders::OpBuilderEntry>(
+        "active_response_create",
+        {schemval::ValidationToken {}, builders::CreateARBuilder});
 }
 
 /**
