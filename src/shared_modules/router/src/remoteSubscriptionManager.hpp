@@ -86,7 +86,7 @@ public:
      * @brief Creates and sends the init provider message.
      *
      * @param endpointName Name of the endpoint.
-     * @param onSuccess Callback to be called when the message is sent.
+     * @param onSuccess Callback to be called when provider is added.
      */
     void sendInitProviderMessage(const std::string& endpointName, const std::function<void()>& onSuccess)
     {
@@ -99,6 +99,7 @@ public:
      *
      * @param endpointName Name of the endpoint.
      * @param subscriberId Id of the subscriber.
+     * @param onSuccess Callback to be called when the subscriber is removed.
      */
     void sendRemoveSubscriberMessage(const std::string& endpointName,
                                      const std::string& subscriberId,
