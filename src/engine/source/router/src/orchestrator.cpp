@@ -109,12 +109,18 @@ std::vector<EntryConverter> getEntriesFromStore(const std::shared_ptr<store::ISt
         return {};
     }
 
-    return EntryConverter::fromJsonArray(base::getResponse(jsonEntry));
+    auto json = base::getResponse(jsonEntry);
+    if (json.isEmpty())
+    {
+        LOG_WARNING("Router: {} table is empty", tableName.toStr());
+    }
+
+    return EntryConverter::fromJsonArray(json);
 }
 
 base::OptError Orchestrator::initWorker(const std::shared_ptr<IWorker>& worker,
-                              const std::vector<EntryConverter>& routerEntries,
-                              const std::vector<EntryConverter>& testerEntries)
+                                        const std::vector<EntryConverter>& routerEntries,
+                                        const std::vector<EntryConverter>& testerEntries)
 {
     auto error = loadRouterOnWoker(routerEntries, worker);
     auto error2 = loadTesterOnWorker(testerEntries, worker);
@@ -133,7 +139,6 @@ base::OptError Orchestrator::initWorker(const std::shared_ptr<IWorker>& worker,
     }
 
     return std::nullopt;
-
 }
 
 // Public

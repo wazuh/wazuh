@@ -45,9 +45,6 @@ constexpr auto ENGINE_KVDB_PATH_ENV = "WZE_KVDB_PATH";
 constexpr auto ENGINE_KVDB_CLI_PAGE = 1;
 constexpr auto ENGINE_KVDB_CLI_RECORDS = 50;
 
-constexpr auto ENGINE_ENVIRONMENT = "default:255:filter/allow-all/0:policy/wazuh/0";
-constexpr auto ENGINE_ENVIRONMENT_ENV = "WZE_ENVIRONMENT";
-
 constexpr auto ENGINE_ROUTER_THREADS = 1;
 constexpr auto ENGINE_ROUTER_THREADS_ENV = "WZE_ROUTER_THREADS";
 
