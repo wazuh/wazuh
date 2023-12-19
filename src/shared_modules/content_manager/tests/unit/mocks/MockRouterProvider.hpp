@@ -37,7 +37,6 @@ public:
 
     /**
      * @brief Mock implementation of function IRouterProvider::start
-     * @param onConnect Callback to be called when the provider is connected.
      */
     MOCK_METHOD(void, start, (const std::function<void()>& onConnect));
 
