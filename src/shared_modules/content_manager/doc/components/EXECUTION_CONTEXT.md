@@ -6,7 +6,7 @@ The [execution context](../../src/components/executionContext.hpp) stage is part
 
 The tasks that this stage performs are:
 - **Set up context**: Configure some of the fields present on the Updater Context.
-- **Database initialization**: Initializes the RocksDB database, retrieving the API offset stored in it. It also defines which offset will be considered as the current one between the offset in the database and the offset in the input configuration.
+- **Database initialization**: Initializes the RocksDB database, creating the necessary columns, and retrieving the API offset stored in it as well as the last downloaded file hash. It also defines which offset will be considered as the current one between the offset in the database and the offset in the input configuration.
 - **Output folders creation**: It creates the folders needed to store the execution files, such as downloaded and uncompressed files. If the output folder already exists, it gets deleted and re-created.
 
 It is important to note that this stage is only called once for each Content Manager execution.
@@ -22,3 +22,4 @@ The context fields related to this stage are:
 - `topicName`: Used to compose the name of the database.
 - `spRocksDB`: Used to initialize the database connector.
 - `outputFolder`: Used to create the output files location.
+- `downloadedFileHash`: Used to store the file hash from the database.

@@ -14,6 +14,7 @@
 
 #include "../sharedDefs.hpp"
 #include "chainOfResponsability.hpp"
+#include "componentsHelper.hpp"
 #include "json.hpp"
 #include "stringHelper.h"
 #include "updaterContext.hpp"
@@ -39,23 +40,44 @@ private:
      * @brief Reads and returns the last offset from the database.
      *
      * @param context Updater context configured with the database driver.
-     * @return unsigned int Last offset from the database.
+     * @return unsigned int Last offset from the database. If there is no available data, cero is returned.
      */
     unsigned int getDatabaseOffset(const UpdaterBaseContext& context) const
     {
         unsigned int databaseOffset;
         try
         {
-            databaseOffset = std::stoi(context.spRocksDB->getLastKeyValue().second.ToString());
+            databaseOffset =
+                std::stoi(context.spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString());
         }
         catch (const std::runtime_error&)
         {
             // First execution. Set offset to zero.
             databaseOffset = 0;
-            context.spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)), "0");
+            context.spRocksDB->put(
+                Utils::getCompactTimestamp(std::time(nullptr)), "0", Components::Columns::CURRENT_OFFSET);
         }
 
         return databaseOffset;
+    }
+
+    /**
+     * @brief Reads and returns the file hash from the database.
+     *
+     * @param context Updater context configured with the database driver.
+     * @return std::string Last file hash from the database. If there is no available data, an empty string is returned.
+     */
+    std::string getDatabaseFileHash(const UpdaterBaseContext& context) const
+    {
+        try
+        {
+            return context.spRocksDB->getLastKeyValue(Components::Columns::DOWNLOADED_FILE_HASH).second.ToString();
+        }
+        catch (const std::runtime_error& e)
+        {
+            // First execution. Return empty hash.
+            return "";
+        }
     }
 
     /**
@@ -96,6 +118,21 @@ private:
         // Initialize RocksDB driver instance.
         context.spRocksDB = std::make_unique<Utils::RocksDBWrapper>(databasePath + databaseName);
 
+        // Create database columns if necessary.
+        const std::vector<std::string> COLUMNS {Components::Columns::CURRENT_OFFSET,
+                                                Components::Columns::DOWNLOADED_FILE_HASH};
+        for (const auto& columnName : COLUMNS)
+        {
+            if (!context.spRocksDB->columnExists(columnName))
+            {
+                logDebug1(WM_CONTENTUPDATER, "Column '%s' doesn't exist so it will be created", columnName.c_str());
+                context.spRocksDB->createColumn(columnName);
+            }
+        }
+
+        // Set last downloaded hash.
+        context.downloadedFileHash = getDatabaseFileHash(context);
+
         // Read input offsets.
         const auto databaseOffset {getDatabaseOffset(context)};
         const auto configOffset {getConfigOffset(context.configData)};
@@ -106,7 +143,9 @@ private:
         if (currentOffset > databaseOffset)
         {
             // Put the current offset in the database.
-            context.spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)), std::to_string(currentOffset));
+            context.spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)),
+                                   std::to_string(currentOffset),
+                                   Components::Columns::CURRENT_OFFSET);
         }
     }
 

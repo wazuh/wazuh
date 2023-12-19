@@ -58,6 +58,12 @@ protected:
      */
     void TearDown() override
     {
+        // Destruct RocksDB wrapper.
+        if (m_spUpdaterBaseContext->spRocksDB)
+        {
+            m_spUpdaterBaseContext->spRocksDB.reset();
+        }
+
         std::filesystem::remove_all(m_outputFolder);
         std::filesystem::remove_all(m_databasePath);
     }

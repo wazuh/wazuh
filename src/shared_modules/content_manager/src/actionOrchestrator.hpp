@@ -15,7 +15,8 @@
 #include "components/executionContext.hpp"
 #include "components/factoryContentUpdater.hpp"
 #include "components/updaterContext.hpp"
-#include "routerProvider.hpp"
+#include "componentsHelper.hpp"
+#include "iRouterProvider.hpp"
 #include "utils/rocksDBWrapper.hpp"
 #include <memory>
 #include <utility>
@@ -34,7 +35,7 @@ public:
      * @param parameters Parameters used to create the orchestration.
      * @param shouldRun Flag used to interrupt the orchestration stages.
      */
-    explicit ActionOrchestrator(const std::shared_ptr<RouterProvider> channel,
+    explicit ActionOrchestrator(const std::shared_ptr<IRouterProvider> channel,
                                 const nlohmann::json& parameters,
                                 const std::atomic<bool>& shouldRun)
     {
@@ -83,8 +84,8 @@ public:
             // If the database exists, get the last offset
             if (m_spBaseContext->spRocksDB)
             {
-                spUpdaterContext->currentOffset =
-                    std::stoi(m_spBaseContext->spRocksDB->getLastKeyValue().second.ToString());
+                spUpdaterContext->currentOffset = std::stoi(
+                    m_spBaseContext->spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString());
             }
 
             if (offset == 0)
@@ -100,8 +101,19 @@ public:
                 runFullContentDownload(spUpdaterContext);
             }
 
+            // Store last file hash.
+            const auto lastDownloadedFileHash {m_spBaseContext->downloadedFileHash};
+
             // Run the updater chain
             m_spUpdaterOrchestration->handleRequest(spUpdaterContext);
+
+            // Update filehash if it has changed.
+            if (m_spBaseContext->spRocksDB && m_spBaseContext->downloadedFileHash != lastDownloadedFileHash)
+            {
+                m_spBaseContext->spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)),
+                                                m_spBaseContext->downloadedFileHash,
+                                                Components::Columns::DOWNLOADED_FILE_HASH);
+            }
         }
         catch (const std::exception& e)
         {

@@ -30,6 +30,12 @@ namespace Components
         STATUS_FAIL
     };
 
+    namespace Columns
+    {
+        static const std::string CURRENT_OFFSET {"current_offset"};             ///< Database column name for offsets.
+        static const std::string DOWNLOADED_FILE_HASH {"downloaded_file_hash"}; ///< Database column name for hashes.
+    }                                                                           // namespace Columns
+
     /**
      * @brief Pushes the state of the current component into the data field of the context.
      *
