@@ -75,7 +75,7 @@ public:
      *
      * @return True if the execution was made, false otherwise.
      */
-    bool runActionWithExclusivity(const ActionID id, const int offset = -1)
+    bool runActionExclusively(const ActionID id, const int offset = -1)
     {
         auto expectedValue {false};
         if (m_actionInProgress.compare_exchange_strong(expectedValue, true))
@@ -115,13 +115,13 @@ public:
     }
 
     /**
-     * @brief Runs scheduled action. Wrapper of runActionWithExclusivity().
+     * @brief Runs scheduled action. Wrapper of runActionExclusively().
      *
      */
     void runActionScheduled()
     {
         logInfo(WM_CONTENTUPDATER, "Starting scheduled action for '%s'", m_topicName.c_str());
-        if (!runActionWithExclusivity(ActionID::SCHEDULED))
+        if (!runActionExclusively(ActionID::SCHEDULED))
         {
             logInfo(WM_CONTENTUPDATER, "Action in progress for '%s', scheduled request ignored", m_topicName.c_str());
         }
@@ -171,14 +171,14 @@ public:
     }
 
     /**
-     * @brief Runs ondemand action. Wrapper of runActionWithExclusivity().
+     * @brief Runs ondemand action. Wrapper of runActionExclusively().
      *
      * @param offset Manually set current offset to process. Default -1
      */
     void runActionOnDemand(const int offset = -1)
     {
         logInfo(WM_CONTENTUPDATER, "Starting on-demand action for '%s'", m_topicName.c_str());
-        if (!runActionWithExclusivity(ActionID::ON_DEMAND, offset))
+        if (!runActionExclusively(ActionID::ON_DEMAND, offset))
         {
             logInfo(WM_CONTENTUPDATER, "Action in progress for '%s', on-demand request ignored", m_topicName.c_str());
         }
