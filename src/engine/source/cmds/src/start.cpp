@@ -75,10 +75,7 @@ struct Options
     std::string fileStorage;
     // KVDB
     std::string kvdbPath;
-    // Router
-    std::vector<std::string> policy;
     int routerThreads;
-    bool forceRouterArg;
     // Queue
     int queueSize;
     std::string queueFloodFile;
@@ -153,23 +150,6 @@ void runStart(ConfHandler confManager)
     const auto queueFloodFile = confManager->get<std::string>("server.queue_flood_file");
     const auto queueFloodAttempts = confManager->get<int>("server.queue_flood_attempts");
     const auto queueFloodSleep = confManager->get<int>("server.queue_flood_sleep");
-
-    // Start policy
-    const auto policy = confManager->get<std::vector<std::string>>("server.start.policy");
-    const auto routeName = policy[0];
-    int routePriority;
-    try
-    {
-        routePriority = std::stoi(policy[1]);
-    }
-    catch (const std::exception& e)
-    {
-        LOG_ERROR("Invalid route priority '{}'.", policy[1]);
-        exit(EXIT_FAILURE); // TODO Change whens add the LOG_CRITICAL / LOG_FATAL
-    }
-    const auto routeFilter = policy[2];
-    const auto routePolicy = policy[3];
-    const auto forceRouterArg = confManager->get<bool>("server.start.force_router_arg");
 
     // Set signal [SIGINT]: Crt+C handler
     {
@@ -335,7 +315,6 @@ void runStart(ConfHandler confManager)
                 LOG_DEBUG("Test queue created.");
             }
 
-            // forceRouterArg
             router::Orchestrator::Options config {.m_numThreads = routerThreads,
                                          .m_wStore = store,
                                          .m_wRegistry = registry,
@@ -555,20 +534,7 @@ void configure(CLI::App_p app)
         ->envname(ENGINE_QUEUE_FLOOD_SLEEP_ENV);
 
     // Start subcommand
-    // Router module
     auto startApp = serverApp->add_subcommand("start", "Start a Wazuh engine instance");
-    startApp
-        ->add_option(
-            "--policy", options->policy, "Sets the policy to be used the first time an engine instance is started.")
-        ->default_val(ENGINE_ENVIRONMENT)
-        ->expected(4)
-        ->delimiter(':')
-        ->envname(ENGINE_ENVIRONMENT_ENV);
-    startApp
-        ->add_flag("--force_router_arg",
-                   options->forceRouterArg,
-                   "Use the router parameter, even if there is previous configuration.")
-        ->default_val(false);
 
     // Register callback
     auto weakApp = std::weak_ptr<CLI::App>(app);
