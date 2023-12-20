@@ -30,7 +30,7 @@ base::Expression mapBuilder(const json::Json& definition, const std::shared_ptr<
                    std::back_inserter(mapExpressions),
                    [buildCtx](const auto& mapDef)
                    {
-                       auto opExpr = baseHelperBuiler(mapDef, buildCtx, builders::HelperType::MAP);
+                       auto opExpr = baseHelperBuilder(mapDef, buildCtx, builders::HelperType::MAP);
                        return opExpr;
                    });
 

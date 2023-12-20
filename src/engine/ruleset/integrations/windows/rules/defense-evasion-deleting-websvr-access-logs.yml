@@ -21,7 +21,7 @@ check : >-
 
 normalize:
   - map:
-      - event.risk_score: 47
+      - event.risk_score: 47.0
 
       - rule.description: Identifies the deletion of WebServer access logs. This may indicate an attempt to evade detection or destroy forensic
           evidence on a system.

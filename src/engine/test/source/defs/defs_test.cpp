@@ -25,7 +25,7 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(std::make_tuple(json::Json(), false),
                       std::make_tuple(json::Json(R"([])"), false),
                       std::make_tuple(json::Json(R"(["a"])"), false),
-                      std::make_tuple(json::Json(R"({})"), false),
+                      std::make_tuple(json::Json(R"({})"), true),
                       std::make_tuple(json::Json(R"({"a": 1})"), true),
                       std::make_tuple(json::Json(R"({"a": "1"})"), true),
                       std::make_tuple(json::Json(R"({"a": true})"), true),

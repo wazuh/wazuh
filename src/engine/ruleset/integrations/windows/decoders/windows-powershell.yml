@@ -1,8 +1,5 @@
 name: decoder/windows-powershell/0
 
-parents:
-  - decoder/windows-event/0
-
 metadata:
   module: Windows Powershell
   title: Decoder for Windows Powershell events
@@ -15,13 +12,16 @@ metadata:
   references:
     - https://learn.microsoft.com/en-us/powershell/scripting/windows-powershell/wmf/whats-new/script-logging?view=powershell-7.3
 
+parents:
+  - decoder/windows-event/0
+
 check:
   - windows.System.Channel.#text: Windows PowerShell
 
 normalize:
  - map:
    # TODO: check this replaces
-   - windows.EventData.2: replace(\t, )
+   - windows.EventData.2: replace(\\t, )
    - windows.EventData.2: replace(\   , \  )
    - windows.EventData.2: replace(\  ,\,)
  - parse|windows.EventData.2:

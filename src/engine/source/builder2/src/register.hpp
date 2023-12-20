@@ -25,6 +25,7 @@
 #include "builders/optransform/hlp.hpp"
 #include "builders/optransform/netinfoAddress.hpp"
 #include "builders/optransform/sca.hpp"
+#include "builders/optransform/windows.hpp"
 
 // Stage builders
 #include "builders/stage/check.hpp"
@@ -183,8 +184,8 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
     registry->template add<builders::OpBuilderEntry>(
         "delete", {schemval::ValidationToken {}, builders::opBuilderHelperDeleteField});
     // TODO: this builders should check that the field is an array or an object
-    registry->template add<builders::OpBuilderEntry>(
-        "merge", {schemval::ValidationToken {}, builders::opBuilderHelperMerge});
+    registry->template add<builders::OpBuilderEntry>("merge",
+                                                     {schemval::ValidationToken {}, builders::opBuilderHelperMerge});
     registry->template add<builders::OpBuilderEntry>(
         "merge_recursive",
         {schemval::ValidationToken {schemf::Type::OBJECT}, builders::opBuilderHelperMergeRecursively});
@@ -193,7 +194,8 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
         "rename", {schemval::ValidationToken {}, builders::opBuilderHelperRenameField});
     // Transform helpers: String functions
     registry->template add<builders::OpBuilderEntry>(
-        "split", {schemval::ValidationToken {json::Json::Type::String, true}, builders::opBuilderHelperAppendSplitString});
+        "split",
+        {schemval::ValidationToken {json::Json::Type::String, true}, builders::opBuilderHelperAppendSplitString});
     registry->template add<builders::OpBuilderEntry>(
         "concat", {schemval::ValidationToken {json::Json::Type::String}, builders::opBuilderHelperStringConcat});
     registry->template add<builders::OpBuilderEntry>(
@@ -311,6 +313,12 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
     registry->template add<builders::OpBuilderEntry>(
         "sca_decoder",
         {schemval::ValidationToken {}, builders::optransform::getBuilderSCAdecoder(deps.wdbManager, deps.sockFactory)});
+
+    // Windows builders
+    registry->template add<builders::OpBuilderEntry>(
+        "windows_sid_list_desc",
+        {schemval::ValidationToken {json::Json::Type::String, true},
+         builders::getWindowsSidListDescHelperBuilder(deps.kvdbManager, deps.kvdbScopeName)});
 }
 
 /**

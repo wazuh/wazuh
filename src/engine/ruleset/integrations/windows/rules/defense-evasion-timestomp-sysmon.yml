@@ -28,7 +28,7 @@ check: >-
 
 normalize:
   - map:
-      - event.risk_score: 47
+      - event.risk_score: 47.0
 
       - rule.description: Identifies modification of a file creation time. Adversaries may modify file time attributes to blend
           malicious content with existing files. Timestomping is a technique that modifies the timestamps of

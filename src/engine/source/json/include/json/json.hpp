@@ -322,7 +322,6 @@ public:
      */
     std::optional<int64_t> getInt64(std::string_view path = "") const;
 
-
     /**
      * @brief Get the value of the int or int64 field as int64.
      *
@@ -826,6 +825,8 @@ public:
      * @throws std::runtime_error if the given path is invalid.
      */
     bool eraseIfKey(const std::function<bool(const std::string&)>&, bool recursive = false, const std::string& = "");
+
+    static Json makeObjectJson(const std::string& key, const json::Json& value);
 };
 
 } // namespace json

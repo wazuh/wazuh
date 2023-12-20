@@ -6,6 +6,52 @@
 #include "builders/types.hpp"
 #include "helperParser.hpp"
 
+namespace
+{
+/**
+ * @brief Set the Object if it does not exist
+ *
+ * @param targetField
+ * @return base::Expression
+ */
+auto setObjectTerm(const std::string& field) -> base::Expression
+{
+    auto name {fmt::format("map.value[{}={}]", field, "{}")};
+    auto successTrace {fmt::format("[{}] -> Success", name)};
+
+    auto fn = [field, successTrace](const auto& e)
+    {
+        if (!e->isObject(field))
+        {
+            e->setObject(field);
+        }
+        return base::result::makeSuccess(std::move(e), successTrace);
+    };
+    return base::Term<base::EngineOp>::create("setObjectOp", fn);
+}
+
+/**
+ * @brief Delete the Object if it is empty
+ *
+ * @param targetField
+ * @return base::Expression
+ */
+auto deleteEmptyObjectTerm(const std::string& field) -> base::Expression
+{
+    auto name {fmt::format("unmap.ifEmpty.value[{}]", field)};
+    auto successTrace {fmt::format("[{}] -> Success", name)};
+
+    auto fn = [field, successTrace](const auto& e)
+    {
+        if (e->isObject(field) && e->isEmpty(field))
+        {
+            e->erase(field);
+        }
+        return base::result::makeSuccess(std::move(e), successTrace);
+    };
+    return base::Term<base::EngineOp>::create("deleteEmptyObject", fn);
+}
+} // namespace
 namespace builder::builders
 {
 
@@ -194,7 +240,7 @@ base::Expression baseHelperBuilder(const std::string& helperName,
 }
 
 base::Expression
-baseHelperBuiler(const json::Json& definition, const std::shared_ptr<const IBuildCtx>& buildCtx, HelperType helperType)
+baseHelperBuilder(const json::Json& definition, const std::shared_ptr<const IBuildCtx>& buildCtx, HelperType helperType)
 {
     if (!definition.isObject())
     {
@@ -267,10 +313,52 @@ baseHelperBuiler(const json::Json& definition, const std::shared_ptr<const IBuil
             opArgs = helperToken.args;
         }
     }
-    else if (jValue.isArray() || jValue.isObject())
+    else if (jValue.isArray())
     {
-        // TODO: recursive call
-        throw std::runtime_error("Not implemented");
+        auto arrValue = jValue.getArray().value();
+        std::vector<base::Expression> subExpressions;
+        for (auto i = 0; i < arrValue.size(); ++i)
+        {
+            auto targetFieldItem = targetField.dotPath() + "." + std::to_string(i);
+            auto def = json::Json::makeObjectJson(targetFieldItem, arrValue[i]);
+            subExpressions.emplace_back(baseHelperBuilder(def, buildCtx, helperType));
+        }
+
+        auto opName = fmt::format("{}: arrayExpression", targetField.dotPath());
+        switch (helperType)
+        {
+            case HelperType::FILTER: return base::And::create(opName, subExpressions);
+            default: return base::Chain::create(opName, subExpressions);
+        };
+    }
+    else if (jValue.isObject())
+    {
+        auto objValue = jValue.getObject().value();
+        std::vector<base::Expression> subExpressions;
+
+        if (helperType == HelperType::MAP)
+        {
+            subExpressions.emplace_back(setObjectTerm(targetField.jsonPath()));
+        }
+
+        for (auto& [key, value] : objValue)
+        {
+            auto targetFieldItem = targetField.dotPath() + syntax::field::SEPARATOR + key;
+            auto def = json::Json::makeObjectJson(targetFieldItem, value);
+            subExpressions.emplace_back(baseHelperBuilder(def, buildCtx, helperType));
+        }
+
+        if (helperType == HelperType::MAP)
+        {
+            subExpressions.emplace_back(deleteEmptyObjectTerm(targetField.jsonPath()));
+        }
+
+        auto opName = fmt::format("{}: objectExpression", targetField.dotPath());
+        switch (helperType)
+        {
+            case HelperType::FILTER: return base::And::create(opName, subExpressions);
+            default: return base::Chain::create(opName, subExpressions);
+        };
     }
     else // Null
     {
