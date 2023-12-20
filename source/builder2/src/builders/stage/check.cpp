@@ -25,7 +25,7 @@ base::Expression checkListBuilder(const std::vector<json::Json>& list, const std
                    std::back_inserter(conditionExpressions),
                    [buildCtx](const auto& condition)
                    {
-                       auto opExpr = baseHelperBuiler(condition, buildCtx, builders::HelperType::FILTER);
+                       auto opExpr = baseHelperBuilder(condition, buildCtx, builders::HelperType::FILTER);
                        return opExpr;
                    });
 

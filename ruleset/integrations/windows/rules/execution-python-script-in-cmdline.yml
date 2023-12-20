@@ -17,7 +17,7 @@ check :
 
 normalize:
   - map:
-      - event.risk_score: 47
+      - event.risk_score: 47.0
 
       - rule.description: Identifies when a Python script is executed using command line input and imports the sys module. Attackers often use
           this method to execute malicious scripts and avoiding writing it to disk.

@@ -70,6 +70,7 @@ add_library(builder2 STATIC
     ${SRC_DIR}/builders/optransform/hlp.cpp
     ${SRC_DIR}/builders/optransform/netinfoAddress.cpp
     ${SRC_DIR}/builders/optransform/sca.cpp
+    ${SRC_DIR}/builders/optransform/windows.cpp
 )
 target_include_directories(builder2 PUBLIC ${BUILDER_PUB_INCS} PRIVATE ${BUILDER_PRI_INCS})
 # TODO make variables so we can use them in the tests and make private the dependencies
