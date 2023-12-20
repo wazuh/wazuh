@@ -13,8 +13,7 @@
 #include "wdb_state.h"
 #include <os_net/os_net.h>
 
-#define WDB_ROUTER_HANDLE_WAIT_TIME 10
-#define WDB_ROUTER_DELETED_TOPIC "rsync-deleted"
+#define WDB_SYSCOLLECTOR_DELTAS_TOPIC "deltas-syscollector"
 
 static void wdb_help() __attribute__ ((noreturn));
 static void handler(int signum);
@@ -24,7 +23,6 @@ static void * run_worker(void * args);
 static void * run_gc(void * args);
 static void * run_up(void * args);
 static void * run_backup(void * args);
-static void * run_router_handle(void * args);
 
 extern wdb_state_t wdb_state;
 
@@ -246,13 +244,12 @@ int main(int argc, char ** argv)
     // Router module logging initialization
     router_initialize(taggedLogFunction);
 
-    if (status = pthread_create(&thread_router, NULL, run_router_handle, NULL), status != 0) {
-        merror("Couldn't create 'run_router_handle' thread: %s", strerror(status));
-        goto failure;
+    // Router provider initialization
+    if (router_syscollector_handle = router_provider_create(WDB_SYSCOLLECTOR_DELTAS_TOPIC), !router_syscollector_handle) {
+        mdebug2("Failed to create router handle for 'syscollector'.");
     }
 
     // Join threads
-
     pthread_join(thread_dealer, NULL);
 
     for (i = 0; i < wconfig.worker_pool_size; i++) {
@@ -549,17 +546,6 @@ void * run_up(__attribute__((unused)) void * args) {
     os_free(db_folder);
     closedir(fd);
     return NULL;
-}
-
-void * run_router_handle(__attribute__((unused)) void * args) {
-    mdebug2("Creating router handle for 'wazuh-db'.");
-    while (!router_handle) {
-        if (router_handle = router_provider_create(WDB_ROUTER_DELETED_TOPIC), !router_handle) {
-            mdebug2("Failed to create router handle for 'wazuh-db'.");
-        }
-        sleep(WDB_ROUTER_HANDLE_WAIT_TIME);
-    }
-    mdebug2("Router handle for 'wazuh-db' created.");
 }
 
 void wdb_help() {

@@ -57,7 +57,7 @@ extern void mock_assert(const int result, const char* const expression,
 #endif
 
 void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite3_stmt* stmt) {
-    if (!router_handle) {
+    if (!router_syscollector_handle) {
         mdebug2("Router handle not available.");
         return;
     }
@@ -102,7 +102,7 @@ void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite
         msg_to_send = cJSON_PrintUnformatted(j_msg_to_send);
 
         if (msg_to_send) {
-            router_provider_send_fb(router_handle, msg_to_send, syscollector_deltas_SCHEMA);
+            router_provider_send_fb(router_syscollector_handle, msg_to_send, syscollector_deltas_SCHEMA);
         } else {
             mdebug2("Unable to dump delete message to publish agent %s", agent_id);
         }
