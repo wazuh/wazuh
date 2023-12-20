@@ -30,7 +30,7 @@ parse|event.original:
     - <event.start/%b %d %T> <host.hostname> <message>
 
     # RFC3164 example 4 section 5.4
-    - "<event.start/%Y %b %d %T> <timezone> <host.hostname> <host.ip> <TAG/alphanumeric/->[<process.pid>]:<~/ignore/ ><message>"
+    - "<event.start/%Y %b %d %T> <timezone> <host.hostname> <tmp.host_ip> <TAG/alphanumeric/->[<process.pid>]:<~/ignore/ ><message>"
 
 normalize:
   - map:
@@ -39,3 +39,4 @@ normalize:
       - related.hosts: array_append($host.hostname)
 
       - process.name: rename($TAG)
+      - host.ip: array_append($tmp.host_ip)
