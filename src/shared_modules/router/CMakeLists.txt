@@ -9,9 +9,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_definitions(-DPROMISE_TYPE=PromiseType::NORMAL)
 
-# Use fsanitize for debug build
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address,undefined -fno-omit-frame-pointer")
-
 if (NOT SRC_FOLDER)
     get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
 endif()
