@@ -1,8 +1,5 @@
 name: decoder/windows-sysmon/0
 
-parents:
-  - decoder/windows-event/0
-
 metadata:
   module: Windows Sysmon
   title: Decoder for Windows Sysmon
@@ -15,6 +12,9 @@ metadata:
     date: 2023/10/10
   references:
     - https://learn.microsoft.com/es-es/sysinternals/downloads/sysmon
+
+parents:
+  - decoder/windows-event/0
 
 definitions:
   idEvent_map:
@@ -381,18 +381,20 @@ normalize:
     - registry.hive: $_registry.array.0
     - _registry.array.0: delete()
     - registry.key: join($_registry.array, \\)
-    - registry.value: regex_extract($registry.path, ^.*\\\\(.*)$)
+    - registry.value: regex_extract($registry.path, ^.*\\\\(.*\)$)
 
  - check: ($event.code == '12' OR $event.code == '13' OR $event.code == '14') AND starts_with($windows.Event.EventData.Details,QWORD)
    map:
     - registry.data.type: SZ_QWORD
-    - registry.data.strings: regex_extract($windows.EventData.Details, ^QWORD\\s*\\((0x[0-9A-F]+-0x[0-9A-F]+\)\\\))
+    # This mappping is wrong, strings is an array, not a string
+    # - registry.data.strings: regex_extract($windows.EventData.Details, ^QWORD\\s*\\((0x[0-9A-F]+-0x[0-9A-F]+\)\\\))
 
  - check: ($event.code == '12' OR $event.code == '13' OR $event.code == '14') AND starts_with($windows.EventData.Details,DWORD)
    map:
     - registry.data.type: SZ_DWORD
     - _value: regex_extract($windows.EventData.Details, DWORD \\((0x[0-9A-F]{8}\)\\\))
-    - registry.data.strings: hex_to_number($_value)
+    # This mappping is wrong, strings is an array, not a string
+    # - registry.data.strings: hex_to_number($_value)
 
  - check:
     - windows.EventData.Details: starts_with(Binary Data)

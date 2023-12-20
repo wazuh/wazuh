@@ -37,7 +37,7 @@ check: >-
 
 normalize:
   - map:
-      - event.risk_score: 21
+      - event.risk_score: 21.0
 
       - rule.description: Identifies attempts to disable EventLog via the logman Windows utility, PowerShell, or auditpol. This is often done by
           attackers in an attempt to evade detection on a system.

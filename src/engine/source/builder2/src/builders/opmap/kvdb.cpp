@@ -716,8 +716,8 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
         throw std::runtime_error(fmt::format(throwTrace + "Expected key map 'string' as second argument but got '{}'",
                                              std::static_pointer_cast<Value>(opArgs[1])->value().str()));
     }
-    const auto& dbName = std::static_pointer_cast<Value>(opArgs[0])->value().getString().value();
-    const auto& keyMap = std::static_pointer_cast<Value>(opArgs[1])->value().getString().value();
+    const auto dbName = std::static_pointer_cast<Value>(opArgs[0])->value().getString().value();
+    const auto keyMap = std::static_pointer_cast<Value>(opArgs[1])->value().getString().value();
     const auto& maskRef = *std::static_pointer_cast<const Reference>(opArgs[2]);
 
     // Verify the schema fields

@@ -1504,7 +1504,10 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
     const auto& keyRef = *std::static_pointer_cast<Reference>(opArgs[1]);
     // If key field is a schema field, the value should be a string
     const auto& schema = buildCtx->schema();
-    if (schema.hasField(keyRef.dotPath()) && (schema.getType(keyRef.dotPath()) != schemf::Type::OBJECT))
+    if (schema.hasField(keyRef.dotPath())
+        && (schema.getType(keyRef.dotPath()) != schemf::Type::KEYWORD
+            && schema.getType(keyRef.dotPath()) != schemf::Type::TEXT
+            && schema.getType(keyRef.dotPath()) != schemf::Type::IP))
     {
         throw std::runtime_error(
             fmt::format("Engine helper builder: [{}] failed schema validation: Field '{}' value is not a string",
