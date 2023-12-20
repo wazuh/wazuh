@@ -47,6 +47,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *ossocket = "socket";                            /* Socket Config */
     const char *ossca = "sca";                                  /* Security Configuration Assessment */
     const char *osvulndetection = "vulnerability-detection";    /* Vulnerability Detection Config */
+    const char *osvulndetector = "vulnerability-detector";      /* Old Vulnerability Detector Config */
     const char *osindexer = "indexer";                          /* Indexer Config */
     const char *osgcp_pub = "gcp-pubsub";                       /* Google Cloud PubSub - Wazuh Module */
     const char *osgcp_bucket = "gcp-bucket";                    /* Google Cloud Bucket - Wazuh Module */
@@ -185,7 +186,15 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
         } else if (strcmp(node[i]->element, osvulndetection) == 0) {
 #if !defined(WIN32) && !defined(CLIENT)
-            if ((modules & CWMODULE) && (Read_Vulnerability_Detection(xml, chld_node, d1) < 0)) {
+            if ((modules & CWMODULE) && (Read_Vulnerability_Detection(xml, chld_node, d1, false) < 0)) {
+                goto fail;
+            }
+#else
+            mwarn("%s configuration is only set in the manager.", node[i]->element);
+#endif
+        } else if (strcmp(node[i]->element, osvulndetector) == 0) {
+#if !defined(WIN32) && !defined(CLIENT)
+            if ((modules & CWMODULE) && (Read_Vulnerability_Detection(xml, chld_node, d1, true) < 0)) {
                 goto fail;
             }
 #else
