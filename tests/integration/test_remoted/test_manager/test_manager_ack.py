@@ -86,7 +86,7 @@ def test_manager_ack(test_configuration, test_metadata, configure_local_internal
 
     # Check ACK manager message
     log_queue_monitor = queue_monitor.QueueMonitor(agent.rcv_msg_queue)
-    log_queue_monitor.start(callback=generate_callback(r".*#!-agent ack.*"))
+    log_queue_monitor.start(callback=generate_callback(patterns.ACK_MESSAGE))
     assert log_monitor.callback_result
 
     # Close all threads
