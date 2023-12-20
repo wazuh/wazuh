@@ -6,7 +6,7 @@
       "type": "wazuh-agent"
     },
     "ecs": {
-      "version": "8.8"
+      "version": "8.11.0"
     },
     "event": {
       "category": [
@@ -48,7 +48,7 @@
       "parent": {
         "name": "powershell.exe"
       },
-      "pid": "7008"
+      "pid": 7008
     },
     "related": {
       "user": [

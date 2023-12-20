@@ -6,7 +6,7 @@
       "type": "wazuh-agent"
     },
     "ecs": {
-      "version": "8.8"
+      "version": "8.11.0"
     },
     "event": {
       "category": [
@@ -53,7 +53,7 @@
       "parent": {
         "name": "httpd.exe"
       },
-      "pid": "10328"
+      "pid": 10328
     },
     "related": {
       "hash": [
