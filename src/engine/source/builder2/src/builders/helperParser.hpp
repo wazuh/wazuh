@@ -186,10 +186,10 @@ inline parsec::Parser<std::string> getHelperStartParser() {
 
 /**
  * @brief Get a parser that parses a helper function
- *
+ * 
  * @return parsec::Parser<HelperToken>
  */
-inline parsec::Parser<HelperToken> getHelperParser(bool eraseScapeChars = false)
+inline parsec::Parser<HelperToken> getHelperParser(bool eraseScapeChars = false) // TODO: Delete eraseScapeChars, true
 {
     std::string helperExtended = syntax::helper::NAME_EXTENDED;
     parsec::Parser<std::string> helperNameParser = [helperExtended](auto sv, auto pos) -> parsec::Result<std::string>

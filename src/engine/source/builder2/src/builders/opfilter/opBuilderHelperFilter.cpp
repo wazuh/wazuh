@@ -245,6 +245,13 @@ getStringCmpFunction(const std::string& targetField, Operator op, const OpArg& r
         default: break;
     }
 
+    if (rightParameter->isValue() && !std::static_pointer_cast<Value>(rightParameter)->value().isString()) 
+    {
+        throw std::runtime_error(fmt::format(R"( "{}" function: Parameter "{}" is not a string.)",
+                                             name,
+                                             std::static_pointer_cast<Value>(rightParameter)->value().str()));
+    }
+
     // Tracing messages
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
