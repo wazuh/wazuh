@@ -70,6 +70,7 @@ EXTERNAL_MSGPACK=external/msgpack/
 EXTERNAL_BZIP2=external/bzip2/
 EXTERNAL_GOOGLE_TEST=external/googletest/
 EXTERNAL_LIBPCRE2=external/libpcre2/
+EXTERNAL_LIBINOTIFY=external/libinotify-kqueue/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
@@ -101,7 +102,7 @@ SYSCHECK=syscheckd/
 USE_PRELUDE?=no
 USE_ZEROMQ?=no
 USE_GEOIP?=no
-USE_INOTIFY=no
+USE_INOTIFY=yes
 USE_BIG_ENDIAN=no
 USE_AUDIT=no
 MINGW_HOST=unknown
@@ -487,11 +488,6 @@ OSSEC_WINDRES 		=${QUIET_CCBIN}${MING_BASE}windres
 
 ifneq (,$(filter ${USE_INOTIFY},YES auto yes y Y 1))
 	DEFINES+=-DINOTIFY_ENABLED
-	ifeq (${uname_S},FreeBSD)
-		OSSEC_LDFLAGS+=-L/usr/local/lib -I/usr/local/include
-		OSSEC_LIBS+=-linotify
-		OSSEC_CFLAGS+=-I/usr/local/include
-	endif
 endif
 
 ifneq (,$(filter ${USE_BIG_ENDIAN},YES yes y Y 1))
@@ -902,8 +898,12 @@ LIBPCRE2_LIB = $(EXTERNAL_LIBPCRE2).libs/libpcre2-8.a
 POPT_LIB = $(EXTERNAL_POPT)build/output/src/.libs/libpopt.a
 RPM_LIB = $(EXTERNAL_RPM)builddir/librpm.a
 JEMALLOC_LIB = $(EXTERNAL_JEMALLOC)lib/libjemalloc.so.2
+ifneq (,$(filter ${uname_S},Darwin OpenBSD FreeBSD NetBSD))
+LIBINOTIFY_LIB = $(EXTERNAL_LIBINOTIFY).libs/libinotify.a
+endif
 
-EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB)
+
+EXTERNAL_LIBS := $(LIBINOTIFY_LIB) $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB)
 
 # Adding libcurl only on Windows, Linux and MacOS
 ifeq (${TARGET},winagent)
@@ -1228,6 +1228,11 @@ ${RPM_LIB}: ${RPM_BUILD_DIR}/Makefile
 ${RPM_BUILD_DIR}/Makefile: ${OPENSSL_LIB} ${ZLIB_LIB} ${POPT_LIB} ${SQLITE_LIB}
 	mkdir -p ${RPM_BUILD_DIR} && cd ${RPM_BUILD_DIR} && cmake -E env CFLAGS="${RPM_CFLAGS}" CC=${RPM_CC} cmake ..
 
+$(LIBINOTIFY_LIB):
+ifneq (,$(filter ${uname_S},Darwin OpenBSD FreeBSD NetBSD))
+	cd ${EXTERNAL_LIBINOTIFY} && autoreconf -fvi && CPPFLAGS=-fPIC ./configure && ${MAKE}
+endif
+
 #### jemalloc ##########
 
 $(JEMALLOC_LIB):
@@ -1320,6 +1325,9 @@ endif
 
 # Agent dependencies
 EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist pacman libarchive popt rpm
+ifneq (,$(filter ${uname_S},Darwin OpenBSD FreeBSD NetBSD))
+	EXTERNAL_RES += libinotify-kqueue
+endif
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
 	# Manager extra dependency
