@@ -92,7 +92,7 @@ normalize:
    - windows.logon.computer_name: $windows.System.Computer.#text
    - windows.logon.event_id: $windows.System.EventID.#text
    - windows.logon.keywords: kvdb_decode_bitmask(windows_powershell_bitmask_tables, Keywords, $windows.System.Keywords.#text)
-   - windows.logon.process.pid: $windows.System.Execution.@ProcessID
+   - windows.logon.process.pid: parse_long($windows.System.Execution.@ProcessID)
    - windows.logon.process.thread.id: $windows.System.Execution.@ThreadID
    - windows.logon.provider_guid: $windows.System.Provider.@Guid
    - windows.logon.provider_name: $windows.System.Provider.@Name

@@ -6,7 +6,7 @@
       "type": "wazuh-agent"
     },
     "ecs": {
-      "version": "8.8"
+      "version": "8.11.0"
     },
     "event": {
       "kind": "event",
@@ -45,7 +45,7 @@
       "type": "wazuh-agent"
     },
     "ecs": {
-      "version": "8.8"
+      "version": "8.11.0"
     },
     "event": {
       "kind": "event",
@@ -80,7 +80,7 @@
       "type": "wazuh-agent"
     },
     "ecs": {
-      "version": "8.8"
+      "version": "8.11.0"
     },
     "event": {
       "kind": "event",
