@@ -88,7 +88,6 @@ login_attempts = 3
 sleep = 1
 
 def clean_agents_ctx():
-    clean_keys()
     clean_rids()
     clean_agents_timestamp()
     clean_diff()
@@ -104,14 +103,6 @@ def wait_server_connection():
 
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
     log_monitor.start(timeout=30, callback=callback_agentd_startup)
-
-
-def clean_logs():
-    truncate_file(WAZUH_LOG_PATH)
-
-
-def clean_keys():
-    truncate_file(WAZUH_CLIENT_KEYS_PATH)
 
 
 def clean_diff():
@@ -359,7 +350,7 @@ def duplicate_name_agent_delete_test(server):
 
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_ossec_authd_agents_ctx(test_configuration, test_metadata, daemons_handler_module,
-                                set_wazuh_configuration, connect_to_sockets_module):
+                                truncate_monitored_files, set_wazuh_configuration, connect_to_sockets_module):
     '''
     description:
         Check if when the 'wazuh-authd' daemon receives an enrollment request from an agent
@@ -407,7 +398,6 @@ def test_ossec_authd_agents_ctx(test_configuration, test_metadata, daemons_handl
     control_service('stop')
     check_daemon_status(running_condition=False, target_daemon='wazuh-authd')
     time.sleep(1)
-    clean_logs()
     clean_agents_ctx()
     control_service('start')
     check_daemon_status(running_condition=True, target_daemon='wazuh-authd')

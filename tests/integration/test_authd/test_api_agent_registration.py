@@ -55,7 +55,6 @@ tags:
 import ipaddress
 import re
 import requests
-import os
 import pytest
 import time
 from pathlib import Path
@@ -101,24 +100,6 @@ def retrieve_client_key_entry(agent_parameters):
     return desired_entries
 
 
-@pytest.fixture(scope='module')
-def clean_registered_agents():
-    control_service('stop')
-    truncate_file(WAZUH_CLIENT_KEYS_PATH)
-    control_service('start')
-
-    yield
-
-    control_service('stop')
-    truncate_file(WAZUH_CLIENT_KEYS_PATH)
-    control_service('start')
-
-
-@pytest.fixture(scope='module')
-def truncate_api_log():
-    truncate_file(WAZUH_API_LOG_FILE_PATH)
-
-
 def check_valid_agent_id(id):
     return re.match('(^[0-9][0-9][0-9]$)', id)
 
@@ -151,7 +132,8 @@ def check_api_data_response(api_response, expected_response):
 
 @pytest.mark.filterwarnings('ignore::urllib3.exceptions.InsecureRequestWarning')
 @pytest.mark.parametrize('test_metadata', test_metadata, ids=test_cases_ids)
-def test_agentd_server_configuration(test_metadata, truncate_api_log, clean_registered_agents, wait_for_api_startup_module):
+def test_agentd_server_configuration(test_metadata, truncate_monitored_files_module,
+                                     daemons_handler_module, wait_for_api_startup_module):
     '''
     description:
         Checks `wazuh-api` responds correctly to agent registration requests. Also, ensure client.keys is update
@@ -164,15 +146,15 @@ def test_agentd_server_configuration(test_metadata, truncate_api_log, clean_regi
         - test_metadata:
             type: dict
             brief: Test case metadata.
-        - truncate_api_log:
+        - truncate_monitored_files_module:
             type: fixture
-            brief: Truncate API logs.
-        - clean_registered_agents:
-            type: fixture
-            brief: Remove current registered agents in the environment.
+            brief: Truncate all the log files and json alerts files before and after the test execution.
         - wait_for_api_startup_module:
             type: fixture
             brief: Wait for api starts.
+        - daemons_handler_module:
+            type: fixture
+            brief: Handler of Wazuh daemons.
 
     assertions:
         - Verify that agents IPV4 agents can be registered

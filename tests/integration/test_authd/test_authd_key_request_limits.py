@@ -61,6 +61,7 @@ from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils import callbacks
 from wazuh_testing.modules.authd import PREFIX
 from wazuh_testing.modules.authd.configuration import AUTHD_DEBUG_CONFIG
+from wazuh_testing.constants.daemons import AUTHD_DAEMON
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH, SCRIPTS_FOLDER_PATH
 
@@ -86,11 +87,14 @@ script_filename = 'fetch_keys.py'
 monitored_sockets_params = [('wazuh-authd', None, True)]
 receiver_sockets, monitored_sockets = None, None
 
+daemons_handler_configuration = {'daemons': [AUTHD_DAEMON], 'ignore_errors': True}
+
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_key_request_limits(test_configuration, test_metadata, set_wazuh_configuration, copy_tmp_script,
-                            configure_local_internal_options, restart_authd_function,
-                            wait_for_authd_startup, connect_to_sockets, tear_down):
+def test_key_request_limits(test_configuration, test_metadata, set_wazuh_configuration,
+                            copy_tmp_script, configure_local_internal_options,
+                            truncate_monitored_files, daemons_handler,
+                            wait_for_authd_startup, connect_to_sockets):
     '''
     description:
         Checks that every input message on the key request port with different limits 'timeout' and 'queue_size'
@@ -114,18 +118,18 @@ def test_key_request_limits(test_configuration, test_metadata, set_wazuh_configu
         - configure_local_internal_options_module:
             type: fixture
             brief: Configure the local internal options file.
-        - restart_authd_function:
+        - daemons_handler:
             type: fixture
-            brief: Stops the wazuh-authd daemon.
+            brief: Handler of Wazuh daemons.
         - wait_for_authd_startup:
             type: fixture
             brief: Waits until Authd is accepting connections.
         - connect_to_sockets:
             type: fixture
             brief: Bind to the configured sockets at function scope.
-        - tear_down:
+        - truncate_monitored_files:
             type: fixture
-            brief: Cleans the client.keys file.
+            brief: Truncate all the log files and json alerts files before and after the test execution.
 
     assertions:
         - The exec_path must be configured correctly

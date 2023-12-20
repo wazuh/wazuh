@@ -69,8 +69,8 @@ local_internal_options = {AUTHD_DEBUG_CONFIG: '2'}
 
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_authd_use_password_invalid(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
-                                    configure_local_internal_options, set_authd_pass, tear_down):
+def test_authd_use_password_invalid(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files_module,
+                                    configure_local_internal_options, set_authd_pass):
     '''
     description:
         Checks the correct errors are raised when an invalid password value
@@ -101,9 +101,9 @@ def test_authd_use_password_invalid(test_configuration, test_metadata, set_wazuh
         - set_authd_pass:
             type: fixture
             brief: Configures the `authd.pass` file as needed.
-        - tear_down:
+        - truncate_monitored_files_module:
             type: fixture
-            brief: Roll back the daemon and client.keys state after the test ends.
+            brief: Truncate all the log files and json alerts files before and after the test execution.
 
     assertions:
         - Error log 'Empty password provided.' is raised in ossec.log.

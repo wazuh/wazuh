@@ -7,11 +7,11 @@ import yaml
 from wazuh_testing import logger
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, WAZUH_API_LOG_FILE_PATH, WAZUH_API_JSON_LOG_FILE_PATH
 from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH, DEFAULT_AUTHD_PASS_PATH, DEFAULT_AUTHD_PASS_PATH
-from wazuh_testing.utils.db_queries.global_db import insert_agent_in_db, clean_agents_from_db
+from wazuh_testing.utils.db_queries.global_db import clean_agents_from_db, create_or_update_agent
 from wazuh_testing.utils import file
 from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.tools.monitors import file_monitor
-from wazuh_testing.modules.authd.patterns import PREFIX
+from wazuh_testing.modules.authd import PREFIX
 from wazuh_testing.constants.daemons import AUTHD_DAEMON
 from wazuh_testing.utils.services import control_service
 from wazuh_testing.constants.api import WAZUH_API_PORT
@@ -50,24 +50,6 @@ def clean_client_keys_file_module():
     truncate_client_keys_file_implementation()
 
 
-@pytest.fixture(scope='module')
-def restart_authd(get_configuration):
-    """
-    Restart Authd.
-    """
-    file.truncate_file(WAZUH_LOG_PATH)
-    control_service("restart", daemon=AUTHD_DAEMON)
-
-
-@pytest.fixture(scope='function')
-def restart_authd_function():
-    """
-    Restart Authd.
-    """
-    file.truncate_file(WAZUH_LOG_PATH)
-    control_service("restart", daemon=AUTHD_DAEMON)
-
-
 @pytest.fixture(scope='function')
 def stop_authd_function():
     """
@@ -82,6 +64,7 @@ def wait_for_authd_startup_module():
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
     log_monitor.start(timeout=AUTHD_STARTUP_TIMEOUT, encoding="utf-8",
                       callback=generate_callback(rf'{PREFIX}Accepting connections on port 1515'))
+    assert log_monitor.callback_result
 
 
 @pytest.fixture()
@@ -90,18 +73,7 @@ def wait_for_authd_startup():
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
     log_monitor.start(timeout=AUTHD_STARTUP_TIMEOUT, encoding="utf-8",
                       callback=generate_callback(rf'{PREFIX}Accepting connections on port 1515'))
-
-
-@pytest.fixture(scope='module')
-def tear_down():
-    """
-    Roll back the daemon and client.keys state after the test ends.
-    """
-    yield
-    # Stop Wazuh
-    control_service('stop')
-    file.truncate_file(WAZUH_CLIENT_KEYS_PATH)
-    control_service('start')
+    assert log_monitor.callback_result
 
 
 @pytest.fixture(scope='module')
@@ -165,7 +137,8 @@ def insert_pre_existent_agents(test_metadata, stop_authd_function):
             keys_file.write(f"{id} {name} {ip} {key}\n")
 
             # Write agent in global.db
-            insert_agent_in_db(id, name, ip, registration_time, connection_status, disconnection_time)
+            create_or_update_agent(agent_id=id, name=name, ip=ip, date_add=registration_time, 
+                                   connection_status=connection_status, disconnection_time=disconnection_time)
 
     keys_file.close()
 

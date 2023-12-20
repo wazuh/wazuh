@@ -89,7 +89,7 @@ receiver_sockets, monitored_sockets = None, None
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_key_request_func(test_configuration, test_metadata, set_wazuh_configuration, connect_to_sockets,
-                          daemons_handler, configure_local_internal_options, tear_down,
+                          truncate_monitored_files_module, daemons_handler, configure_local_internal_options,
                           copy_tmp_script, wait_for_authd_startup):
     '''
     description:
@@ -116,9 +116,9 @@ def test_key_request_func(test_configuration, test_metadata, set_wazuh_configura
         - configure_local_internal_options:
             type: fixture
             brief: Handle the monitoring of a specified file.
-        - tear_down:
+        - truncate_monitored_files_module:
             type: fixture
-            brief: Cleans the client.keys file.
+            brief: Truncate all the log files and json alerts files before and after the test execution.
         - copy_tmp_script:
             type: fixture
             brief: Copy the script to a temporary folder for testing.

@@ -91,9 +91,10 @@ def set_up_groups(test_metadata, request):
 
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_authd_local_messages(test_configuration, test_metadata, set_wazuh_configuration, configure_sockets_environment_module,
-                              connect_to_sockets, set_up_groups, insert_pre_existent_agents,
-                              restart_wazuh_daemon_function, wait_for_authd_startup, tear_down):
+def test_authd_local_messages(test_configuration, test_metadata, set_wazuh_configuration,
+                              configure_sockets_environment_module, insert_pre_existent_agents,
+                              truncate_monitored_files, daemons_handler, wait_for_authd_startup,
+                              set_up_groups, connect_to_sockets):
     '''
     description:
         Checks that every input message in trough local authd port generates the adequate response to worker.
@@ -125,7 +126,7 @@ def test_authd_local_messages(test_configuration, test_metadata, set_wazuh_confi
         - insert_pre_existent_agents:
             type: fixture
             brief: adds the required agents to the client.keys and global.db
-        - restart_wazuh_daemon_function:
+        - daemons_handler:
             type: fixture
             brief: Restarts wazuh or a specific daemon passed.
         - wait_for_authd_startup:
@@ -134,9 +135,9 @@ def test_authd_local_messages(test_configuration, test_metadata, set_wazuh_confi
         - get_current_test_case:
             type: fixture
             brief: gets the current test case from the tests' list
-        - tear_down:
+        - truncate_monitored_files:
             type: fixture
-            brief: cleans the client.keys file
+            brief: Truncate all the log files and json alerts files before and after the test execution.
 
     assertions:
         - The received output must match with expected

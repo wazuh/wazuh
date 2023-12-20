@@ -58,7 +58,7 @@ from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.ports import DEFAULT_SSL_REMOTE_ENROLLMENT_PORT
 from wazuh_testing.constants.daemons import AUTHD_DAEMON, WAZUH_DB_DAEMON, MODULES_DAEMON
 from wazuh_testing.utils.callbacks import generate_callback
-from wazuh_testing.modules.authd.patterns import PREFIX
+from wazuh_testing.modules.authd import PREFIX
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
@@ -102,27 +102,13 @@ monitored_sockets_params = [(MODULES_DAEMON, None, True), (WAZUH_DB_DAEMON, None
 
 receiver_sockets, monitored_sockets = None, None
 
-
-def restart_wazuh_authd():
-    # Stop Wazuh
-    services.control_service('stop', daemon=AUTHD_DAEMON)
-    time.sleep(1)
-    services.check_daemon_status(running_condition=False, target_daemon=AUTHD_DAEMON)
-    # Start Wazuh daemons
-    time.sleep(1)
-    services.control_service('start', daemon=AUTHD_DAEMON)
-    """Wait until agentd has begun"""
-
-    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-    log_monitor.start(timeout=30, encoding="utf-8",
-                      callback=generate_callback(rf'{PREFIX}Accepting connections on port 1515'))
-    time.sleep(1)
-
+daemons_handler_configuration = {'daemons': [AUTHD_DAEMON], 'ignore_errors': True}
 
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_authd_ssl_certs(test_configuration, test_metadata, set_wazuh_configuration,
-                         generate_ca_certificate, tear_down):
+                         generate_ca_certificate, truncate_monitored_files, daemons_handler,
+                         wait_for_authd_startup):
     '''
     description:
         Checks if the 'wazuh-authd' daemon can manage 'SSL' connections with agents
@@ -148,9 +134,9 @@ def test_authd_ssl_certs(test_configuration, test_metadata, set_wazuh_configurat
         - generate_ca_certificate:
             type: fixture
             brief: Build the 'CA' (Certificate of Authority) and sign the certificate used by the testing agent.
-        - tear_down:
+        - truncate_monitored_files_module:
             type: fixture
-            brief: cleans the client.keys file
+            brief: Truncate all the log files and json alerts files before and after the test execution.
 
     assertions:
         - Verify that the agent can only connect to the 'wazuh-authd' daemon socket using a valid certificate.
@@ -170,7 +156,6 @@ def test_authd_ssl_certs(test_configuration, test_metadata, set_wazuh_configurat
     '''
     verify_host = (test_metadata['verify_host'] == 'yes')
     option = test_metadata['sim_option']
-    restart_wazuh_authd()
     address, family, connection_protocol = receiver_sockets_params[0]
     SSL_socket = SocketController(address, family=family, connection_protocol=connection_protocol, open_at_start=False)
     if option != 'NO CERT':

@@ -70,6 +70,9 @@ receiver_sockets_params = [(("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), '
 monitored_sockets_params = [(MODULES_DAEMON, None, True), (WAZUH_DB_DAEMON, None, True), (AUTHD_DAEMON, None, True)]
 receiver_sockets, monitored_sockets = None, None
 
+# Test daemons to restart.
+daemons_handler_configuration = {'all_daemons': True}
+
 
 # Functions
 
@@ -92,9 +95,10 @@ def read_random_pass():
 
 # Test
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_authd_force_options(test_configuration, test_metadata, set_wazuh_configuration, configure_sockets_environment_module,
-                             clean_client_keys_file, reset_password, restart_wazuh_daemon_function,
-                             wait_for_authd_startup, connect_to_sockets, tear_down):
+def test_authd_force_options(test_configuration, test_metadata, set_wazuh_configuration,
+                             configure_sockets_environment_module, clean_client_keys_file,
+                             reset_password, truncate_monitored_files, daemons_handler,
+                             wait_for_authd_startup, connect_to_sockets):
     '''
     description:
         Checks that every input message in authd port generates the adequate output.
@@ -123,7 +127,7 @@ def test_authd_force_options(test_configuration, test_metadata, set_wazuh_config
         - reset_password:
             type: fixture
             brief: Write the password file.
-        - restart_wazuh_daemon_function:
+        - daemons_handler:
             type: fixture
             brief: Restarts wazuh or a specific daemon passed.
         - wait_for_authd_startup:
@@ -132,9 +136,9 @@ def test_authd_force_options(test_configuration, test_metadata, set_wazuh_config
         - connect_to_sockets:
             type: fixture
             brief: Bind to the configured sockets at function scope.
-        - tear_down:
+        - truncate_monitored_files:
             type: fixture
-            brief: Roll back the daemon and client.keys state after the test ends.
+            brief: Truncate all the log files and json alerts files before and after the test execution.
 
     assertions:
         - The random password works as expected.

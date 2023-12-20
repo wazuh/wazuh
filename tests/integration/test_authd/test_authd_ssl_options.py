@@ -71,12 +71,14 @@ receiver_sockets_params = [(("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), '
 monitored_sockets_params = [(MODULES_DAEMON, None, True), (WAZUH_DB_DAEMON, None, True), (AUTHD_DAEMON, None, True)]
 receiver_sockets, monitored_sockets = None, None
 
+daemons_handler_configuration = {'daemons': [AUTHD_DAEMON], 'ignore_errors': True}
+
 
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_ossec_auth_configurations(test_configuration, test_metadata, set_wazuh_configuration,
-                                   restart_authd_function, wait_for_authd_startup,
-                                   configure_sockets_environment_module):
+def test_ossec_auth_configurations(test_configuration, test_metadata, set_wazuh_configuration,                                   
+                                   truncate_monitored_files, daemons_handler,
+                                   wait_for_authd_startup, configure_sockets_environment_module):
     '''
     description:
         Checks if the 'SSL' settings of the 'wazuh-authd' daemon work correctly by enrolling agents
@@ -99,9 +101,9 @@ def test_ossec_auth_configurations(test_configuration, test_metadata, set_wazuh_
         - set_wazuh_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
-        - restart_authd_function:
+        - daemons_handler:
             type: fixture
-            brief: stops the wazuh-authd daemon
+            brief: Handler of Wazuh daemons.
         - wait_for_authd_startup:
             type: fixture
             brief: Waits until Authd is accepting connections.

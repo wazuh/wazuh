@@ -82,6 +82,9 @@ receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 cluster_socket_address = ('localhost', 1516)
 remote_enrollment_address = ('localhost', DEFAULT_SSL_REMOTE_ENROLLMENT_PORT)
 
+# Test daemons to restart.
+daemons_handler_configuration = {'all_daemons': True}
+
 AGENT_ID = 0
 AGENT_NAME = 'test_agent'
 INPUT_MESSAGE = "OSSEC A:'{}_{}'"
@@ -110,7 +113,8 @@ def wait_for_tcp_port(port, host='localhost', timeout=10):
     raise TimeoutError(f'Waited too long for the port {port} on host {host} to start accepting messages')
 
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_remote_enrollment(test_configuration, test_metadata, set_wazuh_configuration, restart_wazuh_daemon_function, tear_down):
+def test_remote_enrollment(test_configuration, test_metadata, set_wazuh_configuration,
+                           truncate_monitored_files, daemons_handler):
     '''
     description:
         Checks if the 'wazuh-authd' daemon remote enrollment is enabled/disabled according
@@ -133,12 +137,12 @@ def test_remote_enrollment(test_configuration, test_metadata, set_wazuh_configur
         - set_wazuh_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
-        - restart_wazuh_daemon_function:
+        - daemons_handler:
             type: fixture
             brief: Restarts wazuh or a specific daemon passed.
-        - tear_down:
+        - truncate_monitored_files:
             type: fixture
-            brief: cleans the client.keys file
+            brief: Truncate all the log files and json alerts files before and after the test execution.
 
     assertions:
         - Verify that the port '1515' opens or closes depending on the value of the 'remote_enrollment' option.

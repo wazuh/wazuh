@@ -67,12 +67,14 @@ monitored_sockets_params = [(MODULES_DAEMON, None, True), (WAZUH_DB_DAEMON, None
 receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 hostname = socket.gethostname()
 
+daemons_handler_configuration = {'daemons': [AUTHD_DAEMON], 'ignore_errors': True}
+
 
 # Test
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_authd_valid_name_ip(test_configuration, test_metadata, set_wazuh_configuration, configure_sockets_environment_module,
                              clean_client_keys_file, connect_to_sockets_module,
-                             restart_authd_function, wait_for_authd_startup, tear_down):
+                             truncate_monitored_files, daemons_handler, wait_for_authd_startup):
     '''
     description:
         Checks that every input message in authd port generates the adequate output.
@@ -98,18 +100,18 @@ def test_authd_valid_name_ip(test_configuration, test_metadata, set_wazuh_config
         - clean_client_keys_file:
             type: fixture
             brief: Stops Wazuh and cleans any previous key in client.keys file at function scope.
-        - restart_authd_function:
+        - daemons_handler:
             type: fixture
-            brief: Restart the 'wazuh-authd' daemon, clear the 'ossec.log' file and start a new file monitor.
+            brief: Handler of Wazuh daemons.
         - wait_for_authd_startup:
             type: fixture
             brief: Waits until Authd is accepting connections.
         - connect_to_sockets_module:
             type: fixture
             brief: Bind to the configured sockets at module scope.
-        - tear_down:
+        - truncate_monitored_files:
             type: fixture
-            brief: Roll back the daemon and client.keys state after the test ends.
+            brief: Truncate all the log files and json alerts files before and after the test execution.
 
     assertions:
         - The manager registers agents with valid IP and name

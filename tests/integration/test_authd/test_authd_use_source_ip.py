@@ -67,8 +67,8 @@ daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
 # Test
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_authd_use_source_ip(test_configuration, test_metadata, set_wazuh_configuration, configure_receiver_sockets,
-                             configure_sockets_environment_module, clean_client_keys_file, daemons_handler,
-                             wait_for_authd_startup, connect_to_sockets, tear_down):
+                             configure_sockets_environment_module, clean_client_keys_file, truncate_monitored_files_module,
+                             daemons_handler, wait_for_authd_startup, connect_to_sockets):
     '''
     description:
         Checks that every input message in authd port generates the adequate output
@@ -106,9 +106,9 @@ def test_authd_use_source_ip(test_configuration, test_metadata, set_wazuh_config
         - test_case:
             type: list
             brief: List all the test cases for the test.
-        - tear_down:
+        - truncate_monitored_files_module:
             type: fixture
-            brief: Roll back the daemon and client.keys state after the test ends.
+            brief: Truncate all the log files and json alerts files before and after the test execution.
 
     assertions:
         - The manager uses the agent's IP as requested

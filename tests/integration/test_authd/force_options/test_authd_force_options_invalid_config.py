@@ -65,11 +65,13 @@ test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cas
 test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 
 local_internal_options = {AUTHD_DEBUG_CONFIG: '2'}
+daemons_handler_configuration = {'daemons': [AUTHD_DAEMON], 'ignore_errors': True}
 
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_authd_force_options_invalid_config(test_configuration, test_metadata, set_wazuh_configuration,
-                                            configure_local_internal_options, tear_down):
+                                            configure_local_internal_options, truncate_monitored_files,
+                                            daemons_handler, wait_for_authd_startup):
     '''
     description:
         Checks that every input with a wrong configuration option value
@@ -94,9 +96,9 @@ def test_authd_force_options_invalid_config(test_configuration, test_metadata, s
         - configure_local_internal_options:
             type: fixture
             brief: Handle the monitoring of a specified file.
-        - tear_down:
+        - truncate_monitored_files_module:
             type: fixture
-            brief: Roll back the daemon and client.keys state after the test ends.
+            brief: Truncate all the log files and json alerts files before and after the test execution.
 
     assertions:
         - The received output must match with expected due to wrong configuration options.
@@ -108,15 +110,6 @@ def test_authd_force_options_invalid_config(test_configuration, test_metadata, s
     expected_output:
         - Invalid configuration values error.
     '''
-
-    truncate_file(WAZUH_LOG_PATH)
-    try:
-        control_service('restart', daemon=AUTHD_DAEMON)
-    except Exception:
-        pass
-    else:
-        raise Exception('Authd started when it was expected to fail')
-
 
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     log = re.escape(test_metadata['log'])

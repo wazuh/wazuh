@@ -69,6 +69,9 @@ receiver_sockets_params = [(("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), '
 monitored_sockets_params = [(MODULES_DAEMON, None, True), (WAZUH_DB_DAEMON, None, True), (AUTHD_DAEMON, None, True)]
 receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 
+# Test daemons to restart.
+daemons_handler_configuration = {'all_daemons': True}
+
 # Tests
 @pytest.fixture(scope='function')
 def set_up_groups(test_metadata, request):
@@ -91,9 +94,9 @@ def set_up_groups(test_metadata, request):
 
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_ossec_auth_messages_with_key_hash(test_configuration, test_metadata, set_wazuh_configuration,
-                                           configure_sockets_environment_module, connect_to_sockets_module,
-                                           set_up_groups, insert_pre_existent_agents, restart_wazuh_daemon_function,
-                                           wait_for_authd_startup, tear_down):
+                                           configure_sockets_environment_module, insert_pre_existent_agents,
+                                           truncate_monitored_files, daemons_handler, wait_for_authd_startup,
+                                           set_up_groups, connect_to_sockets_module):
     '''
     description:
         Checks that every input message in authd port generates the adequate output.
@@ -125,7 +128,7 @@ def test_ossec_auth_messages_with_key_hash(test_configuration, test_metadata, se
         - insert_pre_existent_agents:
             type: fixture
             brief: adds the required agents to the client.keys and global.db
-        - restart_wazuh_daemon_function:
+        - daemons_handler:
             type: fixture
             brief: Restarts wazuh or a specific daemon passed.
         - wait_for_authd_startup:
@@ -134,9 +137,9 @@ def test_ossec_auth_messages_with_key_hash(test_configuration, test_metadata, se
         - get_current_test_case:
             type: fixture
             brief: gets the current test case from the tests' list
-        - tear_down:
+        - truncate_monitored_files:
             type: fixture
-            brief: cleans the client.keys file
+            brief: Truncate all the log files and json alerts files before and after the test execution.
 
     assertions:
         - The received output must match with expected

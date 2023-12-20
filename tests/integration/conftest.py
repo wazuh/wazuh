@@ -16,6 +16,7 @@ from wazuh_testing.constants.paths import ROOT_PREFIX
 from wazuh_testing.constants.paths.api import RBAC_DATABASE_PATH
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, ALERTS_JSON_PATH, WAZUH_API_LOG_FILE_PATH, \
                                                WAZUH_API_JSON_LOG_FILE_PATH
+from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH
 from wazuh_testing.logger import logger
 from wazuh_testing.tools import socket_controller
 from wazuh_testing.tools.monitors import queue_monitor
@@ -160,7 +161,8 @@ def set_wazuh_configuration(test_configuration: dict) -> None:
 def truncate_monitored_files_implementation() -> None:
     """Truncate all the log files and json alerts files before and after the test execution"""
     if services.get_service() == WAZUH_MANAGER:
-        log_files = [WAZUH_LOG_PATH, ALERTS_JSON_PATH, WAZUH_API_LOG_FILE_PATH, WAZUH_API_JSON_LOG_FILE_PATH]
+        log_files = [WAZUH_LOG_PATH, ALERTS_JSON_PATH, WAZUH_API_LOG_FILE_PATH,
+                     WAZUH_API_JSON_LOG_FILE_PATH, WAZUH_CLIENT_KEYS_PATH]
     else:
         log_files = [WAZUH_LOG_PATH]
 
@@ -275,36 +277,6 @@ def daemons_handler_module(request: pytest.FixtureRequest) -> None:
         request (pytest.FixtureRequest): Provide information about the current test function which made the request.
     """
     yield from daemons_handler_implementation(request)
-
-
-@pytest.fixture(scope='module')
-def restart_wazuh_daemon(daemon=None):
-    """
-    Restart a Wazuh daemon
-    """
-    file.truncate_file(WAZUH_LOG_PATH)
-    services.control_service("restart", daemon=daemon)
-
-
-@pytest.fixture(scope='function')
-def restart_wazuh_daemon_function(daemon=None):
-    """
-    Restart a Wazuh daemon
-    """
-    file.truncate_file(WAZUH_LOG_PATH)
-    services.control_service("restart", daemon=daemon)
-
-
-@pytest.fixture(scope='module')
-def restart_wazuh_daemon_after_finishing_module(daemon: str = None) -> None:
-    """Restart a Wazuh daemons and clears the wazuh log after the test module finishes execution.
-
-    Args:
-        daemon (str): provide which daemon to restart. If None, all daemons will be restarted.
-    """
-    yield
-    file.truncate_file(WAZUH_LOG_PATH)
-    services.control_service("restart", daemon=daemon)
 
 
 @pytest.fixture(scope='module')
