@@ -14,6 +14,7 @@
 #include <stdio.h>
 
 #include "../../wrappers/common.h"
+#include "../../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../../wrappers/libc/stdio_wrappers.h"
 #include "../../wrappers/posix/pthread_wrappers.h"
 #include "../../wrappers/posix/unistd_wrappers.h"
@@ -618,9 +619,9 @@ void test_wm_agent_upgrade_send_write_ok(void **state)
     char *agent_res = "ok ";
     int format = -1;
 
-    expect_string(__wrap_fopen, path, file_path);
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, file_path);
+    expect_string(__wrap_wfopen, modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fread, chunk);
     will_return(__wrap_fread, chunk_size);
@@ -679,7 +680,7 @@ void test_wm_agent_upgrade_send_write_ok(void **state)
     will_return(__wrap_fread, chunk);
     will_return(__wrap_fread, 0);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 0);
 
     int res = wm_agent_upgrade_send_write(agent, format, wpk_file, file_path, chunk_size);
@@ -701,9 +702,9 @@ void test_wm_agent_upgrade_send_write_ok_new(void **state)
     char *agent_res = "{\"error\":0,\"message\":\"ok\",\"data\": []}";
     int format = 1;
 
-    expect_string(__wrap_fopen, path, file_path);
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, file_path);
+    expect_string(__wrap_wfopen, modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fread, chunk);
     will_return(__wrap_fread, chunk_size);
@@ -762,7 +763,7 @@ void test_wm_agent_upgrade_send_write_ok_new(void **state)
     will_return(__wrap_fread, chunk);
     will_return(__wrap_fread, 0);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 0);
 
     int res = wm_agent_upgrade_send_write(agent, format, wpk_file, file_path, chunk_size);
@@ -785,9 +786,9 @@ void test_wm_agent_upgrade_send_write_err(void **state)
     char *agent_res2 = "err Could not write file in agent";
     int format = -1;
 
-    expect_string(__wrap_fopen, path, file_path);
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, file_path);
+    expect_string(__wrap_wfopen, modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fread, chunk);
     will_return(__wrap_fread, chunk_size);
@@ -843,7 +844,7 @@ void test_wm_agent_upgrade_send_write_err(void **state)
     expect_string(__wrap_wm_agent_upgrade_parse_agent_response, agent_response, agent_res2);
     will_return(__wrap_wm_agent_upgrade_parse_agent_response, OS_INVALID);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 0);
 
     int res = wm_agent_upgrade_send_write(agent, format, wpk_file, file_path, chunk_size);
@@ -861,9 +862,9 @@ void test_wm_agent_upgrade_send_write_open_err(void **state)
     int chunk_size = 5;
     int format = -1;
 
-    expect_string(__wrap_fopen, path, file_path);
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 0);
+    expect_string(__wrap_wfopen, filename, file_path);
+    expect_string(__wrap_wfopen, modes, "rb");
+    will_return(__wrap_wfopen, 0);
 
     int res = wm_agent_upgrade_send_write(agent, format, wpk_file, file_path, chunk_size);
 
@@ -1407,9 +1408,9 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_linux_ok(void **state)
 
     // Write file
 
-    expect_string(__wrap_fopen, path, "var/upgrade/test.wpk");
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, "var/upgrade/test.wpk");
+    expect_string(__wrap_wfopen, modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fread, "test\n");
     will_return(__wrap_fread, config->chunk_size);
@@ -1427,7 +1428,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_linux_ok(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 0);
 
     // Close file
@@ -1574,9 +1575,9 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_windows_ok(void **state)
 
     // Write file
 
-    expect_string(__wrap_fopen, path, "var/upgrade/test.wpk");
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, "var/upgrade/test.wpk");
+    expect_string(__wrap_wfopen, modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fread, "test\n");
     will_return(__wrap_fread, config->chunk_size);
@@ -1594,7 +1595,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_windows_ok(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 0);
 
     // Close file
@@ -1739,9 +1740,9 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_custom_custom_installer_ok(
 
     // Write file
 
-    expect_string(__wrap_fopen, path, "/tmp/test.wpk");
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, "/tmp/test.wpk");
+    expect_string(__wrap_wfopen, modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fread, "test\n");
     will_return(__wrap_fread, config->chunk_size);
@@ -1759,7 +1760,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_custom_custom_installer_ok(
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 0);
 
     // Close file
@@ -1903,9 +1904,9 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_custom_default_installer_ok
 
     // Write file
 
-    expect_string(__wrap_fopen, path, "/tmp/test.wpk");
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, "/tmp/test.wpk");
+    expect_string(__wrap_wfopen, modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fread, "test\n");
     will_return(__wrap_fread, config->chunk_size);
@@ -1923,7 +1924,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_custom_default_installer_ok
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 0);
 
     // Close file
@@ -2070,9 +2071,9 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_run_upgrade_err(void **stat
 
     // Write file
 
-    expect_string(__wrap_fopen, path, "var/upgrade/test.wpk");
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, "var/upgrade/test.wpk");
+    expect_string(__wrap_wfopen, modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fread, "test\n");
     will_return(__wrap_fread, config->chunk_size);
@@ -2090,7 +2091,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_run_upgrade_err(void **stat
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 0);
 
     // Close file
@@ -2236,9 +2237,9 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_send_sha1_err(void **state)
 
     // Write file
 
-    expect_string(__wrap_fopen, path, "var/upgrade/test.wpk");
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, "var/upgrade/test.wpk");
+    expect_string(__wrap_wfopen, modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fread, "test\n");
     will_return(__wrap_fread, config->chunk_size);
@@ -2256,7 +2257,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_send_sha1_err(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 0);
 
     // Close file
@@ -2388,9 +2389,9 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_close_file_err(void **state
 
     // Write file
 
-    expect_string(__wrap_fopen, path, "var/upgrade/test.wpk");
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, "var/upgrade/test.wpk");
+    expect_string(__wrap_wfopen, modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fread, "test\n");
     will_return(__wrap_fread, config->chunk_size);
@@ -2408,7 +2409,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_close_file_err(void **state
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 0);
 
     // Close file
@@ -2522,9 +2523,9 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_write_file_err(void **state
 
     // Write file
 
-    expect_string(__wrap_fopen, path, "var/upgrade/test.wpk");
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, "var/upgrade/test.wpk");
+    expect_string(__wrap_wfopen, modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fread, "test\n");
     will_return(__wrap_fread, config->chunk_size);
@@ -2539,7 +2540,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_write_file_err(void **state
     will_return(__wrap_OS_RecvSecureTCP, agent_res_err);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_err) + 1);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 0);
 
     expect_string_count(__wrap__mtdebug2, tag, "wazuh-modulesd:agent-upgrade", 6);
@@ -2999,9 +3000,9 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_ok(void **state)
 
     // Write file
 
-    expect_string(__wrap_fopen, path, "var/upgrade/test.wpk");
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, "var/upgrade/test.wpk");
+    expect_string(__wrap_wfopen, modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fread, "test\n");
     will_return(__wrap_fread, config->chunk_size);
@@ -3019,7 +3020,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_ok(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 0);
 
     // Close file
@@ -3231,9 +3232,9 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok(void **state)
 
     // Write file
 
-    expect_string(__wrap_fopen, path, "var/upgrade/test.wpk");
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, "var/upgrade/test.wpk");
+    expect_string(__wrap_wfopen, modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fread, "test\n");
     will_return(__wrap_fread, config->chunk_size);
@@ -3251,7 +3252,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 0);
 
     // Close file
@@ -3464,9 +3465,9 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_custom_ok(void **state)
 
     // Write file
 
-    expect_string(__wrap_fopen, path, "/tmp/test.wpk");
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, "/tmp/test.wpk");
+    expect_string(__wrap_wfopen, modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fread, "test\n");
     will_return(__wrap_fread, config->chunk_size);
@@ -3484,7 +3485,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_custom_ok(void **state)
     will_return(__wrap_OS_RecvSecureTCP, agent_res_ok);
     will_return(__wrap_OS_RecvSecureTCP, strlen(agent_res_ok) + 1);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 0);
 
     // Close file
