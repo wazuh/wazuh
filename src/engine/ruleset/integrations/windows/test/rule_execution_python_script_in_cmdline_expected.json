@@ -6,7 +6,7 @@
       "type": "wazuh-agent"
     },
     "ecs": {
-      "version": "8.8"
+      "version": "8.11.0"
     },
     "event": {
       "category": [
@@ -76,7 +76,7 @@
         "original_file_name": "python.exe",
         "product": "Python"
       },
-      "pid": "9348",
+      "pid": 9348,
       "working_directory": "C:\\Users\\Positivo BGH\\Desktop\\nahuel\\"
     },
     "related": {

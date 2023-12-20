@@ -249,18 +249,18 @@ normalize:
 
   ## Process fields
     - process.entity_id: $windows.EventData.ProcessGuid
-    - process.pid: $windows.EventData.ProcessId
+    - process.pid: parse_long($windows.EventData.ProcessId)
     - process.executable: $windows.EventData.Image
     - process.entity_id: $windows.EventData.SourceProcessGuid
     - process.entity_id: $windows.EventData.SourceProcessGUID
-    - process.pid: $windows.EventData.SourceProcessId
+    - process.pid: parse_long($windows.EventData.SourceProcessId)
     - process.thread.id: $windows.EventData.SourceThreadId
     - process.executable: $windows.EventData.SourceImage
     - process.executable: $windows.EventData.Destination
     - process.command_line: $windows.EventData.CommandLine
     - process.working_directory: $windows.EventData.CurrentDirectory
     - process.parent.entity_id: $windows.EventData.ParentProcessGuid
-    - process.parent.pid: $windows.EventData.ParentProcessId
+    - process.parent.pid: parse_long($windows.EventData.ParentProcessId)
     - process.parent.executable: $windows.EventData.ParentImage
     - process.parent.command_line: $windows.EventData.ParentCommandLine
     - _file_data: parse_file($process.executable)
