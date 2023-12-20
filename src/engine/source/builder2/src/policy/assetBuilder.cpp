@@ -176,6 +176,22 @@ base::Expression AssetBuilder::buildExpression(const base::Name& name,
     {
         return base::And::create(name, {std::move(condition)});
     }
+
+    // Delete variables from the event when asset is executed (TODO: Find a better way to manage variables)
+    {
+        auto ifVar = [](const std::string& attr) -> bool
+        {
+            return !attr.empty() && attr[0] == syntax::field::VAR_ANCHOR;
+        };
+        auto deleteVariables = base::Term<base::EngineOp>::create("DeleteVariables",
+                                                                  [ifVar](auto e)
+                                                                  {
+                                                                      e->eraseIfKey(ifVar);
+                                                                      return base::result::makeSuccess(e, "");
+                                                                  });
+        consequenceExpressions.emplace_back(std::move(deleteVariables));
+    }
+
     consequence = base::And::create(syntax::asset::CONSEQUENCE_NAME, std::move(consequenceExpressions));
 
     return base::Implication::create(name, std::move(condition), std::move(consequence));

@@ -310,6 +310,22 @@ baseHelperBuilder(const json::Json& definition, const std::shared_ptr<const IBui
 
             auto helperToken = parseRes.value();
             helperName = helperToken.name;
+
+            // Resolve definition
+            for (auto& arg : helperToken.args)
+            {
+                if (arg->isReference())
+                {
+                    auto ref = std::static_pointer_cast<Reference>(arg);
+                    auto isDef = buildCtx->definitions().contains(ref->jsonPath());
+                    if (isDef)
+                    {
+                        auto def = buildCtx->definitions().get(ref->jsonPath());
+                        arg = std::make_shared<Value>(def);
+                    }
+                }
+            }
+
             opArgs = helperToken.args;
         }
     }
