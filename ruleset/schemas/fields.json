@@ -584,6 +584,14 @@
                 "string"
             ]
         },
+        "container.security_context.privileged": {
+            "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nIndicates whether the container is running in privileged mode.",
+            "type": [
+                "boolean",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
         "data_stream.dataset": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe field can contain anything that makes sense to signify the source of the data.\nExamples include `nginx.access`, `prometheus`, `endpoint` etc. For data streams that otherwise fit, but that do not have dataset set we use the value \"generic\" for the dataset value. `event.dataset` should have the same value as `data_stream.dataset`.\nBeyond the Elasticsearch data stream naming criteria noted above, the `dataset` value has additional restrictions:\n  * Must not contain `-`\n  * No longer than 100 characters",
             "type": [
@@ -1555,7 +1563,7 @@
             ]
         },
         "event.created": {
-            "description": "Module: ecs\nIndexerType: date\nArray: False\n\nevent.created contains the date/time when the event was first read by an agent, or by your pipeline.\nThis field is distinct from @timestamp in that @timestamp typically contain the time extracted from the original event.\nIn most situations, these two timestamps will be slightly different. The difference can be used to calculate the delay between your source generating an event, and the time when your agent first processed it. This can be used to monitor your agent's or pipeline's ability to keep up with your event source.\nIn case the two timestamps are identical, @timestamp should be used.",
+            "description": "Module: ecs\nIndexerType: date\nArray: False\n\n`event.created` contains the date/time when the event was first read by an agent, or by your pipeline.\nThis field is distinct from `@timestamp` in that `@timestamp` typically contain the time extracted from the original event.\nIn most situations, these two timestamps will be slightly different. The difference can be used to calculate the delay between your source generating an event, and the time when your agent first processed it. This can be used to monitor your agent's or pipeline's ability to keep up with your event source.\nIn case the two timestamps are identical, `@timestamp` should be used.",
             "type": [
                 "string"
             ]
@@ -1567,7 +1575,7 @@
             ]
         },
         "event.duration": {
-            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nDuration of the event in nanoseconds.\nIf event.start and event.end are known this value should be the difference between the end and start time.",
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nDuration of the event in nanoseconds.\nIf `event.start` and `event.end` are known this value should be the difference between the end and start time.",
             "type": [
                 "number",
                 "string"
@@ -1575,7 +1583,7 @@
             "pattern": "^[\\+\\$].+"
         },
         "event.end": {
-            "description": "Module: ecs\nIndexerType: date\nArray: False\n\nevent.end contains the date when the event ended or when the activity was last observed.",
+            "description": "Module: ecs\nIndexerType: date\nArray: False\n\n`event.end` contains the date when the event ended or when the activity was last observed.",
             "type": [
                 "string"
             ]
@@ -1599,7 +1607,7 @@
             ]
         },
         "event.kind": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis is one of four ECS Categorization Fields, and indicates the highest level in the ECS category hierarchy.\n`event.kind` gives high-level information about what type of information the event contains, without being specific to the contents of the event. For example, values of this field distinguish alert events from metric events.\nThe value of this field can be used to inform how these kinds of events should be handled. They may warrant different retention, different access control, it may also help understand whether the data coming in at a regular interval or not.",
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThis is one of four ECS Categorization Fields, and indicates the highest level in the ECS category hierarchy.\n`event.kind` gives high-level information about what type of information the event contains, without being specific to the contents of the event. For example, values of this field distinguish alert events from metric events.\nThe value of this field can be used to inform how these kinds of events should be handled. They may warrant different retention, different access control, it may also help understand whether the data is coming in at a regular interval or not.",
             "type": [
                 "string"
             ]
@@ -1673,7 +1681,7 @@
             "pattern": "^[\\+\\$].+"
         },
         "event.start": {
-            "description": "Module: ecs\nIndexerType: date\nArray: False\n\nevent.start contains the date when the event started or when the activity was first observed.",
+            "description": "Module: ecs\nIndexerType: date\nArray: False\n\n`event.start` contains the date when the event started or when the activity was first observed.",
             "type": [
                 "string"
             ]
@@ -1729,28 +1737,17 @@
                 "string"
             ]
         },
-        "faas.trigger": {
-            "description": "Module: ecs\nIndexerType: nested\nArray: False\n\nDetails about the function trigger.",
+        "faas.trigger.request_id": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe ID of the trigger request , message, event, etc.",
             "type": [
-                "object",
                 "string"
-            ],
-            "pattern": "^[\\+\\$].+",
-            "additionalProperties": false,
-            "properties": {
-                "request_id": {
-                    "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe ID of the trigger request , message, event, etc.",
-                    "type": [
-                        "string"
-                    ]
-                },
-                "type": {
-                    "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe trigger for the function execution.",
-                    "type": [
-                        "string"
-                    ]
-                }
-            }
+            ]
+        },
+        "faas.trigger.type": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe trigger for the function execution.",
+            "type": [
+                "string"
+            ]
         },
         "faas.version": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe version of a serverless function.",
@@ -4501,11 +4498,27 @@
                 "string"
             ]
         },
+        "process.entry_leader.parent.session_leader.vpid": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVirtual process id.\nThe process id within a pid namespace. This is not necessarily unique across all processes on the host but it is unique within the process namespace that the process exists within.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
         "process.entry_leader.parent.start": {
             "description": "Module: ecs\nIndexerType: date\nArray: False\n\nThe time the process started.",
             "type": [
                 "string"
             ]
+        },
+        "process.entry_leader.parent.vpid": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVirtual process id.\nThe process id within a pid namespace. This is not necessarily unique across all processes on the host but it is unique within the process namespace that the process exists within.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
         },
         "process.entry_leader.pid": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nProcess id.",
@@ -4627,6 +4640,14 @@
             "type": [
                 "string"
             ]
+        },
+        "process.entry_leader.vpid": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVirtual process id.\nThe process id within a pid namespace. This is not necessarily unique across all processes on the host but it is unique within the process namespace that the process exists within.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
         },
         "process.entry_leader.working_directory": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe working directory of the process.",
@@ -4846,6 +4867,14 @@
             "type": [
                 "string"
             ]
+        },
+        "process.group_leader.vpid": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVirtual process id.\nThe process id within a pid namespace. This is not necessarily unique across all processes on the host but it is unique within the process namespace that the process exists within.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
         },
         "process.group_leader.working_directory": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe working directory of the process.",
@@ -5575,6 +5604,14 @@
                 "string"
             ]
         },
+        "process.parent.group_leader.vpid": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVirtual process id.\nThe process id within a pid namespace. This is not necessarily unique across all processes on the host but it is unique within the process namespace that the process exists within.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
         "process.parent.hash.md5": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nMD5 hash.",
             "type": [
@@ -6029,6 +6066,32 @@
                 "string"
             ]
         },
+        "process.parent.thread.capabilities.effective": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThis is the set of capabilities used by the kernel to perform permission checks for the thread.",
+            "type": [
+                "string",
+                "array"
+            ],
+            "pattern": "^[\\+\\$].+",
+            "items": {
+                "type": [
+                    "string"
+                ]
+            }
+        },
+        "process.parent.thread.capabilities.permitted": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThis is a limiting superset for the effective capabilities that the thread may assume.",
+            "type": [
+                "string",
+                "array"
+            ],
+            "pattern": "^[\\+\\$].+",
+            "items": {
+                "type": [
+                    "string"
+                ]
+            }
+        },
         "process.parent.thread.id": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThread ID.",
             "type": [
@@ -6095,6 +6158,14 @@
             "type": [
                 "string"
             ]
+        },
+        "process.parent.vpid": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVirtual process id.\nThe process id within a pid namespace. This is not necessarily unique across all processes on the host but it is unique within the process namespace that the process exists within.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
         },
         "process.parent.working_directory": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe working directory of the process.",
@@ -6471,11 +6542,27 @@
                 "string"
             ]
         },
+        "process.session_leader.parent.session_leader.vpid": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVirtual process id.\nThe process id within a pid namespace. This is not necessarily unique across all processes on the host but it is unique within the process namespace that the process exists within.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
         "process.session_leader.parent.start": {
             "description": "Module: ecs\nIndexerType: date\nArray: False\n\nThe time the process started.",
             "type": [
                 "string"
             ]
+        },
+        "process.session_leader.parent.vpid": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVirtual process id.\nThe process id within a pid namespace. This is not necessarily unique across all processes on the host but it is unique within the process namespace that the process exists within.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
         },
         "process.session_leader.pid": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nProcess id.",
@@ -6598,6 +6685,14 @@
                 "string"
             ]
         },
+        "process.session_leader.vpid": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVirtual process id.\nThe process id within a pid namespace. This is not necessarily unique across all processes on the host but it is unique within the process namespace that the process exists within.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
+        },
         "process.session_leader.working_directory": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe working directory of the process.",
             "type": [
@@ -6621,6 +6716,32 @@
             "type": [
                 "string"
             ]
+        },
+        "process.thread.capabilities.effective": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThis is the set of capabilities used by the kernel to perform permission checks for the thread.",
+            "type": [
+                "string",
+                "array"
+            ],
+            "pattern": "^[\\+\\$].+",
+            "items": {
+                "type": [
+                    "string"
+                ]
+            }
+        },
+        "process.thread.capabilities.permitted": {
+            "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThis is a limiting superset for the effective capabilities that the thread may assume.",
+            "type": [
+                "string",
+                "array"
+            ],
+            "pattern": "^[\\+\\$].+",
+            "items": {
+                "type": [
+                    "string"
+                ]
+            }
         },
         "process.thread.id": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThread ID.",
@@ -6704,6 +6825,14 @@
             "type": [
                 "string"
             ]
+        },
+        "process.vpid": {
+            "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVirtual process id.\nThe process id within a pid namespace. This is not necessarily unique across all processes on the host but it is unique within the process namespace that the process exists within.",
+            "type": [
+                "number",
+                "string"
+            ],
+            "pattern": "^[\\+\\$].+"
         },
         "process.working_directory": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe working directory of the process.",
@@ -8694,7 +8823,7 @@
                                 ]
                             },
                             "name": {
-                                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe display name indicator in an UI friendly format",
+                                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe display name indicator in an UI friendly format\nURL, IP address, email address, registry key, port number, hash value, or other relevant name can serve as the display name.",
                                 "type": [
                                     "string"
                                 ]
@@ -10316,7 +10445,7 @@
             ]
         },
         "threat.indicator.name": {
-            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe display name indicator in an UI friendly format",
+            "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe display name indicator in an UI friendly format\nURL, IP address, email address, registry key, port number, hash value, or other relevant name can serve as the display name.",
             "type": [
                 "string"
             ]

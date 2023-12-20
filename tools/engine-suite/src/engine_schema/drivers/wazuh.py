@@ -27,7 +27,7 @@ def to_engine_schema(yaml_definition: dict, module_name: str) -> dict:
     for name_path, entry in yaml_definition.items():
         field = _entry_to_field(module_name, name_path, entry)
         engine_schema[field.name] = dict()
-        engine_schema[field.name]['type'] = str(field.json_type)
+        engine_schema[field.name]['type'] = str(field.indexer_type)
         engine_schema[field.name]['array'] = field.array
 
     return engine_schema

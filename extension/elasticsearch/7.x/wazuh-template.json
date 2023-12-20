@@ -559,6 +559,14 @@
                     "runtime": {
                         "type": "keyword",
                         "ignore_above": 1024
+                    },
+                    "security_context": {
+                        "type": "object",
+                        "properties": {
+                            "privileged": {
+                                "type": "boolean"
+                            }
+                        }
                     }
                 }
             },
@@ -1275,7 +1283,7 @@
                         "ignore_above": 1024
                     },
                     "original": {
-                        "type": "text"
+                        "type": "keyword"
                     },
                     "outcome": {
                         "type": "keyword",
@@ -1341,7 +1349,7 @@
                         "ignore_above": 1024
                     },
                     "trigger": {
-                        "type": "nested",
+                        "type": "object",
                         "properties": {
                             "request_id": {
                                 "type": "keyword",
@@ -3124,11 +3132,17 @@
                                             },
                                             "start": {
                                                 "type": "date"
+                                            },
+                                            "vpid": {
+                                                "type": "long"
                                             }
                                         }
                                     },
                                     "start": {
                                         "type": "date"
+                                    },
+                                    "vpid": {
+                                        "type": "long"
                                     }
                                 }
                             },
@@ -3249,6 +3263,9 @@
                                         }
                                     }
                                 }
+                            },
+                            "vpid": {
+                                "type": "long"
                             },
                             "working_directory": {
                                 "type": "keyword",
@@ -3450,6 +3467,9 @@
                                         }
                                     }
                                 }
+                            },
+                            "vpid": {
+                                "type": "long"
                             },
                             "working_directory": {
                                 "type": "keyword",
@@ -3845,6 +3865,9 @@
                                     },
                                     "start": {
                                         "type": "date"
+                                    },
+                                    "vpid": {
+                                        "type": "long"
                                     }
                                 }
                             },
@@ -4126,6 +4149,19 @@
                             "thread": {
                                 "type": "object",
                                 "properties": {
+                                    "capabilities": {
+                                        "type": "object",
+                                        "properties": {
+                                            "effective": {
+                                                "type": "keyword",
+                                                "ignore_above": 1024
+                                            },
+                                            "permitted": {
+                                                "type": "keyword",
+                                                "ignore_above": 1024
+                                            }
+                                        }
+                                    },
                                     "id": {
                                         "type": "long"
                                     },
@@ -4180,6 +4216,9 @@
                                         }
                                     }
                                 }
+                            },
+                            "vpid": {
+                                "type": "long"
                             },
                             "working_directory": {
                                 "type": "keyword",
@@ -4446,11 +4485,17 @@
                                             },
                                             "start": {
                                                 "type": "date"
+                                            },
+                                            "vpid": {
+                                                "type": "long"
                                             }
                                         }
                                     },
                                     "start": {
                                         "type": "date"
+                                    },
+                                    "vpid": {
+                                        "type": "long"
                                     }
                                 }
                             },
@@ -4572,6 +4617,9 @@
                                     }
                                 }
                             },
+                            "vpid": {
+                                "type": "long"
+                            },
                             "working_directory": {
                                 "type": "keyword",
                                 "ignore_above": 1024,
@@ -4602,6 +4650,19 @@
                     "thread": {
                         "type": "object",
                         "properties": {
+                            "capabilities": {
+                                "type": "object",
+                                "properties": {
+                                    "effective": {
+                                        "type": "keyword",
+                                        "ignore_above": 1024
+                                    },
+                                    "permitted": {
+                                        "type": "keyword",
+                                        "ignore_above": 1024
+                                    }
+                                }
+                            },
                             "id": {
                                 "type": "long"
                             },
@@ -4662,6 +4723,9 @@
                                 }
                             }
                         }
+                    },
+                    "vpid": {
+                        "type": "long"
                     },
                     "working_directory": {
                         "type": "keyword",
@@ -8128,18 +8192,12 @@
     "order": 1,
     "settings": {
         "index": {
-            "number_of_shards": "3",
-            "number_of_replicas": "0",
-            "auto_expand_replicas": "0-1",
             "mapping": {
                 "total_fields": {
                     "limit": 10000
                 }
             },
-            "refresh_interval": "5s",
-            "query.default_field": [
-                "event.original"
-            ]
+            "refresh_interval": "5s"
         }
     }
 }
