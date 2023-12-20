@@ -62,8 +62,7 @@ from wazuh_testing.utils.configuration import get_test_cases_data, load_configur
 from wazuh_testing.utils import callbacks
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from .. import wait_keepalive, wait_enrollment, check_module_stop, kill_server
-
+from utils import wait_keepalive, wait_enrollment, check_module_stop
 # Marks
 pytestmark = pytest.mark.tier(level=0)
 
@@ -159,8 +158,8 @@ def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuratio
     check_module_stop()
 
     # Reset simulator
-    kill_server(authd_server)
+    authd_server.destroy()
 
     # Reset simulator
-    kill_server(remoted_server)
+    remoted_server.destroy()
     

@@ -61,7 +61,7 @@ from wazuh_testing.utils.configuration import get_test_cases_data, load_configur
 from wazuh_testing.utils.services import control_service
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from .. import wait_keepalive, wait_ack, wait_state_update, wait_agent_notification
+from utils import wait_keepalive, wait_ack, wait_state_update, wait_agent_notification
 
 # Marks
 pytestmark = pytest.mark.tier(level=0)
@@ -149,8 +149,7 @@ def test_agentd_state(test_configuration, test_metadata, set_wazuh_configuration
         check_fields(expected_output, remoted_server)
 
     if remoted_server:
-        remoted_server.clear()
-        remoted_server.shutdown()
+        remoted_server.destroy()
     
     
 def parse_state_file():
@@ -174,6 +173,7 @@ def parse_state_file():
 
     return state
     
+
 def wait_for_custom_message_response(expected_status: str, remoted_server: RemotedSimulator, timeout: int = 60):
     """Request remoted_server the status of the agent
 
@@ -207,6 +207,7 @@ def wait_for_custom_message_response(expected_status: str, remoted_server: Remot
     
     return None
 
+
 def check_fields(expected_output, remoted_server):
     """Check every field agains expected data
 
@@ -237,6 +238,7 @@ def check_fields(expected_output, remoted_server):
                 precondition()
             assert checks[field].get('handler')(expected_value, get_state_callback, expected_output['fields']['status'], remoted_server) 
 
+
 def check_last_ack(expected_value: str=None, get_state_callback=None, expected_status: str=None, remoted_server: RemotedSimulator=None):
     """Check `last_ack` field
 
@@ -266,6 +268,7 @@ def check_last_ack(expected_value: str=None, get_state_callback=None, expected_s
     
     wait_ack()
     return True
+
 
 def check_last_keepalive(expected_value: str=None, get_state_callback=None, expected_status: str=None, remoted_server: RemotedSimulator=None):
     """Check `last_keepalive` field

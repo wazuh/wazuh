@@ -51,6 +51,7 @@ from pathlib import Path
 import sys
 import time
 
+from wazuh_testing.constants.daemons import AGENT_DAEMON
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.paths.variables import AGENTD_STATE
 from wazuh_testing.constants.platforms import WINDOWS
@@ -126,23 +127,22 @@ def test_agentd_state_config(test_configuration, test_metadata, remove_state_fil
         - '.*State file updating thread started.*'
     '''
 
-    control_service('stop', 'wazuh-agentd')
+    control_service('stop', AGENT_DAEMON)
 
     if sys.platform == WINDOWS:
         if test_metadata['agentd_ends']:
             with pytest.raises(ValueError):
                 control_service('start')
             assert (test_metadata['agentd_ends']
-                    is not check_if_process_is_running('wazuh-agentd'))
+                    is not check_if_process_is_running(AGENT_DAEMON))
         else:
             control_service('start')
     else:
-        control_service('start', 'wazuh-agentd')
+        control_service('start', AGENT_DAEMON)
         # Sleep enough time to Wazuh load agent.state_interval configuration and
         # boot wazuh-agentd
         time.sleep(1) 
-        assert (test_metadata['agentd_ends']
-                    is not check_if_process_is_running('wazuh-agentd'))
+        assert (test_metadata['agentd_ends']is not check_if_process_is_running(AGENT_DAEMON))
     
     # Check if the test requires checking state file existence
     if test_metadata['state_file_exist']:
@@ -151,7 +151,7 @@ def test_agentd_state_config(test_configuration, test_metadata, remove_state_fil
 
     # Follow ossec.log to find desired messages by a callback
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-
     wazuh_log_monitor.start(callback=callbacks.generate_callback(str(test_metadata['event_monitor'])))
-    
     assert (wazuh_log_monitor.callback_result != None), f'Error invalid configuration event not detected'
+
+    control_service('stop')

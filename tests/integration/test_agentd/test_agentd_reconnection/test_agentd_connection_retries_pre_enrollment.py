@@ -58,7 +58,7 @@ from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from .. import wait_keepalive, kill_server
+from utils import wait_keepalive
 
 # Marks
 pytestmark = pytest.mark.tier(level=0)
@@ -143,5 +143,5 @@ def test_agentd_connection_retries_pre_enrollment(test_metadata, set_wazuh_confi
     wait_keepalive()
 
     # Reset simulator
-    kill_server(remoted_server)
+    remoted_server.destroy()
     

@@ -55,7 +55,7 @@ references:
 tags:
     - enrollment
 '''
-from datetime import timedelta
+from datetime import timedelta, datetime
 import pytest
 from pathlib import Path
 import sys
@@ -67,11 +67,10 @@ from wazuh_testing.modules.agentd.patterns import AGENTD_TRYING_CONNECT, AGENTD_
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils import callbacks
-from wazuh_testing.utils.client_keys import add_client_keys_entry
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from .. import parse_time_from_log_line, wait_connect, wait_server_rollback, check_connection_try, kill_server
+from utils import wait_connect, wait_server_rollback, check_connection_try
 
 # Marks
 pytestmark = pytest.mark.tier(level=0)
@@ -186,7 +185,7 @@ def test_agentd_parametrized_reconnections(test_metadata, set_wazuh_configuratio
         wait_connect()
 
         # Shutdown RemotedSimulator
-        kill_server(remoted_server)
+        remoted_server.destroy()
 
     # Wait for server rollback
     wait_server_rollback()
@@ -200,3 +199,20 @@ def test_agentd_parametrized_reconnections(test_metadata, set_wazuh_configuratio
     if test_metadata['ENROLL'] == 'yes':
         wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_CONNECTED_TO_SERVER))
         assert (wazuh_log_monitor.callback_result != None), f'Connected to the server message not found'
+
+
+def parse_time_from_log_line(log_line):
+    """Create a datetime object from a date in a string.
+
+    Args:
+        log_line (str): String with date.
+
+    Returns:
+        datetime: datetime object with the parsed time.
+    """
+    data = log_line.split(" ")
+    (year, month, day) = data[0].split("/")
+    (hour, minute, second) = data[1].split(":")
+    log_time = datetime(year=int(year), month=int(month), day=int(day), hour=int(hour), minute=int(minute),
+                        second=int(second))
+    return log_time

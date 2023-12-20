@@ -51,6 +51,7 @@ import sys
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG, AGENTD_TIMEOUT
+from wazuh_testing.modules.agentd.patterns import * 
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
@@ -60,7 +61,6 @@ from wazuh_testing.utils.configuration import get_test_cases_data, load_configur
 from wazuh_testing.utils.services import control_service
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from .. import get_regex, kill_server
 
 # Marks
 pytestmark = pytest.mark.tier(level=0)
@@ -200,6 +200,35 @@ def test_agentd_multi_server(test_configuration, test_metadata, set_wazuh_config
 
     # Shutdown simulators
     for i in range(len(remoted_servers)):
-        kill_server(remoted_servers[i])
-    kill_server(authd_server)
+        if(remoted_servers[i]):
+            remoted_servers[i].destroy()
+
+    if(authd_server):
+        authd_server.destroy()
     
+
+def get_regex(pattern, server_address, server_port):
+    """Return a regex and the values to complete it
+
+    Args:
+        pattern (str): String refering to the framework patterns.
+        server_address (str): String with server ip.
+        server_port (str): String with server port.
+
+    Returns:
+        regex (regex): refered by framework patter.
+        values (dict): values to complete regex 
+    """
+    if(pattern == 'AGENTD_TRYING_CONNECT' or pattern == 'AGENTD_UNABLE_TO_CONNECT'):
+        regex = globals()[pattern]
+        values = {'IP': str(server_address), 'PORT':str(server_port)}
+    elif (pattern == 'AGENTD_REQUESTING_KEY'):
+        regex = globals()[pattern]
+        values = {'IP': str(server_address)}
+    elif (pattern == 'AGENTD_CONNECTED_TO_ENROLLMENT'):
+        regex = globals()[pattern]
+        values = {'IP': '', 'PORT': ''}
+    else:
+        regex = globals()[pattern]
+        values = {}
+    return regex, values

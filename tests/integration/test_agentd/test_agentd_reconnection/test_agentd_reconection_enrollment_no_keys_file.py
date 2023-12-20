@@ -58,7 +58,7 @@ from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from .. import wait_keepalive, kill_server, wait_enrollment_try
+from utils import wait_keepalive, wait_enrollment_try
 
 # Marks
 pytestmark = pytest.mark.tier(level=0)
@@ -146,7 +146,7 @@ def test_agentd_reconection_enrollment_no_keys_file(test_metadata, set_wazuh_con
     wait_keepalive()
     
     # Reset simulator
-    kill_server(remoted_server)
+    remoted_server.destroy()
 
     remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'], mode = 'WRONG_KEY')
     remoted_server.start()
@@ -155,7 +155,7 @@ def test_agentd_reconection_enrollment_no_keys_file(test_metadata, set_wazuh_con
     wait_enrollment_try()
 
     # Reset simulator
-    kill_server(remoted_server)
+    remoted_server.destroy()
 
     remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
     remoted_server.start()
@@ -163,7 +163,7 @@ def test_agentd_reconection_enrollment_no_keys_file(test_metadata, set_wazuh_con
     wait_keepalive()
 
     # Reset simulator
-    kill_server(authd_server)
+    authd_server.destroy()
 
     # Reset simulator
-    kill_server(remoted_server)
+    remoted_server.destroy()
