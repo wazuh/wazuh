@@ -109,9 +109,9 @@ void test_hmac_file_popen_fail(void **state)
     char file_name[256];
     strncpy(file_name, "/tmp/tmp_file-XXXXXX", 256);
 
-    expect_value(__wrap_wfopen, filename, (const char*)file_name);
-    expect_string(__wrap_wfopen, modes, "r");
-    will_return(__wrap_wfopen, 1);
+    expect_value(__wrap_fopen, __filename, file_name);
+    expect_string(__wrap_fopen, __modes, "r");
+    will_return(__wrap_fopen, 0);
 
     assert_int_equal(OS_HMAC_SHA1_File(key, file_name, buffer, OS_TEXT), -1);
 }
@@ -122,7 +122,7 @@ int main(void) {
         cmocka_unit_test(test_hmac_string_length_key),
         cmocka_unit_test(test_hmac_file_length_key),
         cmocka_unit_test(test_hmac_file),
-        cmocka_unit_test_setup_teardown(test_hmac_file_popen_fail, setup_group, teardown_group)
+        cmocka_unit_test_setup_teardown(test_hmac_file_popen_fail, setup_group, teardown_group),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
