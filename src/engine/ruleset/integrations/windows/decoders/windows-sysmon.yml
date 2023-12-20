@@ -323,7 +323,7 @@ normalize:
    map:
     - message: $windows.EventData.Type
 
- - check: string_not_equal($event.code,7)
+ - check: string_not_equal($event.code, "7")
    map:
    - process.pe.original_file_name: $windows.EventData.OriginalFileName
    - process.pe.company: $windows.EventData.Company
