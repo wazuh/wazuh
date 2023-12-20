@@ -34,7 +34,7 @@ enum class HelperType
 };
 
 base::Expression
-baseHelperBuiler(const json::Json& definition, const std::shared_ptr<const IBuildCtx>& buildCtx, HelperType helperType);
+baseHelperBuilder(const json::Json& definition, const std::shared_ptr<const IBuildCtx>& buildCtx, HelperType helperType);
 
 } // namespace builder::builders
 

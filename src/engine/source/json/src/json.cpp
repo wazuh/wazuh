@@ -304,7 +304,6 @@ std::optional<int64_t> Json::getIntAsInt64(std::string_view path) const
     }
 }
 
-
 std::optional<float_t> Json::getFloat(std::string_view path) const
 {
     auto pp = rapidjson::Pointer(path.data());
@@ -1225,6 +1224,17 @@ bool Json::eraseIfKey(const std::function<bool(const std::string&)>& func, bool 
     }
 
     return modified;
+}
+
+Json Json::makeObjectJson(const std::string& key, const json::Json& value)
+{
+    rapidjson::Document doc(rapidjson::kObjectType);
+    {
+        rapidjson::Value k(key.c_str(), key.size(), doc.GetAllocator());
+        rapidjson::Value v(value.m_document, doc.GetAllocator());
+        doc.AddMember(k, v, doc.GetAllocator());
+    }
+    return Json(std::move(doc));
 }
 
 } // namespace json

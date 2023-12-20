@@ -1,8 +1,5 @@
 name: decoder/windows-powershell-operational/0
 
-parents:
-  - decoder/windows-event/0
-
 metadata:
   module: Windows Powershell/Operational
   title: Decoder for Windows Powershell Operational logs
@@ -14,6 +11,9 @@ metadata:
     date: 2023/10/10
   references:
     - https://learn.microsoft.com/en-us/powershell/scripting/windows-powershell/wmf/whats-new/script-logging?view=powershell-7.3
+
+parents:
+  - decoder/windows-event/0
 
 check:
   - windows.System.Channel.#text: Microsoft-Windows-PowerShell/Operational
