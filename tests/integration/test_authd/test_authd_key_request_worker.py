@@ -46,14 +46,12 @@ os_version:
 tags:
     - key request
 '''
-import os
-
 from pathlib import Path
 
 import pytest
 from wazuh_testing.modules.authd.utils import CLUSTER_DATA_HEADER_SIZE
 from wazuh_testing.constants.paths.sockets import MODULESD_C_INTERNAL_SOCKET_PATH, MODULESD_KREQUEST_SOCKET_PATH
-from wazuh_testing.tools import WorkerMID
+from wazuh_testing.tools.mitm import WorkerMID
 from wazuh_testing.utils.configuration import load_configuration_template, get_test_cases_data
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH, SCRIPTS_FOLDER_PATH

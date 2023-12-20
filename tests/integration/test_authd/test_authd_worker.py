@@ -36,8 +36,6 @@ os_version:
 tags:
     - enrollment
 '''
-import os
-import subprocess
 import time
 from pathlib import Path
 
@@ -47,7 +45,7 @@ from wazuh_testing.constants.paths.logs import WAZUH_CLUSTER_LOGS_PATH
 from wazuh_testing.constants.paths.sockets import MODULESD_C_INTERNAL_SOCKET_PATH
 from wazuh_testing.constants.ports import DEFAULT_SSL_REMOTE_ENROLLMENT_PORT
 from wazuh_testing.constants.daemons import AUTHD_DAEMON, CLUSTER_DAEMON
-from wazuh_testing.tools import WorkerMID
+from wazuh_testing.tools.mitm import WorkerMID
 from wazuh_testing.utils.configuration import load_configuration_template, get_test_cases_data
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH

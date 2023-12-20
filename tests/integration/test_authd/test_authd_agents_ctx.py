@@ -58,7 +58,7 @@ from wazuh_testing.utils.file import truncate_file, remove_file, recursive_direc
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils.services import control_service, check_daemon_status
 from wazuh_testing.modules.api.utils import remove_groups, set_up_groups
-from wazuh_testing.tools.wazuh_manager import remove_all_agents
+from wazuh_testing.utils.manage_agents import remove_all_agents
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
