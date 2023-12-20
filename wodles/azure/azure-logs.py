@@ -871,6 +871,14 @@ def offset_to_datetime(offset: str):
 if __name__ == "__main__":
     args = get_script_arguments()
 
+    # Get log level
+    log_level = args.debug_level
+
+    # Set log level
+    azure_logger.set_level(
+        log_level=log_level
+    )
+
     if not orm.check_database_integrity():
         sys.exit(1)
 
