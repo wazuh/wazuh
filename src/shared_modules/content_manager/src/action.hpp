@@ -68,6 +68,24 @@ public:
     }
 
     /**
+     * @brief Action execution with exclusivity: The action is only executed if there isn't another action in progress.
+     *
+     * @param id Action ID.
+     * @param offset Manually set current offset to process.
+     *
+     * @return True if the execution was made, false otherwise.
+     */
+    bool runActionExclusively(const ActionID id, const int offset = -1)
+    {
+        auto expectedValue {false};
+        if (m_actionInProgress.compare_exchange_strong(expectedValue, true))
+        {
+            runAction(id, offset);
+        }
+        return !expectedValue;
+    }
+
+    /**
      * @brief Action scheduler start.
      *
      * @param interval Scheduler interval.
@@ -83,31 +101,30 @@ public:
                 std::unique_lock<std::mutex> lock(m_mutex);
 
                 // Run action on start, independently of the interval time.
-                logInfo(WM_CONTENTUPDATER, "Starting on-start action for '%s'", m_topicName.c_str());
-                runAction(ActionID::SCHEDULED);
+                runActionScheduled();
 
                 while (m_schedulerRunning)
                 {
                     m_cv.wait_for(lock, std::chrono::seconds(this->m_interval));
                     if (m_schedulerRunning)
                     {
-                        bool expected = false;
-                        if (m_actionInProgress.compare_exchange_strong(expected, true))
-                        {
-                            logInfo(WM_CONTENTUPDATER, "Starting scheduled action for '%s'", m_topicName.c_str());
-                            runAction(ActionID::SCHEDULED);
-                        }
-                        else
-                        {
-                            // LCOV_EXCL_START
-                            logInfo(WM_CONTENTUPDATER,
-                                    "Action in progress for '%s', scheduled request ignored",
-                                    m_topicName.c_str());
-                            // LCOV_EXCL_STOP
-                        }
+                        runActionScheduled();
                     }
                 }
             });
+    }
+
+    /**
+     * @brief Runs scheduled action. Wrapper of runActionExclusively().
+     *
+     */
+    void runActionScheduled()
+    {
+        logInfo(WM_CONTENTUPDATER, "Starting scheduled action for '%s'", m_topicName.c_str());
+        if (!runActionExclusively(ActionID::SCHEDULED))
+        {
+            logInfo(WM_CONTENTUPDATER, "Action in progress for '%s', scheduled request ignored", m_topicName.c_str());
+        }
     }
 
     /**
@@ -154,23 +171,16 @@ public:
     }
 
     /**
-     * @brief Runs ondemand action.
+     * @brief Runs ondemand action. Wrapper of runActionExclusively().
      *
      * @param offset Manually set current offset to process. Default -1
      */
     void runActionOnDemand(const int offset = -1)
     {
-        auto expected = false;
-        if (m_actionInProgress.compare_exchange_strong(expected, true))
+        logInfo(WM_CONTENTUPDATER, "Starting on-demand action for '%s'", m_topicName.c_str());
+        if (!runActionExclusively(ActionID::ON_DEMAND, offset))
         {
-            logInfo(WM_CONTENTUPDATER, "Starting on-demand action for '%s'", m_topicName.c_str());
-            runAction(ActionID::ON_DEMAND, offset);
-        }
-        else
-        {
-            // LCOV_EXCL_START
             logInfo(WM_CONTENTUPDATER, "Action in progress for '%s', on-demand request ignored", m_topicName.c_str());
-            // LCOV_EXCL_STOP
         }
     }
 
