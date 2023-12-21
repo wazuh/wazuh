@@ -22,59 +22,68 @@
 
 int OS_HMAC_SHA1_Str(const char *key, const char *text, os_sha1 output)
 {
-    unsigned char result[SHA_DIGEST_LENGTH + 1];
-    unsigned char o_key_pad[HMAC_SHA1_BLOCKSIZE + 1];
-    unsigned char i_key_pad[HMAC_SHA1_BLOCKSIZE + 1];
-    unsigned char key_temp[HMAC_SHA1_BLOCKSIZE + 1];
+    unsigned char result[EVP_MAX_MD_SIZE];
+    size_t len, key_length;
+    EVP_MAC *hmac = NULL;
+    EVP_MAC_CTX *ctx = NULL;
+    OSSL_PARAM params[3];
+    os_sha1 sha_key;
+    int ret = -1;
 
-    int i;
-    size_t key_length;
-    size_t text_length;
-    SHA_CTX context;
+    hmac = EVP_MAC_fetch(NULL, "HMAC", NULL);
+    if (!hmac) {
+        goto cleanup;
+    }
+
+    ctx = EVP_MAC_CTX_new(hmac);
+    if (!ctx) {
+        goto cleanup;
+    }
 
     key_length = strlen(key);
-    text_length = strlen(text);
-
     if (key_length > HMAC_SHA1_BLOCKSIZE){
-        os_sha1 sha_key;
         OS_SHA1_Str(key, key_length, sha_key);
-        key_length = strlen(sha_key);
-        memcpy(key_temp, sha_key, key_length);
-    }
-    else {
-        memcpy(key_temp, key, key_length);
+        key = sha_key;
+        key_length = SHA_DIGEST_LENGTH;
     }
 
-    memset(o_key_pad, 0, sizeof(o_key_pad));
-    memset(i_key_pad, 0, sizeof(i_key_pad));
-    memcpy(o_key_pad, key_temp, key_length);
-    memcpy(i_key_pad, key_temp, key_length);
+    params[0] = OSSL_PARAM_construct_utf8_string("digest", "SHA1", 0);
+    params[1] = OSSL_PARAM_construct_octet_string(OSSL_MAC_PARAM_KEY, (void*)key, key_length);
+    params[2] = OSSL_PARAM_construct_end();
 
-    for (i = 0; i < HMAC_SHA1_BLOCKSIZE; i++){
-        o_key_pad[i] ^= 0x5c;
-        i_key_pad[i] ^= 0x36;
+    if (!EVP_MAC_init(ctx, (unsigned char *)key, strlen(key), params)) {
+        goto cleanup;
     }
 
-    SHA1_Init(&context);
+    if (!EVP_MAC_update(ctx, (unsigned char *)text, strlen(text))) {
+        goto cleanup;
+    }
 
-    SHA1_Update(&context, i_key_pad, HMAC_SHA1_BLOCKSIZE);
-    SHA1_Update(&context, text, text_length);
+    if (!EVP_MAC_final(ctx, result, &len, sizeof(result))) {
+        goto cleanup;
+    }
 
-    SHA1_Final(result, &context);
+    if ((len * 2) + 1 > sizeof(os_sha1)) {
+        goto cleanup;
+    }
 
-
-    SHA1_Init(&context);
-
-    SHA1_Update(&context, o_key_pad, HMAC_SHA1_BLOCKSIZE);
-    SHA1_Update(&context, result, SHA_DIGEST_LENGTH);
-
-    SHA1_Final(result, &context);
-
-    for (i = 0; i < SHA_DIGEST_LENGTH; i++) {
+    for (size_t i = 0; i < len; i++) {
         snprintf(output + i * 2, 3, "%02x", result[i]);
     }
 
-    return 0;
+    output[len * 2] = '\0';
+    ret = 0;
+
+cleanup:
+    if (ctx) {
+        EVP_MAC_CTX_free(ctx);
+    }
+
+    if (hmac) {
+        EVP_MAC_free(hmac);
+    }
+
+    return ret;
 }
 
 int OS_HMAC_SHA1_File(const char *key, const char *file_path, os_sha1 output, int mode)
