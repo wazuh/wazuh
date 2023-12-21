@@ -34,7 +34,6 @@ daemons_handler_configuration = {'all_daemons': True}
 local_internal_options = {REMOTED_DEBUG: '2'}
 
 
-
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
 def test_syslog_message(test_configuration, test_metadata, configure_local_internal_options, truncate_monitored_files,
@@ -74,11 +73,8 @@ def test_syslog_message(test_configuration, test_metadata, configure_local_inter
     syslog_simulator_thread = thread_executor.ThreadExecutor(run_syslog_simulator.syslog_simulator, {'parameters': syslog_simulator_parameters})
     syslog_simulator_thread.start()
 
-
     # Wait until syslog simulator is started
     time.sleep(SYSLOG_SIMULATOR_START_TIME)
-
-
 
     # Read the events log data
     log_monitor_archives = FileMonitor(ARCHIVES_LOG_PATH)

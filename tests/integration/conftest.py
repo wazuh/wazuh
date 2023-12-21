@@ -651,6 +651,7 @@ def autostart_simulators(request: pytest.FixtureRequest) -> None:
         authd.shutdown() if create_authd else None
         remoted.shutdown() if create_remoted else None
 
+
 @pytest.fixture()
 def simulate_agents(test_metadata):
 
