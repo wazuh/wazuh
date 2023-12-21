@@ -73,10 +73,8 @@ def test_syslog_message_parser(test_configuration, test_metadata, configure_loca
     syslog_simulator_thread = thread_executor.ThreadExecutor(run_syslog_simulator.syslog_simulator, {'parameters': syslog_simulator_parameters})
     syslog_simulator_thread.start()
 
-
     # Wait until syslog simulator is started
     time.sleep(SYSLOG_SIMULATOR_START_TIME)
-
 
     # Read the events log data
     log_monitor = FileMonitor(ARCHIVES_LOG_PATH)

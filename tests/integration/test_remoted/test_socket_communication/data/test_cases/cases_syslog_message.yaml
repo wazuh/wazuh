@@ -51,7 +51,6 @@
     protocol: udp
 
 
-
 - name: Syslog_message failed_login_sshd_pri_header
   description: Send syslog message
   configuration_parameters:
@@ -200,7 +199,6 @@
 
     port: '514'
     protocol: tcp
-
 
 
 - name: Syslog_message dummy_pri_header

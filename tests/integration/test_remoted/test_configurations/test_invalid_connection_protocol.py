@@ -80,7 +80,6 @@ def test_invalid_connection_protocol(test_configuration, test_metadata, configur
         log_monitor.start(callback=generate_callback(regex=patterns.IGNORED_INVALID_PROTOCOL, replacement={"protocol": invalid_protocol}))
         assert invalid_protocol in log_monitor.callback_result
 
-
     #detect if warning message is created when no valid protocol is provided.
     if len(test_metadata['valid_protocol']) == 0:
         log_monitor.start(callback=generate_callback(patterns.ERROR_GETTING_PROTOCOL))
