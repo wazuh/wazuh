@@ -307,6 +307,29 @@ class ClusterLogger(WazuhLogger):
         self.logger.setLevel(debug_level)
 
 
+def log_subprocess_execution(logger_instance: logging.Logger, logs: dict):
+    """Log messages returned by functions that are executed in cluster's subprocesses.
+
+    Parameters
+    ----------
+    logger_instance: Logger object
+        Instance of the used logger.
+    logs: dict
+        Dict containing messages of different logging level.
+    """
+    if 'debug' in logs and logs['debug']:
+        logger_instance.debug(f"{dict(logs['debug'])}")
+    if 'debug2' in logs and logs['debug2']:
+        logger_instance.debug2(f"{dict(logs['debug2'])}")
+    if 'warning' in logs and logs['warning']:
+        logger_instance.warning(f"{dict(logs['warning'])}")
+    if 'error' in logs and logs['error']:
+        logger_instance.error(f"{dict(logs['error'])}")
+    if 'generic_errors' in logs and logs['generic_errors']:
+        for error in logs['generic_errors']:
+            logger_instance.error(error, exc_info=False)
+
+
 def process_spawn_sleep(child):
     """Task to force the cluster pool spawn all its children and create their PID files.
 

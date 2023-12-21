@@ -171,7 +171,7 @@ void start_agent(int is_startup)
         sleep(agt->server[current_server_id].retry_interval);
 
         /* Wait for server reply */
-        mwarn(AG_WAIT_SERVER, agt->server[current_server_id].rip);
+        mwarn(AG_WAIT_SERVER, agt->server[current_server_id].rip, __ossec_version);
 
         /* If there is a next server, try it */
         if (agt->server[current_server_id + 1].rip) {

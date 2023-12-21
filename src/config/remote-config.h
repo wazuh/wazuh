@@ -26,7 +26,7 @@
 #define REMOTED_NET_PROTOCOL_TCP_UDP (REMOTED_NET_PROTOCOL_TCP | REMOTED_NET_PROTOCOL_UDP) ///< Either UDP or TCP
 #define REMOTED_RIDS_CLOSING_TIME_DEFAULT   (5 * 60) ///< Default rids_closing_time value (5 minutes)
 
-#define REMOTED_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT true   ///< Default allow_higher_versions value (true)
+#define REMOTED_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT false  ///< Default allow_higher_versions value (false)
 
 #include "shared.h"
 #include "global-config.h"
