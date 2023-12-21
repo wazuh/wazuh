@@ -34,11 +34,11 @@ import signal
 import sys
 
 # Local imports
+from aws_tools import (aws_logger, get_script_arguments, get_aws_config_params, ALL_REGIONS,
+                       SECURITY_LAKE_IAM_ROLE_AUTHENTICATION_URL, arg_validate_security_lake_auth_params, handler)
 import buckets_s3
 import services
 import subscribers
-from aws_tools import (aws_logger, get_script_arguments, get_aws_config_params, ALL_REGIONS,
-                       SECURITY_LAKE_IAM_ROLE_AUTHENTICATION_URL, arg_validate_security_lake_auth_params, handler)
 
 
 def main(argv):
@@ -50,6 +50,7 @@ def main(argv):
 
     # Set logging level
     aws_logger.set_level(log_level=int(log_lvl))
+
 
     try:
         if options.logBucket:
