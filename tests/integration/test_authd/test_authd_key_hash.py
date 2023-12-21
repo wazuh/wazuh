@@ -37,8 +37,6 @@ os_version:
 tags:
     - enrollment
 '''
-
-import subprocess
 import time
 
 import pytest
@@ -73,25 +71,6 @@ receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 daemons_handler_configuration = {'all_daemons': True}
 
 # Tests
-@pytest.fixture(scope='function')
-def set_up_groups(test_metadata, request):
-    """
-    Set pre-existent groups.
-    """
-
-    groups = test_metadata['groups']
-
-    for group in groups:
-        if(group):
-            subprocess.call(['/var/ossec/bin/agent_groups', '-a', '-g', f'{group}', '-q'])
-
-    yield
-
-    for group in groups:
-        if(group):
-            subprocess.call(['/var/ossec/bin/agent_groups', '-r', '-g', f'{group}', '-q'])
-
-
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_ossec_auth_messages_with_key_hash(test_configuration, test_metadata, set_wazuh_configuration,
                                            configure_sockets_environment_module, truncate_monitored_files,

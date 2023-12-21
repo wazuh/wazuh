@@ -74,13 +74,12 @@ mitm_master = WorkerMID(address=MODULESD_C_INTERNAL_SOCKET_PATH, family='AF_UNIX
 monitored_sockets_params = [('wazuh-clusterd', mitm_master, True), ('wazuh-authd', None, True)]
 receiver_sockets, monitored_sockets = None, None
 
-daemons_handler_configuration = {'all_daemons': True}
 
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_authd_key_request_worker(test_configuration, test_metadata, set_wazuh_configuration,
-                                  copy_tmp_script, truncate_monitored_files_module, configure_sockets_environment_module,
-                                  connect_to_sockets_module):
+                                  configure_sockets_environment, copy_tmp_script,
+                                  connect_to_sockets):
     '''
     description:
         Checks that every message from the worker is correctly formatted for master,
@@ -99,7 +98,7 @@ def test_authd_key_request_worker(test_configuration, test_metadata, set_wazuh_c
         - set_wazuh_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
-        - configure_sockets_environment:
+        - configure_sockets_environment_function:
             type: fixture
             brief: Configure the socket listener to receive and send messages on the sockets.
         - copy_tmp_script:

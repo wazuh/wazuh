@@ -2,7 +2,6 @@ import shutil
 import pytest
 import time
 import os
-import yaml
 
 from wazuh_testing import logger
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, WAZUH_API_LOG_FILE_PATH, WAZUH_API_JSON_LOG_FILE_PATH
@@ -10,8 +9,10 @@ from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH,
 from wazuh_testing.utils.db_queries.global_db import clean_agents_from_db, create_or_update_agent
 from wazuh_testing.utils import file
 from wazuh_testing.utils.callbacks import generate_callback
+from wazuh_testing.utils.agent_groups import create_group, delete_group
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.modules.authd import PREFIX
+from wazuh_testing.modules.authd.utils import clean_diff, clean_rids, clean_agents_timestamp
 from wazuh_testing.constants.daemons import AUTHD_DAEMON
 from wazuh_testing.utils.services import control_service
 from wazuh_testing.constants.api import WAZUH_API_PORT
@@ -212,3 +213,28 @@ def generate_ca_certificate(test_metadata):
         controller.generate_agent_certificates(SSL_AGENT_PRIVATE_KEY, SSL_AGENT_CERT,
                                                WRONG_IP if option == 'INCORRECT HOST' else AGENT_IP, signed=will_sign)
     controller.store_ca_certificate(controller.get_root_ca_cert(), SSL_AGENT_CA)
+
+
+@pytest.fixture(scope="function")
+def set_up_groups(test_metadata, request):
+    groups = test_metadata['groups']
+    for group in groups:
+        if(group):
+            create_group(group)
+    yield
+    for group in groups:
+        if(group):
+            delete_group(group)
+
+
+@pytest.fixture()
+def clean_agents_ctx(stop_authd_function):
+    clean_rids()
+    clean_agents_timestamp()
+    clean_diff()
+
+    yield
+
+    clean_rids()
+    clean_agents_timestamp()
+    clean_diff()

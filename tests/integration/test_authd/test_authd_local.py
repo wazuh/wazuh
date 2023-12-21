@@ -37,8 +37,6 @@ os_version:
 tags:
     - enrollment
 '''
-import os
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -68,25 +66,6 @@ daemons_handler_configuration = {'all_daemons': True}
 # TODO Replace or delete
 monitored_sockets_params = [(WAZUH_DB_DAEMON, None, True), (AUTHD_DAEMON, None, True)]
 receiver_sockets, monitored_sockets = None, None
-
-# Fixtures
-@pytest.fixture(scope='function')
-def set_up_groups(test_metadata, request):
-    """
-    Set pre-existent groups.
-    """
-
-    groups = test_metadata['groups']
-
-    for group in groups:
-        if(group):
-            subprocess.call(['/var/ossec/bin/agent_groups', '-a', '-g', f'{group}', '-q'])
-
-    yield
-
-    for group in groups:
-        if(group):
-            subprocess.call(['/var/ossec/bin/agent_groups', '-r', '-g', f'{group}', '-q'])
 
 
 # Tests

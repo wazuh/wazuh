@@ -44,8 +44,6 @@ references:
 tags:
     - enrollment
 '''
-import os
-import subprocess
 import time
 
 import pytest
@@ -82,19 +80,6 @@ daemons_handler_configuration = {'all_daemons': True}
 
 
 # Tests
-
-@pytest.fixture(scope="function")
-def set_up_groups(test_metadata, request):
-    groups = test_metadata['groups']
-    for group in groups:
-        if(group):
-            subprocess.call(['/var/ossec/bin/agent_groups', '-a', '-g', f'{group}', '-q'])
-    yield
-    for group in groups:
-        if(group):
-            subprocess.call(['/var/ossec/bin/agent_groups', '-r', '-g', f'{group}', '-q'])
-
-
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_ossec_auth_messages(test_configuration, test_metadata, set_wazuh_configuration, daemons_handler_module,                          
                              truncate_monitored_files, configure_sockets_environment, daemons_handler,

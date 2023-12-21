@@ -44,21 +44,14 @@ references:
 tags:
     - enrollment
 '''
-import os
-import subprocess
-import time
 from pathlib import Path
 
 import pytest
-from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.constants.paths.sockets import AUTHD_SOCKET_PATH, QUEUE_AGENTS_TIMESTAMP_PATH, QUEUE_DIFF_PATH, QUEUE_RIDS_PATH
-from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH
+from wazuh_testing.constants.paths.sockets import AUTHD_SOCKET_PATH
 from wazuh_testing.constants.ports import DEFAULT_SSL_REMOTE_ENROLLMENT_PORT
-from wazuh_testing.utils.file import truncate_file, remove_file, recursive_directory_creation
-from wazuh_testing.tools.monitors import file_monitor
-from wazuh_testing.utils.services import control_service, check_daemon_status
 from wazuh_testing.modules.api.utils import remove_groups, set_up_groups
 from wazuh_testing.utils.manage_agents import remove_all_agents
+from wazuh_testing.modules.authd import utils
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
@@ -87,281 +80,11 @@ timeout = 10
 login_attempts = 3
 sleep = 1
 
-@pytest.fixture()
-def clean_agents_ctx(stop_authd_function):
-    time.sleep(1)
-
-    clean_rids()
-    clean_agents_timestamp()
-    clean_diff()
-
-    yield
-
-    clean_rids()
-    clean_agents_timestamp()
-    clean_diff()
-
-
-def wait_server_connection():
-    """Wait until agentd has begun"""
-
-    def callback_agentd_startup(line):
-        if 'Accepting connections on port 1515' in line:
-            return line
-        return None
-
-    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-    log_monitor.start(timeout=30, callback=callback_agentd_startup)
-    assert log_monitor.callback_result
-
-
-def clean_diff():
-    try:
-        remove_file(QUEUE_DIFF_PATH)
-        recursive_directory_creation(QUEUE_DIFF_PATH)
-        os.chmod(QUEUE_DIFF_PATH, 0o777)
-    except Exception as e:
-        print('Failed to delete %s. Reason: %s' % (QUEUE_DIFF_PATH, e))
-
-
-def clean_rids():
-    for filename in os.listdir(QUEUE_RIDS_PATH):
-        file_path = os.path.join(QUEUE_RIDS_PATH, filename)
-        if "sender_counter" not in file_path:
-            try:
-                os.unlink(file_path)
-            except Exception as e:
-                print('Failed to delete %s. Reason: %s' % (file_path, e))
-
-
-def clean_agents_timestamp():
-    truncate_file(QUEUE_AGENTS_TIMESTAMP_PATH)
-
-
-def check_agent_groups(id, expected, timeout=30):
-    subprocess.call(['/var/ossec/bin/agent_groups', '-s', '-i', id, '-q'])
-    wait = time.time() + timeout
-    while time.time() < wait:
-        groups_created = subprocess.check_output("/var/ossec/bin/agent_groups")
-        if expected in str(groups_created):
-            return True
-    return False
-
-
-def check_diff(name, expected, timeout=30):
-    diff_path = os.path.join(QUEUE_DIFF_PATH, name)
-    wait = time.time() + timeout
-    while time.time() < wait:
-        ret = os.path.exists(diff_path)
-        if ret == expected:
-            return True
-    return False
-
-
-def check_client_keys(id, expected):
-    found = False
-    try:
-        with open(WAZUH_CLIENT_KEYS_PATH) as client_file:
-            client_lines = client_file.read().splitlines()
-            for line in client_lines:
-                data = line.split(" ")
-                if data[0] == id:
-                    found = True
-                    break
-    except IOError:
-        raise
-
-    if found == expected:
-        return True
-    else:
-        return False
-
-
-def check_agent_timestamp(id, name, ip, expected):
-    line = "{} {} {}".format(id, name, ip)
-    found = False
-    try:
-        with open(QUEUE_AGENTS_TIMESTAMP_PATH) as file:
-            file_lines = file.read().splitlines()
-            for file_line in file_lines:
-                if line in file_line:
-                    found = True
-                    break
-    except IOError:
-        raise
-    if found == expected:
-        return True
-    else:
-        return False
-
-
-def check_rids(id, expected):
-    agent_info_path = os.path.join(QUEUE_RIDS_PATH, id)
-    if expected == os.path.exists(agent_info_path):
-        return True
-    else:
-        return False
-
-
-def create_rids(id):
-    rids_path = os.path.join(QUEUE_RIDS_PATH, id)
-    try:
-        file = open(rids_path, 'w')
-        file.close()
-        os.chmod(rids_path, 0o777)
-    except IOError:
-        raise
-
-
-def create_diff(name):
-    SIGID = '533'
-    diff_folder = os.path.join(QUEUE_DIFF_PATH, name)
-    try:
-        os.mkdir(diff_folder)
-    except IOError:
-        raise
-
-    sigid_folder = os.path.join(diff_folder, SIGID)
-    try:
-        os.mkdir(sigid_folder)
-    except IOError:
-        raise
-
-    last_entry_path = os.path.join(sigid_folder, 'last-entry')
-    try:
-        file = open(last_entry_path, 'w')
-        file.close()
-        os.chmod(last_entry_path, 0o777)
-    except IOError:
-        raise
-
-
-def register_agent_main_server(Name, Group=None, IP=None):
-    message = "OSSEC A:'{}'".format(Name)
-    if Group:
-        message += " G:'{}'".format(Group)
-    if IP:
-        message += " IP:'{}'".format(IP)
-
-    receiver_sockets[0].open()
-    receiver_sockets[0].send(message, size=False)
-    timeout = time.time() + 10
-    response = ''
-    while response == '':
-        response = receiver_sockets[0].receive().decode()
-        if time.time() > timeout:
-            raise ConnectionResetError('Manager did not respond to sent message!')
-    time.sleep(5)
-    return response
-
-
-def register_agent_local_server(Name, Group=None, IP=None):
-    message = ('{"arguments":{"force":{"enabled":true,"disconnected_time":{"enabled":true,"value":"0"},'
-               '"key_mismatch":true,"after_registration_time":"0"}')
-    message += ',"name":"{}"'.format(Name)
-    if Group:
-        message += ',"groups":"{}"'.format(Group)
-    if IP:
-        message += ',"ip":"{}"'.format(IP)
-    else:
-        message += ',"ip":"any"'
-    message += '},"function":"add"}'
-
-    receiver_sockets[1].open()
-    receiver_sockets[1].send(message, size=True)
-    response = receiver_sockets[1].receive(size=True).decode()
-    time.sleep(5)
-    return response
-
 
 # Tests
-def duplicate_ip_agent_delete_test(server):
-    """Register a first agent, then register an agent with duplicate IP.
-        Check that client.keys, agent-groups, agent-timestamp and agent diff were updated correctly
-
-    Parameters
-    ----------
-    server : registration server to create registrations
-        Valid values : "main", "local"
-    """
-    clean_diff()
-    if server == "main":
-        SUCCESS_RESPONSE = "OSSEC K:'"
-        register_agent = register_agent_main_server
-    elif server == "local":
-        SUCCESS_RESPONSE = '{"error":0,'
-        register_agent = register_agent_local_server
-    else:
-        raise Exception('Invalid registration server')
-
-    # Register first agent
-    response = register_agent('userA', test_group, '192.0.0.0')
-    create_rids('001')  # Simulate rids was created
-    create_diff('userA')  # Simulate diff folder was created
-    assert response[:len(SUCCESS_RESPONSE)] == SUCCESS_RESPONSE, 'Wrong response received'
-    assert check_client_keys('001', True), 'Agent key was never created'
-    assert check_agent_groups('001', test_group), 'Did not recieve the expected group: {test_group} for the agent'
-    assert check_agent_timestamp('001', 'userA', '192.0.0.0', True), 'Agent_timestamp was never created'
-    assert check_rids('001', True), 'Rids file was never created'
-    assert check_diff('userA', True), 'Agent diff folder was never created'
-
-    # Register agent with duplicate IP
-    response = register_agent('userC', test_group, '192.0.0.0')
-    assert response[:len(SUCCESS_RESPONSE)] == SUCCESS_RESPONSE, 'Wrong response received'
-    assert check_client_keys('002', True), 'Agent key was never created'
-    assert check_client_keys('001', False), 'Agent key was not removed'
-    assert check_agent_groups('002', test_group), 'Did not recieve the expected group: {test_group} for the agent'
-    assert check_agent_groups('001', test_group), 'Agent has groups when agent should not exist'
-    assert check_agent_timestamp('002', 'userC', '192.0.0.0', True), 'Agent_timestamp was never created'
-    assert check_agent_timestamp('001', 'userA', '192.0.0.0', False), 'Agent_timestamp was not removed'
-    assert check_rids('001', False), 'Rids file was was not removed'
-    assert check_diff('userA', False), 'Agent diff folder was not removed'
-
-
-def duplicate_name_agent_delete_test(server):
-    """Register a first agent, then register an agent with duplicate Name.
-        Check that client.keys, agent-groups, agent-timestamp and agent diff were updated correctly
-
-    Parameters
-    ----------
-    server : registration server to create registrations
-        Valid values : "main", "local"
-    """
-    clean_diff()
-    if server == "main":
-        SUCCESS_RESPONSE = "OSSEC K:'"
-        register_agent = register_agent_main_server
-    elif server == "local":
-        SUCCESS_RESPONSE = '{"error":0,'
-        register_agent = register_agent_local_server
-    else:
-        raise Exception('Invalid registration server')
-    create_diff('userB')  # Simulate diff folder was created
-    create_rids('003')  # Simulate rids was created
-    response = register_agent('userB', test_group)
-    assert response[:len(SUCCESS_RESPONSE)] == SUCCESS_RESPONSE, 'Wrong response received'
-    assert check_client_keys('003', True), 'Agent key was never created'
-    assert check_agent_groups('003', test_group), 'Did not recieve the expected group: {test_group} for the agent'
-    assert check_agent_timestamp('003', 'userB', 'any', True), 'Agent_timestamp was never created'
-    assert check_rids('003', True), 'Rids file was never created'
-    assert check_diff('userB', True), 'Agent diff folder was never created'
-
-    # Register agent with duplicate Name
-    response = register_agent('userB', test_group)
-    assert response[:len(SUCCESS_RESPONSE)] == SUCCESS_RESPONSE, 'Wrong response received'
-    assert check_client_keys('004', True), 'Agent key was never created'
-    assert check_client_keys('003', False), 'Agent key was not removed'
-    assert check_agent_groups('004', test_group), 'Did not recieve the expected group: {test_group} for the agent'
-    assert check_agent_groups('003', test_group), 'Agent has groups when agent should not exist'
-    assert check_agent_timestamp('004', 'userB', 'any', True), 'Agent_timestamp was never created'
-    assert check_agent_timestamp('003', 'userB', 'any', False), 'Agent_timestamp was not removed'
-    assert check_rids('003', False), 'Rids file was was not removed'
-    assert check_diff('userB', False), 'Agent diff folder was not removed'
-
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_ossec_authd_agents_ctx(test_configuration, test_metadata, set_wazuh_configuration,
-                                truncate_monitored_files, clean_agents_ctx, daemons_handler, connect_to_sockets,
-                                wait_for_authd_startup):
+def test_ossec_authd_agents_ctx(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
+                                clean_agents_ctx, daemons_handler, connect_to_sockets, wait_for_authd_startup):
     '''
     description:
         Check if when the 'wazuh-authd' daemon receives an enrollment request from an agent
@@ -406,11 +129,75 @@ def test_ossec_authd_agents_ctx(test_configuration, test_metadata, set_wazuh_con
         - keys
         - ssl
     '''
-    wait_server_connection()
-    time.sleep(1)
     set_up_groups([test_group])
-    duplicate_ip_agent_delete_test(test_metadata["server_type"])
-    duplicate_name_agent_delete_test(test_metadata["server_type"])
+    server = test_metadata["server_type"]
+
+    if server == "main":
+        SUCCESS_RESPONSE = "OSSEC K:'"
+        register_agent = utils.register_agent_main_server
+    elif server == "local":
+        SUCCESS_RESPONSE = '{"error":0,'
+        register_agent = utils.register_agent_local_server
+    else:
+        raise Exception('Invalid registration server')
+
+
+    # Register a first agent, then register an agent with duplicate IP.
+    # Check that client.keys, agent-groups, agent-timestamp and agent diff were updated correctly
+
+    # Register first agent
+    response = register_agent(receiver_sockets, 'userA', test_group, '192.0.0.0')
+
+    utils.create_rids('001')  # Simulate rids was created
+    utils.create_diff('userA')  # Simulate diff folder was created
+
+    assert response[:len(SUCCESS_RESPONSE)] == SUCCESS_RESPONSE, 'Wrong response received'
+    assert utils.check_client_keys('001', True), 'Agent key was never created'
+    assert utils.check_agent_groups('001', test_group), 'Did not recieve the expected group: {test_group} for the agent'
+    assert utils.check_agent_timestamp('001', 'userA', '192.0.0.0', True), 'Agent_timestamp was never created'
+    assert utils.check_rids('001', True), 'Rids file was never created'
+    assert utils.check_diff('userA', True), 'Agent diff folder was never created'
+
+    # Register agent with duplicate IP
+    response = register_agent(receiver_sockets, 'userC', test_group, '192.0.0.0')
+    assert response[:len(SUCCESS_RESPONSE)] == SUCCESS_RESPONSE, 'Wrong response received'
+    assert utils.check_client_keys('002', True), 'Agent key was never created'
+    assert utils.check_client_keys('001', False), 'Agent key was not removed'
+    assert utils.check_agent_groups('002', test_group), 'Did not recieve the expected group: {test_group} for the agent'
+    assert utils.check_agent_groups('001', test_group), 'Agent has groups when agent should not exist'
+    assert utils.check_agent_timestamp('002', 'userC', '192.0.0.0', True), 'Agent_timestamp was never created'
+    assert utils.check_agent_timestamp('001', 'userA', '192.0.0.0', False), 'Agent_timestamp was not removed'
+    assert utils.check_rids('001', False), 'Rids file was was not removed'
+    assert utils.check_diff('userA', False), 'Agent diff folder was not removed'
+
+    # Register a first agent, then register an agent with duplicate Name.
+    # Check that client.keys, agent-groups, agent-timestamp and agent diff were updated correctly
+
+    utils.clean_diff()
+
+    utils.create_diff('userB')  # Simulate diff folder was created
+    utils.create_rids('003')  # Simulate rids was created
+
+    response = register_agent(receiver_sockets, 'userB', test_group)
+
+    assert response[:len(SUCCESS_RESPONSE)] == SUCCESS_RESPONSE, 'Wrong response received'
+    assert utils.check_client_keys('003', True), 'Agent key was never created'
+    assert utils.check_agent_groups('003', test_group), 'Did not recieve the expected group: {test_group} for the agent'
+    assert utils.check_agent_timestamp('003', 'userB', 'any', True), 'Agent_timestamp was never created'
+    assert utils.check_rids('003', True), 'Rids file was never created'
+    assert utils.check_diff('userB', True), 'Agent diff folder was never created'
+
+    # Register agent with duplicate Name
+    response = register_agent(receiver_sockets, 'userB', test_group)
+    assert response[:len(SUCCESS_RESPONSE)] == SUCCESS_RESPONSE, 'Wrong response received'
+    assert utils.check_client_keys('004', True), 'Agent key was never created'
+    assert utils.check_client_keys('003', False), 'Agent key was not removed'
+    assert utils.check_agent_groups('004', test_group), 'Did not recieve the expected group: {test_group} for the agent'
+    assert utils.check_agent_groups('003', test_group), 'Agent has groups when agent should not exist'
+    assert utils.check_agent_timestamp('004', 'userB', 'any', True), 'Agent_timestamp was never created'
+    assert utils.check_agent_timestamp('003', 'userB', 'any', False), 'Agent_timestamp was not removed'
+    assert utils.check_rids('003', False), 'Rids file was was not removed'
+    assert utils.check_diff('userB', False), 'Agent diff folder was not removed'
 
     remove_all_agents('wazuhdb')
     remove_groups()

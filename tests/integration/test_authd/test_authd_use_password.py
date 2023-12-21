@@ -95,7 +95,7 @@ def read_random_pass():
 
 # Test
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_authd_force_options(test_configuration, test_metadata, set_wazuh_configuration,
+def test_authd_use_password(test_configuration, test_metadata, set_wazuh_configuration,
                              reset_password, truncate_monitored_files, daemons_handler, configure_sockets_environment,
                              wait_for_authd_startup, connect_to_sockets):
     '''
