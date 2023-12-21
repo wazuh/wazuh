@@ -146,10 +146,6 @@ TransformBuilder getArrayAppendBuilder(bool unique)
             {
                 targetArray = std::vector<json::Json>(resp.value());
             }
-            else
-            {
-                event->setArray(targetField);
-            }
 
             for (const auto& appendOp : appendOps)
             {

@@ -231,9 +231,11 @@ MapOp opBuilderHelperIntTransformation(IntOperator op,
 
     // Depending on the operator we return the correct function
     std::function<int64_t(int64_t l, int64_t r)> transformFunction;
+    int64_t startValue;
     switch (op)
     {
         case IntOperator::SUM:
+            startValue = 0;
             transformFunction = [overflowFailureTrace, underflowFailureTrace](int64_t l, int64_t r)
             {
                 if ((r > 0) && (l > std::numeric_limits<int64_t>::max() - r))
@@ -251,6 +253,7 @@ MapOp opBuilderHelperIntTransformation(IntOperator op,
             };
             break;
         case IntOperator::SUB:
+            startValue = 0;
             transformFunction = [overflowFailureTrace, underflowFailureTrace](int64_t l, int64_t r)
             {
                 if ((r < 0) && (l > std::numeric_limits<int64_t>::max() + r))
@@ -268,6 +271,7 @@ MapOp opBuilderHelperIntTransformation(IntOperator op,
             };
             break;
         case IntOperator::MUL:
+            startValue = 1;
             transformFunction = [overflowFailureTrace, underflowFailureTrace](int64_t l, int64_t r)
             {
                 if ((r != 0) && (l > std::numeric_limits<int64_t>::max() / r))
@@ -285,6 +289,7 @@ MapOp opBuilderHelperIntTransformation(IntOperator op,
             };
             break;
         case IntOperator::DIV:
+            startValue = 1;
             transformFunction = [name, overflowFailureTrace, underflowFailureTrace](int64_t l, int64_t r)
             {
                 if (0 == r)
@@ -331,7 +336,7 @@ MapOp opBuilderHelperIntTransformation(IntOperator op,
         int64_t res;
         try
         {
-            res = std::accumulate(auxVector.begin(), auxVector.end(), 0, transformFunction);
+            res = std::accumulate(auxVector.begin(), auxVector.end(), startValue, transformFunction);
         }
         catch (const std::runtime_error& e)
         {

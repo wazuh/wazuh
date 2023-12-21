@@ -81,13 +81,13 @@ TransformOp specificHLPBuilder(const Reference& targetField,
     utils::assertValue(newParameters);
     for (const auto& param : newParameters)
     {
-        const auto& value = std::static_pointer_cast<Value>(param)->value();
-        if (!value.isString())
+        auto value = std::static_pointer_cast<Value>(param);
+        if (!value->value().isString())
         {
-            throw std::runtime_error(fmt::format("Got non 'string' parameter '{}'", value.str()));
+            throw std::runtime_error(fmt::format("Got non 'string' parameter '{}'", value->value().str()));
         }
 
-        hlpOptionsList.emplace_back(value.getString().value());
+        hlpOptionsList.emplace_back(value->value().getString().value());
     }
 
     hlp::parser::Parser parser;

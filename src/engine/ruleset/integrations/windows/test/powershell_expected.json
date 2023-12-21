@@ -136,7 +136,6 @@
     },
     "windows": {
       "EventData": {
-        "2": "replace(\\t, )",
         "Binary": {}
       },
       "System": {
@@ -227,7 +226,6 @@
     },
     "windows": {
       "EventData": {
-        "2": "replace(\\t, )",
         "Binary": {}
       },
       "System": {
@@ -318,7 +316,6 @@
     },
     "windows": {
       "EventData": {
-        "2": "replace(\\t, )",
         "Binary": {}
       },
       "System": {
