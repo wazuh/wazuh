@@ -10,7 +10,7 @@
       "port": 546
     },
     "ecs": {
-      "version": "8.8"
+      "version": "8.11.0"
     },
     "event": {
       "action": "network_connection",
@@ -87,7 +87,7 @@
       "port": 34331
     },
     "ecs": {
-      "version": "8.8"
+      "version": "8.11.0"
     },
     "event": {
       "action": "network_connection",
@@ -164,7 +164,7 @@
       "port": 1514
     },
     "ecs": {
-      "version": "8.8"
+      "version": "8.11.0"
     },
     "event": {
       "action": "network_connection",

@@ -10,7 +10,7 @@
             "address": "192.168.56.10"
         },
         "ecs": {
-            "version": "8.8"
+            "version": "8.11.0"
         },
         "event": {
             "category": [
@@ -32,7 +32,7 @@
         "http": {
             "request": {
                 "body": {
-                    "bytes": "47"
+                    "bytes": 47
                 },
                 "method": "post",
                 "referrer": "https://192.168.56.10/app/login?nextUrl=%2Fapp%2Fwazuh"
@@ -84,7 +84,7 @@
             "address": "192.168.56.10"
         },
         "ecs": {
-            "version": "8.8"
+            "version": "8.11.0"
         },
         "event": {
             "category": [
@@ -106,7 +106,7 @@
         "http": {
             "request": {
                 "body": {
-                    "bytes": "434"
+                    "bytes": 434
                 },
                 "method": "post",
                 "referrer": "https://192.168.56.10/app/wazuh"
@@ -158,7 +158,7 @@
             "address": "192.168.56.10"
         },
         "ecs": {
-            "version": "8.8"
+            "version": "8.11.0"
         },
         "event": {
             "category": [
@@ -180,7 +180,7 @@
         "http": {
             "request": {
                 "body": {
-                    "bytes": "73"
+                    "bytes": 73
                 },
                 "method": "post",
                 "referrer": "https://192.168.56.10/app/wazuh"
@@ -232,7 +232,7 @@
             "address": "192.168.56.10"
         },
         "ecs": {
-            "version": "8.8"
+            "version": "8.11.0"
         },
         "event": {
             "category": [
@@ -254,7 +254,7 @@
         "http": {
             "request": {
                 "body": {
-                    "bytes": "44"
+                    "bytes": 44
                 },
                 "method": "post",
                 "referrer": "https://192.168.56.10/app/login?nextUrl=%2Fapp%2Fwazuh"
@@ -306,7 +306,7 @@
             "address": "192.168.56.10"
         },
         "ecs": {
-            "version": "8.8"
+            "version": "8.11.0"
         },
         "event": {
             "category": [
@@ -328,7 +328,7 @@
         "http": {
             "request": {
                 "body": {
-                    "bytes": "0"
+                    "bytes": 0
                 },
                 "method": "post",
                 "referrer": "https://192.168.56.10/app/wazuh"
@@ -380,7 +380,7 @@
             "address": "192.168.56.10"
         },
         "ecs": {
-            "version": "8.8"
+            "version": "8.11.0"
         },
         "event": {
             "category": [
@@ -451,7 +451,7 @@
             "address": "192.168.56.10"
         },
         "ecs": {
-            "version": "8.8"
+            "version": "8.11.0"
         },
         "event": {
             "category": [
@@ -522,7 +522,7 @@
             "address": "192.168.56.10"
         },
         "ecs": {
-            "version": "8.8"
+            "version": "8.11.0"
         },
         "event": {
             "category": [
@@ -594,7 +594,7 @@
             "address": "192.168.56.10"
         },
         "ecs": {
-            "version": "8.8"
+            "version": "8.11.0"
         },
         "event": {
             "category": [
