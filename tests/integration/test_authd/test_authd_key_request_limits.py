@@ -87,7 +87,7 @@ script_filename = 'fetch_keys.py'
 monitored_sockets_params = [('wazuh-authd', None, True)]
 receiver_sockets, monitored_sockets = None, None
 
-daemons_handler_configuration = {'daemons': [AUTHD_DAEMON], 'ignore_errors': True}
+daemons_handler_configuration = {'all_daemons': True}
 
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)

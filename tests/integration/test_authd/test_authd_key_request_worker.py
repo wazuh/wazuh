@@ -79,8 +79,8 @@ daemons_handler_configuration = {'all_daemons': True}
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_authd_key_request_worker(test_configuration, test_metadata, set_wazuh_configuration,
-                                  copy_tmp_script, configure_sockets_environment,
-                                  truncate_monitored_files, daemons_handler, connect_to_sockets):
+                                  copy_tmp_script, truncate_monitored_files_module, configure_sockets_environment_module,
+                                  connect_to_sockets_module):
     '''
     description:
         Checks that every message from the worker is correctly formatted for master,

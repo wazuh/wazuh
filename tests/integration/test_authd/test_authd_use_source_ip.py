@@ -67,7 +67,7 @@ daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
 # Test
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_authd_use_source_ip(test_configuration, test_metadata, set_wazuh_configuration, configure_receiver_sockets,
-                             clean_client_keys_file, truncate_monitored_files, daemons_handler,
+                             truncate_monitored_files, daemons_handler,
                              configure_sockets_environment, wait_for_authd_startup, connect_to_sockets):
     '''
     description:
@@ -91,9 +91,6 @@ def test_authd_use_source_ip(test_configuration, test_metadata, set_wazuh_config
         - configure_sockets_environment_module:
             type: fixture
             brief: Configure the socket listener to receive and send messages on the sockets.
-        - clean_client_keys_file:
-            type: fixture
-            brief: Cleans any previous key in client.keys file at function scope.
         - daemons_handler:
             type: fixture
             brief: Handler of Wazuh daemons.

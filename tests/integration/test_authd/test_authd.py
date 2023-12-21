@@ -96,10 +96,9 @@ def set_up_groups(test_metadata, request):
 
 
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_ossec_auth_messages(test_configuration, test_metadata, set_wazuh_configuration,
-                             configure_sockets_environment_module, clean_client_keys_file_module,
-                             truncate_monitored_files, daemons_handler_module, wait_for_authd_startup_module,
-                             set_up_groups, connect_to_sockets_module):
+def test_ossec_auth_messages(test_configuration, test_metadata, set_wazuh_configuration, daemons_handler_module,                          
+                             truncate_monitored_files, configure_sockets_environment, daemons_handler,
+                             wait_for_authd_startup, connect_to_sockets, set_up_groups):
     '''
     description:
         Checks if when the `wazuh-authd` daemon receives different types of enrollment requests,
@@ -127,9 +126,6 @@ def test_ossec_auth_messages(test_configuration, test_metadata, set_wazuh_config
         - configure_sockets_environment_module:
             type: fixture
             brief: Configure environment for sockets and MITM.
-        - clean_client_keys_file_module:
-            type: fixture
-            brief: Stops Wazuh and cleans any previous key in client.keys file at module scope.
         - daemons_handler:
             type: fixture
             brief: Restarts wazuh or a specific daemon passed.

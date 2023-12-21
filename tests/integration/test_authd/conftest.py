@@ -22,34 +22,6 @@ from wazuh_testing.tools.certificate_controller import CertificateController
 
 AUTHD_STARTUP_TIMEOUT = 30
 
-
-def truncate_client_keys_file_implementation():
-    """
-    Cleans any previous key in client.keys file.
-    """
-    try:
-        control_service("stop", AUTHD_DAEMON)
-    except Exception:
-        pass
-    file.truncate_file(WAZUH_CLIENT_KEYS_PATH)
-
-
-@pytest.fixture()
-def clean_client_keys_file():
-    """
-    Cleans any previous key in client.keys file at function scope.
-    """
-    truncate_client_keys_file_implementation()
-
-
-@pytest.fixture(scope='module')
-def clean_client_keys_file_module():
-    """
-    Cleans any previous key in client.keys file at module scope.
-    """
-    truncate_client_keys_file_implementation()
-
-
 @pytest.fixture(scope='function')
 def stop_authd_function():
     """

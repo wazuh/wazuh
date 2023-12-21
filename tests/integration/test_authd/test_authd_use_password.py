@@ -95,7 +95,7 @@ def read_random_pass():
 
 # Test
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_authd_force_options(test_configuration, test_metadata, set_wazuh_configuration, clean_client_keys_file,
+def test_authd_force_options(test_configuration, test_metadata, set_wazuh_configuration,
                              reset_password, truncate_monitored_files, daemons_handler, configure_sockets_environment,
                              wait_for_authd_startup, connect_to_sockets):
     '''
@@ -120,9 +120,6 @@ def test_authd_force_options(test_configuration, test_metadata, set_wazuh_config
         - configure_sockets_environment_module:
             type: fixture
             brief: Configure the socket listener to receive and send messages on the sockets.
-        - clean_client_keys_file:
-            type: fixture
-            brief: Cleans any previous key in client.keys file at function scope.
         - reset_password:
             type: fixture
             brief: Write the password file.
