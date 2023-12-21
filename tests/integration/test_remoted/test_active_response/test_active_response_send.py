@@ -87,13 +87,12 @@ def test_active_response_ar_sending(test_configuration, test_metadata, configure
 
     assert log_monitor.callback_result
 
-
     log_monitor.start(callback=generate_callback(patterns.ACTIVE_RESPONSE_SENT))
 
     assert log_monitor.callback_result
 
     log_queue_monitor = queue_monitor.QueueMonitor(agent.rcv_msg_queue)
-    log_queue_monitor.start(callback=generate_callback(regex=patterns.EXECD_MESSAGE, replacement={"message": ACTIVE_RESPONSE_EXAMPLE_COMMAND}
-                                                       ))
+    log_queue_monitor.start(callback=generate_callback(regex=patterns.EXECD_MESSAGE,
+                                                       replacement={"message": ACTIVE_RESPONSE_EXAMPLE_COMMAND}))
     assert log_monitor.callback_result
     injector.stop_receive()

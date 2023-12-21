@@ -32,6 +32,7 @@ daemons_handler_configuration = {'all_daemons': True}
 
 local_internal_options = {REMOTED_DEBUG: '2'}
 
+
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
 def test_invalid_connection(test_configuration, test_metadata, configure_local_internal_options, truncate_monitored_files,

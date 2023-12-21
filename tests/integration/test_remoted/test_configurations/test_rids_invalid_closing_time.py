@@ -41,9 +41,8 @@ def test_rids_closing_time_invalid(test_configuration, test_metadata, configure_
                             set_wazuh_configuration, restart_wazuh_expect_error, capsys):
 
     '''
-    description: Check if 'wazuh-remoted' fails when an invalid 'rids_closing_time' value is set. For this purpose, 
+    description: Check if 'wazuh-remoted' fails when an invalid 'rids_closing_time' value is set. For this purpose,
                  it uses the configuration from test cases and check if the warning has been logged.
-
 
     parameters:
         - test_configuration

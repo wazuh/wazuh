@@ -95,7 +95,6 @@ def test_denied_ips_syslog(test_configuration, test_metadata, configure_local_in
                                                     replacement={
                                                     "syslog_ips": denied_ip}))
 
-
     real_config_list = get_real_configuration
 
     utils.compare_config_api_response(real_config_list, 'remote')

@@ -8,6 +8,7 @@ import pytest
 
 from wazuh_testing.utils import services
 
+
 @pytest.fixture
 def protocols_list_to_str_upper_case(request, test_metadata):
     """convert valid_protocol list to comma separated uppercase string

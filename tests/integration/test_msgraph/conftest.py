@@ -14,14 +14,16 @@ from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils import callbacks
 from wazuh_testing.utils.file import remove_file
 
+
 @pytest.fixture()
 def wait_for_msgraph_start():
     # Wait for module ms-graph starts
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     wazuh_log_monitor.start(callback=callbacks.generate_callback(patterns.MODULESD_STARTED, {
                               'integration': 'ms-graph'
-                          }))     
+                          }))
     assert (wazuh_log_monitor.callback_result == None), f'Error invalid configuration event not detected'
+
 
 @pytest.fixture(scope="session")
 def proxy_setup():

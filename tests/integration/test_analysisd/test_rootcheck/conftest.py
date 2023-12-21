@@ -22,6 +22,7 @@ def wait_for_rootcheck_start():
                           }))
     assert (wazuh_log_monitor.callback_result == None), f'Error invalid configuration event not detected'
 
+
 @pytest.fixture(scope="function")
 def simulate_agents(request):
     agents = []
