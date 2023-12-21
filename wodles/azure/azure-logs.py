@@ -38,7 +38,6 @@ sys.path.insert(0, dirname(dirname(abspath(__file__))))
 from utils import ANALYSISD, MAX_EVENT_SIZE
 from shared.wazuh_cloud_logger import WazuhCloudLogger
 
-
 # URLs
 URL_LOGGING = 'https://login.microsoftonline.com'
 URL_ANALYTICS = 'https://api.loganalytics.io'
@@ -48,7 +47,6 @@ DATETIME_MASK = '%Y-%m-%dT%H:%M:%S.%fZ'
 CREDENTIALS_URL = 'https://documentation.wazuh.com/current/azure/activity-services/prerequisites/credentials.html'
 DEPRECATED_MESSAGE = 'The {name} authentication parameter was deprecated in {release}. ' \
                      'Please use another authentication method instead. Check {url} for more information.'
-
 
 # Set Azure logger
 azure_logger = WazuhCloudLogger(
@@ -183,13 +181,13 @@ def read_auth_file(auth_path: str, fields: tuple):
                     continue
                 credentials[key] = value.replace("\n", "")
         if fields[0] not in credentials or fields[1] not in credentials:
-            azure_logger.error(f"Error: The authentication file does not contains the expected '{fields[0]}' "
-                          f"and '{fields[1]}' fields.")
+            azure_logger.error(f"Error: The authentication file does not contain the expected '{fields[0]}' "
+                               f"and '{fields[1]}' fields.")
             sys.exit(1)
         return credentials[fields[0]], credentials[fields[1]]
     except ValueError:
         azure_logger.error("Error: The authentication file format is not valid. "
-                      "Make sure that it is composed of only 2 lines with 'field = value' format.")
+                           "Make sure that it is composed of only 2 lines with 'field = value' format.")
         sys.exit(1)
     except OSError as e:
         azure_logger.error(f"Error: The authentication file could not be opened: {e}")
@@ -229,11 +227,11 @@ def update_row_object(table: orm.Base, md5_hash: str, new_min: str, new_max: str
         min_ = new_min if new_min_date < old_min_date else old_min_str
         max_ = new_max if new_max_date > old_max_date else old_max_str
         azure_logger.debug(f"Attempting to update a {table.__tablename__} row object. "
-                      f"MD5: '{md5_hash}', min_date: '{min_}', max_date: '{max_}'")
+                           f"MD5: '{md5_hash}', min_date: '{min_}', max_date: '{max_}'")
         try:
             orm.update_row(table=table, md5=md5_hash, min_date=min_, max_date=max_, query=query)
         except orm.AzureORMError as e:
-            azure_logger.error(f"Error updating row object from {table.__tablename__}: {e}")
+            azure_logger.error(f"Error updating row object from {table.__tablename__}: {e}.")
             sys.exit(1)
 
 
@@ -262,11 +260,11 @@ def create_new_row(table: orm.Base, md5_hash: str, query: str, offset: str) -> o
     desired_str = desired_datetime.strftime(DATETIME_MASK)
     item = table(md5=md5_hash, query=query, min_processed_date=desired_str, max_processed_date=desired_str)
     azure_logger.debug(f"Attempting to insert row object into {table.__tablename__} with md5='{md5_hash}', "
-                  f"min_date='{desired_str}', max_date='{desired_str}'")
+                       f"min_date='{desired_str}', max_date='{desired_str}'")
     try:
         orm.add_row(row=item)
     except orm.AzureORMError as e:
-        azure_logger.error(f"Error inserting row object into {table.__tablename__}: {e}")
+        azure_logger.error(f"Error inserting row object into {table.__tablename__}: {e}.")
         sys.exit(1)
     return item
 
@@ -303,7 +301,7 @@ def start_log_analytics():
     try:
         get_log_analytics_events(url=url, body=body, headers=headers, md5_hash=md5_hash)
     except HTTPError as e:
-        azure_logger.error(f"Log Analytics: {e}")
+        azure_logger.error(f"Log Analytics: {e}.")
     azure_logger.info("Azure Log Analytics ending.")
 
 
@@ -328,7 +326,7 @@ def build_log_analytics_query(offset: str, md5_hash: str) -> dict:
             item = create_new_row(table=orm.LogAnalytics, query=args.la_query, md5_hash=md5_hash, offset=offset)
     except orm.AzureORMError as e:
         azure_logger.error(f"Error trying to obtain row object from '{orm.LogAnalytics.__tablename__}' "
-                           f"using md5='{md5}': {e}")
+                           f"using md5='{md5}': {e}.")
         sys.exit(1)
 
     min_str = item.min_processed_date
@@ -355,7 +353,7 @@ def build_log_analytics_query(offset: str, md5_hash: str) -> dict:
             filter_value = f"TimeGenerated > {max_str}"
 
     query = f"{args.la_query} | order by TimeGenerated asc | where {filter_value} "
-    azure_logger.info(f"Log Analytics: The search starts for query: '{query}'")
+    azure_logger.info(f"Log Analytics: The search starts for query: '{query}'.")
     return {"query": query}
 
 
@@ -385,7 +383,7 @@ def get_log_analytics_events(url: str, body: dict, headers: dict, md5_hash: str)
             columns = response.json()['tables'][0]['columns']
             rows = response.json()['tables'][0]['rows']
             if len(rows) == 0:
-                azure_logger.info("Log Analytics: There are no new results")
+                azure_logger.info("Log Analytics: There are no new results.")
             else:
                 time_position = get_time_position(columns)
                 if time_position is not None:
@@ -393,7 +391,7 @@ def get_log_analytics_events(url: str, body: dict, headers: dict, md5_hash: str)
                     update_row_object(table=orm.LogAnalytics, md5_hash=md5_hash, new_min=rows[0][time_position],
                                       new_max=rows[len(rows) - 1][time_position], query=args.la_query)
                 else:
-                    azure_logger.error("Error: No TimeGenerated field was found")
+                    azure_logger.error("Error: No TimeGenerated field was found.")
 
         except KeyError as e:
             azure_logger.error(f"Error: It was not possible to obtain the columns and rows from the event: '{e}'.")
@@ -459,7 +457,8 @@ def start_graph():
     if args.graph_auth_path and args.graph_tenant_domain:
         client, secret = read_auth_file(auth_path=args.graph_auth_path, fields=("application_id", "application_key"))
     elif args.graph_id and args.graph_key and args.graph_tenant_domain:
-        azure_logger.warning(DEPRECATED_MESSAGE.format(name="graph_id and graph_key", release="4.4", url=CREDENTIALS_URL))
+        azure_logger.warning(
+            DEPRECATED_MESSAGE.format(name="graph_id and graph_key", release="4.4", url=CREDENTIALS_URL))
         client = args.graph_id
         secret = args.graph_key
     else:
@@ -475,15 +474,15 @@ def start_graph():
     azure_logger.info(f"Graph: Building the url.")
     md5_hash = md5(args.graph_query.encode()).hexdigest()
     url = build_graph_url(offset=args.graph_time_offset, md5_hash=md5_hash)
-    azure_logger.info(f"Graph: The URL is '{url}'")
+    azure_logger.info(f"Graph: The URL is '{url}'.")
 
     # Get events
-    azure_logger.info("Graph: Pagination starts")
+    azure_logger.info("Graph: Pagination starts.")
     try:
         get_graph_events(url=url, headers=headers, md5_hash=md5_hash)
     except HTTPError as e:
         azure_logger.error(f"Graph: {e}")
-    azure_logger.info("Graph: End")
+    azure_logger.info("Graph: End.")
 
 
 def build_graph_url(offset: str, md5_hash: str):
@@ -506,7 +505,8 @@ def build_graph_url(offset: str, md5_hash: str):
         if item is None:
             item = create_new_row(table=orm.Graph, query=args.graph_query, md5_hash=md5_hash, offset=offset)
     except orm.AzureORMError as e:
-        azure_logger.error(f"Error trying to obtain row object from '{orm.Graph.__tablename__}' using md5='{md5}': {e}")
+        azure_logger.error(f"Error trying to obtain row object from '{orm.Graph.__tablename__}' "
+                           f"using md5='{md5}': {e}.")
         sys.exit(1)
 
     min_str = item.min_processed_date
@@ -530,7 +530,7 @@ def build_graph_url(offset: str, md5_hash: str):
         else:
             filter_value = f"{filtering_condition}+gt+{max_str}"
 
-    azure_logger.info(f"Graph: The search starts for query: '{args.graph_query}' using {filter_value}")
+    azure_logger.info(f"Graph: The search starts for query: '{args.graph_query}' using {filter_value}.")
     return f"{URL_GRAPH}/v1.0/{args.graph_query}{'?' if '?' not in args.graph_query else ''}&$filter={filter_value}"
 
 
@@ -570,7 +570,7 @@ def get_graph_events(url: str, headers: dict, md5_hash: str):
             send_message(json_result)
 
         if len(values_json) == 0:
-            azure_logger.info("Graph: There are no new results")
+            azure_logger.info("Graph: There are no new results.")
         next_url = response_json.get('@odata.nextLink')
 
         if next_url:
@@ -593,7 +593,8 @@ def start_storage():
     if args.storage_auth_path:
         name, key = read_auth_file(auth_path=args.storage_auth_path, fields=("account_name", "account_key"))
     elif args.account_name and args.account_key:
-        azure_logger.warning(DEPRECATED_MESSAGE.format(name="account_name and account_key", release="4.4", url=CREDENTIALS_URL))
+        azure_logger.warning(
+            DEPRECATED_MESSAGE.format(name="account_name and account_key", release="4.4", url=CREDENTIALS_URL))
         name = args.account_name
         key = args.account_key
     else:
@@ -640,7 +641,8 @@ def start_storage():
             if item is None:
                 item = create_new_row(table=orm.Storage, query=name, md5_hash=md5_hash, offset=offset)
         except orm.AzureORMError as e:
-            azure_logger.error(f"Error trying to obtain row object from '{orm.Storage.__tablename__}' using md5='{md5}': {e}")
+            azure_logger.error(f"Error trying to obtain row object from '{orm.Storage.__tablename__}' "
+                               f"using md5='{md5}': {e}.")
             sys.exit(1)
 
         min_datetime = parse(item.min_processed_date, fuzzy=True)
@@ -648,12 +650,13 @@ def start_storage():
         desired_datetime = offset_to_datetime(offset) if offset else max_datetime
         get_blobs(container_name=container, prefix=args.prefix, blob_service=block_blob_service, md5_hash=md5_hash,
                   min_datetime=min_datetime, max_datetime=max_datetime, desired_datetime=desired_datetime)
-    azure_logger.info("Storage: End")
+    azure_logger.info("Storage: End.")
 
 
 def get_blobs(
-    container_name: str, blob_service: BlockBlobService, md5_hash: str, min_datetime: datetime, max_datetime: datetime,
-    desired_datetime: datetime, next_marker: str = None, prefix: str = None
+        container_name: str, blob_service: BlockBlobService, md5_hash: str, min_datetime: datetime,
+        max_datetime: datetime,
+        desired_datetime: datetime, next_marker: str = None, prefix: str = None
 ):
     """Get the blobs from a container and send their content.
 
@@ -691,7 +694,7 @@ def get_blobs(
     else:
 
         azure_logger.info(f"Storage: The search starts from the date: {desired_datetime} for blobs in "
-                     f"container: '{container_name}' and prefix: '/{prefix if prefix is not None else ''}'")
+                          f"container: '{container_name}' and prefix: '/{prefix if prefix is not None else ''}'")
         for blob in blobs:
             # Skip if the blob is empty
             if blob.properties.content_length == 0:
@@ -799,10 +802,10 @@ def get_token(client_id: str, secret: str, domain: str, scope: str):
             err_msg = f"The '{domain}' tenant domain was not found."
         else:
             err_msg = "Couldn't get the token for authentication."
-        azure_logger.error(f"Error: {err_msg}")
+        azure_logger.error(f"Error: {err_msg}.")
 
     except RequestException as e:
-        azure_logger.error(f"Error: An error occurred while trying to obtain the authentication token: {e}")
+        azure_logger.error(f"Error: An error occurred while trying to obtain the authentication token: {e}.")
 
     sys.exit(1)
 
@@ -833,7 +836,7 @@ def send_message(message: str):
         elif e.errno == 90:
             azure_logger.error("ERROR: Message too long to send to Wazuh.  Skipping message...")
         else:
-            azure_logger.error(f"ERROR: Error sending message to wazuh: {e}")
+            azure_logger.error(f"ERROR: Error sending message to wazuh: {e}.")
             sys.exit(1)
     finally:
         s.close()
