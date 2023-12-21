@@ -35,11 +35,13 @@ daemons_handler_configuration = {'all_daemons': True}
 
 local_internal_options = {REMOTED_DEBUG: '2'}
 
+
 def get_remoted_pid():
     for process in psutil.process_iter():
         if process.name() == REMOTE_DAEMON:
             return process.pid
     return None
+
 
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
