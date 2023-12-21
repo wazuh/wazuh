@@ -194,10 +194,11 @@ static int read_main_elements(const OS_XML *xml, int modules,
 #endif
         } else if (strcmp(node[i]->element, osvulndetector) == 0) {
 #if !defined(WIN32) && !defined(CLIENT)
-            mwarn(  "<vulnerability-detector> is deprecated. Replace it with "
-                    "the new <vulnerability-detection> configuration.");
-            if ((modules & CWMODULE) && (Read_Vulnerability_Detection(xml, chld_node, d1, true) < 0)) {
-                goto fail;
+            if ((modules & CWMODULE)) {
+                mwarn("%s configuration is deprecated. Use %s instead.", osvulndetector, osvulndetection);
+                if (Read_Vulnerability_Detection(xml, chld_node, d1, true) < 0) {
+                    goto fail;
+                }
             }
 #else
             mwarn("%s configuration is only set in the manager.", node[i]->element);
