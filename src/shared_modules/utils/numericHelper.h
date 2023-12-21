@@ -21,7 +21,7 @@
 
 namespace Utils
 {
-    static double floatToDoubleRound(float number, size_t precision)
+    static double floatToDoubleRound(const float number, const int precision)
     {
         std::stringstream ssAux;
         ssAux << std::fixed << std::setprecision(precision) << number;
