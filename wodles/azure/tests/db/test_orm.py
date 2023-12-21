@@ -5,27 +5,26 @@
 # This program is free software; you can redistribute
 # it and/or modify it under the terms of GPLv2
 
-
 import hashlib
 import json
-import os
 import sys
+from os.path import abspath, dirname, join, realpath
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy import inspect
+from sqlalchemy import create_engine, inspect
 from sqlalchemy.exc import IntegrityError
 
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))  # noqa: E501
-import orm
+sys.path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
+
+import db.orm as orm
 
 # Overwrite ORM's engine to avoid creating the local database file during the tests
 orm.engine = create_engine('sqlite:///', echo=False)
 orm.session = orm.sessionmaker(bind=orm.engine)()
 
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-test_last_dates_path = os.path.join(test_data_path, 'last_date_files')
+test_data_path = join(dirname(dirname(realpath(__file__))), 'data')
+test_last_dates_path = join(test_data_path, 'last_date_files')
 
 
 @pytest.fixture(scope='function')
@@ -43,9 +42,15 @@ def teardown_db():
     orm.Base.metadata.drop_all(orm.engine)
 
 
-@pytest.mark.parametrize('expected_table_names, expected_columns', [
-    (['graph', 'log_analytics', 'storage'], ['md5', 'query', 'min_processed_date', 'max_processed_date'])
-])
+@pytest.mark.parametrize(
+    'expected_table_names, expected_columns',
+    [
+        (
+            ['graph', 'log_analytics', 'storage'],
+            ['md5', 'query', 'min_processed_date', 'max_processed_date'],
+        )
+    ],
+)
 def test_create_db(expected_table_names, expected_columns, teardown_db):
     """Check if the create_db function works as expected."""
     # Check there is no tables available
@@ -70,8 +75,13 @@ def test_add_get_row(create_and_teardown_db):
     for table in [orm.Graph, orm.LogAnalytics, orm.Storage]:
         for id_ in range(3):
             md5 = hashlib.md5(f'{table.__tablename__}{id_}'.encode()).hexdigest()
-            original_datetime = "2022-01-01T23:59:59.1234567Z"
-            row = table(md5=md5, query="", min_processed_date=original_datetime, max_processed_date=original_datetime)
+            original_datetime = '2022-01-01T23:59:59.1234567Z'
+            row = table(
+                md5=md5,
+                query='',
+                min_processed_date=original_datetime,
+                max_processed_date=original_datetime,
+            )
             orm.add_row(row=row)
             row = orm.get_row(table=table, md5=md5)
             assert row
@@ -80,8 +90,14 @@ def test_add_get_row(create_and_teardown_db):
             assert row.max_processed_date == original_datetime
 
             # Update the row
-            new_datetime = "1999-01-01T23:59:59.1234567Z"
-            orm.update_row(table=table, md5=md5, min_date=new_datetime, max_date=new_datetime, query="query")
+            new_datetime = '1999-01-01T23:59:59.1234567Z'
+            orm.update_row(
+                table=table,
+                md5=md5,
+                min_date=new_datetime,
+                max_date=new_datetime,
+                query='query',
+            )
             row = orm.get_row(table=table, md5=md5)
             assert row.min_processed_date == new_datetime
             assert row.max_processed_date == new_datetime
@@ -89,13 +105,13 @@ def test_add_get_row(create_and_teardown_db):
         assert len(orm.get_all_rows(table=table)) == 3
 
     # Try to obtain a non-existing item
-    assert orm.get_row(table=orm.Graph, md5="non-existing") is None
+    assert orm.get_row(table=orm.Graph, md5='non-existing') is None
 
 
 def test_add_ko(create_and_teardown_db):
     """Test the add_row function by attempting to insert a row with None values. The commit operation should raise an
     IntegrityError that must be caught."""
-    row = orm.Graph(md5="test", query="", min_processed_date=None, max_processed_date=None)
+    row = orm.Graph(md5='test', query='', min_processed_date=None, max_processed_date=None)
     with pytest.raises(orm.AzureORMError):
         orm.add_row(row=row)
     assert len(orm.get_all_rows(orm.Graph)) == 0
@@ -105,32 +121,35 @@ def test_get_rows_ko(create_and_teardown_db):
     """Ensure the get_rows function fails when using an invalid database."""
     orm.Base.metadata.drop_all(orm.engine)
     with pytest.raises(orm.AzureORMError):
-        assert orm.get_row(table=orm.Graph, md5="")
+        assert orm.get_row(table=orm.Graph, md5='')
     with pytest.raises(orm.AzureORMError):
         orm.get_all_rows(table=orm.Graph)
 
 
-@patch('orm.session.commit', side_effect=IntegrityError)
+@patch('db.orm.session.commit', side_effect=IntegrityError)
 def test_update_row_ko(create_and_teardown_db):
     """Ensure the update_row function catch exceptions when trying to commit the changes."""
     with pytest.raises(orm.AzureORMError):
-        orm.update_row(orm.Graph, md5="test", min_date="", max_date="")
+        orm.update_row(orm.Graph, md5='test', min_date='', max_date='')
 
 
-@pytest.mark.parametrize('last_dates_file_path', [
-    (os.path.join(test_last_dates_path, 'last_dates.json')),
-    (os.path.join(test_last_dates_path, 'last_dates_graph.json')),
-    (os.path.join(test_last_dates_path, 'last_dates_log_analytics.json')),
-    (os.path.join(test_last_dates_path, 'last_dates_storage.json')),
-    (os.path.join(test_last_dates_path, 'last_dates_old.json')),
-    (os.path.join(test_last_dates_path, 'last_dates_clean.json')),
-    (os.path.join(test_last_dates_path, 'last_dates_with_invalid_min_max.json')),
-    (os.path.join(test_last_dates_path, 'last_dates_old_invalid_value.json'))
-])
+@pytest.mark.parametrize(
+    'last_dates_file_path',
+    [
+        (join(test_last_dates_path, 'last_dates.json')),
+        (join(test_last_dates_path, 'last_dates_graph.json')),
+        (join(test_last_dates_path, 'last_dates_log_analytics.json')),
+        (join(test_last_dates_path, 'last_dates_storage.json')),
+        (join(test_last_dates_path, 'last_dates_old.json')),
+        (join(test_last_dates_path, 'last_dates_clean.json')),
+        (join(test_last_dates_path, 'last_dates_with_invalid_min_max.json')),
+        (join(test_last_dates_path, 'last_dates_old_invalid_value.json')),
+    ],
+)
 def test_load_dates_json(last_dates_file_path):
     """Check the load_dates_json function properly loads the contents of the files, regardless of their structure as
     long as it is a valid one."""
-    with patch('orm.last_dates_path', new=last_dates_file_path):
+    with patch('db.orm.last_dates_path', new=last_dates_file_path):
         last_dates_dict = orm.load_dates_json()
         for key in last_dates_dict.keys():
             assert isinstance(last_dates_dict[key], dict)
@@ -139,7 +158,7 @@ def test_load_dates_json(last_dates_file_path):
                 assert set(last_dates_dict[key][md5].keys()) == {'min', 'max'}
 
 
-@patch('os.path.exists', return_value=False)
+@patch('db.orm.exists', return_value=False)
 @patch('builtins.open')
 def test_load_dates_json_no_file(mock_open, mock_exists):
     """Check the load_dates_json handles exception as expected when no file is provided."""
@@ -147,27 +166,31 @@ def test_load_dates_json_no_file(mock_open, mock_exists):
     mock_exists.assert_called_once()
 
 
-@pytest.mark.parametrize('last_dates_file_path', [
-    (os.path.join(test_last_dates_path, 'last_dates_invalid.json'))
-])
+@pytest.mark.parametrize(
+    'last_dates_file_path',
+    [(join(test_last_dates_path, 'last_dates_invalid.json'))],
+)
 def test_load_dates_json_ko(last_dates_file_path):
     """Check the load_dates_json handles exception as expected when an invalid file is provided."""
-    with patch('orm.last_dates_path', new=last_dates_file_path):
+    with patch('db.orm.last_dates_path', new=last_dates_file_path):
         with pytest.raises(json.JSONDecodeError):
             orm.load_dates_json()
 
 
-@pytest.mark.parametrize('file_exists, file_size', [
-    (True, 0),
-    (True, 100),
-    (False, 100),
-])
-@patch('orm.create_db')
-@patch('orm.migrate_from_last_dates_file')
+@pytest.mark.parametrize(
+    'file_exists, file_size',
+    [
+        (True, 0),
+        (True, 100),
+        (False, 100),
+    ],
+)
+@patch('db.orm.create_db')
+@patch('db.orm.migrate_from_last_dates_file')
 def test_check_integrity(mock_migrate, mock_create_db, create_and_teardown_db, file_exists, file_size):
     """Ensure that the check_integrity functions is able to create a new database file."""
-    with patch('os.path.exists', return_value=file_exists):
-        with patch('os.path.getsize', return_value=file_size):
+    with patch('db.orm.exists', return_value=file_exists):
+        with patch('db.orm.getsize', return_value=file_size):
             orm.check_database_integrity()
             mock_create_db.assert_called()
             if file_exists and file_size > 0:
@@ -178,20 +201,26 @@ def test_check_integrity(mock_migrate, mock_create_db, create_and_teardown_db, f
 
 def test_check_integrity_ko(teardown_db):
     """Ensure the check_integrity function returns a False value when the migration process fails."""
-    with patch('os.path.exists'):
-        with patch('os.path.getsize', return_value=100):
-            with patch('orm.migrate_from_last_dates_file', side_effect=Exception):
+    with patch('db.orm.exists'):
+        with patch('db.orm.getsize', return_value=100):
+            with patch(
+                'db.orm.migrate_from_last_dates_file',
+                side_effect=Exception,
+            ):
                 assert orm.check_database_integrity() is False
 
 
-@pytest.mark.parametrize('last_dates_file_path', [
-    (os.path.join(test_last_dates_path, 'last_dates.json')),
-    (os.path.join(test_last_dates_path, 'last_dates_graph.json')),
-    (os.path.join(test_last_dates_path, 'last_dates_log_analytics.json')),
-    (os.path.join(test_last_dates_path, 'last_dates_storage.json')),
-    (os.path.join(test_last_dates_path, 'last_dates_old.json')),
-    (os.path.join(test_last_dates_path, 'last_dates_clean.json'))
-])
+@pytest.mark.parametrize(
+    'last_dates_file_path',
+    [
+        (join(test_last_dates_path, 'last_dates.json')),
+        (join(test_last_dates_path, 'last_dates_graph.json')),
+        (join(test_last_dates_path, 'last_dates_log_analytics.json')),
+        (join(test_last_dates_path, 'last_dates_storage.json')),
+        (join(test_last_dates_path, 'last_dates_old.json')),
+        (join(test_last_dates_path, 'last_dates_clean.json')),
+    ],
+)
 def test_migrate_from_last_dates_file(last_dates_file_path, create_and_teardown_db):
     """Test the last_dates file migration functionality."""
     items = orm.get_all_rows(table=orm.Graph)
@@ -200,7 +229,7 @@ def test_migrate_from_last_dates_file(last_dates_file_path, create_and_teardown_
     with open(last_dates_file_path, 'r') as file:
         test_file_contents = json.load(file)
 
-    with patch('orm.last_dates_path', new=last_dates_file_path):
+    with patch('db.orm.last_dates_path', new=last_dates_file_path):
         orm.migrate_from_last_dates_file()
 
     # Validate the contents of each table
@@ -218,47 +247,46 @@ def test_migrate_from_last_dates_file(last_dates_file_path, create_and_teardown_
 
 
 def test_min_max_valid():
-    json_content = {"min": "2022-03-07T15:12:56.98Z", "max": "2022-03-17T15:12:56.98Z"}
+    json_content = {'min': '2022-03-07T15:12:56.98Z', 'max': '2022-03-17T15:12:56.98Z'}
 
     result = orm.get_min_max_values(json_content)
     assert result == json_content
 
 
 def test_min_max_invalid_min():
-    json_content = {"min": "0", "max": "2022-03-17T15:12:56.98Z"}
+    json_content = {'min': '0', 'max': '2022-03-17T15:12:56.98Z'}
 
     result = orm.get_min_max_values(json_content)
-    assert result == {"min": json_content["max"], "max": json_content["max"]}
+    assert result == {'min': json_content['max'], 'max': json_content['max']}
 
 
 def test_min_max_invalid_max():
-    json_content = {"min": "2022-03-17T15:12:56.98Z", "max": "0"}
+    json_content = {'min': '2022-03-17T15:12:56.98Z', 'max': '0'}
 
     result = orm.get_min_max_values(json_content)
-    assert result == {"min": json_content["min"], "max": json_content["min"]}
+    assert result == {'min': json_content['min'], 'max': json_content['min']}
 
 
 def test_min_max_invalid_max_and_min(monkeypatch):
-    json_content = {"min": "0", "max": "0"}
+    json_content = {'min': '0', 'max': '0'}
     expected_value = orm.get_default_min_max_values()
-    monkeypatch.setattr(orm, "get_default_min_max_values", lambda: expected_value)
+    monkeypatch.setattr(orm, 'get_default_min_max_values', lambda: expected_value)
 
     result = orm.get_min_max_values(json_content)
-    assert result == {"min": expected_value, "max": expected_value}
+    assert result == {'min': expected_value, 'max': expected_value}
 
 
 def test_min_max_valid_old_format():
-    json_content = "2022-03-04T15:12:56.98Z"
+    json_content = '2022-03-04T15:12:56.98Z'
 
     result = orm.get_min_max_values(json_content)
-    assert result == {"min": json_content, "max": json_content}
+    assert result == {'min': json_content, 'max': json_content}
 
 
 def test_min_max_invalid_old_format(monkeypatch):
-    json_content = "0"
+    json_content = '0'
     expected_value = orm.get_default_min_max_values()
-    monkeypatch.setattr(orm, "get_default_min_max_values", lambda: expected_value)
+    monkeypatch.setattr(orm, 'get_default_min_max_values', lambda: expected_value)
 
     result = orm.get_min_max_values(json_content)
-    assert result == {"min": expected_value, "max": expected_value}
-
+    assert result == {'min': expected_value, 'max': expected_value}
