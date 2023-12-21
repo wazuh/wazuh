@@ -178,5 +178,5 @@ normalize:
       - related.user: array_append($user.name, $user.effective.name)
       - related.ip: array_append($source.ip)
       - process.command_line: $_system.auth.sudo.command
-      - process.tty.char_device.major: $_system.process.tty.char_device.major
+      - process.tty.char_device.major: parse_long($_system.process.tty.char_device.major)
       - process.working_directory: $_system.auth.sudo.pwd

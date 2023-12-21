@@ -169,7 +169,8 @@ base::RespOrError<RuntimeValidator> Validator::getRuntimeValidator(const DotPath
                 return false;
             }
 
-            for (const auto& item : value.getArray().value())
+            auto array = value.getArray().value();
+            for (const auto& item : array)
             {
                 if (!validator(item))
                 {
@@ -200,7 +201,7 @@ ValidationToken Validator::createToken(const DotPath& path) const
 {
     if (m_schema->hasField(path))
     {
-         // return ValidationToken(m_schema->getType(path), m_schema->isArray(path));
+        // return ValidationToken(m_schema->getType(path), m_schema->isArray(path));
         auto jType = getEntry(m_schema->getType(path)).jsonType;
         return ValidationToken(jType, m_schema->isArray(path));
     }
