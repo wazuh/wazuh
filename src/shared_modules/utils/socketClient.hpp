@@ -107,6 +107,11 @@ public:
         const std::function<void()>& onConnect = []() {},
         int type = (SOCK_STREAM | SOCK_NONBLOCK))
     {
+        // If the thread is already running, then return, this case happens when the client is restarted/reconnected.
+        if (m_mainLoopThread.joinable())
+        {
+            return;
+        }
         m_mainLoopThread = std::thread(
             [&, type, onRead, onConnect]()
             {
