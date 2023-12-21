@@ -24,7 +24,7 @@ base::Expression toExpression(const TransformOp& op, const std::string& name);
 
 base::Expression baseHelperBuilder(const std::string& helperName,
                                    const Reference& targetField,
-                                   const std::vector<OpArg>& opArgs,
+                                   std::vector<OpArg>& opArgs,
                                    const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 enum class HelperType
