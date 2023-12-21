@@ -180,9 +180,25 @@ base::Expression toExpression(const TransformOp& op, const std::string& name)
 
 base::Expression baseHelperBuilder(const std::string& helperName,
                                    const Reference& targetField,
-                                   const std::vector<OpArg>& opArgs,
+                                   std::vector<OpArg>& opArgs,
                                    const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
+    // Resolve definition
+    for (auto i = 0; i < opArgs.size(); ++i)
+    {
+        auto& arg = opArgs[i];
+        if (arg->isReference())
+        {
+            auto ref = std::static_pointer_cast<Reference>(arg);
+            auto isDef = buildCtx->definitions().contains(ref->jsonPath());
+            if (isDef)
+            {
+                auto def = buildCtx->definitions().get(ref->jsonPath());
+                opArgs[i] = std::make_shared<Value>(def);
+            }
+        }
+    }
+
     // Obtain the builder
     auto resp = buildCtx->registry().get<OpBuilderEntry>(helperName);
     if (base::isError(resp))
@@ -310,21 +326,6 @@ baseHelperBuilder(const json::Json& definition, const std::shared_ptr<const IBui
 
             auto helperToken = parseRes.value();
             helperName = helperToken.name;
-
-            // Resolve definition
-            for (auto& arg : helperToken.args)
-            {
-                if (arg->isReference())
-                {
-                    auto ref = std::static_pointer_cast<Reference>(arg);
-                    auto isDef = buildCtx->definitions().contains(ref->jsonPath());
-                    if (isDef)
-                    {
-                        auto def = buildCtx->definitions().get(ref->jsonPath());
-                        arg = std::make_shared<Value>(def);
-                    }
-                }
-            }
 
             opArgs = helperToken.args;
         }
