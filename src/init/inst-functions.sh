@@ -1123,23 +1123,7 @@ checkDownloadContent()
     sleep 10
 
     if [ "${DOWNLOAD_CONTENT}" = "yes" ]; then
-#        ./build/wazuh_modules/vulnerability_scanner/testtool/scanner/vd_scanner_testtool \
-#        -c wazuh_modules/vulnerability_scanner/testtool/scanner/config.json \
-#        -t wazuh_modules/vulnerability_scanner/indexer/template/legacy-template.json \
-#        -d
-#
-#        rm -rf queue/indexer
-#        rm -rf queue/sockets
-#        rm -rf queue/router
-
-        mkdir -p queue/vd
-        mkdir -p queue/vd-updater
-        touch queue/vd/file1
-        touch queue/vd-updater/file1
-        echo "content vd" >> queue/vd/file1
-        echo "content updater" >> queue/vd-updater/file1
-
-        tar -cJf vd.tar.xz queue
+        wget -O vd.tar.xz https://.../vd.tar.xz
 
         ${INSTALL} -m 0640 -o ${WAZUH_USER} -g ${WAZUH_GROUP} vd.tar.xz ${INSTALLDIR}/
     fi
