@@ -128,8 +128,8 @@ def check_options(test_metadata):
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration_t1, test_metadata_t1), ids=test_cases_ids_t1)
 def test_authd_force_options(test_configuration, test_metadata, set_wazuh_configuration,
-                             configure_local_internal_options, insert_pre_existent_agents,
-                             truncate_monitored_files, daemons_handler,
+                             configure_local_internal_options, truncate_monitored_files,
+                             insert_pre_existent_agents, daemons_handler,
                              wait_for_authd_startup, connect_to_sockets):
     '''
     description:
@@ -187,8 +187,8 @@ def test_authd_force_options(test_configuration, test_metadata, set_wazuh_config
 
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration_t2, test_metadata_t2), ids=test_cases_ids_t2)
 def test_authd_force_insert(test_configuration, test_metadata, set_wazuh_configuration,
-                            configure_local_internal_options, insert_pre_existent_agents,
-                            truncate_monitored_files, daemons_handler,
+                            configure_local_internal_options, truncate_monitored_files,
+                            insert_pre_existent_agents, daemons_handler,
                             wait_for_authd_startup, connect_to_sockets):
     '''
     description:
@@ -254,8 +254,8 @@ def test_authd_force_insert(test_configuration, test_metadata, set_wazuh_configu
 
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration_t3, test_metadata_t3), ids=test_cases_ids_t3)
 def test_authd_force_insert_only(test_configuration, test_metadata, set_wazuh_configuration,
-                                 configure_local_internal_options, insert_pre_existent_agents,
-                                 truncate_monitored_files, daemons_handler,
+                                 configure_local_internal_options, truncate_monitored_files,
+                                 insert_pre_existent_agents, daemons_handler,
                                  wait_for_authd_startup, connect_to_sockets):
     '''
     description:

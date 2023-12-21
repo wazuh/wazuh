@@ -71,7 +71,7 @@ daemons_handler_configuration = {'daemons': [AUTHD_DAEMON], 'ignore_errors': Tru
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_authd_force_options_invalid_config(test_configuration, test_metadata, set_wazuh_configuration,
                                             configure_local_internal_options, truncate_monitored_files,
-                                            daemons_handler, wait_for_authd_startup):
+                                            daemons_handler):
     '''
     description:
         Checks that every input with a wrong configuration option value

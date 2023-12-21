@@ -87,7 +87,16 @@ timeout = 10
 login_attempts = 3
 sleep = 1
 
-def clean_agents_ctx():
+@pytest.fixture()
+def clean_agents_ctx(stop_authd_function):
+    time.sleep(1)
+
+    clean_rids()
+    clean_agents_timestamp()
+    clean_diff()
+
+    yield
+
     clean_rids()
     clean_agents_timestamp()
     clean_diff()
@@ -103,6 +112,7 @@ def wait_server_connection():
 
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
     log_monitor.start(timeout=30, callback=callback_agentd_startup)
+    assert log_monitor.callback_result
 
 
 def clean_diff():
@@ -349,8 +359,9 @@ def duplicate_name_agent_delete_test(server):
     assert check_diff('userB', False), 'Agent diff folder was not removed'
 
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_ossec_authd_agents_ctx(test_configuration, test_metadata, daemons_handler_module,
-                                truncate_monitored_files, set_wazuh_configuration, connect_to_sockets_module):
+def test_ossec_authd_agents_ctx(test_configuration, test_metadata, set_wazuh_configuration,
+                                truncate_monitored_files, clean_agents_ctx, daemons_handler, connect_to_sockets,
+                                wait_for_authd_startup):
     '''
     description:
         Check if when the 'wazuh-authd' daemon receives an enrollment request from an agent
@@ -395,18 +406,11 @@ def test_ossec_authd_agents_ctx(test_configuration, test_metadata, daemons_handl
         - keys
         - ssl
     '''
-    control_service('stop')
-    check_daemon_status(running_condition=False, target_daemon='wazuh-authd')
-    time.sleep(1)
-    clean_agents_ctx()
-    control_service('start')
-    check_daemon_status(running_condition=True, target_daemon='wazuh-authd')
     wait_server_connection()
     time.sleep(1)
     set_up_groups([test_group])
     duplicate_ip_agent_delete_test(test_metadata["server_type"])
     duplicate_name_agent_delete_test(test_metadata["server_type"])
 
-    clean_agents_ctx()
     remove_all_agents('wazuhdb')
     remove_groups()

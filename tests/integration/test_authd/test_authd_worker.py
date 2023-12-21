@@ -69,11 +69,13 @@ receiver_sockets_params = [(ossec_authd_socket_path, 'AF_INET', 'SSL_TLSv1_2')]
 mitm_master = WorkerMID(address=MODULESD_C_INTERNAL_SOCKET_PATH, family='AF_UNIX', connection_protocol='TCP')
 monitored_sockets_params = [(CLUSTER_DAEMON, mitm_master, True), (AUTHD_DAEMON, None, True)]
 receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
+daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
 
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_ossec_auth_messages(test_configuration, test_metadata, set_wazuh_configuration,
-                             configure_sockets_environment, connect_to_sockets, wait_for_authd_startup_module):
+                             truncate_monitored_files, daemons_handler, configure_sockets_environment,
+                             wait_for_authd_startup, connect_to_sockets):
     '''
     description:
         Checks that every message from the agent is correctly formatted for master,

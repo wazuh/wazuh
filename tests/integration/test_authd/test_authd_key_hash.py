@@ -94,8 +94,8 @@ def set_up_groups(test_metadata, request):
 
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_ossec_auth_messages_with_key_hash(test_configuration, test_metadata, set_wazuh_configuration,
-                                           configure_sockets_environment_module, insert_pre_existent_agents,
-                                           truncate_monitored_files, daemons_handler, wait_for_authd_startup,
+                                           configure_sockets_environment_module, truncate_monitored_files,
+                                           insert_pre_existent_agents, daemons_handler, wait_for_authd_startup,
                                            set_up_groups, connect_to_sockets_module):
     '''
     description:

@@ -92,9 +92,9 @@ def set_up_groups(test_metadata, request):
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_authd_local_messages(test_configuration, test_metadata, set_wazuh_configuration,
-                              configure_sockets_environment_module, insert_pre_existent_agents,
-                              truncate_monitored_files, daemons_handler, wait_for_authd_startup,
-                              set_up_groups, connect_to_sockets):
+                              truncate_monitored_files, insert_pre_existent_agents,
+                              daemons_handler, configure_sockets_environment,
+                              wait_for_authd_startup, set_up_groups, connect_to_sockets):
     '''
     description:
         Checks that every input message in trough local authd port generates the adequate response to worker.

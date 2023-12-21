@@ -67,8 +67,8 @@ daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
 # Test
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_authd_use_source_ip(test_configuration, test_metadata, set_wazuh_configuration, configure_receiver_sockets,
-                             configure_sockets_environment_module, clean_client_keys_file, truncate_monitored_files_module,
-                             daemons_handler, wait_for_authd_startup, connect_to_sockets):
+                             clean_client_keys_file, truncate_monitored_files, daemons_handler,
+                             configure_sockets_environment, wait_for_authd_startup, connect_to_sockets):
     '''
     description:
         Checks that every input message in authd port generates the adequate output
