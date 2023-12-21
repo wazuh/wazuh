@@ -44,7 +44,6 @@ def test_rids_closing_time_valid(test_configuration, test_metadata, configure_lo
     description: Check that 'rids_closing_time' can be set with no errors. For this purpose,
                  it uses the configuration from test cases and check if the selected cfg matches with the API response.
 
-
     parameters:
         - test_configuration
             type: dict

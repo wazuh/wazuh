@@ -16,7 +16,6 @@
     protocol: 'UDP'
     port: '1514'
 
-
 - name: Command config wazuh active response send
   description: Command config wazuh active response send
   configuration_parameters:
@@ -52,7 +51,6 @@
   metadata:
     protocol: 'UDP'
     port: '4565'
-
 
 - name: Command config wazuh active response send
   description: Command config wazuh active response send

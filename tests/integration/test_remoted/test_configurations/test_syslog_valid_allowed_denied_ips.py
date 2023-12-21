@@ -78,7 +78,6 @@ def test_allowed_denied_ips_syslog(test_configuration, test_metadata, configure_
                                                     "syslog_ips": allowed_ips}))
     assert log_monitor.callback_result
 
-
     real_config_list = get_real_configuration
 
     utils.compare_config_api_response(real_config_list, 'remote')

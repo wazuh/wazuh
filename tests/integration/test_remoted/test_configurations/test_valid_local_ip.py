@@ -33,7 +33,6 @@ def get_dynamic_data():
     final_configuration = []
     network_interfaces = netifaces.interfaces()
 
-
     for interface in network_interfaces:
         try:
             ip = netifaces.ifaddresses(interface)[netifaces.AF_INET][0]['addr']
@@ -62,7 +61,6 @@ local_internal_options = {REMOTED_DEBUG: '2'}
 
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, final_metadata))
-
 def test_local_ip_valid(test_configuration, test_metadata, configure_local_internal_options, truncate_monitored_files,
                             set_wazuh_configuration, restart_wazuh_expect_error, get_real_configuration):
     '''

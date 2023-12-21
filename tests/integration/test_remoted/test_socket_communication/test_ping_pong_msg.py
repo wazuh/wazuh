@@ -73,7 +73,6 @@ def test_ping_pong_message(test_configuration, test_metadata, configure_local_in
     if protocol_valid_upper in ['TCP,TCP', 'UDP,UDP', 'tcp,tcp', 'udp,udp']:
         protocol = protocol_valid_upper.split(',')[0]
 
-
     log_monitor.start(callback=generate_callback(patterns.DETECT_REMOTED_STARTED,
                                                  replacement={
                                                     "port": test_metadata['port'],
