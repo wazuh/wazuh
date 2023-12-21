@@ -1121,11 +1121,12 @@ checkDownloadContent()
 {
     echo "install.sh download_content:776=${DOWNLOAD_CONTENT} ¿continuar? (y/n): "
     sleep 10
+    VD_FILENAME='vd_1.0.0_vd_4.8.0.tar.xz'
 
     if [ "${DOWNLOAD_CONTENT}" = "yes" ]; then
-        wget -O vd.tar.xz https://.../vd.tar.xz
+        wget -O vd.tar.xz https://.../${VD_FILENAME}
 
-        ${INSTALL} -m 0640 -o ${WAZUH_USER} -g ${WAZUH_GROUP} vd.tar.xz ${INSTALLDIR}/
+        ${INSTALL} -m 0640 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${VD_FILENAME} ${INSTALLDIR}/
     fi
 }
 
