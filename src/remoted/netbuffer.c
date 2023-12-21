@@ -90,6 +90,11 @@ int nb_recv(netbuffer_t * buffer, int sock) {
         cur_len = wnet_order(*(uint32_t *)(sockbuf->data + i));
 
         if (cur_len > OS_MAXSTR) {
+            char hex[OS_SIZE_2048 + 1] = {0};
+            for (int j = 0; (j < OS_SIZE_2048/2) && (i+j < sockbuf->data_len); ++j) {
+                sprintf(hex+2*j, "%.2x", sockbuf->data[i+j]);
+            }
+            mwarn("Unexpected message (hex): '%s'", hex);
             recv_len = -2;
             goto end;
         }
