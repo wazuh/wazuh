@@ -56,9 +56,7 @@ from wazuh_testing.constants.paths.variables import AGENTD_STATE
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
-from wazuh_testing.utils.client_keys import add_client_keys_entry
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
-from wazuh_testing.utils.services import control_service
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
 from utils import wait_keepalive, wait_ack, wait_state_update, wait_agent_notification
@@ -79,6 +77,8 @@ if sys.platform == WINDOWS:
 else:
     local_internal_options = {AGENTD_DEBUG: '2'}
 
+daemons_handler_configuration = {'all_daemons': True}
+
 def start_remoted_server(test_metadata) -> None:
     """"Start RemotedSimulator if test case need it"""
     if 'remoted' in test_metadata and test_metadata['remoted']:
@@ -89,7 +89,8 @@ def start_remoted_server(test_metadata) -> None:
     return remoted_server
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_agentd_state(test_configuration, test_metadata, set_wazuh_configuration, remove_state_file, configure_local_internal_options, truncate_monitored_files):
+def test_agentd_state(test_configuration, test_metadata, set_wazuh_configuration, remove_state_file, configure_local_internal_options, 
+                      truncate_monitored_files, clean_keys, add_keys, daemons_handler):
     '''
     description: Check that the statistics file 'wazuh-agentd.state' is created automatically
                  and verify that the content of its fields is correct.
@@ -117,6 +118,15 @@ def test_agentd_state(test_configuration, test_metadata, set_wazuh_configuration
         - truncate_monitored_files:
             type: fixture
             brief: Reset the 'ossec.log' file and start a new monitor.
+        - clean_keys:
+            type: fixture
+            brief: Cleans keys file content
+        - add_keys:
+            type: fixture
+            brief: Adds keys to keys file
+        - daemons_handler:
+            type: fixture
+            brief: Handler of Wazuh daemons.
 
     assertions:
         - Verify that the 'wazuh-agentd.state' statistics file has been created.
@@ -132,17 +142,8 @@ def test_agentd_state(test_configuration, test_metadata, set_wazuh_configuration
         - r'connected'
     '''
 
-    # Stop service
-    control_service('stop')
-
     # Start RemotedSimulator if test case need it
     remoted_server = start_remoted_server(test_metadata) 
-
-    # Add dummy key in order to communicate with RemotedSimulator
-    add_client_keys_entry("001", "ubuntu-agent", "any", "SuperSecretKey")
-
-    # Start service
-    control_service('start')
 
     # Check fields for every expected output type
     for expected_output in test_metadata['output']:

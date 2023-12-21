@@ -54,11 +54,9 @@ from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WIND
 from wazuh_testing.modules.agentd.patterns import * 
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
-from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils import callbacks
 from wazuh_testing.utils.client_keys import add_client_keys_entry
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
-from wazuh_testing.utils.services import control_service
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
@@ -79,6 +77,8 @@ else:
     local_internal_options = {AGENTD_DEBUG: '2'}
 local_internal_options.update({AGENTD_TIMEOUT: '5'})
 
+daemons_handler_configuration = {'all_daemons': True}
+
 # Tests
 """
 How does this test work:
@@ -92,7 +92,7 @@ How does this test work:
 """
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_agentd_multi_server(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options, truncate_monitored_files, 
-                             remove_keys_file):
+                             remove_keys_file, start_remoted_simulators, daemons_handler):
     '''
     description: Check the agent's enrollment and connection to a manager in a multi-server environment.
                  Initialize an environment with multiple simulated servers in which the agent is forced to enroll
@@ -155,14 +155,8 @@ def test_agentd_multi_server(test_configuration, test_metadata, set_wazuh_config
         - ssl
         - keys
     '''
-
-    # Servers paremeters
     remoted_server_addresses = ["127.0.0.0","127.0.0.1","127.0.0.2"]
     remoted_server_ports = [1514,1516,1517]
-    remoted_servers = [None,None,None]
-    
-    # Stop target Agent
-    control_service('stop')
 
     # Configure keys
     if(test_metadata['SIMULATOR_MODES']['AUTHD'] == 'ACCEPT'):
@@ -172,16 +166,6 @@ def test_agentd_multi_server(test_configuration, test_metadata, set_wazuh_config
         if(test_metadata['SIMULATOR_MODES']['AUTHD_PREV_MODE'] == 'ACCEPT'):
             authd_server = None
             add_client_keys_entry("001", "ubuntu-agent", "any", "SuperSecretKey")
-
-    # Start target Agent
-    control_service('start')
-    
-    # Start Remoted Simulators
-    for i in range(len(remoted_server_addresses)):
-        if(test_metadata['SIMULATOR_MODES'][i] != 'CLOSE'):
-            remoted_servers[i] = RemotedSimulator(protocol = test_metadata['PROTOCOL'], server_ip = remoted_server_addresses[i], 
-                                        port = remoted_server_ports[i], mode = test_metadata['SIMULATOR_MODES'][i])
-            remoted_servers[i].start()
 
     # Start FileMonitor
     log_monitor = FileMonitor(WAZUH_LOG_PATH)
@@ -197,11 +181,6 @@ def test_agentd_multi_server(test_configuration, test_metadata, set_wazuh_config
             # Look for expected log
             log_monitor.start(callback=callbacks.generate_callback(regex,values), timeout = 45)
             assert (log_monitor.callback_result != None), regex
-
-    # Shutdown simulators
-    for i in range(len(remoted_servers)):
-        if(remoted_servers[i]):
-            remoted_servers[i].destroy()
 
     if(authd_server):
         authd_server.destroy()
