@@ -255,67 +255,11 @@ checks:
   # 2.2.41 (L1) Ensure 'Perform volume maintenance tasks' is set to 'Administrators'. (Automated) - Not Implemented
   # 2.2.42 (L1) Ensure 'Profile single process' is set to 'Administrators'. (Automated) - Not Implemented
   # 2.2.43 (L1) Ensure 'Profile system performance' is set to 'Administrators, NT SERVICE\WdiServiceHost'. (Automated) - Not Implemented
-  # 2.2.44 (L1) Ensure 'Replace a process level token' is set to 'LOCAL SERVICE, NETWORK SERVICE'. (Automated)
-   - id: 18551
-     title: "Ensure 'Replace a process level token' is set to 'LOCAL SERVICE, NETWORK SERVICE'."
-     description: "This policy setting allows one process or service to start another service or process with a different security access token, which can be used to modify the security access token of that sub-process and result in the escalation of privileges. The recommended state for this setting is: LOCAL SERVICE, NETWORK SERVICE. Note: This user right is considered a \"sensitive privilege\" for the purposes of auditing. Note #2: A Member Server that holds the Web Server (IIS) Role with Web Server Role Service will require a special exception to this recommendation, to allow IIS application pool(s) to be granted this user right. Note #3: A Member Server with Microsoft SQL Server installed will require a special exception to this recommendation for additional SQL-generated entries to be granted this user right."
-     rationale: "Users with the Replace a process level token privilege are able to start processes as other users whose credentials they know. They could use this method to hide their unauthorized actions on the computer. (On Windows 2000-based computers, use of the Replace a process level token user right also requires the user to have the Adjust memory quotas for a process user right that is discussed earlier in this section.)."
-     impact: "On most computers, this is the default configuration and there will be no negative impact. However, if you have installed the Web Server (IIS) Role with Web Services Role Service, you will need to allow the IIS application pool(s) to be granted this User Right Assignment."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to LOCAL SERVICE, NETWORK SERVICE: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Replace a process level token."
-     compliance:
-       - cis: ["2.2.44"]
-     condition:
-     rules:
-
-  # 2.2.45 (L1) Ensure 'Restore files and directories' is set to 'Administrators'. (Automated)
-   - id: 18552
-     title: "Ensure 'Restore files and directories' is set to 'Administrators'."
-     description: "This policy setting determines which users can bypass file, directory, registry, and other persistent object permissions when restoring backed up files and directories on computers that run Windows Vista (or newer) in your environment. This user right also determines which users can set valid security principals as object owners; it is similar to the Back up files and directories user right. The recommended state for this setting is: Administrators. Note: This user right is considered a \"sensitive privilege\" for the purposes of auditing."
-     rationale: "An attacker with the Restore files and directories user right could restore sensitive data to a computer and overwrite data that is more recent, which could lead to loss of important data, data corruption, or a denial of service. Attackers could overwrite executable files that are used by legitimate administrators or system services with versions that include malicious software to grant themselves elevated privileges, compromise data, or install backdoors for continued access to the computer. Note: Even if the following countermeasure is configured, an attacker could still restore data to a computer in a domain that is controlled by the attacker. Therefore, it is critical that organizations carefully protect the media that is used to back up data."
-     impact: "If you remove the Restore files and directories user right from the Backup Operators group and other accounts you could make it impossible for users who have been delegated specific tasks to perform those tasks. You should verify that this change won't negatively affect the ability of your organization's personnel to do their jobs."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Restore files and directories."
-     compliance:
-       - cis: ["2.2.45"]
-     condition:
-     rules:
-
-  # 2.2.46 (L1) Ensure 'Shut down the system' is set to 'Administrators'. (Automated)
-   - id: 18553
-     title: "Ensure 'Shut down the system' is set to 'Administrators'."
-     description: "This policy setting determines which users who are logged on locally to the computers in your environment can shut down the operating system with the Shut Down command. Misuse of this user right can result in a denial of service condition. The recommended state for this setting is: Administrators."
-     rationale: "The ability to shut down Domain Controllers and Member Servers should be limited to a very small number of trusted Administrators. Although the Shut down the system user right requires the ability to log on to the server, you should be very careful about which accounts and groups you allow to shut down a Domain Controller or Member Server. When a Domain Controller is shut down, it is no longer available to process logons, serve Group Policy, and answer Lightweight Directory Access Protocol (LDAP) queries. If you shut down Domain Controllers that possess Flexible Single Master Operations (FSMO) roles, you can disable key domain functionality, such as processing logons for new passwords — one of the functions of the Primary Domain Controller (PDC) Emulator role."
-     impact: "The impact of removing these default groups from the Shut down the system user right could limit the delegated abilities of assigned roles in your environment. You should confirm that delegated activities will not be adversely affected."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Shut down the system."
-     compliance:
-       - cis: ["2.2.46"]
-     condition:
-     rules:
-
-  # 2.2.47 (L1) Ensure 'Synchronize directory service data' is set to 'No One' (DC only). (Automated)
-   - id: 18554
-     title: "Ensure 'Synchronize directory service data' is set to 'No One' (DC only)."
-     description: "This security setting determines which users and groups have the authority to synchronize all directory service data. This is also known as Active Directory synchronization. The recommended state for this setting is: No One."
-     rationale: "The Synchronize directory service data user right affects Domain Controllers; only Domain Controllers should be able to synchronize directory service data. Domain Controllers have this user right inherently, because the synchronization process runs in the context of the System account on Domain Controllers. Attackers who have this user right can view all information stored within the directory. They could then use some of that information to facilitate additional attacks or expose sensitive data, such as direct telephone numbers or physical addresses."
-     impact: "None - this is the default behavior."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to No One: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Synchronize directory service data."
-     compliance:
-       - cis: ["2.2.47"]
-     condition:
-     rules:
-
-  # 2.2.48 (L1) Ensure 'Take ownership of files or other objects' is set to 'Administrators'. (Automated)
-   - id: 18555
-     title: "Ensure 'Take ownership of files or other objects' is set to 'Administrators'."
-     description: "This policy setting allows users to take ownership of files, folders, registry keys, processes, or threads. This user right bypasses any permissions that are in place to protect objects to give ownership to the specified user. The recommended state for this setting is: Administrators. Note: This user right is considered a \"sensitive privilege\" for the purposes of auditing."
-     rationale: "Any users with the Take ownership of files or other objects user right can take control of any object, regardless of the permissions on that object, and then make any changes they wish to that object. Such changes could result in exposure of data, corruption of data, or a DoS condition."
-     impact: "None - this is the default behavior."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Take ownership of files or other objects."
-     compliance:
-       - cis: ["2.2.48"]
-       - cis_csc_v7: ["14.6"]
-       - iso_27001-2013: ["A.9.1.1"]
-     condition:
-     rules:
+  # 2.2.44 (L1) Ensure 'Replace a process level token' is set to 'LOCAL SERVICE, NETWORK SERVICE'. (Automated) - Not Implemented
+  # 2.2.45 (L1) Ensure 'Restore files and directories' is set to 'Administrators'. (Automated) - Not Implemented
+  # 2.2.46 (L1) Ensure 'Shut down the system' is set to 'Administrators'. (Automated) - Not Implemented
+  # 2.2.47 (L1) Ensure 'Synchronize directory service data' is set to 'No One' (DC only). (Automated) - Not Implemented
+  # 2.2.48 (L1) Ensure 'Take ownership of files or other objects' is set to 'Administrators'. (Automated) - Not Implemented
 
   # 2.3.1.1 (L1) Ensure 'Accounts: Block Microsoft accounts' is set to 'Users can't add or log on with Microsoft accounts'. (Automated)
    - id: 18556
@@ -327,8 +271,11 @@ checks:
      compliance:
        - cis: ["2.3.1.1"]
        - cis_csc_v7: ["16.2"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> NoConnectedUser'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> NoConnectedUser -> 3'
 
   # 2.3.1.2 (L1) Ensure 'Accounts: Guest account status' is set to 'Disabled' (MS only). (Automated)
    - id: 18557
@@ -345,8 +292,9 @@ checks:
        - pci_dss_v3.2.1: ["2.1", "2.1.1"]
        - pci_dss_v4.0: ["2.2.2", "2.3.1"]
        - soc_2: ["CC6.3"]
-     condition:
+     condition: all
      rules:
+       - 'c:net user guest -> r:Account active\s+No'
 
   # 2.3.1.3 (L1) Ensure 'Accounts: Limit local account use of blank passwords to console logon only' is set to 'Enabled'. (Automated)
    - id: 18558
@@ -363,8 +311,10 @@ checks:
        - iso_27001-2013: ["A.9.4.3"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> LimitBlankPasswordUse'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> LimitBlankPasswordUse -> 1'
 
   # 2.3.1.4 (L1) Configure 'Accounts: Rename administrator account'. (Automated)
    - id: 18559
@@ -379,8 +329,9 @@ checks:
        - pci_dss_v3.2.1: ["2.1", "2.1.1"]
        - pci_dss_v4.0: ["2.2.2", "2.3.1"]
        - soc_2: ["CC6.3"]
-     condition:
+     condition: all
      rules:
+       - "c:net user administrator -> r:The user name could not be found."
 
   # 2.3.1.5 (L1) Configure 'Accounts: Rename guest account'. (Automated)
    - id: 18560
@@ -389,16 +340,39 @@ checks:
      rationale: "The Guest account exists on all computers that run the Windows 2000 or newer operating systems. If you rename this account, it is slightly more difficult for unauthorized persons to guess this privileged user name and password combination."
      impact: "There should be little impact, because the Guest account is disabled by default."
      remediation: "To establish the recommended configuration via GP, configure the following UI path: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Rename guest account."
-     references:
-       - 'https://docs.microsoft.com/en-us/windows-server/identity/ad-'
      compliance:
        - cis: ["2.3.1.5"]
        - cis_csc_v8: ["4.7"]
        - pci_dss_v3.2.1: ["2.1", "2.1.1"]
        - pci_dss_v4.0: ["2.2.2", "2.3.1"]
        - soc_2: ["CC6.3"]
-     condition:
+     condition: all
      rules:
+       - "c:net user guest -> r:The user name could not be found."
+
+  # 2.3.2.1 (L1) Ensure 'Audit: Force audit policy subcategory settings (Windows Vista or later) to override audit policy category settings' is set to 'Enabled'. (Automated)
+   - id: 27015
+     title: "Ensure 'Audit: Force audit policy subcategory settings (Windows Vista or later) to override audit policy category settings' is set to 'Enabled'."
+     description: "This policy setting allows administrators to enable the more precise auditing capabilities present in Windows Vista. The Audit Policy settings available in Windows Server 2003 Active Directory do not yet contain settings for managing the new auditing subcategories. To properly apply the auditing policies prescribed in this baseline, the Audit: Force audit policy subcategory settings (Windows Vista or later) to override audit policy category settings setting needs to be configured to Enabled. The recommended state for this setting is: Enabled. Important: Be very cautious about audit settings that can generate a large volume of traffic. For example, if you enable either success or failure auditing for all of the Privilege Use subcategories, the high volume of audit events generated can make it difficult to find other types of entries in the Security log. Such a configuration could also have a significant impact on system performance."
+     rationale: "Prior to the introduction of auditing subcategories in Windows Vista, it was difficult to track events at a per-system or per-user level. The larger event categories created too many events and the key information that needed to be audited was difficult to find."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Audit: Force audit policy subcategory settings (Windows Vista or later) to override audit policy category settings."
+     references:
+       - 'https://docs.microsoft.com/en-us/windows-server/identity/ad-ds/manage/component-updates/command-line-process-auditing#to-ensure-that-advanced-audit-policy-configuration-settings-are-not-overwritten'
+     compliance:
+       - cis: ["2.3.2.1"]
+       - cis_csc_v8: ["8.5"]
+       - cis_csc_v7: ["6.2", "6.3"] 
+       - cmmc_v2.0: ["AU.L2-3.3.1"]
+       - iso_27001-2013: ["A.12.4.1"]
+       - nist_sp_800-53: ["AU-3(1)", "AU-7"]
+       - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
+       - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
+       - soc_2: ["CC5.2", "CC7.2"]
+     condition: any
+     rules:
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> SCENoApplyLegacyAuditPolicy'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> SCENoApplyLegacyAuditPolicy -> 1'
 
   # 2.3.2.2 (L1) Ensure 'Audit: Shut down system immediately if unable to log security audits' is set to 'Disabled'. (Automated)
    - id: 18561
@@ -414,8 +388,11 @@ checks:
        - iso_27001-2013: ["A.12.4.1"]
        - pci_dss_v3.2.1: ["10.7"]
        - soc_2: ["A1.1"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> CrashOnAuditFail'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> CrashOnAuditFail -> 0'
 
   # 2.3.4.1 (L1) Ensure 'Devices: Allowed to format and eject removable media' is set to 'Administrators'. (Automated)
    - id: 18562
@@ -428,8 +405,10 @@ checks:
        - cis: ["2.3.4.1"]
        - cis_csc_v7: ["13.7"]
        - iso_27001-2013: ["A.8.3.1"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> AllocateDASD'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> AllocateDASD -> 0'
 
   # 2.3.4.2 (L1) Ensure 'Devices: Prevent users from installing printer drivers' is set to 'Enabled'. (Automated)
    - id: 18563
@@ -440,8 +419,11 @@ checks:
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Devices: Prevent users from installing printer drivers."
      compliance:
        - cis: ["2.3.4.2"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Print\Providers\LanMan Print Services\Servers'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Print\Providers\LanMan Print Services\Servers -> AddPrinterDrivers'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Print\Providers\LanMan Print Services\Servers -> AddPrinterDrivers -> 1'
 
   # 2.3.5.1 (L1) Ensure 'Domain controller: Allow server operators to schedule tasks' is set to 'Disabled' (DC only). (Automated)
    - id: 18564
@@ -452,8 +434,10 @@ checks:
      remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain controller: Allow server operators to schedule tasks."
      compliance:
        - cis: ["2.3.5.1"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> SubmitControl'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> SubmitControl -> 0'
 
   # 2.3.5.2 (L1) Ensure 'Domain controller: Allow vulnerable Netlogon secure channel connections' is set to 'Not Configured' (DC Only). (Automated)
    - id: 18565
@@ -466,8 +450,9 @@ checks:
        - 'https://go.microsoft.com/fwlink/?linkid=2133485'
      compliance:
        - cis: ["2.3.5.2"]
-     condition:
+     condition: all
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Netlogon\Parameters -> VulnerableChannelAllowList'
 
   # 2.3.5.3 (L1) Ensure 'Domain controller: LDAP server channel binding token requirements' is set to 'Always' (DC Only). (Automated)
    - id: 18566
@@ -486,13 +471,16 @@ checks:
        - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
        - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
        - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters -> LdapEnforceChannelBinding'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters -> LdapEnforceChannelBinding -> 2'
 
   # 2.3.5.4 (L1) Ensure 'Domain controller: LDAP server signing requirements' is set to 'Require signing' (DC only). (Automated)
    - id: 18567
      title: "Ensure 'Domain controller: LDAP server signing requirements' is set to 'Require signing' (DC only)."
-     description: "This policy setting determines whether the Lightweight Directory Access Protocol (LDAP) server requires LDAP clients to negotiate data signing. The recommended state for this setting is: Require signing. Note: Domain member computers must have Network security: LDAP signing requirements (Rule 2.3.11.8) set to Negotiate signing or higher. If not, they will fail to authenticate once the above Require signing value is configured on the Domain Controllers. Fortunately, Negotiate signing is the default in the client configuration. Note #2: This policy setting does not have any impact on LDAP simple bind (ldap_simple_bind) or LDAP simple bind through SSL (ldap_simple_bind_s). No Microsoft LDAP clients that are shipped with Windows XP Professional use LDAP simple bind or LDAP simple bind through SSL to talk to a Domain Controller. Note #3: Before enabling this setting, you should first ensure that there are no clients (including server-based applications) that are configured to authenticate with Active Directory via unsigned LDAP, because changing this setting will break those applications. Such applications should first be reconfigured to use signed LDAP, Secure LDAP (LDAPS), or IPsec-protected connections. For more information on how to identify whether your DCs are being accessed via unsigned LDAP (and where those accesses are coming from), see this Microsoft TechNet blog article: Identifying Clear Text LDAP binds to your DC’s – Practical Windows Security."
+     description: "This policy setting determines whether the Lightweight Directory Access Protocol (LDAP) server requires LDAP clients to negotiate data signing. The recommended state for this setting is: Require signing. Note: Domain member computers must have Network security: LDAP signing requirements (Rule 2.3.11.8) set to Negotiate signing or higher. If not, they will fail to authenticate once the above Require signing value is configured on the Domain Controllers. Fortunately, Negotiate signing is the default in the client configuration. Note #2: This policy setting does not have any impact on LDAP simple bind (ldap_simple_bind) or LDAP simple bind through SSL (ldap_simple_bind_s). No Microsoft LDAP clients that are shipped with Windows XP Professional use LDAP simple bind or LDAP simple bind through SSL to talk to a Domain Controller. Note #3: Before enabling this setting, you should first ensure that there are no clients (including server-based applications) that are configured to authenticate with Active Directory via unsigned LDAP, because changing this setting will break those applications. Such applications should first be reconfigured to use signed LDAP, Secure LDAP (LDAPS), or IPsec-protected connections. For more information on how to identify whether your DCs are being accessed via unsigned LDAP (and where those accesses are coming from), see this Microsoft TechNet blog article: Identifying Clear Text LDAP binds to your DC's - Practical Windows Security."
      rationale: "Unsigned network traffic is susceptible to man-in-the-middle attacks. In such attacks, an intruder captures packets between the server and the client, modifies them, and then forwards them to the client. Where LDAP servers are concerned, an attacker could cause a client to make decisions that are based on false records from the LDAP directory. To lower the risk of such an intrusion in an organization's network, you can implement strong physical security measures to protect the network infrastructure. Also, you could implement Internet Protocol security (IPsec) authentication header mode (AH), which performs mutual authentication and packet integrity for IP traffic to make all types of man-in-the-middle attacks extremely difficult. Additionally, allowing the use of regular, unsigned LDAP permits credentials to be received over the network in clear text, which could very easily result in the interception of account passwords by other systems on the network."
      impact: "Unless TLS/SSL is being used, the LDAP data signing option must be negotiated. Clients that do not support LDAP signing will be unable to run LDAP queries against the Domain Controllers. All Windows 2000-based computers in your organization that are managed from Windows Server 2003-based or Windows XP-based computers and that use Windows NT Challenge/Response (NTLM) authentication must have Windows 2000 Service Pack 3 (SP3) installed. Alternatively, these clients must have a registry change. For information about this registry change, see Microsoft Knowledge Base article 325465: Windows 2000 domain controllers require SP3 or later when using Windows Server 2003 administration tools. Also, some non-Microsoft operating systems do not support LDAP signing. If you enable this policy setting, client computers that use those operating systems may be unable to access domain resources."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Require signing: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain controller: LDAP server signing requirements."
@@ -504,8 +492,11 @@ checks:
        - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
        - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
        - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters -> LDAPServerIntegrity'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters -> LDAPServerIntegrity -> 2'
 
   # 2.3.5.5 (L1) Ensure 'Domain controller: Refuse machine account password changes' is set to 'Disabled' (DC only). (Automated)
    - id: 18568
@@ -524,14 +515,17 @@ checks:
        - pci_dss_v3.2.1: ["11.5", "2.2"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
        - soc_2: ["CC7.1", "CC8.1"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Netlogon\Parameters'
+       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Netlogon\Parameters -> RefusePasswordChange'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Netlogon\Parameters -> RefusePasswordChange -> 0'
 
   # 2.3.6.1 (L1) Ensure 'Domain member: Digitally encrypt or sign secure channel data (always)' is set to 'Enabled'. (Automated)
    - id: 18569
      title: "Ensure 'Domain member: Digitally encrypt or sign secure channel data (always)' is set to 'Enabled'."
      description: "This policy setting determines whether all secure channel traffic that is initiated by the domain member must be signed or encrypted. The recommended state for this setting is: Enabled."
-     rationale: "When a computer joins a domain, a computer account is created. After it joins the domain, the computer uses the password for that account to create a secure channel with the Domain Controller for its domain every time that it restarts. Requests that are sent on the secure channel are authenticated—and sensitive information such as passwords are encrypted—but the channel is not integrity-checked, and not all information is encrypted. Digital encryption and signing of the secure channel is a good idea where it is supported. The secure channel protects domain credentials as they are sent to the Domain Controller."
+     rationale: "When a computer joins a domain, a computer account is created. After it joins the domain, the computer uses the password for that account to create a secure channel with the Domain Controller for its domain every time that it restarts. Requests that are sent on the secure channel are authenticated-and sensitive information such as passwords are encrypted-but the channel is not integrity-checked, and not all information is encrypted. Digital encryption and signing of the secure channel is a good idea where it is supported. The secure channel protects domain credentials as they are sent to the Domain Controller."
      impact: "None - this is the default behavior. However, only Windows NT 4.0 with Service Pack 6a (SP6a) and subsequent versions of the Windows operating system support digital encryption and signing of the secure channel. Windows 98 Second Edition clients do not support it unless they have Dsclient installed. Therefore, you cannot enable the Domain member: Digitally encrypt or sign secure channel data (always) setting on Domain Controllers that support Windows 98 clients as members of the domain. Potential impacts can include the following: - The ability to create or delete trust relationships with clients running versions of Windows earlier than Windows NT 4.0 with SP6a will be disabled. - Logons from clients running versions of Windows earlier than Windows NT 4.0 with SP6a will be disabled. - The ability to authenticate other domains' users from a Domain Controller running a version of Windows earlier than Windows NT 4.0 with SP6a in a trusted domain will be disabled. You can enable this policy setting after you eliminate all Windows 9x clients from the domain and upgrade all Windows NT 4.0 servers and Domain Controllers from trusted/trusting domains to Windows NT 4.0 with SP6a."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Digitally encrypt or sign secure channel data (always)."
      compliance:
@@ -544,14 +538,17 @@ checks:
        - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
        - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
        - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters'
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> RequireSignOrSeal'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> RequireSignOrSeal -> 1'
 
   # 2.3.6.2 (L1) Ensure 'Domain member: Digitally encrypt secure channel data (when possible)' is set to 'Enabled'. (Automated)
    - id: 18570
      title: "Ensure 'Domain member: Digitally encrypt secure channel data (when possible)' is set to 'Enabled'."
      description: "This policy setting determines whether a domain member should attempt to negotiate encryption for all secure channel traffic that it initiates. The recommended state for this setting is: Enabled."
-     rationale: "When a computer joins a domain, a computer account is created. After it joins the domain, the computer uses the password for that account to create a secure channel with the Domain Controller for its domain every time that it restarts. Requests that are sent on the secure channel are authenticated—and sensitive information such as passwords are encrypted—but the channel is not integrity-checked, and not all information is encrypted. Digital encryption and signing of the secure channel is a good idea where it is supported. The secure channel protects domain credentials as they are sent to the Domain Controller."
+     rationale: "When a computer joins a domain, a computer account is created. After it joins the domain, the computer uses the password for that account to create a secure channel with the Domain Controller for its domain every time that it restarts. Requests that are sent on the secure channel are authenticated-and sensitive information such as passwords are encrypted-but the channel is not integrity-checked, and not all information is encrypted. Digital encryption and signing of the secure channel is a good idea where it is supported. The secure channel protects domain credentials as they are sent to the Domain Controller."
      impact: "None - this is the default behavior. However, only Windows NT 4.0 Service Pack 6a (SP6a) and subsequent versions of the Windows operating system support digital encryption and signing of the secure channel. Windows 98 Second Edition clients do not support it unless they have Dsclient installed."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Digitally encrypt secure channel data (when possible)."
      compliance:
@@ -566,6 +563,9 @@ checks:
        - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
      condition:
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters'
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> SealSecureChannel'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> SealSecureChannel -> 1'
 
   # 2.3.6.3 (L1) Ensure 'Domain member: Digitally sign secure channel data (when possible)' is set to 'Enabled'. (Automated)
    - id: 18571
