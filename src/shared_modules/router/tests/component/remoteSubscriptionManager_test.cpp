@@ -1,7 +1,7 @@
 /*
  * Wazuh router - RemoteSubscriptionManager tests
  * Copyright (C) 2015, Wazuh Inc.
- * September 06, 2023.
+ * December 19, 2023.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public

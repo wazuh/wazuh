@@ -46,7 +46,6 @@ int main(int argc, char ** argv)
     pthread_t thread_gc;
     pthread_t thread_up;
     pthread_t thread_backup;
-    pthread_t thread_router;
 
     OS_SetName(ARGV0);
 
@@ -198,6 +197,14 @@ int main(int argc, char ** argv)
 
     minfo(STARTUP_MSG, (int)getpid());
 
+    // Router module logging initialization
+    router_initialize(taggedLogFunction);
+
+    // Router provider initialization
+    if (router_syscollector_handle = router_provider_create(WDB_SYSCOLLECTOR_DELTAS_TOPIC), !router_syscollector_handle) {
+        mdebug2("Failed to create router handle for 'syscollector'.");
+    }
+
     if (notify_queue = wnotify_init(1), !notify_queue) {
         merror_exit("at run_dealer(): wnotify_init(): %s (%d)",
                 strerror(errno), errno);
@@ -241,14 +248,6 @@ int main(int argc, char ** argv)
         }
     }
 
-    // Router module logging initialization
-    router_initialize(taggedLogFunction);
-
-    // Router provider initialization
-    if (router_syscollector_handle = router_provider_create(WDB_SYSCOLLECTOR_DELTAS_TOPIC), !router_syscollector_handle) {
-        mdebug2("Failed to create router handle for 'syscollector'.");
-    }
-
     // Join threads
     pthread_join(thread_dealer, NULL);
 
@@ -263,7 +262,6 @@ int main(int argc, char ** argv)
     if(backups_enabled) {
         pthread_join(thread_backup, NULL);
     }
-    pthread_join(thread_router, NULL);
     wdb_close_all();
 
     OSHash_Free(open_dbs);
