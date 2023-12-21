@@ -56,7 +56,7 @@ normalize:
       - <event.duration>
 
   - map:
-      - event.duration: int_calculate(mul,1000000)
+      - event.duration: int_calculate(mul,$event.duration,1000000)
       - host.name: $_json_event.node\.name
       - host.id: $_json_event.node\.id
       - cluster.name: $_json_event.cluster\.name

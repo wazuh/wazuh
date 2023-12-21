@@ -6,7 +6,7 @@
       "type": "wazuh-agent"
     },
     "ecs": {
-      "version": "8.8"
+      "version": "8.11.0"
     },
     "event": {
       "category": [
@@ -113,7 +113,7 @@
           "AnyKeyword"
         ],
         "process": {
-          "pid": "4844",
+          "pid": 4844,
           "thread": {
             "id": "4428"
           }
@@ -133,7 +133,7 @@
       "type": "wazuh-agent"
     },
     "ecs": {
-      "version": "8.8"
+      "version": "8.11.0"
     },
     "event": {
       "category": [
@@ -240,7 +240,7 @@
           "AnyKeyword"
         ],
         "process": {
-          "pid": "4844",
+          "pid": 4844,
           "thread": {
             "id": "4428"
           }

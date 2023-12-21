@@ -34,7 +34,7 @@ normalize:
       - destination.address: $json_event.dest_ip
       - destination.ip: $destination.address
       - destination.port: $json_event.dest_port
-      - event.created: $json_event.timestamp
+      - event.created: parse_date($json_event.timestamp, %FT%T%z)
       - network.transport: $json_event.proto
       - source.address: $json_event.src_ip
       - source.ip: $json_event.src_ip
@@ -60,7 +60,7 @@ normalize:
       - source.bytes: $json_event.flow.bytes_toserver
       - source.mac: $json_event.ether.src_mac
       - source.packets: $json_event.flow.pkts_toserver
-      - event.start: $json_event.flow.start
+      - event.start: parse_date($json_event.flow.start, %FT%T%z)
       - event.end: $json_event.flow.end
 
   - check:

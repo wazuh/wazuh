@@ -55,7 +55,7 @@ normalize:
       - source.address: $json_event.req.remoteAddress
       - user_agent.original: $json_event.req.userAgent
       - http.request.referrer: $json_event.req.referer
-      - http.request.body.bytes: $json_event.req.headers.content-length
+      - http.request.body.bytes: parse_long($json_event.req.headers.content-length)
       - http.response.status_code: $json_event.res.statusCode
 
   - check: $http.response.status_code < 400

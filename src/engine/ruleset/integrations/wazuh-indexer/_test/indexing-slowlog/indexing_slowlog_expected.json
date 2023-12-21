@@ -11,7 +11,7 @@
             "uuid": "eOXG1FbXQB2KVUJrjJeSQQ"
         },
         "ecs": {
-            "version": "8.8"
+            "version": "8.11.0"
         },
         "event": {
             "category": [
@@ -82,7 +82,7 @@
             "uuid": "eOXG1FbXQB2KVUJrjJeSQQ"
         },
         "ecs": {
-            "version": "8.8"
+            "version": "8.11.0"
         },
         "event": {
             "category": [

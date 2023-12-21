@@ -67,7 +67,7 @@
         "entity_id": "{23b237de-6cd1-650b-0006-000000002000}",
         "executable": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
         "name": "powershell.exe",
-        "pid": "7008"
+        "pid": 7008
       },
       "pe": {
         "company": "Python Software Foundation",

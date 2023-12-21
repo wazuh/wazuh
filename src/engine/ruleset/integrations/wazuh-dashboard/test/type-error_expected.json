@@ -7,7 +7,7 @@
             "type": "wazuh-agent"
         },
         "ecs": {
-            "version": "8.8"
+            "version": "8.11.0"
         },
         "error": {
             "code": "ERR_SSL_SSLV3_ALERT_CERTIFICATE_UNKNOWN",
@@ -68,7 +68,7 @@
             "type": "wazuh-agent"
         },
         "ecs": {
-            "version": "8.8"
+            "version": "8.11.0"
         },
         "error": {
             "message": "Internal Server Error",
