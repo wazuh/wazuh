@@ -32,7 +32,7 @@ TEST_F(PubSubPublisherTest, instantiation)
 TEST_F(PubSubPublisherTest, TestPublishEmptyData)
 {
     auto mockRouterProvider {std::make_shared<MockRouterProvider>()};
-    EXPECT_CALL(*mockRouterProvider, start).Times(1);
+    EXPECT_CALL(*mockRouterProvider, start()).Times(1);
     EXPECT_CALL(*mockRouterProvider, stop).Times(1);
 
     m_spUpdaterBaseContext->spChannel = mockRouterProvider;
@@ -53,7 +53,7 @@ TEST_F(PubSubPublisherTest, TestPublishEmptyData)
 TEST_F(PubSubPublisherTest, TestPublishValidData)
 {
     auto mockRouterProvider {std::make_shared<MockRouterProvider>()};
-    EXPECT_CALL(*mockRouterProvider, start).Times(1);
+    EXPECT_CALL(*mockRouterProvider, start()).Times(1);
     EXPECT_CALL(*mockRouterProvider, send(::testing::_)).Times(1);
     EXPECT_CALL(*mockRouterProvider, stop).Times(1);
 

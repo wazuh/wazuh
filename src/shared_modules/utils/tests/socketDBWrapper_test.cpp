@@ -62,7 +62,10 @@ TEST_F(SocketDBWrapperTest, IgnoreTest)
 TEST_F(SocketDBWrapperTest, DueTest)
 {
     m_query = "SELECT * FROM test_table;";
-    m_responses = std::vector<std::string> {R"(due {"field": "value1"})", R"(due {"field": "value2"})", R"(due {"field": "value3"})", R"(ok {"status":"SUCCESS"})"};
+    m_responses = std::vector<std::string> {R"(due {"field": "value1"})",
+                                            R"(due {"field": "value2"})",
+                                            R"(due {"field": "value3"})",
+                                            R"(ok {"status":"SUCCESS"})"};
 
     nlohmann::json output;
     SocketDBWrapper socketDBWrapper(TEST_SOCKET);
@@ -108,5 +111,15 @@ TEST_F(SocketDBWrapperTest, OkTest)
 
 TEST_F(SocketDBWrapperTestNoSetUp, NoSocketTest)
 {
-    EXPECT_THROW(SocketDBWrapper socketDBWrapper(TEST_SOCKET), std::exception);
+    std::unique_ptr<SocketDBWrapper> socketDBWrapper;
+    EXPECT_NO_THROW(socketDBWrapper = std::make_unique<SocketDBWrapper>(TEST_SOCKET));
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    EXPECT_NO_THROW(socketDBWrapper.reset());
+}
+
+TEST_F(SocketDBWrapperTestNoSetUp, NoSocketTestNoSleep)
+{
+    std::unique_ptr<SocketDBWrapper> socketDBWrapper;
+    EXPECT_NO_THROW(socketDBWrapper = std::make_unique<SocketDBWrapper>(TEST_SOCKET));
+    EXPECT_NO_THROW(socketDBWrapper.reset());
 }

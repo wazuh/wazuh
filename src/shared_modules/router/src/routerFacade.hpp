@@ -14,8 +14,8 @@
 
 #include "publisher.hpp"
 #include "remoteProvider.hpp"
-#include "remoteStateHelper.hpp"
 #include "remoteSubscriber.hpp"
+#include "remoteSubscriptionManager.hpp"
 #include "singleton.hpp"
 #include <functional>
 #include <map>
@@ -31,7 +31,7 @@ class RouterFacade final : public Singleton<RouterFacade>
 {
 public:
     // From subscriber.
-
+    // LCOV_EXCL_START
     /**
      * @brief Adds a subscriber to a given provider.
      *
@@ -49,10 +49,13 @@ public:
      * @param name Provider name.
      * @param subscriberId Subscriber ID.
      * @param callback Subscriber update callback.
+     * @param onConnect Callback to be called when the subscriber is connected.
      */
-    void addSubscriberRemote(const std::string& name,
-                             const std::string& subscriberId,
-                             const std::function<void(const std::vector<char>&)>& callback);
+    void addSubscriberRemote(
+        const std::string& name,
+        const std::string& subscriberId,
+        const std::function<void(const std::vector<char>&)>& callback,
+        const std::function<void()>& onConnect = []() {});
 
     /**
      * @brief Removes a local subscriber.
@@ -76,8 +79,10 @@ public:
      * @brief Initializes remote provider.
      *
      * @param name Provider name.
+     * @param onConnect Callback to be called when the provider is connected.
      */
-    void initProviderRemote(const std::string& name);
+    void initProviderRemote(
+        const std::string& name, const std::function<void()>& onConnect = []() {});
 
     /**
      * @brief Removes remote provider.
@@ -121,13 +126,13 @@ public:
      *
      */
     void destroy();
-
+    // LCOV_EXCL_STOP
 private:
-    std::map<std::string, std::unique_ptr<Publisher>> m_providers {};
+    std::unordered_map<std::string, std::unique_ptr<Publisher>> m_providers {};
     std::shared_mutex m_providersMutex {};
-    std::shared_ptr<SocketServer<Socket<OSPrimitives>, EpollWrapper>> m_providerRegistrationServer {};
-    std::map<std::string, std::shared_ptr<RemoteSubscriber>> m_remoteSubscribers {};
-    std::map<std::string, std::shared_ptr<RemoteProvider>> m_remoteProviders {};
+    std::unique_ptr<SocketServer<Socket<OSPrimitives>, EpollWrapper>> m_providerRegistrationServer {};
+    std::unordered_map<std::string, std::shared_ptr<RemoteSubscriber>> m_remoteSubscribers {};
+    std::unordered_map<std::string, std::shared_ptr<RemoteProvider>> m_remoteProviders {};
     std::mutex m_remoteSubscribersMutex {};
     std::mutex m_remoteProvidersMutex {};
 };

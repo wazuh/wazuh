@@ -51,6 +51,11 @@ public:
     MOCK_METHOD(void, start, ());
 
     /**
+     * @brief Mock implementation of function IRouterProvider::start
+     */
+    MOCK_METHOD(void, start, (const std::function<void()>& onConnect));
+
+    /**
      * @brief Mock implementation of function IRouterProvider::send.
      *
      */

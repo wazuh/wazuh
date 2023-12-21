@@ -50,6 +50,7 @@ public:
     virtual ~RouterProvider() = default;
     void stop();
     void start();
+    void start(const std::function<void()>& onConnect);
     void send(const std::vector<char>& data);
 };
 

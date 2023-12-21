@@ -14,7 +14,7 @@
 
 #include "epollWrapper.hpp"
 #include "observer.hpp"
-#include "remoteStateHelper.hpp"
+#include "remoteSubscriptionManager.hpp"
 #include "routerProvider.hpp"
 #include "socketClient.hpp"
 #include <external/nlohmann/json.hpp>
@@ -27,88 +27,83 @@
 class RemoteSubscriber final
 {
 private:
-    std::shared_ptr<SocketClient<Socket<OSPrimitives>, EpollWrapper>> m_socketClient {};
+    std::unique_ptr<SocketClient<Socket<OSPrimitives>, EpollWrapper>> m_socketClient {};
+    std::unique_ptr<RemoteSubscriptionManager> m_remoteSubscriptionManager {};
     std::string m_endpointName {};
-    std::string m_subscriberId {};
-    bool m_isRegistered;
+    std::atomic<bool> m_isRegistered;
 
 public:
     /**
      * @brief Class constructor.
      *
-     * @param endpoint
-     * @param subscriberId
-     * @param callback
-     * @param socketPath
+     * @param endpoint Endpoint name.
+     * @param subscriberId Subscriber ID.
+     * @param callback Subscriber update callback.
+     * @param socketPath Client socket path.
+     * @param onConnect Callback to be called when the subscriber is connected.
      */
-    explicit RemoteSubscriber(std::string endpoint,
-                              std::string subscriberId,
-                              const std::function<void(const std::vector<char>&)>& callback,
-                              const std::string& socketPath)
+    explicit RemoteSubscriber(
+        std::string endpoint,
+        const std::string& subscriberId,
+        const std::function<void(const std::vector<char>&)>& callback,
+        const std::string& socketPath,
+        const std::function<void()>& onConnect = []() {})
         : m_endpointName {std::move(endpoint)}
-        , m_subscriberId {std::move(subscriberId)}
         , m_isRegistered {false}
+        , m_remoteSubscriptionManager {std::make_unique<RemoteSubscriptionManager>()}
     {
         std::promise<void> promise;
         m_socketClient =
-            std::make_shared<SocketClient<Socket<OSPrimitives>, EpollWrapper>>(socketPath + m_endpointName);
-        m_socketClient->connect(
-            [&, callback](const char* body, uint32_t bodySize, const char*, uint32_t)
+            std::make_unique<SocketClient<Socket<OSPrimitives>, EpollWrapper>>(socketPath + m_endpointName);
+
+        m_remoteSubscriptionManager->sendInitProviderMessage(
+            m_endpointName,
+            [this, callback, socketClient = m_socketClient.get(), subscriberId, onConnect]()
             {
-                if (!m_isRegistered)
-                {
-                    // LCOV_EXCL_START
-                    if (bodySize == 0)
+                socketClient->connect(
+                    [this, callback, onConnect](const char* body, uint32_t bodySize, const char*, uint32_t)
                     {
-                        promise.set_exception(std::make_exception_ptr(std::runtime_error("Connection refused")));
-                    }
-                    else
+                        if (!m_isRegistered)
+                        {
+                            // LCOV_EXCL_START
+                            nlohmann::json jsonMessage;
+                            try
+                            {
+                                jsonMessage = nlohmann::json::parse(body, body + bodySize);
+                                if (jsonMessage.at("Result").get_ref<const std::string&>() == "OK")
+                                {
+                                    m_isRegistered = true;
+                                    onConnect();
+                                }
+                                else
+                                {
+                                    throw std::runtime_error("Connection refused");
+                                }
+                            }
+                            catch (const std::exception& e)
+                            {
+                                std::cerr << "RemoteSubscriber: Invalid result: " << e.what() << std::endl;
+                            }
+                            // LCOV_EXCL_STOP
+                        }
+                        else
+                        {
+                            callback(std::vector<char>(body, body + bodySize));
+                        }
+                    },
+                    [subscriberId, socketClient]()
                     {
                         nlohmann::json jsonMessage;
-                        try
-                        {
-                            jsonMessage = nlohmann::json::parse(body, body + bodySize);
-                            if (jsonMessage.at("Result").get_ref<const std::string&>() == "OK")
-                            {
-                                m_isRegistered = true;
-                                promise.set_value();
-                            }
-                            else
-                            {
-                                throw std::runtime_error("Connection refused");
-                            }
-                        }
-                        catch (const std::exception& e)
-                        {
-                            promise.set_exception(std::make_exception_ptr(std::runtime_error(e.what())));
-                        }
-                    }
-                    // LCOV_EXCL_STOP
-                }
-                else
-                {
-                    callback(std::vector<char>(body, body + bodySize));
-                }
+                        jsonMessage["type"] = "subscribe";
+                        jsonMessage["subscriberId"] = subscriberId;
+                        auto jsonMessageString = jsonMessage.dump();
+
+                        socketClient->send(jsonMessageString.c_str(), jsonMessageString.length());
+                    });
             });
-
-        nlohmann::json jsonMessage;
-        jsonMessage["type"] = "subscribe";
-        jsonMessage["subscriberId"] = m_subscriberId;
-        auto jsonMessageString = jsonMessage.dump();
-
-        m_socketClient->send(jsonMessageString.c_str(), jsonMessageString.length());
-        auto future {promise.get_future()};
-
-        if (future.wait_for(std::chrono::seconds(10)) == std::future_status::timeout)
-        {
-            throw std::runtime_error("Connection refused"); // LCOV_EXCL_LINE
-        }
     }
 
-    ~RemoteSubscriber()
-    {
-        RemoteStateHelper::sendRemoveSubscriberMessage(m_endpointName, m_subscriberId);
-    }
+    ~RemoteSubscriber() = default;
 };
 
 #endif // _REMOTE_SUBSCRIBER_HPP

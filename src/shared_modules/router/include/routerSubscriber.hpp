@@ -72,6 +72,15 @@ public:
      * @param callback Subscriber update callback.
      */
     void subscribe(const std::function<void(const std::vector<char>&)>& callback);
+
+    /**
+     * @brief Adds subscriber to the list.
+     *
+     * @param callback Subscriber update callback.
+     * @param onConnect Callback to be called when the subscriber is connected to the broker.
+     */
+    void subscribe(const std::function<void(const std::vector<char>&)>& callback,
+                   const std::function<void()>& onConnect);
 };
 
 #endif //_ROUTER_SUBSCRIBER_HPP

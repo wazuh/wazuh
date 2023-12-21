@@ -10,8 +10,9 @@
  */
 
 #include "interface_c_test.hpp"
-#include "remoteStateHelper.hpp"
+#include "remoteSubscriptionManager.hpp"
 #include "router.h"
+#include "routerSubscriber.hpp"
 #include <chrono>
 #include <filesystem>
 #include <thread>
@@ -32,18 +33,7 @@ void RouterCInterfaceTest::TearDown()
     }
 };
 
-void RouterCInterfaceTestNoSetUp::TearDown()
-{
-    if (router_stop() != 0)
-    {
-        FAIL() << "Failed to stop router";
-    }
-};
-
-TEST_F(RouterCInterfaceTest, TestProviderSubscriberSimple)
-{
-    // TODO - Add C interface for subscribers.
-}
+void RouterCInterfaceTestNoSetUp::TearDown() {};
 
 TEST_F(RouterCInterfaceTest, DISABLED_TestDoubleProviderInit)
 {
@@ -143,4 +133,101 @@ TEST_F(RouterCInterfaceTestNoSetUp, TestRemoveProviderWithServerDown)
     EXPECT_NO_THROW(router_provider_destroy(provider));
 
     // It shouldn't hang here
+    if (router_stop() != 0)
+    {
+        FAIL() << "Failed to stop router";
+    }
+}
+
+/**
+ * @brief We simulate send data to a provider after the broker crash and check that client doesn't hang.
+ *
+ */
+TEST_F(RouterCInterfaceTestNoSetUp, TestRemoveBrokerBeforeProvider)
+{
+    router_start();
+
+    ROUTER_PROVIDER_HANDLE handle = router_provider_create("test");
+    if (nullptr == handle)
+    {
+        FAIL() << "The provider wasn't created";
+    }
+
+    // Simulating the broker crash
+    std::filesystem::remove(std::filesystem::path(REMOTE_SUBSCRIPTION_ENDPOINT));
+
+    // It shouldn't hang here
+    if (router_stop() != 0)
+    {
+        FAIL() << "Failed to stop router";
+    }
+
+    EXPECT_EQ(router_provider_send(handle, "test", 4), -1);
+    EXPECT_EQ(router_provider_send(handle, "test", 4), -1);
+}
+
+/**
+ * @brief We simulate send data to a provider after the broker crash and check that client doesn't hang.
+ *
+ */
+TEST_F(RouterCInterfaceTestNoSetUp, TestSendMessageAfterBrokerRestart)
+{
+    router_start();
+
+    ROUTER_PROVIDER_HANDLE handle = router_provider_create("test");
+    if (nullptr == handle)
+    {
+        FAIL() << "The provider wasn't created";
+    }
+
+    // Simulating the broker crash
+    std::filesystem::remove(std::filesystem::path(REMOTE_SUBSCRIPTION_ENDPOINT));
+
+    // It shouldn't hang here
+    if (router_stop() != 0)
+    {
+        FAIL() << "Failed to stop router";
+    }
+
+    router_start();
+
+    auto subscriptor = std::make_unique<RouterSubscriber>("test", "subscriberTest");
+
+    std::atomic<int> count = 0;
+    constexpr auto MESSAGE_COUNT = 2;
+
+    auto payloadString = std::string("test");
+    auto payload = std::vector<char> {payloadString.begin(), payloadString.end()};
+    std::promise<void> promiseSubscriber;
+    std::promise<void> promiseSubscriberConnected;
+
+    EXPECT_NO_THROW({
+        subscriptor->subscribe(
+            [&](const std::vector<char>& message)
+            {
+                // Validate payload
+                EXPECT_EQ(message.size(), 4);
+                std::string str(message.begin(), message.end());
+                EXPECT_EQ(str, "test");
+                //  Count messages
+                count++;
+
+                if (count == MESSAGE_COUNT)
+                {
+                    promiseSubscriber.set_value();
+                }
+            },
+            [&]() { promiseSubscriberConnected.set_value(); });
+    });
+    promiseSubscriberConnected.get_future().wait();
+
+    EXPECT_EQ(router_provider_send(handle, "test", 4), 0);
+    EXPECT_EQ(router_provider_send(handle, "test", 4), 0);
+
+    promiseSubscriber.get_future().wait();
+
+    if (router_stop() != 0)
+    {
+        FAIL() << "Failed to stop router";
+    }
 }

@@ -48,7 +48,8 @@ public:
                                                           PUBLISHER_DISPATCH_THREAD_COUNT))
     {
         m_socketServer->listen(
-            [&](const int fd, const char* body, const size_t bodySize, const char* header, const size_t headerSize)
+            [this, msgDispatcher = m_msgDispatcher.get(), socketServer = m_socketServer.get()](
+                const int fd, const char* body, const size_t bodySize, const char* header, const size_t headerSize)
             {
                 // if the message is from the provider, push data.
                 // if the message is subscriber client, register to receive data.
@@ -61,19 +62,19 @@ public:
                     if (headerString.compare("P") == 0)
                     {
                         auto message = std::vector<char>(body, body + bodySize);
-                        m_msgDispatcher->push(message);
+                        msgDispatcher->push(message);
                     }
                 }
                 else
                 {
                     auto jsonBody = nlohmann::json::parse(body, body + bodySize);
                     this->addSubscriber(std::make_shared<Subscriber<const std::vector<char>&>>(
-                        [this, fd](const std::vector<char>& message)
-                        { m_socketServer->send(fd, message.data(), message.size()); },
+                        [fd, socketServer](const std::vector<char>& message)
+                        { socketServer->send(fd, message.data(), message.size()); },
                         jsonBody.at("subscriberId").get_ref<const std::string&>()));
 
                     const std::string responseString = R"({"Result":"OK"})";
-                    m_socketServer->send(fd, responseString.c_str(), responseString.size());
+                    socketServer->send(fd, responseString.c_str(), responseString.size());
                 }
             });
     }
@@ -90,6 +91,7 @@ public:
 
     ~Publisher() override
     {
+        m_socketServer.reset();
         m_msgDispatcher->rundown();
     }
 };
