@@ -444,7 +444,6 @@
 #define VU_INVALID_CPE_VERSION      "(5593): Couldn't get the version of the CPE for the %s package."
 #define VU_WIN_CPE_GEN_ERROR        "(5594): Could not generate the OS CPE for the agent '%.3d'"
 #define VU_ALMA_VERSION_ERROR       "(5595): Invalid AlmaLinux OS version."
-#define VU_OLD_VD_CONFIG_WARNING    "(5596): Vulnerability Detector configuration is deprecated. Please, update it with the new Vulnerability Scanner module config."
 
 
 /* File integrity monitoring error messages*/
