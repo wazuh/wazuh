@@ -78,3 +78,4 @@ normalize:
   - map:
       - url.extension: regex_extract($url.original, .*\\.([a-zA-Z0-9]+\)(?:\\?|$\))
       - url.path: $url.original
+      - url.query: regex_extract($url.original, \\?(.*\))
