@@ -90,6 +90,9 @@ int nb_recv(netbuffer_t * buffer, int sock) {
         cur_len = wnet_order(*(uint32_t *)(sockbuf->data + i));
 
         if (cur_len > OS_MAXSTR) {
+            char hex[OS_SIZE_2048 + 1] = {0};
+            print_hex_string(&sockbuf->data[i], sockbuf->data_len - i, hex, sizeof(hex));
+            mwarn("Unexpected message (hex): '%s'", hex);
             recv_len = -2;
             goto end;
         }
