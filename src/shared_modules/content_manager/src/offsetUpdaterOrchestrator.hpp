@@ -43,7 +43,7 @@ public:
         {
             // Create context.
             m_spBaseContext = std::make_shared<UpdaterBaseContext>(shouldRun);
-            m_spBaseContext->topicName = parameters.at("topicName");
+            m_spBaseContext->topicName = parameters.at("offsetUpdaterTopicName");
             m_spBaseContext->configData = parameters.at("configData");
             m_spBaseContext->spRocksDB = spDatabaseConnector;
 

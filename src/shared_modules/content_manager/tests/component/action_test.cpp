@@ -161,7 +161,7 @@ TEST_F(ActionTest, TestInstantiationAndRegisterActionOnDemandForRawData)
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
-    EXPECT_NO_THROW(action->registerActionOnDemand(UpdaterType::CONTENT));
+    EXPECT_NO_THROW(action->registerActionOnDemand(topicName, UpdaterType::CONTENT));
 
     EXPECT_NO_THROW(action->unregisterActionOnDemand(topicName));
 
@@ -187,8 +187,8 @@ TEST_F(ActionTest, TestInstantiationOfTwoActionsWithTheSameTopicName)
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
-    EXPECT_NO_THROW(action1->registerActionOnDemand(UpdaterType::CONTENT));
-    EXPECT_THROW(action2->registerActionOnDemand(UpdaterType::CONTENT), std::runtime_error);
+    EXPECT_NO_THROW(action1->registerActionOnDemand(topicName, UpdaterType::CONTENT));
+    EXPECT_THROW(action2->registerActionOnDemand(topicName, UpdaterType::CONTENT), std::runtime_error);
 
     EXPECT_NO_THROW(action1->unregisterActionOnDemand(topicName));
 
@@ -212,7 +212,7 @@ TEST_F(ActionTest, TestInstantiationAndRunActionOnDemand)
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
-    EXPECT_NO_THROW(action->registerActionOnDemand(UpdaterType::CONTENT));
+    EXPECT_NO_THROW(action->registerActionOnDemand(topicName, UpdaterType::CONTENT));
 
     EXPECT_NO_THROW(action->runActionOnDemand(UpdaterType::CONTENT));
 

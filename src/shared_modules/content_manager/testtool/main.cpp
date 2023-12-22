@@ -30,6 +30,7 @@ static const nlohmann::json CONFIG_PARAMETERS =
     R"(
         {
             "topicName": "test",
+            "offsetUpdaterTopicName": "offset_update",
             "interval": 10,
             "ondemand": true,
             "configData":
