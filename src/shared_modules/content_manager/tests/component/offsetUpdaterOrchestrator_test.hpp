@@ -18,7 +18,6 @@
 #include <external/nlohmann/json.hpp>
 #include <filesystem>
 #include <memory>
-#include <string>
 
 /**
  * @brief Runs component tests for OffsetUpdaterOrchestrator class.
@@ -36,10 +35,9 @@ protected:
         "OffsetUpdaterOrchestratorTest_database"}; ///< Path used to store the RocksDB database.
     const std::filesystem::path m_outputFolder {
         std::filesystem::temp_directory_path() /
-        "OffsetUpdaterOrchestratorTest_output"}; ///< Path used to store the output files.
-    nlohmann::json m_parameters;                 ///< Parameters used to create the orchestration.
-    const std::string m_topicName {"offset-updater-orchestrator-action"}; ///< Topic name.
-    std::shared_ptr<Utils::RocksDBWrapper> m_spRocksDBWrapper;            ///< DB connector used on tests.
+        "OffsetUpdaterOrchestratorTest_output"};               ///< Path used to store the output files.
+    nlohmann::json m_parameters;                               ///< Parameters used to create the orchestration.
+    std::shared_ptr<Utils::RocksDBWrapper> m_spRocksDBWrapper; ///< DB connector used on tests.
 
     /**
      * @brief Sets initial conditions for each test case.

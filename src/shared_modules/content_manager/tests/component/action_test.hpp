@@ -45,6 +45,7 @@ protected:
         m_parameters = R"(
             {
                 "topicName": "action-tests",
+                "offsetUpdaterTopicName": "offset_update",
                 "interval": 1,
                 "ondemand": false,
                 "configData": {
