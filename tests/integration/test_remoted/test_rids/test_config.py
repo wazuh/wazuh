@@ -13,7 +13,8 @@ from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.utils.services import control_service
 from wazuh_testing.modules.remoted.configuration import REMOTED_DEBUG, REMOTED_WORKER_POOL, REMOTED_VERIFY_MSG_ID
 from wazuh_testing.modules.remoted import patterns
-from wazuh_testing.utils.configuration import set_internal_options_conf
+from wazuh_testing.utils import configuration
+
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
@@ -65,9 +66,8 @@ def test_rids_conf(test_configuration, test_metadata, configure_local_internal_o
     '''
 
     log_monitor = FileMonitor(WAZUH_LOG_PATH)
-
-    set_internal_options_conf(REMOTED_VERIFY_MSG_ID, test_metadata[REMOTED_VERIFY_MSG_ID])
-    set_internal_options_conf(REMOTED_WORKER_POOL, test_metadata[REMOTED_WORKER_POOL])
+    local_internal_options = {REMOTED_VERIFY_MSG_ID: test_metadata[REMOTED_VERIFY_MSG_ID], REMOTED_WORKER_POOL: test_metadata[REMOTED_WORKER_POOL]}
+    configuration.set_local_internal_options_dict(local_internal_options)
 
     expected_start = test_metadata['expected_start']
     try:
@@ -77,5 +77,5 @@ def test_rids_conf(test_configuration, test_metadata, configure_local_internal_o
         assert not expected_start, 'Start error was not expected'
 
     # Set default config again
-    set_internal_options_conf(REMOTED_VERIFY_MSG_ID, 0)
-    set_internal_options_conf(REMOTED_WORKER_POOL, 4)
+    local_internal_options = {REMOTED_VERIFY_MSG_ID: 0, REMOTED_WORKER_POOL: 4}
+    configuration.set_local_internal_options_dict(local_internal_options)
