@@ -693,26 +693,8 @@ def remove_backups(request: pytest.FixtureRequest):
     recursive_directory_creation(backups_path)
     os.chmod(backups_path, 0o777)
 
-@pytest.fixture(scope='function')
-def file_monitoring(request):
-    """Fixture to handle the monitoring of a specified file.
 
-    It uses the variable `file_to_monitor` to determinate the file to monitor. Default `LOG_FILE_PATH`
-
-    Args:
-        request (fixture): Provide information on the executing test function.
-    """
-    if hasattr(request.module, 'file_to_monitor'):
-        file_to_monitor = getattr(request.module, 'file_to_monitor')
-    else:
-        file_to_monitor = WAZUH_LOG_PATH
-
-    logger.debug(f"Initializing file to monitor to {file_to_monitor}")
-
-    log_monitor = file_monitor.FileMonitor(file_to_monitor)
-    setattr(request.module, 'log_monitor', log_monitor)
-
+@pytest.fixture(scope='module')
+def clean_databases():
     yield
-
-    truncate_file(file_to_monitor)
-    logger.debug(f"Trucanted {file_to_monitor}")
+    database.delete_dbs()

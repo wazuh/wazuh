@@ -59,7 +59,7 @@ import pytest
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils import callbacks
-from wazuh_testing.utils.database import query_wdb, delete_dbs
+from wazuh_testing.utils.database import query_wdb
 from wazuh_testing.utils.db_queries.global_db import insert_agent_in_db
 from wazuh_testing.utils import configuration
 
@@ -72,18 +72,13 @@ pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 t_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_set_agent_groups.yaml')
 t_config_parameters, t_config_metadata, t_case_ids = configuration.get_test_cases_data(t_cases_path)
 
-# Fixtures
-@pytest.fixture(scope='module')
-def remove_database(request):
-    yield
-    delete_dbs()
 
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
 
 # Tests
 @pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
-def test_set_agent_groups(remove_database, daemons_handler, test_metadata, create_groups):
+def test_set_agent_groups(clean_databases, daemons_handler, test_metadata, create_groups):
     '''
     description: Check that every input message using the 'set_agent_groups' command in wazuh-db socket generates
                  the proper output to wazuh-db socket. To do this, it performs a query to the socket with a command
@@ -93,7 +88,7 @@ def test_set_agent_groups(remove_database, daemons_handler, test_metadata, creat
     wazuh_min_version: 4.4.0
 
     parameters:
-        - remove_database:
+        - clean_databases:
             type: fixture
             brief: Delete databases.
         - daemons_handler:

@@ -57,6 +57,7 @@ import time
 import pytest
 
 from wazuh_testing.constants.paths import WAZUH_PATH
+from wazuh_testing.constants.daemons import WAZUH_DB_DAEMON
 from wazuh_testing.constants.paths.sockets import WAZUH_DB_SOCKET_PATH
 from wazuh_testing.constants.executions import TIER0, SERVER, LINUX
 from wazuh_testing.utils.database import query_wdb
@@ -74,7 +75,7 @@ t_config_parameters, t_config_metadata, t_case_ids = configuration.get_test_case
 
 backups_path = Path(WAZUH_PATH, 'backup', 'db')
 receiver_sockets_params = [(WAZUH_DB_SOCKET_PATH, 'AF_UNIX', 'TCP')]
-monitored_sockets_params = [('wazuh-db', None, True)]
+monitored_sockets_params = [(WAZUH_DB_DAEMON, None, True)]
 receiver_sockets = None  # Set in the fixtures
 
 

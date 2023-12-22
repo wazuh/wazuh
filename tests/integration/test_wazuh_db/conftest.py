@@ -1,14 +1,7 @@
-import os
-import sys
-import re
-import shutil
-
 import pytest
 
-from wazuh_testing.tools.wazuh_manager import create_group, delete_group
-from wazuh_testing.constants import paths
-from wazuh_testing.tools.monitors import file_monitor
-from wazuh_testing.utils.file import truncate_file
+from wazuh_testing.utils.agent_groups import create_group, delete_group
+from wazuh_testing.utils.db_queries import global_db
 
 @pytest.fixture(scope='function')
 def create_groups(test_metadata):
@@ -28,8 +21,12 @@ def create_groups(test_metadata):
 
 
 @pytest.fixture(scope='function')
-def clear_logs(request):
-    """Reset the ossec.log and start a new monitor"""
-    truncate_file(paths.logs.WAZUH_LOG_PATH)
-    log_monitor = file_monitor.FileMonitor(paths.logs.WAZUH_LOG_PATH)
-    setattr(request.module, 'wazuh_log_monitor', log_monitor)
+def pre_insert_agents_into_group():
+
+    global_db.insert_agent_into_group(2)
+
+    yield
+
+    global_db.clean_agents_from_db()
+    global_db.clean_groups_from_db()
+    global_db.clean_belongs()

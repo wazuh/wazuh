@@ -50,8 +50,11 @@ import json
 import random
 
 from wazuh_testing.constants.paths.sockets import WAZUH_DB_SOCKET_PATH
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.constants.daemons import WAZUH_DB_DAEMON
+from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils.database import delete_dbs
-from wazuh_testing.tools.wazuh_manager import remove_all_agents
+from wazuh_testing.utils.manage_agents import remove_all_agents
 from wazuh_testing.utils.services import control_service
 from wazuh_testing.utils.callbacks import make_callback
 from wazuh_testing.modules.wazuh_db import WAZUH_DB_PREFIX
@@ -80,9 +83,12 @@ WAZUH_DB_CHECKSUM_CALCULUS_TIMEOUT = 20
 #                daemon_first: bool))
 # Example1 -> ('wazuh-clusterd', None)              Only start wazuh-clusterd with no MITM
 # Example2 -> ('wazuh-clusterd', (my_mitm, True))   Start MITM and then wazuh-clusterd
-monitored_sockets_params = [('wazuh-db', None, True)]
+monitored_sockets_params = [(WAZUH_DB_DAEMON, None, True)]
 
 receiver_sockets, monitored_sockets, log_monitors = None, None, None  # Set in the fixtures
+
+# Test daemons to restart.
+daemons_handler_configuration = {'all_daemons': True}
 
 
 def regex_match(regex, string):
@@ -176,16 +182,6 @@ def insert_agents_test():
 
     for agent in agent_list:
         remove_agent(agent)
-
-
-@pytest.fixture(scope='module')
-def restart_wazuh(request):
-    control_service('restart')
-
-    yield
-
-    delete_dbs()
-    control_service('stop')
 
 
 def execute_wazuh_db_query(command, single_response=True):
@@ -307,8 +303,9 @@ def pre_insert_packages():
 
 
 @pytest.mark.parametrize('test_metadata', t1_config_metadata, ids=t1_case_ids)
-def test_wazuh_db_messages_agent(restart_wazuh, clean_registered_agents, configure_sockets_environment,
-                                 connect_to_sockets_module, insert_agents_test, test_metadata):
+def test_wazuh_db_messages_agent(daemons_handler_module, clean_databases, clean_registered_agents,
+                                 configure_sockets_environment, connect_to_sockets_module,
+                                 insert_agents_test, test_metadata):
     '''
     description: Check that every input agent message in wazuh-db socket generates the proper output to wazuh-db
                  socket. To do this, it performs a query to the socket with a command taken from the input list of
@@ -375,7 +372,7 @@ def test_wazuh_db_messages_agent(restart_wazuh, clean_registered_agents, configu
 
 
 @pytest.mark.parametrize('test_metadata', t2_config_metadata, ids=t2_case_ids)
-def test_wazuh_db_messages_global(connect_to_sockets_module, restart_wazuh, test_metadata):
+def test_wazuh_db_messages_global(connect_to_sockets_module, daemons_handler_module, clean_databases, test_metadata):
     '''
     description: Check that every global input message in wazuh-db socket generates the proper output to wazuh-db
                  socket. To do this, it performs a query to the socket with a command taken from the input list of
@@ -431,8 +428,8 @@ def test_wazuh_db_messages_global(connect_to_sockets_module, restart_wazuh, test
 
 
 @pytest.mark.skip(reason="It will be blocked by #2217, when it is solved we can enable again this test")
-def test_wazuh_db_chunks(restart_wazuh, configure_sockets_environment, clean_registered_agents,
-                         connect_to_sockets_module, pre_insert_agents):
+def test_wazuh_db_chunks(daemons_handler_module, clean_databases, configure_sockets_environment,
+                         clean_registered_agents, connect_to_sockets_module, pre_insert_agents):
     '''
     description: Check that commands by chunks work properly when the agents' amount exceeds the response maximum size.
                  To do this, it sends a command to the wazuh-db socket and checks the response from the socket.
@@ -490,8 +487,8 @@ def test_wazuh_db_chunks(restart_wazuh, configure_sockets_environment, clean_reg
     send_chunk_command('global disconnect-agents 0 {} syncreq'.format(str(int(time.time()) + 1)))
 
 
-def test_wazuh_db_range_checksum(restart_wazuh, configure_sockets_environment, connect_to_sockets_module,
-                                 prepare_range_checksum_data, file_monitoring, request):
+def test_wazuh_db_range_checksum(daemons_handler_module, clean_databases, configure_sockets_environment,
+                                 connect_to_sockets_module, prepare_range_checksum_data):
     '''
     description: Calculates the checksum range during the synchronization of the DBs the first time and avoids the
                  checksum range the next time. To do this, it performs a query to the database with the command that
@@ -514,12 +511,6 @@ def test_wazuh_db_range_checksum(restart_wazuh, configure_sockets_environment, c
         - prepare_range_checksum_data:
             type: fixture
             brief: Execute syscheck command with a specific payload to query the database.
-        - file_monitoring:
-            type: fixture
-            brief:  Handle the monitoring of a specified file.
-        - request:
-            type: fixture
-            brief:  Provide information of the requesting test function.
 
     assertions:
         - Verify that the checksum range can be calculated the first time and the checksum range was avoid the second
@@ -540,7 +531,7 @@ def test_wazuh_db_range_checksum(restart_wazuh, configure_sockets_environment, c
     '''
     command = """agent 1 syscheck integrity_check_global {\"begin\":\"/home/test/file1\",\"end\":\"/home/test/file2\",
                  \"checksum\":\"2a41be94762b4dc57d98e8262e85f0b90917d6be\",\"id\":1}"""
-    log_monitor = request.module.log_monitor
+    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
     # Checksum Range calculus expected the first time
     execute_wazuh_db_query(command)
     log_monitor.start(callback=make_callback('range checksum: Time: ', prefix=WAZUH_DB_PREFIX,
@@ -554,10 +545,8 @@ def test_wazuh_db_range_checksum(restart_wazuh, configure_sockets_environment, c
     assert log_monitor.callback_result, 'Checksum Range wasn´t avoided the second time'
 
 
-def test_wazuh_db_timeout(configure_sockets_environment,
-                          connect_to_sockets_module,
-                          pre_insert_packages,
-                          pre_set_sync_info):
+def test_wazuh_db_timeout(configure_sockets_environment, connect_to_sockets_module,
+                          pre_insert_packages, pre_set_sync_info):
     """Check that effectively the socket is closed after timeout is reached"""
     wazuh_db_send_sleep = 2
     command = 'agent 000 package get'

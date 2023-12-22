@@ -45,9 +45,8 @@ import pytest
 import json
 from pathlib import Path
 
-from wazuh_testing.constants import paths
-from wazuh_testing.utils.database import query_wdb, delete_dbs
-from wazuh_testing.utils.db_queries import global_db
+from wazuh_testing.utils.database import query_wdb
+from wazuh_testing.utils.db_queries.global_db import calculate_global_hash
 from wazuh_testing.constants.executions import TIER0, SERVER, LINUX
 from wazuh_testing.utils import configuration
 
@@ -59,25 +58,6 @@ pytestmark = [LINUX, TIER0, SERVER]
 # Configurations
 t_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_sync_agent_groups_get.yaml')
 t_config_parameters, t_config_metadata, t_case_ids = configuration.get_test_cases_data(t_cases_path)
-
-# Fixtures
-# Insert agents into DB  and assign them into a group)
-@pytest.fixture(scope='function')
-def pre_insert_agents_into_group():
-
-    global_db.insert_agent_into_group(2)
-
-    yield
-
-    global_db.clean_agents_from_db()
-    global_db.clean_groups_from_db()
-    global_db.clean_belongs()
-
-
-@pytest.fixture(scope='module')
-def clean_databases():
-    yield
-    delete_dbs()
 
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
@@ -122,7 +102,7 @@ def test_sync_agent_groups(daemons_handler, test_metadata, create_groups, pre_in
 
     # Check if it requires the global hash.
     if '[GLOBAL_HASH]' in output:
-        global_hash = global_db.calculate_global_hash()
+        global_hash = calculate_global_hash()
         output = output.replace('[GLOBAL_HASH]', global_hash)
 
     time.sleep(1)

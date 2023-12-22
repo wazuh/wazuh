@@ -57,7 +57,7 @@ import pytest
 from wazuh_testing.constants.executions import TIER0, SERVER, LINUX
 from wazuh_testing.utils.database import query_wdb
 from wazuh_testing.tools.simulators import agent_simulator as ag
-from wazuh_testing.tools.wazuh_manager import remove_all_agents
+from wazuh_testing.utils.manage_agents import remove_all_agents
 
 
 # Marks

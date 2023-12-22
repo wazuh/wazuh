@@ -60,7 +60,7 @@ import numbers
 from wazuh_testing.utils.services import control_service
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils import callbacks
-from wazuh_testing.constants import paths
+from wazuh_testing.constants.paths.logs import WAZUH_PATH, WAZUH_LOG_PATH
 from wazuh_testing.constants.executions import TIER0, SERVER, LINUX
 from wazuh_testing.utils.database import validate_interval_format
 from wazuh_testing.modules.wazuh_db import patterns
@@ -77,17 +77,16 @@ t_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_wazuh_db_backups_conf.yaml')
 t_config_parameters, t_config_metadata, t_case_ids = configuration.get_test_cases_data(t_cases_path)
 t_configurations = configuration.load_configuration_template(t_config_path, t_config_parameters, t_config_metadata)
 
-backups_path = Path(paths.WAZUH_PATH, 'backup', 'db')
-interval = 5
+backups_path = Path(WAZUH_PATH, 'backup', 'db')
 
 # Variables
-wazuh_log_monitor = file_monitor.FileMonitor(paths.logs.WAZUH_LOG_PATH)
+interval = 5
 timeout = 15
 
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t_configurations, t_config_metadata), ids=t_case_ids)
 def test_wdb_backup_configs(test_configuration, test_metadata, set_wazuh_configuration,
-                            clear_logs, remove_backups):
+                            truncate_monitored_files, remove_backups):
     '''
     description: Check that given different wdb backup configuration parameters, the expected behavior is achieved.
                  For this, the test gets a series of parameters for the wazuh_db_backups_conf.yaml file and applies
@@ -135,6 +134,7 @@ def test_wdb_backup_configs(test_configuration, test_metadata, set_wazuh_configu
     '''
     test_interval = test_metadata['interval']
     test_max_files = test_metadata['max_files']
+    wazuh_log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
     try:
         control_service('restart')
     except (subprocess.CalledProcessError, ValueError) as err:

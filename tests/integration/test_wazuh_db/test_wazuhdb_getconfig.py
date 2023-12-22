@@ -42,6 +42,7 @@ tags:
 from pathlib import Path
 import pytest
 from wazuh_testing.constants.paths.sockets import WAZUH_DB_SOCKET_PATH
+from wazuh_testing.constants.daemons import WAZUH_DB_DAEMON
 from wazuh_testing.utils.database import query_wdb
 from wazuh_testing.utils import configuration
 
@@ -55,7 +56,7 @@ t_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_wazuhdb_getconfig.yaml')
 t_config_parameters, t_config_metadata, t_case_ids = configuration.get_test_cases_data(t_cases_path)
 
 receiver_sockets_params = [(WAZUH_DB_SOCKET_PATH, 'AF_UNIX', 'TCP')]
-monitored_sockets_params = [('wazuh-db', None, True)]
+monitored_sockets_params = [(WAZUH_DB_DAEMON, None, True)]
 receiver_sockets = None  # Set in the fixtures
 
 
