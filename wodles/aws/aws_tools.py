@@ -32,12 +32,13 @@ ALL_REGIONS = (
 RETRY_ATTEMPTS_KEY: str = "max_attempts"
 RETRY_MODE_CONFIG_KEY: str = "retry_mode"
 RETRY_MODE_BOTO_KEY: str = "mode"
+WAZUH_DEFAULT_RETRY_CONFIGURATION = {RETRY_ATTEMPTS_KEY: 10, RETRY_MODE_BOTO_KEY: 'standard'}
 
 # Enable/disable debug mode
 debug_level = 0
 
 
-def set_profile_dict_config(boto_config: dict, profile_config: dict):
+def set_profile_dict_config(boto_config: dict, profile: str, profile_config: dict):
     """Create a botocore.config.Config object with the specified profile_config.
 
     This function reads the profile configuration from the provided profile_config object and extracts the necessary
@@ -50,6 +51,9 @@ def set_profile_dict_config(boto_config: dict, profile_config: dict):
     ----------
     boto_config: dict
         The config dictionary where the Boto Config will be set.
+    
+    profile : str
+        The AWS profile name to use for the configuration.
 
     profile_config : dict
         The user config dict containing the profile configuration.
@@ -89,6 +93,24 @@ def set_profile_dict_config(boto_config: dict, profile_config: dict):
             )
         }
         boto_config['config'].proxies_config = proxies_config
+    
+    # Checks for retries config in profile config and sets it if not found to avoid throttling exception
+    if RETRY_ATTEMPTS_KEY in profile_config or RETRY_MODE_CONFIG_KEY in profile_config:
+        retries = {
+            RETRY_ATTEMPTS_KEY: int(profile_config.get(RETRY_ATTEMPTS_KEY, 10)),
+            RETRY_MODE_BOTO_KEY: profile_config.get(RETRY_MODE_CONFIG_KEY, 'standard')
+        }
+        debug(f"Retries parameters found in user profile. Using profile '{profile}' retries configuration", 2)
+        boto_config['config'].retries = retries
+
+    else:
+        debug(
+            "No retries configuration found in profile config. Generating default configuration for retries: mode: "
+            f"{boto_config['config'].retries['mode']} - max_attempts: {boto_config['config'].retries['max_attempts']}",
+            2)
+
+    # Set signature version
+    boto_config['config'].signature_version = profile_config.get('signature_version', 's3v4')
 
 
 def remove_prefix(text: str, prefix: str) -> str:
