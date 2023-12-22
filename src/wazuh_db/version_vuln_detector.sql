@@ -1,0 +1,1 @@
+schema_vuln_detector.sql

@@ -1661,6 +1661,9 @@ wdblib_c += $(wildcard wazuh_db/helpers/*.c)
 wdblib_o := $(wdblib_c:.c=.o) $(wdb_sql:.sql=.o)
 wdb_o := wazuh_db/main.o $(wdblib_o:.c=.o) $(wdb_c:.c=.o) $(wdb_sql:.sql=.o)
 
+wazuh_db/version_%.o: wazuh_db/version_%.sql
+	${QUIET_CC}echo 'const char *'$(word 2, $(subst /, ,$(subst .sql, ,$<))) '=' `grep -o "VALUES.*db_version.*,.*'[0-9]*'" $< | sed "s/VALUES.*,//" | tr "'" "\""`";" | ${MING_BASE}${CC} ${OSSEC_CFLAGS} -xc -c -o $@ -
+
 wazuh_db/schema_%.o: wazuh_db/schema_%.sql
 	${QUIET_CC}echo 'const char *'$(word 2, $(subst /, ,$(subst .,_,$<))) '= "'"`cat $< | tr -d \"\n\"`"'";' | ${MING_BASE}${CC} ${OSSEC_CFLAGS} -xc -c -o $@ -
 
