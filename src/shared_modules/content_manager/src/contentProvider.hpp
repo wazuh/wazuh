@@ -67,7 +67,8 @@ public:
      */
     void startOnDemandAction()
     {
-        m_action->registerActionOnDemand();
+        m_action->registerActionOnDemand(UpdaterType::CONTENT);
+        m_action->registerActionOnDemand(UpdaterType::OFFSET);
     }
 
     /**

@@ -329,10 +329,9 @@ TEST_F(ActionOrchestratorTest, OfflineDownloadDownloadedFileHashStore)
         ASSERT_NO_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_spStopActionCondition).run());
     }
 
-    const auto EXPECTED_DB_PATH {DATABASE_PATH / ("updater_" + topicName + "_metadata")};
     constexpr auto EXPECTED_HASH {"83f5b8992df285cdd0235bb0304e236047614d60"};
-    auto wrapper {Utils::RocksDBWrapper(EXPECTED_DB_PATH)};
-    EXPECT_EQ(wrapper.getLastKeyValue(Components::Columns::DOWNLOADED_FILE_HASH).second.ToString(), EXPECTED_HASH);
+    EXPECT_EQ(m_spRocksDBWrapper->getLastKeyValue(Components::Columns::DOWNLOADED_FILE_HASH).second.ToString(),
+              EXPECTED_HASH);
 }
 
 /**

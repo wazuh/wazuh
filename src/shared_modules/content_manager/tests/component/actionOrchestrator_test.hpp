@@ -15,6 +15,7 @@
 #include "conditionSync.hpp"
 #include "fakes/fakeServer.hpp"
 #include "mocks/mockRouterProvider.hpp"
+#include "utils/rocksDBWrapper.hpp"
 #include "gtest/gtest.h"
 #include <external/nlohmann/json.hpp>
 #include <filesystem>
@@ -42,6 +43,7 @@ protected:
     const std::filesystem::path m_inputFilesDir {std::filesystem::current_path() /
                                                  "input_files"}; ///< Input files folder.
     std::shared_ptr<MockRouterProvider> m_spMockRouterProvider;  ///< Router provider used on tests.
+    std::shared_ptr<Utils::RocksDBWrapper> m_spRocksDBWrapper;   ///< DB connector used on tests.
 
     /**
      * @brief Sets initial conditions for each test case.
@@ -71,6 +73,7 @@ protected:
         m_parameters.at("configData")["databasePath"] = DATABASE_PATH;
         m_parameters.at("configData")["offset"] = INITIAL_OFFSET;
 
+        m_spRocksDBWrapper = std::make_shared<Utils::RocksDBWrapper>(DATABASE_PATH);
         m_spMockRouterProvider = std::make_shared<MockRouterProvider>();
     }
     /**
@@ -90,6 +93,7 @@ protected:
 
         // Remove database files.
         std::filesystem::remove_all(DATABASE_PATH);
+        m_spRocksDBWrapper.reset();
     }
 
     /**

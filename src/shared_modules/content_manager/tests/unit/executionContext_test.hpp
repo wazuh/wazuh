@@ -15,6 +15,7 @@
 #include "conditionSync.hpp"
 #include "executionContext.hpp"
 #include "updaterContext.hpp"
+#include "utils/rocksDBWrapper.hpp"
 #include "gtest/gtest.h"
 #include <filesystem>
 #include <memory>

@@ -52,7 +52,7 @@ struct UpdaterBaseContext
      * @brief Pointer to the RocksDB instance.
      *
      */
-    std::unique_ptr<Utils::RocksDBWrapper> spRocksDB {};
+    std::shared_ptr<Utils::RocksDBWrapper> spRocksDB {};
 
     /**
      * @brief Path to the output folder where the data will be stored.

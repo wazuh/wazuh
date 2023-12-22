@@ -12,10 +12,12 @@
 #ifndef _OFFSET_UPDATER_ORCHESTRATOR_TEST_HPP
 #define _OFFSET_UPDATER_ORCHESTRATOR_TEST_HPP
 
+#include "utils/rocksDBWrapper.hpp"
 #include "gtest/gtest.h"
 #include <atomic>
 #include <external/nlohmann/json.hpp>
 #include <filesystem>
+#include <memory>
 #include <string>
 
 /**
@@ -37,6 +39,7 @@ protected:
         "OffsetUpdaterOrchestratorTest_output"}; ///< Path used to store the output files.
     nlohmann::json m_parameters;                 ///< Parameters used to create the orchestration.
     const std::string m_topicName {"offset-updater-orchestrator-action"}; ///< Topic name.
+    std::shared_ptr<Utils::RocksDBWrapper> m_spRocksDBWrapper;            ///< DB connector used on tests.
 
     /**
      * @brief Sets initial conditions for each test case.

@@ -30,6 +30,12 @@ enum ActionID
     ON_DEMAND
 };
 
+enum UpdaterType
+{
+    CONTENT,
+    OFFSET
+};
+
 /**
  * @brief Action class.
  *
@@ -53,7 +59,24 @@ public:
         , m_stopActionCondition {std::make_shared<ConditionSync>(false)}
         , m_orchestration {std::make_unique<ActionOrchestrator>(channel, parameters, m_stopActionCondition)}
     {
-        m_parameters = std::move(parameters);
+        m_parameters = parameters;
+
+        // Init RocksDB connector.
+        std::shared_ptr<Utils::RocksDBWrapper> spDatabaseConnector;
+        if (m_parameters.at("configData").contains("databasePath"))
+        {
+            const auto& databasePath {m_parameters.at("configData").at("databasePath").get_ref<const std::string&>()};
+            spDatabaseConnector = std::make_shared<Utils::RocksDBWrapper>(databasePath);
+        }
+
+        // Create content updater orchestration.
+        m_orchestration = std::make_unique<ActionOrchestrator>(channel, parameters, m_shouldRun, spDatabaseConnector);
+
+        // Create offset updater orchestration.
+        m_offsetUpdaterTopicName = "offset_updater";
+        parameters.at("topicName") = m_offsetUpdaterTopicName;
+        m_offsetUpdaterOrchestration =
+            std::make_unique<OffsetUpdaterOrchestrator>(std::move(parameters), m_shouldRun, spDatabaseConnector);
     }
 
     /**
@@ -65,7 +88,8 @@ public:
         // Stop running action, if any.
         m_stopActionCondition->set(true);
 
-        unregisterActionOnDemand();
+        unregisterActionOnDemand(m_topicName);
+        unregisterActionOnDemand(m_offsetUpdaterTopicName);
         stopActionScheduler();
     }
 
@@ -77,12 +101,12 @@ public:
      *
      * @return True if the execution was made, false otherwise.
      */
-    bool runActionExclusively(const ActionID id, const int offset = -1)
+    bool runActionExclusively(const ActionID id, const UpdaterType type, const int offset = -1)
     {
         auto expectedValue {false};
         if (m_actionInProgress.compare_exchange_strong(expectedValue, true))
         {
-            runAction(id, offset);
+            runAction(id, type, offset);
         }
         return !expectedValue;
     }
@@ -123,7 +147,7 @@ public:
     void runActionScheduled()
     {
         logInfo(WM_CONTENTUPDATER, "Starting scheduled action for '%s'", m_topicName.c_str());
-        if (!runActionExclusively(ActionID::SCHEDULED))
+        if (!runActionExclusively(ActionID::SCHEDULED, UpdaterType::CONTENT))
         {
             logInfo(WM_CONTENTUPDATER, "Action in progress for '%s', scheduled request ignored", m_topicName.c_str());
         }
@@ -149,18 +173,19 @@ public:
      * @brief Registers new ondemand action.
      *
      */
-    void registerActionOnDemand()
+    void registerActionOnDemand(const UpdaterType type)
     {
-        OnDemandManager::instance().addEndpoint(m_topicName, [this](int offset) { this->runActionOnDemand(offset); });
+        OnDemandManager::instance().addEndpoint(m_topicName,
+                                                [&type, this](int offset) { this->runActionOnDemand(type, offset); });
     }
 
     /**
      * @brief Unregisters ondemand action.
      *
      */
-    void unregisterActionOnDemand()
+    void unregisterActionOnDemand(const std::string& topicName)
     {
-        OnDemandManager::instance().removeEndpoint(m_topicName);
+        OnDemandManager::instance().removeEndpoint(topicName);
     }
 
     /**
@@ -177,10 +202,10 @@ public:
      *
      * @param offset Manually set current offset to process. Default -1
      */
-    void runActionOnDemand(const int offset = -1)
+    void runActionOnDemand(const UpdaterType type, const int offset = -1)
     {
         logInfo(WM_CONTENTUPDATER, "Starting on-demand action for '%s'", m_topicName.c_str());
-        if (!runActionExclusively(ActionID::ON_DEMAND, offset))
+        if (!runActionExclusively(ActionID::ON_DEMAND, type, offset))
         {
             logInfo(WM_CONTENTUPDATER, "Action in progress for '%s', on-demand request ignored", m_topicName.c_str());
         }
@@ -206,17 +231,25 @@ private:
     std::mutex m_mutex;
     std::condition_variable m_cv;
     std::string m_topicName;
+    std::string m_offsetUpdaterTopicName;
     nlohmann::json m_parameters;
     std::shared_ptr<ConditionSync> m_stopActionCondition;
     std::unique_ptr<ActionOrchestrator> m_orchestration;
 
-    void runAction(const ActionID id, const int offset = -1)
+    void runAction(const ActionID id, const UpdaterType type, const int offset = -1)
     {
         logInfo(WM_CONTENTUPDATER, "Action for '%s' started", m_topicName.c_str());
 
         try
         {
-            m_orchestration->run(offset);
+            if (type == UpdaterType::CONTENT)
+            {
+                m_orchestration->run(offset);
+            }
+            else
+            {
+                m_offsetUpdaterOrchestration->run(offset);
+            }
         }
         catch (const std::exception& e)
         {

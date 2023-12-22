@@ -56,7 +56,7 @@ protected:
                     "outputFolder": "/tmp/action-tests",
                     "dataFormat": "json",
                     "contentFileName": "sample.json",
-                    "databasePath": "/tmp/action-tests/rocksdb"
+                    "databasePath": "/tmp/rocksdb"
                 }
             }
         )"_json;

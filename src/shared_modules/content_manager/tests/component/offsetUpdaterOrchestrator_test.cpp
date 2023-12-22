@@ -33,10 +33,13 @@ void OffsetUpdaterOrchestratorTest::SetUp()
     m_parameters["topicName"] = m_topicName;
     m_parameters.at("configData")["databasePath"] = m_databaseFolder;
     m_parameters.at("configData")["outputFolder"] = m_outputFolder;
+
+    m_spRocksDBWrapper = std::make_shared<Utils::RocksDBWrapper>(m_databaseFolder);
 }
 
 void OffsetUpdaterOrchestratorTest::TearDown()
 {
+    m_spRocksDBWrapper.reset();
     std::filesystem::remove_all(m_databaseFolder);
     std::filesystem::remove_all(m_outputFolder);
 }
@@ -47,8 +50,8 @@ void OffsetUpdaterOrchestratorTest::TearDown()
  */
 TEST_F(OffsetUpdaterOrchestratorTest, Instantiation)
 {
-    EXPECT_NO_THROW(OffsetUpdaterOrchestrator(m_parameters, m_shouldRun));
-    EXPECT_NO_THROW(std::make_shared<OffsetUpdaterOrchestrator>(m_parameters, m_shouldRun));
+    EXPECT_NO_THROW(OffsetUpdaterOrchestrator(m_parameters, m_shouldRun, m_spRocksDBWrapper));
+    EXPECT_NO_THROW(std::make_shared<OffsetUpdaterOrchestrator>(m_parameters, m_shouldRun, m_spRocksDBWrapper));
 }
 
 /**
@@ -59,18 +62,16 @@ TEST_F(OffsetUpdaterOrchestratorTest, RunOrchestration)
 {
     constexpr auto OFFSET {100};
     constexpr auto ITERATIONS {5};
-    const auto databaseFolder {m_databaseFolder / ("updater_" + m_topicName + "_metadata")};
 
     // Run the orchestration ITERATIONS times over the same database.
     for (auto i {0}; i < ITERATIONS; i++)
     {
-        auto offsetUpdater {std::make_unique<OffsetUpdaterOrchestrator>(m_parameters, m_shouldRun)};
+        auto offsetUpdater {std::make_unique<OffsetUpdaterOrchestrator>(m_parameters, m_shouldRun, m_spRocksDBWrapper)};
         ASSERT_NO_THROW(offsetUpdater->run(OFFSET + i));
         offsetUpdater.reset();
 
-        const auto databaseOffset {Utils::RocksDBWrapper(databaseFolder)
-                                       .getLastKeyValue(Components::Columns::CURRENT_OFFSET)
-                                       .second.ToString()};
+        const auto databaseOffset {
+            m_spRocksDBWrapper->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString()};
         EXPECT_EQ(std::to_string(OFFSET + i), databaseOffset);
     }
 }

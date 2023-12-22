@@ -104,19 +104,13 @@ private:
      */
     void createRocksDB(UpdaterBaseContext& context) const
     {
-        // Create the database name. It will be the topic name with the prefix "updater_" and the suffix "_metadata".
-        const auto databaseName {"/updater_" + context.topicName + "_metadata"};
-        const auto databasePath {context.configData.at("databasePath").get_ref<std::string&>()};
-
         // Check if the output folder exists.
+        const auto databasePath {context.configData.at("databasePath").get_ref<std::string&>()};
         if (!std::filesystem::exists(databasePath))
         {
             // Create the folders.
             std::filesystem::create_directories(databasePath);
         }
-
-        // Initialize RocksDB driver instance.
-        context.spRocksDB = std::make_unique<Utils::RocksDBWrapper>(databasePath + databaseName);
 
         // Create database columns if necessary.
         const std::vector<std::string> COLUMNS {Components::Columns::CURRENT_OFFSET,
@@ -201,9 +195,8 @@ public:
     {
         logDebug1(WM_CONTENTUPDATER, "ExecutionContext - Starting process");
 
-        // Check if the database path is given and not empty.
-        if (context->configData.contains("databasePath") &&
-            !context->configData.at("databasePath").get<std::string>().empty())
+        // Check if the database driver was given.
+        if (context->spRocksDB)
         {
             createRocksDB(*context);
         }
