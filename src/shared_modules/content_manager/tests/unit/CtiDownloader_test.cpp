@@ -98,10 +98,8 @@ public:
 
 void CtiDownloaderTest::SetUp()
 {
-    m_shouldRun = true;
-
     // Create base context.
-    auto spBaseContext {std::make_shared<UpdaterBaseContext>(m_shouldRun)};
+    auto spBaseContext {std::make_shared<UpdaterBaseContext>(m_spStopActionCondition)};
     spBaseContext->configData["url"] = FAKE_CTI_URL;
 
     // Create updater context.
@@ -236,7 +234,7 @@ TEST_F(CtiDownloaderTest, BaseParametersDownloadInterrupted)
 {
     auto downloader {CtiDummyDownloader(HTTPRequest::instance())};
 
-    m_shouldRun = false;
+    m_spStopActionCondition->set(true);
     ASSERT_NO_THROW(downloader.handleRequest(m_spUpdaterContext));
 
     // Check expected data.

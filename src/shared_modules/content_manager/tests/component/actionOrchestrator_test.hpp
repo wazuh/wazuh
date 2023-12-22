@@ -12,10 +12,10 @@
 #ifndef _ACTION_ORCHESTRATOR_TEST_HPP
 #define _ACTION_ORCHESTRATOR_TEST_HPP
 
+#include "conditionSync.hpp"
 #include "fakes/fakeServer.hpp"
 #include "mocks/mockRouterProvider.hpp"
 #include "gtest/gtest.h"
-#include <atomic>
 #include <external/nlohmann/json.hpp>
 #include <filesystem>
 #include <memory>
@@ -33,7 +33,9 @@ protected:
     nlohmann::json m_parameters; ///< Parameters used to create the ActionOrchestrator
 
     inline static std::unique_ptr<FakeServer> m_spFakeServer; ///< Pointer to FakeServer class
-    const std::atomic<bool> m_shouldRun {true};               ///< Interruption flag.
+    std::shared_ptr<ConditionSync> m_spStopActionCondition {
+        std::make_shared<ConditionSync>(false)}; ///< Stop condition wrapper
+
     const std::filesystem::path DATABASE_PATH {std::filesystem::temp_directory_path() /
                                                "ActionOrchestratorTest"}; ///< Path used to store the RocksDB database.
     const unsigned int INITIAL_OFFSET {1}; ///< Initial offset to be inserted on the database.

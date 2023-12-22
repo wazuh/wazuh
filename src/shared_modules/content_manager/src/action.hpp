@@ -13,8 +13,10 @@
 #define _ACTION_MODULE_HPP
 
 #include "actionOrchestrator.hpp"
+#include "conditionSync.hpp"
 #include "onDemandManager.hpp"
 #include "routerProvider.hpp"
+#include "updaterContext.hpp"
 #include <atomic>
 #include <chrono>
 #include <external/nlohmann/json.hpp>
@@ -48,8 +50,8 @@ public:
         , m_cv {}
         , m_topicName {std::move(topicName)}
         , m_interval {0}
-        , m_shouldRun {true}
-        , m_orchestration {std::make_unique<ActionOrchestrator>(channel, parameters, m_shouldRun)}
+        , m_stopActionCondition {std::make_shared<ConditionSync>(false)}
+        , m_orchestration {std::make_unique<ActionOrchestrator>(channel, parameters, m_stopActionCondition)}
     {
         m_parameters = std::move(parameters);
     }
@@ -61,7 +63,7 @@ public:
     ~Action()
     {
         // Stop running action, if any.
-        m_shouldRun = false;
+        m_stopActionCondition->set(true);
 
         unregisterActionOnDemand();
         stopActionScheduler();
@@ -205,8 +207,8 @@ private:
     std::condition_variable m_cv;
     std::string m_topicName;
     nlohmann::json m_parameters;
+    std::shared_ptr<ConditionSync> m_stopActionCondition;
     std::unique_ptr<ActionOrchestrator> m_orchestration;
-    std::atomic<bool> m_shouldRun;
 
     void runAction(const ActionID id, const int offset = -1)
     {

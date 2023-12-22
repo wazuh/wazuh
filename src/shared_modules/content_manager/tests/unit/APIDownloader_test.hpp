@@ -14,10 +14,10 @@
 
 #include "APIDownloader.hpp"
 #include "HTTPRequest.hpp"
+#include "conditionSync.hpp"
 #include "fakes/fakeServer.hpp"
 #include "updaterContext.hpp"
 #include "gtest/gtest.h"
-#include <atomic>
 #include <memory>
 
 /**
@@ -37,7 +37,8 @@ protected:
 
     inline static std::unique_ptr<FakeServer> m_spFakeServer; ///< pointer to FakeServer class
 
-    const std::atomic<bool> m_shouldRun {true}; ///< Interruption flag.
+    std::shared_ptr<ConditionSync> m_spStopActionCondition {
+        std::make_shared<ConditionSync>(false)}; ///< Stop condition wrapper
 
     /**
      * @brief Sets initial conditions for each test case.
@@ -48,7 +49,7 @@ protected:
     {
         m_spAPIDownloader = std::make_shared<APIDownloader>(HTTPRequest::instance());
         // Create a updater base context
-        m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_shouldRun);
+        m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_spStopActionCondition);
         m_spUpdaterBaseContext->outputFolder = "/tmp/api-downloader-tests";
         m_spUpdaterBaseContext->downloadsFolder = m_spUpdaterBaseContext->outputFolder / DOWNLOAD_FOLDER;
         m_spUpdaterBaseContext->contentsFolder = m_spUpdaterBaseContext->outputFolder / CONTENTS_FOLDER;
