@@ -80,6 +80,7 @@ private:
 
         // Commit changes.
         context.data.at("paths") = std::move(pathsArray);
+        context.data.at("offset") = context.currentOffset;
     }
 
     /**

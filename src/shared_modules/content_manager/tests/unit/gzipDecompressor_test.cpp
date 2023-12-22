@@ -47,6 +47,7 @@ TEST_F(GzipDecompressorTest, DecompressNoFile)
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
     expectedData["type"] = DEFAULT_TYPE;
+    expectedData["offset"] = 0;
 
     // Run decompression.
     ASSERT_NO_THROW(GzipDecompressor().handleRequest(m_spContext));
@@ -70,6 +71,7 @@ TEST_F(GzipDecompressorTest, DecompressOneFile)
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
     expectedData["type"] = DEFAULT_TYPE;
+    expectedData["offset"] = 0;
 
     // Run decompression.
     ASSERT_NO_THROW(GzipDecompressor().handleRequest(m_spContext));
@@ -98,6 +100,7 @@ TEST_F(GzipDecompressorTest, DecompressTwoFiles)
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
     expectedData["type"] = DEFAULT_TYPE;
+    expectedData["offset"] = 0;
 
     // Run decompression.
     ASSERT_NO_THROW(GzipDecompressor().handleRequest(m_spContext));
@@ -125,6 +128,7 @@ TEST_F(GzipDecompressorTest, DecompressInexistantFile)
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(FAIL_STATUS);
     expectedData["type"] = DEFAULT_TYPE;
+    expectedData["offset"] = 0;
 
     // Run decompression.
     ASSERT_THROW(GzipDecompressor().handleRequest(m_spContext), std::runtime_error);
@@ -150,6 +154,7 @@ TEST_F(GzipDecompressorTest, DecompressTwoFilesOneInexistant)
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(FAIL_STATUS);
     expectedData["type"] = DEFAULT_TYPE;
+    expectedData["offset"] = 0;
 
     // Run decompression.
     ASSERT_THROW(GzipDecompressor().handleRequest(m_spContext), std::runtime_error);

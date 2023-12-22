@@ -12,11 +12,11 @@
 #ifndef _OFFSET_UPDATER_ORCHESTRATOR_HPP
 #define _OFFSET_UPDATER_ORCHESTRATOR_HPP
 
-#include "../sharedDefs.h"
 #include "components/executionContext.hpp"
 #include "components/factoryOffsetUpdater.hpp"
 #include "components/updaterContext.hpp"
 #include "json.hpp"
+#include "sharedDefs.hpp"
 #include <atomic>
 #include <memory>
 #include <string>
