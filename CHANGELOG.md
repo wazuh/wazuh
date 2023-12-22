@@ -3,6 +3,27 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.7.2]
 
+### Manager
+
+#### Fixed
+
+- wazuh-remoted now includes the offending bytes in the warning about invalid message size from agents. ([#21011](https://github.com/wazuh/wazuh/pull/21011))
+- Fixed a bug in the Windows Eventchannel decoder on handling Unicode characters. ([#20658](https://github.com/wazuh/wazuh/pull/20658))
+- Fixed data validation at Windows Eventchannel decoder. ([#20735](https://github.com/wazuh/wazuh/pull/20735))
+
+### Agent
+
+#### Fixed
+
+- The host_deny Active response now checks the IP parameter format. ([#20656](https://github.com/wazuh/wazuh/pull/20656))
+- Fixed a bug in the Windows agent that might lead it to crash when gathering forwarded Windows events. ([#20594](https://github.com/wazuh/wazuh/pull/20594))
+
+### Ruleset
+
+#### Added
+
+- Added new SCA policy for Debian 12. ([#17565](https://github.com/wazuh/wazuh/pull/17565))
+
 
 ## [v4.7.1]
 
