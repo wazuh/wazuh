@@ -478,89 +478,95 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> AutoDisconnect -> 0'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> AutoDisconnect -> n:^(\d+) compare <= 15'
 
-  # 2.3.9.2 (L1) Ensure 'Microsoft network server: Digitally sign communications (always)' is set to 'Enabled'. (Automated)
-   - id: 18586
-     title: "(L1) Ensure 'Microsoft network server: Digitally sign communications (always)' is set to 'Enabled'."
-     description: "This policy setting determines whether packet signing is required by the SMB server component. Enable this policy setting in a mixed environment to prevent downstream clients from using the workstation as a network server. The recommended state for this setting is: Enabled."
-     rationale: "Session hijacking uses tools that allow attackers who have access to the same network as the client or server to interrupt, end, or steal a session in progress. Attackers can potentially intercept and modify unsigned SMB packets and then modify the traffic and forward it so that the server might perform undesirable actions. Alternatively, the attacker could pose as the server or client after legitimate authentication and gain unauthorized access to data. SMB is the resource sharing protocol that is supported by many Windows operating systems. It is the basis of NetBIOS and many other protocols. SMB signatures authenticate both users and the servers that host the data. If either side fails the authentication process, data transmission will not take place."
-     impact: "The Microsoft network server will not communicate with a Microsoft network client unless that client agrees to perform SMB packet signing. The Windows 2000 Server, Windows 2000 Professional, Windows Server 2003, Windows XP Professional and Windows Vista implementations of the SMB file and print sharing protocol support mutual authentication, which prevents session hijacking attacks and supports message authentication to prevent man-in-the-middle attacks. SMB signing provides this authentication by placing a digital signature into each SMB, which is then verified by both the client and the server. Implementation of SMB signing may negatively affect performance, because each packet needs to be signed and verified. If these settings are enabled on a server that is performing multiple roles, such as a small business server that is serving as a Domain Controller, file server, print server, and application server performance may be substantially slowed. Additionally, if you configure computers to ignore all unsigned SMB communications, older applications and operating systems will not be able to connect. However, if you completely disable all SMB signing, computers will be vulnerable to session hijacking attacks. When SMB signing policies are enabled on Domain Controllers running Windows Server 2003 and member computers running Windows Vista SP1 or Windows Server 2008 group policy processing will fail. A hotfix is available from Microsoft that resolves this issue; see Microsoft Knowledge Base article 950876 for more details: Group Policy settings are not applied on member computers that are running Windows Server 2008 or Windows Vista SP1 when certain SMB signing policies are enabled."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network server: Digitally sign communications (always)."
-     compliance:
-       - cis: ["2.3.9.2"]
-     condition:
-     rules:
+ # 2.3.9.2 Ensure 'Microsoft network server: Digitally sign communications (always)' is set to 'Enabled'
+  - id: 16526
+    title: "Ensure 'Microsoft network server: Digitally sign communications (always)' is set to 'Enabled'"
+    description: "This policy setting determines whether packet signing is required by the SMB server component. Enable this policy setting in a mixed environment to prevent downstream clients from using the workstation as a network server. The recommended state for this setting is: Enabled."
+    rationale: "Session hijacking uses tools that allow attackers who have access to the same network as the client or server to interrupt, end, or steal a session in progress. Attackers can potentially intercept and modify unsigned SMB packets and then modify the traffic and forward it so that the server might perform undesirable actions. Alternatively, the attacker could pose as the server or client after legitimate authentication and gain unauthorized access to data. SMB is the resource sharing protocol that is supported by many Windows operating systems. It is the basis of NetBIOS and many other protocols. SMB signatures authenticate both users and the servers that host the data. If either side fails the authentication process, data transmission will not take place."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network server: Digitally sign communications (always)."
+    compliance:
+      - cis: ["2.3.9.2"]
+      - cis_csc: ["13"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+    references:
+      - "CCE-37864-6"
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> RequireSecuritySignature -> 1'
 
-  # 2.3.9.3 (L1) Ensure 'Microsoft network server: Digitally sign communications (if client agrees)' is set to 'Enabled'. (Automated)
-   - id: 18587
-     title: "(L1) Ensure 'Microsoft network server: Digitally sign communications (if client agrees)' is set to 'Enabled'."
-     description: "This policy setting determines whether the SMB server will negotiate SMB packet signing with clients that request it. If no signing request comes from the client, a connection will be allowed without a signature if the Microsoft network server: Digitally sign communications (always) setting is not enabled. Note: Enable this policy setting on SMB clients on your network to make them fully effective for packet signing with all clients and servers in your environment. The recommended state for this setting is: Enabled."
-     rationale: "Session hijacking uses tools that allow attackers who have access to the same network as the client or server to interrupt, end, or steal a session in progress. Attackers can potentially intercept and modify unsigned SMB packets and then modify the traffic and forward it so that the server might perform undesirable actions. Alternatively, the attacker could pose as the server or client after legitimate authentication and gain unauthorized access to data. SMB is the resource sharing protocol that is supported by many Windows operating systems. It is the basis of NetBIOS and many other protocols. SMB signatures authenticate both users and the servers that host the data. If either side fails the authentication process, data transmission will not take place."
-     impact: "The Microsoft network server will negotiate SMB packet signing as requested by the client. That is, if packet signing has been enabled on the client, packet signing will be negotiated. The Windows 2000 Server, Windows 2000 Professional, Windows Server 2003, Windows XP Professional and Windows Vista implementations of the SMB file and print sharing protocol support mutual authentication, which prevents session hijacking attacks and supports message authentication to prevent man-in-the-middle attacks. SMB signing provides this authentication by placing a digital signature into each SMB, which is then verified by both the client and the server. Implementation of SMB signing may negatively affect performance, because each packet needs to be signed and verified. If these settings are enabled on a server that is performing multiple roles, such as a small business server that is serving as a Domain Controller, file server, print server, and application server performance may be substantially slowed. Additionally, if you configure computers to ignore all unsigned SMB communications, older applications and operating systems will not be able to connect. However, if you completely disable all SMB signing, computers will be vulnerable to session hijacking attacks. When SMB signing policies are enabled on Domain Controllers running Windows Server 2003 and member computers running Windows Vista SP1 or Windows Server 2008 group policy processing will fail. A hotfix is available from Microsoft that resolves this issue; see Microsoft Knowledge Base article 950876 for more details: Group Policy settings are not applied on member computers that are running Windows Server 2008 or Windows Vista SP1 when certain SMB signing policies are enabled."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network server: Digitally sign communications (if client agrees)."
-     compliance:
-       - cis: ["2.3.9.3"]
-     condition:
-     rules:
+  # 2.3.9.3 Ensure 'Microsoft network server: Digitally sign communications (if client agrees)' is set to 'Enabled'
+  - id: 16527
+    title: "Ensure 'Microsoft network server: Digitally sign communications (if client agrees)' is set to 'Enabled'"
+    description: "This policy setting determines whether the SMB server will negotiate SMB packet signing with clients that request it. If no signing request comes from the client, a connection will be allowed without a signature if the Microsoft network server: Digitally sign communications (always) setting is not enabled. Note: Enable this policy setting on SMB clients on your network to make them fully effective for packet signing with all clients and servers in your environment. The recommended state for this setting is: Enabled."
+    rationale: "Session hijacking uses tools that allow attackers who have access to the same network as the client or server to interrupt, end, or steal a session in progress. Attackers can potentially intercept and modify unsigned SMB packets and then modify the traffic and forward it so that the server might perform undesirable actions. Alternatively, the attacker could pose as the server or client after legitimate authentication and gain unauthorized access to data. SMB is the resource sharing protocol that is supported by many Windows operating systems. It is the basis of NetBIOS and many other protocols. SMB signatures authenticate both users and the servers that host the data. If either side fails the authentication process, data transmission will not take place."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network server: Digitally sign communications (if client agrees)."
+    compliance:
+      - cis: ["2.3.9.3"]
+      - cis_csc: ["13"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+    references:
+      - "CCE-35988-5"
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> EnableSecuritySignature -> 1'
 
-  # 2.3.9.4 (L1) Ensure 'Microsoft network server: Disconnect clients when logon hours expire' is set to 'Enabled'. (Automated)
-   - id: 18588
-     title: "(L1) Ensure 'Microsoft network server: Disconnect clients when logon hours expire' is set to 'Enabled'."
-     description: "This security setting determines whether to disconnect users who are connected to the local computer outside their user account's valid logon hours. This setting affects the Server Message Block (SMB) component. If you enable this policy setting you should also enable Network security: Force logoff when logon hours expire (Rule 2.3.11.6). If your organization configures logon hours for users, this policy setting is necessary to ensure they are effective. The recommended state for this setting is: Enabled."
-     rationale: "If your organization configures logon hours for users, then it makes sense to enable this policy setting. Otherwise, users who should not have access to network resources outside of their logon hours may actually be able to continue to use those resources with sessions that were established during allowed hours."
-     impact: "None - this is the default behavior. If logon hours are not used in your organization, this policy setting will have no impact. If logon hours are used, existing user sessions will be forcibly terminated when their logon hours expire."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network server: Disconnect clients when logon hours expire."
-     compliance:
-       - cis: ["2.3.9.4"]
-       - cis_csc_v8: ["5.6"]
-       - cis_csc_v7: ["16.13"]
-       - nist_sp_800-53: ["AC-2(1)"]
-       - soc_2: ["CC6.1"]
-     condition:
-     rules:
+  # 2.3.9.4 Ensure 'Microsoft network server: Disconnect clients when logon hours expire' is set to 'Enabled'
+  - id: 16528
+    title: "Ensure 'Microsoft network server: Disconnect clients when logon hours expire' is set to 'Enabled'"
+    description: "This security setting determines whether to disconnect users who are connected to the local computer outside their user account's valid logon hours. This setting affects the Server Message Block (SMB) component. If you enable this policy setting you should also enable Network security: Force logoff when logon hours expire (Rule 2.3.11.6). If your organization configures logon hours for users, this policy setting is necessary to ensure they are effective. The recommended state for this setting is: Enabled."
+    rationale: "If your organization configures logon hours for users, then it makes sense to enable this policy setting. Otherwise, users who should not have access to network resources outside of their logon hours may actually be able to continue to use those resources with sessions that were established during allowed hours."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network server: Disconnect clients when logon hours expire."
+    compliance:
+      - cis: ["2.3.9.4"]
+      - cis_csc: ["16"]
+      - pci_dss: ["7.1"]
+      - tsc: ["CC6.4"]
+    references:
+      - "CCE-37972-7"
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> EnableForcedLogOff -> 1'
 
-  # 2.3.9.5 (L1) Ensure 'Microsoft network server: Server SPN target name validation level' is set to 'Accept if provided by client' or higher (MS only). (Automated)
-   - id: 18589
-     title: "(L1) Ensure 'Microsoft network server: Server SPN target name validation level' is set to 'Accept if provided by client' or higher (MS only)."
-     description: "This policy setting controls the level of validation a computer with shared folders or printers (the server) performs on the service principal name (SPN) that is provided by the client computer when it establishes a session using the server message block (SMB) protocol. The server message block (SMB) protocol provides the basis for file and print sharing and other networking operations, such as remote Windows administration. The SMB protocol supports validating the SMB server service principal name (SPN) within the authentication blob provided by a SMB client to prevent a class of attacks against SMB servers referred to as SMB relay attacks. This setting will affect both SMB1 and SMB2. The recommended state for this setting is: Accept if provided by client. Configuring this setting to Required from client also conforms to the benchmark. Note: Since the release of the MS KB3161561 security patch, this setting can cause significant issues (such as replication problems, group policy editing issues and blue screen crashes) on Domain Controllers when used simultaneously with UNC path hardening (i.e. Rule 18.5.14.1). CIS therefore recommends against deploying this setting on Domain Controllers."
-     rationale: "The identity of a computer can be spoofed to gain unauthorized access to network resources."
-     impact: "All Windows operating systems support both a client-side SMB component and a server-side SMB component. This setting affects the server SMB behavior, and its implementation should be carefully evaluated and tested to prevent disruptions to file and print serving capabilities. If configured to Accept if provided by client, the SMB server will accept and validate the SPN provided by the SMB client and allow a session to be established if it matches the SMB server’s list of SPN’s for itself. If the SPN does NOT match, the session request for that SMB client will be denied. If configured to Required from client, the SMB client MUST send a SPN name in session setup, and the SPN name provided MUST match the SMB server that is being requested to establish a connection. If no SPN is provided by client, or the SPN provided does not match, the session is denied."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Accept if provided by client (configuring to Required from client also conforms to the benchmark): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network server: Server SPN target name validation level."
-     compliance:
-       - cis: ["2.3.9.5"]
-       - cis_csc_v8: ["4.1"]
-       - cis_csc_v7: ["5.1"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-       - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
-       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
-       - pci_dss_v3.2.1: ["11.5", "2.2"]
-       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-       - soc_2: ["CC7.1", "CC8.1"]
-     condition:
-     rules:
+  # 2.3.9.5 Ensure 'Microsoft network server: Server SPN target name validation level' is set to 'Accept if provided by client' or higher
+  - id: 16529
+    title: "Ensure 'Microsoft network server: Server SPN target name validation level' is set to 'Accept if provided by client' or higher"
+    description: "This policy setting controls the level of validation a computer with shared folders or printers (the server) performs on the service principal name (SPN) that is provided by the client computer when it establishes a session using the server message block (SMB) protocol. The server message block (SMB) protocol provides the basis for file and print sharing and other networking operations, such as remote Windows administration. The SMB protocol supports validating the SMB server service principal name (SPN) within the authentication blob provided by a SMB client to prevent a class of attacks against SMB servers referred to as SMB relay attacks. This setting will affect both SMB1 and SMB2. The recommended state for this setting is: Accept if provided by client. Configuring this setting to Required from client also conforms to the benchmark. Note: Since the release of the MS KB3161561 security patch, this setting can cause significant issues (such as replication problems, group policy editing issues and blue screen crashes) on Domain Controllers when used simultaneously with UNC path hardening (i.e. Rule 18.5.14.1). CIS therefore recommends against deploying this setting on Domain Controllers."
+    rationale: "The identity of a computer can be spoofed to gain unauthorized access to network resources."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Accept if provided by client (configuring to Required from client also conforms to the benchmark): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network server: Server SPN target name validation level."
+    compliance:
+      - cis: ["2.3.9.5"]
+      - cis_csc: ["14"]
+      - pci_dss: ["7.1"]
+      - tsc: ["CC6.4"]
+    references:
+      - https://support.microsoft.com/en-us/help/3161561/ms16-075-and-ms16-076-description-of-the-security-update-for-windows-n
+      - "CCE-36170-9"
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters -> SMBServerNameHardeningLevel -> n:^(\d+) compare >= 1'
 
-  # 2.3.10.1 (L1) Ensure 'Network access: Allow anonymous SID/Name translation' is set to 'Disabled'. (Automated)
-   - id: 18590
-     title: "(L1) Ensure 'Network access: Allow anonymous SID/Name translation' is set to 'Disabled'."
-     description: "This policy setting determines whether an anonymous user can request security identifier (SID) attributes for another user, or use a SID to obtain its corresponding user name. The recommended state for this setting is: Disabled."
-     rationale: "If this policy setting is enabled, a user with local access could use the well-known Administrator's SID to learn the real name of the built-in Administrator account, even if it has been renamed. That person could then use the account name to initiate a password guessing attack."
-     impact: "None - this is the default behavior."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Allow anonymous SID/Name translation."
-     compliance:
-       - cis: ["2.3.10.1"]
-     condition:
-     rules:
-
-  # 2.3.10.2 (L1) Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts' is set to 'Enabled' (MS only). (Automated)
-   - id: 18591
-     title: "(L1) Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts' is set to 'Enabled' (MS only)."
-     description: "This policy setting controls the ability of anonymous users to enumerate the accounts in the Security Accounts Manager (SAM). If you enable this policy setting, users with anonymous connections will not be able to enumerate domain account user names on the systems in your environment. This policy setting also allows additional restrictions on anonymous connections. The recommended state for this setting is: Enabled. Note: This policy has no effect on Domain Controllers."
-     rationale: "An unauthorized user could anonymously list account names and use the information to attempt to guess passwords or perform social engineering attacks. (Social engineering attacks try to deceive users in some way to obtain passwords or some form of security information.)."
-     impact: "None - this is the default behavior. It will be impossible to establish trusts with Windows NT 4.0-based domains. Also, client computers that run older versions of the Windows operating system such as Windows NT 3.51 and Windows 95 will experience problems when they try to use resources on the server."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Do not allow anonymous enumeration of SAM accounts."
-     compliance:
-       - cis: ["2.3.10.2"]
-     condition:
-     rules:
+  # 2.3.10.2 Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts' is set to 'Enabled'
+  - id: 16530
+    title: "Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts' is set to 'Enabled'"
+    description: "This policy setting controls the ability of anonymous users to enumerate the accounts in the Security Accounts Manager (SAM). If you enable this policy setting, users with anonymous connections will not be able to enumerate domain account user names on the systems in your environment. This policy setting also allows additional restrictions on anonymous connections. The recommended state for this setting is: Enabled. Note: This policy has no effect on Domain Controllers."
+    rationale: "An unauthorized user could anonymously list account names and use the information to attempt to guess passwords or perform social engineering attacks. (Social engineering attacks try to deceive users in some way to obtain passwords or some form of security information)"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Do not allow anonymous enumeration of SAM accounts."
+    compliance:
+      - cis: ["2.3.10.2"]
+      - cis_csc: ["16"]
+      - pci_dss: ["7.1"]
+      - tsc: ["CC6.4"]
+    references:
+      - "CCE-36316-8"
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> RestrictAnonymousSAM -> 1'
 
   # 2.3.10.3 (L1) Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts and shares' is set to 'Enabled' (MS only). (Automated)
    - id: 18592
