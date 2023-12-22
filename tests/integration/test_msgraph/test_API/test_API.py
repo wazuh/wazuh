@@ -150,7 +150,7 @@ def test_future_events_yes(test_configuration, test_metadata, set_wazuh_configur
             brief: Setups the API proxy application.
 
     assertions:
-        - Verify that when the `only_future_events` option is set to `yes`, the ms-graph module saves a bookmark, 
+        - Verify that when the `only_future_events` option is set to `yes`, the ms-graph module saves a bookmark,
         and after a restart, it waits for a first scan.
 
     input_description: A configuration template is contained in an external YAML file
@@ -212,7 +212,7 @@ def test_future_events_no(test_configuration, test_metadata, set_wazuh_configura
             brief: Setups the API proxy application.
 
     assertions:
-        - Verify that when the `only_future_events` option is set to `no`, the ms-graph module saves a bookmark, 
+        - Verify that when the `only_future_events` option is set to `no`, the ms-graph module saves a bookmark,
         and after a restart, it does not wait for a first scan.
 
     input_description: A configuration template is contained in an external YAML file
@@ -232,7 +232,7 @@ def test_future_events_no(test_configuration, test_metadata, set_wazuh_configura
         control_service('stop')
         truncate_file(WAZUH_LOG_PATH)
         control_service('start')
-        
+
         wazuh_log_monitor.start(callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*seconds to run next scan"))
         assert (wazuh_log_monitor.callback_result != None), f'Error, `next scan` not found in log'
 
