@@ -3,6 +3,44 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.7.2]
 
+### Manager
+
+#### Fixed
+
+- wazuh-remoted now includes the offending bytes in the warning about invalid message size from agents. ([#21011](https://github.com/wazuh/wazuh/pull/21011))
+- Fixed a bug in the Windows Eventchannel decoder on handling Unicode characters. ([#20658](https://github.com/wazuh/wazuh/pull/20658))
+- Fixed data validation at Windows Eventchannel decoder. ([#20735](https://github.com/wazuh/wazuh/pull/20735))
+
+### Agent
+
+#### Added
+- Added mapping geolocation for AWS WAF integration. ([#20649](https://github.com/wazuh/wazuh/pull/20649))
+- Added timeouts to external and Cloud integrations to prevent indefinite waiting for a response. ([#20638](https://github.com/wazuh/wazuh/pull/20638))
+
+#### Fixed
+
+- The host_deny Active response now checks the IP parameter format. ([#20656](https://github.com/wazuh/wazuh/pull/20656))
+- Fixed a bug in the Windows agent that might lead it to crash when gathering forwarded Windows events. ([#20594](https://github.com/wazuh/wazuh/pull/20594))
+- The AWS integration now finds AWS configuration profiles that do not contain the `profile` prefix. ([#20447](https://github.com/wazuh/wazuh/pull/20447))
+- Fixed parsing for regions argument of the AWS integration. ([#20660](https://github.com/wazuh/wazuh/pull/20660))
+
+### Ruleset
+
+#### Added
+
+- Added new SCA policy for Debian 12. ([#17565](https://github.com/wazuh/wazuh/pull/17565))
+
+#### Fixed
+
+- Fixed AWS Macie fields used in some rules and removed unused AWS Macie Classic rules. ([#20663](https://github.com/wazuh/wazuh/pull/20663))
+
+### Other
+
+#### Changed
+
+- Upgraded external aiohttp library dependency version to 3.9.1. ([#20798](https://github.com/wazuh/wazuh/pull/20798))
+- Upgraded pip dependency version to 23.3.2. ([#20632](https://github.com/wazuh/wazuh/issues/20632))
+
 
 ## [v4.7.1]
 
