@@ -29,6 +29,7 @@ All notable changes to this project will be documented in this file.
 - Added snap package manager support to Syscollector. ([#15740](https://github.com/wazuh/wazuh/pull/15740))
 - Added event size validation for the external integrations. ([#17932](https://github.com/wazuh/wazuh/pull/17932))
 - Added new unit tests for the AWS integration. ([#17623](https://github.com/wazuh/wazuh/pull/17623))
+- Added mapping geolocation for AWS WAF integration. ([#20649](https://github.com/wazuh/wazuh/pull/20649))
 
 #### Changed
 
@@ -49,6 +50,11 @@ All notable changes to this project will be documented in this file.
 #### Added
 
 - Added new `GET /manager/version/check` endpoint to obtain information about new releases of Wazuh. ([#19952](https://github.com/wazuh/wazuh/pull/19952))
+- Introduced an `auto` option for the ssl_protocol setting in the API configuration. This enables automatic negotiation of the TLS certificate to be used. ([#20420](https://github.com/wazuh/wazuh/pull/20420))
+
+#### Fixed
+
+- Fixed a warning from SQLAlchemy involving detached Roles instances in RBAC. ([#20527](https://github.com/wazuh/wazuh/pull/20527))
 
 #### Removed
 
@@ -62,6 +68,7 @@ All notable changes to this project will be documented in this file.
 - Upgraded external cryptography library dependency version to 41.0.4. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
 - Upgraded external numpy library dependency version to 1.26.0. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
 - Upgraded external grpcio library dependency version to 1.58.0. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
+- Upgraded external pyarrow library dependency version to 14.0.1. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
 - Upgraded embedded Python version to 3.10.13. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
 
 
