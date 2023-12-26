@@ -11,6 +11,7 @@
 
 #include "action_test.hpp"
 #include "action.hpp"
+#include "actionOrchestrator.hpp"
 #include "gtest/gtest.h"
 #include <chrono>
 #include <filesystem>
@@ -315,4 +316,23 @@ TEST_F(ActionTest, ScheduledActionCatchException)
         m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
     EXPECT_TRUE(std::filesystem::is_empty(outputFolder / DOWNLOAD_FOLDER));
     EXPECT_TRUE(std::filesystem::is_empty(outputFolder / CONTENTS_FOLDER));
+}
+
+/**
+ * @brief Test the on-demand action execution for an offset update process.
+ *
+ */
+TEST_F(ActionTest, RunActionOnDemandOffsetUpdate)
+{
+    m_parameters["ondemand"] = true;
+    const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
+
+    auto action {Action(m_spRouterProvider, topicName, m_parameters)};
+    action.registerActionOnDemand();
+
+    constexpr auto OFFSET {1000};
+    ASSERT_NO_THROW(action.runActionOnDemand(OFFSET, ActionOrchestrator::UpdateType::OFFSET));
+
+    action.unregisterActionOnDemand();
+    action.clearEndpoints();
 }
