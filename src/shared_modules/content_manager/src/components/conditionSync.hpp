@@ -30,7 +30,7 @@ public:
      *
      * @param initialState The initial value of the condition.
      */
-    ConditionSync(bool initialState)
+    explicit ConditionSync(bool initialState)
         : m_condition(initialState) {};
 
     /**
