@@ -13,7 +13,7 @@ class MockQueue : public iQueue<T>
 {
 public:
     MOCK_METHOD(void, push, (T&& element), (override));
-    MOCK_METHOD(bool, try_push, (const T& element), (override));
+    MOCK_METHOD(bool, tryPush, (const T& element), (override));
     MOCK_METHOD(bool, waitPop, (T& element, int64_t timeout), (override));
     MOCK_METHOD(bool, tryPop, (T& element), (override));
     MOCK_METHOD(bool, empty, (), (const, override));

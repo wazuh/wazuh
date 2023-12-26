@@ -277,7 +277,7 @@ public:
      * @note If the pathFloodedFile is not provided, the queue will not be flooded,and the
      * push method will block until there is space in the queue.
      */
-    
+
 
     /**
      * @brief Tries to push an element to the queue.
@@ -286,7 +286,7 @@ public:
      * @return true if the element was pushed.
      * @return false if the queue is full.
      */
-    bool try_push(const T& element) override
+    bool tryPush(const T& element) override
     {
         auto result = m_queue.try_enqueue(element);
         if (result)
