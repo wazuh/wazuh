@@ -132,6 +132,8 @@ private:
      */
     void runOffsetUpdate(std::shared_ptr<UpdaterContext> spUpdaterContext, int offset) const
     {
+        logDebug2(WM_CONTENTUPDATER, "Running '%s' offset update", m_spBaseContext->topicName.c_str());
+
         if (0 > offset)
         {
             throw std::invalid_argument {"Invalid offset value: " + std::to_string(offset)};
