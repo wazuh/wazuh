@@ -132,6 +132,11 @@ private:
      */
     void runOffsetUpdate(std::shared_ptr<UpdaterContext> spUpdaterContext, int offset) const
     {
+        if (0 > offset)
+        {
+            throw std::invalid_argument {"Invalid offset value: " + std::to_string(offset)};
+        }
+
         spUpdaterContext->currentOffset = offset;
 
         FactoryOffsetUpdater::create(m_spBaseContext->configData)->handleRequest(spUpdaterContext);
