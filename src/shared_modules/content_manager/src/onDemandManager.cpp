@@ -67,14 +67,16 @@ void OnDemandManager::startServer()
                          });
 
             // Capture PUT requests. These requests are used to update the offset from the database.
-            m_server.Put("/ondemand/(.*)",
+            m_server.Put("/offset",
                          [&](const httplib::Request& req, httplib::Response& res)
                          {
                              std::shared_lock<std::shared_mutex> lock {m_mutex};
 
                              try
                              {
-                                 const auto offset {nlohmann::json::parse(req.body).at("offset").get<int>()};
+                                 const auto requestData = nlohmann::json::parse(req.body);
+                                 const auto offset {requestData.at("offset").get<int>()};
+                                 const auto& topicName {requestData.at("topicName").get_ref<const std::string&>()};
 
                                  if (0 > offset)
                                  {
@@ -82,7 +84,7 @@ void OnDemandManager::startServer()
                                          "Invalid offset value: Should be greater or equal than zero");
                                  }
 
-                                 if (const auto& it {m_endpoints.find(req.matches[1].str())}; it != m_endpoints.end())
+                                 if (const auto& it {m_endpoints.find(topicName)}; it != m_endpoints.end())
                                  {
                                      it->second(offset, ActionOrchestrator::UpdateType::OFFSET);
                                      res.status = 200;
@@ -91,7 +93,7 @@ void OnDemandManager::startServer()
                                  else
                                  {
                                      res.status = 404;
-                                     res.body = "Endpoint " + req.matches[1].str() + " not found";
+                                     res.body = "Topic '" + topicName + "' not found";
                                  }
                              }
                              catch (const std::exception& e)

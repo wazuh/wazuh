@@ -109,11 +109,17 @@ void logFunction(const int logLevel,
     }
 }
 
+/**
+ * @brief Performs a PUT query to the on-demand manager, requesting an offset update.
+ *
+ * @param topicName Name of the topic.
+ */
 void runOffsetUpdate(const std::string& topicName)
 {
     nlohmann::json data;
     data["offset"] = OFFSET_UPDATE_VALUE;
-    const auto putUrl {"http://localhost/ondemand/" + topicName};
+    data["topicName"] = topicName;
+    const auto putUrl {"http://localhost/offset"};
     UNIXSocketRequest::instance().put(
         HttpUnixSocketURL(ONDEMAND_SOCK, putUrl),
         data,
