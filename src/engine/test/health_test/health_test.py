@@ -57,8 +57,6 @@ def compare_results(parsed_results, expected_json, input_file_name, mismatches):
         return
 
     for i, event_json in enumerate(parsed_results):
-        if 'TestSessionID' in event_json:
-            del event_json['TestSessionID']
         try:
             if event_json != expected_json[i]:
                 mismatches.append((input_file_name, i))  # Añadir el índice del problema

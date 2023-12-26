@@ -23,7 +23,7 @@ namespace eEngine = ::com::wazuh::api::engine;
 
 /* Runtime endpoint */
 template<typename ConfDriver>
-api::Handler runtimeGet(ConfHandler<ConfDriver> confHandler)
+api::HandlerSync runtimeGet(ConfHandler<ConfDriver> confHandler)
 {
     return [confHandler](api::wpRequest wRequest) -> api::wpResponse
     {
@@ -57,7 +57,7 @@ api::Handler runtimeGet(ConfHandler<ConfDriver> confHandler)
 }
 
 template<typename ConfDriver>
-api::Handler runtimePut(ConfHandler<ConfDriver> confHandler)
+api::HandlerSync runtimePut(ConfHandler<ConfDriver> confHandler)
 {
     return [confHandler](api::wpRequest wRequest) -> api::wpResponse
     {
@@ -97,7 +97,7 @@ api::Handler runtimePut(ConfHandler<ConfDriver> confHandler)
 }
 
 template<typename ConfDriver>
-api::Handler runtimeSave(ConfHandler<ConfDriver> confHandler)
+api::HandlerSync runtimeSave(ConfHandler<ConfDriver> confHandler)
 {
     return [confHandler](api::wpRequest wRequest) -> api::wpResponse
     {
@@ -138,9 +138,9 @@ api::Handler runtimeSave(ConfHandler<ConfDriver> confHandler)
 template<typename ConfDriver>
 void registerHandlers(std::shared_ptr<api::Api> api, ConfHandler<ConfDriver> confHandler)
 {
-    const bool ok = api->registerHandler("config.runtime/get", runtimeGet(confHandler))
-                    && api->registerHandler("config.runtime/put", runtimePut(confHandler))
-                    && api->registerHandler("config.runtime/save", runtimeSave(confHandler));
+    const bool ok = api->registerHandler("config.runtime/get", Api::convertToHandlerAsync(runtimeGet(confHandler)))
+                    && api->registerHandler("config.runtime/put", Api::convertToHandlerAsync(runtimePut(confHandler)))
+                    && api->registerHandler("config.runtime/save", Api::convertToHandlerAsync(runtimeSave(confHandler)));
 
     if (!ok)
     {

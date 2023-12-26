@@ -13,13 +13,13 @@ namespace api::catalog::handlers
 {
 
 /* Resource Endpoint */
-api::Handler resourcePost(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::IRBAC> rbac);
-api::Handler resourceGet(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::IRBAC> rbac);
-api::Handler resourceDelete(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::IRBAC> rbac);
-api::Handler resourcePut(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::IRBAC> rbac);
-api::Handler resourceValidate(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::IRBAC> rbac);
-api::Handler policyAddIntegration(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::IRBAC> rbac);
-api::Handler policyDelIntegration(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::IRBAC> rbac);
+api::HandlerSync resourcePost(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::IRBAC> rbac);
+api::HandlerSync resourceGet(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::IRBAC> rbac);
+api::HandlerSync resourceDelete(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::IRBAC> rbac);
+api::HandlerSync resourcePut(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::IRBAC> rbac);
+api::HandlerSync resourceValidate(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::IRBAC> rbac);
+api::HandlerSync policyAddIntegration(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::IRBAC> rbac);
+api::HandlerSync policyDelIntegration(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::IRBAC> rbac);
 
 /**
  * @brief Register all available Catalog handlers in the API registry.

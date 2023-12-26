@@ -19,7 +19,8 @@ using wpRequest = base::utils::wazuhProtocol::WazuhRequest;
 /**
  * @brief Represent a handler function, which receives a WazuhRequest and returns a WazuhResponse
  */
-using Handler = std::function<wpResponse(const wpRequest&)>;
+using HandlerAsync = std::function<void(const wpRequest&, std::function<void(const wpResponse&)>)>;
+using HandlerSync = std::function<wpResponse(const wpRequest&)>;
 
 /**
  * @brief A registry for API handlers
@@ -31,7 +32,7 @@ using Handler = std::function<wpResponse(const wpRequest&)>;
 class Registry
 {
 
-    std::map<std::string, Handler> m_handlers; ///< Map of command and handlers
+    std::map<std::string, HandlerAsync> m_handlers; ///< Map of command and handlers
     std::shared_mutex m_mutex;                 ///< A mutex for thread safety (protect m_handlers)
 
 public:
@@ -56,12 +57,12 @@ public:
      * @brief Register a route in the registry
      *
      * @param command The command name, can't be empty
-     * @param callback The callback function
+     * @param handler The handler function
      * @return true If the command was registered
      * @return false If the command was not registered (already exists, the command is
      * empty or the callback is null)
      */
-    bool registerHandler(const std::string& command, const Handler& callback);
+    bool registerHandler(const std::string& command, const HandlerAsync& handler);
 
     /**
      * @brief Get the callback function for a command
@@ -70,7 +71,7 @@ public:
      * @return The handler function
      * @return commandNotFound function If the command was not found
      */
-    Handler getHandler(const std::string& command);
+    HandlerAsync getHandler(const std::string& command);
 };
 
 } // namespace api

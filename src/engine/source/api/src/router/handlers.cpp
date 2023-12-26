@@ -130,7 +130,7 @@ eRouter::Entry eRouteEntryFromEntry(const ::router::prod::Entry& entry, const st
 }
 } // namespace
 
-api::Handler routePost(const std::weak_ptr<::router::IRouterAPI>& router)
+api::HandlerSync routePost(const std::weak_ptr<::router::IRouterAPI>& router)
 {
     return [wRouter = router](const api::wpRequest& wRequest) -> api::wpResponse
     {
@@ -183,7 +183,7 @@ api::Handler routePost(const std::weak_ptr<::router::IRouterAPI>& router)
     };
 }
 
-api::Handler routeDelete(const std::weak_ptr<::router::IRouterAPI>& router)
+api::HandlerSync routeDelete(const std::weak_ptr<::router::IRouterAPI>& router)
 {
     return [wRouter = router](const api::wpRequest& wRequest) -> api::wpResponse
     {
@@ -210,7 +210,7 @@ api::Handler routeDelete(const std::weak_ptr<::router::IRouterAPI>& router)
     };
 }
 
-api::Handler routeGet(const std::weak_ptr<::router::IRouterAPI>& router, const std::weak_ptr<api::policy::IPolicy>& policy)
+api::HandlerSync routeGet(const std::weak_ptr<::router::IRouterAPI>& router, const std::weak_ptr<api::policy::IPolicy>& policy)
 {
     return [wRouter = router, wPolicyManager = policy](const api::wpRequest& wRequest) -> api::wpResponse
     {
@@ -244,7 +244,7 @@ api::Handler routeGet(const std::weak_ptr<::router::IRouterAPI>& router, const s
     };
 }
 
-api::Handler routeReload(const std::weak_ptr<::router::IRouterAPI>& router)
+api::HandlerSync routeReload(const std::weak_ptr<::router::IRouterAPI>& router)
 {
     return [wRouter = router](const api::wpRequest& wRequest) -> api::wpResponse
     {
@@ -276,7 +276,7 @@ api::Handler routeReload(const std::weak_ptr<::router::IRouterAPI>& router)
     };
 }
 
-api::Handler routePatchPriority(const std::weak_ptr<::router::IRouterAPI>& router)
+api::HandlerSync routePatchPriority(const std::weak_ptr<::router::IRouterAPI>& router)
 {
     return [wRouter = router](const api::wpRequest& wRequest) -> api::wpResponse
     {
@@ -308,7 +308,7 @@ api::Handler routePatchPriority(const std::weak_ptr<::router::IRouterAPI>& route
     };
 }
 
-api::Handler tableGet(const std::weak_ptr<::router::IRouterAPI>& router, const std::weak_ptr<api::policy::IPolicy>& policy)
+api::HandlerSync tableGet(const std::weak_ptr<::router::IRouterAPI>& router, const std::weak_ptr<api::policy::IPolicy>& policy)
 {
     return [wRouter = router, wPolicyManager = policy](const api::wpRequest& wRequest) -> api::wpResponse
     {
@@ -339,7 +339,7 @@ api::Handler tableGet(const std::weak_ptr<::router::IRouterAPI>& router, const s
     };
 }
 
-api::Handler queuePost(const std::weak_ptr<::router::IRouterAPI>& router)
+api::HandlerSync queuePost(const std::weak_ptr<::router::IRouterAPI>& router)
 {
     return [wRouter = router](const api::wpRequest& wRequest) -> api::wpResponse
     {
@@ -367,15 +367,15 @@ api::Handler queuePost(const std::weak_ptr<::router::IRouterAPI>& router)
 void registerHandlers(const std::weak_ptr<::router::IRouterAPI>& router, const std::weak_ptr<api::policy::IPolicy>& policy, std::shared_ptr<api::Api> api)
 {
     // Commands to manage routes
-    const bool ok = api->registerHandler("router.route/post", routePost(router))
-                    && api->registerHandler("router.route/delete", routeDelete(router))
-                    && api->registerHandler("router.route/get", routeGet(router, policy))
-                    && api->registerHandler("router.route/reload", routeReload(router))
-                    && api->registerHandler("router.route/patchPriority", routePatchPriority(router))
+    const bool ok = api->registerHandler("router.route/post", Api::convertToHandlerAsync(routePost(router)))
+                    && api->registerHandler("router.route/delete", Api::convertToHandlerAsync(routeDelete(router)))
+                    && api->registerHandler("router.route/get", Api::convertToHandlerAsync(routeGet(router, policy)))
+                    && api->registerHandler("router.route/reload", Api::convertToHandlerAsync(routeReload(router)))
+                    && api->registerHandler("router.route/patchPriority", Api::convertToHandlerAsync(routePatchPriority(router)))
                     // Commands to manage the routes table
-                    && api->registerHandler("router.table/get", tableGet(router, policy))
+                    && api->registerHandler("router.table/get", Api::convertToHandlerAsync(tableGet(router, policy)))
                     // Commands to manage the queue of events
-                    && api->registerHandler("router.queue/post", queuePost(router));
+                    && api->registerHandler("router.queue/post", Api::convertToHandlerAsync(queuePost(router)));
 
     if (!ok)
     {
