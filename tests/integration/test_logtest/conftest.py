@@ -4,7 +4,6 @@
 
 import pytest
 
-from wazuh_testing.modules.logcollector import logcollector
 from wazuh_testing.modules.analysisd.patterns import LOGTEST_STARTED
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils.callbacks import generate_callback
@@ -14,4 +13,4 @@ from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 def wait_for_logtest_startup(request):
     """Wait until logtest has begun."""
     log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    log_monitor.start(callback=generate_callback(LOGTEST_STARTED), timeout=logcollector.LOG_COLLECTOR_GLOBAL_TIMEOUT, only_new_events=True)
+    log_monitor.start(callback=generate_callback(LOGTEST_STARTED), timeout=40, only_new_events=True)
