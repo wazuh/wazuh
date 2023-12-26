@@ -49,7 +49,7 @@ public:
     /**
      * @brief Enables the environment if it is builded.
      *
-     * @param name
+     * @param name The name of the environment to be enabled.
      * @return base::OptError
      */
     virtual base::OptError enableEntry(const std::string& name) = 0;
@@ -71,6 +71,8 @@ public:
 
     /**
      * @brief Get an environment by name.
+     * @param name The name of the environment to change the priority for.
+     * @return An entry or error.
      */
     virtual base::RespOrError<prod::Entry> getEntry(const std::string& name) const = 0;
 
