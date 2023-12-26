@@ -24,8 +24,8 @@ protected:
     void SetUp() override
     {
         initLogging();
-        m_api.registerHandler("testCommand", testHandler);
-        m_api.registerHandler("testCommandException", testHandlerExeption);
+        m_api.registerHandler("testCommand", Api::convertToHandlerAsync(testHandler));
+        m_api.registerHandler("testCommandException", Api::convertToHandlerAsync(testHandlerExeption));
     }
 };
 
@@ -34,14 +34,14 @@ TEST_P(ApiTest, ProcessRequest)
     const std::string& message = std::get<0>(GetParam());
     const std::string& expectedResponse = std::get<1>(GetParam());
 
-    std::string response;
-    auto callbackFn = [&response](const std::string& res)
+    auto response = std::make_shared<std::string>();
+    auto callbackFn = [&response](const base::utils::wazuhProtocol::WazuhResponse& res)
     {
-        response = res;
+        *response = res.toString();
     };
 
     m_api.processRequest(message, callbackFn);
-    EXPECT_EQ(response, expectedResponse);
+    EXPECT_EQ(*response, expectedResponse);
 }
 
 INSTANTIATE_TEST_SUITE_P(

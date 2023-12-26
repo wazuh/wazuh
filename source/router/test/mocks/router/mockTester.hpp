@@ -18,6 +18,8 @@ public:
     MOCK_METHOD(std::list<::router::test::Entry>, getTestEntries, (), (const, override));
     MOCK_METHOD(std::future<base::RespOrError<::router::test::Output>>, ingestTest, (base::Event&& event, const ::router::test::Options& opt), (override));
     MOCK_METHOD(std::future<base::RespOrError<::router::test::Output>>, ingestTest, (std::string_view event, const ::router::test::Options& opt), (override));
+    MOCK_METHOD(base::OptError, ingestTest, (base::Event&& event, const ::router::test::Options& opt, std::function<void(base::RespOrError<::router::test::Output>&&)> callbackFn), (override));
+    MOCK_METHOD(base::OptError, ingestTest, (std::string_view event, const ::router::test::Options& opt, std::function<void(base::RespOrError<::router::test::Output>&&)> callbackFn), (override));
     MOCK_METHOD(base::RespOrError<std::unordered_set<std::string>>, getAssets, (const std::string& name), (const, override));
     MOCK_METHOD(std::size_t, getTestTimeout, (), (const, override));
 };

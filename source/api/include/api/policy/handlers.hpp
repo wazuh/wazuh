@@ -7,25 +7,25 @@
 namespace api::policy::handlers
 {
 /* Store of policy handlers */
-api::Handler storePost(const std::shared_ptr<policy::IPolicy>& policyManager);
-api::Handler storeDelete(const std::shared_ptr<policy::IPolicy>& policyManager);
-api::Handler storeGet(const std::shared_ptr<policy::IPolicy>& policyManager);
+api::HandlerSync storePost(const std::shared_ptr<policy::IPolicy>& policyManager);
+api::HandlerSync storeDelete(const std::shared_ptr<policy::IPolicy>& policyManager);
+api::HandlerSync storeGet(const std::shared_ptr<policy::IPolicy>& policyManager);
 
 /* Specific policy handlers */
-api::Handler policyAssetPost(const std::shared_ptr<policy::IPolicy>& policyManager);
-api::Handler policyAssetDelete(const std::shared_ptr<policy::IPolicy>& policyManager);
-api::Handler policyAssetGet(const std::shared_ptr<policy::IPolicy>& policyManager);
+api::HandlerSync policyAssetPost(const std::shared_ptr<policy::IPolicy>& policyManager);
+api::HandlerSync policyAssetDelete(const std::shared_ptr<policy::IPolicy>& policyManager);
+api::HandlerSync policyAssetGet(const std::shared_ptr<policy::IPolicy>& policyManager);
 
 /* Default parent policy handlers */
-api::Handler policyDefaultParentGet(const std::shared_ptr<policy::IPolicy>& policyManager);
-api::Handler policyDefaultParentPost(const std::shared_ptr<policy::IPolicy>& policyManager);
-api::Handler policyDefaultParentDelete(const std::shared_ptr<policy::IPolicy>& policyManager);
+api::HandlerSync policyDefaultParentGet(const std::shared_ptr<policy::IPolicy>& policyManager);
+api::HandlerSync policyDefaultParentPost(const std::shared_ptr<policy::IPolicy>& policyManager);
+api::HandlerSync policyDefaultParentDelete(const std::shared_ptr<policy::IPolicy>& policyManager);
 
 /* Policy manager handlers */
-api::Handler policiesGet(const std::shared_ptr<policy::IPolicy>& policyManager);
+api::HandlerSync policiesGet(const std::shared_ptr<policy::IPolicy>& policyManager);
 
 /* Policy namespaces handlers */
-api::Handler policyNamespacesGet(const std::shared_ptr<policy::IPolicy>& policyManager);
+api::HandlerSync policyNamespacesGet(const std::shared_ptr<policy::IPolicy>& policyManager);
 
 /**
  * @brief Register all policy commands

@@ -114,7 +114,7 @@ public:
     }
 
     // Loopback
-    void onMessage(const std::string& message, std::function<void(const std::string&)> callback) override
+    void onMessage(const std::string& message, std::function<void(const base::utils::wazuhProtocol::WazuhResponse&)> callback) override
     {
         if (*enableBlockQueueWorkers)
         {
@@ -131,7 +131,7 @@ public:
         }
         (*m_processedMessages)++;
 
-        callback(message);
+        callback(base::utils::wazuhProtocol::WazuhResponse {message});
     }
 
     // Do nothing

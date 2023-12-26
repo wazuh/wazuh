@@ -14,7 +14,7 @@ namespace eEngine = ::com::wazuh::api::engine;
 
 /* Manager Endpoint */
 
-api::Handler metricsDumpCmd(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI)
+api::HandlerSync metricsDumpCmd(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI)
 {
     return [metricsAPI](api::wpRequest wRequest) -> api::wpResponse
     {
@@ -49,7 +49,7 @@ api::Handler metricsDumpCmd(const std::shared_ptr<metricsManager::IMetricsManage
 }
 
 
-api::Handler metricsGetCmd(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI)
+api::HandlerSync metricsGetCmd(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI)
 {
     return [metricsAPI](api::wpRequest wRequest) -> api::wpResponse
     {
@@ -91,7 +91,7 @@ api::Handler metricsGetCmd(const std::shared_ptr<metricsManager::IMetricsManager
     };
 }
 
-api::Handler metricsEnableCmd(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI)
+api::HandlerSync metricsEnableCmd(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI)
 {
     return [metricsAPI](api::wpRequest wRequest) -> api::wpResponse
     {
@@ -130,7 +130,7 @@ api::Handler metricsEnableCmd(const std::shared_ptr<metricsManager::IMetricsMana
     };
 }
 
-api::Handler metricsTestCmd(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI)
+api::HandlerSync metricsTestCmd(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI)
 {
     return [metricsAPI](api::wpRequest wRequest) -> api::wpResponse
     {
@@ -153,7 +153,7 @@ api::Handler metricsTestCmd(const std::shared_ptr<metricsManager::IMetricsManage
     };
 }
 
-api::Handler metricsList(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI)
+api::HandlerSync metricsList(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI)
 {
     std::variant<std::string, base::Error> result;
     return [metricsAPI](api::wpRequest wRequest) -> api::wpResponse
@@ -193,11 +193,11 @@ void registerHandlers(const std::shared_ptr<metricsManager::IMetricsManagerAPI>&
 {
     try
     {
-        api->registerHandler("metrics.manager/dump", metricsDumpCmd(metricsAPI));
-        api->registerHandler("metrics.manager/get", metricsGetCmd(metricsAPI));
-        api->registerHandler("metrics.manager/enable", metricsEnableCmd(metricsAPI));
-        api->registerHandler("metrics.manager/test", metricsTestCmd(metricsAPI));
-        api->registerHandler("metrics.manager/list", metricsList(metricsAPI));
+        api->registerHandler("metrics.manager/dump", Api::convertToHandlerAsync(metricsDumpCmd(metricsAPI)));
+        api->registerHandler("metrics.manager/get", Api::convertToHandlerAsync(metricsGetCmd(metricsAPI)));
+        api->registerHandler("metrics.manager/enable", Api::convertToHandlerAsync(metricsEnableCmd(metricsAPI)));
+        api->registerHandler("metrics.manager/test", Api::convertToHandlerAsync(metricsTestCmd(metricsAPI)));
+        api->registerHandler("metrics.manager/list", Api::convertToHandlerAsync(metricsList(metricsAPI)));
     }
     catch (const std::exception& e)
     {

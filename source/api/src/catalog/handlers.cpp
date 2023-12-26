@@ -33,7 +33,7 @@ auto checkResourcePermission(const base::Name& name,
 namespace eCatalog = ::com::wazuh::api::engine::catalog;
 namespace eEngine = ::com::wazuh::api::engine;
 
-api::Handler resourcePost(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::IRBAC> rbac)
+api::HandlerSync resourcePost(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::IRBAC> rbac)
 {
 
     auto rbacPtr = rbac.lock();
@@ -111,7 +111,7 @@ api::Handler resourcePost(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::
     };
 }
 
-api::Handler resourceGet(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::IRBAC> rbac)
+api::HandlerSync resourceGet(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::IRBAC> rbac)
 {
 
     auto rbacPtr = rbac.lock();
@@ -194,7 +194,7 @@ api::Handler resourceGet(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::I
     };
 }
 
-api::Handler resourceDelete(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::IRBAC> rbac)
+api::HandlerSync resourceDelete(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::IRBAC> rbac)
 {
 
     auto rbacPtr = rbac.lock();
@@ -269,7 +269,7 @@ api::Handler resourceDelete(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac
     };
 }
 
-api::Handler resourcePut(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::IRBAC> rbac)
+api::HandlerSync resourcePut(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::IRBAC> rbac)
 {
 
     auto rbacPtr = rbac.lock();
@@ -346,7 +346,7 @@ api::Handler resourcePut(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::I
     };
 }
 
-api::Handler resourceValidate(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::IRBAC> rbac)
+api::HandlerSync resourceValidate(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::IRBAC> rbac)
 {
 
     auto rbacPtr = rbac.lock();
@@ -426,11 +426,11 @@ api::Handler resourceValidate(std::shared_ptr<Catalog> catalog, std::weak_ptr<rb
 
 void registerHandlers(std::shared_ptr<Catalog> catalog, std::shared_ptr<api::Api> api)
 {
-    const bool ok = api->registerHandler("catalog.resource/post", resourcePost(catalog, api->getRBAC()))
-                    && api->registerHandler("catalog.resource/get", resourceGet(catalog, api->getRBAC()))
-                    && api->registerHandler("catalog.resource/put", resourcePut(catalog, api->getRBAC()))
-                    && api->registerHandler("catalog.resource/delete", resourceDelete(catalog, api->getRBAC()))
-                    && api->registerHandler("catalog.resource/validate", resourceValidate(catalog, api->getRBAC()));
+    const bool ok = api->registerHandler("catalog.resource/post", Api::convertToHandlerAsync(resourcePost(catalog, api->getRBAC())))
+                    && api->registerHandler("catalog.resource/get", Api::convertToHandlerAsync(resourceGet(catalog, api->getRBAC())))
+                    && api->registerHandler("catalog.resource/put", Api::convertToHandlerAsync(resourcePut(catalog, api->getRBAC())))
+                    && api->registerHandler("catalog.resource/delete", Api::convertToHandlerAsync(resourceDelete(catalog, api->getRBAC())))
+                    && api->registerHandler("catalog.resource/validate", Api::convertToHandlerAsync(resourceValidate(catalog, api->getRBAC())));
 
     if (!ok)
     {

@@ -24,7 +24,7 @@ namespace api::graph::handlers
 namespace eGraph = ::com::wazuh::api::engine::graph;
 namespace eEngine = ::com::wazuh::api::engine;
 
-api::Handler resourceGet(const Config& config)
+api::HandlerSync resourceGet(const Config& config)
 {
     return [config](api::wpRequest wRequest) -> api::wpResponse
     {
@@ -116,7 +116,7 @@ api::Handler resourceGet(const Config& config)
 
 void registerHandlers(const Config& config, std::shared_ptr<api::Api> api)
 {
-    const bool ok = api->registerHandler("graph.resource/get", resourceGet(config));
+    const bool ok = api->registerHandler("graph.resource/get", Api::convertToHandlerAsync(resourceGet(config)));
 
     if (!ok)
     {

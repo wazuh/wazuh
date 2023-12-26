@@ -27,7 +27,7 @@ protected:
 TEST_P(CatalogGetApiTest, ResourseGet)
 {
     auto [input, output] = GetParam();
-    api::Handler cmd;
+    api::HandlerSync cmd;
     auto mockRbac = std::make_shared<rbac::mocks::MockRBAC>();
     ASSERT_NO_THROW(cmd = api::catalog::handlers::resourceGet(m_spCatalog, mockRbac));
     json::Json params {input.c_str()};
@@ -80,7 +80,7 @@ protected:
 TEST_P(CatalogPostApiTest, ResoursePost)
 {
     auto [execution, type, format, content, output] = GetParam();
-    api::Handler cmd;
+    api::HandlerSync cmd;
     auto mockRbac = std::make_shared<rbac::mocks::MockRBAC>();
     ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePost(m_spCatalog, mockRbac));
     json::Json params;
@@ -156,7 +156,7 @@ protected:
 TEST_P(CatalogPutApiTest, ResoursePost)
 {
     auto [execution, name, format, content, output] = GetParam();
-    api::Handler cmd;
+    api::HandlerSync cmd;
     auto mockRbac = std::make_shared<rbac::mocks::MockRBAC>();
     ASSERT_NO_THROW(cmd = api::catalog::handlers::resourcePut(m_spCatalog, mockRbac));
     json::Json params;
@@ -230,7 +230,7 @@ protected:
 TEST_P(CatalogDeleteApiTest, ResourseDelete)
 {
     auto [execution, name, output] = GetParam();
-    api::Handler cmd;
+    api::HandlerSync cmd;
     auto mockRbac = std::make_shared<rbac::mocks::MockRBAC>();
     ASSERT_NO_THROW(cmd = api::catalog::handlers::resourceDelete(m_spCatalog, mockRbac));
     json::Json params;
