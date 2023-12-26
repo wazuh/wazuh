@@ -22,7 +22,6 @@ void OffsetUpdaterOrchestratorTest::SetUp()
 {
     m_parameters = R"(
         {
-            "offsetUpdaterTopicName": "offset_update",
             "interval": 1,
             "ondemand": true,
             "configData": {
@@ -31,6 +30,7 @@ void OffsetUpdaterOrchestratorTest::SetUp()
         }
     )"_json;
 
+    m_parameters["topicName"] = m_topicName;
     m_parameters.at("configData")["databasePath"] = m_databaseFolder;
     m_parameters.at("configData")["outputFolder"] = m_outputFolder;
 

@@ -39,7 +39,6 @@ protected:
         m_parameters = R"(
             {
                 "topicName": "content-register-tests",
-                "offsetUpdaterTopicName": "offset_update",
                 "interval": 1,
                 "ondemand": false,
                 "configData": {
