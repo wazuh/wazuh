@@ -16,6 +16,7 @@
 #include "components/factoryContentUpdater.hpp"
 #include "components/updaterContext.hpp"
 #include "componentsHelper.hpp"
+#include "factoryOffsetUpdater.hpp"
 #include "iRouterProvider.hpp"
 #include "utils/rocksDBWrapper.hpp"
 #include <memory>
@@ -28,6 +29,16 @@
 class ActionOrchestrator final
 {
 public:
+    /**
+     * @brief Enum that represents the type of update that exists.
+     *
+     */
+    enum UpdateType
+    {
+        CONTENT,
+        OFFSET
+    };
+
     /**
      * @brief Creates a new instance of ActionOrchestrator.
      *
@@ -69,51 +80,22 @@ public:
      * @brief Run the content updater orchestration.
      *
      * @param offset Manually set current offset to process. Default -1
+     * @param type Type of update the orchestrator should perform.
      */
-    void run(const int offset = -1) const
+    void run(const int offset = -1, const UpdateType type = UpdateType::CONTENT) const
     {
+        // Create a updater context
+        auto spUpdaterContext {std::make_shared<UpdaterContext>()};
+        spUpdaterContext->spUpdaterBaseContext = m_spBaseContext;
 
         try
         {
-            // Create a updater context
-            auto spUpdaterContext {std::make_shared<UpdaterContext>()};
-            spUpdaterContext->spUpdaterBaseContext = m_spBaseContext;
-
-            logDebug2(WM_CONTENTUPDATER, "Running '%s' content update", m_spBaseContext->topicName.c_str());
-
-            // If the database exists, get the last offset
-            if (m_spBaseContext->spRocksDB)
+            if (type == UpdateType::OFFSET)
             {
-                spUpdaterContext->currentOffset = std::stoi(
-                    m_spBaseContext->spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString());
+                return runOffsetUpdate(spUpdaterContext, offset);
             }
 
-            if (offset == 0)
-            {
-                spUpdaterContext->currentOffset = 0;
-            }
-
-            // If an offset download is requested and the current offset is '0', a snapshot will be downloaded with
-            // the full content to avoid downloading many offsets at once.
-            const auto& contentSource {m_spBaseContext->configData.at("contentSource").get_ref<const std::string&>()};
-            if (0 == spUpdaterContext->currentOffset && "cti-offset" == contentSource)
-            {
-                runFullContentDownload(spUpdaterContext);
-            }
-
-            // Store last file hash.
-            const auto lastDownloadedFileHash {m_spBaseContext->downloadedFileHash};
-
-            // Run the updater chain
-            m_spUpdaterOrchestration->handleRequest(spUpdaterContext);
-
-            // Update filehash if it has changed.
-            if (m_spBaseContext->spRocksDB && m_spBaseContext->downloadedFileHash != lastDownloadedFileHash)
-            {
-                m_spBaseContext->spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)),
-                                                m_spBaseContext->downloadedFileHash,
-                                                Components::Columns::DOWNLOADED_FILE_HASH);
-            }
+            return runContentUpdate(spUpdaterContext, offset);
         }
         catch (const std::exception& e)
         {
@@ -140,6 +122,64 @@ private:
     void cleanContext() const
     {
         m_spBaseContext->downloadedFileHash.clear();
+    }
+
+    /**
+     * @brief Creates and triggers a new orchestration that updates the offset in the database.
+     *
+     * @param spUpdaterContext Updater context.
+     * @param offset New value of the offset.
+     */
+    void runOffsetUpdate(std::shared_ptr<UpdaterContext> spUpdaterContext, int offset) const
+    {
+        spUpdaterContext->currentOffset = offset;
+
+        FactoryOffsetUpdater::create(m_spBaseContext->configData)->handleRequest(spUpdaterContext);
+    }
+
+    /**
+     * @brief Triggers a new orchestration that updates the content.
+     *
+     * @param spUpdaterContext Updater context.
+     * @param offset If zero, resets the current offset.
+     */
+    void runContentUpdate(std::shared_ptr<UpdaterContext> spUpdaterContext, int offset) const
+    {
+        logDebug2(WM_CONTENTUPDATER, "Running '%s' content update", m_spBaseContext->topicName.c_str());
+
+        // If the database exists, get the last offset
+        if (m_spBaseContext->spRocksDB)
+        {
+            spUpdaterContext->currentOffset = std::stoi(
+                m_spBaseContext->spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString());
+        }
+
+        if (offset == 0)
+        {
+            spUpdaterContext->currentOffset = 0;
+        }
+
+        // If an offset download is requested and the current offset is '0', a snapshot will be downloaded with
+        // the full content to avoid downloading many offsets at once.
+        const auto& contentSource {m_spBaseContext->configData.at("contentSource").get_ref<const std::string&>()};
+        if (0 == spUpdaterContext->currentOffset && "cti-offset" == contentSource)
+        {
+            runFullContentDownload(spUpdaterContext);
+        }
+
+        // Store last file hash.
+        const auto lastDownloadedFileHash {m_spBaseContext->downloadedFileHash};
+
+        // Run the updater chain
+        m_spUpdaterOrchestration->handleRequest(spUpdaterContext);
+
+        // Update filehash if it has changed.
+        if (m_spBaseContext->spRocksDB && m_spBaseContext->downloadedFileHash != lastDownloadedFileHash)
+        {
+            m_spBaseContext->spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)),
+                                            m_spBaseContext->downloadedFileHash,
+                                            Components::Columns::DOWNLOADED_FILE_HASH);
+        }
     }
 
     /**
