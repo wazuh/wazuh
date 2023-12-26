@@ -12,12 +12,12 @@
 #ifndef _UPDATE_CTI_API_OFFSET_TEST_HPP
 #define _UPDATE_CTI_API_OFFSET_TEST_HPP
 
+#include "conditionSync.hpp"
 #include "updateCtiApiOffset.hpp"
 #include "updaterContext.hpp"
 #include "utils/rocksDBWrapper.hpp"
 #include "utils/timeHelper.h"
 #include "gtest/gtest.h"
-#include <atomic>
 #include <filesystem>
 
 const auto DATABASE_FOLDER {std::filesystem::temp_directory_path() / "test_db"};
@@ -46,7 +46,8 @@ protected:
      */
     std::shared_ptr<UpdateCtiApiOffset> m_spUpdateCtiApiOffset;
 
-    const std::atomic<bool> m_shouldRun {true}; ///< Interruption flag.
+    std::shared_ptr<ConditionSync> m_spStopActionCondition {
+        std::make_shared<ConditionSync>(false)}; ///< Stop condition wrapper
 
     /**
      * @brief Sets up the test fixture.
@@ -54,7 +55,7 @@ protected:
     void SetUp() override
     {
         // Initialize contexts
-        m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_shouldRun);
+        m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_spStopActionCondition);
         m_spUpdaterBaseContext->spRocksDB = std::make_unique<Utils::RocksDBWrapper>(DATABASE_FOLDER);
         m_spUpdaterBaseContext->spRocksDB->createColumn(Components::Columns::CURRENT_OFFSET);
         m_spUpdaterBaseContext->spRocksDB->put(

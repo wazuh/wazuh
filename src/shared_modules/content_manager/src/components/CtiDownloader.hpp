@@ -136,11 +136,13 @@ protected:
                 throw std::runtime_error {exceptionMessage};
             }};
 
-        constexpr auto INITIAL_SLEEP_TIME {1};
+        constexpr auto INITIAL_SLEEP_TIME {0};
         auto sleepTime {INITIAL_SLEEP_TIME};
-        auto retryAttempt {1};
+        auto retryAttempt {0};
         auto retry {true};
-        while (retry && m_spUpdaterContext->spUpdaterBaseContext->shouldRun.load())
+        auto& stopCondition {m_spUpdaterContext->spUpdaterBaseContext->spStopCondition};
+
+        while (retry && !(stopCondition->waitFor(std::chrono::seconds(sleepTime))))
         {
             try
             {
@@ -153,8 +155,7 @@ protected:
 
                 logError(WM_CONTENTUPDATER, e.what());
 
-                // Sleep and, if necessary, increase sleep time exponentially.
-                std::this_thread::sleep_for(std::chrono::seconds(sleepTime));
+                // Increase sleep time exponentially, up to the threshold
                 if (sleepTime < SLEEP_TIME_THRESHOLD)
                 {
                     sleepTime = std::min(SLEEP_TIME_THRESHOLD, static_cast<int>(std::pow(2, retryAttempt)));

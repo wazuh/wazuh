@@ -36,7 +36,7 @@ TEST_F(ActionOrchestratorTest, TestInstantiation)
 
     EXPECT_NO_THROW(routerProvider->start());
 
-    EXPECT_NO_THROW(std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_shouldRun));
+    EXPECT_NO_THROW(std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_spStopActionCondition));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -59,7 +59,8 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitoutConfigData)
 
     parameters.erase("configData");
 
-    EXPECT_THROW(std::make_shared<ActionOrchestrator>(routerProvider, parameters, m_shouldRun), std::invalid_argument);
+    EXPECT_THROW(std::make_shared<ActionOrchestrator>(routerProvider, parameters, m_spStopActionCondition),
+                 std::invalid_argument);
 
     EXPECT_NO_THROW(routerProvider->stop());
 }
@@ -78,7 +79,7 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitoutContentSourceInConfigData
 
     m_parameters.at("configData").erase("contentSource");
 
-    EXPECT_THROW(std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_shouldRun),
+    EXPECT_THROW(std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_spStopActionCondition),
                  std::invalid_argument);
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
@@ -100,7 +101,7 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitoutCompressionTypeInConfigDa
 
     m_parameters.at("configData").erase("compressionType");
 
-    EXPECT_THROW(std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_shouldRun),
+    EXPECT_THROW(std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_spStopActionCondition),
                  std::invalid_argument);
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
@@ -122,7 +123,7 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitXZCompressionType)
 
     m_parameters["configData"]["compressionType"] = "xz";
 
-    EXPECT_NO_THROW(std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_shouldRun));
+    EXPECT_NO_THROW(std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_spStopActionCondition));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -143,7 +144,7 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitoutVersionedContentInConfigD
 
     m_parameters.at("configData").erase("versionedContent");
 
-    EXPECT_THROW(std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_shouldRun),
+    EXPECT_THROW(std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_spStopActionCondition),
                  std::invalid_argument);
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
@@ -165,7 +166,7 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitoutDeleteDownloadedContentIn
 
     m_parameters.at("configData").erase("deleteDownloadedContent");
 
-    EXPECT_THROW(std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_shouldRun),
+    EXPECT_THROW(std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_spStopActionCondition),
                  std::invalid_argument);
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
@@ -188,7 +189,8 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitRawCompressionTy
 
     EXPECT_NO_THROW(routerProvider->start());
 
-    auto actionOrchestrator {std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_shouldRun)};
+    auto actionOrchestrator {
+        std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_spStopActionCondition)};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -223,7 +225,8 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionTyp
 
     EXPECT_NO_THROW(routerProvider->start());
 
-    auto actionOrchestrator {std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_shouldRun)};
+    auto actionOrchestrator {
+        std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_spStopActionCondition)};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -259,7 +262,8 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionTyp
 
     EXPECT_NO_THROW(routerProvider->start());
 
-    auto actionOrchestrator {std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_shouldRun)};
+    auto actionOrchestrator {
+        std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_spStopActionCondition)};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -286,7 +290,8 @@ TEST_F(ActionOrchestratorTest, RunWithFullContentDownload)
     routerProvider->start();
 
     m_parameters["configData"]["url"] = "http://localhost:4444/snapshot/consumers";
-    auto actionOrchestrator {std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_shouldRun)};
+    auto actionOrchestrator {
+        std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_spStopActionCondition)};
 
     // Trigger orchestration with an offset of zero.
     ASSERT_NO_THROW(actionOrchestrator->run(0));
@@ -321,7 +326,7 @@ TEST_F(ActionOrchestratorTest, OfflineDownloadDownloadedFileHashStore)
     {
         // Trigger orchestration in a reduced scope so that the database is closed.
         EXPECT_CALL(*m_spMockRouterProvider, send(::testing::_)).Times(1);
-        ASSERT_NO_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_shouldRun).run());
+        ASSERT_NO_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_spStopActionCondition).run());
     }
 
     const auto EXPECTED_DB_PATH {DATABASE_PATH / ("updater_" + topicName + "_metadata")};
@@ -355,13 +360,13 @@ TEST_F(ActionOrchestratorTest, OfflineDownloadSameAndModifiedFileDifferentInstan
     {
         // Run first orchestration. File should be published.
         EXPECT_CALL(*m_spMockRouterProvider, send(::testing::_)).Times(1);
-        ASSERT_NO_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_shouldRun).run());
+        ASSERT_NO_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_spStopActionCondition).run());
     }
 
     {
         // Run second orchestration. File should not be published since it didn't change.
         EXPECT_CALL(*m_spMockRouterProvider, send(::testing::_)).Times(0);
-        ASSERT_NO_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_shouldRun).run());
+        ASSERT_NO_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_spStopActionCondition).run());
     }
 
     // Modify input file.
@@ -372,7 +377,7 @@ TEST_F(ActionOrchestratorTest, OfflineDownloadSameAndModifiedFileDifferentInstan
     {
         // Run third orchestration. File should be published since it has changed.
         EXPECT_CALL(*m_spMockRouterProvider, send(::testing::_)).Times(1);
-        ASSERT_NO_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_shouldRun).run());
+        ASSERT_NO_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_spStopActionCondition).run());
     }
 
     // Remove input test file.

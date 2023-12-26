@@ -12,9 +12,9 @@
 #ifndef _ZIP_DECOMPRESSOR_TEST_HPP
 #define _ZIP_DECOMPRESSOR_TEST_HPP
 
+#include "conditionSync.hpp"
 #include "updaterContext.hpp"
 #include "gtest/gtest.h"
-#include <atomic>
 #include <filesystem>
 #include <memory>
 
@@ -33,7 +33,8 @@ protected:
     ~ZipDecompressorTest() override = default;
 
     std::shared_ptr<UpdaterContext> m_spContext; ///< Context used on tests.
-    const std::atomic<bool> m_shouldRun {true};  ///< Interruption flag.
+    std::shared_ptr<ConditionSync> m_spStopActionCondition {
+        std::make_shared<ConditionSync>(false)}; ///< Stop condition wrapper
 
     /**
      * @brief Setup routine for each test fixture. Context initialization and output directories creation.
@@ -42,7 +43,7 @@ protected:
     void SetUp() override
     {
         m_spContext = std::make_shared<UpdaterContext>();
-        m_spContext->spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_shouldRun);
+        m_spContext->spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_spStopActionCondition);
         m_spContext->spUpdaterBaseContext->outputFolder = OUTPUT_FOLDER;
 
         std::filesystem::create_directory(OUTPUT_FOLDER);

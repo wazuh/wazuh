@@ -12,10 +12,10 @@
 #ifndef _FILE_DOWNLOADER_TEST_HPP
 #define _FILE_DOWNLOADER_TEST_HPP
 
+#include "conditionSync.hpp"
 #include "fakes/fakeServer.hpp"
 #include "updaterContext.hpp"
 #include "gtest/gtest.h"
-#include <atomic>
 #include <filesystem>
 #include <memory>
 
@@ -34,7 +34,8 @@ protected:
     const std::filesystem::path m_outputFolder {std::filesystem::temp_directory_path() /
                                                 "FileDownloaderTest"}; ///< Output folder for tests.
     inline static std::unique_ptr<FakeServer> m_spFakeServer;          ///< Fake HTTP server used in tests.
-    const std::atomic<bool> m_shouldRun {true};                        ///< Interruption flag.
+    std::shared_ptr<ConditionSync> m_spStopActionCondition {
+        std::make_shared<ConditionSync>(false)}; ///< Stop condition wrapper
 
     /**
      * @brief Setup routine for the test suite.

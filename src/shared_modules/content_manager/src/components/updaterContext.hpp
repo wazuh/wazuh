@@ -12,11 +12,13 @@
 #ifndef _UPDATER_CONTEXT_HPP
 #define _UPDATER_CONTEXT_HPP
 
+#include "conditionSync.hpp"
 #include "iRouterProvider.hpp"
+#include "json.hpp"
 #include "utils/rocksDBWrapper.hpp"
-#include <atomic>
 #include <external/nlohmann/json.hpp>
 #include <filesystem>
+#include <memory>
 #include <string>
 
 constexpr auto DOWNLOAD_FOLDER = "downloads";
@@ -80,15 +82,15 @@ struct UpdaterBaseContext
      * @brief Variable to control the graceful shutdown of the orchestration.
      *
      */
-    const std::atomic<bool>& shouldRun;
+    std::shared_ptr<ConditionSync> spStopCondition;
 
     /**
      * @brief Struct constructor.
      *
-     * @param shouldRun Reference to an interruption flag.
+     * @param spStopCondition Pointer to a stop condition wrapper.
      */
-    explicit UpdaterBaseContext(const std::atomic<bool>& shouldRun)
-        : shouldRun(shouldRun)
+    explicit UpdaterBaseContext(std::shared_ptr<ConditionSync> spStopCondition)
+        : spStopCondition(spStopCondition)
     {
     }
 };

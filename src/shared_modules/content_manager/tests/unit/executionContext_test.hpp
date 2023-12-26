@@ -12,10 +12,10 @@
 #ifndef _EXECUTION_CONTEXT_TEST_HPP
 #define _EXECUTION_CONTEXT_TEST_HPP
 
+#include "conditionSync.hpp"
 #include "executionContext.hpp"
 #include "updaterContext.hpp"
 #include "gtest/gtest.h"
-#include <atomic>
 #include <filesystem>
 #include <memory>
 
@@ -36,7 +36,8 @@ protected:
 
     const std::filesystem::path m_databasePath {"/tmp/database"};        ///< Path used to store the database files.
     const std::filesystem::path m_outputFolder {"/tmp/content_manager"}; ///< Path used to store the output files.
-    const std::atomic<bool> m_shouldRun {true};                          ///< Interruption flag.
+    std::shared_ptr<ConditionSync> m_spStopActionCondition {
+        std::make_shared<ConditionSync>(false)}; ///< Stop condition wrapper
 
     /**
      * @brief Sets initial conditions for each test case.
@@ -48,7 +49,7 @@ protected:
         m_spExecutionContext = std::make_shared<ExecutionContext>();
         // Create a updater context
         m_spUpdaterContext = std::make_shared<UpdaterContext>();
-        m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_shouldRun);
+        m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_spStopActionCondition);
         m_spUpdaterBaseContext->configData["outputFolder"] = m_outputFolder.string();
     }
 

@@ -48,9 +48,10 @@ private:
 
         // Iterate until the current offset is equal to the consumer offset.
         auto pathsArray = nlohmann::json::array();
+        auto& stopCondition {m_spUpdaterContext->spUpdaterBaseContext->spStopCondition};
         while (context.currentOffset < consumerLastOffset)
         {
-            if (!context.spUpdaterBaseContext->shouldRun.load())
+            if (stopCondition->check())
             {
                 logWarn(WM_CONTENTUPDATER, "The offsets download has been interrupted");
                 return;

@@ -14,10 +14,10 @@
 
 #include "CtiOffsetDownloader.hpp"
 #include "HTTPRequest.hpp"
+#include "conditionSync.hpp"
 #include "fakes/fakeServer.hpp"
 #include "updaterContext.hpp"
 #include "gtest/gtest.h"
-#include <atomic>
 #include <memory>
 
 /**
@@ -37,7 +37,8 @@ protected:
     std::shared_ptr<CtiOffsetDownloader> m_spCtiOffsetDownloader; ///< CtiOffsetDownloader used to download the content.
 
     inline static std::unique_ptr<FakeServer> m_spFakeServer; ///< Pointer to FakeServer class
-    std::atomic<bool> m_shouldRun;                            ///< Run flag.
+    std::shared_ptr<ConditionSync> m_spStopActionCondition {
+        std::make_shared<ConditionSync>(false)}; ///< Stop condition wrapper
 
     /**
      * @brief Sets initial conditions for each test case.
@@ -46,10 +47,9 @@ protected:
     // cppcheck-suppress unusedFunction
     void SetUp() override
     {
-        m_shouldRun = true;
         m_spCtiOffsetDownloader = std::make_shared<CtiOffsetDownloader>(HTTPRequest::instance());
         // Create a updater base context
-        m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_shouldRun);
+        m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_spStopActionCondition);
         m_spUpdaterBaseContext->outputFolder = "/tmp/api-downloader-tests";
         m_spUpdaterBaseContext->downloadsFolder = m_spUpdaterBaseContext->outputFolder / DOWNLOAD_FOLDER;
         m_spUpdaterBaseContext->contentsFolder = m_spUpdaterBaseContext->outputFolder / CONTENTS_FOLDER;

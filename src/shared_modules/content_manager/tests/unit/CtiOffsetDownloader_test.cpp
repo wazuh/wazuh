@@ -226,7 +226,7 @@ TEST_F(CtiOffsetDownloaderTest, DownloadClientAndServerErrorsRetryAndFail)
 TEST_F(CtiOffsetDownloaderTest, DownloadInterrupted)
 {
     // Set interruption flag.
-    m_shouldRun = false;
+    m_spStopActionCondition->set(true);
 
     ASSERT_NO_THROW(m_spCtiOffsetDownloader->handleRequest(m_spUpdaterContext));
 
