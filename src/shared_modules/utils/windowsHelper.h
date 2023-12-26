@@ -17,6 +17,7 @@
 #include <map>
 #include <memory>
 #include <vector>
+#include <array>
 #include <system_error>
 #include <winsock2.h>
 #include <windows.h>

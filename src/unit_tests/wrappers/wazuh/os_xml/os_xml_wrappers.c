@@ -56,4 +56,15 @@ int __wrap_OS_ReadXML(__attribute__ ((__unused__)) const char * file, OS_XML * _
     return retval;
 }
 
+int __wrap_OS_ReadXMLString(__attribute__ ((__unused__)) const char * file, OS_XML * _lxml) {
+    int retval = mock_type(int);
+    if (retval < 0) {
+        char * buffer = mock_type(char *);
+        strcpy(_lxml->err, buffer);
+        _lxml->err_line = mock_type(int);
+    }
+    return retval;
+}
+
+
 void __wrap_OS_ClearXML(__attribute__ ((__unused__)) OS_XML * _lxml) { return; }
