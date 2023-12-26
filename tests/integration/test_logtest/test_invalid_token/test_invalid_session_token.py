@@ -50,11 +50,12 @@ import json
 from pathlib import Path
 import pytest
 
-from logtest import callback_session_initialized, callback_invalid_token
 from wazuh_testing.constants.paths.sockets import LOGTEST_SOCKET_PATH
 from wazuh_testing.constants.daemons import ANALYSISD_DAEMON, WAZUH_DB_DAEMON
 from wazuh_testing.tools.socket_controller import SocketController
 from wazuh_testing.utils import configuration
+from wazuh_testing.utils.callbacks import generate_callback
+from wazuh_testing.modules.analysisd import patterns
 
 from . import TEST_CASES_FOLDER_PATH
 
@@ -134,16 +135,15 @@ def test_invalid_session_token(test_metadata, daemons_handler_module, wait_for_l
 
     connection.close()
 
-    # Get the generated token
-    new_token = result["data"]['token']
-
-    # Check invalid token warning message
-    match = callback_invalid_token(result["data"]['messages'][0])
+    # Check invalid token warning 
+    callback = generate_callback(patterns.LOGTEST_INVALID_TOKEN)
+    match = callback(result["data"]['messages'][0])
     if match is None:
         errors.append(test_metadata['stage'])
 
     # Check new token message is generated
-    match = callback_session_initialized(result["data"]['messages'][1])
+    callback = generate_callback(patterns.LOGTEST_SESSION_INIT)
+    match = callback(result["data"]['messages'][1])
     if match is None:
         errors.append(test_metadata['stage'])
 

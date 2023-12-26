@@ -52,13 +52,14 @@ from pathlib import Path
 from time import sleep
 from json import dumps
 
-from logtest import callback_remove_session, callback_session_initialized
 from wazuh_testing.constants.paths.sockets import LOGTEST_SOCKET_PATH
 from wazuh_testing.global_parameters import GlobalParameters
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.analysisd.configuration import ANALYSISD_DEBUG
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils import configuration
+from wazuh_testing.utils.callbacks import generate_callback
+from wazuh_testing.modules.analysisd import patterns
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
@@ -149,11 +150,11 @@ def test_remove_old_session_for_inactivity(configure_local_internal_options, tes
     msg_recived = msg_recived.decode()
 
     wazuh_log_monitor.start(timeout=global_parameters.default_timeout,
-                      callback=callback_session_initialized)
+                      callback=generate_callback(patterns.LOGTEST_SESSION_INIT))
     assert wazuh_log_monitor.callback_result, "Session initialization event not found"
 
     sleep(session_timeout)
 
     wazuh_log_monitor.start(timeout=global_parameters.default_timeout,
-                      callback=callback_remove_session)
+                      callback=generate_callback(patterns.LOGTEST_REMOVE_SESSION))
     assert wazuh_log_monitor.callback_result, "Session removal event not found"
