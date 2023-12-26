@@ -33,11 +33,8 @@ public:
      *
      * @param parameters Parameters used to create the orchestration.
      * @param shouldRun Flag used to interrupt the orchestration stages.
-     * @param spDatabaseConnector RocksDB driver.
      */
-    explicit OffsetUpdaterOrchestrator(const nlohmann::json& parameters,
-                                       const std::atomic<bool>& shouldRun,
-                                       const std::shared_ptr<Utils::RocksDBWrapper> spDatabaseConnector)
+    explicit OffsetUpdaterOrchestrator(const nlohmann::json& parameters, const std::atomic<bool>& shouldRun)
     {
         try
         {
@@ -45,7 +42,6 @@ public:
             m_spBaseContext = std::make_shared<UpdaterBaseContext>(shouldRun);
             m_spBaseContext->topicName = parameters.at("topicName");
             m_spBaseContext->configData = parameters.at("configData");
-            m_spBaseContext->spRocksDB = spDatabaseConnector;
 
             logDebug1(
                 WM_CONTENTUPDATER, "Creating '%s' offset updater orchestration", m_spBaseContext->topicName.c_str());

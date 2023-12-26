@@ -11,8 +11,6 @@
 
 #include "action_test.hpp"
 #include "action.hpp"
-#include "components/componentsHelper.hpp"
-#include "utils/rocksDBWrapper.hpp"
 #include "gtest/gtest.h"
 #include <chrono>
 #include <filesystem>
@@ -45,7 +43,7 @@ TEST_F(ActionTest, TestInstantiationWhitoutConfigData)
 
     parameters.erase("configData");
 
-    EXPECT_THROW(std::make_shared<Action>(m_spRouterProvider, topicName, parameters), nlohmann::detail::out_of_range);
+    EXPECT_THROW(std::make_shared<Action>(m_spRouterProvider, topicName, parameters), std::invalid_argument);
 }
 
 /*
@@ -161,9 +159,9 @@ TEST_F(ActionTest, TestInstantiationAndRegisterActionOnDemandForRawData)
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
-    EXPECT_NO_THROW(action->registerActionOnDemand(UpdaterType::CONTENT));
+    EXPECT_NO_THROW(action->registerActionOnDemand());
 
-    EXPECT_NO_THROW(action->unregisterActionOnDemand(topicName));
+    EXPECT_NO_THROW(action->unregisterActionOnDemand());
 
     EXPECT_NO_THROW(action->clearEndpoints());
 }
@@ -187,10 +185,10 @@ TEST_F(ActionTest, TestInstantiationOfTwoActionsWithTheSameTopicName)
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
-    EXPECT_NO_THROW(action1->registerActionOnDemand(UpdaterType::CONTENT));
-    EXPECT_THROW(action2->registerActionOnDemand(UpdaterType::CONTENT), std::runtime_error);
+    EXPECT_NO_THROW(action1->registerActionOnDemand());
+    EXPECT_THROW(action2->registerActionOnDemand(), std::runtime_error);
 
-    EXPECT_NO_THROW(action1->unregisterActionOnDemand(topicName));
+    EXPECT_NO_THROW(action1->unregisterActionOnDemand());
 
     EXPECT_NO_THROW(action1->clearEndpoints());
 }
@@ -212,13 +210,13 @@ TEST_F(ActionTest, TestInstantiationAndRunActionOnDemand)
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
-    EXPECT_NO_THROW(action->registerActionOnDemand(UpdaterType::CONTENT));
+    EXPECT_NO_THROW(action->registerActionOnDemand());
 
-    EXPECT_NO_THROW(action->runActionOnDemand(UpdaterType::CONTENT));
+    EXPECT_NO_THROW(action->runActionOnDemand());
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    EXPECT_NO_THROW(action->unregisterActionOnDemand(topicName));
+    EXPECT_NO_THROW(action->unregisterActionOnDemand());
     EXPECT_NO_THROW(action->clearEndpoints());
 
     // This file shouldn't exist because it's a test for raw data
@@ -281,7 +279,7 @@ TEST_F(ActionTest, OnDemandActionCatchException)
     auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters)};
 
     // Trigger action. No exceptions are expected despite the error.
-    ASSERT_NO_THROW(action->runActionOnDemand(UpdaterType::CONTENT));
+    ASSERT_NO_THROW(action->runActionOnDemand());
 
     // Check that no output files have been created.
     const std::filesystem::path outputFolder {
@@ -317,20 +315,4 @@ TEST_F(ActionTest, ScheduledActionCatchException)
         m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
     EXPECT_TRUE(std::filesystem::is_empty(outputFolder / DOWNLOAD_FOLDER));
     EXPECT_TRUE(std::filesystem::is_empty(outputFolder / CONTENTS_FOLDER));
-}
-
-TEST_F(ActionTest, RunOffsetUpdater)
-{
-    constexpr auto OFFSET {100};
-
-    const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
-    auto action {std::make_unique<Action>(m_spRouterProvider, topicName, m_parameters)};
-
-    ASSERT_NO_THROW(action->runActionOnDemand(UpdaterType::OFFSET, OFFSET));
-    action.reset();
-
-    const auto& databasePath {m_parameters.at("configData").at("databasePath").get_ref<const std::string&>()};
-    const auto databaseOffset {
-        Utils::RocksDBWrapper(databasePath).getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString()};
-    EXPECT_EQ(std::to_string(OFFSET), databaseOffset);
 }

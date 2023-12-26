@@ -40,7 +40,7 @@ TEST_F(ContentProviderTest, TestInstantiationWithoutConfigData)
 
     parameters.erase("configData");
 
-    EXPECT_THROW(std::make_shared<ContentProvider>(topicName, parameters), nlohmann::detail::out_of_range);
+    EXPECT_THROW(std::make_shared<ContentProvider>(topicName, parameters), std::invalid_argument);
 }
 
 /*

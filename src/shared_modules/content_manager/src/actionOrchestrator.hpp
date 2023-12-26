@@ -46,7 +46,6 @@ public:
             m_spBaseContext->topicName = parameters.at("topicName");
             m_spBaseContext->configData = parameters.at("configData");
             m_spBaseContext->spChannel = channel;
-            m_spBaseContext->spRocksDB = spDatabaseConnector;
 
             logDebug1(
                 WM_CONTENTUPDATER, "Creating '%s' Content Updater orchestration", m_spBaseContext->topicName.c_str());
