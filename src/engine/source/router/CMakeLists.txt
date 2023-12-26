@@ -38,6 +38,7 @@ target_link_libraries(router_router
     PRIVATE
     base
     store::istore
+    builder::ibuilder
 )
 add_library(router::router ALIAS router_router)
 
