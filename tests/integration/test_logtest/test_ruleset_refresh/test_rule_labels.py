@@ -48,17 +48,15 @@ references:
 tags:
     - logtest_configuration
 '''
-import os
 from pathlib import Path
 import pytest
 
-from wazuh_testing.constants.paths import WAZUH_PATH
 from wazuh_testing.constants.paths.sockets import LOGTEST_SOCKET_PATH
-from shutil import copy
+from wazuh_testing.constants.daemons import ANALYSISD_DAEMON, WAZUH_DB_DAEMON
 from json import loads
 from wazuh_testing.utils import configuration
 
-from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH, TEST_RULES_DECODERS_PATH
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 
 # Marks
@@ -85,32 +83,7 @@ receiver_sockets_params = [(LOGTEST_SOCKET_PATH, 'AF_UNIX', 'TCP')]
 receiver_sockets = None
 
 # Test daemons to restart.
-daemons_handler_configuration = {'daemons': ['wazuh-analysisd', 'wazuh-db']}
-
-
-# Fixtures
-@pytest.fixture(scope='function')
-def configure_rules_list(test_metadata):
-    """Configure a custom rules for testing.
-    Restart Wazuh is not needed for applying the configuration is optional.
-    """
-
-    # configuration for testing
-    rules_dir = os.path.join(WAZUH_PATH, test_metadata['rule_dir'])
-    if not os.path.exists(rules_dir):
-        os.makedirs(rules_dir)
-
-    file_test = os.path.join(TEST_RULES_DECODERS_PATH, test_metadata['rule_file'])
-    file_dst = os.path.join(rules_dir, test_metadata['rule_file'])
-
-    copy(file_test, file_dst)
-
-    yield
-
-    # restore previous configuration
-    os.remove(file_dst)
-    if len(os.listdir(rules_dir)) == 0:
-        os.rmdir(rules_dir)
+daemons_handler_configuration = {'daemons': [ANALYSISD_DAEMON, WAZUH_DB_DAEMON]}
 
 
 # Tests

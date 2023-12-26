@@ -47,16 +47,14 @@ tags:
     - logtest_configuration
 '''
 import pytest
-from os import remove
 from pathlib import Path
-from shutil import copy
 from json import loads
 
 from wazuh_testing.constants.paths.sockets import LOGTEST_SOCKET_PATH
-from wazuh_testing.constants.paths.ruleset import CUSTOM_DECODERS_PATH
+from wazuh_testing.constants.daemons import ANALYSISD_DAEMON, WAZUH_DB_DAEMON
 from wazuh_testing.utils import configuration
 
-from . import TEST_CASES_FOLDER_PATH, TEST_RULES_DECODERS_PATH
+from . import TEST_CASES_FOLDER_PATH
 
 # Marks
 
@@ -71,30 +69,12 @@ receiver_sockets_params = [(LOGTEST_SOCKET_PATH, 'AF_UNIX', 'TCP')]
 receiver_sockets = []
 
 # Test daemons to restart.
-daemons_handler_configuration = {'daemons': ['wazuh-analysisd', 'wazuh-db']}
-
-# Fixtures
-@pytest.fixture(scope='function')
-def configure_local_decoders(test_metadata):
-    """Configure a custom decoder for testing."""
-
-    # configuration for testing
-    file_test = Path(TEST_RULES_DECODERS_PATH, test_metadata['decoder'])
-    target_file_test = Path(CUSTOM_DECODERS_PATH, test_metadata['decoder'])
-
-    copy(file_test, target_file_test)
-
-    yield
-
-    # restore previous configuration
-    remove(target_file_test)
+daemons_handler_configuration = {'daemons': [ANALYSISD_DAEMON, WAZUH_DB_DAEMON]}
 
 # Tests
 @pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
-def test_invalid_decoder_syntax(test_metadata, configure_local_decoders,
-                                daemons_handler_module,
-                                wait_for_logtest_startup,
-                                connect_to_sockets):
+def test_invalid_decoder_syntax(test_metadata, configure_local_decoders, daemons_handler_module,
+                                wait_for_logtest_startup, connect_to_sockets):
     '''
     description: Check if `wazuh-logtest` correctly detects and handles errors when processing a decoders file.
                  To do this, it sends a logtest request using the input configurations and parses the logtest reply

@@ -51,15 +51,13 @@ tags:
 '''
 from pathlib import Path
 import pytest
-import os
 
-from wazuh_testing.constants.paths import WAZUH_PATH
 from wazuh_testing.constants.paths.sockets import LOGTEST_SOCKET_PATH
-from shutil import copy
+from wazuh_testing.constants.daemons import ANALYSISD_DAEMON, WAZUH_DB_DAEMON
 from json import loads
 from wazuh_testing.utils import configuration
 
-from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH, TEST_RULES_DECODERS_PATH
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 # Marks
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
@@ -75,45 +73,7 @@ receiver_sockets_params = [(LOGTEST_SOCKET_PATH, 'AF_UNIX', 'TCP')]
 receiver_sockets = None
 
 # Test daemons to restart.
-daemons_handler_configuration = {'daemons': ['wazuh-analysisd', 'wazuh-db']}
-
-# Fixtures
-@pytest.fixture(scope='function')
-def configure_cdbs_list(test_metadata):
-    """Configure a custom cdbs for testing.
-
-    Restarting Wazuh is not needed for applying the configuration, it is optional.
-    """
-
-    # cdb configuration for testing
-    cdb_dir = os.path.join(WAZUH_PATH, test_metadata['cdb_dir'])
-    if not os.path.exists(cdb_dir):
-        os.makedirs(cdb_dir)
-
-    file_cdb_test = os.path.join(TEST_RULES_DECODERS_PATH, test_metadata['cdb_file'])
-    file_cdb_dst = os.path.join(cdb_dir, test_metadata['cdb_file'])
-
-    copy(file_cdb_test, file_cdb_dst)
-
-    # rule configuration for testing
-    rule_dir = os.path.join(WAZUH_PATH, test_metadata['rule_dir'])
-    if not os.path.exists(rule_dir):
-        os.makedirs(rule_dir)
-
-    file_rule_test = os.path.join(TEST_RULES_DECODERS_PATH, test_metadata['rule_file'])
-    file_rule_dst = os.path.join(rule_dir, test_metadata['rule_file'])
-
-    copy(file_rule_test, file_rule_dst)
-
-    yield
-
-    # restore previous configuration
-    os.remove(file_cdb_dst)
-    if len(os.listdir(cdb_dir)) == 0:
-        os.rmdir(cdb_dir)
-    os.remove(file_rule_dst)
-    if len(os.listdir(rule_dir)) == 0:
-        os.rmdir(rule_dir)
+daemons_handler_configuration = {'daemons': [ANALYSISD_DAEMON, WAZUH_DB_DAEMON]}
 
 
 # Test

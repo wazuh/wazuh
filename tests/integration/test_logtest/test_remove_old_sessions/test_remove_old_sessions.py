@@ -55,6 +55,7 @@ from wazuh_testing.tools.socket_controller import SocketController
 from wazuh_testing.constants.paths.sockets import LOGTEST_SOCKET_PATH
 from wazuh_testing.global_parameters import GlobalParameters
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.modules.analysisd.configuration import ANALYSISD_DEBUG
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils import configuration
 
@@ -70,7 +71,7 @@ t_config_parameters, t_config_metadata, t_case_ids = configuration.get_test_case
 t_configurations = configuration.load_configuration_template(t_config_path, t_config_parameters, t_config_metadata)
 
 # Variables
-local_internal_options = {'analysisd.debug': '1'}
+local_internal_options = {ANALYSISD_DEBUG: '1'}
 create_session_data = {'version': 1, 'command': 'log_processing',
                        'parameters': {'event': 'Oct 15 21:07:56 linux-agent sshd[29205]: Invalid user blimey '
                                       'from 18.18.18.18 port 48928',

@@ -48,16 +48,14 @@ tags:
 '''
 import json
 from pathlib import Path
-import shutil
 import re
 
 import pytest
 from wazuh_testing.constants.paths.sockets import LOGTEST_SOCKET_PATH
-from wazuh_testing.constants import users
-from wazuh_testing.constants.paths import ruleset
+from wazuh_testing.constants.daemons import ANALYSISD_DAEMON, WAZUH_DB_DAEMON
 from wazuh_testing.utils import configuration
 
-from . import TEST_CASES_FOLDER_PATH, TEST_RULES_PATH
+from . import TEST_CASES_FOLDER_PATH
 
 
 # Marks
@@ -72,42 +70,17 @@ receiver_sockets_params = [(LOGTEST_SOCKET_PATH, 'AF_UNIX', 'TCP')]
 receiver_sockets = None
 
 # Test daemons to restart.
-daemons_handler_configuration = {'daemons': ['wazuh-analysisd', 'wazuh-db']}
+daemons_handler_configuration = {'daemons': [ANALYSISD_DAEMON, WAZUH_DB_DAEMON]}
 
 local_rules_debug_messages = ['Trying rule: 880000 - Parent rules verbose', '*Rule 880000 matched',
                               '*Trying child rules', 'Trying rule: 880001 - test last_match', '*Rule 880001 matched',
                               '*Trying child rules', 'Trying rule: 880002 - test_child test_child']
 
 
-# Fixtures
-@pytest.fixture(scope='function')
-def configure_rules_list(test_metadata):
-    """Configure a custom rules for testing.
-
-    Restart Wazuh is not needed for applying the configuration, is optional.
-    """
-
-    # save current rules
-    shutil.copy(ruleset.LOCAL_RULES_PATH, ruleset.LOCAL_RULES_PATH + '.cpy')
-
-    file_test = Path(TEST_RULES_PATH, test_metadata['rule_file'])
-    # copy test rules
-    shutil.copy(file_test, ruleset.LOCAL_RULES_PATH)
-    shutil.chown(ruleset.LOCAL_RULES_PATH, users.WAZUH_UNIX_USER, users.WAZUH_UNIX_GROUP)
-
-    yield
-
-    # restore previous configuration
-    shutil.move(ruleset.LOCAL_RULES_PATH + '.cpy', ruleset.LOCAL_RULES_PATH)
-    shutil.chown(ruleset.LOCAL_RULES_PATH, users.WAZUH_UNIX_USER, users.WAZUH_UNIX_GROUP)
-
-
-
 # Tests
 @pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
-def test_rules_verbose(test_metadata, daemons_handler_module,
-                       configure_rules_list, wait_for_logtest_startup,
-                       connect_to_sockets):
+def test_rules_verbose(test_metadata, daemons_handler_module, configure_rules_list,
+                       wait_for_logtest_startup, connect_to_sockets):
     '''
     description: Check if 'wazuh-logtest' works correctly in 'verbose' mode for rules debugging. To do this, it sends
                  the inputs through a socket, receives and decodes the message. Then, it checks

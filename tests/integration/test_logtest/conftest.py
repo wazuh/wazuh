@@ -3,9 +3,6 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import pytest
-import os
-import sys
-import shutil
 
 from wazuh_testing.modules.logcollector import logcollector
 from logtest import callback_logtest_started
