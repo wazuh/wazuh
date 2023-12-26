@@ -96,7 +96,6 @@ public:
      * @brief Action execution with exclusivity: The action is only executed if there isn't another action in progress.
      *
      * @param id Action ID.
-     * @param type Updater type.
      * @param offset Manually set current offset to process.
      *
      * @return True if the execution was made, false otherwise.
@@ -172,9 +171,6 @@ public:
     /**
      * @brief Registers new ondemand action.
      *
-     * @param topicName Topic name of the action to be registered.
-     * @param type Updater type.
-     *
      */
     void registerActionOnDemand(const std::string& topicName, const UpdaterType type)
     {
@@ -184,8 +180,6 @@ public:
 
     /**
      * @brief Unregisters ondemand action.
-     *
-     * @param topicName Topic name of the action to be unregistered.
      *
      */
     void unregisterActionOnDemand(const std::string& topicName)
@@ -205,7 +199,6 @@ public:
     /**
      * @brief Runs ondemand action. Wrapper of runActionExclusively().
      *
-     * @param type Updater type.
      * @param offset Manually set current offset to process. Default -1
      */
     void runActionOnDemand(const UpdaterType type, const int offset = -1)
