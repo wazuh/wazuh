@@ -51,6 +51,7 @@ import pytest
 from struct import pack
 
 from wazuh_testing.constants.paths.sockets import LOGTEST_SOCKET_PATH
+from wazuh_testing.constants.daemons import ANALYSISD_DAEMON, WAZUH_DB_DAEMON
 from wazuh_testing.utils import configuration
 
 from . import TEST_CASES_FOLDER_PATH
@@ -67,13 +68,12 @@ receiver_sockets_params = [(LOGTEST_SOCKET_PATH, 'AF_UNIX', 'TCP')]
 receiver_sockets = None  # Set in the fixtures
 
 # Test daemons to restart.
-daemons_handler_configuration = {'daemons': ['wazuh-analysisd', 'wazuh-db']}
+daemons_handler_configuration = {'daemons': [ANALYSISD_DAEMON, WAZUH_DB_DAEMON]}
 
 
 # Tests
 @pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
-def test_invalid_socket_input(test_metadata, daemons_handler_module,
-                              wait_for_logtest_startup, connect_to_sockets):
+def test_invalid_socket_input(test_metadata, daemons_handler_module, wait_for_logtest_startup, connect_to_sockets):
     '''
     description: Check if `wazuh-logtest` correctly detects and handles errors when sending a message through
                  the socket to `wazuh-analysisd`. To do this, it sends the inputs through a socket(differentiating by

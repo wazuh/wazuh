@@ -52,6 +52,7 @@ import pytest
 
 from logtest import callback_session_initialized, callback_invalid_token
 from wazuh_testing.constants.paths.sockets import LOGTEST_SOCKET_PATH
+from wazuh_testing.constants.daemons import ANALYSISD_DAEMON, WAZUH_DB_DAEMON
 from wazuh_testing.tools.socket_controller import SocketController
 from wazuh_testing.utils import configuration
 
@@ -66,7 +67,7 @@ t_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_invalid_session_token.yaml')
 t_config_parameters, t_config_metadata, t_case_ids = configuration.get_test_cases_data(t_cases_path)
 
 # Test daemons to restart.
-daemons_handler_configuration = {'daemons': ['wazuh-analysisd', 'wazuh-db']}
+daemons_handler_configuration = {'daemons': [ANALYSISD_DAEMON, WAZUH_DB_DAEMON]}
 
 
 # Tests
