@@ -64,7 +64,7 @@ if(ENGINE_BUILD_TEST)
         gtest_main
         base
         router::router
-        builder2::mocks
+        builder::mocks
         store::mocks
         bk::mocks
         queue::mocks
@@ -86,7 +86,7 @@ if(ENGINE_BUILD_TEST)
         base
         router::router
         # router::mocks # Todo delete
-        builder2::mocks
+        builder::mocks
         store::mocks
         bk::mocks
         bk::rx
