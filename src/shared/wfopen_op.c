@@ -1,6 +1,13 @@
+
+
 #include <stdio.h>
 #include "../headers/file_op.h"
 
+#ifdef WIN32
+#include <errno.h>
+#include <fcntl.h>
+#include <io.h>
+#endif
 
 
 FILE * wfopen(const char * pathname, const char * modes) {
