@@ -39,6 +39,13 @@ void OnDemandManager::startServer()
                                      offset = std::stoi(offset_param->second);
                                  }
 
+                                 if (offset != -1 && offset != 0)
+                                 {
+                                     throw std::invalid_argument("Invalid offset value. Use instead:\n"
+                                                                 "offset=0 (Start with offset 0)\n"
+                                                                 "offset=-1 (Do not replace current offset)");
+                                 }
+
                                  const auto& it {m_endpoints.find(req.matches[1].str())};
                                  if (it != m_endpoints.end())
                                  {

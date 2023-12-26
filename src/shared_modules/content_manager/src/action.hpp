@@ -73,7 +73,8 @@ public:
         m_orchestration = std::make_unique<ActionOrchestrator>(channel, parameters, m_shouldRun, spDatabaseConnector);
 
         // Create offset updater orchestration.
-        m_offsetUpdaterTopicName = parameters.at("offsetUpdaterTopicName").get<std::string>();
+        m_offsetUpdaterTopicName = "offset_updater";
+        parameters.at("topicName") = m_offsetUpdaterTopicName;
         m_offsetUpdaterOrchestration =
             std::make_unique<OffsetUpdaterOrchestrator>(std::move(parameters), m_shouldRun, spDatabaseConnector);
     }
@@ -172,9 +173,9 @@ public:
      * @brief Registers new ondemand action.
      *
      */
-    void registerActionOnDemand(const std::string& topicName, const UpdaterType type)
+    void registerActionOnDemand(const UpdaterType type)
     {
-        OnDemandManager::instance().addEndpoint(topicName,
+        OnDemandManager::instance().addEndpoint(m_topicName,
                                                 [&type, this](int offset) { this->runActionOnDemand(type, offset); });
     }
 

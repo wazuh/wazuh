@@ -30,8 +30,6 @@ class ContentProvider final
 private:
     std::shared_ptr<Action> m_action;
     std::shared_ptr<RouterProvider> m_routerProvider;
-    const std::string m_contentUpdaterTopicName;
-    const std::string m_offsetUpdaterTopicName;
 
 public:
     /**
@@ -42,8 +40,6 @@ public:
      */
     explicit ContentProvider(const std::string& topicName, const nlohmann::json& parameters)
         : m_routerProvider(std::make_shared<RouterProvider>(topicName))
-        , m_contentUpdaterTopicName(topicName)
-        , m_offsetUpdaterTopicName(parameters.at("offsetUpdaterTopicName"))
     {
         m_routerProvider->start();
         m_action = std::make_shared<Action>(m_routerProvider, topicName, parameters);
@@ -71,8 +67,8 @@ public:
      */
     void startOnDemandAction()
     {
-        m_action->registerActionOnDemand(m_contentUpdaterTopicName, UpdaterType::CONTENT);
-        m_action->registerActionOnDemand(m_offsetUpdaterTopicName, UpdaterType::OFFSET);
+        m_action->registerActionOnDemand(UpdaterType::CONTENT);
+        m_action->registerActionOnDemand(UpdaterType::OFFSET);
     }
 
     /**
