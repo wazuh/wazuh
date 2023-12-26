@@ -1,6 +1,7 @@
 
 #include <gtest/gtest.h>
 
+#include <api/api.hpp>
 #include <api/registry.hpp>
 #include <utils/wazuhProtocol/wazuhProtocol.hpp>
 
@@ -15,12 +16,19 @@ TEST(Registry, exec)
     // Get callback in registry
     auto cmdTest = registry.getHandler("test");
 
-    // Execute 2 times the callback fn
-    auto response = cmdTest(WazuhRequest::create("test", "gtest", json::Json {R"({"testArgKey": "testArgValue"})"}));
-    ASSERT_EQ(response.toString(), R"({"data":{},"error":5,"message":"Command \"test\" not found"})");
+    auto res = std::make_shared<std::string>();
 
-    auto response2 = cmdTest(WazuhRequest::create("test", "gtest", json::Json {R"({"testArgKey": "testArgValue"})"}));
-    ASSERT_EQ(response.toString(), response2.toString());
+    auto callbackFn = [&res](const WazuhResponse& response)
+    {
+        *res = response.toString();
+    };
+
+    // Execute 2 times the callback fn
+    cmdTest(WazuhRequest::create("test", "gtest", json::Json {R"({"testArgKey": "testArgValue"})"}), callbackFn);
+    ASSERT_EQ(*res, R"({"data":{},"error":5,"message":"Command \"test\" not found"})");
+
+    cmdTest(WazuhRequest::create("test", "gtest", json::Json {R"({"testArgKey": "testArgValue"})"}), callbackFn);
+    ASSERT_EQ(*res, R"({"data":{},"error":5,"message":"Command \"test\" not found"})");
 
 }
 
@@ -33,22 +41,30 @@ TEST(Registry, addComand)
 
     // Get callback in registry
     auto cmdTest = registry.getHandler(command);
-    auto response = cmdTest(WazuhRequest::create(command, "gtest", json::Json {R"({"testArgKey": "testArgValue"})"}));
-    auto cmdNotFound = response.toString();
-    ASSERT_EQ(response.toString(), R"({"data":{},"error":5,"message":"Command \"test\" not found"})");
+
+    auto res = std::make_shared<std::string>();
+
+    auto callbackFn = [&res](const WazuhResponse& response)
+    {
+        *res = response.toString();
+    };
+
+    cmdTest(WazuhRequest::create(command, "gtest", json::Json {R"({"testArgKey": "testArgValue"})"}), callbackFn);
+    ASSERT_EQ(*res, R"({"data":{},"error":5,"message":"Command \"test\" not found"})");
+    auto cmdNotFound = *res;
 
     // Add command
-    registry.registerHandler(command,
+    registry.registerHandler(command, api::Api::convertToHandlerAsync(
                              [](WazuhRequest) -> WazuhResponse
-                             { return WazuhResponse(json::Json {R"({"testArgKey": "testArgValue"})"}, 0, "OK"); });
+                             { return WazuhResponse(json::Json {R"({"testArgKey": "testArgValue"})"}, 0, "OK"); }));
 
     // Get callback in registry
     cmdTest = registry.getHandler(command);
-    response = cmdTest(WazuhRequest::create("test", "gtest", json::Json {R"({"testArgKey": "testArgValue"})"}));
-    ASSERT_EQ(response.toString(), R"({"data":{"testArgKey":"testArgValue"},"error":0,"message":"OK"})");
+    cmdTest(WazuhRequest::create("test", "gtest", json::Json {R"({"testArgKey": "testArgValue"})"}), callbackFn);
+    ASSERT_EQ(*res, R"({"data":{"testArgKey":"testArgValue"},"error":0,"message":"OK"})");
 
     // Check the new command against the old one
-    ASSERT_NE(cmdNotFound, response.toString());
+    ASSERT_NE(cmdNotFound, *res);
 }
 
 TEST(Registry, addNullCommand)
@@ -58,21 +74,28 @@ TEST(Registry, addNullCommand)
     api::Registry registry;
     std::string command {"test"};
 
+    auto res = std::make_shared<std::string>();
+
+    auto callbackFn = [&res](const WazuhResponse& response)
+    {
+        *res = response.toString();
+    };
+
     // Get callback in registry
     auto cmdTest = registry.getHandler(command);
-    auto response = cmdTest(WazuhRequest::create("test", "gtest", json::Json {R"({"testArgKey": "testArgValue"})"}));
-    auto cmdNotFound = response.toString();
-    ASSERT_EQ(response.toString(), R"({"data":{},"error":5,"message":"Command \"test\" not found"})");
+    cmdTest(WazuhRequest::create("test", "gtest", json::Json {R"({"testArgKey": "testArgValue"})"}), callbackFn);
+    auto cmdNotFound = *res;
+    ASSERT_EQ(*res, R"({"data":{},"error":5,"message":"Command \"test\" not found"})");
 
     // Add command
-    bool res = registry.registerHandler(command, nullptr);
-    ASSERT_FALSE(res); // Fail
+    bool resp = registry.registerHandler(command, nullptr);
+    ASSERT_FALSE(resp); // Fail
 
     // Get callback in registry
     cmdTest = registry.getHandler(command);
-    response = cmdTest(WazuhRequest::create("test", "gtest", json::Json {R"({"testArgKey": "testArgValue"})"}));
+    cmdTest(WazuhRequest::create("test", "gtest", json::Json {R"({"testArgKey": "testArgValue"})"}), callbackFn);
     // Check the new command against the old one
-    ASSERT_EQ(cmdNotFound, response.toString());
+    ASSERT_EQ(cmdNotFound, *res);
 }
 
 TEST(Registry, AddDuplicateCommand)
@@ -82,35 +105,42 @@ TEST(Registry, AddDuplicateCommand)
     api::Registry registry;
     std::string command {"test"};
 
+    auto res = std::make_shared<std::string>();
+
+    auto callbackFn = [&res](const WazuhResponse& response)
+    {
+        *res = response.toString();
+    };
+
     // Get callback in registry
     auto cmdTest = registry.getHandler(command);
-    auto response = cmdTest(WazuhRequest::create("test", "gtest", json::Json {R"({"testArgKey": "testArgValue"})"}));
-    ASSERT_EQ(response.toString(), R"({"data":{},"error":5,"message":"Command \"test\" not found"})");
+    cmdTest(WazuhRequest::create("test", "gtest", json::Json {R"({"testArgKey": "testArgValue"})"}), callbackFn);
+    ASSERT_EQ(*res, R"({"data":{},"error":5,"message":"Command \"test\" not found"})");
 
     // Add command for the first time
-    bool res = registry.registerHandler(
-        command,
+    bool resp = registry.registerHandler(
+        command, api::Api::convertToHandlerAsync(
         [](WazuhRequest) -> WazuhResponse
-        { return WazuhResponse(json::Json {R"({"testArgKey": "testArgValue"})"}, 1, "OK cmd1"); });
+        { return WazuhResponse(json::Json {R"({"testArgKey": "testArgValue"})"}, 1, "OK cmd1"); }));
 
-    ASSERT_TRUE(res); // OK
+    ASSERT_TRUE(resp); // OK
     // Get callback in registry
     cmdTest = registry.getHandler(command);
-    response = cmdTest(WazuhRequest::create("test", "gtest", json::Json {R"({"testArgKey": "testArgValue"})"}));
-    ASSERT_EQ(response.toString(), R"({"data":{"testArgKey":"testArgValue"},"error":1,"message":"OK cmd1"})");
+    cmdTest(WazuhRequest::create("test", "gtest", json::Json {R"({"testArgKey": "testArgValue"})"}), callbackFn);
+    ASSERT_EQ(*res, R"({"data":{"testArgKey":"testArgValue"},"error":1,"message":"OK cmd1"})");
 
     // Add command
-    res = registry.registerHandler(
-        command,
+    resp = registry.registerHandler(
+        command, api::Api::convertToHandlerAsync(
         [](WazuhRequest) -> WazuhResponse
-        { return WazuhResponse(json::Json {R"({"testArgKey": "testArgValue"})"}, 1, "OK cmd2"); });
+        { return WazuhResponse(json::Json {R"({"testArgKey": "testArgValue"})"}, 1, "OK cmd2"); }));
 
-    ASSERT_FALSE(res); // Fail
+    ASSERT_FALSE(resp); // Fail
 
     // Get callback in registry
     cmdTest = registry.getHandler(command);
-    response = cmdTest(WazuhRequest::create("test", "gtest", json::Json {R"({"testArgKey": "testArgValue"})"}));
-    ASSERT_EQ(response.toString(), R"({"data":{"testArgKey":"testArgValue"},"error":1,"message":"OK cmd1"})");
+    cmdTest(WazuhRequest::create("test", "gtest", json::Json {R"({"testArgKey": "testArgValue"})"}), callbackFn);
+    ASSERT_EQ(*res, R"({"data":{"testArgKey":"testArgValue"},"error":1,"message":"OK cmd1"})");
 }
 
 TEST(Registry, AddMultipleCommands)
@@ -121,34 +151,41 @@ TEST(Registry, AddMultipleCommands)
     std::string command {"test"};
     std::string command2 {"test2"};
 
+    auto res = std::make_shared<std::string>();
+
+    auto callbackFn = [&res](const WazuhResponse& response)
+    {
+        *res = response.toString();
+    };
+
     // Get callback in registry
     auto cmdTest = registry.getHandler(command);
-    auto response = cmdTest(WazuhRequest::create("test", "gtest", json::Json {R"({"testArgKey": "testArgValue"})"}));
-    ASSERT_EQ(response.toString(), R"({"data":{},"error":5,"message":"Command \"test\" not found"})");
+    cmdTest(WazuhRequest::create("test", "gtest", json::Json {R"({"testArgKey": "testArgValue"})"}), callbackFn);
+    ASSERT_EQ(*res, R"({"data":{},"error":5,"message":"Command \"test\" not found"})");
 
     // Add command for the first time
-    bool res = registry.registerHandler(
-        command,
+    bool resp = registry.registerHandler(
+        command, api::Api::convertToHandlerAsync(
         [](WazuhRequest) -> WazuhResponse
-        { return WazuhResponse(json::Json {R"({"testArgKey": "testArgValue"})"}, 1, "OK cmd1"); });
+        { return WazuhResponse(json::Json {R"({"testArgKey": "testArgValue"})"}, 1, "OK cmd1"); }));
 
-    ASSERT_TRUE(res); // OK
+    ASSERT_TRUE(resp); // OK
 
     // Add command for the first time
-    res = registry.registerHandler(
-        command2,
+    resp = registry.registerHandler(
+        command2, api::Api::convertToHandlerAsync(
         [](WazuhRequest) -> WazuhResponse
-        { return WazuhResponse(json::Json {R"({"testArgKey": "testArgValue"})"}, 2, "OK cmd2"); });
+        { return WazuhResponse(json::Json {R"({"testArgKey": "testArgValue"})"}, 2, "OK cmd2"); }));
 
-    ASSERT_TRUE(res); // OK
+    ASSERT_TRUE(resp); // OK
 
     // Get callback in registry
     cmdTest = registry.getHandler(command);
-    response = cmdTest(WazuhRequest::create("test", "gtest", json::Json {R"({"testArgKey": "testArgValue"})"}));
-    ASSERT_EQ(response.toString(), R"({"data":{"testArgKey":"testArgValue"},"error":1,"message":"OK cmd1"})");
+    cmdTest(WazuhRequest::create("test", "gtest", json::Json {R"({"testArgKey": "testArgValue"})"}), callbackFn);
+    ASSERT_EQ(*res, R"({"data":{"testArgKey":"testArgValue"},"error":1,"message":"OK cmd1"})");
 
     // Get callback in registry
     cmdTest = registry.getHandler(command2);
-    response = cmdTest(WazuhRequest::create("test", "gtest", json::Json {R"({"testArgKey": "testArgValue"})"}));
-    ASSERT_EQ(response.toString(), R"({"data":{"testArgKey":"testArgValue"},"error":2,"message":"OK cmd2"})");
+    cmdTest(WazuhRequest::create("test", "gtest", json::Json {R"({"testArgKey": "testArgValue"})"}), callbackFn);
+    ASSERT_EQ(*res, R"({"data":{"testArgKey":"testArgValue"},"error":2,"message":"OK cmd2"})");
 }

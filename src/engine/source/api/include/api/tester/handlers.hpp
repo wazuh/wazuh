@@ -9,16 +9,16 @@
 namespace api::tester::handlers
 {
 // Session
-api::Handler sessionPost(const std::weak_ptr<::router::ITesterAPI>& tester);
-api::Handler sessionDelete(const std::weak_ptr<::router::ITesterAPI>& tester);
-api::Handler sessionGet(const std::weak_ptr<::router::ITesterAPI>& tester,
+api::HandlerSync sessionPost(const std::weak_ptr<::router::ITesterAPI>& tester);
+api::HandlerSync sessionDelete(const std::weak_ptr<::router::ITesterAPI>& tester);
+api::HandlerSync sessionGet(const std::weak_ptr<::router::ITesterAPI>& tester,
                         const std::weak_ptr<api::policy::IPolicy>& policy);
-api::Handler sessionReload(const std::weak_ptr<::router::ITesterAPI>& tester);
+api::HandlerSync sessionReload(const std::weak_ptr<::router::ITesterAPI>& tester);
 // Table of sessions
-api::Handler tableGet(const std::weak_ptr<::router::ITesterAPI>& tester,
+api::HandlerSync tableGet(const std::weak_ptr<::router::ITesterAPI>& tester,
                       const std::weak_ptr<api::policy::IPolicy>& policy);
 // Use of session
-api::Handler runPost(const std::weak_ptr<::router::ITesterAPI>& tester,
+api::HandlerAsync runPost(const std::weak_ptr<::router::ITesterAPI>& tester,
                      const std::weak_ptr<store::IStoreReader>& store);
 
 /**

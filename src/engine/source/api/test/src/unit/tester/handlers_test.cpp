@@ -16,6 +16,9 @@
 #include <router/mockTester.hpp>
 #include <store/mockStore.hpp>
 
+#include <api/adapter.hpp>
+#include <eMessages/tester.pb.h>
+
 #include "../../apiAuxiliarFunctions.hpp"
 
 using namespace api::policy::mocks;
@@ -28,11 +31,11 @@ using namespace tester::mocks;
  *
  * The handlers is created with a function that return the handler to test.
  */
-using GetHandlerToTest = std::function<api::Handler(const std::shared_ptr<router::ITesterAPI>&)>;
-using GetHandlerToTestComplement = std::function<api::Handler(const std::shared_ptr<router::ITesterAPI>&,
-                                                              const std::shared_ptr<api::policy::IPolicy>&)>;
+using GetHandlerToTest = std::function<api::HandlerSync(const std::shared_ptr<router::ITesterAPI>&)>;
+using GetHandlerToTestComplement = std::function<api::HandlerSync(const std::shared_ptr<router::ITesterAPI>&,
+                                                                  const std::shared_ptr<api::policy::IPolicy>&)>;
 using GetHandlerToTestComplementStore =
-    std::function<api::Handler(const std::shared_ptr<router::ITesterAPI>&, const std::shared_ptr<MockStoreRead>&)>;
+    std::function<api::HandlerAsync(const std::shared_ptr<router::ITesterAPI>&, const std::shared_ptr<MockStoreRead>&)>;
 /**
  * @brief Represent the type signature of the expected function
  *
@@ -42,7 +45,9 @@ using ExpectedFn = std::function<api::wpResponse(const std::shared_ptr<MockTeste
 using ExpectedFnComplement =
     std::function<api::wpResponse(const std::shared_ptr<MockTesterAPI>&, const std::shared_ptr<MockPolicy>&)>;
 using ExpectedFnComplementStore =
-    std::function<api::wpResponse(const std::shared_ptr<MockTesterAPI>&, const std::shared_ptr<MockStoreRead>&)>;
+    std::function<api::wpResponse(const std::shared_ptr<MockTesterAPI>&,
+                                  const std::shared_ptr<MockStoreRead>&,
+                                  std::function<void(const base::utils::wazuhProtocol::WazuhResponse&)>)>;
 /**
  * @brief Test parameters.
  * @param getHandlerFn Function that return the handler to test.
@@ -69,7 +74,9 @@ using BehaviourComplementStore = std::function<void(std::shared_ptr<MockTesterAP
 using BehaviourWRet = std::function<json::Json(std::shared_ptr<MockTesterAPI>)>;
 using BehaviourWRetComplement = std::function<json::Json(std::shared_ptr<MockTesterAPI>, std::shared_ptr<MockPolicy>)>;
 using BehaviourWRetComplementStore =
-    std::function<json::Json(std::shared_ptr<MockTesterAPI>, std::shared_ptr<MockStoreRead>)>;
+    std::function<json::Json(std::shared_ptr<MockTesterAPI>,
+                             std::shared_ptr<MockStoreRead>,
+                             std::function<void(const base::utils::wazuhProtocol::WazuhResponse&)>)>;
 
 const std::string STATUS_PATH = "/status";
 const std::string ERROR_PATH = "/error";
@@ -153,10 +160,12 @@ static ExpectedFnComplementStore failureWPayloadComplementStore(const BehaviourW
     {
         throw std::runtime_error("Behaviour with return must be defined");
     }
-    return [behaviour](const std::shared_ptr<MockTesterAPI>& router,
-                       const std::shared_ptr<MockStoreRead>& store) -> api::wpResponse
+    return
+        [behaviour](const std::shared_ptr<MockTesterAPI>& router,
+                    const std::shared_ptr<MockStoreRead>& store,
+                    std::function<void(const base::utils::wazuhProtocol::WazuhResponse&)> callback) -> api::wpResponse
     {
-        json::Json dataR = behaviour(router, store);
+        json::Json dataR = behaviour(router, store, callback);
         dataR.setString(STATUS_ERROR, STATUS_PATH);
         return api::wpResponse(dataR);
     };
@@ -193,16 +202,18 @@ static ExpectedFnComplement succesWPayloadComplement(const BehaviourWRetCompleme
     };
 }
 
-static ExpectedFnComplementStore succesWPayloadComplementStore(const BehaviourWRetComplementStore& behaviour = {})
+static ExpectedFnComplementStore successWPayloadComplementStore(const BehaviourWRetComplementStore& behaviour = {})
 {
     if (!behaviour)
     {
         throw std::runtime_error("Behaviour with return must be defined");
     }
-    return [behaviour](const std::shared_ptr<MockTesterAPI>& router,
-                       const std::shared_ptr<MockStoreRead>& store) -> api::wpResponse
+    return
+        [behaviour](const std::shared_ptr<MockTesterAPI>& router,
+                    const std::shared_ptr<MockStoreRead>& store,
+                    std::function<void(const base::utils::wazuhProtocol::WazuhResponse&)> callback) -> api::wpResponse
     {
-        json::Json dataR = behaviour(router, store);
+        json::Json dataR = behaviour(router, store, callback);
         dataR.setString(STATUS_OK, STATUS_PATH);
         return api::wpResponse {dataR};
     };
@@ -634,6 +645,37 @@ INSTANTIATE_TEST_SUITE_P(
                     return res;
                 }))));
 
+namespace eTester = ::com::wazuh::api::engine::tester;
+eTester::Result getResultFromOutput(const ::router::test::Output& output)
+{
+    eTester::Result result {};
+
+    // Set event
+    auto resProtoEvent = eMessage::eMessageFromJson<google::protobuf::Value>(output.event()->str());
+    if (std::holds_alternative<base::Error>(resProtoEvent))
+    {
+        throw std::runtime_error {std::get<base::Error>(resProtoEvent).message}; // Should never happen
+    }
+    auto& protoEvent = std::get<google::protobuf::Value>(resProtoEvent);
+    result.mutable_output()->CopyFrom(protoEvent);
+
+    // Set traces
+    for (const auto& [assetName, assetTrace] : output.traceList())
+    {
+        eTester::Result_AssetTrace eTrace {};
+        eTrace.set_asset(assetName);
+        eTrace.set_success(assetTrace.success);
+        for (const auto& trace : assetTrace.traces)
+        {
+            eTrace.add_traces(trace);
+        }
+
+        result.mutable_asset_traces()->Add(std::move(eTrace));
+    }
+
+    return result;
+}
+
 class TesterHandlerTestComplementStore : public ::testing::TestWithParam<TestRouterTComplementStore>
 {
 protected:
@@ -657,19 +699,26 @@ TEST_P(TesterHandlerTestComplementStore, processRequest)
 {
     const auto [getHandlerFn, jparams, expectedFn] = GetParam();
 
-    auto expectedResponse = expectedFn(m_tester, m_store);
+    auto strResponse = std::make_shared<std::string>();
+    auto callbackFn = [&strResponse](const base::utils::wazuhProtocol::WazuhResponse& res)
+    {
+        *strResponse = res.toString();
+    };
+
+    auto expectedResponse = expectedFn(m_tester, m_store, callbackFn);
     auto request = api::wpRequest::create("router.command", "test", jparams);
 
-    auto response = getHandlerFn(m_tester, m_store)(request);
+    getHandlerFn(m_tester, m_store)(request, callbackFn);
+    auto response = json::Json {strResponse->c_str()};
 
     if (expectedResponse.data().getString(STATUS_PATH) == STATUS_ERROR)
     {
         EXPECT_STREQ(expectedResponse.data().getString(ERROR_PATH).value().c_str(),
-                     response.data().getString(ERROR_PATH).value().c_str());
+                     response.getJson("/data").value().getString("/error").value().c_str());
     }
     else
     {
-        ASSERT_EQ(expectedResponse.data(), response.data());
+        ASSERT_EQ(expectedResponse.data(), response);
     }
 }
 
@@ -682,110 +731,63 @@ INSTANTIATE_TEST_SUITE_P(
             runPost,
             routerTest::JParams(ENVIRONMENT_NAME, false).event("i am a message").queue("49").location("here"),
             failureWPayloadComplementStore(
-                [](auto tester, auto store) -> json::Json
+                [](auto tester, auto store, auto callback) -> json::Json
                 {
                     std::string message = "49:here:i am a message";
-                    EXPECT_CALL(*tester, ingestTest(message, testing::_))
-                        .WillOnce(::testing::Invoke(
-                            [](const std::string_view event, const router::test::Options& opt)
-                            {
-                                std::promise<base::RespOrError<router::test::Output>> promise;
-                                auto future = promise.get_future();
+                    base::Error error {"error"};
 
-                                std::thread(
-                                    [promise = std::move(promise)]() mutable
-                                    {
-                                        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-                                        promise.set_value(base::Error {"error"});
-                                    })
-                                    .detach();
-                                return future;
-                            }));
-                    EXPECT_CALL(*tester, getTestTimeout())
-                        .WillOnce(::testing::Return(1)); // setting less time than the one occupied by the thread
+                    EXPECT_CALL(*tester, ingestTest(message, testing::_, testing::_))
+                        .WillOnce(::testing::Return(error));
                     auto expected = json::Json();
-                    expected.setString("Error running test: Timeout", "/error");
-                    return expected;
-                })),
-        // [runPost]: TraceLevel: None, Output Error
-        TestRouterTComplementStore(
-            runPost,
-            routerTest::JParams(ENVIRONMENT_NAME, false).event("i am a message").queue("49").location("here"),
-            failureWPayloadComplementStore(
-                [](auto tester, auto store) -> json::Json
-                {
-                    std::string message = "49:here:i am a message";
-                    auto error = base::Error {"error"};
-                    EXPECT_CALL(*tester, ingestTest(message, testing::_))
-                        .WillOnce(::testing::Invoke(
-                            [error](const std::string_view event, const router::test::Options& opt)
-                            {
-                                std::promise<base::RespOrError<router::test::Output>> promise;
-                                auto future = promise.get_future();
+                    expected.setString(error.message, "/error");
 
-                                std::thread(
-                                    [promise = std::move(promise), error]() mutable
-                                    {
-                                        std::this_thread::sleep_for(std::chrono::milliseconds(
-                                            10)); // setting more time than the one occupied by the thread
-                                        promise.set_value(error);
-                                    })
-                                    .detach();
-                                return future;
-                            }));
-                    EXPECT_CALL(*tester, getTestTimeout()).WillOnce(::testing::Return(20));
-                    auto expected = json::Json();
-                    expected.setString(fmt::format("Error running test: {}", error.message), "/error");
-                    return expected;
-                })),
-        TestRouterTComplementStore(
-            runPost,
-            routerTest::JParams(ENVIRONMENT_NAME, false).event("i am a message").queue("49").location("here"),
-            succesWPayloadComplementStore(
-                [](auto tester, auto store) -> json::Json
-                {
-                    std::string message = "49:here:i am a message";
-                    auto output = R"({"key": "value"})";
-                    auto result = std::make_shared<json::Json>(output);
-                    EXPECT_CALL(*tester, ingestTest(message, testing::_))
-                        .WillOnce(::testing::Invoke(
-                            [result](const std::string_view event, const router::test::Options& opt)
-                            {
-                                auto output = std::make_shared<router::test::Output>();
-                                output->event() = result;
-                                std::promise<base::RespOrError<router::test::Output>> promise;
-                                auto future = promise.get_future();
+                    base::utils::wazuhProtocol::WazuhResponse response {};
+                    response.data(expected);
+                    callback(response);
 
-                                std::thread(
-                                    [promise = std::move(promise), output]() mutable
-                                    {
-                                        std::this_thread::sleep_for(std::chrono::milliseconds(
-                                            10)); // setting more time than the one occupied by the thread
-                                        promise.set_value(*output);
-                                    })
-                                    .detach();
-                                return future;
-                            }));
-                    EXPECT_CALL(*tester, getTestTimeout()).WillOnce(::testing::Return(20));
-                    auto expected = json::Json();
-                    expected.set("/result/output", json::Json {output});
-                    expected.set("/result/asset_traces", json::Json {"[]"});
                     return expected;
                 })),
-        TestRouterTComplementStore(
-            runPost,
-            routerTest::JParams(ENVIRONMENT_NAME, false)
-                .event("i am a message")
-                .queue("49")
-                .location("here")
-                .traceLevel(router::test::Options::TraceLevel::ASSET_ONLY),
-            failureWPayloadComplementStore(
-                [](auto tester, auto store) -> json::Json
-                {
-                    auto expected = json::Json();
-                    expected.setString("Namespaces parameter is required", "/error");
-                    return expected;
-                })),
+        TestRouterTComplementStore(runPost,
+                                   routerTest::JParams(ENVIRONMENT_NAME, false)
+                                       .event("i am a message")
+                                       .queue("49")
+                                       .location("here")
+                                       .traceLevel(router::test::Options::TraceLevel::ASSET_ONLY),
+                                   failureWPayloadComplementStore(
+                                       [](auto tester, auto store, auto callback) -> json::Json
+                                       {
+                                           auto expected = json::Json();
+                                           expected.setString("Namespaces parameter is required", "/error");
+
+                                           base::utils::wazuhProtocol::WazuhResponse response {};
+                                           response.data(expected);
+                                           callback(response);
+
+                                           return expected;
+                                       })),
+        TestRouterTComplementStore(runPost,
+                                   routerTest::JParams(ENVIRONMENT_NAME, false)
+                                       .event("i am a message")
+                                       .queue("49")
+                                       .location("here")
+                                       .traceLevel(router::test::Options::TraceLevel::ASSET_ONLY)
+                                       .namespaces({"ns1", "ns2"}),
+                                   failureWPayloadComplementStore(
+                                       [](auto tester, auto store, auto callback) -> json::Json
+                                       {
+                                           auto error = "error getting assets";
+                                           EXPECT_CALL(*tester, getAssets(testing::_))
+                                               .WillOnce(::testing::Return(base::Error {error}));
+
+                                           auto expected = json::Json();
+                                           expected.setString(error, "/error");
+
+                                           base::utils::wazuhProtocol::WazuhResponse response {};
+                                           response.data(expected);
+                                           callback(response);
+
+                                           return expected;
+                                       })),
         TestRouterTComplementStore(
             runPost,
             routerTest::JParams(ENVIRONMENT_NAME, false)
@@ -795,70 +797,19 @@ INSTANTIATE_TEST_SUITE_P(
                 .traceLevel(router::test::Options::TraceLevel::ASSET_ONLY)
                 .namespaces({"ns1", "ns2"}),
             failureWPayloadComplementStore(
-                [](auto tester, auto store) -> json::Json
+                [](auto tester, auto store, auto callback) -> json::Json
                 {
-                    auto error = "error getting assets";
-                    EXPECT_CALL(*tester, getAssets(testing::_)).WillOnce(::testing::Return(base::Error {error}));
-                    auto expected = json::Json();
-                    expected.setString(error, "/error");
-                    return expected;
-                })),
-        TestRouterTComplementStore(
-            runPost,
-            routerTest::JParams(ENVIRONMENT_NAME, false)
-                .event("i am a message")
-                .queue("49")
-                .location("here")
-                .traceLevel(router::test::Options::TraceLevel::ASSET_ONLY)
-                .namespaces({"ns1", "ns2"}),
-            failureWPayloadComplementStore(
-                [](auto tester, auto store) -> json::Json
-                {
-                    EXPECT_CALL(*tester, getAssets(testing::_)).WillOnce(::testing::Return(std::unordered_set<std::string>{"policy/wazuh/0", "policy/wazuh/1"}));
+                    EXPECT_CALL(*tester, getAssets(testing::_))
+                        .WillOnce(
+                            ::testing::Return(std::unordered_set<std::string> {"policy/wazuh/0", "policy/wazuh/1"}));
                     EXPECT_CALL(*store, getNamespace(testing::_)).WillOnce(::testing::Return(std::nullopt));
+
                     auto expected = json::Json();
                     expected.setString("Asset policy/wazuh/1 not found in store", "/error");
-                    return expected;
-                })),
-        TestRouterTComplementStore(
-            runPost,
-            routerTest::JParams(ENVIRONMENT_NAME, false)
-                .event("i am a message")
-                .queue("49")
-                .location("here")
-                .traceLevel(router::test::Options::TraceLevel::ASSET_ONLY)
-                .namespaces({"ns1", "ns2"}),
-            succesWPayloadComplementStore(
-                [](auto tester, auto store) -> json::Json
-                {
-                    EXPECT_CALL(*tester, getAssets(testing::_)).WillOnce(::testing::Return(std::unordered_set<std::string>{"policy/wazuh/0", "policy/wazuh/1"}));
-                    EXPECT_CALL(*store, getNamespace(testing::_)).WillRepeatedly(::testing::Return(store::NamespaceId("ns1")));
 
-                    std::string message = "49:here:i am a message";
-                    auto output = R"({"key": "value"})";
-                    auto result = std::make_shared<json::Json>(output);
-                    EXPECT_CALL(*tester, ingestTest(message, testing::_))
-                        .WillOnce(::testing::Invoke(
-                            [result](const std::string_view event, const router::test::Options& opt)
-                            {
-                                auto output = std::make_shared<router::test::Output>();
-                                output->event() = result;
-                                std::promise<base::RespOrError<router::test::Output>> promise;
-                                auto future = promise.get_future();
+                    base::utils::wazuhProtocol::WazuhResponse response {};
+                    response.data(expected);
+                    callback(response);
 
-                                std::thread(
-                                    [promise = std::move(promise), output]() mutable
-                                    {
-                                        std::this_thread::sleep_for(std::chrono::milliseconds(
-                                            10)); // setting more time than the one occupied by the thread
-                                        promise.set_value(*output);
-                                    })
-                                    .detach();
-                                return future;
-                            }));
-                    EXPECT_CALL(*tester, getTestTimeout()).WillOnce(::testing::Return(20));
-                    auto expected = json::Json();
-                    expected.set("/result/output", json::Json {output});
-                    expected.set("/result/asset_traces", json::Json {"[]"});
                     return expected;
                 }))));

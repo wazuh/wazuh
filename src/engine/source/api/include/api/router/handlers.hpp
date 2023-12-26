@@ -11,16 +11,16 @@ namespace api::router::handlers
 {
 
 // Handler for router commands, returns a handler that will call the router
-api::Handler routePost(const std::weak_ptr<::router::IRouterAPI>& router);
-api::Handler routeDelete(const std::weak_ptr<::router::IRouterAPI>& router);
-api::Handler routeGet(const std::weak_ptr<::router::IRouterAPI>& router,
+api::HandlerSync routePost(const std::weak_ptr<::router::IRouterAPI>& router);
+api::HandlerSync routeDelete(const std::weak_ptr<::router::IRouterAPI>& router);
+api::HandlerSync routeGet(const std::weak_ptr<::router::IRouterAPI>& router,
                       const std::weak_ptr<api::policy::IPolicy>& policy);
-api::Handler routeReload(const std::weak_ptr<::router::IRouterAPI>& router);
-api::Handler routePatchPriority(const std::weak_ptr<::router::IRouterAPI>& router);
+api::HandlerSync routeReload(const std::weak_ptr<::router::IRouterAPI>& router);
+api::HandlerSync routePatchPriority(const std::weak_ptr<::router::IRouterAPI>& router);
 
-api::Handler tableGet(const std::weak_ptr<::router::IRouterAPI>& router,
+api::HandlerSync tableGet(const std::weak_ptr<::router::IRouterAPI>& router,
                       const std::weak_ptr<api::policy::IPolicy>& policy);
-api::Handler queuePost(const std::weak_ptr<::router::IRouterAPI>& router);
+api::HandlerSync queuePost(const std::weak_ptr<::router::IRouterAPI>& router);
 
 /**
  * @brief Register all router commands

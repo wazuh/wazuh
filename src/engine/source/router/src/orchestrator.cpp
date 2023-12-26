@@ -493,6 +493,50 @@ std::future<base::RespOrError<test::Output>> Orchestrator::ingestTest(std::strin
     }
 }
 
+base::OptError Orchestrator::ingestTest(base::Event&& event,
+                              const test::Options& opt,
+                              std::function<void(base::RespOrError<test::Output>&&)> callbackFn)
+{
+    if (auto error = opt.validate(); error)
+    {
+        return error;
+    }
+
+    auto tuple = std::make_shared<test::TestingTuple>(std::move(event), opt, std::move(callbackFn));
+    if (!m_testQueue->tryPush(tuple))
+    {
+        return base::Error {"Test queue is full"};
+    }
+    if (m_eventQueue->empty())
+    {
+        m_eventQueue->push(base::Event(nullptr));
+    }
+
+    {
+        std::shared_lock lock {m_syncMutex};
+        m_workers.front()->getTester()->updateLastUsed(opt.environmentName());
+    }
+
+    return std::nullopt;
+}
+
+base::OptError Orchestrator::ingestTest(std::string_view event,
+                              const test::Options& opt,
+                              std::function<void(base::RespOrError<test::Output>&&)> callbackFn)
+{
+    try
+    {
+        base::Event ev = base::parseEvent::parseWazuhEvent(event.data());
+        this->ingestTest(std::move(ev), opt, callbackFn);
+    }
+    catch (const std::exception& e)
+    {
+        return base::Error {e.what()};
+    }
+
+    return std::nullopt;
+}
+
 base::RespOrError<std::unordered_set<std::string>> Orchestrator::getAssets(const std::string& name) const
 {
     if (name.empty())

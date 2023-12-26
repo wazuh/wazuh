@@ -35,7 +35,7 @@ constexpr auto JSON_SCHEMA_POLICY = "schema/wazuh-policy/0";
 class TestSessionDeleteCommand : public ::testing::TestWithParam<std::tuple<int, std::string, std::string>>
 {
 protected:
-    api::Handler m_cmdAPI;
+    api::HandlerSync m_cmdAPI;
     std::shared_ptr<api::catalog::Catalog> m_spCatalog;
     std::shared_ptr<::router::Router> m_spRouter;
     std::shared_ptr<store::mocks::MockStore> m_spMockStore;
@@ -210,7 +210,7 @@ INSTANTIATE_TEST_SUITE_P(Functionality,
 class TestSessionListCommand : public ::testing::TestWithParam<std::tuple<int, std::string, std::string>>
 {
 protected:
-    api::Handler m_cmdAPI;
+    api::HandlerSync m_cmdAPI;
     std::shared_ptr<api::catalog::Catalog> m_spCatalog;
     std::shared_ptr<::router::Router> m_spRouter;
     std::shared_ptr<store::mocks::MockStore> m_spMockStore;
@@ -417,7 +417,7 @@ INSTANTIATE_TEST_SUITE_P(Functionality,
 class TestSessionPostCommand : public ::testing::TestWithParam<std::tuple<int, std::string, std::string>>
 {
 protected:
-    api::Handler m_cmdAPI;
+    api::HandlerSync m_cmdAPI;
     std::shared_ptr<api::catalog::Catalog> m_spCatalog;
     std::shared_ptr<::router::Router> m_spRouter;
     std::shared_ptr<store::mocks::MockStore> m_spMockStore;
@@ -614,7 +614,7 @@ INSTANTIATE_TEST_SUITE_P(
 class TestRunCommand : public ::testing::TestWithParam<std::tuple<std::string, std::string>>
 {
 protected:
-    api::Handler m_cmdAPI;
+    api::HandlerSync m_cmdAPI;
     std::shared_ptr<SessionManager> m_sessionManager;
 
     void SetUp() override
@@ -655,7 +655,7 @@ class TestRunCommandIntegration
     : public ::testing::TestWithParam<std::tuple<int, std::string, std::string, std::string>>
 {
 protected:
-    api::Handler m_cmdAPI;
+    api::HandlerSync m_cmdAPI;
     std::shared_ptr<api::catalog::Catalog> m_spCatalog;
     std::shared_ptr<::router::Router> m_spRouter;
     std::shared_ptr<store::mocks::MockStore> m_spMockStore;

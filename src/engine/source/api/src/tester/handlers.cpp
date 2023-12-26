@@ -194,7 +194,7 @@ eTester::Result fromOutput(const ::router::test::Output& output)
 
 } // namespace
 
-api::Handler sessionPost(const std::weak_ptr<::router::ITesterAPI>& tester)
+api::HandlerSync sessionPost(const std::weak_ptr<::router::ITesterAPI>& tester)
 {
     return [wTester = tester](const api::wpRequest& wRequest) -> api::wpResponse
     {
@@ -241,7 +241,7 @@ api::Handler sessionPost(const std::weak_ptr<::router::ITesterAPI>& tester)
     };
 }
 
-api::Handler sessionDelete(const std::weak_ptr<::router::ITesterAPI>& tester)
+api::HandlerSync sessionDelete(const std::weak_ptr<::router::ITesterAPI>& tester)
 {
     return [wTester = tester](const api::wpRequest& wRequest) -> api::wpResponse
     {
@@ -266,7 +266,7 @@ api::Handler sessionDelete(const std::weak_ptr<::router::ITesterAPI>& tester)
     };
 }
 
-api::Handler sessionGet(const std::weak_ptr<::router::ITesterAPI>& tester, const std::weak_ptr<api::policy::IPolicy>& policy)
+api::HandlerSync sessionGet(const std::weak_ptr<::router::ITesterAPI>& tester, const std::weak_ptr<api::policy::IPolicy>& policy)
 {
     return [wTester = tester, wPolicyManager = policy](const api::wpRequest& wRequest) -> api::wpResponse
     {
@@ -296,7 +296,7 @@ api::Handler sessionGet(const std::weak_ptr<::router::ITesterAPI>& tester, const
     };
 }
 
-api::Handler sessionReload(const std::weak_ptr<::router::ITesterAPI>& tester)
+api::HandlerSync sessionReload(const std::weak_ptr<::router::ITesterAPI>& tester)
 {
     return [wTester = tester](const api::wpRequest& wRequest) -> api::wpResponse
     {
@@ -321,7 +321,7 @@ api::Handler sessionReload(const std::weak_ptr<::router::ITesterAPI>& tester)
     };
 }
 
-api::Handler tableGet(const std::weak_ptr<::router::ITesterAPI>& tester, const std::weak_ptr<api::policy::IPolicy>& policy)
+api::HandlerSync tableGet(const std::weak_ptr<::router::ITesterAPI>& tester, const std::weak_ptr<api::policy::IPolicy>& policy)
 {
     return [wTester = tester, wPolicyManager = policy](const api::wpRequest& wRequest) -> api::wpResponse
     {
@@ -350,9 +350,9 @@ api::Handler tableGet(const std::weak_ptr<::router::ITesterAPI>& tester, const s
     };
 }
 
-api::Handler runPost(const std::weak_ptr<::router::ITesterAPI>& tester, const std::weak_ptr<store::IStoreReader>& store)
+api::HandlerAsync runPost(const std::weak_ptr<::router::ITesterAPI>& tester, const std::weak_ptr<store::IStoreReader>& store)
 {
-    return [wTester = tester, wStore = store](const api::wpRequest& wRequest) -> api::wpResponse
+    return [wTester = tester, wStore = store](const api::wpRequest& wRequest, std::function<void(const api::wpResponse &)> callbackFn)
     {
         using RequestType = eTester::RunPost_Request;
         using ResponseType = eTester::RunPost_Response;
@@ -361,7 +361,8 @@ api::Handler runPost(const std::weak_ptr<::router::ITesterAPI>& tester, const st
         auto res = getRequest<RequestType, ResponseType>(wRequest, wTester);
         if (std::holds_alternative<api::wpResponse>(res))
         {
-            return std::move(std::get<api::wpResponse>(res));
+            callbackFn(std::get<api::wpResponse>(res));
+            return;
         }
         auto& [tester, eRequest] = std::get<TesterAndRequest<RequestType>>(res);
 
@@ -379,7 +380,8 @@ api::Handler runPost(const std::weak_ptr<::router::ITesterAPI>& tester, const st
             auto resFilteredAssets = getNsFilterAssets<RequestType, ResponseType>(eRequest, wStore, tester);
             if (std::holds_alternative<api::wpResponse>(resFilteredAssets))
             {
-                return std::move(std::get<api::wpResponse>(resFilteredAssets));
+                callbackFn(std::get<api::wpResponse>(resFilteredAssets));
+                return;
             }
             auto& filteredAssets = std::get<std::unordered_set<std::string>>(resFilteredAssets);
 
@@ -394,7 +396,8 @@ api::Handler runPost(const std::weak_ptr<::router::ITesterAPI>& tester, const st
                 {
                     if (filteredAssets.find(asset) == filteredAssets.end())
                     {
-                        return genericError<ResponseType>(fmt::format("Asset {} not found in store", asset));
+                        callbackFn(genericError<ResponseType>(fmt::format("Asset {} not found in store", asset)));
+                        return;
                     }
                     requestAssets.insert(asset);
                 }
@@ -425,33 +428,26 @@ api::Handler runPost(const std::weak_ptr<::router::ITesterAPI>& tester, const st
         // Run the test
         auto opt = ::router::test::Options(traceLevel, assetToTrace, eRequest.name());
 
-        std::future<base::RespOrError<router::test::Output>> result;
-        try
+        auto responseCallback = [callbackFn](base::RespOrError<::router::test::Output>&& output)
         {
-            result = tester->ingestTest(eventStr, opt);
-        }
-        catch(const std::exception& e)
-        {
-            return genericError<ResponseType>(e.what());
-        }
+            ResponseType eResponse {};
+            if (base::isError(output))
+            {
+                eResponse.set_status(eEngine::ReturnStatus::ERROR);
+                eResponse.set_error("Error running test: " + base::getError(output).message);
+                callbackFn(::api::adapter::toWazuhResponse<ResponseType>(eResponse));
+                return;
+            }
+            eResponse.mutable_result()->CopyFrom(fromOutput(base::getResponse(output)));
+            eResponse.set_status(eEngine::ReturnStatus::OK);
+            callbackFn(::api::adapter::toWazuhResponse<ResponseType>(eResponse));
+        };
 
-        // Create the response
-        auto r = result.wait_for(std::chrono::milliseconds(tester->getTestTimeout()));
-        if (r != std::future_status::ready)
+        auto error = tester->ingestTest(eventStr, opt, responseCallback);
+        if (error)
         {
-            return genericError<ResponseType>("Error running test: Timeout");
+            callbackFn(genericError<ResponseType>(error.value().message));
         }
-
-        auto output = result.get();
-        if (base::isError(output))
-        {
-            return genericError<ResponseType>("Error running test: " + base::getError(output).message);
-        }
-        ResponseType eResponse {};
-        eResponse.mutable_result()->CopyFrom(fromOutput(base::getResponse(output)));
-        eResponse.set_status(eEngine::ReturnStatus::OK);
-        return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
-
     };
 }
 
@@ -460,11 +456,11 @@ void registerHandlers(const std::weak_ptr<::router::ITesterAPI>& tester,
                       const std::weak_ptr<api::policy::IPolicy>& policy,
                       std::shared_ptr<api::Api> api)
 {
-    if (!(api->registerHandler("tester.session/post", sessionPost(tester))
-          && api->registerHandler("tester.session/delete", sessionDelete(tester))
-          && api->registerHandler("tester.session/get", sessionGet(tester, policy))
-          && api->registerHandler("tester.session/reload", sessionReload(tester))
-          && api->registerHandler("tester.table/get", tableGet(tester, policy))
+    if (!(api->registerHandler("tester.session/post", Api::convertToHandlerAsync(sessionPost(tester)))
+          && api->registerHandler("tester.session/delete", Api::convertToHandlerAsync(sessionDelete(tester)))
+          && api->registerHandler("tester.session/get", Api::convertToHandlerAsync(sessionGet(tester, policy)))
+          && api->registerHandler("tester.session/reload", Api::convertToHandlerAsync(sessionReload(tester)))
+          && api->registerHandler("tester.table/get", Api::convertToHandlerAsync(tableGet(tester, policy)))
           // && api->registerHandler("tester.table/delete", tableDelete(tester))
           && api->registerHandler("tester.run/post", runPost(tester, store))))
     {
