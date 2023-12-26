@@ -5,7 +5,6 @@ import sys
 import time
 
 
-
 def main():
     """This file regenerate the agent key after a manipulation of it
     Print the legacy key of the agent, this way the agent key polling module can set the correct key again.

@@ -102,7 +102,7 @@ def test_ossec_auth_messages(test_configuration, test_metadata, set_wazuh_config
         - connect_to_sockets:
             type: fixture
             brief: Bind to the configured sockets at module scope.
-        - wait_for_authd_startup_module:
+        - wait_for_authd_startup:
             type: fixture
             brief: Waits until Authd is accepting connections.
 

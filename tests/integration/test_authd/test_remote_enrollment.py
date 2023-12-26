@@ -112,6 +112,7 @@ def wait_for_tcp_port(port, host='localhost', timeout=10):
 
     raise TimeoutError(f'Waited too long for the port {port} on host {host} to start accepting messages')
 
+
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_remote_enrollment(test_configuration, test_metadata, set_wazuh_configuration,
                            truncate_monitored_files, daemons_handler):

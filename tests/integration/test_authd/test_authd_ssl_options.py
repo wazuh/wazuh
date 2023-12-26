@@ -76,7 +76,7 @@ daemons_handler_configuration = {'all_daemons': True}
 
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_ossec_auth_configurations(test_configuration, test_metadata, set_wazuh_configuration,                                   
+def test_ossec_auth_configurations(test_configuration, test_metadata, set_wazuh_configuration,
                                    truncate_monitored_files, daemons_handler,
                                    configure_sockets_environment, wait_for_authd_startup):
     '''

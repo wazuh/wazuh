@@ -15,5 +15,5 @@ def wait_for_office365_start():
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     wazuh_log_monitor.start(callback=callbacks.generate_callback(patterns.MODULESD_STARTED, {
                               'integration': 'Office365'
-                          }))     
+                          }))
     assert (wazuh_log_monitor.callback_result == None), f'Error invalid configuration event not detected'

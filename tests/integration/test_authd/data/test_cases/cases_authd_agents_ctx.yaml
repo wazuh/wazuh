@@ -2,10 +2,14 @@
   description:
   configuration_parameters:
   metadata:
+    groups:
+      - 'TestGroup'
     server_type: "main"
 
 - name: get_configuration0-local
   description:
   configuration_parameters:
   metadata:
+    groups:
+      - 'TestGroup'
     server_type: "local"

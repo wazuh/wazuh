@@ -368,7 +368,7 @@ def configure_sockets_environment_module(request: pytest.FixtureRequest) -> None
     yield from configure_sockets_environment_implementation(request)
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture()
 def configure_sockets_environment(request: pytest.FixtureRequest) -> None:
     """Wrapper of `configure_sockets_environment_implementation` which contains the general implementation.
 

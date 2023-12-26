@@ -81,7 +81,7 @@ daemons_handler_configuration = {'all_daemons': True}
 
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_ossec_auth_messages(test_configuration, test_metadata, set_wazuh_configuration, daemons_handler_module,                          
+def test_ossec_auth_messages(test_configuration, test_metadata, set_wazuh_configuration, daemons_handler_module,
                              truncate_monitored_files, configure_sockets_environment, daemons_handler,
                              wait_for_authd_startup, connect_to_sockets, set_up_groups):
     '''
@@ -114,7 +114,7 @@ def test_ossec_auth_messages(test_configuration, test_metadata, set_wazuh_config
         - daemons_handler:
             type: fixture
             brief: Restarts wazuh or a specific daemon passed.
-        - wait_for_authd_startup_module:
+        - wait_for_authd_startup:
             type: fixture
             brief: Waits until Authd is accepting connections.
         - connect_to_sockets_module:

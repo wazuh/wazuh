@@ -124,7 +124,6 @@ def check_options(test_metadata):
             assert wazuh_log_monitor.callback_result, f'Error event not detected'
 
 
-
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration_t1, test_metadata_t1), ids=test_cases_ids_t1)
 def test_authd_force_options(test_configuration, test_metadata, set_wazuh_configuration,
@@ -182,7 +181,6 @@ def test_authd_force_options(test_configuration, test_metadata, set_wazuh_config
     '''
 
     check_options(test_metadata)
-
 
 
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration_t2, test_metadata_t2), ids=test_cases_ids_t2)
@@ -249,7 +247,6 @@ def test_authd_force_insert(test_configuration, test_metadata, set_wazuh_configu
         assert wazuh_log_monitor.callback_result, f'Error event not detected'
 
     check_options(test_metadata)
-
 
 
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration_t3, test_metadata_t3), ids=test_cases_ids_t3)

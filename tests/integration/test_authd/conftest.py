@@ -1,3 +1,8 @@
+"""
+Copyright (C) 2015-2023, Wazuh Inc.
+Created by Wazuh, Inc. <info@wazuh.com>.
+This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+"""
 import shutil
 import pytest
 import time
@@ -5,8 +10,7 @@ import os
 
 from wazuh_testing import logger
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, WAZUH_API_LOG_FILE_PATH, WAZUH_API_JSON_LOG_FILE_PATH
-from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH, DEFAULT_AUTHD_PASS_PATH, DEFAULT_AUTHD_PASS_PATH
-from wazuh_testing.utils.db_queries.global_db import clean_agents_from_db, create_or_update_agent
+from wazuh_testing.constants.paths.configurations import DEFAULT_AUTHD_PASS_PATH, DEFAULT_AUTHD_PASS_PATH
 from wazuh_testing.utils import file
 from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.agent_groups import create_group, delete_group
@@ -14,6 +18,7 @@ from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.modules.authd import PREFIX
 from wazuh_testing.modules.authd.utils import clean_diff, clean_rids, clean_agents_timestamp
 from wazuh_testing.constants.daemons import AUTHD_DAEMON
+from wazuh_testing.utils import mocking
 from wazuh_testing.utils.services import control_service
 from wazuh_testing.constants.api import WAZUH_API_PORT
 from wazuh_testing.constants.ports import DEFAULT_SSL_REMOTE_ENROLLMENT_PORT
@@ -23,21 +28,12 @@ from wazuh_testing.tools.certificate_controller import CertificateController
 
 AUTHD_STARTUP_TIMEOUT = 30
 
-@pytest.fixture(scope='function')
-def stop_authd_function():
+@pytest.fixture()
+def stop_authd():
     """
     Stop Authd.
     """
     control_service("stop", daemon=AUTHD_DAEMON)
-
-
-@pytest.fixture(scope='module')
-def wait_for_authd_startup_module():
-    """Wait until authd has begun"""
-    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-    log_monitor.start(timeout=AUTHD_STARTUP_TIMEOUT, encoding="utf-8",
-                      callback=generate_callback(rf'{PREFIX}Accepting connections on port 1515'))
-    assert log_monitor.callback_result
 
 
 @pytest.fixture()
@@ -76,44 +72,37 @@ def wait_for_api_startup_module():
 
 
 @pytest.fixture()
-def insert_pre_existent_agents(test_metadata, stop_authd_function):
+def insert_pre_existent_agents(test_metadata, stop_authd):
     agents = test_metadata['pre_existent_agents']
     time_now = int(time.time())
-    try:
-        keys_file = open(WAZUH_CLIENT_KEYS_PATH, 'w')
-    except IOError as exception:
-        raise exception
-
-    clean_agents_from_db()
 
     for agent in agents:
-        if(agent):
-            id = agent['id'] if 'id' in agent else '001'
-            name = agent['name'] if 'name' in agent else f"TestAgent{id}"
-            ip = agent['ip'] if 'ip' in agent else 'any'
-            key = agent['key'] if 'key' in agent else 'TopSecret'
-            connection_status = agent['connection_status'] if 'connection_status' in agent else 'never_connected'
-            if 'disconnection_time' in agent and 'delta' in agent['disconnection_time']:
-                disconnection_time = time_now + agent['disconnection_time']['delta']
-            elif 'disconnection_time' in agent and 'value' in agent['disconnection_time']:
-                disconnection_time = agent['disconnection_time']['value']
-            else:
-                disconnection_time = time_now
-            if 'registration_time' in agent and 'delta' in agent['registration_time']:
-                registration_time = time_now + agent['registration_time']['delta']
-            elif 'registration_time' in agent and 'value' in agent['registration_time']:
-                registration_time = agent['registration_time']['value']
-            else:
-                registration_time = time_now
+        id = agent['id'] if 'id' in agent else '001'
+        name = agent['name'] if 'name' in agent else f"TestAgent{id}"
+        ip = agent['ip'] if 'ip' in agent else 'any'
+        key = agent['key'] if 'key' in agent else 'TopSecret'
+        connection_status = agent['connection_status'] if 'connection_status' in agent else 'never_connected'
+        if 'disconnection_time' in agent and 'delta' in agent['disconnection_time']:
+            disconnection_time = time_now + agent['disconnection_time']['delta']
+        elif 'disconnection_time' in agent and 'value' in agent['disconnection_time']:
+            disconnection_time = agent['disconnection_time']['value']
+        else:
+            disconnection_time = time_now
+        if 'registration_time' in agent and 'delta' in agent['registration_time']:
+            registration_time = time_now + agent['registration_time']['delta']
+        elif 'registration_time' in agent and 'value' in agent['registration_time']:
+            registration_time = agent['registration_time']['value']
+        else:
+            registration_time = time_now
 
-            # Write agent in client.keys
-            keys_file.write(f"{id} {name} {ip} {key}\n")
+        mocking.create_mocked_agent(agent_id=id, name=name, ip=ip, date_add=registration_time,
+                                    connection_status=connection_status, disconnection_time=disconnection_time,
+                                    client_key_secret=key)
 
-            # Write agent in global.db
-            create_or_update_agent(agent_id=id, name=name, ip=ip, date_add=registration_time, 
-                                   connection_status=connection_status, disconnection_time=disconnection_time)
+    yield
 
-    keys_file.close()
+    for agent in agents:
+        mocking.delete_mocked_agent(agent['id'])
 
 
 @pytest.fixture()
@@ -136,7 +125,7 @@ def copy_tmp_script(request):
     shutil.copy(os.path.join(script_path, script_filename), os.path.join("/tmp", script_filename))
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture()
 def configure_receiver_sockets(request, test_metadata):
     """
     Get configurations from the module
@@ -145,7 +134,7 @@ def configure_receiver_sockets(request, test_metadata):
         receiver_sockets_params = [(("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET6', 'SSL_TLSv1_2')]
     else:
         receiver_sockets_params = [(("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET', 'SSL_TLSv1_2')]
-    
+
     setattr(request.module, 'receiver_sockets_params', receiver_sockets_params)
 
 
@@ -161,7 +150,7 @@ def set_authd_pass(test_metadata):
     file.remove_file(DEFAULT_AUTHD_PASS_PATH)
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture()
 def reset_password(test_metadata):
     """
     Write the password file.
@@ -228,7 +217,7 @@ def set_up_groups(test_metadata, request):
 
 
 @pytest.fixture()
-def clean_agents_ctx(stop_authd_function):
+def clean_agents_ctx(stop_authd):
     clean_rids()
     clean_agents_timestamp()
     clean_diff()
