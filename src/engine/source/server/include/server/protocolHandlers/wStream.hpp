@@ -30,7 +30,7 @@ private:
     int m_pending {0};                                                  ///< Number of bytes pending to be received
     constexpr static int m_headerSize {sizeof(int)};                    ///< Header size in bytes
     int maxPayloadSize;                                                 // 10 MB by default
-    std::function<void(const std::string&, std::function<void(const std::string&)>)> m_onMessageCallback; ///< Handler called when a message is received
+    std::function<void(const std::string&, std::function<void(const base::utils::wazuhProtocol::WazuhResponse&)>)> m_onMessageCallback; ///< Handler called when a message is received
 
     static const std::shared_ptr<std::string> m_busyResponse;  ///< Response when the server is busy
     static const std::shared_ptr<std::string> m_errorResponse; ///< Response when an unexpected error occurs
@@ -42,7 +42,7 @@ public:
      * @param onMessageCallback Callback to be called when a message is received
      * @param maxPayloadSize Maximum payload size in bytes (default 10 MB)
      */
-    WStream(std::function<void(const std::string&, std::function<void(const std::string&)>)> onMessageCallback, int maxPayloadSize = 1024 * 1024 * 10)
+    WStream(std::function<void(const std::string&, std::function<void(const base::utils::wazuhProtocol::WazuhResponse&)>)> onMessageCallback, int maxPayloadSize = 1024 * 1024 * 10)
         : m_header {}
         , m_payload {}
         , m_stage {Stage::HEADER}
@@ -91,7 +91,7 @@ public:
     /**
      * @copydoc ProtocolHandler::onMessage
      */
-    void onMessage(const std::string& message, std::function<void(const std::string&)> callbackFn) override { return m_onMessageCallback(message, callbackFn); }
+    void onMessage(const std::string& message, std::function<void(const base::utils::wazuhProtocol::WazuhResponse&)> callbackFn) override { return m_onMessageCallback(message, callbackFn); }
 
     /**
      * @copydoc ProtocolHandler::streamToSend
@@ -118,7 +118,7 @@ class WStreamFactory : public ProtocolHandlerFactory
 {
 
 private:
-    std::function<void(const std::string&, std::function<void(const std::string&)>)> m_onMessageCallback; ///< Handler called when a message is received
+    std::function<void(const std::string&, std::function<void(const base::utils::wazuhProtocol::WazuhResponse&)>)> m_onMessageCallback; ///< Handler called when a message is received
     int maxPayloadSize;                                                 // 10 MB by default
 
 public:
@@ -128,7 +128,7 @@ public:
      * @param m_onMessageCallback Callback to be called when a message is received
      * @param maxPayloadSize Maximum payload size in bytes (default 10 MB)
      */
-    WStreamFactory(std::function<void(const std::string&, std::function<void(const std::string&)>)> onMessageCallback,
+    WStreamFactory(std::function<void(const std::string&, std::function<void(const base::utils::wazuhProtocol::WazuhResponse&)>)> onMessageCallback,
                    int maxPayloadSize = 1024 * 1024 * 10)
         : m_onMessageCallback {onMessageCallback}
         , maxPayloadSize {maxPayloadSize}

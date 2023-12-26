@@ -22,7 +22,7 @@ using namespace api::policy::handlers;
  *
  * The handlers is created with a function that return the handler to test.
 */
-using GetHandlerToTest = std::function<api::Handler(const std::shared_ptr<api::policy::IPolicy>&)>;
+using GetHandlerToTest = std::function<api::HandlerSync(const std::shared_ptr<api::policy::IPolicy>&)>;
 
 /**
  * @brief Represent the type signature of the expected function

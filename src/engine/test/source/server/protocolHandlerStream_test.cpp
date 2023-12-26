@@ -7,10 +7,10 @@ using namespace engineserver::ph;
 class WStreamTest : public ::testing::Test
 {
 public:
-    void mockMessageHandler(const std::string& message, std::function<void(const std::string&)> callback)
+    void mockMessageHandler(const std::string& message, std::function<void(const base::utils::wazuhProtocol::WazuhResponse&)> callback)
     {
         auto response =  "RESPONSE: " + message;
-        callback(response);
+        callback(base::utils::wazuhProtocol::WazuhResponse {response});
     }
 
     WStream wstream{std::bind(&WStreamTest::mockMessageHandler, this, std::placeholders::_1, std::placeholders::_2)};
@@ -71,9 +71,9 @@ TEST_F(WStreamTest, onDataProcessingPartialData)
 TEST_F(WStreamTest, onMessageProcessing)
 {
     std::string response;
-    auto callbackFn = [&response](const std::string& res)
+    auto callbackFn = [&response](const base::utils::wazuhProtocol::WazuhResponse& res)
     {
-        response = res;
+        response = res.toString();
     };
     wstream.onMessage("TEST", callbackFn);
     EXPECT_EQ(response, "RESPONSE: TEST");
