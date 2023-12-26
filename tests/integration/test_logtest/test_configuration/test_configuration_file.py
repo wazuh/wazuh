@@ -50,10 +50,11 @@ from pathlib import Path
 import pytest
 
 from wazuh_testing.global_parameters import GlobalParameters
-from logtest import (callback_logtest_started, callback_logtest_disabled, callback_configuration_error)
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils import configuration
+from wazuh_testing.utils.callbacks import generate_callback
+from wazuh_testing.modules.analysisd import patterns
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
@@ -116,11 +117,11 @@ def test_configuration_file(test_configuration, test_metadata, set_wazuh_configu
     '''
     callback = None
     if 'valid_conf' == test_metadata['tags']:
-        callback = callback_logtest_started
+        callback = patterns.LOGTEST_STARTED
     elif 'disabled_conf' == test_metadata['tags']:
-        callback = callback_logtest_disabled
+        callback = patterns.LOGTEST_DISABLED
     else:
-        callback = callback_configuration_error
+        callback = patterns.LOGTEST_CONFIG_ERROR
 
-    wazuh_log_monitor.start(callback=callback, timeout=global_parameters.default_timeout)
+    wazuh_log_monitor.start(callback=generate_callback(callback), timeout=global_parameters.default_timeout)
     assert wazuh_log_monitor.callback_result, 'Event not found'
