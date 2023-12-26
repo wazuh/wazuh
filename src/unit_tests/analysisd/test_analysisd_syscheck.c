@@ -408,6 +408,7 @@ static int setup_registry_key_data(void **state) {
         "\"data\":{"
             "\"path\":\"HKEY_LOCAL_MACHINE\\\\software\\\\test\","
             "\"index\":\"234567890ABCDEF1234567890ABCDEF123456111\","
+            "\"version\":3,"
             "\"arch\":\"[x64]\","
             "\"mode\":\"scheduled\","
             "\"type\":\"added\","
@@ -464,6 +465,7 @@ static int setup_registry_value_data(void **state) {
         "\"data\":{"
             "\"path\":\"HKEY_LOCAL_MACHINE\\\\software\\\\test\","
             "\"index\":\"234567890ABCDEF1234567890ABCDEF123456111\","
+            "\"version\":3,"
             "\"arch\":\"[x64]\","
             "\"value_name\":\"some:value\","
             "\"value_type\":\"REG_SZ\","
@@ -3184,7 +3186,6 @@ static void test_fim_process_alert_remove_registry_value(void **state) {
 static void test_fim_process_alert_no_hash(void **state) {
     fim_data_t *input = *state;
     _sdb sdb = {.socket = 10};
-    const char *result = "This is a mock query result, it wont go anywhere";
     int ret;
 
     cJSON *data = cJSON_GetObjectItem(input->event, "data");
@@ -3198,6 +3199,76 @@ static void test_fim_process_alert_no_hash(void **state) {
     ret = fim_process_alert(&sdb, input->lf, data);
 
     assert_int_equal(ret, -1);
+}
+
+static void test_fim_process_alert_legacy_agents(void **state) {
+    fim_data_t *input = *state;
+    int ret;
+    syscheck_event_t event_type = FIM_MODIFIED;
+
+    cJSON *data = cJSON_GetObjectItem(input->event, "data");
+    cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
+    cJSON *old_attributes = cJSON_GetObjectItem(data, "old_attributes");
+    cJSON *changed_attributes = cJSON_GetObjectItem(data, "changed_attributes");
+    cJSON *array_it;
+
+    // Deleting index and version field
+    cJSON_DeleteItemFromObject(data, "index");
+    cJSON_DeleteItemFromObject(data, "version");
+
+    os_strdup(SYSCHECK_EVENT_STRINGS[FIM_MODIFIED], input->lf->fields[FIM_EVENT_TYPE].value);
+
+    input->lf->fields[FIM_FILE].value = strdup("HKEY_LOCAL_MACHINE\\software\\test");
+    if (input->lf->fields[FIM_FILE].value == NULL)
+        fail();
+
+    input->lf->fields[FIM_REGISTRY_ARCH].value = strdup("[x64]");
+    if (input->lf->fields[FIM_REGISTRY_ARCH].value == NULL)
+        fail();
+
+    input->lf->fields[FIM_MODE].value = strdup("scheduled");
+    if (input->lf->fields[FIM_MODE].value == NULL)
+        fail();
+
+    if(input->lf->fields[FIM_ENTRY_TYPE].value = strdup("registry_key"), input->lf->fields[FIM_ENTRY_TYPE].value == NULL)
+        fail();
+
+    cJSON_ArrayForEach(array_it, changed_attributes) {
+        wm_strcat(&input->lf->fields[FIM_CHFIELDS].value, cJSON_GetStringValue(array_it), ',');
+    }
+
+    ret = fim_generate_alert(input->lf, event_type, attributes, old_attributes, NULL);
+
+    assert_int_equal(ret, 0);
+
+    // Assert fim_fetch_attributes
+    /* assert new attributes */
+    assert_string_equal(input->lf->fields[FIM_MTIME].value, "6789");
+    assert_string_equal(input->lf->fields[FIM_PERM].value, "perm");
+    assert_string_equal(input->lf->fields[FIM_UNAME].value, "user_name");
+    assert_string_equal(input->lf->fields[FIM_GNAME].value, "group_name");
+    assert_string_equal(input->lf->fields[FIM_UID].value, "uid");
+    assert_string_equal(input->lf->fields[FIM_GID].value, "gid");
+
+    /* assert old attributes */
+    assert_string_equal(input->lf->fields[FIM_MTIME_BEFORE].value, "3456");
+    assert_string_equal(input->lf->fields[FIM_PERM_BEFORE].value, "old_perm");
+    assert_string_equal(input->lf->fields[FIM_UNAME_BEFORE].value, "old_user_name");
+    assert_string_equal(input->lf->fields[FIM_GNAME_BEFORE].value, "old_group_name");
+    assert_string_equal(input->lf->fields[FIM_UID_BEFORE].value, "old_uid");
+    assert_string_equal(input->lf->fields[FIM_GID_BEFORE].value, "old_gid");
+
+    /* Assert actual output */
+    assert_string_equal(input->lf->full_log,
+        "Registry Key '[x64] HKEY_LOCAL_MACHINE\\software\\test' modified\n"
+        "Mode: scheduled\n"
+        "Changed attributes: permission,uid,user_name,gid,group_name,mtime\n"
+        "Permissions changed from 'old_perm' to 'perm'\n"
+        "Ownership was 'old_uid', now it is 'uid'\n"
+        "User name was 'old_user_name', now it is 'user_name'\n"
+        "Group ownership was 'old_gid', now it is 'gid'\n"
+        "Group name was 'old_group_name', now it is 'group_name'\n"
+        "Old modification time was: '3456', now it is '6789'\n");
 }
 
 static void test_fim_process_alert_null_event(void **state) {
@@ -3898,6 +3969,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_process_alert_remove_registry_key, setup_registry_key_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_process_alert_remove_registry_value, setup_registry_value_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_process_alert_no_hash, setup_registry_key_data, teardown_fim_data),
+        cmocka_unit_test_setup_teardown(test_fim_process_alert_legacy_agents, setup_registry_key_data, teardown_fim_data),
 
 
         /* decode_fim_event */

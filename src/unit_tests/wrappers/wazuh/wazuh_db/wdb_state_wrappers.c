@@ -30,6 +30,10 @@ void __wrap_w_inc_global() {
     function_called();
 }
 
+void __wrap_w_inc_global_open_time(){
+    function_called();
+}
+
 void __wrap_w_inc_global_sql(){
     function_called();
 }

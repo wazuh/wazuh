@@ -5,12 +5,12 @@
 import os
 import shutil
 import sys
+import pytest
+
 from grp import getgrnam
 from json import dumps
 from pwd import getpwnam
 from unittest.mock import MagicMock, patch, call
-
-import pytest
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..'))
 
@@ -338,6 +338,35 @@ def test_agent_get_agents_in_group(socket_mock, send_mock, mock_get_groups, mock
         # If not `group_exists`, expect an error
         with pytest.raises(WazuhResourceNotFound, match='.* 1710 .*'):
             get_agents_in_group(group_list=[group])
+
+
+@pytest.mark.parametrize('group, q, expected_q', [
+    ('default', '(name~wazuh,status~active)', 'group=default;((name~wazuh,status~active))'),
+    ('default', 'name~wazuh,status~active', 'group=default;(name~wazuh,status~active)')
+])
+@patch('wazuh.agent.get_agents')
+@patch('wazuh.agent.get_groups')
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_agent_get_agents_in_group_q_formats(socket_mock, send_mock, mock_get_groups, mock_get_agents, group,
+                                             q, expected_q):
+    """Test the formatting of the `q` parameter in `get_agents_in_group` from agent module.
+
+    Parameters
+    ----------
+    group : str
+        Name of the group to which the agent belongs.
+    q : str
+        Value of the q parameter.
+    expected_q : str
+        Value of the expected q parameter used in the `get_agents` call.
+    """
+    mock_get_groups.return_value = ['default']
+    # Since the decorator is mocked, pass `group_list` using `call_args` from mock
+    get_agents_in_group(group_list=[group], q=q)
+    kwargs = mock_get_agents.call_args.kwargs
+
+    assert kwargs['q'] == expected_q
 
 
 @pytest.mark.parametrize('agent_list, expected_items', [

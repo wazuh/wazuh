@@ -5,6 +5,7 @@ import asyncio
 import json
 import logging
 import sys
+from collections import defaultdict
 from unittest.mock import patch, MagicMock, AsyncMock, call, ANY
 
 import pytest
@@ -659,10 +660,12 @@ async def test_worker_handler_recv_agent_groups_information(get_chunks_in_task_i
 @patch.object(logging.getLogger("wazuh.Integrity check"), "error")
 @patch("wazuh.core.cluster.cluster.get_files_status", return_value={})
 @patch("wazuh.core.cluster.worker.client.common.Handler.send_request")
-@patch('wazuh.core.cluster.worker.cluster.run_in_pool', return_value={'path': 'test'})
+@patch('wazuh.core.cluster.worker.cluster.run_in_pool', return_value=({'path': 'test'}, {}))
 @patch("wazuh.core.cluster.common.SyncFiles.request_permission", return_value=True)
-async def test_worker_handler_sync_integrity(request_permission_mock, run_in_pool_mock, send_request_mock,
-                                             get_files_status, error_mock, sync_mock, json_dumps_mock):
+@patch("wazuh.core.cluster.utils.log_subprocess_execution")
+async def test_worker_handler_sync_integrity(log_subprocess_mock, request_permission_mock, run_in_pool_mock,
+                                             send_request_mock, get_files_status, error_mock, sync_mock,
+                                             json_dumps_mock):
     """Check if files status are correctly obtained and sent to the master."""
 
     async def asyncio_sleep_mock(delay, result=None, *, loop=None):
@@ -877,8 +880,7 @@ async def test_worker_handler_process_files_from_master_ok(update_files_mock, se
     decompress_files_mock.return_value = (ko_files[0], zip_path)
     await worker_handler.process_files_from_master(name="task_id", file_received=EventMock())
 
-    update_files_mock.assert_called_once_with(ko_files[0], zip_path, cluster_items,
-                                              worker_handler.task_loggers['Integrity sync'])
+    update_files_mock.assert_called_once_with(ko_files[0], zip_path, cluster_items)
     send_request_mock.assert_not_called()
     logger_debug_mock.assert_has_calls(
         [call("Worker does not meet integrity checks. Actions required."), call("Updating local files: Start."),
@@ -900,8 +902,7 @@ async def test_worker_handler_process_files_from_master_ok(update_files_mock, se
     decompress_files_mock.return_value = (ko_files[1], zip_path)
     await worker_handler.process_files_from_master(name="task_id", file_received=EventMock())
 
-    update_files_mock.assert_called_once_with(ko_files[1], zip_path, cluster_items,
-                                              worker_handler.task_loggers['Integrity sync'])
+    update_files_mock.assert_called_once_with(ko_files[1], zip_path, cluster_items)
     send_request_mock.assert_not_called()
     logger_debug_mock.assert_has_calls(
         [call("Worker does not meet integrity checks. Actions required."), call("Updating local files: Start."),
@@ -1010,255 +1011,159 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                                                          open_mock):
     """Check if the method is properly receiving and updating files."""
 
-    class LoggerMock:
-        """Auxiliary class."""
-
-        def __init__(self):
-            self._debug2 = []
-            self._debug = []
-            self._error = []
-
-        def debug(self, debug):
-            self._debug.append(debug)
-
-        def debug2(self, debug):
-            self._debug2.append(debug)
-
-        def error(self, error):
-            self._error.append(error)
-
     all_mocks = [wazuh_gid_mock, wazuh_uid_mock, path_join_mock, mkdir_with_mode_mock, safe_move_mock, open_mock,
                  path_exists_mock]
 
-    with patch.object(LoggerMock, "debug") as logger_debug_mock:
-        with patch.object(LoggerMock, "debug2") as logger_debug2_mock:
-            with patch.object(LoggerMock, "error") as logger_error_mock:
-                # As the method has two large for, we will make the condition for the first one equal to something empty
-                worker_handler.cluster_items["files"]["cluster_item_key"]["remove_subdirs_if_empty"] = {}
+    # As the method has two large for, we will make the condition for the first one equal to something empty
+    worker_handler.cluster_items["files"]["cluster_item_key"]["remove_subdirs_if_empty"] = {}
 
-                # Test the first for: for -> if -> for -> try
-                # In the nested method, with the first value sent to the 'update_master_files_in_worker' (shared), we
-                # are testing the if, meanwhile with the second (missing), we are testing the else.
-                with patch("wazuh.core.cluster.cluster.unmerge_info", return_value=[("name", "content", "_")]):
-                    with patch("os.remove") as os_remove_mock:
-                        worker_handler.update_master_files_in_worker(
-                            ko_files={"shared": {
-                                "filename1": {"merged": "value", "cluster_item_key": "cluster_item_key"}},
-                                "missing": {
-                                    "filename1": {"merged": None, "cluster_item_key": "cluster_item_key"}},
-                                "extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, zip_path="/zip/path",
-                            cluster_items=cluster_items, logger=LoggerMock())
+    # Test the first for: for -> if -> for -> try
+    # In the nested method, with the first value sent to the 'update_master_files_in_worker' (shared), we
+    # are testing the if, meanwhile with the second (missing), we are testing the else.
+    with patch("wazuh.core.cluster.cluster.unmerge_info", return_value=[("name", "content", "_")]):
+        with patch("os.remove") as os_remove_mock:
+            result_logs = worker_handler.update_master_files_in_worker(
+                ko_files={"shared": {
+                    "filename1": {"merged": "value", "cluster_item_key": "cluster_item_key"}},
+                    "missing": {
+                        "filename1": {"merged": None, "cluster_item_key": "cluster_item_key"}},
+                    "extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, zip_path="/zip/path",
+                cluster_items=cluster_items)
 
-                        os_remove_mock.assert_any_call("queue/testing/")
-                        logger_error_mock.assert_not_called()
-                        logger_debug_mock.assert_has_calls(
-                            [call("Received 1 shared files to update from master."),
-                             call("Received 1 missing files to update from master.")])
-                        logger_debug2_mock.assert_has_calls(
-                            [call("Processing file filename1"),
-                             call("Processing file filename1"),
-                             call("Remove file: 'filename3'")])
-                        path_join_mock.assert_has_calls([call(core_common.WAZUH_PATH, 'filename1'),
-                                                         call(core_common.WAZUH_PATH, 'name'),
-                                                         call(core_common.WAZUH_PATH, 'filename1'),
-                                                         call('/zip/path', 'filename1'),
-                                                         call(core_common.WAZUH_PATH, 'filename3')])
-                        wazuh_uid_mock.assert_called_with()
-                        wazuh_gid_mock.assert_called_with()
-                        mkdir_with_mode_mock.assert_any_call("queue/testing")
-                        assert safe_move_mock.call_count == 2
-                        open_mock.assert_called_once()
-                        path_exists_mock.assert_called_once()
+            os_remove_mock.assert_any_call("queue/testing/")
+            assert result_logs['error'] == defaultdict(list)
+            assert result_logs['debug2'] == {"filename1": ["Processing file filename1", "Processing file filename1"],
+                                             "filename3": ["Remove file: 'filename3'"]}
+            path_join_mock.assert_has_calls([call(core_common.WAZUH_PATH, 'filename1'),
+                                             call(core_common.WAZUH_PATH, 'name'),
+                                             call(core_common.WAZUH_PATH, 'filename1'),
+                                             call('/zip/path', 'filename1'),
+                                             call(core_common.WAZUH_PATH, 'filename3')])
+            wazuh_uid_mock.assert_called_with()
+            wazuh_gid_mock.assert_called_with()
+            mkdir_with_mode_mock.assert_any_call("queue/testing")
+            assert safe_move_mock.call_count == 2
+            open_mock.assert_called_once()
+            path_exists_mock.assert_called_once()
 
-                        # Reset all mocks
-                        for mock in all_mocks:
-                            mock.reset_mock()
+            # Reset all mocks
+            for mock in all_mocks:
+                mock.reset_mock()
 
-                # Test the first for: for -> if -> for -> except AND for -> elif -> for -> try -> except -> if
-                worker_handler.update_master_files_in_worker(
-                    {"shared": {"filename1": "data1"}, "missing": {"filename2": "data2"},
-                     "extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path",
-                    cluster_items=cluster_items, logger=LoggerMock())
+    # Test the first for: for -> if -> for -> except AND for -> elif -> for -> try -> except -> if
+    result_logs = worker_handler.update_master_files_in_worker(
+        {"shared": {"filename1": "data1"}, "missing": {"filename2": "data2"},
+         "extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path",
+        cluster_items=cluster_items)
 
-                logger_error_mock.assert_has_calls(
-                    [call("Error processing shared file 'filename1': string indices must be integers"),
-                     call("Error processing missing file 'filename2': string indices must be integers"),
-                     call("Found errors: 1 overwriting, 1 creating and 0 removing", exc_info=False)])
-                logger_debug_mock.assert_has_calls(
-                    [call("Received 1 shared files to update from master."),
-                     call("Received 1 missing files to update from master."),
-                     call("Received 1 shared files to update from master."),
-                     call("Received 1 missing files to update from master.")])
-                logger_debug2_mock.assert_has_calls(
-                    [call("Processing file filename1"),
-                     call("Processing file filename1"),
-                     call("Remove file: 'filename3'"),
-                     call("Processing file filename1"),
-                     call("Processing file filename2"),
-                     call("Remove file: 'filename3'"),
-                     call("File filename3 doesn't exist.")])
-                path_join_mock.assert_has_calls([call(core_common.WAZUH_PATH, "filename1"),
-                                                 call(core_common.WAZUH_PATH, "filename2"),
-                                                 call(core_common.WAZUH_PATH, "filename3")])
-                wazuh_uid_mock.assert_not_called()
-                wazuh_gid_mock.assert_not_called()
-                mkdir_with_mode_mock.assert_not_called()
-                safe_move_mock.assert_not_called()
-                open_mock.assert_not_called()
-                path_exists_mock.assert_not_called()
+    assert result_logs['error'] == {'shared': ["Error processing shared file 'filename1': "
+                                               "string indices must be integers"],
+                                    'missing': ["Error processing missing file 'filename2': "
+                                                "string indices must be integers"]
+                                    }
 
-                # Reset all mocks
-                for mock in all_mocks:
-                    mock.reset_mock()
+    assert result_logs['debug2'] == {'filename1': ["Processing file filename1"],
+                                     'filename3': ["Remove file: 'filename3'",
+                                                   "File filename3 doesn't exist."],
+                                     'filename2': ["Processing file filename2"]}
+    assert result_logs['generic_errors'] == ["Found errors: 1 overwriting, 1 creating and 0 removing"]
 
-                # Test the first for: for -> if -> for -> except AND for -> elif -> for -> try -> except -> else AND
-                # for -> elif -> for -> except
-                path_join_mock.return_value = "queue/testing_mock/"
-                worker_handler.update_master_files_in_worker(
-                    {"shared": {"filename1": "data1"}, "missing": {"filename2": "data2"},
-                     "extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path",
-                    cluster_items=cluster_items, logger=LoggerMock())
+    path_join_mock.assert_has_calls([call(core_common.WAZUH_PATH, "filename1"),
+                                     call(core_common.WAZUH_PATH, "filename2"),
+                                     call(core_common.WAZUH_PATH, "filename3")])
+    wazuh_uid_mock.assert_not_called()
+    wazuh_gid_mock.assert_not_called()
+    mkdir_with_mode_mock.assert_not_called()
+    safe_move_mock.assert_not_called()
+    open_mock.assert_not_called()
+    path_exists_mock.assert_not_called()
 
-                logger_error_mock.assert_has_calls(
-                    [call("Error processing shared file 'filename1': string indices must be integers"),
-                     call("Error processing missing file 'filename2': string indices must be integers"),
-                     call("Found errors: 1 overwriting, 1 creating and 0 removing", exc_info=False),
-                     call("Error processing shared file 'filename1': string indices must be integers"),
-                     call("Error processing missing file 'filename2': string indices must be integers"),
-                     call("Found errors: 1 overwriting, 1 creating and 0 removing", exc_info=False)])
-                logger_debug_mock.assert_has_calls(
-                    [call("Received 1 shared files to update from master."),
-                     call("Received 1 missing files to update from master."),
-                     call("Received 1 shared files to update from master."),
-                     call("Received 1 missing files to update from master."),
-                     call("Received 1 shared files to update from master."),
-                     call("Received 1 missing files to update from master."), ])
-                logger_debug2_mock.assert_has_calls(
-                    [call("Processing file filename1"),
-                     call("Processing file filename1"),
-                     call("Remove file: 'filename3'"),
-                     call("Processing file filename1"),
-                     call("Processing file filename2"),
-                     call("Remove file: 'filename3'"),
-                     call("File filename3 doesn't exist."),
-                     call("Processing file filename1"),
-                     call("Processing file filename2"),
-                     call("Remove file: 'filename3'"),
-                     call("File filename3 doesn't exist.")])
-                path_join_mock.assert_has_calls([call(core_common.WAZUH_PATH, "filename1"),
-                                                 call(core_common.WAZUH_PATH, "filename2"),
-                                                 call(core_common.WAZUH_PATH, "filename3")])
-                wazuh_uid_mock.assert_not_called()
-                wazuh_gid_mock.assert_not_called()
-                mkdir_with_mode_mock.assert_not_called()
-                safe_move_mock.assert_not_called()
-                open_mock.assert_not_called()
-                path_exists_mock.assert_not_called()
+    # Reset all mocks
+    for mock in all_mocks:
+        mock.reset_mock()
 
-                # Reset all mocks
-                for mock in all_mocks:
-                    mock.reset_mock()
+    # Test the first for: for -> if -> for -> except AND for -> elif -> for -> try -> except -> else AND
+    # for -> elif -> for -> except
+    path_join_mock.return_value = "queue/testing_mock/"
+    result_logs = worker_handler.update_master_files_in_worker(
+        {"shared": {"filename1": "data1"}, "missing": {"filename2": "data2"},
+         "extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path",
+        cluster_items=cluster_items)
 
-                # Now, we are going to test the second for
-                worker_handler.cluster_items["files"]["cluster_item_key"]["remove_subdirs_if_empty"] = {
-                    "dir1": "value1"}
-                worker_handler.cluster_items["files"]["excluded_files"] = "dir_files"
+    assert result_logs['error'] == {'shared': ["Error processing shared file 'filename1': "
+                                               "string indices must be integers"],
+                                    'missing': ["Error processing missing file 'filename2': "
+                                                "string indices must be integers"]}
+    assert result_logs['debug2'] == {'filename1': ["Processing file filename1"],
+                                     'filename2': ["Processing file filename2"],
+                                     'filename3': ["Remove file: 'filename3'", "File filename3 doesn't exist."]}
+    assert result_logs['generic_errors'] == ["Found errors: 1 overwriting, 1 creating and 0 removing"]
 
-                # Test the try
-                with patch("os.listdir", return_value="dir_files") as listdir_mock:
-                    with patch("shutil.rmtree") as rmtree_mock:
-                        worker_handler.update_master_files_in_worker(
-                            {"extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path",
-                            cluster_items=cluster_items, logger=LoggerMock())
-                        rmtree_mock.assert_called_once()
-                        listdir_mock.assert_called_once()
+    path_join_mock.assert_has_calls([call(core_common.WAZUH_PATH, "filename1"),
+                                     call(core_common.WAZUH_PATH, "filename2"),
+                                     call(core_common.WAZUH_PATH, "filename3")])
+    wazuh_uid_mock.assert_not_called()
+    wazuh_gid_mock.assert_not_called()
+    mkdir_with_mode_mock.assert_not_called()
+    safe_move_mock.assert_not_called()
+    open_mock.assert_not_called()
+    path_exists_mock.assert_not_called()
 
-                        logger_error_mock.assert_has_calls(
-                            [call("Error processing shared file 'filename1': string indices must be integers"),
-                             call("Error processing missing file 'filename2': string indices must be integers"),
-                             call("Found errors: 1 overwriting, 1 creating and 0 removing", exc_info=False),
-                             call("Error processing shared file 'filename1': string indices must be integers"),
-                             call("Error processing missing file 'filename2': string indices must be integers"),
-                             call("Found errors: 1 overwriting, 1 creating and 0 removing", exc_info=False)])
-                        logger_debug_mock.assert_has_calls(
-                            [call("Received 1 shared files to update from master."),
-                             call("Received 1 missing files to update from master."),
-                             call("Received 1 shared files to update from master."),
-                             call("Received 1 missing files to update from master."),
-                             call("Received 1 shared files to update from master."),
-                             call("Received 1 missing files to update from master."), ])
-                        logger_debug2_mock.assert_has_calls(
-                            [call("Processing file filename1"),
-                             call("Processing file filename1"),
-                             call("Remove file: 'filename3'"),
-                             call("Processing file filename1"),
-                             call("Processing file filename2"),
-                             call("Remove file: 'filename3'"),
-                             call("File filename3 doesn't exist."),
-                             call("Processing file filename1"),
-                             call("Processing file filename2"),
-                             call("Remove file: 'filename3'"),
-                             call("File filename3 doesn't exist."),
-                             call("Remove file: 'filename3'"),
-                             call("File filename3 doesn't exist.")])
-                        path_join_mock.assert_has_calls([call(core_common.WAZUH_PATH, "filename3"),
-                                                         call(core_common.WAZUH_PATH, "")])
-                        wazuh_uid_mock.assert_not_called()
-                        wazuh_gid_mock.assert_not_called()
-                        mkdir_with_mode_mock.assert_not_called()
-                        safe_move_mock.assert_not_called()
-                        open_mock.assert_not_called()
-                        path_exists_mock.assert_not_called()
+    # Reset all mocks
+    for mock in all_mocks:
+        mock.reset_mock()
 
-                        # Reset all mocks
-                        for mock in all_mocks:
-                            mock.reset_mock()
+    # Now, we are going to test the second for
+    worker_handler.cluster_items["files"]["cluster_item_key"]["remove_subdirs_if_empty"] = {
+        "dir1": "value1"}
+    worker_handler.cluster_items["files"]["excluded_files"] = "dir_files"
 
-                # Test the exception
-                worker_handler.update_master_files_in_worker(
-                    {"extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path",
-                    cluster_items=cluster_items, logger=LoggerMock())
+    # Test the try
+    with patch("os.listdir", return_value="dir_files") as listdir_mock:
+        with patch("shutil.rmtree") as rmtree_mock:
+            result_logs = worker_handler.update_master_files_in_worker(
+                {"extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path",
+                cluster_items=cluster_items)
+            rmtree_mock.assert_called_once()
+            listdir_mock.assert_called_once()
 
-                logger_error_mock.assert_has_calls(
-                    [call("Error processing shared file 'filename1': string indices must be integers"),
-                     call("Error processing missing file 'filename2': string indices must be integers"),
-                     call("Found errors: 1 overwriting, 1 creating and 0 removing", exc_info=False),
-                     call("Error processing shared file 'filename1': string indices must be integers"),
-                     call("Error processing missing file 'filename2': string indices must be integers"),
-                     call("Found errors: 1 overwriting, 1 creating and 0 removing", exc_info=False),
-                     call("Found errors: 0 overwriting, 0 creating and 1 removing", exc_info=False)])
-                logger_debug_mock.assert_has_calls(
-                    [call("Received 1 shared files to update from master."),
-                     call("Received 1 missing files to update from master."),
-                     call("Received 1 shared files to update from master."),
-                     call("Received 1 missing files to update from master."),
-                     call("Received 1 shared files to update from master."),
-                     call("Received 1 missing files to update from master."), ])
-                logger_debug2_mock.assert_has_calls(
-                    [call("Processing file filename1"),
-                     call("Processing file filename1"),
-                     call("Remove file: 'filename3'"),
-                     call("Processing file filename1"),
-                     call("Processing file filename2"),
-                     call("Remove file: 'filename3'"),
-                     call("File filename3 doesn't exist."),
-                     call("Processing file filename1"),
-                     call("Processing file filename2"),
-                     call("Remove file: 'filename3'"),
-                     call("File filename3 doesn't exist."),
-                     call("Remove file: 'filename3'"),
-                     call("File filename3 doesn't exist."),
-                     call("Remove file: 'filename3'"),
-                     call("File filename3 doesn't exist."),
-                     call("Error removing directory '': [Errno 2] No such file or directory: 'queue/testing_mock/'")])
-                path_join_mock.assert_has_calls([call(core_common.WAZUH_PATH, "filename3"),
-                                                 call(core_common.WAZUH_PATH, "")])
-                wazuh_uid_mock.assert_not_called()
-                wazuh_gid_mock.assert_not_called()
-                mkdir_with_mode_mock.assert_not_called()
-                safe_move_mock.assert_not_called()
-                open_mock.assert_not_called()
-                path_exists_mock.assert_not_called()
+            assert result_logs['error'] == defaultdict(list)
+            assert result_logs['debug2'] == {'filename3': ["Remove file: 'filename3'",
+                                                           "File filename3 doesn't exist."]}
+            assert result_logs['generic_errors'] == []
+            path_join_mock.assert_has_calls([call(core_common.WAZUH_PATH, "filename3"),
+                                             call(core_common.WAZUH_PATH, "")])
+            wazuh_uid_mock.assert_not_called()
+            wazuh_gid_mock.assert_not_called()
+            mkdir_with_mode_mock.assert_not_called()
+            safe_move_mock.assert_not_called()
+            open_mock.assert_not_called()
+            path_exists_mock.assert_not_called()
+
+            # Reset all mocks
+            for mock in all_mocks:
+                mock.reset_mock()
+
+    # Test the exception
+    result_logs = worker_handler.update_master_files_in_worker(
+        {"extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path",
+        cluster_items=cluster_items)
+
+    assert result_logs['error'] == defaultdict(list)
+    assert result_logs['debug2'] == {'filename3': ["Remove file: 'filename3'",
+                                                   "File filename3 doesn't exist."],
+                                     '': ["Error removing directory '': [Errno 2] No such file or directory: "
+                                          "'queue/testing_mock/'"]}
+    assert result_logs['generic_errors'] == ["Found errors: 0 overwriting, 0 creating and 1 removing"]
+
+    path_join_mock.assert_has_calls([call(core_common.WAZUH_PATH, "filename3"),
+                                     call(core_common.WAZUH_PATH, "")])
+    wazuh_uid_mock.assert_not_called()
+    wazuh_gid_mock.assert_not_called()
+    mkdir_with_mode_mock.assert_not_called()
+    safe_move_mock.assert_not_called()
+    open_mock.assert_not_called()
+    path_exists_mock.assert_not_called()
 
 
 def test_worker_handler_get_logger():
