@@ -460,7 +460,7 @@ std::future<base::RespOrError<test::Output>> Orchestrator::ingestTest(base::Even
     };
     auto tuple = std::make_shared<test::TestingTuple>(std::move(event), opt, std::move(callback));
 
-    if (!m_testQueue->try_push(tuple))
+    if (!m_testQueue->tryPush(tuple))
     {
         return std::async(std::launch::deferred,
                           []() -> base::RespOrError<test::Output> { return base::Error {"Test queue is full"}; });

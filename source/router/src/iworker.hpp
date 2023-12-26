@@ -21,7 +21,16 @@ public:
      */
     virtual void stop() = 0;
 
+    /**
+     * @brief Get the router associated with the worker.
+     * @return A constant reference to the shared pointer of the router.
+     */
     virtual const std::shared_ptr<IRouter>& getRouter() const = 0;
+
+    /**
+     * @brief Get the tester associated with the worker.
+     * @return A constant reference to the shared pointer of the tester.
+     */
     virtual const std::shared_ptr<ITester>& getTester() const = 0;
 };
 

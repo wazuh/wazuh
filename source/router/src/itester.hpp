@@ -50,7 +50,7 @@ public:
     /**
      * @brief Enables the environment if it is builded.
      *
-     * @param name
+     * @param name The name of the environment to be enabled
      * @return base::OptError
      */
     virtual base::OptError enableEntry(const std::string& name) = 0;
@@ -65,6 +65,8 @@ public:
     /**
      * @brief Get an environment by name.
      *
+     * @param name The name of the environment to get
+     * @return base::RespOrError<test::Entry> An entry or error
      */
     virtual base::RespOrError<test::Entry> getEntry(const std::string& name) const = 0;
 
@@ -73,7 +75,7 @@ public:
      *
      * @param event The event to be ingested.
      * @param opt The parameters for the ingest operation.
-     * @return test::Output The result
+     * @return test::Output The result or Error
      */
     virtual base::RespOrError<test::Output> ingestTest(base::Event&& event, const test::Options& opt) = 0;
 
@@ -87,6 +89,7 @@ public:
     /**
      * @brief Update the last time the entry was used.
      * @param name The name of the entry.
+     * @param lastUsed Last time the environment was used.
      * @return false if the entry does not exist.
      */
     virtual bool updateLastUsed(const std::string& name, uint64_t lastUsed = std::numeric_limits<uint64_t>::max()) = 0;
