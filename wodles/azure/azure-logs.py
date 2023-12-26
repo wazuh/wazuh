@@ -391,7 +391,7 @@ def get_log_analytics_events(url: str, body: dict, headers: dict, md5_hash: str)
         If the response for the request is not 200 OK.
     """
     logging.info("Log Analytics: Sending a request to the Log Analytics API.")
-    response = get(url, params=body, headers=headers)
+    response = get(url, params=body, headers=headers, timeout=10)
     if response.status_code == 200:
         try:
             columns = response.json()['tables'][0]['columns']
@@ -563,7 +563,7 @@ def get_graph_events(url: str, headers: dict, md5_hash: str):
     HTTPError
         If the response for the request is not 200 OK.
     """
-    response = get(url=url, headers=headers)
+    response = get(url=url, headers=headers, timeout=10)
 
     if response.status_code == 200:
         response_json = response.json()
@@ -803,7 +803,7 @@ def get_token(client_id: str, secret: str, domain: str, scope: str):
     }
     auth_url = f'{URL_LOGGING}/{domain}/oauth2/v2.0/token'
     try:
-        token_response = post(auth_url, data=body).json()
+        token_response = post(auth_url, data=body, timeout=10).json()
         return token_response['access_token']
     except (ValueError, KeyError):
         if token_response['error'] == 'unauthorized_client':

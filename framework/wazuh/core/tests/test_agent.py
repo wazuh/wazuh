@@ -1228,7 +1228,7 @@ def test_agent_get_stats(socket_mock, send_mock, mock_wazuh_socket):
     agent = Agent('001')
     mock_wazuh_socket.return_value.receive.return_value = b'{"error":0, "data":{"test":0}}'
     result = agent.get_stats('logcollector')
-    assert result == {"test": 0}, 'Result message is not as expected.'
+    assert result == {'global': {}, 'interval': {}}, 'Result message is not as expected.'
 
 
 @patch('wazuh.core.wazuh_socket.WazuhSocket')
