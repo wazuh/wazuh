@@ -49,6 +49,7 @@ private:
         const auto onSuccess {[&context, outputFilepath]([[maybe_unused]] const std::string& data)
                               {
                                   context.data.at("paths").push_back(outputFilepath);
+                                  context.data.at("offset") = context.currentOffset;
                               }};
 
         logDebug2(WM_CONTENTUPDATER, "Downloading snapshot from '%s'", lastSnapshotURL.string().c_str());

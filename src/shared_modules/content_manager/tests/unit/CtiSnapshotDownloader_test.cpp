@@ -81,14 +81,14 @@ TEST_F(CtiSnapshotDownloaderTest, SnapshotDownload)
 
     // Set expected data.
     const auto expectedContentPath {m_spUpdaterContext->spUpdaterBaseContext->downloadsFolder / SNAPSHOT_FILE_NAME};
+    constexpr auto EXPECTED_CURRENT_OFFSET {3};
     nlohmann::json expectedData;
     expectedData["paths"] = nlohmann::json::array();
     expectedData["paths"].push_back(expectedContentPath);
     expectedData["stageStatus"] = OK_STATUS;
     expectedData["type"] = CONTENT_TYPE;
-    expectedData["offset"] = 0;
+    expectedData["offset"] = EXPECTED_CURRENT_OFFSET;
 
-    constexpr auto EXPECTED_CURRENT_OFFSET {3};
     EXPECT_EQ(m_spUpdaterContext->currentOffset, EXPECTED_CURRENT_OFFSET);
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
     EXPECT_TRUE(std::filesystem::exists(expectedContentPath));
@@ -106,15 +106,15 @@ TEST_F(CtiSnapshotDownloaderTest, SnapshotDownloadWithRetry)
     ASSERT_NO_THROW(CtiSnapshotDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
 
     // Set expected data.
+    constexpr auto EXPECTED_CURRENT_OFFSET {3};
     const auto expectedContentPath {m_spUpdaterContext->spUpdaterBaseContext->downloadsFolder / SNAPSHOT_FILE_NAME};
     nlohmann::json expectedData;
     expectedData["paths"] = nlohmann::json::array();
     expectedData["paths"].push_back(expectedContentPath);
     expectedData["stageStatus"] = OK_STATUS;
     expectedData["type"] = CONTENT_TYPE;
-    expectedData["offset"] = 0;
+    expectedData["offset"] = EXPECTED_CURRENT_OFFSET;
 
-    constexpr auto EXPECTED_CURRENT_OFFSET {3};
     EXPECT_EQ(m_spUpdaterContext->currentOffset, EXPECTED_CURRENT_OFFSET);
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
     EXPECT_TRUE(std::filesystem::exists(expectedContentPath));
