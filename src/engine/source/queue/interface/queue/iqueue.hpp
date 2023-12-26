@@ -36,7 +36,7 @@ public:
      * @param element
      * @return true if the element was pushed successfully, false otherwise.
      */
-    virtual bool try_push(const T& element) = 0;
+    virtual bool tryPush(const T& element) = 0;
 
     /**
      * @brief Wait for and pop an element from the queue.

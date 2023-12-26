@@ -318,7 +318,7 @@ TEST_F(OrchestratorTesterTest, IngestTest)
     fakeAssetsString.insert("decoder/fake/0");
     router::test::Options opt(router::test::Options::TraceLevel::ASSET_ONLY, fakeAssetsString, "test");
 
-    EXPECT_CALL(*m_mockQueueTester, try_push(testing::_)).WillOnce(testing::Return(true));
+    EXPECT_CALL(*m_mockQueueTester, tryPush(testing::_)).WillOnce(testing::Return(true));
     EXPECT_CALL(*m_mockQueueRouter, empty()).WillOnce(testing::Return(true));
     EXPECT_CALL(*m_mockQueueRouter, push(testing::_)).Times(1);
 
