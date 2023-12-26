@@ -43,6 +43,16 @@ target_link_libraries(schemval_mocks INTERFACE schemval::ivalidator gmock)
 add_library(schemval::mocks ALIAS schemval_mocks)
 
 ## Component test
+add_executable(schemval_ctest
+    ${COMPONENT_SRC_DIR}/validator_test.cpp
+)
+target_link_libraries(schemval_ctest
+    PRIVATE
+        schemval
+        schemf::mocks
+        gtest_main
+)
+gtest_discover_tests(schemval_ctest)
 
 ## Unit tests TODO: fix
 # add_executable(schemval_utest
