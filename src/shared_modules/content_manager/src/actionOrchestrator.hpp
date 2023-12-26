@@ -79,7 +79,8 @@ public:
     /**
      * @brief Run the content updater orchestration.
      *
-     * @param offset Manually set current offset to process. Default -1
+     * @param offset Offset value from the on-demand request. If equals zero and @param type is CONTENT, the current
+     * offset will be reset to zero. If @param type is OFFSET, this value will be used to perform the offset update.
      * @param type Type of update the orchestrator should perform.
      */
     void run(const int offset = -1, const UpdateType type = UpdateType::CONTENT) const
@@ -95,7 +96,7 @@ public:
                 return runOffsetUpdate(spUpdaterContext, offset);
             }
 
-            return runContentUpdate(spUpdaterContext, offset);
+            return runContentUpdate(spUpdaterContext, offset == 0);
         }
         catch (const std::exception& e)
         {
@@ -148,9 +149,9 @@ private:
      * @brief Triggers a new orchestration that updates the content.
      *
      * @param spUpdaterContext Updater context.
-     * @param offset If zero, resets the current offset.
+     * @param resetOffset If true, the current offset is set to zero.
      */
-    void runContentUpdate(std::shared_ptr<UpdaterContext> spUpdaterContext, int offset) const
+    void runContentUpdate(std::shared_ptr<UpdaterContext> spUpdaterContext, const bool resetOffset) const
     {
         logDebug2(WM_CONTENTUPDATER, "Running '%s' content update", m_spBaseContext->topicName.c_str());
 
@@ -161,7 +162,7 @@ private:
                 m_spBaseContext->spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString());
         }
 
-        if (offset == 0)
+        if (resetOffset)
         {
             spUpdaterContext->currentOffset = 0;
         }
