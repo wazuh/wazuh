@@ -13,7 +13,6 @@ namespace router
 class IRouterAPI
 {
 public:
-
     // Production: Entry
     virtual base::OptError postEntry(const prod::EntryPost& entry) = 0;
     virtual base::OptError deleteEntry(const std::string& name) = 0;
@@ -43,16 +42,24 @@ public:
     // Testing: Table
     virtual std::list<test::Entry> getTestEntries() const = 0;
 
-    // Testing: Ingest
+    // Testing: Ingest Synchronous
     virtual std::future<base::RespOrError<test::Output>> ingestTest(base::Event&& event, const test::Options& opt) = 0;
-    virtual std::future<base::RespOrError<test::Output>> ingestTest(std::string_view event, const test::Options& opt) = 0;
+    virtual std::future<base::RespOrError<test::Output>> ingestTest(std::string_view event,
+                                                                    const test::Options& opt) = 0;
+
+    // Testing: Ingest Asynchronous
+    virtual base::OptError ingestTest(base::Event&& event,
+                            const test::Options& opt,
+                            std::function<void(base::RespOrError<test::Output>&&)> callbackFn) = 0;
+    virtual base::OptError ingestTest(std::string_view event,
+                            const test::Options& opt,
+                            std::function<void(base::RespOrError<test::Output>&&)> callbackFn) = 0;
 
     // Get the assets of the policy of the entry
     virtual base::RespOrError<std::unordered_set<std::string>> getAssets(const std::string& name) const = 0;
 
     // Get the timeout of the test of event ingestion (in milliseconds)
     virtual std::size_t getTestTimeout() const = 0;
-
 };
 } // namespace router
 

@@ -221,7 +221,7 @@ namespace api::policy::handlers
 namespace ePolicy = ::com::wazuh::api::engine::policy;
 namespace eEngine = ::com::wazuh::api::engine;
 
-api::Handler storePost(const std::shared_ptr<policy::IPolicy>& policyManager)
+api::HandlerSync storePost(const std::shared_ptr<policy::IPolicy>& policyManager)
 {
 
     return [wpPolicyAPI = std::weak_ptr(policyManager)](const api::wpRequest& wRequest) -> api::wpResponse
@@ -250,7 +250,7 @@ api::Handler storePost(const std::shared_ptr<policy::IPolicy>& policyManager)
     };
 }
 
-api::Handler storeDelete(const std::shared_ptr<policy::IPolicy>& policyManager)
+api::HandlerSync storeDelete(const std::shared_ptr<policy::IPolicy>& policyManager)
 {
 
     return [wpPolicyAPI = std::weak_ptr(policyManager)](const api::wpRequest& wRequest) -> api::wpResponse
@@ -278,7 +278,7 @@ api::Handler storeDelete(const std::shared_ptr<policy::IPolicy>& policyManager)
     };
 }
 
-api::Handler storeGet(const std::shared_ptr<policy::IPolicy>& policyManager)
+api::HandlerSync storeGet(const std::shared_ptr<policy::IPolicy>& policyManager)
 {
 
     return [wpPolicyAPI = std::weak_ptr(policyManager)](const api::wpRequest& wRequest) -> api::wpResponse
@@ -327,7 +327,7 @@ api::Handler storeGet(const std::shared_ptr<policy::IPolicy>& policyManager)
     };
 }
 
-api::Handler policyAssetPost(const std::shared_ptr<policy::IPolicy>& policyManager)
+api::HandlerSync policyAssetPost(const std::shared_ptr<policy::IPolicy>& policyManager)
 {
 
     return [wpPolicyAPI = std::weak_ptr(policyManager)](const api::wpRequest& wRequest) -> api::wpResponse
@@ -363,7 +363,7 @@ api::Handler policyAssetPost(const std::shared_ptr<policy::IPolicy>& policyManag
     };
 }
 
-api::Handler policyAssetDelete(const std::shared_ptr<policy::IPolicy>& policyManager)
+api::HandlerSync policyAssetDelete(const std::shared_ptr<policy::IPolicy>& policyManager)
 {
 
     return [wpPolicyAPI = std::weak_ptr(policyManager)](const api::wpRequest& wRequest) -> api::wpResponse
@@ -400,7 +400,7 @@ api::Handler policyAssetDelete(const std::shared_ptr<policy::IPolicy>& policyMan
     };
 }
 
-api::Handler policyAssetGet(const std::shared_ptr<policy::IPolicy>& policyManager)
+api::HandlerSync policyAssetGet(const std::shared_ptr<policy::IPolicy>& policyManager)
 {
 
     return [wpPolicyAPI = std::weak_ptr(policyManager)](const api::wpRequest& wRequest) -> api::wpResponse
@@ -443,7 +443,7 @@ api::Handler policyAssetGet(const std::shared_ptr<policy::IPolicy>& policyManage
     };
 }
 
-api::Handler policyDefaultParentGet(const std::shared_ptr<policy::IPolicy>& policyManager)
+api::HandlerSync policyDefaultParentGet(const std::shared_ptr<policy::IPolicy>& policyManager)
 {
 
     return [wpPolicyAPI = std::weak_ptr(policyManager)](const api::wpRequest& wRequest) -> api::wpResponse
@@ -481,7 +481,7 @@ api::Handler policyDefaultParentGet(const std::shared_ptr<policy::IPolicy>& poli
     };
 }
 
-api::Handler policyDefaultParentPost(const std::shared_ptr<policy::IPolicy>& policyManager)
+api::HandlerSync policyDefaultParentPost(const std::shared_ptr<policy::IPolicy>& policyManager)
 {
 
     return [wpPolicyAPI = std::weak_ptr(policyManager)](const api::wpRequest& wRequest) -> api::wpResponse
@@ -526,7 +526,7 @@ api::Handler policyDefaultParentPost(const std::shared_ptr<policy::IPolicy>& pol
     };
 }
 
-api::Handler policiesGet(const std::shared_ptr<policy::IPolicy>& policyManager)
+api::HandlerSync policiesGet(const std::shared_ptr<policy::IPolicy>& policyManager)
 {
 
     return [wpPolicyAPI = std::weak_ptr(policyManager)](const api::wpRequest& wRequest) -> api::wpResponse
@@ -567,7 +567,7 @@ api::Handler policiesGet(const std::shared_ptr<policy::IPolicy>& policyManager)
     };
 }
 
-api::Handler policyDefaultParentDelete(const std::shared_ptr<policy::IPolicy>& policyManager)
+api::HandlerSync policyDefaultParentDelete(const std::shared_ptr<policy::IPolicy>& policyManager)
 {
 
     return [wpPolicyAPI = std::weak_ptr(policyManager)](const api::wpRequest& wRequest) -> api::wpResponse
@@ -604,7 +604,7 @@ api::Handler policyDefaultParentDelete(const std::shared_ptr<policy::IPolicy>& p
     };
 }
 
-api::Handler policyNamespacesGet(const std::shared_ptr<policy::IPolicy>& policyManager)
+api::HandlerSync policyNamespacesGet(const std::shared_ptr<policy::IPolicy>& policyManager)
 {
 
     return [wpPolicyAPI = std::weak_ptr(policyManager)](const api::wpRequest& wRequest) -> api::wpResponse
@@ -641,17 +641,17 @@ api::Handler policyNamespacesGet(const std::shared_ptr<policy::IPolicy>& policyM
 }
 void registerHandlers(const std::shared_ptr<policy::IPolicy>& policy, std::shared_ptr<api::Api> api)
 {
-    auto resOk = api->registerHandler("policy.store/post", storePost(policy))
-                 && api->registerHandler("policy.store/delete", storeDelete(policy))
-                 && api->registerHandler("policy.store/get", storeGet(policy))
-                 && api->registerHandler("policy.asset/post", policyAssetPost(policy))
-                 && api->registerHandler("policy.asset/delete", policyAssetDelete(policy))
-                 && api->registerHandler("policy.asset/get", policyAssetGet(policy))
-                 && api->registerHandler("policy.defaultParent/get", policyDefaultParentGet(policy))
-                 && api->registerHandler("policy.defaultParent/post", policyDefaultParentPost(policy))
-                 && api->registerHandler("policy.defaultParent/delete", policyDefaultParentDelete(policy))
-                 && api->registerHandler("policy.policies/get", policiesGet(policy))
-                 && api->registerHandler("policy.namespaces/get", policyNamespacesGet(policy));
+    auto resOk = api->registerHandler("policy.store/post", Api::convertToHandlerAsync(storePost(policy)))
+                 && api->registerHandler("policy.store/delete", Api::convertToHandlerAsync(storeDelete(policy)))
+                 && api->registerHandler("policy.store/get", Api::convertToHandlerAsync(storeGet(policy)))
+                 && api->registerHandler("policy.asset/post", Api::convertToHandlerAsync(policyAssetPost(policy)))
+                 && api->registerHandler("policy.asset/delete", Api::convertToHandlerAsync(policyAssetDelete(policy)))
+                 && api->registerHandler("policy.asset/get", Api::convertToHandlerAsync(policyAssetGet(policy)))
+                 && api->registerHandler("policy.defaultParent/get", Api::convertToHandlerAsync(policyDefaultParentGet(policy)))
+                 && api->registerHandler("policy.defaultParent/post", Api::convertToHandlerAsync(policyDefaultParentPost(policy)))
+                 && api->registerHandler("policy.defaultParent/delete", Api::convertToHandlerAsync(policyDefaultParentDelete(policy)))
+                 && api->registerHandler("policy.policies/get", Api::convertToHandlerAsync(policiesGet(policy)))
+                 && api->registerHandler("policy.namespaces/get", Api::convertToHandlerAsync(policyNamespacesGet(policy)));
 
     if (!resOk)
     {

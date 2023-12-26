@@ -20,9 +20,9 @@ struct Config
 /** @brief Handler for the resource endpoint get command.
  *
  * @param config Graph configuration.
- * @return api::Handler
+ * @return api::HandlerSync
  */
-api::Handler resourceGet(const Config& config);
+api::HandlerSync resourceGet(const Config& config);
 
 /** @brief Register all handlers for the graph API.
  *

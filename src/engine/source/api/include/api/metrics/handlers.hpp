@@ -11,35 +11,35 @@ namespace api::metrics::handlers
  *
  * @return Dumped data, or error message.
  */
-api::Handler metricsDumpCmd(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI);
+api::HandlerSync metricsDumpCmd(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI);
 
 /**
 * @brief Get a specific instrument.
 *
 * @return Instrument data, or error message.
 */
-api::Handler metricsGetCmd(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI);
+api::HandlerSync metricsGetCmd(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI);
 
 /**
 * @brief Enable or disable a specific instrument.
 *
 * @return Returns "OK" if success, otherwise error message.
 */
-api::Handler metricsEnableCmd(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI);
+api::HandlerSync metricsEnableCmd(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI);
 
 /**
  * @brief List instruments.
  *
  * @return Return the list of instruments.
  */
-api::Handler metricsList(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI);
+api::HandlerSync metricsList(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI);
 
 /**
 * @brief Generate a test instrument.
 *
 * @return Returns "OK".
 */
-api::Handler metricsTestCmd(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI);
+api::HandlerSync metricsTestCmd(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI);
 
 /**
  * @brief Register all available Metrics commands in the API registry.

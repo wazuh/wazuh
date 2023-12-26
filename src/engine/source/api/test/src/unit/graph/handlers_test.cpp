@@ -30,7 +30,7 @@ class GraphGetCommand : public ::testing::TestWithParam<std::tuple<int, std::str
 {
 protected:
     api::graph::handlers::Config graphConfig;
-    api::Handler cmdAPI;
+    api::HandlerSync cmdAPI;
     std::shared_ptr<MockStore> m_spMockStore;
 
     void SetUp() override

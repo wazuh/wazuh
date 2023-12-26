@@ -42,13 +42,30 @@ public:
      * @brief Register a handler for a command
      *
      * @param command Command to register
-     * @param callback Callback to register
+     * @param handler Handler to register
      * @return true if the handler was registered
      * @return false if the handler was not registered (command already registered)
      */
-    bool registerHandler(const std::string& command, const Handler& callback)
+    bool registerHandler(const std::string& command, const HandlerAsync& handler)
     {
-        return m_registry->registerHandler(command, callback);
+        return m_registry->registerHandler(command, handler);
+    }
+
+    /**
+     * @brief Converts a synchronous handler to an asynchronous handler.
+     *
+     * This static method takes a synchronous handler and converts it to an asynchronous handler.
+     *
+     * @param handlerSync Synchronous handler to convert
+     * @return Handler Asynchronous handler
+     */
+    static HandlerAsync convertToHandlerAsync(const HandlerSync& handlerSync)
+    {
+        return [=](const wpRequest& request, std::function<void(const wpResponse&)> callback)
+        {
+            auto response = handlerSync(request);
+            callback(response);
+        };
     }
 
     /**
@@ -61,7 +78,7 @@ public:
      * @param callbackFn A callback function that will be invoked with the generated response.
      *
      */
-    void processRequest(const std::string& message, std::function<void(const std::string&)> callbackFn)
+    void processRequest(const std::string& message, std::function<void(const wpResponse&)> callbackFn)
     {
         wpResponse wresponse {};
         json::Json jrequest {};
@@ -73,7 +90,7 @@ public:
         catch (const std::exception& e)
         {
             wresponse = base::utils::wazuhProtocol::WazuhResponse::invalidJsonRequest();
-            callbackFn(wresponse.toString());
+            callbackFn(wresponse);
             return;
         }
 
@@ -82,20 +99,20 @@ public:
             wpRequest wrequest {jrequest};
             if (wrequest.isValid())
             {
-                wresponse = m_registry->getHandler(wrequest.getCommand().value())(wrequest);
+                m_registry->getHandler(wrequest.getCommand().value())(wrequest, callbackFn);
             }
             else
             {
                 wresponse = base::utils::wazuhProtocol::WazuhResponse::invalidRequest(wrequest.error().value());
+                callbackFn(wresponse);
             }
         }
         catch (const std::exception& e)
         {
             LOG_DEBUG("Exception in Api::processRequest: %s", e.what());
             wresponse = base::utils::wazuhProtocol::WazuhResponse::unknownError();
+            callbackFn(wresponse);
         }
-
-        callbackFn(wresponse.toString());
     }
 
     /**

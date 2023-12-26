@@ -23,7 +23,7 @@ constexpr auto MESSAGE_KEY_EMPTY = "Field /key is empty";
 
 /* Manager Endpoint */
 
-api::Handler managerGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager)
+api::HandlerSync managerGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager)
 {
     return [kvdbManager](const api::wpRequest& wRequest) -> api::wpResponse
     {
@@ -56,7 +56,7 @@ api::Handler managerGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager)
     };
 }
 
-api::Handler managerPost(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager)
+api::HandlerSync managerPost(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager)
 {
     return [kvdbManager](const api::wpRequest& wRequest) -> api::wpResponse
     {
@@ -108,7 +108,7 @@ api::Handler managerPost(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager)
     };
 }
 
-api::Handler managerDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager)
+api::HandlerSync managerDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager)
 {
     return [kvdbManager](const api::wpRequest& wRequest) -> api::wpResponse
     {
@@ -147,7 +147,7 @@ api::Handler managerDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManage
     };
 }
 
-api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, const std::string& kvdbScopeName)
+api::HandlerSync managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, const std::string& kvdbScopeName)
 {
     return [kvdbManager, kvdbScopeName](const api::wpRequest& wRequest) -> api::wpResponse
     {
@@ -227,7 +227,7 @@ api::Handler managerDump(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
 }
 
 /* Specific DB endpoint */
-api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, const std::string& kvdbScopeName)
+api::HandlerSync dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, const std::string& kvdbScopeName)
 {
     return [kvdbManager, kvdbScopeName](const api::wpRequest& wRequest) -> api::wpResponse
     {
@@ -291,7 +291,7 @@ api::Handler dbGet(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, const
     };
 }
 
-api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, const std::string& kvdbScopeName)
+api::HandlerSync dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, const std::string& kvdbScopeName)
 {
     return [kvdbManager, kvdbScopeName](const api::wpRequest& wRequest) -> api::wpResponse
     {
@@ -342,7 +342,7 @@ api::Handler dbDelete(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, co
     };
 }
 
-api::Handler dbPut(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, const std::string& kvdbScopeName)
+api::HandlerSync dbPut(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, const std::string& kvdbScopeName)
 {
     return [kvdbManager, kvdbScopeName](const api::wpRequest& wRequest) -> api::wpResponse
     {
@@ -409,7 +409,7 @@ api::Handler dbPut(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, const
     };
 }
 
-api::Handler dbSearch(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, const std::string& kvdbScopeName)
+api::HandlerSync dbSearch(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager, const std::string& kvdbScopeName)
 {
     return [kvdbManager, kvdbScopeName](const api::wpRequest& wRequest) -> api::wpResponse
     {
@@ -496,15 +496,15 @@ void registerHandlers(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
 {
 
     //        Manager (Works on the KVDB manager, create/delete/list/dump KVDBs)
-    const bool ok = api->registerHandler("kvdb.manager/post", managerPost(kvdbManager))
-                    && api->registerHandler("kvdb.manager/delete", managerDelete(kvdbManager))
-                    && api->registerHandler("kvdb.manager/get", managerGet(kvdbManager))
-                    && api->registerHandler("kvdb.manager/dump", managerDump(kvdbManager, kvdbScopeName)) &&
+    const bool ok = api->registerHandler("kvdb.manager/post", Api::convertToHandlerAsync(managerPost(kvdbManager)))
+                    && api->registerHandler("kvdb.manager/delete", Api::convertToHandlerAsync(managerDelete(kvdbManager)))
+                    && api->registerHandler("kvdb.manager/get", Api::convertToHandlerAsync(managerGet(kvdbManager)))
+                    && api->registerHandler("kvdb.manager/dump", Api::convertToHandlerAsync(managerDump(kvdbManager, kvdbScopeName))) &&
                     // Specific KVDB (Works on a specific KVDB instance, not on the manager, create/delete/modify keys)
-                    api->registerHandler("kvdb.db/put", dbPut(kvdbManager, kvdbScopeName))
-                    && api->registerHandler("kvdb.db/delete", dbDelete(kvdbManager, kvdbScopeName))
-                    && api->registerHandler("kvdb.db/get", dbGet(kvdbManager, kvdbScopeName))
-                    && api->registerHandler("kvdb.db/search", dbSearch(kvdbManager, kvdbScopeName));
+                    api->registerHandler("kvdb.db/put", Api::convertToHandlerAsync(dbPut(kvdbManager, kvdbScopeName)))
+                    && api->registerHandler("kvdb.db/delete", Api::convertToHandlerAsync(dbDelete(kvdbManager, kvdbScopeName)))
+                    && api->registerHandler("kvdb.db/get", Api::convertToHandlerAsync(dbGet(kvdbManager, kvdbScopeName)))
+                    && api->registerHandler("kvdb.db/search", Api::convertToHandlerAsync(dbSearch(kvdbManager, kvdbScopeName)));
 
     if (!ok)
     {
