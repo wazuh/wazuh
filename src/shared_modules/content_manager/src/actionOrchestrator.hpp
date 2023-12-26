@@ -79,8 +79,8 @@ public:
     /**
      * @brief Run the content updater orchestration.
      *
-     * @param offset Offset value from the on-demand request. If equals zero and @param type is CONTENT, the current
-     * offset will be reset to zero. If @param type is OFFSET, this value will be used to perform the offset update.
+     * @param offset Offset value from the on-demand request. If equals zero and \p type is CONTENT, the current
+     * offset will be reset to zero. If \p type is OFFSET, this value will be used to perform the offset update.
      * @param type Type of update the orchestrator should perform.
      */
     void run(const int offset = -1, const UpdateType type = UpdateType::CONTENT) const
