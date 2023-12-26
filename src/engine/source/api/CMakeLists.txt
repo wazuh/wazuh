@@ -40,21 +40,21 @@ target_include_directories(api
 )
 
 target_link_libraries(api
-  base
-  eMessages
-  fmt
-  json
-  kvdb::ikvdb
-  metrics
-  router::irouter
-  store::fileDriver
-  store::istore
-  yml
-  schemf
-  rbac::irbac
-  api::iapi
-  builder2::ibuilder
-  logpar
+    base
+    eMessages
+    fmt
+    json
+    kvdb::ikvdb
+    metrics
+    router::irouter
+    store::fileDriver
+    store::istore
+    yml
+    schemf
+    rbac::irbac
+    api::iapi
+    builder::ibuilder
+    logpar
 )
 
 # Tests
@@ -96,9 +96,9 @@ if(ENGINE_BUILD_TEST)
     store::mocks
     rbac::mocks
     api::mocks
-    builder2::mocks
     kvdb::mocks
     router::mocks
-  )
-  gtest_discover_tests(api_utest)
+    builder::mocks
+)
+gtest_discover_tests(api_utest)
 endif(ENGINE_BUILD_TEST)

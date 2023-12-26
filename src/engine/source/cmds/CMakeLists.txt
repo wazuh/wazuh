@@ -15,7 +15,7 @@ target_link_libraries(cmds
     json
     yml
     defs
-    builder2
+    builder
     #bk::taskf
     bk::rx
     server

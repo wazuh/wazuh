@@ -5,10 +5,10 @@ set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
 set(INC_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
 
 ## Interface
-add_library(builder2_ibuilder INTERFACE)
-target_include_directories(builder2_ibuilder INTERFACE ${IFACE_DIR})
-target_link_libraries(builder2_ibuilder INTERFACE base) # Base for expression
-add_library(builder2::ibuilder ALIAS builder2_ibuilder)
+add_library(builder_ibuilder INTERFACE)
+target_include_directories(builder_ibuilder INTERFACE ${IFACE_DIR})
+target_link_libraries(builder_ibuilder INTERFACE base) # Base for expression
+add_library(builder::ibuilder ALIAS builder_ibuilder)
 
 ## Builders Obj Lib
 # If debug is enabled, Add the RE2_ON_VALGRIND definition for RE2
@@ -34,7 +34,7 @@ SET(BUILDER_PRI_INCS
     ${SRC_DIR}
     ${INC_DIR}/builder
 )
-add_library(builder2 STATIC
+add_library(builder STATIC
     ${SRC_DIR}/builder.cpp
     ${SRC_DIR}/policy/factory.cpp
     ${SRC_DIR}/policy/policy.cpp
@@ -72,11 +72,11 @@ add_library(builder2 STATIC
     ${SRC_DIR}/builders/optransform/sca.cpp
     ${SRC_DIR}/builders/optransform/windows.cpp
 )
-target_include_directories(builder2 PUBLIC ${BUILDER_PUB_INCS} PRIVATE ${BUILDER_PRI_INCS})
+target_include_directories(builder PUBLIC ${BUILDER_PUB_INCS} PRIVATE ${BUILDER_PRI_INCS})
 # TODO make variables so we can use them in the tests and make private the dependencies
-target_link_libraries(builder2
+target_link_libraries(builder
     PUBLIC
-    builder2::ibuilder
+    builder::ibuilder
     store::istore
     base
     defs::idefinitions
@@ -104,35 +104,35 @@ set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
 set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
 
 ## Mocks
-add_library(builder2_mocks INTERFACE)
-target_include_directories(builder2_mocks INTERFACE ${TEST_MOCK_DIR})
-target_link_libraries(builder2_mocks INTERFACE gmock builder2::ibuilder)
-add_library(builder2::mocks ALIAS builder2_mocks)
+add_library(builder_mocks INTERFACE)
+target_include_directories(builder_mocks INTERFACE ${TEST_MOCK_DIR})
+target_link_libraries(builder_mocks INTERFACE gmock builder::ibuilder)
+add_library(builder::mocks ALIAS builder_mocks)
 
 ## Component test
-add_executable(builder2_ctest
+add_executable(builder_ctest
     ${COMPONENT_SRC_DIR}/builder_test.cpp
 )
-target_link_libraries(builder2_ctest PRIVATE builder2 gtest_main)
-gtest_discover_tests(builder2_ctest)
+target_link_libraries(builder_ctest PRIVATE builder gtest_main)
+gtest_discover_tests(builder_ctest)
 
 ## Unit tests
-add_executable(builder2_utest
+add_executable(builder_utest
     ${UNIT_SRC_DIR}/registry_test.cpp
     ${UNIT_SRC_DIR}/policy/factory_test.cpp
     ${UNIT_SRC_DIR}/policy/assetBuilder_test.cpp
     ${UNIT_SRC_DIR}/builders/helperParser_test.cpp
     ${UNIT_SRC_DIR}/exploratory_test.cpp # TODO: delete
 )
-target_include_directories(builder2_utest PUBLIC ${BUILDER_PUB_INCS} PRIVATE ${BUILDER_PRI_INCS} ${TEST_SRC_DIR} ${UNIT_SRC_DIR})
-target_link_libraries(builder2_utest
+target_include_directories(builder_utest PUBLIC ${BUILDER_PUB_INCS} PRIVATE ${BUILDER_PRI_INCS} ${TEST_SRC_DIR} ${UNIT_SRC_DIR})
+target_link_libraries(builder_utest
     PRIVATE
-    builder2
-    builder2::mocks
+    builder
+    builder::mocks
     gtest_main
     schemf::mocks
     store::mocks
 )
-gtest_discover_tests(builder2_utest)
+gtest_discover_tests(builder_utest)
 
 endif(ENGINE_BUILD_TEST)
