@@ -55,11 +55,9 @@ public:
     }
 
     /**
-     * @brief Sets the value of the condition to the specified value.
+     * @brief Sets the value of the condition to the specified value and notifies the waiting threads.
      * @param value The new value of the condition.
      *
-     * Sets the value of the condition to the specified value and notifies
-     * all waiting threads.
      */
     void set(bool value)
     {
