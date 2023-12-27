@@ -13,7 +13,7 @@ metadata:
     - https://httpd.apache.org/docs/2.4/logs.html
 
 check:
-  - wazuh.location: /var/log/apache2/access.log
+  - wazuh.origin: /var/log/apache2/access.log
 #TODO: Once the events arrive tagged, uncomment these lines below and remove the above `event.original`
 # - event.module: apache-http
 # - event.dataset: apache-access
