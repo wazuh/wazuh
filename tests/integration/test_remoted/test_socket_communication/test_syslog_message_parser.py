@@ -14,7 +14,6 @@ from wazuh_testing.utils.configuration import get_test_cases_data, load_configur
 from wazuh_testing.constants.paths.logs import ARCHIVES_LOG_PATH
 from wazuh_testing.modules.remoted.configuration import REMOTED_DEBUG
 from wazuh_testing.modules.remoted import patterns
-from wazuh_testing.scripts.syslog_simulator import SYSLOG_SIMULATOR_START_TIME
 from wazuh_testing.tools import thread_executor
 from wazuh_testing.tools.simulators import run_syslog_simulator
 
@@ -33,6 +32,10 @@ test_configuration = load_configuration_template(config_path, test_configuration
 daemons_handler_configuration = {'all_daemons': True}
 
 local_internal_options = {REMOTED_DEBUG: '2'}
+
+# Test variables.
+SYSLOG_SIMULATOR_START_TIME = 2
+
 
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)

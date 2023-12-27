@@ -15,7 +15,6 @@ from wazuh_testing.modules.remoted.configuration import REMOTED_DEBUG, REMOTED_W
 from wazuh_testing.modules.remoted import patterns
 from wazuh_testing.utils import configuration
 
-
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
 
@@ -31,6 +30,7 @@ test_configuration = load_configuration_template(config_path, test_configuration
 daemons_handler_configuration = {'all_daemons': True}
 
 local_internal_options = {REMOTED_DEBUG: '2'}
+
 
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)

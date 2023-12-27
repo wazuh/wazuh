@@ -71,9 +71,6 @@ local_internal_options = {analysisd_config.ANALYSISD_DEBUG: '2'}
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
 
-# Test variables.
-SYSLOG_SIMULATOR_START_TIME = 2
-
 
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
