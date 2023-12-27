@@ -77,32 +77,34 @@ def insert_pre_existent_agents(test_metadata, stop_authd):
     time_now = int(time.time())
 
     for agent in agents:
-        id = agent['id'] if 'id' in agent else '001'
-        name = agent['name'] if 'name' in agent else f"TestAgent{id}"
-        ip = agent['ip'] if 'ip' in agent else 'any'
-        key = agent['key'] if 'key' in agent else 'TopSecret'
-        connection_status = agent['connection_status'] if 'connection_status' in agent else 'never_connected'
-        if 'disconnection_time' in agent and 'delta' in agent['disconnection_time']:
-            disconnection_time = time_now + agent['disconnection_time']['delta']
-        elif 'disconnection_time' in agent and 'value' in agent['disconnection_time']:
-            disconnection_time = agent['disconnection_time']['value']
-        else:
-            disconnection_time = time_now
-        if 'registration_time' in agent and 'delta' in agent['registration_time']:
-            registration_time = time_now + agent['registration_time']['delta']
-        elif 'registration_time' in agent and 'value' in agent['registration_time']:
-            registration_time = agent['registration_time']['value']
-        else:
-            registration_time = time_now
+        if agent:
+            id = agent['id'] if 'id' in agent else '001'
+            name = agent['name'] if 'name' in agent else f"TestAgent{id}"
+            ip = agent['ip'] if 'ip' in agent else 'any'
+            key = agent['key'] if 'key' in agent else 'TopSecret'
+            connection_status = agent['connection_status'] if 'connection_status' in agent else 'never_connected'
+            if 'disconnection_time' in agent and 'delta' in agent['disconnection_time']:
+                disconnection_time = time_now + agent['disconnection_time']['delta']
+            elif 'disconnection_time' in agent and 'value' in agent['disconnection_time']:
+                disconnection_time = agent['disconnection_time']['value']
+            else:
+                disconnection_time = time_now
+            if 'registration_time' in agent and 'delta' in agent['registration_time']:
+                registration_time = time_now + agent['registration_time']['delta']
+            elif 'registration_time' in agent and 'value' in agent['registration_time']:
+                registration_time = agent['registration_time']['value']
+            else:
+                registration_time = time_now
 
-        mocking.create_mocked_agent(agent_id=id, name=name, ip=ip, date_add=registration_time,
-                                    connection_status=connection_status, disconnection_time=disconnection_time,
-                                    client_key_secret=key)
+            mocking.create_mocked_agent(id=id, name=name, ip=ip, date_add=registration_time,
+                                        connection_status=connection_status, disconnection_time=disconnection_time,
+                                        client_key_secret=key)
 
     yield
 
     for agent in agents:
-        mocking.delete_mocked_agent(agent['id'])
+        if agent:
+            mocking.delete_mocked_agent(agent['id'])
 
 
 @pytest.fixture()

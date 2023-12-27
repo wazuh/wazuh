@@ -40,7 +40,7 @@ import time
 from pathlib import Path
 
 import pytest
-from wazuh_testing.modules.authd.utils import CLUSTER_DATA_HEADER_SIZE
+from wazuh_testing.modules.clusterd.utils import CLUSTER_DATA_HEADER_SIZE
 from wazuh_testing.constants.paths.logs import WAZUH_CLUSTER_LOGS_PATH
 from wazuh_testing.constants.paths.sockets import MODULESD_C_INTERNAL_SOCKET_PATH
 from wazuh_testing.constants.ports import DEFAULT_SSL_REMOTE_ENROLLMENT_PORT
