@@ -393,6 +393,7 @@ TEST_F(ActionOrchestratorTest, RunOffsetUpdate)
     constexpr auto OFFSET {1234};
 
     {
+        // Trigger orchestrator in a reduced scope to avoid conflicts with the RocksDB connection below.
         ASSERT_NO_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_shouldRun)
                             .run(OFFSET, ActionOrchestrator::UpdateType::OFFSET));
     }

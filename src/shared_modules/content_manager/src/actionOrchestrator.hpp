@@ -137,7 +137,7 @@ private:
 
         if (0 > offset)
         {
-            throw std::invalid_argument {"Invalid offset value: " + std::to_string(offset)};
+            throw std::invalid_argument {"Offset value (" + std::to_string(offset) + ") shouldn't be negative"};
         }
 
         spUpdaterContext->currentOffset = offset;
@@ -155,16 +155,15 @@ private:
     {
         logDebug2(WM_CONTENTUPDATER, "Running '%s' content update", m_spBaseContext->topicName.c_str());
 
-        // If the database exists, get the last offset
-        if (m_spBaseContext->spRocksDB)
-        {
-            spUpdaterContext->currentOffset = std::stoi(
-                m_spBaseContext->spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString());
-        }
-
         if (resetOffset)
         {
             spUpdaterContext->currentOffset = 0;
+        }
+        else if (m_spBaseContext->spRocksDB)
+        {
+            // If the database exists, get the last offset
+            spUpdaterContext->currentOffset = std::stoi(
+                m_spBaseContext->spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString());
         }
 
         // If an offset download is requested and the current offset is '0', a snapshot will be downloaded with
@@ -182,7 +181,7 @@ private:
         m_spUpdaterOrchestration->handleRequest(spUpdaterContext);
 
         // Update filehash if it has changed.
-        if (m_spBaseContext->spRocksDB && m_spBaseContext->downloadedFileHash != lastDownloadedFileHash)
+        if (m_spBaseContext->spRocksDB && lastDownloadedFileHash != m_spBaseContext->downloadedFileHash)
         {
             m_spBaseContext->spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)),
                                             m_spBaseContext->downloadedFileHash,
