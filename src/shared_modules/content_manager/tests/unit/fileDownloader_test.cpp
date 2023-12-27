@@ -81,6 +81,7 @@ TEST_F(FileDownloaderTest, DownloadBadURL)
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(FAIL_STATUS);
     expectedData["type"] = DEFAULT_TYPE;
+    expectedData["offset"] = 0;
 
     // Set invalid config data. This will make the downloader to download from 'localhost:4444/invalid_file'.
     m_spUpdaterBaseContext->configData["compressionType"] = "raw";
@@ -108,6 +109,7 @@ TEST_F(FileDownloaderTest, DownloadRawFile)
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
     expectedData["type"] = DEFAULT_TYPE;
+    expectedData["offset"] = 0;
 
     // Set config data. This will make the downloader to download from 'localhost:4444/raw'.
     m_spUpdaterBaseContext->configData["compressionType"] = "raw";
@@ -138,6 +140,7 @@ TEST_F(FileDownloaderTest, DownloadCompressedFile)
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
     expectedData["type"] = DEFAULT_TYPE;
+    expectedData["offset"] = 0;
 
     // Set config data. This will make the downloader to download from 'localhost:4444/xz'.
     m_spUpdaterBaseContext->configData["compressionType"] = "xz";
@@ -169,6 +172,7 @@ TEST_F(FileDownloaderTest, DownloadSameFileTwice)
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
     expectedData["type"] = DEFAULT_TYPE;
+    expectedData["offset"] = 0;
 
     // Set config data. This will make the downloader to download from 'localhost:4444/xz'.
     m_spUpdaterBaseContext->configData["compressionType"] = "xz";
@@ -207,6 +211,7 @@ TEST_F(FileDownloaderTest, DownloadSameFileTwiceAndThenADifferentOne)
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
     expectedData["type"] = DEFAULT_TYPE;
+    expectedData["offset"] = 0;
 
     // Set config data. This will make the downloader to download from 'localhost:4444/xz'.
     m_spUpdaterBaseContext->configData["compressionType"] = "xz";
@@ -258,6 +263,7 @@ TEST_F(FileDownloaderTest, DownloadURLWithoutFilename)
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(FAIL_STATUS);
     expectedData["type"] = DEFAULT_TYPE;
+    expectedData["offset"] = 0;
 
     // Set invalid config data. This will make the downloader to download from 'localhost:4444/'.
     m_spUpdaterBaseContext->configData["url"] = BASE_URL;

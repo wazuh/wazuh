@@ -39,6 +39,8 @@ private:
         {
             if (context.spUpdaterBaseContext->spRocksDB)
             {
+                logDebug2(WM_CONTENTUPDATER, "Updating offset with value: %d", context.currentOffset);
+
                 context.spUpdaterBaseContext->spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)),
                                                              std::to_string(context.currentOffset),
                                                              Components::Columns::CURRENT_OFFSET);

@@ -67,6 +67,7 @@ TEST_F(ZipDecompressorTest, DecompressNoFile)
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
     expectedData["type"] = DEFAULT_TYPE;
+    expectedData["offset"] = 0;
 
     // Run decompression.
     ASSERT_NO_THROW(ZipDecompressor().handleRequest(m_spContext));
@@ -87,6 +88,7 @@ TEST_F(ZipDecompressorTest, DecompressOneZipOneFile)
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
     expectedData["type"] = DEFAULT_TYPE;
+    expectedData["offset"] = 0;
 
     // Set input files.
     m_spContext->data.at("paths").push_back(ZIP_CONTENT_A);
@@ -116,6 +118,7 @@ TEST_F(ZipDecompressorTest, DecompressOneZipTwoFiles)
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
     expectedData["type"] = DEFAULT_TYPE;
+    expectedData["offset"] = 0;
 
     // Set input files.
     m_spContext->data.at("paths").push_back(ZIP_CONTENT_B);
@@ -149,6 +152,7 @@ TEST_F(ZipDecompressorTest, DecompressTwoZips)
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(OK_STATUS);
     expectedData["type"] = DEFAULT_TYPE;
+    expectedData["offset"] = 0;
 
     // Set input files.
     m_spContext->data.at("paths").push_back(ZIP_CONTENT_A);
@@ -182,6 +186,7 @@ TEST_F(ZipDecompressorTest, DecompressInexistantFile)
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(FAIL_STATUS);
     expectedData["type"] = DEFAULT_TYPE;
+    expectedData["offset"] = 0;
 
     // Run decompression.
     EXPECT_THROW(ZipDecompressor().handleRequest(m_spContext), std::runtime_error);
@@ -205,6 +210,7 @@ TEST_F(ZipDecompressorTest, DecompressEmptyZip)
     expectedData["stageStatus"] = nlohmann::json::array();
     expectedData["stageStatus"].push_back(FAIL_STATUS);
     expectedData["type"] = DEFAULT_TYPE;
+    expectedData["offset"] = 0;
 
     // Run decompression.
     EXPECT_THROW(ZipDecompressor().handleRequest(m_spContext), std::runtime_error);

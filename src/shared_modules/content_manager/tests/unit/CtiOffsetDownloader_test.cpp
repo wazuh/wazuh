@@ -173,6 +173,7 @@ TEST_F(CtiOffsetDownloaderTest, DownloadServerErrorWithRetry)
     expectedData["paths"].push_back(contentPath);
     expectedData["stageStatus"] = OK_STATUS;
     expectedData["type"] = DEFAULT_TYPE;
+    expectedData["offset"] = 3;
 
     ASSERT_NO_THROW(m_spCtiOffsetDownloader->handleRequest(m_spUpdaterContext));
 
@@ -194,6 +195,7 @@ TEST_F(CtiOffsetDownloaderTest, DownloadClientErrorNoRetry)
     expectedData["paths"] = m_spUpdaterContext->data.at("paths");
     expectedData["stageStatus"] = FAIL_STATUS;
     expectedData["type"] = DEFAULT_TYPE;
+    expectedData["offset"] = 0;
 
     ASSERT_THROW(m_spCtiOffsetDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
@@ -214,6 +216,7 @@ TEST_F(CtiOffsetDownloaderTest, DownloadClientAndServerErrorsRetryAndFail)
     expectedData["paths"] = m_spUpdaterContext->data.at("paths");
     expectedData["stageStatus"] = FAIL_STATUS;
     expectedData["type"] = DEFAULT_TYPE;
+    expectedData["offset"] = 0;
 
     ASSERT_THROW(m_spCtiOffsetDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
@@ -235,5 +238,6 @@ TEST_F(CtiOffsetDownloaderTest, DownloadInterrupted)
     expectedData["paths"] = m_spUpdaterContext->data.at("paths");
     expectedData["stageStatus"] = OK_STATUS;
     expectedData["type"] = DEFAULT_TYPE;
+    expectedData["offset"] = 0;
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 }

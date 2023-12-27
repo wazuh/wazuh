@@ -112,6 +112,7 @@ struct UpdaterContext
      * @details JSON file structure:
      *  {
      *      "type": "raw",
+     *      "offset": 0,
      *      "paths":
      *      [
      *          "/tmp/outputFolder/file1.json",
@@ -127,7 +128,7 @@ struct UpdaterContext
      *  }
      *
      */
-    nlohmann::json data = R"({ "type": "raw", "paths": [], "stageStatus": [] })"_json;
+    nlohmann::json data = R"({ "type": "raw", "offset": 0, "paths": [], "stageStatus": [] })"_json;
 
     /**
      * @brief Represents the offset processed in the current run.

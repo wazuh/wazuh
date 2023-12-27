@@ -151,6 +151,7 @@ TEST_F(CtiDownloaderTest, BaseParametersDownload)
     expectedData["paths"] = m_spUpdaterContext->data.at("paths");
     expectedData["stageStatus"] = OK_STATUS;
     expectedData["type"] = CONTENT_TYPE;
+    expectedData["offset"] = 0;
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 
     // Check expected base parameters.
@@ -178,6 +179,7 @@ TEST_F(CtiDownloaderTest, BaseParametersDownloadWithRetry)
     expectedData["paths"] = m_spUpdaterContext->data.at("paths");
     expectedData["stageStatus"] = OK_STATUS;
     expectedData["type"] = CONTENT_TYPE;
+    expectedData["offset"] = 0;
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 
     // Check expected base parameters.
@@ -202,6 +204,7 @@ TEST_F(CtiDownloaderTest, BaseParametersDownloadBadResponseFromServer)
     expectedData["paths"] = m_spUpdaterContext->data.at("paths");
     expectedData["stageStatus"] = FAIL_STATUS;
     expectedData["type"] = CONTENT_TYPE;
+    expectedData["offset"] = 0;
 
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 }
@@ -222,6 +225,7 @@ TEST_F(CtiDownloaderTest, BaseParametersDownloadClientError)
     expectedData["paths"] = m_spUpdaterContext->data.at("paths");
     expectedData["stageStatus"] = FAIL_STATUS;
     expectedData["type"] = CONTENT_TYPE;
+    expectedData["offset"] = 0;
 
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 }
@@ -242,6 +246,7 @@ TEST_F(CtiDownloaderTest, BaseParametersDownloadInterrupted)
     expectedData["paths"] = m_spUpdaterContext->data.at("paths");
     expectedData["stageStatus"] = OK_STATUS;
     expectedData["type"] = CONTENT_TYPE;
+    expectedData["offset"] = 0;
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 
     // Check expected base parameters.

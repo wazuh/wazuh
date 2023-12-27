@@ -383,3 +383,36 @@ TEST_F(ActionOrchestratorTest, OfflineDownloadSameAndModifiedFileDifferentInstan
     // Remove input test file.
     std::filesystem::remove(inputFilePath);
 }
+
+/**
+ * @brief Tests the offset update process execution with a valid offset.
+ *
+ */
+TEST_F(ActionOrchestratorTest, RunOffsetUpdate)
+{
+    constexpr auto OFFSET {1234};
+
+    {
+        // Trigger orchestrator in a reduced scope to avoid conflicts with the RocksDB connection below.
+        ASSERT_NO_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_spStopActionCondition)
+                            .run(OFFSET, ActionOrchestrator::UpdateType::OFFSET));
+    }
+
+    const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
+    const auto fullDatabasePath {DATABASE_PATH / ("updater_" + topicName + "_metadata")};
+    auto wrapper {Utils::RocksDBWrapper(fullDatabasePath)};
+    EXPECT_EQ(wrapper.getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString(), std::to_string(OFFSET));
+}
+
+/**
+ * @brief Tests the offset update process execution with an invalid offset. An exception is expected.
+ *
+ */
+TEST_F(ActionOrchestratorTest, RunOffsetUpdateInvalidOffsetThrows)
+{
+    constexpr auto OFFSET {-100};
+
+    EXPECT_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_spStopActionCondition)
+                     .run(OFFSET, ActionOrchestrator::UpdateType::OFFSET),
+                 std::invalid_argument);
+}

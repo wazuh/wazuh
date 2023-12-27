@@ -11,7 +11,9 @@
 
 #include "onDemandManager.hpp"
 #include "../sharedDefs.hpp"
+#include "actionOrchestrator.hpp"
 #include "contentManager.hpp"
+#include "external/nlohmann/json.hpp"
 #include <filesystem>
 #include <utility>
 
@@ -49,12 +51,49 @@ void OnDemandManager::startServer()
                                  const auto& it {m_endpoints.find(req.matches[1].str())};
                                  if (it != m_endpoints.end())
                                  {
-                                     it->second(offset);
+                                     it->second(offset, ActionOrchestrator::UpdateType::CONTENT);
                                      res.status = 200;
                                  }
                                  else
                                  {
                                      res.status = 404;
+                                 }
+                             }
+                             catch (const std::exception& e)
+                             {
+                                 res.status = 400;
+                                 res.body = e.what();
+                             }
+                         });
+
+            // Capture PUT requests. These requests are used to update the offset from the database.
+            m_server.Put("/offset",
+                         [&](const httplib::Request& req, httplib::Response& res)
+                         {
+                             std::shared_lock<std::shared_mutex> lock {m_mutex};
+
+                             try
+                             {
+                                 const auto requestData = nlohmann::json::parse(req.body);
+                                 const auto offset {requestData.at("offset").get<int>()};
+                                 const auto& topicName {requestData.at("topicName").get_ref<const std::string&>()};
+
+                                 if (0 > offset)
+                                 {
+                                     throw std::invalid_argument(
+                                         "Invalid offset value: Should be greater or equal than zero");
+                                 }
+
+                                 if (const auto& it {m_endpoints.find(topicName)}; it != m_endpoints.end())
+                                 {
+                                     it->second(offset, ActionOrchestrator::UpdateType::OFFSET);
+                                     res.status = 200;
+                                     res.body = "Offset update processed successfully";
+                                 }
+                                 else
+                                 {
+                                     res.status = 404;
+                                     res.body = "Topic '" + topicName + "' not found";
                                  }
                              }
                              catch (const std::exception& e)
@@ -93,7 +132,8 @@ void OnDemandManager::stopServer()
     logDebug1(WM_CONTENTUPDATER, "Server stopped");
 }
 
-void OnDemandManager::addEndpoint(const std::string& endpoint, std::function<void(int)> func)
+void OnDemandManager::addEndpoint(const std::string& endpoint,
+                                  std::function<void(int, ActionOrchestrator::UpdateType)> func)
 {
     std::unique_lock<std::shared_mutex> lock {m_mutex};
     // Check if the endpoint already exists

@@ -17,11 +17,13 @@
 #define CPPHTTPLIB_THREAD_POOL_COUNT 2
 #endif
 
+#include "actionOrchestrator.hpp"
 #include "singleton.hpp"
 #include <external/cpp-httplib/httplib.h>
 #include <functional>
 #include <map>
 #include <shared_mutex>
+
 /**
  * @brief OnDemandManager class.
  *
@@ -30,7 +32,7 @@ class OnDemandManager final : public Singleton<OnDemandManager>
 {
 private:
     httplib::Server m_server {};
-    std::map<std::string, std::function<void(int)>> m_endpoints {};
+    std::map<std::string, std::function<void(int, ActionOrchestrator::UpdateType)>> m_endpoints {};
     std::shared_mutex m_mutex {};
     std::thread m_serverThread {};
     std::atomic<bool> m_runningTrigger {true};
@@ -44,7 +46,7 @@ public:
      * @param endpoint Endpoint to add
      * @param func Function to call when the endpoint is called
      */
-    void addEndpoint(const std::string& endpoint, std::function<void(int)> func);
+    void addEndpoint(const std::string& endpoint, std::function<void(int, ActionOrchestrator::UpdateType)> func);
 
     /**
      * @brief Remove an endpoint and stop the server if there are no more endpoints

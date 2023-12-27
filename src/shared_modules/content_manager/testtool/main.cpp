@@ -51,6 +51,10 @@ static const nlohmann::json CONFIG_PARAMETERS =
 // Enable/Disable logging verbosity.
 static const auto VERBOSE {true};
 
+// Enable/Disable the offset update process execution.
+static const auto OFFSET_UPDATE {false};
+static const auto OFFSET_UPDATE_VALUE {100000};
+
 /**
  * @brief Log function callback used on the Content Manager test tool.
  *
@@ -105,6 +109,24 @@ void logFunction(const int logLevel,
     }
 }
 
+/**
+ * @brief Performs a PUT query to the on-demand manager, requesting an offset update.
+ *
+ * @param topicName Name of the topic.
+ */
+void runOffsetUpdate(const std::string& topicName)
+{
+    nlohmann::json data;
+    data["offset"] = OFFSET_UPDATE_VALUE;
+    data["topicName"] = topicName;
+    const auto putUrl {"http://localhost/offset"};
+    UNIXSocketRequest::instance().put(
+        HttpUnixSocketURL(ONDEMAND_SOCK, putUrl),
+        data,
+        [](const std::string& msg) { std::cout << msg << std::endl; },
+        [](const std::string& msg, const long responseCode) { std::cout << msg << ": " << responseCode << std::endl; });
+}
+
 int main()
 {
     auto& instance = ContentModule::instance();
@@ -116,6 +138,12 @@ int main()
     // Client -> Vulnerability detector
     ContentRegister registerer {topic_name, CONFIG_PARAMETERS};
     std::this_thread::sleep_for(std::chrono::seconds(5));
+
+    // Run offset update if specified.
+    if (OFFSET_UPDATE)
+    {
+        runOffsetUpdate(topic_name);
+    }
 
     // OnDemand request
     std::string url = "http://localhost/ondemand/" + topic_name + "?offset=-1";

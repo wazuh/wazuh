@@ -74,15 +74,18 @@ public:
      *
      * @param id Action ID.
      * @param offset Manually set current offset to process.
+     * @param type Type of update to perform.
      *
      * @return True if the execution was made, false otherwise.
      */
-    bool runActionExclusively(const ActionID id, const int offset = -1)
+    bool runActionExclusively(const ActionID id,
+                              const int offset = -1,
+                              const ActionOrchestrator::UpdateType type = ActionOrchestrator::UpdateType::CONTENT)
     {
         auto expectedValue {false};
         if (m_actionInProgress.compare_exchange_strong(expectedValue, true))
         {
-            runAction(id, offset);
+            runAction(id, offset, type);
         }
         return !expectedValue;
     }
@@ -151,7 +154,9 @@ public:
      */
     void registerActionOnDemand()
     {
-        OnDemandManager::instance().addEndpoint(m_topicName, [this](int offset) { this->runActionOnDemand(offset); });
+        OnDemandManager::instance().addEndpoint(m_topicName,
+                                                [this](int offset, const ActionOrchestrator::UpdateType type)
+                                                { this->runActionOnDemand(offset, type); });
     }
 
     /**
@@ -176,11 +181,13 @@ public:
      * @brief Runs ondemand action. Wrapper of runActionExclusively().
      *
      * @param offset Manually set current offset to process. Default -1
+     * @param type Type of update to perform.
      */
-    void runActionOnDemand(const int offset = -1)
+    void runActionOnDemand(const int offset = -1,
+                           const ActionOrchestrator::UpdateType type = ActionOrchestrator::UpdateType::CONTENT)
     {
         logInfo(WM_CONTENTUPDATER, "Starting on-demand action for '%s'", m_topicName.c_str());
-        if (!runActionExclusively(ActionID::ON_DEMAND, offset))
+        if (!runActionExclusively(ActionID::ON_DEMAND, offset, type))
         {
             logInfo(WM_CONTENTUPDATER, "Action in progress for '%s', on-demand request ignored", m_topicName.c_str());
         }
@@ -210,13 +217,15 @@ private:
     std::shared_ptr<ConditionSync> m_stopActionCondition;
     std::unique_ptr<ActionOrchestrator> m_orchestration;
 
-    void runAction(const ActionID id, const int offset = -1)
+    void runAction(const ActionID id,
+                   const int offset = -1,
+                   const ActionOrchestrator::UpdateType type = ActionOrchestrator::UpdateType::CONTENT)
     {
         logInfo(WM_CONTENTUPDATER, "Action for '%s' started", m_topicName.c_str());
 
         try
         {
-            m_orchestration->run(offset);
+            m_orchestration->run(offset, type);
         }
         catch (const std::exception& e)
         {
