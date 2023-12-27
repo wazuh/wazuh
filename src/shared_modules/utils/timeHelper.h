@@ -12,6 +12,7 @@
 #ifndef _TIME_HELPER_H
 #define _TIME_HELPER_H
 
+#include "stringHelper.h"
 #include <chrono>
 #include <ctime>
 #include <iomanip>
@@ -119,6 +120,11 @@ namespace Utils
 
     static std::string rawTimestampToISO8601(const std::string& timestamp)
     {
+        if (timestamp.empty() || !Utils::isNumber(timestamp))
+        {
+            return "";
+        }
+
         std::time_t time = std::stoi(timestamp);
         auto itt = std::chrono::system_clock::from_time_t(time);
 
