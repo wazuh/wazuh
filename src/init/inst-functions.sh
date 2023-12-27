@@ -1121,7 +1121,7 @@ checkDownloadContent()
 {
     VD_FILENAME='vd_1.0.0_vd_4.8.0.tar.xz'
 
-    if [ "${DOWNLOAD_CONTENT}" = "yes" ]; then
+    if [ "${DOWNLOAD_CONTENT}" = "y" ] || [ "${DOWNLOAD_CONTENT}" = "yes" ]; then
         echo "Download ${VD_FILENAME} file"
         wget -O ${VD_FILENAME} https://packages.wazuh.com/deps/vulnerability_model_database/${VD_FILENAME}
         tar -xf ${VD_FILENAME}
