@@ -165,6 +165,7 @@ table AgentInfo {
     agent_id:string;
     agent_ip:string;
     agent_name:string;
+    agent_version:string;
     node_name:string;
 }
 
