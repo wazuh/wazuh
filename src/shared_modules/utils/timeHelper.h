@@ -117,6 +117,24 @@ namespace Utils
         return output.str();
     }
 
+    static std::string rawTimestampToISO8601(const std::string& timestamp)
+    {
+        std::time_t time = std::stoi(timestamp);
+        auto itt = std::chrono::system_clock::from_time_t(time);
+
+        std::ostringstream output;
+        output << std::put_time(gmtime(&time), "%FT%T");
+
+        // Get milliseconds from the current time
+        auto milliseconds =
+            std::chrono::duration_cast<std::chrono::milliseconds>(itt.time_since_epoch()).count() % 1000;
+
+        // ISO 8601
+        output << '.' << std::setfill('0') << std::setw(3) << milliseconds << 'Z';
+
+        return output.str();
+    }
+
 #pragma GCC diagnostic pop
 } // namespace Utils
 
