@@ -92,9 +92,6 @@ def test_authd_use_password_invalid(test_configuration, test_metadata, set_wazuh
         - set_wazuh_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
-        - truncate_monitored_files:
-            type: fixture
-            brief: Truncate all the log files and json alerts files before and after the test execution.
         - configure_local_internal_options:
             type: fixture
             brief: Configure the local internal options file.

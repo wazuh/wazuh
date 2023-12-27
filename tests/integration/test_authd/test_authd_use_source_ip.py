@@ -88,7 +88,10 @@ def test_authd_use_source_ip(test_configuration, test_metadata, set_wazuh_config
         - set_wazuh_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
-        - configure_sockets_environment_module:
+        - configure_receiver_sockets
+            type: fixture
+            brief: Set receiver sockets from configuration.
+        - configure_sockets_environment:
             type: fixture
             brief: Configure the socket listener to receive and send messages on the sockets.
         - daemons_handler:
@@ -100,10 +103,7 @@ def test_authd_use_source_ip(test_configuration, test_metadata, set_wazuh_config
         - connect_to_sockets:
             type: fixture
             brief: Bind to the configured sockets at function scope.
-        - test_case:
-            type: list
-            brief: List all the test cases for the test.
-        - truncate_monitored_files_module:
+        - truncate_monitored_files:
             type: fixture
             brief: Truncate all the log files and json alerts files before and after the test execution.
 

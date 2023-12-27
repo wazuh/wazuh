@@ -16,7 +16,6 @@ from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.agent_groups import create_group, delete_group
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.modules.authd import PREFIX
-from wazuh_testing.modules.authd.utils import clean_diff, clean_rids, clean_agents_timestamp
 from wazuh_testing.constants.daemons import AUTHD_DAEMON
 from wazuh_testing.utils import mocking
 from wazuh_testing.utils.services import control_service
@@ -24,6 +23,7 @@ from wazuh_testing.constants.api import WAZUH_API_PORT
 from wazuh_testing.constants.ports import DEFAULT_SSL_REMOTE_ENROLLMENT_PORT
 from wazuh_testing.modules.api.patterns import API_STARTED_MSG
 from wazuh_testing.tools.certificate_controller import CertificateController
+from . import utils
 
 
 AUTHD_STARTUP_TIMEOUT = 30
@@ -73,6 +73,9 @@ def wait_for_api_startup_module():
 
 @pytest.fixture()
 def insert_pre_existent_agents(test_metadata, stop_authd):
+    """
+    Create some agents and add them to the DB and keys file.
+    """
     agents = test_metadata['pre_existent_agents']
     time_now = int(time.time())
 
@@ -130,7 +133,7 @@ def copy_tmp_script(request):
 @pytest.fixture()
 def configure_receiver_sockets(request, test_metadata):
     """
-    Get configurations from the module
+    Get configurations from the module and set receiver sockets.
     """
     if test_metadata['ipv6'] == 'yes':
         receiver_sockets_params = [(("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET6', 'SSL_TLSv1_2')]
@@ -142,13 +145,15 @@ def configure_receiver_sockets(request, test_metadata):
 
 @pytest.fixture()
 def set_authd_pass(test_metadata):
-    """Configure the file 'authd.pass' as needed for the test."""
+    """
+    Configure the file 'authd.pass' as needed for the test.
+    """
     # Write the content in the authd.pass file.
     file.write_file(DEFAULT_AUTHD_PASS_PATH, test_metadata['password'])
 
     yield
 
-    # Delete the file as by default it doesn't exist.
+    # Delete the file as by default if it doesn't exist.
     file.remove_file(DEFAULT_AUTHD_PASS_PATH)
 
 
@@ -190,6 +195,9 @@ def reset_password(test_metadata):
 
 @pytest.fixture(scope="function")
 def generate_ca_certificate(test_metadata):
+    """
+    Generate custom CA certificate.
+    """
     SSL_AGENT_CA = '/var/ossec/etc/test_rootCA.pem'
     SSL_AGENT_CERT = '/tmp/test_sslagent.cert'
     SSL_AGENT_PRIVATE_KEY = '/tmp/test_sslagent.key'
@@ -208,6 +216,9 @@ def generate_ca_certificate(test_metadata):
 
 @pytest.fixture(scope="function")
 def set_up_groups(test_metadata, request):
+    """
+    Create and delete groups for test.
+    """
     groups = test_metadata['groups']
     for group in groups:
         if(group):
@@ -220,12 +231,15 @@ def set_up_groups(test_metadata, request):
 
 @pytest.fixture()
 def clean_agents_ctx(stop_authd):
-    clean_rids()
-    clean_agents_timestamp()
-    clean_diff()
+    """
+    Clean agents files.
+    """
+    utils.clean_rids()
+    utils.clean_agents_timestamp()
+    utils.clean_diff()
 
     yield
 
-    clean_rids()
-    clean_agents_timestamp()
-    clean_diff()
+    utils.clean_rids()
+    utils.clean_agents_timestamp()
+    utils.clean_diff()

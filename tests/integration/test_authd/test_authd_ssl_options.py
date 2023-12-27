@@ -107,7 +107,7 @@ def test_ossec_auth_configurations(test_configuration, test_metadata, set_wazuh_
         - wait_for_authd_startup:
             type: fixture
             brief: Waits until Authd is accepting connections.
-        - configure_sockets_environment_module:
+        - configure_sockets_environment:
             type: fixture
             brief: Configure environment for sockets and MITM.
 

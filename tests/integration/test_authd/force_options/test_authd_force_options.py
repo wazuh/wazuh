@@ -239,7 +239,6 @@ def test_authd_force_insert(test_configuration, test_metadata, set_wazuh_configu
         - Registration request responses on Authd socket.
     '''
 
-
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     for log in test_metadata['log']:
         log = re.escape(log)
@@ -304,7 +303,6 @@ def test_authd_force_insert_only(test_configuration, test_metadata, set_wazuh_co
     expected_output:
         - Registration request responses on Authd socket.
     '''
-
 
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     for log in test_metadata['log']:

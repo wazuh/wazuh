@@ -113,9 +113,6 @@ def test_ossec_auth_messages_with_key_hash(test_configuration, test_metadata, se
         - wait_for_authd_startup:
             type: fixture
             brief: Waits until Authd is accepting connections.
-        - get_current_test_case:
-            type: fixture
-            brief: gets the current test case from the tests' list
         - truncate_monitored_files:
             type: fixture
             brief: Truncate all the log files and json alerts files before and after the test execution.

@@ -50,7 +50,6 @@ references:
 tags:
     - key_request
 '''
-import os
 import re
 from pathlib import Path
 

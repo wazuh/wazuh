@@ -98,7 +98,7 @@ def test_authd_key_request_worker(test_configuration, test_metadata, set_wazuh_c
         - set_wazuh_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
-        - configure_sockets_environment_function:
+        - configure_sockets_environment:
             type: fixture
             brief: Configure the socket listener to receive and send messages on the sockets.
         - copy_tmp_script:

@@ -50,12 +50,11 @@ import pytest
 import time
 from wazuh_testing.constants.paths.sockets import AUTHD_SOCKET_PATH
 from wazuh_testing.constants.ports import DEFAULT_SSL_REMOTE_ENROLLMENT_PORT
-from wazuh_testing.modules.authd import utils
 from wazuh_testing.utils.agent_groups import check_agent_groups
 from wazuh_testing.utils.db_queries.global_db import clean_agents_from_db
 from wazuh_testing.utils.client_keys import check_client_keys
 
-from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH, utils
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 # Marks
@@ -149,12 +148,21 @@ def test_ossec_authd_agents_ctx(test_configuration, test_metadata, set_wazuh_con
         - set_wazuh_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
+        - truncate_monitored_files:
+            type: fixture
+            brief: Truncate all the log files and json alerts files before and after the test execution.
+        - clean_agents_ctx
+            type: fixture
+            brief: Clean agents files.
         - daemons_handler:
             type: fixture
             brief: Handler of Wazuh daemons.
-        - connect_to_sockets_module:
+        - connect_to_sockets:
             type: fixture
             brief: Module scope version of 'connect_to_sockets' fixture.
+        - wait_for_authd_startup:
+            type: fixture
+            brief: Waits until Authd is accepting connections.
         - set_up_groups:
             type: fixture
             brief: Create a testing group for agents and provide the test case list.

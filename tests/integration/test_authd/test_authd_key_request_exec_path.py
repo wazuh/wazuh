@@ -50,7 +50,6 @@ references:
 tags:
     - key_request
 '''
-import os
 import re
 from pathlib import Path
 
@@ -117,7 +116,7 @@ def test_key_request_exec_path(test_configuration, test_metadata, set_wazuh_conf
         - copy_tmp_script:
             type: fixture
             brief: Copy the script to a temporary folder for testing.
-        - configure_local_internal_options_module:
+        - configure_local_internal_options:
             type: fixture
             brief: Configure the local internal options file.
         - daemons_handler:

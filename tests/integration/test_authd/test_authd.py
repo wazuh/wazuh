@@ -81,7 +81,7 @@ daemons_handler_configuration = {'all_daemons': True}
 
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_ossec_auth_messages(test_configuration, test_metadata, set_wazuh_configuration, daemons_handler_module,
+def test_ossec_auth_messages(test_configuration, test_metadata, set_wazuh_configuration,
                              truncate_monitored_files, configure_sockets_environment, daemons_handler,
                              wait_for_authd_startup, connect_to_sockets, set_up_groups):
     '''
@@ -105,10 +105,13 @@ def test_ossec_auth_messages(test_configuration, test_metadata, set_wazuh_config
         - set_wazuh_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
+        - truncate_monitored_files:
+            type: fixture
+            brief: Truncate all the log files and json alerts files before and after the test execution.
         - set_up_groups:
             type: fixture
             brief: Create a testing group for agents and provide the test case list.
-        - configure_sockets_environment_module:
+        - configure_sockets_environment:
             type: fixture
             brief: Configure environment for sockets and MITM.
         - daemons_handler:
@@ -117,7 +120,7 @@ def test_ossec_auth_messages(test_configuration, test_metadata, set_wazuh_config
         - wait_for_authd_startup:
             type: fixture
             brief: Waits until Authd is accepting connections.
-        - connect_to_sockets_module:
+        - connect_to_sockets:
             type: fixture
             brief: Module scope version of 'connect_to_sockets' fixture.
 

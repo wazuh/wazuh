@@ -96,9 +96,12 @@ def test_authd_force_options_invalid_config(test_configuration, test_metadata, s
         - configure_local_internal_options:
             type: fixture
             brief: Handle the monitoring of a specified file.
-        - truncate_monitored_files_module:
+        - truncate_monitored_files:
             type: fixture
             brief: Truncate all the log files and json alerts files before and after the test execution.
+        - daemons_handler:
+            type: fixture
+            brief: Handler of Wazuh daemons.
 
     assertions:
         - The received output must match with expected due to wrong configuration options.

@@ -43,7 +43,6 @@ references:
 tags:
     - enrollment
 '''
-import os
 import pytest
 import socket, time
 from pathlib import Path

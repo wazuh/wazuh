@@ -60,7 +60,7 @@ import time
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_API_LOG_FILE_PATH
-from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH
+from wazuh_testing.utils.client_keys import get_client_keys
 from wazuh_testing.utils.file import truncate_file
 from wazuh_testing.utils.services import control_service
 from wazuh_testing.modules.api.utils import get_base_url, login
@@ -81,18 +81,7 @@ client_keys_update_timeout = 1
 daemons_handler_configuration = {'all_daemons': True}
 
 def retrieve_client_key_entry(agent_parameters):
-    with open(WAZUH_CLIENT_KEYS_PATH) as client_keys_file:
-        client_keys_content = client_keys_file.readlines()
-        client_keys_dictionary = []
-        for entry in client_keys_content:
-            client_key_agent_list = entry.split()
-
-            client_key_agent_dict = {}
-            client_key_agent_dict.update({'id': client_key_agent_list[0], 'name': client_key_agent_list[1],
-                                          'ip': client_key_agent_list[2], 'key': client_key_agent_list[3]})
-
-            client_keys_dictionary.append(client_key_agent_dict)
-
+    client_keys_dictionary = get_client_keys()
     desired_entries = []
     for client_keys_entry_dict in client_keys_dictionary:
         if agent_parameters.items() <= client_keys_entry_dict.items():

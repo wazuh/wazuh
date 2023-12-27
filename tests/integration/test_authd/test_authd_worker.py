@@ -96,6 +96,12 @@ def test_ossec_auth_messages(test_configuration, test_metadata, set_wazuh_config
         - set_wazuh_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
+        - truncate_monitored_files:
+            type: fixture
+            brief: Truncate all the log files and json alerts files before and after the test execution.
+        - daemons_handler:
+            type: fixture
+            brief: Handler of Wazuh daemons.
         - configure_sockets_environment:
             type: fixture
             brief: Configure the socket listener to receive and send messages on the sockets.

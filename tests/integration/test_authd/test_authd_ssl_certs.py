@@ -134,9 +134,15 @@ def test_authd_ssl_certs(test_configuration, test_metadata, set_wazuh_configurat
         - generate_ca_certificate:
             type: fixture
             brief: Build the 'CA' (Certificate of Authority) and sign the certificate used by the testing agent.
-        - truncate_monitored_files_module:
+        - truncate_monitored_files:
             type: fixture
             brief: Truncate all the log files and json alerts files before and after the test execution.
+        - daemons_handler:
+            type: fixture
+            brief: Handler of Wazuh daemons.
+        - wait_for_authd_startup:
+            type: fixture
+            brief: Waits until Authd is accepting connections.
 
     assertions:
         - Verify that the agent can only connect to the 'wazuh-authd' daemon socket using a valid certificate.

@@ -117,7 +117,7 @@ def test_authd_use_password(test_configuration, test_metadata, set_wazuh_configu
         - set_wazuh_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
-        - configure_sockets_environment_module:
+        - configure_sockets_environment:
             type: fixture
             brief: Configure the socket listener to receive and send messages on the sockets.
         - reset_password:

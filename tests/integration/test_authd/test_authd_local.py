@@ -110,9 +110,6 @@ def test_authd_local_messages(test_configuration, test_metadata, set_wazuh_confi
         - wait_for_authd_startup:
             type: fixture
             brief: Waits until Authd is accepting connections.
-        - get_current_test_case:
-            type: fixture
-            brief: gets the current test case from the tests' list
         - truncate_monitored_files:
             type: fixture
             brief: Truncate all the log files and json alerts files before and after the test execution.
