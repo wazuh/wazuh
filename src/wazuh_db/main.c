@@ -26,6 +26,7 @@ static void * run_backup(void * args);
 
 extern wdb_state_t wdb_state;
 
+_Config config;
 //int wazuhdb_fdsock;
 wnotify_t * notify_queue;
 //static w_queue_t * sock_queue;
@@ -105,8 +106,12 @@ int main(int argc, char ** argv)
     // Allocating memory for configuration structures and setting default values
     wdb_init_conf();
 
+    int modules = 0;
+    modules |= WAZUHDB;
+    modules |= CCLUSTER;
+
     // Read ossec.conf
-    if (ReadConfig(WAZUHDB, OSSECCONF, NULL, NULL) < 0) {
+    if (ReadConfig(modules, OSSECCONF, &config, NULL) < 0) {
         merror_exit("Invalid configuration block for Wazuh-DB.");
     }
 

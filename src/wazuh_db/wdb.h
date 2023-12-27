@@ -21,6 +21,7 @@
 #include "wazuhdb_op.h"
 #include "regex_op.h"
 #include "router.h"
+#include "config/global-config.h"
 
 #define WDB_AGENT_EMPTY 0
 #define WDB_AGENT_PENDING 1
@@ -113,6 +114,9 @@ typedef enum wdb_global_group_hash_operations_t {
 
 // Router provider variables
 extern ROUTER_PROVIDER_HANDLE router_syscollector_handle;
+
+// Configuration
+extern _Config config;
 
 typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,
