@@ -71,9 +71,12 @@ TEST_F(TimeUtilsTest, TimestampToISO8601)
 {
     EXPECT_EQ("2020-12-28T18:00:00.000Z", Utils::timestampToISO8601("2020/12/28 15:00:00"));
     EXPECT_EQ("2020-12-29T00:00:00.000Z", Utils::timestampToISO8601("2020/12/28 21:00:00"));
+    EXPECT_EQ("", Utils::timestampToISO8601("21:00:00"));
 }
 
 TEST_F(TimeUtilsTest, RawTimestampToISO8601)
 {
     EXPECT_EQ("2020-11-13T01:54:25.000Z", Utils::rawTimestampToISO8601("1605232465"));
+    EXPECT_EQ("", Utils::rawTimestampToISO8601(""));
+    EXPECT_EQ("", Utils::rawTimestampToISO8601("abcdefg"));
 }
