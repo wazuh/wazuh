@@ -913,13 +913,23 @@ stages:
     response:
       status_code: 400
 
-  - name: Create a new user (invalid username parameter)
+  - name: Create a new user (invalid username parameter, integer)
     request:
       verify: False
       <<: *post_users_request
       json:
         password: "new_user11A"
         username: 1
+    response:
+      status_code: 400
+  
+  - name: Create a new user (invalid username parameter, non-ASCII)
+    request:
+      verify: False
+      <<: *post_users_request
+      json:
+        username: "new_user_啊"
+        password: "new_user"
     response:
       status_code: 400
 

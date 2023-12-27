@@ -314,7 +314,7 @@ void test_nb_send_err(void ** state) {
 
     will_return(__wrap_send, -1);
 
-    expect_string(__wrap__merror, formatted_msg, "socket: 15, send fail");
+    expect_string(__wrap__merror, formatted_msg, "Could not send data to socket 15: Connection reset by peer (104)");
 
     expect_memory(__wrap_bqueue_used, queue, (bqueue_t *)netbuffer->buffers[sock].bqueue, sizeof(bqueue_t *));
     will_return(__wrap_bqueue_used, 0);

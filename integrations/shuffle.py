@@ -216,7 +216,7 @@ def send_msg(msg: str, url: str) -> None:
             URL of the integration.
     """
     headers = {'content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
-    res     = requests.post(url, data=msg, headers=headers, verify=False)
+    res     = requests.post(url, data=msg, headers=headers, timeout=10)
     debug("# Response received: %s" % res.json)
 
 def get_json_alert(file_location: str) -> any:

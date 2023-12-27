@@ -7,13 +7,12 @@ import os
 import sys
 import zipfile
 import zlib
-from datetime import datetime
+from collections import defaultdict
 from time import time
 from unittest.mock import MagicMock, mock_open, patch, call, ANY
 
 import pytest
 from wazuh.core import common
-from wazuh.core.utils import get_date_from_timestamp
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
@@ -127,7 +126,11 @@ def test_walk_dir(walk_mock, path_join_mock, blake2b_mock, getmtime_mock):
 
     # Check the first if and nested else
     assert cluster.walk_dir(dirname="/foo/bar", recursive=False, files=['all'], excluded_files=['ar.conf'],
-                            excluded_extensions=[".xml", ".txt"], get_cluster_item_key="") == {}
+                            excluded_extensions=[".xml", ".txt"], get_cluster_item_key="") == ({},
+                                                                                               {'debug': defaultdict(
+                                                                                                   list),
+                                                                                                'error': defaultdict(
+                                                                                                    list)})
     walk_mock.assert_called_once_with(path_join_mock.return_value, topdown=True)
     path_join_mock.assert_called_once_with(common.WAZUH_PATH, '/foo/bar')
     blake2b_mock.assert_not_called()
@@ -138,8 +141,9 @@ def test_walk_dir(walk_mock, path_join_mock, blake2b_mock, getmtime_mock):
     # Check nested if
     assert cluster.walk_dir(dirname="/foo/bar", recursive=True, files=['all'], excluded_files=['ar.conf', 'spam'],
                             excluded_extensions=[".xml", ".txt"], get_cluster_item_key="",
-                            previous_status={path_join_mock.return_value: {'mod_time': 45}}) == {
-               path_join_mock.return_value: {'mod_time': 45}}
+                            previous_status={path_join_mock.return_value: {'mod_time': 45}}) == (
+               {path_join_mock.return_value: {'mod_time': 45}},
+               {'debug': defaultdict(list), 'error': defaultdict(list)})
 
     walk_mock.assert_called_once_with(path_join_mock.return_value, topdown=True)
     path_join_mock.assert_has_calls([call(common.WAZUH_PATH, '/foo/bar'),
@@ -153,10 +157,10 @@ def test_walk_dir(walk_mock, path_join_mock, blake2b_mock, getmtime_mock):
 
     assert cluster.walk_dir(dirname="/foo/bar", recursive=True, files=['all'], excluded_files=['ar.conf', 'spam'],
                             excluded_extensions=[".xml", ".txt"], get_cluster_item_key="",
-                            previous_status={path_join_mock.return_value: {'mod_time': 35}}) == {
-
-               '/mock/foo/bar': {'mod_time': 45, 'cluster_item_key': '', 'merged': True, 'merge_type': 'TYPE',
-                                 'merge_name': '/mock/foo/bar', 'hash': 'hash'}}
+                            previous_status={path_join_mock.return_value: {'mod_time': 35}}) == (
+               {'/mock/foo/bar': {'mod_time': 45, 'cluster_item_key': '', 'merged': True, 'merge_type': 'TYPE',
+                                  'merge_name': '/mock/foo/bar', 'hash': 'hash'}},
+               {'debug': defaultdict(list), 'error': defaultdict(list)})
 
     walk_mock.assert_called_once_with(path_join_mock.return_value, topdown=True)
     path_join_mock.assert_has_calls([call(common.WAZUH_PATH, '/foo/bar'),
@@ -171,10 +175,10 @@ def test_walk_dir(walk_mock, path_join_mock, blake2b_mock, getmtime_mock):
     # Check the key error
     assert cluster.walk_dir(dirname="/foo/bar", recursive=True, files=['all'], excluded_files=['ar.conf', 'spam'],
                             excluded_extensions=[".xml", ".txt"], get_cluster_item_key="",
-                            previous_status={path_join_mock.return_value: {'mod_mock_time': 35}}) == {
-
-               '/mock/foo/bar': {'mod_time': 45, 'cluster_item_key': '', 'merged': True, 'merge_type': 'TYPE',
-                                 'merge_name': '/mock/foo/bar', 'hash': 'hash'}}
+                            previous_status={path_join_mock.return_value: {'mod_mock_time': 35}}) == (
+               {'/mock/foo/bar': {'mod_time': 45, 'cluster_item_key': '', 'merged': True, 'merge_type': 'TYPE',
+                                  'merge_name': '/mock/foo/bar', 'hash': 'hash'}},
+               {'debug': defaultdict(list), 'error': defaultdict(list)})
 
     walk_mock.assert_called_once_with(path_join_mock.return_value, topdown=True)
     path_join_mock.assert_has_calls([call(common.WAZUH_PATH, '/foo/bar'),
@@ -189,17 +193,16 @@ def test_walk_dir(walk_mock, path_join_mock, blake2b_mock, getmtime_mock):
 @patch('os.path.join', return_value='/foo/bar')
 def test_walk_dir_ko(mock_path_join, mock_walk):
     """Check all errors that can be raised by the function walk_dir."""
-    with patch.object(wazuh.core.cluster.cluster.logger, "debug") as mock_logger:
-        with patch('os.path.getmtime', side_effect=FileNotFoundError):
-            cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "",
-                             {'/foo/bar/': {'mod_time': True}})
-            mock_logger.assert_called_with("File spam was deleted in previous iteration: ")
 
-    with patch.object(wazuh.core.cluster.cluster.logger, "error") as mock_logger:
-        with patch('os.path.getmtime', side_effect=PermissionError):
-            cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "",
-                             {'/foo/bar/': {'mod_time': True}})
-            mock_logger.assert_called_with("Can't read metadata from file spam: ")
+    with patch('os.path.getmtime', side_effect=FileNotFoundError):
+        _, logs = cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "",
+                         {'/foo/bar/': {'mod_time': True}})
+        assert logs['debug']['/foo/bar'] == ["File spam was deleted in previous iteration: "]
+
+    with patch('os.path.getmtime', side_effect=PermissionError):
+        _, logs = cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "",
+                         {'/foo/bar/': {'mod_time': True}})
+        assert logs['error']['/foo/bar'] == ["Can't read metadata from file spam: "]
 
     with patch('wazuh.core.cluster.cluster.walk', side_effect=OSError):
         with pytest.raises(WazuhInternalError, match=r'.* 3015 .*'):
@@ -242,14 +245,15 @@ def test_get_files_status(mock_get_cluster_items):
 
     test_dict = {"path": "metadata"}
 
-    with patch('wazuh.core.cluster.cluster.walk_dir', return_value=test_dict):
-        assert isinstance(cluster.get_files_status(), dict)
-        assert cluster.get_files_status()["path"] == test_dict["path"]
+    with patch('wazuh.core.cluster.cluster.walk_dir', return_value=(test_dict, {})):
+        assert isinstance(cluster.get_files_status(), tuple) and \
+               all(isinstance(d, dict) for d in cluster.get_files_status())
+
+        assert cluster.get_files_status()[0]["path"] == (test_dict["path"])
 
     with patch('wazuh.core.cluster.cluster.walk_dir', side_effect=Exception):
-        with patch.object(wazuh.core.cluster.cluster.logger, "warning") as logger_mock:
-            cluster.get_files_status()
-            logger_mock.assert_called_once_with(f"Error getting file status: .")
+        _, logs = cluster.get_files_status()
+        assert logs['warning']['etc/'] == [f"Error getting file status: ."]
 
 
 @patch('wazuh.core.cluster.cluster.get_cluster_items', return_value={
@@ -283,7 +287,7 @@ def test_get_ruleset_status(mock_get_cluster_items):
              ['~', '.tmp', '.lock', '.swp'], 'etc/lists/', {}, True)
     ]
 
-    with patch("wazuh.core.cluster.cluster.walk_dir", return_value=test_dict) as walk_dir_mock:
+    with patch("wazuh.core.cluster.cluster.walk_dir", return_value=(test_dict, {})) as walk_dir_mock:
         result = cluster.get_ruleset_status({})
         assert isinstance(result, dict)
         assert result["path"] == test_dict["path"]["hash"]
@@ -332,7 +336,8 @@ def test_compress_files_ok(mock_path_exists, mock_path_dirname, mock_mkdir_with_
     mock_get_cluster_items.return_value = {'intervals': {'communication': {'max_zip_size': 10000, 'compress_level': 0}}}
 
     with patch('builtins.open', mock_open(read_data='test_content')) as open_mock:
-        assert isinstance(cluster.compress_files('some_name', ['some/path', 'another/path'], {'ko_file': 'file'}), str)
+        assert isinstance(cluster.compress_files('some_name', ['some/path', 'another/path'], {'ko_file': 'file'}),
+                          tuple)
         assert open_mock.call_args_list == [call(ANY, 'ab'), call(os.path.join(common.WAZUH_PATH, 'some/path'), 'rb'),
                                             call(os.path.join(common.WAZUH_PATH, 'another/path'), 'rb')]
         assert open_mock.return_value.write.call_args_list == [
@@ -350,10 +355,9 @@ def test_compress_files_ko(mock_path_exists, mock_path_dirname, mock_mkdir_with_
     """Check if the compressing function is raising every exception."""
     with patch('builtins.open', mock_open(read_data='test_content')):
         mock_get_cluster_items.return_value = {'intervals': {'communication': {'max_zip_size': 5,'compress_level': 0}}}
-        with patch.object(wazuh.core.cluster.cluster.logger, 'warning') as warning_logger:
-                cluster.compress_files('some_name', ['some/path'], {'missing': {}, 'shared': {}})
-                warning_logger.assert_called_with(f'File too large to be synced: '
-                                                  f'{os.path.join(common.WAZUH_PATH, "some/path")}')
+        _, logs = cluster.compress_files('some_name', ['some/path'], {'missing': {}, 'shared': {}})
+        assert logs['warning']['some/path'] == [f'File too large to be synced: '
+                                                f'{os.path.join(common.WAZUH_PATH, "some/path")}']
 
         mock_get_cluster_items.return_value = {'intervals': {'communication': {'max_zip_size': 15, 'compress_level': 0}}
                                                }
@@ -362,10 +366,9 @@ def test_compress_files_ko(mock_path_exists, mock_path_dirname, mock_mkdir_with_
                 cluster.compress_files('some_name', ['some/path'], {'ko_file': 'file'})
 
         with patch('zlib.compress', return_value=b'compressed_test_content'):
-            with patch.object(wazuh.core.cluster.cluster.logger, 'warning') as warning_logger:
-                cluster.compress_files('some_name', ['some/path', 'another/path'], {'ko_file': 'file'})
-                warning_logger.assert_called_with('Maximum zip size exceeded. Not all files will be compressed '
-                                                  'during this sync.')
+            _, logs = cluster.compress_files('some_name', ['some/path', 'another/path'], {'ko_file': 'file'})
+            assert logs['warning']['some/path'] == ['Maximum zip size exceeded. '
+                                                    'Not all files will be compressed during this sync.']
 
         with patch('zlib.compress', return_value='compressed_test_content'):
             with pytest.raises(WazuhError, match=r'.* 3001 .*'):

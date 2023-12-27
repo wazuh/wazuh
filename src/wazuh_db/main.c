@@ -206,6 +206,8 @@ int main(int argc, char ** argv)
 
     // Start threads
 
+    rwlock_init(&pool_mutex);
+
     if (status = pthread_create(&thread_dealer, NULL, run_dealer, NULL), status != 0) {
         merror("Couldn't create 'run_dealer' thread: %s", strerror(status));
         goto failure;
@@ -264,6 +266,7 @@ int main(int argc, char ** argv)
     unlink(path_template);
     mdebug1("Template file removed again: %s", path_template);
 
+    rwlock_destroy(&pool_mutex);
     return EXIT_SUCCESS;
 
 failure:

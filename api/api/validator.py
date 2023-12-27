@@ -32,7 +32,7 @@ _iso8601_date = re.compile(r'^([0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9]
 _iso8601_date_time = re.compile(
     r'^([0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])[tT](2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.['
     r'0-9]+)?([zZ]|[+-](?:2[0-3]|[01][0-9]):[0-5][0-9])$')
-_names = re.compile(r'^[\w\-.%]+$')
+_names = re.compile(r'^[\w\-.%]+$', re.ASCII)
 _numbers = re.compile(r'^\d+$')
 _numbers_or_all = re.compile(r'^(\d+|all)$')
 _wazuh_key = re.compile(r'[a-zA-Z0-9]+$')
