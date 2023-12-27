@@ -14,7 +14,7 @@ metadata:
     - https://httpd.apache.org/docs/2.4/custom-error.html
 
 check:
-  - wazuh.location: /var/log/apache2/access.log
+  - wazuh.origin: /var/log/apache2/error.log
 #TODO: Once the events arrive tagged, uncomment these lines below and remove the above regex
 # - event.module: apache-http
 # - event.dataset: apache-error
