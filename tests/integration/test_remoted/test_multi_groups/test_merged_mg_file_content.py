@@ -9,7 +9,6 @@ import time
 import os
 import hashlib
 
-
 from pathlib import Path
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils.callbacks import generate_callback
@@ -18,7 +17,6 @@ from wazuh_testing.modules.remoted.configuration import REMOTED_DEBUG
 from wazuh_testing.constants.paths.configurations import SHARED_CONFIGURATIONS_PATH
 from wazuh_testing.constants.paths.variables import VAR_MULTIGROUPS_PATH
 from wazuh_testing.utils import file
-
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
@@ -35,7 +33,6 @@ test_configuration = load_configuration_template(config_path, test_configuration
 daemons_handler_configuration = {'all_daemons': True}
 
 local_internal_options = {REMOTED_DEBUG: '2'}
-
 
 
 def manipulate_file(action, file_path):
@@ -55,6 +52,7 @@ shared_file_name = 'testing_file'
 shared_file_path = os.path.join(SHARED_CONFIGURATIONS_PATH, 'testing_group', shared_file_name)
 expected_line = f"!0 {shared_file_name}"
 wait_time = 3
+
 
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
