@@ -147,7 +147,6 @@
       "ip": "::1",
       "address": "::1"
     },
-    "TestSessionID": 1,
     "wazuh": {
       "location": "/var/log/apache2/access.log",
       "source": "logcollector",
@@ -204,7 +203,6 @@
     "user_agent": {
       "original": "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2"
     },
-    "TestSessionID": 1,
     "event": {
       "module": "apache-http",
       "category": [
@@ -236,7 +234,6 @@
       "dataset": "apache-access",
       "module": "apache-http"
     },
-    "TestSessionID": 1,
     "user": {
       "name": "-"
     },
@@ -306,8 +303,7 @@
         "apache-access"
       ],
       "queue": 49
-    },
-    "TestSessionID": 1
+    }
   },
   {
     "http": {
@@ -356,7 +352,6 @@
     "service": {
       "type": "apache"
     },
-    "TestSessionID": 1,
     "ecs": {
       "version": "8.8"
     }
@@ -373,7 +368,6 @@
     "user_agent": {
       "original": "-"
     },
-    "TestSessionID": 1,
     "event": {
       "kind": "event",
       "created": "2019-02-02T04:38:45.000Z",
@@ -420,7 +414,6 @@
     "user_agent": {
       "original": "Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2"
     },
-    "TestSessionID": 1,
     "event": {
       "category": [
         "web"
@@ -496,7 +489,6 @@
       },
       "version": "1.1"
     },
-    "TestSessionID": 1,
     "service": {
       "type": "apache"
     },
@@ -535,7 +527,6 @@
     }
   },
   {
-    "TestSessionID": 1,
     "url": {
       "original": "/A%20Beka%20G1%20Howe/test/15%20reading%20test.mp4",
       "extension": "mp4",
@@ -654,8 +645,7 @@
     },
     "service": {
       "type": "apache"
-    },
-    "TestSessionID": 1
+    }
   },
   {
     "http": {
@@ -673,7 +663,6 @@
     "service": {
       "type": "apache"
     },
-    "TestSessionID": 1,
     "wazuh": {
       "location": "/var/log/apache2/access.log",
       "queue": 49,
@@ -761,14 +750,12 @@
       "decoders": [
         "apache-access"
       ]
-    },
-    "TestSessionID": 1
+    }
   },
   {
     "ecs": {
       "version": "8.8"
     },
-    "TestSessionID": 1,
     "source": {
       "address": "127.0.0.1",
       "ip": "127.0.0.1"
@@ -815,7 +802,6 @@
     }
   },
   {
-    "TestSessionID": 1,
     "user": {
       "name": "-"
     },
