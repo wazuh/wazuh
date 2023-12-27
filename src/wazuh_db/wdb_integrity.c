@@ -56,6 +56,9 @@ extern void mock_assert(const int result, const char* const expression,
     mock_assert((int)(expression), #expression, __FILE__, __LINE__);
 #endif
 
+// Configuration
+extern _Config config;
+
 void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite3_stmt* stmt) {
     if (!router_syscollector_handle) {
         mdebug2("Router handle not available.");

@@ -115,9 +115,6 @@ typedef enum wdb_global_group_hash_operations_t {
 // Router provider variables
 extern ROUTER_PROVIDER_HANDLE router_syscollector_handle;
 
-// Configuration
-extern _Config config;
-
 typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,
     WDB_STMT_FIM_FIND_ENTRY,
