@@ -116,7 +116,7 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
         - set_wazuh_configuration:
             type: fixture
             brief: Set the wazuh configuration according to the configuration data.
-        - configure_local_internal_options_function:
+        - configure_local_internal_options:
             type: fixture
             brief: Configure the local_internal_options_file.
         - truncate_monitored_files:
