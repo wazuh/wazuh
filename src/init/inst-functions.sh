@@ -1123,7 +1123,8 @@ checkDownloadContent()
 
     if [ "${DOWNLOAD_CONTENT}" = "yes" ]; then
         echo "Download ${VD_FILENAME} file"
-        wget -O ${VD_FILENAME} https://.../${VD_FILENAME}
+        wget -O ${VD_FILENAME} https://packages.wazuh.com/deps/vulnerability_model_database/${VD_FILENAME}
+        tar -xf ${VD_FILENAME}
 
         ${INSTALL} -m 0640 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${VD_FILENAME} ${INSTALLDIR}/
     fi
