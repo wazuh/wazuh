@@ -203,7 +203,7 @@ normalize:
       - _group_domain: replace(DC=, '')
       - group.domain: $_group_domain
 
-  - check: array_contains($_ev_member_name, $event.id) AND exists($user.target)
+  - check: array_contains($_ev_member_name, $event.id)
     map:
       - user.target.group.id: $group.id
       - user.target.group.name: $group.name

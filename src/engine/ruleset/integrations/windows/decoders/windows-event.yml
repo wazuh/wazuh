@@ -28,13 +28,4 @@ normalize:
 
       - host.name: $windows.System.Computer.#text
 
-      - _win_log_level:
-          '0': Audit
-          '1': Critical
-          '2': Error
-          '3': Warning
-          '4': Information
-          '5': Verbose
-      - log.level: get_value($_win_log_level, $windows.System.Level.#text)
-
       - wazuh.decoders: array_append(windows-event)
