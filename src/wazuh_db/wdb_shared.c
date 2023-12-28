@@ -14,6 +14,7 @@
 /* Variables */
 
 wdb_config wconfig;
+_Config gconfig;
 
 /// Strings used with wdbc_result.
 const char* WDBC_RESULT[] = {

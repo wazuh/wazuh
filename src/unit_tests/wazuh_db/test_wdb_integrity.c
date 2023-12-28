@@ -1779,8 +1779,8 @@ void test_wdbi_report_removed_packages_success(void **state) {
     wdb_component_t component = WDB_SYSCOLLECTOR_PACKAGES;
     sqlite3_stmt* stmt = NULL;
     router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)1;
-    const char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\"},\"data_type\":\"dbsync_packages\","
-                                   "\"data\":{\"name\":\"name\",\"version\":\"version\",\"architecture\":\"architecture\",\"format\":\"format\",\"location\":\"location\"},\"operation\":\"DELETED\"}";
+    const char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"node_name\":\"\"},\"data_type\":\"dbsync_packages\","
+                                   "\"data\":{\"name\":\"name\",\"version\":\"version\",\"architecture\":\"architecture\",\"format\":\"format\",\"location\":\"location\",\"item_id\":\"item_id\"},\"operation\":\"DELETED\"}";
 
     expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, "name");
@@ -1792,6 +1792,8 @@ void test_wdbi_report_removed_packages_success(void **state) {
     will_return(__wrap_sqlite3_column_text, "format");
     expect_value(__wrap_sqlite3_column_text, iCol, 4);
     will_return(__wrap_sqlite3_column_text, "location");
+    expect_value(__wrap_sqlite3_column_text, iCol, 5);
+    will_return(__wrap_sqlite3_column_text, "item_id");
 
     expect_string(__wrap_router_provider_send_fb, msg, expected_message);
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
@@ -1808,7 +1810,7 @@ void test_wdbi_report_removed_hotfixes_success(void **state) {
     wdb_component_t component = WDB_SYSCOLLECTOR_HOTFIXES;
     sqlite3_stmt* stmt = NULL;
     router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)1;
-    const char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\"},\"data_type\":\"dbsync_hotfixes\","
+    const char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"node_name\":\"\"},\"data_type\":\"dbsync_hotfixes\","
                                    "\"data\":{\"hotfix\":\"hotfix\"},\"operation\":\"DELETED\"}";
 
     expect_value(__wrap_sqlite3_column_text, iCol, 0);
@@ -1829,10 +1831,10 @@ void test_wdbi_report_removed_hotfixes_success_multiple_steps(void **state) {
     wdb_component_t component = WDB_SYSCOLLECTOR_HOTFIXES;
     sqlite3_stmt* stmt = NULL;
     router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)1;
-    const char* expected_message_1 = "{\"agent_info\":{\"agent_id\":\"001\"},\"data_type\":\"dbsync_hotfixes\","
+    const char* expected_message_1 = "{\"agent_info\":{\"agent_id\":\"001\",\"node_name\":\"\"},\"data_type\":\"dbsync_hotfixes\","
                                      "\"data\":{\"hotfix\":\"hotfix1\"},\"operation\":\"DELETED\"}";
 
-    const char* expected_message_2 = "{\"agent_info\":{\"agent_id\":\"001\"},\"data_type\":\"dbsync_hotfixes\","
+    const char* expected_message_2 = "{\"agent_info\":{\"agent_id\":\"001\",\"node_name\":\"\"},\"data_type\":\"dbsync_hotfixes\","
                                      "\"data\":{\"hotfix\":\"hotfix2\"},\"operation\":\"DELETED\"}";
 
     // First hotfix

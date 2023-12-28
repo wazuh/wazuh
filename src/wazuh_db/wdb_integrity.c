@@ -56,9 +56,6 @@ extern void mock_assert(const int result, const char* const expression,
     mock_assert((int)(expression), #expression, __FILE__, __LINE__);
 #endif
 
-// Configuration
-extern _Config config;
-
 void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite3_stmt* stmt) {
     if (!router_syscollector_handle) {
         mdebug2("Router handle not available.");
@@ -78,7 +75,7 @@ void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite
         j_data = cJSON_CreateObject();
 
         cJSON_AddStringToObject(j_agent_info, "agent_id", agent_id);
-        cJSON_AddStringToObject(j_agent_info, "node_name", config.node_name ? config.node_name : "");
+        cJSON_AddStringToObject(j_agent_info, "node_name", gconfig.node_name ? gconfig.node_name : "");
         cJSON_AddItemToObject(j_msg_to_send, "agent_info", j_agent_info);
 
         switch (component)

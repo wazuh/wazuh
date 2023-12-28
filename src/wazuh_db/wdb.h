@@ -21,7 +21,7 @@
 #include "wazuhdb_op.h"
 #include "regex_op.h"
 #include "router.h"
-#include "config/global-config.h"
+#include "../config/global-config.h"
 
 #define WDB_AGENT_EMPTY 0
 #define WDB_AGENT_PENDING 1
@@ -442,6 +442,7 @@ extern char *schema_global_upgrade_v4_sql;
 extern char *schema_global_upgrade_v5_sql;
 
 extern wdb_config wconfig;
+extern _Config gconfig;
 extern rwlock_t pool_mutex;
 extern wdb_t * db_pool;
 extern int db_pool_size;
