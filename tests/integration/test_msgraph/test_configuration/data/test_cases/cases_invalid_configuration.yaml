@@ -144,7 +144,6 @@
     module: 'ms-graph'
 
 
-
 - name: Empty_Client_Id
   description: Check ms-graph integration does not start with Empty Client Id
   configuration_parameters:
