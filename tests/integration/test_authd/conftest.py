@@ -10,7 +10,7 @@ import os
 
 from wazuh_testing import logger
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, WAZUH_API_LOG_FILE_PATH, WAZUH_API_JSON_LOG_FILE_PATH
-from wazuh_testing.constants.paths.configurations import DEFAULT_AUTHD_PASS_PATH, DEFAULT_AUTHD_PASS_PATH
+from wazuh_testing.constants.paths.configurations import DEFAULT_AUTHD_PASS_PATH, DEFAULT_AUTHD_PASS_PATH, WAZUH_CLIENT_KEYS_PATH
 from wazuh_testing.utils import file
 from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.agent_groups import create_group, delete_group
@@ -234,12 +234,14 @@ def clean_agents_ctx(stop_authd):
     """
     Clean agents files.
     """
+    file.truncate_file(WAZUH_CLIENT_KEYS_PATH)
     utils.clean_rids()
     utils.clean_agents_timestamp()
     utils.clean_diff()
 
     yield
 
+    file.truncate_file(WAZUH_CLIENT_KEYS_PATH)
     utils.clean_rids()
     utils.clean_agents_timestamp()
     utils.clean_diff()

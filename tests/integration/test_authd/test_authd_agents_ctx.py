@@ -74,11 +74,9 @@ daemons_handler_configuration = {'all_daemons': True}
 receiver_sockets_params = [(("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET', 'SSL_TLSv1_2'), (AUTHD_SOCKET_PATH, 'AF_UNIX', 'TCP')]
 
 receiver_sockets = None  # Set in the fixtures
-groups_infra = ['001','002', '003', '004']
 test_group = "TestGroup"
 timeout = 10
-login_attempts = 3
-sleep = 1
+sleep = 5
 
 
 # Functions
@@ -98,7 +96,7 @@ def register_agent_main_server(receiver_sockets, Name, Group=None, IP=None):
         response = receiver_sockets[0].receive().decode()
         if time.time() > timeout:
             raise ConnectionResetError('Manager did not respond to sent message!')
-    time.sleep(5)
+    time.sleep(sleep)
     return response
 
 
@@ -118,14 +116,14 @@ def register_agent_local_server(receiver_sockets, Name, Group=None, IP=None):
     receiver_sockets[1].open()
     receiver_sockets[1].send(message, size=True)
     response = receiver_sockets[1].receive(size=True).decode()
-    time.sleep(5)
+    time.sleep(sleep)
     return response
 
 
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_ossec_authd_agents_ctx(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
-                                clean_agents_ctx, daemons_handler, connect_to_sockets, wait_for_authd_startup, set_up_groups):
+                                clean_agents_ctx, daemons_handler, wait_for_authd_startup, connect_to_sockets, set_up_groups):
     '''
     description:
         Check if when the 'wazuh-authd' daemon receives an enrollment request from an agent
