@@ -31,10 +31,10 @@ if(NOT ${TARGET} STREQUAL "winagent")
                             -Wl,--wrap,merror -Wl,--wrap,fseek")
     list(APPEND shared_tests_flags "${FILE_OP_BASE_FLAGS}")
 else()
-    list(APPEND shared_tests_flags "-Wl,--wrap,get_windows_file_time_epoch,--wrap,mdebug2 --wrap,wfopen, --wrap,fopen\
+    list(APPEND shared_tests_flags "-Wl,--wrap,get_windows_file_time_epoch,--wrap,mdebug2,--wrap,wfopen,--wrap,fopen\
                                     -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
                                     -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                    -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown ${DEBUG_OP_WRAPPERS}")
+                                    -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown ${DEBUG_OP_WRAPPERS} ${STDIO_OP_WRAPPERS}")
 endif()
 
 list(APPEND shared_tests_names "test_integrity_op")
