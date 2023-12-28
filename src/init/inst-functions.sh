@@ -1121,11 +1121,21 @@ checkDownloadContent()
 {
     VD_FILENAME='vd_1.0.0_vd_4.8.0.tar.xz'
 
-    if [ "${DOWNLOAD_CONTENT}" = "y" ] || [ "${DOWNLOAD_CONTENT}" = "yes" ]; then
+    if [ "X${DOWNLOAD_CONTENT}" = "Xyes" ]; then
         echo "Download ${VD_FILENAME} file"
         wget -O ${VD_FILENAME} http://packages.wazuh.com.s3-website-us-west-1.amazonaws.com/deps/vulnerability_model_database/${VD_FILENAME}
 
         ${INSTALL} -m 0640 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${VD_FILENAME} ${INSTALLDIR}/
+    fi
+
+    if [ "X${DOWNLOAD_CONTENT_AND_DECOMPRESS}" = "Xy" ]; then
+        echo "Download ${VD_FILENAME} file"
+        wget -O ${VD_FILENAME} http://packages.wazuh.com.s3-website-us-west-1.amazonaws.com/deps/vulnerability_model_database/${VD_FILENAME}
+
+        echo "Decompress ${VD_FILENAME} file"
+        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${VD_FILENAME} ${INSTALLDIR}/
+        tar -xf ${INSTALLDIR}/${VD_FILENAME} -C ${INSTALLDIR}/
+        rm -rf ${INSTALLDIR}/${VD_FILENAME}
     fi
 }
 
