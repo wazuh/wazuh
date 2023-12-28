@@ -59,7 +59,6 @@
     },
     "rule": {
       "category": "Potential Corporate Privacy Violation",
-      "id": 2013505,
       "name": "ET POLICY GNU/Linux YUM User-Agent Outbound likely related to package management"
     },
     "source": {
