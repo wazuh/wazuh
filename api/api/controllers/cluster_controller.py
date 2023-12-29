@@ -893,7 +893,7 @@ async def get_node_config(request, node_id: str, component: str, wait_for_comple
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def update_configuration(request, node_id: str, body: dict, pretty: bool = False,
+async def update_configuration(request, node_id: str, body: bytes, pretty: bool = False,
                                wait_for_complete: bool = False) -> web.Response:
     """Update Wazuh configuration (ossec.conf) in node node_id.
 
@@ -902,7 +902,7 @@ async def update_configuration(request, node_id: str, body: dict, pretty: bool =
     request : connexion.request
     node_id : str
         Node ID.
-    body : dict
+    body : bytes
         New content for the Wazuh configuration (ossec.conf).
     pretty : bool
         Show results in human-readable format.

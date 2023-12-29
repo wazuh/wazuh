@@ -113,6 +113,7 @@ typedef struct _agent_breakdown_t {
     struct timeval sql_time;
     struct timeval vacuum_time;
     struct timeval get_fragmentation_time;
+    struct timeval open_calls_time;
     agent_ciscat_t ciscat;
     agent_rootcheck_t rootcheck;
     agent_sca_t sca;
@@ -199,6 +200,7 @@ typedef struct _global_breakdown_t {
     struct timeval sql_time;
     struct timeval vacuum_time;
     struct timeval get_fragmentation_time;
+    struct timeval open_calls_time;
     global_agent_t agent;
     global_belongs_t belongs;
     global_group_t group;
@@ -291,6 +293,13 @@ void w_inc_wazuhdb_remove_time(struct timeval time);
  *
  */
 void w_inc_agent();
+
+/**
+ * @brief Increment open agent DB time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_agent_open_time(struct timeval time);
 
 /**
  * @brief Increment sql agent queries counter
@@ -697,6 +706,13 @@ void w_inc_agent_syscollector_deprecated_osinfo_time(struct timeval time);
  *
  */
 void w_inc_global();
+
+/**
+ * @brief Increment open global time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_global_open_time(struct timeval time);
 
 /**
  * @brief Increment sql global queries counter

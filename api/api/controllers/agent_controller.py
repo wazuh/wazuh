@@ -12,7 +12,7 @@ from api.encoder import dumps, prettify
 from api.models.agent_added_model import AgentAddedModel
 from api.models.agent_inserted_model import AgentInsertedModel
 from api.models.base_model_ import Body
-from api.models.group_added_model import GroupAddedModel
+from api.models.agent_group_added_model import GroupAddedModel
 from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc, deprecate_endpoint
 from api.validator import check_component_configuration_pair
 from wazuh import agent, stats
@@ -866,42 +866,6 @@ async def get_daemon_stats(request, agent_id: str, pretty: bool = False, wait_fo
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_component_stats(request, pretty=False, wait_for_complete=False, agent_id=None, component=None):
-    """Get a specified agent's component stats.
-
-    Parameters
-    ----------
-    request : connexion.request
-    agent_id : str
-        ID of the agent from which the statistics are obtained.
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-    daemons_list : list
-        List of the daemons to get statistical information from.
-
-    Returns
-    -------
-    web.Response
-        API response.
-    """
-    daemons_list = daemons_list or []
-    f_kwargs = {'agent_list': [agent_id],
-                'daemons_list': daemons_list}
-
-    dapi = DistributedAPI(f=stats.get_daemons_stats_agents,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies'])
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
-
-
 async def get_component_stats(request, pretty: bool = False, wait_for_complete: bool = False, agent_id: str = None,
                               component: str = None) -> web.Response:
     """Get a specified agent's component stats.
@@ -1290,7 +1254,7 @@ async def get_group_config(request, group_id: str, pretty: bool = False, wait_fo
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_group_config(request, body: dict, group_id: str, pretty: bool = False,
+async def put_group_config(request, body: bytes, group_id: str, pretty: bool = False,
                            wait_for_complete: bool = False) -> web.Response:
     """Update group configuration.
 
@@ -1300,8 +1264,8 @@ async def put_group_config(request, body: dict, group_id: str, pretty: bool = Fa
     Parameters
     ----------
     request : connexion.request
-    body : dict
-        Dictionary with the new group configuration.
+    body : bytes
+        Bytes object with the new group configuration.
         The body is obtained from the XML file and decoded in this function.
     group_id : str
         Group ID.
@@ -1317,7 +1281,7 @@ async def put_group_config(request, body: dict, group_id: str, pretty: bool = Fa
     """
     # Parse body to utf-8
     Body.validate_content_type(request, expected_content_type='application/xml')
-    parsed_body = Body.decode_body(body, unicode_error=2006, attribute_error=2007)
+    parsed_body = Body.decode_body(body, unicode_error=1911, attribute_error=1912)
 
     f_kwargs = {'group_list': [group_id],
                 'file_data': parsed_body}

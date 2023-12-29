@@ -430,7 +430,6 @@ extern char *schema_upgrade_v9_sql;
 extern char *schema_upgrade_v10_sql;
 extern char *schema_upgrade_v11_sql;
 extern char *schema_upgrade_v12_sql;
-extern char *schema_upgrade_v13_sql;
 extern char *schema_global_upgrade_v1_sql;
 extern char *schema_global_upgrade_v2_sql;
 extern char *schema_global_upgrade_v3_sql;
@@ -438,7 +437,7 @@ extern char *schema_global_upgrade_v4_sql;
 extern char *schema_global_upgrade_v5_sql;
 
 extern wdb_config wconfig;
-extern pthread_mutex_t pool_mutex;
+extern rwlock_t pool_mutex;
 extern wdb_t * db_pool;
 extern int db_pool_size;
 extern OSHash * open_dbs;

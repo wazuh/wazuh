@@ -1441,6 +1441,13 @@ components:
             minor:
               type: string
           description: "Agent OS information"
+        status_code:
+          description: "Agent connection status code"
+          type: integer
+          format: int32
+          default: 0
+          minimum: 0
+          maximum: 5
 
     Agent:
       allOf:
@@ -4458,6 +4465,10 @@ components:
     SyscheckDatabase:
       type: object
       properties:
+        changes:
+          type: integer
+          format: int32
+          description: "Number of changes applied"
         sha1:
           type: string
           format: hash_or_empty
@@ -4810,6 +4821,7 @@ components:
             - win
             - pkg
             - apk
+            - snap
             - macports
             - pypi
             - npm
@@ -7282,6 +7294,7 @@ paths:
                       version: Wazuh v4.3.0
                       node_name: worker2
                       group_config_status: "synced"
+                      status_code: 0
                     - os:
                         arch: x86_64
                         codename: Focal Fossa
@@ -7306,6 +7319,7 @@ paths:
                       version: Wazuh v4.3.0
                       node_name: worker2
                       group_config_status: "synced"
+                      status_code: 0
                     - os:
                         arch: x86_64
                         codename: Focal Fossa
@@ -7330,6 +7344,7 @@ paths:
                       version: Wazuh v4.3.0
                       node_name: worker1
                       group_config_status: "not synced"
+                      status_code: 0
                   total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
@@ -9956,7 +9971,7 @@ paths:
                           cert: "/var/ossec/api/configuration/ssl/server.crt"
                           use_ca: false
                           ca: "/var/ossec/api/configuration/ssl/ca.crt"
-                          ssl_protocol: "TLSv1.2"
+                          ssl_protocol: "auto"
                           ssl_ciphers: ""
                         logs:
                           level: info
@@ -9994,7 +10009,7 @@ paths:
                           cert: "/var/ossec/api/configuration/ssl/server.crt"
                           use_ca: false
                           ca: "/var/ossec/api/configuration/ssl/ca.crt"
-                          ssl_protocol: "TLSv1.2"
+                          ssl_protocol: "auto"
                           ssl_ciphers: ""
                         logs:
                           path: /var/ossec/logs/api.log
@@ -10031,7 +10046,7 @@ paths:
                           cert: "/var/ossec/api/configuration/ssl/server.crt"
                           use_ca: false
                           ca: "/var/ossec/api/configuration/ssl/ca.crt"
-                          ssl_protocol: "TLSv1.2"
+                          ssl_protocol: "auto"
                           ssl_ciphers: ""
                         logs:
                           path: /var/ossec/logs/api.log
@@ -12890,7 +12905,7 @@ paths:
                           cert: "/var/ossec/api/configuration/ssl/server.crt"
                           use_ca: false
                           ca: "/var/ossec/api/configuration/ssl/ca.crt"
-                          ssl_protocol: "TLSv1.2"
+                          ssl_protocol: "auto"
                           ssl_ciphers: ""
                         access:
                           max_login_attempts: 50
@@ -14504,6 +14519,7 @@ paths:
     get:
       tags:
       - Syscheck
+      deprecated: true
       summary: "Get results"
       description: "Return FIM findings in the specified agent"
       operationId: api.controllers.syscheck_controller.get_syscheck_agent
@@ -14594,6 +14610,7 @@ paths:
     delete:
       tags:
         - Syscheck
+      deprecated: true
       summary: "Clear results"
       description: "Clear file integrity monitoring scan results for a specified agent. Only available for agents < 3.12.0, it doesn't apply for more recent ones"
       operationId: api.controllers.syscheck_controller.delete_syscheck_agent
@@ -15187,6 +15204,7 @@ paths:
     delete:
       tags:
         - Experimental
+      deprecated: true
       summary: "Clear agents FIM results"
       description: "Clear the syscheck database for all agents or a list of them"
       operationId: api.controllers.experimental_controller.clear_syscheck_database
@@ -15337,6 +15355,7 @@ paths:
     get:
       tags:
         - Experimental
+      deprecated: true
       summary: "Get agents hardware"
       description: "Return all agents (or a list of them) hardware info. This information include cpu, ram, scan info
       among others of all agents"
@@ -15432,6 +15451,7 @@ paths:
     get:
       tags:
         - Experimental
+      deprecated: true
       summary: "Get agents netaddr"
       description: "Return all agents (or a list of them) IPv4 and IPv6 addresses associated to their network
       interfaces. This information include used IP protocol, interface, and IP address among others"
@@ -15510,6 +15530,7 @@ paths:
     get:
       tags:
         - Experimental
+      deprecated: true
       summary: "Get agents netiface"
       description: "Return all agents (or a list of them) network interfaces. This information includes rx, scan, tx
       info and some network information among other"
@@ -15630,6 +15651,7 @@ paths:
     get:
       tags:
         - Experimental
+      deprecated: true
       summary: "Get agents netproto"
       description: "Return all agents (or a list of them) routing configuration for each network interface. This
       information includes interface, type protocol information among other"
@@ -15705,6 +15727,7 @@ paths:
     get:
       tags:
         - Experimental
+      deprecated: true
       summary: "Get agents OS"
       description: "Return all agents (or a list of them) OS info. This information includes os information,
       architecture information among other"
@@ -15808,6 +15831,7 @@ paths:
     get:
       tags:
         - Experimental
+      deprecated: true
       summary: "Get agents packages"
       description: "Return all agents (or a list of them) packages info. This information includes name, section, size,
       and priority information of all packages among other"
@@ -15908,6 +15932,7 @@ paths:
     get:
       tags:
         - Experimental
+      deprecated: true
       summary: "Get agents ports"
       description: "Return all agents (or a list of them) ports info. This information includes local IP, Remote IP,
       protocol information among other"
@@ -16011,6 +16036,7 @@ paths:
     get:
       tags:
         - Experimental
+      deprecated: true
       summary: "Get agents processes"
       description: "Return all agents (or a list of them) processes info"
       operationId: api.controllers.experimental_controller.get_processes_info
@@ -16138,6 +16164,7 @@ paths:
     get:
       tags:
         - Experimental
+      deprecated: true
       summary: "Get agents hotfixes"
       description: "Return all agents (or a list of them) hotfixes info"
       operationId: api.controllers.experimental_controller.get_hotfixes_info
@@ -16196,6 +16223,7 @@ paths:
     get:
       tags:
         - Syscollector
+      deprecated: true
       summary: "Get agent hardware"
       description: "Return the agent's hardware info. This information include cpu, ram, scan info among others"
       operationId: api.controllers.syscollector_controller.get_hardware_info
@@ -16254,6 +16282,7 @@ paths:
     get:
       tags:
         - Syscollector
+      deprecated: true
       summary: "Get agent hotfixes"
       description: "Return all hotfixes installed by Microsoft(R) in Windows(R) systems (KB... fixes)"
       operationId: api.controllers.syscollector_controller.get_hotfix_info
@@ -16310,6 +16339,7 @@ paths:
     get:
       tags:
         - Syscollector
+      deprecated: true
       summary: "Get agent netaddr"
       description: "Return the agent's network address info. This information include used IP protocol, interface, IP
       address  among others"
@@ -16373,6 +16403,7 @@ paths:
     get:
       tags:
         - Syscollector
+      deprecated: true
       summary: "Get agent netiface"
       description: "Return the agent's network interface info. This information include rx, scan, tx info and some
       network information among others"
@@ -16457,6 +16488,7 @@ paths:
     get:
       tags:
         - Syscollector
+      deprecated: true
       summary: "Get agent netproto"
       description: "Return the agent's routing configuration for each network interface"
       operationId: api.controllers.syscollector_controller.get_network_protocol_info
@@ -16519,6 +16551,7 @@ paths:
     get:
       tags:
         - Syscollector
+      deprecated: true
       summary: "Get agent OS"
       description: "Return the agent's OS info. This information include os information, architecture information among
       others of all agents"
@@ -16581,6 +16614,7 @@ paths:
     get:
       tags:
         - Syscollector
+      deprecated: true
       summary: "Get agent packages"
       description: "Return the agent's packages info. This information include name, section, size, priority
       information of all packages among others"
@@ -16682,6 +16716,7 @@ paths:
     get:
       tags:
         - Syscollector
+      deprecated: true
       summary: "Get agent ports"
       description: "Return the agent's ports info. This information include local IP, Remote IP, protocol information
       among others"
@@ -16788,6 +16823,7 @@ paths:
     get:
       tags:
         - Syscollector
+      deprecated: true
       summary: "Get agent processes"
       description: "Return the agent's processes info"
       operationId: api.controllers.syscollector_controller.get_processes_info
@@ -18941,6 +18977,7 @@ paths:
     put:
       tags:
         - Vulnerability
+      deprecated: true
       summary: "Run vulnerability detector scan"
       description: "Run a vulnerability detector scan in all nodes"
       operationId: api.controllers.vulnerability_controller.run_vulnerability_scan
@@ -18982,6 +19019,7 @@ paths:
     get:
       tags:
         - Vulnerability
+      deprecated: true
       summary: "Get vulnerabilities"
       description: "Return the vulnerabilities of an agent"
       operationId: api.controllers.vulnerability_controller.get_vulnerability_agent
@@ -19065,6 +19103,7 @@ paths:
     get:
       tags:
       - Vulnerability
+      deprecated: true
       summary: "Get last scan datetime"
       description: "Return when the last full and partial vulnerability scan of a specified agent ended."
       operationId: api.controllers.vulnerability_controller.get_last_scan_agent
@@ -19111,6 +19150,7 @@ paths:
     get:
       tags:
         - Vulnerability
+      deprecated: true
       summary: "Get agent vulnerabilities' field summary"
       description: "Return a summary of the vulnerabilities' field of an agent"
       operationId: api.controllers.vulnerability_controller.get_vulnerabilities_field_summary

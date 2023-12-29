@@ -49,3 +49,17 @@ void expect_SetThreadPriority_call(HANDLE handle, int priority, int ret) {
     expect_value(wrap_SetThreadPriority, nPriority, priority);
     will_return(wrap_SetThreadPriority, ret);
 }
+
+BOOL wrap_CreateProcessW(__UNUSED_PARAM(LPCWSTR               lpApplicationName),
+                         LPWSTR                lpCommandLine,
+                         __UNUSED_PARAM(LPSECURITY_ATTRIBUTES lpProcessAttributes),
+                         __UNUSED_PARAM(LPSECURITY_ATTRIBUTES lpThreadAttributes),
+                         __UNUSED_PARAM(BOOL                  bInheritHandles),
+                         __UNUSED_PARAM(DWORD                 dwCreationFlags),
+                         __UNUSED_PARAM(LPVOID                lpEnvironment),
+                         __UNUSED_PARAM(LPCWSTR               lpCurrentDirectory),
+                         __UNUSED_PARAM(LPSTARTUPINFOW        lpStartupInfo),
+                         __UNUSED_PARAM(LPPROCESS_INFORMATION lpProcessInformation)) {
+    check_expected(lpCommandLine);
+    return mock();
+}

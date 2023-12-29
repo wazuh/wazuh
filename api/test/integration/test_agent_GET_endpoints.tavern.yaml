@@ -72,6 +72,19 @@ stages:
           extra_kwargs:
             key: "status"
       status_code: 200
+  
+  - name: Get all agents sorted by status_code
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        sort: status_code
+    response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "status_code"
+      status_code: 200
 
   - name: Pagination with offset 0 and limit 2
     request:
@@ -1187,6 +1200,7 @@ stages:
               registerIP: !anystr
               status: !anystr
               version: !anystr
+              status_code: !anyint
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -3260,6 +3274,7 @@ marks:
         - registerIP
         - status
         - version
+        - status_code
 
 stages:
 
@@ -4155,6 +4170,7 @@ marks:
         - node_name
         - registerIP
         - status
+        - status_code
 
 stages:
 
@@ -4679,6 +4695,7 @@ marks:
         - registerIP
         - status
         - version
+        - status_code
 
 stages:
 

@@ -37,9 +37,12 @@ unsigned int count_reload_retries;
 static const char *const AUDISP_CONFIGURATION = "active = yes\ndirection = out\npath = builtin_af_unix\n"
                                                 "type = builtin\nargs = 0640 %s\nformat = string\n";
 
+w_queue_t * audit_queue;
+
 //This variable controls if the the modification of the rule is made by syscheck.
 
 volatile int audit_db_consistency_flag = 0;
+atomic_int_t audit_parse_thread_active = ATOMIC_INT_INITIALIZER(0);
 atomic_int_t audit_thread_active = ATOMIC_INT_INITIALIZER(0);
 
 #ifdef ENABLE_AUDIT
@@ -359,6 +362,14 @@ int audit_init(void) {
         return -1;
     }
 
+    // Initialize audit queue
+    audit_queue = queue_init(syscheck.queue_size);
+    atomic_int_set(&audit_parse_thread_active, 1);
+    w_create_thread(audit_parse_thread, NULL);
+
+    // Print audit queue size
+    minfo(FIM_AUDIT_QUEUE_SIZE, syscheck.queue_size);
+
     // Perform Audit healthcheck
     if (syscheck.audit_healthcheck) {
         if(audit_health_check(audit_data.socket)) {
@@ -492,7 +503,7 @@ void *audit_main(audit_data_t *audit_data) {
 
     w_rwlock_unlock(&syscheck.directories_lock);
 
-
+    atomic_int_set(&audit_parse_thread_active, 0);
 
     // Clean Audit added rules.
     if (audit_data->mode == AUDIT_ENABLED) {
@@ -503,6 +514,18 @@ void *audit_main(audit_data_t *audit_data) {
 }
 // LCOV_EXCL_STOP
 
+void *audit_parse_thread() {
+    char * audit_logs;
+
+    while (atomic_int_get(&audit_parse_thread_active)) {
+        audit_logs = queue_pop_ex(audit_queue);
+        audit_parse(audit_logs);
+        os_free(audit_logs);
+    }
+    queue_free(audit_queue);
+
+    return NULL;
+}
 
 void audit_read_events(int *audit_sock, atomic_int_t *running) {
     size_t byteRead;
@@ -518,6 +541,7 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
     count_reload_retries = 0;
     int conn_retries;
     char * eoe_found = NULL;
+    char * cache_dup = NULL;
 
     char *buffer;
     os_malloc(BUF_SIZE * sizeof(char), buffer);
@@ -539,7 +563,14 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
         case 0:
             if (cache_i) {
                 // Flush cache
-                audit_parse(cache);
+                os_strdup(cache, cache_dup);
+                if (queue_push_ex(audit_queue, cache_dup)) {
+                    if (!audit_queue_full_reported) {
+                        mwarn(FIM_FULL_AUDIT_QUEUE);
+                        audit_queue_full_reported = 1;
+                    }
+                    os_free(cache_dup);
+                }
                 cache_i = 0;
             }
 
@@ -602,7 +633,14 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
 
                 if (cache_id && strcmp(cache_id, id) && cache_i) {
                     if (!event_too_long_id) {
-                        audit_parse(cache);
+                        os_strdup(cache, cache_dup);
+                        if (queue_push_ex(audit_queue, cache_dup)) {
+                            if (!audit_queue_full_reported) {
+                                mwarn(FIM_FULL_AUDIT_QUEUE);
+                                audit_queue_full_reported = 1;
+                            }
+                            os_free(cache_dup);
+                        }
                     }
                     cache_i = 0;
                 }
@@ -631,7 +669,14 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
 
         // If some audit log remains in the cache and it is complet (line "end of event" is found), flush cache
         if (eoe_found && !event_too_long_id){
-            audit_parse(cache);
+            os_strdup(cache, cache_dup);
+            if (queue_push_ex(audit_queue, cache_dup)) {
+                if (!audit_queue_full_reported) {
+                    mwarn(FIM_FULL_AUDIT_QUEUE);
+                    audit_queue_full_reported = 1;
+                }
+                os_free(cache_dup);
+            }
             cache_i = 0;
         }
 

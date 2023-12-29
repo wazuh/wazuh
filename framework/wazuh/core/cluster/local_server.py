@@ -166,7 +166,7 @@ class LocalServerHandler(server.AbstractServerHandler):
             Request result.
         """
         result = future.result()
-        send_res = asyncio.create_task(self.log_exceptions(self.send_request(command=b'send_f_res', data=result)))
+        send_res = asyncio.create_task(self.send_request(command=b'send_f_res', data=result))
         send_res.add_done_callback(self.send_res_callback)
 
     def send_res_callback(self, future):

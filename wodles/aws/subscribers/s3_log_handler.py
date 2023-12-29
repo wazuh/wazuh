@@ -13,6 +13,8 @@ from typing import List
 
 try:
     import pyarrow.parquet as pq
+    if sys.version_info < (3, 8):
+        import pyarrow_hotfix  # noqa: F401
 except ImportError:
     print('ERROR: pyarrow module is required.')
     sys.exit(10)
@@ -219,12 +221,19 @@ class AWSSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler):
                 if re.match(self.discard_regex, log['full_log']):
                     aws_tools.debug(f'+++ The "{self.discard_regex.pattern}" regex found a match. '
                                     f'The event will be skipped.', 2)
+                else:
+                    print(f'WARNING: The "{self.discard_regex.pattern}" regex did not find a match. '
+                          f'The event will be processed.')             
                     continue
             elif self.event_should_be_skipped(log):
                 aws_tools.debug(f'+++ The "{self.discard_regex.pattern}" regex found a match '
                                 f'in the "{self.discard_field}" '
                       f'field. The event will be skipped.', 2)
                 continue
+            else:
+                aws_tools.debug(
+                                f'+++ The "{self.discard_regex.pattern}" regex did not find a match in the '
+                                f'"{self.discard_field}" field. The event will be processed.', 3)
 
             msg['aws'].update(log)
             self.send_msg(msg)

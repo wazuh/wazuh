@@ -1,3 +1,7 @@
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import sys
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
@@ -29,7 +33,7 @@ async def test_forward_event(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
     """Verify 'forward_event' endpoint is working as expected."""
     with patch('api.controllers.event_controller.Body.validate_content_type'):
         with patch(
-            'api.controllers.event_controller.EventsIngestModel.get_kwargs', return_value=AsyncMock()
+            'api.controllers.event_controller.EventIngestModel.get_kwargs', return_value=AsyncMock()
         ) as mock_getkwargs:
 
             result = await forward_event(request=mock_request)
