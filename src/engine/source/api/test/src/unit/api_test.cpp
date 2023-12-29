@@ -2,8 +2,22 @@
 
 #include <api/api.hpp>
 
-
 using namespace api;
+
+void inline initLogging(void)
+{
+    static bool initialized = false;
+
+    if (!initialized)
+    {
+        // Logging setup
+        logging::LoggingConfig logConfig;
+        logConfig.logLevel = "off";
+        logConfig.filePath = "";
+        logging::loggingInit(logConfig);
+        initialized = true;
+    }
+}
 
 wpResponse testHandler(const wpRequest& request) {
     return wpResponse(json::Json(R"({"response": "OK"})"), 0);
@@ -19,7 +33,7 @@ protected:
     Api m_api;
 
     void SetUp() override {
-        
+        initLogging();
         m_api.registerHandler("testCommand", testHandler);
         m_api.registerHandler("testCommandException", testHandlerExeption);
 
