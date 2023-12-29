@@ -1,5 +1,11 @@
 #include <gtest/gtest.h>
 
+#include <kvdb/mockKvdbManager.hpp>
+#include <logpar/logpar.hpp>
+#include <schemf/mockSchema.hpp>
+#include <sockiface/mockSockFactory.hpp>
+#include <wdb/mockWdbManager.hpp>
+
 #include "builders/ibuildCtx.hpp"
 #include "mockRegistry.hpp" // Force include to ensure it compiles
 #include "register.hpp"
@@ -108,11 +114,19 @@ TEST(RegistryTest, MetaRegistryMock)
     l(mockMetaRegistry);
 }
 
-// TODO move to register test
 TEST(RegistryTest, RegisterBuilders)
 {
+    // TODO update to use logpar mock when implemented
     auto metaRegistry = builders::RegistryType::create<Registry>();
     BuilderDeps deps {};
+    json::Json fakeLogparDefs;
+    fakeLogparDefs.setObject("/fields");
+    deps.logpar = std::make_shared<hlp::logpar::Logpar>(fakeLogparDefs, std::make_shared<schemf::mocks::MockSchema>());
+    deps.kvdbManager = std::make_shared<kvdb::mocks::MockKVDBManager>();
+    deps.sockFactory = std::make_shared<sockiface::mocks::MockSockFactory>();
+    deps.wdbManager = std::make_shared<MockWdbManager>();
+    deps.kvdbScopeName = "test";
+    deps.logparDebugLvl = 0;
 
     ASSERT_NO_THROW(builder::detail::registerOpBuilders<builders::RegistryType>(metaRegistry, deps));
     ASSERT_NO_THROW(builder::detail::registerStageBuilders<builders::RegistryType>(metaRegistry, deps));
