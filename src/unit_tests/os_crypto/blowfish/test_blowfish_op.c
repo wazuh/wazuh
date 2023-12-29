@@ -26,8 +26,8 @@ void test_blowfish(void **state)
     char buffer1[buffersize];
     char buffer2[buffersize];
 
-    OS_BF_Str(string, buffer1, key, buffersize, OS_ENCRYPT);
-    OS_BF_Str(buffer1, buffer2, key, buffersize, OS_DECRYPT);
+    assert_int_equal(OS_BF_Str(string, buffer1, key, buffersize, OS_ENCRYPT), 1);
+    assert_int_equal(OS_BF_Str(buffer1, buffer2, key, buffersize, OS_DECRYPT), 1);
 
     assert_string_equal(buffer2, string);
 }

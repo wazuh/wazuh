@@ -39,7 +39,6 @@ class MacportsWrapper final : public IPackageWrapper
             , m_osPatch {UNKNOWN_VALUE}
             , m_source{UNKNOWN_VALUE}
             , m_location{UNKNOWN_VALUE}
-            , m_multiarch{UNKNOWN_VALUE}
             , m_priority{UNKNOWN_VALUE}
             , m_size{0}
             , m_vendor{UNKNOWN_VALUE}

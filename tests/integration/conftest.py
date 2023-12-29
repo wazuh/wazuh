@@ -16,6 +16,7 @@ from wazuh_testing.constants.paths import ROOT_PREFIX
 from wazuh_testing.constants.paths.api import RBAC_DATABASE_PATH
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, ALERTS_JSON_PATH, WAZUH_API_LOG_FILE_PATH, \
                                                WAZUH_API_JSON_LOG_FILE_PATH
+from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH
 from wazuh_testing.logger import logger
 from wazuh_testing.tools import socket_controller
 from wazuh_testing.tools.monitors import queue_monitor
@@ -27,7 +28,7 @@ from wazuh_testing.utils.file import remove_file
 from wazuh_testing.utils.manage_agents import remove_agents
 
 
-#- - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - - - -
+#- - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - - -
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -160,7 +161,8 @@ def set_wazuh_configuration(test_configuration: dict) -> None:
 def truncate_monitored_files_implementation() -> None:
     """Truncate all the log files and json alerts files before and after the test execution"""
     if services.get_service() == WAZUH_MANAGER:
-        log_files = [WAZUH_LOG_PATH, ALERTS_JSON_PATH, WAZUH_API_LOG_FILE_PATH, WAZUH_API_JSON_LOG_FILE_PATH]
+        log_files = [WAZUH_LOG_PATH, ALERTS_JSON_PATH, WAZUH_API_LOG_FILE_PATH,
+                     WAZUH_API_JSON_LOG_FILE_PATH, WAZUH_CLIENT_KEYS_PATH]
     else:
         log_files = [WAZUH_LOG_PATH]
 
@@ -278,6 +280,17 @@ def daemons_handler_module(request: pytest.FixtureRequest) -> None:
 
 
 @pytest.fixture(scope='module')
+def restart_wazuh_daemon_after_finishing_module(daemon: str = None) -> None:
+    """Restart a Wazuh daemons and clears the wazuh log after the test module finishes execution.
+    Args:
+        daemon (str): provide which daemon to restart. If None, all daemons will be restarted.
+    """
+    yield
+    file.truncate_file(WAZUH_LOG_PATH)
+    services.control_service("restart", daemon=daemon)
+
+
+@pytest.fixture(scope='module')
 def configure_local_internal_options(request: pytest.FixtureRequest) -> None:
     """Configure the local internal options file.
 
@@ -307,8 +320,7 @@ def configure_local_internal_options(request: pytest.FixtureRequest) -> None:
     configuration.set_local_internal_options_dict(backup_local_internal_options)
 
 
-@pytest.fixture(scope='module')
-def configure_sockets_environment(request: pytest.FixtureRequest) -> None:
+def configure_sockets_environment_implementation(request: pytest.FixtureRequest) -> None:
     """Configure environment for sockets and MITM.
 
     Args:
@@ -355,6 +367,26 @@ def configure_sockets_environment(request: pytest.FixtureRequest) -> None:
     database.delete_dbs()
 
     services.control_service('start')
+
+
+@pytest.fixture(scope='module')
+def configure_sockets_environment_module(request: pytest.FixtureRequest) -> None:
+    """Wrapper of `configure_sockets_environment_implementation` which contains the general implementation.
+
+    Args:
+        request (pytest.FixtureRequest): Provide information about the current test function which made the request.
+    """
+    yield from configure_sockets_environment_implementation(request)
+
+
+@pytest.fixture()
+def configure_sockets_environment(request: pytest.FixtureRequest) -> None:
+    """Wrapper of `configure_sockets_environment_implementation` which contains the general implementation.
+
+    Args:
+        request (pytest.FixtureRequest): Provide information about the current test function which made the request.
+    """
+    yield from configure_sockets_environment_implementation(request)
 
 
 def connect_to_sockets_implementation(request: pytest.FixtureRequest) -> None:
@@ -419,6 +451,39 @@ def mock_agent_module():
     yield agent_id
 
     mocking.delete_mocked_agent(agent_id)
+
+
+@pytest.fixture()
+def mock_agent_with_custom_system(agent_system: str) -> int:
+    """Fixture to create a mocked agent with custom system specified as parameter
+    Args:
+        agent_system (str, optional): System to be mocked. Defaults to 'RHEL8'.
+    Returns:
+        int: Agent ID of the mocked agent
+    """
+    if agent_system not in mocking.SYSTEM_DATA:
+        raise ValueError(f"{agent_system} is not supported as mocked system for an agent")
+
+    agent_id = mocking.create_mocked_agent(**mocking.SYSTEM_DATA[agent_system])
+
+    yield agent_id
+
+    mocking.delete_mocked_agent(agent_id)
+
+
+@pytest.fixture()
+def mock_agent_packages(mock_agent_with_custom_system) -> list:
+    """Add 10 mocked packages to the mocked agent
+    Args:
+        mock_agent_with_custom_system (int): Agent ID of the mocked agent
+    Returns:
+        list: List of package names added to the mocked agent
+    """
+    package_names = mocking.insert_mocked_packages(agent_id=mock_agent_with_custom_system)
+
+    yield package_names
+
+    mocking.delete_mocked_packages(agent_id=mock_agent_with_custom_system)
 
 
 @pytest.fixture()

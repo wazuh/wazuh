@@ -212,7 +212,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
         self.aws_organization_id = aws_organization_id
         self.date_format = "%Y/%m/%d"
         self.date_regex = re.compile(r'(\d{4}/\d{2}/\d{2})')
-        self.prefix_regex = re.compile("^\d{12}$")
+        self.prefix_regex = re.compile(r"^\d{12}$")
         self.check_prefix = False
 
     def _same_prefix(self, match_start: int or None, aws_account_id: str, aws_region: str) -> bool:
@@ -528,6 +528,10 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                         f'+++ The "{self.discard_regex.pattern}" regex found a match in the "{self.discard_field}" '
                         f'field. The event will be skipped.', 2)
                     continue
+                else:
+                    aws_tools.debug(
+                        f'+++ The "{self.discard_regex.pattern}" regex did not find a match in the '
+                        f'"{self.discard_field}" field. The event will be processed.', 3)
                 # Parse out all the values of 'None'
                 event_msg = self.get_alert_msg(aws_account_id, log_key, event)
 

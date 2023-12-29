@@ -32,7 +32,7 @@ _iso8601_date = re.compile(r'^([0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9]
 _iso8601_date_time = re.compile(
     r'^([0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])[tT](2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.['
     r'0-9]+)?([zZ]|[+-](?:2[0-3]|[01][0-9]):[0-5][0-9])$')
-_names = re.compile(r'^[\w\-.%]+$')
+_names = re.compile(r'^[\w\-.%]+$', re.ASCII)
 _numbers = re.compile(r'^\d+$')
 _numbers_or_all = re.compile(r'^(\d+|all)$')
 _wazuh_key = re.compile(r'[a-zA-Z0-9]+$')
@@ -91,7 +91,7 @@ api_config_schema = {
                 "ca": {"type": "string",
                        "pattern": r"^[\w\-.]+$"},
                 "ssl_protocol": {"type": "string", "enum": ["tls", "tlsv1", "tlsv1.1", "tlsv1.2", "TLS",
-                                                            "TLSv1", "TLSv1.1", "TLSv1.2"]},
+                                                            "TLSv1", "TLSv1.1", "TLSv1.2", "auto", "AUTO"]},
                 "ssl_ciphers": {"type": "string"}
             },
         },

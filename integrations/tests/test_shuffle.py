@@ -213,4 +213,4 @@ def test_send_msg():
     headers = {'content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
     with patch('requests.post', return_value=requests.Response) as request_post:
         shuffle.send_msg(msg_template, sys_args_template[3])
-        request_post.assert_called_once_with(sys_args_template[3], data=msg_template, headers=headers, verify=False)
+        request_post.assert_called_once_with(sys_args_template[3], data=msg_template, headers=headers, timeout=10)

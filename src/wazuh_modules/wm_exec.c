@@ -16,6 +16,12 @@
 #include <mach/mach.h>
 #endif
 
+#if defined(WAZUH_UNIT_TESTING) && defined(WIN32)
+#include "../../unit_tests/wrappers/windows/processthreadsapi_wrappers.h"
+#include "../../unit_tests/wrappers/windows/handleapi_wrappers.h"
+#include "../../unit_tests/wrappers/windows/libc/kernel32_wrappers.h"
+#endif
+
 static pthread_mutex_t wm_children_mutex;   // Mutex for child process pool
 
 // Data structure to share with the reader thread
@@ -116,11 +122,21 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
                       wm_task_nice < 10 ? BELOW_NORMAL_PRIORITY_CLASS :
                       IDLE_PRIORITY_CLASS;
 
-    if (!CreateProcess(NULL, command, NULL, NULL, TRUE, dwCreationFlags, NULL, NULL, &sinfo, &pinfo)) {
+    size_t size = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, command, -1, NULL, 0);
+    wchar_t *wcommand;
+    os_calloc(size, sizeof(wchar_t), wcommand);
+
+    MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, command, -1, wcommand, size);
+    mdebug2("UTF-8 command: %ls", wcommand);
+
+    if (!CreateProcessW(NULL, wcommand, NULL, NULL, TRUE, dwCreationFlags, NULL, NULL, &sinfo, &pinfo)) {
         winerror = GetLastError();
         merror("at wm_exec(): CreateProcess(%d): %s", winerror, win_strerror(winerror));
+        os_free(wcommand);
         return -1;
     }
+
+    os_free(wcommand);
 
     if (output) {
         CloseHandle(sinfo.hStdOutput);

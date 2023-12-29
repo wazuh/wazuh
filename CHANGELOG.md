@@ -3,6 +3,33 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.9.0]
 
+### Manager
+
+#### Added
+
+- The manager now supports alert forwarding to Fluentd. ([#17306](https://github.com/wazuh/wazuh/pull/17306))
+
+### Agent
+
+#### Changed
+
+- The directory /boot has been removed from the default FIM settings for AIX. #19753
+
+### Ruleset
+
+#### Changed
+
+- The solved vulnerability rule has been clarified. ([#19754](https://github.com/wazuh/wazuh/pull/19754))
+
+### Other
+
+#### Fixed
+
+- Fixed a buffer overflow hazard in HMAC internal library. ([#19794](https://github.com/wazuh/wazuh/pull/19794))
+
+
+## [v4.8.1]
+
 
 ## [v4.8.0]
 
@@ -17,16 +44,29 @@ All notable changes to this project will be documented in this file.
 - Improved wazuh-db detection of deleted database files. ([#18476](https://github.com/wazuh/wazuh/pull/18476))
 - Added timeout and retry parameters to the VirusTotal integration. ([#16893](https://github.com/wazuh/wazuh/pull/16893))
 - Extended wazuh-analysisd EPS metrics with events dropped by overload and remaining credits in the previous cycle. ([#18988](https://github.com/wazuh/wazuh/pull/18988))
+- Replaced Filebeat's date index name processor. ([#19819](https://github.com/wazuh/wazuh/pull/19819))
+- Updated API and framework packages installation commands to use pip instead of direct invocation of setuptools. ([#18466](https://github.com/wazuh/wazuh/pull/18466))
+- Upgraded docker-compose V1 to V2 in API Integration test scripts. ([#17750](https://github.com/wazuh/wazuh/pull/17750))
+- Refactored how cluster status dates are treated in the cluster. ([#17015](https://github.com/wazuh/wazuh/pull/17015))
+
+#### Fixed
+- Updated cluster connection cleanup to remove temporary files when the connection between a worker and a master is broken. ([#17886](https://github.com/wazuh/wazuh/pull/17886))
 
 ### Agent
 
 #### Added
 
 - Added snap package manager support to Syscollector. ([#15740](https://github.com/wazuh/wazuh/pull/15740))
+- Added event size validation for the external integrations. ([#17932](https://github.com/wazuh/wazuh/pull/17932))
+- Added new unit tests for the AWS integration. ([#17623](https://github.com/wazuh/wazuh/pull/17623))
 
 #### Changed
 
 - Disabled host's IP query by Logcollector when ip_update_interval=0. ([#18574](https://github.com/wazuh/wazuh/pull/18574))
+- The MS Graph integration module now supports multiple tenants. ([#19064](https://github.com/wazuh/wazuh/pull/19064))
+- FIM now buffers the Linux audit events for who-data to prevent side effects in other components. ([#16200](https://github.com/wazuh/wazuh/pull/16200))
+- The sub-process execution implementation has been improved. ([#19720](https://github.com/wazuh/wazuh/pull/19720))
+- Refactored and modularized the AWS integration code. ([#17623](https://github.com/wazuh/wazuh/pull/17623))
 
 #### Fixed
 
@@ -34,9 +74,70 @@ All notable changes to this project will be documented in this file.
 - Fixed detection of the OS version on Alpine Linux. ([#16056](https://github.com/wazuh/wazuh/pull/16056))
 - Fixed Solaris 10 name not showing in the Dashboard. ([#18642](https://github.com/wazuh/wazuh/pull/18642))
 
+### RESTful API
+
+#### Added
+
+- Added new `GET /manager/version/check` endpoint to obtain information about new releases of Wazuh. ([#19952](https://github.com/wazuh/wazuh/pull/19952))
+
+#### Removed
+
+- Removed `PUT /vulnerability`, `GET /vulnerability/{agent_id}`, `GET /vulnerability/{agent_id}/last_scan` and `GET /vulnerability/{agent_id}/summary/{field}` API endpoints as they were deprecated in version 4.7.0. Use the Wazuh indexer REST API instead. ([#20119](https://github.com/wazuh/wazuh/pull/20119))
+
+### Other
+
+#### Changed
+
+- Upgraded external aiohttp library dependency version to 3.8.5. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
+- Upgraded external cryptography library dependency version to 41.0.4. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
+- Upgraded external numpy library dependency version to 1.26.0. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
+- Upgraded external grpcio library dependency version to 1.58.0. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
+- Upgraded embedded Python version to 3.10.13. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
+
 
 ## [v4.7.1]
 
+### Manager
+
+#### Fixed
+
+- Fixed a bug causing the Canonical feed parser to fail in Vulnerability Detector. ([#20580](https://github.com/wazuh/wazuh/pull/20580))
+- Fixed a thread lock bug that slowed down wazuh-db performance. ([#20178](https://github.com/wazuh/wazuh/pull/20178))
+- Fixed a bug in Vulnerability detector that skipped vulnerabilities for Windows 11 21H2. ([#20386](https://github.com/wazuh/wazuh/pull/20386))
+- The installer now updates the merged.mg file permissions on upgrade. ([#5941](https://github.com/wazuh/wazuh/pull/5941))
+- Fixed an insecure request warning in the shuffle integration. ([#19993](https://github.com/wazuh/wazuh/pull/19993))
+- Fixed a bug that corrupted cluster logs when they were rotated. ([#19888](https://github.com/wazuh/wazuh/pull/19888))
+
+### Agent
+
+#### Changed
+
+- Improved WPK upgrade scripts to ensure safe execution and backup generation in various circumstances. ([#20616](https://github.com/wazuh/wazuh/pull/20616))
+
+#### Fixed
+
+- Fixed a bug that allowed two simultaneous updates to occur through WPK. ([#20545](https://github.com/wazuh/wazuh/pull/20545))
+- Fixed a bug that prevented the local IP from appearing in the port inventory from macOS agents. ([#20332](https://github.com/wazuh/wazuh/pull/20332))
+- Fixed the default Logcollector settings on macOS to collect logs out-of-the-box. ([#20180](https://github.com/wazuh/wazuh/pull/20180))
+- Fixed a bug in the FIM decoder at wazuh-analysisd that ignored Windows Registry events from agents under 4.6.0. ([#20169](https://github.com/wazuh/wazuh/pull/20169))
+- Fixed multiple bugs in the Syscollector decoder at wazuh-analysisd that did not sanitize the input data properly. ([#20250](https://github.com/wazuh/wazuh/pull/20250))
+- Added the pyarrow_hotfix dependency to fix the pyarrow CVE-2023-47248 vulnerability in the AWS integration. ([#20284](https://github.com/wazuh/wazuh/pull/20284))
+
+### RESTful API
+
+#### Fixed
+
+- Fixed inconsistencies in the behavior of the `q` parameter of some endpoints. ([#18423](https://github.com/wazuh/wazuh/pull/18423))
+- Fixed a bug in the `q` parameter of the `GET /groups/{group_id}/agents` endpoint. ([#18495](https://github.com/wazuh/wazuh/pull/18495))
+- Fixed bug in the regular expression used to to reject non ASCII characters in some endpoints. ([#19533](https://github.com/wazuh/wazuh/pull/19533))
+
+### Other
+
+#### Changed
+
+- Upgraded external certifi library dependency version to 2023.07.22. ([#20149](https://github.com/wazuh/wazuh/pull/20149))
+- Upgraded external requests library dependency version to 2.31.0. ([#20149](https://github.com/wazuh/wazuh/pull/20149))
+- Upgraded embedded Python version to 3.9.18. ([#18800](https://github.com/wazuh/wazuh/issues/18800))
 
 ## [v4.7.0]
 
@@ -44,7 +145,7 @@ All notable changes to this project will be documented in this file.
 
 #### Added
 
-- Introduced native Maltiverse integration. ([#18026](https://github.com/wazuh/wazuh/pull/18026))
+- Introduced native Maltiverse integration. Thanks to David Gil (@dgilm). ([#18026](https://github.com/wazuh/wazuh/pull/18026))
 - Added a file detailing the dependencies for the Wazuh RESTful API and wodles tests. ([#16513](https://github.com/wazuh/wazuh/pull/16513))
 - Added unit tests for the Syscollector legacy decoder. ([#15985](https://github.com/wazuh/wazuh/pull/15985))
 - Added unit tests for the manage_agents tool. ([#15999](https://github.com/wazuh/wazuh/pull/15999))
@@ -54,11 +155,14 @@ All notable changes to this project will be documented in this file.
 #### Changed
 
 - An unnecessary sanity check related to Syscollector has been removed from wazuh-db. ([#16008](https://github.com/wazuh/wazuh/pull/16008))
+- The manager now rejects agents with a higher version by default. ([#20367](https://github.com/wazuh/wazuh/pull/20367))
 
 #### Fixed
 
 - Fixed an unexpected error by the Cluster when a worker gets restarted. ([#16683](https://github.com/wazuh/wazuh/pull/16683))
 - Fixed an issue that let the manager validate wrong XML configurations. ([#16681](https://github.com/wazuh/wazuh/pull/16681))
+- Fixed Syscollector packages multiarch values. ([#19722](https://github.com/wazuh/wazuh/issues/19722))
+- Fixed a bug that made the Windows agent crash randomly when loading RPCRT4.dll. ([#18591](https://github.com/wazuh/wazuh/issues/18591))
 
 #### Deleted
 
@@ -69,30 +173,38 @@ All notable changes to this project will be documented in this file.
 #### Added
 
 - Added support for Custom Logs in Buckets via AWS SQS. ([#17951](https://github.com/wazuh/wazuh/pull/17951))
-- Added geolocation for `aws.data.client_ip` field. Thanks to @rh0dy. ([16198](https://github.com/wazuh/wazuh/pull/16198))
+- Added geolocation for `aws.data.client_ip` field. Thanks to @rh0dy. ([#16198](https://github.com/wazuh/wazuh/pull/16198))
 - Added package inventory support for Alpine Linux in Syscollector. ([#15699](https://github.com/wazuh/wazuh/pull/15699))
 - Added package inventory support for MacPorts in Syscollector. ([#15877](https://github.com/wazuh/wazuh/pull/15877))
 - Added package inventory support for PYPI and node in Syscollector. ([#17982](https://github.com/wazuh/wazuh/pull/17982))
 - Added related process information to the open ports inventory in Syscollector. ([#15000](https://github.com/wazuh/wazuh/pull/15000))
-- Fixed vendor data in package inventory for Brew packages on macOS. ([#16089](https://github.com/wazuh/wazuh/pull/16089))
 
 #### Changed
 
 - The shared modules' code has been sanitized according to the convention. ([#17966](https://github.com/wazuh/wazuh/pull/17966))
 - The package inventory internal messages have been modified to honor the schema compliance. ([#18006](https://github.com/wazuh/wazuh/pull/18006))
-- The agent's leaky bucket throughput limit has been extended to 100.000 EPS. ([#16346](https://github.com/wazuh/wazuh/pull/16346))
+- The agent connection log has been updated to clarify that the agent must connect to an agent with the same or higher version. ([#20360](https://github.com/wazuh/wazuh/pull/20360))
 
 #### Fixed
 
 - Fixed detection of osquery 5.4.0+ running outside the integration. ([#17006](https://github.com/wazuh/wazuh/pull/17006))
+- Fixed vendor data in package inventory for Brew packages on macOS. ([#16089](https://github.com/wazuh/wazuh/pull/16089))
+- Fixed WPK rollback restarting host in Windows agent ([#20081](https://github.com/wazuh/wazuh/pull/20081))
 
 ### RESTful API
+
+### Added
+- Added new `status_code` field to `GET /agents` response. ([#19726](https://github.com/wazuh/wazuh/pull/19726))
 
 #### Fixed
 
 - Addressed error handling for non-utf-8 encoded file readings. ([#16489](https://github.com/wazuh/wazuh/pull/16489))
 - Resolved an issue in the `WazuhException` class that disrupted the API executor subprocess. ([#16914](https://github.com/wazuh/wazuh/pull/16914))
 - Corrected an empty value problem in the API specification key. ([#16918](https://github.com/wazuh/wazuh/issues/16918))
+
+#### Deleted
+
+- Deprecated `PUT /vulnerability`, `GET /vulnerability/{agent_id}`, `GET /vulnerability/{agent_id}/last_scan` and `GET /vulnerability/{agent_id}/summary/{field}` API endpoints. In future versions, the Wazuh indexer REST API can be used instead. ([#20126](https://github.com/wazuh/wazuh/pull/20126))
 
 ### Other
 
@@ -128,6 +240,7 @@ All notable changes to this project will be documented in this file.
 - Changed schema constraints for sys_hwinfo table. ([#16065](https://github.com/wazuh/wazuh/pull/16065))
 - Auth process not start when registration password is empty. ([#15709](https://github.com/wazuh/wazuh/pull/15709))
 - Changed error messages about corrupt GetSecurityInfo messages from FIM to debug logs. ([#19400](https://github.com/wazuh/wazuh/pull/19400))
+- Changed the default settings for wazuh-db to perform database auto-vacuum more often. ([#19956](https://github.com/wazuh/wazuh/pull/19956))
 
 #### Fixed
 
@@ -163,14 +276,14 @@ All notable changes to this project will be documented in this file.
 - Added new unit tests for GCloud integration and increased coverage to 99%. ([#13573](https://github.com/wazuh/wazuh/pull/13573))
 - Added new unit tests for Azure Storage integration and increased coverage to 99%. ([#14104](https://github.com/wazuh/wazuh/pull/14104))
 - Added new unit tests for Docker Listener integration. ([#14177](https://github.com/wazuh/wazuh/pull/14177))
-- Added support for Microsoft Graph security API. ([#18116](https://github.com/wazuh/wazuh/pull/18116))
+- Added support for Microsoft Graph security API. Thanks to Bryce Shurts (@S-Bryce). ([#18116](https://github.com/wazuh/wazuh/pull/18116))
 - Added wildcard support in FIM Windows registers. ([#15852](https://github.com/wazuh/wazuh/pull/15852))
 - Added wildcards support for folders in the localfile configuration on Windows. ([#15973](https://github.com/wazuh/wazuh/pull/15973))
 - Added new settings `ignore` and `restrict` to logcollector. ([#14782](https://github.com/wazuh/wazuh/pull/14782))
 - Added RSync and DBSync to FIM. ([#12745](https://github.com/wazuh/wazuh/pull/12745))
 - Added PCRE2 regex for SCA policies. ([#17124](https://github.com/wazuh/wazuh/pull/17124))
 - Added mechanism to detect policy changes. ([#14763](https://github.com/wazuh/wazuh/pull/14763))
-- Added support for Office365 MS/Azure Government Community Cloud (GCC) and Government Community Cloud High (GCCH) API. ([#16547](https://github.com/wazuh/wazuh/pull/16547))
+- Added support for Office365 MS/Azure Government Community Cloud (GCC) and Government Community Cloud High (GCCH) API. Thanks to Bryce Shurts (@S-Bryce). ([#16547](https://github.com/wazuh/wazuh/pull/16547))
 
 #### Changed
 

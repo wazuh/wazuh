@@ -1,3 +1,7 @@
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import json
 import logging
 import os
@@ -5,10 +9,10 @@ from typing import Dict, Union, Optional
 from dateutil.parser import parse, ParserError
 from datetime import datetime, timezone
 
-from sqlalchemy import create_engine, Column, Text, String, UniqueConstraint
+from sqlalchemy import create_engine, Column, Text, String, UniqueConstraint, update
 from sqlalchemy.exc import IntegrityError, OperationalError, StatementError
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.sql.expression import select
 
 DATABASE_NAME = "azure.db"
 database_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), DATABASE_NAME)
@@ -120,7 +124,7 @@ def get_row(table: Base, md5: str) -> AzureTable:
     AzureORMError
     """
     try:
-        return session.query(table).filter_by(md5=md5).first()
+        return session.scalars(select(table).filter_by(md5=md5).limit(1)).first()
     except (IntegrityError, OperationalError, AttributeError) as e:
         raise AzureORMError(str(e))
 
@@ -138,7 +142,7 @@ def get_all_rows(table: Base) -> list:
     AzureORMError
     """
     try:
-        return session.query(table).all()
+        return session.execute(select(table)).scalars().all()
     except (IntegrityError, OperationalError, AttributeError) as e:
         raise AzureORMError(str(e))
 
@@ -182,7 +186,7 @@ def update_row(table: Base, md5: str, min_date: str, max_date: str, query: str =
         row_data = {'min_processed_date': min_date, 'max_processed_date': max_date}
         if query:
             row_data['query'] = query
-        session.query(table).filter(table.md5 == md5).update(row_data)
+        session.execute(update(table).where(table.md5 == md5).values(row_data))
         session.commit()
     except (IntegrityError, OperationalError, StatementError) as e:
         session.rollback()
