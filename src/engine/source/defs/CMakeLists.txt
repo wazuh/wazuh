@@ -22,6 +22,7 @@ target_link_libraries(defs defs::idefinitions json base)
 add_library(defs_mocks INTERFACE)
 target_include_directories(defs_mocks INTERFACE
   ${CMAKE_CURRENT_LIST_DIR}/mocks
+  ${CMAKE_CURRENT_LIST_DIR}/test/mocks
 )
 target_link_libraries(defs_mocks INTERFACE defs::idefinitions)
 add_library(defs::mocks ALIAS defs_mocks)

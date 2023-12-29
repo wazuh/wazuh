@@ -85,9 +85,10 @@ target_link_libraries(builder
     logicexpr
     logpar
     date::date
-    kvdb::ikvdb
-    sockiface::isock
-    wdb::iwdb
+    kvdb::mocks
+    sockiface::mocks
+    wdb::mocks
+    schemf::mocks
 
     PRIVATE
 
@@ -132,6 +133,7 @@ target_link_libraries(builder_utest
     gtest_main
     schemf::mocks
     store::mocks
+    defs::mocks
 )
 gtest_discover_tests(builder_utest)
 
