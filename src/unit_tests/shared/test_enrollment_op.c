@@ -795,8 +795,8 @@ void test_w_enrollment_store_key_entry_cannot_open(void **state) {
     const char* key_string = "KEY EXAMPLE STRING";
     char key_file[1024];
 #ifdef WIN32
-    expect_string(__wrap_wfopen, __filename, KEYS_FILE);
-    expect_string(__wrap_wfopen, __modes, "w");
+    expect_string(__wrap_wfopen, filename, KEYS_FILE);
+    expect_string(__wrap_wfopen, modes, "w");
     will_return(__wrap_wfopen, 0);
 #else
     expect_string(__wrap_TempFile, source, KEYS_FILE);
@@ -838,8 +838,8 @@ void test_w_enrollment_store_key_entry_success(void **state) {
     FILE file;
     const char* key_string = "KEY EXAMPLE STRING";
 #ifdef WIN32
-    expect_string(__wrap_wfopen, __filename, KEYS_FILE);
-    expect_string(__wrap_wfopen, __modes, "w");
+    expect_string(__wrap_wfopen, filename, KEYS_FILE);
+    expect_string(__wrap_wfopen, modes, "w");
     will_return(__wrap_wfopen, &file);
 
     expect_value(wrap_fprintf, __stream, &file);
@@ -898,8 +898,8 @@ void test_w_enrollment_process_agent_key_valid_key(void **state) {
     expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
     will_return(__wrap_OS_IsValidIP, 1);
 #ifdef WIN32
-    expect_string(__wrap_wfopen, __filename, KEYS_FILE);
-    expect_string(__wrap_wfopen, __modes, "w");
+    expect_string(__wrap_wfopen, filename, KEYS_FILE);
+    expect_string(__wrap_wfopen, modes, "w");
     will_return(__wrap_wfopen, 4);
 
     expect_value(wrap_fprintf, __stream, 4);
@@ -996,8 +996,8 @@ void test_w_enrollment_process_response_success(void **state) {
         expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
         will_return(__wrap_OS_IsValidIP, 1);
 #ifdef WIN32
-        expect_string(__wrap_wfopen, __filename, KEYS_FILE);
-        expect_string(__wrap_wfopen, __modes, "w");
+        expect_string(__wrap_wfopen, filename, KEYS_FILE);
+        expect_string(__wrap_wfopen, modes, "w");
         will_return(__wrap_wfopen, 4);
 
         expect_value(wrap_fprintf, __stream, 4);
@@ -1110,8 +1110,8 @@ void test_w_enrollment_request_key(void **state) {
             expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
             will_return(__wrap_OS_IsValidIP, 1);
 #ifdef WIN32
-            expect_string(__wrap_wfopen, __filename, KEYS_FILE);
-            expect_string(__wrap_wfopen, __modes, "w");
+            expect_string(__wrap_wfopen, filename, KEYS_FILE);
+            expect_string(__wrap_wfopen, modes, "w");
             will_return(__wrap_wfopen, 4);
 
             expect_value(wrap_fprintf, __stream, 4);

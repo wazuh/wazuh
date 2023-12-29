@@ -114,10 +114,10 @@ else()
     link_directories(${SRC_FOLDER}/syscheckd/build/bin)
     add_executable(test_win_whodata test_win_whodata.c)
     target_compile_options(test_win_whodata PRIVATE "-Wall")
-    set(WIN_WHODATA_FLAGS "-Wl,--wrap,wstr_replace -Wl,--wrap,SendMSG -Wl,--wrap,popen \
+    set(WIN_WHODATA_FLAGS "-Wl,--wrap,wstr_replace -Wl,--wrap,SendMSG -Wl,--wrap,popen  \
                            -Wl,--wrap,free_whodata_event -Wl,--wrap,IsFile -Wl,--wrap=remove \
                            -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
-                           -Wl,--wrap,wm_exec -Wl,--wrap,fopen -Wl,--wrap,wfopen -Wl,--wrap,fclose -Wl,--wrap,atexit \
+                           -Wl,--wrap,wm_exec -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,atexit \
                            -Wl,--wrap,check_path_type -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,fim_whodata_event \
                            -Wl,--wrap,fim_checker -Wl,--wrap,os_random -Wl,--wrap,wpopenv -Wl,--wrap,atomic_int_get\
                            -Wl,--wrap,convert_windows_string -Wl,--wrap,FOREVER -Wl,--wrap,wpclose \
@@ -132,7 +132,7 @@ else()
                            -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg \
                            -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
                            -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown ${HASH_OP_WRAPPERS} \
-                           ${DEBUG_OP_WRAPPERS}")
+                           ${DEBUG_OP_WRAPPERS} -Wl,--wrap,wfopen")
     target_link_libraries(test_win_whodata SYSCHECK_EVENT_O ${TEST_EVENT_DEPS} fimdb)
 
     target_link_libraries(test_win_whodata "${WIN_WHODATA_FLAGS}")

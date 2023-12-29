@@ -42,4 +42,3 @@ set(STDIO_OP_WRAPPERS "-Wl,--wrap,fclose \
                        -Wl,--wrap,fgetc \
                        -Wl,--wrap,popen")
 
-set(FILE_OP_WRAPPERS "-Wl,--wrap,wfopen")
