@@ -99,54 +99,57 @@ base::Expression AssetBuilder::buildExpression(const base::Name& name,
     base::Expression condition;
 
     // Check stage
+    if (!objDoc.empty())
     {
-        const auto& [key, value] = *objDoc.begin();
-        if (key == syntax::asset::CHECK_KEY)
         {
-            auto resp = m_buildCtx->registry().get<builders::StageBuilder>(key);
-            if (base::isError(resp))
+            const auto& [key, value] = *objDoc.begin();
+            if (key == syntax::asset::CHECK_KEY)
             {
-                throw std::runtime_error(fmt::format("Could not find builder for stage '{}'", key));
-            }
-            auto builder = base::getResponse<builders::StageBuilder>(resp);
-            auto check = builder(value, newContext);
-            conditionExpressions.emplace_back(std::move(check));
-            objDoc.erase(objDoc.begin());
-        }
-    }
-
-    // Parse stage
-    {
-        const auto& [key, value] = *objDoc.begin();
-        // Parse stage syntax is different from other stages parse|<key>: <value>
-        if (base::utils::string::startsWith(key, syntax::asset::PARSE_KEY))
-        {
-            // TODO fix this hack, we need to format the json as the old parse stage
-            json::Json stageParseValue;
-            stageParseValue.setArray();
-            auto targetField = key.substr(std::string(syntax::asset::PARSE_KEY).size() + 1);
-            if (value.isArray())
-            {
-                json::Json tmp;
-                tmp.setObject();
-                auto arr = value.getArray().value();
-                for (size_t i = 0; i < arr.size(); i++)
+                auto resp = m_buildCtx->registry().get<builders::StageBuilder>(key);
+                if (base::isError(resp))
                 {
-                    auto parseValue = arr[i].getString().value();
-                    tmp.setString(parseValue, json::Json::formatJsonPath(targetField, true));
-                    stageParseValue.appendJson(tmp);
+                    throw std::runtime_error(fmt::format("Could not find builder for stage '{}'", key));
                 }
+                auto builder = base::getResponse<builders::StageBuilder>(resp);
+                auto check = builder(value, newContext);
+                conditionExpressions.emplace_back(std::move(check));
+                objDoc.erase(objDoc.begin());
             }
+        }
 
-            auto resp = m_buildCtx->registry().get<builders::StageBuilder>(syntax::asset::PARSE_KEY);
-            if (base::isError(resp))
+        // Parse stage
+        {
+            const auto& [key, value] = *objDoc.begin();
+            // Parse stage syntax is different from other stages parse|<key>: <value>
+            if (base::utils::string::startsWith(key, syntax::asset::PARSE_KEY))
             {
-                throw std::runtime_error(fmt::format("Could not find builder for stage '{}'", key));
+                // TODO fix this hack, we need to format the json as the old parse stage
+                json::Json stageParseValue;
+                stageParseValue.setArray();
+                auto targetField = key.substr(std::string(syntax::asset::PARSE_KEY).size() + 1);
+                if (value.isArray())
+                {
+                    json::Json tmp;
+                    tmp.setObject();
+                    auto arr = value.getArray().value();
+                    for (size_t i = 0; i < arr.size(); i++)
+                    {
+                        auto parseValue = arr[i].getString().value();
+                        tmp.setString(parseValue, json::Json::formatJsonPath(targetField, true));
+                        stageParseValue.appendJson(tmp);
+                    }
+                }
+
+                auto resp = m_buildCtx->registry().get<builders::StageBuilder>(syntax::asset::PARSE_KEY);
+                if (base::isError(resp))
+                {
+                    throw std::runtime_error(fmt::format("Could not find builder for stage '{}'", key));
+                }
+                auto builder = base::getResponse<builders::StageBuilder>(resp);
+                auto parse = builder(stageParseValue, newContext);
+                conditionExpressions.emplace_back(std::move(parse));
+                objDoc.erase(objDoc.begin());
             }
-            auto builder = base::getResponse<builders::StageBuilder>(resp);
-            auto parse = builder(stageParseValue, newContext);
-            conditionExpressions.emplace_back(std::move(parse));
-            objDoc.erase(objDoc.begin());
         }
     }
 
@@ -204,6 +207,11 @@ Asset AssetBuilder::operator()(const store::Doc& document) const
     if (!objDocOpt)
     {
         throw std::runtime_error("Document is not an object");
+    }
+
+    if (objDocOpt.value().empty())
+    {
+        throw std::runtime_error("Document is empty");
     }
 
     // We need to copy the document because we need to iterate and remove

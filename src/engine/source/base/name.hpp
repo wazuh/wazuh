@@ -162,7 +162,7 @@ public:
      * @return true
      * @return false
      */
-    bool operator==(const Name& other) const { return m_parts == other.m_parts; }
+    friend bool operator==(const Name& rh, const Name& lh) { return rh.m_parts == lh.m_parts; }
 
     /**
      * @brief Inequality comparison operator
@@ -171,7 +171,7 @@ public:
      * @return true
      * @return false
      */
-    bool operator!=(const Name& other) const { return !(*this == other); }
+    friend bool operator!=(const Name& rh, const Name& lh) { return !(rh == lh); }
 
     /**
      * @brief Implicit conversion to std::string
