@@ -70,8 +70,8 @@ normalize:
       - _subcategory_guid: replace(}, '')
       - _subcategory_guid: upcase($_subcategory_guid)
       - _audit_information_array: kvdb_get(windows_audit_SubcategoryGUID_to_categories, $_subcategory_guid)
-      - windows.EventData.Category: $_audit_information_array[1]
-      - windows.EventData.Subcategory: $_audit_information_array[0]
+      - windows.EventData.Category: $_audit_information_array.1
+      - windows.EventData.Subcategory: $_audit_information_array.0
 
   # Set Logon Failure Reason
   - check: exists($windows.EventData.FailureReason)
@@ -181,11 +181,11 @@ normalize:
   - check: array_contains($_ev_member_name, $event.id) AND exists($windows.EventData.MemberName)
     map:
       - _member_name_parts: split($windows.EventData.MemberName, ',')
-      - _member_name_parts[0]: replace(CN=, '')
-      - user.target.name: $_member_name_parts[0]
-      - related.user: array_append_unique($_member_name_parts[0])
-      - _member_name_parts[3]: replace(DC=, '')
-      - user.target.domain: $_member_name_parts[3]
+      - _member_name_parts.0: replace(CN=, '')
+      - user.target.name: $_member_name_parts.0
+      - related.user: array_append_unique($_member_name_parts.0)
+      - _member_name_parts.3: replace(DC=, '')
+      - user.target.domain: $_member_name_parts.3
 
   # Group: Member Name - Set Target User Sid, Target Sid, Target User Name, and Target Domain Name
   - check: array_contains($_ev_member_name, $event.id) AND not_exists($group.id)
@@ -203,7 +203,7 @@ normalize:
       - _group_domain: replace(DC=, '')
       - group.domain: $_group_domain
 
-  - check: array_contains($_ev_member_name, $event.id)
+  - check: array_contains($_ev_member_name, $event.id) AND exists($user.target)
     map:
       - user.target.group.id: $group.id
       - user.target.group.name: $group.name
