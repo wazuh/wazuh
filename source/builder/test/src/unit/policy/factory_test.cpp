@@ -22,8 +22,8 @@ namespace readtest
 using SuccessExpected = InnerExpected<factory::PolicyData::Params, const std::shared_ptr<MockStoreRead>&>;
 using FailureExpected = InnerExpected<None, const std::shared_ptr<MockStoreRead>&>;
 using Expc = Expected<SuccessExpected, FailureExpected>;
-auto Success = Expc::success();
-auto Failure = Expc::failure();
+auto SUCCESS = Expc::success();
+auto FAILURE = Expc::failure();
 
 using ReadT = std::tuple<store::Doc, Expc>;
 class ReadData : public testing::TestWithParam<ReadT>
@@ -60,23 +60,23 @@ INSTANTIATE_TEST_SUITE_P(
     ReadData,
     ::testing::Values(
         // Invalid name
-        ReadT("{}", Failure()),
-        ReadT(R"({"name": "test"})", Failure()),
-        ReadT(R"({"name": 1})", Failure()),
-        ReadT(R"({"name": ""})", Failure()),
+        ReadT("{}", FAILURE()),
+        ReadT(R"({"name": "test"})", FAILURE()),
+        ReadT(R"({"name": 1})", FAILURE()),
+        ReadT(R"({"name": ""})", FAILURE()),
         // Invalid hash
-        ReadT(R"({"name": "test"})", Failure()),
-        ReadT(R"({"name": "test", "hash": ""})", Failure()),
-        ReadT(R"({"name": "test", "hash": 1})", Failure()),
+        ReadT(R"({"name": "test"})", FAILURE()),
+        ReadT(R"({"name": "test", "hash": ""})", FAILURE()),
+        ReadT(R"({"name": "test", "hash": 1})", FAILURE()),
         // Invalid default parents
-        ReadT(R"({"name": "test", "hash": "test", "default_parents": {"asset": 1}})", Failure()),
-        ReadT(R"({"name": "test", "hash": "test", "default_parents": {"asset": ""}})", Failure()),
-        ReadT(R"({"name": "test", "hash": "test", "default_parents": {"asset": "name"}})", Failure()),
+        ReadT(R"({"name": "test", "hash": "test", "default_parents": {"asset": 1}})", FAILURE()),
+        ReadT(R"({"name": "test", "hash": "test", "default_parents": {"asset": ""}})", FAILURE()),
+        ReadT(R"({"name": "test", "hash": "test", "default_parents": {"asset": "name"}})", FAILURE()),
         // Invalid assets
-        ReadT(R"({"name": "test", "hash": "test", "assets": [1]})", Failure()),
-        ReadT(R"({"name": "test", "hash": "test", "assets": [""]})", Failure()),
+        ReadT(R"({"name": "test", "hash": "test", "assets": [1]})", FAILURE()),
+        ReadT(R"({"name": "test", "hash": "test", "assets": [""]})", FAILURE()),
         ReadT(R"({"name": "test", "hash": "test", "assets": ["rule/asset"]})",
-              Failure(
+              FAILURE(
                   [](const std::shared_ptr<MockStoreRead>& store)
                   {
                       EXPECT_CALL(*store, getNamespace(base::Name("rule/asset")))
@@ -84,7 +84,7 @@ INSTANTIATE_TEST_SUITE_P(
                       return None {};
                   })),
         ReadT(R"({"name": "test", "hash": "test", "assets": ["rule/asset", "rule/asset"]})",
-              Failure(
+              FAILURE(
                   [](const std::shared_ptr<MockStoreRead>& store)
                   {
                       EXPECT_CALL(*store, getNamespace(base::Name("rule/asset")))
@@ -92,7 +92,7 @@ INSTANTIATE_TEST_SUITE_P(
                       return None {};
                   })),
         ReadT(R"({"name": "test", "hash": "test", "assets": ["asset"]})",
-              Failure(
+              FAILURE(
                   [](const std::shared_ptr<MockStoreRead>& store)
                   {
                       EXPECT_CALL(*store, getNamespace(base::Name("asset")))
@@ -100,7 +100,7 @@ INSTANTIATE_TEST_SUITE_P(
                       return None {};
                   })),
         ReadT(R"({"name": "test", "hash": "test", "assets": ["other/asset"]})",
-              Failure(
+              FAILURE(
                   [](const std::shared_ptr<MockStoreRead>& store)
                   {
                       EXPECT_CALL(*store, getNamespace(base::Name("other/asset")))
@@ -110,7 +110,7 @@ INSTANTIATE_TEST_SUITE_P(
         // Invalid integrations
         // TODO: add more cases
         ReadT(R"({"name": "test", "hash": "test", "assets": ["integration/name"]})",
-              Failure(
+              FAILURE(
                   [](const std::shared_ptr<MockStoreRead>& store)
                   {
                       EXPECT_CALL(*store, getNamespace(base::Name("integration/name")))
@@ -119,14 +119,14 @@ INSTANTIATE_TEST_SUITE_P(
                           .WillOnce(testing::Return(storeReadError<store::Doc>()));
                       return None {};
                   })),
-        // Success cases
+        // SUCCESS cases
         ReadT(R"({"name": "test", "hash": "test"})",
-              Success([](const std::shared_ptr<MockStoreRead>& store) { return D {.name = "test", .hash = "test"}; })),
+              SUCCESS([](const std::shared_ptr<MockStoreRead>& store) { return D {.name = "test", .hash = "test"}; })),
         ReadT(R"({"name": "test", "hash": "test", "assets": []})",
-              Success([](const std::shared_ptr<MockStoreRead>& store) { return D {.name = "test", .hash = "test"}; })),
+              SUCCESS([](const std::shared_ptr<MockStoreRead>& store) { return D {.name = "test", .hash = "test"}; })),
         ReadT(
             R"({"name": "test", "hash": "test", "default_parents": {"ns": "decoder/asset"}, "assets": ["decoder/asset"]})",
-            Success(
+            SUCCESS(
                 [](const std::shared_ptr<MockStoreRead>& store)
                 {
                     EXPECT_CALL(*store, getNamespace(base::Name("decoder/asset")))
@@ -138,7 +138,7 @@ INSTANTIATE_TEST_SUITE_P(
                               .assets = {{factory::PolicyData::AssetType::DECODER, {{"ns", {{"decoder/asset"}}}}}}};
                 })),
         ReadT(R"({"name": "test", "hash": "test", "assets": ["decoder/asset"]})",
-              Success(
+              SUCCESS(
                   [](const std::shared_ptr<MockStoreRead>& store)
                   {
                       EXPECT_CALL(*store, getNamespace(base::Name("decoder/asset")))
@@ -149,7 +149,7 @@ INSTANTIATE_TEST_SUITE_P(
                                 .assets = {{factory::PolicyData::AssetType::DECODER, {{"ns", {{"decoder/asset"}}}}}}};
                   })),
         ReadT(R"({"name": "test", "hash": "test", "defaultParents": {}, "assets": ["decoder/asset"]})",
-              Success(
+              SUCCESS(
                   [](const std::shared_ptr<MockStoreRead>& store)
                   {
                       EXPECT_CALL(*store, getNamespace(base::Name("decoder/asset")))
@@ -161,7 +161,7 @@ INSTANTIATE_TEST_SUITE_P(
                   })),
         ReadT(
             R"({"name": "test", "hash": "test", "defaultParents": {"otherNs": "decoder/other"}, "assets": ["decoder/asset"]})",
-            Success(
+            SUCCESS(
                 [](const std::shared_ptr<MockStoreRead>& store)
                 {
                     EXPECT_CALL(*store, getNamespace(base::Name("decoder/asset")))
@@ -173,7 +173,7 @@ INSTANTIATE_TEST_SUITE_P(
                 })),
         ReadT(
             R"({"name": "test", "hash": "test", "default_parents": {"ns": "decoder/asset"}, "assets": ["decoder/asset", "output/asset", "rule/asset", "filter/asset"]})",
-            Success(
+            SUCCESS(
                 [](const std::shared_ptr<MockStoreRead>& store)
                 {
                     EXPECT_CALL(*store, getNamespace(base::Name("decoder/asset")))
@@ -206,8 +206,8 @@ using SuccessExpected = InnerExpected<factory::BuiltAssets,
 using FailureExpected =
     InnerExpected<None, const std::shared_ptr<MockStoreRead>&, const std::shared_ptr<MockAssetBuilder>&>;
 using Expc = Expected<SuccessExpected, FailureExpected>;
-auto Success = Expc::success();
-auto Failure = Expc::failure();
+auto SUCCESS = Expc::success();
+auto FAILURE = Expc::failure();
 
 using BuildT = std::tuple<factory::PolicyData, Expc>;
 class BuildAssets : public testing::TestWithParam<BuildT>
@@ -240,12 +240,12 @@ INSTANTIATE_TEST_SUITE_P(
     PolicyFactory,
     BuildAssets,
     ::testing::Values(
-        BuildT(D {.name = "test", .hash = "test"}, Success()),
-        BuildT(D {.name = "test", .hash = "test", .defaultParents = {{"ns", "decoder/asset"}}}, Success()),
+        BuildT(D {.name = "test", .hash = "test"}, SUCCESS()),
+        BuildT(D {.name = "test", .hash = "test", .defaultParents = {{"ns", "decoder/asset"}}}, SUCCESS()),
         BuildT(D {.name = "test",
                   .hash = "test",
                   .assets = {{factory::PolicyData::AssetType::DECODER, {{"ns", {{"decoder/asset"}}}}}}},
-               Success(
+               SUCCESS(
                    [](const std::shared_ptr<MockStoreRead>& store,
                       const std::shared_ptr<MockAssetBuilder>& assetBuilder)
                    {
@@ -265,7 +265,7 @@ INSTANTIATE_TEST_SUITE_P(
                           {factory::PolicyData::AssetType::OUTPUT, {{"ns", {{"output/asset"}}}}},
                           {factory::PolicyData::AssetType::FILTER, {{"ns", {{"filter/asset"}}}}}}},
 
-            Success(
+            SUCCESS(
                 [](const std::shared_ptr<MockStoreRead>& store, const std::shared_ptr<MockAssetBuilder>& assetBuilder)
                 {
                     store::Doc asset;
@@ -281,7 +281,7 @@ INSTANTIATE_TEST_SUITE_P(
         BuildT(D {.name = "test",
                   .hash = "test",
                   .assets = {{factory::PolicyData::AssetType::DECODER, {{"ns", {{"decoder/asset"}}}}}}},
-               Failure(
+               FAILURE(
                    [](const std::shared_ptr<MockStoreRead>& store,
                       const std::shared_ptr<MockAssetBuilder>& assetBuilder)
                    {
@@ -297,7 +297,7 @@ INSTANTIATE_TEST_SUITE_P(
                   .assets = {{factory::PolicyData::AssetType::DECODER, {{"ns", {{"decoder/asset"}}}}},
                              {factory::PolicyData::AssetType::RULE, {{"ns", {{"rule/asset"}}}}},
                              {factory::PolicyData::AssetType::OUTPUT, {{"ns", {{"output/asset"}}}}}}},
-               Failure(
+               FAILURE(
                    [](const std::shared_ptr<MockStoreRead>& store,
                       const std::shared_ptr<MockAssetBuilder>& assetBuilder)
                    {
@@ -314,7 +314,7 @@ INSTANTIATE_TEST_SUITE_P(
         BuildT(D {.name = "test",
                   .hash = "test",
                   .assets = {{factory::PolicyData::AssetType::DECODER, {{"ns", {{"decoder/asset"}}}}}}},
-               Failure(
+               FAILURE(
                    [](const std::shared_ptr<MockStoreRead>& store,
                       const std::shared_ptr<MockAssetBuilder>& assetBuilder)
                    {
@@ -327,7 +327,7 @@ INSTANTIATE_TEST_SUITE_P(
                   .hash = "test",
                   .assets = {{factory::PolicyData::AssetType::DECODER, {{"ns", {{"decoder/asset"}}}}},
                              {factory::PolicyData::AssetType::RULE, {{"ns", {{"rule/asset"}}}}}}},
-               Failure(
+               FAILURE(
                    [](const std::shared_ptr<MockStoreRead>& store,
                       const std::shared_ptr<MockAssetBuilder>& assetBuilder)
                    {
@@ -351,8 +351,8 @@ namespace buildgraphtest
 using SuccessExpected = InnerExpected<AssetData, None>;
 using FailureExpected = InnerExpected<AssetData, None>;
 using Expc = Expected<SuccessExpected, FailureExpected>;
-auto Success = Expc::success();
-auto Failure = Expc::failure();
+auto SUCCESS = Expc::success();
+auto FAILURE = Expc::failure();
 
 using BuildT = std::tuple<Expc>;
 class BuildGraph : public testing::TestWithParam<BuildT>
@@ -438,43 +438,43 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Values(
         // Fail cases
         // Missing decoder
-        BuildT(Failure(AD()(AT::DECODER, "decoder/asset", "decoder/missing"))),
-        BuildT(Failure(AD()(AT::DECODER, "decoder/asset", "decoder/parent1", "decoder/parent2")(
+        BuildT(FAILURE(AD()(AT::DECODER, "decoder/asset", "decoder/missing"))),
+        BuildT(FAILURE(AD()(AT::DECODER, "decoder/asset", "decoder/parent1", "decoder/parent2")(
             AT::DECODER, "decoder/parent1", "decoder/Input"))),
-        BuildT(Failure(AD()(AT::DECODER, "decoder/asset", "decoder/parent1", "decoder/parent2")(
+        BuildT(FAILURE(AD()(AT::DECODER, "decoder/asset", "decoder/parent1", "decoder/parent2")(
             AT::DECODER, "decoder/parent1", "decoder/parent3")(AT::DECODER, "decoder/parent2", "decoder/parent3"))),
         // Missing rule
-        BuildT(Failure(AD()(AT::DECODER, "decoder/asset", "decoder/Input")(AT::RULE, "rule/asset", "rule/missing"))),
+        BuildT(FAILURE(AD()(AT::DECODER, "decoder/asset", "decoder/Input")(AT::RULE, "rule/asset", "rule/missing"))),
         // Missing output
-        BuildT(Failure(AD()(AT::DECODER, "decoder/asset", "decoder/Input")(AT::RULE, "rule/asset", "rule/Input")(
+        BuildT(FAILURE(AD()(AT::DECODER, "decoder/asset", "decoder/Input")(AT::RULE, "rule/asset", "rule/Input")(
             AT::OUTPUT, "output/asset", "output/missing"))),
         // Cross asset dependencies
-        BuildT(Failure(AD()(AT::DECODER, "decoder/asset", "decoder/parent1", "decoder/parent2")(
+        BuildT(FAILURE(AD()(AT::DECODER, "decoder/asset", "decoder/parent1", "decoder/parent2")(
             AT::DECODER, "decoder/parent1", "output/asset")(AT::DECODER, "decoder/parent2", "decoder/parent3")(
             AT::DECODER, "decoder/parent3", "decoder/Input")(AT::RULE, "rule/asset", "rule/Input")(
             AT::OUTPUT, "output/asset", "output/Input"))),
-        // Success cases
-        BuildT(Success()),
-        BuildT(Success(AD()(AT::DECODER, "decoder/asset", "decoder/Input"))),
-        BuildT(Success(
+        // SUCCESS cases
+        BuildT(SUCCESS()),
+        BuildT(SUCCESS(AD()(AT::DECODER, "decoder/asset", "decoder/Input"))),
+        BuildT(SUCCESS(
             AD()(AT::DECODER, "decoder/asset", "decoder/parent")(AT::DECODER, "decoder/parent", "decoder/Input"))),
-        BuildT(Success(AD()(AT::DECODER, "decoder/asset", "decoder/parent1", "decoder/parent2")(
+        BuildT(SUCCESS(AD()(AT::DECODER, "decoder/asset", "decoder/parent1", "decoder/parent2")(
             AT::DECODER, "decoder/parent1", "decoder/Input")(AT::DECODER, "decoder/parent2", "decoder/Input"))),
-        BuildT(Success(AD()(AT::DECODER, "decoder/asset", "decoder/parent1", "decoder/parent2")(
+        BuildT(SUCCESS(AD()(AT::DECODER, "decoder/asset", "decoder/parent1", "decoder/parent2")(
             AT::DECODER, "decoder/parent1", "decoder/parent3")(AT::DECODER, "decoder/parent2", "decoder/parent3")(
             AT::DECODER, "decoder/parent3", "decoder/Input"))),
-        BuildT(Success(AD()(AT::DECODER, "decoder/asset", "decoder/parent1", "decoder/parent2")(
+        BuildT(SUCCESS(AD()(AT::DECODER, "decoder/asset", "decoder/parent1", "decoder/parent2")(
             AT::DECODER, "decoder/parent1", "decoder/parent3")(AT::DECODER, "decoder/parent2", "decoder/parent3")(
             AT::DECODER, "decoder/parent3", "decoder/Input")(AT::RULE, "rule/asset", "rule/Input")(
             AT::OUTPUT, "output/asset", "output/Input"))),
-        BuildT(Success(AD()(AT::DECODER, "decoder/asset", "decoder/parent1", "decoder/parent2")(
+        BuildT(SUCCESS(AD()(AT::DECODER, "decoder/asset", "decoder/parent1", "decoder/parent2")(
             AT::DECODER, "decoder/parent1", "decoder/parent3")(AT::DECODER, "decoder/parent2", "decoder/parent3")(
             AT::DECODER, "decoder/parent3", "decoder/Input")(AT::RULE, "rule/asset", "rule/parent1", "rule/parent2")(
             AT::RULE, "rule/parent1", "rule/parent3")(AT::RULE, "rule/parent2", "rule/parent3")(
             AT::RULE, "rule/parent3", "rule/Input")(AT::OUTPUT, "output/asset", "output/parent1", "output/parent2")(
             AT::OUTPUT, "output/parent1", "output/parent3")(AT::OUTPUT, "output/parent2", "output/parent3")(
             AT::OUTPUT, "output/parent3", "output/Input"))),
-        BuildT(Success(AD()(AT::DECODER, "decoder/asset", "decoder/parent1", "decoder/parent2")(
+        BuildT(SUCCESS(AD()(AT::DECODER, "decoder/asset", "decoder/parent1", "decoder/parent2")(
             AT::DECODER, "decoder/parent1", "decoder/parent3")(AT::DECODER, "decoder/parent2", "decoder/parent3")(
             AT::DECODER, "decoder/parent3", "decoder/Input")(AT::RULE, "rule/asset", "rule/parent1", "rule/parent2")(
             AT::RULE, "rule/parent1", "rule/parent3")(AT::RULE, "rule/parent2", "rule/parent3")(
@@ -492,8 +492,8 @@ using SuccessExpected = InnerExpected<base::Expression, None>;
 using FailureExpected = InnerExpected<None, None>;
 
 using Expc = Expected<SuccessExpected, FailureExpected>;
-auto Success = Expc::success();
-auto Failure = Expc::failure();
+auto SUCCESS = Expc::success();
+auto FAILURE = Expc::failure();
 
 using AD = buildgraphtest::AssetData;
 using buildgraphtest::assetExpr;
@@ -530,32 +530,32 @@ INSTANTIATE_TEST_SUITE_P(
     BuildExpression,
     testing::Values(
         // Empty graph
-        BuildT(AD(), Success(Chain::create("policy/testname", {}))),
+        BuildT(AD(), SUCCESS(Chain::create("policy/testname", {}))),
         // Single assets
         BuildT(AD()(AT::DECODER, "decoder/asset", "decoder/Input"),
-               Success(Chain::create("policy/testname", {Or::create("decoder/Input", {assetExpr("decoder/asset")})}))),
+               SUCCESS(Chain::create("policy/testname", {Or::create("decoder/Input", {assetExpr("decoder/asset")})}))),
         BuildT(AD()(AT::RULE, "rule/asset", "rule/Input"),
-               Success(Chain::create("policy/testname", {Broadcast::create("rule/Input", {assetExpr("rule/asset")})}))),
+               SUCCESS(Chain::create("policy/testname", {Broadcast::create("rule/Input", {assetExpr("rule/asset")})}))),
         BuildT(AD()(AT::OUTPUT, "output/asset", "output/Input"),
-               Success(Chain::create("policy/testname",
+               SUCCESS(Chain::create("policy/testname",
                                      {Broadcast::create("output/Input", {assetExpr("output/asset")})}))),
         // One of each asset
         BuildT(AD()(AT::DECODER, "decoder/asset", "decoder/Input")(AT::RULE, "rule/asset", "rule/Input")(
                    AT::OUTPUT, "output/asset", "output/Input"),
-               Success(Chain::create("policy/testname",
+               SUCCESS(Chain::create("policy/testname",
                                      {Or::create("decoder/Input", {assetExpr("decoder/asset")}),
                                       Broadcast::create("rule/Input", {assetExpr("rule/asset")}),
                                       Broadcast::create("output/Input", {assetExpr("output/asset")})}))),
         // One parent
         BuildT(AD()(AT::DECODER, "decoder/asset", "decoder/parent")(AT::DECODER, "decoder/parent", "decoder/Input"),
-               Success(Chain::create("policy/testname",
+               SUCCESS(Chain::create("policy/testname",
                                      {Or::create("decoder/Input",
                                                  {Implication::create("decoder/parent/Node",
                                                                       assetExpr("decoder/parent"),
                                                                       Or::create("decoder/parent/Children",
                                                                                  {assetExpr("decoder/asset")}))})}))),
         BuildT(AD()(AT::RULE, "rule/asset", "rule/parent")(AT::RULE, "rule/parent", "rule/Input"),
-               Success(Chain::create(
+               SUCCESS(Chain::create(
                    "policy/testname",
                    {Broadcast::create("rule/Input",
                                       {Implication::create("rule/parent/Node",
@@ -563,7 +563,7 @@ INSTANTIATE_TEST_SUITE_P(
                                                            Broadcast::create("rule/parent/Children",
                                                                              {assetExpr("rule/asset")}))})}))),
         BuildT(AD()(AT::OUTPUT, "output/asset", "output/parent")(AT::OUTPUT, "output/parent", "output/Input"),
-               Success(Chain::create(
+               SUCCESS(Chain::create(
                    "policy/testname",
                    {Broadcast::create("output/Input",
                                       {Implication::create("output/parent/Node",
@@ -575,7 +575,7 @@ INSTANTIATE_TEST_SUITE_P(
             AD()(AT::DECODER, "decoder/asset", "decoder/parent")(AT::DECODER, "decoder/parent", "decoder/Input")(
                 AT::RULE, "rule/asset", "rule/parent")(AT::RULE, "rule/parent", "rule/Input")(
                 AT::OUTPUT, "output/asset", "output/parent")(AT::OUTPUT, "output/parent", "output/Input"),
-            Success(Chain::create(
+            SUCCESS(Chain::create(
                 "policy/testname",
                 {Or::create("decoder/Input",
                             {Implication::create("decoder/parent/Node",
@@ -594,7 +594,7 @@ INSTANTIATE_TEST_SUITE_P(
         // Two parents
         BuildT(AD()(AT::DECODER, "decoder/asset", "decoder/parent1", "decoder/parent2")(
                    AT::DECODER, "decoder/parent1", "decoder/Input")(AT::DECODER, "decoder/parent2", "decoder/Input"),
-               Success(Chain::create("policy/testname",
+               SUCCESS(Chain::create("policy/testname",
                                      {Or::create("decoder/Input",
                                                  {Implication::create("decoder/parent1/Node",
                                                                       assetExpr("decoder/parent1"),
@@ -607,7 +607,7 @@ INSTANTIATE_TEST_SUITE_P(
         BuildT(
             AD()(AT::RULE, "rule/asset", "rule/parent1", "rule/parent2")(AT::RULE, "rule/parent1", "rule/Input")(
                 AT::RULE, "rule/parent2", "rule/Input"),
-            Success(Chain::create(
+            SUCCESS(Chain::create(
                 "policy/testname",
                 {Broadcast::create(
                     "rule/Input",
@@ -619,7 +619,7 @@ INSTANTIATE_TEST_SUITE_P(
                                          Broadcast::create("rule/parent2/Children", {assetExpr("rule/asset")}))})}))),
         BuildT(AD()(AT::OUTPUT, "output/asset", "output/parent1", "output/parent2")(
                    AT::OUTPUT, "output/parent1", "output/Input")(AT::OUTPUT, "output/parent2", "output/Input"),
-               Success(Chain::create(
+               SUCCESS(Chain::create(
                    "policy/testname",
                    {Broadcast::create("output/Input",
                                       {Implication::create("output/parent1/Node",
@@ -637,7 +637,7 @@ INSTANTIATE_TEST_SUITE_P(
                 AT::RULE, "rule/asset", "rule/parent1", "rule/parent2")(AT::RULE, "rule/parent1", "rule/Input")(
                 AT::RULE, "rule/parent2", "rule/Input")(AT::OUTPUT, "output/asset", "output/parent1", "output/parent2")(
                 AT::OUTPUT, "output/parent1", "output/Input")(AT::OUTPUT, "output/parent2", "output/Input"),
-            Success(Chain::create(
+            SUCCESS(Chain::create(
                 "policy/testname",
                 {Or::create("decoder/Input",
                             {Implication::create("decoder/parent1/Node",
@@ -670,7 +670,7 @@ INSTANTIATE_TEST_SUITE_P(
                    AT::DECODER, "decoder/child2", "decoder/parent1", "decoder/parent2")(
                    AT::DECODER, "decoder/child3", "decoder/child1")(AT::DECODER, "decoder/parent1", "decoder/Input")(
                    AT::DECODER, "decoder/parent2", "decoder/Input")(AT::DECODER, "decoder/child4", "decoder/Input"),
-               Success(Chain::create(
+               SUCCESS(Chain::create(
                    "policy/testname",
                    {Or::create(
                        "decoder/Input",
@@ -689,7 +689,7 @@ INSTANTIATE_TEST_SUITE_P(
         BuildT(AD()(AT::RULE, "rule/child1", "rule/parent1")(AT::RULE, "rule/child2", "rule/parent1", "rule/parent2")(
                    AT::RULE, "rule/child3", "rule/child1")(AT::RULE, "rule/parent1", "rule/Input")(
                    AT::RULE, "rule/parent2", "rule/Input")(AT::RULE, "rule/child4", "rule/Input"),
-               Success(Chain::create(
+               SUCCESS(Chain::create(
                    "policy/testname",
                    {Broadcast::create(
                        "rule/Input",
@@ -710,7 +710,7 @@ INSTANTIATE_TEST_SUITE_P(
                    AT::OUTPUT, "output/child2", "output/parent1", "output/parent2")(
                    AT::OUTPUT, "output/child3", "output/child1")(AT::OUTPUT, "output/parent1", "output/Input")(
                    AT::OUTPUT, "output/parent2", "output/Input")(AT::OUTPUT, "output/child4", "output/Input"),
-               Success(Chain::create(
+               SUCCESS(Chain::create(
                    "policy/testname",
                    {Broadcast::create(
                        "output/Input",
@@ -740,7 +740,7 @@ INSTANTIATE_TEST_SUITE_P(
                 AT::OUTPUT, "output/child2", "output/parent1", "output/parent2")(
                 AT::OUTPUT, "output/child3", "output/child1")(AT::OUTPUT, "output/parent1", "output/Input")(
                 AT::OUTPUT, "output/parent2", "output/Input")(AT::OUTPUT, "output/child4", "output/Input"),
-            Success(Chain::create(
+            SUCCESS(Chain::create(
                 "policy/testname",
                 {Or::create(
                      "decoder/Input",
