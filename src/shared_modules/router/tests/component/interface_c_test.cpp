@@ -37,10 +37,10 @@ void RouterCInterfaceTestNoSetUp::TearDown() {};
 
 TEST_F(RouterCInterfaceTest, DISABLED_TestDoubleProviderInit)
 {
-    auto handle {router_provider_create("test")};
+    auto handle {router_provider_create("test", false)};
     EXPECT_NE(handle, nullptr);
 
-    EXPECT_EQ(router_provider_create("test"), nullptr);
+    EXPECT_EQ(router_provider_create("test", false), nullptr);
 }
 
 TEST_F(RouterCInterfaceTest, TestDoubleSubscriberInit)
@@ -50,7 +50,7 @@ TEST_F(RouterCInterfaceTest, TestDoubleSubscriberInit)
 
 TEST_F(RouterCInterfaceTest, TestProviderSend)
 {
-    auto handle {router_provider_create("test")};
+    auto handle {router_provider_create("test", false)};
     EXPECT_NE(handle, nullptr);
 
     EXPECT_EQ(router_provider_send(handle, "test", 4), 0);
@@ -60,7 +60,7 @@ TEST_F(RouterCInterfaceTest, TestProviderSend)
 
 TEST_F(RouterCInterfaceTest, TestProviderSendNull)
 {
-    auto handle {router_provider_create("test")};
+    auto handle {router_provider_create("test", false)};
     EXPECT_NE(handle, nullptr);
 
     EXPECT_EQ(router_provider_send(handle, nullptr, 4), -1);
@@ -70,7 +70,7 @@ TEST_F(RouterCInterfaceTest, TestProviderSendNull)
 
 TEST_F(RouterCInterfaceTest, TestProviderSendZero)
 {
-    auto handle {router_provider_create("test")};
+    auto handle {router_provider_create("test", false)};
     EXPECT_NE(handle, nullptr);
 
     EXPECT_EQ(router_provider_send(handle, "test", 0), -1);
@@ -80,7 +80,7 @@ TEST_F(RouterCInterfaceTest, TestProviderSendZero)
 
 TEST_F(RouterCInterfaceTest, TestProviderSendAndDestroy)
 {
-    auto handle {router_provider_create("test")};
+    auto handle {router_provider_create("test", false)};
 
     EXPECT_NE(handle, nullptr);
 
@@ -93,7 +93,7 @@ TEST_F(RouterCInterfaceTest, TestProviderSendAndDestroy)
 
 TEST_F(RouterCInterfaceTest, TestProviderWithEmptyTopicName)
 {
-    auto handle {router_provider_create("")};
+    auto handle {router_provider_create("", false)};
 
     EXPECT_EQ(handle, nullptr);
 
@@ -102,11 +102,11 @@ TEST_F(RouterCInterfaceTest, TestProviderWithEmptyTopicName)
 
 TEST_F(RouterCInterfaceTest, TestTwoProvidersWithTheSameTopicName)
 {
-    auto handle1 {router_provider_create("test-provider")};
+    auto handle1 {router_provider_create("test-provider", false)};
 
     EXPECT_NE(handle1, nullptr);
 
-    auto handle2 {router_provider_create("test-provider")};
+    auto handle2 {router_provider_create("test-provider", false)};
 
     EXPECT_EQ(handle2, nullptr);
 
@@ -121,7 +121,7 @@ TEST_F(RouterCInterfaceTestNoSetUp, TestRemoveProviderWithServerDown)
 {
     router_start();
 
-    ROUTER_PROVIDER_HANDLE provider = router_provider_create("test");
+    ROUTER_PROVIDER_HANDLE provider = router_provider_create("test", false);
     if (nullptr == provider)
     {
         FAIL() << "The provider wasn't created";
@@ -147,7 +147,7 @@ TEST_F(RouterCInterfaceTestNoSetUp, TestRemoveBrokerBeforeProvider)
 {
     router_start();
 
-    ROUTER_PROVIDER_HANDLE handle = router_provider_create("test");
+    ROUTER_PROVIDER_HANDLE handle = router_provider_create("test", false);
     if (nullptr == handle)
     {
         FAIL() << "The provider wasn't created";
@@ -174,7 +174,7 @@ TEST_F(RouterCInterfaceTestNoSetUp, TestSendMessageAfterBrokerRestart)
 {
     router_start();
 
-    ROUTER_PROVIDER_HANDLE handle = router_provider_create("test");
+    ROUTER_PROVIDER_HANDLE handle = router_provider_create("test", false);
     if (nullptr == handle)
     {
         FAIL() << "The provider wasn't created";
