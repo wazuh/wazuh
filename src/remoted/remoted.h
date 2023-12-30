@@ -26,6 +26,9 @@
 #define AG_STOP_MSG REMOTED_MSG_HEADER OS_AG_STOPPED
 #define MAX_SHARED_PATH 200
 
+/* Hash table for agent data */
+extern OSHash *agent_data_hash;
+
 /* Pending data structure */
 
 typedef struct pending_data_t {

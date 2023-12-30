@@ -34,6 +34,7 @@
 #include "../wrappers/wazuh/os_crypto/msgs_wrappers.h"
 #include "../wrappers/wazuh/remoted/state_wrappers.h"
 #include "../wrappers/wazuh/shared_modules/router_wrappers.h"
+#include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 #include "../../remoted/secure.c"
 
 typedef struct test_agent_info {
@@ -46,6 +47,7 @@ extern keystore keys;
 extern remoted logr;
 extern wnotify_t * notify;
 extern char *str_family_address[FAMILY_ADDRESS_SIZE];
+extern OSHash *agent_data_hash;
 
 void tmp_HandleSecureMessage_invalid_family_address(sa_family_t sin_family);
 
@@ -84,6 +86,7 @@ static int teardown_new_tcp(void **state) {
 static int setup_remoted_configuration(void **state) {
     test_mode = 1;
     node_name = "test_node_name";
+    agent_data_hash = (OSHash*)1;
 
     test_agent_info* agent;
     os_calloc(1, sizeof(test_agent_info), agent);
@@ -925,6 +928,7 @@ void test_HandleSecureMessage_close_idle_sock(void **state)
     key->keyid = 1;
     key->rcvd = 0;
     key->ip->ip = "127.0.0.1";
+    key->name = strdup("name");
 
     keys.keyentries[1] = key;
 
@@ -976,7 +980,7 @@ void test_HandleSecureMessage_close_idle_sock(void **state)
 
     // SendMSG
     expect_string(__wrap_SendMSG, message, "12!");
-    expect_string(__wrap_SendMSG, locmsg, "[001] ((null)) 127.0.0.1");
+    expect_string(__wrap_SendMSG, locmsg, "[001] (name) 127.0.0.1");
     expect_any(__wrap_SendMSG, loc);
     will_return(__wrap_SendMSG, 0);
 
@@ -985,6 +989,7 @@ void test_HandleSecureMessage_close_idle_sock(void **state)
     HandleSecureMessage(&message, &wdb_sock);
 
     os_free(key->id);
+    os_free(key->name);
     os_free(key->ip);
     os_free(key);
     os_free(keyentries);
@@ -1015,6 +1020,7 @@ void test_HandleSecureMessage_close_idle_sock_2(void **state)
     key->keyid = 1;
     key->rcvd = 0;
     key->ip->ip = "127.0.0.1";
+    key->name = strdup("name");
 
     keys.keyentries[1] = key;
 
@@ -1066,7 +1072,7 @@ void test_HandleSecureMessage_close_idle_sock_2(void **state)
 
     // SendMSG
     expect_string(__wrap_SendMSG, message, "AAA");
-    expect_string(__wrap_SendMSG, locmsg, "[001] ((null)) 127.0.0.1");
+    expect_string(__wrap_SendMSG, locmsg, "[001] (name) 127.0.0.1");
     expect_any(__wrap_SendMSG, loc);
     will_return(__wrap_SendMSG, 0);
 
@@ -1076,6 +1082,7 @@ void test_HandleSecureMessage_close_idle_sock_2(void **state)
 
     os_free(key->id);
     os_free(key->ip);
+    os_free(key->name);
     os_free(key);
     os_free(keyentries);
 }
@@ -1102,6 +1109,7 @@ void test_HandleSecureMessage_close_idle_sock_disabled(void **state)
     key->sock = 4;
     key->keyid = 1;
     key->rcvd = 0;
+    key->name = strdup("name");
 
     keys.keyentries[1] = key;
 
@@ -1147,6 +1155,7 @@ void test_HandleSecureMessage_close_idle_sock_disabled(void **state)
     HandleSecureMessage(&message, &wdb_sock);
 
     os_free(key->id);
+    os_free(key->name);
     os_free(key);
     os_free(keyentries);
 }
@@ -1173,6 +1182,7 @@ void test_HandleSecureMessage_close_idle_sock_disabled_2(void **state)
     key->sock = 4;
     key->keyid = 1;
     key->rcvd = 0;
+    key->name = strdup("name");
 
     keys.keyentries[1] = key;
 
@@ -1219,6 +1229,7 @@ void test_HandleSecureMessage_close_idle_sock_disabled_2(void **state)
     HandleSecureMessage(&message, &wdb_sock);
 
     os_free(key->id);
+    os_free(key->name);
     os_free(key);
     os_free(keyentries);
 }
@@ -1565,7 +1576,7 @@ void test_HandleSecureMessage_close_same_sock(void **state)
     key->keyid = 1;
     key->rcvd = 0;
     key->ip->ip = "127.0.0.1";
-
+    key->name = strdup("name");
 
     keys.keyentries[1] = key;
 
@@ -1594,7 +1605,7 @@ void test_HandleSecureMessage_close_same_sock(void **state)
 
     // SendMSG
     expect_string(__wrap_SendMSG, message, "12!");
-    expect_string(__wrap_SendMSG, locmsg, "[001] ((null)) 127.0.0.1");
+    expect_string(__wrap_SendMSG, locmsg, "[001] (name) 127.0.0.1");
     expect_any(__wrap_SendMSG, loc);
     will_return(__wrap_SendMSG, 0);
 
@@ -1604,6 +1615,7 @@ void test_HandleSecureMessage_close_same_sock(void **state)
 
     os_free(key->id);
     os_free(key->ip);
+    os_free(key->name);
     os_free(key);
     os_free(keyentries);
 }
@@ -1633,7 +1645,7 @@ void test_HandleSecureMessage_close_same_sock_2(void **state)
     key->keyid = 1;
     key->rcvd = 0;
     key->ip->ip = "127.0.0.1";
-
+    key->name = strdup("name");
 
     keys.keyentries[1] = key;
 
@@ -1663,7 +1675,7 @@ void test_HandleSecureMessage_close_same_sock_2(void **state)
 
     // SendMSG
     expect_string(__wrap_SendMSG, message, "AAA");
-    expect_string(__wrap_SendMSG, locmsg, "[001] ((null)) 127.0.0.1");
+    expect_string(__wrap_SendMSG, locmsg, "[001] (name) 127.0.0.1");
     expect_any(__wrap_SendMSG, loc);
     will_return(__wrap_SendMSG, 0);
 
@@ -1673,6 +1685,7 @@ void test_HandleSecureMessage_close_same_sock_2(void **state)
 
     os_free(key->id);
     os_free(key->ip);
+    os_free(key->name);
     os_free(key);
     os_free(keyentries);
 }
@@ -2048,6 +2061,10 @@ void test_router_message_forward_invalid_sync_json_message(void **state)
 
     expect_string(__wrap__mdebug2, formatted_msg, "Unable to forward message for agent 001");
 
+    will_return(__wrap_OSHash_Get_ex_dup, NULL);
+    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
+    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
+
     router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
 }
 
@@ -2064,6 +2081,10 @@ void test_router_message_forward_valid_integrity_check_global(void **state)
     expect_string(__wrap_router_provider_send_fb, msg, expected_message);
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_synchronization_SCHEMA);
     will_return(__wrap_router_provider_send_fb, 0);
+
+    will_return(__wrap_OSHash_Get_ex_dup, NULL);
+    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
+    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
 
     router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
 }
@@ -2082,6 +2103,10 @@ void test_router_message_forward_valid_integrity_check_left(void **state)
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_synchronization_SCHEMA);
     will_return(__wrap_router_provider_send_fb, 0);
 
+    will_return(__wrap_OSHash_Get_ex_dup, NULL);
+    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
+    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
+
     router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
 }
 
@@ -2099,6 +2124,10 @@ void test_router_message_forward_valid_integrity_check_right(void **state)
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_synchronization_SCHEMA);
     will_return(__wrap_router_provider_send_fb, 0);
 
+    will_return(__wrap_OSHash_Get_ex_dup, NULL);
+    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
+    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
+
     router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
 }
 
@@ -2114,6 +2143,10 @@ void test_router_message_forward_valid_integrity_clear(void **state)
     expect_string(__wrap_router_provider_send_fb, msg, expected_message);
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_synchronization_SCHEMA);
     will_return(__wrap_router_provider_send_fb, 0);
+
+    will_return(__wrap_OSHash_Get_ex_dup, NULL);
+    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
+    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
 
     router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
 }
@@ -2153,6 +2186,10 @@ void test_router_message_forward_invalid_delta_json_message(void **state)
 
     expect_string(__wrap__mdebug2, formatted_msg, "Unable to forward message for agent 001");
 
+    will_return(__wrap_OSHash_Get_ex_dup, NULL);
+    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
+    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
+
     router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
 }
 
@@ -2173,6 +2210,10 @@ void test_router_message_forward_valid_delta_packages_json_message(void **state)
     expect_string(__wrap_router_provider_send_fb, msg, expected_message);
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
     will_return(__wrap_router_provider_send_fb, 0);
+
+    will_return(__wrap_OSHash_Get_ex_dup, NULL);
+    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
+    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
 
     router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
 }
@@ -2195,6 +2236,10 @@ void test_router_message_forward_valid_delta_os_json_message(void **state)
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
     will_return(__wrap_router_provider_send_fb, 0);
 
+    will_return(__wrap_OSHash_Get_ex_dup, NULL);
+    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
+    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
+
     router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
 }
 
@@ -2216,6 +2261,10 @@ void test_router_message_forward_valid_delta_netiface_json_message(void **state)
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
     will_return(__wrap_router_provider_send_fb, 0);
 
+    will_return(__wrap_OSHash_Get_ex_dup, NULL);
+    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
+    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
+
     router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
 }
 
@@ -2235,6 +2284,10 @@ void test_router_message_forward_valid_delta_netproto_json_message(void **state)
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
     will_return(__wrap_router_provider_send_fb, 0);
 
+    will_return(__wrap_OSHash_Get_ex_dup, NULL);
+    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
+    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
+
     router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
 }
 
@@ -2253,6 +2306,10 @@ void test_router_message_forward_valid_delta_netaddr_json_message(void **state)
     expect_string(__wrap_router_provider_send_fb, msg, expected_message);
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
     will_return(__wrap_router_provider_send_fb, 0);
+
+    will_return(__wrap_OSHash_Get_ex_dup, NULL);
+    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
+    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
 
     router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
 }
@@ -2274,6 +2331,10 @@ void test_router_message_forward_valid_delta_hardware_json_message(void **state)
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
     will_return(__wrap_router_provider_send_fb, 0);
 
+    will_return(__wrap_OSHash_Get_ex_dup, NULL);
+    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
+    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
+
     router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
 }
 
@@ -2292,6 +2353,10 @@ void test_router_message_forward_valid_delta_ports_json_message(void **state)
     expect_string(__wrap_router_provider_send_fb, msg, expected_message);
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
     will_return(__wrap_router_provider_send_fb, 0);
+
+    will_return(__wrap_OSHash_Get_ex_dup, NULL);
+    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
+    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
 
     router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
 }
@@ -2312,6 +2377,10 @@ void test_router_message_forward_valid_delta_processes_json_message(void **state
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
     will_return(__wrap_router_provider_send_fb, 0);
 
+    will_return(__wrap_OSHash_Get_ex_dup, NULL);
+    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
+    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
+
     router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
 }
 
@@ -2328,6 +2397,10 @@ void test_router_message_forward_valid_delta_hotfixes_json_message(void **state)
     expect_string(__wrap_router_provider_send_fb, msg, expected_message);
     expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
     will_return(__wrap_router_provider_send_fb, 0);
+
+    will_return(__wrap_OSHash_Get_ex_dup, NULL);
+    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
+    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
 
     router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
 }

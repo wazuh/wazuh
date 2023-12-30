@@ -61,6 +61,11 @@ STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storag
 // Router message forwarder
 void router_message_forward(char* msg, const char* agent_id, const char* agent_ip, const char* agent_name);
 
+// Duplicator method for hash table
+void *agent_data_hash_duplicator(void* data) {
+    return cJSON_Duplicate((cJSON*)data, true);
+}
+
 // Message handler thread
 static void * rem_handler_main(__attribute__((unused)) void * args);
 
@@ -492,6 +497,8 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
     char srcip[IPSIZE + 1] = {0};
     char agname[KEYSIZE + 1] = {0};
     char *agentid_str = NULL;
+    char *agent_ip = NULL;
+    char *agent_name = NULL;
     char buffer[OS_MAXSTR + 1] = "";
     char *tmp_msg;
     size_t msg_length;
@@ -783,6 +790,8 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
              keys.keyentries[agentid]->name, keys.keyentries[agentid]->ip->ip);
 
     os_strdup(keys.keyentries[agentid]->id, agentid_str);
+    os_strdup(keys.keyentries[agentid]->name, agent_name);
+    os_strdup(keys.keyentries[agentid]->ip->ip, agent_ip);
 
     key_unlock();
 
@@ -811,11 +820,14 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
         rem_inc_recv_evt(agentid_str);
     }
 
-    router_message_forward(tmp_msg, keys.keyentries[agentid]->id,
-                                            keys.keyentries[agentid]->ip->ip,
-                                            keys.keyentries[agentid]->name);
+    // Forwarding events to subscribers
+    router_message_forward(tmp_msg, agentid_str,
+                                    agent_ip,
+                                    agent_name);
 
     os_free(agentid_str);
+    os_free(agent_ip);
+    os_free(agent_name);
 }
 
 void router_message_forward(char* msg, const char* agent_id, const char* agent_ip, const char* agent_name) {
@@ -850,6 +862,7 @@ void router_message_forward(char* msg, const char* agent_id, const char* agent_i
     cJSON* j_agent_info = NULL;
     cJSON* j_msg = NULL;
     cJSON* j_data = NULL;
+    cJSON* j_agent_data = NULL;
     char* msg_to_send = NULL;
 
     char* msg_start = msg + message_header_size;
@@ -861,11 +874,16 @@ void router_message_forward(char* msg, const char* agent_id, const char* agent_i
         }
 
         j_msg_to_send = cJSON_CreateObject();
-
         j_agent_info = cJSON_CreateObject();
+
+        // Getting agent context
+        j_agent_data = OSHash_Get_ex_dup(agent_data_hash, agent_id, agent_data_hash_duplicator);
         cJSON_AddStringToObject(j_agent_info, "agent_id", agent_id);
         cJSON_AddStringToObject(j_agent_info, "agent_ip", agent_ip);
         cJSON_AddStringToObject(j_agent_info, "agent_name", agent_name);
+        if (cJSON_IsString(cJSON_GetObjectItem(j_agent_data, "version"))) {
+            cJSON_AddItemToObject(j_agent_info, "agent_version", cJSON_DetachItemFromObject(j_agent_data, "version"));
+        }
         cJSON_AddStringToObject(j_agent_info, "node_name", node_name);
         cJSON_AddItemToObject(j_msg_to_send, "agent_info", j_agent_info);
 
@@ -900,6 +918,7 @@ clean_and_exit:
     cJSON_Delete(j_msg_to_send);
     cJSON_Delete(j_msg);
     cJSON_free(msg_to_send);
+    cJSON_Delete(j_agent_data);
 }
 
 // Close and remove socket from keystore
