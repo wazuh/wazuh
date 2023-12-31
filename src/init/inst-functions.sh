@@ -1117,6 +1117,27 @@ TransferShared()
     find ${INSTALLDIR}/etc/shared -maxdepth 1 -type f -not -name ar.conf -not -name files.yml -exec mv -f {} ${INSTALLDIR}/etc/shared/default \;
 }
 
+checkDownloadContent()
+{
+    VD_FILENAME='vd_1.0.0_vd_4.8.0.tar.xz'
+
+    if [ "X${DOWNLOAD_CONTENT_AND_DECOMPRESS}" = "Xy" ]; then
+        echo "Download ${VD_FILENAME} file"
+        wget -O ${VD_FILENAME} http://packages.wazuh.com/deps/vulnerability_model_database/${VD_FILENAME}
+
+        echo "Decompress ${VD_FILENAME} file"
+        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${VD_FILENAME} ${INSTALLDIR}/
+        tar -xf ${INSTALLDIR}/${VD_FILENAME} -C ${INSTALLDIR}/
+        rm -rf ${INSTALLDIR:?}/${VD_FILENAME}
+        rm -rf ${VD_FILENAME}
+    elif [ "X${DOWNLOAD_CONTENT}" = "Xyes" ]; then
+        echo "Download ${VD_FILENAME} file"
+        wget -O ${VD_FILENAME} http://packages.wazuh.com/deps/vulnerability_model_database/${VD_FILENAME}
+
+        ${INSTALL} -m 0640 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${VD_FILENAME} ${INSTALLDIR}/
+    fi
+}
+
 InstallServer()
 {
 
@@ -1169,6 +1190,9 @@ InstallServer()
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/librocksdb.so.8
         fi
     fi
+
+    # Check if the content needs to be downloaded.
+    checkDownloadContent
 
     # Install cluster files
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/cluster
