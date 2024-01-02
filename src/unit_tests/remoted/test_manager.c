@@ -2896,7 +2896,7 @@ void test_process_groups_find_group_not_changed(void **state)
 
 void test_process_multi_groups_no_groups(void **state)
 {
-    will_return(__wrap_wdb_get_distinct_agent_groups, NULL);
+    will_return(__wrap_wdb_get_distinct_agent_multi_groups, NULL);
 
     expect_value(__wrap_OSHash_Begin, self, m_hash);
     will_return(__wrap_OSHash_Begin, NULL);
@@ -2906,9 +2906,9 @@ void test_process_multi_groups_no_groups(void **state)
 
 void test_process_multi_groups_single_group(void **state)
 {
-    cJSON* j_agent_info = cJSON_Parse("[{\"group\":\"group1\",\"group_hash\":\"ec282560\"}]");
+    cJSON* j_agent_info = cJSON_Parse("[{\"group\":\"group1\"}]");
 
-    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
+    will_return(__wrap_wdb_get_distinct_agent_multi_groups, j_agent_info);
 
     expect_value(__wrap_OSHash_Begin, self, m_hash);
     will_return(__wrap_OSHash_Begin, NULL);
@@ -2918,9 +2918,12 @@ void test_process_multi_groups_single_group(void **state)
 
 void test_process_multi_groups_OSHash_Add_fail(void **state)
 {
-    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]]");
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\"}]]");
 
-    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
+    will_return(__wrap_wdb_get_distinct_agent_multi_groups, j_agent_info);
+
+    expect_string(__wrap_OS_SHA256_String, str, "group1,group2");
+    will_return(__wrap_OS_SHA256_String, "1234567890abcdef");
 
     OSHash_Add_ex_check_data = 0;
     expect_value(__wrap_OSHash_Add_ex, self, m_hash);
@@ -2937,9 +2940,12 @@ void test_process_multi_groups_OSHash_Add_fail(void **state)
 
 void test_process_multi_groups_OSHash_Add_fail_multi_chunk_empty_first(void **state)
 {
-    cJSON* j_agent_info = cJSON_Parse("[[],[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]]");
+    cJSON* j_agent_info = cJSON_Parse("[[],[{\"group\":\"group1,group2\"}]]");
 
-    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
+    will_return(__wrap_wdb_get_distinct_agent_multi_groups, j_agent_info);
+
+    expect_string(__wrap_OS_SHA256_String, str, "group1,group2");
+    will_return(__wrap_OS_SHA256_String, "1234567890abcdef");
 
     OSHash_Add_ex_check_data = 0;
     expect_value(__wrap_OSHash_Add_ex, self, m_hash);
@@ -2956,9 +2962,12 @@ void test_process_multi_groups_OSHash_Add_fail_multi_chunk_empty_first(void **st
 
 void test_process_multi_groups_OSHash_Add_fail_multi_chunk_empty_second(void **state)
 {
-    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}],[]]");
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\"}],[]]");
 
-    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
+    will_return(__wrap_wdb_get_distinct_agent_multi_groups, j_agent_info);
+
+    expect_string(__wrap_OS_SHA256_String, str, "group1,group2");
+    will_return(__wrap_OS_SHA256_String, "1234567890abcdef");
 
     OSHash_Add_ex_check_data = 0;
     expect_value(__wrap_OSHash_Add_ex, self, m_hash);
@@ -2975,9 +2984,12 @@ void test_process_multi_groups_OSHash_Add_fail_multi_chunk_empty_second(void **s
 
 void test_process_multi_groups_OSHash_Add_fail_multi_chunk(void **state)
 {
-    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}], [{\"group\":\"group3,group4\",\"group_hash\":\"abcdef\"}]]");
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\"}], [{\"group\":\"group3,group4\"}]]");
 
-    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
+    will_return(__wrap_wdb_get_distinct_agent_multi_groups, j_agent_info);
+
+    expect_string(__wrap_OS_SHA256_String, str, "group1,group2");
+    will_return(__wrap_OS_SHA256_String, "1234567890abcdef");
 
     OSHash_Add_ex_check_data = 0;
     expect_value(__wrap_OSHash_Add_ex, self, m_hash);
@@ -2985,6 +2997,9 @@ void test_process_multi_groups_OSHash_Add_fail_multi_chunk(void **state)
     will_return(__wrap_OSHash_Add_ex, 0);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Couldn't add multigroup 'group1,group2' to hash table 'm_hash'");
+
+    expect_string(__wrap_OS_SHA256_String, str, "group3,group4");
+    will_return(__wrap_OS_SHA256_String, "abcdef1234567890");
 
     OSHash_Add_ex_check_data = 0;
     expect_value(__wrap_OSHash_Add_ex, self, m_hash);
@@ -3001,9 +3016,12 @@ void test_process_multi_groups_OSHash_Add_fail_multi_chunk(void **state)
 
 void test_process_multi_groups_open_fail(void **state)
 {
-    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]]");
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\"}]]");
 
-    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
+    will_return(__wrap_wdb_get_distinct_agent_multi_groups, j_agent_info);
+
+    expect_string(__wrap_OS_SHA256_String, str, "group1,group2");
+    will_return(__wrap_OS_SHA256_String, "1234567890abcdef");
 
     __real_OSHash_SetFreeDataPointer(mock_hashmap, (void (*)(void *))cleaner);
 
@@ -3039,9 +3057,12 @@ void test_process_multi_groups_open_fail(void **state)
 
 void test_process_multi_groups_find_multi_group_null(void **state)
 {
-    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]]");
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\"}]]");
 
-    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
+    will_return(__wrap_wdb_get_distinct_agent_multi_groups, j_agent_info);
+
+    expect_string(__wrap_OS_SHA256_String, str, "group1,group2");
+    will_return(__wrap_OS_SHA256_String, "1234567890abcdef");
 
     __real_OSHash_SetFreeDataPointer(mock_hashmap, (void (*)(void *))free_group_c_group);
 
@@ -3102,9 +3123,12 @@ void test_process_multi_groups_group_changed(void **state)
 
     state[0] = multigroup->f_time;
 
-    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]]");
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\"}]]");
 
-    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
+    will_return(__wrap_wdb_get_distinct_agent_multi_groups, j_agent_info);
+
+    expect_string(__wrap_OS_SHA256_String, str, "group1,group2");
+    will_return(__wrap_OS_SHA256_String, "1234567890abcdef");
 
     __real_OSHash_SetFreeDataPointer(mock_hashmap, (void (*)(void *))cleaner);
 
@@ -3170,9 +3194,12 @@ void test_process_multi_groups_changed_outside(void **state)
 
     state[0] = multigroup->f_time;
 
-    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]]");
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\"}]]");
 
-    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
+    will_return(__wrap_wdb_get_distinct_agent_multi_groups, j_agent_info);
+
+    expect_string(__wrap_OS_SHA256_String, str, "group1,group2");
+    will_return(__wrap_OS_SHA256_String, "1234567890abcdef");
 
     __real_OSHash_SetFreeDataPointer(mock_hashmap, (void (*)(void *))cleaner);
 
@@ -3251,9 +3278,12 @@ void test_process_multi_groups_changed_outside_nocmerged(void **state)
 
     state[0] = multigroup->f_time;
 
-    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]]");
+    cJSON* j_agent_info = cJSON_Parse("[[{\"group\":\"group1,group2\"}]]");
 
-    will_return(__wrap_wdb_get_distinct_agent_groups, j_agent_info);
+    will_return(__wrap_wdb_get_distinct_agent_multi_groups, j_agent_info);
+
+    expect_string(__wrap_OS_SHA256_String, str, "group1,group2");
+    will_return(__wrap_OS_SHA256_String, "1234567890abcdef");
 
     __real_OSHash_SetFreeDataPointer(mock_hashmap, (void (*)(void *))cleaner);
 
@@ -3325,7 +3355,7 @@ void test_c_files(void **state)
     will_return(__wrap_strerror, "No such file or directory");
     expect_string(__wrap__mdebug1, formatted_msg, "Opening directory: 'etc/shared': No such file or directory");
 
-    will_return(__wrap_wdb_get_distinct_agent_groups, NULL);
+    will_return(__wrap_wdb_get_distinct_agent_multi_groups, NULL);
 
     m_hash = (OSHash *)1;
     expect_value(__wrap_OSHash_Begin, self, m_hash);

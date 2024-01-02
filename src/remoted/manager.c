@@ -939,25 +939,26 @@ STATIC void process_multi_groups() {
     cJSON *group_item = NULL;
     cJSON *chunk_item = NULL;
 
-    cJSON *groups_array = wdb_get_distinct_agent_groups(NULL);
+    cJSON *groups_array = wdb_get_distinct_agent_multi_groups(NULL);
 
     if (groups_array != NULL) {
         cJSON_ArrayForEach(chunk_item, groups_array) {
             cJSON_ArrayForEach(group_item, chunk_item) {
                 char* agent_groups = cJSON_GetStringValue(cJSON_GetObjectItem(group_item, "group"));
 
-                // If we don't duplicate the group_hash, the cJSON_Delete() will remove the string pointer from m_hash
-                char* agent_groups_hash = NULL;
-                w_strdup(cJSON_GetStringValue(cJSON_GetObjectItem(group_item, "group_hash")), agent_groups_hash);
+                if (agent_groups) {
+                    os_sha256 multi_group_hash;
+                    char* agent_groups_hash = NULL;
 
-                // If it's not a multigroup, skip it
-                if(agent_groups && agent_groups_hash && strstr(agent_groups, ",")) {
+                    OS_SHA256_String(agent_groups, multi_group_hash);
+
+                    os_calloc(9, sizeof(char), agent_groups_hash);
+                    snprintf(agent_groups_hash, 9, "%.8s", multi_group_hash);
+
                     if (OSHash_Add_ex(m_hash, agent_groups, agent_groups_hash) != 2) {
                         os_free(agent_groups_hash);
                         mdebug2("Couldn't add multigroup '%s' to hash table 'm_hash'", agent_groups);
                     }
-                } else {
-                    os_free(agent_groups_hash);
                 }
             }
         }

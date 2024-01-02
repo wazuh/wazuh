@@ -49,7 +49,7 @@ list(APPEND remoted_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,w_
                             -Wl,--wrap,wdb_get_all_agents -Wl,--wrap,wdb_get_agent_info \
                             -Wl,--wrap,rem_inc_send_ack -Wl,--wrap,rem_inc_recv_ctrl_request -Wl,--wrap,rem_inc_recv_ctrl_keepalive \
                             -Wl,--wrap,rem_inc_recv_ctrl_startup -Wl,--wrap,rem_inc_recv_ctrl_shutdown -Wl,--wrap,pthread_mutex_lock \
-                            -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,wdb_get_distinct_agent_groups -Wl,--wrap,unlink -Wl,--wrap,getpid \
+                            -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,wdb_get_distinct_agent_multi_groups -Wl,--wrap,unlink -Wl,--wrap,getpid \
                             -Wl,--wrap,w_create_sendsync_payload -Wl,--wrap,w_send_clustered_message")
 
 list(APPEND remoted_names "test_secure")
