@@ -43,7 +43,7 @@ size_t lccom_dispatch(char * command, char ** output){
     const char *rcv_comm = command;
     char *rcv_args = NULL;
 
-    if ((rcv_args = strchr(rcv_comm, ' ')) && !strncmp(rcv_args, "next", 4)){
+    if ((rcv_args = strchr(rcv_comm, ' '))){
         *rcv_args = '\0';
         rcv_args++;
     }
@@ -58,9 +58,10 @@ size_t lccom_dispatch(char * command, char ** output){
         return lccom_getconfig(rcv_args, output);
 
     } else if (strcmp(rcv_comm, "getstate") == 0) {
+        if (rcv_args && !strncmp(rcv_args, "next", 4)){
+            return lccom_getstate(output, true);
+        }
         return lccom_getstate(output, false);
-    } else if (strcmp(rcv_comm, "getstate next") == 0) {
-        return lccom_getstate(output, true);
     } else {
         mdebug1("LCCOM Unrecognized command '%s'.", rcv_comm);
         os_strdup("err Unrecognized command", *output);
