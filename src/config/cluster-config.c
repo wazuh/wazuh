@@ -54,6 +54,7 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
                 return OS_INVALID;
             }
             os_strdup(node[i]->content, Config->cluster_name);
+            os_strdup(Config->cluster_name, cluster_name);
         } else if (!strcmp(node[i]->element, node_name)) {
             if (!strlen(node[i]->content)) {
                 merror("Node name is empty in configuration");
