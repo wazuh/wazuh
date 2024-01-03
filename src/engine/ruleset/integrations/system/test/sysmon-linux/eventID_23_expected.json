@@ -5,9 +5,6 @@
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
     },
-    "ecs": {
-      "version": "8.11.0"
-    },
     "event": {
       "action": "file_deleted",
       "category": [
@@ -66,9 +63,6 @@
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
     },
-    "ecs": {
-      "version": "8.11.0"
-    },
     "event": {
       "action": "file_deleted",
       "category": [
@@ -126,9 +120,6 @@
       "id": "001",
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
-    },
-    "ecs": {
-      "version": "8.11.0"
     },
     "event": {
       "action": "file_deleted",

@@ -5,9 +5,6 @@
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
     },
-    "ecs": {
-      "version": "8.11.0"
-    },
     "event": {
       "dataset": "system-auth",
       "kind": "event",
@@ -53,9 +50,6 @@
       "id": "001",
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
-    },
-    "ecs": {
-      "version": "8.11.0"
     },
     "event": {
       "action": "ssh_login",
@@ -119,9 +113,6 @@
       "id": "001",
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
-    },
-    "ecs": {
-      "version": "8.11.0"
     },
     "event": {
       "category": [
