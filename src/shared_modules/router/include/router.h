@@ -63,9 +63,10 @@ extern "C"
      * @brief Create a router provider.
      *
      * @param name Name of the router provider.
+     * @param isLocal True if the router provider is local, false otherwise.
      * @return ROUTER_PROVIDER_HANDLE Handle to the router provider.
      */
-    EXPORTED ROUTER_PROVIDER_HANDLE router_provider_create(const char* name);
+    EXPORTED ROUTER_PROVIDER_HANDLE router_provider_create(const char* name, bool isLocal);
 
     /**
      * @brief Send a message to the router provider.
@@ -106,7 +107,7 @@ typedef int (*router_start_func)();
 
 typedef int (*router_stop_func)();
 
-typedef ROUTER_PROVIDER_HANDLE (*router_provider_create_func)(const char* name);
+typedef ROUTER_PROVIDER_HANDLE (*router_provider_create_func)(const char* name, bool isLocal);
 
 typedef bool (*router_provider_send_func)(ROUTER_PROVIDER_HANDLE handle,
                                           const char* message,

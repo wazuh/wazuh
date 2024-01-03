@@ -205,7 +205,7 @@ int main(int argc, char ** argv)
     router_initialize(taggedLogFunction);
 
     // Router provider initialization
-    if (router_syscollector_handle = router_provider_create(WDB_SYSCOLLECTOR_DELTAS_TOPIC), !router_syscollector_handle) {
+    if (router_syscollector_handle = router_provider_create(WDB_SYSCOLLECTOR_DELTAS_TOPIC, false), !router_syscollector_handle) {
         mdebug2("Failed to create router handle for 'syscollector'.");
     }
 
