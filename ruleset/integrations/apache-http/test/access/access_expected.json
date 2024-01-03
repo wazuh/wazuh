@@ -5,9 +5,6 @@
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
     },
-    "ecs": {
-      "version": "8.11.0"
-    },
     "event": {
       "category": [
         "web"
@@ -68,9 +65,6 @@
       "id": "001",
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
-    },
-    "ecs": {
-      "version": "8.11.0"
     },
     "event": {
       "category": [
@@ -133,9 +127,6 @@
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
     },
-    "ecs": {
-      "version": "8.11.0"
-    },
     "event": {
       "category": [
         "web"
@@ -181,9 +172,6 @@
       "id": "001",
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
-    },
-    "ecs": {
-      "version": "8.11.0"
     },
     "event": {
       "category": [
@@ -243,9 +231,6 @@
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
     },
-    "ecs": {
-      "version": "8.11.0"
-    },
     "event": {
       "category": [
         "web"
@@ -291,9 +276,6 @@
       "id": "001",
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
-    },
-    "ecs": {
-      "version": "8.11.0"
     },
     "event": {
       "category": [
@@ -353,9 +335,6 @@
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
     },
-    "ecs": {
-      "version": "8.11.0"
-    },
     "event": {
       "category": [
         "web"
@@ -414,9 +393,6 @@
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
     },
-    "ecs": {
-      "version": "8.11.0"
-    },
     "event": {
       "category": [
         "web"
@@ -471,9 +447,6 @@
       "id": "001",
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
-    },
-    "ecs": {
-      "version": "8.11.0"
     },
     "event": {
       "category": [
@@ -539,9 +512,6 @@
     },
     "client": {
       "ip": "10.0.0.1"
-    },
-    "ecs": {
-      "version": "8.11.0"
     },
     "event": {
       "category": [
@@ -611,9 +581,6 @@
     "client": {
       "ip": "192.168.10.1"
     },
-    "ecs": {
-      "version": "8.11.0"
-    },
     "event": {
       "category": [
         "web"
@@ -682,9 +649,6 @@
     "client": {
       "ip": "192.168.0.1"
     },
-    "ecs": {
-      "version": "8.11.0"
-    },
     "event": {
       "category": [
         "web"
@@ -749,9 +713,6 @@
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
     },
-    "ecs": {
-      "version": "8.11.0"
-    },
     "event": {
       "category": [
         "web"
@@ -809,9 +770,6 @@
       "id": "001",
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
-    },
-    "ecs": {
-      "version": "8.11.0"
     },
     "event": {
       "category": [
@@ -875,9 +833,6 @@
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
     },
-    "ecs": {
-      "version": "8.11.0"
-    },
     "event": {
       "category": [
         "web"
@@ -937,9 +892,6 @@
     },
     "destination": {
       "domain": "localhost"
-    },
-    "ecs": {
-      "version": "8.11.0"
     },
     "event": {
       "category": [

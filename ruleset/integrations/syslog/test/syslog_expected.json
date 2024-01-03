@@ -5,9 +5,6 @@
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
     },
-    "ecs": {
-      "version": "8.11.0"
-    },
     "event": {
       "kind": "event",
       "original": "Dec 13 11:35:28 a-mac-with-esc-key GoogleSoftwareUpdateAgent[21412]: 2016-12-13 11:35:28.421 GoogleSoftwareUpdateAgent[21412/0x700007399000] [lvl=2] -[KSUpdateEngine updateAllExceptProduct:] KSUpdateEngine updating all installed products, except:'com.google.Keystone'.",
@@ -44,9 +41,6 @@
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
     },
-    "ecs": {
-      "version": "8.11.0"
-    },
     "event": {
       "kind": "event",
       "original": "Apr 4 03:39:57 --- last message repeated 1 time ---",
@@ -78,9 +72,6 @@
       "id": "001",
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
-    },
-    "ecs": {
-      "version": "8.11.0"
     },
     "event": {
       "kind": "event",

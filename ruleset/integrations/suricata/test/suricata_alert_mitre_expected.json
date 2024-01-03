@@ -12,9 +12,6 @@
       "packets": 3,
       "port": 80
     },
-    "ecs": {
-      "version": "8.11.0"
-    },
     "event": {
       "category": [
         "network",

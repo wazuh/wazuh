@@ -9,9 +9,6 @@
         "destination": {
             "address": "192.168.56.10"
         },
-        "ecs": {
-            "version": "8.11.0"
-        },
         "event": {
             "category": [
                 "web"
@@ -82,9 +79,6 @@
         },
         "destination": {
             "address": "192.168.56.10"
-        },
-        "ecs": {
-            "version": "8.11.0"
         },
         "event": {
             "category": [
@@ -157,9 +151,6 @@
         "destination": {
             "address": "192.168.56.10"
         },
-        "ecs": {
-            "version": "8.11.0"
-        },
         "event": {
             "category": [
                 "web"
@@ -230,9 +221,6 @@
         },
         "destination": {
             "address": "192.168.56.10"
-        },
-        "ecs": {
-            "version": "8.11.0"
         },
         "event": {
             "category": [
@@ -305,9 +293,6 @@
         "destination": {
             "address": "192.168.56.10"
         },
-        "ecs": {
-            "version": "8.11.0"
-        },
         "event": {
             "category": [
                 "web"
@@ -379,9 +364,6 @@
         "destination": {
             "address": "192.168.56.10"
         },
-        "ecs": {
-            "version": "8.11.0"
-        },
         "event": {
             "category": [
                 "web"
@@ -449,9 +431,6 @@
         },
         "destination": {
             "address": "192.168.56.10"
-        },
-        "ecs": {
-            "version": "8.11.0"
         },
         "event": {
             "category": [
@@ -521,9 +500,6 @@
         "destination": {
             "address": "192.168.56.10"
         },
-        "ecs": {
-            "version": "8.11.0"
-        },
         "event": {
             "category": [
                 "web"
@@ -592,9 +568,6 @@
         },
         "destination": {
             "address": "192.168.56.10"
-        },
-        "ecs": {
-            "version": "8.11.0"
         },
         "event": {
             "category": [
