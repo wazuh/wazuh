@@ -13,6 +13,7 @@
 #include "config.h"
 #include "global-config.h"
 
+char *cluster_name = NULL;
 
 int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
 
