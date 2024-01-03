@@ -1,0 +1,53 @@
+[
+    {
+        "agent": {
+            "id": "001",
+            "name": "wazuh-agent-1",
+            "type": "wazuh-agent"
+        },
+        "event": {
+            "action": "audit-log-cleared",
+            "category": [
+                "iam"
+            ],
+            "code": "1102",
+            "dataset": "security",
+            "id": "1102",
+            "kind": "event",
+            "module": "security",
+            "original": "<Event xmlns=\"http://schemas.microsoft.com/win/2004/08/events/event\">\n  <System>\n    <Provider Name=\"Microsoft-Windows-Eventlog\" Guid=\"{fc65ddd8-d6ef-4962-83d5-6e5cfe9ce148}\">\n    </Provider>\n    <EventID>1102</EventID>\n    <Version>0</Version>\n    <Level>4</Level>\n    <Task>104</Task>\n    <Opcode>0</Opcode>\n    <Keywords>0x4020000000000000</Keywords>\n    <TimeCreated SystemTime=\"2019-11-07T10:34:29.055919Z\">\n    </TimeCreated>\n    <EventRecordID>14224</EventRecordID>\n    <Correlation>\n    </Correlation>\n    <Execution ProcessID=\"1144\" ThreadID=\"1824\">\n    </Execution>\n    <Channel>Security</Channel>\n    <Computer>WIN-TEST.testd.local</Computer>\n    <Security>\n    </Security>\n  </System>\n  <UserData>\n    <LogFileCleared xmlns=\"http://manifests.microsoft.com/win/2004/08/windows/eventlog\">\n      <SubjectUserSid>S-1-5-21-101361758-2486510592-3018839910-500</SubjectUserSid>\n      <SubjectUserName>Administrator</SubjectUserName>\n      <SubjectDomainName>TESTD</SubjectDomainName>\n      <SubjectLogonId>0x50e87</SubjectLogonId>\n    </LogFileCleared>\n  </UserData>\n</Event>\n",
+            "provider": "Microsoft-Windows-Eventlog",
+            "start": "2019-11-07T10:34:29.055919Z",
+            "type": [
+                "admin",
+                "change"
+            ]
+        },
+        "host": {
+            "id": "001",
+            "name": "WIN-TEST.testd.local"
+        },
+        "message": "The audit log was cleared",
+        "related": {
+            "user": [
+                "Administrator"
+            ]
+        },
+        "user": {
+            "domain": "TESTD",
+            "id": "S-1-5-21-101361758-2486510592-3018839910-500",
+            "name": "Administrator"
+        },
+        "wazuh": {
+            "decoders": [
+                "windows-event",
+                "windows-security"
+            ],
+            "location": "[001] (wazuh-agent-1) any->EventChannel",
+            "origin": "EventChannel",
+            "queue": 102,
+            "registered_ip": "any",
+            "source": "logcollector"
+        }
+    }
+]
