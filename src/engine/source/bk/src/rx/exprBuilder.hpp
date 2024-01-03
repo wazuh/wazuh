@@ -126,7 +126,12 @@ private:
             return input.map(
                 [op = term->getFn(), tracer = params.publisher](RxEvent result)
                 {
-                    *result = op(result->payload());
+                    try {
+                        *result = op(result->payload());
+                    } catch (const std::exception& e) {
+                        std::string msg = e.what();
+                        throw std::runtime_error(std::string {"Error in expression: "} + msg);
+                    }
                     // TODO: should we allow to not include tracer?
                     if (tracer != nullptr)
                     {
