@@ -1,5 +1,5 @@
 /*
- * Wazuh content manager
+ * Wazuh Content Manager
  * Copyright (C) 2015, Wazuh Inc.
  * May 02, 2023.
  *
@@ -19,7 +19,10 @@
 #include "utils/chainOfResponsability.hpp"
 #include "utils/stringHelper.h"
 #include "utils/xzHelper.hpp"
+#include <filesystem>
 #include <memory>
+#include <stdexcept>
+#include <string>
 #include <utility>
 
 /**

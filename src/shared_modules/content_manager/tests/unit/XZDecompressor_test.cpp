@@ -1,5 +1,5 @@
 /*
- * Wazuh content manager - Unit Tests
+ * Wazuh Content Manager - Unit Tests
  * Copyright (C) 2015, Wazuh Inc.
  * Jun 07, 2023.
  *
@@ -24,25 +24,27 @@ static const auto FAIL_STATUS = R"({"stage":"XZDecompressor","status":"fail"})"_
 static constexpr auto DEFAULT_TYPE {"raw"}; ///< Default content type.
 
 // Paths used on tests.
-static const std::filesystem::path OUTPUT_FOLDER {std::filesystem::current_path() / "input_files" / "xzDecompressor"};
-static const std::filesystem::path SAMPLE_A_INPUT_FILE {OUTPUT_FOLDER / "downloads" / "sample_a.json.xz"};
-static const std::filesystem::path SAMPLE_B_INPUT_FILE {OUTPUT_FOLDER / "downloads" / "sample_b.json.xz"};
-static const std::filesystem::path OUTPUT_CONTENTS_FOLDER {OUTPUT_FOLDER / "contents"};
-static const std::filesystem::path SAMPLE_A_OUTPUT_FILE {OUTPUT_CONTENTS_FOLDER / "sample_a.json"};
-static const std::filesystem::path SAMPLE_B_OUTPUT_FILE {OUTPUT_CONTENTS_FOLDER / "sample_b.json"};
+static const std::filesystem::path INPUT_FILES_FOLDER {std::filesystem::current_path() / "input_files" /
+                                                       "xzDecompressor"};
+static const std::filesystem::path SAMPLE_A_INPUT_FILE {INPUT_FILES_FOLDER / "downloads" / "sample_a.json.xz"};
+static const std::filesystem::path SAMPLE_B_INPUT_FILE {INPUT_FILES_FOLDER / "downloads" / "sample_b.json.xz"};
+static const std::filesystem::path CONTENT_FOLDER {INPUT_FILES_FOLDER / "contents"};
+static const std::filesystem::path SAMPLE_A_OUTPUT_FILE {CONTENT_FOLDER / "sample_a.json"};
+static const std::filesystem::path SAMPLE_B_OUTPUT_FILE {CONTENT_FOLDER / "sample_b.json"};
 
 void XZDecompressorTest::SetUp()
 {
     m_spUpdaterContext = std::make_shared<UpdaterContext>();
     m_spUpdaterContext->spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_spStopActionCondition);
-    m_spUpdaterContext->spUpdaterBaseContext->outputFolder = OUTPUT_FOLDER;
+    // The input files folder simulates the Content Manager output folder.
+    m_spUpdaterContext->spUpdaterBaseContext->outputFolder = INPUT_FILES_FOLDER;
 
-    std::filesystem::create_directory(OUTPUT_CONTENTS_FOLDER);
+    std::filesystem::create_directory(CONTENT_FOLDER);
 }
 
 void XZDecompressorTest::TearDown()
 {
-    std::filesystem::remove_all(OUTPUT_CONTENTS_FOLDER);
+    std::filesystem::remove_all(CONTENT_FOLDER);
 }
 
 /**
