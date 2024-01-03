@@ -48,9 +48,6 @@
                             (modules & CAUTHD        ) | (modules & CBUFFER       ) | (modules & CCLUSTER      ) |\
                             (modules & CSOCKET       ) | (modules & CLOGTEST      ) | (modules & WAZUHDB       ) )
 
-/* Shared variables */
-extern char *cluster_name;
-
 typedef enum needed_tags {
     JSONOUT_OUTPUT = 0,
     ALERTS_LOG,
