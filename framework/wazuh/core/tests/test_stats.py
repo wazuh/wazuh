@@ -239,35 +239,43 @@ def test_get_daemons_stats_from_socket(agent_id, daemon, response):
             mock_send.assert_called_once_with(f"{str(agent_id).zfill(3)} {daemon} getstate".encode())
 
 
-@pytest.mark.parametrize("agent_id, daemon, responses ,expected, expected_socket_calls, expected_arg_calls", [
+@pytest.mark.parametrize("agent_id, daemon, responses, expected, expected_socket_calls, expected_arg_calls", [
     ('000', 'logcollector', [
-        '{"error":0, "remaining": true, "data":{"global": {"start": "2023-11-27 19:51:54", "end": "2023-11-27 19:52:54", "files": [1, 2]}}}'.encode(),
-        '{"error":0, "remaining": false, "data":{"global": {"start": "2023-11-27 19:52:54", "end": "2023-11-27 19:53:54", "files": [3, 4]}}}'.encode()],
+        '{"error":0, "remaining": true, "data":{"global": {"start": "2023-11-27 19:51:54", '
+        '"end": "2023-11-27 19:52:54", "files": [1, 2]}, "interval": {}}}'.encode(),
+        '{"error":0, "remaining": false, "data":{"global": {"start": "2023-11-27 19:52:54", '
+        '"end": "2023-11-27 19:53:54", "files": [3, 4]}, "interval": {}}}'.encode()],
      {"global": {"start": "2023-11-27T19:51:54Z", "end": "2023-11-27T19:53:54Z", "files": [1, 2, 3, 4]},
       "interval": {}},
      2,
      [call('getstate'.encode()), call('getstate next'.encode())]),
-    ('001', 'agent', [
-        '{"error":0, "remaining": true, "data":{"global": {"start": "2023-11-27 19:51:54", "end": "2023-11-27 19:52:54", "files": [1, 2]}}}'.encode(),
-        '{"error":0, "remaining": true, "data":{"global": {"start": "2023-11-27 19:52:54", "end": "2023-11-27 19:53:54", "files": [3, 4]}}}'.encode(),
-        '{"error":0, "remaining": false, "data":{"global": {"start": "2023-11-27 19:53:54", "end": "2023-11-27 19:54:54", "files": [5, 6]}}}'.encode()],
+    ('001', 'logcollector', [
+        '{"error":0, "remaining": true, "data":{"global": {"start": "2023-11-27 19:51:54", '
+        '"end": "2023-11-27 19:52:54", "files": [1, 2]}, "interval": {}}}'.encode(),
+        '{"error":0, "remaining": true, "data":{"global": {"start": "2023-11-27 19:52:54", '
+        '"end": "2023-11-27 19:53:54", "files": [3, 4]}, "interval": {}}}'.encode(),
+        '{"error":0, "remaining": false, "data":{"global": {"start": "2023-11-27 19:53:54", '
+        '"end": "2023-11-27 19:54:54", "files": [5, 6]}, "interval": {}}}'.encode()],
      {"global": {"start": "2023-11-27T19:51:54Z", "end": "2023-11-27T19:54:54Z", "files": [1, 2, 3, 4, 5, 6]},
       "interval": {}},
      3,
      [
-         call('001 agent getstate'.encode()),
-         call('001 agent getstate next'.encode()),
-         call('001 agent getstate next'.encode())]),
-    ('001', 'agent', [
-        '{"error":0, "json_updated": false, "remaining": true, "data":{"global": {"start": "2023-11-27 19:51:54", "end": "2023-11-27 19:52:54", "files": [1, 2]}}}'.encode(),
-        '{"error":0, "json_updated": true, "remaining": true, "data":{"global": {"start": "2023-11-27 19:52:54", "end": "2023-11-27 19:53:54", "files": [3, 4]}}}'.encode(),
-        '{"error":0, "json_updated": false, "remaining": false, "data":{"global": {"start": "2023-11-27 19:53:54", "end": "2023-11-27 19:54:54", "files": [5, 6]}}}'.encode()],
+         call('001 logcollector getstate'.encode()),
+         call('001 logcollector getstate next'.encode()),
+         call('001 logcollector getstate next'.encode())]),
+    ('001', 'logcollector', [
+        '{"error":0, "json_updated": false, "remaining": true, "data":{"global": {"start": "2023-11-27 19:51:54", '
+        '"end": "2023-11-27 19:52:54", "files": [1, 2]}, "interval": {}}}'.encode(),
+        '{"error":0, "json_updated": true, "remaining": true, "data":{"global": {"start": "2023-11-27 19:52:54", '
+        '"end": "2023-11-27 19:53:54", "files": [3, 4]}, "interval": {}}}'.encode(),
+        '{"error":0, "json_updated": false, "remaining": false, "data":{"global": {"start": "2023-11-27 19:53:54", '
+        '"end": "2023-11-27 19:54:54", "files": [5, 6]}, "interval": {}}}'.encode()],
      {"global": {"start": "2023-11-27T19:53:54Z", "end": "2023-11-27T19:54:54Z", "files": [5, 6]}, "interval": {}},
      3,
      [
-         call('001 agent getstate'.encode()),
-         call('001 agent getstate next'.encode()),
-         call('001 agent getstate'.encode())]),
+         call('001 logcollector getstate'.encode()),
+         call('001 logcollector getstate next'.encode()),
+         call('001 logcollector getstate'.encode())]),
 ])
 def test_get_daemons_stats_from_socket(agent_id, daemon, responses, expected, expected_socket_calls,
                                        expected_arg_calls):
