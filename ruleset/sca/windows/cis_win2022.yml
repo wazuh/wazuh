@@ -561,7 +561,7 @@ checks:
        - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
        - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
        - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-     condition:
+     condition: any
      rules:
        - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters'
        - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> SealSecureChannel'
@@ -872,8 +872,11 @@ checks:
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network server: Digitally sign communications (always)."
      compliance:
        - cis: ["2.3.9.2"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> RequireSecuritySignature'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> RequireSecuritySignature -> 1'
 
   # 2.3.9.3 (L1) Ensure 'Microsoft network server: Digitally sign communications (if client agrees)' is set to 'Enabled'. (Automated)
    - id: 18588
@@ -884,8 +887,11 @@ checks:
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network server: Digitally sign communications (if client agrees)."
      compliance:
        - cis: ["2.3.9.3"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> EnableSecuritySignature'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> EnableSecuritySignature -> 1'
 
   # 2.3.9.4 (L1) Ensure 'Microsoft network server: Disconnect clients when logon hours expire' is set to 'Enabled'. (Automated)
    - id: 18589
@@ -900,8 +906,11 @@ checks:
        - cis_csc_v7: ["16.13"]
        - nist_sp_800-53: ["AC-2(1)"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> EnableForcedLogOff'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> EnableForcedLogOff -> 1'
 
   # 2.3.9.5 (L1) Ensure 'Microsoft network server: Server SPN target name validation level' is set to 'Accept if provided by client' or higher (MS only). (Automated)
    - id: 18590
@@ -920,8 +929,11 @@ checks:
        - pci_dss_v3.2.1: ["11.5", "2.2"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
        - soc_2: ["CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters -> SMBServerNameHardeningLevel'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters -> SMBServerNameHardeningLevel -> n:^(\d+) compare >= 1'
 
   # 2.3.10.1 (L1) Ensure 'Network access: Allow anonymous SID/Name translation' is set to 'Disabled'. (Automated)
    - id: 18591
@@ -932,8 +944,9 @@ checks:
      remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Allow anonymous SID/Name translation."
      compliance:
        - cis: ["2.3.10.1"]
-     condition:
+     condition: all
      rules:
+       - 'c:powershell "$null = secedit /export /cfg $env:temp/secexport.cfg; $(gc $env:temp/secexport.cfg | Select-String \"LSAAnonymousNameLookup\").ToString().Split(\"=\")[1].Trim()" -> r:0'
 
   # 2.3.10.2 (L1) Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts' is set to 'Enabled' (MS only). (Automated)
    - id: 18592
@@ -944,8 +957,11 @@ checks:
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Do not allow anonymous enumeration of SAM accounts."
      compliance:
        - cis: ["2.3.10.2"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa'
+       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> RestrictAnonymousSAM'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> RestrictAnonymousSAM -> 1'
 
   # 2.3.10.3 (L1) Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts and shares' is set to 'Enabled' (MS only). (Automated)
    - id: 18593
@@ -956,20 +972,26 @@ checks:
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Do not allow anonymous enumeration of SAM accounts and shares."
      compliance:
        - cis: ["2.3.10.3"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> RestrictAnonymous'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> RestrictAnonymous -> 1'
 
   # 2.3.10.4 (L2) Ensure 'Network access: Do not allow storage of passwords and credentials for network authentication' is set to 'Enabled'. (Automated)
    - id: 18594
-     title: "(L2) Ensure 'Network access: Do not allow storage of passwords and credentials for network authentication' is set to 'Enabled'."
+     title: "Ensure 'Network access: Do not allow storage of passwords and credentials for network authentication' is set to 'Enabled'."
      description: "This policy setting determines whether Credential Manager (formerly called Stored User Names and Passwords) saves passwords or credentials for later use when it gains domain authentication. The recommended state for this setting is: Enabled. Note: Changes to this setting will not take effect until Windows is restarted."
      rationale: "Passwords that are cached can be accessed by the user when logged on to the computer. Although this information may sound obvious, a problem can arise if the user unknowingly executes hostile code that reads the passwords and forwards them to another, unauthorized user."
      impact: "Credential Manager will not store passwords and credentials on the computer. Users will be forced to enter passwords whenever they log on to their Passport account or other network resources that aren't accessible to their domain account. Testing has shown that clients running Windows Vista or Windows Server 2008 will be unable to connect to Distributed File System (DFS) shares in untrusted domains. Enabling this setting also makes it impossible to specify alternate credentials for scheduled tasks, this can cause a variety of problems. For example, some third-party backup products will no longer work. This policy setting should have no impact on users who access network resources that are configured to allow access with their Active Directory-based domain account."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Do not allow storage of passwords and credentials for network authentication."
      compliance:
        - cis: ["2.3.10.4"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> DisableDomainCreds'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> DisableDomainCreds -> 1'
 
   # 2.3.10.5 (L1) Ensure 'Network access: Let Everyone permissions apply to anonymous users' is set to 'Disabled'. (Automated)
    - id: 18595
@@ -980,8 +1002,11 @@ checks:
      remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Let Everyone permissions apply to anonymous users."
      compliance:
        - cis: ["2.3.10.5"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> EveryoneIncludesAnonymous'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> EveryoneIncludesAnonymous -> 0'
 
   # 2.3.10.6 (L1) Configure 'Network access: Named Pipes that can be accessed anonymously' (DC only). (Automated)
    - id: 18596
@@ -992,8 +1017,13 @@ checks:
      remediation: "To establish the recommended configuration via GP, configure the following UI path: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Named Pipes that can be accessed anonymously."
      compliance:
        - cis: ["2.3.10.6"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes -> r:LSARPC'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes -> r:NETLOGON'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes -> r:SAMR'
 
   # 2.3.10.7 (L1) Configure 'Network access: Named Pipes that can be accessed anonymously' (MS only). (Automated)
    - id: 18597
@@ -1004,8 +1034,11 @@ checks:
      remediation: "To establish the recommended configuration via GP, configure the following UI path: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Named Pipes that can be accessed anonymously."
      compliance:
        - cis: ["2.3.10.7"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes'
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes -> r:\S+'
 
   # 2.3.10.8 (L1) Configure 'Network access: Remotely accessible registry paths' is configured. (Automated)
    - id: 18598
@@ -1016,8 +1049,21 @@ checks:
      remediation: "To establish the recommended configuration via GP, set the following UI path to: System\\CurrentControlSet\\Control\\ProductOptions System\\CurrentControlSet\\Control\\Server Applications Software\\Microsoft\\Windows NT\\CurrentVersion Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Remotely accessible registry paths."
      compliance:
        - cis: ["2.3.10.8"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Control\\Print\\Printers'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Services\\Eventlog'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:Software\\Microsoft\\OLAP Server'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:Software\\Microsoft\\Windows NT\\CurrentVersion\\Print'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Control\\ContentIndex'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Control\\Terminal Server'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Control\\Terminal Server\\UserConfig'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Control\\Terminal Server\\DefaultUserConfiguration'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:Software\\Microsoft\\Windows NT\\CurrentVersion\\Perflib'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Services\\SysmonLog'
 
   # 2.3.10.9 (L1) Configure 'Network access: Remotely accessible registry paths and sub-paths' is configured. (Automated)
    - id: 18599
@@ -1028,8 +1074,11 @@ checks:
      remediation: "To establish the recommended configuration via GP, set the following UI path to: System\\CurrentControlSet\\Control\\Print\\Printers System\\CurrentControlSet\\Services\\Eventlog Software\\Microsoft\\OLAP Server Software\\Microsoft\\Windows NT\\CurrentVersion\\Print Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows System\\CurrentControlSet\\Control\\ContentIndex System\\CurrentControlSet\\Control\\Terminal Server System\\CurrentControlSet\\Control\\Terminal Server\\UserConfig System\\CurrentControlSet\\Control\\Terminal Server\\DefaultUserConfiguration Software\\Microsoft\\Windows NT\\CurrentVersion\\Perflib System\\CurrentControlSet\\Services\\SysmonLog Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Remotely accessible registry paths and sub-paths When a server holds the Active Directory Certificate Services Role with Certification Authority Role Service, the above list should also include: System\\CurrentControlSet\\Services\\CertSvc. When a server has the WINS Server Feature installed, the above list should also include: System\\CurrentControlSet\\Services\\WINS."
      compliance:
        - cis: ["2.3.10.9"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths'
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Control\\Print\\Printers System\\CurrentControlSet\\Services\\Eventlog Software\\Microsoft\\OLAP Server|Software\\Microsoft\\Windows NT\\CurrentVersion\\Print Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows System\\CurrentControlSet\\Control\\ContentIndex System\\CurrentControlSet\\Control\\Terminal Server System\\CurrentControlSet\\Control\\Terminal Server\\UserConfig System\\CurrentControlSet\\Control\\Terminal Server\\DefaultUserConfiguration Software\\Microsoft\\Windows NT\\CurrentVersion\\Perflib System\\CurrentControlSet\\Services\\SysmonLog'
 
   # 2.3.10.10 (L1) Ensure 'Network access: Restrict anonymous access to Named Pipes and Shares' is set to 'Enabled'. (Automated)
    - id: 18600
@@ -1040,20 +1089,26 @@ checks:
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Restrict anonymous access to Named Pipes and Shares."
      compliance:
        - cis: ["2.3.10.10"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> RestrictNullSessAccess'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> RestrictNullSessAccess -> 1'
 
   # 2.3.10.11 (L1) Ensure 'Network access: Restrict clients allowed to make remote calls to SAM' is set to 'Administrators: Remote Access: Allow' (MS only). (Automated)
    - id: 18601
      title: "Ensure 'Network access: Restrict clients allowed to make remote calls to SAM' is set to 'Administrators: Remote Access: Allow' (MS only)."
-     description: "This policy setting allows you to restrict remote RPC connections to SAM. The recommended state for this setting is: Administrators: Remote Access: Allow. Note: A Windows 10 R1607, Server 2016 or newer OS is required to access and set this value in Group Policy. Note #2: This setting was originally only supported on Windows Server 2016 and newer, then support for it was added to Windows Server 2008 R2 and newer via the March 2017 security patches. Note #3: If your organization is using Azure Advanced Threat Protection (APT), the service account, “AATP Service” will need to be added to the recommendation configuration. For more information on adding the “AATP Service” account please see Configure SAM-R to enable lateral movement path detection in Microsoft Defender for Identity | Microsoft Docs."
+     description: "This policy setting allows you to restrict remote RPC connections to SAM. The recommended state for this setting is: Administrators: Remote Access: Allow. Note: A Windows 10 R1607, Server 2016 or newer OS is required to access and set this value in Group Policy. Note #2: This setting was originally only supported on Windows Server 2016 and newer, then support for it was added to Windows Server 2008 R2 and newer via the March 2017 security patches. Note #3: If your organization is using Azure Advanced Threat Protection (APT), the service account, \"AATP Service\" will need to be added to the recommendation configuration. For more information on adding the \"AATP Service\" account please see Configure SAM-R to enable lateral movement path detection in Microsoft Defender for Identity | Microsoft Docs."
      rationale: "To ensure that an unauthorized user cannot anonymously list local account names or groups and use the information to attempt to guess passwords or perform social engineering attacks. (Social engineering attacks try to deceive users in some way to obtain passwords or some form of security information.)."
      impact: "None - this is the default behavior."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Remote Access: Allow: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Restrict clients allowed to make remote calls to SAM."
      compliance:
        - cis: ["2.3.10.11"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa'
+       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> restrictremotesam'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> restrictremotesam -> r:O:BAG:BAD:\(A;;RC;;;BA\)'
 
   # 2.3.10.12 (L1) Ensure 'Network access: Shares that can be accessed anonymously' is set to 'None'. (Automated)
    - id: 18602
@@ -1066,8 +1121,11 @@ checks:
        - cis: ["2.3.10.12"]
        - cis_csc_v7: ["14.6"]
        - iso_27001-2013: ["A.9.1.1"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionShares'
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionShares -> r:\S+'
 
   # 2.3.10.13 (L1) Ensure 'Network access: Sharing and security model for local accounts' is set to 'Classic - local users authenticate as themselves'. (Automated)
    - id: 18603
@@ -1078,8 +1136,11 @@ checks:
      remediation: "To establish the recommended configuration via GP, set the following UI path to Classic - local users authenticate as themselves: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Sharing and security model for local accounts."
      compliance:
        - cis: ["2.3.10.13"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> ForceGuest'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> ForceGuest -> 0'
 
   # 2.3.11.1 (L1) Ensure 'Network security: Allow Local System to use computer identity for NTLM' is set to 'Enabled'. (Automated)
    - id: 18604
@@ -1090,8 +1151,11 @@ checks:
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: Allow Local System to use computer identity for NTLM."
      compliance:
        - cis: ["2.3.11.1"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> UseMachineId'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> UseMachineId -> 1'
 
   # 2.3.11.2 (L1) Ensure 'Network security: Allow LocalSystem NULL session fallback' is set to 'Disabled'. (Automated)
    - id: 18605
@@ -1102,8 +1166,11 @@ checks:
      remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: Allow LocalSystem NULL session fallback."
      compliance:
        - cis: ["2.3.11.2"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0'
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0 -> allownullsessionfallback'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0 -> allownullsessionfallback -> 0'
 
   # 2.3.11.3 (L1) Ensure 'Network Security: Allow PKU2U authentication requests to this computer to use online identities' is set to 'Disabled'. (Automated)
    - id: 18606
@@ -1122,8 +1189,30 @@ checks:
        - pci_dss_v3.2.1: ["11.5", "2.2"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
        - soc_2: ["CC7.1", "CC8.1"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\pku2u'
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\pku2u -> AllowOnlineID'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\pku2u -> AllowOnlineID -> 0'
+
+  # 2.3.11.4 (L1) Ensure 'Network security: Configure encryption types allowed for Kerberos' is set to 'AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types' (Automated)
+   - id: 27063
+     title: "Ensure 'Network security: Configure encryption types allowed for Kerberos' is set to 'AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types'."
+     description: "This policy setting allows you to set the encryption types that Kerberos is allowed to use. The recommended state for this setting is: AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types. Note: Some legacy applications and OSes may still require RC4_HMAC_MD5 - we recommend you test in your environment and verify whether you can safely remove it."
+     rationale: "The strength of each encryption algorithm varies from one to the next, choosing stronger algorithms will reduce the risk of compromise however doing so may cause issues when the computer attempts to authenticate with systems that do not support them."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: Configure encryption types allowed for Kerberos."
+     compliance:
+       - cis: ["2.3.11.4"]
+       - cis_csc: ["3.10"]
+       - pci_dss: ["4.1"]
+       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+       - nist_800_53: ["SC.8"]
+       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+     condition: all
+     rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System\Kerberos\Parameters'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System\Kerberos\Parameters -> SupportedEncryptionTypes'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System\Kerberos\Parameters -> SupportedEncryptionTypes -> r:2147483644|2147483640'
 
   # 2.3.11.5 (L1) Ensure 'Network security: Do not store LAN Manager hash value on next password change' is set to 'Enabled'. (Automated)
    - id: 18607
@@ -1143,24 +1232,13 @@ checks:
        - pci_dss_v3.2.1: ["3.4", "3.4.1", "8.2.1"]
        - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> NoLMHash'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> NoLMHash -> 1'
 
-  # 2.3.11.6 (L1) Ensure 'Network security: Force logoff when logon hours expire' is set to 'Enabled'. (Manual)
-   - id: 18608
-     title: "Ensure 'Network security: Force logoff when logon hours expire' is set to 'Enabled'."
-     description: "This policy setting determines whether to disconnect users who are connected to the local computer outside their user account's valid logon hours. This setting affects the Server Message Block (SMB) component. If you enable this policy setting you should also enable Microsoft network server: Disconnect clients when logon hours expire (Rule 2.3.9.4). The recommended state for this setting is: Enabled."
-     rationale: "If this setting is disabled, a user could remain connected to the computer outside of their allotted logon hours."
-     impact: "None - this is the default behavior."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: Force logoff when logon hours expire."
-     compliance:
-       - cis: ["2.3.11.6"]
-       - cis_csc_v8: ["5.6"]
-       - cis_csc_v7: ["16.13"]
-       - nist_sp_800-53: ["AC-2(1)"]
-       - soc_2: ["CC6.1"]
-     condition:
-     rules:
+  # 2.3.11.6 (L1) Ensure 'Network security: Force logoff when logon hours expire' is set to 'Enabled'. (Manual) - Not Implemented
 
   # 2.3.11.7 (L1) Ensure 'Network security: LAN Manager authentication level' is set to 'Send NTLMv2 response only. Refuse LM & NTLM'. (Automated)
    - id: 18609
@@ -1179,8 +1257,11 @@ checks:
        - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
        - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
        - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> LmCompatibilityLevel'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> LmCompatibilityLevel -> 5'
 
   # 2.3.11.8 (L1) Ensure 'Network security: LDAP client signing requirements' is set to 'Negotiate signing' or higher. (Automated)
    - id: 18610
@@ -1199,8 +1280,48 @@ checks:
        - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
        - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
        - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LDAP'
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LDAP -> LDAPClientIntegrity'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LDAP -> LDAPClientIntegrity -> n:(\d+) compare >= 1'
+ # 2.3.11.9 (L1) Ensure 'Network security: Minimum session security for NTLM SSP based (including secure RPC) clients' is set to 'Require NTLMv2 session security, Require 128-bit encryption' (Automated)
+   - id: 27067
+     title: "Ensure 'Network security: Minimum session security for NTLM SSP based (including secure RPC) clients' is set to 'Require NTLMv2 session security, Require 128-bit encryption'."
+     description: "This policy setting determines which behaviors are allowed by clients for applications using the NTLM Security Support Provider (SSP). The SSP Interface (SSPI) is used by applications that need authentication services. The setting does not modify how the authentication sequence works but instead require certain behaviors in applications that use the SSPI. The recommended state for this setting is: Require NTLMv2 session security, Require 128-bit encryption. Note: These values are dependent on the Network security: LAN Manager Authentication Level (Rule 2.3.11.7) security setting value."
+     rationale: "You can enable both options for this policy setting to help protect network traffic that uses the NTLM Security Support Provider (NTLM SSP) from being exposed or tampered with by an attacker who has gained access to the same network. In other words, these options help protect against man-in-the-middle attacks."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to Require NTLMv2 session security, Require 128-bit encryption: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: Minimum session security for NTLM SSP based (including secure RPC) clients."
+     compliance:
+       - cis: ["2.3.11.9"]
+       - cis_csc: ["3.10"]
+       - pci_dss: ["4.1"]
+       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+       - nist_800_53: ["SC.8"]
+       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+     condition: all
+     rules:
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0 -> NtlmMinClientSec'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0 -> NtlmMinClientSec -> 536870912'
+
+  # 2.3.11.10 (L1) Ensure 'Network security: Minimum session security for NTLM SSP based (including secure RPC) servers' is set to 'Require NTLMv2 session security, Require 128-bit encryption' (Automated)
+   - id: 27068
+     title: "Ensure 'Network security: Minimum session security for NTLM SSP based (including secure RPC) servers' is set to 'Require NTLMv2 session security, Require 128-bit encryption'."
+     description: "This policy setting determines which behaviors are allowed by servers for applications using the NTLM Security Support Provider (SSP). The SSP Interface (SSPI) is used by applications that need authentication services. The setting does not modify how the authentication sequence works but instead require certain behaviors in applications that use the SSPI. The recommended state for this setting is: Require NTLMv2 session security, Require 128-bit encryption. Note: These values are dependent on the Network security: LAN Manager Authentication Level (Rule 2.3.11.7) security setting value."
+     rationale: "You can enable all of the options for this policy setting to help protect network traffic that uses the NTLM Security Support Provider (NTLM SSP) from being exposed or tampered with by an attacker who has gained access to the same network. That is, these options help protect against man-in-the-middle attacks."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to Require NTLMv2 session security, Require 128-bit encryption: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: Minimum session security for NTLM SSP based (including secure RPC) servers."
+     compliance:
+       - cis: ["2.3.11.10"]
+       - cis_csc: ["3.10"]
+       - pci_dss: ["4.1"]
+       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+       - nist_800_53: ["SC.8"]
+       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+     condition: all
+     rules:
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0 -> NTLMMinServerSec'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0 -> NTLMMinServerSec -> 537395200'
 
   # 2.3.13.1 (L1) Ensure 'Shutdown: Allow system to be shut down without having to log on' is set to 'Disabled'. (Automated)
    - id: 18611
@@ -1211,8 +1332,9 @@ checks:
      remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Shutdown: Allow system to be shut down without having to log on."
      compliance:
        - cis: ["2.3.13.1"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> ShutdownWithoutLogon -> 0'
 
   # 2.3.15.1 (L1) Ensure 'System objects: Require case insensitivity for non-Windows subsystems' is set to 'Enabled'. (Automated)
    - id: 18612
@@ -1220,7 +1342,7 @@ checks:
      description: "This policy setting determines whether case insensitivity is enforced for all subsystems. The Microsoft Win32 subsystem is case insensitive. However, the kernel supports case sensitivity for other subsystems, such as the Portable Operating System Interface for UNIX (POSIX). Because Windows is case insensitive (but the POSIX subsystem will support case sensitivity), failure to enforce this policy setting makes it possible for a user of the POSIX subsystem to create a file with the same name as another file by using mixed case to label it. Such a situation can block access to these files by another user who uses typical Win32 tools, because only one of the files will be available. The recommended state for this setting is: Enabled."
      rationale: "Because Windows is case-insensitive but the POSIX subsystem will support case sensitivity, failure to enable this policy setting would make it possible for a user of that subsystem to create a file with the same name as another file but with a different mix of upper and lower case letters. Such a situation could potentially confuse users when they try to access such files from normal Win32 tools because only one of the files will be available."
      impact: "None - this is the default behavior."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\System objects: Require case insensitivity for non- Windows subsystems."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\System objects: Require case insensitivity for non-Windows subsystems."
      compliance:
        - cis: ["2.3.15.1"]
        - cis_csc_v8: ["4.1", "5.1"]
@@ -1230,8 +1352,11 @@ checks:
        - pci_dss_v3.2.1: ["11.5", "2.2", "8.1", "8.1.1"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "12.5.2", "2.1.1", "2.2.1"]
        - soc_2: ["CC6.1", "CC6.2", "CC6.3", "CC7.1", "CC8.1"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Kernel'
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Kernel -> ObCaseInsensitive'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Kernel -> ObCaseInsensitive -> 1'
 
   # 2.3.15.2 (L1) Ensure 'System objects: Strengthen default permissions of internal system objects (e.g. Symbolic Links)' is set to 'Enabled'. (Automated)
    - id: 18613
@@ -1242,8 +1367,11 @@ checks:
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\System objects: Strengthen default permissions of internal system objects (e.g. Symbolic Links)."
      compliance:
        - cis: ["2.3.15.2"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager'
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager -> ProtectionMode'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager -> ProtectionMode -> 1'
 
   # 2.3.17.1 (L1) Ensure 'User Account Control: Admin Approval Mode for the Built-in Administrator account' is set to 'Enabled'. (Automated)
    - id: 18614
@@ -1256,8 +1384,27 @@ checks:
        - cis: ["2.3.17.1"]
        - cis_csc_v7: ["4.3"]
        - iso_27001-2013: ["A.9.2.3"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> FilterAdministratorToken'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> FilterAdministratorToken -> 1'
+
+ # 2.3.17.2 (L1) Ensure 'User Account Control: Behavior of the elevation prompt for administrators in Admin Approval Mode' is set to 'Prompt
+   - id: 27073
+     title: "Ensure 'User Account Control: Behavior of the elevation prompt for administrators in Admin Approval Mode' is set to 'Prompt for consent on the secure desktop'."
+     description: "This policy setting controls the behavior of the elevation prompt for administrators. The recommended state for this setting is: Prompt for consent on the secure desktop."
+     rationale: "One of the risks that the UAC feature introduced with Windows Vista is trying to mitigate is that of malicious software running under elevated credentials without the user or administrator being aware of its activity. This setting raises awareness to the administrator of elevated privilege operations and permits the administrator to prevent a malicious program from elevating its privilege when the program attempts to do so."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to Prompt for consent on the secure desktop: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\User Account Control: Behavior of the elevation prompt for administrators in Admin Approval Mode."
+     compliance:
+       - cis: ["2.3.17.2"]
+       - pci_dss: ["7.1"]
+       - tsc: ["CC6.4"]
+     condition: all
+     rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> ConsentPromptBehaviorAdmin'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> ConsentPromptBehaviorAdmin -> r:^2$'
 
   # 2.3.17.3 (L1) Ensure 'User Account Control: Behavior of the elevation prompt for standard users' is set to 'Automatically deny elevation requests'. (Automated)
    - id: 18615
