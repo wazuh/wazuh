@@ -346,3 +346,6 @@ normalize:
       - file.target_path: concat($windows.EventData.ShareName, '\\', $file.name)
       - _file_parts: parse_file($file.name)
       - file.extension: $_file_parts.ext
+
+  - map:
+      - windows: delete()

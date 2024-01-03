@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<Events>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System>
+    <Provider Name="Microsoft-Windows-Eventlog" Guid="{fc65ddd8-d6ef-4962-83d5-6e5cfe9ce148}">
+    </Provider>
+    <EventID>1104</EventID>
+    <Version>0</Version>
+    <Level>2</Level>
+    <Task>101</Task>
+    <Opcode>0</Opcode>
+    <Keywords>0x4020000000000000</Keywords>
+    <TimeCreated SystemTime="2024-10-08T01:23:45.123456Z">
+    </TimeCreated>
+    <EventRecordID>19352</EventRecordID>
+    <Correlation>
+    </Correlation>
+    <Execution ProcessID="123" ThreadID="1234">
+    </Execution>
+    <Channel>Security</Channel>
+    <Computer>WIN-TEST.TESTD.local</Computer>
+    <Security>
+    </Security>
+  </System>
+  <UserData>
+    <FileIsFull xmlns="http://manifests.microsoft.com/win/2004/08/windows/eventlog">
+    </FileIsFull>
+  </UserData>
+</Event>
+</Events>
