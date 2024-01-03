@@ -87,11 +87,13 @@ TEST_F(ActionTest, TestInstantiationAndStartActionSchedulerForRawDataWithDeleteD
     m_parameters["configData"]["compressionType"] = "xz";
     m_parameters["configData"]["deleteDownloadedContent"] = true;
 
+    // Append XZ extension.
+    auto& fileName {m_parameters.at("configData").at("contentFileName").get_ref<std::string&>()};
+    fileName += ".xz";
+
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
     const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
-    const auto& fileName {m_parameters.at("configData").at("contentFileName").get_ref<const std::string&>()};
     const auto& interval {m_parameters.at("interval").get_ref<const size_t&>()};
-    const auto contentPath {outputFolder + "/" + CONTENTS_FOLDER + "/3-" + fileName};
     const auto downloadPath {outputFolder + "/" + DOWNLOAD_FOLDER + "/3-" + fileName};
 
     auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters)};
@@ -107,6 +109,7 @@ TEST_F(ActionTest, TestInstantiationAndStartActionSchedulerForRawDataWithDeleteD
     // This file shouldn't exist because deleteDownloadedContent is enabled
     EXPECT_FALSE(std::filesystem::exists(downloadPath));
 
+    const auto contentPath {Utils::rightTrim(outputFolder + "/" + CONTENTS_FOLDER + "/3-" + fileName, ".xz")};
     EXPECT_TRUE(std::filesystem::exists(contentPath));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
@@ -121,11 +124,13 @@ TEST_F(ActionTest, TestInstantiationAndStartActionSchedulerForCompressedData)
     m_parameters["configData"]["url"] = "http://localhost:4444/xz/consumers";
     m_parameters["configData"]["compressionType"] = "xz";
 
+    // Append XZ extension.
+    auto& fileName {m_parameters.at("configData").at("contentFileName").get_ref<std::string&>()};
+    fileName += ".xz";
+
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
     const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
-    const auto& fileName {m_parameters.at("configData").at("contentFileName").get_ref<const std::string&>()};
     const auto& interval {m_parameters.at("interval").get_ref<const size_t&>()};
-    const auto contentPath {outputFolder + "/" + CONTENTS_FOLDER + "/3-" + fileName};
     const auto downloadPath {outputFolder + "/" + DOWNLOAD_FOLDER + "/3-" + fileName};
 
     auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters)};
@@ -141,6 +146,7 @@ TEST_F(ActionTest, TestInstantiationAndStartActionSchedulerForCompressedData)
     // This file should exist because deleteDownloadedContent is not enabled
     EXPECT_TRUE(std::filesystem::exists(downloadPath));
 
+    const auto contentPath {Utils::rightTrim(outputFolder + "/" + CONTENTS_FOLDER + "/3-" + fileName, ".xz")};
     EXPECT_TRUE(std::filesystem::exists(contentPath));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
