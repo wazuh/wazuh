@@ -18,7 +18,7 @@ char *cluster_name = NULL;
 int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
 
     static const char *disabled = "disabled";
-    static const char *cluster_name = "name";
+    static const char *cluster_name_tag = "name";
     static const char *node_name = "node_name";
     static const char *node_type = "node_type";
     static const char *key = "key";
@@ -45,7 +45,7 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
         } else if (!node[i]->content) {
             merror(XML_VALUENULL, node[i]->element);
             return OS_INVALID;
-        } else if (!strcmp(node[i]->element, cluster_name)) {
+        } else if (!strcmp(node[i]->element, cluster_name_tag)) {
             if (!strlen(node[i]->content)) {
                 merror("Cluster name is empty in configuration");
                 return OS_INVALID;
