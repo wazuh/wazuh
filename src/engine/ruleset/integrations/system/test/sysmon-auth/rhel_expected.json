@@ -5,9 +5,6 @@
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
     },
-    "ecs": {
-      "version": "8.11.0"
-    },
     "event": {
       "action": "ssh_login",
       "category": [
@@ -71,9 +68,6 @@
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
     },
-    "ecs": {
-      "version": "8.11.0"
-    },
     "event": {
       "action": "ssh_login",
       "category": [
@@ -122,9 +116,6 @@
       "id": "001",
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
-    },
-    "ecs": {
-      "version": "8.11.0"
     },
     "event": {
       "category": [
@@ -187,9 +178,6 @@
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
     },
-    "ecs": {
-      "version": "8.11.0"
-    },
     "event": {
       "category": [
         "authentication",
@@ -251,9 +239,6 @@
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
     },
-    "ecs": {
-      "version": "8.11.0"
-    },
     "event": {
       "action": "ssh_login",
       "category": [
@@ -308,9 +293,6 @@
       "id": "001",
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
-    },
-    "ecs": {
-      "version": "8.11.0"
     },
     "event": {
       "action": "ssh_login",
@@ -375,9 +357,6 @@
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
     },
-    "ecs": {
-      "version": "8.11.0"
-    },
     "event": {
       "category": [
         "authentication",
@@ -431,9 +410,6 @@
       "id": "001",
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
-    },
-    "ecs": {
-      "version": "8.11.0"
     },
     "event": {
       "action": "ssh_login",

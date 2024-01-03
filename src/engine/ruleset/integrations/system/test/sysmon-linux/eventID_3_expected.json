@@ -9,9 +9,6 @@
       "ip": "fe80:0:0:0:a00:27ff:fee3:816e",
       "port": 546
     },
-    "ecs": {
-      "version": "8.11.0"
-    },
     "event": {
       "action": "network_connection",
       "category": [
@@ -86,9 +83,6 @@
       "ip": "127.0.0.1",
       "port": 34331
     },
-    "ecs": {
-      "version": "8.11.0"
-    },
     "event": {
       "action": "network_connection",
       "category": [
@@ -162,9 +156,6 @@
     "destination": {
       "ip": "192.168.3.104",
       "port": 1514
-    },
-    "ecs": {
-      "version": "8.11.0"
     },
     "event": {
       "action": "network_connection",
