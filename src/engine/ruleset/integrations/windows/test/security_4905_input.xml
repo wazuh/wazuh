@@ -1,0 +1,28 @@
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System>
+    <Provider Name="Microsoft-Windows-Security-Auditing" Guid="{54849625-5478-4994-A5BA-3E3B0328C30D}" />
+    <EventID>4905</EventID>
+    <Version>0</Version>
+    <Level>0</Level>
+    <Task>13568</Task>
+    <Opcode>0</Opcode>
+    <Keywords>0x8020000000000000</Keywords>
+    <TimeCreated SystemTime="2015-10-01T17:39:12.039825000Z" />
+    <EventRecordID>1049718</EventRecordID>
+    <Correlation />
+    <Execution ProcessID="500" ThreadID="1888" />
+    <Channel>Security</Channel>
+    <Computer>DC01.contoso.local</Computer>
+    <Security />
+  </System>
+  <EventData>
+    <Data Name="SubjectUserSid">S-1-5-18</Data>
+    <Data Name="SubjectUserName">DC01$</Data>
+    <Data Name="SubjectDomainName">CONTOSO</Data>
+    <Data Name="SubjectLogonId">0x3e7</Data>
+    <Data Name="AuditSourceName">IIS-METABASE</Data>
+    <Data Name="EventSourceId">0x20c15f</Data>
+    <Data Name="ProcessId">0xd90</Data>
+    <Data Name="ProcessName">-</Data>
+  </EventData>
+</Event>
