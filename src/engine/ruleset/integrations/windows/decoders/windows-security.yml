@@ -347,4 +347,24 @@ normalize:
       - file.extension: $_file_parts.ext
 
   - map:
+      # Set destination address
+      - destination.ip: $windows.EventData.DestAddress
+      - destination.port: $windows.EventData.DestPort
+      - related.ip: array_append_unique($destination.ip)
+      # Set source address
+      - source.ip: $windows.EventData.SourceAddress
+      - source.port: $windows.EventData.SourcePort
+      - related.ip: array_append_unique($source.ip)
+
+  # Network protocol
+  - check:  $windows.EventData.Protocol != "-"
+    map:
+      - network.iana_number: $windows.EventData.Protocol
+      - network.transport: kvdb_get(windows_sec_iana_number_name, $windows.EventData.Protocol)
+      - _direccion_code: $windows.EventData.Direction
+      - _direccion_code: replace(%%, '')
+      - _direction: kvdb_get(windows_audit_access_id_to_description, $_direccion_code)
+      - network.direction: downcase($_direction)
+
+  - map:
       - windows: delete()
