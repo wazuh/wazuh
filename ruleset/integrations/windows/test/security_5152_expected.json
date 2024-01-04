@@ -1,0 +1,60 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "destination": {
+      "ip": "10.0.0.10"
+    },
+    "event": {
+      "action": "windows-firewall-packet-drop",
+      "category": [
+        "network"
+      ],
+      "code": "5152",
+      "dataset": "security",
+      "id": "5152",
+      "kind": "event",
+      "module": "security",
+      "provider": "Microsoft-Windows-Security-Auditing",
+      "start": "2015-09-22T16:52:37.274367300Z",
+      "type": [
+        "connection",
+        "info",
+        "denied"
+      ]
+    },
+    "host": {
+      "id": "001",
+      "name": "DC01.contoso.local"
+    },
+    "message": "The Windows Filtering Platform blocked a packet",
+    "network": {
+      "direction": "inbound",
+      "iana_number": "6",
+      "transport": "tcp"
+    },
+    "related": {
+      "ip": [
+        "10.0.0.10",
+        "10.0.0.100"
+      ]
+    },
+    "source": {
+      "ip": "10.0.0.100"
+    },
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-security"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  }
+]
