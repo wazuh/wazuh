@@ -11,7 +11,7 @@
       "module": "system",
       "original": "Feb  9 21:19:40 precise32 sshd[8317]: subsystem request for sftp by user vagrant",
       "outcome": "success",
-      "start": "2023-02-09T21:19:40.000Z"
+      "start": "2024-02-09T21:19:40.000Z"
     },
     "host": {
       "hostname": "precise32",
@@ -62,7 +62,7 @@
       "module": "system",
       "original": "May 24 08:56:54 ubuntu2004 sshd[1238]: Accepted publickey for vagrant from 10.0.2.2 port 56902 ssh2: RSA SHA256:1M4RzhMyWuFS/86uPY/ce2prh/dVTHW7iD2RhpquOZA",
       "outcome": "success",
-      "start": "2023-05-24T08:56:54.000Z",
+      "start": "2024-05-24T08:56:54.000Z",
       "type": [
         "access",
         "allowed"
@@ -124,7 +124,7 @@
       "module": "system",
       "original": "Feb  9 21:24:37 precise32 sshd[8302]: pam_unix(sshd:session): session closed for user vagrant",
       "outcome": "success",
-      "start": "2023-02-09T21:24:37.000Z",
+      "start": "2024-02-09T21:24:37.000Z",
       "type": [
         "end"
       ]
