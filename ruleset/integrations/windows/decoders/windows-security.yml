@@ -280,7 +280,7 @@ normalize:
       - process.pid: hex_to_number($windows.EventData.ProcessId)
       - process.executable: $windows.EventData.ProcessName
       - source.ip: $windows.EventData.IpAddress
-      - source.port: $windows.EventData.IpPort
+      - source.port: parse_long($windows.EventData.IpPort)
       - source.domain: $windows.EventData.WorkstationName
       - related.ip: array_append_unique($windows.EventData.IpAddress)
       - _process_parts: parse_file($windows.EventData.ProcessName)
