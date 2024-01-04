@@ -1,0 +1,58 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "security-event-source-added",
+      "category": [
+        "iam",
+        "configuration"
+      ],
+      "code": "4904",
+      "dataset": "security",
+      "id": "4904",
+      "kind": "event",
+      "module": "security",
+      "provider": "Microsoft-Windows-Security-Auditing",
+      "start": "2015-10-01T00:53:01.030688000Z",
+      "type": [
+        "admin",
+        "change"
+      ]
+    },
+    "host": {
+      "id": "001",
+      "name": "DC01.contoso.local"
+    },
+    "message": "An attempt was made to register a security event source",
+    "process": {
+      "executable": "C:\\\\Windows\\\\System32\\\\svchost.exe",
+      "name": "svchost.exe",
+      "pid": 1672
+    },
+    "related": {
+      "user": [
+        "DC01$"
+      ]
+    },
+    "user": {
+      "domain": "CONTOSO",
+      "id": "S-1-5-18",
+      "name": "DC01$"
+    },
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-security"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  }
+]

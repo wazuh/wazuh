@@ -1,0 +1,52 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "changed-computer-account",
+      "category": [
+        "iam"
+      ],
+      "code": "4742",
+      "dataset": "security",
+      "id": "4742",
+      "kind": "event",
+      "module": "security",
+      "provider": "Microsoft-Windows-Security-Auditing",
+      "start": "2019-12-18T16:22:12.342508Z",
+      "type": [
+        "change",
+        "admin"
+      ]
+    },
+    "host": {
+      "id": "001",
+      "name": "DC_TEST2k12.TEST.SAAS"
+    },
+    "message": "A computer account was changed",
+    "related": {
+      "user": [
+        "at_adm"
+      ]
+    },
+    "user": {
+      "domain": "TEST",
+      "id": "S-1-5-21-1717121054-434620538-60925301-2794",
+      "name": "at_adm"
+    },
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-security"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  }
+]

@@ -1,0 +1,51 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "trusted-domain-information-changed",
+      "category": [
+        "configuration"
+      ],
+      "code": "4716",
+      "dataset": "security",
+      "id": "4716",
+      "kind": "event",
+      "module": "security",
+      "provider": "Microsoft-Windows-Security-Auditing",
+      "start": "2020-07-28T08:17:00.470644Z",
+      "type": [
+        "change"
+      ]
+    },
+    "host": {
+      "id": "001",
+      "name": "WIN-BVM4LI1L1Q6.TEST.local"
+    },
+    "message": "Trusted domain information was modified",
+    "related": {
+      "user": [
+        "Administrator"
+      ]
+    },
+    "user": {
+      "domain": "TEST",
+      "id": "S-1-5-21-2024912787-2692429404-2351956786-500",
+      "name": "Administrator"
+    },
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-security"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  }
+]
