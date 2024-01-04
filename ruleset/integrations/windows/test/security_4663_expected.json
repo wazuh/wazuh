@@ -1,32 +1,25 @@
 [
     {
-        "TestSessionID": 9,
+        "TestSessionID": 5,
         "agent": {
             "id": "001",
             "name": "wazuh-agent-1",
             "type": "wazuh-agent"
         },
         "event": {
-            "action": "logging-full",
-            "category": [
-                "iam"
-            ],
-            "code": "1104",
+            "code": "4663",
             "dataset": "security",
-            "id": "1104",
+            "id": "4663",
             "kind": "event",
             "module": "security",
-            "provider": "Microsoft-Windows-Eventlog",
-            "start": "2024-10-08T01:23:45.123456Z",
-            "type": [
-                "admin"
-            ]
+            "provider": "Microsoft-Windows-Security-Auditing",
+            "start": "2015-09-18T22:13:54.770429700Z"
         },
         "host": {
             "id": "001",
-            "name": "WIN-TEST.TESTD.local"
+            "name": "DC01.contoso.local"
         },
-        "message": "The security Log is now full",
+        "message": "An attempt was made to access an object",
         "wazuh": {
             "decoders": [
                 "windows-event",

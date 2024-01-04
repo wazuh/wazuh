@@ -18,6 +18,7 @@ check:
 normalize:
   - map:
       - windows: parse_xml($event.original, windows)
+      - event.original: delete()
 
       - event.dataset: general
       - event.start: $windows.System.TimeCreated.@SystemTime
