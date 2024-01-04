@@ -25,7 +25,6 @@ normalize:
   - map:
       - wazuh.decoders: array_append(windows-security)
       - event.dataset: security
-      - event.code: $event.id
       - event.module: security
       - event: kvdb_get_merge(windows_security_eventid_to_category_type_action, $event.id)
       - windows.logon.id: $windows.EventData.SubjectLogonId
