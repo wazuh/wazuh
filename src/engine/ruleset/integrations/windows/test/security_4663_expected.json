@@ -19,6 +19,9 @@
       "name": "DC01.contoso.local"
     },
     "message": "An attempt was made to access an object",
+    "process": {
+      "pid": 1112
+    },
     "wazuh": {
       "decoders": [
         "windows-event",
