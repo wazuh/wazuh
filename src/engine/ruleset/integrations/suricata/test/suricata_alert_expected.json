@@ -1,5 +1,6 @@
 [
   {
+    "@timestamp": "2023-05-22T16:24:48.761Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -8,8 +9,9 @@
     "destination": {
       "address": "185.23.36.124",
       "bytes": 1646,
+      "domain": "mirror.tedra.es",
       "ip": "185.23.36.124",
-      "packets": 3,
+      "paquets": 4,
       "port": 80
     },
     "event": {
@@ -25,7 +27,6 @@
       "severity": 1,
       "start": "2023-05-22T16:24:48.703Z",
       "type": [
-        "detail",
         "allowed"
       ]
     },
@@ -45,9 +46,14 @@
     },
     "network": {
       "bytes": 2101,
-      "packets": 7,
+      "packets": 0,
       "protocol": "http",
       "transport": "TCP"
+    },
+    "observer": {
+      "product": "Suricata",
+      "type": "ids",
+      "vendor": "OISF"
     },
     "related": {
       "hosts": [
@@ -81,6 +87,7 @@
     }
   },
   {
+    "@timestamp": "2021-05-17T09:51:00.572Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -89,8 +96,9 @@
     "destination": {
       "address": "40.112.213.22",
       "bytes": 4570,
+      "domain": "dmd.metaservices.microsoft.com",
       "ip": "40.112.213.22",
-      "packets": 5,
+      "paquets": 8,
       "port": 80
     },
     "event": {
@@ -106,7 +114,6 @@
       "severity": 3,
       "start": "2021-05-17T09:51:00.572Z",
       "type": [
-        "detail",
         "allowed"
       ]
     },
@@ -122,9 +129,14 @@
     },
     "network": {
       "bytes": 8860,
-      "packets": 13,
+      "packets": 0,
       "protocol": "http",
       "transport": "TCP"
+    },
+    "observer": {
+      "product": "Suricata",
+      "type": "ids",
+      "vendor": "OISF"
     },
     "related": {
       "hosts": [
