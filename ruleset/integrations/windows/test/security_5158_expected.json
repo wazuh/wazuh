@@ -5,35 +5,28 @@
       "name": "wazuh-agent-1",
       "type": "wazuh-agent"
     },
-    "destination": {
-      "ip": "10.0.0.10",
-      "port": 3333
-    },
     "event": {
-      "action": "windows-firewall-packet-drop",
+      "action": "windows-firewall-bind-local-port",
       "category": [
         "network"
       ],
-      "code": "5152",
+      "code": "5158",
       "dataset": "security",
-      "id": "5152",
+      "id": "5158",
       "kind": "event",
       "module": "security",
       "provider": "Microsoft-Windows-Security-Auditing",
-      "start": "2015-09-22T16:52:37.274367300Z",
+      "start": "2015-09-22T05:24:03.376171200Z",
       "type": [
-        "connection",
-        "info",
-        "denied"
+        "info"
       ]
     },
     "host": {
       "id": "001",
       "name": "DC01.contoso.local"
     },
-    "message": "The Windows Filtering Platform blocked a packet",
+    "message": "The Windows Filtering Platform has permitted a bind to a local port",
     "network": {
-      "direction": "inbound",
       "iana_number": "6",
       "transport": "tcp"
     },
@@ -44,13 +37,12 @@
     },
     "related": {
       "ip": [
-        "10.0.0.10",
-        "10.0.0.100"
+        "0.0.0.0"
       ]
     },
     "source": {
-      "ip": "10.0.0.100",
-      "port": 49278
+      "ip": "0.0.0.0",
+      "port": 3333
     },
     "wazuh": {
       "decoders": [
