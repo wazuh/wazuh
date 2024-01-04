@@ -345,7 +345,7 @@ public function config()
         ' Remove last backslash from home_dir
         install_dir = Left(home_dir, Len(home_dir) - 1)
 
-        setPermsInherit = "icacls """ & install_dir & """ /inheritancelevel:d /q"
+        setPermsInherit = "icacls """ & install_dir & """ /inheritancelevel:e /q"
         WshShell.run setPermsInherit, 0, True
 
         remUserPerm = "icacls """ & install_dir & """ /remove *S-1-5-32-545 /q"
