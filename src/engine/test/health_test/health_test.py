@@ -31,7 +31,7 @@ def execute_integration_test(github_working_dir, env_dir, os_path, input_file_pa
     # Execute the command and get the output
     try:
         # print the command
-        print(f"{main_command} {input_file_path} | engine-test -c {engine_test_conf} run {integration} --api-socket {env_dir}/queue/sockets/engine-api -j")
+        print(f"\n{main_command} {input_file_path} | engine-test -c {engine_test_conf} run {integration} --api-socket {env_dir}/queue/sockets/engine-api -j")
         output = subprocess.check_output(f"{main_command} {input_file_path} | engine-test -c {engine_test_conf} run {integration} --api-socket {env_dir}/queue/sockets/engine-api -j", shell=True, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e:
         print("Subprocess Error:")

@@ -15,7 +15,6 @@
             "id": "1105",
             "kind": "event",
             "module": "security",
-            "original": "<Event xmlns=\"http://schemas.microsoft.com/win/2004/08/events/event\">\n  <System>\n    <Provider Name=\"Microsoft-Windows-Eventlog\" Guid=\"{fc65ddd8-d6ef-4962-83d5-6e5cfe9ce148}\">\n    </Provider>\n    <EventID>1105</EventID>\n    <Version>0</Version>\n    <Level>4</Level>\n    <Task>105</Task>\n    <Opcode>0</Opcode>\n    <Keywords>0x4020000000000000</Keywords>\n    <TimeCreated SystemTime=\"2020-12-07T16:12:34.123456Z\">\n    </TimeCreated>\n    <EventRecordID>18197</EventRecordID>\n    <Correlation>\n    </Correlation>\n    <Execution ProcessID=\"123\" ThreadID=\"1234\">\n    </Execution>\n    <Channel>Security</Channel>\n    <Computer>WIN-TEST.testd.local</Computer>\n    <Security>\n    </Security>\n  </System>\n  <UserData>\n    <AutoBackup xmlns=\"http://manifests.microsoft.com/win/2004/08/windows/eventlog\">\n      <Channel>Security</Channel>\n      <BackupPath>C:\\Windows\\System32\\Winevt\\Logs\\Archive-Security-2020-12-07-16-12-34-123.evtx</BackupPath>\n    </AutoBackup>\n  </UserData>\n</Event>\n",
             "provider": "Microsoft-Windows-Eventlog",
             "start": "2020-12-07T16:12:34.123456Z",
             "type": [
