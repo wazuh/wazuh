@@ -10,11 +10,10 @@
         "process"
       ],
       "code": "4104",
-      "dataset": "powershell",
+      "dataset": "powershell-operational",
       "id": "4104",
       "kind": "event",
       "module": "windows",
-      "original": "<Event xmlns=\"http://schemas.microsoft.com/win/2004/08/events/event\">\n  <System>\n    <Provider Name=\"Microsoft-Windows-PowerShell\" Guid=\"A0C1853B-5C40-4B15-8766-3CF1C58F985A\">\n    </Provider>\n    <EventID>4104</EventID>\n    <Version>1</Version>\n    <Level>5</Level>\n    <Task>2</Task>\n    <Opcode>15</Opcode>\n    <Keywords>0x0</Keywords>\n    <TimeCreated SystemTime=\"2020-05-14T11:33:51.393884Z\">\n    </TimeCreated>\n    <EventRecordID>3582</EventRecordID>\n    <Correlation ActivityID=\"FB13C9DE-29F7-0000-79DB-13FBF729D601\">\n    </Correlation>\n    <Execution ProcessID=\"4844\" ThreadID=\"4428\">\n    </Execution>\n    <Channel>Microsoft-Windows-PowerShell/Operational</Channel>\n    <Computer>vagrant</Computer>\n    <Security UserID=\"S-1-5-21-1350058589-2282154016-2764056528-1000\">\n    </Security>\n  </System>\n  <EventData>\n    <Data Name=\"MessageNumber\">1</Data>\n    <Data Name=\"MessageTotal\">1</Data>\n    <Data Name=\"ScriptBlockText\"/>\n    <Data Name=\"ScriptBlockId\">f5521cbd-656e-4296-b74d-9ffb4eec23b0</Data>\n    <Data Name=\"Path\">C:\\Users\\vagrant\\Desktop\\patata.ps1</Data>\n  </EventData>\n</Event>\n",
       "provider": "Microsoft-Windows-PowerShell",
       "start": "2020-05-14T11:33:51.393884Z",
       "type": [
@@ -24,9 +23,6 @@
     "host": {
       "id": "001",
       "name": "vagrant"
-    },
-    "log": {
-      "level": "Verbose"
     },
     "message": "Creating script block text",
     "powershell": {
@@ -134,11 +130,10 @@
         "process"
       ],
       "code": "4104",
-      "dataset": "powershell",
+      "dataset": "powershell-operational",
       "id": "4104",
       "kind": "event",
       "module": "windows",
-      "original": "<Event xmlns=\"http://schemas.microsoft.com/win/2004/08/events/event\">\n  <System>\n    <Provider Name=\"Microsoft-Windows-PowerShell\" Guid=\"A0C1853B-5C40-4B15-8766-3CF1C58F985A\">\n    </Provider>\n    <EventID>4104</EventID>\n    <Version>1</Version>\n    <Level>5</Level>\n    <Task>2</Task>\n    <Opcode>15</Opcode>\n    <Keywords>0x0</Keywords>\n    <TimeCreated SystemTime=\"2020-05-14T11:33:51.389266Z\">\n    </TimeCreated>\n    <EventRecordID>3580</EventRecordID>\n    <Correlation ActivityID=\"FB13C9DE-29F7-0001-18E0-13FBF729D601\">\n    </Correlation>\n    <Execution ProcessID=\"4844\" ThreadID=\"4428\">\n    </Execution>\n    <Channel>Microsoft-Windows-PowerShell/Operational</Channel>\n    <Computer>vagrant</Computer>\n    <Security UserID=\"S-1-5-21-1350058589-2282154016-2764056528-1000\">\n    </Security>\n  </System>\n  <EventData>\n    <Data Name=\"MessageNumber\">1</Data>\n    <Data Name=\"MessageTotal\">1</Data>\n    <Data Name=\"ScriptBlockText\">.\\patata.ps1</Data>\n    <Data Name=\"ScriptBlockId\">50d2dbda-7361-4926-a94d-d9eadfdb43fa</Data>\n    <Data Name=\"Path\"/>\n  </EventData>\n</Event>\n",
       "provider": "Microsoft-Windows-PowerShell",
       "start": "2020-05-14T11:33:51.389266Z",
       "type": [
@@ -148,9 +143,6 @@
     "host": {
       "id": "001",
       "name": "vagrant"
-    },
-    "log": {
-      "level": "Verbose"
     },
     "message": "Creating script block text",
     "powershell": {

@@ -6,30 +6,34 @@
       "type": "wazuh-agent"
     },
     "event": {
+      "action": "logging-service-shutdown",
+      "category": [
+        "process"
+      ],
+      "code": "1100",
+      "dataset": "security",
+      "id": "1100",
       "kind": "event",
-      "start": "2024-12-13T11:35:28.000Z"
-    },
-    "host": {
-      "hostname": "a-mac-with-esc-key",
-      "id": "001"
-    },
-    "message": "2016-12-13 11:35:28.421 GoogleSoftwareUpdateAgent[21412/0x700007399000] [lvl=2] -[KSUpdateEngine updateAllExceptProduct:] KSUpdateEngine updating all installed products, except:'com.google.Keystone'.",
-    "process": {
-      "name": "GoogleSoftwareUpdateAgent",
-      "pid": 21412
-    },
-    "related": {
-      "hosts": [
-        "a-mac-with-esc-key"
+      "module": "security",
+      "provider": "Microsoft-Windows-Eventlog",
+      "start": "2023-11-07T10:12:04.123456Z",
+      "type": [
+        "end"
       ]
     },
+    "host": {
+      "id": "001",
+      "name": "WIN-TEST.local"
+    },
+    "message": "The event logging service has shut down",
     "wazuh": {
       "decoders": [
-        "syslog"
+        "windows-event",
+        "windows-security"
       ],
-      "location": "[001] (wazuh-agent-1) any->/tmp/syslog.log",
-      "origin": "/tmp/syslog.log",
-      "queue": 49,
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
       "registered_ip": "any",
       "source": "logcollector"
     }
