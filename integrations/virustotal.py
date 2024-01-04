@@ -143,14 +143,59 @@ def debug(msg: str) -> None:
             f.write(msg + '\n')
 
 
+def request_info_from_api(alert, alert_output, api_key):
+    """
+    Request information from an API using the provided alert and API key.
+
+    Parameters
+    ----------
+    alert : dict
+        The alert dictionary containing information for the API request.
+    alert_output : dict
+        The output dictionary where API response information will be stored.
+    api_key : str
+        The API key required for making the API request.
+
+    Returns
+    -------
+    dict
+        The response data received from the API.
+
+    Raises
+    ------
+    Timeout
+        If the API request times out.
+    Exception
+        If an unexpected exception occurs during the API request.
+    """
+    for attempt in range(retries + 1):
+        try:
+            vt_response_data = query_api(alert['syscheck']['md5_after'], api_key)
+            return vt_response_data
+        except Timeout:
+            debug('# Error: Request timed out. Remaining retries: %s' % (retries - attempt))
+            continue
+        except Exception as e:
+            debug(str(e))
+            sys.exit(ERR_NO_RESPONSE_VT)
+
+    debug('# Error: Request timed out and maximum number of retries was exceeded')
+    alert_output['virustotal']['error'] = 408
+    alert_output['virustotal']['description'] = 'Error: API request timed out'
+    send_msg(alert_output)
+    sys.exit(ERR_NO_RESPONSE_VT)
+
+
 def request_virustotal_info(alert: any, apikey: str):
     """
-    Generate the JSON object with the message to be sent.
+    Generate the JSON object with the message to be send
 
     Parameters
     ----------
     alert : any
         JSON alert object.
+    apikey : str
+        The API key required for making the API request.
 
     Returns
     -------
@@ -159,35 +204,29 @@ def request_virustotal_info(alert: any, apikey: str):
     """
     alert_output = {'virustotal': {}, 'integration': 'virustotal'}
 
-    if 'syscheck' not in alert or 'md5_after' not in alert['syscheck']:
-        debug('# No syscheck block or md5 checksum present in the alert')
+    # If there is no syscheck block present in the alert. Exit.
+    if 'syscheck' not in alert:
+        debug('# No syscheck block present in the alert')
         return None
 
-    md5_checksum = alert['syscheck']['md5_after']
-    if not re.match(r'\b([a-f\d]{32}|[A-F\d]{32})\b', md5_checksum):
+    # If there is no md5 checksum present in the alert. Exit.
+    if 'md5_after' not in alert['syscheck']:
+        debug('# No md5 checksum present in the alert')
+        return None
+
+    # If the md5_after field is not a md5 hash checksum. Exit
+    if not (
+        isinstance(alert['syscheck']['md5_after'], str) is True
+        and len(re.findall(r'\b([a-f\d]{32}|[A-F\d]{32})\b', alert['syscheck']['md5_after'])) == 1
+    ):
         debug('# md5_after field in the alert is not a md5 hash checksum')
         return None
 
-    request_ok = False
-    for attempt in range(retries + 1):
-        try:
-            vt_response_data = query_api(md5_checksum, apikey)
-            request_ok = True
-            break
-        except Timeout:
-            debug('# Error: Request timed out. Remaining retries: %s' % (retries - attempt))
-            continue
-        except Exception as e:
-            debug(str(e))
-            sys.exit(ERR_NO_RESPONSE_VT)
+    # Request info using VirusTotal API
+    vt_response_data = request_info_from_api(alert, alert_output, apikey)
 
-    if not request_ok:
-        debug('# Error: Request timed out and maximum number of retries was exceeded')
-        alert_output['virustotal']['error'] = 408
-        alert_output['virustotal']['description'] = 'Error: API request timed out'
-        send_msg(alert_output)
-        sys.exit(ERR_NO_RESPONSE_VT)
-
+    alert_output['virustotal']['found'] = 0
+    alert_output['virustotal']['malicious'] = 0
     alert_output['virustotal']['source'] = {
         'alert_id': alert['id'],
         'file': alert['syscheck']['path'],
@@ -195,23 +234,25 @@ def request_virustotal_info(alert: any, apikey: str):
         'sha1': alert['syscheck']['sha1_after'],
     }
 
-    if in_database(vt_response_data, md5_checksum):
+    # Check if VirusTotal has any info about the hash
+    if in_database(vt_response_data, hash):
         alert_output['virustotal']['found'] = 1
 
-        if alert_output['virustotal']['found'] == 1:
-            if vt_response_data['positives'] > 0:
-                alert_output['virustotal']['malicious'] = 1
+    # Info about the file found in VirusTotal
+    if alert_output['virustotal']['found'] == 1:
+        if vt_response_data['positives'] > 0:
+            alert_output['virustotal']['malicious'] = 1
 
-            # Populate JSON Output object with VirusTotal request
-            alert_output['virustotal'].update(
-                {
-                    'sha1': vt_response_data['sha1'],
-                    'scan_date': vt_response_data['scan_date'],
-                    'positives': vt_response_data['positives'],
-                    'total': vt_response_data['total'],
-                    'permalink': vt_response_data['permalink'],
-                }
-            )
+        # Populate JSON Output object with VirusTotal request
+        alert_output['virustotal'].update(
+            {
+                'sha1': vt_response_data['sha1'],
+                'scan_date': vt_response_data['scan_date'],
+                'positives': vt_response_data['positives'],
+                'total': vt_response_data['total'],
+                'permalink': vt_response_data['permalink'],
+            }
+        )
 
     return alert_output
 
