@@ -16,7 +16,7 @@
       "module": "system",
       "original": "May 31 09:47:16 jal sshd: jizquierdo [priv][10917]: DEAD_PROCESS: 10922 ttys006",
       "outcome": "success",
-      "start": "2023-05-31T09:47:16.000Z",
+      "start": "2024-05-31T09:47:16.000Z",
       "type": [
         "end"
       ]
@@ -74,7 +74,7 @@
       "module": "system",
       "original": "May 31 09:47:16 jal sshd: jizquierdo [priv][10917]: USER_PROCESS: 10922 tty/006",
       "outcome": "success",
-      "start": "2023-05-31T09:47:16.000Z",
+      "start": "2024-05-31T09:47:16.000Z",
       "type": [
         "access",
         "allowed",
