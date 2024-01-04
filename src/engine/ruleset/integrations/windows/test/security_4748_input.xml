@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<Events>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System>
+    <Provider Name="Microsoft-Windows-Security-Auditing" Guid="54849625-5478-4994-A5BA-3E3B0328C30D">
+    </Provider>
+    <EventID>4748</EventID>
+    <Version>0</Version>
+    <Level>0</Level>
+    <Task>13827</Task>
+    <Opcode>0</Opcode>
+    <Keywords>0x8020000000000000</Keywords>
+    <TimeCreated SystemTime="2020-10-22T12:34:56.123456Z">
+    </TimeCreated>
+    <EventRecordID>3707490</EventRecordID>
+    <Correlation>
+    </Correlation>
+    <Execution ProcessID="492" ThreadID="1076">
+    </Execution>
+    <Channel>Security</Channel>
+    <Computer>HOST_TEST.TESTD</Computer>
+    <Security>
+    </Security>
+  </System>
+  <EventData>
+    <Data Name="TargetUserName">testUlocal</Data>
+    <Data Name="TargetDomainName">TESTD</Data>
+    <Data Name="TargetSid">S-1-5-21-1717121054-434620538-60925301-2903</Data>
+    <Data Name="SubjectUserSid">S-1-5-21-1717121054-434620538-60925301-2794</Data>
+    <Data Name="SubjectUserName">uTest</Data>
+    <Data Name="SubjectDomainName">TESTD</Data>
+    <Data Name="SubjectLogonId">0x2e67800</Data>
+    <Data Name="PrivilegeList">-</Data>
+  </EventData>
+</Event>
+</Events>
