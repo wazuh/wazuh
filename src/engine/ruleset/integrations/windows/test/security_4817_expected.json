@@ -1,0 +1,53 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "object-audit-changed",
+      "category": [
+        "iam",
+        "configuration"
+      ],
+      "code": "4817",
+      "dataset": "security",
+      "id": "4817",
+      "kind": "event",
+      "module": "security",
+      "provider": "Microsoft-Windows-Security-Auditing",
+      "start": "2015-11-10T01:26:33.191368500Z",
+      "type": [
+        "admin",
+        "change"
+      ]
+    },
+    "host": {
+      "id": "001",
+      "name": "DC01.contoso.local"
+    },
+    "message": "Auditing settings on object were changed.",
+    "related": {
+      "user": [
+        "DC01$"
+      ]
+    },
+    "user": {
+      "domain": "CONTOSO",
+      "id": "S-1-5-18",
+      "name": "DC01$"
+    },
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-security"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  }
+]

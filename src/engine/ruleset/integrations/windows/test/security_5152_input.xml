@@ -1,0 +1,31 @@
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System>
+    <Provider Name="Microsoft-Windows-Security-Auditing" Guid="{54849625-5478-4994-A5BA-3E3B0328C30D}" />
+    <EventID>5152</EventID>
+    <Version>0</Version>
+    <Level>0</Level>
+    <Task>12809</Task>
+    <Opcode>0</Opcode>
+    <Keywords>0x8010000000000000</Keywords>
+    <TimeCreated SystemTime="2015-09-22T16:52:37.274367300Z" />
+    <EventRecordID>321323</EventRecordID>
+    <Correlation />
+    <Execution ProcessID="4" ThreadID="4456" />
+    <Channel>Security</Channel>
+    <Computer>DC01.contoso.local</Computer>
+    <Security />
+  </System>
+  <EventData>
+    <Data Name="ProcessId">4556</Data>
+    <Data Name="Application">\\device\\harddiskvolume2\\documents\\listener.exe</Data>
+    <Data Name="Direction">%%14592</Data>
+    <Data Name="SourceAddress">10.0.0.100</Data>
+    <Data Name="SourcePort">49278</Data>
+    <Data Name="DestAddress">10.0.0.10</Data>
+    <Data Name="DestPort">3333</Data>
+    <Data Name="Protocol">6</Data>
+    <Data Name="FilterRTID">0</Data>
+    <Data Name="LayerName">%%14610</Data>
+    <Data Name="LayerRTID">44</Data>
+  </EventData>
+</Event>
