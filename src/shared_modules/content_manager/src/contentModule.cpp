@@ -16,8 +16,8 @@
 #include <utility>
 
 void ContentModule::start(
-    const std::function<
-        void(const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>&
+    const std::function<void(
+        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
         logFunction)
 {
     ContentModuleFacade::instance().start(logFunction);
@@ -66,8 +66,9 @@ extern "C"
                           const std::string& file,
                           const int line,
                           const std::string& func,
-                          const std::string& logMessage)
-            { callbackLog(logLevel, tag.c_str(), file.c_str(), line, func.c_str(), logMessage.c_str()); });
+                          const std::string& logMessage,
+                          va_list args)
+            { callbackLog(logLevel, tag.c_str(), file.c_str(), line, func.c_str(), logMessage.c_str(), args); });
     }
 
     void content_manager_stop()
