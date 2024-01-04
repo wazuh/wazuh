@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<Events>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System>
+    <Provider Name="Microsoft-Windows-Security-Auditing" Guid="54849625-5478-4994-A5BA-3E3B0328C30D">
+    </Provider>
+    <EventID>4742</EventID>
+    <Version>0</Version>
+    <Level>0</Level>
+    <Task>13825</Task>
+    <Opcode>0</Opcode>
+    <Keywords>0x8020000000000000</Keywords>
+    <TimeCreated SystemTime="2019-12-18T16:22:12.342508Z">
+    </TimeCreated>
+    <EventRecordID>3699934</EventRecordID>
+    <Correlation>
+    </Correlation>
+    <Execution ProcessID="492" ThreadID="664">
+    </Execution>
+    <Channel>Security</Channel>
+    <Computer>DC_TEST2k12.TEST.SAAS</Computer>
+    <Security>
+    </Security>
+  </System>
+  <EventData>
+    <Data Name="ComputerAccountChange">-</Data>
+    <Data Name="TargetUserName">TESTCOMPUTEROBJ$</Data>
+    <Data Name="TargetDomainName">TEST</Data>
+    <Data Name="TargetSid">S-1-5-21-1717121054-434620538-60925301-2902</Data>
+    <Data Name="SubjectUserSid">S-1-5-21-1717121054-434620538-60925301-2794</Data>
+    <Data Name="SubjectUserName">at_adm</Data>
+    <Data Name="SubjectDomainName">TEST</Data>
+    <Data Name="SubjectLogonId">0x2e67800</Data>
+    <Data Name="PrivilegeList">-</Data>
+    <Data Name="SamAccountName">-</Data>
+    <Data Name="DisplayName">-</Data>
+    <Data Name="UserPrincipalName">-</Data>
+    <Data Name="HomeDirectory">-</Data>
+    <Data Name="HomePath">-</Data>
+    <Data Name="ScriptPath">-</Data>
+    <Data Name="ProfilePath">-</Data>
+    <Data Name="UserWorkstations">-</Data>
+    <Data Name="PasswordLastSet">-</Data>
+    <Data Name="AccountExpires">-</Data>
+    <Data Name="PrimaryGroupId">-</Data>
+    <Data Name="AllowedToDelegateTo">-</Data>
+    <Data Name="OldUacValue">0x85</Data>
+    <Data Name="NewUacValue">0x84</Data>
+    <Data Name="UserAccountControl">
+                %%2048</Data>
+    <Data Name="UserParameters">-</Data>
+    <Data Name="SidHistory">-</Data>
+    <Data Name="LogonHours">-</Data>
+    <Data Name="DnsHostName">-</Data>
+    <Data Name="ServicePrincipalNames">-</Data>
+  </EventData>
+</Event>
+</Events>
