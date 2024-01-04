@@ -1,32 +1,42 @@
 [
     {
-        "TestSessionID": 9,
+        "TestSessionID": 5,
         "agent": {
             "id": "001",
             "name": "wazuh-agent-1",
             "type": "wazuh-agent"
         },
         "event": {
-            "action": "logging-full",
+            "action": "domain-trust-added",
             "category": [
-                "iam"
+                "configuration"
             ],
-            "code": "1104",
+            "code": "4706",
             "dataset": "security",
-            "id": "1104",
+            "id": "4706",
             "kind": "event",
             "module": "security",
-            "provider": "Microsoft-Windows-Eventlog",
-            "start": "2024-10-08T01:23:45.123456Z",
+            "provider": "Microsoft-Windows-Security-Auditing",
+            "start": "2015-10-01T20:41:13.189445500Z",
             "type": [
-                "admin"
+                "creation"
             ]
         },
         "host": {
             "id": "001",
-            "name": "WIN-TEST.TESTD.local"
+            "name": "DC01.contoso.local"
         },
-        "message": "The security Log is now full",
+        "message": "A new trust was created to a domain",
+        "related": {
+            "user": [
+                "dadmin"
+            ]
+        },
+        "user": {
+            "domain": "CONTOSO",
+            "id": "S-1-5-21-3457937927-2839227994-823803824-1104",
+            "name": "dadmin"
+        },
         "wazuh": {
             "decoders": [
                 "windows-event",
