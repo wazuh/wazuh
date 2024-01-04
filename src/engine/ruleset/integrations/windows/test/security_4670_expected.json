@@ -1,22 +1,24 @@
 [
     {
+        "TestSessionID": 3,
         "agent": {
             "id": "001",
             "name": "wazuh-agent-1",
             "type": "wazuh-agent"
         },
         "event": {
-            "action": "audit-log-cleared",
+            "action": "permissions-changed",
             "category": [
-                "iam"
+                "iam",
+                "configuration"
             ],
-            "code": "1102",
+            "code": "4670",
             "dataset": "security",
-            "id": "1102",
+            "id": "4670",
             "kind": "event",
             "module": "security",
-            "provider": "Microsoft-Windows-Eventlog",
-            "start": "2019-11-07T10:34:29.055919Z",
+            "provider": "Microsoft-Windows-Security-Auditing",
+            "start": "2015-09-18T19:36:50.187044600Z",
             "type": [
                 "admin",
                 "change"
@@ -24,18 +26,23 @@
         },
         "host": {
             "id": "001",
-            "name": "WIN-TEST.testd.local"
+            "name": "DC01.contoso.local"
         },
-        "message": "The audit log was cleared",
+        "message": "Permissions on an object were changed",
+        "process": {
+            "executable": "C:\\\\Windows\\\\System32\\\\dllhost.exe",
+            "name": "dllhost.exe",
+            "pid": 3504
+        },
         "related": {
             "user": [
-                "Administrator"
+                "dadmin"
             ]
         },
         "user": {
-            "domain": "TESTD",
-            "id": "S-1-5-21-101361758-2486510592-3018839910-500",
-            "name": "Administrator"
+            "domain": "CONTOSO",
+            "id": "S-1-5-21-3457937927-2839227994-823803824-1104",
+            "name": "dadmin"
         },
         "wazuh": {
             "decoders": [
