@@ -53,6 +53,26 @@ def execute_integration_test(github_working_dir, env_dir, os_path, input_file_pa
 
     return parsed_results
 
+def replace_single_quotes(json_obj):
+    if isinstance(json_obj, dict):
+        for key, value in json_obj.items():
+            # Verifica si la clave es una cadena y contiene comillas simples
+            if isinstance(key, str) and "'" in key:
+                # Reemplaza las comillas simples por comillas dobles
+                new_key = key.replace("'", "\"")
+                # Actualiza la clave en el diccionario
+                json_obj[new_key] = json_obj.pop(key)
+
+            # Llamada recursiva para procesar valores anidados
+            replace_single_quotes(value)
+
+        return json_obj
+    elif isinstance(json_obj, list):
+        # Llamada recursiva para procesar elementos de la lista
+        return [replace_single_quotes(item) for item in json_obj]
+    else:
+        return json_obj
+
 def compare_results(parsed_results, expected_json, input_file_name, mismatches):
     if len(parsed_results) != len(expected_json):
         mismatches.append((input_file_name, 0))
@@ -63,6 +83,7 @@ def compare_results(parsed_results, expected_json, input_file_name, mismatches):
             del event_json['TestSessionID']
         try:
             if event_json != expected_json[i]:
+                print(json.dumps(replace_single_quotes(event_json)))
                 mismatches.append((input_file_name, i))  # Añadir el índice del problema
                 continue
         except json.JSONDecodeError as e:

@@ -1,5 +1,6 @@
 [
   {
+    "@timestamp": "2023-05-24T08:01:27.384Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -8,8 +9,9 @@
     "destination": {
       "address": "18.225.36.18",
       "bytes": 999,
+      "domain": "mirrorlist.centos.org",
       "ip": "18.225.36.18",
-      "packets": 3,
+      "paquets": 4,
       "port": 80
     },
     "event": {
@@ -25,7 +27,6 @@
       "severity": 1,
       "start": "2023-05-24T08:01:27.154Z",
       "type": [
-        "detail",
         "allowed"
       ]
     },
@@ -45,9 +46,14 @@
     },
     "network": {
       "bytes": 1412,
-      "packets": 7,
+      "packets": 0,
       "protocol": "http",
       "transport": "TCP"
+    },
+    "observer": {
+      "product": "Suricata",
+      "type": "ids",
+      "vendor": "OISF"
     },
     "related": {
       "hosts": [

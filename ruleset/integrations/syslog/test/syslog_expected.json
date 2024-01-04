@@ -8,7 +8,7 @@
     "event": {
       "kind": "event",
       "original": "Dec 13 11:35:28 a-mac-with-esc-key GoogleSoftwareUpdateAgent[21412]: 2016-12-13 11:35:28.421 GoogleSoftwareUpdateAgent[21412/0x700007399000] [lvl=2] -[KSUpdateEngine updateAllExceptProduct:] KSUpdateEngine updating all installed products, except:'com.google.Keystone'.",
-      "start": "2023-12-13T11:35:28.000Z"
+      "start": "2024-12-13T11:35:28.000Z"
     },
     "host": {
       "hostname": "a-mac-with-esc-key",
@@ -44,7 +44,7 @@
     "event": {
       "kind": "event",
       "original": "Apr 4 03:39:57 --- last message repeated 1 time ---",
-      "start": "2023-04-04T03:39:57.000Z"
+      "start": "2024-04-04T03:39:57.000Z"
     },
     "host": {
       "hostname": "---",
