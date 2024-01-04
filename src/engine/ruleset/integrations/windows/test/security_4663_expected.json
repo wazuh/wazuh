@@ -1,35 +1,34 @@
 [
-    {
-        "TestSessionID": 5,
-        "agent": {
-            "id": "001",
-            "name": "wazuh-agent-1",
-            "type": "wazuh-agent"
-        },
-        "event": {
-            "code": "4663",
-            "dataset": "security",
-            "id": "4663",
-            "kind": "event",
-            "module": "security",
-            "provider": "Microsoft-Windows-Security-Auditing",
-            "start": "2015-09-18T22:13:54.770429700Z"
-        },
-        "host": {
-            "id": "001",
-            "name": "DC01.contoso.local"
-        },
-        "message": "An attempt was made to access an object",
-        "wazuh": {
-            "decoders": [
-                "windows-event",
-                "windows-security"
-            ],
-            "location": "[001] (wazuh-agent-1) any->EventChannel",
-            "origin": "EventChannel",
-            "queue": 102,
-            "registered_ip": "any",
-            "source": "logcollector"
-        }
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "code": "4663",
+      "dataset": "security",
+      "id": "4663",
+      "kind": "event",
+      "module": "security",
+      "provider": "Microsoft-Windows-Security-Auditing",
+      "start": "2015-09-18T22:13:54.770429700Z"
+    },
+    "host": {
+      "id": "001",
+      "name": "DC01.contoso.local"
+    },
+    "message": "An attempt was made to access an object",
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-security"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
     }
+  }
 ]

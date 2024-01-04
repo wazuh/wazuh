@@ -1,42 +1,41 @@
 [
-    {
-        "TestSessionID": 9,
-        "agent": {
-            "id": "001",
-            "name": "wazuh-agent-1",
-            "type": "wazuh-agent"
-        },
-        "event": {
-            "action": "logging-full",
-            "category": [
-                "iam"
-            ],
-            "code": "1104",
-            "dataset": "security",
-            "id": "1104",
-            "kind": "event",
-            "module": "security",
-            "provider": "Microsoft-Windows-Eventlog",
-            "start": "2024-10-08T01:23:45.123456Z",
-            "type": [
-                "admin"
-            ]
-        },
-        "host": {
-            "id": "001",
-            "name": "WIN-TEST.TESTD.local"
-        },
-        "message": "The security Log is now full",
-        "wazuh": {
-            "decoders": [
-                "windows-event",
-                "windows-security"
-            ],
-            "location": "[001] (wazuh-agent-1) any->EventChannel",
-            "origin": "EventChannel",
-            "queue": 102,
-            "registered_ip": "any",
-            "source": "logcollector"
-        }
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logging-full",
+      "category": [
+        "iam"
+      ],
+      "code": "1104",
+      "dataset": "security",
+      "id": "1104",
+      "kind": "event",
+      "module": "security",
+      "provider": "Microsoft-Windows-Eventlog",
+      "start": "2024-10-08T01:23:45.123456Z",
+      "type": [
+        "admin"
+      ]
+    },
+    "host": {
+      "id": "001",
+      "name": "WIN-TEST.TESTD.local"
+    },
+    "message": "The security Log is now full",
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-security"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
     }
+  }
 ]
