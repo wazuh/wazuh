@@ -124,7 +124,7 @@ int isChroot(void);
  * @param line Line number.
  * @param func Function name.
  * @param msg Message to send into the log.
- * @para args Variable arguments list.
+ * @param args Variable arguments list.
  */
 void mtLoggingFunctionsWrapper(int level, const char* tag, const char* file, int line, const char* func, const char* msg, va_list args);
 
