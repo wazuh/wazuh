@@ -1,0 +1,70 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-in",
+      "category": [
+        "authentication"
+      ],
+      "code": "4624",
+      "dataset": "security",
+      "id": "4624",
+      "kind": "event",
+      "module": "security",
+      "provider": "Microsoft-Windows-Security-Auditing",
+      "start": "2015-11-12T00:24:35.079785200Z",
+      "type": [
+        "start"
+      ]
+    },
+    "host": {
+      "id": "001",
+      "name": "WIN-GG82ULGC9GO"
+    },
+    "message": "An account was successfully logged on",
+    "process": {
+      "executable": "C:\\\\Windows\\\\System32\\\\svchost.exe",
+      "name": "svchost.exe",
+      "pid": 1100
+    },
+    "related": {
+      "ip": [
+        "127.0.0.1"
+      ],
+      "user": [
+        "Administrator",
+        "WIN-GG82ULGC9GO$"
+      ]
+    },
+    "source": {
+      "domain": "WIN-GG82ULGC9GO",
+      "ip": "127.0.0.1",
+      "port": 0
+    },
+    "user": {
+      "domain": "WIN-GG82ULGC9GO",
+      "id": "S-1-5-21-1377283216-344919071-3415362939-500",
+      "name": "Administrator",
+      "target": {
+        "domain": "WIN-GG82ULGC9GO",
+        "id": "S-1-5-21-1377283216-344919071-3415362939-500",
+        "name": "Administrator"
+      }
+    },
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-security"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  }
+]
