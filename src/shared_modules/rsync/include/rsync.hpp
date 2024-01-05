@@ -50,7 +50,7 @@ class EXPORTED RemoteSync
          *
          * @param logFunction Log function.
          */
-        static void initializeFullLogFunction(const std::function<void(const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>& logFunction);
+        static void initializeFullLogFunction(const std::function<void(const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>& logFunction);
 
         /**
          * @brief Remote sync initializes the instance.

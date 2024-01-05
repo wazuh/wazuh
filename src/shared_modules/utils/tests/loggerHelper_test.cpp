@@ -17,7 +17,7 @@
 namespace Log
 {
     std::function<void(
-            const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>
+        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
         GLOBAL_LOG_FUNCTION;
 };
 
@@ -35,45 +35,62 @@ constexpr auto WARNING_REGEX_THREAD = "warning Tag .+\\.cpp \\d+ operator\\(\\) 
 
 constexpr auto TAG = "Tag";
 
-void debugVerboseTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg)
+void debugVerboseTestFunction(
+    const char* tag, const char* file, int line, const char* func, const char* msg, va_list args)
 {
+    char buffer[MAXLEN];
+    vsnprintf(buffer, MAXLEN, msg, args);
+
     ssOutput << "debug_verbose"
-             << " " << tag << " " << file << " " << line << " " << func << " " << msg << std::endl;
+             << " " << tag << " " << file << " " << line << " " << func << " " << buffer << std::endl;
 }
 
-void debugTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg)
+void debugTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, va_list args)
 {
+    char buffer[MAXLEN];
+    vsnprintf(buffer, MAXLEN, msg, args);
+
     ssOutput << "debug"
-             << " " << tag << " " << file << " " << line << " " << func << " " << msg << std::endl;
+             << " " << tag << " " << file << " " << line << " " << func << " " << buffer << std::endl;
 }
 
-void infoTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg)
+void infoTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, va_list args)
 {
+    char buffer[MAXLEN];
+    vsnprintf(buffer, MAXLEN, msg, args);
+
     ssOutput << "info"
-             << " " << tag << " " << file << " " << line << " " << func << " " << msg << std::endl;
+             << " " << tag << " " << file << " " << line << " " << func << " " << buffer << std::endl;
 }
 
-void warningTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg)
+void warningTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, va_list args)
 {
+    char buffer[MAXLEN];
+    vsnprintf(buffer, MAXLEN, msg, args);
+
     ssOutput << "warning"
-             << " " << tag << " " << file << " " << line << " " << func << " " << msg << std::endl;
+             << " " << tag << " " << file << " " << line << " " << func << " " << buffer << std::endl;
 }
 
-void errorTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg)
+void errorTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, va_list args)
 {
+    char buffer[MAXLEN];
+    vsnprintf(buffer, MAXLEN, msg, args);
+
     ssOutput << "error"
-             << " " << tag << " " << file << " " << line << " " << func << " " << msg << std::endl;
+             << " " << tag << " " << file << " " << line << " " << func << " " << buffer << std::endl;
 }
 
-void logFunctionWrapper(int level, const char* tag, const char* file, int line, const char* func, const char* msg)
+void logFunctionWrapper(
+    int level, const char* tag, const char* file, int line, const char* func, const char* msg, va_list args)
 {
     switch (level)
     {
-        case (Log::LOGLEVEL_DEBUG): debugTestFunction(tag, file, line, func, msg); break;
-        case (Log::LOGLEVEL_DEBUG_VERBOSE): debugVerboseTestFunction(tag, file, line, func, msg); break;
-        case (Log::LOGLEVEL_INFO): infoTestFunction(tag, file, line, func, msg); break;
-        case (Log::LOGLEVEL_WARNING): warningTestFunction(tag, file, line, func, msg); break;
-        case (Log::LOGLEVEL_ERROR): errorTestFunction(tag, file, line, func, msg); break;
+        case (Log::LOGLEVEL_DEBUG): debugTestFunction(tag, file, line, func, msg, args); break;
+        case (Log::LOGLEVEL_DEBUG_VERBOSE): debugVerboseTestFunction(tag, file, line, func, msg, args); break;
+        case (Log::LOGLEVEL_INFO): infoTestFunction(tag, file, line, func, msg, args); break;
+        case (Log::LOGLEVEL_WARNING): warningTestFunction(tag, file, line, func, msg, args); break;
+        case (Log::LOGLEVEL_ERROR): errorTestFunction(tag, file, line, func, msg, args); break;
         default: break;
     }
 }

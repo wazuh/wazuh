@@ -19,7 +19,7 @@
 namespace Log
 {
     std::function<void(
-        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>
+        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
         GLOBAL_LOG_FUNCTION;
 };
 constexpr auto IC_NAME {"indexer-connnector"};
@@ -36,8 +36,8 @@ constexpr auto DATABASE_BASE_PATH = "queue/indexer/";
 IndexerConnector::IndexerConnector(
     const nlohmann::json& config,
     const std::string& templatePath,
-    const std::function<
-        void(const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>&
+    const std::function<void(
+        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
         logFunction)
 {
     if (logFunction)

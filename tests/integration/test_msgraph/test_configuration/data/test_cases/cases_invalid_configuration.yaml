@@ -59,7 +59,7 @@
     error_type: 'Invalid'
     module: 'ms-graph'
 
-    
+
 - name: Invalid_Curl_Max_Size
   description: Check ms-graph integration does not start with Invalid Curl Max Size
   configuration_parameters:
@@ -80,7 +80,7 @@
     error_type: 'Invalid'
     module: 'ms-graph'
 
-    
+
 - name: Invalid_Run_On_Start
   description: Check ms-graph integration does not start with Invalid Run On Start
   configuration_parameters:
@@ -101,7 +101,7 @@
     error_type: 'Invalid'
     module: 'ms-graph'
 
-    
+
 - name: Invalid_Version
   description: Check ms-graph integration does not start with Invalid Version
   configuration_parameters:

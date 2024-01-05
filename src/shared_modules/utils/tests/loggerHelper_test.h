@@ -21,7 +21,8 @@ void debugTestFunction(const char* tag, const char* file, int line, const char* 
 void infoTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg);
 void warningTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg);
 void errorTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg);
-void logFunctionWrapper(int level, const char* tag, const char* file, int line, const char* func, const char* msg);
+void logFunctionWrapper(
+    int level, const char* tag, const char* file, int line, const char* func, const char* msg, va_list args);
 std::stringstream ssOutput;
 
 class LoggerHelperTest : public ::testing::Test
@@ -38,8 +39,9 @@ protected:
                const std::string& file,
                const int line,
                const std::string& func,
-               const std::string& logMessage)
-            { logFunctionWrapper(logLevel, tag.c_str(), file.c_str(), line, func.c_str(), logMessage.c_str()); });
+               const std::string& logMessage,
+               va_list args)
+            { logFunctionWrapper(logLevel, tag.c_str(), file.c_str(), line, func.c_str(), logMessage.c_str(), args); });
     }
 
     virtual void SetUp()
