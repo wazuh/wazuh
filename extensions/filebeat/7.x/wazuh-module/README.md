@@ -20,7 +20,8 @@ Currently, we host the following modules
 |:--|:--|
 |wazuh-filebeat-0.1.tar.gz|From 3.9.x to 4.2.x included|
 |wazuh-filebeat-0.2.tar.gz|From 4.3.x to 4.6.x included|
-|wazuh-filebeat-0.3.tar.gz|From 4.7.x to current|
+|wazuh-filebeat-0.3.tar.gz|4.7.x|
+|wazuh-filebeat-0.4.tar.gz|From 4.8.x to current|
 
 
 ## How-To update module tar.gz file
