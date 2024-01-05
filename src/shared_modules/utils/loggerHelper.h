@@ -54,17 +54,20 @@ namespace Log
 #pragma GCC visibility push(hidden)
 
     extern std::function<void(
-        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>
+        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
         GLOBAL_LOG_FUNCTION;
 #pragma GCC visibility pop
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 
-    static void assignLogFunction(
-        const std::function<
-            void(const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>&
-            logFunction)
+    static void assignLogFunction(const std::function<void(const int,
+                                                           const std::string&,
+                                                           const std::string&,
+                                                           const int,
+                                                           const std::string&,
+                                                           const std::string&,
+                                                           va_list)>& logFunction)
     {
         if (!GLOBAL_LOG_FUNCTION)
         {
@@ -94,12 +97,10 @@ namespace Log
             {
                 std::va_list args;
                 va_start(args, msg);
-                char formattedStr[MAXLEN] = {0};
-                vsnprintf(formattedStr, MAXLEN, msg, args);
-                va_end(args);
 
-                GLOBAL_LOG_FUNCTION(
-                    LOGLEVEL_INFO, tag, sourceFile.file, sourceFile.line, sourceFile.func, formattedStr);
+                GLOBAL_LOG_FUNCTION(LOGLEVEL_INFO, tag, sourceFile.file, sourceFile.line, sourceFile.func, msg, args);
+
+                va_end(args);
             }
         }
 
@@ -116,12 +117,11 @@ namespace Log
             {
                 std::va_list args;
                 va_start(args, msg);
-                char formattedStr[MAXLEN] = {0};
-                vsnprintf(formattedStr, MAXLEN, msg, args);
-                va_end(args);
 
                 GLOBAL_LOG_FUNCTION(
-                    LOGLEVEL_WARNING, tag, sourceFile.file, sourceFile.line, sourceFile.func, formattedStr);
+                    LOGLEVEL_WARNING, tag, sourceFile.file, sourceFile.line, sourceFile.func, msg, args);
+
+                va_end(args);
             }
         }
 
@@ -138,12 +138,10 @@ namespace Log
             {
                 std::va_list args;
                 va_start(args, msg);
-                char formattedStr[MAXLEN] = {0};
-                vsnprintf(formattedStr, MAXLEN, msg, args);
-                va_end(args);
 
-                GLOBAL_LOG_FUNCTION(
-                    LOGLEVEL_DEBUG, tag, sourceFile.file, sourceFile.line, sourceFile.func, formattedStr);
+                GLOBAL_LOG_FUNCTION(LOGLEVEL_DEBUG, tag, sourceFile.file, sourceFile.line, sourceFile.func, msg, args);
+
+                va_end(args);
             }
         }
 
@@ -160,12 +158,11 @@ namespace Log
             {
                 std::va_list args;
                 va_start(args, msg);
-                char formattedStr[MAXLEN] = {0};
-                vsnprintf(formattedStr, MAXLEN, msg, args);
-                va_end(args);
 
                 GLOBAL_LOG_FUNCTION(
-                    LOGLEVEL_DEBUG_VERBOSE, tag, sourceFile.file, sourceFile.line, sourceFile.func, formattedStr);
+                    LOGLEVEL_DEBUG_VERBOSE, tag, sourceFile.file, sourceFile.line, sourceFile.func, msg, args);
+
+                va_end(args);
             }
         }
 
@@ -182,12 +179,10 @@ namespace Log
             {
                 std::va_list args;
                 va_start(args, msg);
-                char formattedStr[MAXLEN] = {0};
-                vsnprintf(formattedStr, MAXLEN, msg, args);
-                va_end(args);
 
-                GLOBAL_LOG_FUNCTION(
-                    LOGLEVEL_ERROR, tag, sourceFile.file, sourceFile.line, sourceFile.func, formattedStr);
+                GLOBAL_LOG_FUNCTION(LOGLEVEL_ERROR, tag, sourceFile.file, sourceFile.line, sourceFile.func, msg, args);
+
+                va_end(args);
             }
         }
     };

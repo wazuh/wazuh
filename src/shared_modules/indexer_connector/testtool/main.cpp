@@ -4,6 +4,8 @@
 #include <iomanip>
 #include <iostream>
 
+auto constexpr MAXLEN {65536};
+
 std::string generateRandomString(size_t length)
 {
     const char alphanum[] = "0123456789"
@@ -100,7 +102,8 @@ int main(const int argc, const char* argv[])
                                              const std::string& file,
                                              const int line,
                                              const std::string& func,
-                                             const std::string& message)
+                                             const std::string& message,
+                                             va_list args)
                                           {
                                               auto pos = file.find_last_of('/');
                                               if (pos != std::string::npos)
@@ -108,16 +111,18 @@ int main(const int argc, const char* argv[])
                                                   pos++;
                                               }
                                               std::string fileName = file.substr(pos, file.size() - pos);
+                                              char formattedStr[MAXLEN] = {0};
+                                              vsnprintf(formattedStr, MAXLEN, message.c_str(), args);
 
                                               if (logLevel != LOG_ERROR)
                                               {
                                                   std::cout << tag << ":" << fileName << ":" << line << " " << func
-                                                            << " : " << message.c_str() << std::endl;
+                                                            << " : " << formattedStr << std::endl;
                                               }
                                               else
                                               {
                                                   std::cerr << tag << ":" << fileName << ":" << line << " " << func
-                                                            << " : " << message.c_str() << std::endl;
+                                                            << " : " << formattedStr << std::endl;
                                               }
                                           });
         // Read events file.

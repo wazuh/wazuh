@@ -63,12 +63,15 @@ public:
      * @param templatePath Path to the template file.
      * @param logFunction Callback function to be called when trying to log a message.
      */
-    explicit IndexerConnector(
-        const nlohmann::json& config,
-        const std::string& templatePath,
-        const std::function<
-            void(const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>&
-            logFunction = {});
+    explicit IndexerConnector(const nlohmann::json& config,
+                              const std::string& templatePath,
+                              const std::function<void(const int,
+                                                       const std::string&,
+                                                       const std::string&,
+                                                       const int,
+                                                       const std::string&,
+                                                       const std::string&,
+                                                       va_list)>& logFunction = {});
 
     ~IndexerConnector();
 

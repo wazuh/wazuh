@@ -33,10 +33,13 @@ public:
      *
      * @param logFunction Log function.
      */
-    void
-    start(const std::function<
-          void(const int, const std::string&, const std::string&, const int, const std::string&, const std::string&)>&
-              logFunction);
+    void start(const std::function<void(const int,
+                                        const std::string&,
+                                        const std::string&,
+                                        const int,
+                                        const std::string&,
+                                        const std::string&,
+                                        va_list)>& logFunction);
 
     /**
      * @brief Clear providers.

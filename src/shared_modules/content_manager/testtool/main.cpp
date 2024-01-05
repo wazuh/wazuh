@@ -70,7 +70,8 @@ void logFunction(const int logLevel,
                  const std::string& file,
                  const int line,
                  const std::string& func,
-                 const std::string& message)
+                 const std::string& message,
+                 va_list args)
 {
     auto pos {file.find_last_of('/')};
     if (pos != std::string::npos)
@@ -88,23 +89,26 @@ void logFunction(const int logLevel,
                                                             {LOGLEVEL_CRITICAL, "CRITICAL"}};
     const auto levelTag {"[" + LOG_LEVEL_TAGS.at(logLevel) + "]"};
 
+    char formattedStr[OS_MAXSTR] = {0};
+    vsnprintf(formattedStr, OS_MAXSTR, message.c_str(), args);
+
     if (logLevel == LOGLEVEL_ERROR || logLevel == LOGLEVEL_CRITICAL)
     {
         // Error logs.
-        std::cerr << tag << ":" << levelTag << ": " << message.c_str() << std::endl;
+        std::cerr << tag << ":" << levelTag << ": " << formattedStr << std::endl;
     }
     else if (logLevel == LOGLEVEL_INFO || logLevel == LOGLEVEL_WARNING)
     {
         // Info and warning logs.
-        std::cout << tag << ":" << levelTag << ": " << message.c_str() << std::endl;
+        std::cout << tag << ":" << levelTag << ": " << formattedStr << std::endl;
     }
     else
     {
         // Debug logs.
         if (VERBOSE)
         {
-            std::cout << tag << ":" << levelTag << ":" << fileName << ":" << line << " " << func << ": "
-                      << message.c_str() << std::endl;
+            std::cout << tag << ":" << levelTag << ":" << fileName << ":" << line << " " << func << ": " << formattedStr
+                      << std::endl;
         }
     }
 }
