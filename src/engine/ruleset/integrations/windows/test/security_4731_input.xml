@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<Events>
+  <Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+    <System>
+      <Provider Name="Microsoft-Windows-Security-Auditing"
+        Guid="54849625-5478-4994-A5BA-3E3B0328C30D">
+      </Provider>
+      <EventID>4731</EventID>
+      <Version>0</Version>
+      <Level>0</Level>
+      <Task>13826</Task>
+      <Opcode>0</Opcode>
+      <Keywords>0x8020000000000000</Keywords>
+      <TimeCreated SystemTime="2019-10-22T11:29:49.358676Z">
+      </TimeCreated>
+      <EventRecordID>4569</EventRecordID>
+      <Correlation>
+      </Correlation>
+      <Execution ProcessID="772" ThreadID="1664">
+      </Execution>
+      <Channel>Security</Channel>
+      <Computer>WIN-41OB2LO92CR.wlbeat.local</Computer>
+      <Security>
+      </Security>
+    </System>
+    <EventData>
+      <Data Name="TargetUserName">test_group1</Data>
+      <Data Name="TargetDomainName">WLBEAT</Data>
+      <Data Name="TargetSid">S-1-5-21-101361758-2486510592-3018839910-1111</Data>
+      <Data Name="SubjectUserSid">S-1-5-21-101361758-2486510592-3018839910-500</Data>
+      <Data Name="SubjectUserName">Administrator</Data>
+      <Data Name="SubjectDomainName">WLBEAT</Data>
+      <Data Name="SubjectLogonId">0x4a727</Data>
+      <Data Name="PrivilegeList">-</Data>
+      <Data Name="SamAccountName">test_group1</Data>
+      <Data Name="SidHistory">-</Data>
+    </EventData>
+  </Event>
+</Events>

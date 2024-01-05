@@ -1,0 +1,57 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "added-group-account",
+      "category": [
+        "iam"
+      ],
+      "code": "4731",
+      "dataset": "security",
+      "id": "4731",
+      "kind": "event",
+      "module": "security",
+      "provider": "Microsoft-Windows-Security-Auditing",
+      "start": "2019-10-22T11:29:49.358676Z",
+      "type": [
+        "group",
+        "creation"
+      ]
+    },
+    "group": {
+      "domain": "WLBEAT",
+      "id": "S-1-5-21-101361758-2486510592-3018839910-1111",
+      "name": "test_group1"
+    },
+    "host": {
+      "id": "001",
+      "name": "WIN-41OB2LO92CR.wlbeat.local"
+    },
+    "message": "A security-enabled local group was created",
+    "related": {
+      "user": [
+        "Administrator"
+      ]
+    },
+    "user": {
+      "domain": "WLBEAT",
+      "id": "S-1-5-21-101361758-2486510592-3018839910-500",
+      "name": "Administrator"
+    },
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-security"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  }
+]
