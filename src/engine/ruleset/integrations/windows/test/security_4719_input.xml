@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<Events>
+  <Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+    <System>
+      <Provider Name="Microsoft-Windows-Security-Auditing"
+        Guid="{54849625-5478-4994-A5BA-3E3B0328C30D}" />
+      <EventID>4719</EventID>
+      <Version>0</Version>
+      <Level>0</Level>
+      <Task>13568</Task>
+      <Opcode>0</Opcode>
+      <Keywords>0x8020000000000000</Keywords>
+      <TimeCreated SystemTime="2015-09-30T19:57:09.668217100Z" />
+      <EventRecordID>1049418</EventRecordID>
+      <Correlation />
+      <Execution ProcessID="516" ThreadID="4668" />
+      <Channel>Security</Channel>
+      <Computer>DC01.contoso.local</Computer>
+      <Security />
+    </System>
+    <EventData>
+      <Data Name="SubjectUserSid">S-1-5-18</Data>
+      <Data Name="SubjectUserName">DC01$</Data>
+      <Data Name="SubjectDomainName">CONTOSO</Data>
+      <Data Name="SubjectLogonId">0x3e7</Data>
+      <Data Name="CategoryId">%%8274</Data>
+      <Data Name="SubcategoryId">%%12807</Data>
+      <Data Name="SubcategoryGuid">{0CCE9223-69AE-11D9-BED3-505054503030}</Data>
+      <Data Name="AuditPolicyChanges">%%8448, %%8450</Data>
+    </EventData>
+  </Event>
+</Events>
