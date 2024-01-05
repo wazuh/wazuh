@@ -2048,7 +2048,7 @@ checks:
 
   # 9.3.7 (L1) Ensure 'Windows Firewall: Public: Logging: Name' is set to '%SystemRoot%\System32\logfiles\firewall\publicfw.log'. (Automated)
    - id: 18645
-     title: "Ensure 'Windows Firewall: Public: Logging: Name' is set to '%SystemRoot%\System32\logfiles\firewall\publicfw.log'."
+     title: "Ensure 'Windows Firewall: Public: Logging: Name' is set to '%SystemRoot%\\System32\\logfiles\\firewall\\publicfw.log'."
      description: "Use this option to specify the path and name of the file in which Windows Firewall will write its log information. The recommended state for this setting is: %SystemRoot%\\System32\\logfiles\\firewall\\publicfw.log."
      rationale: "If Windows Firewall events are not recorded it may be difficult or impossible for Administrators to analyze system issues or unauthorized activities of malicious users. Microsoft stores all firewall events as one file on the system (pfirewall.log). To improve logging, separate each firewall profile (domain, private, public) into its own distinct log file (domainfw.log, privatefw.log, publicfw.log) for better organization and identification of specific issues within each profile."
      impact: "The log file will be stored in the specified file."
@@ -2063,8 +2063,11 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.4", "10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["1.2.1", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC6.6", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogFilePath'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogFilePath -> r:System32\\logfiles\\firewall\\publicfw.log'
 
   # 9.3.8 (L1) Ensure 'Windows Firewall: Public: Logging: Size limit (KB)' is set to '16,384 KB or greater'. (Automated)
    - id: 18646
@@ -2083,8 +2086,11 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.4", "10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["1.2.1", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC6.6", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogFileSize'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogFileSize -> n:^(\d+) compare >= 16384'
 
   # 9.3.9 (L1) Ensure 'Windows Firewall: Public: Logging: Log dropped packets' is set to 'Yes'. (Automated)
    - id: 18647
@@ -2103,8 +2109,11 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.4", "10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["1.2.1", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC6.6", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogDroppedPackets'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogDroppedPackets -> 1'
 
   # 9.3.10 (L1) Ensure 'Windows Firewall: Public: Logging: Log successful connections' is set to 'Yes'. (Automated)
    - id: 18648
@@ -2123,8 +2132,11 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.4", "10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["1.2.1", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC6.6", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogSuccessfulConnections'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogSuccessfulConnections -> 1'
 
   # 17.1.1 (L1) Ensure 'Audit Credential Validation' is set to 'Success and Failure'. (Automated)
    - id: 18649
@@ -2143,8 +2155,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"Credential Validation" -> r:Success and Failure'
 
   # 17.1.2 (L1) Ensure 'Audit Kerberos Authentication Service' is set to 'Success and Failure' (DC Only). (Automated)
    - id: 18650
@@ -2163,8 +2176,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"Kerberos Authentication Service" -> r:Success and Failure'
 
   # 17.1.3 (L1) Ensure 'Audit Kerberos Service Ticket Operations' is set to 'Success and Failure' (DC Only). (Automated)
    - id: 18651
@@ -2183,8 +2197,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"Kerberos Service Ticket Operations" -> r:Success and Failure'
 
   # 17.2.1 (L1) Ensure 'Audit Application Group Management' is set to 'Success and Failure'. (Automated)
    - id: 18652
@@ -2203,8 +2218,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"Application Group Management" -> r:Success and Failure'
 
   # 17.2.2 (L1) Ensure 'Audit Computer Account Management' is set to include 'Success' (DC only). (Automated)
    - id: 18653
@@ -2223,8 +2239,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
-     rules:
+     condition: all
+     rules: 
+       - 'c:auditpol.exe /get /subcategory:"Computer Account Management" -> r:Success'
 
   # 17.2.3 (L1) Ensure 'Audit Distribution Group Management' is set to include 'Success' (DC only). (Automated)
    - id: 18654
@@ -2243,8 +2260,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"Distribution Group Management" -> r:Success'
 
   # 17.2.4 (L1) Ensure 'Audit Other Account Management Events' is set to include 'Success' (DC only). (Automated)
    - id: 18655
@@ -2263,8 +2281,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"Other Account Management Events" -> r:Success'
 
   # 17.2.5 (L1) Ensure 'Audit Security Group Management' is set to include 'Success'. (Automated)
    - id: 18656
@@ -2283,8 +2302,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"Security Group Management" -> r:Success'
 
   # 17.2.6 (L1) Ensure 'Audit User Account Management' is set to 'Success and Failure'. (Automated)
    - id: 18657
@@ -2303,8 +2323,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"User Account Management" -> r:Success and Failure'
 
   # 17.3.1 (L1) Ensure 'Audit PNP Activity' is set to include 'Success'. (Automated)
    - id: 18658
@@ -2323,8 +2344,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"Plug and Play Events" -> r:Success'
 
   # 17.3.2 (L1) Ensure 'Audit Process Creation' is set to include 'Success'. (Automated)
    - id: 18659
@@ -2343,8 +2365,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"Process Creation" -> r:Success'
 
   # 17.4.1 (L1) Ensure 'Audit Directory Service Access' is set to include 'Failure' (DC only). (Automated)
    - id: 18660
@@ -2363,8 +2386,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"Directory Service Access" -> r:Failure'
 
   # 17.4.2 (L1) Ensure 'Audit Directory Service Changes' is set to include 'Success' (DC only). (Automated)
    - id: 18661
@@ -2383,8 +2407,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"Directory Service Changes" -> r:Success'
 
   # 17.5.1 (L1) Ensure 'Audit Account Lockout' is set to include 'Failure'. (Automated)
    - id: 18662
@@ -2403,13 +2428,14 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"Account Lockout" -> r:Failure'
 
   # 17.5.2 (L1) Ensure 'Audit Group Membership' is set to include 'Success'. (Automated)
    - id: 18663
      title: "Ensure 'Audit Group Membership' is set to include 'Success'."
-     description: "This policy allows you to audit the group membership information in the user’s logon token. Events in this subcategory are generated on the computer on which a logon session is created. For an interactive logon, the security audit event is generated on the computer that the user logged on to. For a network logon, such as accessing a shared folder on the network, the security audit event is generated on the computer hosting the resource. The recommended state for this setting is to include: Success. Note: A Windows 10, Server 2016 or newer OS is required to access and set this value in Group Policy."
+     description: "This policy allows you to audit the group membership information in the user's logon token. Events in this subcategory are generated on the computer on which a logon session is created. For an interactive logon, the security audit event is generated on the computer that the user logged on to. For a network logon, such as accessing a shared folder on the network, the security audit event is generated on the computer hosting the resource. The recommended state for this setting is to include: Success. Note: A Windows 10, Server 2016 or newer OS is required to access and set this value in Group Policy."
      rationale: "Auditing these events may be useful when investigating a security incident."
      impact: "If no audit settings are configured, or if audit settings are too lax on the computers in your organization, security incidents might not be detected or not enough evidence will be available for network forensic analysis after security incidents occur. However, if audit settings are too severe, critically important entries in the Security log may be obscured by all of the meaningless entries and computer performance and the available amount of data storage may be seriously affected. Companies that operate in certain regulated industries may have legal obligations to log certain events or activities."
      remediation: "To establish the recommended configuration via GP, set the following UI path to include Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Group Membership."
@@ -2423,8 +2449,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"Group Membership" -> r:Success'
 
   # 17.5.3 (L1) Ensure 'Audit Logoff' is set to include 'Success'. (Automated)
    - id: 18664
@@ -2443,8 +2470,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"Logoff" -> r:Success'
 
   # 17.5.4 (L1) Ensure 'Audit Logon' is set to 'Success and Failure'. (Automated)
    - id: 18665
@@ -2463,8 +2491,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"Logon" -> r:Success and Failure'
 
   # 17.5.5 (L1) Ensure 'Audit Other Logon/Logoff Events' is set to 'Success and Failure'. (Automated)
    - id: 18666
@@ -2483,8 +2512,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"Other Logon/Logoff Events" -> r:Success and Failure'
 
   # 17.5.6 (L1) Ensure 'Audit Special Logon' is set to include 'Success'. (Automated)
    - id: 18667
@@ -2503,8 +2533,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"Special Logon" -> r:Success'
 
   # 17.6.1 (L1) Ensure 'Audit Detailed File Share' is set to include 'Failure'. (Automated)
    - id: 18668
@@ -2524,8 +2555,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3", "7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "7.1", "9.4.5"]
        - soc_2: ["CC5.2", "CC6.1", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"Detailed File Share" -> r:Failure'
 
   # 17.6.2 (L1) Ensure 'Audit File Share' is set to 'Success and Failure'. (Automated)
    - id: 18669
@@ -2545,8 +2577,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3", "7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "7.1", "9.4.5"]
        - soc_2: ["CC5.2", "CC6.1", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"File Share" -> r:Success and Failure'
 
   # 17.6.3 (L1) Ensure 'Audit Other Object Access Events' is set to 'Success and Failure'. (Automated)
    - id: 18670
@@ -2565,8 +2598,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"Other Object Access Events" -> r:Success and Failure'
 
   # 17.6.4 (L1) Ensure 'Audit Removable Storage' is set to 'Success and Failure'. (Automated)
    - id: 18671
@@ -2585,8 +2619,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"Removable Storage" -> r:Success and Failure'
 
   # 17.7.1 (L1) Ensure 'Audit Audit Policy Change' is set to include 'Success'. (Automated)
    - id: 18672
@@ -2605,8 +2640,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"Audit Policy Change" -> r:Success'
 
   # 17.7.2 (L1) Ensure 'Audit Authentication Policy Change' is set to include 'Success'. (Automated)
    - id: 18673
@@ -2625,8 +2661,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"Authentication Policy Change" -> r:Success'
 
   # 17.7.3 (L1) Ensure 'Audit Authorization Policy Change' is set to include 'Success'. (Automated)
    - id: 18674
@@ -2645,8 +2682,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"Authorization Policy Change" -> r:Success'
 
   # 17.7.4 (L1) Ensure 'Audit MPSSVC Rule-Level Policy Change' is set to 'Success and Failure'. (Automated)
    - id: 18675
@@ -2654,7 +2692,7 @@ checks:
      description: "This subcategory determines whether the operating system generates audit events when changes are made to policy rules for the Microsoft Protection Service (MPSSVC.exe). Events for this subcategory include: - 4944: The following policy was active when the Windows Firewall started. - 4945: A rule was listed when the Windows Firewall started. - 4946: A change has been made to Windows Firewall exception list. A rule was added. - 4947: A change has been made to Windows Firewall exception list. A rule was modified. - 4948: A change has been made to Windows Firewall exception list. A rule was deleted. - 4949: Windows Firewall settings were restored to the default values. - 4950: A Windows Firewall setting has changed. - 4951: A rule has been ignored because its major version number was not recognized by Windows Firewall. - 4952: Parts of a rule have been ignored because its minor version number was not recognized by Windows Firewall. The other parts of the rule will be enforced. - 4953: A rule has been ignored by Windows Firewall because it could not parse the rule. - 4954: Windows Firewall Group Policy settings have changed. The new settings have been applied. - 4956: Windows Firewall has changed the active profile. - 4957: Windows Firewall did not apply the following rule. - 4958: Windows Firewall did not apply the following rule because the rule referred to items not configured on this computer. The recommended state for this setting is: Success and Failure."
      rationale: "Changes to firewall rules are important for understanding the security state of the computer and how well it is protected against network attacks."
      impact: "If no audit settings are configured, or if audit settings are too lax on the computers in your organization, security incidents might not be detected or not enough evidence will be available for network forensic analysis after security incidents occur. However, if audit settings are too severe, critically important entries in the Security log may be obscured by all of the meaningless entries and computer performance and the available amount of data storage may be seriously affected. Companies that operate in certain regulated industries may have legal obligations to log certain events or activities."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Success and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Policy Change\\Audit MPSSVC Rule- Level Policy Change."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to Success and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Policy Change\\Audit MPSSVC Rule-Level Policy Change."
      compliance:
        - cis: ["17.7.4"]
        - cis_csc_v8: ["8.5"]
@@ -2665,8 +2703,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"MPSSVC Rule-Level Policy Change" -> r:Success and Failure'
 
   # 17.7.5 (L1) Ensure 'Audit Other Policy Change Events' is set to include 'Failure'. (Automated)
    - id: 18676
@@ -2685,8 +2724,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"Other Policy Change Events" -> r:Failure'
 
   # 17.8.1 (L1) Ensure 'Audit Sensitive Privilege Use' is set to 'Success and Failure'. (Automated)
    - id: 18677
@@ -2705,8 +2745,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"Sensitive Privilege Use" -> r:Success and Failure'
 
   # 17.9.1 (L1) Ensure 'Audit IPsec Driver' is set to 'Success and Failure'. (Automated)
    - id: 18678
@@ -2725,8 +2766,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"IPsec Driver" -> r:Success and Failure'
 
   # 17.9.2 (L1) Ensure 'Audit Other System Events' is set to 'Success and Failure'. (Automated)
    - id: 18679
@@ -2745,8 +2787,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"Other System Events" -> r:Success and Failure'
 
   # 17.9.3 (L1) Ensure 'Audit Security State Change' is set to include 'Success'. (Automated)
    - id: 18680
@@ -2765,8 +2808,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"Security State Change" -> r:Success'
 
   # 17.9.4 (L1) Ensure 'Audit Security System Extension' is set to include 'Success'. (Automated)
    - id: 18681
@@ -2785,8 +2829,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+       - 'c:auditpol.exe /get /subcategory:"Security System Extension" -> r:Success'
 
   # 17.9.5 (L1) Ensure 'Audit System Integrity' is set to 'Success and Failure'. (Automated)
    - id: 18682
@@ -2805,8 +2850,9 @@ checks:
        - pci_dss_v3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
        - pci_dss_v4.0: ["10.2", "10.2.1", "10.2.1.2", "10.2.1.5", "9.4.5"]
        - soc_2: ["CC5.2", "CC7.2"]
-     condition:
+     condition: all
      rules:
+      - 'c:auditpol.exe /get /subcategory:"System Integrity" -> r:Success and Failure'
 
   # 18.1.1.1 (L1) Ensure 'Prevent enabling lock screen camera' is set to 'Enabled'. (Automated)
    - id: 18683
@@ -2817,8 +2863,11 @@ checks:
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Control Panel\\Personalization\\Prevent enabling lock screen camera Note: This Group Policy path may not exist by default. It is provided by the Group Policy template ControlPanelDisplay.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
      compliance:
        - cis: ["18.1.1.1"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Personalization'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Personalization -> NoLockScreenCamera'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Personalization -> NoLockScreenCamera -> 1'
 
   # 18.1.1.2 (L1) Ensure 'Prevent enabling lock screen slide show' is set to 'Enabled'. (Automated)
    - id: 18684
@@ -2829,8 +2878,11 @@ checks:
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Control Panel\\Personalization\\Prevent enabling lock screen slide show Note: This Group Policy path may not exist by default. It is provided by the Group Policy template ControlPanelDisplay.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
      compliance:
        - cis: ["18.1.1.2"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Personalization'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Personalization -> NoLockScreenSlideshow'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Personalization -> NoLockScreenSlideshow -> 1'
 
   # 18.1.2.2 (L1) Ensure 'Allow users to enable online speech recognition services' is set to 'Disabled'. (Automated)
    - id: 18685
@@ -2849,12 +2901,15 @@ checks:
        - pci_dss_v3.2.1: ["11.5", "2.2"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
        - soc_2: ["CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\InputPersonalization'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\InputPersonalization -> AllowInputPersonalization'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\InputPersonalization -> AllowInputPersonalization -> 0'
 
   # 18.1.3 (L2) Ensure 'Allow Online Tips' is set to 'Disabled'. (Automated)
    - id: 18686
-     title: "(L2) Ensure 'Allow Online Tips' is set to 'Disabled'."
+     title: "Ensure 'Allow Online Tips' is set to 'Disabled'."
      description: "This policy setting configures the retrieval of online tips and help for the Settings app. The recommended state for this setting is: Disabled."
      rationale: "Due to privacy concerns, data should never be sent to any third-party since this data could contain sensitive information."
      impact: "Settings will not contact Microsoft content services to retrieve tips and help content."
@@ -2863,8 +2918,11 @@ checks:
        - cis: ["18.1.3"]
        - cis_csc_v7: ["9.2", "9.3"]
        - iso_27001-2013: ["A.13.1.1", "A.13.1.3"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> AllowOnlineTips'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> AllowOnlineTips -> 0'
 
   # 18.3.1 (L1) Ensure LAPS AdmPwd GPO Extension / CSE is installed (MS only). (Automated)
    - id: 18687
@@ -2883,8 +2941,10 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1", "CC6.3"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\GPExtensions\{D76B9641-3288-4f75-942D-087DE603E3EA}'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\GPExtensions\{D76B9641-3288-4f75-942D-087DE603E3EA} -> DllName'
 
   # 18.3.2 (L1) Ensure 'Do not allow password expiration time longer than required by policy' is set to 'Enabled' (MS only). (Automated)
    - id: 18688
@@ -2896,8 +2956,12 @@ checks:
      compliance:
        - cis: ["18.3.2"]
        - cis_csc_v7: ["16.10"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\GPExtensions\{D76B9641-3288-4f75-942D-087DE603E3EA} -> DllName'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PwdExpirationProtectionEnabled'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PwdExpirationProtectionEnabled -> 1'
 
   # 18.3.3 (L1) Ensure 'Enable Local Admin Password Management' is set to 'Enabled' (MS only). (Automated)
    - id: 18689
@@ -2916,8 +2980,12 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1", "CC6.3"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\GPExtensions\{D76B9641-3288-4f75-942D-087DE603E3EA} -> DllName'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> AdmPwdEnabled'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> AdmPwdEnabled -> 1'
 
   # 18.3.4 (L1) Ensure 'Password Settings: Password Complexity' is set to 'Enabled: Large letters + small letters + numbers + special characters' (MS only). (Automated)
    - id: 18690
@@ -2934,8 +3002,12 @@ checks:
        - iso_27001-2013: ["A.9.4.3"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\GPExtensions\{D76B9641-3288-4f75-942D-087DE603E3EA} -> DllName'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordComplexity'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordComplexity -> 4'
 
   # 18.3.5 (L1) Ensure 'Password Settings: Password Length' is set to 'Enabled: 15 or more' (MS only). (Automated)
    - id: 18691
@@ -2952,8 +3024,12 @@ checks:
        - iso_27001-2013: ["A.9.4.3"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\GPExtensions\{D76B9641-3288-4f75-942D-087DE603E3EA} -> DllName'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordLength'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordLength -> n:^(\d+) compare >= 15'
 
   # 18.3.6 (L1) Ensure 'Password Settings: Password Age (Days)' is set to 'Enabled: 30 or fewer' (MS only). (Automated)
    - id: 18692
@@ -2969,8 +3045,12 @@ checks:
        - cmmc_v2.0: ["IA.L2-3.5.7"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\GPExtensions\{D76B9641-3288-4f75-942D-087DE603E3EA} -> DllName'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordAgeDays'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordAgeDays -> n:^(\d+) compare <= 30'
 
   # 18.4.1 (L1) Ensure 'Apply UAC restrictions to local accounts on network logons' is set to 'Enabled' (MS only). (Automated)
    - id: 18693
@@ -2988,8 +3068,11 @@ checks:
        - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - soc_2: ["CC6.1", "CC6.3"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> LocalAccountTokenFilterPolicy'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> LocalAccountTokenFilterPolicy -> 0'
 
   # 18.4.2 (L1) Ensure 'Configure RPC packet level privacy setting for incoming connections' is set to 'Enabled'. (Automated)
    - id: 18694
@@ -3003,14 +3086,17 @@ checks:
        - 'https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-1678'
      compliance:
        - cis: ["18.4.2"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\mrxsmb10'
+       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\mrxsmb10 -> Start'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\mrxsmb10 -> Start -> 4'
 
   # 18.4.3 (L1) Ensure 'Configure SMB v1 client driver' is set to 'Enabled: Disable driver (recommended)'. (Automated)
    - id: 18695
      title: "Ensure 'Configure SMB v1 client driver' is set to 'Enabled: Disable driver (recommended)'."
      description: "This setting configures the start type for the Server Message Block version 1 (SMBv1) client driver service (MRxSmb10), which is recommended to be disabled. The recommended state for this setting is: Enabled: Disable driver (recommended). Note: Do not, under any circumstances, configure this overall setting as Disabled, as doing so will delete the underlying registry entry altogether, which will cause serious problems."
-     rationale: "Since September 2016, Microsoft has strongly encouraged that SMBv1 be disabled and no longer used on modern networks, as it is a 30 year old design that is much more vulnerable to attacks then much newer designs such as SMBv2 and SMBv3. More information on this can be found at the following links: Stop using SMB1 | Storage at Microsoft Disable SMB v1 in Managed Environments with Group Policy – \"Stay Safe\" Cyber Security Blog Disabling SMBv1 through Group Policy – Microsoft Security Guidance blog."
+     rationale: "Since September 2016, Microsoft has strongly encouraged that SMBv1 be disabled and no longer used on modern networks, as it is a 30 year old design that is much more vulnerable to attacks then much newer designs such as SMBv2 and SMBv3. More information on this can be found at the following links: Stop using SMB1 | Storage at Microsoft Disable SMB v1 in Managed Environments with Group Policy - \"Stay Safe\" Cyber Security Blog Disabling SMBv1 through Group Policy - Microsoft Security Guidance blog."
      impact: "Some legacy OSes (e.g. Windows XP, Server 2003 or older), applications and appliances may no longer be able to communicate with the system once SMBv1 is disabled. We recommend careful testing be performed to determine the impact prior to configuring this as a widespread control, and where possible, remediate any incompatibilities found with the vendor of the incompatible system. Microsoft is also maintaining a thorough (although not comprehensive) list of known SMBv1 incompatibilities at this link: SMB1 Product Clearinghouse | Storage at Microsoft."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Disable driver (recommended): Computer Configuration\\Policies\\Administrative Templates\\MS Security Guide\\Configure SMB v1 client driver Note: This Group Policy path does not exist by default. An additional Group Policy template (SecGuide.admx/adml) is required - it is available from Microsoft at this link."
      compliance:
@@ -3022,8 +3108,11 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters -> SMB1'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters -> SMB1 -> 0'
 
   # 18.4.4 (L1) Ensure 'Configure SMB v1 server' is set to 'Disabled'. (Automated)
    - id: 18696
