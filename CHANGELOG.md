@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 
 ### Manager
 
+#### Added
+
+- Added minimum time constraint of 1 hour for Vulnerability Detector feed downloads. ([#21142](https://github.com/wazuh/wazuh/pull/21142))
+
 #### Fixed
 
 - wazuh-remoted now includes the offending bytes in the warning about invalid message size from agents. ([#21011](https://github.com/wazuh/wazuh/pull/21011))
