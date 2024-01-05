@@ -138,7 +138,7 @@ def test_debug():
             patch('shuffle.LOG_FILE', return_value='integrations.log') as log_file:
         shuffle.debug(msg_template)
         open_mock.assert_called_with(log_file, 'a')
-        open_mock().write.assert_called_with(msg_template)
+        open_mock().write.assert_called_with(f"{msg_template}\n")
 
 
 @pytest.mark.parametrize('rule_id, expected_msg', [

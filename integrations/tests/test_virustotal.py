@@ -10,13 +10,17 @@ import os
 import pytest
 import sys
 import requests
+from requests.exceptions import Timeout
 from socket import socket, AF_UNIX, SOCK_DGRAM
 import virustotal as virustotal
-from unittest.mock import patch, mock_open
+from unittest.mock import patch, mock_open, call
 
 # Exit error codes
 ERR_NO_APIKEY           = 1
 ERR_BAD_ARGUMENTS       = 2
+ERR_BAD_MD5_SUM         = 3
+ERR_NO_RESPONSE_VT      = 4
+ERR_SOCKET_OPERATION    = 5
 ERR_FILE_NOT_FOUND      = 6
 ERR_INVALID_JSON        = 7
 
@@ -187,9 +191,9 @@ def test_debug():
     with patch('virustotal.debug_enabled', return_value=True), \
             patch("virustotal.open", mock_open()) as open_mock, \
             patch('virustotal.LOG_FILE', return_value='integrations.log') as log_file:
-        virustotal.debug(msg_template)
+        virustotal.debug(str(msg_template))
         open_mock.assert_called_with(log_file, 'a')
-        open_mock().write.assert_called_with(msg_template)
+        open_mock().write.assert_called_with(str(msg_template) + '\n')
 
 
 def test_send_msg_raise_exception():
@@ -210,6 +214,7 @@ def test_send_msg():
             assert data[0].decode() != None
             s.close()
         os.remove('./socket.sock')
+
 def test_request_virustotal_info_md5_after_check_fail_1():
     """Test that the md5_after field from alerts are valid md5 hash."""
     with patch('virustotal.debug') as debug:
@@ -271,3 +276,32 @@ def test_request_virustotal_info_md5_after_check_ok():
     with patch('virustotal.query_api'), patch('virustotal.in_database', return_value=False), patch('virustotal.debug') as debug:
         response = virustotal.request_virustotal_info(alert_template_md5[8],apikey_virustotal)
         assert response == alert_output
+
+def test_request_virustotal_info_exception():
+    """Test that the query_api function fails with no retries when an Exception happens."""
+    with patch('virustotal.query_api', side_effect=[Exception(), None]), \
+            patch('virustotal.debug'), \
+            pytest.raises(SystemExit) as pytest_wrapped_e:
+        virustotal.request_virustotal_info(alert_template_md5[8],apikey_virustotal)
+    assert pytest_wrapped_e.value.code == ERR_NO_RESPONSE_VT
+
+def test_request_virustotal_info_timeout_and_retries_expired():
+    """Test that the query_api function fails with retries when an Timeout exception happens (retries expired)."""
+    virustotal.retries = 2
+    with patch('virustotal.query_api', side_effect=[Timeout(), Timeout(), Timeout(), None]), \
+            patch('virustotal.send_msg'), \
+            patch('virustotal.debug'), \
+            pytest.raises(SystemExit) as pytest_wrapped_e:
+        virustotal.request_virustotal_info(alert_template_md5[8],apikey_virustotal)
+    assert pytest_wrapped_e.value.code == ERR_NO_RESPONSE_VT
+
+def test_request_virustotal_info_timeout_and_retries_not_expired():
+    """Test that the query_api function fails with retries when an Timeout exception happens (retries not expired)."""
+    virustotal.retries = 2
+    with patch('virustotal.query_api', side_effect=[Timeout(), Timeout(), None]), \
+            patch('virustotal.in_database', return_value=False), \
+            patch('virustotal.debug') as debug:
+        response = virustotal.request_virustotal_info(alert_template_md5[8],apikey_virustotal)
+        debug.assert_has_calls([call('# Error: Request timed out. Remaining retries: 2'),
+                                call('# Error: Request timed out. Remaining retries: 1')])
+    assert response == alert_output

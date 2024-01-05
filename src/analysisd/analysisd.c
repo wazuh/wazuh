@@ -993,6 +993,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     /* Initialize EPS limits */
     load_limits(Config.eps.maximum, Config.eps.timeframe, Config.eps.maximum_found);
+    w_set_available_credits_prev(Config.eps.maximum * Config.eps.timeframe);
 
     /* Create message handler thread */
     w_create_thread(ad_input_main, &m_queue);
@@ -1071,9 +1072,11 @@ void OS_ReadMSG_analysisd(int m_queue)
     while (1) {
         sleep(1);
 
-        if (limit_reached(NULL)) {
+        unsigned int credits = 0;
+        if (limit_reached(&credits)) {
             w_inc_eps_seconds_over_limit();
         }
+        w_set_available_credits_prev(credits);
 
         update_limits();
     }
@@ -1400,6 +1403,8 @@ void * ad_input_main(void * args) {
                             mdebug2("Queues are full and no EPS credits, dropping events.");
                         }
                         w_inc_eps_events_dropped();
+                    } else {
+                        w_inc_eps_events_dropped_not_eps();
                     }
                 } else {
                     w_inc_eps_events_dropped();

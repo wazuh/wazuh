@@ -24,7 +24,6 @@
 
 #include "../scheduling/wmodules_scheduling_helpers.h"
 #include "../../wrappers/common.h"
-
 #include "../../wrappers/libc/stdlib_wrappers.h"
 #include "../../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wmodules_wrappers.h"
@@ -32,11 +31,11 @@
 #include "../../wrappers/wazuh/shared/url_wrappers.h"
 #include "../../wrappers/wazuh/shared/schedule_scan_wrappers.h"
 #include "../../wrappers/libc/time_wrappers.h"
-
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
 
 #define TEST_MAX_DATES 5
+#define TEST_MAX_TENANT 3
 
 static wmodule *ms_graph_module;
 static OS_XML *lxml;
@@ -61,14 +60,18 @@ static void wmodule_cleanup(wmodule *module){
             os_free(module_data->resources[resource].name);
         }
         os_free(module_data->resources);
+        for(int i = 0; module_data->auth_config[i]; i++) {
+            os_free(module_data->auth_config[i]->tenant_id);
+            os_free(module_data->auth_config[i]->client_id);
+            os_free(module_data->auth_config[i]->secret_value);
+            os_free(module_data->auth_config[i]->access_token);
+            os_free(module_data->auth_config[i]->login_fqdn);
+            os_free(module_data->auth_config[i]->query_fqdn);
 
-        os_free(module_data->auth_config.tenant_id);
-        os_free(module_data->auth_config.client_id);
-        os_free(module_data->auth_config.secret_value);
-        os_free(module_data->auth_config.access_token);
-        os_free(module_data->auth_config.login_fqdn);
-        os_free(module_data->auth_config.query_fqdn);
+            os_free(module_data->auth_config[i]);
+        }
 
+        os_free(module_data->auth_config);
         os_free(module_data);
     }
     os_free(module->tag);
@@ -111,7 +114,6 @@ static int teardown_conf(void **state) {
 }
 
 // XML reading tests
-
 void test_bad_tag(void **state) {
     const char* config =
         "<invalid>yes</invalid>\n"
@@ -143,9 +145,7 @@ void test_bad_tag(void **state) {
 }
 
 void test_empty_module(void **state) {
-    const char* config =
-        ""
-    ;
+    const char* config = "";
     test_structure *test = *state;
     expect_string(__wrap__merror, formatted_msg, "Empty configuration found in module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
@@ -215,9 +215,10 @@ void test_enabled_no(void **state) {
     assert_int_equal(module_data->curl_max_size, OS_SIZE_1048576);
     assert_int_equal(module_data->run_on_start, 1);
     assert_string_equal(module_data->version, "v1.0");
-    assert_string_equal(module_data->auth_config.tenant_id, "example_string");
-    assert_string_equal(module_data->auth_config.client_id, "example_string");
-    assert_string_equal(module_data->auth_config.secret_value, "example_string");
+
+    assert_string_equal(module_data->auth_config[0]->tenant_id, "example_string");
+    assert_string_equal(module_data->auth_config[0]->client_id, "example_string");
+    assert_string_equal(module_data->auth_config[0]->secret_value, "example_string");
     assert_int_equal(module_data->num_resources, 2);
     assert_string_equal(module_data->resources[0].name, "security");
     assert_int_equal(module_data->resources[0].num_relationships, 2);
@@ -291,9 +292,9 @@ void test_disabled_only_future_events(void **state) {
     assert_int_equal(module_data->curl_max_size, OS_SIZE_1048576);
     assert_int_equal(module_data->run_on_start, 1);
     assert_string_equal(module_data->version, "v1.0");
-    assert_string_equal(module_data->auth_config.tenant_id, "example_string");
-    assert_string_equal(module_data->auth_config.client_id, "example_string");
-    assert_string_equal(module_data->auth_config.secret_value, "example_string");
+    assert_string_equal(module_data->auth_config[0]->tenant_id, "example_string");
+    assert_string_equal(module_data->auth_config[0]->client_id, "example_string");
+    assert_string_equal(module_data->auth_config[0]->secret_value, "example_string");
     assert_int_equal(module_data->num_resources, 2);
     assert_string_equal(module_data->resources[0].name, "security");
     assert_int_equal(module_data->resources[0].num_relationships, 2);
@@ -458,9 +459,9 @@ void test_disabled_run_on_start(void **state) {
     assert_int_equal(module_data->curl_max_size, OS_SIZE_1048576);
     assert_int_equal(module_data->run_on_start, 0);
     assert_string_equal(module_data->version, "v1.0");
-    assert_string_equal(module_data->auth_config.tenant_id, "example_string");
-    assert_string_equal(module_data->auth_config.client_id, "example_string");
-    assert_string_equal(module_data->auth_config.secret_value, "example_string");
+    assert_string_equal(module_data->auth_config[0]->tenant_id, "example_string");
+    assert_string_equal(module_data->auth_config[0]->client_id, "example_string");
+    assert_string_equal(module_data->auth_config[0]->secret_value, "example_string");
     assert_int_equal(module_data->num_resources, 2);
     assert_string_equal(module_data->resources[0].name, "security");
     assert_int_equal(module_data->resources[0].num_relationships, 2);
@@ -1061,7 +1062,6 @@ void test_invalid_attribute_resource(void **state) {
 }
 
 // Main program tests
-
 void test_normal_config(void **state) {
     const char* config =
         "<enabled>yes</enabled>\n"
@@ -1095,9 +1095,9 @@ void test_normal_config(void **state) {
     assert_int_equal(module_data->curl_max_size, OS_SIZE_1048576);
     assert_int_equal(module_data->run_on_start, 1);
     assert_string_equal(module_data->version, "v1.0");
-    assert_string_equal(module_data->auth_config.tenant_id, "example_string");
-    assert_string_equal(module_data->auth_config.client_id, "example_string");
-    assert_string_equal(module_data->auth_config.secret_value, "example_string");
+    assert_string_equal(module_data->auth_config[0]->tenant_id, "example_string");
+    assert_string_equal(module_data->auth_config[0]->client_id, "example_string");
+    assert_string_equal(module_data->auth_config[0]->secret_value, "example_string");
     assert_int_equal(module_data->num_resources, 2);
     assert_string_equal(module_data->resources[0].name, "security");
     assert_int_equal(module_data->resources[0].num_relationships, 2);
@@ -1141,11 +1141,11 @@ void test_normal_config_api_type_gcc(void **state) {
     assert_int_equal(module_data->curl_max_size, OS_SIZE_1048576);
     assert_int_equal(module_data->run_on_start, 1);
     assert_string_equal(module_data->version, "v1.0");
-    assert_string_equal(module_data->auth_config.tenant_id, "example_string");
-    assert_string_equal(module_data->auth_config.client_id, "example_string");
-    assert_string_equal(module_data->auth_config.secret_value, "example_string");
-    assert_string_equal(module_data->auth_config.login_fqdn, "login.microsoftonline.us");
-    assert_string_equal(module_data->auth_config.query_fqdn, "graph.microsoft.us");
+    assert_string_equal(module_data->auth_config[0]->tenant_id, "example_string");
+    assert_string_equal(module_data->auth_config[0]->client_id, "example_string");
+    assert_string_equal(module_data->auth_config[0]->secret_value, "example_string");
+    assert_string_equal(module_data->auth_config[0]->login_fqdn, "login.microsoftonline.us");
+    assert_string_equal(module_data->auth_config[0]->query_fqdn, "graph.microsoft.us");
     assert_int_equal(module_data->num_resources, 2);
     assert_string_equal(module_data->resources[0].name, "security");
     assert_int_equal(module_data->resources[0].num_relationships, 2);
@@ -1189,11 +1189,11 @@ void test_normal_config_api_type_dod(void **state) {
     assert_int_equal(module_data->curl_max_size, OS_SIZE_1048576);
     assert_int_equal(module_data->run_on_start, 1);
     assert_string_equal(module_data->version, "v1.0");
-    assert_string_equal(module_data->auth_config.tenant_id, "example_string");
-    assert_string_equal(module_data->auth_config.client_id, "example_string");
-    assert_string_equal(module_data->auth_config.secret_value, "example_string");
-    assert_string_equal(module_data->auth_config.login_fqdn, "login.microsoftonline.us");
-    assert_string_equal(module_data->auth_config.query_fqdn, "dod-graph.microsoft.us");
+    assert_string_equal(module_data->auth_config[0]->tenant_id, "example_string");
+    assert_string_equal(module_data->auth_config[0]->client_id, "example_string");
+    assert_string_equal(module_data->auth_config[0]->secret_value, "example_string");
+    assert_string_equal(module_data->auth_config[0]->login_fqdn, "login.microsoftonline.us");
+    assert_string_equal(module_data->auth_config[0]->query_fqdn, "dod-graph.microsoft.us");
     assert_int_equal(module_data->num_resources, 2);
     assert_string_equal(module_data->resources[0].name, "security");
     assert_int_equal(module_data->resources[0].num_relationships, 2);
@@ -1205,7 +1205,6 @@ void test_normal_config_api_type_dod(void **state) {
 }
 
 void test_cleanup() {
-
     expect_string(__wrap__mtinfo, tag, WM_MS_GRAPH_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "Module shutdown.");
     wm_ms_graph_cleanup();
@@ -1213,16 +1212,20 @@ void test_cleanup() {
 
 void test_setup_complete(void **state) {
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
+
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
+
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_string", module_data->auth_config.client_id);
-    os_strdup("example_string", module_data->auth_config.tenant_id);
-    os_strdup("example_string", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_string", module_data->auth_config[0]->client_id);
+    os_strdup("example_string", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_string", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     os_strdup("identityProtection", module_data->resources[1].name);
@@ -1250,24 +1253,24 @@ void test_setup_complete(void **state) {
     expect_string(__wrap__mterror, formatted_msg, "Unable to connect to Message Queue. Exiting...");
 
     wm_ms_graph_setup(module_data);
-
 }
 
 void test_main_token(void **state) {
-
     current_time = 1;
     unsigned int run_on_start = 1;
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -1327,24 +1330,23 @@ void test_main_token(void **state) {
     will_return(__wrap_FOREVER, 0);
 
     wm_ms_graph_main(module_data);
-
-
 }
 
 void test_main_relationships(void **state) {
-
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -1354,8 +1356,8 @@ void test_main_relationships(void **state) {
     size_t max_size = OS_SIZE_8192;
     bool initial = true;
 
-    os_strdup("token", module_data->auth_config.access_token);
-    module_data->auth_config.token_expiration_time = 276447231;
+    os_strdup("token", module_data->auth_config[0]->access_token);
+    module_data->auth_config[0]->token_expiration_time = 276447231;
 
     will_return(__wrap_FOREVER, 1);
 
@@ -1391,7 +1393,6 @@ void test_main_relationships(void **state) {
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-
     will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
@@ -1407,8 +1408,6 @@ void test_main_relationships(void **state) {
     will_return(__wrap_FOREVER, 0);
 
     wm_ms_graph_main(module_data);
-
-
 }
 
 void test_disabled(void **state) {
@@ -1467,16 +1466,18 @@ void test_dump(void **state) {
     </resource>
     */
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_string", module_data->auth_config.client_id);
-    os_strdup("example_string", module_data->auth_config.tenant_id);
-    os_strdup("example_string", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_string", module_data->auth_config[0]->client_id);
+    os_strdup("example_string", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_string", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -1510,16 +1511,18 @@ void test_dump_gcc_configuration(void **state) {
     </resource>
     */
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = false;
     module_data->only_future_events = true;
     module_data->curl_max_size = 1024L;
     module_data->run_on_start = false;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_string", module_data->auth_config.client_id);
-    os_strdup("example_string", module_data->auth_config.tenant_id);
-    os_strdup("example_string", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GCC_HIGH_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GCC_HIGH_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_string", module_data->auth_config[0]->client_id);
+    os_strdup("example_string", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_string", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GCC_HIGH_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GCC_HIGH_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     module_data->resources[0].name = NULL;
     module_data->num_resources = 1;
@@ -1553,16 +1556,18 @@ void test_dump_dod_configuration(void **state) {
     </resource>
     */
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = false;
     module_data->only_future_events = true;
     module_data->curl_max_size = 1024L;
     module_data->run_on_start = false;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_string", module_data->auth_config.client_id);
-    os_strdup("example_string", module_data->auth_config.tenant_id);
-    os_strdup("example_string", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_DOD_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_DOD_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_string", module_data->auth_config[0]->client_id);
+    os_strdup("example_string", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_string", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_DOD_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_DOD_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
 
     cJSON* dump = wm_ms_graph_dump(module_data);
     char* dump_text = cJSON_PrintUnformatted(dump);
@@ -1592,16 +1597,18 @@ void test_wm_ms_graph_get_access_token_no_response(void **state) {
     </resource>
     */
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -1624,10 +1631,9 @@ void test_wm_ms_graph_get_access_token_no_response(void **state) {
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtwarn, formatted_msg, "No response received when attempting to obtain access token.");
 
-    wm_ms_graph_get_access_token(&module_data->auth_config, max_size);
+    wm_ms_graph_get_access_token(module_data->auth_config[0], max_size);
 
-    assert_null(module_data->auth_config.access_token);
-
+    assert_null(module_data->auth_config[0]->access_token);
 }
 
 void test_wm_ms_graph_get_access_token_unsuccessful_status_code(void **state) {
@@ -1649,16 +1655,18 @@ void test_wm_ms_graph_get_access_token_unsuccessful_status_code(void **state) {
     </resource>
     */
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -1687,10 +1695,9 @@ void test_wm_ms_graph_get_access_token_unsuccessful_status_code(void **state) {
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtwarn, formatted_msg, "Received unsuccessful status code when attempting to obtain access token: Status code was '400' & response was '{\"error\":\"bad_request\"}'");
 
-    wm_ms_graph_get_access_token(&module_data->auth_config, max_size);
+    wm_ms_graph_get_access_token(module_data->auth_config[0], max_size);
 
-    assert_null(module_data->auth_config.access_token);
-
+    assert_null(module_data->auth_config[0]->access_token);
 }
 
 void test_wm_ms_graph_get_access_token_curl_max_size(void **state) {
@@ -1712,16 +1719,18 @@ void test_wm_ms_graph_get_access_token_curl_max_size(void **state) {
     </resource>
     */
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -1747,14 +1756,12 @@ void test_wm_ms_graph_get_access_token_curl_max_size(void **state) {
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
     will_return(__wrap_wurl_http_request, response);
-
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtwarn, formatted_msg, "Reached maximum CURL size when attempting to obtain access token. Consider increasing the value of 'curl_max_size'.");
 
-    wm_ms_graph_get_access_token(&module_data->auth_config, max_size);
+    wm_ms_graph_get_access_token(module_data->auth_config[0], max_size);
 
-    assert_null(module_data->auth_config.access_token);
-
+    assert_null(module_data->auth_config[0]->access_token);
 }
 
 void test_wm_ms_graph_get_access_token_parse_json_fail(void **state) {
@@ -1776,16 +1783,18 @@ void test_wm_ms_graph_get_access_token_parse_json_fail(void **state) {
     </resource>
     */
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -1811,14 +1820,12 @@ void test_wm_ms_graph_get_access_token_parse_json_fail(void **state) {
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
     will_return(__wrap_wurl_http_request, response);
-
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtwarn, formatted_msg, "Failed to parse access token JSON body.");
 
-    wm_ms_graph_get_access_token(&module_data->auth_config, max_size);
+    wm_ms_graph_get_access_token(module_data->auth_config[0], max_size);
 
-    assert_null(module_data->auth_config.access_token);
-
+    assert_null(module_data->auth_config[0]->access_token);
 }
 
 void test_wm_ms_graph_get_access_token_success(void **state) {
@@ -1840,16 +1847,18 @@ void test_wm_ms_graph_get_access_token_success(void **state) {
     </resource>
     */
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -1877,15 +1886,14 @@ void test_wm_ms_graph_get_access_token_success(void **state) {
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
     will_return(__wrap_wurl_http_request, response);
 
-    wm_ms_graph_get_access_token(&module_data->auth_config, max_size);
+    wm_ms_graph_get_access_token(module_data->auth_config[0], max_size);
 
-    assert_string_equal(module_data->auth_config.access_token, "token_value");
+    assert_string_equal(module_data->auth_config[0]->access_token, "token_value");
 #ifdef WIN32
-    assert_int_equal(module_data->auth_config.token_expiration_time, 123);
+    assert_int_equal(module_data->auth_config[0]->token_expiration_time, 123);
 #else
-    assert_int_equal(module_data->auth_config.token_expiration_time, 223);
+    assert_int_equal(module_data->auth_config[0]->token_expiration_time, 223);
 #endif
-
 }
 
 void test_wm_ms_graph_get_access_token_no_access_token(void **state) {
@@ -1907,16 +1915,18 @@ void test_wm_ms_graph_get_access_token_no_access_token(void **state) {
     </resource>
     */
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -1946,8 +1956,7 @@ void test_wm_ms_graph_get_access_token_no_access_token(void **state) {
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtwarn, formatted_msg, "Incomplete access token response, value or expiration time not present.");
 
-    wm_ms_graph_get_access_token(&module_data->auth_config, max_size);
-
+    wm_ms_graph_get_access_token(module_data->auth_config[0], max_size);
 }
 
 void test_wm_ms_graph_get_access_token_no_expire_time(void **state) {
@@ -1969,16 +1978,18 @@ void test_wm_ms_graph_get_access_token_no_expire_time(void **state) {
     </resource>
     */
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
     module_data->run_on_start = true;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -2008,8 +2019,7 @@ void test_wm_ms_graph_get_access_token_no_expire_time(void **state) {
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtwarn, formatted_msg, "Incomplete access token response, value or expiration time not present.");
 
-    wm_ms_graph_get_access_token(&module_data->auth_config, max_size);
-
+    wm_ms_graph_get_access_token(module_data->auth_config[0], max_size);
 }
 
 void test_wm_ms_graph_scan_relationships_single_initial_only_no(void **state) {
@@ -2031,17 +2041,19 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no(void **state) {
     </resource>
     */
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -2062,7 +2074,6 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no(void **state) {
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-
     will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
@@ -2076,7 +2087,6 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no(void **state) {
     expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run first scan.");
 
     wm_ms_graph_scan_relationships(module_data, initial);
-
 }
 
 void test_wm_ms_graph_scan_relationships_single_initial_only_yes_fail_write(void **state) {
@@ -2098,17 +2108,19 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_yes_fail_write(void
     </resource>
     */
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
     module_data->only_future_events = true;
     module_data->curl_max_size = 1024L;
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -2134,7 +2146,6 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_yes_fail_write(void
     expect_string(__wrap__mterror, formatted_msg, "Couldn't save running state.");
 
     wm_ms_graph_scan_relationships(module_data, initial);
-
 }
 
 void test_wm_ms_graph_scan_relationships_single_initial_only_no_next_time_no_response(void **state) {
@@ -2157,6 +2168,8 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no_next_time_no_res
     */
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
     wm_ms_graph_state_t relationship_state_struc;
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     relationship_state_struc.next_time = 10;
     module_data->enabled = true;
     module_data->only_future_events = false;
@@ -2164,12 +2177,12 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no_next_time_no_res
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
-    os_strdup("token", module_data->auth_config.access_token);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
+    os_strdup("token", module_data->auth_config[0]->access_token);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -2189,7 +2202,6 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no_next_time_no_res
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-
     will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
@@ -2208,7 +2220,6 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no_next_time_no_res
     expect_string(__wrap__mtwarn, formatted_msg, "No response received when attempting to get relationship 'alerts_v2' from resource 'security' on API version 'v1.0'.");
 
     wm_ms_graph_scan_relationships(module_data, initial);
-
 }
 
 void test_wm_ms_graph_scan_relationships_single_no_initial_no_timestamp(void **state) {
@@ -2231,6 +2242,8 @@ void test_wm_ms_graph_scan_relationships_single_no_initial_no_timestamp(void **s
     */
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
     wm_ms_graph_state_t relationship_state_struc;
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     relationship_state_struc.next_time = 10;
     module_data->enabled = true;
     module_data->only_future_events = false;
@@ -2238,11 +2251,11 @@ void test_wm_ms_graph_scan_relationships_single_no_initial_no_timestamp(void **s
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -2263,7 +2276,6 @@ void test_wm_ms_graph_scan_relationships_single_no_initial_no_timestamp(void **s
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-
     will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
@@ -2277,7 +2289,6 @@ void test_wm_ms_graph_scan_relationships_single_no_initial_no_timestamp(void **s
     expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run first scan.");
 
     wm_ms_graph_scan_relationships(module_data, initial);
-
 }
 
 void test_wm_ms_graph_scan_relationships_single_unsuccessful_status_code(void **state) {
@@ -2300,6 +2311,8 @@ void test_wm_ms_graph_scan_relationships_single_unsuccessful_status_code(void **
     */
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
     wm_ms_graph_state_t relationship_state_struc;
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     relationship_state_struc.next_time = 10;
     module_data->enabled = true;
     module_data->only_future_events = false;
@@ -2307,11 +2320,11 @@ void test_wm_ms_graph_scan_relationships_single_unsuccessful_status_code(void **
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -2337,7 +2350,6 @@ void test_wm_ms_graph_scan_relationships_single_unsuccessful_status_code(void **
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-
     will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
@@ -2356,7 +2368,6 @@ void test_wm_ms_graph_scan_relationships_single_unsuccessful_status_code(void **
     expect_string(__wrap__mtwarn, formatted_msg, "Received unsuccessful status code when attempting to get relationship 'alerts_v2' logs: Status code was '400' & response was '{\"error\":\"bad_request\"}'");
 
     wm_ms_graph_scan_relationships(module_data, initial);
-
 }
 
 void test_wm_ms_graph_scan_relationships_single_reached_curl_size(void **state) {
@@ -2379,6 +2390,8 @@ void test_wm_ms_graph_scan_relationships_single_reached_curl_size(void **state) 
     */
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
     wm_ms_graph_state_t relationship_state_struc;
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     relationship_state_struc.next_time = 10;
     module_data->enabled = true;
     module_data->only_future_events = false;
@@ -2386,11 +2399,11 @@ void test_wm_ms_graph_scan_relationships_single_reached_curl_size(void **state) 
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -2417,7 +2430,6 @@ void test_wm_ms_graph_scan_relationships_single_reached_curl_size(void **state) 
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-
     will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
@@ -2436,7 +2448,6 @@ void test_wm_ms_graph_scan_relationships_single_reached_curl_size(void **state) 
     expect_string(__wrap__mtwarn, formatted_msg, "Reached maximum CURL size when attempting to get relationship 'alerts_v2' logs. Consider increasing the value of 'curl_max_size'.");
 
     wm_ms_graph_scan_relationships(module_data, initial);
-
 }
 
 void test_wm_ms_graph_scan_relationships_single_failed_parse(void **state) {
@@ -2459,6 +2470,8 @@ void test_wm_ms_graph_scan_relationships_single_failed_parse(void **state) {
     */
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
     wm_ms_graph_state_t relationship_state_struc;
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     relationship_state_struc.next_time = 10;
     module_data->enabled = true;
     module_data->only_future_events = false;
@@ -2466,11 +2479,11 @@ void test_wm_ms_graph_scan_relationships_single_failed_parse(void **state) {
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -2497,7 +2510,6 @@ void test_wm_ms_graph_scan_relationships_single_failed_parse(void **state) {
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-
     will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
@@ -2516,7 +2528,6 @@ void test_wm_ms_graph_scan_relationships_single_failed_parse(void **state) {
     expect_string(__wrap__mtwarn, formatted_msg, "Failed to parse relationship 'alerts_v2' JSON body.");
 
     wm_ms_graph_scan_relationships(module_data, initial);
-
 }
 
 void test_wm_ms_graph_scan_relationships_single_no_logs(void **state) {
@@ -2539,6 +2550,8 @@ void test_wm_ms_graph_scan_relationships_single_no_logs(void **state) {
     */
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
     wm_ms_graph_state_t relationship_state_struc;
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     relationship_state_struc.next_time = 10;
     module_data->enabled = true;
     module_data->only_future_events = false;
@@ -2546,11 +2559,11 @@ void test_wm_ms_graph_scan_relationships_single_no_logs(void **state) {
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -2577,7 +2590,6 @@ void test_wm_ms_graph_scan_relationships_single_no_logs(void **state) {
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-
     will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
@@ -2598,7 +2610,6 @@ void test_wm_ms_graph_scan_relationships_single_no_logs(void **state) {
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-
     will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
@@ -2612,7 +2623,6 @@ void test_wm_ms_graph_scan_relationships_single_no_logs(void **state) {
     expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run next scan.");
 
     wm_ms_graph_scan_relationships(module_data, initial);
-
 }
 
 void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
@@ -2635,6 +2645,8 @@ void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
     */
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
     wm_ms_graph_state_t relationship_state_struc;
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     relationship_state_struc.next_time = 10;
     module_data->enabled = true;
     module_data->only_future_events = false;
@@ -2642,11 +2654,11 @@ void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -2674,7 +2686,6 @@ void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-
     will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
@@ -2704,7 +2715,6 @@ void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-
     will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
@@ -2718,7 +2728,6 @@ void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
     expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run next scan.");
 
     wm_ms_graph_scan_relationships(module_data, initial);
-
 }
 
 void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
@@ -2741,6 +2750,8 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     */
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
     wm_ms_graph_state_t relationship_state_struc;
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     relationship_state_struc.next_time = 10;
     module_data->enabled = true;
     module_data->only_future_events = false;
@@ -2748,11 +2759,11 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     module_data->num_resources = 1;
@@ -2780,7 +2791,6 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-
     will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
@@ -2824,7 +2834,6 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-
     will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
@@ -2838,7 +2847,6 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run next scan.");
 
     wm_ms_graph_scan_relationships(module_data, initial);
-
 }
 
 void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **state) {
@@ -2866,6 +2874,8 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
     wm_ms_graph_state_t relationship_state_struc;
     wm_ms_graph_state_t relationship_state_struc_2;
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     relationship_state_struc.next_time = 10;
     relationship_state_struc_2.next_time = 10;
     module_data->enabled = true;
@@ -2874,11 +2884,11 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     module_data->run_on_start = true;
     module_data->scan_config.interval = 60;
     os_strdup("v1.0", module_data->version);
-    os_strdup("example_client", module_data->auth_config.client_id);
-    os_strdup("example_tenant", module_data->auth_config.tenant_id);
-    os_strdup("example_secret", module_data->auth_config.secret_value);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config.login_fqdn);
-    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config.query_fqdn);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
     os_strdup("security", module_data->resources[0].name);
     os_strdup("auditlogs", module_data->resources[1].name);
@@ -2910,7 +2920,6 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-
     will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
@@ -2939,7 +2948,6 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-
     will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
@@ -2969,7 +2977,6 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-
     will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
@@ -2998,7 +3005,6 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-
     will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
@@ -3012,7 +3018,6 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     expect_string(__wrap__mterror, formatted_msg, "Couldn't save running state.");
 
     wm_ms_graph_scan_relationships(module_data, initial);
-
 }
 
 int main(void) {

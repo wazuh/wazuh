@@ -77,10 +77,17 @@ include_directories(${SRC_FOLDER}/external/openssl/include/)
 include_directories(${SRC_FOLDER}/external/libplist/bin/include/)
 include_directories(${SRC_FOLDER}/external/libdb/build_unix/)
 if(NOT CMAKE_CHECK_CENTOS5) # Avoid incompatible libraries in CentOS 5 and Red Hat 5
-include_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
-include_directories(${SRC_FOLDER}/external/libarchive/libarchive/)
-include_directories(${SRC_FOLDER}/external/rpm/builddir/output/include/)
+  include_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
+  include_directories(${SRC_FOLDER}/external/libarchive/libarchive/)
+  include_directories(${SRC_FOLDER}/external/rpm/builddir/output/include/)
 endif(NOT CMAKE_CHECK_CENTOS5)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  # Avoid download externals from http-request submodule
+  set(EXTERNAL_RES "")
+  set(PRECOMPILED_EXTERNAL_RES "")
+  include_directories(${SRC_FOLDER}/shared_modules/http-request/include/)
+  include_directories(${SRC_FOLDER}/shared_modules/http-request/shared/)
+endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
   link_directories(${INSTALL_PREFIX}/lib)
@@ -99,7 +106,10 @@ link_directories(${SRC_FOLDER}/external/libarchive/.libs/)
 link_directories(${SRC_FOLDER}/external/rpm/builddir/)
 endif(NOT CMAKE_CHECK_CENTOS5)
 link_directories(${SRC_FOLDER}/external/openssl/)
-
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  link_directories(${SRC_FOLDER}/shared_modules/http-request/build)
+endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  link_directories(${SRC_FOLDER}/external/curl/lib/.libs/)
 
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -210,6 +220,14 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 target_link_libraries(sysinfo wazuhext)
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  set(CURL_DEP "wazuhext")
+  target_link_libraries(sysinfo urlrequest)
+  if(CMAKE_CHECK_CENTOS5)
+      set(USE_HTTP 1)
+  endif(CMAKE_CHECK_CENTOS5)
+  add_subdirectory(${SRC_FOLDER}/shared_modules/http-request ${SRC_FOLDER}/shared_modules/http-request/build)
+endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 
 if(APPLE)
   add_custom_command(TARGET sysinfo

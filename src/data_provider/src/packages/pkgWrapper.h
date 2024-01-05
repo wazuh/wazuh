@@ -19,6 +19,7 @@
 #include "ipackageWrapper.h"
 #include "sharedDefs.h"
 #include "plist/plist.h"
+#include "filesystemHelper.h"
 
 static const std::string APP_INFO_PATH      { "Contents/Info.plist" };
 static const std::string PLIST_BINARY_START { "bplist00"            };
@@ -138,6 +139,8 @@ class PKGWrapper final : public IPackageWrapper
                 [this, &filePath](std::istream & data)
                 {
                     std::string line;
+                    std::string bundleShortVersionString;
+                    std::string bundleVersion;
 
                     while (std::getline(data, line))
                     {
@@ -151,12 +154,12 @@ class PKGWrapper final : public IPackageWrapper
                         else if (line == "<key>CFBundleShortVersionString</key>" &&
                                  std::getline(data, line))
                         {
-                            auto version = getValueFnc(line);
-
-                            if (!version.empty())
-                            {
-                                m_version = version;
-                            }
+                            bundleShortVersionString = getValueFnc(line);
+                        }
+                        else if (line == "<key>CFBundleVersion</key>" &&
+                                 std::getline(data, line))
+                        {
+                            bundleVersion = getValueFnc(line);
                         }
                         else if (line == "<key>LSApplicationCategoryType</key>" &&
                                  std::getline(data, line))
@@ -186,6 +189,23 @@ class PKGWrapper final : public IPackageWrapper
                         }
                     }
 
+                    if (!bundleShortVersionString.empty())
+                    {
+                        if (Utils::startsWith(bundleVersion, bundleShortVersionString))
+                        {
+                            m_version = bundleVersion;
+                        }
+                        else
+                        {
+                            m_version = bundleShortVersionString;
+                        }
+                    }
+
+                    m_architecture = UNKNOWN_VALUE;
+                    m_multiarch = UNKNOWN_VALUE;
+                    m_priority = UNKNOWN_VALUE;
+                    m_size = 0;
+                    m_installTime = UNKNOWN_VALUE;
                     m_source = filePath.find(UTILITIES_FOLDER) ? "utilities" : "applications";
                     m_location = filePath;
                 }

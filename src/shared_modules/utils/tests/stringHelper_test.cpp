@@ -170,6 +170,61 @@ TEST_F(StringUtilsTest, SplitDelimiterNullTerminated)
     EXPECT_EQ(tokens[1], "world");
 }
 
+TEST_F(StringUtilsTest, SplitMapKeyValue)
+{
+    std::string buffer("PRETTY_NAME=\"Ubuntu 22.04.1 LTS\"\n\
+NAME=\"Ubuntu\"\n\
+VERSION_ID=\"22.04\"\n\
+VERSION=\"22.04.1 LTS (Jammy Jellyfish)\"\n\
+VERSION_CODENAME=jammy\n\
+ID=ubuntu\n\
+ID_LIKE=debian\n\
+HOME_URL=\"https://www.ubuntu.com/\"\n\
+SUPPORT_URL=\"https://help.ubuntu.com/\"\n\
+BUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\n\
+PRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\n\
+UBUNTU_CODENAME=jammy\n");
+    std::map<std::string, std::string> mapResult;
+    Utils::splitMapKeyValue(buffer, '=', mapResult);
+    std::map<std::string, std::string>::iterator itMapResult;
+    EXPECT_NE(itMapResult = mapResult.find("PRETTY_NAME"), mapResult.end());
+    EXPECT_EQ(itMapResult->first, "PRETTY_NAME");
+    EXPECT_EQ(itMapResult->second, "Ubuntu 22.04.1 LTS");
+    EXPECT_NE(itMapResult = mapResult.find("NAME"), mapResult.end());
+    EXPECT_EQ(itMapResult->first, "NAME");
+    EXPECT_EQ(itMapResult->second, "Ubuntu");
+    EXPECT_NE(itMapResult = mapResult.find("VERSION_ID"), mapResult.end());
+    EXPECT_EQ(itMapResult->first, "VERSION_ID");
+    EXPECT_EQ(itMapResult->second, "22.04");
+    EXPECT_NE(itMapResult = mapResult.find("VERSION"), mapResult.end());
+    EXPECT_EQ(itMapResult->first, "VERSION");
+    EXPECT_EQ(itMapResult->second, "22.04.1 LTS (Jammy Jellyfish)");
+    EXPECT_NE(itMapResult = mapResult.find("VERSION_CODENAME"), mapResult.end());
+    EXPECT_EQ(itMapResult->first, "VERSION_CODENAME");
+    EXPECT_EQ(itMapResult->second, "jammy");
+    EXPECT_NE(itMapResult = mapResult.find("ID"), mapResult.end());
+    EXPECT_EQ(itMapResult->first, "ID");
+    EXPECT_EQ(itMapResult->second, "ubuntu");
+    EXPECT_NE(itMapResult = mapResult.find("ID_LIKE"), mapResult.end());
+    EXPECT_EQ(itMapResult->first, "ID_LIKE");
+    EXPECT_EQ(itMapResult->second, "debian");
+    EXPECT_NE(itMapResult = mapResult.find("HOME_URL"), mapResult.end());
+    EXPECT_EQ(itMapResult->first, "HOME_URL");
+    EXPECT_EQ(itMapResult->second, "https://www.ubuntu.com/");
+    EXPECT_NE(itMapResult = mapResult.find("SUPPORT_URL"), mapResult.end());
+    EXPECT_EQ(itMapResult->first, "SUPPORT_URL");
+    EXPECT_EQ(itMapResult->second, "https://help.ubuntu.com/");
+    EXPECT_NE(itMapResult = mapResult.find("BUG_REPORT_URL"), mapResult.end());
+    EXPECT_EQ(itMapResult->first, "BUG_REPORT_URL");
+    EXPECT_EQ(itMapResult->second, "https://bugs.launchpad.net/ubuntu/");
+    EXPECT_NE(itMapResult = mapResult.find("PRIVACY_POLICY_URL"), mapResult.end());
+    EXPECT_EQ(itMapResult->first, "PRIVACY_POLICY_URL");
+    EXPECT_EQ(itMapResult->second, "https://www.ubuntu.com/legal/terms-and-policies/privacy-policy");
+    EXPECT_NE(itMapResult = mapResult.find("UBUNTU_CODENAME"), mapResult.end());
+    EXPECT_EQ(itMapResult->first, "UBUNTU_CODENAME");
+    EXPECT_EQ(itMapResult->second, "jammy");
+}
+
 TEST_F(StringUtilsTest, CheckMultiReplacement)
 {
     std::string string_base { "hello         world" };

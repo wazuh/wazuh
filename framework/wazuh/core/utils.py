@@ -997,7 +997,7 @@ def load_wazuh_xml(xml_path, data=None):
     data = re.sub(r"<(?!/?\w+.+>|!--)", "&lt;", data)
 
     # replace \< by &lt, only outside xml tags;
-    data = re.sub(r'^&backslash;<(.*[^>])$', '&backslash;&lt;\g<1>', data)
+    data = re.sub(r'^&backslash;<(.*[^>])$', r'&backslash;&lt;\g<1>', data)
 
     # replace \> by &gt;
     data = re.sub(r'&backslash;>', '&backslash;&gt;', data)

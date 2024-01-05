@@ -178,6 +178,22 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             if not os.path.exists(worker_tmp_files):
                 utils.mkdir_with_mode(worker_tmp_files)
 
+    def connection_lost(self, exc):
+        """Define process of closing connection with the server.
+
+        Cancel all tasks and set 'on_con_lost' as True if not already.
+
+        Parameters
+        ----------
+        exc : Exception, None
+            'None' means a regular EOF is received, or the connection was aborted or closed
+            by this side of the connection.
+        """
+        super().connection_lost(exc)
+
+        # Clean cluster files from previous executions.
+        cluster.clean_up(node_name=self.name)
+
     def process_request(self, command: bytes, data: bytes) -> Union[bytes, Tuple[bytes, bytes]]:
         """Define all commands that a worker can receive from the master.
 
@@ -208,7 +224,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             return self.setup_sync_integrity(command, data)
         elif command == b'syn_m_a_e':
             logger = self.task_loggers['Agent-info sync']
-            start_time = self.agent_info_sync_status['date_start']
+            start_time = datetime.utcfromtimestamp(self.agent_info_sync_status['date_start'])
             return c_common.end_sending_agent_information(logger, start_time, data.decode())
         elif command == b'syn_m_a_err':
             logger = self.task_loggers['Agent-info sync']

@@ -27,6 +27,7 @@ def test_async_init():
     assert async_wdb._writer is None
 
 
+@pytest.mark.asyncio
 @patch('asyncio.open_unix_connection', return_value=[AsyncMock(), MagicMock()])
 async def test_async_open_connection(open_unix_connection_mock):
     """Verify that open_unix_connection is called with expected parameters."""
@@ -34,7 +35,7 @@ async def test_async_open_connection(open_unix_connection_mock):
     await async_wdb.open_connection()
     assert async_wdb._reader is not None
     assert async_wdb._writer is not None
-    open_unix_connection_mock.assert_called_once_with(path=common.WDB_SOCKET, loop='test_loop')
+    open_unix_connection_mock.assert_awaited_once_with(path=common.WDB_SOCKET)
 
 
 def test_async_close():
@@ -45,6 +46,7 @@ def test_async_close():
     async_wdb._writer.close.assert_called_once_with()
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize('raw, expected_response', [
     (False, {'test': 'test response'}),
     (True, ['ok', '{"test": "test response"}'])
@@ -68,6 +70,7 @@ async def test_async_send(raw, expected_response):
     async_wdb._reader.readexactly.assert_has_calls([call(4), call(28)])
 
 
+@pytest.mark.asyncio
 async def test_async_send_ko():
     """Verify that expected exception codes are raised."""
     async_wdb = AsyncWazuhDBConnection()
@@ -91,6 +94,7 @@ async def test_async_send_ko():
         await async_wdb._send('test')
 
 
+@pytest.mark.asyncio
 async def test_run_wdb_command():
     """Test `WazuhDBConnection.run_wdb_command` method."""
     send_result = ('status', '["data"]')
@@ -104,6 +108,7 @@ async def test_run_wdb_command():
     assert result == send_result, 'Expected command response does not match'
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize('wdb_response', [
     ('err', 'Extra custom test message'),
     ('err', )

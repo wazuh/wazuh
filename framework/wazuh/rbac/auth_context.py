@@ -58,7 +58,7 @@ class RBAChecker:
         if role is None:
             # All system's roles
             with orm.RolesManager() as rm:
-                roles_list = map(orm.Roles.to_dict, rm.get_roles())
+                roles_list = list(map(orm.Roles.to_dict, rm.get_roles()))
         else:
             roles_list = [role] if not isinstance(role, list) else role
 

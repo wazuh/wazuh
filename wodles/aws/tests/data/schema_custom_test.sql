@@ -21,7 +21,7 @@ INSERT INTO 'custom' (
     processed_date,
     created_date) VALUES (
     'test-bucket/',
-    '123456789',
+    '123456789123',
     'custom/2019/04/15/07/firehose_custom-1-2019-04-15-09-16-03.zip',
     DATETIME('now'),
     '');
@@ -33,7 +33,7 @@ INSERT INTO 'custom' (
     processed_date,
     created_date) VALUES (
     'test-bucket/',
-    '123456789',
+    '123456789123',
     'custom/2019/04/15/07/firehose_custom-1-2019-04-15-10-16-03.zip',
     DATETIME('now'),
     '');
@@ -45,7 +45,7 @@ INSERT INTO 'custom' (
     processed_date,
     created_date) VALUES (
     'test-bucket/',
-    '123456789',
+    '123456789123',
     'custom/2019/04/15/07/firehose_custom-1-2019-04-15-11-16-03.zip',
     DATETIME('now'),
     '');
@@ -57,7 +57,7 @@ INSERT INTO 'custom' (
     processed_date,
     created_date) VALUES (
     'test-bucket/',
-    '123456789',
+    '123456789123',
     'custom/2019/04/15/07/firehose_custom-1-2019-04-15-13-19-03.zip',
     DATETIME('now'),
     '');
@@ -69,7 +69,7 @@ INSERT INTO 'custom' (
     processed_date,
     created_date) VALUES (
     'test-bucket/',
-    '123456789',
+    '123456789123',
     'custom/2019/04/15/07/firehose_custom-1-2019-04-15-12-16-03.zip',
     DATETIME('now'),
     '');
@@ -81,7 +81,7 @@ INSERT INTO 'custom' (
     processed_date,
     created_date) VALUES (
     'test-bucket/',
-    '123456789',
+    '123456789123',
     'custom/2019/04/15/07/firehose_custom-1-2019-04-15-13-17-03.zip',
     DATETIME('now'),
     '');
@@ -93,7 +93,7 @@ INSERT INTO 'custom' (
     processed_date,
     created_date) VALUES (
     'test-bucket/',
-    '123456789',
+    '123456789123',
     'custom/2019/04/15/07/firehose_custom-1-2019-04-15-08-16-03.zip',
     DATETIME('now'),
     '');
@@ -105,8 +105,7 @@ INSERT INTO 'custom' (
     processed_date,
     created_date) VALUES (
     'test-bucket/',
-    '123456789',
+    '123456789123',
     'custom/2019/04/15/07/firehose_custom-1-2019-04-15-13-18-03.zip',
     DATETIME('now'),
     '');
-

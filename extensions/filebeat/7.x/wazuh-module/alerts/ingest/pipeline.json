@@ -90,15 +90,11 @@
       }
     },
     {
-      "date_index_name": {
-        "field": "timestamp",
-        "date_rounding": "d",
-        "index_name_prefix": "{{fields.index_prefix}}",
-        "index_name_format": "yyyy.MM.dd",
-        "ignore_failure": false
+      "set": {
+        "field": "_index",
+        "value": "wazuh-alerts"
       }
     },
-
     { "remove": { "field": "message", "ignore_missing": true, "ignore_failure": true } },
     { "remove": { "field": "ecs", "ignore_missing": true, "ignore_failure": true } },
     { "remove": { "field": "beat", "ignore_missing": true, "ignore_failure": true } },

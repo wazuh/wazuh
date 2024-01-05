@@ -74,7 +74,6 @@ except Exception as e:
 debug_enabled: bool = False
 pwd: str = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 json_alert: dict = {}
-now: str = time.strftime("%a %b %d %H:%M:%S %Z %Y")
 
 # Set paths
 LOG_FILE: str = os.path.join(pwd, 'logs', 'integrations.log')
@@ -235,23 +234,23 @@ def main(args: list):
         bad_arguments = False
         if len(args) >= 4:
             msg = "{0} {1} {2} {3} {4}".format(
-                now,
                 args[1],
                 args[2],
                 args[3],
                 args[4] if len(args) > 4 else "",
+                args[5] if len(args) > 5 else ""
             )
             debug_enabled = len(args) > 4 and args[4] == "debug"
         else:
-            msg = f"{now} Wrong arguments"
+            msg = '# ERROR: Wrong arguments'
             bad_arguments = True
 
         # Logging the call
         with open(LOG_FILE, "a") as f:
-            f.write(msg + "\n")
+            f.write(msg + '\n')
 
         if bad_arguments:
-            debug(f"# Exiting: Bad arguments. Inputted: {args}")
+            debug("# ERROR: Exiting, bad arguments. Inputted: %s" % args)
             sys.exit(2)
 
         # Main function
@@ -328,10 +327,9 @@ def debug(msg: str):
         The debug message to print.
     """
     if debug_enabled:
-        msg = "{0}: {1}\n".format(now, msg)
         print(msg)
         with open(LOG_FILE, "a") as f:
-            f.write(msg)
+            f.write(msg + '\n')
 
 
 def get_ioc_confidence(ioc: dict) -> str:

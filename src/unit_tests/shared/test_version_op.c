@@ -17,6 +17,7 @@
 #include "shared.h"
 #include "../wrappers/common.h"
 #include "../wrappers/libc/stdio_wrappers.h"
+#include "../wrappers/wazuh/shared/binaries_op_wrappers.h"
 #include "../headers/version_op.h"
 
 /* setup/teardowns */
@@ -1165,7 +1166,13 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
     will_return(__wrap_fopen, 0);
 
     // uname
-    expect_string(__wrap_popen, command, "uname");
+    char *uname_path = NULL;
+    os_strdup("/path/to/uname", uname_path);
+    expect_string(__wrap_get_binary_path, command, "uname");
+    will_return(__wrap_get_binary_path, uname_path);
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/uname");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1173,7 +1180,13 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
     will_return(__wrap_fgets, "Darwin\n");
 
     // system_profiler SPSoftwareDataType
-    expect_string(__wrap_popen, command, "system_profiler SPSoftwareDataType");
+    char *system_profiler_path = NULL;
+    os_strdup("/path/to/system_profiler", system_profiler_path);
+    expect_string(__wrap_get_binary_path, command, "system_profiler");
+    will_return(__wrap_get_binary_path, system_profiler_path);
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/system_profiler SPSoftwareDataType");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1196,7 +1209,13 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
     will_return(__wrap_pclose, 1);
 
     // sw_vers -productVersion
-    expect_string(__wrap_popen, command, "sw_vers -productVersion");
+    char *sw_vers_path = NULL;
+    os_strdup("/path/to/sw_vers", sw_vers_path);
+    expect_string(__wrap_get_binary_path, command, "sw_vers");
+    will_return(__wrap_get_binary_path, sw_vers_path);
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/sw_vers -productVersion");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1207,7 +1226,7 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
     will_return(__wrap_pclose, 1);
 
     // sw_vers -buildVersion
-    expect_string(__wrap_popen, command, "sw_vers -buildVersion");
+    expect_string(__wrap_popen, command, "/path/to/sw_vers -buildVersion");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1218,7 +1237,7 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
     will_return(__wrap_pclose, 1);
 
     // uname -r
-    expect_string(__wrap_popen, command, "uname -r");
+    expect_string(__wrap_popen, command, "/path/to/uname -r");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1310,7 +1329,13 @@ void test_get_unix_version_fail_os_release_uname_darwin_no_key(void **state)
     will_return(__wrap_fopen, 0);
 
     // uname
-    expect_string(__wrap_popen, command, "uname");
+    char *uname_path = NULL;
+    os_strdup("/path/to/uname", uname_path);
+    expect_string(__wrap_get_binary_path, command, "uname");
+    will_return(__wrap_get_binary_path, uname_path);
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/uname");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1318,7 +1343,13 @@ void test_get_unix_version_fail_os_release_uname_darwin_no_key(void **state)
     will_return(__wrap_fgets, "Darwin\n");
 
     // system_profiler SPSoftwareDataType
-    expect_string(__wrap_popen, command, "system_profiler SPSoftwareDataType");
+    char *cmd_path = NULL;
+    os_strdup("/path/to/system_profiler", cmd_path);
+    expect_string(__wrap_get_binary_path, command, "system_profiler");
+    will_return(__wrap_get_binary_path, cmd_path);
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/system_profiler SPSoftwareDataType");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1335,7 +1366,13 @@ void test_get_unix_version_fail_os_release_uname_darwin_no_key(void **state)
     will_return(__wrap_pclose, 1);
 
     // sw_vers -productVersion
-    expect_string(__wrap_popen, command, "sw_vers -productVersion");
+    char *sw_vers_path = NULL;
+    os_strdup("/path/to/sw_vers", sw_vers_path);
+    expect_string(__wrap_get_binary_path, command, "sw_vers");
+    will_return(__wrap_get_binary_path, sw_vers_path);
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/sw_vers -productVersion");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1346,7 +1383,7 @@ void test_get_unix_version_fail_os_release_uname_darwin_no_key(void **state)
     will_return(__wrap_pclose, 1);
 
     // sw_vers -buildVersion
-    expect_string(__wrap_popen, command, "sw_vers -buildVersion");
+    expect_string(__wrap_popen, command, "/path/to/sw_vers -buildVersion");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1357,7 +1394,7 @@ void test_get_unix_version_fail_os_release_uname_darwin_no_key(void **state)
     will_return(__wrap_pclose, 1);
 
     // uname -r
-    expect_string(__wrap_popen, command, "uname -r");
+    expect_string(__wrap_popen, command, "/path/to/uname -r");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1449,7 +1486,13 @@ void test_get_unix_version_fail_os_release_uname_sunos(void **state)
     will_return(__wrap_fopen, 0);
 
     // uname
-    expect_string(__wrap_popen, command, "uname");
+    char *uname_path = NULL;
+    os_strdup("/path/to/uname", uname_path);
+    expect_string(__wrap_get_binary_path, command, "uname");
+    will_return(__wrap_get_binary_path, uname_path);
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/uname");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1479,6 +1522,219 @@ void test_get_unix_version_fail_os_release_uname_sunos(void **state)
     assert_string_equal(ret->os_major, "11");
     assert_string_equal(ret->os_minor, "1");
     assert_string_equal(ret->os_version, "11.1");
+    assert_string_equal(ret->os_platform, "sunos");
+    assert_string_equal(ret->sysname, "Linux");
+}
+
+// Scenario two: The content of /etc/release is Solaris 10 x/y ...
+void test_get_unix_version_fail_os_release_uname_sunos_10_scenario_one(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Fail to open /etc/os-release
+    expect_string(__wrap_fopen, path, "/etc/os-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /usr/lib/os-release
+    expect_string(__wrap_fopen, path, "/usr/lib/os-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/centos-release
+    expect_string(__wrap_fopen, path, "/etc/centos-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/fedora-release
+    expect_string(__wrap_fopen, path, "/etc/fedora-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/redhat-release
+    expect_string(__wrap_fopen, path, "/etc/redhat-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/arch-release
+    expect_string(__wrap_fopen, path, "/etc/arch-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/lsb-release
+    expect_string(__wrap_fopen, path, "/etc/lsb-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/gentoo-release
+    expect_string(__wrap_fopen, path, "/etc/gentoo-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/SuSE-release
+    expect_string(__wrap_fopen, path, "/etc/SuSE-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/debian_version
+    expect_string(__wrap_fopen, path, "/etc/debian_version");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/slackware-version
+    expect_string(__wrap_fopen, path, "/etc/slackware-version");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/alpine-release
+    expect_string(__wrap_fopen, path, "/etc/alpine-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // uname
+    char *uname_path = NULL;
+    os_strdup("/path/to/uname", uname_path);
+    expect_string(__wrap_get_binary_path, command, "uname");
+    will_return(__wrap_get_binary_path, uname_path);
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/uname");
+    expect_string(__wrap_popen, type, "r");
+    will_return(__wrap_popen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "SunOS\n");
+
+    // Open /etc/release
+    expect_string(__wrap_fopen, path, "/etc/release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "Solaris 10 1/13");
+
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+
+    expect_value(__wrap_pclose, stream, 1);
+    will_return(__wrap_pclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "SunOS");
+    assert_string_equal(ret->os_major, "10");
+    assert_string_equal(ret->os_version, "10");
+    assert_string_equal(ret->os_platform, "sunos");
+    assert_string_equal(ret->sysname, "Linux");
+}
+
+// Scenario two: The content of /etc/release is Oracle Solaris 10 x/y ...
+void test_get_unix_version_fail_os_release_uname_sunos_10_scenario_two(void **state)
+{
+    (void) state;
+    os_info *ret;
+
+    // Fail to open /etc/os-release
+    expect_string(__wrap_fopen, path, "/etc/os-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /usr/lib/os-release
+    expect_string(__wrap_fopen, path, "/usr/lib/os-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/centos-release
+    expect_string(__wrap_fopen, path, "/etc/centos-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/fedora-release
+    expect_string(__wrap_fopen, path, "/etc/fedora-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/redhat-release
+    expect_string(__wrap_fopen, path, "/etc/redhat-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/arch-release
+    expect_string(__wrap_fopen, path, "/etc/arch-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/lsb-release
+    expect_string(__wrap_fopen, path, "/etc/lsb-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/gentoo-release
+    expect_string(__wrap_fopen, path, "/etc/gentoo-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/SuSE-release
+    expect_string(__wrap_fopen, path, "/etc/SuSE-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/debian_version
+    expect_string(__wrap_fopen, path, "/etc/debian_version");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/slackware-version
+    expect_string(__wrap_fopen, path, "/etc/slackware-version");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/alpine-release
+    expect_string(__wrap_fopen, path, "/etc/alpine-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // uname
+    char *uname_path = NULL;
+    os_strdup("/path/to/uname", uname_path);
+    expect_string(__wrap_get_binary_path, command, "uname");
+    will_return(__wrap_get_binary_path, uname_path);
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/uname");
+    expect_string(__wrap_popen, type, "r");
+    will_return(__wrap_popen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "SunOS\n");
+
+    // Open /etc/release
+    expect_string(__wrap_fopen, path, "/etc/release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 1);
+
+    expect_value(__wrap_fgets, __stream, 1);
+    will_return(__wrap_fgets, "Oracle Solaris 10 1/13");
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+
+    expect_value(__wrap_pclose, stream, 1);
+    will_return(__wrap_pclose, 1);
+
+    ret = get_unix_version();
+    *state = ret;
+
+    assert_non_null(ret);
+    assert_string_equal(ret->os_name, "SunOS");
+    assert_string_equal(ret->os_major, "10");
+    assert_string_equal(ret->os_version, "10");
     assert_string_equal(ret->os_platform, "sunos");
     assert_string_equal(ret->sysname, "Linux");
 }
@@ -1549,7 +1805,13 @@ void test_get_unix_version_fail_os_release_uname_hp_ux(void **state)
     will_return(__wrap_fopen, 0);
 
     // uname
-    expect_string(__wrap_popen, command, "uname");
+    char *uname_path = NULL;
+    os_strdup("/path/to/uname", uname_path);
+    expect_string(__wrap_get_binary_path, command, "uname");
+    will_return(__wrap_get_binary_path, uname_path);
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/uname");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1557,7 +1819,7 @@ void test_get_unix_version_fail_os_release_uname_hp_ux(void **state)
     will_return(__wrap_fgets, "HP-UX\n");
 
     // uname - r
-    expect_string(__wrap_popen, command, "uname -r");
+    expect_string(__wrap_popen, command, "/path/to/uname -r");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1649,7 +1911,13 @@ void test_get_unix_version_fail_os_release_uname_bsd(void **state)
     will_return(__wrap_fopen, 0);
 
     // uname
-    expect_string(__wrap_popen, command, "uname");
+    char *uname_path = NULL;
+    os_strdup("/path/to/uname", uname_path);
+    expect_string(__wrap_get_binary_path, command, "uname");
+    will_return(__wrap_get_binary_path, uname_path);
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/uname");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1657,7 +1925,7 @@ void test_get_unix_version_fail_os_release_uname_bsd(void **state)
     will_return(__wrap_fgets, "OpenBSD\n");
 
     // uname - r
-    expect_string(__wrap_popen, command, "uname -r");
+    expect_string(__wrap_popen, command, "/path/to/uname -r");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1749,7 +2017,13 @@ void test_get_unix_version_zscaler(void **state)
     will_return(__wrap_fopen, 0);
 
     // uname
-    expect_string(__wrap_popen, command, "uname");
+    char *uname_path = NULL;
+    os_strdup("/path/to/uname", uname_path);
+    expect_string(__wrap_get_binary_path, command, "uname");
+    will_return(__wrap_get_binary_path, uname_path);
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/uname");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1757,7 +2031,7 @@ void test_get_unix_version_zscaler(void **state)
     will_return(__wrap_fgets, "ZscalerOS\n");
 
     // uname - r
-    expect_string(__wrap_popen, command, "uname -r");
+    expect_string(__wrap_popen, command, "/path/to/uname -r");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1846,7 +2120,13 @@ void test_get_unix_version_fail_os_release_uname_aix(void **state)
     will_return(__wrap_fopen, 0);
 
     // uname
-    expect_string(__wrap_popen, command, "uname");
+    char *uname_path = NULL;
+    os_strdup("/path/to/uname", uname_path);
+    expect_string(__wrap_get_binary_path, command, "uname");
+    will_return(__wrap_get_binary_path, uname_path);
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/uname");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -1854,7 +2134,13 @@ void test_get_unix_version_fail_os_release_uname_aix(void **state)
     will_return(__wrap_fgets, "AIX\n");
 
     // oslevel
-    expect_string(__wrap_popen, command, "oslevel");
+    char *oslevel_path = NULL;
+    os_strdup("/path/to/oslevel", oslevel_path);
+    expect_string(__wrap_get_binary_path, command, "oslevel");
+    will_return(__wrap_get_binary_path, oslevel_path);
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_string(__wrap_popen, command, "/path/to/oslevel");
     expect_string(__wrap_popen, type, "r");
     will_return(__wrap_popen, 1);
 
@@ -2051,6 +2337,8 @@ int main(void) {
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_darwin, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_darwin_no_key, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_sunos, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_sunos_10_scenario_one, delete_os_info),
+            cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_sunos_10_scenario_two, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_hp_ux, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_bsd, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_zscaler, delete_os_info),

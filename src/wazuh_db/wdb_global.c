@@ -85,15 +85,7 @@ int wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* regi
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
-    case SQLITE_ROW:
-    case SQLITE_DONE:
-        return OS_SUCCESS;
-        break;
-    default:
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
+    return wdb_exec_stmt_silent(stmt);
 }
 
 int wdb_global_update_agent_name(wdb_t *wdb, int id, char* name) {
@@ -120,15 +112,7 @@ int wdb_global_update_agent_name(wdb_t *wdb, int id, char* name) {
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
-    case SQLITE_ROW:
-    case SQLITE_DONE:
-        return OS_SUCCESS;
-        break;
-    default:
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
+    return wdb_exec_stmt_silent(stmt);
 }
 
 int wdb_global_update_agent_version(wdb_t *wdb,
@@ -246,15 +230,7 @@ int wdb_global_update_agent_version(wdb_t *wdb,
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
-    case SQLITE_ROW:
-    case SQLITE_DONE:
-        return OS_SUCCESS;
-        break;
-    default:
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
+    return wdb_exec_stmt_silent(stmt);
 }
 
 cJSON* wdb_global_get_agent_labels(wdb_t *wdb, int id) {
@@ -307,15 +283,7 @@ int wdb_global_del_agent_labels(wdb_t *wdb, int id) {
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
-    case SQLITE_ROW:
-    case SQLITE_DONE:
-        return OS_SUCCESS;
-        break;
-    default:
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
+    return wdb_exec_stmt_silent(stmt);
 }
 
 int wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value) {
@@ -346,15 +314,7 @@ int wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value) {
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
-    case SQLITE_ROW:
-    case SQLITE_DONE:
-        return OS_SUCCESS;
-        break;
-    default:
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
+    return wdb_exec_stmt_silent(stmt);
 }
 
 int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *connection_status, const char* sync_status) {
@@ -385,15 +345,7 @@ int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *connection
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
-    case SQLITE_ROW:
-    case SQLITE_DONE:
-        return OS_SUCCESS;
-        break;
-    default:
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
+    return wdb_exec_stmt_silent(stmt);
 }
 
 int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char *connection_status, const char *sync_status, int status_code) {
@@ -437,15 +389,7 @@ int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char *co
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
-    case SQLITE_ROW:
-    case SQLITE_DONE:
-        return OS_SUCCESS;
-        break;
-    default:
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
+    return wdb_exec_stmt_silent(stmt);
 }
 
 int wdb_global_update_agent_status_code(wdb_t *wdb, int id, int status_code, const char *version, const char *sync_status) {
@@ -483,15 +427,7 @@ int wdb_global_update_agent_status_code(wdb_t *wdb, int id, int status_code, con
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
-    case SQLITE_ROW:
-    case SQLITE_DONE:
-        return OS_SUCCESS;
-        break;
-    default:
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
+    return wdb_exec_stmt_silent(stmt);
 }
 
 int wdb_global_delete_agent(wdb_t *wdb, int id) {
@@ -514,15 +450,7 @@ int wdb_global_delete_agent(wdb_t *wdb, int id) {
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
-    case SQLITE_ROW:
-    case SQLITE_DONE:
-        return OS_SUCCESS;
-        break;
-    default:
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
+    return wdb_exec_stmt_silent(stmt);
 }
 
 cJSON* wdb_global_select_agent_name(wdb_t *wdb, int id) {
@@ -624,7 +552,6 @@ cJSON* wdb_global_find_agent(wdb_t *wdb, const char *name, const char *ip) {
 }
 
 int wdb_global_update_agent_groups_hash(wdb_t* wdb, int agent_id, char* groups_string) {
-    int result = OS_INVALID;
     char groups_hash[WDB_GROUP_HASH_SIZE+1] = {0};
 
     // If the comma-separated groups string is not sent, read it from 'group' column
@@ -666,16 +593,7 @@ int wdb_global_update_agent_groups_hash(wdb_t* wdb, int agent_id, char* groups_s
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
-    case SQLITE_DONE:
-        result = OS_SUCCESS;
-        break;
-    default:
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
-        result = OS_INVALID;
-    }
-
-    return result;
+    return wdb_exec_stmt_silent(stmt);
 }
 
 int wdb_global_adjust_v4(wdb_t* wdb) {
@@ -780,15 +698,7 @@ int wdb_global_insert_agent_group(wdb_t *wdb, char* group_name) {
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
-    case SQLITE_ROW:
-    case SQLITE_DONE:
-        return OS_SUCCESS;
-        break;
-    default:
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
+    return wdb_exec_stmt_silent(stmt);
 }
 
 cJSON* wdb_global_select_group_belong(wdb_t *wdb, int id_agent) {
@@ -851,15 +761,7 @@ int wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent, int p
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
-    case SQLITE_ROW:
-    case SQLITE_DONE:
-        return OS_SUCCESS;
-        break;
-    default:
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
+    return wdb_exec_stmt_silent(stmt);
 }
 
 int wdb_global_delete_tuple_belong(wdb_t *wdb, int id_group, int id_agent) {
@@ -898,6 +800,7 @@ int wdb_global_delete_group(wdb_t *wdb, char* group_name) {
     int is_worker = OS_INVALID;
     char* sync_status = NULL;
     int result = OS_INVALID;
+    bool err_flag = false;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("Cannot begin transaction");
@@ -919,9 +822,7 @@ int wdb_global_delete_group(wdb_t *wdb, char* group_name) {
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
-    case SQLITE_ROW:
-    case SQLITE_DONE:
+    if (OS_SUCCESS == wdb_exec_stmt_silent(stmt)) {
         sync_status = (w_is_single_node(&is_worker) || is_worker)?"synced":"syncreq";
         cJSON_ArrayForEach(agent_id_item, sql_agents_id) {
             cJSON* agent_id = cJSON_GetObjectItem(agent_id_item, "id_agent");
@@ -929,14 +830,16 @@ int wdb_global_delete_group(wdb_t *wdb, char* group_name) {
                 if (WDBC_ERROR == wdb_global_if_empty_set_default_agent_group(wdb, agent_id->valueint) ||
                     WDBC_ERROR == wdb_global_recalculate_agent_groups_hash(wdb, agent_id->valueint, sync_status)) {
                     merror("Couldn't recalculate hash group for agent: '%03d'", agent_id->valueint);
+                    err_flag = true;
+                    break;
                 }
             }
         }
-        result = OS_SUCCESS;
-        break;
-    default:
+        if (!err_flag) {
+            result = OS_SUCCESS;
+        }
+    } else {
         mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
-        break;
     }
 
     cJSON_Delete(sql_agents_id);
@@ -1021,15 +924,7 @@ int wdb_global_delete_agent_belong(wdb_t *wdb, int id) {
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
-    case SQLITE_ROW:
-    case SQLITE_DONE:
-        return OS_SUCCESS;
-        break;
-    default:
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
+    return wdb_exec_stmt_silent(stmt);
 }
 
 int wdb_global_set_sync_status(wdb_t *wdb, int id, const char* sync_status) {
@@ -1056,15 +951,7 @@ int wdb_global_set_sync_status(wdb_t *wdb, int id, const char* sync_status) {
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
-    case SQLITE_ROW:
-    case SQLITE_DONE:
-        return OS_SUCCESS;
-        break;
-    default:
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
+    return wdb_exec_stmt_silent(stmt);
 }
 
 wdbc_result wdb_global_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char **output) {
@@ -1199,8 +1086,7 @@ wdbc_result wdb_global_set_agent_group_context(wdb_t *wdb, int id, char* csv, ch
 
     if (OS_SUCCESS == wdb_exec_stmt_silent(stmt)) {
         return WDBC_OK;
-    }
-    else {
+    } else {
         mdebug1("Error executing setting the agent group context: %s", sqlite3_errmsg(wdb->db));
         return WDBC_ERROR;
     }
@@ -1229,7 +1115,7 @@ cJSON* wdb_global_get_groups_integrity(wdb_t* wdb, os_sha1 hash) {
         }
         return response;
     default:
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
         return response;
     }
 }
@@ -1707,15 +1593,7 @@ int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON * json_agent) {
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
-    case SQLITE_ROW:
-    case SQLITE_DONE:
-        return OS_SUCCESS;
-        break;
-    default:
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
+    return wdb_exec_stmt_silent(stmt);
 }
 
 cJSON* wdb_global_get_agent_info(wdb_t *wdb, int id) {
@@ -1856,6 +1734,7 @@ int wdb_global_agent_exists(wdb_t *wdb, int agent_id) {
     case SQLITE_DONE:
         return 0;
     default:
+        mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
 }
@@ -1885,15 +1764,7 @@ int wdb_global_reset_agents_connection(wdb_t *wdb, const char *sync_status) {
         return OS_INVALID;
     }
 
-    switch (wdb_step(stmt)) {
-    case SQLITE_ROW:
-    case SQLITE_DONE:
-        return OS_SUCCESS;
-        break;
-    default:
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
+    return wdb_exec_stmt_silent(stmt);
 }
 
 cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, const char* node_name, int limit, wdbc_result* status) {
@@ -1965,7 +1836,7 @@ int wdb_global_create_backup(wdb_t* wdb, char* output, const char* tag) {
     os_free(timestamp);
 
     // Commiting pending transaction to run VACUUM
-    if (wdb_commit2(wdb) == OS_INVALID) {
+    if (wdb_commit2(wdb) < 0) {
         snprintf(output, OS_MAXSTR + 1, "err Cannot commit current transaction to create backup");
         return OS_INVALID;
     }
