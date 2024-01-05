@@ -1,0 +1,57 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "service-installed",
+      "category": [
+        "iam",
+        "configuration"
+      ],
+      "code": "4697",
+      "dataset": "security",
+      "id": "4697",
+      "kind": "event",
+      "module": "security",
+      "provider": "Microsoft-Windows-Security-Auditing",
+      "start": "2015-11-12T01:36:11.991070500Z",
+      "type": [
+        "admin",
+        "change"
+      ]
+    },
+    "host": {
+      "id": "001",
+      "name": "WIN-GG82ULGC9GO.contoso.local"
+    },
+    "message": "A service was installed in the system",
+    "related": {
+      "user": [
+        "WIN-GG82ULGC9GO$"
+      ]
+    },
+    "service": {
+      "name": "AppHostSvc",
+      "type": "Win32 Share Process"
+    },
+    "user": {
+      "domain": "CONTOSO",
+      "id": "S-1-5-18",
+      "name": "WIN-GG82ULGC9GO$"
+    },
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-security"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  }
+]
