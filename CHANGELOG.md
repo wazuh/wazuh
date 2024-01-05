@@ -32,6 +32,7 @@ All notable changes to this project will be documented in this file.
 - Added snap package manager support to Syscollector. ([#15740](https://github.com/wazuh/wazuh/pull/15740))
 - Added event size validation for the external integrations. ([#17932](https://github.com/wazuh/wazuh/pull/17932))
 - Added new unit tests for the AWS integration. ([#17623](https://github.com/wazuh/wazuh/pull/17623))
+- Added mapping geolocation for AWS WAF integration. ([#20649](https://github.com/wazuh/wazuh/pull/20649))
 
 #### Changed
 
@@ -52,10 +53,41 @@ All notable changes to this project will be documented in this file.
 #### Added
 
 - Added new `GET /manager/version/check` endpoint to obtain information about new releases of Wazuh. ([#19952](https://github.com/wazuh/wazuh/pull/19952))
+- Introduced an `auto` option for the ssl_protocol setting in the API configuration. This enables automatic negotiation of the TLS certificate to be used. ([#20420](https://github.com/wazuh/wazuh/pull/20420))
+
+#### Fixed
+
+- Fixed a warning from SQLAlchemy involving detached Roles instances in RBAC. ([#20527](https://github.com/wazuh/wazuh/pull/20527))
 
 #### Removed
 
 - Removed `PUT /vulnerability`, `GET /vulnerability/{agent_id}`, `GET /vulnerability/{agent_id}/last_scan` and `GET /vulnerability/{agent_id}/summary/{field}` API endpoints as they were deprecated in version 4.7.0. Use the Wazuh indexer REST API instead. ([#20119](https://github.com/wazuh/wazuh/pull/20119))
+
+### Ruleset
+
+#### Added
+
+- Added new SCA policy for Amazon Linux 2023. ([#17780](https://github.com/wazuh/wazuh/pull/17780))
+- Added new SCA policy for Rocky Linux 8. ([#17784](https://github.com/wazuh/wazuh/pull/17784))
+- Added rules to detect IcedID attacks. ([#19528](https://github.com/wazuh/wazuh/pull/19528))
+
+#### Changed
+
+- SCA policy for Ubuntu Linux 18.04 rework. ([#18721](https://github.com/wazuh/wazuh/pull/18721))
+- SCA policy for Ubuntu Linux 22.04 rework. ([#17515](https://github.com/wazuh/wazuh/pull/17515))
+- SCA policy for Red Hat Enterprise Linux 7 rework. ([#18440](https://github.com/wazuh/wazuh/pull/18440))
+- SCA policy for Red Hat Enterprise Linux 8 rework. ([#17770](https://github.com/wazuh/wazuh/pull/17770))
+- SCA policy for Red Hat Enterprise Linux 9 rework. ([#17412](https://github.com/wazuh/wazuh/pull/17412))
+- SCA policy for CentOS 7 rework. ([#17624](https://github.com/wazuh/wazuh/pull/17624))
+- SCA policy for CentOS 8 rework. ([#18439](https://github.com/wazuh/wazuh/pull/18439))
+- SCA policy for Debian 8 rework. ([#18010](https://github.com/wazuh/wazuh/pull/18010))
+- SCA policy for Debian 10 rework. ([#17922](https://github.com/wazuh/wazuh/pull/17922))
+- SCA policy for Amazon Linux 2 rework. ([#18695](https://github.com/wazuh/wazuh/pull/18695))
+- SCA policy for SUSE Linux Enterprise 15 rework. ([#18985](https://github.com/wazuh/wazuh/pull/18985))
+- SCA policy for macOS 13.0 Ventura rework. ([#19037](https://github.com/wazuh/wazuh/pull/19037))
+- SCA policy for Microsoft Windows 10 Enterprise rework. ([#19515](https://github.com/wazuh/wazuh/pull/19515))
+- SCA policy for Microsoft Windows 11 Enterprise rework. ([#20044](https://github.com/wazuh/wazuh/pull/20044))
+- Update MITRE DB to v13.1. ([#17518](https://github.com/wazuh/wazuh/pull/17518))
 
 ### Other
 
@@ -65,7 +97,51 @@ All notable changes to this project will be documented in this file.
 - Upgraded external cryptography library dependency version to 41.0.4. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
 - Upgraded external numpy library dependency version to 1.26.0. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
 - Upgraded external grpcio library dependency version to 1.58.0. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
+- Upgraded external pyarrow library dependency version to 14.0.1. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
 - Upgraded embedded Python version to 3.10.13. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
+
+## [v4.7.2]
+
+### Manager
+
+#### Added
+
+- Added minimum time constraint of 1 hour for Vulnerability Detector feed downloads. ([#21142](https://github.com/wazuh/wazuh/pull/21142))
+
+#### Fixed
+
+- wazuh-remoted now includes the offending bytes in the warning about invalid message size from agents. ([#21011](https://github.com/wazuh/wazuh/pull/21011))
+- Fixed a bug in the Windows Eventchannel decoder on handling Unicode characters. ([#20658](https://github.com/wazuh/wazuh/pull/20658))
+- Fixed data validation at Windows Eventchannel decoder. ([#20735](https://github.com/wazuh/wazuh/pull/20735))
+
+### Agent
+
+#### Added
+- Added timeouts to external and Cloud integrations to prevent indefinite waiting for a response. ([#20638](https://github.com/wazuh/wazuh/pull/20638))
+
+#### Fixed
+
+- The host_deny Active response now checks the IP parameter format. ([#20656](https://github.com/wazuh/wazuh/pull/20656))
+- Fixed a bug in the Windows agent that might lead it to crash when gathering forwarded Windows events. ([#20594](https://github.com/wazuh/wazuh/pull/20594))
+- The AWS integration now finds AWS configuration profiles that do not contain the `profile` prefix. ([#20447](https://github.com/wazuh/wazuh/pull/20447))
+- Fixed parsing for regions argument of the AWS integration. ([#20660](https://github.com/wazuh/wazuh/pull/20660))
+
+### Ruleset
+
+#### Added
+
+- Added new SCA policy for Debian 12. ([#17565](https://github.com/wazuh/wazuh/pull/17565))
+
+#### Fixed
+
+- Fixed AWS Macie fields used in some rules and removed unused AWS Macie Classic rules. ([#20663](https://github.com/wazuh/wazuh/pull/20663))
+
+### Other
+
+#### Changed
+
+- Upgraded external aiohttp library dependency version to 3.9.1. ([#20798](https://github.com/wazuh/wazuh/pull/20798))
+- Upgraded pip dependency version to 23.3.2. ([#20632](https://github.com/wazuh/wazuh/issues/20632))
 
 
 ## [v4.7.1]
