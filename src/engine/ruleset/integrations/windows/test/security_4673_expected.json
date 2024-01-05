@@ -1,0 +1,56 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "privileged-service-called",
+      "category": [
+        "iam"
+      ],
+      "code": "4673",
+      "dataset": "security",
+      "id": "4673",
+      "kind": "event",
+      "module": "security",
+      "provider": "Microsoft-Windows-Security-Auditing",
+      "start": "2015-10-09T00:37:36.434836600Z",
+      "type": [
+        "admin"
+      ]
+    },
+    "host": {
+      "id": "001",
+      "name": "DC01.contoso.local"
+    },
+    "message": "A privileged service was called",
+    "process": {
+      "executable": "C:\\\\Windows\\\\System32\\\\lsass.exe",
+      "name": "lsass.exe",
+      "pid": 496
+    },
+    "related": {
+      "user": [
+        "DC01$"
+      ]
+    },
+    "user": {
+      "domain": "CONTOSO",
+      "id": "S-1-5-18",
+      "name": "DC01$"
+    },
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-security"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  }
+]
