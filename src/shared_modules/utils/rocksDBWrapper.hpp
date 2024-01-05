@@ -39,6 +39,7 @@ namespace Utils
         virtual void createColumn(const std::string& columnName) = 0;
         virtual bool columnExists(const std::string& columnName) const = 0;
         virtual void deleteAll() = 0;
+        virtual void flush() = 0;
 
         virtual ~IRocksDBWrapper() = default;
     };
@@ -50,12 +51,11 @@ namespace Utils
     class RocksDBWrapper : public IRocksDBWrapper
     {
     public:
-        explicit RocksDBWrapper(const std::string& dbPath)
+        explicit RocksDBWrapper(const std::string& dbPath, const bool enableWal = true)
+            : m_enableWal {enableWal}
         {
             rocksdb::Options options;
             options.create_if_missing = true;
-            // Disable wal
-            options.wal_bytes_per_sync = 0;
             rocksdb::TransactionDB* dbRawPtr;
             std::vector<rocksdb::ColumnFamilyDescriptor> columnsDescriptors;
             const std::filesystem::path databasePath {dbPath};
@@ -137,7 +137,7 @@ namespace Utils
             }
 
             rocksdb::WriteOptions writeOptions;
-            writeOptions.disableWAL = true;
+            writeOptions.disableWAL = !m_enableWal;
 
             const auto status {m_db->Put(writeOptions, getColumnFamilyHandle(columnName), key, value)};
             if (!status.ok())
@@ -245,8 +245,9 @@ namespace Utils
             {
                 throw std::invalid_argument("Key is empty");
             }
+
             rocksdb::WriteOptions writeOptions;
-            writeOptions.disableWAL = true;
+            writeOptions.disableWAL = !m_enableWal;
 
             const auto status {m_db->Delete(writeOptions, getColumnFamilyHandle(columnName), key)};
             if (!status.ok())
@@ -456,9 +457,22 @@ namespace Utils
             }
         }
 
+        /**
+         * @brief Flushes the transaction.
+         */
+        void flush() override
+        {
+            const auto status {m_db->Flush(rocksdb::FlushOptions(), m_columnsHandles)};
+            if (!status.ok())
+            {
+                throw std::runtime_error {"Failed to flush transaction: " + std::string {status.getState()}};
+            }
+        }
+
     private:
         std::unique_ptr<rocksdb::TransactionDB> m_db;               ///< RocksDB instance.
         std::vector<rocksdb::ColumnFamilyHandle*> m_columnsHandles; ///< List of column family handles.
+        const bool m_enableWal;                                     ///< Whether to enable WAL or not.
 
         /**
          * @brief Returns the column family handle identified by its name.
@@ -642,6 +656,13 @@ namespace Utils
             {
                 throw std::runtime_error {"Failed to commit transaction: " + std::string {status.getState()}};
             }
+
+            const auto statusFlush {m_dbWrapper->m_db->Flush(rocksdb::FlushOptions(), m_dbWrapper->m_columnsHandles)};
+            if (!statusFlush.ok())
+            {
+                throw std::runtime_error {"Failed to flush transaction: " + std::string {statusFlush.getState()}};
+            }
+
             m_committed = true;
         }
 
@@ -675,6 +696,15 @@ namespace Utils
         bool columnExists(const std::string& columnName) const override
         {
             return m_dbWrapper->columnExists(columnName);
+        }
+
+        /**
+         * @brief Flushes the transaction.
+         */
+        void flush() override
+        {
+            // This is only permited for atomic operations.
+            throw std::runtime_error("Not implemented");
         }
 
     private:

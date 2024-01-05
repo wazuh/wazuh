@@ -17,6 +17,7 @@
 #include "sym_load.h"
 #include "utils/flatbuffers/include/syscollector_synchronization_schema.h"
 #include "utils/flatbuffers/include/syscollector_deltas_schema.h"
+#include "agent_messages_adapter.h"
 
 enum msg_type {
     MT_INVALID,
@@ -189,12 +190,12 @@ void HandleSecure()
     // Router module logging initialization
     router_initialize(taggedLogFunction);
 
-    // Router initialize providers
-    if (router_syscollector_handle = router_provider_create("deltas-syscollector"), !router_syscollector_handle) {
+    // Router providers initialization
+    if (router_syscollector_handle = router_provider_create("deltas-syscollector", false), !router_syscollector_handle) {
         mdebug2("Failed to create router handle for 'syscollector'.");
     }
 
-    if (router_rsync_handle = router_provider_create("rsync-syscollector"), !router_rsync_handle) {
+    if (router_rsync_handle = router_provider_create("rsync-syscollector", false), !router_rsync_handle) {
         mdebug2("Failed to create router handle for 'rsync'.");
     }
 
@@ -821,9 +822,7 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
     }
 
     // Forwarding events to subscribers
-    router_message_forward(tmp_msg, agentid_str,
-                                    agent_ip,
-                                    agent_name);
+    router_message_forward(tmp_msg, agentid_str, agent_ip, agent_name);
 
     os_free(agentid_str);
     os_free(agent_ip);
@@ -858,67 +857,23 @@ void router_message_forward(char* msg, const char* agent_id, const char* agent_i
         return;
     }
 
-    cJSON* j_msg_to_send = NULL;
-    cJSON* j_agent_info = NULL;
-    cJSON* j_msg = NULL;
-    cJSON* j_data = NULL;
-    cJSON* j_agent_data = NULL;
     char* msg_to_send = NULL;
-
     char* msg_start = msg + message_header_size;
     size_t msg_size = strnlen(msg_start, OS_MAXSTR - message_header_size);
     if ((msg_size + message_header_size) < OS_MAXSTR) {
-        j_msg = cJSON_Parse(msg_start);
-        if(!j_msg) {
-            goto clean_and_exit;
-        }
-
-        j_msg_to_send = cJSON_CreateObject();
-        j_agent_info = cJSON_CreateObject();
-
-        // Getting agent context
-        j_agent_data = OSHash_Get_ex_dup(agent_data_hash, agent_id, agent_data_hash_duplicator);
-        cJSON_AddStringToObject(j_agent_info, "agent_id", agent_id);
-        cJSON_AddStringToObject(j_agent_info, "agent_ip", agent_ip);
-        cJSON_AddStringToObject(j_agent_info, "agent_name", agent_name);
-        if (cJSON_IsString(cJSON_GetObjectItem(j_agent_data, "version"))) {
-            cJSON_AddItemToObject(j_agent_info, "agent_version", cJSON_DetachItemFromObject(j_agent_data, "version"));
-        }
-        cJSON_AddStringToObject(j_agent_info, "node_name", node_name);
-        cJSON_AddItemToObject(j_msg_to_send, "agent_info", j_agent_info);
-
-        cJSON_AddItemToObject(j_msg_to_send, "data_type", cJSON_DetachItemFromObject(j_msg, "type"));
-
         if (schema_type == MT_SYS_DELTAS) {
-            cJSON_AddItemToObject(j_msg_to_send, "data", cJSON_DetachItemFromObject(j_msg, "data"));
-            cJSON_AddItemToObject(j_msg_to_send, "operation", cJSON_DetachItemFromObject(j_msg, "operation"));
+            msg_to_send = adapt_delta_message(msg_start, agent_name, agent_id, agent_ip, node_name);
         } else if (schema_type == MT_SYS_SYNC) {
-            cJSON* j_data_msg = cJSON_GetObjectItem(j_msg, "data");
-            if (j_data_msg) {
-                j_data = cJSON_CreateObject();
-                cJSON_AddItemToObject(j_data, "attributes_type", cJSON_DetachItemFromObject(j_msg, "component"));
-                for (cJSON* j_item = j_data_msg->child; j_item; j_item = j_item->next) {
-                    cJSON_AddItemToObject(j_data, j_item->string, cJSON_Duplicate(cJSON_GetObjectItem(j_data_msg, j_item->string), true));
-                }
-                cJSON_AddItemToObject(j_msg_to_send, "data", j_data);
+            msg_to_send = adapt_sync_message(msg_start, agent_name, agent_id, agent_ip, node_name);
+        }
+
+        if (msg_to_send) {
+            if (router_provider_send_fb(router_handle, msg_to_send, get_schema(schema_type)) != 0) {
+                mdebug2("Unable to forward message for agent %s", agent_id);
             }
-        }
-
-        msg_to_send = cJSON_PrintUnformatted(j_msg_to_send);
-        if(!msg_to_send) {
-            goto clean_and_exit;
-        }
-
-        if (router_provider_send_fb(router_handle, msg_to_send, get_schema(schema_type)) != 0) {
-            mdebug2("Unable to forward message for agent %s", agent_id);
+            cJSON_free(msg_to_send);
         }
     }
-
-clean_and_exit:
-    cJSON_Delete(j_msg_to_send);
-    cJSON_Delete(j_msg);
-    cJSON_free(msg_to_send);
-    cJSON_Delete(j_agent_data);
 }
 
 // Close and remove socket from keystore

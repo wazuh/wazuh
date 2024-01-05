@@ -190,7 +190,7 @@ extern "C"
         return retVal;
     }
 
-    ROUTER_PROVIDER_HANDLE router_provider_create(const char* name)
+    ROUTER_PROVIDER_HANDLE router_provider_create(const char* name, bool isLocal)
     {
         ROUTER_PROVIDER_HANDLE retVal = nullptr;
         try
@@ -202,8 +202,7 @@ extern "C"
             }
             else
             {
-                // TO DO - Add parameter to control if the provider is local or remote.
-                std::shared_ptr<RouterProvider> provider = std::make_shared<RouterProvider>(name, false);
+                std::shared_ptr<RouterProvider> provider = std::make_shared<RouterProvider>(name, isLocal);
                 provider->start();
                 std::unique_lock<std::shared_mutex> lock(PROVIDERS_MUTEX);
                 PROVIDERS[provider.get()] = provider;
