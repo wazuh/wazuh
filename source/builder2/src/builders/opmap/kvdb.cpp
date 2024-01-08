@@ -787,7 +787,7 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
     };
 
     // Return Op
-    return [targetField = targetField.dotPath(), getValueFn, getMaskFn, successTrace, failureTrace4](
+    return [targetField = targetField.jsonPath(), getValueFn, getMaskFn, successTrace, failureTrace4](
                const base::Event& event) -> TransformResult
     {
         // Get mask in hexa
