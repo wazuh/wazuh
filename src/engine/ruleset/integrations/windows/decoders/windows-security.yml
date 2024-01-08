@@ -29,6 +29,16 @@ normalize:
       - event: kvdb_get_merge(windows_security_eventid_to_category_type_action, $event.id)
       - windows.logon.id: $windows.EventData.SubjectLogonId
 
+  # Set event outcome
+  - check:
+      - windows.System.Keywords.#text: binary_and(0x10000000000000)
+    map:
+      - event.outcome: failure
+  - check:
+      - windows.System.Keywords.#text: binary_and(0x20000000000000)
+    map:
+      - event.outcome: success
+
   # Set log level
   - check: $windows.System.Level.#text=="0" OR $windows.System.Level.#text=="4"
     map:

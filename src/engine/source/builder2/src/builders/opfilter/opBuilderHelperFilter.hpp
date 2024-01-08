@@ -264,6 +264,20 @@ FilterOp opBuilderHelperIntGreaterThanEqual(const Reference& targetField,
                                             const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
+ * @brief Builds helper Binary and operation.
+ * Convert the argument to a integer and do a binary and with the field value.
+ *
+ * Note: only hexa string is supported
+ * @param targetField target field of the helper
+ * @param opArgs  vector of parameters as present in the raw definition
+ * @param buildCtx handler with definitions
+ * @return FilterOp The lifter with the `binary_and` filter.
+ */
+FilterOp opBuilderHelperBinaryAnd(const Reference& targetField,
+                                  const std::vector<OpArg>& opArgs,
+                                  const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
  * @brief Builds helper regex match operation.
  * Checks that the field value matches a regular expression
  *
