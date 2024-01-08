@@ -44,6 +44,7 @@
 
 #define WM_DEF_TIMEOUT      1800            // Default runtime limit (30 minutes)
 #define WM_DEF_INTERVAL     86400           // Default cycle interval (1 day)
+#define WM_MIN_UPDATE_INTERVAL 3600         // Minimum cycle update interval (1 hour)
 
 #define DAY_SEC    86400
 #define WEEK_SEC   604800
