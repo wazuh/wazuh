@@ -9,11 +9,23 @@ All notable changes to this project will be documented in this file.
 
 - The manager now supports alert forwarding to Fluentd. ([#17306](https://github.com/wazuh/wazuh/pull/17306))
 
-### Agent
+#### Fixed
+
+- Fixed compilation issue for local installation. ([#20505](https://github.com/wazuh/wazuh/pull/20505))
 
 #### Changed
 
-- The directory /boot has been removed from the default FIM settings for AIX. #19753
+- Changed error messages about `recv()` messages from wazuh-db to debug logs. ([#20285](https://github.com/wazuh/wazuh/pull/20285))
+
+### Agent
+
+#### Fixed
+
+- Fixed command wodle to support UTF-8 characters on windows agent. ([#19146](https://github.com/wazuh/wazuh/pull/19146))
+
+#### Changed
+
+- The directory /boot has been removed from the default FIM settings for AIX. ([#19753](https://github.com/wazuh/wazuh/pull/19753))
 
 ### Ruleset
 
