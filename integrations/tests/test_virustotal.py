@@ -271,32 +271,32 @@ def test_request_virustotal_info_md5_after_check_ok():
         assert response == alert_output
 
 
-def test_request_virustotal_info_exception():
+def test_request_info_from_api_exception():
     """Test that the query_api function fails with no retries when an Exception happens."""
     with patch('virustotal.query_api', side_effect=[Exception(), None]), patch('virustotal.debug'), pytest.raises(
         SystemExit
     ) as pytest_wrapped_e:
-        virustotal.request_virustotal_info(alert_template_md5[8], apikey_virustotal)
+        virustotal.request_info_from_api(alert_template_md5[8], {'virustotal': {}}, apikey_virustotal)
     assert pytest_wrapped_e.value.code == ERR_NO_RESPONSE_VT
 
 
-def test_request_virustotal_info_timeout_and_retries_expired():
+def test_request_info_from_api_timeout_and_retries_expired():
     """Test that the query_api function fails with retries when an Timeout exception happens (retries expired)."""
     virustotal.retries = 2
     with patch('virustotal.query_api', side_effect=[Timeout(), Timeout(), Timeout(), None]), patch(
         'virustotal.send_msg'
     ), patch('virustotal.debug'), pytest.raises(SystemExit) as pytest_wrapped_e:
-        virustotal.request_virustotal_info(alert_template_md5[8], apikey_virustotal)
+        virustotal.request_info_from_api(alert_template_md5[8], {'virustotal': {}}, apikey_virustotal)
     assert pytest_wrapped_e.value.code == ERR_NO_RESPONSE_VT
 
 
-def test_request_virustotal_info_timeout_and_retries_not_expired():
+def test_request_info_from_api_timeout_and_retries_not_expired():
     """Test that the query_api function fails with retries when an Timeout exception happens (retries not expired)."""
     virustotal.retries = 2
-    with patch('virustotal.query_api', side_effect=[Timeout(), Timeout(), None]), patch(
+    with patch('virustotal.query_api', side_effect=[Timeout(), Timeout(), alert_output]), patch(
         'virustotal.in_database', return_value=False
     ), patch('virustotal.debug') as debug:
-        response = virustotal.request_virustotal_info(alert_template_md5[8], apikey_virustotal)
+        response = virustotal.request_info_from_api(alert_template_md5[8], {'virustotal': {}}, apikey_virustotal)
         debug.assert_has_calls(
             [
                 call('# Error: Request timed out. Remaining retries: 2'),
