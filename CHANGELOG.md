@@ -114,7 +114,7 @@ All notable changes to this project will be documented in this file.
 ### Agent
 
 #### Added
-- Added mapping geolocation for AWS WAF integration. ([#20649](https://github.com/wazuh/wazuh/pull/20649))
+
 - Added timeouts to external and Cloud integrations to prevent indefinite waiting for a response. ([#20638](https://github.com/wazuh/wazuh/pull/20638))
 
 #### Fixed
