@@ -108,6 +108,9 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
     registry->template add<builders::OpBuilderEntry>(
         "is_true", {schemval::ValidationToken {}, builders::opfilter::opBuilderHelperIsTrue});
     registry->template add<builders::OpBuilderEntry>(
+        "binary_and",
+        {schemval::ValidationToken {json::Json::Type::String}, builders::opfilter::opBuilderHelperBinaryAnd});
+    registry->template add<builders::OpBuilderEntry>(
         "regex_match",
         {schemval::ValidationToken {json::Json::Type::String}, builders::opfilter::opBuilderHelperRegexMatch});
     registry->template add<builders::OpBuilderEntry>(
@@ -210,7 +213,7 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
     // Global event helpers
     registry->template add<builders::OpBuilderEntry>(
         "erase_custom_fields", {schemval::ValidationToken {}, builders::opBuilderHelperEraseCustomFields});
-    // HLP Parser helpers
+    // HLP Parser helpers [ #TODO CHECK if the parser should be always text ]
     registry->template add<builders::OpBuilderEntry>(
         "parse_bool", {schemval::ValidationToken {schemf::Type::TEXT}, builders::optransform::boolParseBuilder});
     registry->template add<builders::OpBuilderEntry>(

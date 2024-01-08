@@ -475,6 +475,122 @@ FilterOp opBuilderHelperStringContains(const Reference& targetField,
     return op;
 }
 
+// field: binary_and($ref, value)
+FilterOp opBuilderHelperBinaryAnd(const Reference& targetField,
+                                  const std::vector<OpArg>& opArgs,
+                                  const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    const auto& name = buildCtx->context().opName;
+    const auto& schema = buildCtx->schema();
+
+    // Assert expected number of parameters
+    utils::assertSize(opArgs, 1);
+    // Parameter type check
+    utils::assertValue(opArgs, 0);
+
+    // Ref value
+    if (schema.hasField(targetField.dotPath()) && schema.getType(targetField.dotPath()) != schemf::Type::TEXT)
+    {
+        throw std::runtime_error(fmt::format("{} function: Reference '{}' is not an text", name, targetField.dotPath()));
+    }
+
+    // Mask
+    if (!std::static_pointer_cast<Value>(opArgs[0])->value().isString())
+    {
+        throw std::runtime_error(fmt::format("{} function: Mask '{}' is not a string", name, opArgs[0]->str()));
+    }
+    auto strMask = std::static_pointer_cast<Value>(opArgs[0])->value().getString().value();
+
+    // Tracing
+    const auto successTrace {fmt::format("[{}] -> Success", name)};
+    const auto referenceNotFoundTrace {fmt::format("[{}] -> Failure: Reference '{}' not found or not a string",
+                                                   name,
+                                                   targetField.dotPath())};
+    const auto referenceNotValidHexTrace {fmt::format("[{}] -> Failure: Reference '{}' is not a valid hexadecimal "
+                                                      "number",
+                                                      name,
+                                                      targetField.dotPath())};
+
+    const auto failAndTrace {fmt::format("[{}] -> Failure: Binary AND is false", name)};
+
+    // Get the mask
+    std::string prefix {"0x"};
+    // 4 digits per byte + prefix
+    std::size_t maxSize = (std::numeric_limits<uint64_t>::digits / 4) + prefix.size();
+    uint64_t mask {};
+    {
+        if (strMask.substr(0, prefix.size()) != prefix)
+        {
+            throw std::runtime_error(
+                fmt::format("{} function: Mask '{}' is not a valid hexadecimal number", name, strMask));
+        }
+        else if (strMask.size() > maxSize)
+        {
+            throw std::runtime_error(fmt::format("{} function: Mask '{}' is too big", name, strMask));
+        }
+
+        try
+        {
+            mask = std::stoull(strMask, nullptr, 16);
+            if (mask == 0)
+            {
+                throw std::runtime_error(fmt::format("{} function: Mask cannot be 0", name));
+            }
+        }
+        catch (const std::exception& e)
+        {
+            throw std::runtime_error(fmt::format("{} function: Mask '{}' is not a valid hexadecimal number: {}",
+                                                 name,
+                                                 strMask,
+                                                 e.what()));
+        }
+    }
+
+    // Fn to get the value from the event
+    auto getValue = [targetField, referenceNotFoundTrace, referenceNotValidHexTrace](base::ConstEvent event) -> base::RespOrError<uint64_t>
+    {
+        const auto value = event->getString(targetField.jsonPath());
+        if (!value.has_value())
+        {
+            return base::Error {referenceNotFoundTrace};
+        }
+
+        if (value.value().substr(0, 2) != "0x")
+        {
+            return base::Error {referenceNotValidHexTrace};
+        }
+
+        uint64_t result {};
+        try
+        {
+            result = std::stoull(value.value(), nullptr, 16);
+        }
+        catch (const std::exception& e)
+        {
+            return base::Error {referenceNotValidHexTrace};
+        }
+
+        return result;
+    };
+
+    // The filter
+    return [getValue, mask, successTrace, failAndTrace](base::ConstEvent event) -> FilterResult
+    {
+        auto valueResult = getValue(event);
+        if (base::isError(valueResult))
+        {
+            return base::result::makeFailure(false, base::getError(valueResult).message);
+        }
+
+        if (base::getResponse(valueResult) & mask)
+        {
+            return base::result::makeSuccess(true, successTrace);
+        }
+        return base::result::makeFailure(false, failAndTrace);
+    };
+
+}
+
 //*************************************************
 //*               Regex filters                   *
 //*************************************************
