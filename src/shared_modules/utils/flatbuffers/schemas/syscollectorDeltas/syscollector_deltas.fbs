@@ -39,8 +39,8 @@ table dbsync_network_iface {
     mac:string;
     tx_packets:uint;
     rx_packets:uint;
-    tx_bytes:uint;
-    rx_bytes:uint;
+    tx_bytes:long;
+    rx_bytes:long;
     tx_errors:uint;
     rx_errors:uint;
     tx_dropped:uint;
