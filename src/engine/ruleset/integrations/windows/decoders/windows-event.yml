@@ -20,10 +20,10 @@ normalize:
       - windows: parse_xml($event.original, windows)
       - event.original: delete()
 
-      - event.dataset: general
       - event.start: $windows.System.TimeCreated.@SystemTime
       - event.code: $windows.System.EventID.#text
-      - event.id: $windows.System.EventID.#text
+      - event.dataset: downcase($windows.System.Channel.#text)
+      - event.module: 'windows'
       - event.kind: event
       - event.provider: $windows.System.Provider.@Name
 
