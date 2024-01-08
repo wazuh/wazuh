@@ -310,6 +310,33 @@ TEST(SyscollectorFbTest, JSONParseNetItf)
 
 }
 
+TEST(SyscollectorFbTest, JSONParseNetItfNegativeValue)
+{
+    // Syscollector network iface can send negative values for some fields. This test is to avoid reverting the changes in the flatbuffer schema.
+    const std::string alert_json =
+        "{\n  agent_info: {\n    agent_id: \"001\",\n    node_name: \"node01\"\n  },\n  data_type: \"state\",\n  data: {\n    attributes_type: \"syscollector_network_iface\",\n    attributes: {\n      checksum: \"92a69b6285431e7d67da91e5006d23246628f13c\",\n      item_id: \"7a60750dd3c25c53f21ff7f44b4743664ddbb66a\",\n      mac: \"XX:XX:XX:XX:XX:XX\",\n      mtu: 1500,\n      name: \"enp0s3\",\n      rx_bytes: -255555,\n      rx_dropped: 255555,\n      rx_errors: 255555,\n      rx_packets: 255555,\n      scan_time: \"0000/00/00 00:00:00\",\n      state: \"up\",\n      tx_bytes: 255555,\n      tx_dropped: 255555,\n      tx_errors: 255555,\n      tx_packets: 255555,\n      type: \"quantic_fiber\"\n    },\n    index: \"7a60750dd3c25c53f21ff7f44b4743664ddbb66a\",\n    timestamp: \"\"\n  }\n}\n";
+
+    flatbuffers::Parser parser;
+    std::string schemaFile;
+
+    bool loadSuccess = flatbuffers::LoadFile(syscollector_message.c_str(), false, &schemaFile);
+
+    EXPECT_TRUE(loadSuccess);
+
+    bool parseSuccess = parser.Parse(schemaFile.c_str(), INCLUDE_DIRECTORIES) && parser.Parse(alert_json.c_str());
+
+    EXPECT_TRUE(parseSuccess);
+
+    std::string json_gen;
+
+    bool genSuccess = GenText(parser, parser.builder_.GetBufferPointer(), &json_gen);
+
+    EXPECT_FALSE(genSuccess);
+
+    EXPECT_STREQ(alert_json.c_str(), json_gen.c_str());
+
+}
+
 TEST(SyscollectorFbTest, JSONIntegrityGlobal)
 {
 
