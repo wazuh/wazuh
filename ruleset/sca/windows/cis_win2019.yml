@@ -3425,7 +3425,7 @@ checks:
 
   # 18.9.4.2 (L1) Ensure 'Remote host allows delegation of non- exportable credentials' is set to 'Enabled'. (Automated)
    - id: 18734
-     title: "(L1) Ensure 'Remote host allows delegation of non- exportable credentials' is set to 'Enabled'."
+     title: "Ensure 'Remote host allows delegation of non- exportable credentials' is set to 'Enabled'."
      description: "Remote host allows delegation of non-exportable credentials. When using credential delegation, devices provide an exportable version of credentials to the remote host. This exposes users to the risk of credential theft from attackers on the remote host. The Restricted Admin Mode and Windows Defender Remote Credential Guard features are two options to help protect against this risk. The recommended state for this setting is: Enabled. Note: More detailed information on Windows Defender Remote Credential Guard and how it compares to Restricted Admin Mode can be found at this link: Protect Remote Desktop credentials with Windows Defender Remote Credential Guard (Windows 10) | Microsoft Docs."
      rationale: "Restricted Admin Mode was designed to help protect administrator accounts by ensuring that reusable credentials are not stored in memory on remote devices that could potentially be compromised. Windows Defender Remote Credential Guard helps you protect your credentials over a Remote Desktop connection by redirecting Kerberos requests back to the device that is requesting the connection. Both features should be enabled and supported, as they reduce the chance of credential theft."
      impact: "The host will support the Restricted Admin Mode and Windows Defender Remote Credential Guard features."
@@ -3440,12 +3440,15 @@ checks:
        - nist_sp_800-53: ["SI-16"]
        - pci_dss_v3.2.1: ["1.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CredentialsDelegation'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CredentialsDelegation -> AllowProtectedCreds'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CredentialsDelegation -> AllowProtectedCreds -> 1'
 
   # 18.9.5.1 (NG) Ensure 'Turn On Virtualization Based Security' is set to 'Enabled'. (Automated)
    - id: 18735
-     title: "(NG) Ensure 'Turn On Virtualization Based Security' is set to 'Enabled'."
+     title: "Ensure 'Turn On Virtualization Based Security' is set to 'Enabled'."
      description: "This policy setting specifies whether Virtualization Based Security is enabled. Virtualization Based Security uses the Windows Hypervisor to provide support for security services. The recommended state for this setting is: Enabled Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot enabled, which in turn requires that Windows was installed with a UEFI BIOS configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs."
      rationale: "Kerberos, NTLM, and Credential manager isolate secrets by using virtualization-based security. Previous versions of Windows stored secrets in the Local Security Authority (LSA). Prior to Windows 10, the LSA stored secrets used by the operating system in its process memory. With Windows Defender Credential Guard enabled, the LSA process in the operating system talks to a new component called the isolated LSA process that stores and protects those secrets. Data stored by the isolated LSA process is protected using virtualization-based security and is not accessible to the rest of the operating system."
      impact: "Warning: All drivers on the system must be compatible with this feature or the system may crash. Ensure that this policy setting is only deployed to computers which are known to be compatible. Warning #2: Enabling Windows Defender Credential Guard on Domain Controllers is not supported. The domain controller hosts authentication services which integrate with processes isolated when Windows Defender Credential Guard is enabled, causing crashes."
@@ -3457,12 +3460,15 @@ checks:
        - nist_sp_800-53: ["SI-16"]
        - pci_dss_v3.2.1: ["1.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> EnableVirtualizationBasedSecurity'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> EnableVirtualizationBasedSecurity -> 1'
 
   # 18.9.5.2 (NG) Ensure 'Turn On Virtualization Based Security: Select Platform Security Level' is set to 'Secure Boot' or higher. (Automated)
    - id: 18736
-     title: "(NG) Ensure 'Turn On Virtualization Based Security: Select Platform Security Level' is set to 'Secure Boot' or higher."
+     title: "Ensure 'Turn On Virtualization Based Security: Select Platform Security Level' is set to 'Secure Boot' or higher."
      description: "This policy setting specifies whether Virtualization Based Security (VBS) is enabled. VBS uses the Windows Hypervisor to provide support for security services. The recommended state for this setting is: Secure Boot or Secure Boot and DMA Protection. Note: VBS requires a 64-bit version of Windows with Secure Boot enabled, which in turn requires that Windows was installed with a UEFI BIOS configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs."
      rationale: "Secure Boot can help reduce the risk of bootloader attacks and in conjunction with DMA protections to help protect data from being scraped from memory."
      impact: "Choosing the Secure Boot option provides the system with as much protection as is supported by the computer’s hardware. A system with input/output memory management units (IOMMUs) will have Secure Boot with DMA protection. A system without IOMMUs will simply have Secure Boot enabled without DMA protection. Choosing the Secure Boot with DMA protection option requires the system to have IOMMUs in order to enable VBS. Without IOMMU hardware support, VBS will be disabled. Warning: All drivers on the system must be compatible with this feature or the system may crash. Ensure that this policy setting is only deployed to computers which are known to be compatible."
@@ -3474,12 +3480,15 @@ checks:
        - nist_sp_800-53: ["SI-16"]
        - pci_dss_v3.2.1: ["1.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> RequirePlatformSecurityFeatures'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> RequirePlatformSecurityFeatures -> 3'
 
   # 18.9.5.3 (NG) Ensure 'Turn On Virtualization Based Security: Virtualization Based Protection of Code Integrity' is set to 'Enabled with UEFI lock'. (Automated)
    - id: 18737
-     title: "(NG) Ensure 'Turn On Virtualization Based Security: Virtualization Based Protection of Code Integrity' is set to 'Enabled with UEFI lock'."
+     title: "Ensure 'Turn On Virtualization Based Security: Virtualization Based Protection of Code Integrity' is set to 'Enabled with UEFI lock'."
      description: "This setting enables virtualization based protection of Kernel Mode Code Integrity. When this is enabled, kernel mode memory protections are enforced and the Code Integrity validation path is protected by the Virtualization Based Security feature. The recommended state for this setting is: Enabled with UEFI lock Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot enabled, which in turn requires that Windows was installed with a UEFI BIOS configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs."
      rationale: "The Enabled with UEFI lock option ensures that Virtualization Based Protection of Code Integrity cannot be disabled remotely."
      impact: "Warning: All drivers on the system must be compatible with this feature or the system may crash. Ensure that this policy setting is only deployed to computers which are known to be compatible. Warning #2: Once this setting is turned on and active, Virtualization Based Security cannot be disabled solely via GPO or any other remote method. After removing the setting from GPO, the features must also be manually disabled locally at the machine using the steps provided at this link: Manage Windows Defender Credential Guard (Windows 10) | Microsoft Docs."
@@ -3491,12 +3500,15 @@ checks:
        - nist_sp_800-53: ["SI-16"]
        - pci_dss_v3.2.1: ["1.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> HypervisorEnforcedCodeIntegrity'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> HypervisorEnforcedCodeIntegrity -> 1'
 
   # 18.9.5.4 (NG) Ensure 'Turn On Virtualization Based Security: Require UEFI Memory Attributes Table' is set to 'True (checked)'. (Automated)
    - id: 18738
-     title: "(NG) Ensure 'Turn On Virtualization Based Security: Require UEFI Memory Attributes Table' is set to 'True (checked)'."
+     title: "Ensure 'Turn On Virtualization Based Security: Require UEFI Memory Attributes Table' is set to 'True (checked)'."
      description: "This option will only enable Virtualization Based Protection of Code Integrity on devices with UEFI firmware support for the Memory Attributes Table. Devices without the UEFI Memory Attributes Table may have firmware that is incompatible with Virtualization Based Protection of Code Integrity which in some cases can lead to crashes or data loss or incompatibility with certain plug-in cards. If not setting this option the targeted devices should be tested to ensure compatibility. The recommended state for this setting is: True (checked) Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot enabled, which in turn requires that Windows was installed with a UEFI BIOS configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs."
      rationale: "This setting will help protect this control from being enabled on a system that is not compatible which could lead to a crash or data loss."
      impact: "Warning: All drivers on the system must be compatible with this feature or the system may crash. Ensure that this policy setting is only deployed to computers which are known to be compatible."
@@ -3508,12 +3520,15 @@ checks:
        - nist_sp_800-53: ["SI-16"]
        - pci_dss_v3.2.1: ["1.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> HVCIMATRequired'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> HVCIMATRequired -> 1'
 
   # 18.9.5.5 (NG) Ensure 'Turn On Virtualization Based Security: Credential Guard Configuration' is set to 'Enabled with UEFI lock' (MS Only). (Automated)
    - id: 18739
-     title: "(NG) Ensure 'Turn On Virtualization Based Security: Credential Guard Configuration' is set to 'Enabled with UEFI lock' (MS Only)."
+     title: "Ensure 'Turn On Virtualization Based Security: Credential Guard Configuration' is set to 'Enabled with UEFI lock' (MS Only)."
      description: "This setting lets users turn on Credential Guard with virtualization-based security to help protect credentials. The \"Enabled with UEFI lock\" option ensures that Credential Guard cannot be disabled remotely. In order to disable the feature, you must set the Group Policy to \"Disabled\" as well as remove the security functionality from each computer, with a physically present user, in order to clear configuration persisted in UEFI. The recommended state for this setting is: Enabled with UEFI lock, but only on Member Servers (not Domain Controllers). Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot enabled, which in turn requires that Windows was installed with a UEFI BIOS configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs."
      rationale: "The Enabled with UEFI lock option ensures that Credential Guard cannot be disabled remotely."
      impact: "Warning: All drivers on the system must be compatible with this feature or the system may crash. Ensure that this policy setting is only deployed to computers which are known to be compatible. Warning #2: Enabling Windows Defender Credential Guard on Domain Controllers is not supported. The domain controller hosts authentication services which integrate with processes isolated when Windows Defender Credential Guard is enabled, causing crashes. Warning #3: Once this setting is turned on and active, Credential Guard cannot be disabled solely via GPO or any other remote method. After removing the setting from GPO, the features must also be manually disabled locally at the machine using the steps provided at this link: Manage Windows Defender Credential Guard (Windows 10) | Microsoft Docs."
@@ -3525,29 +3540,17 @@ checks:
        - nist_sp_800-53: ["SI-16"]
        - pci_dss_v3.2.1: ["1.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> LsaCfgFlags'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> LsaCfgFlags -> 1'
 
-  # 18.9.5.6 (NG) Ensure 'Turn On Virtualization Based Security: Credential Guard Configuration' is set to 'Disabled' (DC Only). (Automated)
-   - id: 18740
-     title: "(NG) Ensure 'Turn On Virtualization Based Security: Credential Guard Configuration' is set to 'Disabled' (DC Only)."
-     description: "This setting lets users turn on Credential Guard with virtualization-based security to help protect credentials. The recommended state for this setting is: Disabled on Domain Controllers. Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot enabled, which in turn requires that Windows was installed with a UEFI BIOS configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs."
-     rationale: "Credential Guard is not useful on Domain Controllers and can cause crashes on them."
-     impact: "None - this is the default behavior. Warning: Enabling Windows Defender Credential Guard on Domain Controllers is not supported. The domain controller hosts authentication services which integrate with processes isolated when Windows Defender Credential Guard is enabled, causing crashes. Manage Windows Defender Credential Guard (Windows 10) | Microsoft Docs."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Device Guard\\Turn On Virtualization Based Security: Credential Guard Configuration Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 Release 1511 Administrative Templates (or newer)."
-     compliance:
-       - cis: ["18.9.5.6"]
-       - cis_csc_v8: ["10.5"]
-       - cis_csc_v7: ["8.3"]
-       - nist_sp_800-53: ["SI-16"]
-       - pci_dss_v3.2.1: ["1.4"]
-       - soc_2: ["CC6.8"]
-     condition:
-     rules:
+  # 18.9.5.6 (NG) Ensure 'Turn On Virtualization Based Security: Credential Guard Configuration' is set to 'Disabled' (DC Only). (Automated) - Not Implemented
 
   # 18.9.5.7 (NG) Ensure 'Turn On Virtualization Based Security: Secure Launch Configuration' is set to 'Enabled'. (Automated)
    - id: 18741
-     title: "(NG) Ensure 'Turn On Virtualization Based Security: Secure Launch Configuration' is set to 'Enabled'."
+     title: "Ensure 'Turn On Virtualization Based Security: Secure Launch Configuration' is set to 'Enabled'."
      description: "Secure Launch protects the Virtualization Based Security environment from exploited vulnerabilities in device firmware. The recommended state for this setting is: Enabled. Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot enabled, which in turn requires that Windows was installed with a UEFI BIOS configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs."
      rationale: "Secure Launch changes the way windows boots to use Intel Trusted Execution Technology (TXT) and Runtime BIOS Resilience features to prevent firmware exploits from being able to impact the security of the Windows Virtualization Based Security environment."
      impact: "Warning: All drivers on the system must be compatible with this feature or the system may crash. Ensure that this policy setting is only deployed to computers which are known to be compatible."
@@ -3559,12 +3562,15 @@ checks:
        - nist_sp_800-53: ["SI-16"]
        - pci_dss_v3.2.1: ["1.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> ConfigureSystemGuardLaunch'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> ConfigureSystemGuardLaunch -> 1'
 
   # 18.9.7.2 (L1) Ensure 'Prevent device metadata retrieval from the Internet' is set to 'Enabled'. (Automated)
    - id: 18742
-     title: "(L1) Ensure 'Prevent device metadata retrieval from the Internet' is set to 'Enabled'."
+     title: "Ensure 'Prevent device metadata retrieval from the Internet' is set to 'Enabled'."
      description: "This policy setting allows you to prevent Windows from retrieving device metadata from the Internet. The recommended state for this setting is: Enabled. Note: This will not prevent the installation of basic hardware drivers, but does prevent associated third-party utility software from automatically being installed under the context of the SYSTEM account."
      rationale: "Installation of software should be conducted by an authorized system administrator and not a standard user. Allowing automatic third-party software installations under the context of the SYSTEM account has potential for allowing unauthorized access via backdoors or installation software bugs."
      impact: "Standard users without administrator privileges will not be able to install associated third-party utility software for peripheral devices. This may limit the use of advanced features of those devices unless/until an administrator installs the associated utility software for the device."
@@ -3572,12 +3578,15 @@ checks:
      compliance:
        - cis: ["18.9.7.2"]
        - cis_csc_v7: ["18.3"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Device Metadata'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Device Metadata -> PreventDeviceMetadataFromNetwork'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Device Metadata -> PreventDeviceMetadataFromNetwork -> 1'
 
   # 18.9.13.1 (L1) Ensure 'Boot-Start Driver Initialization Policy' is set to 'Enabled: Good, unknown and bad but critical'. (Automated)
    - id: 18743
-     title: "(L1) Ensure 'Boot-Start Driver Initialization Policy' is set to 'Enabled: Good, unknown and bad but critical'."
+     title: "Ensure 'Boot-Start Driver Initialization Policy' is set to 'Enabled: Good, unknown and bad but critical'."
      description: "This policy setting allows you to specify which boot-start drivers are initialized based on a classification determined by an Early Launch Antimalware boot-start driver. The Early Launch Antimalware boot-start driver can return the following classifications for each boot-start driver: - Good: The driver has been signed and has not been tampered with. - Bad: The driver has been identified as malware. It is recommended that you do not allow known bad drivers to be initialized. - Bad, but required for boot: The driver has been identified as malware, but the computer cannot successfully boot without loading this driver. - Unknown: This driver has not been attested to by your malware detection application and has not been classified by the Early Launch Antimalware boot-start driver. If you enable this policy setting you will be able to choose which boot-start drivers to initialize the next time the computer is started. If your malware detection application does not include an Early Launch Antimalware boot-start driver or if your Early Launch Antimalware boot-start driver has been disabled, this setting has no effect and all boot-start drivers are initialized. The recommended state for this setting is: Enabled: Good, unknown and bad but critical."
      rationale: "This policy setting helps reduce the impact of malware that has already infected your system."
      impact: "None - this is the default behavior."
@@ -3589,12 +3598,15 @@ checks:
        - nist_sp_800-53: ["SI-16"]
        - pci_dss_v3.2.1: ["1.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Policies\EarlyLaunch'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Policies\EarlyLaunch -> DriverLoadPolicy'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Policies\EarlyLaunch -> DriverLoadPolicy -> 3'
 
   # 18.9.19.2 (L1) Ensure 'Configure registry policy processing: Do not apply during periodic background processing' is set to 'Enabled: FALSE'. (Automated)
    - id: 18744
-     title: "(L1) Ensure 'Configure registry policy processing: Do not apply during periodic background processing' is set to 'Enabled: FALSE'."
+     title: "Ensure 'Configure registry policy processing: Do not apply during periodic background processing' is set to 'Enabled: FALSE'."
      description: "The \"Do not apply during periodic background processing\" option prevents the system from updating affected policies in the background while the computer is in use. When background updates are disabled, policy changes will not take effect until the next user logon or system restart. The recommended state for this setting is: Enabled: FALSE (unchecked)."
      rationale: "Setting this option to false (unchecked) will ensure that domain policy changes take effect more quickly, as compared to waiting until the next user logon or system restart."
      impact: "Group Policies will be reapplied every time they are refreshed, which could have a slight impact on performance."
@@ -3609,12 +3621,15 @@ checks:
        - pci_dss_v3.2.1: ["11.5", "2.2"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
        - soc_2: ["CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Group Policy\{35378EAC-683F-11D2-A89A-00C04FBBCFA2}'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Group Policy\{35378EAC-683F-11D2-A89A-00C04FBBCFA2} -> NoBackgroundPolicy'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Group Policy\{35378EAC-683F-11D2-A89A-00C04FBBCFA2} -> NoBackgroundPolicy -> 0'
 
   # 18.9.19.3 (L1) Ensure 'Configure registry policy processing: Process even if the Group Policy objects have not changed' is set to 'Enabled: TRUE'. (Automated)
    - id: 18745
-     title: "(L1) Ensure 'Configure registry policy processing: Process even if the Group Policy objects have not changed' is set to 'Enabled: TRUE'."
+     title: "Ensure 'Configure registry policy processing: Process even if the Group Policy objects have not changed' is set to 'Enabled: TRUE'."
      description: "The \"Process even if the Group Policy objects have not changed\" option updates and reapplies policies even if the policies have not changed. The recommended state for this setting is: Enabled: TRUE (checked)."
      rationale: "Setting this option to true (checked) will ensure unauthorized changes that might have been configured locally are forced to match the domain-based Group Policy settings again."
      impact: "Group Policies will be reapplied even if they have not been changed, which could have a slight impact on performance."
@@ -3629,12 +3644,15 @@ checks:
        - pci_dss_v3.2.1: ["11.5", "2.2"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
        - soc_2: ["CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Group Policy\{35378EAC-683F-11D2-A89A-00C04FBBCFA2}'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Group Policy\{35378EAC-683F-11D2-A89A-00C04FBBCFA2} -> NoGPOListChanges'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Group Policy\{35378EAC-683F-11D2-A89A-00C04FBBCFA2} -> NoGPOListChanges -> 0'
 
   # 18.9.19.4 (L1) Ensure 'Continue experiences on this device' is set to 'Disabled'. (Automated)
    - id: 18746
-     title: "(L1) Ensure 'Continue experiences on this device' is set to 'Disabled'."
+     title: "Ensure 'Continue experiences on this device' is set to 'Disabled'."
      description: "This policy setting determines whether the Windows device is allowed to participate in cross-device experiences (continue experiences). The recommended state for this setting is: Disabled."
      rationale: "A cross-device experience is when a system can access app and send messages to other devices. In an enterprise managed environment only trusted systems should be communicating within the network. Access to any other system should be prohibited."
      impact: "The Windows device will not be discoverable by other devices, and cannot participate in cross-device experiences."
@@ -3648,12 +3666,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> EnableCdp'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> EnableCdp -> 0'
 
   # 18.9.19.5 (L1) Ensure 'Turn off background refresh of Group Policy' is set to 'Disabled'. (Automated)
    - id: 18747
-     title: "(L1) Ensure 'Turn off background refresh of Group Policy' is set to 'Disabled'."
+     title: "Ensure 'Turn off background refresh of Group Policy' is set to 'Disabled'."
      description: "This policy setting prevents Group Policy from being updated while the computer is in use. This policy setting applies to Group Policy for computers, users and Domain Controllers. The recommended state for this setting is: Disabled."
      rationale: "This setting ensures that group policy changes take effect more quickly, as compared to waiting until the next user logon or system restart."
      impact: "None - this is the default behavior."
@@ -3668,12 +3689,14 @@ checks:
        - pci_dss_v3.2.1: ["11.5", "2.2"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
        - soc_2: ["CC7.1", "CC8.1"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> DisableBkGndGroupPolicy'
 
   # 18.9.20.1.1 (L1) Ensure 'Turn off downloading of print drivers over HTTP' is set to 'Enabled'. (Automated)
    - id: 18748
-     title: "(L1) Ensure 'Turn off downloading of print drivers over HTTP' is set to 'Enabled'."
+     title: "Ensure 'Turn off downloading of print drivers over HTTP' is set to 'Enabled'."
      description: "This policy setting controls whether the computer can download print driver packages over HTTP. To set up HTTP printing, printer drivers that are not available in the standard operating system installation might need to be downloaded over HTTP. The recommended state for this setting is: Enabled."
      rationale: "Users might download drivers that include malicious code."
      impact: "Print drivers cannot be downloaded over HTTP. Note: This policy setting does not prevent the client computer from printing to printers on the intranet or the Internet over HTTP. It only prohibits downloading drivers that are not already installed locally."
@@ -3687,12 +3710,15 @@ checks:
        - nist_sp_800-53: ["CM-7(5)"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Printers'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Printers -> DisableWebPnPDownload'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Printers -> DisableWebPnPDownload -> 1'
 
   # 18.9.20.1.2 (L2) Ensure 'Turn off handwriting personalization data sharing' is set to 'Enabled'. (Automated)
    - id: 18749
-     title: "(L2) Ensure 'Turn off handwriting personalization data sharing' is set to 'Enabled'."
+     title: "Ensure 'Turn off handwriting personalization data sharing' is set to 'Enabled'."
      description: "This setting turns off data sharing from the handwriting recognition personalization tool. The handwriting recognition personalization tool enables Tablet PC users to adapt handwriting recognition to their own writing style by providing writing samples. The tool can optionally share user writing samples with Microsoft to improve handwriting recognition in future versions of Windows. The tool generates reports and transmits them to Microsoft over a secure connection. The recommended state for this setting is: Enabled."
      rationale: "A person's handwriting is Personally Identifiable Information (PII), especially when it comes to your signature. As such, it is unacceptable in many environments to automatically upload PII to a website without explicit approval by the user."
      impact: "Tablet PC users cannot choose to share writing samples from the handwriting recognition personalization tool with Microsoft."
@@ -3706,12 +3732,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\TabletPC'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\TabletPC -> PreventHandwritingDataSharing'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\TabletPC -> PreventHandwritingDataSharing -> 1'
 
   # 18.9.20.1.3 (L2) Ensure 'Turn off handwriting recognition error reporting' is set to 'Enabled'. (Automated)
    - id: 18750
-     title: "(L2) Ensure 'Turn off handwriting recognition error reporting' is set to 'Enabled'."
+     title: "Ensure 'Turn off handwriting recognition error reporting' is set to 'Enabled'."
      description: "Turns off the handwriting recognition error reporting tool. The handwriting recognition error reporting tool enables users to report errors encountered in Tablet PC Input Panel. The tool generates error reports and transmits them to Microsoft over a secure connection. Microsoft uses these error reports to improve handwriting recognition in future versions of Windows. The recommended state for this setting is: Enabled."
      rationale: "A person's handwriting is Personally Identifiable Information (PII), especially when it comes to your signature. As such, it is unacceptable in many environments to automatically upload PII to a website without explicit approval by the user."
      impact: "Users cannot start the handwriting recognition error reporting tool or send error reports to Microsoft."
@@ -3725,12 +3754,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\HandwritingErrorReports'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\HandwritingErrorReports -> PreventHandwritingErrorReports'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\HandwritingErrorReports -> PreventHandwritingErrorReports -> 1'
 
   # 18.9.20.1.4 (L2) Ensure 'Turn off Internet Connection Wizard if URL connection is referring to Microsoft.com' is set to 'Enabled'. (Automated)
    - id: 18751
-     title: "(L2) Ensure 'Turn off Internet Connection Wizard if URL connection is referring to Microsoft.com' is set to 'Enabled'."
+     title: "Ensure 'Turn off Internet Connection Wizard if URL connection is referring to Microsoft.com' is set to 'Enabled'."
      description: "This policy setting specifies whether the Internet Connection Wizard can connect to Microsoft to download a list of Internet Service Providers (ISPs). The recommended state for this setting is: Enabled."
      rationale: "In an enterprise managed environment we want to lower the risk of a user unknowingly exposing sensitive data."
      impact: "The \"Choose a list of Internet Service Providers\" path in the Internet Connection Wizard causes the wizard to exit. This prevents users from retrieving the list of ISPs, which resides on Microsoft servers."
@@ -3744,12 +3776,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Internet Connection Wizard'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Internet Connection Wizard -> ExitOnMSICW'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Internet Connection Wizard -> ExitOnMSICW -> 1'
 
   # 18.9.20.1.5 (L1) Ensure 'Turn off Internet download for Web publishing and online ordering wizards' is set to 'Enabled'. (Automated)
    - id: 18752
-     title: "(L1) Ensure 'Turn off Internet download for Web publishing and online ordering wizards' is set to 'Enabled'."
+     title: "Ensure 'Turn off Internet download for Web publishing and online ordering wizards' is set to 'Enabled'."
      description: "This policy setting controls whether Windows will download a list of providers for the Web publishing and online ordering wizards. The recommended state for this setting is: Enabled."
      rationale: "Although the risk is minimal, enabling this setting will reduce the possibility of a user unknowingly downloading malicious content through this feature."
      impact: "Windows is prevented from downloading providers; only the service providers cached in the local registry are displayed."
@@ -3763,12 +3798,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoWebServices'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoWebServices -> 1'
 
   # 18.9.20.1.6 (L2) Ensure 'Turn off printing over HTTP' is set to 'Enabled'. (Automated)
    - id: 18753
-     title: "(L2) Ensure 'Turn off printing over HTTP' is set to 'Enabled'."
+     title: "Ensure 'Turn off printing over HTTP' is set to 'Enabled'."
      description: "This policy setting allows you to disable the client computer's ability to print over HTTP, which allows the computer to print to printers on the intranet as well as the Internet. The recommended state for this setting is: Enabled. Note: This control affects printing over both HTTP and HTTPS."
      rationale: "Information that is transmitted over HTTP through this capability is not protected and can be intercepted by malicious users. For this reason, it is not often used in enterprise managed environments."
      impact: "The client computer will not be able to print to Internet printers over HTTP or HTTPS. Note: This policy setting affects the client side of Internet printing only. Regardless of how it is configured, a computer could act as an Internet Printing server and make its shared printers available through HTTP."
@@ -3782,12 +3820,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Printers'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Printers -> DisableHTTPPrinting'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Printers -> DisableHTTPPrinting -> 1'
 
   # 18.9.20.1.7 (L2) Ensure 'Turn off Registration if URL connection is referring to Microsoft.com' is set to 'Enabled'. (Automated)
    - id: 18754
-     title: "(L2) Ensure 'Turn off Registration if URL connection is referring to Microsoft.com' is set to 'Enabled'."
+     title: "Ensure 'Turn off Registration if URL connection is referring to Microsoft.com' is set to 'Enabled'."
      description: "This policy setting specifies whether the Windows Registration Wizard connects to Microsoft.com for online registration. The recommended state for this setting is: Enabled."
      rationale: "Users in an enterprise managed environment should not be registering their own copies of Windows, providing their own PII in the process."
      impact: "Users are blocked from connecting to Microsoft.com for online registration and they cannot register their copy of Windows online."
@@ -3801,12 +3842,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Registration Wizard Control'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Registration Wizard Control -> NoRegistration'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Registration Wizard Control -> NoRegistration -> 1'
 
   # 18.9.20.1.8 (L2) Ensure 'Turn off Search Companion content file updates' is set to 'Enabled'. (Automated)
    - id: 18755
-     title: "(L2) Ensure 'Turn off Search Companion content file updates' is set to 'Enabled'."
+     title: "Ensure 'Turn off Search Companion content file updates' is set to 'Enabled'."
      description: "This policy setting specifies whether Search Companion should automatically download content updates during local and Internet searches. The recommended state for this setting is: Enabled."
      rationale: "There is a small risk that users will unknowingly reveal sensitive information because of the topics they are searching for. This risk is very low because even if this setting is enabled users still must submit search queries to the desired search engine in order to perform searches."
      impact: "Search Companion does not download content updates during searches. Note: Internet searches will still send the search text and information about the search to Microsoft and the chosen search provider. If you select Classic Search, the Search Companion feature will be unavailable. You can select Classic Search by clicking Start, Search, Change Preferences, and then Change Internet Search Behavior."
@@ -3820,12 +3864,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\SearchCompanion'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\SearchCompanion -> DisableContentFileUpdates'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\SearchCompanion -> DisableContentFileUpdates -> 1'
 
   # 18.9.20.1.9 (L2) Ensure 'Turn off the "Order Prints" picture task' is set to 'Enabled'. (Automated)
    - id: 18756
-     title: "(L2) Ensure 'Turn off the "Order Prints" picture task' is set to 'Enabled'."
+     title: "Ensure 'Turn off the 'Order Prints' picture task' is set to 'Enabled'."
      description: "This policy setting specifies whether the \"Order Prints Online\" task is available from Picture Tasks in Windows folders. The Order Prints Online Wizard is used to download a list of providers and allow users to order prints online. The recommended state for this setting is: Enabled."
      rationale: "In an enterprise managed environment we want to lower the risk of a user unknowingly exposing sensitive data."
      impact: "The task \"Order Prints Online\" is removed from Picture Tasks in File Explorer folders."
@@ -3839,12 +3886,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoOnlinePrintsWizard'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoOnlinePrintsWizard -> 1'
 
   # 18.9.20.1.10 (L2) Ensure 'Turn off the "Publish to Web" task for files and folders' is set to 'Enabled'. (Automated)
    - id: 18757
-     title: "(L2) Ensure 'Turn off the "Publish to Web" task for files and folders' is set to 'Enabled'."
+     title: "Ensure 'Turn off the 'Publish to Web' task for files and folders' is set to 'Enabled'."
      description: "This policy setting specifies whether the tasks Publish this file to the Web, Publish this folder to the Web, and Publish the selected items to the Web are available from File and Folder Tasks in Windows folders. The recommended state for this setting is: Enabled."
      rationale: "Users may publish confidential or sensitive information to a public service outside of the control of the organization."
      impact: "The \"Publish to Web\" task is removed from File and Folder tasks in Windows folders."
@@ -3858,12 +3908,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoPublishingWizard'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoPublishingWizard -> 1'
 
   # 18.9.20.1.11 (L2) Ensure 'Turn off the Windows Messenger Customer Experience Improvement Program' is set to 'Enabled'. (Automated)
    - id: 18758
-     title: "(L2) Ensure 'Turn off the Windows Messenger Customer Experience Improvement Program' is set to 'Enabled'."
+     title: "Ensure 'Turn off the Windows Messenger Customer Experience Improvement Program' is set to 'Enabled'."
      description: "This policy setting specifies whether Windows Messenger can collect anonymous information about how the Windows Messenger software and service is used. Microsoft uses information collected through the Customer Experience Improvement Program to detect software flaws so that they can be corrected more quickly, enabling this setting will reduce the amount of data Microsoft is able to gather for this purpose. The recommended state for this setting is: Enabled."
      rationale: "Large enterprise managed environments may not want to have information collected by Microsoft from managed client computers."
      impact: "Windows Messenger will not collect usage information, and the user settings to enable the collection of usage information will not be shown."
@@ -3877,12 +3930,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Messenger\Client'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Messenger\Client -> CEIP'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Messenger\Client -> CEIP -> 2'
 
   # 18.9.20.1.12 (L2) Ensure 'Turn off Windows Customer Experience Improvement Program' is set to 'Enabled'. (Automated)
    - id: 18759
-     title: "(L2) Ensure 'Turn off Windows Customer Experience Improvement Program' is set to 'Enabled'."
+     title: "Ensure 'Turn off Windows Customer Experience Improvement Program' is set to 'Enabled'."
      description: "This policy setting specifies whether the Windows Customer Experience Improvement Program can collect anonymous information about how Windows is used. Microsoft uses information collected through the Windows Customer Experience Improvement Program to improve features that are most used and to detect flaws so that they can be corrected more quickly. Enabling this setting will reduce the amount of data Microsoft is able to gather for this purpose. The recommended state for this setting is: Enabled."
      rationale: "Large enterprise managed environments may not want to have information collected by Microsoft from managed client computers."
      impact: "All users are opted out of the Windows Customer Experience Improvement Program."
@@ -3896,12 +3952,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\SQMClient\Windows'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\SQMClient\Windows -> CEIPEnable'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\SQMClient\Windows -> CEIPEnable -> 0'
 
   # 18.9.20.1.13 (L2) Ensure 'Turn off Windows Error Reporting' is set to 'Enabled'. (Automated)
    - id: 18760
-     title: "(L2) Ensure 'Turn off Windows Error Reporting' is set to 'Enabled'."
+     title: "Ensure 'Turn off Windows Error Reporting' is set to 'Enabled'."
      description: "This policy setting controls whether or not errors are reported to Microsoft. Error Reporting is used to report information about a system or application that has failed or has stopped responding and is used to improve the quality of the product. The recommended state for this setting is: Enabled."
      rationale: "If a Windows Error occurs in a secure, enterprise managed environment, the error should be reported directly to IT staff for troubleshooting and remediation. There is no benefit to the corporation to report these errors directly to Microsoft, and there is some risk of unknowingly exposing sensitive data as part of the error."
      impact: "Users are not given the option to report errors to Microsoft."
@@ -3915,25 +3974,30 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting -> Disabled'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting -> Disabled -> 1'
 
   # 18.9.23.1 (L2) Ensure 'Support device authentication using certificate' is set to 'Enabled: Automatic'. (Automated)
    - id: 18761
-     title: "(L2) Ensure 'Support device authentication using certificate' is set to 'Enabled: Automatic'."
+     title: "Ensure 'Support device authentication using certificate' is set to 'Enabled: Automatic'."
      description: "This policy setting allows you to set support for Kerberos to attempt authentication using the certificate for the device to the domain. Support for device authentication using certificate will require connectivity to a DC in the device account domain which supports certificate authentication for computer accounts. The recommended state for this setting is: Enabled: Automatic."
      rationale: "Having stronger device authentication with the use of certificates is strongly encouraged over standard username and password authentication. Having this set to Automatic will allow certificate based authentication to be used whenever possible."
      impact: "None - this is the default behavior."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Automatic: Computer Configuration\\Policies\\Administrative Templates\\System\\Kerberos\\Support device authentication using certificate Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Kerberos.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer)."
      compliance:
        - cis: ["18.9.23.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\kerberos\parameters -> DevicePKInitBehavior -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\kerberos\parameters -> DevicePKInitEnabled -> 1'
 
   # 18.9.24.1 (L1) Ensure 'Enumeration policy for external devices incompatible with Kernel DMA Protection' is set to 'Enabled: Block All'. (Automated)
    - id: 18762
-     title: "(L1) Ensure 'Enumeration policy for external devices incompatible with Kernel DMA Protection' is set to 'Enabled: Block All'."
-     description: "This policy is intended to provide additional security against external DMA-capable devices. It allows for more control over the enumeration of external DMA-capable devices that are not compatible with DMA Remapping/device memory isolation and sandboxing. The recommended state for this setting is: Enabled: Block All. Note: This policy does not apply to 1394, PCMCIA or ExpressCard devices. The protection also only applies to Windows 10 R1803 or higher, and also requires a UEFI BIOS to function. Note #2: More information on this feature is available at this link: Kernel DMA Protection for Thunderbolt™ 3 (Windows 10) | Microsoft Docs."
+     title: "Ensure 'Enumeration policy for external devices incompatible with Kernel DMA Protection' is set to 'Enabled: Block All'."
+     description: "This policy is intended to provide additional security against external DMA-capable devices. It allows for more control over the enumeration of external DMA-capable devices that are not compatible with DMA Remapping/device memory isolation and sandboxing. The recommended state for this setting is: Enabled: Block All. Note: This policy does not apply to 1394, PCMCIA or ExpressCard devices. The protection also only applies to Windows 10 R1803 or higher, and also requires a UEFI BIOS to function. Note #2: More information on this feature is available at this link: Kernel DMA Protection for Thunderbolt 3 (Windows 10) | Microsoft Docs."
      rationale: "Device memory sandboxing allows the OS to leverage the I/O Memory Management Unit (IOMMU) of a device to block unpermitted I/O, or memory access, by the peripheral."
      impact: "External devices that are not compatible with DMA-remapping will not be enumerated and will not function unless/until the user has logged in successfully and has an unlocked user session. Once enumerated, these devices will continue to function, regardless of the state of the session. Devices that are compatible with DMA-remapping will be enumerated immediately, with their device memory isolated."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Block All: Computer Configuration\\Policies\\Administrative Templates\\System\\Kernel DMA Protection\\Enumeration policy for external devices incompatible with Kernel DMA Protection Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DmaGuard.admx/adml that is included with the Microsoft Windows 10 Release 1809 & Server 2019 Administrative Templates (or newer)."
@@ -3941,12 +4005,15 @@ checks:
        - cis: ["18.9.24.1"]
        - cis_csc_v7: ["1.4"]
        - iso_27001-2013: ["A.8.1.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Kernel DMA Protection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Kernel DMA Protection -> DeviceEnumerationPolicy'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Kernel DMA Protection -> DeviceEnumerationPolicy -> 0'
 
   # 18.9.25.1 (NG) Ensure 'Configures LSASS to run as a protected process' is set to 'Enabled: Enabled with UEFI Lock'. (Automated)
    - id: 18763
-     title: "(NG) Ensure 'Configures LSASS to run as a protected process' is set to 'Enabled: Enabled with UEFI Lock'."
+     title: "Ensure 'Configures LSASS to run as a protected process' is set to 'Enabled: Enabled with UEFI Lock'."
      description: "This policy setting controls whether the Local Security Authority Subservice Service (LSASS) runs in protected mode and also has the option to lock in protected mode with Unified Extensible Firmware Interface (UEFI). The Local Security Authority (LSA), which includes the LSASS process, validates users for local and remote sign-ins and enforces local security policies. The recommended state for this setting is: Enabled: Enabled with UEFI Lock. Note: This additional protection to prevent reading memory and code injection by non-protected processes is supported by Windows 8.1 (and newer)."
      rationale: "Provides added security for the credentials that LSA stores and manages. Enabling this setting with UEFI Lock prevents the setting from being changed remotely."
      impact: "Once this setting has been applied (Enabled), removing the group policy setting (set to Not Configured) will not reverse the impact. In order to reverse the impact, you must explicitly configure this setting to Disabled and follow Microsoft's documentation on disabling the UEFI Lock."
@@ -3956,24 +4023,30 @@ checks:
        - 'https://learn.microsoft.com/en-us/windows/security/identity-protection/credential-guard/credential-guard-manage#disabling-windows-defender-credential-guard-with-uefi-lock'
      compliance:
        - cis: ["18.9.25.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> RunAsPPL'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> RunAsPPL -> 1'
 
   # 18.9.26.1 (L2) Ensure 'Disallow copying of user input methods to the system account for sign-in' is set to 'Enabled'. (Automated)
    - id: 18764
-     title: "(L2) Ensure 'Disallow copying of user input methods to the system account for sign-in' is set to 'Enabled'."
+     title: "Ensure 'Disallow copying of user input methods to the system account for sign-in' is set to 'Enabled'."
      description: "This policy prevents automatic copying of user input methods to the system account for use on the sign-in screen. The user is restricted to the set of input methods that are enabled in the system account. The recommended state for this setting is: Enabled."
      rationale: "This is a way to increase the security of the system account."
      impact: "Users will have input methods enabled for the system account on the sign-in page."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Locale Services\\Disallow copying of user input methods to the system account for sign-in Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Globalization.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
      compliance:
        - cis: ["18.9.26.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Control Panel\International'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Control Panel\International -> BlockUserInputMethodsForSignIn'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Control Panel\International -> BlockUserInputMethodsForSignIn -> 1'
 
   # 18.9.27.1 (L1) Ensure 'Block user from showing account details on sign-in' is set to 'Enabled'. (Automated)
    - id: 18765
-     title: "(L1) Ensure 'Block user from showing account details on sign-in' is set to 'Enabled'."
+     title: "Ensure 'Block user from showing account details on sign-in' is set to 'Enabled'."
      description: "This policy prevents the user from showing account details (email address or user name) on the sign-in screen. The recommended state for this setting is: Enabled."
      rationale: "An attacker with access to the console (for example, someone with physical access or someone who is able to connect to the server through Remote Desktop Services) could view the name of the last user who logged on to the server. The attacker could then try to guess the password, use a dictionary, or use a brute-force attack to try and log on."
      impact: "The user cannot choose to show account details on the sign-in screen."
@@ -3988,96 +4061,120 @@ checks:
        - pci_dss_v3.2.1: ["11.5", "2.2"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
        - soc_2: ["CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> BlockUserFromShowingAccountDetailsOnSignin'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> BlockUserFromShowingAccountDetailsOnSignin -> 1'
 
   # 18.9.27.2 (L1) Ensure 'Do not display network selection UI' is set to 'Enabled'. (Automated)
    - id: 18766
-     title: "(L1) Ensure 'Do not display network selection UI' is set to 'Enabled'."
+     title: "Ensure 'Do not display network selection UI' is set to 'Enabled'."
      description: "This policy setting allows you to control whether anyone can interact with available networks UI on the logon screen. The recommended state for this setting is: Enabled."
      rationale: "An unauthorized user could disconnect the PC from the network or can connect the PC to other available networks without signing into Windows."
      impact: "The PC's network connectivity state cannot be changed without signing into Windows."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Logon\\Do not display network selection UI Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Logon.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
      compliance:
        - cis: ["18.9.27.2"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> DontDisplayNetworkSelectionUI'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> DontDisplayNetworkSelectionUI -> 1'
 
   # 18.9.27.3 (L1) Ensure 'Do not enumerate connected users on domain-joined computers' is set to 'Enabled'. (Automated)
    - id: 18767
-     title: "(L1) Ensure 'Do not enumerate connected users on domain-joined computers' is set to 'Enabled'."
+     title: "Ensure 'Do not enumerate connected users on domain-joined computers' is set to 'Enabled'."
      description: "This policy setting prevents connected users from being enumerated on domain-joined computers. The recommended state for this setting is: Enabled."
      rationale: "A malicious user could use this feature to gather account names of other users, that information could then be used in conjunction with other types of attacks such as guessing passwords or social engineering. The value of this countermeasure is small because a user with domain credentials could gather the same account information using other methods."
      impact: "The Logon UI will not enumerate any connected users on domain-joined computers."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Logon\\Do not enumerate connected users on domain-joined computers Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Logon.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
      compliance:
        - cis: ["18.9.27.3"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> DontEnumerateConnectedUsers'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> DontEnumerateConnectedUsers -> 1'
 
   # 18.9.27.4 (L1) Ensure 'Enumerate local users on domain-joined computers' is set to 'Disabled' (MS only). (Automated)
    - id: 18768
-     title: "(L1) Ensure 'Enumerate local users on domain-joined computers' is set to 'Disabled' (MS only)."
+     title: "Ensure 'Enumerate local users on domain-joined computers' is set to 'Disabled' (MS only)."
      description: "This policy setting allows local users to be enumerated on domain-joined computers. The recommended state for this setting is: Disabled."
      rationale: "A malicious user could use this feature to gather account names of other users, that information could then be used in conjunction with other types of attacks such as guessing passwords or social engineering. The value of this countermeasure is small because a user with domain credentials could gather the same account information using other methods."
      impact: "None - this is the default behavior."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Logon\\Enumerate local users on domain-joined computers Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Logon.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
      compliance:
        - cis: ["18.9.27.4"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> EnumerateLocalUsers'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> EnumerateLocalUsers -> 0'
 
   # 18.9.27.5 (L1) Ensure 'Turn off app notifications on the lock screen' is set to 'Enabled'. (Automated)
    - id: 18769
-     title: "(L1) Ensure 'Turn off app notifications on the lock screen' is set to 'Enabled'."
+     title: "Ensure 'Turn off app notifications on the lock screen' is set to 'Enabled'."
      description: "This policy setting allows you to prevent app notifications from appearing on the lock screen. The recommended state for this setting is: Enabled."
      rationale: "App notifications might display sensitive business or personal data."
      impact: "No app notifications are displayed on the lock screen."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Logon\\Turn off app notifications on the lock screen Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Logon.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
      compliance:
        - cis: ["18.9.27.5"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> DisableLockScreenAppNotifications'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> DisableLockScreenAppNotifications -> 1'
 
   # 18.9.27.6 (L1) Ensure 'Turn off picture password sign-in' is set to 'Enabled'. (Automated)
    - id: 18770
-     title: "(L1) Ensure 'Turn off picture password sign-in' is set to 'Enabled'."
+     title: "Ensure 'Turn off picture password sign-in' is set to 'Enabled'."
      description: "This policy setting allows you to control whether a domain user can sign in using a picture password. The recommended state for this setting is: Enabled. Note: If the picture password feature is permitted, the user's domain password is cached in the system vault when using it."
      rationale: "Picture passwords bypass the requirement for a typed complex password. In a shared work environment, a simple shoulder surf where someone observed the on-screen gestures would allow that person to gain access to the system without the need to know the complex password. Vertical monitor screens with an image are much more visible at a distance than horizontal key strokes, increasing the likelihood of a successful observation of the mouse gestures."
      impact: "Users will not be able to set up or sign in with a picture password."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Logon\\Turn off picture password sign-in Note: This Group Policy path may not exist by default. It is provided by the Group Policy template CredentialProviders.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
      compliance:
        - cis: ["18.9.27.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> BlockDomainPicturePassword'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> BlockDomainPicturePassword -> 1'
 
   # 18.9.27.7 (L1) Ensure 'Turn on convenience PIN sign-in' is set to 'Disabled'. (Automated)
    - id: 18771
-     title: "(L1) Ensure 'Turn on convenience PIN sign-in' is set to 'Disabled'."
+     title: "Ensure 'Turn on convenience PIN sign-in' is set to 'Disabled'."
      description: "This policy setting allows you to control whether a domain user can sign in using a convenience PIN. In Windows 10, convenience PIN was replaced with Passport, which has stronger security properties. To configure Passport for domain users, use the policies under Computer Configuration\\Administrative Templates\\Windows Components\\Microsoft Passport for Work. Note: The user's domain password will be cached in the system vault when using this feature. The recommended state for this setting is: Disabled."
      rationale: "A PIN is created from a much smaller selection of characters than a password, so in most cases a PIN will be much less robust than a password."
      impact: "None - this is the default behavior."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Logon\\Turn on convenience PIN sign-in Note: This Group Policy path may not exist by default. It is provided by the Group Policy template CredentialProviders.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer). Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Turn on PIN sign-in, but it was renamed starting with the Windows 10 Release 1511 Administrative Templates."
      compliance:
        - cis: ["18.9.27.7"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> AllowDomainPINLogon'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> AllowDomainPINLogon -> 0'
 
   # 18.9.30.1 (L2) Ensure 'Allow Clipboard synchronization across devices' is set to 'Disabled'. (Automated)
    - id: 18772
-     title: "(L2) Ensure 'Allow Clipboard synchronization across devices' is set to 'Disabled'."
+     title: "Ensure 'Allow Clipboard synchronization across devices' is set to 'Disabled'."
      description: "This policy setting determines whether Clipboard contents can be synchronized across devices. The recommended state for this setting is: Disabled."
      rationale: "Due to privacy concerns, clipboard data should stay local to the system and not synced across devices."
      impact: "If you disable this policy setting, Clipboard contents cannot be shared to other devices."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\OS Policies\\Allow Clipboard synchronization across devices."
      compliance:
        - cis: ["18.9.30.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> AllowCrossDeviceClipboard'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> AllowCrossDeviceClipboard -> 0'
 
   # 18.9.30.2 (L2) Ensure 'Allow upload of User Activities' is set to 'Disabled'. (Automated)
    - id: 18773
-     title: "(L2) Ensure 'Allow upload of User Activities' is set to 'Disabled'."
+     title: "Ensure 'Allow upload of User Activities' is set to 'Disabled'."
      description: "This policy setting determines whether published User Activities can be uploaded to the cloud. The recommended state for this setting is: Disabled."
      rationale: "Due to privacy concerns, data should never be sent to any third-party since this data could contain sensitive information."
      impact: "Activities of type User Activity are not allowed to be uploaded to the cloud. The Timeline feature will not function across devices."
@@ -4091,8 +4188,11 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> UploadUserActivities'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> UploadUserActivities -> 0'
 
   # 18.9.32.6.1 (L2) Ensure 'Allow network connectivity during connected-standby (on battery)' is set to 'Disabled'. (Automated)
    - id: 18774
