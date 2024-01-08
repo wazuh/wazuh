@@ -290,7 +290,7 @@ MapOp SendAR(std::shared_ptr<sockiface::ISockFactory> sockFactory,
 
         if (rightParameter->isReference())
         {
-            auto reference = event->getString(std::static_pointer_cast<Reference>(rightParameter)->dotPath());
+            auto reference = event->getString(std::static_pointer_cast<Reference>(rightParameter)->jsonPath());
             if (!reference)
             {
                 return base::result::makeFailure(json::Json {}, failureTrace1);
