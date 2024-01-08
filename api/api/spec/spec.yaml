@@ -1297,18 +1297,6 @@ components:
                   - $ref: '#/components/schemas/WazuhRemotedStats'
         - $ref: '#/components/schemas/AllItemsResponse'
 
-    AllItemsResponseNewVersions:
-      allOf:
-        - $ref: '#/components/schemas/AllItemsResponse'
-        - type: object
-          required:
-            - affected_items
-          properties:
-            affected_items:
-              type: array
-              description: "Items that successfully applied the API call action"
-              items:
-                $ref: '#/components/schemas/NewVersions'
 
     BasicInfo:
       type: object
@@ -13193,7 +13181,7 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/AllItemsResponseNewVersions'
+                        $ref: '#/components/schemas/NewVersions'
               example:
                 data:
                   last_check_date: '2023-10-09T15:39:57.616301+00:00'
