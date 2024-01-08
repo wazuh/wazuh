@@ -14,12 +14,13 @@ from wazuh_testing import session_parameters
 
 # Local module imports
 from . import event_monitor
-from .utils import ERROR_MESSAGE, TestConfigurator, local_internal_options
+from .utils import ERROR_MESSAGE
+from .configurator import configurator
 
 pytestmark = [pytest.mark.server]
 
-# Set test configurator for the module
-configurator = TestConfigurator(module='basic_test_module')
+# Set module name
+configurator.module(test_module='basic_test_module')
 
 # -------------------------------------------- TEST_BUCKET_DEFAULTS ----------------------------------------------------
 # Configure T1 test
@@ -33,7 +34,8 @@ configurator.configure_test(configuration_file='bucket_configuration_defaults.ya
                          ids=configurator.cases_ids)
 def test_bucket_defaults(
         configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_s3_cloudtrail_db,
-        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
+        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring,
+
 ):
     """
     description: The module is invoked with the expected parameters and no error occurs.

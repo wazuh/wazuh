@@ -7,10 +7,6 @@
 """
 
 # qa-integration-framework imports
-from wazuh_testing.utils.configuration import (
-    get_test_cases_data,
-    load_configuration_template,
-)
 from wazuh_testing.modules.monitord import configuration as monitord_config
 
 from os.path import join, dirname, realpath
@@ -20,6 +16,7 @@ TEMPLATE_DIR = 'configuration_template'
 TEST_CASES_DIR = 'test_cases'
 WAZUH_MODULES_DEBUG = 'wazuh_modules.debug'
 
+# DICTS
 ERROR_MESSAGE = {
 
     "failed_start": "The AWS module did not start as expected",
@@ -55,61 +52,6 @@ TIMEOUT = {
 # Paths
 TEST_DATA_PATH = join(dirname(realpath(__file__)), 'data')
 
-
 # Set local internal options
 local_internal_options = {WAZUH_MODULES_DEBUG: '2',
                           monitord_config.MONITORD_ROTATE_LOG: '0'}
-
-
-# Classes
-class TestConfigurator:
-    """
-    TestConfigurator class is responsible for configuring test data and parameters for a specific test module.
-
-    Attributes:
-    - module (str): The name of the test module.
-    - configuration_path (str): The path to the configuration directory for the test module.
-    - test_cases_path (str): The path to the test cases directory for the test module.
-    - metadata (list): Test metadata retrieved from the test cases.
-    - parameters (list): Test parameters retrieved from the test cases.
-    - cases_ids (list): Identifiers for the test cases.
-    - test_configuration_template (list): The loaded configuration template for the test module.
-
-    """
-    def __init__(self, module):
-        self.module = module
-        self.configuration_path = join(TEST_DATA_PATH, TEMPLATE_DIR, self.module)
-        self.test_cases_path = join(TEST_DATA_PATH, TEST_CASES_DIR, self.module)
-        self.metadata = None
-        self.parameters = None
-        self.cases_ids = None
-        self.test_configuration_template = None
-
-    def configure_test(self, configuration_file="", cases_file=""):
-        """
-        Configures the test data and parameters for the given test module.
-
-        Args:
-        - configuration_file (str): The name of the configuration file.
-        - cases_file (str): The name of the test cases file.
-
-        Returns:
-        None
-        """
-        # Set test cases path
-        cases_path = join(self.test_cases_path, cases_file)
-
-        # set test cases data
-        self.parameters, self.metadata, self.cases_ids = get_test_cases_data(cases_path)
-
-        # Set test configuration template for tests with config files
-        if configuration_file != "":
-            # Set config path
-            configurations_path = join(self.configuration_path, configuration_file)
-
-            # load configuration template
-            self.test_configuration_template = load_configuration_template(
-                configurations_path,
-                self.parameters,
-                self.metadata
-            )
