@@ -29,6 +29,15 @@ normalize:
       - event: kvdb_get_merge(windows_security_eventid_to_category_type_action, $event.id)
       - windows.logon.id: $windows.EventData.SubjectLogonId
 
+  # Set log level
+  - check: $windows.System.Level.#text=="0" OR $windows.System.Level.#text=="4"
+    map:
+      - log.level: 'information'
+  - check:
+      - windows.System.Level.#text: "2"
+    map:
+      - log.level: 'error'
+
   - map:
       # Set Logon Type
       - windows.logon.type: kvdb_get(windows_logon_type_to_title, $windows.EventData.LogonType)
@@ -373,6 +382,3 @@ normalize:
       - process.executable: $windows.EventData.Application
       - _process_parts: parse_file($windows.EventData.Application)
       - process.name: $_process_parts.name
-
-  - map:
-      - windows: delete()
