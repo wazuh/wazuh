@@ -117,6 +117,7 @@ All notable changes to this project will be documented in this file.
 ### Agent
 
 #### Added
+
 - Added timeouts to external and Cloud integrations to prevent indefinite waiting for a response. ([#20638](https://github.com/wazuh/wazuh/pull/20638))
 
 #### Fixed
