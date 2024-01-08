@@ -4,3 +4,5 @@
     SQS_NAME: wazuh-sqs-integration-tests
   metadata:
     sqs_name: wazuh-sqs-integration-tests
+    bucket_name: wazuh-sqs-integration-test
+    bucket_type: cloudtrail
