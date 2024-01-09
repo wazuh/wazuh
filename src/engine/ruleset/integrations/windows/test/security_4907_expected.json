@@ -13,9 +13,9 @@
       ],
       "code": "4907",
       "dataset": "security",
-      "id": "4907",
       "kind": "event",
-      "module": "security",
+      "module": "windows",
+      "outcome": "success",
       "provider": "Microsoft-Windows-Security-Auditing",
       "start": "2015-10-01T18:18:19.458828800Z",
       "type": [
@@ -26,6 +26,9 @@
     "host": {
       "id": "001",
       "name": "DC01.contoso.local"
+    },
+    "log": {
+      "level": "information"
     },
     "message": "Auditing settings on object were changed",
     "process": {
@@ -53,6 +56,67 @@
       "queue": 102,
       "registered_ip": "any",
       "source": "logcollector"
+    },
+    "windows": {
+      "EventData": {
+        "HandleId": "0x2f8",
+        "NewSd": "S:ARAI(AU;CISA;KA;;;S-1-5-21-3457937927-2839227994-823803824-1104)",
+        "ObjectName": "\\\\REGISTRY\\\\MACHINE\\\\SYSTEM\\\\ControlSet001\\\\Services\\\\EventLog\\\\Internet Explorer",
+        "ObjectServer": "Security",
+        "ObjectType": "Key",
+        "OldSd": "S:AI",
+        "ProcessId": "0x120c",
+        "ProcessName": "C:\\\\Windows\\\\regedit.exe",
+        "SubjectDomainName": "CONTOSO",
+        "SubjectLogonId": "0x138eb0",
+        "SubjectUserName": "dadmin",
+        "SubjectUserSid": "S-1-5-21-3457937927-2839227994-823803824-1104"
+      },
+      "System": {
+        "Channel": {
+          "#text": "Security"
+        },
+        "Computer": {
+          "#text": "DC01.contoso.local"
+        },
+        "Correlation": {},
+        "EventID": {
+          "#text": "4907"
+        },
+        "EventRecordID": {
+          "#text": "1049732"
+        },
+        "Execution": {
+          "@ProcessID": "500",
+          "@ThreadID": "508"
+        },
+        "Keywords": {
+          "#text": "0x8020000000000000"
+        },
+        "Level": {
+          "#text": "0"
+        },
+        "Opcode": {
+          "#text": "0"
+        },
+        "Provider": {
+          "@Guid": "{54849625-5478-4994-A5BA-3E3B0328C30D}",
+          "@Name": "Microsoft-Windows-Security-Auditing"
+        },
+        "Security": {},
+        "Task": {
+          "#text": "13568"
+        },
+        "TimeCreated": {
+          "@SystemTime": "2015-10-01T18:18:19.458828800Z"
+        },
+        "Version": {
+          "#text": "0"
+        }
+      },
+      "logon": {
+        "id": "0x138eb0"
+      }
     }
   }
 ]

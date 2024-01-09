@@ -12,9 +12,9 @@
       ],
       "code": "4798",
       "dataset": "security",
-      "id": "4798",
       "kind": "event",
-      "module": "security",
+      "module": "windows",
+      "outcome": "success",
       "provider": "Microsoft-Windows-Security-Auditing",
       "start": "2015-11-12T04:14:17.436787700Z",
       "type": [

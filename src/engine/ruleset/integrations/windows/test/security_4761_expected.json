@@ -12,9 +12,9 @@
       ],
       "code": "4761",
       "dataset": "security",
-      "id": "4761",
       "kind": "event",
-      "module": "security",
+      "module": "windows",
+      "outcome": "success",
       "provider": "Microsoft-Windows-Security-Auditing",
       "start": "2019-12-19T08:29:38.448732Z",
       "type": [
@@ -30,6 +30,9 @@
     "host": {
       "id": "001",
       "name": "DC_TEST2k12.TEST.SAAS"
+    },
+    "log": {
+      "level": "information"
     },
     "message": "A member was added to a security-disabled universal group",
     "related": {
@@ -62,6 +65,65 @@
       "queue": 102,
       "registered_ip": "any",
       "source": "logcollector"
+    },
+    "windows": {
+      "EventData": {
+        "MemberName": "CN=Administrator,CN=Users,DC=TEST,DC=SAAS",
+        "MemberSid": "S-1-5-21-1717121054-434620538-60925301-500",
+        "PrivilegeList": "-",
+        "SubjectDomainName": "TEST",
+        "SubjectLogonId": "0x2e67800",
+        "SubjectUserName": "at_adm",
+        "SubjectUserSid": "S-1-5-21-1717121054-434620538-60925301-2794",
+        "TargetDomainName": "TEST",
+        "TargetSid": "S-1-5-21-1717121054-434620538-60925301-2905",
+        "TargetUserName": "testuni2"
+      },
+      "System": {
+        "Channel": {
+          "#text": "Security"
+        },
+        "Computer": {
+          "#text": "DC_TEST2k12.TEST.SAAS"
+        },
+        "Correlation": {},
+        "EventID": {
+          "#text": "4761"
+        },
+        "EventRecordID": {
+          "#text": "3707755"
+        },
+        "Execution": {
+          "@ProcessID": "492",
+          "@ThreadID": "1348"
+        },
+        "Keywords": {
+          "#text": "0x8020000000000000"
+        },
+        "Level": {
+          "#text": "0"
+        },
+        "Opcode": {
+          "#text": "0"
+        },
+        "Provider": {
+          "@Guid": "54849625-5478-4994-A5BA-3E3B0328C30D",
+          "@Name": "Microsoft-Windows-Security-Auditing"
+        },
+        "Security": {},
+        "Task": {
+          "#text": "13827"
+        },
+        "TimeCreated": {
+          "@SystemTime": "2019-12-19T08:29:38.448732Z"
+        },
+        "Version": {
+          "#text": "0"
+        }
+      },
+      "logon": {
+        "id": "0x2e67800"
+      }
     }
   }
 ]
