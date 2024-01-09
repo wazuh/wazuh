@@ -301,10 +301,15 @@ def test_get_source_ip_in_alert(alert, is_private, expected):
     example_token = 'example_token'
     testing_maltiverse = maltiverse.Maltiverse(example_token)
 
-    with patch('maltiverse.maltiverse_alert') as alert_mock, patch('ipaddress.IPv4Address') as ip_mock:
+    with patch('maltiverse.maltiverse_alert') as alert_mock, patch('ipaddress.IPv4Address') as ip_mock, \
+            patch('maltiverse.requests.Session.get') as mock_get:
         alert_mock.return_value = {}
         ip_mock_instance = ip_mock.return_value
         ip_mock_instance.is_private = is_private
+
+        mock_response = mock_get.return_value
+        mock_response.json.return_value = response_example
+
         result = maltiverse.get_source_ip_in_alert(alert, testing_maltiverse)
 
     assert len(result) == expected
