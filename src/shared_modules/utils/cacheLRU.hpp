@@ -53,15 +53,15 @@ public:
         if (m_map.size() >= m_capacity)
         {
             // Cache is full, remove the least recently used item (the back of the list)
-            auto lruKey = m_list.back();
+            const auto& lruKey = m_list.back();
             m_list.pop_back();
             m_map.erase(lruKey);
         }
 
         // Insert the new key-value pair into the cache
-        m_map[key] = value;
+        m_map[key] = std::move(value);
         // Move the new item to the front of the list (most recently used)
-        refreshKey(key);
+        refreshKey(std::move(key));
     }
 
     /**

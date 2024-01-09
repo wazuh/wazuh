@@ -93,10 +93,12 @@ public:
         {
             if (type == UpdateType::OFFSET)
             {
-                return runOffsetUpdate(spUpdaterContext, offset);
+                return runOffsetUpdate(std::move(spUpdaterContext), offset);
             }
-
-            return runContentUpdate(spUpdaterContext, offset == 0);
+            else
+            {
+                return runContentUpdate(std::move(spUpdaterContext), offset == 0);
+            }
         }
         catch (const std::exception& e)
         {
@@ -142,7 +144,7 @@ private:
 
         spUpdaterContext->currentOffset = offset;
 
-        FactoryOffsetUpdater::create(m_spBaseContext->configData)->handleRequest(spUpdaterContext);
+        FactoryOffsetUpdater::create(m_spBaseContext->configData)->handleRequest(std::move(spUpdaterContext));
     }
 
     /**
@@ -178,7 +180,7 @@ private:
         const auto lastDownloadedFileHash {m_spBaseContext->downloadedFileHash};
 
         // Run the updater chain
-        m_spUpdaterOrchestration->handleRequest(spUpdaterContext);
+        m_spUpdaterOrchestration->handleRequest(std::move(spUpdaterContext));
 
         // Update filehash if it has changed.
         if (m_spBaseContext->spRocksDB && lastDownloadedFileHash != m_spBaseContext->downloadedFileHash)

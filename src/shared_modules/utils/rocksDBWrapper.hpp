@@ -115,8 +115,9 @@ namespace Utils
                               const auto status {m_db->DestroyColumnFamilyHandle(handle)};
                               if (!status.ok())
                               {
-                                  throw std::runtime_error {"Failed to free RocksDB column family: " +
-                                                            std::string {status.getState()}};
+                                  std::cerr
+                                      << "Failed to free RocksDB column family: " + std::string {status.getState()}
+                                      << std::endl;
                               }
                           });
         };

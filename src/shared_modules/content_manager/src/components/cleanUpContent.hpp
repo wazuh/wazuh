@@ -35,7 +35,7 @@ private:
     void cleanUp(const UpdaterContext& context) const
     {
         // Get the path to the folder.
-        const auto path = context.spUpdaterBaseContext->downloadsFolder;
+        const auto& path = context.spUpdaterBaseContext->downloadsFolder;
 
         // Check if the path exists.
         if (!std::filesystem::exists(path))
@@ -64,7 +64,7 @@ public:
 
         cleanUp(*context);
 
-        return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(context);
+        return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(std::move(context));
     }
 };
 

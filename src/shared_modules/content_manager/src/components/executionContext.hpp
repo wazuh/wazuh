@@ -210,7 +210,7 @@ public:
 
         createOutputFolder(*context);
 
-        return AbstractHandler<std::shared_ptr<UpdaterBaseContext>>::handleRequest(context);
+        return AbstractHandler<std::shared_ptr<UpdaterBaseContext>>::handleRequest(std::move(context));
     }
 };
 

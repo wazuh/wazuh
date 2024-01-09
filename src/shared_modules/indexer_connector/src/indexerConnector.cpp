@@ -123,7 +123,7 @@ IndexerConnector::IndexerConnector(
                     auto data = dataQueue.front();
                     dataQueue.pop();
                     auto parsedData = nlohmann::json::parse(data);
-                    auto id = parsedData.at("id").get_ref<const std::string&>();
+                    const auto& id = parsedData.at("id").get_ref<const std::string&>();
 
                     if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
                     {

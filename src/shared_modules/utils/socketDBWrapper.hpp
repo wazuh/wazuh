@@ -92,7 +92,7 @@ public:
                                     nlohmann::json::parse(responsePacket.substr(sizeof(DB_WRAPPER_OK) - 1));
                                 if (responseParsed.type() == nlohmann::json::value_t::array)
                                 {
-                                    m_response = responseParsed;
+                                    m_response = std::move(responseParsed);
                                 }
                                 else
                                 {
