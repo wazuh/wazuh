@@ -3188,7 +3188,7 @@ checks:
      description: "NetBIOS over TCP/IP is a network protocol that among other things provides a way to easily resolve NetBIOS names that are registered on Windows-based systems to the IP addresses that are configured on those systems. This setting determines whether the computer releases its NetBIOS name when it receives a name-release request. The recommended state for this setting is: Enabled."
      rationale: "The NetBT protocol is designed not to use authentication, and is therefore vulnerable to spoofing. Spoofing makes a transmission appear to come from a user other than the user who performed the action. A malicious user could exploit the unauthenticated nature of the protocol to send a name-conflict datagram to a target computer, which would cause the computer to relinquish its name and not respond to queries. An attacker could send a request over the network and query a computer to release its NetBIOS name. As with any change that could affect applications, it is recommended that you test this change in a non-production environment before you change the production environment. The result of such an attack could be to cause intermittent connectivity issues on the target computer, or even to prevent the use of Network Neighborhood, domain logons, the NET SEND command, or additional NetBIOS name resolution."
      impact: "None - this is the default behavior."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (NoNameReleaseOnDemand) Allow the computer to ignore NetBIOS name release requests except from WINS servers Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required - it is available from this TechNet blog post: The MSS settings – Microsoft Security Guidance blog."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (NoNameReleaseOnDemand) Allow the computer to ignore NetBIOS name release requests except from WINS servers Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required - it is available from this TechNet blog post: The MSS settings - Microsoft Security Guidance blog."
      compliance:
        - cis: ["18.5.6"]
        - cis_csc_v8: ["4.1"]
@@ -3199,8 +3199,11 @@ checks:
        - pci_dss_v3.2.1: ["11.5", "2.2"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
        - soc_2: ["CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NetBT\Parameters'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NetBT\Parameters -> NoNameReleaseOnDemand'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NetBT\Parameters -> NoNameReleaseOnDemand -> 1'
 
   # 18.5.7 (L2) Ensure 'MSS: (PerformRouterDiscovery) Allow IRDP to detect and configure Default Gateway addresses (could lead to DoS)' is set to 'Disabled'. (Automated)
    - id: 31205
@@ -3208,7 +3211,7 @@ checks:
      description: "This setting is used to enable or disable the Internet Router Discovery Protocol (IRDP), which allows the system to detect and configure default gateway addresses automatically as described in RFC 1256 on a per-interface basis. The recommended state for this setting is: Disabled."
      rationale: "An attacker who has gained control of a computer on the same network segment could configure a computer on the network to impersonate a router. Other computers with IRDP enabled would then attempt to route their traffic through the already compromised computer."
      impact: "Windows will not automatically detect and configure default gateway addresses on the computer."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (PerformRouterDiscovery) Allow IRDP to detect and configure Default Gateway addresses (could lead to DoS) Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required - it is available from this TechNet blog post: The MSS settings – Microsoft Security Guidance blog."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (PerformRouterDiscovery) Allow IRDP to detect and configure Default Gateway addresses (could lead to DoS) Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required - it is available from this TechNet blog post: The MSS settings - Microsoft Security Guidance blog."
      compliance:
        - cis: ["18.5.7"]
        - cis_csc_v8: ["4.8"]
@@ -3218,8 +3221,11 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> PerformRouterDiscovery'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> PerformRouterDiscovery -> 0'
 
   # 18.5.8 (L1) Ensure 'MSS: (SafeDllSearchMode) Enable Safe DLL search mode (recommended)' is set to 'Enabled'. (Automated)
    - id: 31206
@@ -3227,7 +3233,7 @@ checks:
      description: "The DLL search order can be configured to search for DLLs that are requested by running processes in one of two ways: - Search folders specified in the system path first, and then search the current working folder. - Search current working folder first, and then search the folders specified in the system path. When enabled, the registry value is set to 1. With a setting of 1, the system first searches the folders that are specified in the system path and then searches the current working folder. When disabled the registry value is set to 0 and the system first searches the current working folder and then searches the folders that are specified in the system path. Applications will be forced to search for DLLs in the system path first. For applications that require unique versions of these DLLs that are included with the application, this entry could cause performance or stability problems. The recommended state for this setting is: Enabled. Note: More information on how Safe DLL search mode works is available at this link: Dynamic-Link Library Search Order - Windows applications | Microsoft Docs."
      rationale: "If a user unknowingly executes hostile code that was packaged with additional files that include modified versions of system DLLs, the hostile code could load its own versions of those DLLs and potentially increase the type and degree of damage the code can render."
      impact: "None - this is the default behavior."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (SafeDllSearchMode) Enable Safe DLL search mode (recommended) Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required - it is available from this TechNet blog post: The MSS settings – Microsoft Security Guidance blog."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (SafeDllSearchMode) Enable Safe DLL search mode (recommended) Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required - it is available from this TechNet blog post: The MSS settings - Microsoft Security Guidance blog."
      compliance:
        - cis: ["18.5.8"]
        - cis_csc_v8: ["10.5"]
@@ -3235,8 +3241,34 @@ checks:
        - nist_sp_800-53: ["SI-16"]
        - pci_dss_v3.2.1: ["1.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager -> SafeDllSearchMode'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager -> SafeDllSearchMode -> 1'
+
+  # 18.5.9 Ensure 'MSS: (ScreenSaverGracePeriod) The time in seconds before the screen saver grace period expires (0 recommended)' is set to 'Enabled: 5 or fewer seconds' (Automated)
+   - id: 31207
+     title: "Ensure 'MSS: (ScreenSaverGracePeriod) The time in seconds before the screen saver grace period expires (0 recommended)' is set to 'Enabled: 5 or fewer seconds'."
+     description: "Windows includes a grace period between when the screen saver is launched and when the console is actually locked automatically when screen saver locking is enabled. The recommended state for this setting is: Enabled: 5 or fewer seconds."
+     rationale: "The default grace period that is allowed for user movement before the screen saver lock takes effect is five seconds. If you leave the default grace period configuration, your computer is vulnerable to a potential attack from someone who could approach the console and attempt to log on to the computer before the lock takes effect. An entry to the registry can be made to adjust the length of the grace period."
+     impact: "Users will have to enter their passwords to resume their console sessions as soon as the grace period ends after screen saver activation."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 5 or fewer seconds: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (ScreenSaverGracePeriod) The time in seconds before the screen saver grace period expires (0 recommended) Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required - it is available from this TechNet blog post: The MSS settings - Microsoft Security Guidance blog."
+     compliance:
+       - cis: ["18.5.9"]
+       - cis_csc_v8: ["4.3"]
+       - cis_csc_v7: ["16.11"]
+       - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
+       - hipaa: ["164.312(a)(2)(iii)"]
+       - iso_27001-2013: ["A.8.1.3"]
+       - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
+       - pci_dss_v3.2.1: ["8.1.8"]
+       - pci_dss_v4.0: ["8.2.8"]
+     condition: all
+     rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon -> ScreenSaverGracePeriod'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon -> ScreenSaverGracePeriod -> n:^(\d+) compare <= 5'
 
   # 18.5.10 (L2) Ensure 'MSS: (TcpMaxDataRetransmissions IPv6) How many times unacknowledged data is retransmitted' is set to 'Enabled: 3'. (Automated)
    - id: 31207
@@ -3244,7 +3276,7 @@ checks:
      description: "This setting controls the number of times that TCP retransmits an individual data segment (non-connect segment) before the connection is aborted. The retransmission time-out is doubled with each successive retransmission on a connection. It is reset when responses resume. The base time-out value is dynamically determined by the measured round-trip time on the connection. The recommended state for this setting is: Enabled: 3."
      rationale: "A malicious user could exhaust a target computer's resources if it never sent any acknowledgment messages for data that was transmitted by the target computer."
      impact: "TCP starts a retransmission timer when each outbound segment is passed to the IP. If no acknowledgment is received for the data in a given segment before the timer expires, then the segment is retransmitted up to three times."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 3: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS:(TcpMaxDataRetransmissions IPv6) How many times unacknowledged data is retransmitted Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required - it is available from this TechNet blog post: The MSS settings – Microsoft Security Guidance blog."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 3: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS:(TcpMaxDataRetransmissions IPv6) How many times unacknowledged data is retransmitted Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required - it is available from this TechNet blog post: The MSS settings - Microsoft Security Guidance blog."
      compliance:
        - cis: ["18.5.10"]
        - cis_csc_v8: ["4.2"]
@@ -3254,8 +3286,11 @@ checks:
        - pci_dss_v3.2.1: ["1.1.1", "1.2.2"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.4.2", "1.5.1", "2.1.1", "2.2.1"]
        - soc_2: ["CC5.2"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters -> TcpMaxDataRetransmissions'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters -> TcpMaxDataRetransmissions -> 3'
 
   # 18.5.11 (L2) Ensure 'MSS: (TcpMaxDataRetransmissions) How many times unacknowledged data is retransmitted' is set to 'Enabled: 3'. (Automated)
    - id: 31208
@@ -3263,25 +3298,51 @@ checks:
      description: "This setting controls the number of times that TCP retransmits an individual data segment (non-connect segment) before the connection is aborted. The retransmission time-out is doubled with each successive retransmission on a connection. It is reset when responses resume. The base time-out value is dynamically determined by the measured round-trip time on the connection. The recommended state for this setting is: Enabled: 3."
      rationale: "A malicious user could exhaust a target computer's resources if it never sent any acknowledgment messages for data that was transmitted by the target computer."
      impact: "TCP starts a retransmission timer when each outbound segment is passed to the IP. If no acknowledgment is received for the data in a given segment before the timer expires, then the segment is retransmitted up to three times."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 3: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS:(TcpMaxDataRetransmissions) How many times unacknowledged data is retransmitted Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required - it is available from this TechNet blog post: The MSS settings – Microsoft Security Guidance blog."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 3: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS:(TcpMaxDataRetransmissions) How many times unacknowledged data is retransmitted Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required - it is available from this TechNet blog post: The MSS settings - Microsoft Security Guidance blog."
      compliance:
        - cis: ["18.5.11"]
        - cis_csc_v7: ["9.2"]
        - iso_27001-2013: ["A.13.1.3"]
+     condition: all
+     rules:
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> TcpMaxDataRetransmissions'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> TcpMaxDataRetransmissions -> 3'
+
+  # 18.5.12 (L1) Ensure 'MSS: (WarningLevel) Percentage threshold for the security event log at which the system will generate a warning' is set to 'Enabled: 90% or less' (Automated)
+   - id: 31209
+     title: "Ensure 'MSS: (WarningLevel) Percentage threshold for the security event log at which the system will generate a warning' is set to 'Enabled: 90% or less'."
+     description: "This setting can generate a security audit in the Security event log when the log reaches a user-defined threshold. The recommended state for this setting is: Enabled: 90% or less. Note: If log settings are configured to Overwrite events as needed or Overwrite events older than x days, this event will not be generated."
+     rationale: "If the Security log reaches 90 percent of its capacity and the computer has not been configured to overwrite events as needed, more recent events will not be written to the log. If the log reaches its capacity and the computer has been configured to shut down when it can no longer record events to the Security log, the computer will shut down and will no longer be available to provide network services."
+     impact: "An audit event will be generated when the Security log reaches the 90% percent full threshold (or whatever lower value may be set) unless the log is configured to overwrite events as needed."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 90% or less: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (WarningLevel) Percentage threshold for the security event log at which the system will generate a warning Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required - it is available from this TechNet blog post: The MSS settings - Microsoft Security Guidance blog."
+     compliance:
+       - cis: ["18.5.12"]
+       - cis_csc_v8: ["8.3"]
+       - cis_csc_v7: ["6.3", "6.4"]
+       - iso_27001-2013: ["A.12.4.1"]
+       - pci_dss_v3.2.1: ["10.7"]
+       - soc_2: ["A1.1"]
      condition:
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Eventlog\Security'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Eventlog\Security -> WarningLevel'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Eventlog\Security -> WarningLevel -> n:^(\d+) compare <= 90'
 
   # 18.6.4.1 (L1) Ensure 'Configure NetBIOS settings' is set to 'Enabled: Disable NetBIOS name resolution on public networks'. (Automated)
    - id: 31209
      title: "Ensure 'Configure NetBIOS settings' is set to 'Enabled: Disable NetBIOS name resolution on public networks'."
-     description: "This policy setting specifies if the Domain Name System (DNS) client will perform name resolution over Network Basic Input/Output System (NetBIOS). NetBIOS is a legacy name resolution method for internal Microsoft networking that predates the use of DNS for that purpose (pre–Active Directory). Some legacy applications still require the use of NetBIOS for full functionality. The recommended state for this setting is: Enabled: Disable NetBIOS name resolution on public networks. Configuring this setting to Enabled: Disable NetBIOS name resolution also conforms to the benchmark."
+     description: "This policy setting specifies if the Domain Name System (DNS) client will perform name resolution over Network Basic Input/Output System (NetBIOS). NetBIOS is a legacy name resolution method for internal Microsoft networking that predates the use of DNS for that purpose (pre-Active Directory). Some legacy applications still require the use of NetBIOS for full functionality. The recommended state for this setting is: Enabled: Disable NetBIOS name resolution on public networks. Configuring this setting to Enabled: Disable NetBIOS name resolution also conforms to the benchmark."
      rationale: "NetBIOS does not perform authentication and can allow remote attackers to cause a denial of service by sending spoofed Name Conflicts or Name Release datagrams. This is also known as \"NetBIOS Name Server Protocol Spoofing\". Preventing the use of NetBIOS on public networks reduces the attack surface."
      impact: "None - this is the default behavior."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Disable NetBIOS name resolution on public networks: Computer Configuration\\Policies\\Administrative Templates\\Network\\DNS Client\\Configure NetBIOS settings."
      compliance:
        - cis: ["18.6.4.1"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient -> EnableNetbios'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient -> EnableNetbios -> 1'
 
   # 18.6.4.2 (L1) Ensure 'Turn off multicast name resolution' is set to 'Enabled'. (Automated)
    - id: 31210
@@ -3299,8 +3360,11 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient -> EnableMulticast'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient -> EnableMulticast -> 1'
 
   # 18.6.5.1 (L2) Ensure 'Enable Font Providers' is set to 'Disabled'. (Automated)
    - id: 31211
@@ -3315,8 +3379,11 @@ checks:
        - cis_csc_v7: ["18.4"]
        - pci_dss_v3.2.1: ["6.2"]
        - pci_dss_v4.0: ["12.3.4", "6.3.3"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> EnableFontProviders'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> EnableFontProviders -> 0'
 
   # 18.6.8.1 (L1) Ensure 'Enable insecure guest logons' is set to 'Disabled'. (Automated)
    - id: 31212
@@ -3329,8 +3396,11 @@ checks:
        - cis: ["18.6.8.1"]
        - cis_csc_v7: ["9.2"]
        - iso_27001-2013: ["A.13.1.3"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LanmanWorkstation'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LanmanWorkstation -> AllowInsecureGuestAuth'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LanmanWorkstation -> AllowInsecureGuestAuth -> 0'
 
   # 18.6.9.1 (L2) Ensure 'Turn on Mapper I/O (LLTDIO) driver' is set to 'Disabled'. (Automated)
    - id: 31213
@@ -3349,8 +3419,12 @@ checks:
        - pci_dss_v3.2.1: ["11.5", "2.2"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
        - soc_2: ["CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> AllowLLTDIOOnDomain -> 0'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> AllowLLTDIOOnPublicNet -> 0'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> EnableLLTDIO -> 0'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> ProhibitLLTDIOOnPrivateNet -> 0'
 
   # 18.6.9.2 (L2) Ensure 'Turn on Responder (RSPNDR) driver' is set to 'Disabled'. (Automated)
    - id: 31214
@@ -3369,8 +3443,12 @@ checks:
        - pci_dss_v3.2.1: ["11.5", "2.2"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
        - soc_2: ["CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> AllowRspndrOnDomain -> 0'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> AllowRspndrOnPublicNet -> 0'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> EnableRspndr -> 0'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> ProhibitRspndrOnPrivateNet -> 0'
 
   # 18.6.10.2 (L2) Ensure 'Turn off Microsoft Peer-to-Peer Networking Services' is set to 'Enabled'. (Automated)
    - id: 31215
@@ -3378,7 +3456,7 @@ checks:
      description: "The Peer Name Resolution Protocol (PNRP) allows for distributed resolution of a name to an IPv6 address and port number. The protocol operates in the context of clouds. A cloud is a set of peer computers that can communicate with each other by using the same IPv6 scope. Peer-to-Peer protocols allow for applications in the areas of RTC, collaboration, content distribution and distributed processing. The recommended state for this setting is: Enabled."
      rationale: "This setting enhances the security of the environment and reduces the overall risk exposure related to peer-to-peer networking."
      impact: "Microsoft Peer-to-Peer Networking Services are turned off in their entirety, and all applications dependent on them will stop working."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Microsoft Peer-to-Peer Networking Services\\Turn off Microsoft Peer-to-Peer Networking Services Note: This Group Policy path is provided by the Group Policy template P2P- pnrp.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Microsoft Peer-to-Peer Networking Services\\Turn off Microsoft Peer-to-Peer Networking Services Note: This Group Policy path is provided by the Group Policy template P2P - pnrp.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
      compliance:
        - cis: ["18.6.10.2"]
        - cis_csc_v8: ["4.8"]
@@ -3388,8 +3466,11 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Peernet'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Peernet -> Disabled'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Peernet -> Disabled -> 1'
 
   # 18.6.11.2 (L1) Ensure 'Prohibit installation and configuration of Network Bridge on your DNS domain network' is set to 'Enabled'. (Automated)
    - id: 31216
@@ -3408,8 +3489,11 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "1.2.3", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "1.3.1", "1.3.2", "1.3.3", "1.4.4", "11.4.5", "2.2.4", "6.4.1", "7.1", "7.2.5.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections -> NC_AllowNetBridge_NLA'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections -> NC_AllowNetBridge_NLA -> 0'
 
   # 18.6.11.3 (L1) Ensure 'Prohibit use of Internet Connection Sharing on your DNS domain network' is set to 'Enabled'. (Automated)
    - id: 31217
@@ -3428,8 +3512,11 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "1.2.3", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "1.3.1", "1.3.2", "1.3.3", "1.4.4", "11.4.5", "2.2.4", "6.4.1", "7.1", "7.2.5.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections -> NC_ShowSharedAccessUI'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections -> NC_ShowSharedAccessUI -> 1'
 
   # 18.6.11.4 (L1) Ensure 'Require domain users to elevate when setting a network's location' is set to 'Enabled'. (Automated)
    - id: 31218
@@ -3440,8 +3527,25 @@ checks:
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Network Connections\\Require domain users to elevate when setting a network's location Note: This Group Policy path may not exist by default. It is provided by the Group Policy template NetworkConnections.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
      compliance:
        - cis: ["18.6.11.4"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections -> NC_StdDomainUserSetLocation'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections -> NC_StdDomainUserSetLocation -> 1'
+
+  # 18.6.14.1 (L1) Ensure 'Hardened UNC Paths' is set to 'Enabled, with "Require Mutual Authentication" and "Require Integrity" set for all NETLOGON and SYSVOL shares' (Automated)
+   - id: 31219
+     title: "Ensure 'Hardened UNC Paths' is set to 'Enabled, with \"Require Mutual Authentication\" and \"Require Integrity\" set for all NETLOGON and SYSVOL shares'."
+     description: "This policy setting configures secure access to UNC paths. The recommended state for this setting is: Enabled, with \"Require Mutual Authentication\" and \"Require Integrity\" set for all NETLOGON and SYSVOL shares. Note: If the environment exclusively contains Windows 8.0 / Server 2012 (non-R2) or newer systems, then the \"Privacy\" setting may (optionally) also be set to enable SMB encryption. However, using SMB encryption will render the targeted share paths completely inaccessible by older OSes, so only use this additional option with caution and thorough testing."
+     rationale: "In February 2015, Microsoft released a new control mechanism to mitigate a security risk in Group Policy as part of the MS15-011 / MSKB 3000483 security update. This mechanism requires both the installation of the new security update and also the deployment of specific group policy settings to all computers on the domain from Windows Vista / Server 2008 (non-R2) or newer (the associated security patch to enable this feature was not released for Server 2003). A new group policy template (NetworkProvider.admx/adml) was also provided with the security update. Once the new GPO template is in place, the following are the minimum requirements to remediate the Group Policy security risk: \\*\\NETLOGON RequireMutualAuthentication=1, RequireIntegrity=1 \\*\\SYSVOL RequireMutualAuthentication=1, RequireIntegrity=1 Note: A reboot may be required after the setting is applied to a client machine to access the above paths. Additional guidance on the deployment of this security setting is available from the Microsoft Premier Field Engineering (PFE) Platforms TechNet Blog here: Guidance on Deployment of MS15-011 and MS15-014."
+     impact: "Windows only allows access to the specified UNC paths after fulfilling additional security requirements."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled with the following paths configured, at a minimum: \\*\\NETLOGON RequireMutualAuthentication=1, RequireIntegrity=1 \\*\\SYSVOL RequireMutualAuthentication=1, RequireIntegrity=1 Computer Configuration\\Policies\\Administrative Templates\\Network\\Network Provider\\Hardened UNC Paths Note: This Group Policy path does not exist by default. An additional Group Policy template (NetworkProvider.admx/adml) is required - it is included with the MS15-011 / MSKB 3000483 security update or with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer)."
+     compliance:
+       - cis: ["18.6.14.1"]
+     condition: all
+     rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths -> \\*\NETLOGON -> r:RequireMutualAuthentication=1 && r:RequireIntegrity=1'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths -> \\*\SYSVOL -> r:RequireMutualAuthentication=1 && r:RequireIntegrity=1'
 
   # 18.6.19.2.1 (L2) Disable IPv6 (Ensure TCPIP6 Parameter 'DisabledComponents' is set to '0xff (255)'). (Automated)
    - id: 31219
@@ -3459,8 +3563,11 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters -> DisabledComponents'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters -> DisabledComponents -> 255'
 
   # 18.6.20.1 (L2) Ensure 'Configuration of wireless settings using Windows Connect Now' is set to 'Disabled'. (Automated)
    - id: 31220
@@ -3478,8 +3585,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> EnableRegistrars -> 0'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableUPnPRegistrar -> 0'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableInBand802DOT11Registrar -> 0'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableFlashConfigRegistrar -> 0'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableWPDRegistrar -> 0'
 
   # 18.6.20.2 (L2) Ensure 'Prohibit access of the Windows Connect Now wizards' is set to 'Enabled'. (Automated)
    - id: 31221
@@ -3497,8 +3609,34 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\UI'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\UI -> DisableWcnUi'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\UI -> DisableWcnUi -> 1'
+
+  # 18.6.21.1 (L1) Ensure 'Minimize the number of simultaneous connections to the Internet or a Windows Domain' is set to 'Enabled: 1 = Minimize simultaneous connections' (Automated)
+   - id: 31222
+     title: "Ensure 'Minimize the number of simultaneous connections to the Internet or a Windows Domain' is set to 'Enabled: 1 = Minimize simultaneous connections'."
+     description: "This policy setting prevents computers from establishing multiple simultaneous connections to either the Internet or to a Windows domain. The recommended state for this setting is: Enabled: 1 = Minimize simultaneous connections."
+     rationale: "Preventing bridged network connections can help prevent a user unknowingly allowing traffic to route between internal and external networks, which risks exposure to sensitive internal data."
+     impact: "None - this is the default behavior."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 1 = Minimize simultaneous connections: Computer Configuration\\Policies\\Administrative Templates\\Network\\Windows Connection Manager\\Minimize the number of simultaneous connections to the Internet or a Windows Domain Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WCM.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates. It was updated with a new Minimize Policy Options sub-setting starting with the Windows 10 Release 1903 Administrative Templates."
+     compliance:
+       - cis: ["18.6.21.1"]
+       - cis_csc_v8: ["4.1"]
+       - cis_csc_v7: ["15.5"]
+       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
+       - iso_27001-2013: ["A.14.2.2"]
+       - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+       - pci_dss_v3.2.1: ["11.5", "2.2"]
+       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
+       - soc_2: ["CC7.1", "CC8.1"]
+     condition: all
+     rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy -> fMinimizeConnections'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy -> fMinimizeConnections -> 1'
 
   # 18.6.21.2 (L2) Ensure 'Prohibit connection to non-domain networks when connected to domain authenticated network' is set to 'Enabled' (MS only). (Automated)
    - id: 31222
@@ -3511,8 +3649,11 @@ checks:
        - cis: ["18.6.21.2"]
        - cis_csc_v7: ["12.4"]
        - iso_27001-2013: ["A.13.1.1"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy -> fBlockNonDomain'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy -> fBlockNonDomain -> 1'
 
   # 18.7.1 (L1) Ensure 'Allow Print Spooler to accept client connections' is set to 'Disabled'. (Automated)
    - id: 31223
@@ -3525,8 +3666,11 @@ checks:
        - 'https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34527'
      compliance:
        - cis: ["18.7.1"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RegisterSpoolerRemoteRpcEndPoint'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RegisterSpoolerRemoteRpcEndPoint -> 0'
 
   # 18.7.2 (L1) Ensure 'Configure Redirection Guard' is set to 'Enabled: Redirection Guard Enabled'. (Automated)
    - id: 31224
@@ -3539,8 +3683,11 @@ checks:
        - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/windows-11-'
      compliance:
        - cis: ["18.7.2"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RedirectionguardPolicy'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RedirectionguardPolicy -> 1'
 
   # 18.7.3 (L1) Ensure 'Configure RPC connection settings: Protocol to use for outgoing RPC connections' is set to 'Enabled: RPC over TCP'. (Automated)
    - id: 31225
@@ -3553,8 +3700,11 @@ checks:
        - 'https://learn.microsoft.com/en-us/troubleshoot/windows-client/printing/windows-'
      compliance:
        - cis: ["18.7.3"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC -> RpcUseNamedPipeProtocol'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC -> RpcUseNamedPipeProtocol -> 1'
 
   # 18.7.4 (L1) Ensure 'Configure RPC connection settings: Use authentication for outgoing RPC connections' is set to 'Enabled: Default'. (Automated)
    - id: 31226
@@ -3567,8 +3717,11 @@ checks:
        - 'https://learn.microsoft.com/en-us/troubleshoot/windows-client/printing/windows-'
      compliance:
        - cis: ["18.7.4"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC -> RpcAuthentication'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC -> RpcAuthentication -> 1'
 
   # 18.7.5 (L1) Ensure 'Configure RPC listener settings: Protocols to allow for incoming RPC connections' is set to 'Enabled: RPC over TCP'. (Automated)
    - id: 31227
@@ -3579,8 +3732,26 @@ checks:
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: RCP over TCP: Computer Configuration\\Policies\\Administrative Templates\\Printers\\Configure RPC listener settings: Configure protocol options for incoming RPC connections Note: This Group Policy path is provided by the Group Policy template Printing.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates (and newer)."
      compliance:
        - cis: ["18.7.5"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC -> RpcProtocols'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC -> RpcProtocols -> 1'
+
+  # 18.7.6 (L1) Ensure 'Configure RPC listener settings: Authentication protocol to use for incoming RPC connections:' is set to 'Enabled: Negotiate' or higher (Automated)
+   - id: 31227
+     title: "Ensure 'Configure RPC listener settings: Authentication protocol to use for incoming RPC connections:' is set to 'Enabled: Negotiate' or higher."
+     description: "This policy setting controls which protocols incoming Remote Procedure Call (RPC) connections to the print spooler are allowed to use. The recommended state for this setting is: Enabled: Negotiate or higher."
+     rationale: "This setting can prevent the use of named pipes for RPC connections to the print spooler and forces the use of TCP which is a more secure communication method."
+     impact: "Warning: Many existing print configurations may be using the older named pipes protocol and therefore will cease to function."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Negotiate or higher: Computer Configuration\\Policies\\Administrative Templates\\Printers\\Configure RPC listener settings: Configure protocol options for incoming RPC connections Note: This Group Policy path is provided by the Group Policy template Printing.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates (and newer)."
+     compliance:
+       - cis: ["18.7.6"]
+     condition: all
+     rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC -> ForceKerberosForRpc'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC -> ForceKerberosForRpc -> 1'
 
   # 18.7.7 (L1) Ensure 'Configure RPC over TCP port' is set to 'Enabled: 0'. (Automated)
    - id: 31228
@@ -3591,13 +3762,16 @@ checks:
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 0: Computer Configuration\\Policies\\Administrative Templates\\Printers\\Configure RPC over TCP port Note: This Group Policy path is provided by the Group Policy template Printing.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates (and newer)."
      compliance:
        - cis: ["18.7.7"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC -> RpcTcpPort'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC -> RpcTcpPort -> 0'
 
   # 18.7.8 (L1) Ensure 'Limits print driver installation to Administrators' is set to 'Enabled'. (Automated)
    - id: 31229
      title: "Ensure 'Limits print driver installation to Administrators' is set to 'Enabled'."
-     description: "This policy setting controls whether users who aren't Administrators can install print drivers on the system. The recommended state for this setting is: Enabled. Note: On August 10, 2021, Microsoft announced a Point and Print Default Behavior Change which modifies the default Point and Print driver installation and update behavior to require Administrator privileges. This is documented in KB5005652— Manage new Point and Print default driver installation behavior (CVE-2021-34481)."
+     description: "This policy setting controls whether users who aren't Administrators can install print drivers on the system. The recommended state for this setting is: Enabled. Note: On August 10, 2021, Microsoft announced a Point and Print Default Behavior Change which modifies the default Point and Print driver installation and update behavior to require Administrator privileges. This is documented in KB5005652 - Manage new Point and Print default driver installation behavior (CVE-2021-34481)."
      rationale: "Restricting the installation of print drives to Administrators can help mitigate the PrintNightmare vulnerability (CVE-2021-34527) and other Print Spooler attacks."
      impact: "None - this is the default behavior."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled. Computer Configuration\\Policies\\Administrative Templates\\Printers\\Limits print driver installation to Administrators Note: This Group Policy path is provided by the Group Policy template Printing.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (and newer)."
@@ -3606,8 +3780,11 @@ checks:
        - 'https://support.microsoft.com/en-gb/topic/kb5005652-manage-new-point-and-'
      compliance:
        - cis: ["18.7.8"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint -> RestrictDriverInstallationToAdministrators'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint -> RestrictDriverInstallationToAdministrators -> 1'
 
   # 18.7.9 (L1) Ensure 'Manage processing of Queue-specific files' is set to 'Enabled: Limit Queue-specific files to Color profiles'. (Automated)
    - id: 31230
@@ -3621,13 +3798,16 @@ checks:
        - 'https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-36958'
      compliance:
        - cis: ["18.7.9"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> CopyFilesPolicy'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> CopyFilesPolicy -> 1'
 
   # 18.7.10 (L1) Ensure 'Point and Print Restrictions: When installing drivers for a new connection' is set to 'Enabled: Show warning and elevation prompt'. (Automated)
    - id: 31231
      title: "Ensure 'Point and Print Restrictions: When installing drivers for a new connection' is set to 'Enabled: Show warning and elevation prompt'."
-     description: "This policy setting controls whether computers will show a warning and a security elevation prompt when users create a new printer connection using Point and Print. The recommended state for this setting is: Enabled: Show warning and elevation prompt. Note: On August 10, 2021, Microsoft announced a Point and Print Default Behavior Change which modifies the default Point and Print driver installation and update behavior to require Administrator privileges. This is documented in KB5005652— Manage new Point and Print default driver installation behavior (CVE-2021-34481). This change overrides all Point and Print Group Policy settings and ensures that only Administrators can install printer drivers from a print server using Point and Print."
+     description: "This policy setting controls whether computers will show a warning and a security elevation prompt when users create a new printer connection using Point and Print. The recommended state for this setting is: Enabled: Show warning and elevation prompt. Note: On August 10, 2021, Microsoft announced a Point and Print Default Behavior Change which modifies the default Point and Print driver installation and update behavior to require Administrator privileges. This is documented in KB5005652 - Manage new Point and Print default driver installation behavior (CVE-2021-34481). This change overrides all Point and Print Group Policy settings and ensures that only Administrators can install printer drivers from a print server using Point and Print."
      rationale: "Enabling Windows User Account Control (UAC) for the installation of new print drivers can help mitigate the PrintNightmare vulnerability (CVE-2021-34527) and other Print Spooler attacks. Although the Point and Print default driver installation behavior overrides this setting, it is important to configure this as a backstop in the event that behavior is reversed."
      impact: "None - this is the default behavior."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Show warning and elevation prompt: Computer Configuration\\Policies\\Administrative Templates\\Printers\\Point and Print Restrictions: When installing drivers for a new connection Note: This Group Policy path is provided by the Group Policy template Printing.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
@@ -3640,13 +3820,16 @@ checks:
        - 'https://support.microsoft.com/en-us/topic/kb5005652-manage-new-point-and-'
      compliance:
        - cis: ["18.7.10"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint -> NoWarningNoElevationOnInstall'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint -> NoWarningNoElevationOnInstall -> 1'
 
   # 18.7.11 (L1) Ensure 'Point and Print Restrictions: When updating drivers for an existing connection' is set to 'Enabled: Show warning and elevation prompt'. (Automated)
    - id: 31232
      title: "Ensure 'Point and Print Restrictions: When updating drivers for an existing connection' is set to 'Enabled: Show warning and elevation prompt'."
-     description: "This policy setting controls whether computers will show a warning and a security elevation prompt when users are updating drivers for an existing connection using Point and Print. The recommended state for this setting is: Enabled: Show warning and elevation prompt. Note: On August 10, 2021, Microsoft announced a Point and Print Default Behavior Change which modifies the default Point and Print driver installation and update behavior to require Administrator privileges. This is documented in KB5005652— Manage new Point and Print default driver installation behavior (CVE-2021-34481). This change overrides all Point and Print Group Policy settings and ensures that only Administrators can install printer drivers from a print server using Point and Print."
+     description: "This policy setting controls whether computers will show a warning and a security elevation prompt when users are updating drivers for an existing connection using Point and Print. The recommended state for this setting is: Enabled: Show warning and elevation prompt. Note: On August 10, 2021, Microsoft announced a Point and Print Default Behavior Change which modifies the default Point and Print driver installation and update behavior to require Administrator privileges. This is documented in KB5005652 - Manage new Point and Print default driver installation behavior (CVE-2021-34481). This change overrides all Point and Print Group Policy settings and ensures that only Administrators can install printer drivers from a print server using Point and Print."
      rationale: "Enabling Windows User Account Control (UAC) for updating existing print drivers can help mitigate the PrintNightmare vulnerability (CVE-2021-34527) and other Print Spooler attacks. Although the Point and Print default driver installation behavior overrides this setting, it is important to configure this as a backstop in the event that behavior is reversed."
      impact: "None - this is the default behavior."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Show warning and elevation prompt: Computer Configuration\\Policies\\Administrative Templates\\Printers\\Point and Print Restrictions: When updating drivers for an existing connection Note: This Group Policy path is provided by the Group Policy template Printing.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
@@ -3659,8 +3842,11 @@ checks:
        - 'https://support.microsoft.com/en-us/topic/kb5005652-manage-new-point-and-'
      compliance:
        - cis: ["18.7.11"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint -> UpdatePromptSettings'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint -> UpdatePromptSettings -> 1'
 
   # 18.8.1.1 (L2) Ensure 'Turn off notifications network usage' is set to 'Enabled'. (Automated)
    - id: 31233
@@ -3678,8 +3864,11 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\PushNotifications'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\PushNotifications -> NoCloudApplicationNotification'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\PushNotifications -> NoCloudApplicationNotification -> 1'
 
   # 18.9.3.1 (L1) Ensure 'Include command line in process creation events' is set to 'Enabled'. (Automated)
    - id: 31234
@@ -3696,8 +3885,11 @@ checks:
        - cis_csc_v7: ["8.8"]
        - iso_27001-2013: ["A.12.14.1"]
        - soc_2: ["CC5.2", "CC6.8"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Audit'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Audit -> ProcessCreationIncludeCmdLine_Enabled'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Audit -> ProcessCreationIncludeCmdLine_Enabled -> 1'
 
   # 18.9.4.1 (L1) Ensure 'Encryption Oracle Remediation' is set to 'Enabled: Force Updated Clients'. (Automated)
    - id: 31235
@@ -3714,8 +3906,11 @@ checks:
        - nist_sp_800-53: ["SI-2(2)"]
        - pci_dss_v3.2.1: ["6.2"]
        - soc_2: ["CC7.1"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\CredSSP\Parameters'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\CredSSP\Parameters -> AllowEncryptionOracle'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\CredSSP\Parameters -> AllowEncryptionOracle -> 1'
 
   # 18.9.4.2 (L1) Ensure 'Remote host allows delegation of non- exportable credentials' is set to 'Enabled'. (Automated)
    - id: 31236
@@ -3734,12 +3929,15 @@ checks:
        - nist_sp_800-53: ["SI-16"]
        - pci_dss_v3.2.1: ["1.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CredentialsDelegation'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CredentialsDelegation -> AllowProtectedCreds'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CredentialsDelegation -> AllowProtectedCreds -> 1'
 
   # 18.9.5.1 (NG) Ensure 'Turn On Virtualization Based Security' is set to 'Enabled'. (Automated)
    - id: 31237
-     title: "(NG) Ensure 'Turn On Virtualization Based Security' is set to 'Enabled'."
+     title: "Ensure 'Turn On Virtualization Based Security' is set to 'Enabled'."
      description: "This policy setting specifies whether Virtualization Based Security is enabled. Virtualization Based Security uses the Windows Hypervisor to provide support for security services. The recommended state for this setting is: Enabled Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot enabled, which in turn requires that Windows was installed with a UEFI BIOS configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs."
      rationale: "Kerberos, NTLM, and Credential manager isolate secrets by using virtualization-based security. Previous versions of Windows stored secrets in the Local Security Authority (LSA). Prior to Windows 10, the LSA stored secrets used by the operating system in its process memory. With Windows Defender Credential Guard enabled, the LSA process in the operating system talks to a new component called the isolated LSA process that stores and protects those secrets. Data stored by the isolated LSA process is protected using virtualization-based security and is not accessible to the rest of the operating system."
      impact: "Warning: All drivers on the system must be compatible with this feature or the system may crash. Ensure that this policy setting is only deployed to computers which are known to be compatible. Warning #2: Enabling Windows Defender Credential Guard on Domain Controllers is not supported. The domain controller hosts authentication services which integrate with processes isolated when Windows Defender Credential Guard is enabled, causing crashes."
@@ -3751,15 +3949,18 @@ checks:
        - nist_sp_800-53: ["SI-16"]
        - pci_dss_v3.2.1: ["1.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> EnableVirtualizationBasedSecurity'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> EnableVirtualizationBasedSecurity -> 1'
 
   # 18.9.5.2 (NG) Ensure 'Turn On Virtualization Based Security: Select Platform Security Level' is set to 'Secure Boot' or higher. (Automated)
    - id: 31238
-     title: "(NG) Ensure 'Turn On Virtualization Based Security: Select Platform Security Level' is set to 'Secure Boot' or higher."
+     title: "Ensure 'Turn On Virtualization Based Security: Select Platform Security Level' is set to 'Secure Boot' or higher."
      description: "This policy setting specifies whether Virtualization Based Security (VBS) is enabled. VBS uses the Windows Hypervisor to provide support for security services. The recommended state for this setting is: Secure Boot or Secure Boot and DMA Protection. Note: VBS requires a 64-bit version of Windows with Secure Boot enabled, which in turn requires that Windows was installed with a UEFI BIOS configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs."
      rationale: "Secure Boot can help reduce the risk of bootloader attacks and in conjunction with DMA protections to help protect data from being scraped from memory."
-     impact: "Choosing the Secure Boot option provides the system with as much protection as is supported by the computer’s hardware. A system with input/output memory management units (IOMMUs) will have Secure Boot with DMA protection. A system without IOMMUs will simply have Secure Boot enabled without DMA protection. Choosing the Secure Boot with DMA protection option requires the system to have IOMMUs in order to enable VBS. Without IOMMU hardware support, VBS will be disabled. Warning: All drivers on the system must be compatible with this feature or the system may crash. Ensure that this policy setting is only deployed to computers which are known to be compatible."
+     impact: "Choosing the Secure Boot option provides the system with as much protection as is supported by the computer's hardware. A system with input/output memory management units (IOMMUs) will have Secure Boot with DMA protection. A system without IOMMUs will simply have Secure Boot enabled without DMA protection. Choosing the Secure Boot with DMA protection option requires the system to have IOMMUs in order to enable VBS. Without IOMMU hardware support, VBS will be disabled. Warning: All drivers on the system must be compatible with this feature or the system may crash. Ensure that this policy setting is only deployed to computers which are known to be compatible."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Secure Boot or Secure Boot and DMA Protection: Computer Configuration\\Policies\\Administrative Templates\\System\\Device Guard\\Turn On Virtualization Based Security: Select Platform Security Level Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer)."
      compliance:
        - cis: ["18.9.5.2"]
@@ -3773,7 +3974,7 @@ checks:
 
   # 18.9.5.3 (NG) Ensure 'Turn On Virtualization Based Security: Virtualization Based Protection of Code Integrity' is set to 'Enabled with UEFI lock'. (Automated)
    - id: 31239
-     title: "(NG) Ensure 'Turn On Virtualization Based Security: Virtualization Based Protection of Code Integrity' is set to 'Enabled with UEFI lock'."
+     title: "Ensure 'Turn On Virtualization Based Security: Virtualization Based Protection of Code Integrity' is set to 'Enabled with UEFI lock'."
      description: "This setting enables virtualization based protection of Kernel Mode Code Integrity. When this is enabled, kernel mode memory protections are enforced and the Code Integrity validation path is protected by the Virtualization Based Security feature. The recommended state for this setting is: Enabled with UEFI lock Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot enabled, which in turn requires that Windows was installed with a UEFI BIOS configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs."
      rationale: "The Enabled with UEFI lock option ensures that Virtualization Based Protection of Code Integrity cannot be disabled remotely."
      impact: "Warning: All drivers on the system must be compatible with this feature or the system may crash. Ensure that this policy setting is only deployed to computers which are known to be compatible. Warning #2: Once this setting is turned on and active, Virtualization Based Security cannot be disabled solely via GPO or any other remote method. After removing the setting from GPO, the features must also be manually disabled locally at the machine using the steps provided at this link: Manage Windows Defender Credential Guard (Windows 10) | Microsoft Docs."
@@ -3790,7 +3991,7 @@ checks:
 
   # 18.9.5.4 (NG) Ensure 'Turn On Virtualization Based Security: Require UEFI Memory Attributes Table' is set to 'True (checked)'. (Automated)
    - id: 31240
-     title: "(NG) Ensure 'Turn On Virtualization Based Security: Require UEFI Memory Attributes Table' is set to 'True (checked)'."
+     title: "Ensure 'Turn On Virtualization Based Security: Require UEFI Memory Attributes Table' is set to 'True (checked)'."
      description: "This option will only enable Virtualization Based Protection of Code Integrity on devices with UEFI firmware support for the Memory Attributes Table. Devices without the UEFI Memory Attributes Table may have firmware that is incompatible with Virtualization Based Protection of Code Integrity which in some cases can lead to crashes or data loss or incompatibility with certain plug-in cards. If not setting this option the targeted devices should be tested to ensure compatibility. The recommended state for this setting is: True (checked) Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot enabled, which in turn requires that Windows was installed with a UEFI BIOS configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs."
      rationale: "This setting will help protect this control from being enabled on a system that is not compatible which could lead to a crash or data loss."
      impact: "Warning: All drivers on the system must be compatible with this feature or the system may crash. Ensure that this policy setting is only deployed to computers which are known to be compatible."
@@ -3807,7 +4008,7 @@ checks:
 
   # 18.9.5.5 (NG) Ensure 'Turn On Virtualization Based Security: Credential Guard Configuration' is set to 'Enabled with UEFI lock' (MS Only). (Automated)
    - id: 31241
-     title: "(NG) Ensure 'Turn On Virtualization Based Security: Credential Guard Configuration' is set to 'Enabled with UEFI lock' (MS Only)."
+     title: "Ensure 'Turn On Virtualization Based Security: Credential Guard Configuration' is set to 'Enabled with UEFI lock' (MS Only)."
      description: "This setting lets users turn on Credential Guard with virtualization-based security to help protect credentials. The \"Enabled with UEFI lock\" option ensures that Credential Guard cannot be disabled remotely. In order to disable the feature, you must set the Group Policy to \"Disabled\" as well as remove the security functionality from each computer, with a physically present user, in order to clear configuration persisted in UEFI. The recommended state for this setting is: Enabled with UEFI lock, but only on Member Servers (not Domain Controllers). Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot enabled, which in turn requires that Windows was installed with a UEFI BIOS configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs."
      rationale: "The Enabled with UEFI lock option ensures that Credential Guard cannot be disabled remotely."
      impact: "Warning: All drivers on the system must be compatible with this feature or the system may crash. Ensure that this policy setting is only deployed to computers which are known to be compatible. Warning #2: Enabling Windows Defender Credential Guard on Domain Controllers is not supported. The domain controller hosts authentication services which integrate with processes isolated when Windows Defender Credential Guard is enabled, causing crashes. Warning #3: Once this setting is turned on and active, Credential Guard cannot be disabled solely via GPO or any other remote method. After removing the setting from GPO, the features must also be manually disabled locally at the machine using the steps provided at this link: Manage Windows Defender Credential Guard (Windows 10) | Microsoft Docs."
@@ -3824,7 +4025,7 @@ checks:
 
   # 18.9.5.6 (NG) Ensure 'Turn On Virtualization Based Security: Credential Guard Configuration' is set to 'Disabled' (DC Only). (Automated)
    - id: 31242
-     title: "(NG) Ensure 'Turn On Virtualization Based Security: Credential Guard Configuration' is set to 'Disabled' (DC Only)."
+     title: "Ensure 'Turn On Virtualization Based Security: Credential Guard Configuration' is set to 'Disabled' (DC Only)."
      description: "This setting lets users turn on Credential Guard with virtualization-based security to help protect credentials. The recommended state for this setting is: Disabled on Domain Controllers. Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot enabled, which in turn requires that Windows was installed with a UEFI BIOS configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs."
      rationale: "Credential Guard is not useful on Domain Controllers and can cause crashes on them."
      impact: "None - this is the default behavior. Warning: Enabling Windows Defender Credential Guard on Domain Controllers is not supported. The domain controller hosts authentication services which integrate with processes isolated when Windows Defender Credential Guard is enabled, causing crashes. Manage Windows Defender Credential Guard (Windows 10) | Microsoft Docs."
@@ -3841,7 +4042,7 @@ checks:
 
   # 18.9.5.7 (NG) Ensure 'Turn On Virtualization Based Security: Secure Launch Configuration' is set to 'Enabled'. (Automated)
    - id: 31243
-     title: "(NG) Ensure 'Turn On Virtualization Based Security: Secure Launch Configuration' is set to 'Enabled'."
+     title: "Ensure 'Turn On Virtualization Based Security: Secure Launch Configuration' is set to 'Enabled'."
      description: "Secure Launch protects the Virtualization Based Security environment from exploited vulnerabilities in device firmware. The recommended state for this setting is: Enabled. Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot enabled, which in turn requires that Windows was installed with a UEFI BIOS configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs."
      rationale: "Secure Launch changes the way windows boots to use Intel Trusted Execution Technology (TXT) and Runtime BIOS Resilience features to prevent firmware exploits from being able to impact the security of the Windows Virtualization Based Security environment."
      impact: "Warning: All drivers on the system must be compatible with this feature or the system may crash. Ensure that this policy setting is only deployed to computers which are known to be compatible."
