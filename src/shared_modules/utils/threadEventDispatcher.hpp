@@ -32,7 +32,7 @@ public:
                                    const uint64_t bulkSize = ELEMENTS_PER_BULK,
                                    const unsigned int numberOfThreads = std::thread::hardware_concurrency(),
                                    const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
-        : m_functor {functor}
+        : m_functor {std::move(functor)}
         , m_running {true}
         , m_numberOfThreads {numberOfThreads ? numberOfThreads : 1}
         , m_maxQueueSize {maxQueueSize}
