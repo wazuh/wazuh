@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<Events>
+  <Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+    <System>
+      <Provider Name="Microsoft-Windows-Security-Auditing"
+        Guid="{54849625-5478-4994-A5BA-3E3B0328C30D}" />
+      <EventID>4689</EventID>
+      <Version>0</Version>
+      <Level>0</Level>
+      <Task>13313</Task>
+      <Opcode>0</Opcode>
+      <Keywords>0x8020000000000000</Keywords>
+      <TimeCreated SystemTime="2015-08-27T17:13:01.826339500Z" />
+      <EventRecordID>187030</EventRecordID>
+      <Correlation />
+      <Execution ProcessID="4" ThreadID="144" />
+      <Channel>Security</Channel>
+      <Computer>DC01.contoso.local</Computer>
+      <Security />
+    </System>
+    <EventData>
+      <Data Name="SubjectUserSid">S-1-5-21-3457937927-2839227994-823803824-1104</Data>
+      <Data Name="SubjectUserName">dadmin</Data>
+      <Data Name="SubjectDomainName">CONTOSO</Data>
+      <Data Name="SubjectLogonId">0x31365</Data>
+      <Data Name="Status">0x0</Data>
+      <Data Name="ProcessId">0xfb0</Data>
+      <Data Name="ProcessName">C:\\Windows\\System32\\notepad.exe</Data>
+    </EventData>
+  </Event>
+</Events>
