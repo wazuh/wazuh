@@ -11,7 +11,7 @@ metadata:
     date: 2023/09/15
 
 check: >-
-    array_contains($event.category, file) AND array_contains($event.type, change) AND $event.id == '2'
+    array_contains($event.category, file) AND array_contains($event.type, change) AND $event.code == '2'
     AND NOT regex_match($process.executable, '(^[A-Za-z]:)?\\\\Program Files\\\\([0-9A-Za-z_]+)')
     AND NOT regex_match($process.executable, '(^[A-Za-z]:)?\\\\Program Files (x86)\\\\([0-9A-Za-z_]+)')
     AND NOT regex_match($process.executable, '(^[A-Za-z]:)?\\\\Windows\\\\system32\\\\msiexec\.exe')
