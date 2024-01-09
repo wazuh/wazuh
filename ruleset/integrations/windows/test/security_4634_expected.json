@@ -12,9 +12,9 @@
       ],
       "code": "4634",
       "dataset": "security",
-      "id": "4634",
       "kind": "event",
-      "module": "security",
+      "module": "windows",
+      "outcome": "success",
       "provider": "Microsoft-Windows-Security-Auditing",
       "start": "2015-09-09T02:27:57.877205900Z",
       "type": [
@@ -37,12 +37,7 @@
     "user": {
       "domain": "Window Manager",
       "id": "S-1-5-90-1",
-      "name": "DWM-1",
-      "target": {
-        "domain": "Window Manager",
-        "id": "S-1-5-90-1",
-        "name": "DWM-1"
-      }
+      "name": "DWM-1"
     },
     "wazuh": {
       "decoders": [

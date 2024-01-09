@@ -12,9 +12,9 @@
       ],
       "code": "4781",
       "dataset": "security",
-      "id": "4781",
       "kind": "event",
-      "module": "security",
+      "module": "windows",
+      "outcome": "success",
       "provider": "Microsoft-Windows-Security-Auditing",
       "start": "2015-08-22T02:41:09.737420900Z",
       "type": [

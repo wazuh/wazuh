@@ -12,9 +12,9 @@
       ],
       "code": "5158",
       "dataset": "security",
-      "id": "5158",
       "kind": "event",
-      "module": "security",
+      "module": "windows",
+      "outcome": "success",
       "provider": "Microsoft-Windows-Security-Auditing",
       "start": "2015-09-22T05:24:03.376171200Z",
       "type": [
@@ -24,6 +24,9 @@
     "host": {
       "id": "001",
       "name": "DC01.contoso.local"
+    },
+    "log": {
+      "level": "information"
     },
     "message": "The Windows Filtering Platform has permitted a bind to a local port",
     "network": {
@@ -54,6 +57,60 @@
       "queue": 102,
       "registered_ip": "any",
       "source": "logcollector"
+    },
+    "windows": {
+      "EventData": {
+        "Application": "\\\\device\\\\harddiskvolume2\\\\documents\\\\listener.exe",
+        "FilterRTID": "0",
+        "LayerName": "%%14608",
+        "LayerRTID": "36",
+        "ProcessId": "4556",
+        "Protocol": "6",
+        "SourceAddress": "0.0.0.0",
+        "SourcePort": "3333"
+      },
+      "System": {
+        "Channel": {
+          "#text": "Security"
+        },
+        "Computer": {
+          "#text": "DC01.contoso.local"
+        },
+        "Correlation": {},
+        "EventID": {
+          "#text": "5158"
+        },
+        "EventRecordID": {
+          "#text": "308122"
+        },
+        "Execution": {
+          "@ProcessID": "4",
+          "@ThreadID": "3712"
+        },
+        "Keywords": {
+          "#text": "0x8020000000000000"
+        },
+        "Level": {
+          "#text": "0"
+        },
+        "Opcode": {
+          "#text": "0"
+        },
+        "Provider": {
+          "@Guid": "{54849625-5478-4994-A5BA-3E3B0328C30D}",
+          "@Name": "Microsoft-Windows-Security-Auditing"
+        },
+        "Security": {},
+        "Task": {
+          "#text": "12810"
+        },
+        "TimeCreated": {
+          "@SystemTime": "2015-09-22T05:24:03.376171200Z"
+        },
+        "Version": {
+          "#text": "0"
+        }
+      }
     }
   }
 ]
