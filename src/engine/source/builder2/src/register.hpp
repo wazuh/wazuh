@@ -213,7 +213,7 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
     // Global event helpers
     registry->template add<builders::OpBuilderEntry>(
         "erase_custom_fields", {schemval::ValidationToken {}, builders::opBuilderHelperEraseCustomFields});
-    // HLP Parser helpers [ #TODO CHECK if the parser should be always text ]
+    // HLP Parser helpers
     registry->template add<builders::OpBuilderEntry>(
         "parse_bool", {schemval::ValidationToken {schemf::Type::TEXT}, builders::optransform::boolParseBuilder});
     registry->template add<builders::OpBuilderEntry>(

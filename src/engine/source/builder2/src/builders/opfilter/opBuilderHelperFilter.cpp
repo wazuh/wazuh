@@ -488,12 +488,6 @@ FilterOp opBuilderHelperBinaryAnd(const Reference& targetField,
     // Parameter type check
     utils::assertValue(opArgs, 0);
 
-    // Ref value
-    if (schema.hasField(targetField.dotPath()) && schema.getType(targetField.dotPath()) != schemf::Type::TEXT)
-    {
-        throw std::runtime_error(fmt::format("{} function: Reference '{}' is not an text", name, targetField.dotPath()));
-    }
-
     // Mask
     if (!std::static_pointer_cast<Value>(opArgs[0])->value().isString())
     {
