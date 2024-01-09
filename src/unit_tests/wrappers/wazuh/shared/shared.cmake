@@ -7,6 +7,7 @@ set(HASH_OP_WRAPPERS "-Wl,--wrap,OSHash_Add \
                       -Wl,--wrap,OSHash_Delete \
                       -Wl,--wrap,OSHash_Get \
                       -Wl,--wrap,OSHash_Get_ex \
+                      -Wl,--wrap,OSHash_Get_ex_dup \
                       -Wl,--wrap,OSHash_Next \
                       -Wl,--wrap,OSHash_SetFreeDataPointer \
                       -Wl,--wrap,OSHash_setSize \

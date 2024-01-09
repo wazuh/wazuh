@@ -2,6 +2,8 @@
 file(GLOB remoted_files
     ${SRC_FOLDER}/remoted/*.o)
 
+add_compile_options("-g")
+
 add_library(REMOTED_O STATIC ${remoted_files})
 
 set_source_files_properties(
@@ -17,7 +19,9 @@ set_target_properties(
     LINKER_LANGUAGE C
 )
 
-target_link_libraries(REMOTED_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+link_directories(${SRC_FOLDER}/build/shared_modules/router)
+include_directories(${SRC_FOLDER}/shared_modules/router/include)
+target_link_libraries(REMOTED_O ${WAZUHLIB} ${WAZUHEXT} -lpthread -lrouter)
 
 #include wrappers
 include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
@@ -68,7 +72,8 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,save_controlmsg -Wl,--wrap,sleep -Wl,--wrap,stat -Wl,--wrap,time \
                             -Wl,--wrap,w_mutex_lock -Wl,--wrap,w_mutex_unlock \
                             -Wl,--wrap,wnotify_add -Wl,--wrap,SendMSG -Wl,--wrap,rem_inc_recv_evt \
-                            -Wl,--wrap,OS_DupKeyEntry -Wl,--wrap,OS_FreeKey ${DEBUG_OP_WRAPPERS}")
+                            -Wl,--wrap,OS_DupKeyEntry -Wl,--wrap,OS_FreeKey ${DEBUG_OP_WRAPPERS} \
+                            -Wl,--wrap,router_provider_send_fb ${HASH_OP_WRAPPERS}")
 
 list(APPEND remoted_names "test_netbuffer")
 list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,wnet_order -Wl,--wrap,wnotify_modify \

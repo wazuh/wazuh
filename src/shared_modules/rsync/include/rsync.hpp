@@ -46,17 +46,11 @@ class EXPORTED RemoteSync
         static void initialize(std::function<void(const std::string&)> logFunction);
 
         /**
-         * @brief Initialize all the logs functions used by RSync with a full log function.
+         * @brief Method to initialize the shared library with a full log function.
          *
-         * @param debugVerboseFunction Function pointer to the debug verbose log function.
-         * @param debugFunction Function pointer to the debug log function.
-         * @param infoFunction Function pointer to the info log function.
-         * @param warningFunction Function pointer to the warning function.
-         * @param errorFunction Function pointer to the error function.
+         * @param logFunction Log function.
          */
-        static void initializeFullLogFunction(full_log_fnc_t debugVerboseFunction, full_log_fnc_t debugFunction,
-                                              full_log_fnc_t infoFunction, full_log_fnc_t warningFunction,
-                                              full_log_fnc_t errorFunction);
+        static void initializeFullLogFunction(const std::function<void(const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>& logFunction);
 
         /**
          * @brief Remote sync initializes the instance.
