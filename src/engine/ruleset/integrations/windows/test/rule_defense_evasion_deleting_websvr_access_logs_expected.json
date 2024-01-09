@@ -11,7 +11,6 @@
       ],
       "code": "23",
       "dataset": "sysmon",
-      "id": "23",
       "kind": "event",
       "module": "windows",
       "provider": "Microsoft-Windows-Sysmon",
@@ -30,6 +29,9 @@
     "host": {
       "id": "001",
       "name": "DESKTOP-8UVR214"
+    },
+    "log": {
+      "level": "information"
     },
     "message": [
       "File Delete archived"
