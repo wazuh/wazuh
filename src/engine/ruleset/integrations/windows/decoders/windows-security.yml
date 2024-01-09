@@ -38,15 +38,6 @@ normalize:
     map:
       - event.outcome: success
 
-  # Set log level
-  - check: $windows.System.Level.#text=="0" OR $windows.System.Level.#text=="4"
-    map:
-      - log.level: 'information'
-  - check:
-      - windows.System.Level.#text: "2"
-    map:
-      - log.level: 'error'
-
   - map:
       # Set Logon Type
       - windows.logon.type: kvdb_get(windows_logon_type_to_title, $windows.EventData.LogonType)

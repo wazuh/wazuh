@@ -12,6 +12,16 @@ metadata:
   references:
     - https://learn.microsoft.com/en-us/windows/win32/events/windows-events
 
+definitions:
+ # Standard Windows system reporting levels
+  _win_log_level:
+    '0': information
+    '1': critical
+    '2': error
+    '3': warning
+    '4': information
+    '5': verbose
+
 check:
   - event.module: windows
 
@@ -26,6 +36,8 @@ normalize:
       - event.module: 'windows'
       - event.kind: event
       - event.provider: $windows.System.Provider.@Name
+
+      - log.level: get_value($_win_log_level, $windows.System.Level.#text)
 
       - host.name: $windows.System.Computer.#text
 
