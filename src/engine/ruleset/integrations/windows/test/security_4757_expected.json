@@ -6,11 +6,11 @@
       "type": "wazuh-agent"
     },
     "event": {
-      "action": "added-member-to-group",
+      "action": "removed-member-from-group",
       "category": [
         "iam"
       ],
-      "code": "4756",
+      "code": "4757",
       "dataset": "security",
       "kind": "event",
       "module": "windows",
@@ -34,7 +34,7 @@
     "log": {
       "level": "information"
     },
-    "message": "A member was added to a security-enabled universal group",
+    "message": "A member was removed from a security-enabled universal group",
     "related": {
       "user": [
         "Administrator"
@@ -87,7 +87,7 @@
         },
         "Correlation": {},
         "EventID": {
-          "#text": "4756"
+          "#text": "4757"
         },
         "EventRecordID": {
           "#text": "4684"

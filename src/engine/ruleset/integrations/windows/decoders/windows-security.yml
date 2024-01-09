@@ -158,29 +158,29 @@ normalize:
 
   # Group: Target User 1 - Set Target User Name
   - check: >-
-      array_contains($_ev_target_user_1, $event.code) AND not_exists($user.name) AND
-      string_not_equal($windows.EventData.TargetUserName, -)
-    map:
-      - user.name: $windows.EventData.TargetUserName
-
-  - check: >-
       array_contains($_ev_target_user_1, $event.code) AND exists($user.name) AND
       string_not_equal($windows.EventData.TargetUserName, -)
     map:
       - user.target.name: $windows.EventData.TargetUserName
+
+  - check: >-
+      array_contains($_ev_target_user_1, $event.code) AND not_exists($user.name) AND
+      string_not_equal($windows.EventData.TargetUserName, -)
+    map:
+      - user.name: $windows.EventData.TargetUserName
 
   - check: array_contains($_ev_target_user_1, $event.code) AND string_not_equal($windows.EventData.TargetUserName, -)
     map:
       - related.user: array_append_unique($windows.EventData.TargetUserName)
 
   # Group: Target User 1 - Set Target User Domain
-  - check: array_contains($_ev_target_user_1, $event.code) AND not_exists($user.domain)
-    map:
-      - user.domain: $windows.EventData.TargetDomainName
-
   - check: array_contains($_ev_target_user_1, $event.code) AND exists($user.domain)
     map:
       - user.target.domain: $windows.EventData.TargetDomainName
+
+  - check: array_contains($_ev_target_user_1, $event.code) AND not_exists($user.domain)
+    map:
+      - user.domain: $windows.EventData.TargetDomainName
 
   # Group: Member Name - Set Event IDs array for Member Name
   - map:

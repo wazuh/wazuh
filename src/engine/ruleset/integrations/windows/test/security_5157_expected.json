@@ -16,9 +16,9 @@
       ],
       "code": "5157",
       "dataset": "security",
-      "id": "5157",
       "kind": "event",
-      "module": "security",
+      "module": "windows",
+      "outcome": "failure",
       "provider": "Microsoft-Windows-Security-Auditing",
       "start": "2015-09-22T03:46:51.662750400Z",
       "type": [
@@ -30,6 +30,9 @@
     "host": {
       "id": "001",
       "name": "DC01.contoso.local"
+    },
+    "log": {
+      "level": "information"
     },
     "message": "The Windows Filtering Platform has blocked a connection",
     "network": {
@@ -62,6 +65,65 @@
       "queue": 102,
       "registered_ip": "any",
       "source": "logcollector"
+    },
+    "windows": {
+      "EventData": {
+        "Application": "\\\\device\\\\harddiskvolume2\\\\documents\\\\listener.exe",
+        "DestAddress": "10.0.0.100",
+        "DestPort": "49218",
+        "Direction": "%%14592",
+        "FilterRTID": "110398",
+        "LayerName": "%%14610",
+        "LayerRTID": "44",
+        "ProcessID": "4556",
+        "Protocol": "6",
+        "RemoteMachineID": "S-1-0-0",
+        "RemoteUserID": "S-1-0-0",
+        "SourceAddress": "10.0.0.10",
+        "SourcePort": "3333"
+      },
+      "System": {
+        "Channel": {
+          "#text": "Security"
+        },
+        "Computer": {
+          "#text": "DC01.contoso.local"
+        },
+        "Correlation": {},
+        "EventID": {
+          "#text": "5157"
+        },
+        "EventRecordID": {
+          "#text": "304390"
+        },
+        "Execution": {
+          "@ProcessID": "4",
+          "@ThreadID": "4520"
+        },
+        "Keywords": {
+          "#text": "0x8010000000000000"
+        },
+        "Level": {
+          "#text": "0"
+        },
+        "Opcode": {
+          "#text": "0"
+        },
+        "Provider": {
+          "@Guid": "{54849625-5478-4994-A5BA-3E3B0328C30D}",
+          "@Name": "Microsoft-Windows-Security-Auditing"
+        },
+        "Security": {},
+        "Task": {
+          "#text": "12810"
+        },
+        "TimeCreated": {
+          "@SystemTime": "2015-09-22T03:46:51.662750400Z"
+        },
+        "Version": {
+          "#text": "1"
+        }
+      }
     }
   }
 ]
