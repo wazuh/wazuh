@@ -12,9 +12,9 @@
       ],
       "code": "4738",
       "dataset": "security",
-      "id": "4738",
       "kind": "event",
-      "module": "security",
+      "module": "windows",
+      "outcome": "success",
       "provider": "Microsoft-Windows-Security-Auditing",
       "start": "2015-08-20T16:22:02.792454100Z",
       "type": [
@@ -25,6 +25,9 @@
     "host": {
       "id": "001",
       "name": "DC01.contoso.local"
+    },
+    "log": {
+      "level": "information"
     },
     "message": "A user account was changed",
     "related": {
@@ -53,6 +56,91 @@
       "queue": 102,
       "registered_ip": "any",
       "source": "logcollector"
+    },
+    "windows": {
+      "EventData": {
+        "AccountExpires": "-",
+        "AllowedToDelegateTo": "-",
+        "DisplayName": "-",
+        "Dummy": "-",
+        "HomeDirectory": "-",
+        "HomePath": "-",
+        "LogonHours": "-",
+        "NewUACList": [
+          "SCRIPT",
+          "LOCKOUT",
+          "NORMAL_ACCOUNT"
+        ],
+        "NewUacValue": "0x211",
+        "OldUACList": [
+          "SCRIPT",
+          "LOCKOUT"
+        ],
+        "OldUacValue": "0x15",
+        "PasswordLastSet": "-",
+        "PrimaryGroupId": "-",
+        "PrivilegeList": "-",
+        "ProfilePath": "-",
+        "SamAccountName": "-",
+        "ScriptPath": "-",
+        "SidHistory": "-",
+        "SubjectDomainName": "CONTOSO",
+        "SubjectLogonId": "0x30dc2",
+        "SubjectUserName": "dadmin",
+        "SubjectUserSid": "S-1-5-21-3457937927-2839227994-823803824-1104",
+        "TargetDomainName": "CONTOSO",
+        "TargetSid": "S-1-5-21-3457937927-2839227994-823803824-6609",
+        "TargetUserName": "ksmith",
+        "UserAccountControl": "%%2050 %%2089",
+        "UserParameters": "-",
+        "UserPrincipalName": "-",
+        "UserWorkstations": "-"
+      },
+      "System": {
+        "Channel": {
+          "#text": "Security"
+        },
+        "Computer": {
+          "#text": "DC01.contoso.local"
+        },
+        "Correlation": {},
+        "EventID": {
+          "#text": "4738"
+        },
+        "EventRecordID": {
+          "#text": "175413"
+        },
+        "Execution": {
+          "@ProcessID": "520",
+          "@ThreadID": "1508"
+        },
+        "Keywords": {
+          "#text": "0x8020000000000000"
+        },
+        "Level": {
+          "#text": "0"
+        },
+        "Opcode": {
+          "#text": "0"
+        },
+        "Provider": {
+          "@Guid": "{54849625-5478-4994-A5BA-3E3B0328C30D}",
+          "@Name": "Microsoft-Windows-Security-Auditing"
+        },
+        "Security": {},
+        "Task": {
+          "#text": "13824"
+        },
+        "TimeCreated": {
+          "@SystemTime": "2015-08-20T16:22:02.792454100Z"
+        },
+        "Version": {
+          "#text": "0"
+        }
+      },
+      "logon": {
+        "id": "0x30dc2"
+      }
     }
   }
 ]

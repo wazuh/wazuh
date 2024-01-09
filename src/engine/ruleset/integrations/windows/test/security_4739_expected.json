@@ -12,9 +12,9 @@
       ],
       "code": "4739",
       "dataset": "security",
-      "id": "4739",
       "kind": "event",
-      "module": "security",
+      "module": "windows",
+      "outcome": "success",
       "provider": "Microsoft-Windows-Security-Auditing",
       "start": "2015-10-02T00:45:37.587380900Z",
       "type": [

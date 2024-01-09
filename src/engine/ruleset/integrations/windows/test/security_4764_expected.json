@@ -12,9 +12,9 @@
       ],
       "code": "4764",
       "dataset": "security",
-      "id": "4764",
       "kind": "event",
-      "module": "security",
+      "module": "windows",
+      "outcome": "success",
       "provider": "Microsoft-Windows-Security-Auditing",
       "start": "2015-08-20T00:25:33.459568000Z",
       "type": [

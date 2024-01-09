@@ -12,9 +12,9 @@
       ],
       "code": "4771",
       "dataset": "security",
-      "id": "4771",
       "kind": "event",
-      "module": "security",
+      "module": "windows",
+      "outcome": "failure",
       "provider": "Microsoft-Windows-Security-Auditing",
       "start": "2015-08-07T18:10:21.495462300Z",
       "type": [
@@ -24,6 +24,9 @@
     "host": {
       "id": "001",
       "name": "DC01.contoso.local"
+    },
+    "log": {
+      "level": "information"
     },
     "message": "Kerberos pre-authentication failed",
     "related": {
@@ -43,11 +46,7 @@
     },
     "user": {
       "id": "S-1-5-21-3457937927-2839227994-823803824-1104",
-      "name": "dadmin",
-      "target": {
-        "id": "S-1-5-21-3457937927-2839227994-823803824-1104",
-        "name": "dadmin"
-      }
+      "name": "dadmin"
     },
     "wazuh": {
       "decoders": [
@@ -59,6 +58,70 @@
       "queue": 102,
       "registered_ip": "any",
       "source": "logcollector"
+    },
+    "windows": {
+      "EventData": {
+        "CertIssuerName": "",
+        "CertSerialNumber": "",
+        "CertThumbprint": "",
+        "IpAddress": "::ffff:10.0.0.12",
+        "IpPort": "49254",
+        "PreAuthType": "15",
+        "ServiceName": "krbtgt/CONTOSO.LOCAL",
+        "Status": "0x10",
+        "StatusDescription": "KDC_ERR_PADATA_TYPE_NOSUPP",
+        "TargetSid": "S-1-5-21-3457937927-2839227994-823803824-1104",
+        "TargetUserName": "dadmin",
+        "TicketOptions": "0x40810010",
+        "TicketOptionsDescription": [
+          "Renewable-ok",
+          "Name-canonicalize",
+          "Renewable",
+          "Forwardable"
+        ]
+      },
+      "System": {
+        "Channel": {
+          "#text": "Security"
+        },
+        "Computer": {
+          "#text": "DC01.contoso.local"
+        },
+        "Correlation": {},
+        "EventID": {
+          "#text": "4771"
+        },
+        "EventRecordID": {
+          "#text": "166708"
+        },
+        "Execution": {
+          "@ProcessID": "520",
+          "@ThreadID": "1084"
+        },
+        "Keywords": {
+          "#text": "0x8010000000000000"
+        },
+        "Level": {
+          "#text": "0"
+        },
+        "Opcode": {
+          "#text": "0"
+        },
+        "Provider": {
+          "@Guid": "{54849625-5478-4994-A5BA-3E3B0328C30D}",
+          "@Name": "Microsoft-Windows-Security-Auditing"
+        },
+        "Security": {},
+        "Task": {
+          "#text": "14339"
+        },
+        "TimeCreated": {
+          "@SystemTime": "2015-08-07T18:10:21.495462300Z"
+        },
+        "Version": {
+          "#text": "0"
+        }
+      }
     }
   }
 ]

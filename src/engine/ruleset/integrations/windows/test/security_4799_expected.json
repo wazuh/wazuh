@@ -12,9 +12,9 @@
       ],
       "code": "4799",
       "dataset": "security",
-      "id": "4799",
       "kind": "event",
-      "module": "security",
+      "module": "windows",
+      "outcome": "success",
       "provider": "Microsoft-Windows-Security-Auditing",
       "start": "2015-11-12T03:50:23.625407600Z",
       "type": [

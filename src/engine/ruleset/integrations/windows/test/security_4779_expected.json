@@ -13,9 +13,9 @@
       ],
       "code": "4779",
       "dataset": "security",
-      "id": "4779",
       "kind": "event",
-      "module": "security",
+      "module": "windows",
+      "outcome": "success",
       "provider": "Microsoft-Windows-Security-Auditing",
       "start": "2015-09-10T23:04:41.044489800Z",
       "type": [
@@ -25,6 +25,9 @@
     "host": {
       "id": "001",
       "name": "DC01.contoso.local"
+    },
+    "log": {
+      "level": "information"
     },
     "message": "A session was disconnected from a Window Station",
     "related": {
@@ -53,6 +56,61 @@
       "queue": 102,
       "registered_ip": "any",
       "source": "logcollector"
+    },
+    "windows": {
+      "EventData": {
+        "AccountDomain": "CONTOSO",
+        "AccountName": "ladmin",
+        "ClientAddress": "10.0.0.100",
+        "ClientName": "WIN81",
+        "LogonID": "0x1e01f6",
+        "SessionName": "RDP-Tcp\\#3"
+      },
+      "System": {
+        "Channel": {
+          "#text": "Security"
+        },
+        "Computer": {
+          "#text": "DC01.contoso.local"
+        },
+        "Correlation": {},
+        "EventID": {
+          "#text": "4779"
+        },
+        "EventRecordID": {
+          "#text": "237646"
+        },
+        "Execution": {
+          "@ProcessID": "504",
+          "@ThreadID": "524"
+        },
+        "Keywords": {
+          "#text": "0x8020000000000000"
+        },
+        "Level": {
+          "#text": "0"
+        },
+        "Opcode": {
+          "#text": "0"
+        },
+        "Provider": {
+          "@Guid": "{54849625-5478-4994-A5BA-3E3B0328C30D}",
+          "@Name": "Microsoft-Windows-Security-Auditing"
+        },
+        "Security": {},
+        "Task": {
+          "#text": "12551"
+        },
+        "TimeCreated": {
+          "@SystemTime": "2015-09-10T23:04:41.044489800Z"
+        },
+        "Version": {
+          "#text": "0"
+        }
+      },
+      "logon": {
+        "id": "0x1e01f6"
+      }
     }
   }
 ]

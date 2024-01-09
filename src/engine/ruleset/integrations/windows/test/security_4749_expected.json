@@ -12,9 +12,9 @@
       ],
       "code": "4749",
       "dataset": "security",
-      "id": "4749",
       "kind": "event",
-      "module": "security",
+      "module": "windows",
+      "outcome": "success",
       "provider": "Microsoft-Windows-Security-Auditing",
       "start": "2015-08-14T16:16:35.568878700Z",
       "type": [
@@ -30,6 +30,9 @@
     "host": {
       "id": "001",
       "name": "DC01.contoso.local"
+    },
+    "log": {
+      "level": "information"
     },
     "message": "A security-disabled global group was created",
     "related": {
@@ -52,6 +55,65 @@
       "queue": 102,
       "registered_ip": "any",
       "source": "logcollector"
+    },
+    "windows": {
+      "EventData": {
+        "PrivilegeList": "-",
+        "SamAccountName": "ServiceDesk",
+        "SidHistory": "-",
+        "SubjectDomainName": "CONTOSO",
+        "SubjectLogonId": "0x3007b",
+        "SubjectUserName": "dadmin",
+        "SubjectUserSid": "S-1-5-21-3457937927-2839227994-823803824-1104",
+        "TargetDomainName": "CONTOSO",
+        "TargetSid": "S-1-5-21-3457937927-2839227994-823803824-6119",
+        "TargetUserName": "ServiceDesk"
+      },
+      "System": {
+        "Channel": {
+          "#text": "Security"
+        },
+        "Computer": {
+          "#text": "DC01.contoso.local"
+        },
+        "Correlation": {},
+        "EventID": {
+          "#text": "4749"
+        },
+        "EventRecordID": {
+          "#text": "172181"
+        },
+        "Execution": {
+          "@ProcessID": "520",
+          "@ThreadID": "1108"
+        },
+        "Keywords": {
+          "#text": "0x8020000000000000"
+        },
+        "Level": {
+          "#text": "0"
+        },
+        "Opcode": {
+          "#text": "0"
+        },
+        "Provider": {
+          "@Guid": "{54849625-5478-4994-A5BA-3E3B0328C30D}",
+          "@Name": "Microsoft-Windows-Security-Auditing"
+        },
+        "Security": {},
+        "Task": {
+          "#text": "13827"
+        },
+        "TimeCreated": {
+          "@SystemTime": "2015-08-14T16:16:35.568878700Z"
+        },
+        "Version": {
+          "#text": "0"
+        }
+      },
+      "logon": {
+        "id": "0x3007b"
+      }
     }
   }
 ]
