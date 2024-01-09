@@ -145,15 +145,16 @@ normalize:
       - _ev_target_user_1: kvdb_get(windows_event_type_to_eventid_list, target_user_1)
 
   # Group: Target User 1 - Set Target User Id and Target Sid
+  - check: array_contains($_ev_target_user_1, $event.code) AND exists($user.id)
+    map:
+      - user.target.id: $windows.EventData.TargetUserSid
+      - user.target.id: $windows.EventData.TargetSid
+
   - check: array_contains($_ev_target_user_1, $event.code) AND not_exists($user.id)
     map:
       - user.id: $windows.EventData.TargetUserSid
       - user.id: $windows.EventData.TargetSid
 
-  - check: array_contains($_ev_target_user_1, $event.code) AND exists($user.id)
-    map:
-      - user.target.id: $windows.EventData.TargetUserSid
-      - user.target.id: $windows.EventData.TargetSid
 
   # Group: Target User 1 - Set Target User Name
   - check: >-
