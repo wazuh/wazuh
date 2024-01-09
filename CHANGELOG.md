@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 
 #### Changed
 
+- Vulnerability Detection refactor. ([#21201](https://github.com/wazuh/wazuh/pull/21201))
 - Improved wazuh-db detection of deleted database files. ([#18476](https://github.com/wazuh/wazuh/pull/18476))
 - Added timeout and retry parameters to the VirusTotal integration. ([#16893](https://github.com/wazuh/wazuh/pull/16893))
 - Extended wazuh-analysisd EPS metrics with events dropped by overload and remaining credits in the previous cycle. ([#18988](https://github.com/wazuh/wazuh/pull/18988))
