@@ -11,7 +11,6 @@
       ],
       "code": "400",
       "dataset": "powershell",
-      "id": "400",
       "kind": "event",
       "module": "windows",
       "provider": "PowerShell",
@@ -23,6 +22,9 @@
     "host": {
       "id": "001",
       "name": "vagrant"
+    },
+    "log": {
+      "level": "information"
     },
     "message": "Engine state is changed from None to Available.",
     "wazuh": {
@@ -93,7 +95,6 @@
       ],
       "code": "400",
       "dataset": "powershell",
-      "id": "400",
       "kind": "event",
       "module": "windows",
       "provider": "PowerShell",
@@ -105,6 +106,9 @@
     "host": {
       "id": "001",
       "name": "vagrant"
+    },
+    "log": {
+      "level": "information"
     },
     "message": "Engine state is changed from None to Available.",
     "wazuh": {
@@ -175,7 +179,6 @@
       ],
       "code": "400",
       "dataset": "powershell",
-      "id": "400",
       "kind": "event",
       "module": "windows",
       "provider": "PowerShell",
@@ -187,6 +190,9 @@
     "host": {
       "id": "001",
       "name": "vagrant"
+    },
+    "log": {
+      "level": "information"
     },
     "message": "Engine state is changed from None to Available.",
     "wazuh": {
@@ -257,7 +263,6 @@
       ],
       "code": "400",
       "dataset": "powershell",
-      "id": "400",
       "kind": "event",
       "module": "windows",
       "provider": "PowerShell",
@@ -269,6 +274,9 @@
     "host": {
       "id": "001",
       "name": "vagrant"
+    },
+    "log": {
+      "level": "information"
     },
     "message": "Engine state is changed from None to Available.",
     "wazuh": {

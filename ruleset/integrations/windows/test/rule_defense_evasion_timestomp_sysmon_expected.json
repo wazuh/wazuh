@@ -11,7 +11,6 @@
       ],
       "code": "2",
       "dataset": "sysmon",
-      "id": "2",
       "kind": "event",
       "module": "windows",
       "provider": "Microsoft-Windows-Sysmon",
@@ -30,6 +29,9 @@
     "host": {
       "id": "001",
       "name": "DESKTOP-22QKO5D"
+    },
+    "log": {
+      "level": "information"
     },
     "message": [
       "File creation time"
