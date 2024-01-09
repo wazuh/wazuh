@@ -12,6 +12,7 @@
 #include "actionOrchestrator_test.hpp"
 #include "actionOrchestrator.hpp"
 #include "routerProvider.hpp"
+#include "stringHelper.h"
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -237,7 +238,7 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionTyp
     // This file should exist because deleteDownloadedContent is not enabled
     EXPECT_TRUE(std::filesystem::exists(downloadPath));
 
-    const auto contentPath {Utils::rightTrim(outputFolder + "/" + CONTENTS_FOLDER + "/3-" + fileName, ".xz")};
+    const auto contentPath {outputFolder + "/" + CONTENTS_FOLDER + "/3-" + Utils::rightTrim(fileName, ".xz")};
     EXPECT_TRUE(std::filesystem::exists(contentPath));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
@@ -277,7 +278,7 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionTyp
     // This file shouldn't exist because deleteDownloadedContent is enabled
     EXPECT_FALSE(std::filesystem::exists(downloadPath));
 
-    const auto contentPath {Utils::rightTrim(outputFolder + "/" + CONTENTS_FOLDER + "/3-" + fileName, ".xz")};
+    const auto contentPath {outputFolder + "/" + CONTENTS_FOLDER + "/3-" + Utils::rightTrim(fileName, ".xz")};
     EXPECT_TRUE(std::filesystem::exists(contentPath));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
