@@ -22,8 +22,8 @@ namespace Log
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
         GLOBAL_LOG_FUNCTION;
 };
-constexpr auto IC_NAME {"indexer-connnector"};
-constexpr auto MAX_WAIT_TIME {30};
+constexpr auto IC_NAME {"indexer-connector"};
+constexpr auto MAX_WAIT_TIME {60};
 
 // TODO: remove the LCOV flags when the implementation of this class is completed
 // LCOV_EXCL_START
@@ -188,10 +188,10 @@ IndexerConnector::IndexerConnector(
                 }
                 catch (const std::exception& e)
                 {
-                    logDebug2(IC_NAME,
-                              "Error initializing IndexerConnector: %s, we will try again after %ld seconds.",
-                              e.what(),
-                              sleepTime.count());
+                    logWarn(IC_NAME,
+                            "Error initializing IndexerConnector: %s, we will try again after %ld seconds.",
+                            e.what(),
+                            sleepTime.count());
                 }
             } while (!m_initialized && !m_cv.wait_for(lock, sleepTime, [&]() { return m_stopping.load(); }));
         });
@@ -225,7 +225,14 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
         HttpURL(selector->getNext() + "/_index_template/" + indexName + "_template"),
         templateData,
         [&](const std::string& response) {},
-        [&](const std::string& error, const long) { throw std::runtime_error(error); },
+        [&](const std::string& error, const long statusCode)
+        {
+#define NOT_USED -1
+            if (statusCode != 400)
+            {
+                throw std::runtime_error(statusCode != NOT_USED ? error + ": " + std::to_string(statusCode) : error);
+            }
+        },
         "",
         DEFAULT_HEADERS,
         secureCommunication);
@@ -237,9 +244,10 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
         [&](const std::string& response) {},
         [&](const std::string& error, const long statusCode)
         {
+#define NOT_USED -1
             if (statusCode != 400)
             {
-                throw std::runtime_error(error);
+                throw std::runtime_error(statusCode != NOT_USED ? error + ": " + std::to_string(statusCode) : error);
             }
         },
         "",
