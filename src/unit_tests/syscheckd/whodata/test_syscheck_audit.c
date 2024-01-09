@@ -18,7 +18,7 @@
 #include "../../../syscheckd/src/whodata/syscheck_audit.h"
 
 #include "wrappers/externals/procpc/readproc_wrappers.h"
-#include "wrappers/libc/stdio_wrappers.h"
+//#include "wrappers/libc/stdio_wrappers.h"
 #include "wrappers/libc/stdlib_wrappers.h"
 #include "wrappers/posix/unistd_wrappers.h"
 #include "wrappers/wazuh/shared/debug_op_wrappers.h"
@@ -426,13 +426,13 @@ void test_set_auditd_config_audit_plugin_tampered_configuration(void **state) {
     expect_abspath(AUDIT_SOCKET, 1);
     expect_abspath(AUDIT_CONF_FILE, 1);
 
-    expect_string(__wrap_fopen, path, "etc/af_wazuh.conf");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, "etc/af_wazuh.conf");
+    expect_string(__wrap_wfopen, modes, "w");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fwrite, 1);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 0);
 
     // Create plugin
@@ -485,13 +485,13 @@ void test_set_auditd_config_audit_plugin_not_created(void **state) {
     expect_abspath(AUDIT_SOCKET, 1);
     expect_abspath(AUDIT_CONF_FILE, 1);
 
-    expect_string(__wrap_fopen, path, "etc/af_wazuh.conf");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, "etc/af_wazuh.conf");
+    expect_string(__wrap_wfopen, modes, "w");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fwrite, 1);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 0);
 
     // Create plugin
@@ -534,9 +534,9 @@ void test_set_auditd_config_audit_plugin_not_created_fopen_error(void **state) {
     will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    expect_string(__wrap_fopen, path, "etc/af_wazuh.conf");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 0);
+    expect_string(__wrap_wfopen, filename, "etc/af_wazuh.conf");
+    expect_string(__wrap_wfopen, modes, "w");
+    will_return(__wrap_wfopen, 0);
 
     expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file 'etc/af_wazuh.conf' due to [(0)-(Success)].");
 
@@ -569,13 +569,13 @@ void test_set_auditd_config_audit_plugin_not_created_fclose_error(void **state) 
     will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    expect_string(__wrap_fopen, path, "etc/af_wazuh.conf");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, "etc/af_wazuh.conf");
+    expect_string(__wrap_wfopen, modes, "w");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fwrite, 1);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, -1);
 
     expect_string(__wrap__merror, formatted_msg, "(1140): Could not close file 'etc/af_wazuh.conf' due to [(0)-(Success)].");
@@ -609,13 +609,13 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink(void **sta
     will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    expect_string(__wrap_fopen, path, "etc/af_wazuh.conf");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, "etc/af_wazuh.conf");
+    expect_string(__wrap_wfopen, modes, "w");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fwrite, 1);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 0);
 
     // Create plugin
@@ -666,13 +666,13 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_restart(vo
     will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    expect_string(__wrap_fopen, path, "etc/af_wazuh.conf");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, "etc/af_wazuh.conf");
+    expect_string(__wrap_wfopen, modes, "w");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fwrite, 1);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 0);
 
     // Create plugin
@@ -724,13 +724,13 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_error(void
     will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    expect_string(__wrap_fopen, path, "etc/af_wazuh.conf");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, "etc/af_wazuh.conf");
+    expect_string(__wrap_wfopen, modes, "w");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fwrite, 1);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 0);
 
     // Create plugin
@@ -778,13 +778,13 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_unlink_err
     will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    expect_string(__wrap_fopen, path, "etc/af_wazuh.conf");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, "etc/af_wazuh.conf");
+    expect_string(__wrap_wfopen, modes, "w");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fwrite, 1);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 0);
 
     // Create plugin
@@ -1265,9 +1265,9 @@ void test_audit_rules_to_realtime_second_search_audit_rule_fail(void **state) {
 }
 
 void test_audit_create_rules_file(void **state) {
-    expect_string(__wrap_fopen, path, AUDIT_RULES_FILE);
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, AUDIT_RULES_FILE);
+    expect_string(__wrap_wfopen, modes, "w");
+    will_return(__wrap_wfopen, 1);
 
     // Mutex inside get_real_path
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
@@ -1288,7 +1288,7 @@ void test_audit_create_rules_file(void **state) {
     expect_string(__wrap_fprintf, formatted_msg, "-w /test1 -p wa -k wazuh_fim\n");
     will_return(__wrap_fprintf, 0);
 
-    expect_any(__wrap_fclose, _File);
+    expect_any(__wrap_fclose, __stream);
     will_return(__wrap_fclose, 0);
 
     expect_abspath(AUDIT_RULES_FILE, 0);
@@ -1305,9 +1305,9 @@ void test_audit_create_rules_file(void **state) {
 void test_audit_create_rules_file_fopen_fail(void **state) {
     char error_msg[OS_SIZE_128];
 
-    expect_string(__wrap_fopen, path, AUDIT_RULES_FILE);
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 0);
+    expect_string(__wrap_wfopen, filename, AUDIT_RULES_FILE);
+    expect_string(__wrap_wfopen, modes, "w");
+    will_return(__wrap_wfopen, 0);
 
     snprintf(error_msg, OS_SIZE_128, FOPEN_ERROR, AUDIT_RULES_FILE, errno, strerror(errno));
     expect_string(__wrap__merror, formatted_msg, error_msg);
@@ -1318,9 +1318,9 @@ void test_audit_create_rules_file_fopen_fail(void **state) {
 void test_audit_create_rules_file_fclose_fail(void **state) {
     char error_msg[OS_SIZE_128];
 
-    expect_string(__wrap_fopen, path, AUDIT_RULES_FILE);
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, AUDIT_RULES_FILE);
+    expect_string(__wrap_wfopen, modes, "w");
+    will_return(__wrap_wfopen, 1);
 
     // Mutex inside get_real_path
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
@@ -1341,7 +1341,7 @@ void test_audit_create_rules_file_fclose_fail(void **state) {
     expect_string(__wrap_fprintf, formatted_msg, "-w /test1 -p wa -k wazuh_fim\n");
     will_return(__wrap_fprintf, 0);
 
-    expect_any(__wrap_fclose, _File);
+    expect_any(__wrap_fclose, __stream);
     will_return(__wrap_fclose, 1);
 
     snprintf(error_msg, OS_SIZE_128, FCLOSE_ERROR, AUDIT_RULES_FILE, errno, strerror(errno));
@@ -1351,9 +1351,9 @@ void test_audit_create_rules_file_fclose_fail(void **state) {
 }
 
 void test_audit_create_rules_file_symlink_exist(void **state) {
-    expect_string(__wrap_fopen, path, AUDIT_RULES_FILE);
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, AUDIT_RULES_FILE);
+    expect_string(__wrap_wfopen, modes, "w");
+    will_return(__wrap_wfopen, 1);
 
     // Mutex inside get_real_path
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
@@ -1374,7 +1374,7 @@ void test_audit_create_rules_file_symlink_exist(void **state) {
     expect_string(__wrap_fprintf, formatted_msg, "-w /test1 -p wa -k wazuh_fim\n");
     will_return(__wrap_fprintf, 0);
 
-    expect_any(__wrap_fclose, _File);
+    expect_any(__wrap_fclose, __stream);
     will_return(__wrap_fclose, 0);
 
     expect_abspath(AUDIT_RULES_FILE, 0);
@@ -1400,9 +1400,9 @@ void test_audit_create_rules_file_symlink_exist(void **state) {
 void test_audit_create_rules_file_unlink_fail(void **state) {
     char error_msg[OS_SIZE_128];
 
-    expect_string(__wrap_fopen, path, AUDIT_RULES_FILE);
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, AUDIT_RULES_FILE);
+    expect_string(__wrap_wfopen, modes, "w");
+    will_return(__wrap_wfopen, 1);
 
     // Mutex inside get_real_path
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
@@ -1423,7 +1423,7 @@ void test_audit_create_rules_file_unlink_fail(void **state) {
     expect_string(__wrap_fprintf, formatted_msg, "-w /test1 -p wa -k wazuh_fim\n");
     will_return(__wrap_fprintf, 0);
 
-    expect_any(__wrap_fclose, _File);
+    expect_any(__wrap_fclose, __stream);
     will_return(__wrap_fclose, 0);
 
     expect_abspath(AUDIT_RULES_FILE, 0);
@@ -1446,9 +1446,9 @@ void test_audit_create_rules_file_unlink_fail(void **state) {
 void test_audit_create_rules_file_symlink_fail(void **state) {
     char error_msg[OS_SIZE_256];
 
-    expect_string(__wrap_fopen, path, AUDIT_RULES_FILE);
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, AUDIT_RULES_FILE);
+    expect_string(__wrap_wfopen, modes, "w");
+    will_return(__wrap_wfopen, 1);
 
     // Mutex inside get_real_path
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
@@ -1469,7 +1469,7 @@ void test_audit_create_rules_file_symlink_fail(void **state) {
     expect_string(__wrap_fprintf, formatted_msg, "-w /test1 -p wa -k wazuh_fim\n");
     will_return(__wrap_fprintf, 0);
 
-    expect_any(__wrap_fclose, _File);
+    expect_any(__wrap_fclose, __stream);
     will_return(__wrap_fclose, 0);
 
     expect_abspath(AUDIT_RULES_FILE, 0);

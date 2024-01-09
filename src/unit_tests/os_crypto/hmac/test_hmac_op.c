@@ -15,6 +15,8 @@
 #include "../headers/shared.h"
 #include "../../os_crypto/hmac/hmac.h"
 #include "../../wrappers/common.h"
+#include "../../wrappers/wazuh/shared/file_op_wrappers.h"
+
 
 /* setups/teardowns */
 static int setup_group(void **state) {
@@ -49,8 +51,8 @@ void test_hmac_file(void **state)
     const char *string_hmac = "bcbf151b282a23e0849453f2b5732bfd8226e16a";
 
     os_sha1 buffer;
-
     /* create tmp file */
+
     char file_name[256];
     strncpy(file_name, "/tmp/tmp_file-XXXXXX", 256);
     int fd = mkstemp(file_name);
@@ -83,8 +85,8 @@ void test_hmac_file_length_key(void **state)
     const char *string_hmac = "11ff0061a90ab6490f35994b044fb281fd4dfa6a";
 
     os_sha1 buffer;
-
     /* create tmp file */
+
     char file_name[256];
     strncpy(file_name, "/tmp/tmp_file-XXXXXX", 256);
     int fd = mkstemp(file_name);
@@ -107,8 +109,8 @@ void test_hmac_file_popen_fail(void **state)
     char file_name[256];
     strncpy(file_name, "/tmp/tmp_file-XXXXXX", 256);
 
-    expect_value(__wrap_fopen, path, file_name);
-    expect_string(__wrap_fopen, mode, "r");
+    expect_value(__wrap_fopen, __filename, file_name);
+    expect_string(__wrap_fopen, __modes, "r");
     will_return(__wrap_fopen, 0);
 
     assert_int_equal(OS_HMAC_SHA1_File(key, file_name, buffer, OS_TEXT), -1);

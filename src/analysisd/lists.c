@@ -48,7 +48,7 @@ int Lists_OP_LoadList(char *listfile, ListNode **cdblists, OSList* log_msg)
     snprintf(b_filename, OS_MAXSTR, "%.65531s.cdb", a_filename);
 
     /* Check if the CDB list file is actually available */
-    FILE *txt_fd = fopen(a_filename, "r");
+    FILE *txt_fd = wfopen(a_filename, "r");
     if (!txt_fd)
     {
         smwarn(log_msg, FOPEN_ERROR, a_filename, errno, strerror(errno));

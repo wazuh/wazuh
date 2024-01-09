@@ -83,7 +83,7 @@ int write_state() {
 #ifdef WIN32
     snprintf(path, sizeof(path), "%s.state", __local_name);
 
-    if (fp = fopen(path, "w"), !fp) {
+    if (fp = wfopen(path, "w"), !fp) {
         merror(FOPEN_ERROR, path, errno, strerror(errno));
         w_mutex_unlock(&state_mutex);
         return -1;
@@ -93,7 +93,7 @@ int write_state() {
     snprintf(path, sizeof(path), OS_PIDFILE "/%s.state", __local_name);
     snprintf(path_temp, sizeof(path_temp), "%s.temp", path);
 
-    if (fp = fopen(path_temp, "w"), !fp) {
+    if (fp = wfopen(path_temp, "w"), !fp) {
         merror(FOPEN_ERROR, path_temp, errno, strerror(errno));
         w_mutex_unlock(&state_mutex);
         return -1;

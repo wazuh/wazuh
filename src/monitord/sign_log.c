@@ -85,7 +85,7 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
 
     /* Generate MD5, SHA-1, and SHA-256 of the current file */
 
-    if (fp = fopen(logfile_r, "r"), fp) {
+    if (fp = wfopen(logfile_r, "r"), fp) {
         while (n = fread(buffer, 1, 2048, fp), n > 0) {
             SHA1_Update(&sha1_ctx, buffer, n);
             MD5_Update(&md5_ctx, buffer, (unsigned long)n);
@@ -97,7 +97,7 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
         // Include rotated files
 
         for (i = 1; snprintf(logfile_r, OS_FLSIZE + 1, "%s-%.3d.%s", logfile, i, ext), !IsFile(logfile_r) && FileSize(logfile_r) > 0; i++) {
-            if (fp = fopen(logfile_r, "r"), fp) {
+            if (fp = wfopen(logfile_r, "r"), fp) {
                 while (n = fread(buffer, 1, 2048, fp), n > 0) {
                     SHA1_Update(&sha1_ctx, buffer, n);
                     MD5_Update(&md5_ctx, buffer, (unsigned long)n);
@@ -138,7 +138,7 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
         strncpy(sf256_sum, "none", 6);
     }
 
-    fp = fopen(logfilesum, "w");
+    fp = wfopen(logfilesum, "w");
     if (!fp) {
         merror(FOPEN_ERROR, logfilesum, errno, strerror(errno));
         return;

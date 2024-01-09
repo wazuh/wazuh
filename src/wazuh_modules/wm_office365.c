@@ -533,7 +533,7 @@ STATIC char* wm_office365_get_access_token(wm_office365_auth* auth, size_t max_s
     } else if (auth->client_secret_path) {
         FILE *fd = NULL;
 
-        if (fd = fopen(auth->client_secret_path, "r"), fd) {
+        if (fd = wfopen(auth->client_secret_path, "r"), fd) {
             char str[OS_SIZE_1024 -1] = {0};
             size_t size_read = 0;
 

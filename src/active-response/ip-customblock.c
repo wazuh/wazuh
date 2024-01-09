@@ -69,7 +69,7 @@ int main (int argc, char **argv) {
             return OS_INVALID;
         }
 
-        FILE *fp = fopen(srcip_path, "a");
+        FILE *fp = wfopen(srcip_path, "a");
         if(fp == NULL) {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR - 1, "Error creating %s file", srcip_path);

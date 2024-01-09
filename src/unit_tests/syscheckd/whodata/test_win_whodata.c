@@ -6388,13 +6388,13 @@ void test_run_whodata_scan_error_event_channel(void **state) {
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
-    expect_string(__wrap_fopen, path, "tmp\\backup-policies");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, (FILE*)1234);
+    expect_string(__wrap_wfopen, filename, "tmp\\backup-policies");
+    expect_string(__wrap_wfopen, modes, "r");
+    will_return(__wrap_wfopen, (FILE*)1234);
 
-    expect_string(__wrap_fopen, path, "tmp\\new-policies");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, (FILE*)2345);
+    expect_string(__wrap_wfopen, filename, "tmp\\new-policies");
+    expect_string(__wrap_wfopen, modes, "w");
+    will_return(__wrap_wfopen, (FILE*)2345);
 
     expect_value(wrap_fgets, __stream, (FILE*)1234);
     will_return(wrap_fgets, "some policies");
@@ -6493,13 +6493,13 @@ void test_run_whodata_scan_success(void **state) {
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
-    expect_string(__wrap_fopen, path, "tmp\\backup-policies");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, (FILE*)1234);
+    expect_string(__wrap_wfopen, filename, "tmp\\backup-policies");
+    expect_string(__wrap_wfopen, modes, "r");
+    will_return(__wrap_wfopen, (FILE*)1234);
 
-    expect_string(__wrap_fopen, path, "tmp\\new-policies");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, (FILE*)2345);
+    expect_string(__wrap_wfopen, filename, "tmp\\new-policies");
+    expect_string(__wrap_wfopen, modes, "w");
+    will_return(__wrap_wfopen, (FILE*)2345);
 
     expect_value(wrap_fgets, __stream, (FILE*)1234);
     will_return(wrap_fgets, "some policies");
@@ -6626,16 +6626,15 @@ void test_set_policies_unable_to_open_backup_file(void **state) {
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
-    expect_string(__wrap_fopen, path, "tmp\\backup-policies");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, filename, "tmp\\backup-policies");
+    expect_string(__wrap_wfopen, modes, "r");
+    will_return(__wrap_wfopen, NULL);
     errno = EACCES;
 
     expect_string(__wrap__merror, formatted_msg,
         "(6661): 'tmp\\backup-policies' could not be opened: 'Permission denied' (13).");
 
     ret = set_policies();
-
     assert_int_equal(ret, 1);
 }
 
@@ -6651,13 +6650,13 @@ void test_set_policies_unable_to_open_new_file(void **state) {
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
-    expect_string(__wrap_fopen, path, "tmp\\backup-policies");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, (FILE*)1234);
+    expect_string(__wrap_wfopen, filename, "tmp\\backup-policies");
+    expect_string(__wrap_wfopen, modes, "r");
+    will_return(__wrap_wfopen, (FILE*)1234);
 
-    expect_string(__wrap_fopen, path, "tmp\\new-policies");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, filename, "tmp\\new-policies");
+    expect_string(__wrap_wfopen, modes, "w");
+    will_return(__wrap_wfopen, NULL);
     errno = EACCES;
 
     expect_string(__wrap__merror, formatted_msg,
@@ -6667,7 +6666,6 @@ void test_set_policies_unable_to_open_new_file(void **state) {
     will_return(__wrap_fclose, 0);
 
     ret = set_policies();
-
     assert_int_equal(ret, 1);
 }
 
@@ -6683,13 +6681,13 @@ void test_set_policies_unable_to_restore_policies(void **state) {
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
-    expect_string(__wrap_fopen, path, "tmp\\backup-policies");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, (FILE*)1234);
+    expect_string(__wrap_wfopen, filename, "tmp\\backup-policies");
+    expect_string(__wrap_wfopen, modes, "r");
+    will_return(__wrap_wfopen, (FILE*)1234);
 
-    expect_string(__wrap_fopen, path, "tmp\\new-policies");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, (FILE*)2345);
+    expect_string(__wrap_wfopen, filename, "tmp\\new-policies");
+    expect_string(__wrap_wfopen, modes, "w");
+    will_return(__wrap_wfopen, (FILE*)2345);
 
     expect_value(wrap_fgets, __stream, (FILE*)1234);
     will_return(wrap_fgets, "some policies");
@@ -6724,7 +6722,6 @@ void test_set_policies_unable_to_restore_policies(void **state) {
     will_return(__wrap_fclose, 0);
 
     ret = set_policies();
-
     assert_int_equal(ret, 2);
 }
 void test_set_policies_success(void **state) {
@@ -6739,13 +6736,13 @@ void test_set_policies_success(void **state) {
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
-    expect_string(__wrap_fopen, path, "tmp\\backup-policies");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, (FILE*)1234);
+    expect_string(__wrap_wfopen, filename, "tmp\\backup-policies");
+    expect_string(__wrap_wfopen, modes, "r");
+    will_return(__wrap_wfopen, (FILE*)1234);
 
-    expect_string(__wrap_fopen, path, "tmp\\new-policies");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, (FILE*)2345);
+    expect_string(__wrap_wfopen, filename, "tmp\\new-policies");
+    expect_string(__wrap_wfopen, modes, "w");
+    will_return(__wrap_wfopen, (FILE*)2345);
 
     expect_value(wrap_fgets, __stream, (FILE*)1234);
     will_return(wrap_fgets, "some policies");
@@ -6778,7 +6775,6 @@ void test_set_policies_success(void **state) {
     will_return(__wrap_fclose, 0);
 
     ret = set_policies();
-
     assert_int_equal(ret, 0);
 }
 

@@ -14,6 +14,7 @@
 #include <stdio.h>
 
 #include "../../wrappers/common.h"
+#include "../../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../../wrappers/libc/stdio_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/mq_op_wrappers.h"
@@ -802,16 +803,16 @@ void test_wm_agent_upgrade_validate_wpk_exist(void **state)
     os_strdup("wazuh_agent_v4.0.0_windows.wpk", task->wpk_file);
     os_strdup(sha1, task->wpk_sha1);
 
-    expect_string(__wrap_fopen, path, "var/upgrade/wazuh_agent_v4.0.0_windows.wpk");
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, "var/upgrade/wazuh_agent_v4.0.0_windows.wpk");
+    expect_string(__wrap_wfopen, modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
     expect_string(__wrap_OS_SHA1_File, fname, "var/upgrade/wazuh_agent_v4.0.0_windows.wpk");
     expect_value(__wrap_OS_SHA1_File, mode, OS_BINARY);
     will_return(__wrap_OS_SHA1_File, sha1);
     will_return(__wrap_OS_SHA1_File, 0);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 0);
 
     int ret = wm_agent_upgrade_validate_wpk(task);
@@ -828,16 +829,16 @@ void test_wm_agent_upgrade_validate_wpk_exist_diff_sha1(void **state)
     os_strdup("wazuh_agent_v4.0.0_windows.wpk", task->wpk_file);
     os_strdup(sha1, task->wpk_sha1);
 
-    expect_string(__wrap_fopen, path, "var/upgrade/wazuh_agent_v4.0.0_windows.wpk");
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, "var/upgrade/wazuh_agent_v4.0.0_windows.wpk");
+    expect_string(__wrap_wfopen, modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
     expect_string(__wrap_OS_SHA1_File, fname, "var/upgrade/wazuh_agent_v4.0.0_windows.wpk");
     expect_value(__wrap_OS_SHA1_File, mode, OS_BINARY);
     will_return(__wrap_OS_SHA1_File, "32bb98743e298dee0a654a654765c765d765ae80");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 0);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
@@ -867,9 +868,9 @@ void test_wm_agent_upgrade_validate_wpk_download_retry(void **state)
     os_strdup("wazuh_agent_v4.0.0_windows.wpk", task->wpk_file);
     os_strdup(sha1, task->wpk_sha1);
 
-    expect_string(__wrap_fopen, path, "var/upgrade/wazuh_agent_v4.0.0_windows.wpk");
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 0);
+    expect_string(__wrap_wfopen, filename, "var/upgrade/wazuh_agent_v4.0.0_windows.wpk");
+    expect_string(__wrap_wfopen, modes, "rb");
+    will_return(__wrap_wfopen, 0);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8161): Downloading WPK file from: 'https://packages.wazuh.com/4.x/wpk/windows/wazuh_agent_v4.0.0_windows.wpk'");
@@ -905,9 +906,9 @@ void test_wm_agent_upgrade_validate_wpk_download_diff_sha1(void **state)
     os_strdup("wazuh_agent_v4.0.0_windows.wpk", task->wpk_file);
     os_strdup(sha1, task->wpk_sha1);
 
-    expect_string(__wrap_fopen, path, "var/upgrade/wazuh_agent_v4.0.0_windows.wpk");
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 0);
+    expect_string(__wrap_wfopen, filename, "var/upgrade/wazuh_agent_v4.0.0_windows.wpk");
+    expect_string(__wrap_wfopen, modes, "rb");
+    will_return(__wrap_wfopen, 0);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8161): Downloading WPK file from: 'https://packages.wazuh.com/4.x/wpk/windows/wazuh_agent_v4.0.0_windows.wpk'");
@@ -936,9 +937,9 @@ void test_wm_agent_upgrade_validate_wpk_download_retry_max(void **state)
     os_strdup("wazuh_agent_v4.0.0_windows.wpk", task->wpk_file);
     os_strdup(sha1, task->wpk_sha1);
 
-    expect_string(__wrap_fopen, path, "var/upgrade/wazuh_agent_v4.0.0_windows.wpk");
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 0);
+    expect_string(__wrap_wfopen, filename, "var/upgrade/wazuh_agent_v4.0.0_windows.wpk");
+    expect_string(__wrap_wfopen, modes, "rb");
+    will_return(__wrap_wfopen, 0);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8161): Downloading WPK file from: 'https://packages.wazuh.com/4.x/wpk/windows/wazuh_agent_v4.0.0_windows.wpk'");
@@ -996,11 +997,11 @@ void test_wm_agent_upgrade_validate_wpk_custom_exist(void **state)
 
     os_strdup("/tmp/test.wpk", task->custom_file_path);
 
-    expect_string(__wrap_fopen, path, "/tmp/test.wpk");
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, "/tmp/test.wpk");
+    expect_string(__wrap_wfopen, modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 0);
 
     int ret = wm_agent_upgrade_validate_wpk_custom(task);
@@ -1014,9 +1015,9 @@ void test_wm_agent_upgrade_validate_wpk_custom_not_exist(void **state)
 
     os_strdup("/tmp/test.wpk", task->custom_file_path);
 
-    expect_string(__wrap_fopen, path, "/tmp/test.wpk");
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 0);
+    expect_string(__wrap_wfopen, filename, "/tmp/test.wpk");
+    expect_string(__wrap_wfopen, modes, "rb");
+    will_return(__wrap_wfopen, 0);
 
     int ret = wm_agent_upgrade_validate_wpk_custom(task);
 

@@ -620,7 +620,7 @@ void LogCollectorStart()
                      * ensure it's fresh when hardlinks are used (like alerts.log).
                      */
                     FILE *tf;
-                    tf = fopen(current->file, "r");
+                    tf = wfopen(current->file, "r");
                     if(tf == NULL) {
                         if (errno == ENOENT) {
                             if(current->exists==1){
@@ -997,7 +997,7 @@ int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
 #ifndef WIN32
     struct stat stat_fd = { .st_mode = 0 };
 
-    lf->fp = fopen(lf->file, "r");
+    lf->fp = wfopen(lf->file, "r");
     if (!lf->fp) {
         if (do_log == 1 && lf->exists == 1) {
             merror(FOPEN_ERROR, lf->file, errno, strerror(errno));
@@ -1107,7 +1107,7 @@ error:
 /* Reload file: open after close, and restore position */
 int reload_file(logreader * lf) {
 #ifndef WIN32
-    lf->fp = fopen(lf->file, "r");
+    lf->fp = wfopen(lf->file, "r");
 
     if (!lf->fp) {
         return -1;
@@ -2612,7 +2612,7 @@ STATIC void w_initialize_file_status() {
     /* Read json file to load last read positions */
     FILE * fd = NULL;
 
-    if (fd = fopen(LOCALFILE_STATUS, "r"), fd != NULL) {
+    if (fd = wfopen(LOCALFILE_STATUS, "r"), fd != NULL) {
         char str[OS_MAXSTR] = {0};
 
         if (fread(str, 1, OS_MAXSTR - 1, fd) < 1) {

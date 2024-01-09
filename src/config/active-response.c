@@ -50,7 +50,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     char *tmp_location = NULL;
 
     /* Open shared ar file */
-    fp = fopen(DEFAULTAR, "a");
+    fp = wfopen(DEFAULTAR, "a");
     if (!fp) {
         merror(FOPEN_ERROR, DEFAULTAR, errno, strerror(errno));
         return (-1);

@@ -336,10 +336,11 @@ int fim_diff_registry_tmp(const char *value_data,
 
     char *aux_data = NULL;
     int ret = 0;
+    FILE *fp;
 
     mkdir_ex(diff->tmp_folder);
-    FILE *fp = fopen(diff->file_origin, "w");
-    if (NULL != fp) {
+
+    if (fp = wfopen(diff->file_origin, "w"), fp) {
         switch (data_type) {
             case REG_SZ:
             case REG_EXPAND_SZ:

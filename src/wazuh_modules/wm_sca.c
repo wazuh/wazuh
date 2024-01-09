@@ -362,7 +362,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
             int cis_db_index = i;
             char **sorted_variables = NULL;
 
-            FILE *fp = fopen(data->policies[i]->policy_path, "r");
+            FILE *fp = wfopen(data->policies[i]->policy_path, "r");
 
             if(!fp) {
                 mwarn("Policy file not found: '%s'. Skipping it.", data->policies[i]->policy_path);
@@ -1549,7 +1549,7 @@ static int wm_sca_check_file_contents(const char * const file,
     }
     #endif
 
-    FILE *fp = fopen(realpath_buffer, "r");
+    FILE *fp = wfopen(realpath_buffer, "r");
     const int fopen_errno = errno;
     if (!fp) {
         if (*reason == NULL) {

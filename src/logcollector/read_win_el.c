@@ -558,7 +558,7 @@ void win_read_vista_sec()
     FILE *fp;
 
     /* Vista security */
-    fp = fopen("vista_sec.txt", "r");
+    fp = wfopen("vista_sec.txt", "r");
     if (!fp) merror_exit("Unable to read vista security descriptions.");
 
     /* Creating the hash */

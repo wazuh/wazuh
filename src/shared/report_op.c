@@ -403,7 +403,7 @@ void os_ReportdStart(report_filter *r_filter)
     os_calloc(1, sizeof(file_queue), fileq);
 
     if (r_filter->report_type == REPORT_TYPE_DAILY && r_filter->filename) {
-        fileq->fp = fopen(r_filter->filename, "r");
+        fileq->fp = wfopen(r_filter->filename, "r");
         if (!fileq->fp) {
             merror("Unable to open alerts file to generate report.");
             goto cleanup;

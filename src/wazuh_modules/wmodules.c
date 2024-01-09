@@ -198,7 +198,7 @@ int wm_state_io(const char * tag, int op, void *state, size_t size) {
     snprintf(path, PATH_MAX, "%s/%s", WM_STATE_DIR, tag);
     #endif
 
-    if (!(file = fopen(path, op == WM_IO_WRITE ? "wb" : "rb"))) {
+    if (!(file = wfopen(path, op == WM_IO_WRITE ? "wb" : "rb"))) {
         return -1;
     }
     w_file_cloexec(file);

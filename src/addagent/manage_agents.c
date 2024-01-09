@@ -128,7 +128,7 @@ int add_agent(int json_output)
     if (sock = auth_connect(), sock < 0) {
         authd_running = 0;
         /* Check if we can open the auth_file */
-        fp = fopen(KEYS_FILE, "a");
+        fp = wfopen(KEYS_FILE, "a");
         if (!fp) {
             if (json_output) {
                 char buffer[1024];

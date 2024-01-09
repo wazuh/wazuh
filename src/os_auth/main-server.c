@@ -514,7 +514,7 @@ int main(int argc, char **argv)
     minfo(STARTUP_MSG, (int)getpid());
 
     /* Checking client keys file */
-    fp = fopen(KEYS_FILE, "a");
+    fp = wfopen(KEYS_FILE, "a");
     if (!fp) {
         merror("Unable to open %s (key file)", KEYS_FILE);
         exit(1);
@@ -536,7 +536,7 @@ int main(int argc, char **argv)
 
         /* Check if password is enabled */
         if (config.flags.use_password) {
-            fp = fopen(AUTHD_PASS, "r");
+            fp = wfopen(AUTHD_PASS, "r");
             buf[0] = '\0';
 
             /* Checking if there is a custom password file */

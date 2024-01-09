@@ -49,7 +49,7 @@ int json_fwrite(const char * path, const cJSON * item) {
 
     size = strlen(buffer);
 
-    if (fp = fopen(path, "w"), !fp) {
+    if (fp = wfopen(path, "w"), !fp) {
         mdebug1(FOPEN_ERROR, path, errno, strerror(errno));
         goto end;
     }

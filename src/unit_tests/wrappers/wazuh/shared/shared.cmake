@@ -38,4 +38,6 @@ set(STDIO_OP_WRAPPERS "-Wl,--wrap,fclose \
                        -Wl,--wrap,fseek \
                        -Wl,--wrap,fwrite \
                        -Wl,--wrap,remove \
-                       -Wl,--wrap,fgetc")
+                       -Wl,--wrap,fgetc \
+                       -Wl,--wrap,popen")
+

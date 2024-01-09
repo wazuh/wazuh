@@ -155,7 +155,7 @@ size_t wcom_uncompress(const char * source, const char * target, char ** output)
         return strlen(*output);
     }
 
-    if (ftarget = fopen(final_target, "wb"), !ftarget) {
+    if (ftarget = wfopen(final_target, "wb"), !ftarget) {
         gzclose(fsource);
         merror("At WCOM uncompress: Unable to open '%s'", final_target);
         os_strdup("err Unable to open target", *output);

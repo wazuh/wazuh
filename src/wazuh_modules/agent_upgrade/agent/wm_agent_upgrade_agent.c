@@ -233,7 +233,7 @@ STATIC bool wm_upgrade_agent_search_upgrade_result(int *queue_fd) {
     char buffer[20];
     const char * PATH = WM_AGENT_UPGRADE_RESULT_FILE;
 
-    FILE *result_file = fopen(PATH, "r");
+    FILE *result_file = wfopen(PATH, "r");
     if (result_file) {
         if (fgets(buffer, 20, result_file) == NULL) {
             fclose(result_file);

@@ -404,9 +404,9 @@ void check_rc_sys(const char *basedir)
 
     /* Open output files */
     if (rootcheck.notify != QUEUE) {
-        _wx = fopen("rootcheck-rw-rw-rw-.txt", "w");
-        _ww = fopen("rootcheck-rwxrwxrwx.txt", "w");
-        _suid = fopen("rootcheck-suid-files.txt", "w");
+        _wx = wfopen("rootcheck-rw-rw-rw-.txt", "w");
+        _ww = wfopen("rootcheck-rwxrwxrwx.txt", "w");
+        _suid = wfopen("rootcheck-suid-files.txt", "w");
     } else {
         _wx = NULL;
         _ww = NULL;

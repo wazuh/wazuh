@@ -134,7 +134,7 @@ int rk_check_file(char *file, char *pattern)
             full_negate = pt_check_negate(pattern);
             /* Check for content in the file */
             mtdebug2(ARGV0, "Checking file: %s", file);
-            fp = fopen(file, "r");
+            fp = wfopen(file, "r");
             if (fp) {
 
                 mtdebug2(ARGV0, "Starting new file: %s", file);
@@ -470,7 +470,7 @@ int is_file(char *file_name)
 #ifndef WIN32
             (access(file_name, F_OK) < 0) &&
 #endif
-            ((fp = fopen(file_name, "r")) == NULL)) {
+            ((fp = wfopen(file_name, "r")) == NULL)) {
         return ret;
     }
 

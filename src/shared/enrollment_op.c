@@ -399,7 +399,7 @@ static int w_enrollment_store_key_entry(const char* keys) {
 
 #ifdef WIN32
     FILE *fp;
-    fp = fopen(KEYS_FILE, "w");
+    fp = wfopen(KEYS_FILE, "w");
 
     if (!fp) {
         merror(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
@@ -607,7 +607,7 @@ static void w_enrollment_load_pass(w_enrollment_cert *cert_cfg) {
     /* Checking if there is a custom password file */
     if (cert_cfg->authpass == NULL) {
         FILE *fp;
-        fp = fopen(cert_cfg->authpass_file, "r");
+        fp = wfopen(cert_cfg->authpass_file, "r");
 
         if (fp) {
             char buf[4096];

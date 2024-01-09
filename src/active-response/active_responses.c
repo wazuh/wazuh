@@ -28,7 +28,7 @@ static cJSON* get_srcip_from_win_eventdata(const cJSON *data);
 void write_debug_file(const char *ar_name, const char *msg) {
     char *timestamp = w_get_timestamp(time(NULL));
 
-    FILE *ar_log_file = fopen(LOG_FILE, "a");
+    FILE *ar_log_file = wfopen(LOG_FILE, "a");
 
     if (ar_log_file) {
         fprintf(ar_log_file, "%s %s: %s\n", timestamp, ar_name, msg);
@@ -500,7 +500,7 @@ int lock(const char *lock_path, const char *lock_pid_path, const char *log_path,
         if (mkdir(lock_path, S_IRWXG) == 0) {
             // Lock acquired (setting the pid)
             pid_t pid = getpid();
-            if (pid_file = fopen(lock_pid_path, "w"), !pid_file) {
+            if (pid_file = wfopen(lock_pid_path, "w"), !pid_file) {
                 write_debug_file(log_path, "Cannot write pid file");
                 return OS_INVALID;
             } else {
@@ -511,7 +511,7 @@ int lock(const char *lock_path, const char *lock_pid_path, const char *log_path,
         }
 
         // Getting currently/saved PID locking the file
-        if (pid_file = fopen(lock_pid_path, "r"), !pid_file) {
+        if (pid_file = wfopen(lock_pid_path, "r"), !pid_file) {
             write_debug_file(log_path, "Cannot read pid file");
         } else {
             read = fscanf(pid_file, "%d", &current_pid);
@@ -603,7 +603,7 @@ int lock(const char *lock_path, const char *lock_pid_path, const char *log_path,
                 if (mkdir(lock_path, S_IRWXG) == 0) {
                     // Lock acquired (setting the pid)
                     pid_t pid = getpid();
-                    pid_file = fopen(lock_pid_path, "w");
+                    pid_file = wfopen(lock_pid_path, "w");
                     fprintf(pid_file, "%d", (int)pid);
                     fclose(pid_file);
 

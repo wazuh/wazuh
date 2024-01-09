@@ -12,6 +12,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
+#include "../../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../headers/shared.h"
 #include "../../os_crypto/sha1/sha1_op.h"
 #include "../../wrappers/libc/stdio_wrappers.h"
@@ -43,9 +44,9 @@ void OS_SHA1_File_Nbytes_unable_open_file (void **state)
 
     int mode = OS_BINARY;
 
-    expect_value(__wrap_fopen, path, path);
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, NULL);
+    expect_value(__wrap_wfopen, filename, path);
+    expect_string(__wrap_wfopen, modes, "rb");
+    will_return(__wrap_wfopen, NULL);
 
     assert_int_equal(OS_SHA1_File_Nbytes(path, &context, output, mode, nbytes), -1);
 }
@@ -59,9 +60,9 @@ void OS_SHA1_File_Nbytes_ok (void **state)
 
     int mode = OS_BINARY;
 
-    expect_value(__wrap_fopen, path, path);
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_value(__wrap_wfopen, filename, path);
+    expect_string(__wrap_wfopen, modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fread, "test");
     will_return(__wrap_fread, 0);
@@ -69,7 +70,7 @@ void OS_SHA1_File_Nbytes_ok (void **state)
     will_return(__wrap_fread, "test");
     will_return(__wrap_fread, 0);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     assert_int_equal(OS_SHA1_File_Nbytes(path, &context, output, mode, nbytes), 0);
@@ -84,14 +85,14 @@ void OS_SHA1_File_Nbytes_num_bytes_exceded (void **state)
 
     int mode = OS_BINARY;
 
-    expect_value(__wrap_fopen, path, path);
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
+    expect_value(__wrap_wfopen, filename, path);
+    expect_string(__wrap_wfopen, modes, "rb");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fread, "test");
     will_return(__wrap_fread, 0);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     assert_int_equal(OS_SHA1_File_Nbytes(path, &context, output, mode, nbytes), 0);
@@ -152,14 +153,14 @@ void test_sha1_file(void **state)
     char file_name[256];
     strncpy(file_name, "/tmp/tmp_file-XXXXXX", 256);
 
-    expect_string(__wrap_fopen, path, file_name);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, filename, file_name);
+    expect_string(__wrap_wfopen, modes, "r");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fread, string);
     will_return(__wrap_fread, 0);
 
-    expect_value(__wrap_fclose, _File, 1);
+    expect_value(__wrap_fclose, __stream, 1);
     will_return(__wrap_fclose, 1);
 
     assert_int_equal(OS_SHA1_File(file_name, buffer, OS_TEXT), 0);
@@ -174,9 +175,9 @@ void test_sha1_file_fail(void **state)
     char file_name[256];
     strncpy(file_name, "not_existing_file", 256);
 
-    expect_string(__wrap_fopen, path, file_name);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 0);
+    expect_string(__wrap_wfopen, filename, file_name);
+    expect_string(__wrap_wfopen, modes, "r");
+    will_return(__wrap_wfopen, 0);
 
     assert_int_equal(OS_SHA1_File(file_name, buffer, OS_TEXT), -1);
 }

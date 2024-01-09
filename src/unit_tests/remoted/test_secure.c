@@ -17,6 +17,7 @@
 #include "../../headers/shared.h"
 #include "../../remoted/remoted.h"
 #include "../wrappers/common.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/linux/socket_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_metadata_wrappers.h"
@@ -203,7 +204,7 @@ void test_close_fp_main_close_first(void **state)
 
     expect_string(__wrap__mdebug2, formatted_msg, "Closing rids for agent 001.");
 
-    expect_value(__wrap_fclose, _File, (FILE *)1234);
+    expect_value(__wrap_fclose, __stream, (FILE *)1234);
     will_return(__wrap_fclose, 1);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Opened rids queue size: 0");
@@ -258,7 +259,7 @@ void test_close_fp_main_close_first_queue_2(void **state)
 
     expect_string(__wrap__mdebug2, formatted_msg, "Closing rids for agent 001.");
 
-    expect_value(__wrap_fclose, _File, (FILE *)1234);
+    expect_value(__wrap_fclose, __stream, (FILE *)1234);
     will_return(__wrap_fclose, 1);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Opened rids queue size: 1");
@@ -323,7 +324,7 @@ void test_close_fp_main_close_first_queue_2_close_2(void **state)
 
     expect_string(__wrap__mdebug2, formatted_msg, "Closing rids for agent 001.");
 
-    expect_value(__wrap_fclose, _File, (FILE *)1234);
+    expect_value(__wrap_fclose, __stream, (FILE *)1234);
     will_return(__wrap_fclose, 1);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Opened rids queue size: 1");
@@ -337,7 +338,7 @@ void test_close_fp_main_close_first_queue_2_close_2(void **state)
 
     expect_string(__wrap__mdebug2, formatted_msg, "Closing rids for agent 002.");
 
-    expect_value(__wrap_fclose, _File, (FILE *)1234);
+    expect_value(__wrap_fclose, __stream, (FILE *)1234);
     will_return(__wrap_fclose, 1);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Opened rids queue size: 0");
