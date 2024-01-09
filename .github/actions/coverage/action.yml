@@ -40,7 +40,8 @@ runs:
           arguments="--capture "
 
           # Set working directory
-          arguments+="--directory . "
+          arguments+="--directory build/tests/unit "
+          arguments+="--directory build/tests/component "
 
           # Set output file
           arguments+="--output-file build/coverage.info "
