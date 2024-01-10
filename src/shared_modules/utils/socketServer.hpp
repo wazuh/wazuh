@@ -55,7 +55,7 @@ private:
     void addClient(const int fd, std::shared_ptr<TSocket> client)
     {
         std::lock_guard<std::mutex> lock {m_mutex};
-        m_clients[fd] = client;
+        m_clients[fd] = std::move(client);
     }
 
     void sendPendingMessages(std::shared_ptr<TSocket> client)
@@ -84,7 +84,11 @@ public:
         {
             throw std::runtime_error("Failed to create stop pipe");
         }
-        ::fcntl(m_stopFD[0], F_SETFL, O_NONBLOCK);
+
+        if (::fcntl(m_stopFD[0], F_SETFL, O_NONBLOCK) == -1)
+        {
+            throw std::runtime_error("Failed to set stop pipe to non-blocking");
+        }
 
         // Add pipe to stop epoll
         m_epoll->addDescriptor(m_stopFD[0], EPOLLIN | EPOLLET);

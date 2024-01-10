@@ -106,7 +106,7 @@ private:
     {
         // Create the database name. It will be the topic name with the prefix "updater_" and the suffix "_metadata".
         const auto databaseName {"/updater_" + context.topicName + "_metadata"};
-        const auto databasePath {context.configData.at("databasePath").get_ref<std::string&>()};
+        const auto& databasePath {context.configData.at("databasePath").get_ref<std::string&>()};
 
         // Check if the output folder exists.
         if (!std::filesystem::exists(databasePath))
@@ -210,7 +210,7 @@ public:
 
         createOutputFolder(*context);
 
-        return AbstractHandler<std::shared_ptr<UpdaterBaseContext>>::handleRequest(context);
+        return AbstractHandler<std::shared_ptr<UpdaterBaseContext>>::handleRequest(std::move(context));
     }
 };
 

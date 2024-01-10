@@ -24,7 +24,7 @@ public:
     virtual ~Provider() = default;
     void addSubscriber(std::shared_ptr<Observer<T>> subscriber)
     {
-        m_subject.attach(subscriber);
+        m_subject.attach(std::move(subscriber));
     }
 
     void removeSubscriber(const std::string& observerId)

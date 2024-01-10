@@ -62,7 +62,7 @@ public:
 
         publish(*context);
 
-        return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(context);
+        return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(std::move(context));
     }
 };
 
