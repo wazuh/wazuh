@@ -137,6 +137,23 @@ TransformOp opBuilderHelperStringReplace(const Reference& targetField,
 //*************************************************
 
 /**
+ * @brief Converts numbers to strings using a specified format.
+ *
+ * This function takes a vector of operation arguments and a shared pointer to a build context.
+ * It converts numeric values present in the operation arguments to strings based on the specified format
+ * and returns a MapOp representing the result.
+ *
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
+ *
+ * @return MapOp representing the result of the conversion.
+ *
+ * @note The conversion format and options are determined by the implementation of the build context.
+ * @throw std::runtime_error if there is an issue with the conversion process.
+ */
+MapOp opBuilderHelperNumberToString(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
  * @brief Transforms an integer. Stores the result of a mathematical operation
  * of a single or a set of values or references into the target field.
  *
