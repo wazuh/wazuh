@@ -13,11 +13,13 @@ metadata:
     - https://httpd.apache.org/docs/2.4/logs.html
     - https://httpd.apache.org/docs/2.4/custom-error.html
 
+# Debian OR RedHat OR FreeBSD OR MacOS or Windows
 check:
-  - wazuh.origin: /var/log/apache2/error.log
-#TODO: Once the events arrive tagged, uncomment these lines below and remove the above regex
-# - event.module: apache-http
-# - event.dataset: apache-error
+  $wazuh.origin == /var/log/apache2/error.log
+  OR $wazuh.origin == /var/log/httpd/error_log
+  OR $wazuh.origin == /var/log/httpd-error.log
+  OR $wazuh.origin == /etc/httpd/log/error_log
+  OR $wazuh.origin == "C:\\Program Files (x86)\\Apache Software Foundation\\Apache2.2\\error.log"
 
 parse|event.original:
   - "[<event.created/%a %b %d %T %Y/en_US.UTF-8>] [<log.logger>:<log.level>] [pid <process.pid>(?:tid <process.thread.id>)] [client <source.address>(?:<source.port>)] <message>"
