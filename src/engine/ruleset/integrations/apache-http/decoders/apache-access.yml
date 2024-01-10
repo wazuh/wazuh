@@ -12,8 +12,14 @@ metadata:
   references:
     - https://httpd.apache.org/docs/2.4/logs.html
 
+# Debian OR RedHat OR FreeBSD OR MacOS or Windows
 check:
-  - wazuh.origin: /var/log/apache2/access.log
+  $wazuh.origin == /var/log/apache2/access.log
+  OR $wazuh.origin == /var/log/httpd/access_log
+  OR $wazuh.origin == /var/log/httpd-access.log
+  OR $wazuh.origin == /etc/httpd/log/access_log
+  OR $wazuh.origin == "C:\\Program Files (x86)\\Apache Software Foundation\\Apache2.2\\access.log"
+
 #TODO: Once the events arrive tagged, uncomment these lines below and remove the above `event.original`
 # - event.module: apache-http
 # - event.dataset: apache-access
