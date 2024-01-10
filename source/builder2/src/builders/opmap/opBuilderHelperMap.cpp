@@ -894,6 +894,58 @@ TransformOp opBuilderHelperStringReplace(const Reference& targetField,
 //*           Int tranform                        *
 //*************************************************
 
+// field: +to_str/<$ref1>/
+MapOp opBuilderHelperNumberToString(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    // Assert expected number of parameters
+    builder::builders::utils::assertSize(opArgs, 1);
+    const auto name = buildCtx->context().opName;
+
+    auto arg = opArgs[0];
+    std::string rReference;
+    if (arg->isValue())
+    {
+        throw std::runtime_error(fmt::format("This helper only works with references"));
+    }
+    else
+    {
+        rReference = std::static_pointer_cast<Reference>(opArgs[0])->jsonPath();
+    }
+
+    // Tracing messages
+    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
+    const std::string failureTrace2 {fmt::format(R"([{}] -> Failure: Reference not found: )", name)};
+    const std::string failureTrace3 {fmt::format(R"([{}] -> Failure: Parameter is not number: )", name)};
+
+    // Function that implements the helper
+    return [=, rReference = std::move(rReference)](base::ConstEvent event) -> MapResult
+    {
+        const auto resolvedRValueInt {event->getInt64(rReference)};
+        const auto resolvedRValueDouble {event->getDouble(rReference)};
+
+        std::string valueConverted;
+
+        if (resolvedRValueInt.has_value())
+        {
+            valueConverted = std::to_string(resolvedRValueInt.value());
+        }
+        else if (resolvedRValueDouble.has_value())
+        {
+            valueConverted = std::to_string(resolvedRValueDouble.value());
+        }
+        else
+        {
+            return base::result::makeFailure(json::Json {},
+                                            (!event->exists(rReference)) ? (failureTrace2 + rReference)
+                                                                        : (failureTrace3 + rReference));
+        }
+
+        json::Json result;
+        result.setString(valueConverted);
+        return base::result::makeSuccess(result, successTrace);
+    };
+}
+
 // field: +int_calculate/[+|-|*|/]/<val1|$ref1>/.../<valN|$refN>
 MapOp opBuilderHelperIntCalc(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
