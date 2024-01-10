@@ -133,31 +133,37 @@ void runOffsetUpdate(const std::string& topicName)
 
 int main()
 {
-    auto& instance = ContentModule::instance();
-    const std::string topic_name = CONFIG_PARAMETERS.at("topicName").get<std::string>();
-
     // Server
+    auto& instance = ContentModule::instance();
     instance.start(logFunction);
 
-    // Client -> Vulnerability detector
-    ContentRegister registerer {topic_name, CONFIG_PARAMETERS};
-    std::this_thread::sleep_for(std::chrono::seconds(5));
-
-    // Run offset update if specified.
-    if (OFFSET_UPDATE)
+    try
     {
-        runOffsetUpdate(topic_name);
+        const std::string topic_name = CONFIG_PARAMETERS.at("topicName").get<std::string>();
+        // Client -> Vulnerability detector
+        ContentRegister registerer {topic_name, CONFIG_PARAMETERS};
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+
+        // Run offset update if specified.
+        if (OFFSET_UPDATE)
+        {
+            runOffsetUpdate(topic_name);
+        }
+
+        // OnDemand request
+        std::string url = "http://localhost/ondemand/" + topic_name + "?offset=-1";
+        UNIXSocketRequest::instance().get(
+            HttpUnixSocketURL(ONDEMAND_SOCK, std::move(url)),
+            [](const std::string& msg) { std::cout << msg << std::endl; },
+            [](const std::string& msg, const long responseCode)
+            { std::cout << msg << ": " << responseCode << std::endl; });
+
+        std::this_thread::sleep_for(std::chrono::seconds(60));
     }
-
-    // OnDemand request
-    std::string url = "http://localhost/ondemand/" + topic_name + "?offset=-1";
-    UNIXSocketRequest::instance().get(
-        HttpUnixSocketURL(ONDEMAND_SOCK, url),
-        [](const std::string& msg) { std::cout << msg << std::endl; },
-        [](const std::string& msg, const long responseCode) { std::cout << msg << ": " << responseCode << std::endl; });
-
-    std::this_thread::sleep_for(std::chrono::seconds(60));
-
+    catch (const std::exception& e)
+    {
+        std::cout << "Exception: " << e.what() << std::endl;
+    }
     // Stop server
     instance.stop();
 

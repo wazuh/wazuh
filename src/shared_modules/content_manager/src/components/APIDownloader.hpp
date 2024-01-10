@@ -132,7 +132,7 @@ public:
         // Push success state.
         Components::pushStatus(COMPONENT_NAME, Components::Status::STATUS_OK, *context);
 
-        return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(context);
+        return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(std::move(context));
     }
 };
 

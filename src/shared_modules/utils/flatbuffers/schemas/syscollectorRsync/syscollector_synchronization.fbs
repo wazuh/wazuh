@@ -44,16 +44,16 @@ table syscollector_network_iface {
     mac:string;
     mtu:uint32;
     name:string;
-    rx_bytes:uint;
-    rx_dropped:uint;
-    rx_errors:uint;
-    rx_packets:uint;
+    rx_bytes:long;
+    rx_dropped:long;
+    rx_errors:long;
+    rx_packets:long;
     scan_time:string;
     state:string;
-    tx_bytes:uint;
-    tx_dropped:uint;
-    tx_errors:uint;
-    tx_packets:uint;
+    tx_bytes:long;
+    tx_dropped:long;
+    tx_errors:long;
+    tx_packets:long;
     type:string;
 }
 

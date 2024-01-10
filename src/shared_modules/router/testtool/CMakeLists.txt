@@ -3,7 +3,9 @@ cmake_minimum_required(VERSION 3.12.4)
 project(router_test_tool)
 
 # Use fsanitize for debug build
+if (FSANITIZE)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address,undefined -fno-omit-frame-pointer")
+endif()
 
 enable_testing()
 

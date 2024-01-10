@@ -48,14 +48,14 @@ public:
      * @param key The key to be inserted.
      * @param value The value associated with the key.
      */
-    void insertKey(KeyType key, ValueType value)
+    void insertKey(const KeyType& key, const ValueType& value)
     {
         if (m_map.size() >= m_capacity)
         {
             // Cache is full, remove the least recently used item (the back of the list)
-            auto lruKey = m_list.back();
-            m_list.pop_back();
+            const auto& lruKey = m_list.back();
             m_map.erase(lruKey);
+            m_list.pop_back();
         }
 
         // Insert the new key-value pair into the cache
@@ -75,7 +75,7 @@ public:
      * @return The value associated with the key or a default-constructed ValueType
      *         if the key is not found.
      */
-    std::optional<ValueType> getValue(KeyType key)
+    std::optional<ValueType> getValue(const KeyType& key)
     {
         // Check if the key exists in the cache
         if (m_map.find(key) != m_map.end())
@@ -97,7 +97,7 @@ private:
      *
      * @param key The key to be moved to the front.
      */
-    void refreshKey(KeyType key)
+    void refreshKey(const KeyType& key)
     {
         m_list.remove(key);
         m_list.emplace_front(key);

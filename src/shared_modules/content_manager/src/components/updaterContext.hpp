@@ -20,6 +20,7 @@
 #include <filesystem>
 #include <memory>
 #include <string>
+#include <utility>
 
 constexpr auto DOWNLOAD_FOLDER = "downloads";
 constexpr auto CONTENTS_FOLDER = "contents";
@@ -90,7 +91,7 @@ struct UpdaterBaseContext
      * @param spStopCondition Pointer to a stop condition wrapper.
      */
     explicit UpdaterBaseContext(std::shared_ptr<ConditionSync> spStopCondition)
-        : spStopCondition(spStopCondition)
+        : spStopCondition(std::move(spStopCondition))
     {
     }
 };
