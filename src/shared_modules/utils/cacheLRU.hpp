@@ -54,8 +54,8 @@ public:
         {
             // Cache is full, remove the least recently used item (the back of the list)
             const auto& lruKey = m_list.back();
-            m_list.pop_back();
             m_map.erase(lruKey);
+            m_list.pop_back();
         }
 
         // Insert the new key-value pair into the cache

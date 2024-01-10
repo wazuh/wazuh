@@ -155,38 +155,38 @@ private:
      */
     void runContentUpdate(std::shared_ptr<UpdaterContext> spUpdaterContext, const bool resetOffset) const
     {
-        logDebug2(WM_CONTENTUPDATER, "Running '%s' content update", m_spBaseContext->topicName.c_str());
+        logDebug2(WM_CONTENTUPDATER, "Running '%s' content update", spUpdaterContext->spUpdaterBaseContext->topicName.c_str());
 
         if (resetOffset)
         {
             spUpdaterContext->currentOffset = 0;
         }
-        else if (m_spBaseContext->spRocksDB)
+        else if (spUpdaterContext->spUpdaterBaseContext->spRocksDB)
         {
             // If the database exists, get the last offset
             spUpdaterContext->currentOffset = std::stoi(
-                m_spBaseContext->spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString());
+                spUpdaterContext->spUpdaterBaseContext->spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString());
         }
 
         // If an offset download is requested and the current offset is '0', a snapshot will be downloaded with
         // the full content to avoid downloading many offsets at once.
-        const auto& contentSource {m_spBaseContext->configData.at("contentSource").get_ref<const std::string&>()};
+        const auto& contentSource {spUpdaterContext->spUpdaterBaseContext->configData.at("contentSource").get_ref<const std::string&>()};
         if (0 == spUpdaterContext->currentOffset && "cti-offset" == contentSource)
         {
             runFullContentDownload(spUpdaterContext);
         }
 
         // Store last file hash.
-        const auto lastDownloadedFileHash {m_spBaseContext->downloadedFileHash};
+        const auto lastDownloadedFileHash {spUpdaterContext->spUpdaterBaseContext->downloadedFileHash};
 
         // Run the updater chain
-        m_spUpdaterOrchestration->handleRequest(std::move(spUpdaterContext));
+        m_spUpdaterOrchestration->handleRequest(spUpdaterContext);
 
         // Update filehash if it has changed.
-        if (m_spBaseContext->spRocksDB && lastDownloadedFileHash != m_spBaseContext->downloadedFileHash)
+        if (spUpdaterContext->spUpdaterBaseContext->spRocksDB && lastDownloadedFileHash != spUpdaterContext->spUpdaterBaseContext->downloadedFileHash)
         {
-            m_spBaseContext->spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)),
-                                            m_spBaseContext->downloadedFileHash,
+            spUpdaterContext->spUpdaterBaseContext->spRocksDB->put(Utils::getCompactTimestamp(std::time(nullptr)),
+                                            spUpdaterContext->spUpdaterBaseContext->downloadedFileHash,
                                             Components::Columns::DOWNLOADED_FILE_HASH);
         }
     }
