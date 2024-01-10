@@ -1,5 +1,6 @@
 import os
 import sys
+
 sys.path.append('/tools')
 
 from healthcheck_utils import get_agent_health_base
@@ -13,5 +14,5 @@ def get_health():
         return 1
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     exit(get_health() or get_agent_health_base())

@@ -11,29 +11,29 @@ from typing import Union
 
 import six
 from connexion import ProblemException
+from wazuh.core import common, exception
 
 from api.api_exception import APIError
-from wazuh.core import common, exception
 
 
 class APILoggerSize:
-    size_regex = re.compile(r"(\d+)([KM])")
-    unit_conversion = {
-        'K': 1024,
-        'M': 1024 ** 2
-    }
+    size_regex = re.compile(r'(\d+)([KM])')
+    unit_conversion = {'K': 1024, 'M': 1024**2}
 
     def __init__(self, size_string: str):
         size_string = size_string.upper()
         try:
             size, unit = self.size_regex.match(size_string).groups()
         except AttributeError:
-            raise APIError(2011, details="Size value does not match the expected format: <number><unit> (Available"
-                                         " units: K (kilobytes), M (megabytes). For instance: 45M") from None
+            raise APIError(
+                2011,
+                details='Size value does not match the expected format: <number><unit> (Available'
+                ' units: K (kilobytes), M (megabytes). For instance: 45M',
+            ) from None
 
         self.size = int(size) * self.unit_conversion[unit]
         if self.size < self.unit_conversion['M']:
-            raise APIError(2011, details=f"Minimum value for size is 1M. Current: {size_string}")
+            raise APIError(2011, details=f'Minimum value for size is 1M. Current: {size_string}')
 
 
 def serialize(item: object) -> object:
@@ -148,6 +148,7 @@ def deserialize_date(string: str) -> Union[datetime.date, str]:
     """
     try:
         from dateutil.parser import parse
+
         return parse(string).date()
     except ImportError:
         return string
@@ -170,6 +171,7 @@ def deserialize_datetime(string: str) -> Union[datetime.datetime, str]:
     """
     try:
         from dateutil.parser import parse
+
         return parse(string)
     except ImportError:
         return string
@@ -196,9 +198,7 @@ def deserialize_model(data: Union[list, dict], klass: type):
         return data
 
     for attr, attr_type in six.iteritems(instance.swagger_types):
-        if data is not None \
-                and instance.attribute_map[attr] in data \
-                and isinstance(data, (list, dict)):
+        if data is not None and instance.attribute_map[attr] in data and isinstance(data, (list, dict)):
             value = data[instance.attribute_map[attr]]
             setattr(instance, attr, _deserialize(value, attr_type))
 
@@ -220,8 +220,7 @@ def _deserialize_list(data: list, boxed_type: type) -> list:
     list
         Deserialized list.
     """
-    return [_deserialize(sub_data, boxed_type)
-            for sub_data in data]
+    return [_deserialize(sub_data, boxed_type) for sub_data in data]
 
 
 def _deserialize_dict(data: dict, boxed_type: type) -> dict:
@@ -239,8 +238,7 @@ def _deserialize_dict(data: dict, boxed_type: type) -> dict:
     dict
         Deserialized dict.
     """
-    return {k: _deserialize(v, boxed_type)
-            for k, v in six.iteritems(data)}
+    return {k: _deserialize(v, boxed_type) for k, v in six.iteritems(data)}
 
 
 def remove_nones_to_dict(dct: dict) -> dict:
@@ -256,8 +254,7 @@ def remove_nones_to_dict(dct: dict) -> dict:
     dict
         Dictionary with the None values removed.
     """
-    return {k: v if not isinstance(v, dict) else remove_nones_to_dict(v)
-            for k, v in dct.items() if v is not None}
+    return {k: v if not isinstance(v, dict) else remove_nones_to_dict(v) for k, v in dct.items() if v is not None}
 
 
 def parse_api_param(param: str, param_type: str) -> Union[typing.Dict, None]:
@@ -313,7 +310,7 @@ def _parse_sort_param(sort: str) -> typing.Dict:
     dict
         Dictionary that the framework can process.
     """
-    sort_fields = sort[(1 if sort[0] == '-' or sort[0] == '+' else 0):]
+    sort_fields = sort[(1 if sort[0] == '-' or sort[0] == '+' else 0) :]
     return {'fields': sort_fields.split(','), 'order': 'desc' if sort[0] == '-' else 'asc'}
 
 
@@ -370,14 +367,18 @@ def _create_problem(exc: Exception, code: int = None):
     """
     ext = None
     if isinstance(exc, exception.WazuhException):
-        ext = remove_nones_to_dict({'remediation': exc.remediation,
-                                    'code': exc.code,
-                                    'dapi_errors': exc.dapi_errors if exc.dapi_errors != {} else None
-                                    })
+        ext = remove_nones_to_dict(
+            {
+                'remediation': exc.remediation,
+                'code': exc.code,
+                'dapi_errors': exc.dapi_errors if exc.dapi_errors != {} else None,
+            }
+        )
 
     if isinstance(exc, exception.WazuhInternalError):
-        raise ProblemException(status=500 if not code else code,
-                               type=exc.type, title=exc.title, detail=exc.message, ext=ext)
+        raise ProblemException(
+            status=500 if not code else code, type=exc.type, title=exc.title, detail=exc.message, ext=ext
+        )
     elif isinstance(exc, exception.WazuhPermissionError):
         raise ProblemException(status=403, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
     elif isinstance(exc, exception.WazuhResourceNotFound):
@@ -387,8 +388,9 @@ def _create_problem(exc: Exception, code: int = None):
     elif isinstance(exc, exception.WazuhNotAcceptable):
         raise ProblemException(status=406, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
     elif isinstance(exc, exception.WazuhError):
-        raise ProblemException(status=400 if not code else code,
-                               type=exc.type, title=exc.title, detail=exc.message, ext=ext)
+        raise ProblemException(
+            status=400 if not code else code, type=exc.type, title=exc.title, detail=exc.message, ext=ext
+        )
 
     raise exc
 

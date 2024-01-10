@@ -5,91 +5,57 @@
 import copy
 import datetime
 import os
-from typing import Dict, Tuple, Any, List
+from typing import Any, Dict, List, Tuple
 
+import wazuh.core.utils as core_utils
 import yaml
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend as crypto_default_backend
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
-from jsonschema import validate, ValidationError
+from jsonschema import ValidationError, validate
 
-import wazuh.core.utils as core_utils
 from api.api_exception import APIError
-from api.constants import CONFIG_FILE_PATH, SECURITY_CONFIG_PATH, API_SSL_PATH
+from api.constants import API_SSL_PATH, CONFIG_FILE_PATH, SECURITY_CONFIG_PATH
 from api.validator import api_config_schema, security_config_schema
 
-default_security_configuration = {
-    "auth_token_exp_timeout": 900,
-    "rbac_mode": "white"
-}
+default_security_configuration = {'auth_token_exp_timeout': 900, 'rbac_mode': 'white'}
 
 default_api_configuration = {
-    "host": "0.0.0.0",
-    "port": 55000,
-    "drop_privileges": True,
-    "experimental_features": False,
-    "max_upload_size": 10485760,
-    "intervals": {
-        "request_timeout": 10
+    'host': '0.0.0.0',
+    'port': 55000,
+    'drop_privileges': True,
+    'experimental_features': False,
+    'max_upload_size': 10485760,
+    'intervals': {'request_timeout': 10},
+    'https': {
+        'enabled': True,
+        'key': 'server.key',
+        'cert': 'server.crt',
+        'use_ca': False,
+        'ca': 'ca.crt',
+        'ssl_protocol': 'auto',
+        'ssl_ciphers': '',
     },
-    "https": {
-        "enabled": True,
-        "key": "server.key",
-        "cert": "server.crt",
-        "use_ca": False,
-        "ca": "ca.crt",
-        "ssl_protocol": "auto",
-        "ssl_ciphers": ""
+    'logs': {'level': 'info', 'format': 'plain', 'max_size': {'enabled': False, 'size': '1M'}},
+    'cors': {
+        'enabled': False,
+        'source_route': '*',
+        'expose_headers': '*',
+        'allow_headers': '*',
+        'allow_credentials': False,
     },
-    "logs": {
-        "level": "info",
-        "format": "plain",
-        "max_size": {
-            "enabled": False,
-            "size": "1M"
-        }
-    },
-    "cors": {
-        "enabled": False,
-        "source_route": "*",
-        "expose_headers": "*",
-        "allow_headers": "*",
-        "allow_credentials": False,
-    },
-    "cache": {
-        "enabled": True,
-        "time": 0.750
-    },
-    "access": {
-        "max_login_attempts": 50,
-        "block_time": 300,
-        "max_request_per_minute": 300
-    },
-    "upload_configuration": {
-        "remote_commands": {
-            "localfile": {
-                "allow": True,
-                "exceptions": []
-            },
-            "wodle_command": {
-                "allow": True,
-                "exceptions": []
-            }
+    'cache': {'enabled': True, 'time': 0.750},
+    'access': {'max_login_attempts': 50, 'block_time': 300, 'max_request_per_minute': 300},
+    'upload_configuration': {
+        'remote_commands': {
+            'localfile': {'allow': True, 'exceptions': []},
+            'wodle_command': {'allow': True, 'exceptions': []},
         },
-        "limits": {
-            "eps": {
-                "allow": True
-            }
-        },
-        "agents": {
-            "allow_higher_versions": {
-                "allow": True
-            }
-        }
-    }
+        'limits': {'eps': {'allow': True}},
+        'agents': {'allow_higher_versions': {'allow': True}},
+    },
 }
 
 
@@ -144,6 +110,7 @@ def fill_dict(default: Dict, config: Dict, json_schema: Dict) -> Dict:
     dict
         Filled dictionary.
     """
+
     def _update_default_config(default_config: Dict, user_config: Dict) -> Dict:
         """Update default configuration with the values of the user one.
 
@@ -174,8 +141,9 @@ def fill_dict(default: Dict, config: Dict, json_schema: Dict) -> Dict:
     return _update_default_config(default, config)
 
 
-def generate_private_key(private_key_path: str, public_exponent: int = 65537,
-                         key_size: int = 2048) -> rsa.RSAPrivateKey:
+def generate_private_key(
+    private_key_path: str, public_exponent: int = 65537, key_size: int = 2048
+) -> rsa.RSAPrivateKey:
     """Generate a private key in 'CONFIG_PATH/ssl/server.key'.
 
     Parameters
@@ -192,17 +160,15 @@ def generate_private_key(private_key_path: str, public_exponent: int = 65537,
     rsa.RSAPrivateKey
         Private key.
     """
-    key = rsa.generate_private_key(
-        public_exponent,
-        key_size,
-        crypto_default_backend()
-    )
+    key = rsa.generate_private_key(public_exponent, key_size, crypto_default_backend())
     with open(private_key_path, 'wb') as f:
-        f.write(key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption()
-        ))
+        f.write(
+            key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption(),
+            )
+        )
     os.chmod(private_key_path, 0o400)
 
     return key
@@ -221,35 +187,56 @@ def generate_self_signed_certificate(private_key: rsa.RSAPrivateKey, certificate
     """
     # Generate private key
     # Various details about who we are. For a self-signed certificate, the subject and issuer are always the same
-    subject = issuer = x509.Name([
-        x509.NameAttribute(NameOID.COUNTRY_NAME, u"US"),
-        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u"California"),
-        x509.NameAttribute(NameOID.LOCALITY_NAME, u"San Francisco"),
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"Wazuh"),
-        x509.NameAttribute(NameOID.COMMON_NAME, u"wazuh.com"),
-    ])
-    cert = x509.CertificateBuilder().subject_name(
-        subject
-    ).issuer_name(
-        issuer
-    ).public_key(
-        private_key.public_key()
-    ).serial_number(
-        x509.random_serial_number()
-    ).not_valid_before(
-        datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
-    ).not_valid_after(
-        # Our certificate will be valid for one year
-        core_utils.get_utc_now() + datetime.timedelta(days=365)
-    ).add_extension(
-        x509.SubjectAlternativeName([x509.DNSName(u"localhost")]),
-        critical=False,
-        # Sign our certificate with our private key
-    ).sign(private_key, hashes.SHA256(), crypto_default_backend())
+    subject = issuer = x509.Name(
+        [
+            x509.NameAttribute(NameOID.COUNTRY_NAME, 'US'),
+            x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, 'California'),
+            x509.NameAttribute(NameOID.LOCALITY_NAME, 'San Francisco'),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, 'Wazuh'),
+            x509.NameAttribute(NameOID.COMMON_NAME, 'wazuh.com'),
+        ]
+    )
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(subject)
+        .issuer_name(issuer)
+        .public_key(private_key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc))
+        .not_valid_after(
+            # Our certificate will be valid for one year
+            core_utils.get_utc_now() + datetime.timedelta(days=365)
+        )
+        .add_extension(
+            x509.SubjectAlternativeName([x509.DNSName('localhost')]),
+            critical=False,
+            # Sign our certificate with our private key
+        )
+        .sign(private_key, hashes.SHA256(), crypto_default_backend())
+    )
     # Write our certificate out to disk.
     with open(certificate_path, 'wb') as f:
         f.write(cert.public_bytes(serialization.Encoding.PEM))
     os.chmod(certificate_path, 0o400)
+
+
+def replace_bools(conf: dict):
+    """Replace 'yes' and 'no' strings in configuration for actual booleans.
+
+    Parameters
+    ----------
+    conf : dict
+        Current API configuration.
+    """
+    for k in conf.keys():
+        if isinstance(conf[k], dict):
+            replace_bools(conf[k])
+        else:
+            if isinstance(conf[k], str):
+                if conf[k].lower() == 'yes':
+                    conf[k] = True
+                elif conf[k].lower() == 'no':
+                    conf[k] = False
 
 
 def read_yaml_config(config_file: str = CONFIG_FILE_PATH, default_conf: dict = None) -> Dict:
@@ -267,24 +254,6 @@ def read_yaml_config(config_file: str = CONFIG_FILE_PATH, default_conf: dict = N
     dict
         API configuration.
     """
-
-    def replace_bools(conf: dict):
-        """Replace 'yes' and 'no' strings in configuration for actual booleans.
-
-        Parameters
-        ----------
-        conf : dict
-            Current API configuration.
-        """
-        for k in conf.keys():
-            if isinstance(conf[k], dict):
-                replace_bools(conf[k])
-            else:
-                if isinstance(conf[k], str):
-                    if conf[k].lower() == 'yes':
-                        conf[k] = True
-                    elif conf[k].lower() == 'no':
-                        conf[k] = False
 
     if default_conf is None:
         default_conf = default_api_configuration

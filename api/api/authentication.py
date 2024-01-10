@@ -10,23 +10,22 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from typing import Union
 
+import wazuh.core.utils as core_utils
+import wazuh.rbac.utils as rbac_utils
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from jose import JWTError, jwt
-from werkzeug.exceptions import Unauthorized
-
-import api.configuration as conf
-import wazuh.core.utils as core_utils
-import wazuh.rbac.utils as rbac_utils
-from api.constants import SECURITY_CONFIG_PATH
-from api.constants import SECURITY_PATH
-from api.util import raise_if_exc
 from wazuh import WazuhInternalError
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.cluster.utils import read_config
-from wazuh.core.common import wazuh_uid, wazuh_gid
+from wazuh.core.common import wazuh_gid, wazuh_uid
 from wazuh.rbac.orm import AuthenticationManager, TokenManager, UserRolesManager
 from wazuh.rbac.preprocessor import optimize_resources
+from werkzeug.exceptions import Unauthorized
+
+import api.configuration as conf
+from api.constants import SECURITY_CONFIG_PATH, SECURITY_PATH
+from api.util import raise_if_exc
 
 pool = ThreadPoolExecutor(max_workers=1)
 
@@ -72,19 +71,18 @@ def check_user(user: str, password: str, required_scopes=None) -> Union[dict, No
     dict or None
         Dictionary with the username and its status or None.
     """
-    dapi = DistributedAPI(f=check_user_master,
-                          f_kwargs={'user': user, 'password': password},
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=False,
-                          logger=logging.getLogger('wazuh-api')
-                          )
+    dapi = DistributedAPI(
+        f=check_user_master,
+        f_kwargs={'user': user, 'password': password},
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=False,
+        logger=logging.getLogger('wazuh-api'),
+    )
     data = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())
 
     if data['result']:
-        return {'sub': user,
-                'active': True
-                }
+        return {'sub': user, 'active': True}
 
 
 # Set JWT settings
@@ -129,12 +127,13 @@ def change_keypair():
     private_key = key_obj.private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption()
+        encryption_algorithm=serialization.NoEncryption(),
     ).decode('utf-8')
-    public_key = key_obj.public_key().public_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo
-    ).decode('utf-8')
+    public_key = (
+        key_obj.public_key()
+        .public_bytes(encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.SubjectPublicKeyInfo)
+        .decode('utf-8')
+    )
     with open(_private_key_path, mode='w') as key_file:
         key_file.write(private_key)
     with open(_public_key_path, mode='w') as key_file:
@@ -151,8 +150,9 @@ def get_security_conf() -> dict:
     dict
         Dictionary with the content of the security.yaml file.
     """
-    conf.security_conf.update(conf.read_yaml_config(config_file=SECURITY_CONFIG_PATH,
-                                                    default_conf=conf.default_security_configuration))
+    conf.security_conf.update(
+        conf.read_yaml_config(config_file=SECURITY_CONFIG_PATH, default_conf=conf.default_security_configuration)
+    )
     return conf.security_conf
 
 
@@ -173,26 +173,30 @@ def generate_token(user_id: str = None, data: dict = None, auth_context: dict = 
     str
         Encoded JWT token.
     """
-    dapi = DistributedAPI(f=get_security_conf,
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=False,
-                          logger=logging.getLogger('wazuh-api')
-                          )
+    dapi = DistributedAPI(
+        f=get_security_conf,
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=False,
+        logger=logging.getLogger('wazuh-api'),
+    )
     result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).dikt
     timestamp = int(core_utils.get_utc_now().timestamp())
 
     payload = {
-                  "iss": JWT_ISSUER,
-                  "aud": "Wazuh API REST",
-                  "nbf": timestamp,
-                  "exp": timestamp + result['auth_token_exp_timeout'],
-                  "sub": str(user_id),
-                  "run_as": auth_context is not None,
-                  "rbac_roles": data['roles'],
-                  "rbac_mode": result['rbac_mode']
-              } | ({"hash_auth_context": hashlib.blake2b(json.dumps(auth_context).encode(), digest_size=16).hexdigest()}
-                   if auth_context is not None else {})
+        'iss': JWT_ISSUER,
+        'aud': 'Wazuh API REST',
+        'nbf': timestamp,
+        'exp': timestamp + result['auth_token_exp_timeout'],
+        'sub': str(user_id),
+        'run_as': auth_context is not None,
+        'rbac_roles': data['roles'],
+        'rbac_mode': result['rbac_mode'],
+    } | (
+        {'hash_auth_context': hashlib.blake2b(json.dumps(auth_context).encode(), digest_size=16).hexdigest()}
+        if auth_context is not None
+        else {}
+    )
 
     return jwt.encode(payload, generate_keypair()[0], algorithm=JWT_ALGORITHM)
 
@@ -230,8 +234,9 @@ def check_token(username: str, roles: tuple, token_nbf_time: int, run_as: bool) 
                 return {'valid': False}
             with TokenManager() as tm:
                 for role in user_roles:
-                    if not tm.is_token_valid(role_id=role, user_id=user_id, token_nbf_time=int(token_nbf_time),
-                                             run_as=run_as):
+                    if not tm.is_token_valid(
+                        role_id=role, user_id=user_id, token_nbf_time=int(token_nbf_time), run_as=run_as
+                    ):
                         return {'valid': False}
 
     policies = optimize_resources(roles)
@@ -263,15 +268,20 @@ def decode_token(token: str) -> dict:
         payload = jwt.decode(token, generate_keypair()[1], algorithms=[JWT_ALGORITHM], audience='Wazuh API REST')
 
         # Check token and add processed policies in the Master node
-        dapi = DistributedAPI(f=check_token,
-                              f_kwargs={'username': payload['sub'],
-                                        'roles': tuple(payload['rbac_roles']), 'token_nbf_time': payload['nbf'],
-                                        'run_as': payload['run_as'], 'origin_node_type': read_config()['node_type']},
-                              request_type='local_master',
-                              is_async=False,
-                              wait_for_complete=False,
-                              logger=logging.getLogger('wazuh-api')
-                              )
+        dapi = DistributedAPI(
+            f=check_token,
+            f_kwargs={
+                'username': payload['sub'],
+                'roles': tuple(payload['rbac_roles']),
+                'token_nbf_time': payload['nbf'],
+                'run_as': payload['run_as'],
+                'origin_node_type': read_config()['node_type'],
+            },
+            request_type='local_master',
+            is_async=False,
+            wait_for_complete=False,
+            logger=logging.getLogger('wazuh-api'),
+        )
         data = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).to_dict()
 
         if not data['result']['valid']:
@@ -280,18 +290,21 @@ def decode_token(token: str) -> dict:
         payload['rbac_policies']['rbac_mode'] = payload.pop('rbac_mode')
 
         # Detect local changes
-        dapi = DistributedAPI(f=get_security_conf,
-                              request_type='local_master',
-                              is_async=False,
-                              wait_for_complete=False,
-                              logger=logging.getLogger('wazuh-api')
-                              )
+        dapi = DistributedAPI(
+            f=get_security_conf,
+            request_type='local_master',
+            is_async=False,
+            wait_for_complete=False,
+            logger=logging.getLogger('wazuh-api'),
+        )
         result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())
 
         current_rbac_mode = result['rbac_mode']
         current_expiration_time = result['auth_token_exp_timeout']
-        if payload['rbac_policies']['rbac_mode'] != current_rbac_mode \
-                or (payload['exp'] - payload['nbf']) != current_expiration_time:
+        if (
+            payload['rbac_policies']['rbac_mode'] != current_rbac_mode
+            or (payload['exp'] - payload['nbf']) != current_expiration_time
+        ):
             raise Unauthorized
 
         return payload

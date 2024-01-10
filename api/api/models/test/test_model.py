@@ -16,10 +16,11 @@ from connexion import ProblemException
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         sys.modules['api.authentication'] = MagicMock()
+        from wazuh import WazuhError
+
         from api.models import base_model_ as bm
         from api.models import event_ingest_model
         from api.util import deserialize_model
-        from wazuh import WazuhError
 
         del sys.modules['api.authentication']
 
@@ -28,11 +29,11 @@ models_path = dirname(dirname(abspath(__file__)))
 
 class TestModel(bm.Body):
     """Test class for custom Model. Body inherits from Model and has all the attributes required for testing."""
-    __test__ = False
-    
-    def __init__(self, *args):
 
-        self.swagger_types = {f"arg_{i + 1}": type(arg) for i, arg in enumerate(args)}
+    __test__ = False
+
+    def __init__(self, *args):
+        self.swagger_types = {f'arg_{i + 1}': type(arg) for i, arg in enumerate(args)}
 
         if not self.swagger_types:
             self.swagger_types = {'arg_1': str}
@@ -85,7 +86,7 @@ def test_model_to_dict():
     test_model = TestModel(*model_params)
     dikt = test_model.to_dict()
     assert isinstance(dikt, dict)
-    assert dikt == {f"arg_{i + 1}": value for i, value in enumerate(model_params)}
+    assert dikt == {f'arg_{i + 1}': value for i, value in enumerate(model_params)}
 
 
 def test_model_to_str():
@@ -164,12 +165,12 @@ def test_data_from_dict():
 
 def test_items():
     """Test class Items."""
-    l = [TestModel('one', 2)]
-    items_model = bm.Items(l)
+    test_models = [TestModel('one', 2)]
+    items_model = bm.Items(test_models)
 
     assert items_model.swagger_types == {'items': bm.List[bm.Model]}
     assert items_model.attribute_map == {'items': 'items'}
-    assert items_model._items == l
+    assert items_model._items == test_models
 
     # Test class properties
     new_items = [TestModel('new', 9)]
@@ -184,10 +185,7 @@ def test_items_from_dict():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('additional_kwargs', [
-    {},
-    {'arg_2': 'test'}
-])
+@pytest.mark.parametrize('additional_kwargs', [{}, {'arg_2': 'test'}])
 async def test_body_get_kwargs(additional_kwargs):
     """Test class Body `get_kwargs` class method."""
     request = {'arg_1': 'value1'}
@@ -291,7 +289,7 @@ def test_all_models(deserialize_mock, module_name):
 
 @pytest.mark.parametrize('size,raises', ([1, True], [2, False]))
 async def test_event_ingest_model_validation(size, raises):
-    request = {'events': [{"foo": 1}, {"bar": 2}]}
+    request = {'events': [{'foo': 1}, {'bar': 2}]}
     event_ingest_model.MAX_EVENTS_PER_REQUEST = size
 
     if raises:

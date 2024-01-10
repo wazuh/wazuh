@@ -7,21 +7,33 @@ from typing import Union
 
 from aiohttp import web
 from connexion.lifecycle import ConnexionResponse
-
-from api.encoder import dumps, prettify
-from api.models.base_model_ import Body
-from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh import decoder as decoder_framework
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.results import AffectedItemsWazuhResult
 
+from api.encoder import dumps, prettify
+from api.models.base_model_ import Body
+from api.util import parse_api_param, raise_if_exc, remove_nones_to_dict
+
 logger = logging.getLogger('wazuh-api')
 
 
-async def get_decoders(request, decoder_names: list = None, pretty: bool = False, wait_for_complete: bool = False,
-                       offset: int = 0, limit: int = None, select: list = None, sort: str = None, search: str = None,
-                       q: str = None, filename: str = None, relative_dirname: str = None,
-                       status: str = None, distinct: bool = False) -> web.Response:
+async def get_decoders(
+    request,
+    decoder_names: list = None,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    offset: int = 0,
+    limit: int = None,
+    select: list = None,
+    sort: str = None,
+    search: str = None,
+    q: str = None,
+    filename: str = None,
+    relative_dirname: str = None,
+    status: str = None,
+    distinct: bool = False,
+) -> web.Response:
     """Get all decoders.
 
     Returns information about all the decoders included in the ossec.conf file.
@@ -63,37 +75,51 @@ async def get_decoders(request, decoder_names: list = None, pretty: bool = False
     web.Response
         API response.
     """
-    f_kwargs = {'names': decoder_names,
-                'offset': offset,
-                'limit': limit,
-                'select': select,
-                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['filename', 'position'],
-                'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
-                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
-                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
-                'q': q,
-                'filename': filename,
-                'status': status,
-                'relative_dirname': relative_dirname,
-                'distinct': distinct}
+    f_kwargs = {
+        'names': decoder_names,
+        'offset': offset,
+        'limit': limit,
+        'select': select,
+        'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['filename', 'position'],
+        'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
+        'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+        'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+        'q': q,
+        'filename': filename,
+        'status': status,
+        'relative_dirname': relative_dirname,
+        'distinct': distinct,
+    }
 
-    dapi = DistributedAPI(f=decoder_framework.get_decoders,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=decoder_framework.get_decoders,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_any',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_decoders_files(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
-                             limit: int = None, sort: str = None, search: str = None, filename: str = None,
-                             relative_dirname: str = None, status: str = None, q: str = None,
-                             select: str = None, distinct: bool = False) -> web.Response:
+async def get_decoders_files(
+    request,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    offset: int = 0,
+    limit: int = None,
+    sort: str = None,
+    search: str = None,
+    filename: str = None,
+    relative_dirname: str = None,
+    status: str = None,
+    q: str = None,
+    select: str = None,
+    distinct: bool = False,
+) -> web.Response:
     """Get all decoders' files.
 
     Returns information about all decoders' files used in Wazuh.
@@ -135,35 +161,45 @@ async def get_decoders_files(request, pretty: bool = False, wait_for_complete: b
     web.Response
         API response.
     """
-    f_kwargs = {'offset': offset,
-                'limit': limit,
-                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['filename'],
-                'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
-                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
-                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
-                'filename': filename,
-                'relative_dirname': relative_dirname,
-                'status': status,
-                'q': q,
-                'select': select,
-                'distinct': distinct}
+    f_kwargs = {
+        'offset': offset,
+        'limit': limit,
+        'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['filename'],
+        'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
+        'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+        'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+        'filename': filename,
+        'relative_dirname': relative_dirname,
+        'status': status,
+        'q': q,
+        'select': select,
+        'distinct': distinct,
+    }
 
-    dapi = DistributedAPI(f=decoder_framework.get_decoders_files,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=decoder_framework.get_decoders_files,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_any',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_decoders_parents(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
-                               limit: int = None, select: list = None, sort: str = None,
-                               search: str = None) -> web.Response:
+async def get_decoders_parents(
+    request,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    offset: int = 0,
+    limit: int = None,
+    select: list = None,
+    sort: str = None,
+    search: str = None,
+) -> web.Response:
     """Get decoders by parents.
 
     Returns information about all parent decoders. A parent decoder is a decoder used as base of other decoders.
@@ -192,31 +228,39 @@ async def get_decoders_parents(request, pretty: bool = False, wait_for_complete:
     web.Response
         API response.
     """
-    f_kwargs = {'offset': offset,
-                'limit': limit,
-                'select': select,
-                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['filename', 'position'],
-                'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
-                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
-                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
-                'parents': True}
+    f_kwargs = {
+        'offset': offset,
+        'limit': limit,
+        'select': select,
+        'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['filename', 'position'],
+        'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
+        'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+        'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+        'parents': True,
+    }
 
-    dapi = DistributedAPI(f=decoder_framework.get_decoders,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=decoder_framework.get_decoders,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_any',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_file(request, pretty: bool = False, wait_for_complete: bool = False, 
-                   filename: str = None, relative_dirname: str = None, 
-                   raw: bool = False) -> Union[web.Response, ConnexionResponse]:
+async def get_file(
+    request,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    filename: str = None,
+    relative_dirname: str = None,
+    raw: bool = False,
+) -> Union[web.Response, ConnexionResponse]:
     """Get decoder file content.
 
     Parameters
@@ -243,27 +287,33 @@ async def get_file(request, pretty: bool = False, wait_for_complete: bool = Fals
     """
     f_kwargs = {'filename': filename, 'raw': raw, 'relative_dirname': relative_dirname}
 
-    dapi = DistributedAPI(f=decoder_framework.get_decoder_file,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=decoder_framework.get_decoder_file,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
     if isinstance(data, AffectedItemsWazuhResult):
         response = web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
     else:
-        response = ConnexionResponse(body=data["message"], 
-                                     mimetype='application/xml', content_type='application/xml')
+        response = ConnexionResponse(body=data['message'], mimetype='application/xml', content_type='application/xml')
 
     return response
 
 
-async def put_file(request, body: bytes, filename: str = None, relative_dirname: str = None,
-                   overwrite: bool = False, pretty: bool = False,
-                   wait_for_complete: bool = False) -> web.Response:
+async def put_file(
+    request,
+    body: bytes,
+    filename: str = None,
+    relative_dirname: str = None,
+    overwrite: bool = False,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+) -> web.Response:
     """Upload a decoder file.
 
     Parameters
@@ -276,7 +326,7 @@ async def put_file(request, body: bytes, filename: str = None, relative_dirname:
     relative_dirname : str
         Relative directory where the decoder is located.
     overwrite : bool
-        If set to false, an exception will be raised when  
+        If set to false, an exception will be raised when
         updating contents of an already existing file.
     pretty : bool
         Show results in human-readable format.
@@ -292,28 +342,30 @@ async def put_file(request, body: bytes, filename: str = None, relative_dirname:
     Body.validate_content_type(request, expected_content_type='application/octet-stream')
     parsed_body = Body.decode_body(body, unicode_error=1911, attribute_error=1912)
 
-    f_kwargs = {'filename': filename,
-                'overwrite': overwrite,
-                'content': parsed_body,
-                'relative_dirname': relative_dirname}
+    f_kwargs = {
+        'filename': filename,
+        'overwrite': overwrite,
+        'content': parsed_body,
+        'relative_dirname': relative_dirname,
+    }
 
-    dapi = DistributedAPI(f=decoder_framework.upload_decoder_file,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=decoder_framework.upload_decoder_file,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def delete_file(request, filename: str = None, 
-                      relative_dirname: str = None,
-                      pretty: bool = False,
-                      wait_for_complete: bool = False) -> web.Response:
+async def delete_file(
+    request, filename: str = None, relative_dirname: str = None, pretty: bool = False, wait_for_complete: bool = False
+) -> web.Response:
     """Delete a decoder file.
 
     Parameters
@@ -335,14 +387,15 @@ async def delete_file(request, filename: str = None,
     """
     f_kwargs = {'filename': filename, 'relative_dirname': relative_dirname}
 
-    dapi = DistributedAPI(f=decoder_framework.delete_decoder_file,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=decoder_framework.delete_decoder_file,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)

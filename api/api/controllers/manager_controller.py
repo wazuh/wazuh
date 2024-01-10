@@ -6,18 +6,18 @@ import datetime
 import logging
 from typing import Union
 
-from aiohttp import web
-from connexion.lifecycle import ConnexionResponse
-
 import wazuh.manager as manager
 import wazuh.stats as stats
-from api.encoder import dumps, prettify
-from api.models.base_model_ import Body
-from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date, deprecate_endpoint
-from api.validator import check_component_configuration_pair
+from aiohttp import web
+from connexion.lifecycle import ConnexionResponse
 from wazuh.core import common
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.results import AffectedItemsWazuhResult
+
+from api.encoder import dumps, prettify
+from api.models.base_model_ import Body
+from api.util import deprecate_endpoint, deserialize_date, parse_api_param, raise_if_exc, remove_nones_to_dict
+from api.validator import check_component_configuration_pair
 
 logger = logging.getLogger('wazuh-api')
 
@@ -40,14 +40,15 @@ async def get_status(request, pretty: bool = False, wait_for_complete: bool = Fa
     """
     f_kwargs = {}
 
-    dapi = DistributedAPI(f=manager.get_status,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=manager.get_status,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_any',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
@@ -71,22 +72,29 @@ async def get_info(request, pretty: bool = False, wait_for_complete: bool = Fals
     """
     f_kwargs = {}
 
-    dapi = DistributedAPI(f=manager.get_basic_info,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=manager.get_basic_info,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_any',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_configuration(request, pretty: bool = False, wait_for_complete: bool = False, section: str = None,
-                            field: str = None, raw: bool = False,
-                            distinct: bool = False) -> Union[web.Response, ConnexionResponse]:
+async def get_configuration(
+    request,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    section: str = None,
+    field: str = None,
+    raw: bool = False,
+    distinct: bool = False,
+) -> Union[web.Response, ConnexionResponse]:
     """Get manager's or local_node's configuration (ossec.conf)
 
     Parameters
@@ -113,25 +121,23 @@ async def get_configuration(request, pretty: bool = False, wait_for_complete: bo
             raw=False (default) -> web.Response (application/json)
         If any exception was raised, it will return a web.Response with details.
     """
-    f_kwargs = {'section': section,
-                'field': field,
-                'raw': raw,
-                'distinct': distinct}
+    f_kwargs = {'section': section, 'field': field, 'raw': raw, 'distinct': distinct}
 
-    dapi = DistributedAPI(f=manager.read_ossec_conf,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=manager.read_ossec_conf,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_any',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     if isinstance(data, AffectedItemsWazuhResult):
         response = web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
     else:
-        response = ConnexionResponse(body=data["message"], mimetype='application/xml', content_type='application/xml')
+        response = ConnexionResponse(body=data['message'], mimetype='application/xml', content_type='application/xml')
     return response
 
 
@@ -150,13 +156,15 @@ async def get_daemon_stats(request, pretty: bool = False, wait_for_complete: boo
     daemons_list = daemons_list or []
     f_kwargs = {'daemons_list': daemons_list}
 
-    dapi = DistributedAPI(f=stats.get_daemons_stats,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies'])
+    dapi = DistributedAPI(
+        f=stats.get_daemons_stats,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_any',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
@@ -189,14 +197,15 @@ async def get_stats(request, pretty: bool = False, wait_for_complete: bool = Fal
 
     f_kwargs = {'date': date}
 
-    dapi = DistributedAPI(f=stats.totals,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=stats.totals,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_any',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
@@ -223,14 +232,15 @@ async def get_stats_hourly(request, pretty: bool = False, wait_for_complete: boo
     """
     f_kwargs = {}
 
-    dapi = DistributedAPI(f=stats.hourly,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=stats.hourly,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_any',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
@@ -257,14 +267,15 @@ async def get_stats_weekly(request, pretty: bool = False, wait_for_complete: boo
     """
     f_kwargs = {}
 
-    dapi = DistributedAPI(f=stats.weekly,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=stats.weekly,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_any',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
@@ -291,14 +302,15 @@ async def get_stats_analysisd(request, pretty: bool = False, wait_for_complete: 
     """
     f_kwargs = {'filename': common.ANALYSISD_STATS}
 
-    dapi = DistributedAPI(f=stats.deprecated_get_daemons_stats,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=stats.deprecated_get_daemons_stats,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_any',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
@@ -325,22 +337,34 @@ async def get_stats_remoted(request, pretty: bool = False, wait_for_complete: bo
     """
     f_kwargs = {'filename': common.REMOTED_STATS}
 
-    dapi = DistributedAPI(f=stats.deprecated_get_daemons_stats,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=stats.deprecated_get_daemons_stats,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_any',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_log(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0, limit: int = None,
-                  sort: str = None, search: str = None, tag: str = None, level: str = None,
-                  q: str = None, select: str = None, distinct: bool = False) -> web.Response:
+async def get_log(
+    request,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    offset: int = 0,
+    limit: int = None,
+    sort: str = None,
+    search: str = None,
+    tag: str = None,
+    level: str = None,
+    q: str = None,
+    select: str = None,
+    distinct: bool = False,
+) -> web.Response:
     """Get manager's or local_node's last 2000 wazuh log entries.
 
     Parameters
@@ -375,26 +399,29 @@ async def get_log(request, pretty: bool = False, wait_for_complete: bool = False
     web.Response
         API response.
     """
-    f_kwargs = {'offset': offset,
-                'limit': limit,
-                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['timestamp'],
-                'sort_ascending': False if sort is None or parse_api_param(sort, 'sort')['order'] == 'desc' else True,
-                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
-                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
-                'tag': tag,
-                'level': level,
-                'q': q,
-                'select': select,
-                'distinct': distinct}
+    f_kwargs = {
+        'offset': offset,
+        'limit': limit,
+        'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['timestamp'],
+        'sort_ascending': False if sort is None or parse_api_param(sort, 'sort')['order'] == 'desc' else True,
+        'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+        'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+        'tag': tag,
+        'level': level,
+        'q': q,
+        'select': select,
+        'distinct': distinct,
+    }
 
-    dapi = DistributedAPI(f=manager.ossec_log,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=manager.ossec_log,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_any',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
@@ -418,14 +445,15 @@ async def get_log_summary(request, pretty: bool = False, wait_for_complete: bool
     """
     f_kwargs = {}
 
-    dapi = DistributedAPI(f=manager.ossec_log_summary,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=manager.ossec_log_summary,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_any',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
@@ -449,14 +477,15 @@ async def get_api_config(request, pretty: bool = False, wait_for_complete: bool 
     """
     f_kwargs = {}
 
-    dapi = DistributedAPI(f=manager.get_api_config,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=manager.get_api_config,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_any',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
@@ -480,14 +509,15 @@ async def put_restart(request, pretty: bool = False, wait_for_complete: bool = F
     """
     f_kwargs = {}
 
-    dapi = DistributedAPI(f=manager.restart,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=manager.restart,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_any',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
@@ -511,21 +541,23 @@ async def get_conf_validation(request, pretty: bool = False, wait_for_complete: 
     """
     f_kwargs = {}
 
-    dapi = DistributedAPI(f=manager.validation,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=manager.validation,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_any',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_manager_config_ondemand(request, component: str, pretty: bool = False, wait_for_complete: bool = False,
-                                      **kwargs: dict) -> web.Response:
+async def get_manager_config_ondemand(
+    request, component: str, pretty: bool = False, wait_for_complete: bool = False, **kwargs: dict
+) -> web.Response:
     """Get active configuration in manager or local_node for one component [on demand].
 
     Parameters
@@ -543,27 +575,27 @@ async def get_manager_config_ondemand(request, component: str, pretty: bool = Fa
     web.Response
         API response.
     """
-    f_kwargs = {'component': component,
-                'config': kwargs.get('configuration', None)
-                }
+    f_kwargs = {'component': component, 'config': kwargs.get('configuration', None)}
 
     raise_if_exc(check_component_configuration_pair(f_kwargs['component'], f_kwargs['config']))
 
-    dapi = DistributedAPI(f=manager.get_config,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=manager.get_config,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_any',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def update_configuration(request, body: bytes, pretty: bool = False,
-                               wait_for_complete: bool = False) -> web.Response:
+async def update_configuration(
+    request, body: bytes, pretty: bool = False, wait_for_complete: bool = False
+) -> web.Response:
     """Update manager's or local_node's configuration (ossec.conf).
 
     Parameters
@@ -587,14 +619,15 @@ async def update_configuration(request, body: bytes, pretty: bool = False,
 
     f_kwargs = {'new_conf': parsed_body}
 
-    dapi = DistributedAPI(f=manager.update_ossec_conf,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=manager.update_ossec_conf,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_any',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)

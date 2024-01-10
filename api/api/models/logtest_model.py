@@ -7,27 +7,18 @@
 from __future__ import absolute_import
 
 from datetime import date, datetime  # noqa: F401
-from typing import List, Dict  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
 from api.models.base_model_ import Body
 
 
 class LogtestModel(Body):
     """Run logtest model."""
-    def __init__(self, token: str = None, log_format: str = None, location: str = None, event: str = None):
-        self.swagger_types = {
-            'token': str,
-            'log_format': str,
-            'location': str,
-            'event': str
-        }
 
-        self.attribute_map = {
-            'token': 'token',
-            'log_format': 'log_format',
-            'location': 'location',
-            'event': 'event'
-        }
+    def __init__(self, token: str = None, log_format: str = None, location: str = None, event: str = None):
+        self.swagger_types = {'token': str, 'log_format': str, 'location': str, 'event': str}
+
+        self.attribute_map = {'token': 'token', 'log_format': 'log_format', 'location': 'location', 'event': 'event'}
 
         self._token = token
         self._log_format = log_format

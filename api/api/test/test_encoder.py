@@ -11,8 +11,9 @@ from api.models.configuration_model import HTTPSModel
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
-        from api.encoder import prettify, dumps
         from wazuh.core.results import WazuhResult
+
+        from api.encoder import dumps, prettify
 
 
 def custom_hook(dct):
@@ -24,10 +25,7 @@ def custom_hook(dct):
         return dct
 
 
-@pytest.mark.parametrize('o', [HTTPSModel(key='v1'),
-                               WazuhResult({'k1': 'v1'}, str_priority='v2')
-                               ]
-                         )
+@pytest.mark.parametrize('o', [HTTPSModel(key='v1'), WazuhResult({'k1': 'v1'}, str_priority='v2')])
 def test_encoder_dumps(o):
     """Test dumps method from API encoder using WazuhAPIJSONEncoder."""
     encoded = dumps(o)

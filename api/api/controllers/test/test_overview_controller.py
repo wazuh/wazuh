@@ -7,15 +7,18 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from aiohttp import web_response
+
 from api.controllers.test.utils import CustomAffectedItems
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        from api.controllers.overview_controller import get_overview_agents
         from wazuh import agent
         from wazuh.tests.util import RBAC_bypasser
+
+        from api.controllers.overview_controller import get_overview_agents
+
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         del sys.modules['wazuh.rbac.orm']
 
@@ -28,14 +31,15 @@ with patch('wazuh.common.wazuh_uid'):
 async def test_get_overview_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     """Verify 'get_overview_agents' endpoint is working as expected."""
     result = await get_overview_agents(request=mock_request)
-    mock_dapi.assert_called_once_with(f=agent.get_full_overview,
-                                      f_kwargs=mock_remove.return_value,
-                                      request_type='local_master',
-                                      is_async=False,
-                                      wait_for_complete=False,
-                                      logger=ANY,
-                                      rbac_permissions=mock_request['token_info']['rbac_policies']
-                                      )
+    mock_dapi.assert_called_once_with(
+        f=agent.get_full_overview,
+        f_kwargs=mock_remove.return_value,
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=False,
+        logger=ANY,
+        rbac_permissions=mock_request['token_info']['rbac_policies'],
+    )
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with({})
     assert isinstance(result, web_response.Response)

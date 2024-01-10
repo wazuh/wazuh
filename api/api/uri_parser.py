@@ -20,8 +20,7 @@ class APIUriParser(connexion.decorators.uri_parsing.OpenAPIURIParser):
         @functools.wraps(function)
         def wrapper(request):
             def coerce_dict(md):
-                """ MultiDict -> dict of lists
-                """
+                """MultiDict -> dict of lists"""
                 try:
                     return md.to_dict(flat=False)
                 except AttributeError:
@@ -35,11 +34,25 @@ class APIUriParser(connexion.decorators.uri_parsing.OpenAPIURIParser):
                         raise_if_exc(APIError(2009))
 
             # Transform to lowercase the values for query parameter's spec.yaml enums
-            lower_fields = ['component', 'configuration', 'hash', 'requirement', 'status', 'type', 'section', 'tag',
-                            'level', 'resource']
+            lower_fields = [
+                'component',
+                'configuration',
+                'hash',
+                'requirement',
+                'status',
+                'type',
+                'section',
+                'tag',
+                'level',
+                'resource',
+            ]
             request.query.update(
-                {k.lower(): [list_item.lower() for list_item in v] if isinstance(v, list) else v.lower()
-                 for k, v in request.query.items() if k in lower_fields})
+                {
+                    k.lower(): [list_item.lower() for list_item in v] if isinstance(v, list) else v.lower()
+                    for k, v in request.query.items()
+                    if k in lower_fields
+                }
+            )
 
             query = coerce_dict(request.query)
             path_params = coerce_dict(request.path_params)

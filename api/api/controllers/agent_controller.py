@@ -7,27 +7,39 @@ from typing import Union
 
 from aiohttp import web
 from connexion.lifecycle import ConnexionResponse
-
-from api.encoder import dumps, prettify
-from api.models.agent_added_model import AgentAddedModel
-from api.models.agent_inserted_model import AgentInsertedModel
-from api.models.base_model_ import Body
-from api.models.agent_group_added_model import GroupAddedModel
-from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc, deprecate_endpoint
-from api.validator import check_component_configuration_pair
 from wazuh import agent, stats
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import DATABASE_LIMIT
 from wazuh.core.results import AffectedItemsWazuhResult
 
+from api.encoder import dumps, prettify
+from api.models.agent_added_model import AgentAddedModel
+from api.models.agent_group_added_model import GroupAddedModel
+from api.models.agent_inserted_model import AgentInsertedModel
+from api.models.base_model_ import Body
+from api.util import deprecate_endpoint, parse_api_param, raise_if_exc, remove_nones_to_dict
+from api.validator import check_component_configuration_pair
+
 logger = logging.getLogger('wazuh-api')
 
 
-async def delete_agents(request, pretty: bool = False, wait_for_complete: bool = False, agents_list: str = None,
-                        purge: bool = False, status: str = None, q: str = None, older_than: str = None,
-                        manager: str = None, version: str = None, group: str = None, node_name: str = None,
-                        name: str = None, ip: str = None) -> web.Response:
+async def delete_agents(
+    request,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    agents_list: str = None,
+    purge: bool = False,
+    status: str = None,
+    q: str = None,
+    older_than: str = None,
+    manager: str = None,
+    version: str = None,
+    group: str = None,
+    node_name: str = None,
+    name: str = None,
+    ip: str = None,
+) -> web.Response:
     """Delete all agents or a list of them based on optional criteria.
 
     Parameters
@@ -68,45 +80,64 @@ async def delete_agents(request, pretty: bool = False, wait_for_complete: bool =
     """
     if 'all' in agents_list:
         agents_list = None
-    f_kwargs = {'agent_list': agents_list,
-                'purge': purge,
-                'filters': {
-                    'status': status,
-                    'older_than': older_than,
-                    'manager': manager,
-                    'version': version,
-                    'group': group,
-                    'node_name': node_name,
-                    'name': name,
-                    'ip': ip,
-                    'registerIP': request.query.get('registerIP', None)
-                },
-                'q': q
-                }
+    f_kwargs = {
+        'agent_list': agents_list,
+        'purge': purge,
+        'filters': {
+            'status': status,
+            'older_than': older_than,
+            'manager': manager,
+            'version': version,
+            'group': group,
+            'node_name': node_name,
+            'name': name,
+            'ip': ip,
+            'registerIP': request.query.get('registerIP', None),
+        },
+        'q': q,
+    }
 
     # Add nested fields to kwargs filters
     nested = ['os.version', 'os.name', 'os.platform']
     for field in nested:
         f_kwargs['filters'][field] = request.query.get(field, None)
 
-    dapi = DistributedAPI(f=agent.delete_agents,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.delete_agents,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agents(request, pretty: bool = False, wait_for_complete: bool = False, agents_list: str = None,
-                     offset: int = 0, limit: int = DATABASE_LIMIT, select: str = None, sort: str = None,
-                     search: str = None, status: str = None, q: str = None, older_than: str = None, manager: str = None,
-                     version: str = None, group: str = None, node_name: str = None, name: str = None, ip: str = None,
-                     group_config_status: str = None, distinct: bool = False) -> web.Response:
+async def get_agents(
+    request,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    agents_list: str = None,
+    offset: int = 0,
+    limit: int = DATABASE_LIMIT,
+    select: str = None,
+    sort: str = None,
+    search: str = None,
+    status: str = None,
+    q: str = None,
+    older_than: str = None,
+    manager: str = None,
+    version: str = None,
+    group: str = None,
+    node_name: str = None,
+    name: str = None,
+    ip: str = None,
+    group_config_status: str = None,
+    distinct: bool = False,
+) -> web.Response:
     """Get information about all agents or a list of them.
 
     Parameters
@@ -158,40 +189,42 @@ async def get_agents(request, pretty: bool = False, wait_for_complete: bool = Fa
     web.Response
         Response with all selected agents' information.
     """
-    f_kwargs = {'agent_list': agents_list,
-                'offset': offset,
-                'limit': limit,
-                'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search'),
-                'select': select,
-                'filters': {
-                    'status': status,
-                    'older_than': older_than,
-                    'manager': manager,
-                    'version': version,
-                    'group': group,
-                    'node_name': node_name,
-                    'name': name,
-                    'ip': ip,
-                    'registerIP': request.query.get('registerIP', None),
-                    'group_config_status': group_config_status
-                },
-                'q': q,
-                'distinct': distinct
-                }
+    f_kwargs = {
+        'agent_list': agents_list,
+        'offset': offset,
+        'limit': limit,
+        'sort': parse_api_param(sort, 'sort'),
+        'search': parse_api_param(search, 'search'),
+        'select': select,
+        'filters': {
+            'status': status,
+            'older_than': older_than,
+            'manager': manager,
+            'version': version,
+            'group': group,
+            'node_name': node_name,
+            'name': name,
+            'ip': ip,
+            'registerIP': request.query.get('registerIP', None),
+            'group_config_status': group_config_status,
+        },
+        'q': q,
+        'distinct': distinct,
+    }
     # Add nested fields to kwargs filters
     nested = ['os.version', 'os.name', 'os.platform']
     for field in nested:
         f_kwargs['filters'][field] = request.query.get(field, None)
 
-    dapi = DistributedAPI(f=agent.get_agents,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.get_agents,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
@@ -217,22 +250,24 @@ async def add_agent(request, pretty: bool = False, wait_for_complete: bool = Fal
     Body.validate_content_type(request, expected_content_type='application/json')
     f_kwargs = await AgentAddedModel.get_kwargs(request)
 
-    dapi = DistributedAPI(f=agent.add_agent,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.add_agent,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
 
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def reconnect_agents(request, pretty: bool = False, wait_for_complete: bool = False,
-                           agents_list: Union[list, str] = '*') -> web.Response:
+async def reconnect_agents(
+    request, pretty: bool = False, wait_for_complete: bool = False, agents_list: Union[list, str] = '*'
+) -> web.Response:
     """Force reconnect all agents or a list of them.
 
     Parameters
@@ -252,22 +287,24 @@ async def reconnect_agents(request, pretty: bool = False, wait_for_complete: boo
     """
     f_kwargs = {'agent_list': agents_list}
 
-    dapi = DistributedAPI(f=agent.reconnect_agents,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          rbac_permissions=request['token_info']['rbac_policies'],
-                          broadcasting=agents_list == '*',
-                          logger=logger
-                          )
+    dapi = DistributedAPI(
+        f=agent.reconnect_agents,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='distributed_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        rbac_permissions=request['token_info']['rbac_policies'],
+        broadcasting=agents_list == '*',
+        logger=logger,
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def restart_agents(request, pretty: bool = False, wait_for_complete: bool = False,
-                         agents_list: str = '*') -> web.Response:
+async def restart_agents(
+    request, pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*'
+) -> web.Response:
     """Restart all agents or a list of them.
 
     Parameters
@@ -287,22 +324,24 @@ async def restart_agents(request, pretty: bool = False, wait_for_complete: bool 
     """
     f_kwargs = {'agent_list': agents_list}
 
-    dapi = DistributedAPI(f=agent.restart_agents,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          rbac_permissions=request['token_info']['rbac_policies'],
-                          broadcasting=agents_list == '*',
-                          logger=logger
-                          )
+    dapi = DistributedAPI(
+        f=agent.restart_agents,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='distributed_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        rbac_permissions=request['token_info']['rbac_policies'],
+        broadcasting=agents_list == '*',
+        logger=logger,
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def restart_agents_by_node(request, node_id: str, pretty: bool = False,
-                                 wait_for_complete: bool = False) -> web.Response:
+async def restart_agents_by_node(
+    request, node_id: str, pretty: bool = False, wait_for_complete: bool = False
+) -> web.Response:
     """Restart all agents belonging to a node.
 
     Parameters
@@ -323,22 +362,29 @@ async def restart_agents_by_node(request, node_id: str, pretty: bool = False,
 
     f_kwargs = {'node_id': node_id, 'agent_list': '*'}
 
-    dapi = DistributedAPI(f=agent.restart_agents_by_node,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes
-                          )
+    dapi = DistributedAPI(
+        f=agent.restart_agents_by_node,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='distributed_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+        nodes=nodes,
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agent_config(request, pretty: bool = False, wait_for_complete: bool = False, agent_id: str = None,
-                           component: str = None, **kwargs: dict) -> web.Response:
+async def get_agent_config(
+    request,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    agent_id: str = None,
+    component: str = None,
+    **kwargs: dict,
+) -> web.Response:
     """Get agent active configuration.
 
     Returns the active configuration the agent is currently using. This can be different from the configuration present
@@ -361,28 +407,27 @@ async def get_agent_config(request, pretty: bool = False, wait_for_complete: boo
     web.Response
         API response with the agent configuration.
     """
-    f_kwargs = {'agent_list': [agent_id],
-                'component': component,
-                'config': kwargs.get('configuration', None)
-                }
+    f_kwargs = {'agent_list': [agent_id], 'component': component, 'config': kwargs.get('configuration', None)}
 
     raise_if_exc(check_component_configuration_pair(f_kwargs['component'], f_kwargs['config']))
 
-    dapi = DistributedAPI(f=agent.get_agent_config,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.get_agent_config,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='distributed_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def delete_single_agent_multiple_groups(request, agent_id: str, groups_list: str = None, pretty: bool = False,
-                                              wait_for_complete: bool = False) -> web.Response:
+async def delete_single_agent_multiple_groups(
+    request, agent_id: str, groups_list: str = None, pretty: bool = False, wait_for_complete: bool = False
+) -> web.Response:
     """Remove the agent from all groups or a list of them.
 
     The agent will automatically revert to the "default" group if it is removed from all its assigned groups.
@@ -404,17 +449,17 @@ async def delete_single_agent_multiple_groups(request, agent_id: str, groups_lis
     web.Response
         API response.
     """
-    f_kwargs = {'agent_list': [agent_id],
-                'group_list': groups_list}
+    f_kwargs = {'agent_list': [agent_id], 'group_list': groups_list}
 
-    dapi = DistributedAPI(f=agent.remove_agent_from_groups,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.remove_agent_from_groups,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
 
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -444,21 +489,23 @@ async def get_sync_agent(request, agent_id: str, pretty: bool = False, wait_for_
     """
     f_kwargs = {'agent_list': [agent_id]}
 
-    dapi = DistributedAPI(f=agent.get_agents_sync_group,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.get_agents_sync_group,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def delete_single_agent_single_group(request, agent_id: str, group_id: str, pretty: bool = False,
-                                           wait_for_complete: bool = False) -> web.Response:
+async def delete_single_agent_single_group(
+    request, agent_id: str, group_id: str, pretty: bool = False, wait_for_complete: bool = False
+) -> web.Response:
     """Remove agent from a single group.
 
     Removes an agent from a group. If the agent has multigroups, it will preserve all previous groups except the last
@@ -481,24 +528,30 @@ async def delete_single_agent_single_group(request, agent_id: str, group_id: str
     web.Response
         API response.
     """
-    f_kwargs = {'agent_list': [agent_id],
-                'group_list': [group_id]}
+    f_kwargs = {'agent_list': [agent_id], 'group_list': [group_id]}
 
-    dapi = DistributedAPI(f=agent.remove_agent_from_group,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.remove_agent_from_group,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_agent_single_group(request, agent_id: str, group_id: str, force_single_group: bool = False,
-                                 pretty: bool = False, wait_for_complete: bool = False) -> web.Response:
+async def put_agent_single_group(
+    request,
+    agent_id: str,
+    group_id: str,
+    force_single_group: bool = False,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+) -> web.Response:
     """Assign an agent to the specified group.
 
     Parameters
@@ -520,18 +573,17 @@ async def put_agent_single_group(request, agent_id: str, group_id: str, force_si
     web.Response
         API response.
     """
-    f_kwargs = {'agent_list': [agent_id],
-                'group_list': [group_id],
-                'replace': force_single_group}
+    f_kwargs = {'agent_list': [agent_id], 'group_list': [group_id], 'replace': force_single_group}
 
-    dapi = DistributedAPI(f=agent.assign_agents_to_group,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.assign_agents_to_group,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
@@ -557,14 +609,15 @@ async def get_agent_key(request, agent_id: str, pretty: bool = False, wait_for_c
     """
     f_kwargs = {'agent_list': [agent_id]}
 
-    dapi = DistributedAPI(f=agent.get_agents_keys,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.get_agents_keys,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
@@ -590,24 +643,37 @@ async def restart_agent(request, agent_id: str, pretty: bool = False, wait_for_c
     """
     f_kwargs = {'agent_list': [agent_id]}
 
-    dapi = DistributedAPI(f=agent.restart_agents,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.restart_agents,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='distributed_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_upgrade_agents(request, agents_list: str = None, pretty: bool = False, wait_for_complete: bool = False,
-                             wpk_repo: str = None, upgrade_version: str = None, use_http: bool = False,
-                             force: bool = False, q: str = None, manager: str = None, version: str = None,
-                             group: str = None, node_name: str = None, name: str = None,
-                             ip: str = None) -> web.Response:
+async def put_upgrade_agents(
+    request,
+    agents_list: str = None,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    wpk_repo: str = None,
+    upgrade_version: str = None,
+    use_http: bool = False,
+    force: bool = False,
+    q: str = None,
+    manager: str = None,
+    version: str = None,
+    group: str = None,
+    node_name: str = None,
+    name: str = None,
+    ip: str = None,
+) -> web.Response:
     """Upgrade agents using a WPK file from an online repository.
 
     Parameters
@@ -651,46 +717,59 @@ async def put_upgrade_agents(request, agents_list: str = None, pretty: bool = Fa
     if 'all' in agents_list:
         agents_list = '*'
 
-    f_kwargs = {'agent_list': agents_list,
-                'wpk_repo': wpk_repo,
-                'version': upgrade_version,
-                'use_http': use_http,
-                'force': force,
-                'filters': {
-                    'manager': manager,
-                    'version': version,
-                    'group': group,
-                    'node_name': node_name,
-                    'name': name,
-                    'ip': ip,
-                    'registerIP': request.query.get('registerIP', None)
-                },
-                'q': q
-                }
+    f_kwargs = {
+        'agent_list': agents_list,
+        'wpk_repo': wpk_repo,
+        'version': upgrade_version,
+        'use_http': use_http,
+        'force': force,
+        'filters': {
+            'manager': manager,
+            'version': version,
+            'group': group,
+            'node_name': node_name,
+            'name': name,
+            'ip': ip,
+            'registerIP': request.query.get('registerIP', None),
+        },
+        'q': q,
+    }
 
     # Add nested fields to kwargs filters
     nested = ['os.version', 'os.name', 'os.platform']
     for field in nested:
         f_kwargs['filters'][field] = request.query.get(field, None)
 
-    dapi = DistributedAPI(f=agent.upgrade_agents,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies'],
-                          broadcasting=agents_list == '*'
-                          )
+    dapi = DistributedAPI(
+        f=agent.upgrade_agents,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='distributed_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+        broadcasting=agents_list == '*',
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_upgrade_custom_agents(request, agents_list: str = None, pretty: bool = False,
-                                    wait_for_complete: bool = False, file_path: str = None, installer: str = None,
-                                    q: str = None, manager: str = None, version: str = None, group: str = None,
-                                    node_name: str = None, name: str = None, ip: str = None) -> web.Response:
+async def put_upgrade_custom_agents(
+    request,
+    agents_list: str = None,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    file_path: str = None,
+    installer: str = None,
+    q: str = None,
+    manager: str = None,
+    version: str = None,
+    group: str = None,
+    node_name: str = None,
+    name: str = None,
+    ip: str = None,
+) -> web.Response:
     """Upgrade agents using a local WPK file.
 
     Parameters
@@ -730,43 +809,55 @@ async def put_upgrade_custom_agents(request, agents_list: str = None, pretty: bo
     if 'all' in agents_list:
         agents_list = '*'
 
-    f_kwargs = {'agent_list': agents_list,
-                'file_path': file_path,
-                'installer': installer,
-                'filters': {
-                    'manager': manager,
-                    'version': version,
-                    'group': group,
-                    'node_name': node_name,
-                    'name': name,
-                    'ip': ip,
-                    'registerIP': request.query.get('registerIP', None)
-                },
-                'q': q
-                }
+    f_kwargs = {
+        'agent_list': agents_list,
+        'file_path': file_path,
+        'installer': installer,
+        'filters': {
+            'manager': manager,
+            'version': version,
+            'group': group,
+            'node_name': node_name,
+            'name': name,
+            'ip': ip,
+            'registerIP': request.query.get('registerIP', None),
+        },
+        'q': q,
+    }
 
     # Add nested fields to kwargs filters
     nested = ['os.version', 'os.name', 'os.platform']
     for field in nested:
         f_kwargs['filters'][field] = request.query.get(field, None)
 
-    dapi = DistributedAPI(f=agent.upgrade_agents,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies'],
-                          broadcasting=agents_list == '*'
-                          )
+    dapi = DistributedAPI(
+        f=agent.upgrade_agents,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='distributed_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+        broadcasting=agents_list == '*',
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agent_upgrade(request, agents_list: str = None, pretty: bool = False, wait_for_complete: bool = False,
-                            q: str = None, manager: str = None, version: str = None, group: str = None,
-                            node_name: str = None, name: str = None, ip: str = None) -> web.Response:
+async def get_agent_upgrade(
+    request,
+    agents_list: str = None,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    q: str = None,
+    manager: str = None,
+    version: str = None,
+    group: str = None,
+    node_name: str = None,
+    name: str = None,
+    ip: str = None,
+) -> web.Response:
     """Get upgrade results from agents.
 
     Parameters
@@ -798,39 +889,42 @@ async def get_agent_upgrade(request, agents_list: str = None, pretty: bool = Fal
     web.Response
         Upgrade message after having upgraded the agents.
     """
-    f_kwargs = {'agent_list': agents_list,
-                'filters': {
-                    'manager': manager,
-                    'version': version,
-                    'group': group,
-                    'node_name': node_name,
-                    'name': name,
-                    'ip': ip,
-                    'registerIP': request.query.get('registerIP', None)
-                },
-                'q': q
-                }
+    f_kwargs = {
+        'agent_list': agents_list,
+        'filters': {
+            'manager': manager,
+            'version': version,
+            'group': group,
+            'node_name': node_name,
+            'name': name,
+            'ip': ip,
+            'registerIP': request.query.get('registerIP', None),
+        },
+        'q': q,
+    }
 
     # Add nested fields to kwargs filters
     nested = ['os.version', 'os.name', 'os.platform']
     for field in nested:
         f_kwargs['filters'][field] = request.query.get(field, None)
 
-    dapi = DistributedAPI(f=agent.get_upgrade_result,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.get_upgrade_result,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_daemon_stats(request, agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
-                           daemons_list: list = None) -> web.Response:
+async def get_daemon_stats(
+    request, agent_id: str, pretty: bool = False, wait_for_complete: bool = False, daemons_list: list = None
+) -> web.Response:
     """Get Wazuh statistical information from the specified daemons of a specified agent.
 
     Parameters
@@ -851,23 +945,25 @@ async def get_daemon_stats(request, agent_id: str, pretty: bool = False, wait_fo
         API response.
     """
     daemons_list = daemons_list or []
-    f_kwargs = {'agent_list': [agent_id],
-                'daemons_list': daemons_list}
+    f_kwargs = {'agent_list': [agent_id], 'daemons_list': daemons_list}
 
-    dapi = DistributedAPI(f=stats.get_daemons_stats_agents,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies'])
+    dapi = DistributedAPI(
+        f=stats.get_daemons_stats_agents,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='distributed_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_component_stats(request, pretty: bool = False, wait_for_complete: bool = False, agent_id: str = None,
-                              component: str = None) -> web.Response:
+async def get_component_stats(
+    request, pretty: bool = False, wait_for_complete: bool = False, agent_id: str = None, component: str = None
+) -> web.Response:
     """Get a specified agent's component stats.
 
     Parameters
@@ -887,24 +983,25 @@ async def get_component_stats(request, pretty: bool = False, wait_for_complete: 
     web.Response
         API response with the module stats.
     """
-    f_kwargs = {'agent_list': [agent_id],
-                'component': component}
+    f_kwargs = {'agent_list': [agent_id], 'component': component}
 
-    dapi = DistributedAPI(f=stats.get_agents_component_stats_json,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=stats.get_agents_component_stats_json,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='distributed_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def post_new_agent(request, agent_name: str, pretty: bool = False,
-                         wait_for_complete: bool = False) -> web.Response:
+async def post_new_agent(
+    request, agent_name: str, pretty: bool = False, wait_for_complete: bool = False
+) -> web.Response:
     """Add agent (quick method).
 
     Parameters
@@ -924,21 +1021,23 @@ async def post_new_agent(request, agent_name: str, pretty: bool = False,
     """
     f_kwargs = await AgentAddedModel.get_kwargs({'name': agent_name})
 
-    dapi = DistributedAPI(f=agent.add_agent,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.add_agent,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def delete_multiple_agent_single_group(request, group_id: str, agents_list: str = None, pretty: bool = False,
-                                             wait_for_complete: bool = False) -> web.Response:
+async def delete_multiple_agent_single_group(
+    request, group_id: str, agents_list: str = None, pretty: bool = False, wait_for_complete: bool = False
+) -> web.Response:
     """Remove agents assignment from a specified group.
 
     Parameters
@@ -960,25 +1059,30 @@ async def delete_multiple_agent_single_group(request, group_id: str, agents_list
     """
     if 'all' in agents_list:
         agents_list = None
-    f_kwargs = {'agent_list': agents_list,
-                'group_list': [group_id]}
+    f_kwargs = {'agent_list': agents_list, 'group_list': [group_id]}
 
-    dapi = DistributedAPI(f=agent.remove_agents_from_group,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.remove_agents_from_group,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_multiple_agent_single_group(request, group_id: str, agents_list: str = None, pretty: bool = False,
-                                          wait_for_complete: bool = False,
-                                          force_single_group: bool = False) -> web.Response:
+async def put_multiple_agent_single_group(
+    request,
+    group_id: str,
+    agents_list: str = None,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    force_single_group: bool = False,
+) -> web.Response:
     """Add multiple agents to a group.
 
     Parameters
@@ -1000,25 +1104,25 @@ async def put_multiple_agent_single_group(request, group_id: str, agents_list: s
     web.Response
         API response.
     """
-    f_kwargs = {'agent_list': agents_list,
-                'group_list': [group_id],
-                'replace': force_single_group}
+    f_kwargs = {'agent_list': agents_list, 'group_list': [group_id], 'replace': force_single_group}
 
-    dapi = DistributedAPI(f=agent.assign_agents_to_group,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.assign_agents_to_group,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def delete_groups(request, groups_list: str = None, pretty: bool = False,
-                        wait_for_complete: bool = False) -> web.Response:
+async def delete_groups(
+    request, groups_list: str = None, pretty: bool = False, wait_for_complete: bool = False
+) -> web.Response:
     """Delete all groups or a list of them.
 
     Parameters
@@ -1040,23 +1144,33 @@ async def delete_groups(request, groups_list: str = None, pretty: bool = False,
         groups_list = None
     f_kwargs = {'group_list': groups_list}
 
-    dapi = DistributedAPI(f=agent.delete_groups,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.delete_groups,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_list_group(request, pretty: bool = False, wait_for_complete: bool = False,
-                        groups_list: str = None, offset: int = 0, limit: int = None,
-                        sort: str = None, search: str = None, q: str = None, select: str = None,
-                        distinct: bool = False) -> web.Response:
+async def get_list_group(
+    request,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    groups_list: str = None,
+    offset: int = 0,
+    limit: int = None,
+    sort: str = None,
+    search: str = None,
+    q: str = None,
+    select: str = None,
+    distinct: bool = False,
+) -> web.Response:
     """Get groups.
 
     Returns a list containing basic information about each agent group such as number of agents belonging to the group
@@ -1093,35 +1207,48 @@ async def get_list_group(request, pretty: bool = False, wait_for_complete: bool 
         API response.
     """
     hash_ = request.query.get('hash', 'md5')  # Select algorithm to generate the returned checksums.
-    f_kwargs = {'offset': offset,
-                'limit': limit,
-                'group_list': groups_list,
-                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['name'],
-                'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
-                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
-                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
-                'hash_algorithm': hash_,
-                'q': q,
-                'select': select,
-                'distinct': distinct}
+    f_kwargs = {
+        'offset': offset,
+        'limit': limit,
+        'group_list': groups_list,
+        'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['name'],
+        'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
+        'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+        'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+        'hash_algorithm': hash_,
+        'q': q,
+        'select': select,
+        'distinct': distinct,
+    }
 
-    dapi = DistributedAPI(f=agent.get_agent_groups,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.get_agent_groups,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agents_in_group(request, group_id: str, pretty: bool = False, wait_for_complete: bool = False,
-                              offset: int = 0, limit: int = DATABASE_LIMIT, select: str = None, sort: str = None,
-                              search: str = None, status: str = None, q: str = None,
-                              distinct: bool = False) -> web.Response:
+async def get_agents_in_group(
+    request,
+    group_id: str,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    offset: int = 0,
+    limit: int = DATABASE_LIMIT,
+    select: str = None,
+    sort: str = None,
+    search: str = None,
+    status: str = None,
+    q: str = None,
+    distinct: bool = False,
+) -> web.Response:
     """Get the list of agents that belongs to the specified group.
 
     Parameters
@@ -1156,26 +1283,29 @@ async def get_agents_in_group(request, group_id: str, pretty: bool = False, wait
     web.Response
         API response.
     """
-    f_kwargs = {'group_list': [group_id],
-                'offset': offset,
-                'limit': limit,
-                'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search'),
-                'select': select,
-                'filters': {
-                    'status': status,
-                },
-                'q': q,
-                'distinct': distinct}
+    f_kwargs = {
+        'group_list': [group_id],
+        'offset': offset,
+        'limit': limit,
+        'sort': parse_api_param(sort, 'sort'),
+        'search': parse_api_param(search, 'search'),
+        'select': select,
+        'filters': {
+            'status': status,
+        },
+        'q': q,
+        'distinct': distinct,
+    }
 
-    dapi = DistributedAPI(f=agent.get_agents_in_group,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.get_agents_in_group,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
 
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -1201,21 +1331,28 @@ async def post_group(request, pretty: bool = False, wait_for_complete: bool = Fa
     Body.validate_content_type(request, expected_content_type='application/json')
     f_kwargs = await GroupAddedModel.get_kwargs(request)
 
-    dapi = DistributedAPI(f=agent.create_group,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.create_group,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_group_config(request, group_id: str, pretty: bool = False, wait_for_complete: bool = False,
-                           offset: int = 0, limit: int = DATABASE_LIMIT) -> web.Response:
+async def get_group_config(
+    request,
+    group_id: str,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    offset: int = 0,
+    limit: int = DATABASE_LIMIT,
+) -> web.Response:
     """Get group configuration defined in the `agent.conf` file.
 
     Parameters
@@ -1237,25 +1374,25 @@ async def get_group_config(request, group_id: str, pretty: bool = False, wait_fo
     web.Response
         API response.
     """
-    f_kwargs = {'group_list': [group_id],
-                'offset': offset,
-                'limit': limit}
+    f_kwargs = {'group_list': [group_id], 'offset': offset, 'limit': limit}
 
-    dapi = DistributedAPI(f=agent.get_agent_conf,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.get_agent_conf,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_group_config(request, body: bytes, group_id: str, pretty: bool = False,
-                           wait_for_complete: bool = False) -> web.Response:
+async def put_group_config(
+    request, body: bytes, group_id: str, pretty: bool = False, wait_for_complete: bool = False
+) -> web.Response:
     """Update group configuration.
 
     Update a specified group's configuration. This API call expects a full valid XML file with the shared configuration
@@ -1283,25 +1420,35 @@ async def put_group_config(request, body: bytes, group_id: str, pretty: bool = F
     Body.validate_content_type(request, expected_content_type='application/xml')
     parsed_body = Body.decode_body(body, unicode_error=1911, attribute_error=1912)
 
-    f_kwargs = {'group_list': [group_id],
-                'file_data': parsed_body}
+    f_kwargs = {'group_list': [group_id], 'file_data': parsed_body}
 
-    dapi = DistributedAPI(f=agent.upload_group_file,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.upload_group_file,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_group_files(request, group_id: str, pretty: bool = False, wait_for_complete: bool = False,
-                          offset: int = 0, limit: int = None, sort: str = None, search: str = None, 
-                          q: str = None, select: str = None, distinct: bool = False) -> web.Response:
+async def get_group_files(
+    request,
+    group_id: str,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    offset: int = 0,
+    limit: int = None,
+    sort: str = None,
+    search: str = None,
+    q: str = None,
+    select: str = None,
+    distinct: bool = False,
+) -> web.Response:
     """Get the files placed under the group directory.
 
     Parameters
@@ -1335,33 +1482,37 @@ async def get_group_files(request, group_id: str, pretty: bool = False, wait_for
         API response.
     """
     hash_ = request.query.get('hash', 'md5')  # Select algorithm to generate the returned checksums.
-    f_kwargs = {'group_list': [group_id],
-                'offset': offset,
-                'limit': limit,
-                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ["filename"],
-                'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
-                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
-                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
-                'hash_algorithm': hash_,
-                'q': q,
-                'select': select,
-                'distinct': distinct}
+    f_kwargs = {
+        'group_list': [group_id],
+        'offset': offset,
+        'limit': limit,
+        'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['filename'],
+        'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
+        'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+        'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+        'hash_algorithm': hash_,
+        'q': q,
+        'select': select,
+        'distinct': distinct,
+    }
 
-    dapi = DistributedAPI(f=agent.get_group_files,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.get_group_files,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_group_file_json(request, group_id: str, file_name: str, pretty: bool = False,
-                              wait_for_complete: bool = False) -> web.Response:
+async def get_group_file_json(
+    request, group_id: str, file_name: str, pretty: bool = False, wait_for_complete: bool = False
+) -> web.Response:
     """Get the files placed under the group directory in JSON format.
 
     Parameters
@@ -1381,26 +1532,30 @@ async def get_group_file_json(request, group_id: str, file_name: str, pretty: bo
     web.Response
         API response.
     """
-    f_kwargs = {'group_list': [group_id],
-                'filename': file_name,
-                'type_conf': request.query.get('type', None),
-                'return_format': 'json'}
+    f_kwargs = {
+        'group_list': [group_id],
+        'filename': file_name,
+        'type_conf': request.query.get('type', None),
+        'return_format': 'json',
+    }
 
-    dapi = DistributedAPI(f=agent.get_file_conf,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.get_file_conf,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_group_file_xml(request, group_id: str, file_name: str, pretty: bool = False,
-                             wait_for_complete: bool = False) -> ConnexionResponse:
+async def get_group_file_xml(
+    request, group_id: str, file_name: str, pretty: bool = False, wait_for_complete: bool = False
+) -> ConnexionResponse:
     """Get the files placed under the group directory in XML format.
 
     Parameters
@@ -1420,27 +1575,31 @@ async def get_group_file_xml(request, group_id: str, file_name: str, pretty: boo
     connexion.lifecycle.ConnexionResponse
         API response.
     """
-    f_kwargs = {'group_list': [group_id],
-                'filename': file_name,
-                'type_conf': request.query.get('type', None),
-                'return_format': 'xml'}
+    f_kwargs = {
+        'group_list': [group_id],
+        'filename': file_name,
+        'type_conf': request.query.get('type', None),
+        'return_format': 'xml',
+    }
 
-    dapi = DistributedAPI(f=agent.get_file_conf,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.get_file_conf,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
-    response = ConnexionResponse(body=data["data"], mimetype='application/xml')
+    response = ConnexionResponse(body=data['data'], mimetype='application/xml')
 
     return response
 
 
-async def restart_agents_by_group(request, group_id: str, pretty: bool = False,
-                                  wait_for_complete: bool = False) -> web.Response:
+async def restart_agents_by_group(
+    request, group_id: str, pretty: bool = False, wait_for_complete: bool = False
+) -> web.Response:
     """Restart all agents from a group.
 
     Parameters
@@ -1459,14 +1618,15 @@ async def restart_agents_by_group(request, group_id: str, pretty: bool = False,
         API response.
     """
     f_kwargs = {'group_list': [group_id], 'select': ['id'], 'limit': None}
-    dapi = DistributedAPI(f=agent.get_agents_in_group,
-                          f_kwargs=f_kwargs,
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.get_agents_in_group,
+        f_kwargs=f_kwargs,
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     agents = raise_if_exc(await dapi.distribute_function())
 
     agent_list = [a['id'] for a in agents.affected_items]
@@ -1475,14 +1635,15 @@ async def restart_agents_by_group(request, group_id: str, pretty: bool = False,
         return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
     f_kwargs = {'agent_list': agent_list}
-    dapi = DistributedAPI(f=agent.restart_agents_by_group,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.restart_agents_by_group,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='distributed_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
 
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -1508,21 +1669,31 @@ async def insert_agent(request, pretty: bool = False, wait_for_complete: bool = 
     Body.validate_content_type(request, expected_content_type='application/json')
     f_kwargs = await AgentInsertedModel.get_kwargs(request)
 
-    dapi = DistributedAPI(f=agent.add_agent,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.add_agent,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agent_no_group(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
-                             limit: int = DATABASE_LIMIT, select=None, sort=None, search=None, q=None) -> web.Response:
+async def get_agent_no_group(
+    request,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    offset: int = 0,
+    limit: int = DATABASE_LIMIT,
+    select=None,
+    sort=None,
+    search=None,
+    q=None,
+) -> web.Response:
     """Get agents without group.
 
     Parameters
@@ -1551,29 +1722,39 @@ async def get_agent_no_group(request, pretty: bool = False, wait_for_complete: b
     web.Response
         API response.
     """
-    f_kwargs = {'offset': offset,
-                'limit': limit,
-                'select': select,
-                'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search'),
-                'q': 'id!=000;group=null' + (';' + q if q else '')}
+    f_kwargs = {
+        'offset': offset,
+        'limit': limit,
+        'select': select,
+        'sort': parse_api_param(sort, 'sort'),
+        'search': parse_api_param(search, 'search'),
+        'q': 'id!=000;group=null' + (';' + q if q else ''),
+    }
 
-    dapi = DistributedAPI(f=agent.get_agents,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.get_agents,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agent_outdated(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
-                             limit: int = DATABASE_LIMIT, sort: str = None, search: str = None,
-                             q: str = None) -> web.Response:
+async def get_agent_outdated(
+    request,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    offset: int = 0,
+    limit: int = DATABASE_LIMIT,
+    sort: str = None,
+    search: str = None,
+    q: str = None,
+) -> web.Response:
     """Get outdated agents.
 
     Parameters
@@ -1600,28 +1781,39 @@ async def get_agent_outdated(request, pretty: bool = False, wait_for_complete: b
     web.Response
         API response.
     """
-    f_kwargs = {'offset': offset,
-                'limit': limit,
-                'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search'),
-                'q': q}
+    f_kwargs = {
+        'offset': offset,
+        'limit': limit,
+        'sort': parse_api_param(sort, 'sort'),
+        'search': parse_api_param(search, 'search'),
+        'q': q,
+    }
 
-    dapi = DistributedAPI(f=agent.get_outdated_agents,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.get_outdated_agents,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_agent_fields(request, pretty: bool = False, wait_for_complete: bool = False, fields: str = None,
-                           offset: int = 0, limit: int = DATABASE_LIMIT, sort: str = None, search: str = None,
-                           q: str = None) -> web.Response:
+async def get_agent_fields(
+    request,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    fields: str = None,
+    offset: int = 0,
+    limit: int = DATABASE_LIMIT,
+    sort: str = None,
+    search: str = None,
+    q: str = None,
+) -> web.Response:
     """Get distinct fields in agents.
 
     Returns all the different combinations that agents have for the selected fields. It also indicates the total number
@@ -1653,21 +1845,24 @@ async def get_agent_fields(request, pretty: bool = False, wait_for_complete: boo
     web.Response
         API response.
     """
-    f_kwargs = {'offset': offset,
-                'limit': limit,
-                'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search'),
-                'fields': fields,
-                'q': q}
+    f_kwargs = {
+        'offset': offset,
+        'limit': limit,
+        'sort': parse_api_param(sort, 'sort'),
+        'search': parse_api_param(search, 'search'),
+        'fields': fields,
+        'q': q,
+    }
 
-    dapi = DistributedAPI(f=agent.get_distinct_agents,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.get_distinct_agents,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
@@ -1691,14 +1886,15 @@ async def get_agent_summary_status(request, pretty: bool = False, wait_for_compl
     """
     f_kwargs = {}
 
-    dapi = DistributedAPI(f=agent.get_agents_summary_status,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.get_agents_summary_status,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
@@ -1722,14 +1918,15 @@ async def get_agent_summary_os(request, pretty: bool = False, wait_for_complete:
     """
     f_kwargs = {}
 
-    dapi = DistributedAPI(f=agent.get_agents_summary_os,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.get_agents_summary_os,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)

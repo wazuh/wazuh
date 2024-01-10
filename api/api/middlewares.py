@@ -19,7 +19,7 @@ from api.util import raise_if_exc
 MAX_REQUESTS_EVENTS_DEFAULT = 30
 
 # API secure headers
-secure_headers = SecureHeaders(server="Wazuh", csp="none", xfo="DENY")
+secure_headers = SecureHeaders(server='Wazuh', csp='none', xfo='DENY')
 
 logger = getLogger('wazuh-api')
 
@@ -37,7 +37,7 @@ def _cleanup_detail_field(detail: str) -> str:
     str
         New value for the detail field.
     """
-    return ' '.join(str(detail).replace("\n\n", ". ").replace("\n", "").split())
+    return ' '.join(str(detail).replace('\n\n', '. ').replace('\n', '').split())
 
 
 @web.middleware
@@ -89,8 +89,10 @@ async def prevent_bruteforce_attack(request: web_request.BaseRequest, attempts: 
         Number of attempts until an IP is blocked.
     """
     global ip_stats, ip_block
-    if request.path in {'/security/user/authenticate', '/security/user/authenticate/run_as'} and \
-            request.method in {'GET', 'POST'}:
+    if request.path in {'/security/user/authenticate', '/security/user/authenticate/run_as'} and request.method in {
+        'GET',
+        'POST',
+    }:
         if request.remote not in ip_stats.keys():
             ip_stats[request.remote] = dict()
             ip_stats[request.remote]['attempts'] = 1
@@ -117,10 +119,7 @@ async def request_logging(request, handler):
 
 @web.middleware
 async def check_rate_limit(
-    request: web_request.BaseRequest,
-    request_counter_key: str,
-    current_time_key: str,
-    max_requests: int
+    request: web_request.BaseRequest, request_counter_key: str, current_time_key: str, max_requests: int
 ) -> None:
     """This function checks that the maximum number of requests per minute passed in `max_requests` is not exceeded.
 
@@ -140,8 +139,8 @@ async def check_rate_limit(
         'general_request_counter': {'code': 6001},
         'events_request_counter': {
             'code': 6005,
-            'extra_message': f'For POST /events endpoint the limit is set to {max_requests} requests.'
-        }
+            'extra_message': f'For POST /events endpoint the limit is set to {max_requests} requests.',
+        },
     }
     if not globals()[current_time_key]:
         globals()[current_time_key] = get_utc_now().timestamp()
@@ -163,24 +162,37 @@ async def security_middleware(request, handler):
     max_request_per_minute = access_conf['max_request_per_minute']
 
     if max_request_per_minute > 0:
-        await check_rate_limit(
-            request,
-            'general_request_counter',
-            'general_current_time',
-            max_request_per_minute
-        )
+        await check_rate_limit(request, 'general_request_counter', 'general_current_time', max_request_per_minute)
 
         if request.path == '/events':
             await check_rate_limit(
-                request,
-                'events_request_counter',
-                'events_current_time',
-                MAX_REQUESTS_EVENTS_DEFAULT
+                request, 'events_request_counter', 'events_current_time', MAX_REQUESTS_EVENTS_DEFAULT
             )
 
     await unlock_ip(request, block_time=access_conf['block_time'])
 
     return await handler(request)
+
+
+def remove_unwanted_fields_from_error(problem, fields_to_remove=None):
+    """This function deletes unwanted fields from the problem dict.
+
+    Parameters
+    ----------
+    problem : ConnexionResponse
+        ConnexionResponse with the unwanted fields.
+    fields_to_remove : optional[list]
+        List of fields to remove.
+    """
+
+    fields_to_remove = fields_to_remove or ['status', 'type']
+    for field in fields_to_remove:
+        if field in problem.body:
+            del problem.body[field]
+    if problem.body.get('detail') == '':
+        del problem.body['detail']
+    if 'code' in problem.body:
+        problem.body['error'] = problem.body.pop('code')
 
 
 @web.middleware
@@ -191,45 +203,41 @@ async def response_postprocessing(request, handler):
     'await handler(request) it means the output will be a 200 response and no fields needs to be removed.
     """
 
-    def remove_unwanted_fields(fields_to_remove=None):
-        fields_to_remove = fields_to_remove or ['status', 'type']
-        for field in fields_to_remove:
-            if field in problem.body:
-                del problem.body[field]
-        if problem.body.get('detail') == '':
-            del problem.body['detail']
-        if 'code' in problem.body:
-            problem.body['error'] = problem.body.pop('code')
-
     problem = None
 
     try:
         return await handler(request)
 
     except ProblemException as ex:
-        problem = connexion_problem(status=ex.__dict__['status'],
-                                    title=ex.__dict__['title'] if ex.__dict__.get('title') else 'Bad Request',
-                                    type=ex.__dict__.get('type', 'about:blank'),
-                                    detail=_cleanup_detail_field(ex.__dict__['detail'])
-                                    if 'detail' in ex.__dict__ else '',
-                                    ext=ex.__dict__.get('ext'))
+        problem = connexion_problem(
+            status=ex.__dict__['status'],
+            title=ex.__dict__['title'] if ex.__dict__.get('title') else 'Bad Request',
+            type=ex.__dict__.get('type', 'about:blank'),
+            detail=_cleanup_detail_field(ex.__dict__['detail']) if 'detail' in ex.__dict__ else '',
+            ext=ex.__dict__.get('ext'),
+        )
     except HTTPException as ex:
-        problem = connexion_problem(ex.status,
-                                    ex.reason if ex.reason else '',
-                                    type=ex.reason if ex.reason else '',
-                                    detail=ex.text if ex.text else '')
+        problem = connexion_problem(
+            ex.status,
+            ex.reason if ex.reason else '',
+            type=ex.reason if ex.reason else '',
+            detail=ex.text if ex.text else '',
+        )
     except (OAuthProblem, Unauthorized) as auth_exception:
-        if request.path in {'/security/user/authenticate', '/security/user/authenticate/run_as'} and \
-                request.method in {'GET', 'POST'}:
+        if request.path in {'/security/user/authenticate', '/security/user/authenticate/run_as'} and request.method in {
+            'GET',
+            'POST',
+        }:
             await prevent_bruteforce_attack(request=request, attempts=api_conf['access']['max_login_attempts'])
-            problem = connexion_problem(401, "Unauthorized", type="about:blank", detail="Invalid credentials")
+            problem = connexion_problem(401, 'Unauthorized', type='about:blank', detail='Invalid credentials')
         else:
             if isinstance(auth_exception, OAuthProblem):
-                problem = connexion_problem(401, "Unauthorized", type="about:blank",
-                                            detail="No authorization token provided")
+                problem = connexion_problem(
+                    401, 'Unauthorized', type='about:blank', detail='No authorization token provided'
+                )
             else:
-                problem = connexion_problem(401, "Unauthorized", type="about:blank", detail="Invalid token")
+                problem = connexion_problem(401, 'Unauthorized', type='about:blank', detail='Invalid token')
     finally:
-        problem and remove_unwanted_fields()
+        problem and remove_unwanted_fields_from_error(problem)
 
     return problem

@@ -35,7 +35,6 @@ async def test_forward_event(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
         with patch(
             'api.controllers.event_controller.EventIngestModel.get_kwargs', return_value=AsyncMock()
         ) as mock_getkwargs:
-
             result = await forward_event(request=mock_request)
             mock_dapi.assert_called_once_with(
                 f=send_event_to_analysisd,
@@ -44,7 +43,7 @@ async def test_forward_event(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
                 is_async=False,
                 wait_for_complete=False,
                 logger=ANY,
-                rbac_permissions=mock_request['token_info']['rbac_policies']
+                rbac_permissions=mock_request['token_info']['rbac_policies'],
             )
             mock_exc.assert_called_once_with(mock_dfunc.return_value)
             mock_remove.assert_called_once_with(mock_getkwargs.return_value)

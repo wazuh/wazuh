@@ -5,17 +5,17 @@
 import logging
 from functools import wraps
 
-from aiohttp import web
-
 import wazuh.ciscat as ciscat
 import wazuh.rootcheck as rootcheck
 import wazuh.syscheck as syscheck
 import wazuh.syscollector as syscollector
-from api import configuration
-from api.encoder import dumps, prettify
-from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deprecate_endpoint
+from aiohttp import web
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.exception import WazuhResourceNotFound
+
+from api import configuration
+from api.encoder import dumps, prettify
+from api.util import deprecate_endpoint, parse_api_param, raise_if_exc, remove_nones_to_dict
 
 logger = logging.getLogger('wazuh-api')
 
@@ -34,8 +34,9 @@ def check_experimental_feature_value(func):
 
 
 @check_experimental_feature_value
-async def clear_rootcheck_database(request, pretty: bool = False, wait_for_complete: bool = False,
-                                   agents_list: list = None) -> web.Response:
+async def clear_rootcheck_database(
+    request, pretty: bool = False, wait_for_complete: bool = False, agents_list: list = None
+) -> web.Response:
     """Clear the rootcheck database for all the agents or a list of them.
 
     Parameters
@@ -59,15 +60,16 @@ async def clear_rootcheck_database(request, pretty: bool = False, wait_for_compl
 
     f_kwargs = {'agent_list': agents_list}
 
-    dapi = DistributedAPI(f=rootcheck.clear,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          broadcasting=agents_list == '*',
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=rootcheck.clear,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='distributed_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        broadcasting=agents_list == '*',
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
@@ -75,8 +77,9 @@ async def clear_rootcheck_database(request, pretty: bool = False, wait_for_compl
 
 @deprecate_endpoint()
 @check_experimental_feature_value
-async def clear_syscheck_database(request, pretty: bool = False, wait_for_complete: bool = False,
-                                  agents_list: list = None) -> web.Response:
+async def clear_syscheck_database(
+    request, pretty: bool = False, wait_for_complete: bool = False, agents_list: list = None
+) -> web.Response:
     """Clear the syscheck database for all agents or a list of them.
 
     Parameters
@@ -100,26 +103,40 @@ async def clear_syscheck_database(request, pretty: bool = False, wait_for_comple
 
     f_kwargs = {'agent_list': agents_list}
 
-    dapi = DistributedAPI(f=syscheck.clear,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          broadcasting=agents_list == '*',
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=syscheck.clear,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='distributed_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        broadcasting=agents_list == '*',
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 @check_experimental_feature_value
-async def get_cis_cat_results(request, pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*',
-                              offset: int = 0, limit: int = None, select: str = None, sort: str = None,
-                              search: str = None, benchmark: str = None, profile: str = None, fail: int = None,
-                              error: int = None, notchecked: int = None, unknown: int = None,
-                              score: int = None) -> web.Response:
+async def get_cis_cat_results(
+    request,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    agents_list: str = '*',
+    offset: int = 0,
+    limit: int = None,
+    select: str = None,
+    sort: str = None,
+    search: str = None,
+    benchmark: str = None,
+    profile: str = None,
+    fail: int = None,
+    error: int = None,
+    notchecked: int = None,
+    unknown: int = None,
+    score: int = None,
+) -> web.Response:
     """Get ciscat results info from all agents or a list of them.
 
     Parameters
@@ -162,33 +179,35 @@ async def get_cis_cat_results(request, pretty: bool = False, wait_for_complete: 
     web.Response
         API response.
     """
-    f_kwargs = {'agent_list': agents_list,
-                'offset': offset,
-                'limit': limit,
-                'select': select,
-                'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search'),
-                'filters': {
-                    'benchmark': benchmark,
-                    'profile': profile,
-                    'fail': fail,
-                    'error': error,
-                    'notchecked': notchecked,
-                    'unknown': unknown,
-                    'score': score,
-                    'pass': request.query.get('pass', None)
-                }
-                }
+    f_kwargs = {
+        'agent_list': agents_list,
+        'offset': offset,
+        'limit': limit,
+        'select': select,
+        'sort': parse_api_param(sort, 'sort'),
+        'search': parse_api_param(search, 'search'),
+        'filters': {
+            'benchmark': benchmark,
+            'profile': profile,
+            'fail': fail,
+            'error': error,
+            'notchecked': notchecked,
+            'unknown': unknown,
+            'score': score,
+            'pass': request.query.get('pass', None),
+        },
+    }
 
-    dapi = DistributedAPI(f=ciscat.get_ciscat_results,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          broadcasting=agents_list == '*',
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=ciscat.get_ciscat_results,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='distributed_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        broadcasting=agents_list == '*',
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
@@ -196,9 +215,18 @@ async def get_cis_cat_results(request, pretty: bool = False, wait_for_complete: 
 
 @deprecate_endpoint()
 @check_experimental_feature_value
-async def get_hardware_info(request, pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*',
-                            offset: int = 0, limit: int = None, select: str = None, sort: str = None,
-                            search: str = None, board_serial: str = None) -> web.Response:
+async def get_hardware_info(
+    request,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    agents_list: str = '*',
+    offset: int = 0,
+    limit: int = None,
+    select: str = None,
+    sort: str = None,
+    search: str = None,
+    board_serial: str = None,
+) -> web.Response:
     """Get hardware info from all agents or a list of them.
 
     Parameters
@@ -229,32 +257,32 @@ async def get_hardware_info(request, pretty: bool = False, wait_for_complete: bo
     web.Response
         API response.
     """
-    filters = {
-        'board_serial': board_serial
-    }
+    filters = {'board_serial': board_serial}
     # Add nested fields to kwargs filters
     nested = ['ram.free', 'ram.total', 'cpu.cores', 'cpu.mhz', 'cpu.name']
     for field in nested:
         filters[field] = request.query.get(field, None)
-    f_kwargs = {'agent_list': agents_list,
-                'offset': offset,
-                'limit': limit,
-                'select': select,
-                'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search'),
-                'filters': filters,
-                'element_type': 'hardware'
-                }
+    f_kwargs = {
+        'agent_list': agents_list,
+        'offset': offset,
+        'limit': limit,
+        'select': select,
+        'sort': parse_api_param(sort, 'sort'),
+        'search': parse_api_param(search, 'search'),
+        'filters': filters,
+        'element_type': 'hardware',
+    }
 
-    dapi = DistributedAPI(f=syscollector.get_item_agent,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          broadcasting=agents_list == '*',
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=syscollector.get_item_agent,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='distributed_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        broadcasting=agents_list == '*',
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
@@ -262,10 +290,22 @@ async def get_hardware_info(request, pretty: bool = False, wait_for_complete: bo
 
 @deprecate_endpoint()
 @check_experimental_feature_value
-async def get_network_address_info(request, pretty: bool = False, wait_for_complete: bool = False,
-                                   agents_list: str = '*', offset: int = 0, limit: str = None, select: str = None,
-                                   sort: str = None, search: str = None, iface_name: str = None, proto: str = None,
-                                   address: str = None, broadcast: str = None, netmask: str = None) -> web.Response:
+async def get_network_address_info(
+    request,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    agents_list: str = '*',
+    offset: int = 0,
+    limit: str = None,
+    select: str = None,
+    sort: str = None,
+    search: str = None,
+    iface_name: str = None,
+    proto: str = None,
+    address: str = None,
+    broadcast: str = None,
+    netmask: str = None,
+) -> web.Response:
     """Get the IPv4 and IPv6 addresses associated to all network interfaces.
 
     Parameters
@@ -304,31 +344,33 @@ async def get_network_address_info(request, pretty: bool = False, wait_for_compl
     web.Response
         API response.
     """
-    f_kwargs = {'agent_list': agents_list,
-                'offset': offset,
-                'limit': limit,
-                'select': select,
-                'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search'),
-                'filters': {
-                    'iface_name': iface_name,
-                    'proto': proto,
-                    'address': address,
-                    'broadcast': broadcast,
-                    'netmask': netmask
-                },
-                'element_type': 'netaddr'
-                }
+    f_kwargs = {
+        'agent_list': agents_list,
+        'offset': offset,
+        'limit': limit,
+        'select': select,
+        'sort': parse_api_param(sort, 'sort'),
+        'search': parse_api_param(search, 'search'),
+        'filters': {
+            'iface_name': iface_name,
+            'proto': proto,
+            'address': address,
+            'broadcast': broadcast,
+            'netmask': netmask,
+        },
+        'element_type': 'netaddr',
+    }
 
-    dapi = DistributedAPI(f=syscollector.get_item_agent,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          broadcasting=agents_list == '*',
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=syscollector.get_item_agent,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='distributed_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        broadcasting=agents_list == '*',
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
@@ -336,10 +378,20 @@ async def get_network_address_info(request, pretty: bool = False, wait_for_compl
 
 @deprecate_endpoint()
 @check_experimental_feature_value
-async def get_network_interface_info(request, pretty: bool = False, wait_for_complete: bool = False,
-                                     agents_list: str = '*', offset: int = 0, limit: int = None, select: str = None,
-                                     sort: str = None, search: str = None, adapter: str = None, state: str = None,
-                                     mtu: str = None) -> web.Response:
+async def get_network_interface_info(
+    request,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    agents_list: str = '*',
+    offset: int = 0,
+    limit: int = None,
+    select: str = None,
+    sort: str = None,
+    search: str = None,
+    adapter: str = None,
+    state: str = None,
+    mtu: str = None,
+) -> web.Response:
     """Get all network interfaces from all agents or a list of them.
 
     Parameters
@@ -374,36 +426,33 @@ async def get_network_interface_info(request, pretty: bool = False, wait_for_com
     web.Response
         API response.
     """
-    filters = {
-        'adapter': adapter,
-        'type': request.query.get('type', None),
-        'state': state,
-        'mtu': mtu
-    }
+    filters = {'adapter': adapter, 'type': request.query.get('type', None), 'state': state, 'mtu': mtu}
     # Add nested fields to kwargs filters
     nested = ['tx.packets', 'rx.packets', 'tx.bytes', 'rx.bytes', 'tx.errors', 'rx.errors', 'tx.dropped', 'rx.dropped']
     for field in nested:
         filters[field] = request.query.get(field, None)
 
-    f_kwargs = {'agent_list': agents_list,
-                'offset': offset,
-                'limit': limit,
-                'select': select,
-                'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search'),
-                'filters': filters,
-                'element_type': 'netiface'
-                }
+    f_kwargs = {
+        'agent_list': agents_list,
+        'offset': offset,
+        'limit': limit,
+        'select': select,
+        'sort': parse_api_param(sort, 'sort'),
+        'search': parse_api_param(search, 'search'),
+        'filters': filters,
+        'element_type': 'netiface',
+    }
 
-    dapi = DistributedAPI(f=syscollector.get_item_agent,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          broadcasting=agents_list == '*',
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=syscollector.get_item_agent,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='distributed_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        broadcasting=agents_list == '*',
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
@@ -411,10 +460,20 @@ async def get_network_interface_info(request, pretty: bool = False, wait_for_com
 
 @deprecate_endpoint()
 @check_experimental_feature_value
-async def get_network_protocol_info(request, pretty: bool = False, wait_for_complete: bool = False,
-                                    agents_list: str = '*', offset: int = 0, limit: int = None, select: str = None,
-                                    sort: str = None, search: str = None, iface: str = None, gateway: str = None,
-                                    dhcp: str = None) -> web.Response:
+async def get_network_protocol_info(
+    request,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    agents_list: str = '*',
+    offset: int = 0,
+    limit: int = None,
+    select: str = None,
+    sort: str = None,
+    search: str = None,
+    iface: str = None,
+    gateway: str = None,
+    dhcp: str = None,
+) -> web.Response:
     """Get network protocol info from all agents or a list of them.
 
     Parameters
@@ -449,30 +508,27 @@ async def get_network_protocol_info(request, pretty: bool = False, wait_for_comp
     web.Response
         API response.
     """
-    f_kwargs = {'agent_list': agents_list,
-                'offset': offset,
-                'limit': limit,
-                'select': select,
-                'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search'),
-                'filters': {
-                    'iface': iface,
-                    'type': request.query.get('type', None),
-                    'gateway': gateway,
-                    'dhcp': dhcp
-                },
-                'element_type': 'netproto'
-                }
+    f_kwargs = {
+        'agent_list': agents_list,
+        'offset': offset,
+        'limit': limit,
+        'select': select,
+        'sort': parse_api_param(sort, 'sort'),
+        'search': parse_api_param(search, 'search'),
+        'filters': {'iface': iface, 'type': request.query.get('type', None), 'gateway': gateway, 'dhcp': dhcp},
+        'element_type': 'netproto',
+    }
 
-    dapi = DistributedAPI(f=syscollector.get_item_agent,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          broadcasting=agents_list == '*',
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=syscollector.get_item_agent,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='distributed_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        broadcasting=agents_list == '*',
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
@@ -480,10 +536,22 @@ async def get_network_protocol_info(request, pretty: bool = False, wait_for_comp
 
 @deprecate_endpoint()
 @check_experimental_feature_value
-async def get_os_info(request, pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*',
-                      offset: int = 0, limit: int = None, select: str = None, sort: str = None, search: str = None,
-                      os_name: str = None, architecture: str = None, os_version: str = None, version: str = None,
-                      release: str = None) -> web.Response:
+async def get_os_info(
+    request,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    agents_list: str = '*',
+    offset: int = 0,
+    limit: int = None,
+    select: str = None,
+    sort: str = None,
+    search: str = None,
+    os_name: str = None,
+    architecture: str = None,
+    os_version: str = None,
+    version: str = None,
+    release: str = None,
+) -> web.Response:
     """Get OS info from all agents or a list of them.
 
     Parameters
@@ -522,31 +590,33 @@ async def get_os_info(request, pretty: bool = False, wait_for_complete: bool = F
     web.Response
         API response.
     """
-    f_kwargs = {'agent_list': agents_list,
-                'offset': offset,
-                'limit': limit,
-                'select': select,
-                'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search'),
-                'filters': {
-                    'os_name': os_name,
-                    'architecture': architecture,
-                    'os_version': os_version,
-                    'version': version,
-                    'release': release
-                },
-                'element_type': 'os'
-                }
+    f_kwargs = {
+        'agent_list': agents_list,
+        'offset': offset,
+        'limit': limit,
+        'select': select,
+        'sort': parse_api_param(sort, 'sort'),
+        'search': parse_api_param(search, 'search'),
+        'filters': {
+            'os_name': os_name,
+            'architecture': architecture,
+            'os_version': os_version,
+            'version': version,
+            'release': release,
+        },
+        'element_type': 'os',
+    }
 
-    dapi = DistributedAPI(f=syscollector.get_item_agent,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          broadcasting=agents_list == '*',
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=syscollector.get_item_agent,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='distributed_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        broadcasting=agents_list == '*',
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
@@ -554,10 +624,21 @@ async def get_os_info(request, pretty: bool = False, wait_for_complete: bool = F
 
 @deprecate_endpoint()
 @check_experimental_feature_value
-async def get_packages_info(request, pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*',
-                            offset: int = 0, limit: int = None, select: str = None, sort: str = None,
-                            search: str = None, vendor: str = None, name: str = None, architecture: str = None,
-                            version: str = None) -> web.Response:
+async def get_packages_info(
+    request,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    agents_list: str = '*',
+    offset: int = 0,
+    limit: int = None,
+    select: str = None,
+    sort: str = None,
+    search: str = None,
+    vendor: str = None,
+    name: str = None,
+    architecture: str = None,
+    version: str = None,
+) -> web.Response:
     """Get packages info from all agents or a list of them.
 
     Parameters
@@ -594,31 +675,33 @@ async def get_packages_info(request, pretty: bool = False, wait_for_complete: bo
     web.Response
         API response.
     """
-    f_kwargs = {'agent_list': agents_list,
-                'offset': offset,
-                'limit': limit,
-                'select': select,
-                'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search'),
-                'filters': {
-                    'vendor': vendor,
-                    'name': name,
-                    'architecture': architecture,
-                    'format': request.query.get('format', None),
-                    'version': version
-                },
-                'element_type': 'packages'
-                }
+    f_kwargs = {
+        'agent_list': agents_list,
+        'offset': offset,
+        'limit': limit,
+        'select': select,
+        'sort': parse_api_param(sort, 'sort'),
+        'search': parse_api_param(search, 'search'),
+        'filters': {
+            'vendor': vendor,
+            'name': name,
+            'architecture': architecture,
+            'format': request.query.get('format', None),
+            'version': version,
+        },
+        'element_type': 'packages',
+    }
 
-    dapi = DistributedAPI(f=syscollector.get_item_agent,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          broadcasting=agents_list == '*',
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=syscollector.get_item_agent,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='distributed_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        broadcasting=agents_list == '*',
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
@@ -626,10 +709,22 @@ async def get_packages_info(request, pretty: bool = False, wait_for_complete: bo
 
 @deprecate_endpoint()
 @check_experimental_feature_value
-async def get_ports_info(request, pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*',
-                         offset: int = 0, limit: int = None, select: str = None, sort: str = None, search: str = None,
-                         pid: str = None, protocol: str = None, tx_queue: str = None, state: str = None,
-                         process: str = None) -> web.Response:
+async def get_ports_info(
+    request,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    agents_list: str = '*',
+    offset: int = 0,
+    limit: int = None,
+    select: str = None,
+    sort: str = None,
+    search: str = None,
+    pid: str = None,
+    protocol: str = None,
+    tx_queue: str = None,
+    state: str = None,
+    process: str = None,
+) -> web.Response:
     """Get ports info from all agents or a list of them.
 
     Parameters
@@ -668,37 +763,33 @@ async def get_ports_info(request, pretty: bool = False, wait_for_complete: bool 
     web.Response
         API response.
     """
-    filters = {
-        'pid': pid,
-        'protocol': protocol,
-        'tx_queue': tx_queue,
-        'state': state,
-        'process': process
-    }
+    filters = {'pid': pid, 'protocol': protocol, 'tx_queue': tx_queue, 'state': state, 'process': process}
     # Add nested fields to kwargs filters
     nested = ['local.ip', 'local.port', 'remote.ip']
     for field in nested:
         filters[field] = request.query.get(field, None)
 
-    f_kwargs = {'agent_list': agents_list,
-                'offset': offset,
-                'limit': limit,
-                'select': select,
-                'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search'),
-                'filters': filters,
-                'element_type': 'ports'
-                }
+    f_kwargs = {
+        'agent_list': agents_list,
+        'offset': offset,
+        'limit': limit,
+        'select': select,
+        'sort': parse_api_param(sort, 'sort'),
+        'search': parse_api_param(search, 'search'),
+        'filters': filters,
+        'element_type': 'ports',
+    }
 
-    dapi = DistributedAPI(f=syscollector.get_item_agent,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          broadcasting=agents_list == '*',
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=syscollector.get_item_agent,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='distributed_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        broadcasting=agents_list == '*',
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
@@ -706,12 +797,31 @@ async def get_ports_info(request, pretty: bool = False, wait_for_complete: bool 
 
 @deprecate_endpoint()
 @check_experimental_feature_value
-async def get_processes_info(request, pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*',
-                             offset: int = 0, limit: int = None, select: str = None, sort: str = None,
-                             search: str = None, pid: str = None, state: str = None, ppid: str = None,
-                             egroup: str = None, euser: str = None, fgroup: str = None, name: str = None,
-                             nlwp: str = None, pgrp: str = None, priority: str = None, rgroup: str = None,
-                             ruser: str = None, sgroup: str = None, suser: str = None) -> web.Response:
+async def get_processes_info(
+    request,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    agents_list: str = '*',
+    offset: int = 0,
+    limit: int = None,
+    select: str = None,
+    sort: str = None,
+    search: str = None,
+    pid: str = None,
+    state: str = None,
+    ppid: str = None,
+    egroup: str = None,
+    euser: str = None,
+    fgroup: str = None,
+    name: str = None,
+    nlwp: str = None,
+    pgrp: str = None,
+    priority: str = None,
+    rgroup: str = None,
+    ruser: str = None,
+    sgroup: str = None,
+    suser: str = None,
+) -> web.Response:
     """Get processes info from all agents or a list of them.
 
     Parameters
@@ -768,40 +878,42 @@ async def get_processes_info(request, pretty: bool = False, wait_for_complete: b
     web.Response
         API response.
     """
-    f_kwargs = {'agent_list': agents_list,
-                'offset': offset,
-                'limit': limit,
-                'select': select,
-                'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search'),
-                'filters': {
-                    'state': state,
-                    'pid': pid,
-                    'ppid': ppid,
-                    'egroup': egroup,
-                    'euser': euser,
-                    'fgroup': fgroup,
-                    'name': name,
-                    'nlwp': nlwp,
-                    'pgrp': pgrp,
-                    'priority': priority,
-                    'rgroup': rgroup,
-                    'ruser': ruser,
-                    'sgroup': sgroup,
-                    'suser': suser
-                },
-                'element_type': 'processes'
-                }
+    f_kwargs = {
+        'agent_list': agents_list,
+        'offset': offset,
+        'limit': limit,
+        'select': select,
+        'sort': parse_api_param(sort, 'sort'),
+        'search': parse_api_param(search, 'search'),
+        'filters': {
+            'state': state,
+            'pid': pid,
+            'ppid': ppid,
+            'egroup': egroup,
+            'euser': euser,
+            'fgroup': fgroup,
+            'name': name,
+            'nlwp': nlwp,
+            'pgrp': pgrp,
+            'priority': priority,
+            'rgroup': rgroup,
+            'ruser': ruser,
+            'sgroup': sgroup,
+            'suser': suser,
+        },
+        'element_type': 'processes',
+    }
 
-    dapi = DistributedAPI(f=syscollector.get_item_agent,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          broadcasting=agents_list == '*',
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=syscollector.get_item_agent,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='distributed_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        broadcasting=agents_list == '*',
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
@@ -809,9 +921,18 @@ async def get_processes_info(request, pretty: bool = False, wait_for_complete: b
 
 @deprecate_endpoint()
 @check_experimental_feature_value
-async def get_hotfixes_info(request, pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*',
-                            offset: int = 0, limit: int = None, sort: str = None, search: str = None,
-                            select: str = None, hotfix: str = None) -> web.Response:
+async def get_hotfixes_info(
+    request,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    agents_list: str = '*',
+    offset: int = 0,
+    limit: int = None,
+    sort: str = None,
+    search: str = None,
+    select: str = None,
+    hotfix: str = None,
+) -> web.Response:
     """Get hotfixes info from all agents or a list of them.
 
     Parameters
@@ -846,24 +967,27 @@ async def get_hotfixes_info(request, pretty: bool = False, wait_for_complete: bo
     """
     filters = {'hotfix': hotfix}
 
-    f_kwargs = {'agent_list': agents_list,
-                'offset': offset,
-                'limit': limit,
-                'select': select,
-                'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search'),
-                'filters': filters,
-                'element_type': 'hotfixes'}
+    f_kwargs = {
+        'agent_list': agents_list,
+        'offset': offset,
+        'limit': limit,
+        'select': select,
+        'sort': parse_api_param(sort, 'sort'),
+        'search': parse_api_param(search, 'search'),
+        'filters': filters,
+        'element_type': 'hotfixes',
+    }
 
-    dapi = DistributedAPI(f=syscollector.get_item_agent,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          broadcasting=agents_list == '*',
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=syscollector.get_item_agent,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='distributed_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        broadcasting=agents_list == '*',
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)

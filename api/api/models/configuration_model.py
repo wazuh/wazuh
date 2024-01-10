@@ -12,21 +12,9 @@ from api.models.base_model_ import Body, Model
 
 class HTTPSModel(Model):
     def __init__(self, enabled=None, key=None, cert=None, use_ca=None, ca=None):
-        self.swagger_types = {
-            'enabled': bool,
-            'key': str,
-            'cert': str,
-            'use_ca': bool,
-            'ca': str
-        }
+        self.swagger_types = {'enabled': bool, 'key': str, 'cert': str, 'use_ca': bool, 'ca': str}
 
-        self.attribute_map = {
-            'enabled': 'enabled',
-            'key': 'key',
-            'cert': 'cert',
-            'use_ca': 'use_ca',
-            'ca': 'ca'
-        }
+        self.attribute_map = {'enabled': 'enabled', 'key': 'key', 'cert': 'cert', 'use_ca': 'use_ca', 'ca': 'ca'}
 
         self._enabled = enabled
         self._key = key
@@ -97,13 +85,15 @@ class LogsModel(Model):
 
 
 class CORSModel(Model):
-    def __init__(self, enabled=None, source_route=None, expose_headers=None, allow_headers=None, allow_credentials=None):
+    def __init__(
+        self, enabled=None, source_route=None, expose_headers=None, allow_headers=None, allow_credentials=None
+    ):
         self.swagger_types = {
             'enabled': bool,
             'source_route': str,
             'expose_headers': str,
             'allow_headers': bool,
-            'allow_credentials': bool
+            'allow_credentials': bool,
         }
 
         self.attribute_map = {
@@ -111,7 +101,7 @@ class CORSModel(Model):
             'source_route': 'source_route',
             'expose_headers': 'expose_headers',
             'allow_headers': 'allow_headers',
-            'allow_credentials': 'allow_credentials'
+            'allow_credentials': 'allow_credentials',
         }
 
         self._enabled = enabled
@@ -163,15 +153,9 @@ class CORSModel(Model):
 
 class CacheModel(Model):
     def __init__(self, enabled=None, time=None):
-        self.swagger_types = {
-            'enabled': bool,
-            'time': float
-        }
+        self.swagger_types = {'enabled': bool, 'time': float}
 
-        self.attribute_map = {
-            'enabled': 'enabled',
-            'time': 'time'
-        }
+        self.attribute_map = {'enabled': 'enabled', 'time': 'time'}
 
         self._enabled = enabled
         self._time = time
@@ -195,16 +179,12 @@ class CacheModel(Model):
 
 class AccessModel(Model):
     def __init__(self, max_login_attempts=None, block_time=None, max_request_per_minute=None):
-        self.swagger_types = {
-            'max_login_attempts': int,
-            'block_time': int,
-            'max_request_per_minute': int
-        }
+        self.swagger_types = {'max_login_attempts': int, 'block_time': int, 'max_request_per_minute': int}
 
         self.attribute_map = {
             'max_login_attempts': 'max_login_attempts',
             'block_time': 'block_time',
-            'max_request_per_minute': 'max_request_per_minute'
+            'max_request_per_minute': 'max_request_per_minute',
         }
 
         self._max_login_attempts = max_login_attempts
@@ -238,8 +218,17 @@ class AccessModel(Model):
 
 class APIConfigurationModel(Body):
     """API configuration model. Deprecated since v4.0.4, we maintain Model"""
-    def __init__(self, https=None, logs=None, cors=None, cache=None, drop_privileges=None,
-                 experimental_features=None, access=None):
+
+    def __init__(
+        self,
+        https=None,
+        logs=None,
+        cors=None,
+        cache=None,
+        drop_privileges=None,
+        experimental_features=None,
+        access=None,
+    ):
         self.swagger_types = {
             'https': HTTPSModel,
             'logs': LogsModel,
@@ -247,7 +236,7 @@ class APIConfigurationModel(Body):
             'cache': CacheModel,
             'drop_privileges': bool,
             'experimental_features': bool,
-            'access': AccessModel
+            'access': AccessModel,
         }
 
         self.attribute_map = {
@@ -257,7 +246,7 @@ class APIConfigurationModel(Body):
             'cache': 'cache',
             'drop_privileges': 'drop_privileges',
             'experimental_features': 'experimental_features',
-            'access': 'access'
+            'access': 'access',
         }
 
         self._https = https
@@ -329,15 +318,9 @@ class SecurityConfigurationModel(Body):
     """Security configuration model."""
 
     def __init__(self, auth_token_exp_timeout: int = None, rbac_mode: str = None):
-        self.swagger_types = {
-            'auth_token_exp_timeout': int,
-            'rbac_mode': str
-        }
+        self.swagger_types = {'auth_token_exp_timeout': int, 'rbac_mode': str}
 
-        self.attribute_map = {
-            'auth_token_exp_timeout': 'auth_token_exp_timeout',
-            'rbac_mode': 'rbac_mode'
-        }
+        self.attribute_map = {'auth_token_exp_timeout': 'auth_token_exp_timeout', 'rbac_mode': 'rbac_mode'}
 
         self._auth_token_exp_timeout = auth_token_exp_timeout
         self._rbac_mode = rbac_mode

@@ -13,7 +13,6 @@ from api.models.base_model_ import Body
 
 
 class AgentInsertedModel(Body):
-
     def __init__(self, id=None, name=None, ip=None, agent_id=None, key=None, force=None):
         """AgentAddedModel body model
         :param id: Agent id.
@@ -29,23 +28,9 @@ class AgentInsertedModel(Body):
         :param force: Remove the old agent with the same name or IP if conditions are met.
         :type force: dict
         """
-        self.swagger_types = {
-            'id': str,
-            'name': str,
-            'ip': str,
-            'agent_id': str,
-            'key': str,
-            'force': AgentForce
-        }
+        self.swagger_types = {'id': str, 'name': str, 'ip': str, 'agent_id': str, 'key': str, 'force': AgentForce}
 
-        self.attribute_map = {
-            'id': str,
-            'name': 'name',
-            'ip': 'ip',
-            'agent_id': 'id',
-            'key': 'key',
-            'force': 'force'
-        }
+        self.attribute_map = {'id': str, 'name': 'name', 'ip': 'ip', 'agent_id': 'id', 'key': 'key', 'force': 'force'}
 
         self._id = id
         self._name = name

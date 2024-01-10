@@ -7,22 +7,16 @@
 from __future__ import absolute_import
 
 from datetime import date, datetime  # noqa: F401
-from typing import List, Dict  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
 from api.models.base_model_ import Body, Model
 
 
 class DisconnectedTime(Model):
-    def __init__(self, enabled=True, value="1h"):
-        self.swagger_types = {
-            'enabled': bool,
-            'value': str
-        }
+    def __init__(self, enabled=True, value='1h'):
+        self.swagger_types = {'enabled': bool, 'value': str}
 
-        self.attribute_map = {
-            'enabled': 'enabled',
-            'value': 'value'
-        }
+        self.attribute_map = {'enabled': 'enabled', 'value': 'value'}
 
         self._enabled = enabled
         self._value = value
@@ -45,17 +39,13 @@ class DisconnectedTime(Model):
 
 
 class AgentForce(Model):
-    def __init__(self, enabled=True, disconnected_time=None, after_registration_time="1h"):
-        self.swagger_types = {
-            'enabled': bool,
-            'disconnected_time': DisconnectedTime,
-            'after_registration_time': str
-        }
+    def __init__(self, enabled=True, disconnected_time=None, after_registration_time='1h'):
+        self.swagger_types = {'enabled': bool, 'disconnected_time': DisconnectedTime, 'after_registration_time': str}
 
         self.attribute_map = {
             'enabled': 'enabled',
             'disconnected_time': 'disconnected_time',
-            'after_registration_time': 'after_registration_time'
+            'after_registration_time': 'after_registration_time',
         }
 
         self._enabled = enabled
@@ -88,19 +78,10 @@ class AgentForce(Model):
 
 
 class AgentAddedModel(Body):
-
     def __init__(self, name: str = None, ip: str = None):
-        self.swagger_types = {
-            'name': str,
-            'ip': str,
-            'force': AgentForce
-        }
+        self.swagger_types = {'name': str, 'ip': str, 'force': AgentForce}
 
-        self.attribute_map = {
-            'name': 'name',
-            'ip': 'ip',
-            'force': 'force'
-        }
+        self.attribute_map = {'name': 'name', 'ip': 'ip', 'force': 'force'}
 
         self._name = name
         self._ip = ip

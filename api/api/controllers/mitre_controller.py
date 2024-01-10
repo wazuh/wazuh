@@ -5,11 +5,11 @@
 import logging
 
 from aiohttp import web
-
-from api.encoder import dumps, prettify
-from api.util import raise_if_exc, parse_api_param, remove_nones_to_dict
 from wazuh import mitre
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
+
+from api.encoder import dumps, prettify
+from api.util import parse_api_param, raise_if_exc, remove_nones_to_dict
 
 logger = logging.getLogger('wazuh-api')
 
@@ -31,22 +31,32 @@ async def get_metadata(request, pretty: bool = False, wait_for_complete: bool = 
         API response.
     """
 
-    dapi = DistributedAPI(f=mitre.mitre_metadata,
-                          f_kwargs={},
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=mitre.mitre_metadata,
+        f_kwargs={},
+        request_type='local_any',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_references(request, reference_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
-                         offset: int = None, limit: int = None, sort: str = None, search: str = None,
-                         select: list = None, q: str = None) -> web.Response:
+async def get_references(
+    request,
+    reference_ids: list = None,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    offset: int = None,
+    limit: int = None,
+    sort: str = None,
+    search: str = None,
+    select: list = None,
+    q: str = None,
+) -> web.Response:
     """Get information of specified MITRE's references.
 
     Parameters
@@ -88,25 +98,36 @@ async def get_references(request, reference_ids: list = None, pretty: bool = Fal
         'search_text': parse_api_param(search, 'search')['value'] if search else None,
         'complementary_search': parse_api_param(search, 'search')['negation'] if search else None,
         'select': select,
-        'q': q
+        'q': q,
     }
 
-    dapi = DistributedAPI(f=mitre.mitre_references,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=mitre.mitre_references,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_any',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_tactics(request, tactic_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
-                      offset: int = None, limit: int = None, sort: str = None, search: str = None, select: list = None,
-                      q: str = None, distinct: bool = False) -> web.Response:
+async def get_tactics(
+    request,
+    tactic_ids: list = None,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    offset: int = None,
+    limit: int = None,
+    sort: str = None,
+    search: str = None,
+    select: list = None,
+    q: str = None,
+    distinct: bool = False,
+) -> web.Response:
     """Get information of specified MITRE's tactics.
 
     Parameters
@@ -151,25 +172,36 @@ async def get_tactics(request, tactic_ids: list = None, pretty: bool = False, wa
         'complementary_search': parse_api_param(search, 'search')['negation'] if search else None,
         'select': select,
         'q': q,
-        'distinct': distinct
+        'distinct': distinct,
     }
 
-    dapi = DistributedAPI(f=mitre.mitre_tactics,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=mitre.mitre_tactics,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_any',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_techniques(request, technique_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
-                         offset: int = None, limit: int = None, sort: str = None, search: str = None,
-                         select: list = None, q: str = None, distinct: bool = False) -> web.Response:
+async def get_techniques(
+    request,
+    technique_ids: list = None,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    offset: int = None,
+    limit: int = None,
+    sort: str = None,
+    search: str = None,
+    select: list = None,
+    q: str = None,
+    distinct: bool = False,
+) -> web.Response:
     """Get information of specified MITRE's techniques.
 
     Parameters
@@ -202,35 +234,49 @@ async def get_techniques(request, technique_ids: list = None, pretty: bool = Fal
     web.Response
         API response with the MITRE's techniques information.
     """
-    f_kwargs = {'filters': {
-        'id': technique_ids,
-    },
+    f_kwargs = {
+        'filters': {
+            'id': technique_ids,
+        },
         'offset': offset,
         'limit': limit,
         'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else None,
         'sort_ascending': False if sort is None or parse_api_param(sort, 'sort')['order'] == 'desc' else True,
         'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
         'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
-        'select': select, 
+        'select': select,
         'q': q,
-        'distinct': distinct}
+        'distinct': distinct,
+    }
 
-    dapi = DistributedAPI(f=mitre.mitre_techniques,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies'])
+    dapi = DistributedAPI(
+        f=mitre.mitre_techniques,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_any',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
 
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_mitigations(request, mitigation_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
-                          offset: int = None, limit: int = None, sort: str = None, search: str = None,
-                          select: list = None, q: str = None, distinct: bool = False) -> web.Response:
+async def get_mitigations(
+    request,
+    mitigation_ids: list = None,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    offset: int = None,
+    limit: int = None,
+    sort: str = None,
+    search: str = None,
+    select: list = None,
+    q: str = None,
+    distinct: bool = False,
+) -> web.Response:
     """Get information of specified MITRE's mitigations.
 
     Parameters
@@ -263,9 +309,10 @@ async def get_mitigations(request, mitigation_ids: list = None, pretty: bool = F
     web.Response
         API response with the MITRE's mitigations information.
     """
-    f_kwargs = {'filters': {
-        'id': mitigation_ids,
-    },
+    f_kwargs = {
+        'filters': {
+            'id': mitigation_ids,
+        },
         'offset': offset,
         'limit': limit,
         'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else None,
@@ -274,24 +321,36 @@ async def get_mitigations(request, mitigation_ids: list = None, pretty: bool = F
         'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
         'select': select,
         'q': q,
-        'distinct': distinct}
+        'distinct': distinct,
+    }
 
-    dapi = DistributedAPI(f=mitre.mitre_mitigations,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=mitre.mitre_mitigations,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_any',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_groups(request, group_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
-                     offset: int = None, limit: int = None, sort: str = None, search: str = None, select: list = None,
-                     q: str = None, distinct: bool = False) -> web.Response:
+async def get_groups(
+    request,
+    group_ids: list = None,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    offset: int = None,
+    limit: int = None,
+    sort: str = None,
+    search: str = None,
+    select: list = None,
+    q: str = None,
+    distinct: bool = False,
+) -> web.Response:
     """Get information of specified MITRE's groups.
 
     Parameters
@@ -336,24 +395,36 @@ async def get_groups(request, group_ids: list = None, pretty: bool = False, wait
         'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
         'select': select,
         'q': q,
-        'distinct': distinct}
+        'distinct': distinct,
+    }
 
-    dapi = DistributedAPI(f=mitre.mitre_groups,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=mitre.mitre_groups,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_any',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_software(request, software_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
-                       offset: int = None, limit: int = None, sort: str = None, search: str = None, select: list = None,
-                       q: str = None, distinct: bool = False) -> web.Response:
+async def get_software(
+    request,
+    software_ids: list = None,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    offset: int = None,
+    limit: int = None,
+    sort: str = None,
+    search: str = None,
+    select: list = None,
+    q: str = None,
+    distinct: bool = False,
+) -> web.Response:
     """Get information of specified MITRE's software.
 
     Parameters
@@ -398,15 +469,18 @@ async def get_software(request, software_ids: list = None, pretty: bool = False,
         'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
         'select': select,
         'q': q,
-        'distinct': distinct}
+        'distinct': distinct,
+    }
 
-    dapi = DistributedAPI(f=mitre.mitre_software,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies'])
+    dapi = DistributedAPI(
+        f=mitre.mitre_software,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_any',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
 
     data = raise_if_exc(await dapi.distribute_function())
 

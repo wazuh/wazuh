@@ -13,23 +13,23 @@ from base64 import b64decode
 from aiohttp import web_request
 from aiohttp.abc import AbstractAccessLogger
 from pythonjsonlogger import jsonlogger
-
 from wazuh.core.wlogging import WazuhLogger
 
 # Compile regex when the module is imported so it's not necessary to compile it everytime log.info is called
 request_pattern = re.compile(r'\[.+]|\s+\*\s+')
 
 # Variable used to specify an unknown user
-UNKNOWN_USER_STRING = "unknown_user"
+UNKNOWN_USER_STRING = 'unknown_user'
 
 # Run_as login endpoint path
-RUN_AS_LOGIN_ENDPOINT = "/security/user/authenticate/run_as"
+RUN_AS_LOGIN_ENDPOINT = '/security/user/authenticate/run_as'
 
 
 class AccessLogger(AbstractAccessLogger):
     """
     Define the log writer used by aiohttp.
     """
+
     def custom_logging(self, user, remote, method, path, query, body, time, status, hash_auth_context=''):
         """Provide the log entry structure depending on the logging format.
 
@@ -62,7 +62,7 @@ class AccessLogger(AbstractAccessLogger):
             'parameters': query,
             'body': body,
             'time': f'{time:.3f}s',
-            'status_code': status
+            'status_code': status,
         }
 
         if not hash_auth_context:
@@ -95,7 +95,7 @@ class AccessLogger(AbstractAccessLogger):
             Time taken by the API to respond to the request.
         """
         query = dict(request.query)
-        body = request.get("body", dict())
+        body = request.get('body', dict())
         if 'password' in query:
             query['password'] = '****'
         if 'password' in body:
@@ -108,7 +108,7 @@ class AccessLogger(AbstractAccessLogger):
         user = request.get('user', '')
         if not user:
             try:
-                user = b64decode(request.headers["authorization"].split()[1]).decode().split(':')[0]
+                user = b64decode(request.headers['authorization'].split()[1]).decode().split(':')[0]
             except (KeyError, IndexError, binascii.Error):
                 user = UNKNOWN_USER_STRING
 
@@ -121,8 +121,17 @@ class AccessLogger(AbstractAccessLogger):
         if not hash_auth_context and request.path == RUN_AS_LOGIN_ENDPOINT:
             hash_auth_context = hashlib.blake2b(json.dumps(body).encode(), digest_size=16).hexdigest()
 
-        self.custom_logging(user, request.remote, request.method, request.path, query, body, time, response.status,
-                            hash_auth_context=hash_auth_context)
+        self.custom_logging(
+            user,
+            request.remote,
+            request.method,
+            request.path,
+            query,
+            body,
+            time,
+            response.status,
+            hash_auth_context=hash_auth_context,
+        )
 
 
 class APILogger(WazuhLogger):
@@ -133,8 +142,7 @@ class APILogger(WazuhLogger):
     def __init__(self, *args: dict, **kwargs: dict):
         """APIlogger class constructor."""
         log_path = kwargs.get('log_path', '')
-        super().__init__(*args, **kwargs,
-                         custom_formatter=WazuhJsonFormatter if log_path.endswith('json') else None)
+        super().__init__(*args, **kwargs, custom_formatter=WazuhJsonFormatter if log_path.endswith('json') else None)
 
     def setup_logger(self, custom_handler: logging.Handler = None):
         """
@@ -180,24 +188,15 @@ class WazuhJsonFormatter(jsonlogger.JsonFormatter):
         """
         # Request handling
         if record.message is None:
-            record.message = {
-                'type': 'request',
-                'payload': message_dict
-            }
+            record.message = {'type': 'request', 'payload': message_dict}
         else:
             # Traceback handling
             traceback = message_dict.get('exc_info')
             if traceback is not None:
-                record.message = {
-                    'type': 'error',
-                    'payload': f'{record.message}. {traceback}'
-                }
+                record.message = {'type': 'error', 'payload': f'{record.message}. {traceback}'}
             else:
                 # Plain text messages
-                record.message = {
-                    'type': 'informative',
-                    'payload': record.message
-                }
+                record.message = {'type': 'informative', 'payload': record.message}
         log_record['timestamp'] = self.formatTime(record, self.datefmt)
         log_record['levelname'] = record.levelname
         log_record['data'] = record.message

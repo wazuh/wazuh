@@ -7,18 +7,23 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from aiohttp import web_response
+
 from api.controllers.test.utils import CustomAffectedItems
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        from api.controllers.rootcheck_controller import (delete_rootcheck,
-                                                          get_last_scan_agent,
-                                                          get_rootcheck_agent,
-                                                          put_rootcheck)
         from wazuh import rootcheck
         from wazuh.tests.util import RBAC_bypasser
+
+        from api.controllers.rootcheck_controller import (
+            delete_rootcheck,
+            get_last_scan_agent,
+            get_rootcheck_agent,
+            put_rootcheck,
+        )
+
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         del sys.modules['wazuh.rbac.orm']
 
@@ -31,17 +36,17 @@ with patch('wazuh.common.wazuh_uid'):
 async def test_put_rootcheck(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     """Verify 'put_rootcheck' endpoint is working as expected."""
     result = await put_rootcheck(request=mock_request)
-    f_kwargs = {'agent_list': '*'
-                }
-    mock_dapi.assert_called_once_with(f=rootcheck.run,
-                                      f_kwargs=mock_remove.return_value,
-                                      request_type='distributed_master',
-                                      is_async=False,
-                                      wait_for_complete=False,
-                                      logger=ANY,
-                                      broadcasting=True,
-                                      rbac_permissions=mock_request['token_info']['rbac_policies']
-                                      )
+    f_kwargs = {'agent_list': '*'}
+    mock_dapi.assert_called_once_with(
+        f=rootcheck.run,
+        f_kwargs=mock_remove.return_value,
+        request_type='distributed_master',
+        is_async=False,
+        wait_for_complete=False,
+        logger=ANY,
+        broadcasting=True,
+        rbac_permissions=mock_request['token_info']['rbac_policies'],
+    )
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with(f_kwargs)
     assert isinstance(result, web_response.Response)
@@ -55,16 +60,16 @@ async def test_put_rootcheck(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
 async def test_delete_rootcheck(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     """Verify 'delete_rootcheck' endpoint is working as expected."""
     result = await delete_rootcheck(request=mock_request)
-    f_kwargs = {'agent_list': ['']
-                }
-    mock_dapi.assert_called_once_with(f=rootcheck.clear,
-                                      f_kwargs=mock_remove.return_value,
-                                      request_type='distributed_master',
-                                      is_async=False,
-                                      wait_for_complete=False,
-                                      logger=ANY,
-                                      rbac_permissions=mock_request['token_info']['rbac_policies']
-                                      )
+    f_kwargs = {'agent_list': ['']}
+    mock_dapi.assert_called_once_with(
+        f=rootcheck.clear,
+        f_kwargs=mock_remove.return_value,
+        request_type='distributed_master',
+        is_async=False,
+        wait_for_complete=False,
+        logger=ANY,
+        rbac_permissions=mock_request['token_info']['rbac_policies'],
+    )
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with(f_kwargs)
     assert isinstance(result, web_response.Response)
@@ -78,28 +83,26 @@ async def test_delete_rootcheck(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
 async def test_get_rootcheck_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     """Verify 'get_rootcheck_agent' endpoint is working as expected."""
     result = await get_rootcheck_agent(request=mock_request)
-    f_kwargs = {'agent_list': [None],
-                'offset': 0,
-                'limit': None,
-                'sort': None,
-                'search': None,
-                'select': None,
-                'q': '',
-                'distinct': False,
-                'filters': {
-                    'status': 'all',
-                    'pci_dss': None,
-                    'cis': None
-                    },
-                }
-    mock_dapi.assert_called_once_with(f=rootcheck.get_rootcheck_agent,
-                                      f_kwargs=mock_remove.return_value,
-                                      request_type='distributed_master',
-                                      is_async=False,
-                                      wait_for_complete=False,
-                                      logger=ANY,
-                                      rbac_permissions=mock_request['token_info']['rbac_policies']
-                                      )
+    f_kwargs = {
+        'agent_list': [None],
+        'offset': 0,
+        'limit': None,
+        'sort': None,
+        'search': None,
+        'select': None,
+        'q': '',
+        'distinct': False,
+        'filters': {'status': 'all', 'pci_dss': None, 'cis': None},
+    }
+    mock_dapi.assert_called_once_with(
+        f=rootcheck.get_rootcheck_agent,
+        f_kwargs=mock_remove.return_value,
+        request_type='distributed_master',
+        is_async=False,
+        wait_for_complete=False,
+        logger=ANY,
+        rbac_permissions=mock_request['token_info']['rbac_policies'],
+    )
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with(f_kwargs)
     assert isinstance(result, web_response.Response)
@@ -113,16 +116,16 @@ async def test_get_rootcheck_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc,
 async def test_get_last_scan_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     """Verify 'get_last_scan_agent' endpoint is working as expected."""
     result = await get_last_scan_agent(request=mock_request)
-    f_kwargs = {'agent_list': [None]
-                }
-    mock_dapi.assert_called_once_with(f=rootcheck.get_last_scan,
-                                      f_kwargs=mock_remove.return_value,
-                                      request_type='distributed_master',
-                                      is_async=False,
-                                      wait_for_complete=False,
-                                      logger=ANY,
-                                      rbac_permissions=mock_request['token_info']['rbac_policies']
-                                      )
+    f_kwargs = {'agent_list': [None]}
+    mock_dapi.assert_called_once_with(
+        f=rootcheck.get_last_scan,
+        f_kwargs=mock_remove.return_value,
+        request_type='distributed_master',
+        is_async=False,
+        wait_for_complete=False,
+        logger=ANY,
+        rbac_permissions=mock_request['token_info']['rbac_policies'],
+    )
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with(f_kwargs)
     assert isinstance(result, web_response.Response)

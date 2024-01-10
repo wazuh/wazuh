@@ -12,7 +12,6 @@ MAX_EVENTS_PER_REQUEST = 100
 
 
 class EventIngestModel(Body):
-
     def __init__(self, events: Optional[list] = None) -> None:
         """EventIngestModel body model.
 
@@ -48,7 +47,7 @@ class EventIngestModel(Body):
             raise ProblemException(
                 status=400,
                 title='Events bulk size exceeded',
-                detail='The size of the events bulk is exceeding the limit'
+                detail='The size of the events bulk is exceeding the limit',
             )
 
         self._events = events

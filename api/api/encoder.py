@@ -6,15 +6,16 @@ import json
 
 import six
 from connexion.jsonifier import JSONEncoder
+from wazuh.core.results import AbstractWazuhResult
 
 from api.models.base_model_ import Model
-from wazuh.core.results import AbstractWazuhResult
 
 
 class WazuhAPIJSONEncoder(JSONEncoder):
-    """"
+    """ "
     Define the custom Wazuh API JSON encoder class.
     """
+
     include_nulls = False
 
     def default(self, o: object) -> dict:

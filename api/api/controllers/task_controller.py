@@ -5,20 +5,33 @@
 import logging
 
 from aiohttp import web
-
-from api.encoder import dumps, prettify
-from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import DATABASE_LIMIT
 from wazuh.task import get_task_status
 
+from api.encoder import dumps, prettify
+from api.util import parse_api_param, raise_if_exc, remove_nones_to_dict
+
 logger = logging.getLogger('wazuh')
 
 
-async def get_tasks_status(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
-                           limit: int = DATABASE_LIMIT, tasks_list: list = None, agents_list: list = None,
-                           command: str = None, node: str = None, module: str = None, status: str = None, q: str = None,
-                           search: str = None, select: str = None, sort: str = None) -> web.Response:
+async def get_tasks_status(
+    request,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    offset: int = 0,
+    limit: int = DATABASE_LIMIT,
+    tasks_list: list = None,
+    agents_list: list = None,
+    command: str = None,
+    node: str = None,
+    module: str = None,
+    status: str = None,
+    q: str = None,
+    search: str = None,
+    select: str = None,
+    sort: str = None,
+) -> web.Response:
     """Check the status of the specified tasks.
 
     Parameters
@@ -59,27 +72,32 @@ async def get_tasks_status(request, pretty: bool = False, wait_for_complete: boo
     web.Response
         API response.
     """
-    f_kwargs = {'select': select, 'search': parse_api_param(search, 'search'),
-                'offset': offset, 'limit': limit,
-                'filters': {
-                    'task_list': tasks_list,
-                    'agent_list': agents_list,
-                    'status': status,
-                    'module': module,
-                    'command': command,
-                    'node': node
-                },
-                'sort': parse_api_param(sort, 'sort'), 'q': q
-                }
+    f_kwargs = {
+        'select': select,
+        'search': parse_api_param(search, 'search'),
+        'offset': offset,
+        'limit': limit,
+        'filters': {
+            'task_list': tasks_list,
+            'agent_list': agents_list,
+            'status': status,
+            'module': module,
+            'command': command,
+            'node': node,
+        },
+        'sort': parse_api_param(sort, 'sort'),
+        'q': q,
+    }
 
-    dapi = DistributedAPI(f=get_task_status,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=get_task_status,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)

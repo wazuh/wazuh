@@ -5,21 +5,35 @@
 import logging
 from typing import List
 
-from aiohttp import web
-
 import wazuh.ciscat as ciscat
-from api.encoder import dumps, prettify
-from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
+from aiohttp import web
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
+
+from api.encoder import dumps, prettify
+from api.util import parse_api_param, raise_if_exc, remove_nones_to_dict
 
 logger = logging.getLogger('wazuh-api')
 
 
-async def get_agents_ciscat_results(request, agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
-                                    offset: int = 0, limit: int = None, select: List[str] = None, sort: str = None,
-                                    search: str = None, benchmark: str = None, profile: str = None, fail: int = None,
-                                    error: int = None, notchecked: int = None, unknown: int = None, score: int = None,
-                                    q: str = None) -> web.Response:
+async def get_agents_ciscat_results(
+    request,
+    agent_id: str,
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    offset: int = 0,
+    limit: int = None,
+    select: List[str] = None,
+    sort: str = None,
+    search: str = None,
+    benchmark: str = None,
+    profile: str = None,
+    fail: int = None,
+    error: int = None,
+    notchecked: int = None,
+    unknown: int = None,
+    score: int = None,
+    q: str = None,
+) -> web.Response:
     """Get CIS-CAT results from an agent
 
     Returns the agent's ciscat results info.
@@ -81,19 +95,20 @@ async def get_agents_ciscat_results(request, agent_id: str, pretty: bool = False
             'error': error,
             'notchecked': notchecked,
             'unknown': unknown,
-            'score': score
+            'score': score,
         },
-        'q': q
+        'q': q,
     }
 
-    dapi = DistributedAPI(f=ciscat.get_ciscat_results,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=ciscat.get_ciscat_results,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='distributed_master',
+        is_async=False,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request['token_info']['rbac_policies'],
+    )
     response = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=response, status=200, dumps=prettify if pretty else dumps)

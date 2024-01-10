@@ -13,7 +13,6 @@ from api.models.base_model_ import Body
 
 
 class ActiveResponseModel(Body):
-
     def __init__(self, command: str = None, custom: bool = None, arguments: list = None, alert: dict = None):
         """ActiveResponseModel body model.
 
@@ -27,17 +26,9 @@ class ActiveResponseModel(Body):
         alert : dict
             Alert information depending on the AR executed.
         """
-        self.swagger_types = {
-            'command': str,
-            'arguments': List[str],
-            'alert': dict
-        }
+        self.swagger_types = {'command': str, 'arguments': List[str], 'alert': dict}
 
-        self.attribute_map = {
-            'command': 'command',
-            'arguments': 'arguments',
-            'alert': 'alert'
-        }
+        self.attribute_map = {'command': 'command', 'arguments': 'arguments', 'alert': 'alert'}
 
         self._command = command
         self._arguments = arguments

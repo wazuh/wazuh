@@ -25,7 +25,7 @@ def send_msg(msg):
     # Receive response
     data = sock.recv(4)
     data_size = struct.unpack('<I', data[0:4])[0]
-    data = sock.recv(data_size).decode(encoding='utf-8', errors='ignore').split(" ", 1)
+    data = sock.recv(data_size).decode(encoding='utf-8', errors='ignore').split(' ', 1)
 
     return data
 
@@ -38,30 +38,40 @@ def create_and_send_query(agent_info_file):
         for agent in agent_info:
             # Add last_keepalive with epoch time
             try:
-                agent['agent']['last_keepalive'] = int(time.time()) - \
-                                                            3600*24*int(agent['extra_params']['days_from_last_connection'])
+                agent['agent']['last_keepalive'] = int(time.time()) - 3600 * 24 * int(
+                    agent['extra_params']['days_from_last_connection']
+                )
             except KeyError:
                 pass
 
             # Update fields of agent table
             try:
-                query = "UPDATE agent SET " + \
-                        ", ".join(['{0} = {1}'.format(key, value) if isinstance(value, int)
-                                   else '{0} = "{1}"'.format(key, value)
-                                   for key, value in agent['agent'].items()]) + \
-                        f" WHERE id = {agent['extra_params']['agent_id']}"
+                query = (
+                    'UPDATE agent SET '
+                    + ', '.join(
+                        [
+                            '{0} = {1}'.format(key, value)
+                            if isinstance(value, int)
+                            else '{0} = "{1}"'.format(key, value)
+                            for key, value in agent['agent'].items()
+                        ]
+                    )
+                    + f" WHERE id = {agent['extra_params']['agent_id']}"
+                )
                 # Send query to wdb
-                f.write(str(send_msg("global sql " + query)) + '\n')
+                f.write(str(send_msg('global sql ' + query)) + '\n')
             except KeyError:
                 pass
 
             # Insert fields of labels table
             try:
                 for key, value in agent['labels'].items():
-                    query = f"INSERT INTO labels ('id', 'key', 'value') VALUES " \
-                            f"({agent['extra_params']['agent_id']}, '{key}', '{value}')"
+                    query = (
+                        f"INSERT INTO labels ('id', 'key', 'value') VALUES "
+                        f"({agent['extra_params']['agent_id']}, '{key}', '{value}')"
+                    )
                     # Send query to wdb
-                    f.write(str(send_msg("global sql " + query)) + '\n')
+                    f.write(str(send_msg('global sql ' + query)) + '\n')
             except KeyError:
                 pass
 
@@ -69,9 +79,11 @@ def create_and_send_query(agent_info_file):
 def add_agent_group_relationships(agent_groups_file: str) -> None:
     def _create_agent_group_relationship(agent_id: int, group_ids: list) -> None:
         groups = ','.join([f'"{group_id}"' for group_id in group_ids])
-        command = 'global set-agent-groups {"mode":"append","sync_status":"syncreq","data":[{"id":' \
-                  f'{agent_id},"groups":[{groups}]' \
-                  '}]}'
+        command = (
+            'global set-agent-groups {"mode":"append","sync_status":"syncreq","data":[{"id":'
+            f'{agent_id},"groups":[{groups}]'
+            '}]}'
+        )
 
         send_msg(command)
 
@@ -82,6 +94,6 @@ def add_agent_group_relationships(agent_groups_file: str) -> None:
         _create_agent_group_relationship(agent, group_list)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     create_and_send_query('/tmp_volume/configuration_files/master_only/agent_info.yaml')
     add_agent_group_relationships('/tmp_volume/configuration_files/master_only/agent_groups.yaml')
