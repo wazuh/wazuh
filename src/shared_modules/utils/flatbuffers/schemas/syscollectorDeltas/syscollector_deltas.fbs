@@ -37,14 +37,14 @@ table dbsync_network_iface {
     state:string;
     mtu:uint32;
     mac:string;
-    tx_packets:uint;
-    rx_packets:uint;
-    tx_bytes:uint;
-    rx_bytes:uint;
-    tx_errors:uint;
-    rx_errors:uint;
-    tx_dropped:uint;
-    rx_dropped:uint;
+    tx_packets:long;
+    rx_packets:long;
+    tx_bytes:long;
+    rx_bytes:long;
+    tx_errors:long;
+    rx_errors:long;
+    tx_dropped:long;
+    rx_dropped:long;
     checksum:string;
     item_id:string;
 }
