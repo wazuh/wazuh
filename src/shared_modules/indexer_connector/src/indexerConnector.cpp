@@ -16,6 +16,8 @@
 #include "serverSelector.hpp"
 #include <fstream>
 
+constexpr auto NOT_USED {-1};
+
 namespace Log
 {
     std::function<void(
@@ -227,7 +229,6 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
         [&](const std::string& response) {},
         [&](const std::string& error, const long statusCode)
         {
-#define NOT_USED -1
             if (statusCode != 400)
             {
                 throw std::runtime_error(statusCode != NOT_USED ? error + ": " + std::to_string(statusCode) : error);
@@ -244,7 +245,6 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
         [&](const std::string& response) {},
         [&](const std::string& error, const long statusCode)
         {
-#define NOT_USED -1
             if (statusCode != 400)
             {
                 throw std::runtime_error(statusCode != NOT_USED ? error + ": " + std::to_string(statusCode) : error);
