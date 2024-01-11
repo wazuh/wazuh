@@ -1,0 +1,12 @@
+@startuml
+actor User
+
+User -> RouterFacade: 1. Initialize provider (from modulesd)
+RouterFacade -> SocketServer: 2. Initialize IPC socket for providers from another processes.
+SocketServer -> SocketServer: 3. Set response for providers registration action.
+
+User -> RouterFacade: 4. Destroy service.
+RouterFacade -> SocketServer: 5. Cleanup socket server.
+
+
+@enduml

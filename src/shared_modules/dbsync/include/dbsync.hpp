@@ -46,16 +46,20 @@ class EXPORTED DBSync
         /**
          * @brief Explicit DBSync Constructor.
          *
-         * @param hostType     Dynamic library host type to be used.
-         * @param dbType       Database type to be used (currently only supported SQLITE3)
-         * @param path         Path where the local database will be created.
-         * @param sqlStatement SQL sentence to create tables in a SQL engine.
+         * @param hostType          Dynamic library host type to be used.
+         * @param dbType            Database type to be used (currently only supported SQLITE3)
+         * @param path              Path where the local database will be created.
+         * @param sqlStatement      SQL sentence to create tables in a SQL engine.
+         * @param dbManagement      Database management type to be used at startup.
+         * @param upgradeStatements SQL sentences to be executed when upgrading the database.
          *
          */
-        explicit DBSync(const HostType     hostType,
-                        const DbEngineType dbType,
-                        const std::string& path,
-                        const std::string& sqlStatement);
+        explicit DBSync(const HostType                  hostType,
+                        const DbEngineType              dbType,
+                        const std::string&              path,
+                        const std::string&              sqlStatement,
+                        const DbManagement              dbManagement = DbManagement::VOLATILE,
+                        const std::vector<std::string>& upgradeStatements = {});
 
         /**
          * @brief DBSync Constructor.

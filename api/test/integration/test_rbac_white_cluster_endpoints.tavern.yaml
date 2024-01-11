@@ -63,7 +63,7 @@ stages:
                 - 'worker1'
           total_affected_items: 1
           total_failed_items: 1
-        
+
   - name: Get cluster healtcheck
     request:
       verify: False
@@ -119,7 +119,7 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-        
+
 ---
 test_name: GET /cluster/local/info
 
@@ -144,7 +144,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        
+
 ---
 test_name: GET /cluster/nodes
 
@@ -172,7 +172,7 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-        
+
   - name: Get cluster nodes
     request:
       verify: False
@@ -190,7 +190,7 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-        
+
   - name: Filters (type) -> master
     request:
       verify: False
@@ -208,7 +208,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        
+
   - name: Filters (type) -> worker
     request:
       verify: False
@@ -227,7 +227,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        
+
 ---
 test_name: GET /cluster/nodes/{node_id}
 
@@ -267,7 +267,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        
+
   - name: Get cluster (master-node,worker1,worker2) (Allow, Deny, Allow)
     request:
       verify: False
@@ -294,7 +294,7 @@ stages:
                 - 'worker1'
           total_affected_items: 2
           total_failed_items: 1
-        
+
 ---
 test_name: GET /cluster/status
 
@@ -347,11 +347,12 @@ stages:
               sca: !anything
               syscheck: !anything
               syscollector: !anything
-              vulnerability-detector: !anything
+              vulnerability-detection: !anything
+              indexer: !anything
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        
+
   - name: Request (worker1) (Deny)
     request:
       verify: False
@@ -383,7 +384,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-        
+
 ---
 test_name: GET /cluster/configuration/validation
 
@@ -409,7 +410,7 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
-        
+
   - name: Request cluster validation
     request:
       verify: False
@@ -434,7 +435,7 @@ stages:
                 - worker1
           total_affected_items: 1
           total_failed_items: 1
-        
+
 ---
 test_name: GET /cluster/{node_id}/configuration/{component}/{configuration}
 

@@ -28,8 +28,6 @@ relationships:
         - syscollector_read
         - logtest_all
         - task_status
-        - vulnerability_read
-        - vulnerability_run
         - events_ingest
       rule_ids:
         - wui_elastic_admin
@@ -48,7 +46,6 @@ relationships:
         - sca_read
         - syscheck_read
         - syscollector_read
-        - vulnerability_read
       rule_ids: []
 
     users_admin:

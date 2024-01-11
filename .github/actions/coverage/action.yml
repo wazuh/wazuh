@@ -1,0 +1,125 @@
+name: "Coverage"
+description: "Calculates the coverage for a module located on a given path"
+
+inputs:
+  path:
+    required: true
+    description: "Path to the module"
+  id:
+    required: true
+    description: "Module identifier, used to name the artifact"
+
+runs:
+  using: "composite"
+  steps:
+      - name: Dependencies for local execution
+        if: env.ACT # Only run for local execution
+        shell: bash
+        run: |
+
+          # Update packages
+          sudo apt-get update
+          sudo apt-get install -y bc
+
+      # Dependencies for testing:
+      # - lcov
+      - name: Install dependencies
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: lcov
+          version: 1.0
+
+      # Generate the coverage files
+      - name: Generate coverage files
+        shell: bash
+        run: |
+
+          cd ${{ inputs.path }}
+
+          # Set arguments
+          arguments="--capture "
+
+          # Set working directory
+          if [[ -d "build/tests/unit" ]]; then
+            arguments+="--directory build/tests/unit "
+          fi
+
+          if [[ -d "build/tests/component" ]]; then
+            arguments+="--directory build/tests/component "
+          fi
+
+          # Set output file
+          arguments+="--output-file build/coverage.info "
+
+          # # Disable branch coverage
+          arguments+="-rc lcov_branch_coverage=0 "
+
+          # Include test files
+          include_files=""
+          for file in $(find src/ include/ -type f -regextype posix-extended -regex ".*/*\.(hpp|cpp|h|c)")
+          do
+            if [[ ! "$file" =~ "_generated.h" ]]; then
+              include_files+="--include=$(pwd)$dir/$file "
+            fi
+          done
+          arguments+="$include_files"
+
+          echo "Executing: lcov $arguments"
+          lcov $arguments
+
+      # Generate the HTML coverage report
+      - name: Generate coverage report
+        shell: bash
+        run: |
+
+          cd ${{ inputs.path }}/build
+
+          # Generate HTML report
+          genhtml coverage.info --output-directory coverage_report
+
+      # Upload the coverage report as an artifact
+      - name: Uploading coverage report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: Coverage Report - ${{ inputs.id }}
+          path: ./${{ inputs.path }}/build/coverage_report
+          retention-days: 1
+
+      # Check whether the coverage is greater than 90% both for lines and functions
+      - name: Validate coverage
+        shell: bash
+        run: |
+
+          cd ${{ inputs.path }}
+
+          # Obtain the coverage data
+          coverageData=($(lcov --list build/coverage.info | tail -n1 | grep -oE '[0-9.]+%'))
+
+          # Check if lines the coverage is greater than 90%
+          linesCoverage=$(echo "${coverageData[0]}" | sed 's/%//')
+          echo "Lines coverage is: $linesCoverage %"
+          if ! (( $(echo "$linesCoverage > 90" | bc -l) )); then
+            echo "----------------------------------------"
+            echo "FAILED: Lines coverage is lower than 90%"
+            echo "----------------------------------------"
+            exit 1
+          else
+            echo "------------------------------------------"
+            echo "PASSED: Lines coverage is greater than 90%"
+            echo "------------------------------------------"
+          fi
+
+          # Check if functions coverage is greater than 90%
+          functionsCoverage=$(echo "${coverageData[1]}" | sed 's/%//')
+          echo "Functions coverage is: $functionsCoverage %"
+          if ! (( $(echo "$functionsCoverage > 90" | bc -l) )); then
+            echo "---------------------------------------------"
+            echo "FAILED: Functions coverage is lower than 90%"
+            echo "--------------------------------------------"
+            exit 1
+          else
+            echo "----------------------------------------------"
+            echo "PASSED: Functions coverage is greater than 90%"
+            echo "----------------------------------------------"
+          fi
