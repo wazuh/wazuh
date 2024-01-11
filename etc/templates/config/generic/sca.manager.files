@@ -1,4 +1,6 @@
 generic/sca_unix_audit.yml
+almalinux/cis_alma_linux_8.yml
+almalinux/cis_alma_linux_9.yml
 amazon/cis_amazon_linux_1.yml
 amazon/cis_amazon_linux_2.yml
 amazon/cis_amazon_linux_2023.yml
@@ -57,5 +59,3 @@ windows/cis_win2012r2.yml
 windows/cis_win2016.yml
 windows/cis_win2019.yml
 windows/cis_win2022.yml
-almalinux/cis_alma_linux_9.yml
-almalinux/cis_alma_linux_8.yml
