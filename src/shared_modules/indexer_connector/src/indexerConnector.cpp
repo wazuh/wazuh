@@ -27,8 +27,6 @@ namespace Log
 constexpr auto IC_NAME {"indexer-connector"};
 constexpr auto MAX_WAIT_TIME {60};
 
-// TODO: remove the LCOV flags when the implementation of this class is completed
-// LCOV_EXCL_START
 std::unordered_map<IndexerConnector*, std::unique_ptr<ThreadDispatchQueue>> QUEUE_MAP;
 
 // Single thread because the events needs to be processed in order.
@@ -40,7 +38,8 @@ IndexerConnector::IndexerConnector(
     const std::string& templatePath,
     const std::function<void(
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
-        logFunction)
+        logFunction,
+    const uint32_t timeout)
 {
     if (logFunction)
     {
@@ -97,7 +96,7 @@ IndexerConnector::IndexerConnector(
     nlohmann::json templateData = nlohmann::json::parse(templateFile);
 
     // Initialize publisher.
-    auto selector {std::make_shared<ServerSelector>(config.at("hosts"), INTERVAL, secureCommunication)};
+    auto selector {std::make_shared<ServerSelector>(config.at("hosts"), timeout, secureCommunication)};
 
     QUEUE_MAP[this] = std::make_unique<ThreadDispatchQueue>(
         [=](std::queue<std::string>& dataQueue)
@@ -257,4 +256,3 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
     m_initialized = true;
     logInfo(IC_NAME, "IndexerConnector initialized.");
 }
-// LCOV_EXCL_STOP
