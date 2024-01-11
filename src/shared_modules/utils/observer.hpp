@@ -58,7 +58,7 @@ public:
 
         if (it != observers.end())
         {
-            *it = observer;
+            *it = std::move(observer);
         }
         else
         {

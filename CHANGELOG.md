@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 
 #### Changed
 
+- Vulnerability Detection refactor. ([#21201](https://github.com/wazuh/wazuh/pull/21201))
 - Improved wazuh-db detection of deleted database files. ([#18476](https://github.com/wazuh/wazuh/pull/18476))
 - Added timeout and retry parameters to the VirusTotal integration. ([#16893](https://github.com/wazuh/wazuh/pull/16893))
 - Extended wazuh-analysisd EPS metrics with events dropped by overload and remaining credits in the previous cycle. ([#18988](https://github.com/wazuh/wazuh/pull/18988))
@@ -60,6 +61,32 @@ All notable changes to this project will be documented in this file.
 
 - Removed `PUT /vulnerability`, `GET /vulnerability/{agent_id}`, `GET /vulnerability/{agent_id}/last_scan` and `GET /vulnerability/{agent_id}/summary/{field}` API endpoints as they were deprecated in version 4.7.0. Use the Wazuh indexer REST API instead. ([#20119](https://github.com/wazuh/wazuh/pull/20119))
 
+### Ruleset
+
+#### Added
+
+- Added new SCA policy for Amazon Linux 2023. ([#17780](https://github.com/wazuh/wazuh/pull/17780))
+- Added new SCA policy for Rocky Linux 8. ([#17784](https://github.com/wazuh/wazuh/pull/17784))
+- Added rules to detect IcedID attacks. ([#19528](https://github.com/wazuh/wazuh/pull/19528))
+
+#### Changed
+
+- SCA policy for Ubuntu Linux 18.04 rework. ([#18721](https://github.com/wazuh/wazuh/pull/18721))
+- SCA policy for Ubuntu Linux 22.04 rework. ([#17515](https://github.com/wazuh/wazuh/pull/17515))
+- SCA policy for Red Hat Enterprise Linux 7 rework. ([#18440](https://github.com/wazuh/wazuh/pull/18440))
+- SCA policy for Red Hat Enterprise Linux 8 rework. ([#17770](https://github.com/wazuh/wazuh/pull/17770))
+- SCA policy for Red Hat Enterprise Linux 9 rework. ([#17412](https://github.com/wazuh/wazuh/pull/17412))
+- SCA policy for CentOS 7 rework. ([#17624](https://github.com/wazuh/wazuh/pull/17624))
+- SCA policy for CentOS 8 rework. ([#18439](https://github.com/wazuh/wazuh/pull/18439))
+- SCA policy for Debian 8 rework. ([#18010](https://github.com/wazuh/wazuh/pull/18010))
+- SCA policy for Debian 10 rework. ([#17922](https://github.com/wazuh/wazuh/pull/17922))
+- SCA policy for Amazon Linux 2 rework. ([#18695](https://github.com/wazuh/wazuh/pull/18695))
+- SCA policy for SUSE Linux Enterprise 15 rework. ([#18985](https://github.com/wazuh/wazuh/pull/18985))
+- SCA policy for macOS 13.0 Ventura rework. ([#19037](https://github.com/wazuh/wazuh/pull/19037))
+- SCA policy for Microsoft Windows 10 Enterprise rework. ([#19515](https://github.com/wazuh/wazuh/pull/19515))
+- SCA policy for Microsoft Windows 11 Enterprise rework. ([#20044](https://github.com/wazuh/wazuh/pull/20044))
+- Update MITRE DB to v13.1. ([#17518](https://github.com/wazuh/wazuh/pull/17518))
+
 ### Other
 
 #### Changed
@@ -88,6 +115,7 @@ All notable changes to this project will be documented in this file.
 ### Agent
 
 #### Added
+
 - Added timeouts to external and Cloud integrations to prevent indefinite waiting for a response. ([#20638](https://github.com/wazuh/wazuh/pull/20638))
 
 #### Fixed

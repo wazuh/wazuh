@@ -40,7 +40,13 @@ runs:
           arguments="--capture "
 
           # Set working directory
-          arguments+="--directory . "
+          if [[ -d "build/tests/unit" ]]; then
+            arguments+="--directory build/tests/unit "
+          fi
+
+          if [[ -d "build/tests/component" ]]; then
+            arguments+="--directory build/tests/component "
+          fi
 
           # Set output file
           arguments+="--output-file build/coverage.info "

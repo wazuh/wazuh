@@ -70,7 +70,11 @@ public:
         {
             throw std::runtime_error("Failed to create stop pipe");
         }
-        ::fcntl(m_stopFD[0], F_SETFL, O_NONBLOCK);
+
+        if (::fcntl(m_stopFD[0], F_SETFL, O_NONBLOCK) == -1)
+        {
+            throw std::runtime_error("Failed to set stop pipe to non-blocking");
+        }
 
         // Add pipe to stop epoll
         m_epoll->addDescriptor(m_stopFD[0], EPOLLIN | EPOLLET);

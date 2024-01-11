@@ -445,8 +445,15 @@ public:
             }
 
             constexpr uint32_t UI_OPT {BUFFER_MAX_SIZE};
-            T::setsockopt(m_sock, SOL_SOCKET, SO_RCVBUFFORCE, (const char*)&UI_OPT, sizeof(UI_OPT));
-            T::setsockopt(m_sock, SOL_SOCKET, SO_SNDBUFFORCE, (const char*)&UI_OPT, sizeof(UI_OPT));
+            if (T::setsockopt(m_sock, SOL_SOCKET, SO_RCVBUFFORCE, (const char*)&UI_OPT, sizeof(UI_OPT)) < 0)
+            {
+                std::cerr << "Failed to set socket options" << std::endl;
+            }
+
+            if (T::setsockopt(m_sock, SOL_SOCKET, SO_SNDBUFFORCE, (const char*)&UI_OPT, sizeof(UI_OPT)) < 0)
+            {
+                std::cerr << "Failed to set socket options" << std::endl;
+            }
         }
         else
         {
@@ -586,8 +593,16 @@ public:
         }
 
         const uint32_t uiOpt {BUFFER_MAX_SIZE};
-        T::setsockopt(sock, SOL_SOCKET, SO_RCVBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt));
-        T::setsockopt(sock, SOL_SOCKET, SO_SNDBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt));
+
+        if (T::setsockopt(sock, SOL_SOCKET, SO_RCVBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt)) < 0)
+        {
+            std::cerr << "Failed to set socket options" << std::endl;
+        }
+
+        if (T::setsockopt(sock, SOL_SOCKET, SO_SNDBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt)) < 0)
+        {
+            std::cerr << "Failed to set socket options" << std::endl;
+        }
 
         // Set socket to non-blocking.
         int flags = T::fcntl(sock, F_GETFL, 0);
@@ -738,8 +753,15 @@ public:
             }
 
             const uint32_t uiOpt {BUFFER_MAX_SIZE};
-            T::setsockopt(m_sock, SOL_SOCKET, SO_RCVBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt));
-            T::setsockopt(m_sock, SOL_SOCKET, SO_SNDBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt));
+            if (T::setsockopt(m_sock, SOL_SOCKET, SO_RCVBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt)) < 0)
+            {
+                std::cerr << "Failed to set socket options" << std::endl;
+            }
+
+            if (T::setsockopt(m_sock, SOL_SOCKET, SO_SNDBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt)) < 0)
+            {
+                std::cerr << "Failed to set socket options" << std::endl;
+            }
         }
         else
         {
