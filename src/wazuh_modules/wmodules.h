@@ -69,7 +69,6 @@ typedef enum crypto_type {
 #include "wm_command.h"
 #include "wm_ciscat.h"
 #include "wm_aws.h"
-#include "vulnerability_detector/wm_vuln_detector.h"
 #include "wm_osquery_monitor.h"
 #include "wm_download.h"
 #include "wm_azure.h"
@@ -83,6 +82,9 @@ typedef enum crypto_type {
 #include "task_manager/wm_task_manager.h"
 #include "wm_github.h"
 #include "wm_office365.h"
+#include "wm_router.h"
+#include "wm_content_manager.h"
+#include "wm_vulnerability_scanner.h"
 #include "wm_ms_graph.h"
 
 extern wmodule *wmodules;       // Loaded modules.

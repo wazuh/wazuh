@@ -521,23 +521,6 @@ x-rbac-catalog:
         actions: ['task:status']
         resources: ['*:*:*']
         effect: "deny"
-    'vulnerability:read':
-      description: "Allow reading agents' vulnerabilities information"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/agent:id'
-        - $ref: '#/x-rbac-catalog/resources/agent:group'
-      example:
-        actions: [ 'vulnerability:read' ]
-        resources: [ 'agent:id:011', 'agent:group:us-west' ]
-        effect: "allow"
-    'vulnerability:run':
-      description: "Allow running a vulnerability detector scan"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: [ 'vulnerability:run' ]
-        resources: [ '*:*:*' ]
-        effect: "allow"
     'event:ingest':
       description: "Ingest events"
       resources:
@@ -1313,6 +1296,7 @@ components:
                   - $ref: '#/components/schemas/WazuhAnalysisdStats'
                   - $ref: '#/components/schemas/WazuhRemotedStats'
         - $ref: '#/components/schemas/AllItemsResponse'
+
 
     BasicInfo:
       type: object
@@ -4176,7 +4160,7 @@ components:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:syscollector:
             $ref: '#/components/schemas/LogSummary'
-          wazuh-modulesd:vulnerability-detector:
+          wazuh-modulesd:vulnerability-detection:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:task-manager:
             $ref: '#/components/schemas/LogSummary'
@@ -4292,6 +4276,97 @@ components:
           nullable: true
           format: date-time
           description: "Date when the latest scan started. If no scans have been run, null will be returned"
+
+    NewVersions:
+      type: object
+      properties:
+        last_check_date:
+          type: string
+          description: "Datetime of the last query to the CTI service"
+        current_version:
+          type: string
+          description: "Current version in the format vX.Y.Z"
+        update_check:
+          type: boolean
+          description: "Flag that indicates if the service is enabled"
+        last_available_major:
+          type: object
+          description: "Information about the most recent available major update"
+          properties:
+            tag:
+              type: string
+              description: "Version in the format vX.Y.Z"
+            description:
+              type: string
+            title:
+              type: string
+            published_date:
+              type: string
+            semver:
+              type: object
+              properties:
+                major:
+                  type: integer
+                  format: int32
+                minor:
+                  type: integer
+                  format: int32
+                patch:
+                  type: integer
+                  format: int32
+        last_available_minor:
+          type: object
+          description: "Information about the most recent available minor update"
+          properties:
+            tag:
+              type: string
+              description: "Version in the format vX.Y.Z"
+            description:
+              type: string
+            title:
+              type: string
+            published_date:
+              type: string
+            semver:
+              type: object
+              properties:
+                major:
+                  type: integer
+                  format: int32
+                minor:
+                  type: integer
+                  format: int32
+                patch:
+                  type: integer
+                  format: int32
+        last_available_patch:
+          type: object
+          description: "Information about the most recent available patch update"
+          properties:
+            tag:
+              type: string
+              description: "Version in the format vX.Y.Z"
+            description:
+              type: string
+            title:
+              type: string
+            published_date:
+              type: string
+            semver:
+              type: object
+              properties:
+                major:
+                  type: integer
+                  format: int32
+                minor:
+                  type: integer
+                  format: int32
+                patch:
+                  type: integer
+                  format: int32
+        uuid:
+          type: string
+          description: "Identifier of the Wazuh instance"
 
     # Rules models
     RuleFile:
@@ -6318,6 +6393,8 @@ components:
         - socket
         - syscheck
         - syslog_output
+        - vulnerability-detection
+        - indexer
         # Wodle sections
         - aws-s3
         - azure-logs
@@ -6326,7 +6403,6 @@ components:
         - open-scap
         - osquery
         - syscollector
-        - vulnerability-detector
     field:
       in: query
       name: field
@@ -6940,6 +7016,13 @@ components:
       schema:
         type: boolean
         default: false
+    force_query:
+      in: query
+      name: force_query
+      description: "Force query to CTI service"
+      schema:
+        type: boolean
+        default: false
     file_path:
       in: query
       name: file_path
@@ -7071,8 +7154,6 @@ tags:
     description: "Syscollector information"
   - name: Tasks
     description: "Tasks information"
-  - name: Vulnerability
-    description: "Vulnerabilities information"
   - name: Events
     description: "Ingestion endpoints"
 
@@ -10300,15 +10381,16 @@ paths:
                         scan_on_start: yes
                         interval: "12h"
                         skip_nfs: yes
-                      vulnerability-detector:
-                        enabled: no
-                        interval: "5m"
-                        ignore_time: "6h"
-                        run_on_start: yes
-                        provider:
-                          name: nvd
-                          enabled: yes
-                          update_interval: "1h"
+                      vulnerability-detection:
+                        enabled: yes
+                        index-status: yes
+                        feed-update-interval: "60m"
+                      indexer:
+                        enabled: yes
+                        hosts:
+                          host: http://127.0.0.1:9200
+                        username: admin
+                        password: admin
                       syscheck:
                         disabled: no
                         frequency: 43200
@@ -13073,6 +13155,73 @@ paths:
           $ref: '#/components/responses/UnauthorizedResponse'
         '403':
           $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /manager/version/check:
+    get:
+      tags:
+      - Manager
+      summary: "Check available updates"
+      description: "Return if there is any available update"
+      operationId: api.controllers.manager_controller.check_available_version
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/force_query'
+      responses:
+        '200':
+          description: "Information about available new versions"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/NewVersions'
+              example:
+                data:
+                  last_check_date: '2023-10-09T15:39:57.616301+00:00'
+                  current_version: v4.8.0
+                  update_check: true
+                  last_available_major:
+                    tag: v5.0.0
+                    description: ""
+                    title: Wazuh 5.0.0
+                    published_date: '2023-10-05T12:48:00Z'
+                    semver:
+                      major: 5
+                      minor: 0
+                      patch: 0
+                  last_available_minor:
+                    tag: v4.9.1
+                    description: ""
+                    title: Wazuh 4.9.1
+                    published_date: '2023-10-05T12:47:00Z'
+                    semver:
+                      major: 4
+                      minor: 9
+                      patch: 1
+                  last_available_patch:
+                    tag: v4.8.2
+                    description: ""
+                    title: Wazuh 4.8.2
+                    published_date: '2023-10-05T12:46:00Z'
+                    semver:
+                      major: 4
+                      minor: 8
+                      patch: 2
+                  uuid": "edc90f7f-fca4-446c-8985-e69520948e42"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '404':
+          $ref: '#/components/responses/ResourceNotFoundResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
@@ -18947,221 +19096,6 @@ paths:
                   failed_items: []
                 message: "All specified task's status were returned"
                 error: 0
-
-  /vulnerability:
-    put:
-      tags:
-        - Vulnerability
-      deprecated: true
-      summary: "Run vulnerability detector scan"
-      description: "Run a vulnerability detector scan in all nodes"
-      operationId: api.controllers.vulnerability_controller.run_vulnerability_scan
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/vulnerability:run'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      responses:
-        '200':
-          description: "Run vulnerability detector scan"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                data:
-                  affected_items:
-                    - master-node
-                    - worker1
-                    - worker2
-                  total_affected_items: 3
-                  total_failed_items: 0
-                  failed_items: []
-                message: "A vulnerability detector scan was requested in all nodes"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /vulnerability/{agent_id}:
-    get:
-      tags:
-        - Vulnerability
-      deprecated: true
-      summary: "Get vulnerabilities"
-      description: "Return the vulnerabilities of an agent"
-      operationId: api.controllers.vulnerability_controller.get_vulnerability_agent
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/vulnerability:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/query'
-        - $ref: '#/components/parameters/distinct'
-        - $ref: '#/components/parameters/architecture'
-        - $ref: '#/components/parameters/cve'
-        - $ref: '#/components/parameters/name'
-        - $ref: '#/components/parameters/cve_version'
-        - $ref: '#/components/parameters/cve_type'
-        - $ref: '#/components/parameters/cve_status'
-        - $ref: '#/components/parameters/cve_severity'
-      responses:
-        '200':
-          description: "Get agent vulnerabilities"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                data:
-                  affected_items:
-                    - severity: "High"
-                      updated: "2022-01-10"
-                      version: "2.34-6ubuntu1.3"
-                      type: "PACKAGE"
-                      name: "binutils"
-                      external_references: ["https://sourceware.org/bugzilla/show_bug.cgi?id=28694","https://sourceware.org/git/gitweb.cgi?p=binutils-gdb.git;h=161e87d12167b1e36193385485c1f6ce92f74f02","https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/UQBH244M5PV6S6UMHUTCVCWFZDX7Y4M6/","https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/UUHLDDT3HH7YEY6TX7IJRGPJUTNNVEL3/","https://security.netapp.com/advisory/ntap-20220107-0002/","https://nvd.nist.gov/vuln/detail/CVE-2021-45078","http://people.canonical.com/~ubuntu-security/cve/2021/CVE-2021-45078.html","https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-45078"]
-                      condition: "Package unfixed"
-                      detection_time: "2022-03-14T11:04:04Z"
-                      cvss3_score: 7.8
-                      published: "2021-12-15"
-                      architecture: "amd64"
-                      cve: "CVE-2021-45078"
-                      status: "VALID"
-                      title: "CVE-2021-45078 affects binutils"
-                      cvss2_score: 6.8
-                    - severity: "High"
-                      updated: "2022-01-10"
-                      version: "2.34-6ubuntu1.3"
-                      type: "PACKAGE"
-                      name: "binutils-common"
-                      external_references: ["https://sourceware.org/bugzilla/show_bug.cgi?id=28694","https://sourceware.org/git/gitweb.cgi?p=binutils-gdb.git;h=161e87d12167b1e36193385485c1f6ce92f74f02","https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/UQBH244M5PV6S6UMHUTCVCWFZDX7Y4M6/","https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/UUHLDDT3HH7YEY6TX7IJRGPJUTNNVEL3/","https://security.netapp.com/advisory/ntap-20220107-0002/","https://nvd.nist.gov/vuln/detail/CVE-2021-45078","http://people.canonical.com/~ubuntu-security/cve/2021/CVE-2021-45078.html","https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-45078"]
-                      condition: "Package unfixed"
-                      detection_time: "2022-03-14T11:04:04Z"
-                      cvss3_score: 7.8
-                      published: "2021-12-15"
-                      architecture: "amd64"
-                      cve: "CVE-2021-45078"
-                      status: "VALID"
-                      title: "CVE-2021-45078 affects binutils-common"
-                      cvss2_score: 6.8
-                  total_affected_items: 2
-                  total_failed_items: 0
-                  failed_items: []
-                message: "All selected vulnerabilities were returned"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /vulnerability/{agent_id}/last_scan:
-    get:
-      tags:
-      - Vulnerability
-      deprecated: true
-      summary: "Get last scan datetime"
-      description: "Return when the last full and partial vulnerability scan of a specified agent ended."
-      operationId: api.controllers.vulnerability_controller.get_last_scan_agent
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/vulnerability:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-      responses:
-        '200':
-          description: "Scan dates"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseLastScan'
-              example:
-                data:
-                  affected_items:
-                    - last_full_scan: '2021-06-14T07:45:51Z'
-                      last_partial_scan: '2021-06-14T10:15:56Z'
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: [ ]
-                message: Last vulnerability scans of the agent were returned
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /vulnerability/{agent_id}/summary/{field}:
-    get:
-      tags:
-        - Vulnerability
-      deprecated: true
-      summary: "Get agent vulnerabilities' field summary"
-      description: "Return a summary of the vulnerabilities' field of an agent"
-      operationId: api.controllers.vulnerability_controller.get_vulnerabilities_field_summary
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/vulnerability:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/vulnerability_field'
-        - $ref: '#/components/parameters/limit'
-      responses:
-        '200':
-          description: "Get agent vulnerabilities' field summary"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                data:
-                  severity:
-                    critical: 8
-                    medium: 3
-                    high: 1
-                    low: 0
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
 
   /events:
     post:

@@ -124,11 +124,28 @@ TEST_F(StringUtilsTest, Trim)
     EXPECT_EQ("Hello", Utils::trim(" \t\nHello\t\n ", " \t\n"));
 }
 
-TEST_F(StringUtilsTest, ToUpper)
+TEST_F(StringUtilsTest, ToUpperCase)
 {
     EXPECT_EQ("", Utils::toUpperCase(""));
     EXPECT_EQ("HELLO WORLD", Utils::toUpperCase("HeLlO WoRlD"));
     EXPECT_EQ("123", Utils::toUpperCase("123"));
+}
+
+TEST_F(StringUtilsTest, ToLowerCase)
+{
+    EXPECT_EQ("", Utils::toLowerCase(""));
+    EXPECT_EQ("hello world", Utils::toLowerCase("HeLlO WoRlD"));
+    EXPECT_EQ("123", Utils::toLowerCase("123"));
+}
+
+TEST_F(StringUtilsTest, ToSentenceCase)
+{
+    EXPECT_EQ("", Utils::toSentenceCase(""));
+    EXPECT_EQ("H", Utils::toSentenceCase("h"));
+    EXPECT_EQ("Hello", Utils::toSentenceCase("hello"));
+    EXPECT_EQ("Hello", Utils::toSentenceCase("HELLO"));
+    EXPECT_EQ("Hello world", Utils::toSentenceCase("HeLlO WoRlD"));
+    EXPECT_EQ("123", Utils::toSentenceCase("123"));
 }
 
 TEST_F(StringUtilsTest, StartsWith)
@@ -476,3 +493,75 @@ TEST_F(StringUtilsTest, stringIsNumberTrue)
     EXPECT_TRUE(Utils::isNumber("12345"));
 }
 
+TEST_F(StringUtilsTest, parseStrToBoolYes)
+{
+    EXPECT_TRUE(Utils::parseStrToBool("yes"));
+}
+
+TEST_F(StringUtilsTest, parseStrToBoolNo)
+{
+    EXPECT_FALSE(Utils::parseStrToBool("no"));
+}
+
+TEST_F(StringUtilsTest, parseStrToBoolSarasa)
+{
+    EXPECT_THROW(Utils::parseStrToBool("Sarasa"),std::runtime_error);
+}
+
+TEST_F(StringUtilsTest, parseStrToTimeEmpty)
+{
+  EXPECT_EQ(Utils::parseStrToTime("1"),1);
+}
+
+TEST_F(StringUtilsTest,parseStrToTimeOneSec)
+{
+  EXPECT_EQ(Utils::parseStrToTime("1s"),1);
+}
+
+TEST_F(StringUtilsTest,parseStrToTimeOneMin)
+{
+  EXPECT_EQ(Utils::parseStrToTime("1m"),60);
+}
+
+TEST_F(StringUtilsTest,parseStrToTimeOneHour)
+{
+  EXPECT_EQ(Utils::parseStrToTime("1h"),3600);
+}
+
+TEST_F(StringUtilsTest,parseStrToTimeOneDay)
+{
+  EXPECT_EQ(Utils::parseStrToTime("1d"),86400);
+}
+
+TEST_F(StringUtilsTest,parseStrToTimeOneWeek)
+{
+  EXPECT_EQ(Utils::parseStrToTime("1w"),604800);
+}
+
+TEST_F(StringUtilsTest,parseStrToTimeOneSarasa)
+{
+  EXPECT_EQ(Utils::parseStrToTime("1invalid"),-1);
+}
+
+/*
+ * isAlphaNumericWithSpecialCharacters() tests
+ */
+
+/**
+ * @brief Validates the string is alphanumeric and contains all of the special characters passed as argument.
+ *
+ */
+TEST_F(StringUtilsTest, IsAlphaNumericWithSpecialCharacters)
+{
+    const std::string stringBase1 {"random_string"};
+    const std::string stringBase2 {"r4nd0mS7r1n6"};
+    const std::string stringBase3 {"random-_-string"};
+    const std::string stringBase4 {"random*string"};
+    const std::string stringBase5 {""};
+    EXPECT_TRUE(Utils::isAlphaNumericWithSpecialCharacters(stringBase1, "_"));
+    EXPECT_TRUE(Utils::isAlphaNumericWithSpecialCharacters(stringBase1, "__"));
+    EXPECT_TRUE(Utils::isAlphaNumericWithSpecialCharacters(stringBase2, ""));
+    EXPECT_TRUE(Utils::isAlphaNumericWithSpecialCharacters(stringBase3, "-_"));
+    EXPECT_TRUE(Utils::isAlphaNumericWithSpecialCharacters(stringBase4, "*"));
+    EXPECT_FALSE(Utils::isAlphaNumericWithSpecialCharacters(stringBase5, "-_*"));
+}
