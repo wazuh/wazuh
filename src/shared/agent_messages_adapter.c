@@ -46,6 +46,7 @@ char* adapt_delta_message(const char* data, const char* name, const char* id, co
         }
         cJSON_Delete(j_agent_data);
     } else {
+        // A NULL agent_data_hash is received when the helper is executed from the manager side. Syscollector messages are not received by remoted module for agent 000.
         cJSON_AddItemToObject(j_agent_info, "agent_version", cJSON_CreateString(__ossec_version));
     }
 
@@ -94,6 +95,7 @@ char* adapt_sync_message(const char* data, const char* name, const char* id, con
         }
         cJSON_Delete(j_agent_data);
     } else {
+        // A NULL agent_data_hash is received when the helper is executed from the manager side. Syscollector messages are not received by remoted module for agent 000.
         cJSON_AddItemToObject(j_agent_info, "agent_version", cJSON_CreateString(__ossec_version));
     }
 
