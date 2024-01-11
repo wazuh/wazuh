@@ -3323,7 +3323,7 @@ checks:
        - iso_27001-2013: ["A.12.4.1"]
        - pci_dss_v3.2.1: ["10.7"]
        - soc_2: ["A1.1"]
-     condition:
+     condition: all
      rules:
        - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Eventlog\Security'
        - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Eventlog\Security -> WarningLevel'
