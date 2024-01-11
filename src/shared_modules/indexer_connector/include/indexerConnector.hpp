@@ -74,7 +74,7 @@ public:
                                                        const std::string&,
                                                        const std::string&,
                                                        va_list)>& logFunction = {},
-                              const uint32_t timeout = INTERVAL);
+                              const uint32_t& timeout = INTERVAL);
 
     ~IndexerConnector();
 

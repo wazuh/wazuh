@@ -39,7 +39,7 @@ IndexerConnector::IndexerConnector(
     const std::function<void(
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
         logFunction,
-    const uint32_t timeout)
+    const uint32_t& timeout)
 {
     if (logFunction)
     {
