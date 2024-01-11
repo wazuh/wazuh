@@ -33,7 +33,8 @@ AUTH_TEMPLATE="./etc/templates/config/generic/auth.template"
 CLUSTER_TEMPLATE="./etc/templates/config/generic/cluster.template"
 
 CISCAT_TEMPLATE="./etc/templates/config/generic/wodle-ciscat.template"
-VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detector.manager.template"
+VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detection.manager.template"
+INDEXER_TEMPLATE="./etc/templates/config/generic/wodle-indexer.manager.template"
 
 SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE="./etc/templates/config/generic/sca.template"
 
@@ -492,6 +493,10 @@ WriteManager()
     cat ${VULN_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
+    # Indexer
+    cat ${INDEXER_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
     # Write syscheck
     WriteSyscheck "manager"
 
@@ -622,6 +627,10 @@ WriteLocal()
 
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
+    # Indexer
+    cat ${INDEXER_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Write syscheck
@@ -1073,9 +1082,11 @@ InstallLocal()
     fi
 
     # Install Vulnerability Detector files
-    ${INSTALL} -d -m 0660 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/vulnerabilities
-    ${INSTALL} -d -m 0440 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/vulnerabilities/dictionaries
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/vulnerability_detector/cpe_helper.json ${INSTALLDIR}/queue/vulnerabilities/dictionaries
+    ${INSTALL} -d -m 0660 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/vd
+
+    # Install templates files
+    ${INSTALL} -d -m 0440 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/indexer
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/vulnerability_scanner/indexer/template/legacy-template.json ${INSTALLDIR}/queue/indexer/vd_states_template.json
 
     # Install Task Manager files
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tasks
@@ -1106,6 +1117,27 @@ TransferShared()
     find ${INSTALLDIR}/etc/shared -maxdepth 1 -type f -not -name ar.conf -not -name files.yml -exec mv -f {} ${INSTALLDIR}/etc/shared/default \;
 }
 
+checkDownloadContent()
+{
+    VD_FILENAME='vd_1.0.0_vd_4.8.0.tar.xz'
+
+    if [ "X${DOWNLOAD_CONTENT_AND_DECOMPRESS}" = "Xy" ]; then
+        echo "Download ${VD_FILENAME} file"
+        wget -O ${VD_FILENAME} http://packages.wazuh.com/deps/vulnerability_model_database/${VD_FILENAME}
+
+        echo "Decompress ${VD_FILENAME} file"
+        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${VD_FILENAME} ${INSTALLDIR}/
+        tar -xf ${INSTALLDIR}/${VD_FILENAME} -C ${INSTALLDIR}/
+        rm -rf ${INSTALLDIR:?}/${VD_FILENAME}
+        rm -rf ${VD_FILENAME}
+    elif [ "X${DOWNLOAD_CONTENT}" = "Xyes" ]; then
+        echo "Download ${VD_FILENAME} file"
+        wget -O ${VD_FILENAME} http://packages.wazuh.com/deps/vulnerability_model_database/${VD_FILENAME}
+
+        ${INSTALL} -m 0640 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${VD_FILENAME} ${INSTALLDIR}/
+    fi
+}
+
 InstallServer()
 {
 
@@ -1118,6 +1150,49 @@ InstallServer()
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libjemalloc.so.2
         fi
     fi
+    if [ -f build/shared_modules/router/librouter.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/shared_modules/router/librouter.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]); then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/librouter.so
+        fi
+    fi
+    if [ -f build/shared_modules/content_manager/libcontent_manager.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/shared_modules/content_manager/libcontent_manager.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]); then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libcontent_manager.so
+        fi
+    fi
+    if [ -f build/wazuh_modules/vulnerability_scanner/libvulnerability_scanner.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/wazuh_modules/vulnerability_scanner/libvulnerability_scanner.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]); then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libvulnerability_scanner.so
+        fi
+    fi
+    if [ -f build/shared_modules/indexer_connector/libindexer_connector.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/shared_modules/indexer_connector/libindexer_connector.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]); then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libindexer_connector.so
+        fi
+    fi
+    if [ -f external/rocksdb/build/librocksdb.so.8 ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} external/rocksdb/build/librocksdb.so.8 ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]); then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/librocksdb.so.8
+        fi
+    fi
+
+    # Check if the content needs to be downloaded.
+    checkDownloadContent
 
     # Install cluster files
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/cluster
@@ -1132,6 +1207,7 @@ InstallServer()
     ${INSTALL} -m 0750 -o root -g 0 wazuh-authd ${INSTALLDIR}/bin
 
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/rids
+    ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/router
 
     if [ ! -f ${INSTALLDIR}/queue/agents-timestamp ]; then
         ${INSTALL} -m 0600 -o root -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/queue/agents-timestamp

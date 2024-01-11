@@ -15,12 +15,14 @@
 
 using namespace DbSync;
 
-DBSYNC_HANDLE DBSyncImplementation::initialize(const HostType     hostType,
-                                               const DbEngineType dbType,
-                                               const std::string& path,
-                                               const std::string& sqlStatement)
+DBSYNC_HANDLE DBSyncImplementation::initialize(const HostType                  hostType,
+                                               const DbEngineType              dbType,
+                                               const std::string&              path,
+                                               const std::string&              sqlStatement,
+                                               const DbManagement              dbManagement,
+                                               const std::vector<std::string>& upgradeStatements)
 {
-    auto db{ FactoryDbEngine::create(dbType, path, sqlStatement) };
+    auto db{ FactoryDbEngine::create(dbType, path, sqlStatement, dbManagement, upgradeStatements) };
     const auto spDbEngineContext
     {
         std::make_shared<DbEngineContext>(db, hostType, dbType)

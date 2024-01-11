@@ -41,6 +41,7 @@
 #define OS_SIZE_16      16
 
 /* Level of log messages */
+#define LOGLEVEL_DEBUG_VERBOSE 5
 #define LOGLEVEL_CRITICAL 4
 #define LOGLEVEL_ERROR 3
 #define LOGLEVEL_WARNING 2

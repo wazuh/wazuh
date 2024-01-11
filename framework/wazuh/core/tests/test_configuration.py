@@ -42,7 +42,6 @@ def mock_wazuh_path():
     ({}, None, 'new', 1),
     ({}, None, 'new', False),
     ({'old': [None]}, 'ruleset', 'include', [1]),
-    ({'old': [None]}, 'vulnerability-detector', 'provider', [1])
 ])
 def test_insert(json_dst, section_name, option, value):
     """Checks insert function."""
@@ -90,16 +89,28 @@ def test_read_option():
         assert configuration._read_option('open-scap', data)[0] == 'synchronization'
         assert configuration._read_option('syscheck', data)[0] == 'synchronization'
 
-    with open(os.path.join(parent_directory, tmp_path, 'configuration/default/vulnerability_detector.conf')) as f:
+    with open(os.path.join(parent_directory, tmp_path, 'configuration/default/vulnerability_detection.conf')) as f:
         data = fromstring(f.read())
         EXPECTED_VALUES = MappingProxyType(
-            {'enabled': 'no', 'interval': '5m',
-             'provider': {'enabled': 'no', 'name': 'canonical', 'os': ['trusty', 'xenial', 'bionic', 'focal', 'jammy'],
-                          'update_interval': '1h'}})
+            {'enabled': 'no', 'feed-update-interval': '60m', 'index-status': 'yes'}
+        )
         for section in data:
-            assert configuration._read_option('vulnerability-detector', section) == (section.tag,
+            assert configuration._read_option('vulnerability-detection', section) == (section.tag,
                                                                                      EXPECTED_VALUES[section.tag])
 
+    with open(os.path.join(parent_directory, tmp_path, 'configuration/default/indexer.conf')) as f:
+        data = fromstring(f.read())
+        EXPECTED_VALUES = MappingProxyType(
+            {
+                'enabled': 'yes',
+                'hosts': ['http://127.0.0.1:9200', 'http://127.0.0.2:9200'],
+                'username': 'admin',
+                'password': 'admin',
+            }
+        )
+        for section in data:
+            assert configuration._read_option('indexer', section) == (section.tag,
+                                                                    EXPECTED_VALUES[section.tag])
 
 def test_agentconf2json():
     xml_conf = configuration.load_wazuh_xml(
@@ -483,3 +494,23 @@ def test_write_ossec_conf_exceptions():
     with patch('wazuh.core.configuration.open', return_value=Exception):
         with pytest.raises(WazuhError, match=".* 1126 .*"):
             configuration.write_ossec_conf(new_conf="placeholder")
+
+
+@pytest.mark.parametrize(
+    'update_check_config,expected',
+    (
+        [{configuration.GLOBAL_KEY: {configuration.UPDATE_CHECK_OSSEC_FIELD: 'yes'}}, True],
+        [{configuration.GLOBAL_KEY: {configuration.UPDATE_CHECK_OSSEC_FIELD: 'no'}}, False],
+        [{configuration.GLOBAL_KEY: {}}, True],
+        [{}, True]
+    )
+)
+@patch('wazuh.core.configuration.get_ossec_conf')
+def test_update_check_is_enabled(get_ossec_conf_mock, update_check_config, expected):
+    """
+    Test that update_check_is_enabled function returns the expected value,
+    based on the value of UPDATE_CHECK_OSSEC_FIELD.
+    """
+    get_ossec_conf_mock.return_value = update_check_config
+
+    assert configuration.update_check_is_enabled() == expected

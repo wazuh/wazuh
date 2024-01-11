@@ -50,10 +50,12 @@ namespace DbSync
                                     const nlohmann::json&   json,
                                     const ResultCallback    callback);
 
-            DBSYNC_HANDLE initialize(const HostType     hostType,
-                                     const DbEngineType dbType,
-                                     const std::string& path,
-                                     const std::string& sqlStatement);
+            DBSYNC_HANDLE initialize(const HostType                  hostType,
+                                     const DbEngineType              dbType,
+                                     const std::string&              path,
+                                     const std::string&              sqlStatement,
+                                     const DbManagement              dbManagement,
+                                     const std::vector<std::string>& upgradeStatements);
 
             void setMaxRows(const DBSYNC_HANDLE handle,
                             const std::string& table,

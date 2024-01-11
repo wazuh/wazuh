@@ -1226,7 +1226,7 @@ def test_agent_get_config_ko(socket_mock, send_mock, mock_wazuh_socket):
 def test_agent_get_stats(socket_mock, send_mock, mock_wazuh_socket):
     """Test get_stats method returns expected message."""
     agent = Agent('001')
-    mock_wazuh_socket.return_value.receive.return_value = b'{"error":0, "data":{"test":0}}'
+    mock_wazuh_socket.return_value.receive.return_value = b'{"error":0, "data":{"global":{}, "interval":{}}}'
     result = agent.get_stats('logcollector')
     assert result == {'global': {}, 'interval': {}}, 'Result message is not as expected.'
 
