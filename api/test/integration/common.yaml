@@ -163,6 +163,40 @@ variables:
         <email_notification>no</email_notification>
         <agents_disconnection_time>20s</agents_disconnection_time>
         <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
+        <update_check>yes</update_check>
+      </global>
+
+      <logging>
+        <log_format>plain</log_format>
+      </logging>
+
+      <alerts>
+        <log_alert_level>300</log_alert_level>
+        <email_alert_level>12</email_alert_level>
+      </alerts>
+
+      <remote>
+        <connection>secure</connection>
+        <port>1514</port>
+        <protocol>tcp</protocol>
+      </remote>
+
+      <syscheck>
+        <disabled>yes</disabled>
+      </syscheck>
+    </ossec_config>
+
+  valid_ossec_conf_with_update_check_disabled:
+    <ossec_config>
+      <global>
+        <jsonout_output>yes</jsonout_output>
+        <alerts_log>yes</alerts_log>
+        <logall>no</logall>
+        <logall_json>no</logall_json>
+        <email_notification>no</email_notification>
+        <agents_disconnection_time>20s</agents_disconnection_time>
+        <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
+        <update_check>no</update_check>
       </global>
 
       <logging>
@@ -200,4 +234,38 @@ variables:
       </alerts>
 
       <remote>
+    </ossec_config>
+
+  ossec_conf_with_invalid_cti_url:
+    <ossec_config>
+      <global>
+        <jsonout_output>yes</jsonout_output>
+        <alerts_log>yes</alerts_log>
+        <logall>no</logall>
+        <logall_json>no</logall_json>
+        <email_notification>no</email_notification>
+        <agents_disconnection_time>20s</agents_disconnection_time>
+        <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
+        <update_check>yes</update_check>
+        <cti-url>http://localhost:4041</cti-url>
+      </global>
+
+      <logging>
+        <log_format>plain</log_format>
+      </logging>
+
+      <alerts>
+        <log_alert_level>300</log_alert_level>
+        <email_alert_level>12</email_alert_level>
+      </alerts>
+
+      <remote>
+        <connection>secure</connection>
+        <port>1514</port>
+        <protocol>tcp</protocol>
+      </remote>
+
+      <syscheck>
+        <disabled>yes</disabled>
+      </syscheck>
     </ossec_config>

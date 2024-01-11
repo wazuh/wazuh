@@ -115,4 +115,17 @@ int isChroot(void);
 #define DEBUG_MSG(x,y,z)
 #endif /* end debug analysisd */
 
+/**
+ * @brief Wrapper for the tagged log functions.
+ *
+ * @param level Log level.
+ * @param tag Tag representing the module sending the log.
+ * @param file File name.
+ * @param line Line number.
+ * @param func Function name.
+ * @param msg Message to send into the log.
+ * @param args Variable arguments list.
+ */
+void mtLoggingFunctionsWrapper(int level, const char* tag, const char* file, int line, const char* func, const char* msg, va_list args);
+
 #endif /* DEBUG_H */

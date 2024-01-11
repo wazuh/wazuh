@@ -834,34 +834,6 @@ get_rbac_actions:
           effect: deny
         related_endpoints:
           - GET /tasks/status
-      vulnerability:read:
-        description: Allow reading agents' vulnerabilities information
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - vulnerability:read
-          resources:
-            - agent:id:011
-            - agent:group:us-west
-          effect: allow
-        related_endpoints:
-          - GET /vulnerability/{agent_id}
-          - GET /vulnerability/{agent_id}/last_scan
-          - GET /vulnerability/{agent_id}/summary/{field}
-      vulnerability:run:
-        description: Allow running a vulnerability detector scan
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - vulnerability:run
-          resources:
-            - "*:*:*"
-          effect: allow
-        related_endpoints:
-          - PUT /vulnerability
       event:ingest:
         description: "Ingest events"
         resources:
