@@ -21,7 +21,7 @@ if [ -r "/etc/os-release" ]; then
     if [ "X$DIST_VER" = "X" ]; then
         DIST_VER="0"
     fi
-    if [ "$DIST_NAME" = "amzn" ] && [ "$DIST_VER" != "2" ]; then
+    if [ "$DIST_NAME" = "amzn" ] && [ "$DIST_VER" = "2018" ]; then
         DIST_VER="1"
     fi
     DIST_SUBVER=$(echo $VERSION_ID | sed -rn 's/[^0-9]*[0-9]+\.([0-9]+).*/\1/p')
