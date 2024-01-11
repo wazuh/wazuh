@@ -27,12 +27,38 @@
 
 // Template.
 static const auto TEMPLATE_FILE_PATH {std::filesystem::temp_directory_path() / "template.json"};
-static const auto TEMPLATE_DATA = R"({"template":"templateData"})"_json;
+static const auto TEMPLATE_DATA = R"(
+    {
+        "index_patterns": [
+            "logs-2020-01-*"
+        ],
+        "template": {
+            "aliases": {
+                "my_logs": {}
+            },
+            "settings": {
+                "number_of_shards": 2,
+                "number_of_replicas": 1
+            },
+            "mappings": {
+                "properties": {
+                    "timestamp": {
+                        "type": "date",
+                        "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"
+                    },
+                    "value": {
+                        "type": "double"
+                    }
+                }
+            }
+        }
+    }
+)"_json; // Real template example.
 
 // Indexers.
 static const auto INDEXER_TIMEOUT {0u};
 static const std::string INDEXER_HOSTNAME {"localhost"};
-static const auto INDEXER_NAME {"IndexerConnectorTest"};
+static const auto INDEXER_NAME {"indexer_connector_test"}; // Should be in lowcase for a real indexer.
 static const auto MAX_INDEXER_INIT_TIME_MS {2000};
 static const auto MAX_INDEXER_PUBLISH_TIME_MS {5500};
 static const auto INDEX_ID_A {"A"};
