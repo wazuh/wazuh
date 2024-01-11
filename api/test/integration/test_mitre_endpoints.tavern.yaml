@@ -341,6 +341,17 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
+  - name: Get distinct mitre mitigations
+    request:
+      verify: False
+      <<: *general_mitigations_request
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
 ---
 test_name: GET /mitre/references
 
@@ -920,6 +931,17 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
+  - name: Get distinct mitre tactics
+    request:
+      verify: False
+      <<: *general_tactics_request
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
 ---
 test_name: GET /mitre/techniques
 
@@ -1227,6 +1249,17 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
+  - name: Get distinct mitre techniques
+    request:
+      verify: False
+      <<: *general_techniques_request
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
 ---
 test_name: GET /mitre/groups
 
@@ -1509,6 +1542,23 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
+  
+  - name: Filter groups using q parameter with special character
+    request:
+      verify: False
+      <<: *general_groups_request
+      params:
+        q: "name=admin@338"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: "intrusion-set--16ade1aa-0ea1-4bb7-88cc-9079df2ae756"
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
 
   - name: Filter groups using q parameter (complex query)
     request:
@@ -1527,6 +1577,17 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
+
+  - name: Get distinct mitre groups
+    request:
+      verify: False
+      <<: *general_groups_request
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
 
 ---
 test_name: GET /mitre/software
@@ -1828,3 +1889,14 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
+
+  - name: Get distinct mitre software
+    request:
+      verify: False
+      <<: *general_software_request
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key

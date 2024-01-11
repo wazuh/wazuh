@@ -21,7 +21,6 @@ int alert_only;
 
 #define OS_COMMENT_MAX 1024
 
-time_t current_time = 0;
 
 size_t field_offset[] = {
     offsetof(Eventinfo, srcip),
@@ -42,6 +41,7 @@ size_t field_offset[] = {
     offsetof(Eventinfo, dstgeoip),
     offsetof(Eventinfo, location)
 };
+
 
 // Function to check for repetitions from same fields
 
@@ -96,6 +96,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, __attribute__((unused)) EventList *
     int found;
     const char * my_field;
     const char * field;
+    time_t current_time;
 
     /* Checking if sid search is valid */
     if (!rule->sid_search) {
@@ -122,6 +123,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, __attribute__((unused)) EventList *
 
     do {
         lf = (Eventinfo *)lf_node->data;
+        current_time = w_get_current_time();
 
 #ifdef TESTRULE
         time(&current_time);
@@ -271,6 +273,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, __attribute__((unused)) EventList
     OSList *list = rule->group_search;
     const char * my_field;
     const char * field;
+    time_t current_time;
 
     //w_mutex_lock(&rule->mutex);
 
@@ -300,6 +303,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, __attribute__((unused)) EventList
 
     do {
         lf = (Eventinfo *)lf_node->data;
+        current_time = w_get_current_time();
 
 #ifdef TESTRULE
         time(&current_time);
@@ -456,6 +460,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, EventList *last_events, RuleInfo 
     int found;
     const char * my_field;
     const char * field;
+    time_t current_time;
 
     w_mutex_lock(&rule->mutex);
 
@@ -474,6 +479,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, EventList *last_events, RuleInfo 
     /* Search all previous events */
     while (eventnode_pt) {
         lf = eventnode_pt->event;
+        current_time = w_get_current_time();
 
 #ifdef TESTRULE
         time(&current_time);

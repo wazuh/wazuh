@@ -19,16 +19,24 @@
 #define WM_OFFICE365_DEFAULT_INTERVAL 60
 #define WM_OFFICE365_DEFAULT_CURL_MAX_SIZE 1048576L
 #define WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT 60L
+#define WM_OFFICE365_DEFAULT_API_LOGIN_FQDN "login.microsoftonline.com"
+#define WM_OFFICE365_DEFAULT_API_MANAGEMENT_FQDN "manage.office.com"
+
+#define WM_OFFICE365_GCC_API_LOGIN_FQDN "login.microsoftonline.com"
+#define WM_OFFICE365_GCC_API_MANAGEMENT_FQDN "manage-gcc.office.com"
+
+#define WM_OFFICE365_GCC_HIGH_API_LOGIN_FQDN "login.microsoftonline.us"
+#define WM_OFFICE365_GCC_HIGH_API_MANAGEMENT_FQDN "manage.office365.us"
 
 #define WM_OFFICE365_MSG_DELAY 1000000 / wm_max_eps
 #define WM_OFFICE365_RETRIES_TO_SEND_ERROR 3
 #define WM_OFFICE365_NEXT_PAGE_REGEX "NextPageUri:\\s*(\\S+)"
 
-#define WM_OFFICE365_API_ACCESS_TOKEN_URL "https://login.microsoftonline.com/%s/oauth2/v2.0/token"
-#define WM_OFFICE365_API_SUBSCRIPTION_URL "https://manage.office.com/api/v1.0/%s/activity/feed/subscriptions/%s?contentType=%s"
-#define WM_OFFICE365_API_CONTENT_BLOB_URL "https://manage.office.com/api/v1.0/%s/activity/feed/subscriptions/content?contentType=%s&startTime=%s&endTime=%s"
+#define WM_OFFICE365_API_ACCESS_TOKEN_URL "https://%s/%s/oauth2/v2.0/token"
+#define WM_OFFICE365_API_SUBSCRIPTION_URL "https://%s/api/v1.0/%s/activity/feed/subscriptions/%s?contentType=%s"
+#define WM_OFFICE365_API_CONTENT_BLOB_URL "https://%s/api/v1.0/%s/activity/feed/subscriptions/content?contentType=%s&startTime=%s&endTime=%s"
 
-#define WM_OFFICE365_API_ACCESS_TOKEN_PAYLOAD "client_id=%s&scope=https://manage.office.com/.default&grant_type=client_credentials&client_secret=%s"
+#define WM_OFFICE365_API_ACCESS_TOKEN_PAYLOAD "client_id=%s&scope=https://%s/.default&grant_type=client_credentials&client_secret=%s"
 
 #define WM_OFFICE365_API_SUBSCRIPTION_START "start"
 #define WM_OFFICE365_API_SUBSCRIPTION_STOP "stop"
@@ -38,6 +46,8 @@ typedef struct wm_office365_auth {
     char *client_id;
     char *client_secret_path;
     char *client_secret;
+    char *login_fqdn;
+    char *management_fqdn;
     struct wm_office365_auth *next;
 } wm_office365_auth;
 

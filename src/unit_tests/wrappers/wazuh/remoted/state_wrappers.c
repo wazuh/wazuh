@@ -24,8 +24,17 @@ void __wrap_rem_dec_tcp() {
     return;
 }
 
+void __wrap_rem_inc_recv_evt() {
+    function_called();
+    return;
+}
+
 void __wrap_rem_add_recv(unsigned long bytes) {
     check_expected(bytes);
+}
+
+void __wrap_rem_inc_recv_ctrl(const char *agent_id) {
+    check_expected(agent_id);
 }
 
 void __wrap_rem_inc_recv_ctrl_request(const char *agent_id) {

@@ -15,7 +15,7 @@
 #define ASYS_MAX_NUM_AGENTS_STATS 75
 
 #include <stdint.h>
-#include "wazuh_db/helpers/wdb_global_helpers.h"
+#include "../wazuh_db/helpers/wdb_global_helpers.h"
 
 /* Status structures */
 
@@ -72,6 +72,7 @@ typedef struct _modules_t {
     uint64_t gcp;
     uint64_t github;
     uint64_t office365;
+    uint64_t ms_graph;
     uint64_t oscap;
     uint64_t osquery;
     uint64_t rootcheck;
@@ -103,7 +104,9 @@ typedef struct _written_t {
 } written_t;
 
 typedef struct _eps_state_t {
+    uint64_t available_credits_prev;
     uint64_t events_dropped;
+    uint64_t events_dropped_not_eps;
     uint64_t seconds_over_limit;
 } eps_state_t;
 
@@ -229,6 +232,11 @@ void w_inc_modules_github_decoded_events(const char *agent_id);
  * @brief Increment modules office365 decoded events counter
  */
 void w_inc_modules_office365_decoded_events(const char *agent_id);
+
+/**
+ * @brief Increment modules ms-graph decoded events counter
+ */
+void w_inc_modules_ms_graph_decoded_events(const char *agent_id);
 
 /**
  * @brief Increment modules oscap decoded events counter
@@ -371,6 +379,11 @@ void w_inc_modules_github_dropped_events();
 void w_inc_modules_office365_dropped_events();
 
 /**
+ * @brief Increment modules ms-graph dropped events counter
+ */
+void w_inc_modules_ms_graph_dropped_events();
+
+/**
  * @brief Increment modules oscap dropped events counter
  */
 void w_inc_modules_oscap_dropped_events();
@@ -470,9 +483,20 @@ void w_inc_stats_written();
 void w_inc_eps_events_dropped();
 
 /**
+ * @brief Increment events dropped by causes unrelated to eps
+ */
+void w_inc_eps_events_dropped_not_eps();
+
+/**
  * @brief Increment seconds over eps limit
  */
 void w_inc_eps_seconds_over_limit();
+
+/**
+ * @brief Set available credits from previous interval
+ * @param credits Credits from previous interval
+ */
+void w_set_available_credits_prev(unsigned int credits);
 
 /**
  * @brief Create a JSON object with all the analysisd state information

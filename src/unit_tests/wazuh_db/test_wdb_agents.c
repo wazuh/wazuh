@@ -16,13 +16,13 @@
 #include <string.h>
 
 #include "os_err.h"
-#include "wazuh_db/wdb.h"
+#include "../wazuh_db/wdb.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 #include "wazuhdb_op.h"
-#include "wazuh_db/wdb_agents.h"
+#include "../wazuh_db/wdb_agents.h"
 
 /* setup/teardown */
 
@@ -193,7 +193,7 @@ void test_wdb_agents_find_package_error(void **state) {
     expect_sqlite3_step_call(SQLITE_ERROR);
 
     will_return(__wrap_sqlite3_errmsg, "test_sql_no_done");
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_sql_no_done");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) SQLite: test_sql_no_done");
 
     ret = wdb_agents_find_package(data->wdb, reference);
 
@@ -278,7 +278,7 @@ void test_wdb_agents_find_cve_error(void **state) {
     expect_sqlite3_step_call(SQLITE_ERROR);
 
     will_return(__wrap_sqlite3_errmsg, "test_sql_no_done");
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_sql_no_done");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) SQLite: test_sql_no_done");
 
     ret = wdb_agents_find_cve(data->wdb, cve, reference);
 

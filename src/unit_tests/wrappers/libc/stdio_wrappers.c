@@ -216,3 +216,9 @@ int __wrap_fputc(char character, FILE *stream) {
     check_expected(stream);
     return mock();
 }
+
+FILE *__wrap_open_memstream(char **__bufloc, size_t *__sizeloc) {
+    *__bufloc = mock_type(char *);
+    *__sizeloc = mock_type(size_t);
+    return mock_ptr_type(FILE*);
+}

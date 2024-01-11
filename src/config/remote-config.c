@@ -26,15 +26,23 @@
  */
 STATIC int w_remoted_get_net_protocol(const char * content);
 
+/**
+ * @brief gets the remoted agents configuration
+ *
+ * @param node XML node
+ * @param logr remoted configuration structure
+ */
+STATIC void w_remoted_parse_agents(XML_NODE node, remoted * logr);
+
 /* Reads remote config */
-int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
+int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
     int i = 0;
     int secure_count = 0;
     unsigned int pl = 0;
     unsigned int allow_size = 1;
     unsigned int deny_size = 1;
-    remoted *logr;
+    remoted * logr = NULL;
     int defined_queue_size = 0;
     const int DEFAULT_RIDS_CLOSING_TIME = 300;
 
@@ -50,8 +58,10 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_remote_ipv6 = "ipv6";
     const char *xml_remote_connection = "connection";
     const char *xml_remote_lip = "local_ip";
+    const char *xml_remote_agents = "agents";
     const char *xml_queue_size = "queue_size";
     const char *xml_rids_closing_time = "rids_closing_time";
+    const char *xml_connection_overtake_time = "connection_overtake_time";
 
     logr = (remoted *)d1;
 
@@ -238,6 +248,27 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
             logr->rids_closing_time = (int) rids_closing_time;
 
+        } else if (strcmp(node[i]->element, xml_connection_overtake_time) == 0) {
+            if (!OS_StrIsNum(node[i]->content)) {
+                mwarn("Invalid value for element '%s':'%s'. Setting to default value: '%d'.", node[i]->element, node[i]->content, logr->connection_overtake_time);
+            } else {
+                int connection_overtake_time = atoi(node[i]->content);
+                if (connection_overtake_time < 0 || connection_overtake_time > 3600) {
+                    mwarn("Invalid value for element '%s':'%s'. Setting to default value: '%d'.", node[i]->element, node[i]->content, logr->connection_overtake_time);
+                } else {
+                    logr->connection_overtake_time = connection_overtake_time;
+                }
+            }
+        } else if (strcasecmp(node[i]->element, xml_remote_agents) == 0) {
+            xml_node **children = OS_GetElementsbyNode(xml, node[i]);
+            if (children == NULL) {
+                continue;
+            }
+
+            w_remoted_parse_agents(children, logr);
+
+            OS_ClearNode(children);
+
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
@@ -315,4 +346,26 @@ STATIC int w_remoted_get_net_protocol(const char * content) {
     }
 
     return retval;
+}
+
+STATIC void w_remoted_parse_agents(XML_NODE node, remoted * logr) {
+    const char * ALLOW_HIGHER_VERSIONS = "allow_higher_versions";
+
+    int i = 0;
+    while (node[i]) {
+        if (strcasecmp(node[i]->element, ALLOW_HIGHER_VERSIONS) == 0) {
+            if (strcmp(node[i]->content, "no") == 0) {
+                logr->allow_higher_versions = false;
+            }
+            else if (strcmp(node[i]->content, "yes") == 0) {
+                logr->allow_higher_versions = true;
+            } else {
+                mwarn(REMOTED_INV_VALUE_IGNORE, node[i]->content, ALLOW_HIGHER_VERSIONS);
+            }
+        }
+        else {
+            mwarn(XML_INVELEM, node[i]->element);
+        }
+        i++;
+    }
 }

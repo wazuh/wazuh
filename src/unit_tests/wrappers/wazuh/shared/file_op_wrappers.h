@@ -63,6 +63,9 @@ void expect_FileSize(const char *path, int ret);
 int __wrap_rename_ex(const char *source, const char *destination);
 void expect_rename_ex(const char *source, const char *destination, int ret);
 
+int __wrap_mkstemp_ex(char *tmp_path);
+void expect_mkstemp_ex(char *tmp_path, int ret);
+
 float __wrap_DirSize(const char *path);
 
 int __wrap_mkdir_ex(const char *path);
@@ -71,6 +74,8 @@ void expect_mkdir_ex(const char *path, int ret);
 int __wrap_w_ref_parent_folder(const char * path);
 
 int __wrap_cldir_ex(const char *name);
+
+int __wrap_cldir_ex_ignore(const char *name, const char ** ignore);
 
 int __wrap_UnmergeFiles(const char *finalpath, const char *optdir, int mode);
 
@@ -87,7 +92,7 @@ int64_t __wrap_w_ftell (FILE *x);
 
 int __wrap_w_fseek(FILE *x, int64_t pos, int mode);
 
-int __wrap_MergeAppendFile(const char *finalpath, const char *files, const char *tag, int path_offset);
+int __wrap_MergeAppendFile(FILE *finalfp, const char *files, int path_offset);
 
 int __wrap_OS_MoveFile(const char *src, const char *dst);
 
@@ -96,3 +101,6 @@ int __wrap_TestUnmergeFiles(const char *finalpath, int mode);
 int __wrap_checkBinaryFile(const char *f_name);
 
 int __wrap_w_copy_file(const char *src, const char *dst, char mode, __attribute__((unused)) char * message, int silent);
+
+char * __wrap_w_get_file_content(__attribute__ ((__unused__)) const char * path, __attribute__ ((__unused__)) int max_size);
+void expect_w_get_file_content(const char *buffer);

@@ -224,7 +224,7 @@ static int wm_agent_upgrade_read_ca_verification(xml_node **nodes, unsigned int 
             } else if (strcasecmp(nodes[i]->content, "no") == 0) {
                 *verification_flag = 0;
             } else {
-                mwarn("Invalid content for tag <%s>", nodes[i]->element);
+                merror("Invalid content for tag <%s>", nodes[i]->element);
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_CA_STORE)) {
@@ -262,7 +262,7 @@ static int wm_agent_upgrade_read_ca_verification_old(unsigned int *verification_
                 *verification_flag = 0;
             }
             else {
-                mwarn("Invalid content for tag <%s>: '%s'", caverify[2], ca_verification[i]);
+                merror("Invalid content for tag <%s>: '%s'", caverify[2], ca_verification[i]);
                 free_strarray(ca_verification);
                 return OS_INVALID;
             }

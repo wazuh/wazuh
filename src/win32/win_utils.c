@@ -62,6 +62,9 @@ void stop_wmodules()
 /* Locally start (after service/win init) */
 int local_start()
 {
+    // This must be always the first instruction
+    enable_dll_verification();
+
     char *cfg = OSSECCONF;
     WSADATA wsaData;
     DWORD  threadID;
@@ -75,8 +78,6 @@ int local_start()
         nowDebug();
         debug_level--;
     }
-
-    enable_dll_verification();
 
     if (sysinfo_module = so_get_module_handle("sysinfo"), sysinfo_module)
     {
@@ -103,17 +104,17 @@ int local_start()
     /* Read agent config */
     mdebug1("Reading agent configuration.");
     if (ClientConf(cfg) < 0) {
-        merror_exit(CLIENT_ERROR);
+        mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }
 
     if (!Validate_Address(agt->server)){
         merror(AG_INV_MNGIP, agt->server[0].rip);
-        merror_exit(CLIENT_ERROR);
+        mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }
 
     if (!Validate_IPv6_Link_Local_Interface(agt->server)){
         merror(AG_INV_INT);
-        merror_exit(CLIENT_ERROR);
+        mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }
 
     if (agt->notify_time == 0) {
@@ -139,7 +140,7 @@ int local_start()
     w_msg_hash_queues_init();
 
     if (LogCollectorConfig(cfg) < 0) {
-        merror_exit(CONFIG_ERROR, cfg);
+        mlerror_exit(LOGLEVEL_ERROR, CONFIG_ERROR, cfg);
     }
 
     if(agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
@@ -274,7 +275,11 @@ int local_start()
 
     // Read wodle configuration and start modules
 
-    if (!wm_config() && !wm_check()) {
+    if (wm_config() < 0) {
+        mlerror_exit(LOGLEVEL_ERROR, CONFIG_ERROR, cfg);
+    }
+
+    if (!wm_check()) {
         wmodule * cur_module;
 
         for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
@@ -392,7 +397,7 @@ int MQReconnectPredicated(__attribute__((unused)) const char *path, __attribute_
     return (0);
 }
 
-char *get_agent_ip()
+char *get_agent_ip_legacy_win32()
 {
     char agent_ip[IPSIZE + 1] = { '\0' };
     cJSON *object;

@@ -30,5 +30,10 @@ void WindowsPackageImpl::buildPackageData(nlohmann::json& package)
     package["install_time"] = m_packageWrapper->install_time();
     package["location"] = m_packageWrapper->location();
     package["architecture"] = m_packageWrapper->architecture();
+    package["groups"] = m_packageWrapper->groups();
+    package["description"] = m_packageWrapper->description();
+    package["size"] = m_packageWrapper->size();
+    package["priority"] = m_packageWrapper->priority();
+    package["source"] = m_packageWrapper->source();
     package["format"] = m_packageWrapper->format();
 }

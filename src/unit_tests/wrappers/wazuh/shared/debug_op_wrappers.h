@@ -11,7 +11,7 @@
 #ifndef DEBUG_OP_WRAPPERS_H
 #define DEBUG_OP_WRAPPERS_H
 
-#include "headers/defs.h"
+#include "../headers/defs.h"
 
 int __wrap_isChroot();
 
@@ -85,5 +85,7 @@ void __wrap__mwarn(const char * file,
                    int line,
                    const char * func,
                    const char *msg, ...);
+
+char * __wrap_win_strerror(unsigned long error);
 
 #endif

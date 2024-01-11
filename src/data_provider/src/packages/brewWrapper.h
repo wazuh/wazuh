@@ -23,6 +23,8 @@ class BrewWrapper final : public IPackageWrapper
         explicit BrewWrapper(const PackageContext& ctx)
             : m_name{ctx.package}
             , m_version{Utils::splitIndex(ctx.version, '_', 0)}
+            , m_groups{UNKNOWN_VALUE}
+            , m_description {UNKNOWN_VALUE}
             , m_architecture{UNKNOWN_VALUE}
             , m_format{"pkg"}
             , m_source{"homebrew"}
@@ -31,7 +33,6 @@ class BrewWrapper final : public IPackageWrapper
             , m_size{0}
             , m_vendor{UNKNOWN_VALUE}
             , m_installTime{UNKNOWN_VALUE}
-            , m_multiarch{UNKNOWN_VALUE}
         {
             const auto rows { Utils::split(Utils::getFileContent(ctx.filePath + "/" + ctx.package + "/" + ctx.version + "/.brew/" + ctx.package + ".rb"), '\n')};
 
@@ -45,6 +46,19 @@ class BrewWrapper final : public IPackageWrapper
                     Utils::replaceAll(rowParsed, "\"", "");
                     m_description = rowParsed;
                     break;
+                }
+            }
+
+            /* Some brew packages have the version in the name separated by a '@'
+              but we'll only remove the last occurrence if it matches with a version
+              in case there is a '@' in the package name */
+            const auto pos { m_name.rfind('@') };
+
+            if (pos != std::string::npos)
+            {
+                if (std::isdigit(m_name[pos + 1]))
+                {
+                    m_name.resize(pos);
                 }
             }
         }

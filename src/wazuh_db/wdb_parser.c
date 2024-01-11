@@ -127,7 +127,7 @@ static struct column_list const TABLE_PORTS[PORTS_FIELD_COUNT+1] = {
 static struct column_list const TABLE_PACKAGES[PACKAGES_FIELD_COUNT+1] = {
     { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}, true}, .next = &TABLE_PACKAGES[1] },
     { .value = { FIELD_TEXT, 2, false, false, NULL, "scan_time", {.text = ""}, true}, .next = &TABLE_PACKAGES[2] },
-    { .value = { FIELD_TEXT, 3, false, false, NULL, "format", {.text = ""}, false}, .next = &TABLE_PACKAGES[3] },
+    { .value = { FIELD_TEXT, 3, false, true, NULL, "format", {.text = ""}, false}, .next = &TABLE_PACKAGES[3] },
     { .value = { FIELD_TEXT, 4, false, true, NULL, "name", {.text = ""}, true}, .next = &TABLE_PACKAGES[4] },
     { .value = { FIELD_TEXT, 5, false, false, NULL, "priority", {.text = ""}, true}, .next = &TABLE_PACKAGES[5] },
     { .value = { FIELD_TEXT, 6, false, false, "groups", "section", {.text = ""}, true}, .next = &TABLE_PACKAGES[6] },
@@ -139,7 +139,7 @@ static struct column_list const TABLE_PACKAGES[PACKAGES_FIELD_COUNT+1] = {
     { .value = { FIELD_TEXT, 12, false, false, NULL, "multiarch", {.text = ""}, true}, .next = &TABLE_PACKAGES[12] },
     { .value = { FIELD_TEXT, 13, false, false, NULL, "source", {.text = ""}, true}, .next = &TABLE_PACKAGES[13] },
     { .value = { FIELD_TEXT, 14, false, false, NULL, "description", {.text = ""}, true}, .next = &TABLE_PACKAGES[14] },
-    { .value = { FIELD_TEXT, 15, false, false, NULL, "location", {.text = ""}, true}, .next = &TABLE_PACKAGES[15] },
+    { .value = { FIELD_TEXT, 15, false, true, NULL, "location", {.text = ""}, false}, .next = &TABLE_PACKAGES[15] },
     { .value = { FIELD_INTEGER, 16, true, false, NULL, "triaged", {.integer = 0}, true}, .next = &TABLE_PACKAGES[16] },
     { .value = { FIELD_TEXT, 17, true, false, NULL, "cpe", {.text = ""}, true}, .next = &TABLE_PACKAGES[17] },
     { .value = { FIELD_TEXT, 18, true, false, NULL, "msu_name", {.text = ""}, true}, .next = &TABLE_PACKAGES[18] },
@@ -197,13 +197,13 @@ static struct kv_list const TABLE_MAP[] = {
     { .current = { "processes", "sys_processes",  false, TABLE_PROCESSES, PROCESSES_FIELD_COUNT }, .next = NULL},
 };
 
-
 int wdb_parse(char * input, char * output, int peer) {
     char * actor;
     char * id;
     char * query;
     char * sql;
     char * next;
+    char path[PATH_MAX + 1];
     int agent_id = 0;
     char sagent_id[64] = "000";
     wdb_t * wdb;
@@ -284,11 +284,18 @@ int wdb_parse(char * input, char * output, int peer) {
             wdb_leave(wdb_global);
         }
 
+        gettimeofday(&begin, 0);
         if (wdb = wdb_open_agent2(agent_id), !wdb) {
             merror("Couldn't open DB for agent '%s'", sagent_id);
             snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB for agent %d", agent_id);
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_agent_open_time(diff);
             return OS_INVALID;
         }
+        gettimeofday(&end, 0);
+        timersub(&end, &begin, &diff);
+        w_inc_agent_open_time(diff);
         // Add the current peer to wdb structure
         wdb->peer = peer;
 
@@ -337,6 +344,34 @@ int wdb_parse(char * input, char * output, int peer) {
                 gettimeofday(&end, 0);
                 timersub(&end, &begin, &diff);
                 w_inc_agent_fim_registry_time(diff);
+            }
+        } else if (strcmp(query, "fim_registry_key") == 0) {
+            w_inc_agent_fim_registry_key();
+            if (!next) {
+                mdebug1("DB(%s) Invalid FIM registry key query syntax.", sagent_id);
+                mdebug2("DB(%s) FIM registry key query error near: %s", sagent_id, query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", query);
+                result = -1;
+            } else {
+                gettimeofday(&begin, 0);
+                result = wdb_parse_syscheck(wdb, WDB_FIM_REGISTRY_KEY, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_agent_fim_registry_key_time(diff);
+            }
+        } else if (strcmp(query, "fim_registry_value") == 0) {
+            w_inc_agent_fim_registry_value();
+            if (!next) {
+                mdebug1("DB(%s) Invalid FIM registry value query syntax.", sagent_id);
+                mdebug2("DB(%s) FIM registry value query error near: %s", sagent_id, query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", query);
+                result = -1;
+            } else {
+                gettimeofday(&begin, 0);
+                result = wdb_parse_syscheck(wdb, WDB_FIM_REGISTRY_VALUE, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_agent_fim_registry_value_time(diff);
             }
         } else if (strcmp(query, "sca") == 0) {
             w_inc_agent_sca();
@@ -566,7 +601,7 @@ int wdb_parse(char * input, char * output, int peer) {
             wdb_leave(wdb);
             snprintf(output, OS_MAXSTR + 1, "ok");
 
-            w_mutex_lock(&pool_mutex);
+            rwlock_lock_write(&pool_mutex);
 
             gettimeofday(&begin, 0);
             if (wdb_close(wdb, FALSE) < 0) {
@@ -582,7 +617,7 @@ int wdb_parse(char * input, char * output, int peer) {
             timersub(&end, &begin, &diff);
             w_inc_agent_remove_time(diff);
 
-            w_mutex_unlock(&pool_mutex);
+            rwlock_unlock(&pool_mutex);
             return result;
         } else if (strcmp(query, "begin") == 0) {
             w_inc_agent_begin();
@@ -615,7 +650,7 @@ int wdb_parse(char * input, char * output, int peer) {
             wdb_leave(wdb);
             snprintf(output, OS_MAXSTR + 1, "ok");
 
-            w_mutex_lock(&pool_mutex);
+            rwlock_lock_write(&pool_mutex);
 
             gettimeofday(&begin, 0);
             if (wdb_close(wdb, TRUE) < 0) {
@@ -627,7 +662,7 @@ int wdb_parse(char * input, char * output, int peer) {
             timersub(&end, &begin, &diff);
             w_inc_agent_close_time(diff);
 
-            w_mutex_unlock(&pool_mutex);
+            rwlock_unlock(&pool_mutex);
             return result;
         } else if (strncmp(query, "syscollector_", 7) == 0) {
             if (!next) {
@@ -654,7 +689,7 @@ int wdb_parse(char * input, char * output, int peer) {
             wdb_finalize_all_statements(wdb);
 
             if (result != -1) {
-                if (wdb_vacuum(wdb->db) < 0) {
+                if (wdb_vacuum(wdb) < 0) {
                     mdebug1("DB(%s) Cannot vacuum database.", sagent_id);
                     snprintf(output, OS_MAXSTR + 1, "err Cannot vacuum database");
                     result = -1;
@@ -722,6 +757,15 @@ int wdb_parse(char * input, char * output, int peer) {
             result = OS_INVALID;
         }
         wdb_leave(wdb);
+        if (result == OS_INVALID) {
+            snprintf(path, sizeof(path), "%s/%s.db", WDB2_DIR, wdb->id);
+            if (!w_is_file(path)) {
+                mwarn("DB(%s) not found. This behavior is unexpected, the database will be recreated.", path);
+                w_mutex_lock(&pool_mutex);
+                wdb_close(wdb, FALSE);
+                w_mutex_unlock(&pool_mutex);
+            }
+        }
         return result;
     } else if (strcmp(actor, "wazuhdb") == 0) {
         query = next;
@@ -820,16 +864,26 @@ int wdb_parse(char * input, char * output, int peer) {
 
         mdebug2("Global query: %s", query);
 
+        gettimeofday(&begin, 0);
         if (wdb = wdb_open_global(), !wdb) {
             mdebug2("Couldn't open DB global: %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
             snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB global");
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_global_open_time(diff);
             return OS_INVALID;
         } else if (!wdb->enabled) {
             mdebug2("Database disabled: %s/%s.db.", WDB2_DIR, WDB_GLOB_NAME);
             snprintf(output, OS_MAXSTR + 1, "err DB global disabled.");
             wdb_leave(wdb);
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_global_open_time(diff);
             return OS_INVALID;
         }
+        gettimeofday(&end, 0);
+        timersub(&end, &begin, &diff);
+        w_inc_global_open_time(diff);
         // Add the current peer to wdb structure
         wdb->peer = peer;
 
@@ -947,6 +1001,20 @@ int wdb_parse(char * input, char * output, int peer) {
                 gettimeofday(&end, 0);
                 timersub(&end, &begin, &diff);
                 w_inc_global_agent_update_connection_status_time(diff);
+            }
+        } else if (strcmp(query, "update-status-code") == 0) {
+            w_inc_global_agent_update_status_code();
+            if (!next) {
+                mdebug1("Global DB Invalid DB query syntax for update-status-code.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                gettimeofday(&begin, 0);
+                result = wdb_parse_global_update_status_code(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_global_agent_update_status_code_time(diff);
             }
         } else if (strcmp(query, "delete-agent") == 0) {
             w_inc_global_agent_delete_agent();
@@ -1069,7 +1137,15 @@ int wdb_parse(char * input, char * output, int peer) {
                 result = OS_INVALID;
             } else {
                 gettimeofday(&begin, 0);
-                result = wdb_parse_global_delete_group(wdb, next, output);
+                if (wdb_commit2(wdb) < 0) {
+                    snprintf(output, OS_MAXSTR + 1, "err Cannot commit current transaction to continue");
+                    result = OS_INVALID;
+                } else {
+                    result = wdb_parse_global_delete_group(wdb, next, output);
+                    if (result == OS_INVALID && wdb_rollback2(wdb) < 0) {
+                        mdebug1("Global DB Cannot rollback transaction.");
+                    }
+                }
                 gettimeofday(&end, 0);
                 timersub(&end, &begin, &diff);
                 w_inc_global_group_delete_group_time(diff);
@@ -1104,7 +1180,15 @@ int wdb_parse(char * input, char * output, int peer) {
                 result = OS_INVALID;
             } else {
                 gettimeofday(&begin, 0);
-                result = wdb_parse_global_set_agent_groups(wdb, next, output);
+                if (wdb_commit2(wdb) < 0) {
+                    snprintf(output, OS_MAXSTR + 1, "err Cannot commit current transaction to continue");
+                    result = OS_INVALID;
+                } else {
+                    result = wdb_parse_global_set_agent_groups(wdb, next, output);
+                    if (result == OS_INVALID && wdb_rollback2(wdb) < 0) {
+                        mdebug1("Global DB Cannot rollback transaction.");
+                    }
+                }
                 gettimeofday(&end, 0);
                 timersub(&end, &begin, &diff);
                 w_inc_global_agent_set_agent_groups_time(diff);
@@ -1248,7 +1332,7 @@ int wdb_parse(char * input, char * output, int peer) {
             wdb_finalize_all_statements(wdb);
 
             if (result != -1) {
-                if (wdb_vacuum(wdb->db) < 0) {
+                if (wdb_vacuum(wdb) < 0) {
                     mdebug1("Global DB Cannot vacuum database.");
                     snprintf(output, OS_MAXSTR + 1, "err Cannot vacuum database");
                     result = -1;
@@ -1316,6 +1400,15 @@ int wdb_parse(char * input, char * output, int peer) {
             result = OS_INVALID;
         }
         wdb_leave(wdb);
+        if (result == OS_INVALID) {
+            snprintf(path, sizeof(path), "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
+            if (!w_is_file(path)) {
+                mwarn("DB(%s) not found. This behavior is unexpected, the database will be recreated.", path);
+                w_mutex_lock(&pool_mutex);
+                wdb_close(wdb, FALSE);
+                w_mutex_unlock(&pool_mutex);
+            }
+        }
         return result;
     } else if (strcmp(actor, "task") == 0) {
         cJSON *parameters_json = NULL;
@@ -5328,6 +5421,7 @@ int wdb_parse_global_update_connection_status(wdb_t * wdb, char * input, char * 
     cJSON *j_id = NULL;
     cJSON *j_connection_status = NULL;
     cJSON *j_sync_status = NULL;
+    cJSON *j_status_code = NULL;
 
     agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
     if (!agent_data) {
@@ -5339,14 +5433,16 @@ int wdb_parse_global_update_connection_status(wdb_t * wdb, char * input, char * 
         j_id = cJSON_GetObjectItem(agent_data, "id");
         j_connection_status = cJSON_GetObjectItem(agent_data, "connection_status");
         j_sync_status = cJSON_GetObjectItem(agent_data, "sync_status");
+        j_status_code = cJSON_GetObjectItem(agent_data, "status_code");
 
-        if (cJSON_IsNumber(j_id) && cJSON_IsString(j_connection_status) && cJSON_IsString(j_sync_status)) {
+        if (cJSON_IsNumber(j_id) && cJSON_IsString(j_connection_status) && cJSON_IsString(j_sync_status) && cJSON_IsNumber(j_status_code)) {
             // Getting each field
             int id = j_id->valueint;
             char *connection_status = j_connection_status->valuestring;
             char *sync_status = j_sync_status->valuestring;
+            int status_code = j_status_code->valueint;
 
-            if (OS_SUCCESS != wdb_global_update_agent_connection_status(wdb, id, connection_status, sync_status)) {
+            if (OS_SUCCESS != wdb_global_update_agent_connection_status(wdb, id, connection_status, sync_status, status_code)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);
@@ -5354,6 +5450,56 @@ int wdb_parse_global_update_connection_status(wdb_t * wdb, char * input, char * 
             }
         } else {
             mdebug1("Global DB Invalid JSON data when updating agent connection status.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, near '%.32s'", input);
+            cJSON_Delete(agent_data);
+            return OS_INVALID;
+        }
+    }
+
+    snprintf(output, OS_MAXSTR + 1, "ok");
+    cJSON_Delete(agent_data);
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_global_update_status_code(wdb_t * wdb, char * input, char * output) {
+    cJSON *agent_data = NULL;
+    const char *error = NULL;
+    cJSON *j_id = NULL;
+    cJSON *j_status_code = NULL;
+    cJSON *j_version = NULL;
+    cJSON *j_sync_status = NULL;
+
+    agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
+    if (!agent_data) {
+        mdebug1("Global DB Invalid JSON syntax when updating agent status code.");
+        mdebug2("Global DB JSON error near: %s", error);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
+        return OS_INVALID;
+    } else {
+        j_id = cJSON_GetObjectItem(agent_data, "id");
+        j_status_code = cJSON_GetObjectItem(agent_data, "status_code");
+        j_version = cJSON_GetObjectItem(agent_data, "version");
+        j_sync_status = cJSON_GetObjectItem(agent_data, "sync_status");
+
+        if (cJSON_IsNumber(j_id) && cJSON_IsNumber(j_status_code) && (j_version == NULL || cJSON_IsString(j_version)) && cJSON_IsString(j_sync_status)) {
+            // Getting each field
+            int id = j_id->valueint;
+            int status_code = j_status_code->valueint;
+            char *version = NULL;
+            if (j_version != NULL) {
+                version = j_version->valuestring;
+            }
+            char *sync_status = j_sync_status->valuestring;
+
+            if (OS_SUCCESS != wdb_global_update_agent_status_code(wdb, id, status_code, version, sync_status)) {
+                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
+                cJSON_Delete(agent_data);
+                return OS_INVALID;
+            }
+        } else {
+            mdebug1("Global DB Invalid JSON data when updating agent status code.");
             snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, near '%.32s'", input);
             cJSON_Delete(agent_data);
             return OS_INVALID;
@@ -6109,9 +6255,9 @@ int wdb_parse_global_backup(wdb_t** wdb, char* input, char* output) {
     }
     else if (strcmp(next, "restore") == 0) {
         // During a restore, the global wdb_t pointer may change. The mutex prevents anyone else from accesing it
-        w_mutex_lock(&pool_mutex);
+        rwlock_lock_write(&pool_mutex);
         result = wdb_parse_global_restore_backup(wdb, tail, output);
-        w_mutex_unlock(&pool_mutex);
+        rwlock_unlock(&pool_mutex);
     }
     else {
         snprintf(output, OS_MAXSTR + 1, "err Invalid backup action: %s", next);

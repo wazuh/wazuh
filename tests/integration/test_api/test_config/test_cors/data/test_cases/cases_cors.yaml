@@ -1,0 +1,27 @@
+- name: CORS_ORIGIN_ALLOWED
+  description: Check if the expected headers are returned when 'CORS' is enabled and `origin` is the same as `source`.
+  configuration_parameters:
+    ENABLED: yes
+    SOURCE_ROUTE: "https://allowed.com"
+    EXPOSE_HEADERS:
+      - "Test-expose"
+      - "another-expose"
+    ALLOW_HEADERS:
+      - "Content-type"
+    ALLOW_CREDENTIALS: yes
+  metadata:
+    origin: "https://allowed.com"
+
+- name: CORS_ORIGIN_NOT_ALLOWED
+  description: Check if the expected headers are returned when `origin` is different than `source` (CORS enabled)
+  configuration_parameters:
+    ENABLED: yes
+    SOURCE_ROUTE: "https://allowed.com"
+    EXPOSE_HEADERS:
+      - "Test-expose"
+      - "another-expose"
+    ALLOW_HEADERS:
+      - "Content-type"
+    ALLOW_CREDENTIALS: yes
+  metadata:
+    origin: "https://not-allowed.com"

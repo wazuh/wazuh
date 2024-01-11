@@ -11,7 +11,7 @@
 #ifndef WDB_GLOBAL_HELPERS_WRAPPERS_H
 #define WDB_GLOBAL_HELPERS_WRAPPERS_H
 
-#include "wazuh_db/wdb.h"
+#include "../wazuh_db/wdb.h"
 
 cJSON *__wrap_wdb_get_agent_labels(int id, int *sock);
 int __wrap_wdb_find_agent(const char *name, const char *ip, __attribute__((unused)) int *sock);
@@ -24,6 +24,7 @@ rb_tree* __wrap_wdb_get_all_agents_rbtree(bool include_manager, int *sock);
 int __wrap_wdb_update_agent_keepalive(int id, const char *connection_status, const char *sync_status, __attribute__((unused)) int *sock);
 int __wrap_wdb_update_agent_data(agent_info_data *agent_data, __attribute__((unused)) int *sock);
 int __wrap_wdb_update_agent_connection_status(int id, const char *connection_status, const char *sync_status, __attribute__((unused)) int *sock);
+int __wrap_wdb_update_agent_status_code(int id, agent_status_code_t status_code, const char *version, const char *sync_status, __attribute__((unused)) int *sock);
 
 int __wrap_wdb_set_agent_groups_csv(int id,
                                     __attribute__((unused)) char *groups_csv,

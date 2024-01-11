@@ -264,7 +264,7 @@ class LinuxPortWrapper final : public IPortWrapper
 
         std::string processName() const override
         {
-            return {};
+            return UNKNOWN_VALUE;
         }
 
         int32_t pid() const override

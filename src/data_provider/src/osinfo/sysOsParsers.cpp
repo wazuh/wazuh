@@ -11,41 +11,28 @@
 
 #include "osinfo/sysOsParsers.h"
 #include "stringHelper.h"
+#include "filesystemHelper.h"
 #include "sharedDefs.h"
 
-static bool parseUnixFile(const std::map<std::string, std::string>& keyMap,
+static bool parseUnixFile(const std::vector<std::pair<std::string, std::string>>& keyMapping,
                           const char separator,
                           std::istream& in,
                           nlohmann::json& info)
 {
-    enum ValueIds
-    {
-        KEY_ID,
-        DATA_ID,
-        MAX_ID
-    };
     bool ret{false};
-    std::string line;
+    std::string fileContent(std::istreambuf_iterator<char>(in), {});
+    std::map<std::string, std::string> fileKeyValueMap;
+    std::map<std::string, std::string>::iterator itFileKeyValue;
 
-    while (std::getline(in, line))
+    Utils::splitMapKeyValue(fileContent, separator, fileKeyValueMap);
+
+    for (auto keyMappingEntry : keyMapping)
     {
-        line = Utils::trim(line);
-        const auto data{Utils::split(line, separator)};
-
-        if (data.size() == MAX_ID)
+        if (info.find(keyMappingEntry.second) == info.end())
         {
-            const auto it
+            if ((itFileKeyValue = fileKeyValueMap.find(keyMappingEntry.first)) != fileKeyValueMap.end())
             {
-                std::find_if(keyMap.cbegin(), keyMap.cend(),
-                             [&data](const auto & value)
-                {
-                    return value.first == Utils::trim(data[KEY_ID]);
-                })
-            };
-
-            if (it != keyMap.cend())
-            {
-                info[it->second] = Utils::trim(data[DATA_ID], " \"\t");
+                info[keyMappingEntry.second] = itFileKeyValue->second;
                 ret = true;
             }
         }
@@ -137,15 +124,16 @@ static bool findVersionInStream(std::istream& in,
 bool UnixOsParser::parseFile(std::istream& in, nlohmann::json& info)
 {
     constexpr auto SEPARATOR{'='};
-    static const std::map<std::string, std::string> KEY_MAP
+    static const std::vector<std::pair<std::string, std::string>> KEY_MAPPING
     {
         {"NAME",             "os_name"},
         {"VERSION",          "os_version"},
+        {"VERSION_ID",       "os_version"},
         {"ID",               "os_platform"},
         {"BUILD_ID",         "os_build"},
         {"VERSION_CODENAME", "os_codename"}
     };
-    const auto ret {parseUnixFile(KEY_MAP, SEPARATOR, in, info)};
+    const auto ret {parseUnixFile(KEY_MAPPING, SEPARATOR, in, info)};
 
     if (ret && info.find("os_version") != info.end())
     {
@@ -190,8 +178,11 @@ bool UbuntuOsParser::parseFile(std::istream& in, nlohmann::json& output)
 bool CentosOsParser::parseFile(std::istream& in, nlohmann::json& output)
 {
     constexpr auto PATTERN_MATCH{R"([0-9].*\.[0-9]*)"};
-    output["os_name"] = "Centos Linux";
-    output["os_platform"] = "centos";
+
+    if (!output.contains("os_name")) output["os_name"] = "Centos Linux";
+
+    if (!output.contains("os_platform")) output["os_platform"] = "centos";
+
     return findVersionInStream(in, output, PATTERN_MATCH);
 }
 
@@ -290,14 +281,14 @@ bool GentooOsParser::parseFile(std::istream& in, nlohmann::json& output)
 bool SuSEOsParser::parseFile(std::istream& in, nlohmann::json& output)
 {
     constexpr auto SEPARATOR{'='};
-    static const std::map<std::string, std::string> KEY_MAP
+    static const std::vector<std::pair<std::string, std::string>> KEY_MAPPING
     {
         {"VERSION",          "os_version"},
         {"CODENAME",         "os_codename"},
     };
     output["os_name"] = "SuSE Linux";
     output["os_platform"] = "suse";
-    const auto ret{ parseUnixFile(KEY_MAP, SEPARATOR, in, output) };
+    const auto ret{ parseUnixFile(KEY_MAPPING, SEPARATOR, in, output) };
 
     if (ret)
     {
@@ -324,21 +315,21 @@ bool FedoraOsParser::parseFile(std::istream& in, nlohmann::json& output)
 
 bool SolarisOsParser::parseFile(std::istream& in, nlohmann::json& output)
 {
-    const std::string HEADER_STRING{"Oracle Solaris "};
+    const std::string HEADER_STRING{"Solaris "};
     output["os_name"] = "SunOS";
     output["os_platform"] = "sunos";
     std::string line;
-    bool ret{false};
+    size_t pos{std::string::npos};
 
-    while (!ret && std::getline(in, line))
+    while (pos == std::string::npos && std::getline(in, line))
     {
         line = Utils::trim(line);
-        ret = Utils::startsWith(line, HEADER_STRING);
+        pos = line.find(HEADER_STRING);
 
-        if (ret)
+        if (std::string::npos != pos)
         {
-            line = line.substr(HEADER_STRING.size());
-            const auto pos{line.find(" ")};
+            line = line.substr(pos + HEADER_STRING.size());
+            pos = line.find(" ");
 
             if (pos != std::string::npos)
             {
@@ -350,7 +341,7 @@ bool SolarisOsParser::parseFile(std::istream& in, nlohmann::json& output)
         }
     }
 
-    return ret;
+    return std::string::npos == pos ? false : true;
 }
 
 bool HpUxOsParser::parseUname(const std::string& in, nlohmann::json& output)
@@ -371,17 +362,25 @@ bool HpUxOsParser::parseUname(const std::string& in, nlohmann::json& output)
     return ret;
 }
 
+bool AlpineOsParser::parseFile(std::istream& in, nlohmann::json& output)
+{
+    constexpr auto PATTERN_MATCH{R"((?:[0-9]+\.)?(?:[0-9]+\.)?(?:[0-9]+))"};
+    output["os_name"] = "Alpine Linux";
+    output["os_platform"] = "alpine";
+    return findVersionInStream(in, output, PATTERN_MATCH);
+}
+
 bool MacOsParser::parseSwVersion(const std::string& in, nlohmann::json& output)
 {
     constexpr auto SEPARATOR{':'};
-    static const std::map<std::string, std::string> KEY_MAP
+    static const std::vector<std::pair<std::string, std::string>> KEY_MAPPING
     {
         {"ProductVersion",  "os_version"},
         {"BuildVersion",    "os_build"},
     };
     output["os_platform"] = "darwin";
     std::stringstream data{in};
-    const auto ret{ parseUnixFile(KEY_MAP, SEPARATOR, data, output) };
+    const auto ret{ parseUnixFile(KEY_MAPPING, SEPARATOR, data, output) };
 
     if (ret)
     {
@@ -394,13 +393,13 @@ bool MacOsParser::parseSwVersion(const std::string& in, nlohmann::json& output)
 bool MacOsParser::parseSystemProfiler(const std::string& in, nlohmann::json& output)
 {
     constexpr auto SEPARATOR{':'};
-    static const std::map<std::string, std::string> KEY_MAP
+    static const std::vector<std::pair<std::string, std::string>> KEY_MAPPING
     {
         {"System Version", "os_name"},
     };
     std::stringstream data{in};
     nlohmann::json info;
-    auto ret{ parseUnixFile(KEY_MAP, SEPARATOR, data, info) };
+    auto ret{ parseUnixFile(KEY_MAPPING, SEPARATOR, data, info) };
 
     if (ret)
     {
@@ -438,6 +437,7 @@ bool MacOsParser::parseUname(const std::string& in, nlohmann::json& output)
         {"20", "Big Sur"},
         {"21", "Monterey"},
         {"22", "Ventura"},
+        {"23", "Sonoma"},
     };
     constexpr auto PATTERN_MATCH{"[0-9]+"};
     std::string match;

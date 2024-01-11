@@ -71,8 +71,9 @@ void *read_fullcommand(logreader *lf, int *rc, int drop_it) {
         }
         strfinal[n] = '\0';
 
-        /* Send message to queue */
-        if (drop_it == 0) {
+        /* Check ignore and restrict log regex, if configured. */
+        if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, strfinal)) {
+            /* Send message to queue */
             w_msg_hash_queues_push(strfinal, lf->alias ? lf->alias : lf->command, strlen(strfinal) + 1, lf->log_target, LOCALFILE_MQ);
         }
     }

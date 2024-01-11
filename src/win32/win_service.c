@@ -13,10 +13,16 @@
 #include "shared.h"
 #include "os_win.h"
 #include <winsvc.h>
-
+#include "syscheckd/src/db/include/db.h"
 #ifndef ARGV0
 #define ARGV0 "wazuh-agent"
 #endif
+
+/**************************************************************************************
+    WARNING: all the logging functions of this file must use the plain_ variant
+    to avoid calling any external library that could be loaded before the signature
+    verification can be executed in local_start.
+**************************************************************************************/
 
 static LPTSTR g_lpszServiceName        = "WazuhSvc";
 static LPTSTR g_lpszServiceDisplayName = "Wazuh";
@@ -132,7 +138,7 @@ int InstallService(char *path)
 
     /* Uninstall service (if it exists) */
     if (!UninstallService()) {
-        merror("Failure running UninstallService().");
+        plain_merror("Failure running UninstallService().");
         return (0);
     }
 
@@ -174,7 +180,7 @@ int InstallService(char *path)
         goto install_error;
     }
 
-    minfo("Successfully added to the service database.");
+    plain_minfo("Successfully added to the service database.");
     return (1);
 
 install_error: {
@@ -193,7 +199,7 @@ install_error: {
                        0,
                        NULL);
 
-        merror("Unable to create service entry: %s", (LPCTSTR)lpMsgBuf);
+        plain_merror("Unable to create service entry: %s", (LPCTSTR)lpMsgBuf);
         return (0);
     }
 }
@@ -212,32 +218,32 @@ int UninstallService()
         schService = OpenService(schSCManager, g_lpszServiceName, SERVICE_STOP | DELETE);
         if (schService) {
             if (CheckServiceRunning()) {
-                minfo("Found (%s) service is running going to try and stop it.", g_lpszServiceName);
+                plain_minfo("Found (%s) service is running going to try and stop it.", g_lpszServiceName);
                 ret = ControlService(schService, SERVICE_CONTROL_STOP, &lpServiceStatus);
                 if (!ret) {
-                    merror("Failure stopping service (%s) before removing it (%ld).", g_lpszServiceName, GetLastError());
+                    plain_merror("Failure stopping service (%s) before removing it (%ld).", g_lpszServiceName, GetLastError());
                 } else {
-                    minfo("Successfully stopped (%s).", g_lpszServiceName);
+                    plain_minfo("Successfully stopped (%s).", g_lpszServiceName);
                 }
             } else {
-                minfo("Found (%s) service is not running.", g_lpszServiceName);
+                plain_minfo("Found (%s) service is not running.", g_lpszServiceName);
                 ret = 1;
             }
 
             if (ret && DeleteService(schService)) {
-                minfo("Successfully removed (%s) from the service database.", g_lpszServiceName);
+                plain_minfo("Successfully removed (%s) from the service database.", g_lpszServiceName);
                 rc = 1;
             }
             CloseServiceHandle(schService);
         } else {
-            minfo("Service does not exist (%s) nothing to remove.", g_lpszServiceName);
+            plain_minfo("Service does not exist (%s) nothing to remove.", g_lpszServiceName);
             rc = 1;
         }
         CloseServiceHandle(schSCManager);
     }
 
     if (!rc) {
-        merror("Failure removing (%s) from the service database.", g_lpszServiceName);
+        plain_merror("Failure removing (%s) from the service database.", g_lpszServiceName);
     }
 
     return (rc);
@@ -253,19 +259,23 @@ VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
                 ossecServiceStatus.dwCheckPoint             = 0;
                 ossecServiceStatus.dwWaitHint               = 0;
 
-                minfo("Received exit signal. Starting exit process.");
+                plain_minfo("Received exit signal. Starting exit process.");
 #ifdef OSSECHIDS
+                extern bool is_fim_shutdown;
+
                 ossecServiceStatus.dwCurrentState           = SERVICE_STOP_PENDING;
                 SetServiceStatus (ossecServiceStatusHandle, &ossecServiceStatus);
-                minfo("Set pending exit signal.");
+                plain_minfo("Set pending exit signal.");
 
                 // Kill children processes spawned by modules, only in wazuh-agent
                 wm_kill_children();
                 stop_wmodules();
+                is_fim_shutdown = true;
+                fim_db_teardown();
 #endif
                 ossecServiceStatus.dwCurrentState           = SERVICE_STOPPED;
                 SetServiceStatus (ossecServiceStatusHandle, &ossecServiceStatus);
-                minfo("Exit completed successfully.");
+                plain_minfo("Exit completed successfully.");
                 break;
         }
     }
@@ -286,7 +296,7 @@ int os_WinMain(__attribute__((unused)) int argc, __attribute__((unused)) char **
     };
 
     if (!StartServiceCtrlDispatcher(steDispatchTable)) {
-        minfo("Unable to set service information.");
+        plain_minfo("Unable to set service information.");
         return (1);
     }
 
@@ -309,7 +319,7 @@ void WINAPI OssecServiceStart (__attribute__((unused)) DWORD argc, __attribute__
                                    OssecServiceCtrlHandler);
 
     if (ossecServiceStatusHandle == (SERVICE_STATUS_HANDLE)0) {
-        minfo("RegisterServiceCtrlHandler failed.");
+        plain_minfo("RegisterServiceCtrlHandler failed.");
         return;
     }
 
@@ -318,7 +328,7 @@ void WINAPI OssecServiceStart (__attribute__((unused)) DWORD argc, __attribute__
     ossecServiceStatus.dwWaitHint = 0;
 
     if (!SetServiceStatus(ossecServiceStatusHandle, &ossecServiceStatus)) {
-        minfo("SetServiceStatus error.");
+        plain_minfo("SetServiceStatus error.");
         return;
     }
 

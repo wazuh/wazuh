@@ -14,7 +14,38 @@ if(COVERITY)
   add_definitions(-D__GNUC__=8)
 endif(COVERITY)
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14")
+include(CheckCXXSourceCompiles)
+set(CMAKE_CXX_STANDARD 17)
+#Check if std::optional is available, therefore C++17 is available
+check_cxx_source_compiles("
+    #include <optional>
+    int main() {
+        std::optional<int> o;
+        return 0;
+    }
+" HAS_OPTIONAL)
+
+if(NOT HAS_OPTIONAL AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  set(CMAKE_CXX_STANDARD 14)
+endif()
+
+#Check if filesystem is available
+check_cxx_source_compiles("
+    #include <filesystem>
+    int main() {
+        std::filesystem::path p;
+        return 0;
+    }
+" HAS_FILESYSTEM)
+
+if(HAS_FILESYSTEM OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  add_definitions(-DHAS_STDFILESYSTEM=true)
+else()
+  add_definitions(-DHAS_STDFILESYSTEM=false)
+endif()
+
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2")
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -46,10 +77,21 @@ include_directories(${SRC_FOLDER}/external/openssl/include/)
 include_directories(${SRC_FOLDER}/external/libplist/bin/include/)
 include_directories(${SRC_FOLDER}/external/libdb/build_unix/)
 if(NOT CMAKE_CHECK_CENTOS5) # Avoid incompatible libraries in CentOS 5 and Red Hat 5
-include_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
-include_directories(${SRC_FOLDER}/external/libarchive/libarchive/)
-include_directories(${SRC_FOLDER}/external/rpm/builddir/output/include/)
+  include_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
+  include_directories(${SRC_FOLDER}/external/libarchive/libarchive/)
+  include_directories(${SRC_FOLDER}/external/rpm/builddir/output/include/)
 endif(NOT CMAKE_CHECK_CENTOS5)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  # Avoid download externals from http-request submodule
+  set(EXTERNAL_RES "")
+  set(PRECOMPILED_EXTERNAL_RES "")
+  include_directories(${SRC_FOLDER}/shared_modules/http-request/include/)
+  include_directories(${SRC_FOLDER}/shared_modules/http-request/shared/)
+endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+
+if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
+  link_directories(${INSTALL_PREFIX}/lib)
+endif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
 
 link_directories(${SRC_FOLDER})
 link_directories(${SRC_FOLDER}/external/sqlite/)
@@ -64,7 +106,10 @@ link_directories(${SRC_FOLDER}/external/libarchive/.libs/)
 link_directories(${SRC_FOLDER}/external/rpm/builddir/)
 endif(NOT CMAKE_CHECK_CENTOS5)
 link_directories(${SRC_FOLDER}/external/openssl/)
-
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  link_directories(${SRC_FOLDER}/shared_modules/http-request/build)
+endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  link_directories(${SRC_FOLDER}/external/curl/lib/.libs/)
 
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -139,7 +184,8 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_library(sysinfo SHARED
     ${SYSINFO_SRC}
-    ${CMAKE_SOURCE_DIR}/src/sysInfo.cpp )
+    ${CMAKE_SOURCE_DIR}/src/sysInfo.cpp
+    ${SRC_FOLDER}/${RESOURCE_OBJ})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_link_libraries(sysinfo psapi iphlpapi ws2_32)
@@ -151,14 +197,15 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
       # MinGW generates position-independent-code for DLL by default
   )
 elseif(UNIX AND NOT APPLE)
-  if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
-    string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
-  else()
+  if(CMAKE_SYSTEM_NAME STREQUAL "AIX")
     string(REPLACE ";" ":" CXX_IMPLICIT_LINK_DIRECTORIES_STR "${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
     string(REPLACE ";" ":" PLATFORM_REQUIRED_RUNTIME_PATH_STR "${CMAKE_PLATFORM_REQUIRED_RUNTIME_PATH}")
-    set_target_properties(sysinfo PROPERTIES LINK_FLAGS "-static-libgcc -static-libstdc++")
     target_link_libraries(sysinfo -Wl,-blibpath:${INSTALL_PREFIX}/lib:${CXX_IMPLICIT_LINK_DIRECTORIES_STR}:${PLATFORM_REQUIRED_RUNTIME_PATH_STR})
-  endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
+  elseif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
+    # Do nothing for HP-UX
+  else()
+    string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
+  endif(CMAKE_SYSTEM_NAME STREQUAL "AIX")
 elseif(APPLE)
   find_library(iokit_lib IOKit)
   if(NOT iokit_lib)
@@ -173,6 +220,14 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 target_link_libraries(sysinfo wazuhext)
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  set(CURL_DEP "wazuhext")
+  target_link_libraries(sysinfo urlrequest)
+  if(CMAKE_CHECK_CENTOS5)
+      set(USE_HTTP 1)
+  endif(CMAKE_CHECK_CENTOS5)
+  add_subdirectory(${SRC_FOLDER}/shared_modules/http-request ${SRC_FOLDER}/shared_modules/http-request/build)
+endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 
 if(APPLE)
   add_custom_command(TARGET sysinfo

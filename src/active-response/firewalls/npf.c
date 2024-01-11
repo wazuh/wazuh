@@ -9,13 +9,12 @@
 
 #include "../active_responses.h"
 
-#define NPFCTL "/sbin/npfctl"
-
 int main (int argc, char **argv) {
     (void)argc;
     char output_buf[OS_MAXSTR];
     char log_msg[OS_MAXSTR];
     int action = OS_INVALID;
+    char *npfctl_path = NULL;
     cJSON *input_json = NULL;
 
     action = setup_and_check_message(argv, &input_json);
@@ -57,20 +56,22 @@ int main (int argc, char **argv) {
     }
 
     // Checking if npfctl is present
-    if (access(NPFCTL, F_OK) < 0) {
+    if (get_binary_path("npfctl", &npfctl_path) < 0) {
         write_debug_file(argv[0], "The NPFCTL is not accessible");
         cJSON_Delete(input_json);
+        os_free(npfctl_path);
         return OS_INVALID;
     }
 
-    char *exec_cmd1[3] = { NPFCTL, "show", NULL };
+    char *exec_cmd1[3] = { npfctl_path, "show", NULL };
 
-    wfd_t *wfd = wpopenv(NPFCTL, exec_cmd1, W_BIND_STDOUT);
+    wfd_t *wfd = wpopenv(npfctl_path, exec_cmd1, W_BIND_STDOUT);
     if (!wfd) {
         memset(log_msg, '\0', OS_MAXSTR);
-        snprintf(log_msg, OS_MAXSTR - 1, "Error executing '%s' : %s", NPFCTL, strerror(errno));
+        snprintf(log_msg, OS_MAXSTR - 1, "Error executing '%s' : %s", npfctl_path, strerror(errno));
         write_debug_file(argv[0], log_msg);
         cJSON_Delete(input_json);
+        os_free(npfctl_path);
         return OS_INVALID;
     }
 
@@ -88,6 +89,7 @@ int main (int argc, char **argv) {
                     write_debug_file(argv[0], log_msg);
                     cJSON_Delete(input_json);
                     wpclose(wfd);
+                    os_free(npfctl_path);
                     return OS_INVALID;
                 }
                 flag = true;
@@ -98,6 +100,7 @@ int main (int argc, char **argv) {
                 write_debug_file(argv[0], log_msg);
                 cJSON_Delete(input_json);
                 wpclose(wfd);
+                os_free(npfctl_path);
                 return OS_INVALID;
             }
         }
@@ -109,15 +112,17 @@ int main (int argc, char **argv) {
         snprintf(log_msg, OS_MAXSTR -1, "Unable to find 'filtering'");
         write_debug_file(argv[0], log_msg);
         cJSON_Delete(input_json);
+        os_free(npfctl_path);
         return OS_INVALID;
     }
 
-    wfd = wpopenv(NPFCTL, exec_cmd1, W_BIND_STDOUT);
+    wfd = wpopenv(npfctl_path, exec_cmd1, W_BIND_STDOUT);
     if (!wfd) {
         memset(log_msg, '\0', OS_MAXSTR);
-        snprintf(log_msg, OS_MAXSTR - 1, "Error executing '%s' : %s", NPFCTL, strerror(errno));
+        snprintf(log_msg, OS_MAXSTR - 1, "Error executing '%s' : %s", npfctl_path, strerror(errno));
         write_debug_file(argv[0], log_msg);
         cJSON_Delete(input_json);
+        os_free(npfctl_path);
         return OS_INVALID;
     }
 
@@ -137,26 +142,28 @@ int main (int argc, char **argv) {
         snprintf(log_msg, OS_MAXSTR -1, "Unable to find 'table <wazuh_blacklist>'");
         write_debug_file(argv[0], log_msg);
         cJSON_Delete(input_json);
+        os_free(npfctl_path);
         return OS_INVALID;
     }
 
     char *exec_cmd2[6] = { NULL, NULL, NULL, NULL, NULL, NULL };
 
     if (action == ADD_COMMAND) {
-        const char *arg3[6] = { NPFCTL, "table", "wazuh_blacklist", "add", srcip, NULL };
+        const char *arg3[6] = { npfctl_path, "table", "wazuh_blacklist", "add", srcip, NULL };
         memcpy(exec_cmd2, arg3, sizeof(exec_cmd2));
     } else {
-        const char *arg3[6] = { NPFCTL, "table", "wazuh_blacklist", "del", srcip, NULL };
+        const char *arg3[6] = { npfctl_path, "table", "wazuh_blacklist", "del", srcip, NULL };
         memcpy(exec_cmd2, arg3, sizeof(exec_cmd2));
     }
 
     // Executing it
-    wfd = wpopenv(NPFCTL, exec_cmd2, W_BIND_STDOUT);
+    wfd = wpopenv(npfctl_path, exec_cmd2, W_BIND_STDOUT);
     if (!wfd) {
         memset(log_msg, '\0', OS_MAXSTR);
-        snprintf(log_msg, OS_MAXSTR - 1, "Error executing '%s' : %s", NPFCTL, strerror(errno));
+        snprintf(log_msg, OS_MAXSTR - 1, "Error executing '%s' : %s", npfctl_path, strerror(errno));
         write_debug_file(argv[0], log_msg);
         cJSON_Delete(input_json);
+        os_free(npfctl_path);
         return OS_INVALID;
     }
     wpclose(wfd);
@@ -164,6 +171,7 @@ int main (int argc, char **argv) {
     write_debug_file(argv[0], "Ended");
 
     cJSON_Delete(input_json);
+    os_free(npfctl_path);
 
     return OS_SUCCESS;
 }

@@ -13,7 +13,6 @@ list(APPEND md5_sha1_tests_flags "-Wl,--wrap,wpopenv,--wrap,wpclose,--wrap,fread
 # Compiling tests
 list(LENGTH md5_sha1_tests_names count)
 math(EXPR count "${count} - 1")
-include_directories(${SRC_FOLDER})
 foreach(counter RANGE ${count})
     list(GET md5_sha1_tests_names ${counter} test_name)
     list(GET md5_sha1_tests_flags ${counter} test_flags)

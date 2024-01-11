@@ -11,9 +11,9 @@
 #ifndef WM_AGENT_UPGRADE_WRAPPERS_H
 #define WM_AGENT_UPGRADE_WRAPPERS_H
 
-#include "headers/shared.h"
-#include "wazuh_modules/wmodules.h"
-#include "wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_manager.h"
+#include "../../../../headers/shared.h"
+#include "../../../../wazuh_modules/wmodules.h"
+#include "../../../../wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_manager.h"
 
 int setup_hash_table(void (free_data_function)(wm_agent_task* agent_task));
 
@@ -46,8 +46,6 @@ OSHashNode* __wrap_wm_agent_upgrade_get_first_node(unsigned int *index);
 OSHashNode* __wrap_wm_agent_upgrade_get_next_node(unsigned int *index, OSHashNode *current);
 
 cJSON* __wrap_wm_agent_upgrade_get_agent_ids();
-
-int __wrap_wm_agent_upgrade_compare_versions(const char *version1, const char *version2);
 
 bool __wrap_wm_agent_upgrade_validate_task_status_message(const cJSON *input_json, char **status, int *agent_id);
 

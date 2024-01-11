@@ -73,61 +73,62 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         self.default_date = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         self.db_path = join(utils.find_wazuh_path(), "wodles/gcloud/gcloud.db")
         self.db_connector = None
+        self.db_table_name = None
         self.datetime_format = "%Y-%m-%d %H:%M:%S.%f%z"
         self.reparse = reparse
 
         self.sql_create_table = """
-                            CREATE TABLE
-                                {table_name} (
-                                project_id 'text' NOT NULL,
-                                bucket_name 'text' NOT NULL,
-                                prefix 'text' NULL,
-                                blob_name 'text' NOT NULL,
-                                creation_time 'text' NOT NULL,
-                                PRIMARY KEY (project_id, bucket_name, prefix, blob_name));"""
+            CREATE TABLE
+                {table_name} (
+                project_id 'text' NOT NULL,
+                bucket_name 'text' NOT NULL,
+                prefix 'text' NULL,
+                blob_name 'text' NOT NULL,
+                creation_time 'text' NOT NULL,
+                PRIMARY KEY (project_id, bucket_name, prefix, blob_name));"""
         self.sql_delete_processed_files = """
-                                DELETE FROM
-                                    {table_name}
-                                WHERE
-                                    project_id='{project_id}' AND
-                                    bucket_name='{bucket_name}' AND
-                                    prefix ='{prefix}';"""
+            DELETE FROM
+                {table_name}
+            WHERE
+                project_id=:project_id AND
+                bucket_name=:bucket_name AND
+                prefix=:prefix;"""
         self.sql_insert_processed_file = """
-                                        INSERT INTO {table_name} (
-                                            project_id,
-                                            bucket_name,
-                                            prefix,
-                                            blob_name,
-                                            creation_time)
-                                        VALUES
-                                            ('{project_id}',
-                                            '{bucket_name}',
-                                            '{prefix}',
-                                            '{blob_name}',
-                                            '{creation_time}');"""
+            INSERT INTO {table_name} (
+                project_id,
+                bucket_name,
+                prefix,
+                blob_name,
+                creation_time)
+            VALUES
+                (:project_id,
+                :bucket_name,
+                :prefix,
+                :blob_name,
+                :creation_time);"""
         self.sql_find_last_creation_time = """
-                                        SELECT
-                                            creation_time
-                                        FROM
-                                            {table_name}
-                                        WHERE
-                                            project_id='{project_id}' AND
-                                            bucket_name='{bucket_name}' AND
-                                            prefix ='{prefix}'
-                                        ORDER BY
-                                            creation_time DESC
-                                        LIMIT 1;"""
+            SELECT
+                creation_time
+            FROM
+                {table_name}
+            WHERE
+                project_id=:project_id AND
+                bucket_name=:bucket_name AND
+                prefix =:prefix
+            ORDER BY
+                creation_time DESC
+            LIMIT 1;"""
         self.sql_find_processed_files = """
-                                        SELECT
-                                            blob_name
-                                        FROM
-                                            {table_name}
-                                        WHERE
-                                            project_id='{project_id}' AND
-                                            bucket_name='{bucket_name}' AND
-                                            prefix ='{prefix}'
-                                        ORDER BY
-                                            blob_name;"""
+            SELECT
+                blob_name
+            FROM
+                {table_name}
+            WHERE
+                project_id=:project_id AND
+                bucket_name=:bucket_name AND
+                prefix =:prefix
+            ORDER BY
+                blob_name;"""
 
     def _get_last_processed_files(self):
         """Get the names of the blobs processed during the last execution.
@@ -138,14 +139,12 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
             List with the filenames of all the previously processed blobs.
         """
         processed_files = self.db_connector.execute(
-            self.sql_find_processed_files.format(table_name=self.db_table_name,
-                                                 project_id=self.project_id,
-                                                 bucket_name=self.bucket_name,
-                                                 prefix=self.prefix))
-        try:
-            return [p[0] for p in processed_files.fetchall()]
-        except (TypeError, IndexError):
-            return list()
+            self.sql_find_processed_files.format(table_name=self.db_table_name), {
+                'project_id': self.project_id,
+                'bucket_name': self.bucket_name,
+                'prefix': self.prefix
+            })
+        return [p[0] for p in processed_files.fetchall()]
 
     def _update_last_processed_files(self, processed_files: list):
         """Remove the records for the previous execution and store the new values from the current one.
@@ -158,21 +157,23 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         if processed_files:
             self.logger.info('Updating previously processed files.')
             try:
-                self.db_connector.execute(self.sql_delete_processed_files.format(table_name=self.db_table_name,
-                                                                                 project_id=self.project_id,
-                                                                                 bucket_name=self.bucket_name,
-                                                                                 prefix=self.prefix))
-            except sqlite3.IntegrityError:
+                self.db_connector.execute(self.sql_delete_processed_files.format(table_name=self.db_table_name), {
+                    'project_id': self.project_id,
+                    'bucket_name': self.bucket_name,
+                    'prefix': self.prefix
+                })
+            except sqlite3.OperationalError:
                 pass
 
             for blob in processed_files:
                 creation_time = datetime.strftime(blob.time_created, self.datetime_format)
-                self.db_connector.execute(self.sql_insert_processed_file.format(table_name=self.db_table_name,
-                                                                                project_id=self.project_id,
-                                                                                bucket_name=self.bucket_name,
-                                                                                prefix=self.prefix,
-                                                                                blob_name=blob.name,
-                                                                                creation_time=creation_time))
+                self.db_connector.execute(self.sql_insert_processed_file.format(table_name=self.db_table_name), {
+                    'project_id': self.project_id,
+                    'bucket_name': self.bucket_name,
+                    'prefix': self.prefix,
+                    'blob_name': blob.name,
+                    'creation_time': creation_time
+                })
 
     def _get_last_creation_time(self):
         """Get the latest creation time value stored in the database for the given project, bucket_name and
@@ -185,10 +186,11 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         """
         creation_time = datetime.min.replace(tzinfo=pytz.UTC)
         query_creation_time = self.db_connector.execute(
-            self.sql_find_last_creation_time.format(table_name=self.db_table_name,
-                                                    project_id=self.project_id,
-                                                    bucket_name=self.bucket_name,
-                                                    prefix=self.prefix))
+            self.sql_find_last_creation_time.format(table_name=self.db_table_name), {
+                'project_id': self.project_id,
+                'bucket_name': self.bucket_name,
+                'prefix': self.prefix
+            })
         try:
             creation_time_result = query_creation_time.fetchone()[0]
             creation_time = datetime.strptime(creation_time_result, self.datetime_format)
@@ -219,10 +221,11 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
          do not exist yet."""
         self.db_connector = sqlite3.connect(self.db_path)
         try:
-            self.db_connector.execute(self.sql_create_table.format(table_name=self.db_table_name,
-                                                                   project_id=self.project_id,
-                                                                   bucket_name=self.bucket_name,
-                                                                   prefix=self.prefix))
+            self.db_connector.execute(self.sql_create_table.format(table_name=self.db_table_name), {
+                    'project_id': self.project_id,
+                    'bucket_name': self.bucket_name,
+                    'prefix': self.prefix
+                })
         except sqlite3.OperationalError:
             # The table already exist
             pass

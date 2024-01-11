@@ -18,6 +18,7 @@
 #include "../headers/shared.h"
 #include "../os_crypto/sha1/sha1_op.h"
 #include "../external/sqlite/sqlite3.h"
+#include "utils/flatbuffers/include/syscollector_deltas_schema.h"
 
 #include "../wrappers/externals/openssl/digest_wrappers.h"
 #include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
@@ -270,7 +271,7 @@ static void test_wdbi_remove_by_pk_sqlite_step_fail(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(001) sqlite3_step(): ERROR");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(001) SQLite: ERROR");
 
     wdbi_remove_by_pk(data, component, pk_value);
 }
@@ -429,7 +430,7 @@ static void test_wdbi_delete_begin_null(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_errmsg, "test_begin_null");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_begin_null");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) SQLite: test_begin_null");
 
     ret = wdbi_delete(data, 0, begin, end, tail);
 
@@ -457,7 +458,7 @@ static void test_wdbi_delete_end_null(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_errmsg, "test_end_null");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_end_null");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) SQLite: test_end_null");
 
     ret = wdbi_delete(data, 0, begin, end, tail);
 
@@ -486,7 +487,7 @@ static void test_wdbi_delete_tail_null(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_errmsg, "test_tail_null");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_tail_null");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) SQLite: test_tail_null");
 
     ret = wdbi_delete(data, 0, begin, end, tail);
 
@@ -527,7 +528,7 @@ static void test_wdbi_delete_sql_no_done(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_errmsg, "test_sql_no_done");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_sql_no_done");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) SQLite: test_sql_no_done");
 
     ret = wdbi_delete(data, 0, begin, end, tail);
 
@@ -605,7 +606,7 @@ static void test_wdbi_update_attempt_no_sql_done(void **state) {
     will_return(__wrap_sqlite3_step, 1);
     will_return(__wrap_sqlite3_errmsg, "test_no_sql_done");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_no_sql_done");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) SQLite: test_no_sql_done");
 
     wdbi_update_attempt(data, WDB_FIM, 0, agent_checksum, manager_checksum, FALSE);
 }
@@ -685,7 +686,7 @@ static void test_wdbi_update_completion_no_sql_done(void **state) {
     will_return(__wrap_sqlite3_step, 1);
     will_return(__wrap_sqlite3_errmsg, "test_no_sql_done");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_no_sql_done");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) SQLite: test_no_sql_done");
 
     wdbi_update_completion(data, WDB_FIM, 0, agent_checksum, manager_checksum);
 }
@@ -784,7 +785,7 @@ void test_wdbi_query_clear_sql_step_error(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_errmsg, "test_error");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_error");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) SQLite: test_error");
 
     ret = wdbi_query_clear(data, WDB_FIM, payload);
 
@@ -1574,7 +1575,7 @@ void test_wdbi_last_completion_step_fail(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
 
     will_return(__wrap_sqlite3_errmsg, "ERROR_MESSAGE");
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): ERROR_MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) SQLite: ERROR_MESSAGE");
 
     wdbi_set_last_completion(data, WDB_SYSCOLLECTOR_PACKAGES, timestamp);
 }
@@ -1760,6 +1761,108 @@ void wdb_get_global_group_hash_calculate_success(void **state)
     assert_int_equal(ret, OS_SUCCESS);
 }
 
+// Tests wdbi_report_removed
+
+void test_wdbi_report_removed_no_handle(void **state) {
+    const char* agent_id = "001";
+    wdb_component_t component = WDB_SYSCOLLECTOR_PACKAGES;
+    sqlite3_stmt* stmt = NULL;
+    router_syscollector_handle = NULL;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Router handle not available.");
+
+    wdbi_report_removed(agent_id, component, stmt);
+}
+
+void test_wdbi_report_removed_packages_success(void **state) {
+    const char* agent_id = "001";
+    wdb_component_t component = WDB_SYSCOLLECTOR_PACKAGES;
+    sqlite3_stmt* stmt = NULL;
+    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)1;
+    const char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"node_name\":\"\"},\"data_type\":\"dbsync_packages\","
+                                   "\"data\":{\"name\":\"name\",\"version\":\"version\",\"architecture\":\"architecture\",\"format\":\"format\",\"location\":\"location\",\"item_id\":\"item_id\"},\"operation\":\"DELETED\"}";
+
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "name");
+    expect_value(__wrap_sqlite3_column_text, iCol, 1);
+    will_return(__wrap_sqlite3_column_text, "version");
+    expect_value(__wrap_sqlite3_column_text, iCol, 2);
+    will_return(__wrap_sqlite3_column_text, "architecture");
+    expect_value(__wrap_sqlite3_column_text, iCol, 3);
+    will_return(__wrap_sqlite3_column_text, "format");
+    expect_value(__wrap_sqlite3_column_text, iCol, 4);
+    will_return(__wrap_sqlite3_column_text, "location");
+    expect_value(__wrap_sqlite3_column_text, iCol, 5);
+    will_return(__wrap_sqlite3_column_text, "item_id");
+
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
+    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, 0);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    wdbi_report_removed(agent_id, component, stmt);
+}
+
+void test_wdbi_report_removed_hotfixes_success(void **state) {
+    const char* agent_id = "001";
+    wdb_component_t component = WDB_SYSCOLLECTOR_HOTFIXES;
+    sqlite3_stmt* stmt = NULL;
+    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)1;
+    const char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"node_name\":\"\"},\"data_type\":\"dbsync_hotfixes\","
+                                   "\"data\":{\"hotfix\":\"hotfix\"},\"operation\":\"DELETED\"}";
+
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "hotfix");
+
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
+    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, 0);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    wdbi_report_removed(agent_id, component, stmt);
+}
+
+void test_wdbi_report_removed_hotfixes_success_multiple_steps(void **state) {
+    const char* agent_id = "001";
+    wdb_component_t component = WDB_SYSCOLLECTOR_HOTFIXES;
+    sqlite3_stmt* stmt = NULL;
+    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)1;
+    const char* expected_message_1 = "{\"agent_info\":{\"agent_id\":\"001\",\"node_name\":\"\"},\"data_type\":\"dbsync_hotfixes\","
+                                     "\"data\":{\"hotfix\":\"hotfix1\"},\"operation\":\"DELETED\"}";
+
+    const char* expected_message_2 = "{\"agent_info\":{\"agent_id\":\"001\",\"node_name\":\"\"},\"data_type\":\"dbsync_hotfixes\","
+                                     "\"data\":{\"hotfix\":\"hotfix2\"},\"operation\":\"DELETED\"}";
+
+    // First hotfix
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "hotfix1");
+
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message_1);
+    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, 0);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    // Second hotfix
+
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "hotfix2");
+
+    expect_string(__wrap_router_provider_send_fb, msg, expected_message_2);
+    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
+    will_return(__wrap_router_provider_send_fb, 0);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    wdbi_report_removed(agent_id, component, stmt);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         //Test wdb_calculate_stmt_checksum
@@ -1863,6 +1966,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(wdb_get_global_group_hash_invalid_statement, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(wdb_get_global_group_hash_calculate_success_no_group_hash_information, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(wdb_get_global_group_hash_calculate_success, setup_wdb_t, teardown_wdb_t),
+
+        // Tests wdbi_report_removed
+        cmocka_unit_test(test_wdbi_report_removed_no_handle),
+        cmocka_unit_test(test_wdbi_report_removed_packages_success),
+        cmocka_unit_test(test_wdbi_report_removed_hotfixes_success),
+        cmocka_unit_test(test_wdbi_report_removed_hotfixes_success_multiple_steps),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

@@ -103,10 +103,12 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
 
         mdebug2("Reading syslog message: '%.*s'%s", sample_log_length, str, rbytes > sample_log_length ? "..." : "");
 
-        /* Send message to queue */
-        if (drop_it == 0) {
+        /* Check ignore and restrict log regex, if configured. */
+        if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, str)) {
+            /* Send message to queue */
             w_msg_hash_queues_push(str, lf->file, rbytes, lf->log_target, LOCALFILE_MQ);
         }
+
         /* Incorrect message size */
         if (__ms) {
             // strlen(str) >= (OS_MAXSTR - OS_LOG_HEADER - 2)

@@ -1,0 +1,55 @@
+name: "Install Wazuh build dependencies"
+description: "This action installs all the requirements to test and build Wazuh agent/server in Ubuntu Linux"
+inputs:
+   target:
+     required: true
+     description: "Wazuh target to decide if install or not custom dependencies"
+runs:
+  using: "composite"
+  steps:
+    - name: Update apt-get
+      shell: bash
+      run: sudo apt-get update -y
+    - name: Install tools and libraries
+      shell: bash
+      run: sudo apt-get install cppcheck astyle valgrind lcov clang-tools -y
+    - name: Install mingw
+      shell: bash
+      run: |
+        if [[ "${{ inputs.target }}" == "winagent" ]]; then
+          sudo apt-get install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 nsis -y
+        else
+          echo "Skipping mingw installation for this target"
+        fi
+    - name: Install wine
+      shell: bash
+      run: |
+        if [[ "${{ inputs.target }}" == "winagent" ]]; then
+          sudo dpkg --add-architecture i386
+          sudo mkdir -pm755 /etc/apt/keyrings
+          sudo wget -O /etc/apt/keyrings/winehq-archive.key https://dl.winehq.org/wine-builds/winehq.key
+          sudo wget -NP /etc/apt/sources.list.d/ https://dl.winehq.org/wine-builds/ubuntu/dists/jammy/winehq-jammy.sources
+          sudo apt-get update
+          sudo apt-get install -y --allow-downgrades libc6:i386 libgcc-s1:i386 libstdc++6:i386 wine-stable-i386 wine-stable-amd64 winehq-stable
+        else
+          echo "Skipping wine installation for this target"
+        fi
+    - name: Install CMocka
+      shell: bash
+      run: |
+        if [[ "${{ inputs.target }}" == "winagent" ]]; then
+          echo "Installing CMocka by sources with 'winagent' required flags"
+          cd /tmp
+          curl -L https://git.cryptomilk.org/projects/cmocka.git/snapshot/stable-1.1.tar.gz | \
+          tar zvx -C /tmp/ && \
+          sed -i "s|ON|OFF|g" /tmp/stable-1.1/DefineOptions.cmake && \
+          mkdir /tmp/stable-1.1/build && \
+          cd /tmp/stable-1.1/build && \
+          cmake -DCMAKE_C_COMPILER=i686-w64-mingw32-gcc -DCMAKE_C_LINK_EXECUTABLE=i686-w64-mingw32-ld -DCMAKE_INSTALL_PREFIX=/usr/i686-w64-mingw32/ -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_BUILD_TYPE=Release .. && \
+          make && \
+          sudo make install && \
+          cd $GITHUB_WORKSPACE
+        else
+          echo "Installing CMocka directly from apt-get"
+          sudo apt-get install libcmocka-dev -y
+        fi

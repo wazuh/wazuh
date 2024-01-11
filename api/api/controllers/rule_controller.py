@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import logging
+from typing import Union
 
 from aiohttp import web
 from aiohttp_cache import cache
@@ -20,33 +21,64 @@ logger = logging.getLogger('wazuh-api')
 
 
 @cache(expires=api_conf['cache']['time'])
-async def get_rules(request, rule_ids=None, pretty=False, wait_for_complete=False, offset=0, select=None,
-                    limit=None, sort=None, search=None, q=None, status=None, group=None, level=None, filename=None,
-                    relative_dirname=None, pci_dss=None, gdpr=None, gpg13=None, hipaa=None, tsc=None, mitre=None):
+async def get_rules(request, rule_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
+                    offset: int = 0, select: str = None, limit: int = None, sort: str = None, search: str = None,
+                    q: str = None, status: str = None, group: str = None, level: str = None, filename: list = None,
+                    relative_dirname: str = None, pci_dss: str = None, gdpr: str = None, gpg13: str = None,
+                    hipaa: str = None, tsc: str = None, mitre: str = None, distinct: bool = False) -> web.Response:
     """Get information about all Wazuh rules.
 
-    :param rule_ids: Filters by rule ID
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param offset: First element to return in the collection
-    :param select: List of selected fields to return
-    :param limit: Maximum number of elements to return
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
-    :param status: Filters by rules status.
-    :param group: Filters by rule group.
-    :param level: Filters by rule level. Can be a single level (4) or an interval (2-4)
-    :param filename: List of filenames to filter by.
-    :param relative_dirname: Filters by relative dirname.
-    :param pci_dss: Filters by PCI_DSS requirement name.
-    :param gdpr: Filters by GDPR requirement.
-    :param gpg13: Filters by GPG13 requirement.
-    :param hipaa: Filters by HIPAA requirement.
-    :param tsc: Filters by TSC requirement.
-    :param mitre: Filters by mitre technique ID.
-    :return: Data object
+    Parameters
+    ----------
+    request : connexion.request
+    rule_ids : list
+        Filters by rule ID.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    offset : int
+        First item to return.
+    limit : int
+        Maximum number of items to return.
+    search : str
+        Looks for elements with the specified string.
+    select : str
+        Select which fields to return (separated by comma).
+    sort : str
+        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order.
+    q : str
+        Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
+    status : str
+        Filters by rules status.
+    group : str
+        Filters by rule group.
+    level : str
+        Filters by rule level. Can be a single level (4) or an interval (2-4).
+    filename : list
+        List of filenames to filter by.
+    relative_dirname : str
+        Filters by relative dirname.
+    pci_dss : str
+        Filters by PCI_DSS requirement name.
+    gdpr : str
+        Filters by GDPR requirement.
+    gpg13 : str
+        Filters by GPG13 requirement.
+    hipaa : str
+        Filters by HIPAA requirement.
+    tsc : str
+        Filters by TSC requirement.
+    mitre : str
+        Filters by mitre technique ID.
+    distinct : bool
+        Look for distinct values.
+
+    Returns
+    -------
+    web.Response
+        API response.
     """
     f_kwargs = {'rule_ids': rule_ids, 'offset': offset, 'limit': limit, 'select': select,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
@@ -65,7 +97,8 @@ async def get_rules(request, rule_ids=None, pretty=False, wait_for_complete=Fals
                 'hipaa': hipaa,
                 'nist_800_53': request.query.get('nist-800-53', None),
                 'tsc': tsc,
-                'mitre': mitre}
+                'mitre': mitre,
+                'distinct': distinct}
 
     dapi = DistributedAPI(f=rule_framework.get_rules,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -81,18 +114,31 @@ async def get_rules(request, rule_ids=None, pretty=False, wait_for_complete=Fals
 
 
 @cache(expires=api_conf['cache']['time'])
-async def get_rules_groups(request, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
-                           search=None):
+async def get_rules_groups(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
+                           limit: int = None, sort: str = None, search: str = None) -> web.Response:
     """Get all rule groups names.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :return: Data object
+    Parameters
+    ----------
+    request : connexion.request
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    offset : int
+        First item to return.
+    limit : int
+        Maximum number of items to return.
+    search : str
+        Looks for elements with the specified string.
+    sort : str
+        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order.
+
+    Returns
+    -------
+    web.Response
+        API response.
     """
     f_kwargs = {'offset': offset,
                 'limit': limit,
@@ -116,19 +162,34 @@ async def get_rules_groups(request, pretty=False, wait_for_complete=False, offse
 
 
 @cache(expires=api_conf['cache']['time'])
-async def get_rules_requirement(request, requirement=None, pretty=False, wait_for_complete=False, offset=0, limit=None,
-                                sort=None, search=None):
-    """Get all specified requirements
+async def get_rules_requirement(request, requirement: str = None, pretty: bool = False, wait_for_complete: bool = False,
+                                offset: int = 0, limit: int = None, sort: str = None,
+                                search: str = None) -> web.Response:
+    """Get all specified requirements.
 
-    :param requirement: Get the specified requirement in all rules in the system.
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :return: Data object
+    Parameters
+    ----------
+    request : connexion.request
+    requirement : str
+        Get the specified requirement in all rules in the system.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    offset : int
+        First item to return.
+    limit : int
+        Maximum number of items to return.
+    search : str
+        Looks for elements with the specified string.
+    sort : str
+        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order.
+
+    Returns
+    -------
+    web.Response
+        API response.
     """
     f_kwargs = {'requirement': requirement.replace('-', '_'), 'offset': offset, 'limit': limit,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else [''],
@@ -150,21 +211,45 @@ async def get_rules_requirement(request, requirement=None, pretty=False, wait_fo
 
 
 @cache(expires=api_conf['cache']['time'])
-async def get_rules_files(request, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None,
-                          status=None, filename=None, relative_dirname=None):
-    """Get all files which defines rules
+async def get_rules_files(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
+                          limit: int = None, sort: str = None, search: str = None, status: str = None,
+                          filename: list = None, relative_dirname: str = None, q: str = None,
+                          select: str = None, distinct: bool = False) -> web.Response:
+    """Get all the rules files.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param status: Filters by rules status.
-    :param filename: List of filenames to filter by..
-    :param relative_dirname: Filters by relative dirname.
-    :return: Data object
+    Parameters
+    ----------
+    request : connexion.request
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    offset : int
+        First item to return.
+    limit : int
+        Maximum number of items to return.
+    search : str
+        Looks for elements with the specified string.
+    sort : str
+        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order.
+    status : str
+        Filters by rules status.
+    filename : list
+        List of filenames to filter by.
+    relative_dirname : str
+        Filters by relative dirname.
+    q : str
+        Query to filter results by.
+    select : str
+        Select which fields to return (separated by comma).
+    distinct : bool
+        Look for distinct values.
+
+    Returns
+    -------
+    web.Response
+        API response.
     """
     f_kwargs = {'offset': offset,
                 'limit': limit,
@@ -174,7 +259,10 @@ async def get_rules_files(request, pretty=False, wait_for_complete=False, offset
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
                 'status': status,
                 'filename': filename,
-                'relative_dirname': relative_dirname}
+                'relative_dirname': relative_dirname,
+                'q': q,
+                'select': select,
+                'distinct': distinct}
 
     dapi = DistributedAPI(f=rule_framework.get_rules_files,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -190,30 +278,34 @@ async def get_rules_files(request, pretty=False, wait_for_complete=False, offset
 
 
 @cache(expires=api_conf['cache']['time'])
-async def get_file(request, pretty: bool = False, wait_for_complete: bool = False, filename: str = None,
-                   raw: bool = False):
+async def get_file(request, pretty: bool = False, wait_for_complete: bool = False, 
+                   filename: str = None, relative_dirname: str = None, 
+                   raw: bool = False) -> Union[web.Response, ConnexionResponse]:
     """Get rule file content.
 
     Parameters
     ----------
+    request : connexion.request
     pretty : bool, optional
-        Show results in human-readable format. It only works when `raw` is False (JSON format). Default `True`
+        Show results in human-readable format. It only works when `raw` is False (JSON format). Default `True`.
     wait_for_complete : bool, optional
-        Disable response timeout or not. Default `False`
+        Disable response timeout or not. Default `False`.
     filename : str
         Filename to download.
     raw : bool, optional
-        Whether to return the file content in raw or JSON format. Default `False`
+        Whether to return the file content in raw or JSON format. Default `False`.
+    relative_dirname : str
+        Relative directory where the rule is located.
 
     Returns
     -------
-    web.json_response or ConnexionResponse
-        Depending on the `raw` parameter, it will return an object or other:
+    web.Response or ConnexionResponse
+        Depending on the `raw` parameter, it will return a web.Response object or a ConnexionResponse object:
             raw=True            -> ConnexionResponse (application/xml)
-            raw=False (default) -> web.json_response (application/json)
-        If any exception was raised, it will return a web.json_response with details.
+            raw=False (default) -> web.Response      (application/json)
+        If any exception was raised, it will return a web.Response with details.
     """
-    f_kwargs = {'filename': filename, 'raw': raw}
+    f_kwargs = {'filename': filename, 'raw': raw, 'relative_dirname': relative_dirname}
 
     dapi = DistributedAPI(f=rule_framework.get_rule_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -232,25 +324,32 @@ async def get_file(request, pretty: bool = False, wait_for_complete: bool = Fals
     return response
 
 
-async def put_file(request, body, filename=None, overwrite=False, pretty=False, wait_for_complete=False):
+async def put_file(request, body: bytes, filename: str = None, overwrite: bool = False,
+                   pretty: bool = False, relative_dirname: str = None,
+                   wait_for_complete: bool = False) -> web.Response:
     """Upload a rule file.
     
     Parameters
     ----------
-    body : dict
+    request : connexion.request
+    body : bytes
         Body request with the file content to be uploaded.
     filename : str, optional
-        Name of the file. Default `None`
+        Name of the file.
     overwrite : bool, optional
-        If set to false, an exception will be raised when updating contents of an already existing file. Default `False`
+        If set to false, an exception will be raised when updating 
+        contents of an already existing file. Default `False`
     pretty : bool, optional
         Show results in human-readable format. Default `False`
+    relative_dirname : str
+        Relative directory where the rule is located.
     wait_for_complete : bool, optional
         Disable timeout response. Default `False`
 
     Returns
     -------
-    web.json_response
+    web.Response
+        API response.
     """
     # Parse body to utf-8
     Body.validate_content_type(request, expected_content_type='application/octet-stream')
@@ -258,6 +357,7 @@ async def put_file(request, body, filename=None, overwrite=False, pretty=False, 
 
     f_kwargs = {'filename': filename,
                 'overwrite': overwrite,
+                'relative_dirname': relative_dirname,
                 'content': parsed_body}
 
     dapi = DistributedAPI(f=rule_framework.upload_rule_file,
@@ -273,13 +373,19 @@ async def put_file(request, body, filename=None, overwrite=False, pretty=False, 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def delete_file(request, filename=None, pretty=False, wait_for_complete=False):
+async def delete_file(request, filename: str = None, 
+                      relative_dirname: str = None, 
+                      pretty: bool = False,
+                      wait_for_complete: bool = False) -> web.Response:
     """Delete a rule file.
 
     Parameters
     ----------
+    request : connexion.request
     filename : str, optional
-        Name of the file. Default `None`
+        Name of the file.
+    relative_dirname : str
+        Relative directory where the rule file is located.
     pretty : bool, optional
         Show results in human-readable format. Default `False`
     wait_for_complete : bool, optional
@@ -287,9 +393,10 @@ async def delete_file(request, filename=None, pretty=False, wait_for_complete=Fa
 
     Returns
     -------
-    web.json_response
+    web.Response
+        API response.
     """
-    f_kwargs = {'filename': filename}
+    f_kwargs = {'filename': filename, 'relative_dirname': relative_dirname}
 
     dapi = DistributedAPI(f=rule_framework.delete_rule_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

@@ -24,6 +24,7 @@ static char* build_json_keys_message(const char *ar_name, char **keys);
  * */
 static cJSON* get_srcip_from_win_eventdata(const cJSON *data);
 
+
 void write_debug_file(const char *ar_name, const char *msg) {
     char *timestamp = w_get_timestamp(time(NULL));
 
@@ -436,6 +437,52 @@ static char* build_json_keys_message(const char *ar_name, char **keys) {
     return msg;
 }
 
+void splitStrFromCharDelimiter(const char * output_buf, const char delimiter, char * strBefore, char * strAfter){
+    const char *pos = NULL;
+
+    if (output_buf != NULL) {
+        pos = strchr(output_buf, delimiter);
+
+        if (pos != NULL) {
+            if (strBefore != NULL) {
+                strncpy(strBefore, output_buf, pos - output_buf);
+            }
+            if (strAfter != NULL) {
+                strncpy(strAfter, pos + 1, strlen(pos));
+            }
+        }
+    }
+}
+
+int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, const char * str_pattern_2) {
+    int retVal = 0;
+    const char *pos = NULL;
+
+    if (str_pattern_1 != NULL) {
+        pos = strstr(output_buf, str_pattern_1);
+    }
+
+    if (pos != NULL) {
+        char state[OS_MAXSTR];
+        char buffer[OS_MAXSTR];
+
+        if (str_pattern_2 != NULL) {
+            snprintf(buffer, OS_MAXSTR -1, "%%*s %%%lds", strlen(str_pattern_2));
+            if (sscanf(pos, buffer /*"%*s %7s"*/, state) == 1) {
+                if (strcmp(state, str_pattern_2) == 0) {
+                    retVal = 1;
+                } else {
+                    retVal = 0;
+                }
+            }
+        } else {
+            retVal = 1;
+        }
+    }
+
+    return retVal;
+}
+
 #ifndef WIN32
 
 int lock(const char *lock_path, const char *lock_pid_path, const char *log_path, const char *proc_name) {
@@ -493,7 +540,14 @@ int lock(const char *lock_path, const char *lock_pid_path, const char *log_path,
         // by one and fail after MAX_ITERACTION
         if (i >= max_iteration) {
             bool kill = false;
-            char *command_ex_1[4] = { "pgrep", "-f", (char *)proc_name, NULL };
+            char *pgrep_path = NULL;
+
+            if (get_binary_path("pgrep", &pgrep_path) < 0) {
+                memset(log_msg, '\0', OS_MAXSTR);
+                snprintf(log_msg, OS_MAXSTR -1, "Binary '%s' not found in default paths, the full path will not be used.", pgrep_path);
+                write_debug_file(log_path, log_msg);
+            }
+            char *command_ex_1[4] = { pgrep_path, "-f", (char *)proc_name, NULL };
 
             wfd_t *wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDOUT);
             if (!wfd) {
@@ -504,9 +558,16 @@ int lock(const char *lock_path, const char *lock_pid_path, const char *log_path,
                     int pid = atoi(output_buf);
                     if (pid == current_pid) {
                         char pid_str[10];
+                        char *kill_path = NULL;
                         memset(pid_str, '\0', 10);
                         snprintf(pid_str, 9, "%d", pid);
-                        char *command_ex_2[4] = { "kill", "-9", pid_str, NULL };
+
+                        if (get_binary_path("kill", &kill_path) < 0) {
+                            memset(log_msg, '\0', OS_MAXSTR);
+                            snprintf(log_msg, OS_MAXSTR -1, "Binary '%s' not found in default paths, the full path will not be used.", kill_path);
+                            write_debug_file(log_path, log_msg);
+                        }
+                        char *command_ex_2[4] = { kill_path, "-9", pid_str, NULL };
 
                         wfd_t *wfd2 = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDOUT);
                         if (!wfd2) {
@@ -521,11 +582,14 @@ int lock(const char *lock_path, const char *lock_pid_path, const char *log_path,
                             i = 0;
                             saved_pid = -1;
                         }
+                        os_free(kill_path);
                         break;
                     }
                 }
                 wpclose(wfd);
             }
+
+            os_free(pgrep_path);
 
             if (!kill) {
                 memset(log_msg, '\0', OS_MAXSTR);
@@ -584,5 +648,4 @@ int get_ip_version(const char *ip) {
     freeaddrinfo(res);
     return OS_INVALID;
 }
-
 #endif

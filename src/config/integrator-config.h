@@ -24,6 +24,8 @@ typedef struct _IntegratorConfig
     unsigned int enabled;
     unsigned int *rule_id;
     unsigned int max_log;
+    unsigned int timeout;
+    unsigned int retries;
 
     char *name;
     char *apikey;
@@ -31,6 +33,7 @@ typedef struct _IntegratorConfig
     char *path;
     char *alert_format;
     char *group;
+    char *options;
     OSMatch *location;
 }IntegratorConfig;
 

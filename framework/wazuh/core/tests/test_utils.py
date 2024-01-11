@@ -7,10 +7,11 @@ import glob
 import os
 from collections.abc import KeysView
 from io import StringIO
-from shutil import copyfile
+from shutil import copyfile, Error
 from tempfile import TemporaryDirectory, NamedTemporaryFile
-from unittest.mock import patch, MagicMock, mock_open
+from unittest.mock import call, MagicMock, Mock, mock_open, patch, ANY
 from xml.etree.ElementTree import Element
+from wazuh.core.common import OSSEC_TMP_PATH
 
 import pytest
 from defusedxml.ElementTree import parse
@@ -22,6 +23,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.agent import WazuhDBQueryAgents
         from wazuh.core import utils, exception
         from wazuh.core.common import WAZUH_PATH, AGENT_NAME_LEN_LIMIT
+        from wazuh.core.results import WazuhResult
 
 # all necessary params
 
@@ -65,7 +67,7 @@ input_array = [
     },
     {
         "count": 0,
-        "name": "test_nested2",
+        "name": "test@nested2",
         "mergedSum": {
             "nestedSum1": "value"
         },
@@ -217,56 +219,150 @@ def test_cut_array_ko(limit, offset, expected_exception):
         utils.cut_array(array=['one', 'two', 'three'], limit=limit, offset=offset)
 
 
-@pytest.mark.parametrize('array, filters, limit, search_text, sort_by, expected_items, len_expected_items', [
-    ([{'item': 'value_one'}, {'item': 'value_two'}, {'item': 'value_three'}],
-     {'item': 'value_one'}, 1, None, None, [{'item': 'value_one'}], 1),
-    ([{'item': 'value_one'}, {'item': 'value_one'}, {'item': 'value_three'}],
-     {}, 1, 'one', None, [{'item': 'value_one'}], 2),
-    ([{'item': 'value_one'}, {'item': 'value_one'}, {'item': 'value_three'}],
-     {}, 2, 'one', None, [{'item': 'value_one'}, {'item': 'value_one'}], 2),
-    ([{'item': 'value_2'}, {'item': 'value_1'}, {'item': 'value_3'}],
-     {}, 500, None, ['item'], [{'item': 'value_1'}, {'item': 'value_2'}, {'item': 'value_3'}], 3),
-])
-def test_process_array(array, filters, limit, search_text, sort_by, expected_items, len_expected_items):
-    """Test cut_array function."""
-    result = utils.process_array(array=array, filters=filters, limit=limit, offset=0, search_text=search_text,
-                                 sort_by=sort_by)
+@pytest.mark.parametrize(
+    'array, q, filters, limit, search_text, select, sort_by, distinct, expected_items, expected_total_items',
+    [
+        # Test cases with queries
+        ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'},
+          {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z'}],
+         'datetime=2017-10-25T14:48:53.732000Z', None, None, None, None, None, False,
+         [{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}], 1),
 
-    assert result == {'items': expected_items, 'totalItems': len_expected_items}
+        ([{'name': 'W', 'datetime': '2017-10-25T14:48:53.732000Z'},
+          {'name': 'I', 'datetime': '2018-05-15T12:34:12.544000Z'}],
+         '(name=W,name=I)', None, None, None, None, None, False,
+         [{'name': 'W', 'datetime': '2017-10-25T14:48:53.732000Z'},
+          {'name': 'I', 'datetime': '2018-05-15T12:34:12.544000Z'}], 2),
 
+        ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'},
+          {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z'}],
+         'datetime<2017-10-26', None, None, None, None, None, False,
+         [{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}], 1),
 
-@pytest.mark.parametrize('array, q, expected_items', [
-    ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}, {'item': 'value_1',
-                                                                       'datetime': '2018-05-15T12:34:12.544000Z'}],
-     'datetime=2017-10-25T14:48:53.732000Z', [{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}]),
-    ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}, {'item': 'value_1',
-                                                                       'datetime': '2018-05-15T12:34:12.544000Z'}],
-     'datetime<2017-10-26', [{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}]),
-    ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}, {'item': 'value_1',
-                                                                       'datetime': '2018-05-15T12:34:12.544000Z'}],
-     'datetime>2019-10-26,datetime<2017-10-26', [{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}]),
-    ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}, {'item': 'value_1',
-                                                                       'datetime': '2018-05-15T12:34:12.544000Z'}],
-     'datetime>2017-10-26;datetime<2018-05-15T12:34:12.644000Z', [{'item': 'value_1',
-                                                                   'datetime': '2018-05-15T12:34:12.544000Z'}]),
-    ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53Z'}, {'item': 'value_1', 'datetime': '2018-05-15T12:34:12Z'}],
-     'datetime>2017-10-26;datetime<2018-05-15T12:34:12.001000Z', [{'item': 'value_1',
-                                                                   'datetime': '2018-05-15T12:34:12Z'}]),
-])
-def test_process_array_q(array, q, expected_items):
-    """Check the proper functioning of the q parameter.
+        ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'},
+          {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z'}],
+         'datetime>2019-10-26,datetime<2017-10-26', None, None, None, None, None, False,
+         [{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'}], 1),
+
+        ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53.732000Z'},
+          {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z'}],
+         'datetime>2017-10-26;datetime<2018-05-15T12:34:12.644000Z', None, None, None, None, None, False,
+         [{'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z'}], 1),
+
+        ([{'item': 'value_2', 'datetime': '2017-10-25T14:48:53Z'},
+          {'item': 'value_1', 'datetime': '2018-05-15T12:34:12Z'}],
+         'datetime>2017-10-26;datetime<2018-05-15T12:34:12.001000Z', None, None, None, None, None, False,
+         [{'item': 'value_1', 'datetime': '2018-05-15T12:34:12Z'}], 1),
+
+        # Test cases with filters, limit and search
+        ([{'item': 'value_1', 'some': 't'}, {'item': 'value_2', 'some': 'a'}, {'item': 'value_3', 'some': 'b'}],
+         None, {'item': 'value_1', 'some': 't'}, 1, None, None, None, False,
+         [{'item': 'value_1', 'some': 't'}], 1),
+
+        ([{'item': 'value_1'}, {'item': 'value_1'}, {'item': 'value_3'}],
+         None, None, 1, 'e_1', None, None, False,
+         [{'item': 'value_1'}], 2),
+
+        ([{'item': 'value_1'}, {'item': 'value_1'}, {'item': 'value_3'}],
+         None, None, 2, 'e_1', None, None, False,
+         [{'item': 'value_1'}, {'item': 'value_1'}], 2),
+
+        # Test cases with sort
+        ([{'item': 'value_2'}, {'item': 'value_1'}, {'item': 'value_3'}],
+         None, None, None, None, None, ['item'], False,
+         [{'item': 'value_1'}, {'item': 'value_2'}, {'item': 'value_3'}], 3),
+
+        # Test cases with distinct
+        ([{'item': 'value_1', 'component': 'framework'},
+           {'item': 'value_2', 'component': 'API'},
+           {'item': 'value_1', 'component': 'framework'}],
+         None, None, None, None, None, None, True,
+         [{'item': 'value_1', 'component': 'framework'}, {'item': 'value_2', 'component': 'API'}], 2),
+         
+         (['framework', 'API', 'API'],
+         None, None, None, None, None, None, True,
+         ['framework', 'API'], 2),
+
+        # Complex test cases
+        ([{'item': 'value_1', 'datetime': '2017-10-25T14:48:53.732000Z', 'component': 'framework'},
+          {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z', 'component': 'API'}],
+         'datetime~2017', {'item': 'value_1'}, 1, 'frame', None, None, False,
+         [{'item': 'value_1', 'datetime': '2017-10-25T14:48:53.732000Z',
+           'component': 'framework'}], 1),
+
+        ([{'item': 'value_1', 'datetime': '2017-10-25T14:48:53.732000Z', 'component': 'framework'},
+          {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z', 'component': 'API'}],
+         'datetime~2019', {'item': 'value_1'}, 1, None, None, None, False,
+         [], 0),
+
+        ([{'item': 'value_1', 'datetime': '2017-10-25T14:48:53.732000Z', 'component': 'framework'},
+          {'item': 'value_1', 'datetime': '2018-05-15T12:34:12.544000Z', 'component': 'API'}],
+         'datetime~2017', {'item': 'value_1'}, 1, None, ['component', 'item'], None, False,
+         [{'item': 'value_1', 'component': 'framework'}], 1),
+    ])
+def test_process_array(array, q, filters, limit, search_text, sort_by, select, distinct, expected_items,
+                       expected_total_items):
+    """Test that the process_array function is working properly with simple and complex examples.
 
     Parameters
     ----------
     array : list
-        List of values on which to apply the filter.
+        List of values on which to apply the processing.
     q : str
+        Query used to filter the array.
+    filters : dict
+        Define the required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
+    limit : int
+        Maximum number of elements to return.
+    search_text : str
+        String representing the text to search in the array.
+    select : list
+        List of fields to select.
+    sort_by : list
+        List of fields to sort by.
+    distinct: bool
+        Look for distinct values.
     expected_items : list
-        List of items after applying the filter
+        List of items expected after having applied the processing.
+    expected_total_items : int
+        Total items expected after having applied the processing.
     """
-    result = utils.process_array(array=array, q=q)
+    result = utils.process_array(array=array, filters=filters, limit=limit, offset=0, search_text=search_text,
+                                 select=select, sort_by=sort_by, q=q, distinct=distinct)
 
-    assert result == {'items': expected_items, 'totalItems': len(expected_items)}
+    assert result == {'items': expected_items, 'totalItems': expected_total_items}
+
+
+@patch('wazuh.core.utils.len', return_value=1)
+@patch('wazuh.core.utils.cut_array')
+@patch('wazuh.core.utils.select_array', return_value=ANY)
+@patch('wazuh.core.utils.filter_array_by_query', return_value=ANY)
+@patch('wazuh.core.utils.search_array', return_value=ANY)
+@patch('wazuh.core.utils.sort_array', return_value=ANY)
+def test_process_array_ops_order(mock_sort_array, mock_search_array, mock_filter_array_by_query, mock_select_array,
+                                 mock_cut_array, mock_len):
+    """Test that the process_array function calls the sort, search, filter by query, select and cut operations in the
+    expected order and with the expected parameters."""
+    manager_mock = Mock()
+    manager_mock.attach_mock(mock_sort_array, 'mock_sort_array')
+    manager_mock.attach_mock(mock_search_array, 'mock_search_array')
+    manager_mock.attach_mock(mock_filter_array_by_query, 'mock_filter_array_by_query')
+    manager_mock.attach_mock(mock_select_array, 'mock_select_array')
+    manager_mock.attach_mock(mock_cut_array, 'mock_cut_array')
+
+    utils.process_array(array=[{'item': 'value_1'}, {'item': 'value_2'}, {'item': 'value_3'}],
+                        filters={'item': 'value_1'}, limit=1, offset=0, search_text='e_1', select=['item'],
+                        sort_by=['item'], q='item~value')
+
+    # The array in the sort_array function parameter is the initial one after the filters
+    # The array parameter of the other functions is ANY
+    assert manager_mock.mock_calls == [
+        call.mock_sort_array([{'item': 'value_1'}], sort_by=['item'], sort_ascending=True, allowed_sort_fields=None),
+        call.mock_search_array(ANY, search_text='e_1', complementary_search=False, search_in_fields=None),
+        call.mock_filter_array_by_query('item~value', ANY),
+        call.mock_select_array(ANY, select=['item'], required_fields=None, allowed_select_fields=None),
+        call.mock_cut_array(ANY, offset=0, limit=1)
+    ]
 
 
 def test_sort_array_type():
@@ -589,6 +685,14 @@ def test_load_wazuh_xml():
 
         assert elements_equal(original, result.find('dummy_tag'))
 
+@pytest.mark.parametrize('expected_exception', [
+    (1113)
+])
+def test_load_wazuh_xml_ko(expected_exception):
+    """Test load_wazuh_xml fails gracefully when reading an invalid utf-8 character sequence"""
+    file_path = os.path.join(test_data_path, 'test_load_wazuh_xml_ko/invalid_utf8.xml')
+    with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
+        utils.load_wazuh_xml(file_path)
 
 @pytest.mark.parametrize('version1, version2', [
     ('Wazuh v3.5.0', 'Wazuh v3.5.2'),
@@ -943,7 +1047,42 @@ def test_WazuhDBQuery_protected_add_select_to_query(mock_parse, mock_socket_conn
                 '"https://ubuntu.com/security/CVE-2021-3996","https://ubuntu.com/security/notices/USN-5279-1",'
                 '"https://www.openwall.com/lists/oss-security/2022/01/24/2"]',
        'operator': '=', 'field': 'external_references$0', 'separator': 'OR', 'level': 1},
-      {'value': 'Kernel', 'operator': 'LIKE', 'field': 'name$0', 'separator': '', 'level': 0}])
+      {'value': 'Kernel', 'operator': 'LIKE', 'field': 'name$0', 'separator': '', 'level': 0}]),
+    # Cases with $
+    ('file=/test$/test.txt;(type=file,type=registry_key)',
+     [
+        {"value": "/test$/test.txt", "operator": "=", "field": "file$0", "separator": "AND", "level": 0},
+        {"value": "file", "operator": "=", "field": "type$0", "separator": "OR", "level": 1},
+        {"value": "registry_key", "operator": "=", "field": "type$1", "separator": "", "level": 0}
+     ]),
+    ('file=/$test/test.txt;(type=file,type=registry_key)',
+     [
+         {"value": "/$test/test.txt", "operator": "=", "field": "file$0", "separator": "AND", "level": 0},
+         {"value": "file", "operator": "=", "field": "type$0", "separator": "OR", "level": 1},
+         {"value": "registry_key", "operator": "=", "field": "type$1", "separator": "", "level": 0}
+     ]),
+    ('file=/tes$t/test.txt;(type=file,type=registry_key)',
+     [
+         {"value": "/tes$t/test.txt", "operator": "=", "field": "file$0", "separator": "AND", "level": 0},
+         {"value": "file", "operator": "=", "field": "type$0", "separator": "OR", "level": 1},
+         {"value": "registry_key", "operator": "=", "field": "type$1", "separator": "", "level": 0}
+     ]),
+    # Nested queries
+    ('id!=000;(status=active;(group=default2,group=default3))',
+     [{'value': '000', 'operator': '!=', 'field': 'id$0', 'separator': 'AND', 'level': 0},
+      {'value': 'active', 'operator': '=', 'field': 'status$0', 'separator': 'AND', 'level': 1},
+      {'value': 'default2', 'operator': '=', 'field': 'group$0', 'separator': 'OR', 'level': 2},
+      {'value': 'default3', 'operator': '=', 'field': 'group$1', 'separator': '', 'level': 0}]),
+    ('((group=default2,group=default3);id!=000);status=active',
+     [{'value': 'default2', 'operator': '=', 'field': 'group$0', 'separator': 'OR', 'level': 2},
+      {'value': 'default3', 'operator': '=', 'field': 'group$1', 'separator': 'AND', 'level': 1},
+      {'value': '000', 'operator': '!=', 'field': 'id$0', 'separator': 'AND', 'level': 0},
+      {'value': 'active', 'operator': '=', 'field': 'status$0', 'separator': '', 'level': 0}]),
+    ('(status=active,(id!=000;(group=default,group=default3)))',
+     [{'value': 'active', 'operator': '=', 'field': 'status$0', 'separator': 'OR', 'level': 1},
+      {'value': '000', 'operator': '!=', 'field': 'id$0', 'separator': 'AND', 'level': 2},
+      {'value': 'default', 'operator': '=', 'field': 'group$0', 'separator': 'OR', 'level': 3},
+      {'value': 'default3', 'operator': '=', 'field': 'group$1', 'separator': '', 'level': 0}]),
 ])
 @patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
@@ -1099,6 +1238,72 @@ def test_WazuhDBQuery_protected_add_filters_to_query(mock_process, mock_socket_c
     query._add_filters_to_query()
 
     mock_conn_db.assert_called_once_with()
+
+@pytest.mark.parametrize('filters, expected_query', [
+    (
+        [
+            {'value': '000', 'operator': '!=', 'field': 'id$0', 'separator': 'AND', 'level': 0},
+            {'value': 'active', 'operator': '=', 'field': 'status$0', 'separator': 'AND', 'level': 1},
+            {'value': 'default2', 'operator': '=', 'field': 'group$0', 'separator': 'OR', 'level': 2},
+            {'value': 'default3', 'operator': '=', 'field': 'group$1', 'separator': '', 'level': 0}
+        ],
+        'SELECT {0} FROM agent WHERE (id != :id$0 COLLATE NOCASE) AND ((status = :status$0 COLLATE ' + \
+        'NOCASE) AND ((group = :group$0 COLLATE NOCASE) OR (group = :group$1 COLLATE NOCASE)))',
+    ),
+    (
+        [
+            {'value': 'default2', 'operator': '=', 'field': 'group$0', 'separator': 'OR', 'level': 2},
+            {'value': 'default3', 'operator': '=', 'field': 'group$1', 'separator': 'AND', 'level': 1},
+            {'value': '000', 'operator': '!=', 'field': 'id$0', 'separator': 'AND', 'level': 0},
+            {'value': 'active', 'operator': '=', 'field': 'status$0', 'separator': '', 'level': 0}
+        ],
+        'SELECT {0} FROM agent WHERE (((group = :group$0 COLLATE NOCASE) OR (group = :group$1 COLLATE ' + \
+        'NOCASE)) AND (id != :id$0 COLLATE NOCASE)) AND (status = :status$0 COLLATE NOCASE)',
+    ),
+    (
+        [
+            {'value': 'default2', 'operator': '=', 'field': 'group$0', 'separator': 'OR', 'level': 3},
+            {'value': 'default3', 'operator': '=', 'field': 'group$1', 'separator': 'OR', 'level': 2},
+            {'value': '001', 'operator': '=', 'field': 'id$0', 'separator': 'OR', 'level': 1},
+            {'value': '000', 'operator': '!=', 'field': 'id$1', 'separator': 'AND', 'level': 0},
+            {'value': 'active', 'operator': '=', 'field': 'status$0', 'separator': '', 'level': 0}
+        ],
+        'SELECT {0} FROM agent WHERE ((((group = :group$0 COLLATE NOCASE) OR (group = :group$1 COLLATE ' + \
+        'NOCASE)) OR (id = :id$0 COLLATE NOCASE)) OR (id != :id$1 COLLATE NOCASE)) AND ' + \
+        '(status = :status$0 COLLATE NOCASE)',
+    ),
+    (
+        [
+            {'value': 'default2', 'operator': '=', 'field': 'group$0', 'separator': 'OR', 'level': 1},
+            {'value': 'default3', 'operator': '=', 'field': 'group$1', 'separator': '', 'level': 0},
+        ],
+        'SELECT {0} FROM agent WHERE ((group = :group$0 COLLATE NOCASE) OR (group = :group$1 COLLATE NOCASE))',
+    ),
+    (
+        [
+            {'value': 'active', 'operator': '=', 'field': 'status$0', 'separator': 'OR', 'level': 1},
+            {'value': '000', 'operator': '!=', 'field': 'id$0', 'separator': 'AND', 'level': 2},
+            {'value': 'default', 'operator': '=', 'field': 'group$0', 'separator': 'OR', 'level': 3},
+            {'value': 'default3', 'operator': '=', 'field': 'group$1', 'separator': '', 'level': 0}
+        ],
+        'SELECT {0} FROM agent WHERE ((status = :status$0 COLLATE NOCASE) OR ((id != :id$0 COLLATE NOCASE) ' \
+        'AND ((group = :group$0 COLLATE NOCASE) OR (group = :group$1 COLLATE NOCASE))))',
+    ),
+])
+@patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
+@patch('wazuh.core.utils.path.exists', return_value=True)
+def test_WazuhDBQuery_protected_add_filters_to_query_final_query(mock_conn_db, mock_file_exists,
+                                                                 filters, expected_query):
+    """Test WazuhDBQuery._add_filters_to_query final query."""
+    query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None, search=None, select=None,
+                               fields={'id': 'id', 'status': 'status', 'group': 'group'},
+                               default_sort_field=None, query='', backend=utils.WazuhDBBackend(agent_id=0),
+                               count=5, get_data=None)
+
+    query.query_filters = filters
+    query._add_filters_to_query()
+
+    assert query.query.rstrip(' ') == expected_query
 
 
 @patch('wazuh.core.utils.path.exists', return_value=True)
@@ -1337,7 +1542,7 @@ def test_WazuhDBQuery_protected_default_count_query(mock_socket_conn, mock_isfil
     mock_conn_db.assert_called_once_with()
 
 
-@pytest.mark.parametrize('db_filter', [
+@pytest.mark.parametrize('value', [
     'all',
     'other_filter'
 ])
@@ -1347,7 +1552,7 @@ def test_WazuhDBQuery_protected_default_count_query(mock_socket_conn, mock_isfil
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch('socket.socket.connect')
 def test_WazuhDBQuery_protected_pass_filter(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob, mock_exists,
-                                            db_filter):
+                                            value):
     """Test utils.WazuhDBQuery._pass_filter function."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                                search=None, select={'fields': {'os.name'}},
@@ -1356,7 +1561,7 @@ def test_WazuhDBQuery_protected_pass_filter(mock_socket_conn, mock_isfile, mock_
                                backend=utils.WazuhDBBackend(agent_id=1),
                                count=5, get_data='data')
 
-    result = query._pass_filter(db_filter)
+    result = query._pass_filter('os.name', value)
 
     assert isinstance(result, bool)
     mock_conn_db.assert_called_once_with()
@@ -1589,7 +1794,8 @@ def test_WazuhDBQueryGroupBy_protected_add_select_to_query(mock_parse, mock_add,
     ('mergedSum.nestedSum1=value', 2),
     ('configSum.nestedSum1.nestedSum11=value', 1),
     ('configSum.nestedSum2.nestedSum21=value1', 1),
-    ('configSum.nestedSum2.nestedSum21=value2', 1)
+    ('configSum.nestedSum2.nestedSum21=value2', 1),
+    ('name=test@nested2', 1),
 ])
 def test_filter_array_by_query(q, return_length):
     """Test filter by query in an array."""
@@ -1673,8 +1879,9 @@ def test_add_dynamic_detail(detail, value, attribs, details):
 
 @patch('wazuh.core.utils.check_wazuh_limits_unchanged')
 @patch('wazuh.core.utils.check_remote_commands')
+@patch('wazuh.core.utils.check_agents_allow_higher_versions')
 @patch('wazuh.core.manager.common.WAZUH_PATH', new=test_files_path)
-def test_validate_wazuh_xml(mock_remote_commands, mock_unchanged_limits):
+def test_validate_wazuh_xml(mock_remote_commands, mock_agents_versions, mock_unchanged_limits):
     """Test validate_wazuh_xml method works and methods inside are called with expected parameters"""
 
     with open(os.path.join(test_files_path, 'test_rules.xml')) as f:
@@ -1685,10 +1892,12 @@ def test_validate_wazuh_xml(mock_remote_commands, mock_unchanged_limits):
     with patch('builtins.open', m):
         utils.validate_wazuh_xml(xml_file)
     mock_remote_commands.assert_not_called()
+    mock_agents_versions.assert_not_called()
 
     with patch('builtins.open', m):
         utils.validate_wazuh_xml(xml_file, config_file=True)
     mock_remote_commands.assert_called_once()
+    mock_agents_versions.assert_called_once()
 
 
 @pytest.mark.parametrize('effect, expected_exception', [
@@ -1868,3 +2077,140 @@ def test_check_wazuh_limits_unchanged(new_conf, unchanged_limits_conf, original_
         else:
             with pytest.raises(exception.WazuhError, match=".* 1127 .*"):
                 utils.check_wazuh_limits_unchanged(new_conf, original_conf)
+
+
+@pytest.mark.parametrize("new_conf", [
+    ("<ossec_config><remote><agents><allow_higher_versions>yes</allow_higher_versions></agents></remote></ossec_config>"),
+    ("<ossec_config><auth><agents><allow_higher_versions>yes</allow_higher_versions></agents></auth></ossec_config>"),
+    ("<ossec_config><remote><agents><allow_higher_versions>no</allow_higher_versions></agents></remote></ossec_config>"),
+    ("<ossec_config><auth><agents><allow_higher_versions>no</allow_higher_versions></agents></auth></ossec_config>"),
+    ("<ossec_config><remote><agents><allow_higher_versions>yes</allow_higher_versions></agents></remote><auth>" \
+     "<agents><allow_higher_versions>yes</allow_higher_versions></agents></auth></ossec_config>"),
+     ("<ossec_config><remote><agents><allow_higher_versions>no</allow_higher_versions></agents></remote><auth>" \
+     "<agents><allow_higher_versions>no</allow_higher_versions></agents></auth></ossec_config>"),
+])
+@pytest.mark.parametrize("agents_conf", [
+    ({'allow_higher_versions': {'allow': True}}),
+    ({'allow_higher_versions': {'allow': False}}),
+])
+def test_agents_allow_higher_versions(new_conf, agents_conf):
+    """Check if ossec.conf agents versions are protected by the API.
+
+    When 'allow_higher_versions': {'allow': False} is set in the API configuration, the agent versions in ossec.conf 
+    cannot be changed. However, other configuration sections can be added, 
+    removed or modified.
+
+    Parameters
+    ----------
+    new_conf : str
+        New ossec.conf to be uploaded.
+    agents_conf : dict
+        API configuration for the agents section.
+    """
+    api_conf = utils.configuration.api_conf
+    api_conf['upload_configuration']['agents'].update(agents_conf)
+
+    with patch('wazuh.core.utils.configuration.api_conf', new=api_conf):
+        if agents_conf['allow_higher_versions']['allow'] or new_conf.find('no') != -1:
+            utils.check_agents_allow_higher_versions(new_conf)
+        else:
+            with pytest.raises(exception.WazuhError, match=".* 1129 .*"):
+                utils.check_agents_allow_higher_versions(new_conf)
+
+
+@pytest.mark.parametrize(
+    'chk_xml, content', [
+        # basic test case
+        (False, "Test"),
+        # check_xml test case
+        (True, "<Test>'+Tes't</Test>")]
+)
+@patch('wazuh.core.utils.tempfile.mkstemp',
+        return_value=('handle', os.path.join(OSSEC_TMP_PATH, 'file.tmp')))
+@patch('wazuh.core.utils.chmod')
+@patch('wazuh.core.common.wazuh_gid')
+@patch('wazuh.core.common.wazuh_uid')
+def test_upload_file(mock_uid, mock_gid, 
+                     mock_chmod, mock_mks,
+                     chk_xml, content):
+    """Test upload_file function.
+    
+    Parameters
+    ----------
+    mock_uid: Mock
+        mock of the wazuh.core.common.wazuh_uid function.
+    mock_gid: Mock
+        mock of the wazuh.core.common.wazuh_gid function.
+    mock_chmod: Mock
+        mock of the wazuh.core.utils.chmod function.
+    mock_mks
+        Mock of the wazuh.core.utils.tempfile.mkstemp function.
+    chk_xml: bool
+        check_xml_formula_value parameter passed to uploda_file.
+    content: str
+        content parameter passed to upload_file.
+    """
+    filename = "file.xml"
+    mko = mock_open()
+    handle = mko()
+
+    with patch('wazuh.core.utils.open', mko):
+        with patch('wazuh.core.utils.safe_move') as mock_safe_move:
+            result = utils.upload_file(content, file_path=filename,
+                                        check_xml_formula_values=chk_xml)
+            assert isinstance(result, WazuhResult)
+            handle.write.assert_called_once_with(content)
+            tmp_path = os.path.join(OSSEC_TMP_PATH, 'file.tmp')
+            file_path = os.path.join(WAZUH_PATH, filename)
+            mock_safe_move.assert_called_once_with(tmp_path, file_path,
+                                                    ownership=(mock_uid(), mock_gid()),
+                                                    permissions=0o660)
+
+
+@pytest.mark.parametrize(
+    'sm_side_effect, w_side_effect, upload_error', [
+        # IOError exception raised writing file
+        (None, True, (utils.WazuhInternalError, 1005)),
+        # safe_move raises an Error()
+        (Error(), False, (utils.WazuhInternalError, 1016)),
+        # safe_move raises a PermissionError()
+        (PermissionError(), False, (utils.WazuhError, 1006))]
+)
+@patch('wazuh.core.utils.tempfile.mkstemp',
+        return_value=('handle', os.path.join(OSSEC_TMP_PATH, 'file.tmp')))
+@patch('wazuh.core.utils.chmod')
+@patch('wazuh.core.common.wazuh_gid')
+@patch('wazuh.core.common.wazuh_uid')
+def test_upload_file_ko(mock_uid, mock_gid, mock_chmod, mock_mks,
+                     sm_side_effect, w_side_effect, upload_error):
+    """
+    Parameters
+    ----------
+    mock_uid : Mock
+        mock of the wazuh.core.common.wazuh_uid function.
+    mock_gid : Mock
+        mock of the wazuh.core.common.wazuh_gid function.
+    mock_chmod: Mock
+        mock of the wazuh.core.utils.chmod function.
+    mock_mks : Mock
+        Mock of the wazuh.core.utils.tempfile.mkstemp function.
+    sm_side_effect : Exception
+        Exception to raise in the safe_move mock as side_effect.
+    w_side_effect : bool
+        When this parameter is True, file.write function raises an IOError
+        Exception when called.
+    upload_error : tuple[ExceptionType, int]
+        The function checks if the upload_file function raises the ExceptionType
+        defined in the index 0 with the error_code defined in the index 1 of
+        the tuple.
+    """
+    filename = "file.xml"
+    mko = mock_open()
+    handle = mko()
+    if w_side_effect:
+        handle.write.side_effect = IOError()
+
+    with patch('wazuh.core.utils.open', mko):
+        with patch('wazuh.core.utils.safe_move', side_effect=sm_side_effect) as mock_safe_move:
+            with pytest.raises(upload_error[0], match=rf'\b{upload_error[1]}\b'):
+                utils.upload_file("test", file_path=filename)

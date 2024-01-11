@@ -19,10 +19,10 @@ char *__wrap_fim_file_diff(const char *filename) {
     return mock_type(char *);
 }
 
-char *__wrap_fim_diff_process_delete_file(const char *filename) {
+int __wrap_fim_diff_process_delete_file(const char *filename) {
     check_expected(filename);
 
-    return mock_type(char *);
+    return mock();
 }
 
 void expect_fim_file_diff(const char *filename, char *ret) {
@@ -30,7 +30,7 @@ void expect_fim_file_diff(const char *filename, char *ret) {
     will_return(__wrap_fim_file_diff, ret);
 }
 
-void expect_fim_diff_process_delete_file(const char *filename, char *ret) {
+void expect_fim_diff_process_delete_file(const char *filename, int ret) {
     expect_string(__wrap_fim_diff_process_delete_file, filename, filename);
     will_return(__wrap_fim_diff_process_delete_file, ret);
 }
@@ -40,7 +40,7 @@ char *__wrap_fim_registry_value_diff(const char *key_name,
                                      const char *value_name,
                                      const char *value_data,
                                      DWORD data_type,
-                                     __attribute__((unused)) const registry *configuration) {
+                                     __attribute__((unused)) const registry_t *configuration) {
     check_expected(key_name);
     check_expected(value_name);
     check_expected(value_data);

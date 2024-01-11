@@ -5,9 +5,28 @@ $TMP_BACKUP_DIR               = "wazuh_backup_tmp"
 $Env:WAZUH_DEF_REG_START_PATH = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Installer\UserData\S-1-5-18\Products\"
 $Env:WAZUH_PUBLISHER_VALUE    = "Wazuh, Inc."
 
+# Check if there is an upgrade in progress
+$BACKUP_FOLDERS = @()
+if (Test-Path $env:temp\$TMP_BACKUP_DIR) { $BACKUP_FOLDERS += "$env:temp\$TMP_BACKUP_DIR" }
+if (Test-Path $Env:WAZUH_BACKUP_DIR) { $BACKUP_FOLDERS += "$Env:WAZUH_BACKUP_DIR" }
+foreach ($dir in $BACKUP_FOLDERS) {
+    $attempts = 5
+    while ($attempts -gt 0) {
+        Start-Sleep 10
+        $attempts--
+        if ((Get-ChildItem $dir -recurse | Where-Object { $_.LastWriteTime -gt (Get-Date).AddMinutes(-1) })) {
+            Write-Output "$(Get-Date -Format u) - There is an upgrade in progress. Aborting..." >> .\upgrade\upgrade.log
+            exit 1
+        }
+    }
+}
+
+# Delete previous upgrade.log
+Remove-Item -Path ".\upgrade\upgrade.log" -ErrorAction SilentlyContinue
+
 # Select powershell
-if ((Get-WmiObject Win32_OperatingSystem).OSArchitecture -eq "64-bit" -And [System.IntPtr]::Size -eq 4) {
-    write-output "$(Get-Date -format u) Sysnative Powershell will be used to access the registry." >> .\upgrade\upgrade.log
+if (Test-Path "$env:windir\sysnative") {
+    write-output "$(Get-Date -format u) - Sysnative Powershell will be used to access the registry." >> .\upgrade\upgrade.log
     Set-Alias Start-NativePowerShell "$env:windir\sysnative\WindowsPowerShell\v1.0\powershell.exe"
 } else {
     Set-Alias Start-NativePowerShell "$env:windir\System32\WindowsPowerShell\v1.0\powershell.exe"
@@ -130,7 +149,7 @@ function get_uninstall_string {
             foreach ($subsubpath in $subpath) {
                 if ($subsubpath -match "InstallProperties") {
                     if ($subsubpath.GetValue("Publisher") -match $Env:WAZUH_PUBLISHER_VALUE) {
-                        $UninstallString = $subsubpath.GetValue("UninstallString") + " /quiet"
+                        $UninstallString = $subsubpath.GetValue("UninstallString") + " /quiet /norestart"
                     }
                 }
             }
@@ -146,7 +165,7 @@ function uninstall_wazuh {
 
 	if ($UninstallString -ne $null) {
 		write-output "$(Get-Date -format u) - Performing the Wazuh-Agent uninstall using: `"$UninstallString`"." >> .\upgrade\upgrade.log
-		& "C:\Windows\SYSTEM32\cmd.exe" /c $UninstallString
+		& "$env:windir\System32\cmd.exe"/c $UninstallString
 
 		# registry takes some time to refresh (e.g.: NT 6.3)
 		Start-Sleep 5
@@ -229,7 +248,7 @@ function install
 
 # Get current version
 $current_version = (Get-Content VERSION)
-write-output "$(Get-Date -format u) - Current version: $($current_version)." > .\upgrade\upgrade.log
+write-output "$(Get-Date -format u) - Current version: $($current_version)." >> .\upgrade\upgrade.log
 
 # Get process name
 $current_process = "wazuh-agent"
@@ -254,7 +273,7 @@ write-output "$(Get-Date -format u) - Installation finished." >> .\upgrade\upgra
 
 # Check process status
 $process_id = (Get-Process wazuh-agent).id
-$counter = 5
+$counter = 10
 while($process_id -eq $null -And $counter -gt 0)
 {
     $counter--
@@ -268,17 +287,21 @@ write-output "$(Get-Date -format u) - Process ID: $($process_id)." >> .\upgrade\
 Start-Sleep 10
 
 # Check status file
-$status = Get-Content .\wazuh-agent.state | select-string "status='connected'" -SimpleMatch
-$counter = 5
-while($status -eq $null -And $counter -gt 0)
+function Get-AgentStatus {
+    Select-String -Path '.\wazuh-agent.state' -Pattern "^status='(.+)'" | %{$_.Matches[0].Groups[1].value}
+}
+
+$status = Get-AgentStatus
+$counter = 30
+while($status -ne "connected"  -And $counter -gt 0)
 {
     $counter--
     Start-Sleep 2
-    $status = Get-Content .\wazuh-agent.state | select-string "status='connected'" -SimpleMatch
+    $status = Get-AgentStatus
 }
-write-output "$(Get-Date -format u) - Reading status file: $($status)." >> .\upgrade\upgrade.log
+Write-Output "$(Get-Date -Format u) - Reading status file: status='$status'." >> .\upgrade\upgrade.log
 
-If ($status -eq $null)
+If ($status -ne "connected")
 {
     Get-Service -Name "Wazuh" | Stop-Service
     write-output "$(Get-Date -format u) - Upgrade failed: Restoring former installation." >> .\upgrade\upgrade.log
@@ -318,3 +341,5 @@ Remove-Item $Env:WAZUH_BACKUP_DIR -recurse -ErrorAction SilentlyContinue
 Remove-Item -Path ".\upgrade\*"  -Exclude "*.log", "upgrade_result" -ErrorAction SilentlyContinue
 Remove-Item -Path ".\wazuh-agent*.msi" -ErrorAction SilentlyContinue
 Remove-Item -Path ".\do_upgrade.ps1" -ErrorAction SilentlyContinue
+
+exit 0

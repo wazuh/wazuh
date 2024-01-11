@@ -8,14 +8,18 @@ from wazuh.core.exception import DOCU_VERSION
 
 class APIException(Exception):
     """
-    Wazuh API exception
+    Wazuh API exception class.
     """
 
     def __init__(self, code: int, details: str = None):
-        """
-        Constructor
-        :param code: Error code.
-        :param details: Extra details to add to the default exception message to include useful context information
+        """APIException class constructor.
+
+        Parameters
+        ----------
+        code : int
+            Error code.
+        details : str
+            Extra details to add to the default exception message to include useful context information.
         """
         self.code = code
         self.details = details
@@ -39,10 +43,19 @@ class APIException(Exception):
                   'It can be changed in the API configuration',
             2009: 'Semicolon (;) is a reserved character and must '
                   'be percent-encoded (%3B) to use it.',
-            2010: 'Error while attempting to bind on address: address already in use'
+            2010: 'Error while attempting to bind on address: address already in use',
+            2011: 'Error setting up API logger',
+            2012: 'Error while attempting to check RBAC database integrity'
         }
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """Magic method str().
+
+        Returns
+        -------
+        str
+            String representation of the APIException object.
+        """
         details = '.' if self.details is None else f': {self.details}.'
         return f"{self.code} - {self.exceptions[self.code]}{details}"
 

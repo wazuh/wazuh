@@ -3,6 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import contextlib
+import datetime
 
 from wazuh.core import common
 from wazuh.core import exception
@@ -20,12 +21,12 @@ node_id = get_node().get('node') if cluster_enabled else None
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-def totals(date):
+def totals(date: datetime.date) -> AffectedItemsWazuhResult:
     """Retrieve statistical information for the current or specified date.
 
     Parameters
     ----------
-    date: date
+    date : datetime.date
         Date object with the date value of the stats.
 
     Returns
@@ -46,7 +47,7 @@ def totals(date):
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-def hourly():
+def hourly() -> AffectedItemsWazuhResult:
     """Compute hourly averages.
 
     Returns
@@ -66,7 +67,7 @@ def hourly():
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-def weekly():
+def weekly() -> AffectedItemsWazuhResult:
     """Compute weekly averages.
 
     Returns
@@ -195,7 +196,7 @@ def get_daemons_stats_agents(daemons_list: list = None, agent_list: list = None)
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-def get_daemons_stats(daemons_list: list = None):
+def get_daemons_stats(daemons_list: list = None) -> AffectedItemsWazuhResult:
     """Get statistical information from the specified daemons.
     If the list is empty, the stats from all daemons will be retrieved.
 
@@ -253,7 +254,7 @@ def deprecated_get_daemons_stats(filename):
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
-def get_agents_component_stats_json(agent_list=None, component=None):
+def get_agents_component_stats_json(agent_list: list = None, component: str = None) -> AffectedItemsWazuhResult:
     """Get statistics of an agent's component.
 
     Parameters

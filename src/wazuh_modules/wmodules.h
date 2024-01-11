@@ -14,7 +14,7 @@
 
 #include "shared.h"
 #include <pthread.h>
-#include "config/config.h"
+#include "../config/config.h"
 #include "wmodules_def.h"
 
 #define WM_STATE_DIR    "var/wodles"               // Default directory for states.
@@ -23,7 +23,7 @@
 #define WM_BUFFER_MAX   1024                        // Max. static buffer size.
 #define WM_BUFFER_MIN   1024                        // Starting JSON buffer length.
 #define WM_MAX_ATTEMPTS 3                           // Max. number of attempts.
-#define WM_MAX_WAIT     1                           // Max. wait between attempts.
+#define WM_MAX_WAIT     500                           // Max. wait between attempts in milliseconds.
 #define WM_IO_WRITE     0
 #define WM_IO_READ      1
 #define WM_ERROR_TIMEOUT 1                          // Error code for timeout.
@@ -40,9 +40,11 @@
 #define TASK_MANAGER_WM_NAME "task-manager"
 #define GITHUB_WM_NAME "github"
 #define OFFICE365_WM_NAME "office365"
+#define MS_GRAPH_WM_NAME "ms-graph"
 
 #define WM_DEF_TIMEOUT      1800            // Default runtime limit (30 minutes)
 #define WM_DEF_INTERVAL     86400           // Default cycle interval (1 day)
+#define WM_MIN_UPDATE_INTERVAL 3600         // Minimum cycle update interval (1 hour)
 
 #define DAY_SEC    86400
 #define WEEK_SEC   604800
@@ -67,7 +69,6 @@ typedef enum crypto_type {
 #include "wm_command.h"
 #include "wm_ciscat.h"
 #include "wm_aws.h"
-#include "vulnerability_detector/wm_vuln_detector.h"
 #include "wm_osquery_monitor.h"
 #include "wm_download.h"
 #include "wm_azure.h"
@@ -81,6 +82,10 @@ typedef enum crypto_type {
 #include "task_manager/wm_task_manager.h"
 #include "wm_github.h"
 #include "wm_office365.h"
+#include "wm_router.h"
+#include "wm_content_manager.h"
+#include "wm_vulnerability_scanner.h"
+#include "wm_ms_graph.h"
 
 extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.
@@ -175,9 +180,6 @@ int wm_sendmsg_ex(int usec, int queue, const char *message, const char *locmsg, 
 // Check if a path is relative or absolute.
 // Returns 0 if absolute, 1 if relative or -1 on error.
 int wm_relative_path(const char * path);
-
-// Get binary full path
-int wm_get_path(const char *binary, char **validated_comm);
 
 /**
  Check the binary wich executes a commad has the specified hash.

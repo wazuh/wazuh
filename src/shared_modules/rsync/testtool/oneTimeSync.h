@@ -21,7 +21,8 @@ class OneTimeSync final
     public:
         OneTimeSync(const nlohmann::json& config,
                     const nlohmann::json& inputData,
-                    const std::string& outputFolder);
+                    const std::string& outputFolder,
+                    const size_t maxQueueSize);
         ~OneTimeSync();
         void syncData();
         void pushData();

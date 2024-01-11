@@ -12,8 +12,8 @@
 #define MITRE_H
 
 #include "shared.h"
-#include "os_net/os_net.h"
-#include "headers/wazuhdb_op.h"
+#include "../os_net/os_net.h"
+#include "../headers/wazuhdb_op.h"
 
 typedef struct tactic_data {
     char* tactic_id;

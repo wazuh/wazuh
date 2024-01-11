@@ -19,6 +19,10 @@
 
 #ifdef WAZUH_UNIT_TESTING
 #define static
+
+// Redefine ossec_version
+#undef __ossec_version
+#define __ossec_version "v4.5.0"
 #endif
 
 keystore keys;
@@ -121,6 +125,29 @@ w_err_t w_auth_parse_data(const char* buf,
         merror("Invalid agent name: %s from %s", *agentname, ip);
         snprintf(response, OS_SIZE_2048, "ERROR: Invalid agent name: %s", *agentname);
         return OS_INVALID;
+    }
+
+    /* Check for valid agent version */
+    const char * agent_version_token = " V:";
+    if (strncmp(buf, agent_version_token, 3) == 0) {
+        char version[OS_BUFFER_SIZE+1] = {0};
+        sscanf(buf," V:\'%2048[^\']\"",version);
+
+        /* Validate the version */
+        if (buf[strlen(version) + 4] != '\'') {
+            merror("Unterminated version field");
+            snprintf(response, OS_SIZE_2048, "ERROR: Unterminated version field");
+            return OS_INVALID;
+        }
+
+        if (!config.allow_higher_versions && compare_wazuh_versions(__ossec_version, version, false) < 0) {
+            merror("Incompatible version for new agent from: %s", ip);
+            snprintf(response, OS_SIZE_2048, "ERROR: %s", HC_INVALID_VERSION_RESPONSE);
+            return OS_INVALID;
+        }
+
+        /* Forward the string pointer V:'........' 3 for " V:", 2 for '' */
+        buf += strlen(version) + 5;
     }
 
     /* Check for valid centralized group */

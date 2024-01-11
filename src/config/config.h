@@ -38,6 +38,16 @@
 
 #define MAX_NEEDED_TAGS 4
 
+#define BITMASK(modules)   (\
+                            (modules & CGLOBAL       ) | (modules & CRULES        ) | (modules & CSYSCHECK     ) |\
+                            (modules & CROOTCHECK    ) | (modules & CALERTS       ) | (modules & CLOCALFILE    ) |\
+                            (modules & CREMOTE       ) | (modules & CCLIENT       ) | (modules & CMAIL         ) |\
+                            (modules & CAR           ) | (modules & CDBD          ) | (modules & CSYSLOGD      ) |\
+                            (modules & CAGENT_CONFIG ) | (modules & CAGENTLESS    ) | (modules & CREPORTS      ) |\
+                            (modules & CINTEGRATORD  ) | (modules & CWMODULE      ) | (modules & CLABELS       ) |\
+                            (modules & CAUTHD        ) | (modules & CBUFFER       ) | (modules & CCLUSTER      ) |\
+                            (modules & CSOCKET       ) | (modules & CLOGTEST      ) | (modules & WAZUHDB       ) )
+
 typedef enum needed_tags {
     JSONOUT_OUTPUT = 0,
     ALERTS_LOG,
@@ -45,12 +55,14 @@ typedef enum needed_tags {
     LOGALL_JSON
 } NeededTags;
 
-#include "os_xml/os_xml.h"
-#include "config/wazuh_db-config.h"
+
+#include "../os_xml/os_xml.h"
+#include "../config/wazuh_db-config.h"
 #include "time.h"
 
 /* Main function to read the config */
 int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2);
+void PrintErrorAcordingToModules(int modules, const char *cfgfile);
 
 int Read_Global(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_GlobalSK(XML_NODE node, void *configp, void *mailp);
@@ -63,7 +75,7 @@ int Read_CSyslog(XML_NODE node, void *config1, void *config2);
 int Read_CAgentless(XML_NODE node, void *config1, void *config2);
 int Read_Localfile(XML_NODE node, void *d1, void *d2);
 int Read_Integrator(XML_NODE node, void *config1, void *config2);
-int Read_Remote(XML_NODE node, void *d1, void *d2);
+int Read_Remote(const OS_XML *xml,XML_NODE node, void *d1, void *d2);
 int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_ClientBuffer(XML_NODE node, void *d1, void *d2);
 int ReadActiveResponses(XML_NODE node, void *d1, void *d2);
@@ -109,7 +121,8 @@ int wm_key_request_read(__attribute__((unused)) xml_node **nodes, __attribute__(
 int Read_Labels(XML_NODE node, void *d1, void *d2);
 int Read_Cluster(XML_NODE node, void *d1, void *d2);
 int Read_Socket(XML_NODE node, void *d1, void *d2);
-int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2);
+int Read_Vulnerability_Detection(const OS_XML *xml, XML_NODE nodes, void *d1, const bool old_vd);
+int Read_Indexer(const OS_XML *xml, XML_NODE nodes);
 int Read_AgentUpgrade(const OS_XML *xml, xml_node *node, void *d1);
 int Read_TaskManager(const OS_XML *xml, xml_node *node, void *d1);
 
@@ -129,6 +142,14 @@ int Read_Github(const OS_XML *xml, xml_node *node, void *d1);
  * @param d1 office365 configuration structure
  */
 int Read_Office365(const OS_XML *xml, xml_node *node, void *d1);
+
+/**
+ * @brief Read the configuration for MS Graph module
+ * @param xml XML object
+ * @param node XML node to analyze
+ * @param d1 ms_graph configuration structure
+ */
+int Read_MS_Graph(const OS_XML *xml, xml_node *node, void *d1);
 #endif
 
 /**

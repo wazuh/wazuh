@@ -27,19 +27,13 @@
 #endif
 
 #include <stdbool.h>
+#include "commonDefs.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
+#include "logging_helper.h"
 
-typedef enum syscollector_log_level_t
-{
-    SYS_LOG_ERROR,
-    SYS_LOG_INFO,
-    SYS_LOG_DEBUG,
-    SYS_LOG_DEBUG_VERBOSE
-} syscollector_log_level_t;
-
-typedef void((*log_callback_t)(const syscollector_log_level_t level, const char* log));
+typedef void((*log_callback_t)(const modules_log_level_t level, const char* log, const char* tag));
 
 typedef void((*send_data_callback_t)(const void* buffer));
 
@@ -90,5 +84,7 @@ typedef void(*syscollector_start_func)(const unsigned int inverval,
 typedef void(*syscollector_stop_func)();
 
 typedef int (*syscollector_sync_message_func)(const char* data);
+
+typedef void (*rsync_initialize_full_log_func)(full_log_fnc_t log_function);
 
 #endif //_SYSCOLLECTOR_H

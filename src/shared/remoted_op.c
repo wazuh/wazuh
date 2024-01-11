@@ -22,7 +22,7 @@
  * @retval A string pointer to the architecture. NULL if not found.
  */
 char * get_os_arch(char * os_header) {
-    const char * ARCHS[] = { "x86_64", "i386", "i686", "sparc", "amd64", "i86pc", "ia64", "AIX", "armv6", "armv7", "aarch64", NULL };
+    const char * ARCHS[] = { "x86_64", "i386", "i686", "sparc", "amd64", "i86pc", "ia64", "AIX", "armv6", "armv7", "aarch64", "arm64", NULL };
     char * os_arch = NULL;
     int i;
 
@@ -75,7 +75,7 @@ void parse_uname_string (char *uname,
         }
 
         // Get os_build
-        if (w_regexec("^[0-9]+\\.[0-9]+\\.([0-9]+)\\.*", str_tmp, 2, match)) {
+        if (w_regexec("^[0-9]+\\.[0-9]+\\.([0-9]+(\\.[0-9]+)*)\\.*", str_tmp, 2, match)) {
             match_size = match[1].rm_eo - match[1].rm_so;
             os_malloc(match_size +1, osd->os_build);
             snprintf(osd->os_build, match_size + 1, "%.*s", match_size, str_tmp + match[1].rm_so);

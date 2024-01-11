@@ -36,7 +36,7 @@ int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size
         return -1;
     }
 
-    switch (sqlite3_step(stmt)) {
+    switch (wdb_step(stmt)) {
     case SQLITE_ROW:
 
         sum.changes = (long)sqlite3_column_int64(stmt, 0);
@@ -69,7 +69,7 @@ int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size
         return 0;
 
     default:
-        merror("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        merror("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -172,7 +172,7 @@ int wdb_fim_find_entry(wdb_t * wdb, const char * path) {
 
     sqlite3_bind_text(stmt, 1, path, -1, NULL);
 
-    switch (sqlite3_step(stmt)) {
+    switch (wdb_step(stmt)) {
     case SQLITE_ROW:
         return 1;
         break;
@@ -180,7 +180,7 @@ int wdb_fim_find_entry(wdb_t * wdb, const char * path) {
         return 0;
         break;
     default:
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -234,12 +234,12 @@ int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum
     sqlite3_bind_text(stmt, 15, sum->symbolic_path, -1, NULL);
     sqlite3_bind_text(stmt, 16, file, -1, NULL);
 
-    if (sqlite3_step(stmt) == SQLITE_DONE) {
+    if (wdb_step(stmt) == SQLITE_DONE) {
         free(unescaped_perms);
         return 0;
     } else {
         free(unescaped_perms);
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -247,13 +247,22 @@ int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum
 
 int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
     cJSON *json_path;
-    char *path, *arch, *value_name, *full_path, *item_type;
+    char *path, *arch, *value_name, *item_type;
+    char *full_path = NULL;
+
     if (!wdb) {
         merror("WDB object cannot be null.");
         return -1;
     }
 
     json_path = cJSON_GetObjectItem(data, "path");
+
+    // Fallback for RSync format. Windows registries comes with both path and index fields,
+    // path corresponds to the key_path, and index is the hash used as full_path,
+    // It is included in the 3.0 version code
+    if (!json_path) {
+        json_path = cJSON_GetObjectItem(data, "index");
+    }
 
     if (!json_path) {
         merror("DB(%s) fim/save request with no file path argument.", wdb->id);
@@ -292,9 +301,6 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
         os_strdup(path, full_path);
         item_type = "registry_key";
     } else if (strncmp(item_type, "registry_", 9) == 0) {
-        int full_path_length;
-        char *path_escaped_slahes;
-        char *path_escaped;
 
         if (!cJSON_IsNumber(version)) {
             // Synchronization messages without the "version" attribute are ignored, but won't trigger any error
@@ -302,53 +308,77 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
             return 0;
         }
 
-        path_escaped_slahes = wstr_replace(path, "\\", "\\\\");
-        path_escaped = wstr_replace(path_escaped_slahes, ":", "\\:");
-        os_free(path_escaped_slahes);
         arch = cJSON_GetStringValue(cJSON_GetObjectItem(data, "arch"));
+        value_name = cJSON_GetStringValue(cJSON_GetObjectItem(data, "value_name"));
 
-        if (arch == NULL) {
-            merror("DB(%s) fim/save registry request with no arch argument.", wdb->id);
-            os_free(path_escaped);
-            return -1;
-        }
+        // Second version of the message, both registry keys and registry values
+        // work with the same component "fim_registry".
+        // full_path example: "[x32] HKEY_LOCAL_MACHINE\\\\software\\:value_name"
+        if (version->valuedouble == 2.0) {
+            int full_path_length;
+            char *path_escaped_slahes;
+            char *path_escaped;
 
-        if (strcmp(item_type + 9, "key") == 0) {
-            value_name = NULL;
-            full_path_length = snprintf(NULL, 0, "%s %s", arch, path_escaped);
+            path_escaped_slahes = wstr_replace(path, "\\", "\\\\");
+            path_escaped = wstr_replace(path_escaped_slahes, ":", "\\:");
+            os_free(path_escaped_slahes);
 
-            os_calloc(full_path_length + 1, sizeof(char), full_path);
-
-            snprintf(full_path, full_path_length + 1, "%s %s", arch, path_escaped);
-        } else if (strcmp(item_type + 9, "value") == 0) {
-            char *value_name_escaped_slashes;
-            char *value_name_escaped;
-            value_name = cJSON_GetStringValue(cJSON_GetObjectItem(data, "value_name"));
-
-            if (value_name == NULL) {
-                merror("DB(%s) fim/save registry value request with no value name argument.", wdb->id);
+            if (arch == NULL) {
+                merror("DB(%s) fim/save registry request with no arch argument.", wdb->id);
                 os_free(path_escaped);
                 return -1;
             }
 
-            value_name_escaped_slashes = wstr_replace(value_name, "\\", "\\\\");
-            value_name_escaped = wstr_replace(value_name_escaped_slashes, ":", "\\:");
-            os_free(value_name_escaped_slashes);
+            if (strcmp(item_type + 9, "key") == 0) {
+                value_name = NULL;
+                full_path_length = snprintf(NULL, 0, "%s %s", arch, path_escaped);
 
-            full_path_length = snprintf(NULL, 0, "%s %s:%s", arch, path_escaped, value_name_escaped);
+                os_calloc(full_path_length + 1, sizeof(char), full_path);
 
-            os_calloc(full_path_length + 1, sizeof(char), full_path);
+                snprintf(full_path, full_path_length + 1, "%s %s", arch, path_escaped);
+            } else if (strcmp(item_type + 9, "value") == 0) {
+                char *value_name_escaped_slashes;
+                char *value_name_escaped;
 
-            snprintf(full_path, full_path_length + 1, "%s %s:%s", arch, path_escaped, value_name_escaped);
+                if (value_name == NULL) {
+                    merror("DB(%s) fim/save registry value request with no value name argument.", wdb->id);
+                    os_free(path_escaped);
+                    return -1;
+                }
 
-            os_free(value_name_escaped);
-        } else {
-            merror("DB(%s) fim/save request with invalid '%s' type argument.", wdb->id, item_type);
+                value_name_escaped_slashes = wstr_replace(value_name, "\\", "\\\\");
+                value_name_escaped = wstr_replace(value_name_escaped_slashes, ":", "\\:");
+                os_free(value_name_escaped_slashes);
+
+                full_path_length = snprintf(NULL, 0, "%s %s:%s", arch, path_escaped, value_name_escaped);
+
+                os_calloc(full_path_length + 1, sizeof(char), full_path);
+
+                snprintf(full_path, full_path_length + 1, "%s %s:%s", arch, path_escaped, value_name_escaped);
+
+                os_free(value_name_escaped);
+            } else {
+                merror("DB(%s) fim/save request with invalid '%s' type argument.", wdb->id, item_type);
+                os_free(path_escaped);
+                return -1;
+            }
+
             os_free(path_escaped);
-            return -1;
-        }
+        } else if (version->valuedouble == 3.0) {
+            // Third version of the messages, field index its a hash formed with arch,
+            // path and value_name (if it is a value). It is used for full_path db field.
+            // Differents components for keys and values.
+            cJSON *json_index = cJSON_GetObjectItem(data, "index");
 
-        os_free(path_escaped);
+            if (!json_index) {
+                merror("DB(%s) version 3.0 fim/save request with no index argument.", wdb->id);
+                return -1;
+            }
+
+            char* index = cJSON_GetStringValue(json_index);
+
+            os_strdup(index, full_path);
+        }
     } else {
         merror("DB(%s) fim/save request with invalid '%s' type argument.", wdb->id, item_type);
         return -1;
@@ -450,8 +480,8 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
         }
     }
 
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+    if (wdb_step(stmt) != SQLITE_DONE) {
+        mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
         os_free(perm);
         os_free(full_path);
         return -1;
@@ -497,12 +527,12 @@ int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum) {
     sqlite3_bind_text(stmt, 14, sum->symbolic_path, -1, NULL);
     sqlite3_bind_text(stmt, 15, file, -1, NULL);
 
-    if (sqlite3_step(stmt) == SQLITE_DONE) {
+    if (wdb_step(stmt) == SQLITE_DONE) {
         free(unescaped_perms);
         return sqlite3_changes(wdb->db);
     } else {
         free(unescaped_perms);
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -520,7 +550,7 @@ int wdb_fim_delete(wdb_t * wdb, const char * path) {
 
     sqlite3_bind_text(stmt, 1, path, -1, NULL);
 
-    switch (sqlite3_step(stmt)) {
+    switch (wdb_step(stmt)) {
     case SQLITE_ROW:
         return 0;
         break;
@@ -528,7 +558,7 @@ int wdb_fim_delete(wdb_t * wdb, const char * path) {
         return 0;
         break;
     default:
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -545,12 +575,12 @@ int wdb_fim_update_date_entry(wdb_t * wdb, const char *path) {
 
     sqlite3_bind_text(stmt, 1, path, -1, NULL);
 
-    switch (sqlite3_step(stmt)) {
+    switch (wdb_step(stmt)) {
     case SQLITE_DONE:
         mdebug2("DB(%s) Updated date field for file '%s' to '%ld'", wdb->id, path, (long)time(NULL));
         return 0;
     default:
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -574,7 +604,7 @@ int wdb_fim_clean_old_entries(wdb_t * wdb) {
     stmt = wdb->stmt[WDB_STMT_FIM_FIND_DATE_ENTRIES];
     sqlite3_bind_int64(stmt, 1, tscheck3);
 
-    while(result = sqlite3_step(stmt), result != SQLITE_DONE) {
+    while(result = wdb_step(stmt), result != SQLITE_DONE) {
         switch (result) {
             case SQLITE_ROW:
                 //call to delete
@@ -588,7 +618,7 @@ int wdb_fim_clean_old_entries(wdb_t * wdb) {
                 }
                 break;
             default:
-                mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+                mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
                 return -1;
         }
     }

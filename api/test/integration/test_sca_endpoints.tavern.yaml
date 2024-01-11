@@ -414,6 +414,20 @@ stages:
       json:
         error: 2007
 
+  - name: Get distinct sca agent data
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/sca/006"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
 ---
 test_name: GET /sca/{agent_id} using select (parametrized)
 
@@ -499,8 +513,7 @@ stages:
 test_name: GET /sca/{agent_id}/checks/{policy_id}
 
 stages:
-  - &get_policy_id
-    name: Get policy ID
+  - name: Get policy ID
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/sca/001"
@@ -539,7 +552,6 @@ stages:
               compliance: !anything
               rules: !anything
               condition: !anystr
-              reason: !anystr
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -586,9 +598,27 @@ stages:
           expected_rules_command: data.affected_items[0].rules
           expected_condition_command: data.affected_items[0].condition
           expected_command_command: data.affected_items[0].command
+  
+  - name: Get items with the condition 'all'
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        q: condition=all
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
 
-  - &get_item_file_field
-    name: Get item with the file field (q="rules.type=file")
+  - name: Get item with the file field (q="rules.type=file")
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
@@ -982,27 +1012,25 @@ stages:
           failed_items: [ ]
           total_failed_items: 0
 
-#  - name: Get SCA checks filtering by remediation
-#    request:
-#      verify: False
-#      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
-#      method: GET
-#      headers:
-#        Authorization: "Bearer {test_login_token}"
-#      params:
-#        remediation: "{expected_remediation_file:s}"
-#    response:
-#      status_code: 200
-#      json:
-#        error: 0
-#        data:
-#          affected_items:
-#            - <<: *sca_check_result_001_file
-#          total_affected_items: !anyint
-#          failed_items: [ ]
-#          total_failed_items: 0
-
-  # select tests
+  - name: Get SCA checks filtering by remediation
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        remediation: "{expected_remediation_file:s}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *sca_check_result_001_file
+          total_affected_items: !anyint
+          failed_items: [ ]
+          total_failed_items: 0
 
   - name: Get SCA checks filtering by rationale
     request:
@@ -1020,37 +1048,6 @@ stages:
         data:
           affected_items:
             - <<: *sca_check_result_001_command
-          total_affected_items: !anyint
-          failed_items: [ ]
-          total_failed_items: 0
-
----
-test_name: GET /sca/{agent_id}/checks/{policy_id}?remediation
-
-marks:
-  - xfail # Getting SCA check filtering by remediation fails with some values - https://github.com/wazuh/wazuh/issues/15465
-
-stages:
-  - *get_policy_id
-
-  - *get_item_file_field
-
-  - name: Get SCA checks filtering by remediation
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        remediation: "{expected_remediation_file:s}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - <<: *sca_check_result_001_file
           total_affected_items: !anyint
           failed_items: [ ]
           total_failed_items: 0

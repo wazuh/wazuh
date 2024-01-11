@@ -80,11 +80,10 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
         }
 
         char *new_env = getenv("PATH");
-        if (new_env) {
+        if (new_env != NULL) {
             mdebug1("New 'PATH' environment variable set: '%s'", new_env);
         }
-
-        free(new_path);
+        os_free(new_path);
     }
 
     sinfo.cb = sizeof(STARTUPINFO);
@@ -349,10 +348,10 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
             }
 
             char *new_env = getenv("PATH");
-            if (new_env) {
+            if (new_env != NULL) {
                 mdebug1("New 'PATH' environment variable set: '%s'", new_env);
             }
-            free(new_path);
+            os_free(new_path);
         }
 
         argv = w_strtok(command);

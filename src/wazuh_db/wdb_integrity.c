@@ -14,9 +14,13 @@
  */
 
 #include "cJSON.h"
+#include "debug_op.h"
 #include "os_err.h"
 #include "wdb.h"
 #include "os_crypto/sha1/sha1_op.h"
+#include "pthreads_op.h"
+#include "utils/flatbuffers/include/syscollector_deltas_schema.h"
+#include "router.h"
 #include <openssl/evp.h>
 #include <stdarg.h>
 
@@ -24,6 +28,8 @@ static const char * COMPONENT_NAMES[] = {
     [WDB_FIM] = "fim",
     [WDB_FIM_FILE] = "fim_file",
     [WDB_FIM_REGISTRY] = "fim_registry",
+    [WDB_FIM_REGISTRY_KEY] = "fim_registry_key",
+    [WDB_FIM_REGISTRY_VALUE] = "fim_registry_value",
     [WDB_SYSCOLLECTOR_PROCESSES] = "syscollector-processes",
     [WDB_SYSCOLLECTOR_PACKAGES] = "syscollector-packages",
     [WDB_SYSCOLLECTOR_HOTFIXES] = "syscollector-hotfixes",
@@ -49,6 +55,66 @@ extern void mock_assert(const int result, const char* const expression,
 #define assert(expression) \
     mock_assert((int)(expression), #expression, __FILE__, __LINE__);
 #endif
+
+void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite3_stmt* stmt) {
+    if (!router_syscollector_handle) {
+        mdebug2("Router handle not available.");
+        return;
+    }
+
+    cJSON* j_msg_to_send = NULL;
+    cJSON* j_agent_info = NULL;
+    cJSON* j_data = NULL;
+    char* msg_to_send = NULL;
+    char* type = NULL;
+    int result = SQLITE_ERROR;
+
+    do{
+        j_msg_to_send = cJSON_CreateObject();
+        j_agent_info = cJSON_CreateObject();
+        j_data = cJSON_CreateObject();
+
+        cJSON_AddStringToObject(j_agent_info, "agent_id", agent_id);
+        cJSON_AddStringToObject(j_agent_info, "node_name", gconfig.node_name ? gconfig.node_name : "");
+        cJSON_AddItemToObject(j_msg_to_send, "agent_info", j_agent_info);
+
+        switch (component)
+        {
+            case WDB_SYSCOLLECTOR_HOTFIXES:
+                type = "dbsync_hotfixes";
+                cJSON_AddItemToObject(j_data, "hotfix", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
+                break;
+            case WDB_SYSCOLLECTOR_PACKAGES:
+                type = "dbsync_packages";
+                cJSON_AddItemToObject(j_data, "name", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
+                cJSON_AddItemToObject(j_data, "version", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 1)));
+                cJSON_AddItemToObject(j_data, "architecture", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 2)));
+                cJSON_AddItemToObject(j_data, "format", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 3)));
+                cJSON_AddItemToObject(j_data, "location", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 4)));
+                cJSON_AddItemToObject(j_data, "item_id", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 5)));
+                break;
+            default:
+                break;
+        }
+
+        cJSON_AddItemToObject(j_msg_to_send, "data_type", cJSON_CreateString(type));
+        cJSON_AddItemToObject(j_msg_to_send, "data", j_data);
+        cJSON_AddItemToObject(j_msg_to_send, "operation", cJSON_CreateString("DELETED"));
+
+        msg_to_send = cJSON_PrintUnformatted(j_msg_to_send);
+
+        if (msg_to_send) {
+            router_provider_send_fb(router_syscollector_handle, msg_to_send, syscollector_deltas_SCHEMA);
+        } else {
+            mdebug2("Unable to dump delete message to publish agent %s", agent_id);
+        }
+
+        cJSON_Delete(j_msg_to_send);
+        cJSON_free(msg_to_send);
+
+        result = wdb_step(stmt);
+    } while(result == SQLITE_ROW);
+}
 
 void wdbi_remove_by_pk(wdb_t *wdb, wdb_component_t component, const char *pk_value) {
     assert(wdb != NULL);
@@ -84,9 +150,12 @@ void wdbi_remove_by_pk(wdb_t *wdb, wdb_component_t component, const char *pk_val
         return;
     }
 
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return;
+    int result = wdb_step(stmt);
+
+    if (result == SQLITE_ROW) {
+        wdbi_report_removed(wdb->id, component, stmt);
+    } else if (result != SQLITE_DONE) {
+        mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
     }
 }
 
@@ -106,7 +175,7 @@ int wdb_calculate_stmt_checksum(wdb_t * wdb, sqlite3_stmt * stmt, wdb_component_
     assert(stmt != NULL);
     assert(hexdigest != NULL);
 
-    int step = sqlite3_step(stmt);
+    int step = wdb_step(stmt);
 
     if (step != SQLITE_ROW) {
         return 0;
@@ -116,7 +185,7 @@ int wdb_calculate_stmt_checksum(wdb_t * wdb, sqlite3_stmt * stmt, wdb_component_
     EVP_DigestInit(ctx, EVP_sha1());
 
     size_t row_count = 0;
-    for (; step == SQLITE_ROW; step = sqlite3_step(stmt)) {
+    for (; step == SQLITE_ROW; step = wdb_step(stmt)) {
         ++row_count;
 
         char * checksum = (char *)sqlite3_column_text(stmt, 0);
@@ -166,6 +235,8 @@ int wdbi_checksum(wdb_t * wdb, wdb_component_t component, os_sha1 hexdigest) {
     const int INDEXES[] = { [WDB_FIM] = WDB_STMT_FIM_SELECT_CHECKSUM,
                             [WDB_FIM_FILE] = WDB_STMT_FIM_FILE_SELECT_CHECKSUM,
                             [WDB_FIM_REGISTRY] = WDB_STMT_FIM_REGISTRY_SELECT_CHECKSUM,
+                            [WDB_FIM_REGISTRY_KEY] = WDB_STMT_FIM_REGISTRY_KEY_SELECT_CHECKSUM,
+                            [WDB_FIM_REGISTRY_VALUE] = WDB_STMT_FIM_REGISTRY_VALUE_SELECT_CHECKSUM,
                             [WDB_SYSCOLLECTOR_PROCESSES] = WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM,
                             [WDB_SYSCOLLECTOR_PACKAGES] = WDB_STMT_SYSCOLLECTOR_PACKAGES_SELECT_CHECKSUM,
                             [WDB_SYSCOLLECTOR_HOTFIXES] = WDB_STMT_SYSCOLLECTOR_HOTFIXES_SELECT_CHECKSUM,
@@ -207,6 +278,8 @@ int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * beg
     const int INDEXES[] = { [WDB_FIM] = WDB_STMT_FIM_SELECT_CHECKSUM_RANGE,
                             [WDB_FIM_FILE] = WDB_STMT_FIM_FILE_SELECT_CHECKSUM_RANGE,
                             [WDB_FIM_REGISTRY] = WDB_STMT_FIM_REGISTRY_SELECT_CHECKSUM_RANGE,
+                            [WDB_FIM_REGISTRY_KEY] = WDB_STMT_FIM_REGISTRY_KEY_SELECT_CHECKSUM_RANGE,
+                            [WDB_FIM_REGISTRY_VALUE] = WDB_STMT_FIM_REGISTRY_VALUE_SELECT_CHECKSUM_RANGE,
                             [WDB_SYSCOLLECTOR_PROCESSES] = WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM_RANGE,
                             [WDB_SYSCOLLECTOR_PACKAGES] = WDB_STMT_SYSCOLLECTOR_PACKAGES_SELECT_CHECKSUM_RANGE,
                             [WDB_SYSCOLLECTOR_HOTFIXES] = WDB_STMT_SYSCOLLECTOR_HOTFIXES_SELECT_CHECKSUM_RANGE,
@@ -260,6 +333,8 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
     const int INDEXES_AROUND[] = { [WDB_FIM] = WDB_STMT_FIM_DELETE_AROUND,
                                    [WDB_FIM_FILE] = WDB_STMT_FIM_FILE_DELETE_AROUND,
                                    [WDB_FIM_REGISTRY] = WDB_STMT_FIM_REGISTRY_DELETE_AROUND,
+                                   [WDB_FIM_REGISTRY_KEY] = WDB_STMT_FIM_REGISTRY_KEY_DELETE_AROUND,
+                                   [WDB_FIM_REGISTRY_VALUE] = WDB_STMT_FIM_REGISTRY_VALUE_DELETE_AROUND,
                                    [WDB_SYSCOLLECTOR_PROCESSES] = WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_AROUND,
                                    [WDB_SYSCOLLECTOR_PACKAGES] = WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_AROUND,
                                    [WDB_SYSCOLLECTOR_HOTFIXES] = WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_AROUND,
@@ -272,6 +347,8 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
     const int INDEXES_RANGE[] = { [WDB_FIM] = WDB_STMT_FIM_DELETE_RANGE,
                                   [WDB_FIM_FILE] = WDB_STMT_FIM_FILE_DELETE_RANGE,
                                   [WDB_FIM_REGISTRY] = WDB_STMT_FIM_REGISTRY_DELETE_RANGE,
+                                  [WDB_FIM_REGISTRY_KEY] = WDB_STMT_FIM_REGISTRY_KEY_DELETE_RANGE,
+                                  [WDB_FIM_REGISTRY_VALUE] = WDB_STMT_FIM_REGISTRY_VALUE_DELETE_RANGE,
                                   [WDB_SYSCOLLECTOR_PROCESSES] = WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_RANGE,
                                   [WDB_SYSCOLLECTOR_PACKAGES] = WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_RANGE,
                                   [WDB_SYSCOLLECTOR_HOTFIXES] = WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_RANGE,
@@ -301,8 +378,12 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
         sqlite3_bind_text(stmt, 2, end, -1, NULL);
     }
 
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+    int result = wdb_step(stmt);
+
+    if (result == SQLITE_ROW) {
+        wdbi_report_removed(wdb->id, component, stmt);
+    } else if (result != SQLITE_DONE) {
+        mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 
@@ -323,8 +404,8 @@ void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp,
     sqlite3_bind_text(stmt, 3, manager_checksum, -1, NULL);
     sqlite3_bind_text(stmt, 4, COMPONENT_NAMES[component], -1, NULL);
 
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+    if (wdb_step(stmt) != SQLITE_DONE) {
+        mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
     }
 }
 
@@ -343,8 +424,8 @@ void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timesta
     sqlite3_bind_text(stmt, 4, manager_checksum, -1, NULL);
     sqlite3_bind_text(stmt, 5, COMPONENT_NAMES[component], -1, NULL);
 
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+    if (wdb_step(stmt) != SQLITE_DONE) {
+        mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
     }
 }
 
@@ -369,8 +450,8 @@ void wdbi_set_last_completion(wdb_t * wdb, wdb_component_t component, long times
     sqlite3_bind_int64(stmt, 1, timestamp);
     sqlite3_bind_text(stmt, 2, COMPONENT_NAMES[component], -1, NULL);
 
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+    if (wdb_step(stmt) != SQLITE_DONE) {
+        mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
     }
 }
 
@@ -470,6 +551,8 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
     const int INDEXES[] = { [WDB_FIM] = WDB_STMT_FIM_CLEAR,
                             [WDB_FIM_FILE] = WDB_STMT_FIM_FILE_CLEAR,
                             [WDB_FIM_REGISTRY] = WDB_STMT_FIM_REGISTRY_CLEAR,
+                            [WDB_FIM_REGISTRY_KEY] = WDB_STMT_FIM_REGISTRY_KEY_CLEAR,
+                            [WDB_FIM_REGISTRY_VALUE] = WDB_STMT_FIM_REGISTRY_VALUE_CLEAR,
                             [WDB_SYSCOLLECTOR_PROCESSES] = WDB_STMT_SYSCOLLECTOR_PROCESSES_CLEAR,
                             [WDB_SYSCOLLECTOR_PACKAGES] = WDB_STMT_SYSCOLLECTOR_PACKAGES_CLEAR,
                             [WDB_SYSCOLLECTOR_HOTFIXES] = WDB_STMT_SYSCOLLECTOR_HOTFIXES_CLEAR,
@@ -505,8 +588,8 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
 
     sqlite3_stmt * stmt = wdb->stmt[INDEXES[component]];
 
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+    if (wdb_step(stmt) != SQLITE_DONE) {
+        mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
         goto end;
     }
 
@@ -544,85 +627,6 @@ int wdbi_get_last_manager_checksum(wdb_t *wdb, wdb_component_t component, os_sha
     cJSON_Delete(j_sync_info);
     return result;
 }
-
-// Calculates SHA1 hash from a NULL terminated string array
-int wdbi_array_hash(const char ** strings_to_hash, os_sha1 hexdigest) {
-    size_t it = 0;
-    unsigned char digest[EVP_MAX_MD_SIZE];
-    unsigned int digest_size;
-    int ret_val = OS_SUCCESS;
-
-    EVP_MD_CTX * ctx = EVP_MD_CTX_create();
-    if (!ctx) {
-        mdebug2("Failed during hash context creation");
-        return OS_INVALID;
-    }
-
-    if (1 != EVP_DigestInit(ctx, EVP_sha1()) ) {
-        mdebug2("Failed during hash context initialization");
-        EVP_MD_CTX_destroy(ctx);
-        return OS_INVALID;
-    }
-
-    if (strings_to_hash) {
-        while(strings_to_hash[it]) {
-            if (1 != EVP_DigestUpdate(ctx, strings_to_hash[it], strlen(strings_to_hash[it])) ) {
-                mdebug2("Failed during hash context update");
-                ret_val = OS_INVALID;
-                break;
-            }
-            it++;
-        }
-    }
-
-    EVP_DigestFinal_ex(ctx, digest, &digest_size);
-    EVP_MD_CTX_destroy(ctx);
-    if (ret_val != OS_INVALID) {
-        OS_SHA1_Hexdigest(digest, hexdigest);
-    }
-
-    return ret_val;
-}
-
- // Calculates SHA1 hash from a set of strings as parameters, with NULL as end
- int wdbi_strings_hash(os_sha1 hexdigest, ...) {
-    char* parameter = NULL;
-    unsigned char digest[EVP_MAX_MD_SIZE];
-    unsigned int digest_size;
-    int ret_val = OS_SUCCESS;
-    va_list parameters;
-
-    EVP_MD_CTX * ctx = EVP_MD_CTX_create();
-    if (!ctx) {
-        mdebug2("Failed during hash context creation");
-        return OS_INVALID;
-    }
-
-    if (1 != EVP_DigestInit(ctx, EVP_sha1()) ) {
-        mdebug2("Failed during hash context initialization");
-        EVP_MD_CTX_destroy(ctx);
-        return OS_INVALID;
-    }
-
-    va_start(parameters, hexdigest);
-
-    while(parameter = va_arg(parameters, char*), parameter) {
-        if (1 != EVP_DigestUpdate(ctx, parameter, strlen(parameter)) ) {
-            mdebug2("Failed during hash context update");
-            ret_val = OS_INVALID;
-            break;
-        }
-    }
-    va_end(parameters);
-
-    EVP_DigestFinal_ex(ctx, digest, &digest_size);
-    EVP_MD_CTX_destroy(ctx);
-    if (ret_val != OS_INVALID) {
-        OS_SHA1_Hexdigest(digest, hexdigest);
-    }
-
-    return ret_val;
- }
 
 /**
  * @brief Returns the syncronization status of a component from sync_info table.

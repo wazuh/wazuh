@@ -59,6 +59,7 @@ static const char *INSPECTOR_SERVICE_TYPE = "inspector";
 static const char *CLOUDWATCHLOGS_SERVICE_TYPE = "cloudwatchlogs";
 static const char *CISCO_UMBRELLA_BUCKET_TYPE = "cisco_umbrella";
 static const char *SECURITY_LAKE_SUBSCRIBER_TYPE = "security_lake";
+static const char *BUCKETS_SUBSCRIBER_TYPE = "buckets";
 
 static const char *AUTHENTICATION_OPTIONS_URL = "https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html";
 static const char *DEPRECATED_MESSAGE = "Deprecated tag <%s> found at module '%s'. This tag was deprecated in %s; please use a different authentication method. Check %s for more information.";
@@ -76,7 +77,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     wm_aws_subscriber *cur_subscriber = NULL;
 
     if (!nodes) {
-        mwarn("Tag <%s> not found at module '%s'.", XML_BUCKET, WM_AWS_CONTEXT.name);
+        merror("Tag <%s> not found at module '%s'.", XML_BUCKET, WM_AWS_CONTEXT.name);
         return OS_INVALID;
     }
 
@@ -276,22 +277,34 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                             os_strdup(children[j]->content, cur_bucket->iam_role_duration);
                         }
                     } else if (!strcmp(children[j]->element, XML_TRAIL_PREFIX)) {
-                        if (strlen(children[j]->content) != 0) {
+                        if (strlen(children[j]->content) == 0) {
+                            mwarn("Empty content for tag '%s' at module '%s'.", XML_TRAIL_PREFIX, WM_AWS_CONTEXT.name);
+                        }
+                        else if (strlen(children[j]->content) != 0) {
                             free(cur_bucket->trail_prefix);
                             os_strdup(children[j]->content, cur_bucket->trail_prefix);
                         }
                     } else if (!strcmp(children[j]->element, XML_TRAIL_SUFFIX)) {
-                        if (strlen(children[j]->content) != 0) {
+                        if (strlen(children[j]->content) == 0) {
+                            mwarn("Empty content for tag '%s' at module '%s'.", XML_TRAIL_SUFFIX, WM_AWS_CONTEXT.name);
+                        }
+                        else if (strlen(children[j]->content) != 0) {
                             free(cur_bucket->trail_suffix);
                             os_strdup(children[j]->content, cur_bucket->trail_suffix);
                         }
                     } else if (!strcmp(children[j]->element, XML_ONLY_LOGS_AFTER)) {
-                        if (strlen(children[j]->content) != 0) {
+                        if (strlen(children[j]->content) == 0) {
+                            mwarn("Empty content for tag '%s' at module '%s'.", XML_ONLY_LOGS_AFTER, WM_AWS_CONTEXT.name);
+                        }
+                        else if (strlen(children[j]->content) != 0) {
                             free(cur_bucket->only_logs_after);
                             os_strdup(children[j]->content, cur_bucket->only_logs_after);
                         }
                     } else if (!strcmp(children[j]->element, XML_REGION)) {
-                        if (strlen(children[j]->content) != 0) {
+                        if (strlen(children[j]->content) == 0) {
+                            mwarn("Empty content for tag '%s' at module '%s'.", XML_REGION, WM_AWS_CONTEXT.name);
+                        }
+                        else if (strlen(children[j]->content) != 0) {
                             free(cur_bucket->regions);
                             os_strdup(children[j]->content, cur_bucket->regions);
                         }
@@ -305,7 +318,9 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                                 free(cur_bucket->discard_regex);
                                 os_strdup(children[j]->content, cur_bucket->discard_regex);
                             } else {
-                                mwarn("Required attribute '%s' is missing in '%s'. No event will be skipped.", XML_DISCARD_FIELD, XML_DISCARD_REGEX);
+                                merror("Required attribute '%s' is missing in '%s'. This is a mandatory parameter.", XML_DISCARD_FIELD, XML_DISCARD_REGEX);
+                                OS_ClearNode(children);
+                                return OS_INVALID;
                             }
                         } else {
                             mwarn("No value was provided for '%s'. No event will be skipped.", XML_DISCARD_REGEX);
@@ -424,17 +439,28 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                             os_strdup(children[j]->content, cur_service->iam_role_duration);
                         }
                 } else if (!strcmp(children[j]->element, XML_ONLY_LOGS_AFTER)) {
-                    if (strlen(children[j]->content) != 0) {
+                    if (strlen(children[j]->content) == 0) {
+                            mwarn("Empty content for tag '%s' at module '%s'.", XML_ONLY_LOGS_AFTER, WM_AWS_CONTEXT.name);
+                    }
+                    else if (strlen(children[j]->content) != 0) {
                         free(cur_service->only_logs_after);
                         os_strdup(children[j]->content, cur_service->only_logs_after);
                     }
                 } else if (!strcmp(children[j]->element, XML_REGION)) {
-                    if (strlen(children[j]->content) != 0) {
+                    if (strlen(children[j]->content) == 0) {
+                            mwarn("Empty content for tag '%s' at module '%s'.", XML_REGION, WM_AWS_CONTEXT.name);
+                    }
+                    else if (strlen(children[j]->content) != 0) {
                         free(cur_service->regions);
                         os_strdup(children[j]->content, cur_service->regions);
                     }
                 } else if (!strcmp(children[j]->element, XML_LOG_GROUP)) {
-                    if (strlen(children[j]->content) != 0) {
+                    if (strlen(children[j]->content) == 0) {
+                            merror("Empty content for tag '%s' at module '%s'.", XML_LOG_GROUP, WM_AWS_CONTEXT.name);
+                            OS_ClearNode(children);
+                            return OS_INVALID;
+                        }
+                    else if (strlen(children[j]->content) != 0) {
                         free(cur_service->aws_log_groups);
                         os_strdup(children[j]->content, cur_service->aws_log_groups);
                     }
@@ -458,7 +484,14 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                             free(cur_service->discard_regex);
                             os_strdup(children[j]->content, cur_service->discard_regex);
                         } else {
-                            mwarn("Required attribute '%s' is missing in '%s'. No event will be skipped.", XML_DISCARD_FIELD, XML_DISCARD_REGEX);
+                             if(strcmp(*nodes[i]->values, CLOUDWATCHLOGS_SERVICE_TYPE) == 0){
+                                free(cur_service->discard_regex);
+                                os_strdup(children[j]->content, cur_service->discard_regex);
+                            } else {
+                                merror("Required attribute '%s' is missing in '%s'. This is a mandatory parameter.", XML_DISCARD_FIELD, XML_DISCARD_REGEX);
+                                OS_ClearNode(children);
+                                return OS_INVALID;
+                            }
                         }
                     } else {
                         mwarn("No value was provided for '%s'. No event will be skipped.", XML_DISCARD_REGEX);
@@ -507,12 +540,12 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             // type is an attribute of the subscriber tag
             if (!strcmp(*nodes[i]->attributes, XML_SUBSCRIBER_TYPE)) {
                 if (!nodes[i]->values) {
-                    mterror(WM_AWS_LOGTAG, "Empty subscriber type. Valid one is '%s'", SECURITY_LAKE_SUBSCRIBER_TYPE);
+                    mterror(WM_AWS_LOGTAG, "Empty subscriber type. Valid ones are '%s' or '%s'", SECURITY_LAKE_SUBSCRIBER_TYPE, BUCKETS_SUBSCRIBER_TYPE);
                     return OS_INVALID;
-                } else if (!strcmp(*nodes[i]->values, SECURITY_LAKE_SUBSCRIBER_TYPE)) {
+                } else if (!strcmp(*nodes[i]->values, SECURITY_LAKE_SUBSCRIBER_TYPE) || !strcmp(*nodes[i]->values, BUCKETS_SUBSCRIBER_TYPE)) {
                     os_strdup(*nodes[i]->values, cur_subscriber->type);
                 } else {
-                    mterror(WM_AWS_LOGTAG, "Invalid subscriber type '%s'. Valid one is '%s'", *nodes[i]->values, SECURITY_LAKE_SUBSCRIBER_TYPE);
+                    mterror(WM_AWS_LOGTAG, "Invalid subscriber type '%s'. Valid ones are '%s' or '%s'", *nodes[i]->values, SECURITY_LAKE_SUBSCRIBER_TYPE, BUCKETS_SUBSCRIBER_TYPE);
                     return OS_INVALID;
                 }
             } else {
@@ -542,16 +575,31 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                     if (strlen(children[j]->content) != 0) {
                         free(cur_subscriber->sqs_name);
                         os_strdup(children[j]->content, cur_subscriber->sqs_name);
+                    } else {
+                         // If the value is empty, raise error
+                         merror("Invalid content for tag '%s': It cannot be empty", XML_SUBSCRIBER_QUEUE);
+                         OS_ClearNode(children);
+                         return OS_INVALID;
                     }
                 } else if (!strcmp(children[j]->element, XML_AWS_EXTERNAL_ID)) {
                     if (strlen(children[j]->content) != 0) {
                         free(cur_subscriber->external_id);
                         os_strdup(children[j]->content, cur_subscriber->external_id);
+                    } else {
+                         // If the value is empty, raise error
+                         merror("Invalid content for tag '%s': It cannot be empty", XML_AWS_EXTERNAL_ID);
+                         OS_ClearNode(children);
+                         return OS_INVALID;
                     }
                 } else if (!strcmp(children[j]->element, XML_IAM_ROLE_ARN)) {
                     if (strlen(children[j]->content) != 0) {
                         free(cur_subscriber->iam_role_arn);
                         os_strdup(children[j]->content, cur_subscriber->iam_role_arn);
+                    } else {
+                         // If the value is empty, raise error
+                         merror("Invalid content for tag '%s': It cannot be empty", XML_IAM_ROLE_ARN);
+                         OS_ClearNode(children);
+                         return OS_INVALID;
                     }
                 } else if (!strcmp(children[j]->element, XML_IAM_ROLE_DURATION)){
                         if (strlen(children[j]->content) != 0){
@@ -567,6 +615,43 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                     if (strlen(children[j]->content) != 0) {
                         free(cur_subscriber->service_endpoint);
                         os_strdup(children[j]->content, cur_subscriber->service_endpoint);
+                    }
+                } else if (!strcmp(children[j]->element, XML_AWS_PROFILE)) {
+                    if (strcmp(*nodes[i]->values, SECURITY_LAKE_SUBSCRIBER_TYPE) == 0){
+                        merror("The '%s' parameter is not available for Security Lake.", XML_AWS_PROFILE);
+                        OS_ClearNode(children);
+                        return OS_INVALID;
+                    } else {
+                        if (strlen(children[j]->content) != 0)  {
+                        free(cur_subscriber->aws_profile);
+                        os_strdup(children[j]->content, cur_subscriber->aws_profile);
+                        } else {
+                         // If the value is empty, raise error
+                         merror("Invalid content for tag '%s': It cannot be empty", XML_IAM_ROLE_ARN);
+                         return OS_INVALID;
+                        }
+                    }
+
+                } else if (strcmp(children[j]->element, XML_DISCARD_REGEX) == 0) {
+                    if (strcmp(*nodes[i]->values, SECURITY_LAKE_SUBSCRIBER_TYPE) == 0) {
+                        merror("The '%s' parameter is not available for Security Lake.", XML_DISCARD_REGEX);
+                        OS_ClearNode(children);
+                        return OS_INVALID;
+                    }
+                    if (strlen(children[j]->content) != 0) {
+                        const char * field_attr = w_get_attr_val_by_name(children[j], XML_DISCARD_FIELD);
+                        if ((field_attr) && (strlen(field_attr) != 0)) {
+                            free(cur_subscriber->discard_field);
+                            os_strdup(field_attr, cur_subscriber->discard_field);
+
+                            free(cur_subscriber->discard_regex);
+                            os_strdup(children[j]->content, cur_subscriber->discard_regex);
+                        } else {
+                            free(cur_subscriber->discard_regex);
+                            os_strdup(children[j]->content, cur_subscriber->discard_regex);
+                            }
+                    } else {
+                        mwarn("No value was provided for '%s'. No event will be skipped.", XML_DISCARD_REGEX);
                     }
                 } else {
                     merror("No such child tag '%s' of service at module '%s'.", children[j]->element, WM_AWS_CONTEXT.name);

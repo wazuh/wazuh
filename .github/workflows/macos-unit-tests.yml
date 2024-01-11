@@ -16,8 +16,8 @@ jobs:
           brew install cmocka lcov
       - name: Build wazuh agent for macOS 11 with tests flags
         run: |
-          make deps -C src TARGET=agent -j2
-          make -C src TARGET=agent -j2 DEBUG=1 TEST=1
+          make deps -C src TARGET=agent -j3
+          LIBRARY_PATH=/usr/local/lib make -C src TARGET=agent -j3 DEBUG=1 TEST=1
       - name: Run wazuh unit tests for macOS 11
         run: |
           cd src/data_provider/build
@@ -26,9 +26,7 @@ jobs:
           ctest -V
           cd ../../rsync/build
           ctest -V
-          cd ../../utils/tests/build
-          ctest -V
-          cd ../../../../wazuh_modules/syscollector/build
+          cd ../../../wazuh_modules/syscollector/build
           ctest -V
   build-monterey:
     runs-on: macos-12
@@ -40,8 +38,8 @@ jobs:
           brew install cmocka lcov
       - name: Build wazuh agent for macOS 12 with tests flags
         run: |
-          make deps -C src TARGET=agent -j2
-          make -C src TARGET=agent -j2 DEBUG=1 TEST=1
+          make deps -C src TARGET=agent -j3
+          LIBRARY_PATH=/usr/local/lib make -C src TARGET=agent -j3 DEBUG=1 TEST=1
       - name: Run wazuh unit tests for macOS 12
         run: |
           cd src/data_provider/build
@@ -50,9 +48,7 @@ jobs:
           ctest -V
           cd ../../rsync/build
           ctest -V
-          cd ../../utils/tests/build
-          ctest -V
-          cd ../../../../wazuh_modules/syscollector/build
+          cd ../../../wazuh_modules/syscollector/build
           ctest -V
   build-ventura:
     runs-on: macos-13
@@ -64,8 +60,8 @@ jobs:
           brew install cmocka lcov
       - name: Build wazuh agent for macOS 13 with tests flags
         run: |
-          make deps -C src TARGET=agent -j2
-          make -C src TARGET=agent -j2 DEBUG=1 TEST=1
+          make deps -C src TARGET=agent -j3
+          LIBRARY_PATH=/usr/local/lib make -C src TARGET=agent -j3 DEBUG=1 TEST=1
       - name: Run wazuh unit tests for macOS 13
         run: |
           cd src/data_provider/build
@@ -74,7 +70,5 @@ jobs:
           ctest -V
           cd ../../rsync/build
           ctest -V
-          cd ../../utils/tests/build
-          ctest -V
-          cd ../../../../wazuh_modules/syscollector/build
+          cd ../../../wazuh_modules/syscollector/build
           ctest -V

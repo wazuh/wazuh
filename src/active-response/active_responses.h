@@ -15,10 +15,6 @@
 #define LOG_FILE "active-response\\active-responses.log"
 #endif
 
-#define ECHO "/bin/echo"
-#define PASSWD "/usr/bin/passwd"
-#define CHUSER "/usr/bin/chuser"
-
 #define COMMANDSIZE_4096 4096
 
 #define VERSION 1
@@ -107,6 +103,29 @@ char* get_extra_args_from_json(const cJSON *input);
  * @return char * with the keys or NULL on fail
  * */
 char* get_keys_from_json(const cJSON *input);
+
+/**
+ * @brief This function splits a string using a delimiter
+ * @param output_buf buffer output
+ * @param delimiter  delimiter used to split the string
+ * @param strBefore  buffer to store split string before delimiter
+ * @param strAfter   buffer to store split string after delimiter
+*/
+void splitStrFromCharDelimiter(const char * output_buf, const char delimiter, char * strBefore, char * strAfter);
+
+/**
+ * @brief It looks for a string that matches pattern 1, if it finds it, it looks again for pattern 2, there should be spaces in the middle between the patterns.
+ * @param output_buf buffer where search
+ * @param str_pattern_1 pattern to match
+ * @param str_pattern_2 pattern to match
+ * @return 1 or 0
+ * @example output_buf -> "... Status:    Disabled ..."
+ *          isEnabledFromPattern(output_buf, "Status: ", "Enabled")
+ *            if it matches pattern 1 look for pattern 2 and if found, it returns 1
+ *          isEnabledFromPattern(output_buf, "Status: ", NULL)
+ *            find only by "Status"
+*/
+int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, const char * str_pattern_2);
 
 #ifndef WIN32
 

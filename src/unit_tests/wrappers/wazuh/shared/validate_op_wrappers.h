@@ -16,8 +16,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "headers/shared.h"
-#include "headers/validate_op.h"
+#include "../headers/shared.h"
+#include "../headers/validate_op.h"
 
 int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, int max);
 

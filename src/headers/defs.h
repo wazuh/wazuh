@@ -26,6 +26,7 @@
 #define OS_SIZE_1048576 1048576
 #define OS_SIZE_65536   65536
 #define OS_SIZE_61440   61440
+#define OS_SIZE_32768   32768
 #define OS_SIZE_20480   20480
 #define OS_SIZE_8192    8192
 #define OS_SIZE_6144    6144
@@ -40,6 +41,7 @@
 #define OS_SIZE_16      16
 
 /* Level of log messages */
+#define LOGLEVEL_DEBUG_VERBOSE 5
 #define LOGLEVEL_CRITICAL 4
 #define LOGLEVEL_ERROR 3
 #define LOGLEVEL_WARNING 2
@@ -67,7 +69,7 @@
 
 /* Some global names */
 #define __ossec_name    "Wazuh"
-#define __ossec_version "v4.5.1"
+#define __ossec_version "v4.8.1"
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"

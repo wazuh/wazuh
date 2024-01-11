@@ -74,6 +74,7 @@ void *OSHash_Delete_ins(OSHash *self, const char *key) __attribute__((nonnull));
 void *OSHash_Get(const OSHash *self, const char *key) __attribute__((nonnull));
 void *OSHash_Numeric_Get_ex(const OSHash *self, int key) __attribute__((nonnull(1)));
 void *OSHash_Get_ex(const OSHash *self, const char *key) __attribute__((nonnull));
+void *OSHash_Get_ex_dup(const OSHash *self, const char *key, void*(*duplicator)(void*)) __attribute__((nonnull));
 void *OSHash_Get_ins(const OSHash *self, const char *key) __attribute__((nonnull));
 
 unsigned int OSHash_Get_Elem_ex(OSHash *self) __attribute__((nonnull));
@@ -98,6 +99,6 @@ void OSHash_It_ex(const OSHash *hash, char mode, void *data, void (*iterating_fu
 /*
  * Returns the index of the key.
 */
-int OSHash_GetIndex(OSHash *self, const char *key);
+unsigned int OSHash_GetIndex(OSHash *self, const char *key);
 
 #endif /* OS_HASHOP */

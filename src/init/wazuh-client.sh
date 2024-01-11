@@ -11,8 +11,8 @@ PWD=`pwd`
 DIR=`dirname $PWD`;
 
 # Installation info
-VERSION="v4.5.1"
-REVISION="40501"
+VERSION="v4.8.1"
+REVISION="40810"
 TYPE="agent"
 
 ###  Do not modify below here ###
@@ -282,6 +282,16 @@ info()
     fi
 }
 
+restart_service()
+{
+    testconfig
+    lock
+    stop_service
+    sleep 1
+    start_service
+    unlock
+}
+
 ### MAIN HERE ###
 
 arg=$2
@@ -300,20 +310,11 @@ stop)
     unlock
     ;;
 restart)
-    testconfig
-    lock
-    stop_service
-    sleep 1
-    start_service
-    unlock
+    restart_service
     ;;
 reload)
     DAEMONS=$(echo $DAEMONS | sed 's/wazuh-execd//')
-    lock
-    stop_service
-    sleep 1
-    start_service
-    unlock
+    restart_service
     ;;
 status)
     lock

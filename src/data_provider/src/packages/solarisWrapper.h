@@ -21,7 +21,6 @@
 #include "stringHelper.h"
 
 constexpr auto NAME_FILE_INFO   { "pkginfo" };
-constexpr auto EMPTY_VALUE      { "" };
 constexpr auto NAME_FIELD       { "PKG" };
 constexpr auto ARCH_FIELD       { "ARCH" };
 constexpr auto VERSION_FIELD    { "VERSION" };
@@ -120,21 +119,21 @@ class SolarisWrapper final : public IPackageWrapper
         {
             auto it {m_data.find(GROUPS_FIELD)};
 
-            return it != m_data.end() ? it->second : EMPTY_VALUE;
+            return it != m_data.end() ? it->second : UNKNOWN_VALUE;
         }
 
         std::string description() const override
         {
             auto it {m_data.find(DESC_FIELD)};
 
-            return it != m_data.end() ? it->second : EMPTY_VALUE;
+            return it != m_data.end() ? it->second : UNKNOWN_VALUE;
         }
 
         std::string architecture() const override
         {
             auto it {m_data.find(ARCH_FIELD)};
 
-            return it != m_data.end() ? it->second : EMPTY_VALUE;
+            return it != m_data.end() ? it->second : UNKNOWN_VALUE;
         }
 
         std::string format() const override
@@ -154,14 +153,20 @@ class SolarisWrapper final : public IPackageWrapper
 
         std::string location() const override
         {
+            std::string retVal {UNKNOWN_VALUE};
             auto it {m_data.find(LOCATION_FIELD)};
 
-            return it != m_data.end() ? it->second : EMPTY_VALUE;
+            if (it != m_data.end() && !it->second.empty())
+            {
+                retVal = it->second;
+            }
+
+            return retVal;
         }
 
         std::string priority() const override
         {
-            return EMPTY_VALUE;
+            return UNKNOWN_VALUE;
         }
 
         int size() const override
@@ -173,7 +178,7 @@ class SolarisWrapper final : public IPackageWrapper
         {
             auto it {m_data.find(VENDOR_FIELD)};
 
-            return it != m_data.end() ? it->second : EMPTY_VALUE;
+            return it != m_data.end() ? it->second : UNKNOWN_VALUE;
         }
 
         std::string install_time() const override
@@ -202,7 +207,7 @@ class SolarisWrapper final : public IPackageWrapper
 
         std::string multiarch() const override
         {
-            return EMPTY_VALUE;
+            return std::string();
         }
 
     private:

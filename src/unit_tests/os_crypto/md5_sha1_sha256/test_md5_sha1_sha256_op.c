@@ -13,8 +13,8 @@
 #include <cmocka.h>
 
 #include "../headers/shared.h"
-#include "os_crypto/md5_sha1/md5_sha1_op.h"
-#include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
+#include "../os_crypto/md5_sha1/md5_sha1_op.h"
+#include "../os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
 
 #include "../../wrappers/common.h"
 #include "../../wrappers/libc/stdio_wrappers.h"

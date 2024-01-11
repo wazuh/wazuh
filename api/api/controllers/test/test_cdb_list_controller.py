@@ -37,6 +37,8 @@ async def test_get_lists(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
                 'complementary_search': None,
                 'filename': None,
                 'relative_dirname': None,
+                'q': None,
+                'distinct': False
                 }
     mock_dapi.assert_called_once_with(f=cdb_list.get_lists,
                                       f_kwargs=mock_remove.return_value,

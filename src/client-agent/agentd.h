@@ -13,8 +13,8 @@
 
 #include "shared.h"
 #include "sec.h"
-#include "config/config.h"
-#include "config/client-config.h"
+#include "../config/config.h"
+#include "../config/client-config.h"
 #include "state.h"
 
 /* Buffer functions */

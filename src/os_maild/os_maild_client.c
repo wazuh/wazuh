@@ -490,7 +490,7 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
         os_malloc(256*sizeof(char), tab);
         strncpy(tab, "\t", 2);
 
-        PrintTable(al_json, logs, body_size, tab, 2);
+        PrintTable(al_json, logs, &body_size, tab, 2);
 
         free(tab);
     }
@@ -718,7 +718,7 @@ end:
 }
 
 /* Read cJSON and save in printed with email format */
-void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int counter) {
+void PrintTable(cJSON *item, char *printed, size_t *body_size, char *tab, int counter) {
     char *key;
     size_t log_size;
     char *tab_child;
@@ -741,9 +741,9 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
         key = cJSON_PrintUnformatted(item);
         log_size = strlen(key) + strlen(tab) + strlen(item->string) + strlen(delimitator) + strlen(endline);
 
-        if (body_size > log_size) {
-            snprintf(printed + strlen(printed), body_size, "%s%s%s%s%s", tab, item->string, delimitator, key, endline);
-            body_size -= log_size;
+        if (*body_size > log_size) {
+            snprintf(printed + strlen(printed), *body_size, "%s%s%s%s%s", tab, item->string, delimitator, key, endline);
+            *body_size -= log_size;
         }
 
         os_free(key);
@@ -754,28 +754,28 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
         int i = 0;
         log_size = strlen(item->string) + strlen(tab) + strlen(delimitator);
 
-        if(body_size > log_size){
+        if(*body_size > log_size){
             item->string[0] = toupper(item->string[0]);
-            snprintf(printed + strlen(printed), body_size, "%s%s%s", tab, item->string, delimitator);
-            body_size -= log_size;
+            snprintf(printed + strlen(printed), *body_size, "%s%s%s", tab, item->string, delimitator);
+            *body_size -= log_size;
         }
 
         while(json_item = cJSON_GetArrayItem(item, i), json_item){
             key = cJSON_PrintUnformatted(json_item);
             log_size = strlen(key) + strlen(space);
 
-            if(body_size > log_size){
-                snprintf(printed + strlen(printed), body_size, "%s%s", key, space);
-                body_size -= log_size;
+            if(*body_size > log_size){
+                snprintf(printed + strlen(printed), *body_size, "%s%s", key, space);
+                *body_size -= log_size;
             }
 
             os_free(key);
             i++;
         }
 
-        if(body_size > strlen(endline)){
-            strncat(printed, endline, body_size);
-            body_size -= strlen(endline);
+        if(*body_size > strlen(endline)){
+            strncat(printed, endline, *body_size);
+            *body_size -= strlen(endline);
         }
 
     }
@@ -786,10 +786,10 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
             if (item->string) {
                 log_size = strlen(item->string) + strlen(tab) + strlen(endline);
 
-                if (body_size > log_size) {
+                if (*body_size > log_size) {
                     item->string[0] = toupper(item->string[0]);
-                    snprintf(printed + strlen(printed), body_size, "%s%s%s", tab, item->string, endline);
-                    body_size -= log_size;
+                    snprintf(printed + strlen(printed), *body_size, "%s%s%s", tab, item->string, endline);
+                    *body_size -= log_size;
                 }
             }
             /*Cannot be tabulated more than 6 times in the message */
@@ -805,7 +805,7 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
 
 
     /* If there are more items in the array the function is called with the same number of tabs */
-    if(item->next && body_size > 2){
+    if(item->next && *body_size > 2){
         PrintTable(item->next, printed, body_size, tab, counter);
     }
 

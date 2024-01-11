@@ -41,10 +41,12 @@ void dbsync_initialize(log_fnc_t log_function)
     });
 }
 
-DBSYNC_HANDLE dbsync_create(const HostType     host_type,
-                            const DbEngineType db_type,
-                            const char*        path,
-                            const char*        sql_statement)
+DBSYNC_HANDLE dbsync_create_(const HostType     host_type,
+                             const DbEngineType db_type,
+                             const char*        path,
+                             const char*        sql_statement,
+                             const DbManagement db_management,
+                             const char**       upgrade_statements)
 {
     DBSYNC_HANDLE retVal{ nullptr };
     std::string errorMessage;
@@ -57,7 +59,15 @@ DBSYNC_HANDLE dbsync_create(const HostType     host_type,
     {
         try
         {
-            retVal = DBSyncImplementation::instance().initialize(host_type, db_type, path, sql_statement);
+            auto upgradeStatements = std::vector<std::string>();
+
+            while (upgrade_statements && *upgrade_statements)
+            {
+                upgradeStatements.emplace_back(*upgrade_statements);
+                upgrade_statements++;
+            }
+
+            retVal = DBSyncImplementation::instance().initialize(host_type, db_type, path, sql_statement, db_management, upgradeStatements);
         }
         catch (const DbSync::dbsync_error& ex)
         {
@@ -74,6 +84,23 @@ DBSYNC_HANDLE dbsync_create(const HostType     host_type,
 
     log_message(errorMessage);
     return retVal;
+}
+
+DBSYNC_HANDLE dbsync_create(const HostType     host_type,
+                            const DbEngineType db_type,
+                            const char*        path,
+                            const char*        sql_statement)
+{
+    return dbsync_create_(host_type, db_type, path, sql_statement, DbManagement::VOLATILE, nullptr);
+}
+
+DBSYNC_HANDLE dbsync_create_persistent(const HostType     host_type,
+                                       const DbEngineType db_type,
+                                       const char*        path,
+                                       const char*        sql_statement,
+                                       const char**       upgrade_statements)
+{
+    return dbsync_create_(host_type, db_type, path, sql_statement, DbManagement::PERSISTENT, upgrade_statements);
 }
 
 void dbsync_teardown(void)
@@ -283,9 +310,9 @@ int dbsync_insert_data(const DBSYNC_HANDLE handle,
     return retVal;
 }
 
-int dbsync_set_table_max_rows(const DBSYNC_HANDLE      handle,
-                              const char*              table,
-                              const unsigned long long max_rows)
+int dbsync_set_table_max_rows(const DBSYNC_HANDLE handle,
+                              const char*         table,
+                              const long long     max_rows)
 {
     auto retVal { -1 };
     std::string errorMessage;
@@ -640,11 +667,13 @@ void DBSync::initialize(std::function<void(const std::string&)> logFunction)
     }
 }
 
-DBSync::DBSync(const HostType     hostType,
-               const DbEngineType dbType,
-               const std::string& path,
-               const std::string& sqlStatement)
-    : m_dbsyncHandle { DBSyncImplementation::instance().initialize(hostType, dbType, path, sqlStatement) }
+DBSync::DBSync(const HostType                  hostType,
+               const DbEngineType              dbType,
+               const std::string&              path,
+               const std::string&              sqlStatement,
+               const DbManagement              dbManagement,
+               const std::vector<std::string>& upgradeStatements)
+    : m_dbsyncHandle { DBSyncImplementation::instance().initialize(hostType, dbType, path, sqlStatement, dbManagement, upgradeStatements) }
     , m_shouldBeRemoved{ true }
 { }
 
@@ -678,8 +707,8 @@ void DBSync::insertData(const nlohmann::json& jsInsert)
     DBSyncImplementation::instance().insertBulkData(m_dbsyncHandle, jsInsert);
 }
 
-void DBSync::setTableMaxRow(const std::string&       table,
-                            const unsigned long long maxRows)
+void DBSync::setTableMaxRow(const std::string& table,
+                            const long long    maxRows)
 {
     DBSyncImplementation::instance().setMaxRows(m_dbsyncHandle, table, maxRows);
 }
@@ -802,4 +831,88 @@ void DBSyncTxn::getDeletedRows(ResultCallbackData  callbackData)
         }
     };
     PipelineFactory::instance().pipeline(m_txn)->getDeleted(callbackWrapper);
+}
+
+SelectQuery& SelectQuery::columnList(const std::vector<std::string>& fields)
+{
+    m_jsQuery["query"]["column_list"] = fields;
+    return *this;
+}
+
+SelectQuery& SelectQuery::rowFilter(const std::string& filter)
+{
+    m_jsQuery["query"]["row_filter"] = filter;
+    return *this;
+}
+
+SelectQuery& SelectQuery::distinctOpt(const bool distinct)
+{
+    m_jsQuery["query"]["distinct_opt"] = distinct;
+    return *this;
+}
+
+SelectQuery& SelectQuery::orderByOpt(const std::string& orderBy)
+{
+    m_jsQuery["query"]["order_by_opt"] = orderBy;
+    return *this;
+}
+
+SelectQuery& SelectQuery::countOpt(const uint32_t count)
+{
+    m_jsQuery["query"]["count_opt"] = count;
+    return *this;
+}
+
+DeleteQuery& DeleteQuery::data(const nlohmann::json& data)
+{
+    m_jsQuery["query"]["data"].push_back(data);
+    return *this;
+}
+
+DeleteQuery& DeleteQuery::reset()
+{
+    m_jsQuery["query"]["data"].clear();
+    return *this;
+}
+
+DeleteQuery& DeleteQuery::rowFilter(const std::string& filter)
+{
+    m_jsQuery["query"]["where_filter_opt"] = filter;
+    return *this;
+}
+
+InsertQuery& InsertQuery::data(const nlohmann::json& data)
+{
+    m_jsQuery["data"].push_back(data);
+    return *this;
+}
+
+InsertQuery& InsertQuery::reset()
+{
+    m_jsQuery["data"].clear();
+    return *this;
+}
+
+SyncRowQuery& SyncRowQuery::data(const nlohmann::json& data)
+{
+    m_jsQuery["data"].push_back(data);
+    return *this;
+}
+
+SyncRowQuery& SyncRowQuery::ignoreColumn(const std::string& column)
+{
+    m_jsQuery["options"]["ignore"].push_back(column);
+    return *this;
+}
+
+SyncRowQuery& SyncRowQuery::returnOldData()
+{
+    m_jsQuery["options"]["return_old_data"] = true;
+    return *this;
+}
+
+SyncRowQuery& SyncRowQuery::reset()
+{
+    m_jsQuery["data"].clear();
+    return *this;
 }

@@ -13,6 +13,10 @@ import json
 import socket
 import sys
 import time
+from os.path import abspath, dirname
+
+sys.path.insert(0, dirname(dirname(abspath(__file__))))
+from utils import MAX_EVENT_SIZE
 
 try:
     import docker
@@ -20,8 +24,8 @@ except:
     sys.stderr.write("'docker' module needs to be installed. Execute 'pip3 install docker' to do it.\n")
     exit(1)
 
-class DockerListener:
 
+class DockerListener:
     wait_time = 5
     field_debug_name = "Wodle event"
 
@@ -30,17 +34,19 @@ class DockerListener:
         DockerListener constructor
 
         """
-        # socket variables
         if sys.platform == "win32":
             sys.stderr.write("This wodle does not work on Windows.\n")
             sys.exit(1)
-        else:
-            # Get Wazuh installation path, obtained relative to the path of this file
-            self.wazuh_path = os.path.abspath(os.path.join(__file__, "../../.."))
-        self.wazuh_queue = '{0}/queue/sockets/queue'.format(self.wazuh_path)
+        # socket variables
+        self.wazuh_path = os.path.abspath(os.path.join(__file__, "..", "..", ".."))
+        self.wazuh_queue = os.path.join(self.wazuh_path, "queue", "sockets", "queue")
         self.msg_header = "1:Wazuh-Docker:"
         # docker variables
         self.client = None
+        self.thread1 = None
+        self.thread2 = None
+
+    def start(self):
         self.send_msg(json.dumps({self.field_debug_name: "Started"}))
         self.thread1 = threading.Thread(target=self.listen)
         self.thread2 = threading.Thread(target=self.listen)
@@ -128,8 +134,14 @@ class DockerListener:
             print(json_msg)
             s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
             s.connect(self.wazuh_queue)
-            s.send("{header}{msg}".format(header=self.msg_header,
-                                          msg=json_msg).encode())
+
+            encoded_msg = "{header}{msg}".format(header=self.msg_header,
+                                                 msg=json_msg).encode()
+            # Logs warning if event is bigger than max size
+            if len(encoded_msg) > MAX_EVENT_SIZE:
+                sys.stderr.write(f"WARNING: Event size exceeds the maximum allowed limit of {MAX_EVENT_SIZE} bytes.")
+
+            s.send(encoded_msg)
             s.close()
         except socket.error as e:
             if e.errno == 111:
@@ -145,3 +157,4 @@ class DockerListener:
 
 if __name__ == "__main__":
     dl = DockerListener()
+    dl.start()

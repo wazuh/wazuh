@@ -86,6 +86,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
      * ( ex: Dec 29 10:00:01
      *   or  2015 Dec 29 10:00:01
      *   or  2007-06-14T15:48:55-04:00 for syslog-ng isodate
+     *   or  2022-12-19T15:02:53.288+00:00 for syslog isodate
      *   or  2009-05-22T09:36:46.214994-07:00 for rsyslog )
      *   or  2015-04-16 21:51:02,805 (proftpd 1.3.5)
      *   or  2021-04-21 10:16:09.404756-0700 (for macos ULS --syslog output)
@@ -108,7 +109,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 	    (pieces[13] == ':') &&
 	    (pieces[16] == ':') &&
 	    (pieces[19] == ',') &&
-	    (lf->log += 23)
+	    (lf->log += 24)
 	)
 	||
         (
@@ -124,9 +125,11 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
                  (pieces[25] == ' ') && (lf->log += 26)) ||
 
                 ((pieces[19] == '.') &&
-                 (pieces[29] == ':') && (lf->log += 33))  ||
-
-                ((pieces[19] == '.') && (lf->log += 32))
+                (
+                    ((pieces[26] == ':') && (lf->log += 30))  ||
+                    ((pieces[29] == ':') && (lf->log += 33))  ||
+                    (lf->log += 32)
+                ))
             )
         )
      ||

@@ -40,7 +40,8 @@ async def test_get_decoders(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_r
                 'q': None,
                 'filename': None,
                 'status': None,
-                'relative_dirname': None
+                'relative_dirname': None,
+                'distinct': False
                 }
     mock_dapi.assert_called_once_with(f=decoder_framework.get_decoders,
                                       f_kwargs=mock_remove.return_value,
@@ -71,7 +72,10 @@ async def test_get_decoders_files(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
                 'complementary_search': None,
                 'filename': None,
                 'status': None,
-                'relative_dirname': None
+                'relative_dirname': None,
+                'q': None,
+                'select': None,
+                'distinct': False
                 }
     mock_dapi.assert_called_once_with(f=decoder_framework.get_decoders_files,
                                       f_kwargs=mock_remove.return_value,
@@ -127,7 +131,8 @@ async def test_get_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_bool,
     with patch('api.controllers.decoder_controller.isinstance', return_value=mock_bool) as mock_isinstance:
         result = await get_file(request=mock_request)
         f_kwargs = {'filename': None,
-                    'raw': False
+                    'raw': False,
+                    'relative_dirname': None
                     }
         mock_dapi.assert_called_once_with(f=decoder_framework.get_decoder_file,
                                           f_kwargs=mock_remove.return_value,
@@ -157,6 +162,7 @@ async def test_put_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_reque
             result = await put_file(request=mock_request,
                                     body={})
             f_kwargs = {'filename': None,
+                        'relative_dirname': None,
                         'overwrite': False,
                         'content': mock_dbody.return_value
                         }
@@ -181,8 +187,9 @@ async def test_put_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_reque
 async def test_delete_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     """Verify 'delete_file' endpoint is working as expected."""
     result = await delete_file(request=mock_request)
-    f_kwargs = {'filename': None
-                }
+    f_kwargs = {'filename': None,
+                'relative_dirname': None}
+    
     mock_dapi.assert_called_once_with(f=decoder_framework.delete_decoder_file,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',

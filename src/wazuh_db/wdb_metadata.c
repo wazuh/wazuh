@@ -39,7 +39,7 @@ int wdb_metadata_get_entry(wdb_t * wdb, const char *key, char *output) {
     sqlite3_bind_text(stmt, 1, key, -1, NULL);
 
     int ret = OS_INVALID;
-    switch (sqlite3_step(stmt)) {
+    switch (wdb_step(stmt)) {
         case SQLITE_ROW: {
             strncpy(output, (char *)sqlite3_column_text(stmt, 0), OS_SIZE_256);
             ret = OS_SUCCESS;
@@ -51,7 +51,7 @@ int wdb_metadata_get_entry(wdb_t * wdb, const char *key, char *output) {
             break;
         }
         default: {
-            mdebug1("DB(%s) sqlite3_step(): %s",
+            mdebug1("DB(%s) SQLite: %s",
                     wdb->id,
                     sqlite3_errmsg(wdb->db));
             ret = OS_INVALID;
@@ -78,13 +78,13 @@ int wdb_count_tables_with_name(wdb_t * wdb, const char * key, int* count) {
     }
 
     int ret = OS_INVALID;
-    switch (sqlite3_step(stmt)) {
+    switch (wdb_step(stmt)) {
         case SQLITE_ROW: {
             *count = sqlite3_column_int(stmt, 0);
             ret = OS_SUCCESS;
         } break;
         default: {
-            mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+            mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
         }
     }
 

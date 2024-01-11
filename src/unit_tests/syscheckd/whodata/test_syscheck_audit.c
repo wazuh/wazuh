@@ -14,8 +14,8 @@
 #include <stdio.h>
 
 #include "wrappers/common.h"
-#include "syscheckd/syscheck.h"
-#include "syscheckd/whodata/syscheck_audit.h"
+#include "../../../syscheckd/include/syscheck.h"
+#include "../../../syscheckd/src/whodata/syscheck_audit.h"
 
 #include "wrappers/externals/procpc/readproc_wrappers.h"
 #include "wrappers/libc/stdio_wrappers.h"
@@ -29,7 +29,7 @@
 #include "wrappers/wazuh/syscheckd/audit_parse_wrappers.h"
 #include "wrappers/wazuh/syscheckd/audit_rule_handling_wrappers.h"
 
-#include "external/procps/readproc.h"
+#include "../../../external/procps/readproc.h"
 
 extern atomic_int_t audit_health_check_creation;
 extern atomic_int_t hc_thread_active;

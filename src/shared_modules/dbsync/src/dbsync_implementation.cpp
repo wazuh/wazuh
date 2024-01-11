@@ -10,16 +10,19 @@
  */
 
 #include <iostream>
+#include "abstractLocking.hpp"
 #include "dbsync_implementation.h"
 
 using namespace DbSync;
 
-DBSYNC_HANDLE DBSyncImplementation::initialize(const HostType     hostType,
-                                               const DbEngineType dbType,
-                                               const std::string& path,
-                                               const std::string& sqlStatement)
+DBSYNC_HANDLE DBSyncImplementation::initialize(const HostType                  hostType,
+                                               const DbEngineType              dbType,
+                                               const std::string&              path,
+                                               const std::string&              sqlStatement,
+                                               const DbManagement              dbManagement,
+                                               const std::vector<std::string>& upgradeStatements)
 {
-    auto db{ FactoryDbEngine::create(dbType, path, sqlStatement) };
+    auto db{ FactoryDbEngine::create(dbType, path, sqlStatement, dbManagement, upgradeStatements) };
     const auto spDbEngineContext
     {
         std::make_shared<DbEngineContext>(db, hostType, dbType)
@@ -46,6 +49,7 @@ void DBSyncImplementation::insertBulkData(const DBSYNC_HANDLE   handle,
                                           const nlohmann::json& json)
 {
     const auto ctx{ dbEngineContext(handle) };
+    std::lock_guard<std::shared_timed_mutex> lock{ ctx->m_syncMutex };
     ctx->m_dbEngine->bulkInsert(json.at("table"), json.at("data"));
 }
 
@@ -54,9 +58,12 @@ void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE      handle,
                                        const ResultCallback     callback)
 {
     const auto ctx{ dbEngineContext(handle) };
-    ctx->m_dbEngine->syncTableRowData(json.at("table"),
-                                      json.at("data"),
-                                      callback);
+    Utils::ExclusiveLocking lock{ ctx->m_syncMutex };
+
+    ctx->m_dbEngine->syncTableRowData(json,
+                                      callback,
+                                      false,
+                                      lock);
 }
 
 void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE      handle,
@@ -72,16 +79,19 @@ void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE      handle,
         throw dbsync_error{INVALID_TABLE};
     }
 
-    ctx->m_dbEngine->syncTableRowData(json.at("table"),
-                                      json.at("data"),
+    Utils::SharedLocking lock{ ctx->m_syncMutex };
+    ctx->m_dbEngine->syncTableRowData(json,
                                       callback,
-                                      true);
+                                      true,
+                                      lock);
 }
 
 void DBSyncImplementation::deleteRowsData(const DBSYNC_HANDLE   handle,
                                           const nlohmann::json& json)
 {
     const auto ctx{ dbEngineContext(handle) };
+    std::lock_guard<std::shared_timed_mutex> lock{ ctx->m_syncMutex };
+
     ctx->m_dbEngine->deleteTableRowsData(json.at("table"),
                                          json.at("query"));
 }
@@ -91,7 +101,9 @@ void DBSyncImplementation::updateSnapshotData(const DBSYNC_HANDLE   handle,
                                               const ResultCallback  callback)
 {
     const auto ctx{ dbEngineContext(handle) };
-    ctx->m_dbEngine->refreshTableData(json, callback);
+
+    std::unique_lock<std::shared_timed_mutex> lock{ ctx->m_syncMutex };
+    ctx->m_dbEngine->refreshTableData(json, callback, lock);
 }
 
 std::shared_ptr<DBSyncImplementation::DbEngineContext> DBSyncImplementation::dbEngineContext(const DBSYNC_HANDLE handle)
@@ -109,9 +121,11 @@ std::shared_ptr<DBSyncImplementation::DbEngineContext> DBSyncImplementation::dbE
 
 void DBSyncImplementation::setMaxRows(const DBSYNC_HANDLE handle,
                                       const std::string& table,
-                                      const unsigned long long maxRows)
+                                      const long long maxRows)
 {
     const auto ctx{ dbEngineContext(handle) };
+
+    std::lock_guard<std::shared_timed_mutex> lock{ ctx->m_syncMutex };
     ctx->m_dbEngine->setMaxRows(table, maxRows);
 }
 
@@ -123,6 +137,8 @@ TXN_HANDLE DBSyncImplementation::createTransaction(const DBSYNC_HANDLE      hand
     {
         std::make_shared<TransactionContext>(json)
     };
+
+    std::lock_guard<std::shared_timed_mutex> lock{ ctx->m_syncMutex };
     ctx->addTransactionContext(spTransactionContext);
     ctx->m_dbEngine->initializeStatusField(spTransactionContext->m_tables);
 
@@ -135,6 +151,7 @@ void DBSyncImplementation::closeTransaction(const DBSYNC_HANDLE handle,
     const auto& ctx{ dbEngineContext(handle) };
     const auto& tnxCtx { ctx->transactionContext(txn) };
 
+    std::lock_guard<std::shared_timed_mutex> lock{ ctx->m_syncMutex };
     ctx->m_dbEngine->deleteRowsByStatusField(tnxCtx->m_tables);
     ctx->deleteTransactionContext(txn);
 }
@@ -146,7 +163,8 @@ void DBSyncImplementation::getDeleted(const DBSYNC_HANDLE   handle,
     const auto& ctx{ dbEngineContext(handle) };
     const auto& tnxCtx { ctx->transactionContext(txnHandle) };
 
-    ctx->m_dbEngine->returnRowsMarkedForDelete(tnxCtx->m_tables, callback);
+    std::unique_lock<std::shared_timed_mutex> lock{ ctx->m_syncMutex };
+    ctx->m_dbEngine->returnRowsMarkedForDelete(tnxCtx->m_tables, callback, lock);
 }
 
 void DBSyncImplementation::selectData(const DBSYNC_HANDLE   handle,
@@ -154,14 +172,19 @@ void DBSyncImplementation::selectData(const DBSYNC_HANDLE   handle,
                                       const ResultCallback& callback)
 {
     const auto ctx{ dbEngineContext(handle) };
+
+    std::unique_lock<std::shared_timed_mutex> lock{ ctx->m_syncMutex };
     ctx->m_dbEngine->selectData(json.at("table"),
                                 json.at("query"),
-                                callback);
+                                callback,
+                                lock);
 }
 
 void DBSyncImplementation::addTableRelationship(const DBSYNC_HANDLE   handle,
                                                 const nlohmann::json& json)
 {
     const auto ctx{ dbEngineContext(handle) };
+
+    std::lock_guard<std::shared_timed_mutex> lock{ ctx->m_syncMutex };
     ctx->m_dbEngine->addTableRelationship(json);
 }

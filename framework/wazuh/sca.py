@@ -96,6 +96,11 @@ def get_sca_checks(policy_id: str = None, agent_list: list = None, q: str = "", 
     distinct : bool
         Look for distinct values.
 
+    Raises
+    ------
+    WazuhInternalError(2007)
+        If there was an error retrieving data from Wazuh DB.
+
     Returns
     -------
     AffectedItemsWazuhResult

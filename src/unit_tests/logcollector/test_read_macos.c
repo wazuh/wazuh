@@ -1380,6 +1380,8 @@ void test_read_macos_single_full_log_store_timestamp_and_setting(void ** state) 
     lf.macos_log->store_current_settings = false;
     lf.macos_log->current_settings = "some log command with predicate and stuff";
     lf.macos_log->ctxt.timestamp = 1000;
+    lf.regex_ignore = NULL;
+    lf.regex_restrict = NULL;
     strcpy(lf.macos_log->ctxt.buffer, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib) Created Activity ID: 0x2040, Description: Retrieve User by Name\n");
 
     will_return(__wrap_can_read, 1);
@@ -1413,6 +1415,8 @@ void test_read_macos_more_logs_than_maximum(void ** state) {
     lf.macos_log->is_header_processed = true;
     lf.macos_log->store_current_settings = true;
     lf.macos_log->ctxt.timestamp = TIMESTAMP_TIME;
+    lf.regex_ignore = NULL;
+    lf.regex_restrict = NULL;
     maximum_lines = 3;
 
     will_return(__wrap_can_read, 1);
@@ -1479,6 +1483,8 @@ void test_read_macos_disable_maximum_lines(void ** state) {
     lf.macos_log->is_header_processed = true;
     lf.macos_log->store_current_settings = true;
     lf.macos_log->ctxt.timestamp = TIMESTAMP_TIME;
+    lf.regex_ignore = NULL;
+    lf.regex_restrict = NULL;
     maximum_lines = 0;
 
     will_return(__wrap_can_read, 1);
@@ -1554,6 +1560,8 @@ void test_read_macos_toggle_correctly_ended_show_to_stream(void ** state) {
     macos_processes = &lf.macos_log->processes;
     lf.macos_log->store_current_settings = true;
     lf.macos_log->is_header_processed = true;
+    lf.regex_ignore = NULL;
+    lf.regex_restrict = NULL;
 
     // Save an expired context to send it immediately
     strcpy(lf.macos_log->ctxt.buffer, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib)\n");
@@ -1610,7 +1618,8 @@ void test_read_macos_toggle_faulty_ended_show_to_stream(void ** state) {
     macos_processes = &lf.macos_log->processes;
     lf.macos_log->store_current_settings = true;
     lf.macos_log->is_header_processed = true;
-
+    lf.regex_ignore = NULL;
+    lf.regex_restrict = NULL;
 
     // Save an expired context to send it immediately
     strcpy(lf.macos_log->ctxt.buffer, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib)\n");
@@ -1665,7 +1674,8 @@ void test_read_macos_toggle_correctly_ended_show_to_faulty_stream(void ** state)
     macos_processes = &lf.macos_log->processes;
     lf.macos_log->store_current_settings = true;
     lf.macos_log->is_header_processed = true;
-
+    lf.regex_ignore = NULL;
+    lf.regex_restrict = NULL;
 
     // Save an expired context to send it immediately
     strcpy(lf.macos_log->ctxt.buffer, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib)\n");
@@ -1717,6 +1727,8 @@ void test_read_macos_faulty_ended_stream(void ** state) {
     macos_processes = &lf.macos_log->processes;
     lf.macos_log->store_current_settings = true;
     lf.macos_log->is_header_processed = true;
+    lf.regex_ignore = NULL;
+    lf.regex_restrict = NULL;
 
     // Save an expired context to send it immediately
     strcpy(lf.macos_log->ctxt.buffer, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib)\n");
@@ -1772,6 +1784,8 @@ void test_read_macos_faulty_waitpid(void ** state) {
     macos_processes = &lf.macos_log->processes;
     lf.macos_log->store_current_settings = true;
     lf.macos_log->is_header_processed = true;
+    lf.regex_ignore = NULL;
+    lf.regex_restrict = NULL;
 
     // Save an expired context to send it immediately
     strcpy(lf.macos_log->ctxt.buffer, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib)\n");
@@ -1804,6 +1818,56 @@ void test_read_macos_faulty_waitpid(void ** state) {
 
     os_free(lf.macos_log->processes.stream.wfd);
     os_free(lf.macos_log);
+}
+
+void test_read_macos_log_ignored(void ** state) {
+    logreader lf;
+    int dummy_rc;
+    char log_str[PATH_MAX + 1] = {0};
+    w_expression_t * expression_ignore;
+
+    os_calloc(1, sizeof(w_macos_log_config_t), lf.macos_log);
+    os_calloc(1, sizeof(wfd_t), lf.macos_log->processes.stream.wfd);
+
+    lf.regex_ignore = OSList_Create();
+    OSList_SetFreeDataPointer(lf.regex_ignore, (void (*)(void *))w_free_expression);
+
+    w_calloc_expression_t(&expression_ignore, EXP_TYPE_PCRE2);
+    w_expression_compile(expression_ignore, "ignore.*", 0);
+    OSList_InsertData(lf.regex_ignore, NULL, expression_ignore);
+
+    lf.macos_log->state = LOG_RUNNING_STREAM;
+    lf.macos_log->processes.stream.wfd->pid = getpid();
+    lf.macos_log->is_header_processed = true;
+    lf.macos_log->store_current_settings = false;
+    lf.macos_log->current_settings = "some log command with predicate and stuff";
+    lf.macos_log->ctxt.timestamp = 1000;
+    lf.regex_restrict = NULL;
+    strcpy(lf.macos_log->ctxt.buffer, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib) Created Activity ID: 0x2040, Description: Retrieve User by Name\n");
+
+    will_return(__wrap_can_read, 1);
+    will_return(__wrap_time, 1000 + MACOS_LOG_TIMEOUT + 1);
+    will_return(__wrap_w_expression_match, true);
+
+    snprintf(log_str, PATH_MAX, LF_MATCH_REGEX, "2021-05-17 15:31:53.586313-0700  localhost sshd[880]: (libsystem_info.dylib) Created Activity ID: 0x2040, Description: Retrieve User by Name", "ignore", "ignore.*");
+    expect_string(__wrap__mdebug2, formatted_msg, log_str);
+
+    will_return(__wrap_can_read, 0);
+
+    expect_any(__wrap_waitpid, __pid);
+    expect_any(__wrap_waitpid, __options);
+    will_return(__wrap_waitpid, 0);
+    will_return(__wrap_waitpid, 0);
+
+    assert_null(read_macos(&lf, &dummy_rc, 0));
+
+    os_free(lf.macos_log->processes.stream.wfd);
+    os_free(lf.macos_log);
+
+    if (lf.regex_ignore) {
+        OSList_Destroy(lf.regex_ignore);
+        lf.regex_ignore = NULL;
+    }
 }
 
 int main(void) {
@@ -1874,6 +1938,7 @@ int main(void) {
         cmocka_unit_test(test_read_macos_toggle_correctly_ended_show_to_faulty_stream),
         cmocka_unit_test(test_read_macos_faulty_ended_stream),
         cmocka_unit_test(test_read_macos_faulty_waitpid),
+        cmocka_unit_test(test_read_macos_log_ignored),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
