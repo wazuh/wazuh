@@ -367,40 +367,46 @@ def get_daemons_stats_from_socket(agent_id: str, daemon: str) -> dict:
         rec_msg = socket_response.get('message', "")
         raise WazuhError(1117, extra_message=rec_msg)
 
-    global_data = socket_response['data'].get('global', {})
-    interval_data = socket_response['data'].get('interval', {})
-    data = {'global': PaginatedDataHandler(), 'interval': PaginatedDataHandler()}
-
-    data['global'].set_data(global_data)
-    data['interval'].set_data(interval_data)
-
-    while socket_response.get('remaining', False):
-        last_json_updated = socket_response.get('json_updated', False)
-        command = create_stats_command(agent_id=agent_id, daemon=daemon,
-                                       next_page=not last_json_updated)
-        rec_msg = send_command_to_socket(dest_socket, command)
-        socket_response = json.loads(rec_msg)
-
+    if 'global' in socket_response['data'] and 'interval' in socket_response['data']:
         global_data = socket_response['data'].get('global', {})
         interval_data = socket_response['data'].get('interval', {})
+        data = {'global': PaginatedDataHandler(), 'interval': PaginatedDataHandler()}
 
-        if last_json_updated:
-            data = {'global': PaginatedDataHandler(), 'interval': PaginatedDataHandler()}
+        data['global'].set_data(global_data)
+        data['interval'].set_data(interval_data)
 
-            data['global'].set_data(global_data)
-            data['interval'].set_data(interval_data)
-        else:
-            if data['global'].is_empty():
+        while socket_response.get('remaining', False):
+            last_json_updated = socket_response.get('json_updated', False)
+            command = create_stats_command(agent_id=agent_id, daemon=daemon,
+                                           next_page=not last_json_updated)
+            rec_msg = send_command_to_socket(dest_socket, command)
+            socket_response = json.loads(rec_msg)
+
+            global_data = socket_response['data'].get('global', {})
+            interval_data = socket_response['data'].get('interval', {})
+
+            if last_json_updated:
+                data = {'global': PaginatedDataHandler(), 'interval': PaginatedDataHandler()}
+
                 data['global'].set_data(global_data)
-            else:
-                data['global'].update_data(global_data)
-
-            if data['interval'].is_empty():
                 data['interval'].set_data(interval_data)
             else:
-                data['interval'].update_data(interval_data)
+                if data['global'].is_empty():
+                    data['global'].set_data(global_data)
+                else:
+                    data['global'].update_data(global_data)
 
-    return {'global': data['global'].to_dict(), 'interval': data['interval'].to_dict()}
+                if data['interval'].is_empty():
+                    data['interval'].set_data(interval_data)
+                else:
+                    data['interval'].update_data(interval_data)
+
+        return {'global': data['global'].to_dict(), 'interval': data['interval'].to_dict()}
+    else:
+        data = socket_response['data']
+        data.update((k, utils.get_utc_strptime(data[k], "%Y-%m-%d %H:%M:%S").strftime(common.DATE_FORMAT))
+                    for k, v in data.items() if k in {'last_keepalive', 'last_ack'})
+        return data
 
 
 class PaginatedDataHandler:
