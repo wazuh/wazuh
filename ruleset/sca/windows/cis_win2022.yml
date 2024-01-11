@@ -5916,8 +5916,11 @@ checks:
       - nist_sp_800-53: ["AC-2(3)"]
       - pci_dss_v3.2.1: ["8.1.4"]
       - pci_dss_v4.0: ["8.3.7"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftAccount'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftAccount -> DisableUserAuth'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftAccount -> DisableUserAuth -> 1'
 
   # 18.10.43.5.1 (L1) Ensure 'Configure local setting override for reporting to Microsoft MAPS' is set to 'Disabled'. (Automated)
   - id: 18829
@@ -5935,8 +5938,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet -> LocalSettingOverrideSpynetReporting'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet -> LocalSettingOverrideSpynetReporting -> 0'
 
   # 18.10.43.5.2 (L2) Ensure 'Join Microsoft MAPS' is set to 'Disabled'. (Automated)
   - id: 18830
@@ -5954,8 +5960,10 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet -> SpynetReporting'
 
   # 18.10.43.6.1.1 (L1) Ensure 'Configure Attack Surface Reduction rules' is set to 'Enabled'. (Automated)
   - id: 18831
@@ -5971,8 +5979,11 @@ checks:
       - nist_sp_800-53: ["SI-16"]
       - pci_dss_v3.2.1: ["1.4"]
       - soc_2: ["CC6.8"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR -> ExploitGuard_ASR_Rules'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR -> ExploitGuard_ASR_Rules -> 1'
 
   # 18.10.43.6.1.2 (L1) Ensure 'Configure Attack Surface Reduction rules: Set the state for each ASR rule' is configured. (Automated)
   - id: 18832
@@ -5988,8 +5999,31 @@ checks:
       - nist_sp_800-53: ["SI-16"]
       - pci_dss_v3.2.1: ["1.4"]
       - soc_2: ["CC6.8"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> BE9BA2D9-53EA-4CDC-84E5-9B1EEEE46550'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> D4F940AB-401B-4EFC-AADC-AD5F3C50688A'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 3B576869-A4EC-4529-8536-B80A7769E899'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 75668C1F-73B5-4CF0-BB93-3ECF5CB7CC84'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> D3E037E1-3EB8-44C8-A917-57927947596D'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 5BEB7EFE-FD9A-4556-801D-275E5FFC04CC'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 92E97FA1-2EDF-4476-BDD6-9DD0B4DDDC7B'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 26190899-1602-49E8-8B27-eB1D0A1CE869'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 7674BA52-37EB-4A4F-A9A1-F0F9A1619A2C'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 9E6C4E1F-7D60-472F-bA1A-A39EF669E4B2'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> B2B3F03D-6A65-4F7B-A9C7-1C7EF74A9BA4'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> BE9BA2D9-53EA-4CDC-84E5-9B1EEEE46550 -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> D4F940AB-401B-4EFC-AADC-AD5F3C50688A -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 3B576869-A4EC-4529-8536-B80A7769E899 -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 75668C1F-73B5-4CF0-BB93-3ECF5CB7CC84 -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> D3E037E1-3EB8-44C8-A917-57927947596D -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 5BEB7EFE-FD9A-4556-801D-275E5FFC04CC -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 92E97FA1-2EDF-4476-BDD6-9DD0B4DDDC7B -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 26190899-1602-49E8-8B27-eB1D0A1CE869 -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 7674BA52-37EB-4A4F-A9A1-F0F9A1619A2C -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 9E6C4E1F-7D60-472F-bA1A-A39EF669E4B2 -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> B2B3F03D-6A65-4F7B-A9C7-1C7EF74A9BA4 -> 1'
 
   # 18.10.43.6.3.1 (L1) Ensure 'Prevent users and apps from accessing dangerous websites' is set to 'Enabled: Block'. (Automated)
   - id: 18833
@@ -6008,8 +6042,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.4", "11.4"]
       - pci_dss_v4.0: ["1.2.6", "1.4.2"]
       - soc_2: ["CC5.2", "CC6.6", "CC6.8"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\Network Protection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\Network Protection -> EnableNetworkProtection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\Network Protection -> EnableNetworkProtection -> 1'
 
   # 18.10.43.7.1 (L2) Ensure 'Enable file hash computation feature' is set to 'Enabled'. (Automated)
   - id: 18834
@@ -6028,8 +6065,11 @@ checks:
       - pci_dss_v3.2.1: ["5.1"]
       - pci_dss_v4.0: ["5.1.1", "5.2.1", "5.2.2", "5.3.2"]
       - soc_2: ["CC6.8"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\MpEngine'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\MpEngine -> EnableFileHashComputation'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\MpEngine -> EnableFileHashComputation -> 1'
 
   # 18.10.43.10.1 (L1) Ensure 'Scan all downloaded files and attachments' is set to 'Enabled'. (Automated)
   - id: 18835
@@ -6044,8 +6084,11 @@ checks:
       - cis: ["18.10.43.10.1"]
       - cis_csc_v7: ["8.1"]
       - iso_27001-2013: ["A.12.2.1"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableIOAVProtection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableIOAVProtection -> 0'
 
   # 18.10.43.10.2 (L1) Ensure 'Turn off real-time protection' is set to 'Disabled'. (Automated)
   - id: 18836
@@ -6053,15 +6096,18 @@ checks:
     description: "This policy setting configures real-time protection prompts for known malware detection. Microsoft Defender Antivirus alerts you when malware or potentially unwanted software attempts to install itself or to run on your computer. The recommended state for this setting is: Disabled."
     rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to heuristically monitor in real-time for suspicious and known malicious activity."
     impact: "None - this is the default behavior."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Real-Time Protection\\Turn off real- time protection Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Real-Time Protection\\Turn off real-time protection Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
     references:
       - "https://docs.microsoft.com/en-us/windows/security/threat-protection/microsoft-defender-antivirus/configure-real-time-protection-microsoft-defender-antivirus"
     compliance:
       - cis: ["18.10.43.10.2"]
       - cis_csc_v7: ["8.1"]
       - iso_27001-2013: ["A.12.2.1"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableRealtimeMonitoring'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableRealtimeMonitoring -> 0'
 
   # 18.10.43.10.3 (L1) Ensure 'Turn on behavior monitoring' is set to 'Enabled'. (Automated)
   - id: 18837
@@ -6076,8 +6122,11 @@ checks:
       - cis_csc_v7: ["8.1"]
       - iso_27001-2013: ["A.12.2.1"]
       - pci_dss_v4.0: ["5.3.2"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableBehaviorMonitoring'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableBehaviorMonitoring -> 0'
 
   # 18.10.43.10.4 (L1) Ensure 'Turn on script scanning' is set to 'Enabled'. (Automated)
   - id: 18838
@@ -6094,8 +6143,11 @@ checks:
       - cis_csc_v7: ["8.1"]
       - iso_27001-2013: ["A.12.2.1"]
       - pci_dss_v4.0: ["5.3.2"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableScriptScanning'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Real-TimeProtection -> DisableScriptScanning -> 0'
 
   # 18.10.43.12.1 (L2) Ensure 'Configure Watson events' is set to 'Disabled'. (Automated)
   - id: 18839
@@ -6108,8 +6160,11 @@ checks:
       - cis: ["18.10.43.12.1"]
       - cis_csc_v7: ["13.3"]
       - iso_27001-2013: ["A.13.1.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Reporting'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Reporting -> DisableGenericRePorts'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Reporting -> DisableGenericRePorts -> 1'
 
   # 18.10.43.13.1 (L1) Ensure 'Scan removable drives' is set to 'Enabled'. (Automated)
   - id: 18840
@@ -6126,8 +6181,11 @@ checks:
       - hipaa: ["164.310(d)(1)"]
       - iso_27001-2013: ["A.12.2.1"]
       - pci_dss_v4.0: ["5.3.3"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Scan'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Scan -> DisableRemovableDriveScanning'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Scan -> DisableRemovableDriveScanning -> 0'
 
   # 18.10.43.13.2 (L1) Ensure 'Turn on e-mail scanning' is set to 'Enabled'. (Automated)
   - id: 18841
@@ -6140,8 +6198,11 @@ checks:
       - cis: ["18.10.43.13.2"]
       - cis_csc_v7: ["8.1"]
       - iso_27001-2013: ["A.12.2.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Scan'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Scan -> DisableEmailScanning'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Scan -> DisableEmailScanning -> 0'
 
   # 18.10.43.16 (L1) Ensure 'Configure detection for potentially unwanted applications' is set to 'Enabled: Block'. (Automated)
   - id: 18842
@@ -6157,8 +6218,11 @@ checks:
       - iso_27001-2013: ["A.12.1.2", "A.12.2.1", "A.12.5.1", "A.12.6.2"]
       - pci_dss_v3.2.1: ["11.4"]
       - soc_2: ["CC6.8"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender -> PUAProtection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender -> PUAProtection -> 1'
 
   # 18.10.43.17 (L1) Ensure 'Turn off Microsoft Defender AntiVirus' is set to 'Disabled'. (Automated)
   - id: 18843
@@ -6174,22 +6238,28 @@ checks:
       - iso_27001-2013: ["A.12.2.1"]
       - pci_dss_v3.2.1: ["11.4"]
       - soc_2: ["CC6.8"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender -> DisableAntiSpyware'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender -> DisableAntiSpyware -> 0'
 
   # 18.10.51.1 (L1) Ensure 'Prevent the usage of OneDrive for file storage' is set to 'Enabled'. (Automated)
   - id: 18844
     title: "Ensure 'Prevent the usage of OneDrive for file storage' is set to 'Enabled'."
     description: "This policy setting lets you prevent apps and features from working with files on OneDrive using the Next Generation Sync Client. The recommended state for this setting is: Enabled."
     rationale: "Enabling this setting prevents users from accidentally (or intentionally) uploading confidential or sensitive corporate information to the OneDrive cloud service using the Next Generation Sync Client. Note: This security concern applies to any cloud-based file storage application installed on a server, not just the one supplied with Windows Server."
-    impact: "Users can't access OneDrive from the OneDrive app and file picker. Windows Store apps can't access OneDrive using the WinRT API. OneDrive doesn't appear in the navigation pane in File Explorer. OneDrive files aren't kept in sync with the cloud. Users can't automatically upload photos and videos from the camera roll folder. Note: If your organization uses Office 365, be aware that this setting will prevent users from saving files to OneDrive/SkyDrive. Note #2: If your organization has decided to implement OneDrive for Business and therefore needs to except itself from this recommendation, we highly suggest that you also obtain and utilize the OneDrive.admx/adml template that is bundled with the latest OneDrive client, as noted at this link (this template is not included with the Windows Administrative Templates). Two alternative OneDrive settings in particular from that template are worth your consideration: - Allow syncing OneDrive accounts for only specific organizations - a computer- based setting that restricts OneDrive client connections to only approved tenant IDs. - Prevent users from synchronizing personal OneDrive accounts - a user-based setting that prevents use of consumer OneDrive (i.e. non-business)."
+    impact: "Users can't access OneDrive from the OneDrive app and file picker. Windows Store apps can't access OneDrive using the WinRT API. OneDrive doesn't appear in the navigation pane in File Explorer. OneDrive files aren't kept in sync with the cloud. Users can't automatically upload photos and videos from the camera roll folder. Note: If your organization uses Office 365, be aware that this setting will prevent users from saving files to OneDrive/SkyDrive. Note #2: If your organization has decided to implement OneDrive for Business and therefore needs to except itself from this recommendation, we highly suggest that you also obtain and utilize the OneDrive.admx/adml template that is bundled with the latest OneDrive client, as noted at this link (this template is not included with the Windows Administrative Templates). Two alternative OneDrive settings in particular from that template are worth your consideration: - Allow syncing OneDrive accounts for only specific organizations - a computer-based setting that restricts OneDrive client connections to only approved tenant IDs. - Prevent users from synchronizing personal OneDrive accounts - a user-based setting that prevents use of consumer OneDrive (i.e. non-business)."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\OneDrive\\Prevent the usage of OneDrive for file storage Note: This Group Policy path may not exist by default. It is provided by the Group Policy template SkyDrive.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer). However, we strongly recommend you only use the version included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer). Older versions of the templates had conflicting settings in different template files for both OneDrive & SkyDrive, until it was cleaned up properly in the above version. Note #2: In older Microsoft Windows Administrative Templates, this setting was named Prevent the usage of SkyDrive for file storage, but it was renamed starting with the Windows 10 RTM (Release 1507) Administrative Templates."
     compliance:
       - cis: ["18.10.51.1"]
       - cis_csc_v7: ["13.4"]
       - iso_27001-2013: ["A.13.2.3"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\OneDrive'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\OneDrive -> DisableFileSyncNGSC'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\OneDrive -> DisableFileSyncNGSC -> 1'
 
   # 18.10.56.1 (L2) Ensure 'Turn off Push To Install service' is set to 'Enabled'. (Automated)
   - id: 18845
@@ -6207,8 +6277,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\PushToInstall'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\PushToInstall -> DisablePushToInstall'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\PushToInstall -> DisablePushToInstall -> 1'
 
   # 18.10.57.2.2 (L1) Ensure 'Do not allow passwords to be saved' is set to 'Enabled'. (Automated)
   - id: 18846
@@ -6221,8 +6294,11 @@ checks:
       - cis: ["18.10.57.2.2"]
       - cis_csc_v7: ["16.11"]
       - iso_27001-2013: ["A.8.1.3"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> DisablePasswordSaving'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> DisablePasswordSaving -> 1'
 
   # 18.10.57.3.2.1 (L2) Ensure 'Restrict Remote Desktop Services users to a single Remote Desktop Services session' is set to 'Enabled'. (Automated)
   - id: 18847
@@ -6240,22 +6316,26 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fSingleSessionPerUser -> 1'
 
   # 18.10.57.3.3.1 (L2) Ensure 'Allow UI Automation redirection' is set to 'Disabled'. (Automated)
   - id: 18848
     title: "Ensure 'Allow UI Automation redirection' is set to 'Disabled'."
-    description: "This policy setting determines whether User Interface (UI) Automation client applications running on the local computer can access UI elements on the server. UI Automation gives programs access to most UI elements, which allows use of assistive technology products like Magnifier and Narrator that need to interact with the UI in order to work properly. UI information also allows automated test scripts to interact with the UI. For example, the local computer´s Narrator and Magnifier clients can be used to interact with UI on a web page opened in a remote session. The recommended state for this setting is: Disabled. Note: Remote Desktop sessions don´t currently support UI Automation redirection."
+    description: "This policy setting determines whether User Interface (UI) Automation client applications running on the local computer can access UI elements on the server. UI Automation gives programs access to most UI elements, which allows use of assistive technology products like Magnifier and Narrator that need to interact with the UI in order to work properly. UI information also allows automated test scripts to interact with the UI. For example, the local computer's Narrator and Magnifier clients can be used to interact with UI on a web page opened in a remote session. The recommended state for this setting is: Disabled. Note: Remote Desktop sessions don't currently support UI Automation redirection."
     rationale: "In a more security-sensitive environment, it is desirable to reduce the possible attack surface. The need for UI Automation redirection within a Remote Desktop session is rare, and not supported at this time, but it makes sense to reduce the number of unexpected avenues for malicious activity to occur."
     impact: "UI Automation clients on the local computer will not be able to interact with remote apps."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Device and Resource Redirection\\Allow UI Automation redirection Note: This Group Policy path may not exist by default. It is provided by the Group Policy template TerminalServer.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer)."
     references:
-      - "https://docs.microsoft.com/en-us/dotnet/framework/ui-automation/ui-automation-"
+      - "https://docs.microsoft.com/en-us/dotnet/framework/ui-automation/ui-automation-overview"
     compliance:
       - cis: ["18.10.57.3.3.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> EnableUiaRedirection'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> EnableUiaRedirection -> 0'
 
   # 18.10.57.3.3.2 (L2) Ensure 'Do not allow COM port redirection' is set to 'Enabled'. (Automated)
   - id: 18849
@@ -6273,8 +6353,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableCcm'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableCcm -> 1'
 
   # 18.10.57.3.3.3 (L1) Ensure 'Do not allow drive redirection' is set to 'Enabled'. (Automated)
   - id: 18850
@@ -6292,8 +6375,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableCdm'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableCdm -> 1'
 
   # 18.10.57.3.3.4 (L2) Ensure 'Do not allow location redirection' is set to 'Enabled'. (Automated)
   - id: 18851
@@ -6304,8 +6390,11 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Device and Resource Redirection\\Do not allow location redirection Note: This Group Policy path may not exist by default. It is provided by the Group Policy template TerminalServer.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.10.57.3.3.4"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableLocationRedir'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableLocationRedir -> 1'
 
   # 18.10.57.3.3.5 (L2) Ensure 'Do not allow LPT port redirection' is set to 'Enabled'. (Automated)
   - id: 18852
@@ -6323,8 +6412,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableLPT'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableLPT -> 1'
 
   # 18.10.57.3.3.6 (L2) Ensure 'Do not allow supported Plug and Play device redirection' is set to 'Enabled'. (Automated)
   - id: 18853
@@ -6335,8 +6427,11 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Device and Resource Redirection\\Do not allow supported Plug and Play device redirection Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.10.57.3.3.6"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisablePNPRedir'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisablePNPRedir -> 1'
 
   # 18.10.57.3.3.7 (L2) Ensure 'Do not allow WebAuthn redirection' is set to 'Enabled'. (Automated)
   - id: 18854
@@ -6354,8 +6449,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableWebAuthn'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableWebAuthn -> 1'
 
   # 18.10.57.3.9.1 (L1) Ensure 'Always prompt for password upon connection' is set to 'Enabled'. (Automated)
   - id: 18855
@@ -6366,8 +6464,11 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Security\\Always prompt for password upon connection Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In the Microsoft Windows Vista Administrative Templates, this setting was named Always prompt client for password upon connection, but it was renamed starting with the Windows Server 2008 (non-R2) Administrative Templates."
     compliance:
       - cis: ["18.10.57.3.9.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fPromptForPassword'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fPromptForPassword -> 1'
 
   # 18.10.57.3.9.2 (L1) Ensure 'Require secure RPC communication' is set to 'Enabled'. (Automated)
   - id: 18856
@@ -6378,8 +6479,11 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Security\\Require secure RPC communication Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.10.57.3.9.2"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fEncryptRPCTraffic'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fEncryptRPCTraffic -> 1'
 
   # 18.10.57.3.9.3 (L1) Ensure 'Require use of specific security layer for remote (RDP) connections' is set to 'Enabled: SSL'. (Automated)
   - id: 18857
@@ -6396,8 +6500,11 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> SecurityLayer'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> SecurityLayer -> 2'
 
   # 18.10.57.3.9.4 (L1) Ensure 'Require user authentication for remote connections by using Network Level Authentication' is set to 'Enabled'. (Automated)
   - id: 18858
@@ -6414,8 +6521,11 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> UserAuthentication'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> UserAuthentication -> 1'
 
   # 18.10.57.3.9.5 (L1) Ensure 'Set client connection encryption level' is set to 'Enabled: High Level'. (Automated)
   - id: 18859
@@ -6432,8 +6542,11 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MinEncryptionLevel'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MinEncryptionLevel -> 3'
 
   # 18.10.57.3.10.1 (L2) Ensure 'Set time limit for active but idle Remote Desktop Services sessions' is set to 'Enabled: 15 minutes or less, but not Never (0)'. (Automated)
   - id: 18860
@@ -6446,8 +6559,12 @@ checks:
       - cis: ["18.10.57.3.10.1"]
       - cis_csc_v7: ["16.11"]
       - iso_27001-2013: ["A.8.1.3"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> n:^(\d+) compare <= 900000'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> n:^(\d+) compare != 0'
 
   # 18.10.57.3.10.2 (L2) Ensure 'Set time limit for disconnected sessions' is set to 'Enabled: 1 minute'. (Automated)
   - id: 18861
@@ -6460,8 +6577,11 @@ checks:
       - cis: ["18.10.57.3.10.2"]
       - cis_csc_v7: ["16.11"]
       - iso_27001-2013: ["A.8.1.3"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxDisconnectionTime'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxDisconnectionTime -> 60000'
 
   # 18.10.57.3.11.1 (L1) Ensure 'Do not delete temp folders upon exit' is set to 'Disabled'. (Automated)
   - id: 18862
@@ -6472,8 +6592,11 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Temporary Folders\\Do not delete temp folders upon exit Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was named Do not delete temp folder upon exit, but it was renamed starting with the Windows 8.0 & Server 2012 (non-R2) Administrative Templates."
     compliance:
       - cis: ["18.10.57.3.11.1"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> DeleteTempDirsOnExit'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> DeleteTempDirsOnExit -> 1'
 
   # 18.10.57.3.11.2 (L1) Ensure 'Do not use temporary folders per session' is set to 'Disabled'. (Automated)
   - id: 18863
@@ -6484,8 +6607,11 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Temporary Folders\\Do not use temporary folders per session Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
       - cis: ["18.10.57.3.11.2"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> PerSessionTempDir'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> PerSessionTempDir -> 1'
 
   # 18.10.58.1 (L1) Ensure 'Prevent downloading of enclosures' is set to 'Enabled'. (Automated)
   - id: 18864
@@ -6502,8 +6628,11 @@ checks:
       - iso_27001-2013: ["A.12.6.2"]
       - nist_sp_800-53: ["CM-10", "CM-11", "SC-18"]
       - pci_dss_v4.0: ["2.2.4"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Internet Explorer\Feeds'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Internet Explorer\Feeds -> DisableEnclosureDownload'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Internet Explorer\Feeds -> DisableEnclosureDownload -> 1'
 
   # 18.10.59.2 (L2) Ensure 'Allow Cloud Search' is set to 'Enabled: Disable Cloud Search'. (Automated)
   - id: 18865
@@ -6521,8 +6650,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowCloudSearch'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowCloudSearch -> 0'
 
   # 18.10.59.3 (L1) Ensure 'Allow indexing of encrypted files' is set to 'Disabled'. (Automated)
   - id: 18866
@@ -6535,20 +6667,26 @@ checks:
       - cis: ["18.10.59.3"]
       - cis_csc_v7: ["14.8"]
       - iso_27001-2013: ["A.10.1.1"]
-    condition:
+    condition: any
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowIndexingEncryptedStoresOrItems'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowIndexingEncryptedStoresOrItems -> 0'
 
   # 18.10.59.4 (L2) Ensure 'Allow search highlights' is set to 'Disabled'. (Automated)
   - id: 18867
     title: "Ensure 'Allow search highlights' is set to 'Disabled'."
     description: "This policy setting controls search highlights in the start menu search box and in search home. The recommended state for this setting is: Disabled."
     rationale: "In a high security environment, data should never be sent to or received by any third-party since this data could contain sensitive information."
-    impact: "“Interesting”, “informative”, and “noteworthy” information about the current date will not be displayed (by Microsoft) to the user."
+    impact: 'Interesting, "informative", and "noteworthy" information about the current date will not be displayed (by Microsoft) to the user.'
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Search\\Allow search highlights Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Search.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.10.59.4"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> EnableDynamicContentInWSB'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> EnableDynamicContentInWSB -> 0'
 
   # 18.10.63.1 (L2) Ensure 'Turn off KMS Client Online AVS Validation' is set to 'Enabled'. (Automated)
   - id: 18868
@@ -6566,8 +6704,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform -> NoGenTicket'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform -> NoGenTicket -> 1'
 
   # 18.10.76.2.1 (L1) Ensure 'Configure Windows Defender SmartScreen' is set to 'Enabled: Warn and prevent bypass'. (Automated)
   - id: 18869
@@ -6583,8 +6724,13 @@ checks:
       - nist_sp_800-53: ["SI-16"]
       - pci_dss_v3.2.1: ["1.4"]
       - soc_2: ["CC6.8"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> EnableSmartScreen'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> ShellSmartScreenLevel'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> EnableSmartScreen -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> ShellSmartScreenLevel -> Block'
 
   # 18.10.80.1 (L2) Ensure 'Allow suggested apps in Windows Ink Workspace' is set to 'Disabled'. (Automated)
   - id: 18870
@@ -6602,8 +6748,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace -> AllowSuggestedAppsInWindowsInkWorkspace'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace -> AllowSuggestedAppsInWindowsInkWorkspace -> 0'
 
   # 18.10.80.2 (L1) Ensure 'Allow Windows Ink Workspace' is set to 'Enabled: On, but disallow access above lock' OR 'Enabled: Disabled'. (Automated)
   - id: 18871
@@ -6621,8 +6770,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace -> AllowWindowsInkWorkspace'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace -> AllowWindowsInkWorkspace -> r:^0$|^1$'
 
   # 18.10.81.1 (L1) Ensure 'Allow user control over installs' is set to 'Disabled'. (Automated)
   - id: 18872
@@ -6638,8 +6790,11 @@ checks:
       - nist_sp_800-53: ["CM-7(5)"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4"]
       - soc_2: ["CC6.8"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> EnableUserControl'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> EnableUserControl -> 0'
 
   # 18.10.81.2 (L1) Ensure 'Always install with elevated privileges' is set to 'Disabled'. (Automated)
   - id: 18873
@@ -6657,8 +6812,11 @@ checks:
       - nist_sp_800-53: ["AC-6(2)", "AC-6(5)"]
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - soc_2: ["CC6.1", "CC6.3"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> AlwaysInstallElevated'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> AlwaysInstallElevated -> 0'
 
   # 18.10.81.3 (L2) Ensure 'Prevent Internet Explorer security prompt for Windows Installer scripts' is set to 'Disabled'. (Automated)
   - id: 18874
@@ -6674,8 +6832,11 @@ checks:
       - nist_sp_800-53: ["CM-7(5)"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4"]
       - soc_2: ["CC6.8"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> SafeForScripting'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> SafeForScripting -> 0'
 
   # 18.10.82.1 (L1) Ensure 'Enable MPR notifications for the system' is set to 'Disabled'. (Automated)
   - id: 18875
@@ -6696,8 +6857,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> EnableMPR'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> EnableMPR -> 1'
 
   # 18.10.82.2 (L1) Ensure 'Sign-in and lock last interactive user automatically after a restart' is set to 'Disabled'. (Automated)
   - id: 18876
@@ -6710,8 +6874,11 @@ checks:
       - cis: ["18.10.82.2"]
       - cis_csc_v7: ["16.11"]
       - iso_27001-2013: ["A.8.1.3"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> DisableAutomaticRestartSignOn'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> DisableAutomaticRestartSignOn -> 1'
 
   # 18.10.87.1 (L1) Ensure 'Turn on PowerShell Script Block Logging' is set to 'Enabled'. (Automated)
   - id: 18877
@@ -6721,29 +6888,35 @@ checks:
     impact: "PowerShell script input will be logged to the Applications and Services Logs\\Microsoft\\Windows\\PowerShell\\Operational Event Log channel, which can contain credentials and sensitive information. Warning: There are potential risks of capturing credentials and sensitive information in the PowerShell logs, which could be exposed to users who have read-access to those logs. Microsoft provides a feature called \"Protected Event Logging\" to better secure event log data. For assistance with protecting event logging, visit: About Logging Windows - PowerShell | Microsoft Docs."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows PowerShell\\Turn on PowerShell Script Block Logging Note: This Group Policy path may not exist by default. It is provided by the Group Policy template PowerShellExecutionPolicy.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer)."
     references:
-      - "https://docs.microsoft.com/en-"
+      - "https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_logging_windows?view=powershell-7.2#protected-event-logging"
     compliance:
       - cis: ["18.10.87.1"]
       - cis_csc_v8: ["8.8"]
       - cis_csc_v7: ["8.8"]
       - iso_27001-2013: ["A.12.14.1"]
       - soc_2: ["CC5.2", "CC6.8"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging -> EnableScriptBlockLogging'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging -> EnableScriptBlockLogging -> 1'
 
   # 18.10.87.2 (L1) Ensure 'Turn on PowerShell Transcription' is set to 'Enabled'. (Automated)
   - id: 18878
     title: "Ensure 'Turn on PowerShell Transcription' is set to 'Enabled'."
     description: "This Policy setting lets you capture the input and output of Windows PowerShell commands into text-based transcripts. The recommended state for this setting is: Enabled."
     rationale: "PowerShell transcript input can be very valuable when performing forensic investigations of PowerShell attack incidents to determine what occurred."
-    impact: "PowerShell transcript input will be logged to the PowerShell_transcript output file, which is saved to the My Documents folder of each users´ profile by default. Warning: There are potential risks of capturing credentials and sensitive information in the PowerShell_transcript output file, which could be exposed to users who have read-access to the file."
+    impact: "PowerShell transcript input will be logged to the PowerShell_transcript output file, which is saved to the My Documents folder of each users' profile by default. Warning: There are potential risks of capturing credentials and sensitive information in the PowerShell_transcript output file, which could be exposed to users who have read-access to the file."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows PowerShell\\Turn on PowerShell Transcription Note: This Group Policy path may not exist by default. It is provided by the Group Policy template PowerShellExecutionPolicy.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer)."
     references:
       - "https://docs.microsoft.com/en-"
     compliance:
       - cis: ["18.10.87.2"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Transcription'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Transcription -> EnableTranscripting'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Transcription -> EnableTranscripting -> 1'
 
   # 18.10.89.1.1 (L1) Ensure 'Allow Basic authentication' is set to 'Disabled'. (Automated)
   - id: 18879
@@ -6762,8 +6935,11 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowBasic'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowBasic -> 0'
 
   # 18.10.89.1.2 (L1) Ensure 'Allow unencrypted traffic' is set to 'Disabled'. (Automated)
   - id: 18880
