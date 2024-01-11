@@ -607,7 +607,7 @@ def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None
 
         rbac_filters = get_rbac_filters(system_resources=system_groups, permitted_resources=group_list)
 
-        with WazuhDBQueryGroup(**rbac_filters, limit=limit) as group_query:
+        with WazuhDBQueryGroup(**rbac_filters, limit=limit, offset=offset) as group_query:
             query_data = group_query.run()
 
             for group in query_data['items']:
@@ -627,7 +627,7 @@ def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None
 
                 affected_groups.append(group)
 
-        data = process_array(affected_groups, offset=offset, limit=limit, allowed_sort_fields=GROUP_FIELDS,
+        data = process_array(affected_groups, allowed_sort_fields=GROUP_FIELDS,
                             sort_by=sort_by, sort_ascending=sort_ascending, search_text=search_text,
                             complementary_search=complementary_search, q=q, allowed_select_fields=GROUP_FIELDS,
                             select=select, distinct=distinct, required_fields=GROUP_REQUIRED_FIELDS)
