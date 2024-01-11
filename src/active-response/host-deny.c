@@ -65,7 +65,7 @@ int main (int argc, char **argv) {
         }
     }
 
-    if (!strstr(srcip, ".") && !strstr(srcip, ":")) {
+    if (get_ip_version(srcip) == OS_INVALID) {
         memset(log_msg, '\0', OS_MAXSTR);
         snprintf(log_msg, OS_MAXSTR -1, "Unable to run active response (invalid IP: '%s')", srcip);
         write_debug_file(argv[0], log_msg);

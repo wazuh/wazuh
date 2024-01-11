@@ -843,6 +843,10 @@ int wm_vuldet_provider_os_list(xml_node **node, vu_os_feed **feeds, char *pr_nam
                         merror("Invalid content for '%s' option at module '%s'", node[i]->attributes[j], WM_VULNDETECTOR_CONTEXT.name);
                         return OS_INVALID;
                     }
+                    if (feeds_it->interval < WM_MIN_UPDATE_INTERVAL) {
+                        mwarn("The '%s' option at module '%s' must be at least 1 hour. Automatically adjusted.", node[i]->attributes[j], WM_VULNDETECTOR_CONTEXT.name);
+                        feeds_it->interval = WM_MIN_UPDATE_INTERVAL;
+                    }
                 } else if (!strcmp(node[i]->attributes[j], XML_PATH)) {
                     free(feeds_it->path);
                     os_strdup(node[i]->values[j], feeds_it->path);
@@ -1038,6 +1042,10 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
             if (wm_vuldet_get_interval(node[i]->content, &options->update_interval)) {
                 merror("Invalid content for '%s' option at module '%s'", XML_UPDATE_INTERVAL, WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
+            }
+            if (options->update_interval < WM_MIN_UPDATE_INTERVAL) {
+                mwarn("The '%s' option at module '%s' must be at least 1 hour. Automatically adjusted.", node[i]->element, WM_VULNDETECTOR_CONTEXT.name);
+                options->update_interval = WM_MIN_UPDATE_INTERVAL;
             }
         } else if (!strcmp(node[i]->element, XML_TIMEOUT)) {
             char * end;
