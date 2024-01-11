@@ -13,6 +13,8 @@
 #include "wdb_state.h"
 #include <os_net/os_net.h>
 
+#define WDB_SYSCOLLECTOR_DELTAS_TOPIC "deltas-syscollector"
+
 static void wdb_help() __attribute__ ((noreturn));
 static void handler(int signum);
 static void cleanup();
@@ -103,8 +105,12 @@ int main(int argc, char ** argv)
     // Allocating memory for configuration structures and setting default values
     wdb_init_conf();
 
+    int modules = 0;
+    modules |= WAZUHDB;
+    modules |= CCLUSTER;
+
     // Read ossec.conf
-    if (ReadConfig(WAZUHDB, OSSECCONF, NULL, NULL) < 0) {
+    if (ReadConfig(modules, OSSECCONF, &gconfig, NULL) < 0) {
         merror_exit("Invalid configuration block for Wazuh-DB.");
     }
 
@@ -195,6 +201,14 @@ int main(int argc, char ** argv)
 
     minfo(STARTUP_MSG, (int)getpid());
 
+    // Router module logging initialization
+    router_initialize(taggedLogFunction);
+
+    // Router provider initialization
+    if (router_syscollector_handle = router_provider_create(WDB_SYSCOLLECTOR_DELTAS_TOPIC, false), !router_syscollector_handle) {
+        mdebug2("Failed to create router handle for 'syscollector'.");
+    }
+
     if (notify_queue = wnotify_init(1), !notify_queue) {
         merror_exit("at run_dealer(): wnotify_init(): %s (%d)",
                 strerror(errno), errno);
@@ -241,7 +255,6 @@ int main(int argc, char ** argv)
     }
 
     // Join threads
-
     pthread_join(thread_dealer, NULL);
 
     for (i = 0; i < wconfig.worker_pool_size; i++) {

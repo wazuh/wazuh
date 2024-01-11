@@ -21,6 +21,7 @@ class WazuhException(Exception):
         900: 'One of the API child processes terminated abruptly. The API process pool is not usable anymore. '
              'Please restart the Wazuh API',
         901: 'API executor subprocess broke. A service restart may be needed',
+        902: 'API Endpoint only available on master node',
 
         # Wazuh: 0999 - 1099
         999: 'Incompatible version of Python',
@@ -158,13 +159,13 @@ class WazuhException(Exception):
         1209: {'message': 'Invalid relative directory. A \'rule_dir\' tag must '
                           'be declared in ossec.conf ruleset section.',
                'remediation': f'Please, visit the official documentation '
-                              f'(https://documentation.wazuh.com/' 
+                              f'(https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/reference/ossec-conf/ruleset.html)'
                               ' to get more information about the rules'
         },
         1210: {'message': 'Uploading, updating or deleting default rules is not allowed.',
                'remediation': f'Please, visit the official documentation '
-                              f'(https://documentation.wazuh.com/' 
+                              f'(https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/ruleset/index.html)'
                               ' to get more information about the rules'
         },
@@ -430,6 +431,9 @@ class WazuhException(Exception):
         2009: {'message': 'Pagination error. Response from wazuh-db was over the maximum socket buffer size'},
         2010: {'message': 'The requested read operation did not complete fully'},
 
+        # External services
+        2100: {'message': 'Error in CTI service request'},
+
         # Cluster
         3000: 'Cluster',
         3001: 'Error creating zip file',
@@ -590,14 +594,8 @@ class WazuhException(Exception):
         7001: {'message': 'Error trying to read logtest session token',
                'remediation': 'Make sure you introduce the token within the field "token"'},
 
-        # Vulnerability detector
-        8000: {'message': 'Unexpected error trying to request vulnerability detector scan'}
     }
 
-    # Reserve agent upgrade custom errors
-    ERRORS.update({key: {'message': 'Upgrade module\'s reserved exception IDs (1810-1899). '
-                                    'The error message will be the output of upgrade module'}
-                   for key in range(1811, 1900)})
     # Reserve agent upgrade custom errors
     ERRORS.update({key: {'message': 'Vulnerability scan\'s reserved exception IDs (8001-9000). '
                                     'The error message will be the output of vulnerability scan module'}

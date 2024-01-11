@@ -691,3 +691,35 @@ char * win_strerror(unsigned long error) {
     return messageBuffer;
 }
 #endif
+
+void mtLoggingFunctionsWrapper(int level, const char* tag, const char* file, int line, const char* func, const char* msg, va_list args) {
+    switch(level) {
+        case(LOGLEVEL_DEBUG):
+            if (dbg_flag >= 1) {
+                _log(level, tag, file, line, func, msg, args);
+            }
+            break;
+        case(LOGLEVEL_DEBUG_VERBOSE):
+            if (dbg_flag >= 2) {
+                _log(LOGLEVEL_DEBUG, tag, file, line, func, msg, args);
+            }
+            break;
+        case(LOGLEVEL_INFO):
+        case(LOGLEVEL_WARNING):
+        case(LOGLEVEL_ERROR):
+            _log(level, tag, file, line, func, msg, args);
+            break;
+        case(LOGLEVEL_CRITICAL):
+            _log(level, tag, file, line, func, msg, args);
+#ifdef WIN32
+            /* If not MA */
+#ifndef MA
+            WinSetError();
+#endif
+#endif
+            exit(1);
+            break;
+        default:
+            break;
+    }
+}
