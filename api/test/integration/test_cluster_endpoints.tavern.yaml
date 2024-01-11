@@ -604,7 +604,8 @@ stages:
               sca: !anything
               syscheck: !anything
               syscollector: !anything
-              vulnerability-detector: !anything
+              vulnerability-detection: !anything
+              indexer: !anything
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -636,7 +637,8 @@ stages:
               sca: !anything
               syscheck: !anything
               syscollector: !anything
-              vulnerability-detector: !anything
+              vulnerability-detection: !anything
+              indexer: !anything
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0

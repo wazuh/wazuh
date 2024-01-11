@@ -13,6 +13,7 @@
 #define _COMMON_DEFS_H_
 
 #include "cJSON.h"
+#include <stdarg.h>
 
 /**
  * @brief Represents the different host types to be used.
@@ -31,6 +32,16 @@ typedef enum
     UNDEFINED = 0,  /*< Undefined database. */
     SQLITE3   = 1,  /*< SQLite3 database.   */
 } DbEngineType;
+
+/**
+ * @brief Configures how the engine manages the database at startup.
+ */
+typedef enum
+{
+    VOLATILE   = 0,  /*< Removes the DB every time .                          */
+    PERSISTENT = 1,  /*< The DB is kept and the correct version is checked.   */
+} DbManagement;
+
 
 /**
  * @brief Represents the database operation events.
@@ -124,13 +135,15 @@ typedef void((*log_fnc_t)(const char* msg));
  * @brief Callback function for user defined logging but adding a tag, the file name,
  * the line number and the name of the function where the log was generated.
  *
+ * @param level    Level of the log.
  * @param tag      Tag to identify the log.
  * @param file     File name where the log is generated.
  * @param line     Line number where the log is generated.
  * @param func     Function name where the log is generated.
  * @param msg      Message to be logged.
+ * @param args     Variable list args.
  */
-typedef void ((*full_log_fnc_t)(const char* tag, const char* file, int line, const char* func, const char* msg, ...));
+typedef void ((*full_log_fnc_t)(int level, const char* tag, const char* file, int line, const char* func, const char* msg, va_list args));
 
 /**
 * @brief Definition to indicate the unlimited queue.

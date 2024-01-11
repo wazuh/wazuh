@@ -431,6 +431,21 @@ void *OSHash_Get_ex(const OSHash *self, const char *key)
     return result;
 }
 
+/** void *OSHash_Get_ex_dup(OSHash *self, char *key, void(*duplicator)(void*))
+ * Returns NULL on error (key not found).
+ * Returns a copy of the data otherwise. Must be freed by the caller.
+ * Key must not be NULL.
+ */
+void *OSHash_Get_ex_dup(const OSHash *self, const char *key, void*(*duplicator)(void*))
+{
+    void *result;
+    w_rwlock_rdlock((pthread_rwlock_t *)&self->mutex);
+    result = duplicator(OSHash_Get(self, key));
+    w_rwlock_unlock((pthread_rwlock_t *)&self->mutex);
+
+    return result;
+}
+
 /** void *OSHash_Get_ins(OSHash *self, char *key)
  * Returns NULL on error (key not found).
  * Returns the key otherwise.
