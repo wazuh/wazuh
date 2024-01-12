@@ -301,6 +301,7 @@ while($status -ne "connected"  -And $counter -gt 0)
 }
 Write-Output "$(Get-Date -Format u) - Reading status file: status='$status'." >> .\upgrade\upgrade.log
 
+$status = $null
 If ($status -ne "connected")
 {
     Get-Service -Name "Wazuh" | Stop-Service
