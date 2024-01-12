@@ -150,7 +150,7 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
     registry->template add<builders::OpBuilderEntry>("map",
                                                      {builders::opmap::mapValidator(), builders::opmap::mapBuilder});
     registry->template add<builders::OpBuilderEntry>(
-        "to_str", {schemval::ValidationToken {json::Json::Type::String}, builders::opBuilderHelperNumberToString});
+        "to_string", {schemval::ValidationToken {json::Json::Type::String}, builders::opBuilderHelperNumberToString});
     registry->template add<builders::OpBuilderEntry>(
         "int_calculate", {schemval::ValidationToken {json::Json::Type::Number}, builders::opBuilderHelperIntCalc});
     registry->template add<builders::OpBuilderEntry>(
