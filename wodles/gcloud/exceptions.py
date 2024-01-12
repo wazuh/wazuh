@@ -18,12 +18,12 @@ class WazuhIntegrationException(Exception):
 
     Parameters
     ----------
-    error : str
+    error : int
         Error key.
     kwargs : str
         Values of the error message that should be substituted.
     """
-    def __init__(self, errcode: str, **kwargs):
+    def __init__(self, errcode: int, **kwargs):
         self._errcode = errcode
         info = self.__class__.ERRORS[errcode]
         self._message = info['message'].format(**kwargs) if kwargs else \
@@ -92,6 +92,9 @@ class GCloudError(WazuhIntegrationException):
         1103: {
             'key': 'GCloudBucketNameError',
             'message': 'The name of the bucket is required. Use -b <BUCKET_NAME> to specify it.'},
+        1104: {
+            'key': 'GCloudBucketLastProcessedFilesError',
+            'message': 'Database error trying to get the last processed files for table_name={table_name}, project_id={project_id}, bucket_name={bucket_name}, prefix={prefix}'},
 
         # 1200-1299 -> Pub/Sub errors
         1200: {
@@ -114,7 +117,7 @@ class GCloudError(WazuhIntegrationException):
             'message': "The '{project}' project ID is incorrect or the user does not have permissions to access to it"},
         1206: {
             'key': 'GCloudPubSubForbidden',
-            'message': "The client does not have the {permissions} required permissions}"}
+            'message': "The client does not have the {permissions} required permissions"}
     }
 
 

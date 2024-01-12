@@ -19,4 +19,3 @@ struct CJsonSmartFree final : CustomDeleter<decltype(&cJSON_free), cJSON_free> {
 struct CJsonSmartDeleter final : CustomDeleter<decltype(&cJSON_Delete), cJSON_Delete> {};
 
 #endif // _CJSON_SMART_DELETER_HPP
-

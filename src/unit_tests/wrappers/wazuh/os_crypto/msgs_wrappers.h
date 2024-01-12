@@ -13,5 +13,6 @@
 #include <sys/types.h>
 
 size_t __wrap_CreateSecMSG(__attribute__((unused)) keystore *keys, const char *msg, size_t msg_length, char *msg_encrypted, unsigned int id);
+int __wrap_ReadSecMSG(keystore *keys, char *buffer, __attribute__((unused)) char *cleartext, int id, __attribute__((unused)) unsigned int buffer_size, size_t *final_size, const char *srcip, char **output);
 
 #endif

@@ -27,6 +27,7 @@
 #include <openssl/ssl.h>
 #include "auth.h"
 #include "enrollment_op.h"
+#include "dll_load_notify.h"
 
 #undef ARGV0
 #define ARGV0 "agent-auth"
@@ -68,6 +69,11 @@ static void help_agent_auth(char * home_path)
 
 int main(int argc, char **argv)
 {
+#ifdef WIN32
+    // This must be always the first instruction
+    enable_dll_verification();
+#endif
+
     int c;
     int test_config = 0;
 #ifndef WIN32

@@ -9,17 +9,20 @@
 import hashlib
 import json
 import os
-import pytest
 import sys
+from unittest.mock import patch
 
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy import inspect
 from sqlalchemy.exc import IntegrityError
-from unittest.mock import patch
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))  # noqa: E501
-with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
-    import orm
+import orm
+
+# Overwrite ORM's engine to avoid creating the local database file during the tests
+orm.engine = create_engine('sqlite:///', echo=False)
+orm.session = orm.sessionmaker(bind=orm.engine)()
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 test_last_dates_path = os.path.join(test_data_path, 'last_date_files')
@@ -78,7 +81,7 @@ def test_add_get_row(create_and_teardown_db):
 
             # Update the row
             new_datetime = "1999-01-01T23:59:59.1234567Z"
-            orm.update_row(table=table, md5=md5, min_date=new_datetime, max_date=new_datetime)
+            orm.update_row(table=table, md5=md5, min_date=new_datetime, max_date=new_datetime, query="query")
             row = orm.get_row(table=table, md5=md5)
             assert row.min_processed_date == new_datetime
             assert row.max_processed_date == new_datetime
@@ -120,7 +123,9 @@ def test_update_row_ko(create_and_teardown_db):
     (os.path.join(test_last_dates_path, 'last_dates_log_analytics.json')),
     (os.path.join(test_last_dates_path, 'last_dates_storage.json')),
     (os.path.join(test_last_dates_path, 'last_dates_old.json')),
-    (os.path.join(test_last_dates_path, 'last_dates_clean.json'))
+    (os.path.join(test_last_dates_path, 'last_dates_clean.json')),
+    (os.path.join(test_last_dates_path, 'last_dates_with_invalid_min_max.json')),
+    (os.path.join(test_last_dates_path, 'last_dates_old_invalid_value.json'))
 ])
 def test_load_dates_json(last_dates_file_path):
     """Check the load_dates_json function properly loads the contents of the files, regardless of their structure as
@@ -210,3 +215,50 @@ def test_migrate_from_last_dates_file(last_dates_file_path, create_and_teardown_
                 except (KeyError, TypeError):
                     # Old last_dates.json structure
                     assert test_file_contents[table.__tablename__][item.md5] == item.max_processed_date
+
+
+def test_min_max_valid():
+    json_content = {"min": "2022-03-07T15:12:56.98Z", "max": "2022-03-17T15:12:56.98Z"}
+
+    result = orm.get_min_max_values(json_content)
+    assert result == json_content
+
+
+def test_min_max_invalid_min():
+    json_content = {"min": "0", "max": "2022-03-17T15:12:56.98Z"}
+
+    result = orm.get_min_max_values(json_content)
+    assert result == {"min": json_content["max"], "max": json_content["max"]}
+
+
+def test_min_max_invalid_max():
+    json_content = {"min": "2022-03-17T15:12:56.98Z", "max": "0"}
+
+    result = orm.get_min_max_values(json_content)
+    assert result == {"min": json_content["min"], "max": json_content["min"]}
+
+
+def test_min_max_invalid_max_and_min(monkeypatch):
+    json_content = {"min": "0", "max": "0"}
+    expected_value = orm.get_default_min_max_values()
+    monkeypatch.setattr(orm, "get_default_min_max_values", lambda: expected_value)
+
+    result = orm.get_min_max_values(json_content)
+    assert result == {"min": expected_value, "max": expected_value}
+
+
+def test_min_max_valid_old_format():
+    json_content = "2022-03-04T15:12:56.98Z"
+
+    result = orm.get_min_max_values(json_content)
+    assert result == {"min": json_content, "max": json_content}
+
+
+def test_min_max_invalid_old_format(monkeypatch):
+    json_content = "0"
+    expected_value = orm.get_default_min_max_values()
+    monkeypatch.setattr(orm, "get_default_min_max_values", lambda: expected_value)
+
+    result = orm.get_min_max_values(json_content)
+    assert result == {"min": expected_value, "max": expected_value}
+

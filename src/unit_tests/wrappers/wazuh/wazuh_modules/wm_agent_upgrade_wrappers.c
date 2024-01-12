@@ -138,13 +138,6 @@ cJSON* __wrap_wm_agent_upgrade_get_agent_ids() {
     return mock_type(cJSON*);
 }
 
-int __wrap_wm_agent_upgrade_compare_versions(const char *version1, const char *version2) {
-    check_expected(version1);
-    check_expected(version2);
-
-    return mock();
-}
-
 bool __wrap_wm_agent_upgrade_validate_task_status_message(const cJSON *input_json, char **status, int *agent_id) {
     check_expected(input_json);
     if (status) os_strdup(mock_type(char *), *status);

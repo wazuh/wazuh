@@ -11,7 +11,7 @@
 #ifndef H_STRINGOP_OS
 #define H_STRINGOP_OS
 
-#include <external/cJSON/cJSON.h>
+#include <cJSON.h>
 #include <stdbool.h>
 
 #ifdef WIN32
@@ -392,5 +392,15 @@ char** w_strtok(const char *string);
  * @return Allocated string with list concatenation.
  */
 char* w_strcat_list(char ** list, char sep);
+
+/**
+ * @brief Convert a given string to hexadecimal and store it in a buffer
+ * @param src_buf Input buffer containing the string to be converted
+ * @param src_size Input buffer size
+ * @param dst_buf Output buffer where to store the converted string
+ * @param dst_size Output buffer size
+ * @return OS_SUCCESS on success, OS_INVALID on failure
+ */
+int print_hex_string(const char *src_buf, unsigned int src_size, char *dst_buf, unsigned int dst_size);
 
 #endif

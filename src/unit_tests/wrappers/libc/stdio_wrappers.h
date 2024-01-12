@@ -59,4 +59,6 @@ int __wrap_pclose(FILE *stream);
 
 int __wrap_fputc(char character, FILE *stream);
 
+FILE *__wrap_open_memstream(char **__bufloc, size_t *__sizeloc);
+
 #endif

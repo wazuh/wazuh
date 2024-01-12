@@ -30,6 +30,10 @@ void __wrap_w_inc_global() {
     function_called();
 }
 
+void __wrap_w_inc_global_open_time(){
+    function_called();
+}
+
 void __wrap_w_inc_global_sql(){
     function_called();
 }
@@ -101,6 +105,14 @@ void __wrap_w_inc_global_agent_update_connection_status() {
 }
 
 void __wrap_w_inc_global_agent_update_connection_status_time(__attribute__((unused))struct timeval diff) {
+    function_called();
+}
+
+void __wrap_w_inc_global_agent_update_status_code() {
+    function_called();
+}
+
+void __wrap_w_inc_global_agent_update_status_code_time(__attribute__((unused))struct timeval diff) {
     function_called();
 }
 

@@ -18,8 +18,6 @@ class ActiveResponseModel(Body):
         command : str
             Command running in the agent. If this value starts by !, then it refers to a script name instead of a
             command name.
-        custom : bool
-            Whether the specified command is a custom command or not.
         arguments : list
             Command arguments.
         alert : dict
@@ -27,20 +25,17 @@ class ActiveResponseModel(Body):
         """
         self.swagger_types = {
             'command': str,
-            'custom': bool,
             'arguments': List[str],
             'alert': dict
         }
 
         self.attribute_map = {
             'command': 'command',
-            'custom': 'custom',
             'arguments': 'arguments',
             'alert': 'alert'
         }
 
         self._command = command
-        self._custom = custom
         self._arguments = arguments
         self._alert = alert
 
@@ -63,26 +58,6 @@ class ActiveResponseModel(Body):
             Command to run in the agent.
         """
         self._command = command
-
-    @property
-    def custom(self) -> bool:
-        """
-        Returns
-        -------
-        bool
-            Whether the specified command is a custom command or not.
-        """
-        return self._custom
-
-    @custom.setter
-    def custom(self, custom: bool):
-        """
-        Parameters
-        ----------
-        custom : bool
-            Whether the specified command is a custom command or not.
-        """
-        self._custom = custom
 
     @property
     def arguments(self) -> list:

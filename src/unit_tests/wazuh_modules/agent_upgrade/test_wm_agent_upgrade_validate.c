@@ -182,13 +182,26 @@ void test_wm_agent_upgrade_validate_system_ubuntu_ok(void **state)
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
 }
 
-void test_wm_agent_upgrade_validate_system_darwin_ok(void **state)
+void test_wm_agent_upgrade_validate_system_darwin_x64_ok(void **state)
 {
     (void) state;
     char *platform = "darwin";
     char *os_major = "10";
     char *os_minor = "15";
     char *arch = "x64";
+
+    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+}
+
+void test_wm_agent_upgrade_validate_system_darwin_arm_ok(void **state)
+{
+    (void) state;
+    char *platform = "darwin";
+    char *os_major = "10";
+    char *os_minor = "15";
+    char *arch = "arm64";
 
     int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch);
 
@@ -284,116 +297,6 @@ void test_wm_agent_upgrade_validate_system_rolling_archlinux(void **state)
     int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch);
 
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
-}
-
-void test_wm_agent_upgrade_compare_versions_equal_patch(void **state)
-{
-    (void) state;
-    char *v1 = "v4.0.0";
-    char *v2 = "v4.0.0";
-
-    int ret = wm_agent_upgrade_compare_versions(v1, v2);
-
-    assert_int_equal(ret, 0);
-}
-
-void test_wm_agent_upgrade_compare_versions_equal_minor(void **state)
-{
-    (void) state;
-    char *v1 = "3.13";
-    char *v2 = "3.13";
-
-    int ret = wm_agent_upgrade_compare_versions(v1, v2);
-
-    assert_int_equal(ret, 0);
-}
-
-void test_wm_agent_upgrade_compare_versions_equal_major(void **state)
-{
-    (void) state;
-    char *v1 = "4";
-    char *v2 = "v4";
-
-    int ret = wm_agent_upgrade_compare_versions(v1, v2);
-
-    assert_int_equal(ret, 0);
-}
-
-void test_wm_agent_upgrade_compare_versions_greater_patch(void **state)
-{
-    (void) state;
-    char *v1 = "4.0.1";
-    char *v2 = "v4.0.0";
-
-    int ret = wm_agent_upgrade_compare_versions(v1, v2);
-
-    assert_int_equal(ret, 1);
-}
-
-void test_wm_agent_upgrade_compare_versions_greater_minor(void **state)
-{
-    (void) state;
-    char *v1 = "2.15";
-    char *v2 = "2";
-
-    int ret = wm_agent_upgrade_compare_versions(v1, v2);
-
-    assert_int_equal(ret, 1);
-}
-
-void test_wm_agent_upgrade_compare_versions_greater_major(void **state)
-{
-    (void) state;
-    char *v1 = "v5";
-    char *v2 = "4.9";
-
-    int ret = wm_agent_upgrade_compare_versions(v1, v2);
-
-    assert_int_equal(ret, 1);
-}
-
-void test_wm_agent_upgrade_compare_versions_lower_patch(void **state)
-{
-    (void) state;
-    char *v1 = "v4.0.1";
-    char *v2 = "v4.0.3";
-
-    int ret = wm_agent_upgrade_compare_versions(v1, v2);
-
-    assert_int_equal(ret, -1);
-}
-
-void test_wm_agent_upgrade_compare_versions_lower_minor(void **state)
-{
-    (void) state;
-    char *v1 = "2.15.1";
-    char *v2 = "2.18";
-
-    int ret = wm_agent_upgrade_compare_versions(v1, v2);
-
-    assert_int_equal(ret, -1);
-}
-
-void test_wm_agent_upgrade_compare_versions_lower_major(void **state)
-{
-    (void) state;
-    char *v1 = "v5";
-    char *v2 = "v6.1";
-
-    int ret = wm_agent_upgrade_compare_versions(v1, v2);
-
-    assert_int_equal(ret, -1);
-}
-
-void test_wm_agent_upgrade_compare_versions_null(void **state)
-{
-    (void) state;
-    char *v1 = NULL;
-    char *v2 = NULL;
-
-    int ret = wm_agent_upgrade_compare_versions(v1, v2);
-
-    assert_int_equal(ret, 0);
 }
 
 void test_wm_agent_upgrade_validate_wpk_version_windows_https_ok(void **state)
@@ -1327,7 +1230,8 @@ int main(void) {
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_windows_ok),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_rhel_ok),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_ubuntu_ok),
-        cmocka_unit_test(test_wm_agent_upgrade_validate_system_darwin_ok),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_system_darwin_x64_ok),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_system_darwin_arm_ok),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_invalid_platform_solaris),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_invalid_platform_suse),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_invalid_platform_rhel),
@@ -1335,17 +1239,6 @@ int main(void) {
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_invalid_arch),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_rolling_opensuse),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_rolling_archlinux),
-        // wm_agent_upgrade_compare_versions
-        cmocka_unit_test(test_wm_agent_upgrade_compare_versions_equal_patch),
-        cmocka_unit_test(test_wm_agent_upgrade_compare_versions_equal_minor),
-        cmocka_unit_test(test_wm_agent_upgrade_compare_versions_equal_major),
-        cmocka_unit_test(test_wm_agent_upgrade_compare_versions_greater_patch),
-        cmocka_unit_test(test_wm_agent_upgrade_compare_versions_greater_minor),
-        cmocka_unit_test(test_wm_agent_upgrade_compare_versions_greater_major),
-        cmocka_unit_test(test_wm_agent_upgrade_compare_versions_lower_patch),
-        cmocka_unit_test(test_wm_agent_upgrade_compare_versions_lower_minor),
-        cmocka_unit_test(test_wm_agent_upgrade_compare_versions_lower_major),
-        cmocka_unit_test(test_wm_agent_upgrade_compare_versions_null),
         // wm_agent_upgrade_validate_wpk_version
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_windows_https_ok, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_windows_http_ok, setup_validate_wpk_version, teardown_validate_wpk_version),

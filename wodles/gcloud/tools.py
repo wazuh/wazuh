@@ -104,37 +104,6 @@ def get_stdout_logger(name: str, level: int = 0) -> logging.Logger:
     return logger_stdout
 
 
-def get_file_logger(output_file: str, level: int = 3) -> logging.Logger:
-    """Create a logger which returns the messages in a file. Useful for debugging.
-
-    Parameters
-    ----------
-    output_file : str
-        Path to the output file.
-    level : int
-        Logging level.
-
-    Returns
-    -------
-    logging.Logger
-        Logger configured with input parameters. Writes the messages in an output file.
-    """
-    logger_file = logging.getLogger(f'{logger_name}_debug')
-    # set log level
-    logger_file.setLevel(log_levels.get(level, logging.WARNING))
-    # set handler for stdout
-    log_rotation_handler = TimedRotatingFileHandler(output_file,
-                                                    when='midnight',
-                                                    interval=1,
-                                                    backupCount=1,
-                                                    utc=True
-                                                    )
-    log_rotation_handler.setFormatter(logging_format)
-    logger_file.addHandler(log_rotation_handler)
-
-    return logger_file
-
-
 def arg_valid_date(arg_string: str) -> datetime:
     """Validation function for only_logs_after dates.
 

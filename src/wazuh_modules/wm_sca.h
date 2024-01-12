@@ -34,6 +34,7 @@ typedef struct wm_sca_policy_t {
     unsigned int remote:1;
     char *policy_path;
     char *policy_id;
+    char *policy_regex_type;
 } wm_sca_policy_t;
 
 typedef struct wm_sca_t {

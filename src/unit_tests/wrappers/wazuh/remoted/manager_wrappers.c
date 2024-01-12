@@ -20,3 +20,11 @@ cJSON *__wrap_assign_group_to_agent(const char *agent_id, const char *md5) {
 
     return mock_type(cJSON *);
 }
+
+void __wrap_save_controlmsg(const keyentry * key, char *r_msg, __attribute__((unused)) size_t msg_length, int *wdb_sock) {
+    check_expected(key);
+    check_expected(r_msg);
+    check_expected(wdb_sock);
+
+    return;
+}

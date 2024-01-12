@@ -23,6 +23,9 @@
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
+#include "../wrappers/wazuh/os_net/os_net_wrappers.h"
+#include "../wrappers/libc/string_wrappers.h"
+#include "../wrappers/posix/unistd_wrappers.h"
 #include "cJSON.h"
 
 /* redefinitons/wrapping */
@@ -177,6 +180,342 @@ static void test_parse_agent_remove_response(void **state) {
     assert_int_equal(err, -2);
     assert_string_equal(err_response, "ERROR: Invalid message format");
 }
+
+/* Tests w_send_clustered_message */
+
+void test_w_send_clustered_message_connection_error(void **state) {
+    char response[OS_MAXSTR + 1];
+
+    for (int i=0; i < CLUSTER_SEND_MESSAGE_ATTEMPTS; ++i) {
+        will_return(__wrap_external_socket_connect, -1);
+
+        will_return(__wrap_strerror, "ERROR");
+        expect_string(__wrap__mwarn, formatted_msg, "Could not connect to socket 'queue/cluster/c-internal.sock': ERROR (0).");
+    }
+    expect_value_count(__wrap_sleep, seconds, 1, 9);
+
+    expect_string(__wrap__merror, formatted_msg, "Could not send message through the cluster after '10' attempts.");
+
+    assert_int_equal(w_send_clustered_message("command", "payload", response), -2);
+}
+
+void test_w_send_clustered_message_send_error(void **state) {
+    char response[OS_MAXSTR + 1];
+    char *command = "command";
+    char *payload = "payload";
+    size_t payload_size = strlen(payload);
+    int sock_num = 3;
+
+    for (int i=0; i < CLUSTER_SEND_MESSAGE_ATTEMPTS; ++i) {
+        will_return(__wrap_external_socket_connect, sock_num);
+
+        expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
+        expect_value(__wrap_OS_SendSecureTCPCluster, command, command);
+        expect_string(__wrap_OS_SendSecureTCPCluster, payload, payload);
+        expect_value(__wrap_OS_SendSecureTCPCluster, length, payload_size);
+        will_return(__wrap_OS_SendSecureTCPCluster, -1);
+
+        will_return(__wrap_strerror, "ERROR");
+        expect_string(__wrap__mwarn, formatted_msg, "OS_SendSecureTCPCluster(): ERROR");
+    }
+    expect_value_count(__wrap_sleep, seconds, 1, 9);
+
+    expect_string(__wrap__merror, formatted_msg, "Could not send message through the cluster after '10' attempts.");
+
+    assert_int_equal(w_send_clustered_message(command, payload, response), -2);
+}
+
+void test_w_send_clustered_message_recv_cluster_error_detected(void **state) {
+    char response[OS_MAXSTR + 1];
+    char *command = "command";
+    char *payload = "payload";
+    char *recv_response = "response";
+    size_t payload_size = strlen(payload);
+    int sock_num = 3;
+
+    for (int i=0; i < CLUSTER_SEND_MESSAGE_ATTEMPTS; ++i) {
+        will_return(__wrap_external_socket_connect, sock_num);
+
+        expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
+        expect_value(__wrap_OS_SendSecureTCPCluster, command, command);
+        expect_string(__wrap_OS_SendSecureTCPCluster, payload, payload);
+        expect_value(__wrap_OS_SendSecureTCPCluster, length, payload_size);
+        will_return(__wrap_OS_SendSecureTCPCluster, 1);
+
+        expect_value(__wrap_OS_RecvSecureClusterTCP, sock, sock_num);
+        expect_value(__wrap_OS_RecvSecureClusterTCP, length, OS_MAXSTR);
+        will_return(__wrap_OS_RecvSecureClusterTCP, recv_response);
+        will_return(__wrap_OS_RecvSecureClusterTCP, -2);
+
+        expect_string(__wrap__mwarn, formatted_msg, "Cluster error detected");
+    }
+    expect_value_count(__wrap_sleep, seconds, 1, 9);
+
+    expect_string(__wrap__merror, formatted_msg, "Could not send message through the cluster after '10' attempts.");
+
+    assert_int_equal(w_send_clustered_message(command, payload, response), -1);
+}
+
+void test_w_send_clustered_message_recv_error(void **state) {
+    char response[OS_MAXSTR + 1];
+    char *command = "command";
+    char *payload = "payload";
+    char *recv_response = "response";
+    size_t payload_size = strlen(payload);
+    int sock_num = 3;
+
+    for (int i=0; i < CLUSTER_SEND_MESSAGE_ATTEMPTS; ++i) {
+        will_return(__wrap_external_socket_connect, sock_num);
+
+        expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
+        expect_value(__wrap_OS_SendSecureTCPCluster, command, command);
+        expect_string(__wrap_OS_SendSecureTCPCluster, payload, payload);
+        expect_value(__wrap_OS_SendSecureTCPCluster, length, payload_size);
+        will_return(__wrap_OS_SendSecureTCPCluster, 1);
+
+        expect_value(__wrap_OS_RecvSecureClusterTCP, sock, sock_num);
+        expect_value(__wrap_OS_RecvSecureClusterTCP, length, OS_MAXSTR);
+        will_return(__wrap_OS_RecvSecureClusterTCP, recv_response);
+        will_return(__wrap_OS_RecvSecureClusterTCP, -1);
+
+        will_return(__wrap_strerror, "ERROR");
+        expect_string(__wrap__mwarn, formatted_msg, "OS_RecvSecureClusterTCP(): ERROR");
+    }
+    expect_value_count(__wrap_sleep, seconds, 1, 9);
+
+    expect_string(__wrap__merror, formatted_msg, "Could not send message through the cluster after '10' attempts.");
+
+    assert_int_equal(w_send_clustered_message(command, payload, response), -1);
+}
+
+void test_w_send_clustered_message_recv_empty_message(void **state) {
+    char response[OS_MAXSTR + 1];
+    char *command = "command";
+    char *payload = "payload";
+    char *recv_response = "response";
+    size_t payload_size = strlen(payload);
+    int sock_num = 3;
+
+    will_return(__wrap_external_socket_connect, sock_num);
+
+    expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
+    expect_value(__wrap_OS_SendSecureTCPCluster, command, command);
+    expect_string(__wrap_OS_SendSecureTCPCluster, payload, payload);
+    expect_value(__wrap_OS_SendSecureTCPCluster, length, payload_size);
+    will_return(__wrap_OS_SendSecureTCPCluster, 1);
+
+    expect_value(__wrap_OS_RecvSecureClusterTCP, sock, sock_num);
+    expect_value(__wrap_OS_RecvSecureClusterTCP, length, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureClusterTCP, recv_response);
+    will_return(__wrap_OS_RecvSecureClusterTCP, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Empty message from local client.");
+
+    assert_int_equal(w_send_clustered_message(command, payload, response), -1);
+}
+
+void test_w_send_clustered_message_recv_max_len(void **state) {
+    char response[OS_MAXSTR + 1];
+    char *command = "command";
+    char *payload = "payload";
+    char *recv_response = "response";
+    size_t payload_size = strlen(payload);
+    int sock_num = 3;
+
+    will_return(__wrap_external_socket_connect, sock_num);
+
+    expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
+    expect_value(__wrap_OS_SendSecureTCPCluster, command, command);
+    expect_string(__wrap_OS_SendSecureTCPCluster, payload, payload);
+    expect_value(__wrap_OS_SendSecureTCPCluster, length, payload_size);
+    will_return(__wrap_OS_SendSecureTCPCluster, 1);
+
+    expect_value(__wrap_OS_RecvSecureClusterTCP, sock, sock_num);
+    expect_value(__wrap_OS_RecvSecureClusterTCP, length, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureClusterTCP, recv_response);
+    will_return(__wrap_OS_RecvSecureClusterTCP, OS_MAXLEN);
+
+    expect_string(__wrap__merror, formatted_msg, "Received message > 65536");
+
+    assert_int_equal(w_send_clustered_message(command, payload, response), -1);
+}
+
+void test_w_send_clustered_message_success(void **state) {
+    char response[OS_MAXSTR + 1];
+    char *command = "command";
+    char *payload = "payload";
+    char *recv_response = "response";
+    size_t payload_size = strlen(payload);
+    int sock_num = 3;
+
+    will_return(__wrap_external_socket_connect, sock_num);
+
+    expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
+    expect_value(__wrap_OS_SendSecureTCPCluster, command, command);
+    expect_string(__wrap_OS_SendSecureTCPCluster, payload, payload);
+    expect_value(__wrap_OS_SendSecureTCPCluster, length, payload_size);
+    will_return(__wrap_OS_SendSecureTCPCluster, 1);
+
+    expect_value(__wrap_OS_RecvSecureClusterTCP, sock, sock_num);
+    expect_value(__wrap_OS_RecvSecureClusterTCP, length, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureClusterTCP, recv_response);
+    will_return(__wrap_OS_RecvSecureClusterTCP, strlen(recv_response));
+
+    assert_int_equal(w_send_clustered_message(command, payload, response), 0);
+    assert_string_equal(recv_response, response);
+}
+
+void test_w_send_clustered_message_success_after_connection_error(void **state) {
+    char response[OS_MAXSTR + 1];
+    char *command = "command";
+    char *payload = "payload";
+    char *recv_response = "response";
+    size_t payload_size = strlen(payload);
+    int sock_num = 3;
+
+    will_return(__wrap_external_socket_connect, -1);
+
+    will_return(__wrap_strerror, "ERROR");
+    expect_string(__wrap__mwarn, formatted_msg, "Could not connect to socket 'queue/cluster/c-internal.sock': ERROR (0).");
+    expect_value(__wrap_sleep, seconds, 1);
+
+    will_return(__wrap_external_socket_connect, sock_num);
+
+    expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
+    expect_value(__wrap_OS_SendSecureTCPCluster, command, command);
+    expect_string(__wrap_OS_SendSecureTCPCluster, payload, payload);
+    expect_value(__wrap_OS_SendSecureTCPCluster, length, payload_size);
+    will_return(__wrap_OS_SendSecureTCPCluster, 1);
+
+    expect_value(__wrap_OS_RecvSecureClusterTCP, sock, sock_num);
+    expect_value(__wrap_OS_RecvSecureClusterTCP, length, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureClusterTCP, recv_response);
+    will_return(__wrap_OS_RecvSecureClusterTCP, strlen(recv_response));
+
+    assert_int_equal(w_send_clustered_message(command, payload, response), 0);
+    assert_string_equal(recv_response, response);
+}
+
+void test_w_send_clustered_message_success_after_send_error(void **state) {
+    char response[OS_MAXSTR + 1];
+    char *command = "command";
+    char *payload = "payload";
+    char *recv_response = "response";
+    size_t payload_size = strlen(payload);
+    int sock_num = 3;
+
+    will_return(__wrap_external_socket_connect, sock_num);
+
+    expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
+    expect_value(__wrap_OS_SendSecureTCPCluster, command, command);
+    expect_string(__wrap_OS_SendSecureTCPCluster, payload, payload);
+    expect_value(__wrap_OS_SendSecureTCPCluster, length, payload_size);
+    will_return(__wrap_OS_SendSecureTCPCluster, -1);
+
+    will_return(__wrap_strerror, "ERROR");
+    expect_string(__wrap__mwarn, formatted_msg, "OS_SendSecureTCPCluster(): ERROR");
+
+    expect_value(__wrap_sleep, seconds, 1);
+
+    will_return(__wrap_external_socket_connect, sock_num);
+
+    expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
+    expect_value(__wrap_OS_SendSecureTCPCluster, command, command);
+    expect_string(__wrap_OS_SendSecureTCPCluster, payload, payload);
+    expect_value(__wrap_OS_SendSecureTCPCluster, length, payload_size);
+    will_return(__wrap_OS_SendSecureTCPCluster, 1);
+
+    expect_value(__wrap_OS_RecvSecureClusterTCP, sock, sock_num);
+    expect_value(__wrap_OS_RecvSecureClusterTCP, length, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureClusterTCP, recv_response);
+    will_return(__wrap_OS_RecvSecureClusterTCP, strlen(recv_response));
+
+    assert_int_equal(w_send_clustered_message(command, payload, response), 0);
+    assert_string_equal(recv_response, response);
+}
+
+void test_w_send_clustered_message_success_after_cluster_error(void **state) {
+    char response[OS_MAXSTR + 1];
+    char *command = "command";
+    char *payload = "payload";
+    char *recv_response = "response";
+    size_t payload_size = strlen(payload);
+    int sock_num = 3;
+
+    will_return(__wrap_external_socket_connect, sock_num);
+
+    expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
+    expect_value(__wrap_OS_SendSecureTCPCluster, command, command);
+    expect_string(__wrap_OS_SendSecureTCPCluster, payload, payload);
+    expect_value(__wrap_OS_SendSecureTCPCluster, length, payload_size);
+    will_return(__wrap_OS_SendSecureTCPCluster, 1);
+
+    expect_value(__wrap_OS_RecvSecureClusterTCP, sock, sock_num);
+    expect_value(__wrap_OS_RecvSecureClusterTCP, length, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureClusterTCP, recv_response);
+    will_return(__wrap_OS_RecvSecureClusterTCP, -2);
+
+    expect_string(__wrap__mwarn, formatted_msg, "Cluster error detected");
+    expect_value(__wrap_sleep, seconds, 1);
+
+    will_return(__wrap_external_socket_connect, sock_num);
+
+    expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
+    expect_value(__wrap_OS_SendSecureTCPCluster, command, command);
+    expect_string(__wrap_OS_SendSecureTCPCluster, payload, payload);
+    expect_value(__wrap_OS_SendSecureTCPCluster, length, payload_size);
+    will_return(__wrap_OS_SendSecureTCPCluster, 1);
+
+    expect_value(__wrap_OS_RecvSecureClusterTCP, sock, sock_num);
+    expect_value(__wrap_OS_RecvSecureClusterTCP, length, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureClusterTCP, recv_response);
+    will_return(__wrap_OS_RecvSecureClusterTCP, strlen(recv_response));
+
+    assert_int_equal(w_send_clustered_message(command, payload, response), 0);
+    assert_string_equal(recv_response, response);
+}
+
+void test_w_send_clustered_message_success_after_recv_error(void **state) {
+    char response[OS_MAXSTR + 1];
+    char *command = "command";
+    char *payload = "payload";
+    char *recv_response = "response";
+    size_t payload_size = strlen(payload);
+    int sock_num = 3;
+
+    will_return(__wrap_external_socket_connect, sock_num);
+
+    expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
+    expect_value(__wrap_OS_SendSecureTCPCluster, command, command);
+    expect_string(__wrap_OS_SendSecureTCPCluster, payload, payload);
+    expect_value(__wrap_OS_SendSecureTCPCluster, length, payload_size);
+    will_return(__wrap_OS_SendSecureTCPCluster, 1);
+
+    expect_value(__wrap_OS_RecvSecureClusterTCP, sock, sock_num);
+    expect_value(__wrap_OS_RecvSecureClusterTCP, length, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureClusterTCP, recv_response);
+    will_return(__wrap_OS_RecvSecureClusterTCP, -1);
+
+    will_return(__wrap_strerror, "ERROR");
+    expect_string(__wrap__mwarn, formatted_msg, "OS_RecvSecureClusterTCP(): ERROR");
+    expect_value(__wrap_sleep, seconds, 1);
+
+    will_return(__wrap_external_socket_connect, sock_num);
+
+    expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
+    expect_value(__wrap_OS_SendSecureTCPCluster, command, command);
+    expect_string(__wrap_OS_SendSecureTCPCluster, payload, payload);
+    expect_value(__wrap_OS_SendSecureTCPCluster, length, payload_size);
+    will_return(__wrap_OS_SendSecureTCPCluster, 1);
+
+    expect_value(__wrap_OS_RecvSecureClusterTCP, sock, sock_num);
+    expect_value(__wrap_OS_RecvSecureClusterTCP, length, OS_MAXSTR);
+    will_return(__wrap_OS_RecvSecureClusterTCP, recv_response);
+    will_return(__wrap_OS_RecvSecureClusterTCP, strlen(recv_response));
+
+    assert_int_equal(w_send_clustered_message(command, payload, response), 0);
+    assert_string_equal(recv_response, response);
+}
 #endif
 
 static void test_parse_agent_add_response(void **state) {
@@ -242,6 +581,18 @@ int main(void) {
         cmocka_unit_test(test_create_agent_remove_payload),
         cmocka_unit_test(test_create_sendsync_payload),
         cmocka_unit_test(test_parse_agent_remove_response),
+        // Tests w_send_clustered_message
+        cmocka_unit_test(test_w_send_clustered_message_connection_error),
+        cmocka_unit_test(test_w_send_clustered_message_send_error),
+        cmocka_unit_test(test_w_send_clustered_message_recv_cluster_error_detected),
+        cmocka_unit_test(test_w_send_clustered_message_recv_error),
+        cmocka_unit_test(test_w_send_clustered_message_recv_empty_message),
+        cmocka_unit_test(test_w_send_clustered_message_recv_max_len),
+        cmocka_unit_test(test_w_send_clustered_message_success),
+        cmocka_unit_test(test_w_send_clustered_message_success_after_connection_error),
+        cmocka_unit_test(test_w_send_clustered_message_success_after_send_error),
+        cmocka_unit_test(test_w_send_clustered_message_success_after_cluster_error),
+        cmocka_unit_test(test_w_send_clustered_message_success_after_recv_error),
         #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);

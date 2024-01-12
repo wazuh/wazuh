@@ -19,8 +19,8 @@ void PipelineNodesTest::TearDown() {};
 class FunctorWrapper
 {
     public:
-        FunctorWrapper() {}
-        ~FunctorWrapper() {}
+        FunctorWrapper() = default;
+        ~FunctorWrapper() = default;
         MOCK_METHOD(void, Operator, (const int), ());
         void operator()(const int value)
         {
@@ -31,27 +31,55 @@ class FunctorWrapper
             Operator(value);
         }
 };
-using ReadIntNode = Utils::ReadNode<int, std::reference_wrapper<FunctorWrapper>>;
-using ReadWriteNode = Utils::ReadWriteNode<std::string, int, ReadIntNode>;
+
+template<typename R, typename RW>
+static void ReadWriteNodeBehaviour(FunctorWrapper& functor, std::shared_ptr<R>& spReadNode, std::shared_ptr<RW>& spReadWriteNode);
+
+template<typename T>
+static void ReadNodeBehaviour(FunctorWrapper& functor, T& rNode);
+
+using ReadIntNodeSync = Utils::ReadNode<int, std::reference_wrapper<FunctorWrapper>, Utils::SyncDispatcher>;
+using ReadWriteNodeSync = Utils::ReadWriteNode<std::string, int, ReadIntNodeSync>;
+
+using ReadIntNodeAsync = Utils::ReadNode<int, std::reference_wrapper<FunctorWrapper>, Utils::AsyncDispatcher>;
+using ReadWriteNodeAsync = Utils::ReadWriteNode<std::string, int, ReadIntNodeAsync>;
 
 TEST_F(PipelineNodesTest, ReadNodeAsync)
 {
     FunctorWrapper functor;
-    ReadIntNode rNode{ std::ref(functor) };
+    ReadIntNodeAsync rNode{ std::ref(functor) };
 
-    for (int i = 0; i < 10; ++i)
-    {
-        EXPECT_CALL(functor, Operator(i));
-    }
+    ReadNodeBehaviour(functor, rNode);
+}
 
-    for (int i = 0; i < 10; ++i)
-    {
-        rNode.receive(i);
-    }
+TEST_F(PipelineNodesTest, ReadNodeAsyncMultiThread)
+{
+    FunctorWrapper functor;
+    const unsigned int s_numberOfThreads{ 2 };
+    ReadIntNodeAsync rNode{ std::ref(functor), s_numberOfThreads };
 
-    rNode.rundown();
-    EXPECT_TRUE(rNode.cancelled());
-    EXPECT_EQ(0ul, rNode.size());
+    ReadNodeBehaviour(functor, rNode);
+
+    EXPECT_EQ(s_numberOfThreads, rNode.numberOfThreads());
+}
+
+TEST_F(PipelineNodesTest, ReadNodeSync)
+{
+    FunctorWrapper functor;
+    ReadIntNodeSync rNode{ std::ref(functor) };
+
+    ReadNodeBehaviour(functor, rNode);
+}
+
+TEST_F(PipelineNodesTest, ReadNodeSyncMultiThread)
+{
+    FunctorWrapper functor;
+    const unsigned int s_numberOfThreads{ 2 };
+    ReadIntNodeSync rNode{ std::ref(functor), s_numberOfThreads };
+
+    ReadNodeBehaviour(functor, rNode);
+
+    EXPECT_EQ(0u, rNode.numberOfThreads());
 }
 
 TEST_F(PipelineNodesTest, ReadWriteNodeAsync)
@@ -59,33 +87,35 @@ TEST_F(PipelineNodesTest, ReadWriteNodeAsync)
     FunctorWrapper functor;
     auto spReadNode
     {
-        std::make_shared<ReadIntNode>(std::ref(functor))
+        std::make_shared<ReadIntNodeAsync>(std::ref(functor))
     };
     auto spReadWriteNode
     {
-        std::make_shared<ReadWriteNode>([](const std::string & value)
+        std::make_shared<ReadWriteNodeAsync>([](const std::string & value)
         {
             return std::stoi(value);
         })
     };
-    Utils::connect(spReadWriteNode, spReadNode);
 
-    for (int i = 0; i < 10; ++i)
+    ReadWriteNodeBehaviour(functor, spReadNode, spReadWriteNode);
+}
+
+TEST_F(PipelineNodesTest, ReadWriteNodeSync)
+{
+    FunctorWrapper functor;
+    auto spReadNode
     {
-        EXPECT_CALL(functor, Operator(i));
-    }
-
-    for (int i = 0; i < 10; ++i)
+        std::make_shared<ReadIntNodeSync>(std::ref(functor))
+    };
+    auto spReadWriteNode
     {
-        spReadWriteNode->receive(std::to_string(i));
-    }
+        std::make_shared<ReadWriteNodeSync>([](const std::string & value)
+        {
+            return std::stoi(value);
+        })
+    };
 
-    spReadWriteNode->rundown();
-    EXPECT_EQ(0ul, spReadWriteNode->size());
-    EXPECT_TRUE(spReadWriteNode->cancelled());
-    spReadNode->rundown();
-    EXPECT_EQ(0ul, spReadNode->size());
-    EXPECT_TRUE(spReadNode->cancelled());
+    ReadWriteNodeBehaviour(functor, spReadNode, spReadWriteNode);
 }
 
 TEST_F(PipelineNodesTest, ConnectInvalidPtrs1)
@@ -116,4 +146,45 @@ TEST_F(PipelineNodesTest, ConnectInvalidPtrs3)
         })
     };
     EXPECT_NO_THROW(Utils::connect(spReadWriteNode, spReadNode));
+}
+
+template<typename T>
+static void ReadNodeBehaviour(FunctorWrapper& functor, T& rNode)
+{
+    for (int i = 0; i < 10; ++i)
+    {
+        EXPECT_CALL(functor, Operator(i));
+    }
+
+    for (int i = 0; i < 10; ++i)
+    {
+        rNode.receive(i);
+    }
+
+    rNode.rundown();
+    EXPECT_TRUE(rNode.cancelled());
+    EXPECT_EQ(0ul, rNode.size());
+}
+
+template<typename R, typename RW>
+static void ReadWriteNodeBehaviour(FunctorWrapper& functor, std::shared_ptr<R>& spReadNode, std::shared_ptr<RW>& spReadWriteNode)
+{
+    Utils::connect(spReadWriteNode, spReadNode);
+
+    for (int i = 0; i < 10; ++i)
+    {
+        EXPECT_CALL(functor, Operator(i));
+    }
+
+    for (int i = 0; i < 10; ++i)
+    {
+        spReadWriteNode->receive(std::to_string(i));
+    }
+
+    spReadWriteNode->rundown();
+    EXPECT_EQ(0ul, spReadWriteNode->size());
+    EXPECT_TRUE(spReadWriteNode->cancelled());
+    spReadNode->rundown();
+    EXPECT_EQ(0ul, spReadNode->size());
+    EXPECT_TRUE(spReadNode->cancelled());
 }

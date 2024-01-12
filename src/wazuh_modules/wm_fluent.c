@@ -11,11 +11,11 @@
 #ifndef WIN32
 
 #include "wmodules.h"
-#include <os_net/os_net.h>
+#include "../os_net/os_net.h"
 #include <openssl/ssl.h>
 #include <openssl/err.h>
-#include "os_crypto/md5/md5_op.h"
-#include "os_crypto/sha512/sha512_op.h"
+#include "../os_crypto/md5/md5_op.h"
+#include "../os_crypto/sha512/sha512_op.h"
 #include "shared.h"
 #include "msgpack.h"
 

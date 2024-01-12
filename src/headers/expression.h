@@ -12,8 +12,8 @@
 #define EXPRESSION_H_
 #define PCRE2_CODE_UNIT_WIDTH 8
 
-#include "external/libpcre2/include/pcre2.h"
-#include "os_regex/os_regex.h"
+#include "../external/libpcre2/include/pcre2.h"
+#include "../os_regex/os_regex.h"
 
 #define OSMATCH_STR  "osmatch"
 #define OSREGEX_STR  "osregex"
@@ -75,6 +75,12 @@ void w_calloc_expression_t(w_expression_t ** var, w_exp_type_t type);
 void w_free_expression_t(w_expression_t ** var);
 
 /**
+ * @brief Call the free function w_free_expression_t with expression type reference
+ * @param var variable to free
+ */
+void w_free_expression(w_expression_t * var);
+
+/**
  * @brief add ip to os_ip array
  * @param ips array which save ip
  * @param ip ip to save
@@ -101,6 +107,13 @@ bool w_expression_compile(w_expression_t * expression, char * pattern, int flags
  */
 bool w_expression_match(w_expression_t * expression, const char * str_test, const char ** end_match,
                         regex_matching * regex_match);
+
+/**
+ * @brief Frees regex_matching object
+ * @param expression expression with compiled pattern
+  * @param regex_match Structure to manage pattern matches.
+ */
+void w_free_expression_match(w_expression_t * expression, regex_matching **reg);
 
 /**
  * @brief Fill a match_data with PCRE2 result

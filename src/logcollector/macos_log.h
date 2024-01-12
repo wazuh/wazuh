@@ -14,7 +14,7 @@
 /* ******************  INCLUDES  ****************** */
 
 #include "shared.h"
-#include "config/localfile-config.h"
+#include "../config/localfile-config.h"
 #include "sysinfo_utils.h"
 
 /* ******************  DEFINES  ****************** */
@@ -99,65 +99,65 @@ void w_macos_create_log_env(logreader * lf, w_sysinfo_helpers_t * global_sysinfo
 
 /**
  * @brief Set string containing the last recorded timestamp.
- * 
+ *
  * @param timestamp macOS ULS short timestamp
  */
 void w_macos_set_last_log_timestamp(char * timestamp);
 
 /**
  * @brief Set string containing the last macOS ULS settings used.
- * 
+ *
  * @param predicate macOS ULS settings
  */
 void w_macos_set_log_settings(char * settings);
 
 /**
  * @brief Get string containing the last recorded timestamp.
- * 
- * @return Allocated string containing last recorded timestamp. NULL otherwise 
+ *
+ * @return Allocated string containing last recorded timestamp. NULL otherwise
  */
 char * w_macos_get_last_log_timestamp(void);
 
 /**
  * @brief Get string containing the last macOS ULS settings used.
- * 
- * @return Allocated string containing last macOS ULS settings used. NULL otherwise 
+ *
+ * @return Allocated string containing last macOS ULS settings used. NULL otherwise
  */
 char * w_macos_get_log_settings(void);
 
 /**
  * @brief Get macos vault as JSON
- * 
+ *
  * @return cJSON* macos vault
  */
 cJSON * w_macos_get_status_as_JSON(void);
 
 /**
  * @brief Set macos vault from JSON
- * 
+ *
  * @param global_json JSON object containing macos vault information
  */
 void w_macos_set_status_from_JSON(cJSON * global_json);
 
 /**
  * @brief Check if curret macOS codename is Sierra
- * 
+ *
  * @return true if Sierra. false otherwise
  */
 bool w_is_macos_sierra();
 
 /**
  * @brief Get first child process found
- * 
+ *
  * @param parent_pid parent pid
  * @return pid_t found child. Zero otherwise
  */
 pid_t w_get_first_child(pid_t parent_pid);
 
 /**
- * @brief Sets the validity of the \ref macos_log_vault data. 
- * 
- * Enables or disables the generation of the json object with the macOS log status. 
+ * @brief Sets the validity of the \ref macos_log_vault data.
+ *
+ * Enables or disables the generation of the json object with the macOS log status.
  * \ref w_macos_get_status_as_JSON.
  * @param is_valid true if generates the JSON
  */
@@ -165,7 +165,7 @@ void w_macos_set_is_valid_data(bool is_valid);
 
 /**
  * @brief Gets the validity of the \ref macos_log_vault data
- * 
+ *
  * @return true if valid data has been stored
  * @return false if invalid data has been stored
  */

@@ -316,6 +316,17 @@ stages:
           total_affected_items: 0
           total_failed_items: !anyint
 
+  - name: Get distinct decoders
+    request:
+      verify: False
+      <<: *get_decoders
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
 ---
 test_name: GET /decoders
 
@@ -731,6 +742,75 @@ stages:
       json:
         error: 1403
 
+  - name: Get decoders files using query parameter
+    request:
+      verify: False
+      <<: *get_decoders_files
+      params:
+        q: 'filename=0005-wazuh_decoders.xml'
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: !anyint
+    
+  - name: Try to get decoders files using an invalid query
+    request:
+      verify: False
+      <<: *get_decoders_files
+      params:
+        q: filename%=invalid
+    response:
+      status_code: 400
+      json:
+        error: 1407
+
+  - name: Show decoders files using select
+    request:
+      verify: False
+      <<: *get_decoders_files
+      params:
+        select: 'status'
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'filename,status' # required_fields={'filename'}
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Try to show decoders using invalid select
+    request:
+      verify: False
+      <<: *get_decoders_files
+      params:
+        select: 'noexists'
+    response:
+      status_code: 400
+      json: 
+        <<: *invalid_select
+
+  - name: Get distinct decoders files
+    request:
+      verify: False
+      <<: *get_decoders_files
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
 ---
 test_name: GET /decoders/files
 
@@ -954,11 +1034,10 @@ stages:
       status_code: 200
 
 ---
-test_name: GET /decoders/files/{file}
+test_name: GET /decoders/files/(filename)
 
 stages:
 
-    # GET /decoders/files/{file}
   - name: Download a decoders file (JSON format)
     request:
       verify: False
@@ -977,7 +1056,6 @@ stages:
           total_failed_items: 0
         error: 0
 
-    # GET /decoders/files/{file}
   - name: Download a decoders file (raw format)
     request:
       verify: False
@@ -1012,6 +1090,29 @@ stages:
           total_failed_items: 1
         error: 1
 
+  - name: Download a decoders file (user ruleset, decoder belongs to default ruleset)
+    request:
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/0005-wazuh_decoders.xml"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        relative_dirname: 'etc/decoders'
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          total_affected_items: 0
+          failed_items:
+            - error:
+                code: 1503
+              id:
+                - "0005-wazuh_decoders.xml"
+          total_failed_items: 1
+        error: 1
+        
   - name: Download decoder (invalid file 1)
     request:
       verify: False
@@ -1031,7 +1132,7 @@ stages:
       status_code: 400
 
 ---
-test_name: PUT /rule/decoders/{filename}
+test_name: PUT /decoders/files/{filename}
 
 stages:
 
@@ -1092,6 +1193,29 @@ stages:
     response:
       <<: *upload_valid_decoder
 
+  - name: Upload decoder with relative_dirname
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/new_decoder.xml"
+      method: PUT
+      data: "{new_decoder:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        overwrite: True
+        relative_dirname: 'etc/decoders/subdir'        
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - 'etc/decoders/subdir/new_decoder.xml'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        error: 0
+
   - name: Upload decoder with invalid name
     request:
       verify: False
@@ -1145,6 +1269,26 @@ stages:
         data:
           affected_items:
             - "etc/decoders/new_decoder.xml"
+          total_affected_items: 1
+          failed_items: []
+          total_failed_items: 0
+        error: 0
+
+  - name: Delete user decoder in subdir
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/new_decoder.xml"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        relative_dirname: 'etc/decoders/subdir'
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - "etc/decoders/subdir/new_decoder.xml"
           total_affected_items: 1
           failed_items: []
           total_failed_items: 0

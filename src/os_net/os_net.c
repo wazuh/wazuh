@@ -841,10 +841,6 @@ int OS_RecvSecureClusterTCP(int sock, char * ret, size_t length) {
             }
     }
 
-    if (strncmp(buffer+8, "err --------", CMD_SIZE) == 0) {
-        return -2;
-    }
-
     size = wnet_order_big(*(uint32_t*)(buffer + 4));
     if (size > length) {
         mwarn("Cluster message size (%u) exceeds buffer length (%u)", (unsigned)size, (unsigned)length);
@@ -852,7 +848,13 @@ int OS_RecvSecureClusterTCP(int sock, char * ret, size_t length) {
     }
 
     /* Read the payload */
-    return os_recv_waitall(sock, ret, size);
+    int recv_size = os_recv_waitall(sock, ret, size);
+
+    if (strncmp(buffer+8, "err --------", CMD_SIZE) == 0) {
+        return -2;
+    }
+
+    return recv_size;
 }
 
 /* Receive a message from a stream socket, full message (MSG_WAITALL)

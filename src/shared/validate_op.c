@@ -11,7 +11,7 @@
 #include "shared.h"
 #include "validate_op.h"
 #include "expression.h"
-#include "os_net/os_net.h"
+#include "../os_net/os_net.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #define static

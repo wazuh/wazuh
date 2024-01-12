@@ -13,13 +13,20 @@
 #include "os_net/os_net.h"
 
 #ifdef WAZUH_UNIT_TESTING
-    #define static
+    // Remove static qualifier when unit testing
+    #define STATIC
     #ifdef WIN32
             #include "unit_tests/wrappers/wazuh/client-agent/start_agent.h"
             #undef CloseSocket
             #define CloseSocket wrap_closesocket
             #define recv wrap_recv
     #endif
+
+    // Redefine ossec_version
+    #undef __ossec_version
+    #define __ossec_version "v4.5.0"
+#else
+    #define STATIC static
 #endif
 
 #define ENROLLMENT_RETRY_TIME_MAX   60
@@ -29,8 +36,8 @@ int timeout;    //timeout in seconds waiting for a server reply
 
 static ssize_t receive_message(char *buffer, unsigned int max_lenght);
 static void w_agentd_keys_init (void);
-static bool agent_handshake_to_server(int server_id, bool is_startup);
-static void send_msg_on_startup(void);
+STATIC bool agent_handshake_to_server(int server_id, bool is_startup);
+STATIC void send_msg_on_startup(void);
 
 /**
  * @brief Connects to a specified server
@@ -164,7 +171,7 @@ void start_agent(int is_startup)
         sleep(agt->server[current_server_id].retry_interval);
 
         /* Wait for server reply */
-        mwarn(AG_WAIT_SERVER, agt->server[current_server_id].rip);
+        mwarn(AG_WAIT_SERVER, agt->server[current_server_id].rip, __ossec_version);
 
         /* If there is a next server, try it */
         if (agt->server[current_server_id + 1].rip) {
@@ -319,7 +326,7 @@ int try_enroll_to_server(const char * server_rip, uint32_t network_interface) {
  * @retval true on success
  * @retval false when failed
  * */
-static bool agent_handshake_to_server(int server_id, bool is_startup) {
+STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
     size_t msg_length;
     ssize_t recv_b = 0;
 
@@ -328,7 +335,13 @@ static bool agent_handshake_to_server(int server_id, bool is_startup) {
     char buffer[OS_MAXSTR + 1] = { '\0' };
     char cleartext[OS_MAXSTR + 1] = { '\0' };
 
-    snprintf(msg, OS_MAXSTR, "%s%s", CONTROL_HEADER, HC_STARTUP);
+    cJSON* agent_info = cJSON_CreateObject();
+    cJSON_AddStringToObject(agent_info, "version", __ossec_version);
+    char *agent_info_string = cJSON_PrintUnformatted(agent_info);
+    cJSON_Delete(agent_info);
+
+    snprintf(msg, OS_MAXSTR, "%s%s%s", CONTROL_HEADER, HC_STARTUP, agent_info_string);
+    os_free(agent_info_string);
 
     if (connect_server(server_id, true)) {
         /* Send start up message */
@@ -357,6 +370,19 @@ static bool agent_handshake_to_server(int server_id, bool is_startup) {
                         }
 
                         return true;
+                    } else if (strncmp(tmp_msg, HC_ERROR, strlen(HC_ERROR)) == 0) {
+                        cJSON *error_msg = NULL;
+                        cJSON *error_info = NULL;
+                        if (error_msg = cJSON_Parse(strchr(tmp_msg, '{')), error_msg) {
+                            if (error_info = cJSON_GetObjectItem(error_msg, "message"), cJSON_IsString(error_info)) {
+                                mwarn("Couldn't connect to server '%s': '%s'", agt->server[server_id].rip, error_info->valuestring);
+                            } else {
+                                merror("Error getting message from server '%s'", agt->server[server_id].rip);
+                            }
+                        } else {
+                            merror("Error getting message from server '%s'", agt->server[server_id].rip);
+                        }
+                        cJSON_Delete(error_msg);
                     }
                 }
             }
@@ -369,7 +395,7 @@ static bool agent_handshake_to_server(int server_id, bool is_startup) {
 /**
  * @brief Sends log message about start up
  * */
-static void send_msg_on_startup(void) {
+STATIC void send_msg_on_startup(void) {
 
     char msg[OS_MAXSTR + 2] = { '\0' };
     char fmsg[OS_MAXSTR + 1] = { '\0' };

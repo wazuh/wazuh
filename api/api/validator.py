@@ -14,7 +14,7 @@ from wazuh.core import common
 from wazuh.core.exception import WazuhError
 
 _alphanumeric_param = re.compile(r'^[\w,\-.+\s:]+$')
-_symbols_alphanumeric_param = re.compile(r'^[\w,<>!\-.+\s:/()\[\]\'\"|=~#]+$')
+_symbols_alphanumeric_param = re.compile(r'^[\w,*<>!\-.+\s:/()\[\]\'\"|=~#]+$')
 _array_numbers = re.compile(r'^\d+(,\d+)*$')
 _array_names = re.compile(r'^[\w\-.%]+(,[\w\-.%]+)*$')
 _base64 = re.compile(r'^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$')
@@ -32,7 +32,7 @@ _iso8601_date = re.compile(r'^([0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9]
 _iso8601_date_time = re.compile(
     r'^([0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])[tT](2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.['
     r'0-9]+)?([zZ]|[+-](?:2[0-3]|[01][0-9]):[0-5][0-9])$')
-_names = re.compile(r'^[\w\-.%]+$')
+_names = re.compile(r'^[\w\-.%]+$', re.ASCII)
 _numbers = re.compile(r'^\d+$')
 _numbers_or_all = re.compile(r'^(\d+|all)$')
 _wazuh_key = re.compile(r'[a-zA-Z0-9]+$')
@@ -48,6 +48,7 @@ _search_param = re.compile(r'^[^;|&^*>]+$')
 _sort_param = re.compile(r'^[\w_\-,\s+.]+$')
 _timeframe_type = re.compile(r'^(\d+[dhms]?)$')
 _type_format = re.compile(r'^xml$|^json$')
+_wpk_path = re.compile(r'^[\w\-.\\/:\s]*[^\/]\.wpk$')
 _yes_no_boolean = re.compile(r'^yes$|^no$')
 _active_response_command = re.compile(f"^!?{_paths.pattern.lstrip('^')}")
 
@@ -90,7 +91,7 @@ api_config_schema = {
                 "ca": {"type": "string",
                        "pattern": r"^[\w\-.]+$"},
                 "ssl_protocol": {"type": "string", "enum": ["tls", "tlsv1", "tlsv1.1", "tlsv1.2", "TLS",
-                                                            "TLSv1", "TLSv1.1", "TLSv1.2"]},
+                                                            "TLSv1", "TLSv1.1", "TLSv1.2", "auto", "AUTO"]},
                 "ssl_ciphers": {"type": "string"}
             },
         },
@@ -100,7 +101,15 @@ api_config_schema = {
             "properties": {
                 "level": {"type": "string"},
                 "path": {"type": "string"},  # Deprecated. To be removed on later versions
-                "format": {"type": "string", "enum": ["plain", "json", "plain,json", "json,plain"]}
+                "format": {"type": "string", "enum": ["plain", "json", "plain,json", "json,plain"]},
+                "max_size": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "enabled": {"type": "boolean"},
+                        "size": {"type": "string"}
+                    }
+                }
             },
         },
         "cors": {
@@ -181,6 +190,21 @@ api_config_schema = {
                             }
                         }
                     }
+                },
+                "agents": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "allow_higher_versions": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "allow": {
+                                    "type": "boolean"
+                                }
+                            },
+                        }
+                    }
                 }
             }
         },
@@ -198,7 +222,7 @@ WAZUH_COMPONENT_CONFIGURATION_MAPPING = MappingProxyType(
         'integrator': {"integration"},
         'logcollector': {"localfile", "socket", "internal"},
         'mail': {"global", "alerts", "internal"},
-        'monitor': {"global", "internal"},
+        'monitor': {"global", "internal", "reports"},
         'request': {"global", "remote", "internal"},
         'syscheck': {"syscheck", "rootcheck", "internal"},
         'wazuh-db': {"wdb", "internal"},
@@ -209,7 +233,7 @@ WAZUH_COMPONENT_CONFIGURATION_MAPPING = MappingProxyType(
 
 def check_exp(exp: str, regex: re.Pattern) -> bool:
     """Function to check if an expression matches a regex.
-    
+
     Parameters
     ----------
     exp : str
@@ -229,7 +253,7 @@ def check_exp(exp: str, regex: re.Pattern) -> bool:
 
 def check_xml(xml_string: str) -> bool:
     """Function to check if an XML string is correct.
-    
+
     Parameters
     ----------
     xml_string : str
@@ -252,7 +276,7 @@ def check_xml(xml_string: str) -> bool:
 
 def allowed_fields(filters: Dict) -> List:
     """Return a list with allowed fields.
-    
+
     Parameters
     ----------
     filters : dict
@@ -268,7 +292,7 @@ def allowed_fields(filters: Dict) -> List:
 
 def is_safe_path(path: str, basedir: str = common.WAZUH_PATH, relative: bool = True) -> bool:
     """Check if a path is correct.
-    
+
     Parameters
     ----------
     path : str
@@ -381,11 +405,11 @@ def format_path(value):
     return check_exp(value, _paths)
 
 
-@draft4_format_checker.checks("wazuh_path")
-def format_wazuh_path(value):
+@draft4_format_checker.checks("wpk_path")
+def format_wpk_path(value):
     if not is_safe_path(value, relative=False):
         return False
-    return check_exp(value, _paths)
+    return check_exp(value, _wpk_path)
 
 
 @draft4_format_checker.checks("active_response_command")

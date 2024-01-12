@@ -1,13 +1,16 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import binascii
+import collections
 import hashlib
 import json
 import logging
 import re
 from base64 import b64decode
 
+from aiohttp import web_request
 from aiohttp.abc import AbstractAccessLogger
 from pythonjsonlogger import jsonlogger
 
@@ -25,14 +28,8 @@ RUN_AS_LOGIN_ENDPOINT = "/security/user/authenticate/run_as"
 
 class AccessLogger(AbstractAccessLogger):
     """
-    Define the log writter used by aiohttp.
+    Define the log writer used by aiohttp.
     """
-    def check_stream(self):
-        """Renew logger handler stream if it has been closed."""
-        for handler in self.logger.handlers:
-            if not handler.stream or handler.stream.closed:
-                handler.stream = handler._open()
-
     def custom_logging(self, user, remote, method, path, query, body, time, status, hash_auth_context=''):
         """Provide the log entry structure depending on the logging format.
 
@@ -57,35 +54,46 @@ class AccessLogger(AbstractAccessLogger):
         hash_auth_context : str, optional
             Hash representing the authorization context. Default: ''
         """
+        json_info = {
+            'user': user,
+            'ip': remote,
+            'http_method': method,
+            'uri': f'{method} {path}',
+            'parameters': query,
+            'body': body,
+            'time': f'{time:.3f}s',
+            'status_code': status
+        }
+
         if not hash_auth_context:
-            log_info = f'{user} {remote} "{method} {path}" with parameters {json.dumps(query)} ' \
-                       f'and body {json.dumps(body)} done in {time:.3f}s: {status}'
-            json_info = {'user': user,
-                         'ip': remote,
-                         'http_method': method,
-                         'uri': f'{method} {path}',
-                         'parameters': query,
-                         'body': body,
-                         'time': f'{time:.3f}s',
-                         'status_code': status}
+            log_info = f'{user} {remote} "{method} {path}" '
         else:
-            log_info = f'{user} ({hash_auth_context}) {remote} "{method} {path}" with parameters {json.dumps(query)} ' \
-                       f'and body {json.dumps(body)} done in {time:.3f}s: {status}'
-            json_info = {'user': user,
-                         'hash_auth_context': hash_auth_context,
-                         'ip': remote,
-                         'http_method': method,
-                         'uri': f'{method} {path}',
-                         'parameters': query,
-                         'body': body,
-                         'time': f'{time:.3f}s',
-                         'status_code': status}
+            log_info = f'{user} ({hash_auth_context}) {remote} "{method} {path}" '
+            json_info['hash_auth_context'] = hash_auth_context
+
+        if path == '/events' and self.logger.level >= 20:
+            # If log level is info simplify the messages for the /events requests.
+            events = body.get('events', [])
+            body = {'events': len(events)}
+            json_info['body'] = body
+
+        log_info += f'with parameters {json.dumps(query)} and body {json.dumps(body)} done in {time:.3f}s: {status}'
 
         self.logger.info(log_info, extra={'log_type': 'log'})
         self.logger.info(json_info, extra={'log_type': 'json'})
 
-    def log(self, request, response, time):
-        self.check_stream()
+    def log(self, request: web_request.BaseRequest, response: web_request.StreamResponse, time: float):
+        """Override the log method to log messages.
+
+        Parameters
+        ----------
+        request : web_request.BaseRequest
+            API request onject.
+        response : web_request.StreamResponse
+            API response object.
+        time : float
+            Time taken by the API to respond to the request.
+        """
         query = dict(request.query)
         body = request.get("body", dict())
         if 'password' in query:
@@ -122,20 +130,20 @@ class APILogger(WazuhLogger):
     Define the logger used by wazuh-apid.
     """
 
-    def __init__(self, *args, **kwargs):
-        """
-        Constructor
-        """
+    def __init__(self, *args: dict, **kwargs: dict):
+        """APIlogger class constructor."""
         log_path = kwargs.get('log_path', '')
         super().__init__(*args, **kwargs,
                          custom_formatter=WazuhJsonFormatter if log_path.endswith('json') else None)
 
-    def setup_logger(self):
+    def setup_logger(self, custom_handler: logging.Handler = None):
         """
         Set ups API logger. In addition to super().setup_logger() this method adds:
             * Sets up log level based on the log level defined in API configuration file.
+
+        :param custom_handler: custom handler that can be set instead of the default one from the WazuhLogger class.
         """
-        super().setup_logger()
+        super().setup_logger(handler=custom_handler)
 
         if self.debug_level == 'debug2':
             debug_level = logging.DEBUG2
@@ -158,7 +166,7 @@ class WazuhJsonFormatter(jsonlogger.JsonFormatter):
     Define the custom JSON log formatter used by wlogging.
     """
 
-    def add_fields(self, log_record, record, message_dict):
+    def add_fields(self, log_record: collections.OrderedDict, record: logging.LogRecord, message_dict: dict):
         """Implement custom logic for adding fields in a log entry.
 
         Parameters

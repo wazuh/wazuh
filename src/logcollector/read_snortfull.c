@@ -78,8 +78,9 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
                     /* Clean for next event */
                     p = NULL;
 
-                    /* Send the message */
-                    if (drop_it == 0) {
+                    /* Check ignore and restrict log regex, if configured. */
+                    if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, str)) {
+                        /* Send message to queue */
                         w_msg_hash_queues_push(str, lf->file, strlen(f_msg), lf->log_target, LOCALFILE_MQ);
                     }
 
@@ -95,8 +96,9 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
                     strncat(f_msg, ++q, f_msg_size);
                     p = NULL;
 
-                    /* Send the message */
-                    if (drop_it == 0) {
+                    /* Check ignore and restrict log regex, if configured. */
+                    if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, str)) {
+                        /* Send message to queue */
                         w_msg_hash_queues_push(str, lf->file, strlen(str) + 1, lf->log_target, LOCALFILE_MQ);
                     }
 

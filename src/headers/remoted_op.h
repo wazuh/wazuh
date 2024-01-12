@@ -9,7 +9,7 @@
  */
 
 #include "shared.h"
-#include "wazuh_db/helpers/wdb_global_helpers.h"
+#include "../wazuh_db/helpers/wdb_global_helpers.h"
 
 
 /**

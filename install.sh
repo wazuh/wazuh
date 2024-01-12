@@ -143,7 +143,7 @@ Install()
 
     # If update, start Wazuh
     if [ "X${update_only}" = "Xyes" ]; then
-        WazuhUpgrade
+        WazuhUpgrade $INSTYPE
         # Update versions previous to Wazuh 1.2
         UpdateOldVersions
         echo "Starting Wazuh..."

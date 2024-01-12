@@ -15,11 +15,13 @@
 #include <shared.h>
 #include <pthread.h>
 #include <openssl/evp.h>
-#include "external/sqlite/sqlite3.h"
+#include "../external/sqlite/sqlite3.h"
 #include "syscheck_op.h"
 #include "rootcheck_op.h"
 #include "wazuhdb_op.h"
 #include "regex_op.h"
+#include "router.h"
+#include "../config/global-config.h"
 
 #define WDB_AGENT_EMPTY 0
 #define WDB_AGENT_PENDING 1
@@ -50,6 +52,15 @@
 #define AGENT_CS_PENDING         "pending"
 #define AGENT_CS_ACTIVE          "active"
 #define AGENT_CS_DISCONNECTED    "disconnected"
+
+/// Enumeration of agents disconected status reasons.
+typedef enum agent_status_code_t {
+        INVALID_VERSION = 1,    ///< Invalid agent version
+        ERR_VERSION_RECV,       ///< Error retrieving version
+        HC_SHUTDOWN_RECV,       ///< Shutdown message received
+        NO_KEEPALIVE,           ///< Disconnected because no keepalive received
+        RESET_BY_MANAGER,       ///< Connection reset by manager
+} agent_status_code_t;
 
 #define VULN_CVES_STATUS_VALID              "VALID"
 #define VULN_CVES_STATUS_PENDING            "PENDING"
@@ -100,6 +111,9 @@ typedef enum wdb_global_group_hash_operations_t {
 #define WDB_RESPONSE_OK_SIZE     3
 
 #define SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE "legacy"
+
+// Router provider variables
+extern ROUTER_PROVIDER_HANDLE router_syscollector_handle;
 
 typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,
@@ -202,6 +216,16 @@ typedef enum wdb_stmt {
     WDB_STMT_FIM_REGISTRY_CLEAR,
     WDB_STMT_FIM_REGISTRY_DELETE_AROUND,
     WDB_STMT_FIM_REGISTRY_DELETE_RANGE,
+    WDB_STMT_FIM_REGISTRY_KEY_SELECT_CHECKSUM,
+    WDB_STMT_FIM_REGISTRY_KEY_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_FIM_REGISTRY_KEY_CLEAR,
+    WDB_STMT_FIM_REGISTRY_KEY_DELETE_AROUND,
+    WDB_STMT_FIM_REGISTRY_KEY_DELETE_RANGE,
+    WDB_STMT_FIM_REGISTRY_VALUE_SELECT_CHECKSUM,
+    WDB_STMT_FIM_REGISTRY_VALUE_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_FIM_REGISTRY_VALUE_CLEAR,
+    WDB_STMT_FIM_REGISTRY_VALUE_DELETE_AROUND,
+    WDB_STMT_FIM_REGISTRY_VALUE_DELETE_RANGE,
     WDB_STMT_FIM_REGISTRY_DELETE_BY_PK,
     WDB_STMT_ROOTCHECK_INSERT_PM,
     WDB_STMT_ROOTCHECK_UPDATE_PM,
@@ -215,6 +239,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_LABELS_SET,
     WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE,
     WDB_STMT_GLOBAL_UPDATE_AGENT_CONNECTION_STATUS,
+    WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS_CODE,
     WDB_STMT_GLOBAL_DELETE_AGENT,
     WDB_STMT_GLOBAL_SELECT_AGENT_NAME,
     WDB_STMT_GLOBAL_FIND_AGENT,
@@ -381,6 +406,8 @@ typedef enum {
     WDB_FIM,                         ///< File integrity monitoring.
     WDB_FIM_FILE,                    ///< File integrity monitoring.
     WDB_FIM_REGISTRY,                ///< Registry integrity monitoring.
+    WDB_FIM_REGISTRY_KEY,            ///< Registry key integrity monitoring.
+    WDB_FIM_REGISTRY_VALUE,          ///< Registry value integrity monitoring.
     WDB_SYSCOLLECTOR_PROCESSES,      ///< Processes integrity monitoring.
     WDB_SYSCOLLECTOR_PACKAGES,       ///< Packages integrity monitoring.
     WDB_SYSCOLLECTOR_HOTFIXES,       ///< Hotfixes integrity monitoring.
@@ -406,13 +433,17 @@ extern char *schema_upgrade_v7_sql;
 extern char *schema_upgrade_v8_sql;
 extern char *schema_upgrade_v9_sql;
 extern char *schema_upgrade_v10_sql;
+extern char *schema_upgrade_v11_sql;
+extern char *schema_upgrade_v12_sql;
 extern char *schema_global_upgrade_v1_sql;
 extern char *schema_global_upgrade_v2_sql;
 extern char *schema_global_upgrade_v3_sql;
 extern char *schema_global_upgrade_v4_sql;
+extern char *schema_global_upgrade_v5_sql;
 
 extern wdb_config wconfig;
-extern pthread_mutex_t pool_mutex;
+extern _Config gconfig;
+extern rwlock_t pool_mutex;
 extern wdb_t * db_pool;
 extern int db_pool_size;
 extern OSHash * open_dbs;
@@ -442,6 +473,7 @@ typedef struct agent_info_data {
     char *connection_status;
     char *sync_status;
     char *group_config_status;
+    agent_status_code_t status_code;
 } agent_info_data;
 
 typedef enum {
@@ -484,6 +516,12 @@ struct kv_list {
     struct kv current;
     const struct kv_list *next;
 };
+
+
+/**
+ * @brief pointer to function for any transaction
+ */
+typedef int (*wdb_ptr_any_txn_t)(wdb_t *);
 
 /**
  * @brief Opens global database and stores it in DB pool.
@@ -663,9 +701,6 @@ int wdb_create_agent_db2(const char * agent_id);
 /* Remove agents databases from id's list. */
 cJSON *wdb_remove_multiple_agents(char *agent_list);
 
-/* Insert metadata for minor and major version. Returns 0 on success or -1 on error. */
-int wdb_metadata_fill_version(sqlite3 *db);
-
 /* Get value data in output variable. Returns 0 if doesn't found, 1 on success or -1 on error. */
 int wdb_metadata_get_entry (wdb_t * wdb, const char *key, char *output);
 
@@ -692,12 +727,26 @@ int wdb_prepare(sqlite3 *db, const char *zSql, int nByte, sqlite3_stmt **stmt, c
 int wdb_step(sqlite3_stmt *stmt);
 
 /* Begin transaction */
-int wdb_begin(sqlite3 *db);
+int wdb_begin(wdb_t * wdb);
 int wdb_begin2(wdb_t * wdb);
 
 /* Commit transaction */
-int wdb_commit(sqlite3 *db);
+int wdb_commit(wdb_t * wdb);
 int wdb_commit2(wdb_t * wdb);
+
+/**
+ * @brief Rollback transaction
+ * @param[in] wdb Database to query for the table existence.
+ * @return 0 when succeed, !=0 otherwise.
+*/
+int wdb_rollback(wdb_t * wdb);
+
+/**
+ * @brief Rollback transaction and write status
+ * @param[in] wdb Database to query for the table existence.
+ * @return 0 when succeed, !=0 otherwise.
+*/
+int wdb_rollback2(wdb_t * wdb);
 
 /* Create global database */
 int wdb_create_global(const char *path);
@@ -713,11 +762,10 @@ int wdb_rootcheck_delete(wdb_t * wdb);
 
 /**
  * @brief Rebuild database.
- *
- * @param[in] db Database to query for the table existence.
+ * @param[in] wdb Database to query for the table existence.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_vacuum(sqlite3 *db);
+int wdb_vacuum(wdb_t * wdb);
 
 /**
  * @brief Calculate the fragmentation state of a db.
@@ -907,6 +955,7 @@ int wdb_exec_stmt_silent(sqlite3_stmt* stmt);
  *        The result of each step will be placed in returned result while fits.
  *
  * @param [in] stmt The SQL statement to be executed.
+ * @param [in] max_size Maximum size of the response.
  * @param [out] status The status code of the statement execution.
  *                     SQLITE_DONE means the statement is completed.
  *                     SQLITE_ROW means the statement has pending elements.
@@ -1178,6 +1227,17 @@ int wdb_parse_global_update_agent_keepalive(wdb_t * wdb, char * input, char * ou
  *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_update_connection_status(wdb_t * wdb, char * input, char * output);
+
+/**
+ * @brief Function to parse the update agent connection status.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with the agent data in JSON format.
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_global_update_status_code(wdb_t * wdb, char * input, char * output);
 
 /**
  * @brief Function to parse the agent delete from agent table request.
@@ -1492,6 +1552,8 @@ int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * beg
 
 int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, const char * tail);
 
+void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite3_stmt* stmt);
+
 /**
  * @brief Updates the timestamps and counters of a component from sync_info table. It should be called when
  *        the syncronization with the agents is in process, or the checksum sent to the manager is not the same than
@@ -1801,7 +1863,18 @@ int wdb_global_update_agent_keepalive(wdb_t *wdb, int id, const char *connection
  * @param [in] sync_status The value of sync_status.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char* connection_status, const char *sync_status);
+int wdb_global_update_agent_connection_status(wdb_t *wdb, int id, const char* connection_status, const char *sync_status, int status_code);
+
+/**
+ * @brief Function to update an agent status code and the synchronization status.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id The agent ID.
+ * @param [in] status_code The status code to be set.
+ * @param [in] version The agent version to be set.
+ * @return Returns 0 on success or -1 on error.
+ */
+int wdb_global_update_agent_status_code(wdb_t *wdb, int id, int status_code, const char *version, const char *sync_status);
 
 /**
  * @brief Function to delete an agent from the agent table.

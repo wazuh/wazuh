@@ -535,6 +535,17 @@ stages:
           affected_items:
             - <<: *packages_response
 
+  - name: Get distinct packages info
+    request:
+      verify: False
+      <<: *packages_request_003
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
 ---
 test_name: GET /syscollector/{agent_id}/packages?{select}
 
@@ -995,6 +1006,17 @@ stages:
     response:
       status_code: 400
 
+  - name: Get distinct processes info
+    request:
+      verify: False
+      <<: *processes_request_004
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
 ---
 test_name: GET /syscollector/{agent_id}/processes?{sort,select}
 
@@ -1266,6 +1288,17 @@ stages:
         select: wrong
     response:
       <<: *error_response_1724
+
+  - name: Get distinct ports info
+    request:
+      verify: False
+      <<: *port_request_005
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
 
 ---
 test_name: GET /syscollector/{agent_id}/port?{sort,select}
@@ -1660,6 +1693,17 @@ stages:
           affected_items:
             - <<: *netaddr_response
 
+  - name: Get distinct network address info
+    request:
+      verify: False
+      <<: *netaddr_request_002
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
 ---
 test_name: GET /syscollector/{agent_id}/netaddr?{sort,select}
 
@@ -1988,6 +2032,17 @@ stages:
         sort: -wrong
     response:
       <<: *error_response_1403
+
+  - name: Get distinct network protocol info
+    request:
+      verify: False
+      <<: *netproto_request_003
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
 
 ---
 test_name: GET /syscollector/{agent_id}/netproto?{sort,select}
@@ -2644,6 +2699,17 @@ stages:
         data:
           affected_items: []
           total_affected_items: 0
+
+  - name: Get distinct net interface info
+    request:
+      verify: False
+      <<: *netiface_request_008
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
 
 ---
 test_name: GET /syscollector/{agent_id}/netiface?{sort,select}
@@ -4228,3 +4294,14 @@ stages:
           failed_items: []
           total_affected_items: 0
           total_failed_items: 0
+
+  - name: Get distinct hotfixes info
+    request:
+      verify: False
+      <<: *hotfix_request_001
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key

@@ -13,8 +13,8 @@
 #include <cmocka.h>
 
 #include "../../wrappers/common.h"
-#include "syscheckd/syscheck.h"
-#include "syscheckd/whodata/syscheck_audit.h"
+#include "../../../syscheckd/include/syscheck.h"
+#include "../../../syscheckd/src/whodata/syscheck_audit.h"
 
 
 #include "wrappers/externals/audit/libaudit_wrappers.h"

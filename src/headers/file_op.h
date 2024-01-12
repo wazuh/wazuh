@@ -17,7 +17,7 @@
 #include <time.h>
 #include <stdbool.h>
 #include <sys/stat.h>
-#include <external/cJSON/cJSON.h>
+#include <cJSON.h>
 
 #ifdef WIN32
 #include <winsock2.h>
@@ -200,26 +200,14 @@ void DeleteState();
 
 
 /**
- * @brief Merge the specified files into one single file.
- *
- * @param finalpath Path of the generated file.
- * @param files Files to be merged.
- * @param tag Tag to be added on the generated file.
- * @return 1 if the merged file was created, 0 on error.
- */
-int MergeFiles(const char *finalpath, char **files, const char *tag) __attribute__((nonnull(1, 2)));
-
-
-/**
  * @brief Merge files recursively into one single file.
  *
- * @param finalpath Path of the generated file.
+ * @param finalfp Handler of the file.
  * @param files Files to be merged.
- * @param tag Tag to be added on the generated file.
  * @param path_offset Offset for recursion.
  * @return 1 if the merged file was created, 0 on error.
  */
-int MergeAppendFile(const char *finalpath, const char *files, const char *tag, int path_offset) __attribute__((nonnull(1)));
+int MergeAppendFile(FILE *finalfp, const char *files, int path_offset) __attribute__((nonnull(1, 2)));
 
 
 /**
@@ -230,7 +218,7 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
  * @param mode Indicates if the merged file must be readed as a binary file  or not. Use `#OS_TEXT`, `#OS_BINARY`.
  * @return 1 if the file was unmerged, 0 on error.
  */
-int UnmergeFiles(const char *finalpath, const char *optdir, int mode) __attribute__((nonnull(1)));
+int UnmergeFiles(const char *finalpath, const char *optdir, int mode, const char ***unmerged_files) __attribute__((nonnull(1)));
 
 
 /**
@@ -599,7 +587,17 @@ char * abspath(const char * path, char * buffer, size_t size);
  * @return The content of the file
  * @retval NULL The file doesn't exist or its size exceeds the maximum allowed
  */
-char * w_get_file_content(const char * path, int max_size);
+char * w_get_file_content(const char * path, long max_size);
+
+
+/**
+ * @brief Get the pointer to a given file
+ *
+ * @param path File location
+ * @return The pointer to the file
+ * @retval NULL The file doesn't exist
+ */
+FILE * w_get_file_pointer(const char * path);
 
 /**
  * @brief Check if a file is gzip compressed

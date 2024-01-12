@@ -234,6 +234,8 @@ static int setup_event_info(void **state) {
         return -1;
     if(lf->decoder_info->fields[FIM_REGISTRY_VALUE_TYPE] = strdup("value_type"), lf->decoder_info->fields[FIM_REGISTRY_VALUE_TYPE] == NULL)
         return -1;
+    if(lf->decoder_info->fields[FIM_REGISTRY_HASH] = strdup("hash_full_path"), lf->decoder_info->fields[FIM_REGISTRY_HASH] == NULL)
+        return -1;
     if(lf->decoder_info->fields[FIM_ENTRY_TYPE] = strdup("entry_type"), lf->decoder_info->fields[FIM_ENTRY_TYPE] == NULL)
         return -1;
     if(lf->decoder_info->fields[FIM_EVENT_TYPE] = strdup("event_type"), lf->decoder_info->fields[FIM_EVENT_TYPE] == NULL)
@@ -405,6 +407,8 @@ static int setup_registry_key_data(void **state) {
     const char *plain_event = "{\"type\":\"event\","
         "\"data\":{"
             "\"path\":\"HKEY_LOCAL_MACHINE\\\\software\\\\test\","
+            "\"index\":\"234567890ABCDEF1234567890ABCDEF123456111\","
+            "\"version\":3,"
             "\"arch\":\"[x64]\","
             "\"mode\":\"scheduled\","
             "\"type\":\"added\","
@@ -460,6 +464,8 @@ static int setup_registry_value_data(void **state) {
     const char *plain_event = "{\"type\":\"event\","
         "\"data\":{"
             "\"path\":\"HKEY_LOCAL_MACHINE\\\\software\\\\test\","
+            "\"index\":\"234567890ABCDEF1234567890ABCDEF123456111\","
+            "\"version\":3,"
             "\"arch\":\"[x64]\","
             "\"value_name\":\"some:value\","
             "\"value_type\":\"REG_SZ\","
@@ -1623,6 +1629,10 @@ static void test_fim_generate_alert_registry_value_alert(void **state) {
 
     input->lf->fields[FIM_REGISTRY_VALUE_TYPE].value = strdup("REG_SZ");
     if (input->lf->fields[FIM_REGISTRY_VALUE_TYPE].value == NULL)
+        fail();
+
+    input->lf->fields[FIM_REGISTRY_HASH].value = strdup("234567890ABCDEF1234567890ABCDEF123456111");
+    if (input->lf->fields[FIM_REGISTRY_HASH].value == NULL)
         fail();
 
     input->lf->fields[FIM_MODE].value = strdup("scheduled");
@@ -3071,6 +3081,196 @@ static void test_fim_process_alert_no_audit(void **state) {
     assert_int_equal(input->lf->decoder_info->id, 0);
 }
 
+static void test_fim_process_alert_remove_registry_key(void **state) {
+    fim_data_t *input = *state;
+    _sdb sdb = {.socket = 10};
+    const char *result = "This is a mock query result, it wont go anywhere";
+    int ret;
+
+    cJSON *data = cJSON_GetObjectItem(input->event, "data");
+
+    cJSON_DeleteItemFromObject(data, "type");
+    cJSON_AddStringToObject(data, "type", "deleted");
+    cJSON_DeleteItemFromObject(data, "changed_attributes");
+
+    if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
+        fail();
+
+    /* Inside fim_send_db_save */
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck delete 234567890ABCDEF1234567890ABCDEF123456111");
+    expect_any(__wrap_wdbc_query_ex, len);
+    will_return(__wrap_wdbc_query_ex, result);
+    will_return(__wrap_wdbc_query_ex, 0);
+
+    expect_string(__wrap_wdbc_parse_result, result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    ret = fim_process_alert(&sdb, input->lf, data);
+
+    assert_int_equal(ret, 0);
+
+    // Assert fim_generate_alert
+    assert_string_equal(input->lf->fields[FIM_REGISTRY_ARCH].value, "[x64]");
+    assert_string_equal(input->lf->fields[FIM_FILE].value, "HKEY_LOCAL_MACHINE\\software\\test");
+    assert_string_equal(input->lf->fields[FIM_PERM].value, "perm");
+    assert_string_equal(input->lf->fields[FIM_UNAME].value, "user_name");
+    assert_string_equal(input->lf->fields[FIM_GNAME].value, "group_name");
+    assert_string_equal(input->lf->fields[FIM_UID].value, "uid");
+    assert_string_equal(input->lf->fields[FIM_GID].value, "gid");
+    assert_string_equal(input->lf->fields[FIM_REGISTRY_HASH].value, "234567890ABCDEF1234567890ABCDEF123456111");
+
+    assert_null(input->lf->fields[FIM_MD5].value);
+    assert_null(input->lf->fields[FIM_SHA1].value);
+    assert_null(input->lf->fields[FIM_SHA256].value);
+    assert_null(input->lf->fields[FIM_REGISTRY_VALUE_NAME].value);
+    assert_null(input->lf->fields[FIM_SIZE].value);
+
+    assert_string_equal(input->lf->full_log,
+        "Registry Key '[x64] HKEY_LOCAL_MACHINE\\software\\test' deleted\nMode: scheduled\n");
+
+    /* Assert actual output */
+    assert_string_equal(input->lf->fields[FIM_EVENT_TYPE].value, SYSCHECK_EVENT_STRINGS[FIM_DELETED]);
+    assert_string_equal(input->lf->decoder_info->name, FIM_REG_KEY_DEL);
+    assert_int_equal(input->lf->decoder_info->id, 0);
+}
+
+static void test_fim_process_alert_remove_registry_value(void **state) {
+    fim_data_t *input = *state;
+    _sdb sdb = {.socket = 10};
+    const char *result = "This is a mock query result, it wont go anywhere";
+    int ret;
+
+    cJSON *data = cJSON_GetObjectItem(input->event, "data");
+
+    cJSON_DeleteItemFromObject(data, "type");
+    cJSON_AddStringToObject(data, "type", "deleted");
+    cJSON_DeleteItemFromObject(data, "changed_attributes");
+
+    if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
+        fail();
+
+    /* Inside fim_send_db_save */
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck delete 234567890ABCDEF1234567890ABCDEF123456111");
+    expect_any(__wrap_wdbc_query_ex, len);
+    will_return(__wrap_wdbc_query_ex, result);
+    will_return(__wrap_wdbc_query_ex, 0);
+
+    expect_string(__wrap_wdbc_parse_result, result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    ret = fim_process_alert(&sdb, input->lf, data);
+
+    assert_int_equal(ret, 0);
+
+    // Assert fim_generate_alert
+    assert_string_equal(input->lf->fields[FIM_REGISTRY_ARCH].value, "[x64]");
+    assert_string_equal(input->lf->fields[FIM_FILE].value, "HKEY_LOCAL_MACHINE\\software\\test");
+    assert_string_equal(input->lf->fields[FIM_REGISTRY_VALUE_NAME].value, "some:value");
+    assert_string_equal(input->lf->fields[FIM_REGISTRY_HASH].value, "234567890ABCDEF1234567890ABCDEF123456111");
+    assert_string_equal(input->lf->fields[FIM_SIZE].value, "4567");
+    assert_string_equal(input->lf->fields[FIM_MD5].value, "hash_md5");
+    assert_string_equal(input->lf->fields[FIM_SHA1].value, "hash_sha1");
+    assert_string_equal(input->lf->fields[FIM_SHA256].value, "hash_sha256");
+
+    assert_string_equal(input->lf->full_log,
+        "Registry Value '[x64] HKEY_LOCAL_MACHINE\\software\\test\\some:value' deleted\nMode: scheduled\n");
+
+    /* Assert actual output */
+    assert_string_equal(input->lf->fields[FIM_EVENT_TYPE].value, SYSCHECK_EVENT_STRINGS[FIM_DELETED]);
+    assert_string_equal(input->lf->decoder_info->name, FIM_REG_VAL_DEL);
+    assert_int_equal(input->lf->decoder_info->id, 0);
+}
+
+static void test_fim_process_alert_no_hash(void **state) {
+    fim_data_t *input = *state;
+    _sdb sdb = {.socket = 10};
+    int ret;
+
+    cJSON *data = cJSON_GetObjectItem(input->event, "data");
+    cJSON_DeleteItemFromObject(data, "index");
+
+    if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
+        fail();
+
+    expect_string(__wrap__mdebug1, formatted_msg, "No member 'index' in Syscheck JSON payload");
+
+    ret = fim_process_alert(&sdb, input->lf, data);
+
+    assert_int_equal(ret, -1);
+}
+
+static void test_fim_process_alert_legacy_agents(void **state) {
+    fim_data_t *input = *state;
+    int ret;
+    syscheck_event_t event_type = FIM_MODIFIED;
+
+    cJSON *data = cJSON_GetObjectItem(input->event, "data");
+    cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
+    cJSON *old_attributes = cJSON_GetObjectItem(data, "old_attributes");
+    cJSON *changed_attributes = cJSON_GetObjectItem(data, "changed_attributes");
+    cJSON *array_it;
+
+    // Deleting index and version field
+    cJSON_DeleteItemFromObject(data, "index");
+    cJSON_DeleteItemFromObject(data, "version");
+
+    os_strdup(SYSCHECK_EVENT_STRINGS[FIM_MODIFIED], input->lf->fields[FIM_EVENT_TYPE].value);
+
+    input->lf->fields[FIM_FILE].value = strdup("HKEY_LOCAL_MACHINE\\software\\test");
+    if (input->lf->fields[FIM_FILE].value == NULL)
+        fail();
+
+    input->lf->fields[FIM_REGISTRY_ARCH].value = strdup("[x64]");
+    if (input->lf->fields[FIM_REGISTRY_ARCH].value == NULL)
+        fail();
+
+    input->lf->fields[FIM_MODE].value = strdup("scheduled");
+    if (input->lf->fields[FIM_MODE].value == NULL)
+        fail();
+
+    if(input->lf->fields[FIM_ENTRY_TYPE].value = strdup("registry_key"), input->lf->fields[FIM_ENTRY_TYPE].value == NULL)
+        fail();
+
+    cJSON_ArrayForEach(array_it, changed_attributes) {
+        wm_strcat(&input->lf->fields[FIM_CHFIELDS].value, cJSON_GetStringValue(array_it), ',');
+    }
+
+    ret = fim_generate_alert(input->lf, event_type, attributes, old_attributes, NULL);
+
+    assert_int_equal(ret, 0);
+
+    // Assert fim_fetch_attributes
+    /* assert new attributes */
+    assert_string_equal(input->lf->fields[FIM_MTIME].value, "6789");
+    assert_string_equal(input->lf->fields[FIM_PERM].value, "perm");
+    assert_string_equal(input->lf->fields[FIM_UNAME].value, "user_name");
+    assert_string_equal(input->lf->fields[FIM_GNAME].value, "group_name");
+    assert_string_equal(input->lf->fields[FIM_UID].value, "uid");
+    assert_string_equal(input->lf->fields[FIM_GID].value, "gid");
+
+    /* assert old attributes */
+    assert_string_equal(input->lf->fields[FIM_MTIME_BEFORE].value, "3456");
+    assert_string_equal(input->lf->fields[FIM_PERM_BEFORE].value, "old_perm");
+    assert_string_equal(input->lf->fields[FIM_UNAME_BEFORE].value, "old_user_name");
+    assert_string_equal(input->lf->fields[FIM_GNAME_BEFORE].value, "old_group_name");
+    assert_string_equal(input->lf->fields[FIM_UID_BEFORE].value, "old_uid");
+    assert_string_equal(input->lf->fields[FIM_GID_BEFORE].value, "old_gid");
+
+    /* Assert actual output */
+    assert_string_equal(input->lf->full_log,
+        "Registry Key '[x64] HKEY_LOCAL_MACHINE\\software\\test' modified\n"
+        "Mode: scheduled\n"
+        "Changed attributes: permission,uid,user_name,gid,group_name,mtime\n"
+        "Permissions changed from 'old_perm' to 'perm'\n"
+        "Ownership was 'old_uid', now it is 'uid'\n"
+        "User name was 'old_user_name', now it is 'user_name'\n"
+        "Group ownership was 'old_gid', now it is 'gid'\n"
+        "Group name was 'old_group_name', now it is 'group_name'\n"
+        "Old modification time was: '3456', now it is '6789'\n");
+}
+
 static void test_fim_process_alert_null_event(void **state) {
     fim_data_t *input = *state;
     _sdb sdb = {.socket = 10};
@@ -3080,7 +3280,7 @@ static void test_fim_process_alert_null_event(void **state) {
         fail();
 
     /* Inside fim_send_db_save */
-    expect_string(__wrap__mdebug1, formatted_msg, "No member 'type' in Syscheck JSON payload");
+    expect_string(__wrap__mdebug1, formatted_msg, "No member 'type' in Syscheck attributes JSON payload");
 
     ret = fim_process_alert(&sdb, input->lf, NULL);
 
@@ -3289,7 +3489,7 @@ static void test_decode_fim_event_null_item(void **state) {
     if(lf->agent_id = strdup("007"), lf->agent_id == NULL)
         fail();
 
-    expect_string(__wrap__mdebug1, formatted_msg, "No member 'type' in Syscheck JSON payload");
+    expect_string(__wrap__mdebug1, formatted_msg, "No member 'type' in Syscheck attributes JSON payload");
     expect_string(__wrap__merror, formatted_msg, "Can't generate fim alert for event: '"
         "{\"type\":\"event\","
         "\"data\":{"
@@ -3766,6 +3966,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_process_alert_no_old_attributes, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_process_alert_no_audit, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_process_alert_null_event, setup_fim_data, teardown_fim_data),
+        cmocka_unit_test_setup_teardown(test_fim_process_alert_remove_registry_key, setup_registry_key_data, teardown_fim_data),
+        cmocka_unit_test_setup_teardown(test_fim_process_alert_remove_registry_value, setup_registry_value_data, teardown_fim_data),
+        cmocka_unit_test_setup_teardown(test_fim_process_alert_no_hash, setup_registry_key_data, teardown_fim_data),
+        cmocka_unit_test_setup_teardown(test_fim_process_alert_legacy_agents, setup_registry_key_data, teardown_fim_data),
+
 
         /* decode_fim_event */
         cmocka_unit_test_setup_teardown(test_decode_fim_event_type_event, setup_decode_fim_event, teardown_decode_fim_event),

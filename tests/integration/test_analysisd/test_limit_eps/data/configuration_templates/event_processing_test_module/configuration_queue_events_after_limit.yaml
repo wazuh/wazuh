@@ -1,0 +1,21 @@
+- sections:
+    - section: remote
+      elements:
+        - connection:
+            value: syslog
+        - port:
+            value: PORT
+        - protocol:
+            value: PROTOCOL
+        - allowed-ips:
+            value: 0.0.0.0/0
+    - section: global
+      elements:
+        - limits:
+            elements:
+              - eps:
+                  elements:
+                    - maximum:
+                        value: MAXIMUM
+                    - timeframe:
+                        value: TIMEFRAME

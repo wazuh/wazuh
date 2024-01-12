@@ -761,6 +761,17 @@ stages:
         data:
           total_affected_items: !anyint
 
+  - name: Get distinct rules
+    request:
+      verify: False
+      <<: *general_rules_request
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
 ---
 test_name: GET /rules/requirement/pci_dss
 
@@ -1514,6 +1525,23 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
+  - name: Filter search formatted name
+    request:
+      verify: False
+      <<: *groups_rules_request
+      params:
+        search: authentication_success
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - authentication_success
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
   - name: Invalid filter
     request:
       verify: False
@@ -1620,8 +1648,80 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
+  - name: Get rules files using query parameter
+    request:
+      verify: False
+      <<: *files_rules_request
+      params:
+        q: filename=0275-squid_rules.xml
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - filename: 0275-squid_rules.xml
+              relative_dirname: ruleset/rules
+              status: enabled
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+    
+  - name: Try to get rules files using an invalid query
+    request:
+      verify: False
+      <<: *files_rules_request
+      params:
+        q: filename%=invalid
+    response:
+      status_code: 400
+      json:
+        error: 1407
+
+  - name: Show rules files using valid select
+    request:
+      verify: False
+      <<: *files_rules_request
+      params:
+        select: 'status'
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'filename,status' # required_fields={'filename'}
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Try to show rules files using invalid select
+    request:
+      verify: False
+      <<: *files_rules_request
+      params:
+        select: 'noexists'
+    response:
+      status_code: 400
+      json:
+        <<: *invalid_select
+
+  - name: Get distinct rules files
+    request:
+      verify: False
+      <<: *files_rules_request
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
 ---
-test_name: GET /rules/files/{filename}
+test_name: GET /rules/files/(filename)
 
 stages:
 
@@ -1675,6 +1775,28 @@ stages:
           total_failed_items: 1
         error: 1
 
+  - name: Download rule (user ruleset, rule belongs to default ruleset)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/0350-amazon_rules.xml"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        relative_dirname: 'etc/rules'
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          total_affected_items: 0
+          failed_items:
+            - error:
+                code: 1415
+              id:
+                - "0350-amazon_rules.xml"
+          total_failed_items: 1
+        error: 1
+
   - name: Download rule (invalid file 1)
     request:
       verify: False
@@ -1719,6 +1841,28 @@ stages:
         data:
           affected_items:
             - 'etc/rules/new_rule.xml'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        error: 0
+
+  - name: Upload new valid rule in custom subdir
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new_rule.xml"
+      method: PUT
+      data: "{new_rules:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        relative_dirname: 'etc/rules/subdir'
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - 'etc/rules/subdir/new_rule.xml'
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -1817,6 +1961,26 @@ stages:
         data:
           affected_items:
             - "etc/rules/new_rule.xml"
+          total_affected_items: 1
+          failed_items: []
+          total_failed_items: 0
+        error: 0
+
+  - name: Delete user rule in subdir
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new_rule.xml"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        relative_dirname: 'etc/rules/subdir'
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - "etc/rules/subdir/new_rule.xml"
           total_affected_items: 1
           failed_items: []
           total_failed_items: 0

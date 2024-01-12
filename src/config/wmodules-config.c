@@ -88,7 +88,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     }
 #ifdef ENABLE_SYSC
     else if (!strcmp(node->values[0], WM_SYS_CONTEXT.name)) {
-        if (wm_sys_read(xml, children, cur_wmodule) < 0) {
+        if (wm_syscollector_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
@@ -130,11 +130,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     }
 #ifndef WIN32
 #ifndef CLIENT
-    else if (!strcmp(node->values[0], WM_VULNDETECTOR_CONTEXT.name)) {
-        mwarn("A deprecated Vulnerability Detector configuration block was found. It will be ignored.");
-        OS_ClearNode(children);
-        return 0;
-    } else if (!strcmp(node->values[0], KEY_WM_NAME)) {
+    else if (!strcmp(node->values[0], KEY_WM_NAME)) {
         if (wm_key_request_read(children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
@@ -605,6 +601,61 @@ int Read_Office365(const OS_XML *xml, xml_node *node, void *d1) {
     //Office365 module
     if (!strcmp(node->element, WM_OFFICE365_CONTEXT.name)) {
         if (wm_office365_read(xml, children, cur_wmodule) < 0) {
+            OS_ClearNode(children);
+            return OS_INVALID;
+        }
+    }
+
+    OS_ClearNode(children);
+    return 0;
+}
+
+int Read_MS_Graph(const OS_XML *xml, xml_node *node, void *d1) {
+    wmodule **wmodules = (wmodule**)d1;
+    wmodule *cur_wmodule;
+    xml_node **children = NULL;
+    wmodule *cur_wmodule_exists;
+
+    // Allocate memory
+    if ((cur_wmodule = *wmodules)) {
+        cur_wmodule_exists = *wmodules;
+
+        while (cur_wmodule_exists) {
+            if (cur_wmodule_exists->tag) {
+                if (strcmp(cur_wmodule_exists->tag,node->element) == 0) {
+                    cur_wmodule = cur_wmodule_exists;
+                    break;
+                }
+            }
+
+            if (cur_wmodule_exists->next == NULL) {
+                cur_wmodule = cur_wmodule_exists;
+
+                os_calloc(1, sizeof(wmodule), cur_wmodule->next);
+                cur_wmodule = cur_wmodule->next;
+                break;
+            }
+
+            cur_wmodule_exists = cur_wmodule_exists->next;
+        }
+    } else {
+        os_calloc(1, sizeof(wmodule), cur_wmodule);
+        *wmodules = cur_wmodule;
+    }
+
+    if (!cur_wmodule) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        return (OS_INVALID);
+    }
+
+    // Get children
+    if (children = OS_GetElementsbyNode(xml, node), !children) {
+        mdebug1("Empty configuration for module '%s'", node->element);
+    }
+
+    //MS Graph module
+    if (!strcmp(node->element, WM_MS_GRAPH_CONTEXT.name)) {
+        if (wm_ms_graph_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }

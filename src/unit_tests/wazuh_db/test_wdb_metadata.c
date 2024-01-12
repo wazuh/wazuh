@@ -15,7 +15,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "wazuh_db/wdb.h"
+#include "../wazuh_db/wdb.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
@@ -100,7 +100,7 @@ void test_wdb_count_tables_with_name_step_fail(void **state)
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) SQLite: ERROR MESSAGE");
 
     int count = 0;
     ret = wdb_count_tables_with_name(data->wdb, "metadata", &count);

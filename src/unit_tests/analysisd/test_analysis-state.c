@@ -14,9 +14,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "analysisd/analysisd.h"
-#include "analysisd/state.h"
-#include "analysisd/config.h"
+#include "../../analysisd/analysisd.h"
+#include "../../analysisd/state.h"
+#include "../../analysisd/config.h"
 
 #include "../wrappers/common.h"
 #include "../wrappers/posix/time_wrappers.h"
@@ -106,7 +106,9 @@ static int test_setup(void ** state) {
     analysisd_state.events_written_breakdown.stats_written = 564;
     analysisd_state.events_written_breakdown.archives_written = 4200;
     analysisd_state.eps_state_breakdown.events_dropped = 552;
+    analysisd_state.eps_state_breakdown.events_dropped_not_eps = 120;
     analysisd_state.eps_state_breakdown.seconds_over_limit = 1254;
+    analysisd_state.eps_state_breakdown.available_credits_prev = 12;
 
     decode_queue_syscheck_input = queue_init(4096);
     decode_queue_syscollector_input = queue_init(4096);
@@ -322,8 +324,14 @@ void test_asys_create_state_json(void ** state) {
     assert_non_null(cJSON_GetObjectItem(eps, "available_credits"));
     assert_int_equal(cJSON_GetObjectItem(eps, "available_credits")->valueint, 31);
 
+    assert_non_null(cJSON_GetObjectItem(eps, "available_credits_prev"));
+    assert_int_equal(cJSON_GetObjectItem(eps, "available_credits_prev")->valueint, 12);
+
     assert_non_null(cJSON_GetObjectItem(eps, "events_dropped"));
     assert_int_equal(cJSON_GetObjectItem(eps, "events_dropped")->valueint, 552);
+
+    assert_non_null(cJSON_GetObjectItem(eps, "events_dropped_not_eps"));
+    assert_int_equal(cJSON_GetObjectItem(eps, "events_dropped_not_eps")->valueint, 120);
 
     assert_non_null(cJSON_GetObjectItem(eps, "seconds_over_limit"));
     assert_int_equal(cJSON_GetObjectItem(eps, "seconds_over_limit")->valueint, 1254);

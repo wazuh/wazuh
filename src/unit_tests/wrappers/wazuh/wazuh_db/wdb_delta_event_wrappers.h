@@ -12,7 +12,7 @@
 #ifndef WDB_DELTA_EVENT_WRAPPERS_H
 #define WDB_DELTA_EVENT_WRAPPERS_H
 
-#include "wazuh_db/wdb.h"
+#include "../wazuh_db/wdb.h"
 
 
 bool __wrap_wdb_delete_dbsync(wdb_t * wdb, struct kv const * kv_value, cJSON * data);

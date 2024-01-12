@@ -235,7 +235,7 @@ test_name: GET /cluster/nodes/{node_id}
 
 stages:
 
-  - name: Get cluster {worker2} (Deny)
+  - name: Get cluster (worker2) (Deny)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/nodes"
@@ -247,7 +247,7 @@ stages:
     response:
       <<: *permission_denied
 
-  - name: Get cluster {worker2} (Allow)
+  - name: Get cluster (worker1) (Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/nodes"
@@ -268,7 +268,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Get cluster {master-node,worker1,worker2} (Allow, Deny, Allow)
+  - name: Get cluster (master-node,worker1,worker2) (Allow, Deny, Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/nodes"
@@ -316,7 +316,7 @@ test_name: GET /cluster/{node_id}/configuration
 
 stages:
 
-  - name: Request {node_id}
+  - name: Request (worker1)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
@@ -343,12 +343,13 @@ stages:
               sca: !anything
               syscheck: !anything
               syscollector: !anything
-              vulnerability-detector: !anything
+              vulnerability-detection: !anything
+              indexer: !anything
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Request (worker1) (Deny)
+  - name: Request (master-node) (Deny)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration"
@@ -439,7 +440,7 @@ test_name: GET /cluster/{node_id}/info
 
 stages:
 
-  - name: Request {node_id}
+  - name: Request (worker2)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/info"
@@ -449,7 +450,7 @@ stages:
     response:
       <<: *permission_denied
 
-  - name: Request {node_id}
+  - name: Request (worker1)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/info"
@@ -464,7 +465,7 @@ test_name: GET /cluster/{node_id}/logs
 
 stages:
 
-  - name: Request {worker1} (Allow)
+  - name: Request (worker1) (Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/logs"
@@ -474,7 +475,7 @@ stages:
     response:
       status_code: 200
 
-  - name: Request {worker2} (Deny)
+  - name: Request (worker2) (Deny)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/logs"
@@ -489,7 +490,7 @@ test_name: GET /cluster/{node_id}/logs/summary
 
 stages:
 
-  - name: Request {worker1} (Allow)
+  - name: Request (worker1) (Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/logs/summary"
@@ -499,7 +500,7 @@ stages:
     response:
       status_code: 200
 
-  - name: Request {worker2} (Deny)
+  - name: Request (worker2) (Deny)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/logs/summary"
@@ -539,7 +540,7 @@ test_name: GET /cluster/{node_id}/stats
 
 stages:
 
-  - name: Cluster stats {worker2} today (Deny)
+  - name: Cluster stats (worker2) today (Deny)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/stats"
@@ -549,7 +550,7 @@ stages:
     response:
       <<: *permission_denied
 
-  - name: Cluster stats {worker1} today (Allow)
+  - name: Cluster stats (worker1) today (Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/stats"
@@ -566,7 +567,7 @@ test_name: GET /cluster/{node_id}/status
 
 stages:
 
-  - name: Request {worker1} (Allow)
+  - name: Request (worker1) (Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/status"
@@ -576,7 +577,7 @@ stages:
     response:
       status_code: 200
 
-  - name: Request {worker2} (Deny)
+  - name: Request (worker2) (Deny)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/status"

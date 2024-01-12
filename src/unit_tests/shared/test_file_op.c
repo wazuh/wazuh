@@ -14,9 +14,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "headers/defs.h"
+#include "../headers/defs.h"
 #include "../headers/file_op.h"
-#include "error_messages/error_messages.h"
+#include "../error_messages/error_messages.h"
 #include "../wrappers/common.h"
 #include "../wrappers/libc/stdlib_wrappers.h"
 #include "../wrappers/posix/stat_wrappers.h"
@@ -24,7 +24,6 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/externals/zlib/zlib_wrappers.h"
-
 
 /* setups/teardowns */
 static int setup_group(void **state) {
@@ -162,7 +161,6 @@ void test_DeletePID_success(void **state)
     assert_int_equal(0, ret);
 }
 
-
 void test_DeletePID_failure(void **state)
 {
     (void) state;
@@ -273,7 +271,154 @@ void test_w_uncompress_bz2_gz_file_bz2(void **state) {
 
     ret = w_uncompress_bz2_gz_file(path, dest);
     assert_int_equal(ret, 0);
+}
 
+void test_MergeAppendFile_open_fail(void **state) {
+
+    FILE * finalfp = (FILE *)5;
+    char * file = "test.txt";
+    int path_offset = -1;
+    int ret;
+
+    expect_string(__wrap_fopen, path, file);
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "Unable to open file: 'test.txt' due to [(0)-(Success)].");
+
+    ret = MergeAppendFile(finalfp, file, path_offset);
+    assert_int_equal(ret, 0);
+}
+
+void test_MergeAppendFile_fseek_fail(void **state) {
+
+    FILE * finalfp = (FILE *)5;
+    char * file = "test.txt";
+    int path_offset = -1;
+    int ret;
+
+    expect_string(__wrap_fopen, path, file);
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 6);
+
+    will_return(__wrap_fseek, 1);
+
+    expect_string(__wrap__merror, formatted_msg, "Unable to set EOF offset in file: 'test.txt', due to [(0)-(Success)].");
+
+    expect_value(__wrap_fclose, _File, 6);
+    will_return(__wrap_fclose, 1);
+
+    ret = MergeAppendFile(finalfp, file, path_offset);
+    assert_int_equal(ret, 0);
+}
+
+void test_MergeAppendFile_fseek2_fail(void **state) {
+
+    FILE * finalfp = (FILE *)5;
+    char * file = "/test/shared/default/test.txt";
+    int path_offset = -1;
+    int ret;
+
+    expect_string(__wrap_fopen, path, file);
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 6);
+
+    will_return(__wrap_fseek, 0);
+
+    will_return(__wrap_ftell, 0);
+    expect_string(__wrap__mwarn, formatted_msg, "File '/test/shared/default/test.txt' is empty.");
+
+    expect_value(__wrap_fprintf, __stream, finalfp);
+    expect_string(__wrap_fprintf, formatted_msg, "!0 test.txt\n");
+    will_return(__wrap_fprintf, 0);
+
+    will_return(__wrap_fseek, -2);
+
+    expect_string(__wrap__merror, formatted_msg, "Unable to set the offset in file: '/test/shared/default/test.txt', due to [(0)-(Success)].");
+
+    expect_value(__wrap_fclose, _File, 6);
+    will_return(__wrap_fclose, 1);
+
+    ret = MergeAppendFile(finalfp, file, path_offset);
+    assert_int_equal(ret, 0);
+}
+
+void test_MergeAppendFile_diff_ftell(void **state) {
+
+    FILE * finalfp = (FILE *)5;
+    char * file = "/test/shared/default/test.txt";
+    int path_offset = 0;
+    int ret;
+
+    expect_string(__wrap_fopen, path, file);
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 6);
+
+    will_return(__wrap_fseek, 0);
+
+    will_return(__wrap_ftell, 25);
+
+    expect_value(__wrap_fprintf, __stream, finalfp);
+    expect_string(__wrap_fprintf, formatted_msg, "!25 /test/shared/default/test.txt\n");
+    will_return(__wrap_fprintf, 0);
+
+    will_return(__wrap_fseek, 0);
+
+    will_return(__wrap_fread, "test.txt");
+    will_return(__wrap_fread, 1);
+
+    will_return(__wrap_fwrite, 0);
+
+    will_return(__wrap_fread, "test.txt");
+    will_return(__wrap_fread, 0);
+
+    will_return(__wrap_ftell, 33);
+
+    expect_value(__wrap_fclose, _File, 6);
+    will_return(__wrap_fclose, 1);
+
+    expect_string(__wrap__merror, formatted_msg, "File '/test/shared/default/test.txt' was modified after getting its size.");
+
+    ret = MergeAppendFile(finalfp, file, path_offset);
+    assert_int_equal(ret, 0);
+}
+
+void test_MergeAppendFile_success(void **state) {
+
+    FILE * finalfp = (FILE *)5;
+    char * file = "/test/shared/default/test.txt";
+    int path_offset = 0;
+    int ret;
+
+    expect_string(__wrap_fopen, path, file);
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 6);
+
+    will_return(__wrap_fseek, 0);
+
+    will_return(__wrap_ftell, 25);
+
+    expect_value(__wrap_fprintf, __stream, finalfp);
+    expect_string(__wrap_fprintf, formatted_msg, "!25 /test/shared/default/test.txt\n");
+    will_return(__wrap_fprintf, 0);
+
+    will_return(__wrap_fseek, 0);
+
+    will_return(__wrap_fread, "test.txt");
+    will_return(__wrap_fread, 1);
+
+    will_return(__wrap_fwrite, 0);
+
+    will_return(__wrap_fread, "test.txt");
+    will_return(__wrap_fread, 0);
+
+    will_return(__wrap_ftell, 25);
+
+    expect_value(__wrap_fclose, _File, 6);
+    will_return(__wrap_fclose, 1);
+
+    ret = MergeAppendFile(finalfp, file, path_offset);
+    assert_int_equal(ret, 1);
 }
 
 #endif
@@ -294,7 +439,6 @@ void test_w_compress_gzfile_wfopen_fail(void **state){
 
     ret = w_compress_gzfile(srcfile, dstfile);
     assert_int_equal(ret, -1);
-
 }
 
 void test_w_compress_gzfile_gzopen_fail(void **state){
@@ -318,7 +462,6 @@ void test_w_compress_gzfile_gzopen_fail(void **state){
 
     ret = w_compress_gzfile(srcfile, dstfile);
     assert_int_equal(ret, -1);
-
 }
 
 void test_w_compress_gzfile_write_error(void **state){
@@ -355,7 +498,6 @@ void test_w_compress_gzfile_write_error(void **state){
 
     ret = w_compress_gzfile(srcfile, dstfile);
     assert_int_equal(ret, -1);
-
 }
 
 void test_w_compress_gzfile_success(void **state){
@@ -390,7 +532,6 @@ void test_w_compress_gzfile_success(void **state){
 
     ret = w_compress_gzfile(srcfile, dstfile);
     assert_int_equal(ret, 0);
-
 }
 
 // w_uncompress_gzfile
@@ -407,7 +548,6 @@ void test_w_uncompress_gzfile_lstat_fail(void **state) {
 
     ret = w_uncompress_gzfile(srcfile, dstfile);
     assert_int_equal(ret, -1);
-
 }
 
 void test_w_uncompress_gzfile_fopen_fail(void **state) {
@@ -428,7 +568,6 @@ void test_w_uncompress_gzfile_fopen_fail(void **state) {
 
     ret = w_uncompress_gzfile(srcfile, dstfile);
     assert_int_equal(ret, -1);
-
 }
 
 void test_w_uncompress_gzfile_gzopen_fail(void **state) {
@@ -456,7 +595,6 @@ void test_w_uncompress_gzfile_gzopen_fail(void **state) {
 
     ret = w_uncompress_gzfile(srcfile, dstfile);
     assert_int_equal(ret, -1);
-
 }
 
 void test_w_uncompress_gzfile_first_read_fail(void **state) {
@@ -499,7 +637,6 @@ void test_w_uncompress_gzfile_first_read_fail(void **state) {
 
     ret = w_uncompress_gzfile(srcfile, dstfile);
     assert_int_equal(ret, -1);
-
 }
 
 void test_w_uncompress_gzfile_first_read_success(void **state) {
@@ -550,7 +687,6 @@ void test_w_uncompress_gzfile_first_read_success(void **state) {
 
     ret = w_uncompress_gzfile(srcfile, dstfile);
     assert_int_equal(ret, -1);
-
 }
 
 void test_w_uncompress_gzfile_success(void **state) {
@@ -587,7 +723,6 @@ void test_w_uncompress_gzfile_success(void **state) {
 
     ret = w_uncompress_gzfile(srcfile, dstfile);
     assert_int_equal(ret, 0);
-
 }
 
 // w_homedir
@@ -723,7 +858,6 @@ void test_w_homedir_stat_fail(void **state)
     expect_string(__wrap__merror_exit, formatted_msg, "(1108): Unable to find Wazuh install directory. Export it to WAZUH_HOME environment variable.");
 
     expect_assert_failure(w_homedir(argv0));
-
 }
 #endif
 
@@ -754,6 +888,42 @@ void test_get_file_content(void **state)
     assert_string_equal(content, expected);
 
     free(content);
+}
+
+void test_get_file_pointer_NULL(void **state)
+{
+    const char * path = NULL;
+    
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot open NULL path");
+
+    FILE * fp = w_get_file_pointer(path);
+
+    assert_int_equal(NULL, fp);
+}
+
+void test_get_file_pointer_invalid(void **state)
+{
+    const char * file_name = "test_file.txt";
+    expect_string(__wrap_fopen, path, file_name);
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+    expect_string(__wrap__mdebug1, formatted_msg, "(1103): Could not open file 'test_file.txt' due to [(0)-(Success)].");
+
+    FILE * fp = w_get_file_pointer(file_name);
+
+    assert_int_equal(NULL, fp);
+}
+
+void test_get_file_pointer_success(void **state)
+{
+    const char * file_name = "test_file.txt";
+    expect_string(__wrap_fopen, path, file_name);
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 1);
+
+    FILE * fp = w_get_file_pointer(file_name);
+
+    assert_int_equal(fp, fp);
 }
 
 #ifdef TEST_WINAGENT
@@ -866,14 +1036,12 @@ void test_expand_win32_wildcards_directories(void **state) {
     snprintf(vectors[0], OS_SIZE_128, "testdir_%d", 0);
     expect_find_first_file(path, vectors[0], FILE_ATTRIBUTE_DIRECTORY, (HANDLE) 1);
 
-
     for (int i = 1; i < N_PATHS; i++) {
         snprintf(vectors[i], OS_SIZE_128, "testdir_%d", i);
         expect_find_next_file((HANDLE) 1, vectors[i], FILE_ATTRIBUTE_DIRECTORY, (BOOL) 1);
     }
 
     expect_find_next_file((HANDLE) 1, NULL, (DWORD) 0, (BOOL) 0);
-
 
     result = expand_win32_wildcards(path);
     *state = result;
@@ -920,7 +1088,6 @@ void test_expand_win32_wildcards_file_with_next_glob(void **state) {
     // Ending to expand the first wildcard
     expect_find_next_file((HANDLE) 1, NULL, 0, (BOOL) 0);
 
-
     // Beggining to expand the second wildcard
     snprintf(vectors[0], OS_SIZE_128, "test_%d", 0);
     expect_find_first_file("C:\\test_folder\\test?", vectors[0], FILE_ATTRIBUTE_NORMAL, (HANDLE) 1);
@@ -955,6 +1122,12 @@ int main(void) {
         cmocka_unit_test(test_w_is_compressed_bz2_file_uncompressed),
 #ifdef TEST_SERVER
         cmocka_unit_test(test_w_uncompress_bz2_gz_file_bz2),
+        // MergeAppendFile
+        cmocka_unit_test(test_MergeAppendFile_open_fail),
+        cmocka_unit_test(test_MergeAppendFile_fseek_fail),
+        cmocka_unit_test(test_MergeAppendFile_fseek2_fail),
+        cmocka_unit_test(test_MergeAppendFile_diff_ftell),
+        cmocka_unit_test(test_MergeAppendFile_success),
 #endif
         // w_compress_gzfile
         cmocka_unit_test(test_w_compress_gzfile_wfopen_fail),
@@ -975,6 +1148,10 @@ int main(void) {
         cmocka_unit_test(test_w_homedir_check_argv0),
         cmocka_unit_test(test_w_homedir_env_var),
         cmocka_unit_test(test_w_homedir_stat_fail),
+        // w_get_file_pointer
+        cmocka_unit_test(test_get_file_pointer_NULL),
+        cmocka_unit_test(test_get_file_pointer_invalid),
+        cmocka_unit_test(test_get_file_pointer_success),
 #else
         cmocka_unit_test(test_get_UTC_modification_time_success),
         cmocka_unit_test(test_get_UTC_modification_time_fail_get_handle),

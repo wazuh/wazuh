@@ -40,7 +40,7 @@ endif()
 
 # Add compiling flags
 add_compile_options(-ggdb -O0 -g -coverage)
-add_definitions(-DTEST_WINAGENT -DDEBUG -DENABLE_AUDIT -D_WIN32_WINNT=0x600)
+add_definitions(-DTEST_WINAGENT -DDEBUG -DENABLE_AUDIT -D_WIN32_WINNT=0x600 -DWAZUH_UNIT_TESTING)
 
 # Add logcollector objects
 file(GLOB logcollector_lib ${SRC_FOLDER}/logcollector/*.o)
@@ -78,7 +78,7 @@ set_target_properties(
   LINKER_LANGUAGE C
 )
 
-target_link_libraries(DEPENDENCIES_O ${WAZUHLIB} ${WAZUHEXT} ${PTHREAD} ${SYSINFO} ${STATIC_CMOCKA} SYSCHECK_O wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 wintrust)
+target_link_libraries(DEPENDENCIES_O ${WAZUHLIB} ${WAZUHEXT} ${PTHREAD} ${SYSINFO} ${STATIC_CMOCKA} wsock32 wevtapi shlwapi comctl32 advapi32 kernel32 psapi gdi32 iphlpapi ws2_32 crypt32 wintrust)
 
 # Set tests dependencies
 # Use --start-group and --end-group to handle circular dependencies
@@ -89,3 +89,4 @@ add_subdirectory(client-agent)
 add_subdirectory(wazuh_modules)
 add_subdirectory(os_execd)
 add_subdirectory(win32)
+add_subdirectory(logcollector)

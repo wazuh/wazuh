@@ -13,6 +13,7 @@ from configparser import RawConfigParser, NoOptionError
 from io import StringIO
 from os import remove, path as os_path
 from types import MappingProxyType
+from typing import Union
 
 from defusedxml.ElementTree import tostring
 from defusedxml.minidom import parseString
@@ -92,10 +93,6 @@ CONF_SECTIONS = MappingProxyType({
         'type': 'last',
         'list_options': ['nodes']
     },
-    'vulnerability-detector': {
-        'type': 'merge',
-        'list_options': ['feed']
-    },
     'osquery': {
         'type': 'merge',
         'list_options': ['pack']
@@ -107,15 +104,36 @@ CONF_SECTIONS = MappingProxyType({
     'sca': {
         'type': 'merge',
         'list_options': ['policies']
+    },
+    'vulnerability-detection': {
+        'type': 'last',
+        'list_options': []
+    },
+    'indexer': {
+        'type': 'last',
+        'list_options': ['hosts']
     }
 })
 
 GETCONFIG_COMMAND = "getconfig"
+UPDATE_CHECK_OSSEC_FIELD = 'update_check'
+GLOBAL_KEY = 'global'
+YES_VALUE = 'yes'
 
 
-def _insert(json_dst, section_name, option, value):
-    """
-    Inserts element (option:value) in a section (json_dst) called section_name
+def _insert(json_dst: dict, section_name: str, option: str, value: str):
+    """Insert element (option:value) in a section (json_dst) called section_name.
+
+    Parameters
+    ----------
+    json_dst : dict
+        Destination.
+    section_name : str
+        Name of the section.
+    option : str
+        Option to be updated or added.
+    value : str
+        Value of the option to be updated / added.
     """
 
     if not value:
@@ -133,9 +151,17 @@ def _insert(json_dst, section_name, option, value):
             json_dst[option] = value  # Update values
 
 
-def _insert_section(json_dst, section_name, section_data):
-    """
-    Inserts a new section (section_data) called section_name in json_dst.
+def _insert_section(json_dst: dict, section_name: str, section_data: dict):
+    """Insert a new section (section_data) called section_name in json_dst.
+
+    Parameters
+    ----------
+    json_dst : dict
+        Destination.
+    section_name : str
+        Name of the section.
+    section_data : dict
+        Section be added.
     """
 
     if CONF_SECTIONS.get(section_name, {}).get('type') == 'duplicate':
@@ -159,9 +185,20 @@ def _insert_section(json_dst, section_name, section_data):
         json_dst[section_name] = section_data  # Create
 
 
-def _read_option(section_name, opt):
-    """
-    Reads an option (inside a section) and returns the name and the value.
+def _read_option(section_name: str, opt: str) -> tuple:
+    """Read an option (inside a section) and returns the name and the value.
+
+    Parameters
+    ----------
+    section_name : str
+        Name of the section to be read.
+    opt : str
+        Option to be read.
+
+    Returns
+    -------
+    tuple
+        Name and value of the option.
     """
 
     opt_name = opt.tag.lower()
@@ -198,7 +235,8 @@ def _read_option(section_name, opt):
             child_section, child_config = _read_option(child.tag.lower(), child)
             opt_value[child_section] = child_config.split(',') if child_config.find(',') > 0 else child_config
     elif (section_name == 'cluster' and opt_name == 'nodes') or \
-            (section_name == 'sca' and opt_name == 'policies'):
+            (section_name == 'sca' and opt_name == 'policies') or \
+            (section_name == 'indexer' and opt_name == 'hosts')    :
         opt_value = [child.text for child in opt]
     elif section_name == 'labels' and opt_name == 'label':
         opt_value = {'value': opt.text}
@@ -221,7 +259,11 @@ def _read_option(section_name, opt):
             if list(opt):
                 for child in opt:
                     child_section, child_config = _read_option(child.tag.lower(), child)
-                    opt_value[child_section] = child_config
+                    try:
+                        opt_value[child_section].append(child_config)
+                    except KeyError:
+                        opt_value[child_section] = [child_config]
+
             else:
                 opt_value['item'] = opt.text
         else:
@@ -230,8 +272,14 @@ def _read_option(section_name, opt):
     return opt_name, _replace_custom_values(opt_value)
 
 
-def _replace_custom_values(opt_value):
-    """Replaces custom values introduced by 'load_wazuh_xml' with their real values."""
+def _replace_custom_values(opt_value: Union[list, dict, str]) -> Union[list, dict, str]:
+    """Replace custom values introduced by 'load_wazuh_xml' with their real values.
+
+    Parameters
+    ----------
+    opt_value : list or dict or str
+        Value to be replaced.
+    """
     if type(opt_value) is list:
         for i in range(0, len(opt_value)):
             opt_value[i] = _replace_custom_values(opt_value[i])
@@ -243,9 +291,15 @@ def _replace_custom_values(opt_value):
     return opt_value
 
 
-def _conf2json(src_xml, dst_json):
-    """
-    Parses src_xml to json. It is inserted in dst_json.
+def _conf2json(src_xml: str, dst_json: dict):
+    """Parse src_xml to JSON. It is inserted in dst_json.
+
+    Parameters
+    ----------
+    src_xml : str
+        Configuration to be parsed to JSON.
+    dst_json : dict
+        Destination.
     """
 
     for section in list(src_xml):
@@ -263,9 +317,18 @@ def _conf2json(src_xml, dst_json):
         _insert_section(dst_json, section_name, section_json)
 
 
-def _ossecconf2json(xml_conf):
-    """
-    Returns ossec.conf in JSON from xml
+def _ossecconf2json(xml_conf: str) -> dict:
+    """Return ossec.conf in JSON from XML.
+
+    Parameters
+    ----------
+    xml_conf : str
+        Configuration to be parsed to JSON.
+
+    Returns
+    -------
+    dict
+        Final JSON with the ossec.conf content.
     """
     final_json = {}
 
@@ -276,9 +339,18 @@ def _ossecconf2json(xml_conf):
     return final_json
 
 
-def _agentconf2json(xml_conf):
-    """
-    Returns agent.conf in JSON from xml
+def _agentconf2json(xml_conf: str) -> dict:
+    """Return agent.conf in JSON from XML.
+
+    Parameters
+    ----------
+    xml_conf : str
+        Configuration to be parsed to JSON.
+
+    Returns
+    -------
+    dict
+        Final JSON with the agent.conf content.
     """
 
     final_json = []
@@ -307,11 +379,24 @@ def _agentconf2json(xml_conf):
     return final_json
 
 
-def _rcl2json(filepath):
+def _rcl2json(filepath: str) -> dict:
     """
     Returns the RCL file as dictionary.
 
-    :return: rcl file (system_audit, windows_audit) as dictionary.
+    Parameters
+    ----------
+    filepath : str
+        Path to the RCL file.
+
+    Raises
+    ------
+    WazuhError(1101)
+        Requested component does not exist.
+
+    Returns
+    -------
+    dict
+        RCL file (system_audit, windows_audit) as dictionary.
     """
 
     data = {'vars': {}, 'controls': []}
@@ -392,11 +477,23 @@ def _rcl2json(filepath):
     return data
 
 
-def _rootkit_files2json(filepath):
-    """
-    Returns the rootkit file as dictionary.
+def _rootkit_files2json(filepath: str) -> dict:
+    """Return the rootkit file as dictionary.
 
-    :return: rootkit file as dictionary.
+    Parameters
+    ----------
+    filepath : str
+        Path to the rootkit file.
+
+    Raises
+    ------
+    WazuhError(1101)
+        Requested component does not exist.
+
+    Returns
+    -------
+    dict
+        Rootkit file as dictionary.
     """
 
     data = []
@@ -422,11 +519,24 @@ def _rootkit_files2json(filepath):
     return data
 
 
-def _rootkit_trojans2json(filepath):
-    """
-    Returns the rootkit trojans file as dictionary.
+def _rootkit_trojans2json(filepath: str) -> dict:
+    """Return the rootkit trojans file as dictionary.
 
-    :return: rootkit trojans file as dictionary.
+
+    Parameters
+    ----------
+    filepath : str
+        Path to the rootkit trojans file.
+
+    Raises
+    ------
+    WazuhError(1101)
+        Requested component does not exist.
+
+    Returns
+    -------
+    dict
+        Rootkit trojans file as dictionary.
     """
 
     data = []
@@ -459,9 +569,18 @@ def _rootkit_trojans2json(filepath):
     return data
 
 
-def _ar_conf2json(file_path):
-    """
-    Returns the lines of the ar.conf file
+def _ar_conf2json(file_path: str) -> dict:
+    """Return the lines of the ar.conf file.
+
+    Parameters
+    ----------
+    file_path : str
+        Path to the ar.conf file.
+
+    Returns
+    -------
+    dict
+        ar.conf file as dictionary.
     """
     with open(file_path) as f:
         data = [line.strip('\n') for line in f.readlines()]
@@ -469,8 +588,9 @@ def _ar_conf2json(file_path):
 
 
 # Main functions
-def get_ossec_conf(section=None, field=None, conf_file=common.OSSEC_CONF, from_import=False):
-    """Returns ossec.conf (manager) as dictionary.
+def get_ossec_conf(section: str = None, field: str = None, conf_file: str = common.OSSEC_CONF,
+                   from_import: bool = False, distinct: bool = False) -> dict:
+    """Return ossec.conf (manager) as dictionary.
 
     Parameters
     ----------
@@ -479,9 +599,22 @@ def get_ossec_conf(section=None, field=None, conf_file=common.OSSEC_CONF, from_i
     field : str
         Filters by field in section (i.e. included).
     conf_file : str
-        Path of the configuration file to read.
+        Path of the configuration file to read. Default: common.OSSEC_CONF
     from_import : bool
         This flag indicates whether this function has been called from a module load (True) or from a function (False).
+    distinct : bool
+        Look for distinct values.
+
+    Raises
+    ------
+    WazuhError(1101)
+        Requested component does not exist.
+    WazuhError(1102)
+        Invalid section.
+    WazuhError(1103)
+        Invalid field in section.
+    WazuhError(1106)
+        Requested section not present in configuration.
 
     Returns
     -------
@@ -515,18 +648,51 @@ def get_ossec_conf(section=None, field=None, conf_file=common.OSSEC_CONF, from_i
             if isinstance(data[section], list):
                 data = {section: [{field: item[field]} for item in data[section]]}
             else:
-                data = {section: {field: data[section][field]}}
+                field_data = data[section][field]
+                if distinct and section == 'ruleset':
+                    if field in ('decoder_dir', 'rule_dir'):
+                        # Remove duplicates
+                        values = []
+                        [values.append(x) for x in field_data if x not in values]
+                        field_data = values
+
+                data = {section: {field: field_data}}
         except KeyError:
             raise WazuhError(1103)
 
     return data
 
 
-def get_agent_conf(group_id=None, offset=0, limit=common.DATABASE_LIMIT, filename='agent.conf', return_format=None):
-    """
-    Returns agent.conf as dictionary.
+def get_agent_conf(group_id: str = None, offset: int = 0, limit: int = common.DATABASE_LIMIT,
+                   filename: str = 'agent.conf', return_format: str = None) -> Union[dict, str]:
+    """Return agent.conf as dictionary.
 
-    :return: agent.conf as dictionary.
+    Parameters
+    ----------
+    group_id : str
+        ID of the group with the agent.conf we want to get.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    filename : str
+        Name of the file to get. Default: 'agent.conf'
+    return_format : str
+        Return format.
+
+    Raises
+    ------
+    WazuhResourceNotFound(1710)
+        Group was not found.
+    WazuhError(1006)
+        agent.conf does not exist or there is a problem with the permissions.
+    WazuhError(1101)
+        Requested component does not exist.
+
+    Returns
+    -------
+    dict or str
+        agent.conf as dictionary.
     """
     if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
@@ -553,11 +719,34 @@ def get_agent_conf(group_id=None, offset=0, limit=common.DATABASE_LIMIT, filenam
     return {'total_affected_items': len(data), 'affected_items': cut_array(data, offset=offset, limit=limit)}
 
 
-def get_agent_conf_multigroup(multigroup_id=None, offset=0, limit=common.DATABASE_LIMIT, filename=None):
-    """
-    Returns agent.conf as dictionary.
+def get_agent_conf_multigroup(multigroup_id: str = None, offset: int = 0, limit: int = common.DATABASE_LIMIT,
+                              filename: str = None) -> dict:
+    """Return agent.conf as dictionary.
 
-    :return: agent.conf as dictionary.
+    Parameters
+    ----------
+    multigroup_id : str
+        ID of the group with the agent.conf we want to get.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    filename : str
+        Name of the file to get. Default: 'agent.conf'
+
+    Raises
+    ------
+    WazuhResourceNotFound(1710)
+        Group was not found.
+    WazuhError(1006)
+        agent.conf does not exist or there is a problem with the permissions.
+    WazuhError(1101)
+        Requested component does not exist.
+
+    Returns
+    -------
+    dict
+        agent.conf as dictionary.
     """
     # Check if a multigroup_id is provided and it exists
     if multigroup_id and not os_path.exists(os_path.join(common.MULTI_GROUPS_PATH, multigroup_id)) or not multigroup_id:
@@ -581,11 +770,33 @@ def get_agent_conf_multigroup(multigroup_id=None, offset=0, limit=common.DATABAS
     return {'totalItems': len(data), 'items': cut_array(data, offset=offset, limit=limit)}
 
 
-def get_file_conf(filename, group_id=None, type_conf=None, return_format=None):
-    """
-    Returns the configuration file as dictionary.
+def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, return_format: str = None) -> dict:
+    """Return the configuration file as dictionary.
 
-    :return: configuration file as dictionary.
+    Parameters
+    ----------
+    group_id : str
+        ID of the group with the file we want to get.
+    filename : str
+        Name of the file to get.
+    return_format : str
+        Return format.
+    type_conf : str
+        Type of the configuration we want to get.
+
+    Raises
+    ------
+    WazuhResourceNotFound(1710)
+        Group was not found.
+    WazuhError(1006)
+        agent.conf does not exist or there is a problem with the permissions.
+    WazuhError(1104)
+        Invalid file type.
+
+    Returns
+    -------
+    dict
+        Configuration file as dictionary.
     """
     if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
@@ -625,8 +836,42 @@ def get_file_conf(filename, group_id=None, type_conf=None, return_format=None):
     return data
 
 
-def parse_internal_options(high_name, low_name):
-    def get_config(config_path):
+def parse_internal_options(high_name: str, low_name: str) -> str:
+    """Parse internal_options.conf file.
+
+    Parameters
+    ----------
+    high_name : str
+        Name of the daemon with the option we want to parse.
+    low_name : str
+        Option we want to parse.
+
+    Raises
+    ------
+    WazuhInternalError(1107)
+        Internal options file not found.
+    WazuhInternalError(1108)
+        Value not found in internal_options.conf.
+
+    Returns
+    -------
+    str
+        Value of the internal_options.conf option.
+    """
+
+    def get_config(config_path: str) -> dict:
+        """Read configuration given by its path.
+
+        Parameters
+        ----------
+        config_path : str
+            Configuration path.
+
+        Returns
+        -------
+        dict
+            Configuration as a dictionary.
+        """
         with open(config_path) as f:
             str_config = StringIO('[root]\n' + f.read())
 
@@ -651,7 +896,32 @@ def parse_internal_options(high_name, low_name):
         raise WazuhInternalError(1108, e.args[0])
 
 
-def get_internal_options_value(high_name, low_name, max_, min_):
+def get_internal_options_value(high_name: str, low_name: str, max_: int, min_: int) -> int:
+    """Get value of a specific internal option from internal_options.conf.
+
+    Parameters
+    ----------
+    high_name : str
+        Name of the daemon with the option we want to get.
+    low_name : str
+        Option we want to get.
+    max_ : int
+        Maximum value of the option.
+    min_ : int
+        Minimum value of the option.
+
+    Raises
+    ------
+    WazuhError(1109)
+        Option must be a digit.
+    WazuhError(1110)
+        Option value is out of the limits.
+
+    Returns
+    -------
+    int
+        Value of the internal_options.conf option.
+    """
     option = parse_internal_options(high_name, low_name)
     if not option.isdigit():
         raise WazuhError(1109, f'Option: {high_name}.{low_name}. Value: {option}')
@@ -663,12 +933,35 @@ def get_internal_options_value(high_name, low_name, max_, min_):
     return option
 
 
-def upload_group_configuration(group_id, file_content):
-    """
-    Updates group configuration
-    :param group_id: Group to update
-    :param file_content: File content of the new configuration in a string.
-    :return: Confirmation message.
+def upload_group_configuration(group_id: str, file_content: str) -> str:
+    """Update group configuration.
+
+    Parameters
+    ----------
+    group_id : str
+        Group to update.
+    file_content : str
+        File content of the new configuration in a string.
+
+    Raises
+    ------
+    WazuhResourceNotFound(1710)
+        Group was not found.
+    WazuhError(1113)
+        XML syntax error.
+    WazuhError(1114)
+        Wazuh syntax error.
+    WazuhError(1115)
+        Error executing verify-agent-conf.
+    WazuhInternalError(1743)
+        Error running Wazuh syntax validator.
+    WazuhInternalError(1016)
+        Error moving file.
+
+    Returns
+    -------
+    str
+        Confirmation message.
     """
     if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
@@ -747,13 +1040,31 @@ def upload_group_configuration(group_id, file_content):
         raise e
 
 
-def upload_group_file(group_id, file_data, file_name='agent.conf'):
-    """
-    Updates a group file
-    :param group_id: Group to update
-    :param file_data: Upload data
-    :param file_name: File name to update
-    :return: Confirmation message in string
+def upload_group_file(group_id: str, file_data: str, file_name: str = 'agent.conf') -> str:
+    """Update a group file.
+
+    Parameters
+    ----------
+    group_id : str
+        Group to update.
+    file_data : str
+        Upload data.
+    file_name : str
+        File name to update. Default: 'agent.conf'
+
+    Raises
+    ------
+    WazuhResourceNotFound(1710)
+        Group was not found.
+    WazuhError(1112)
+        Empty files are not supported.
+    WazuhError(1111)
+        Remote group file updates are only available in 'agent.conf' file.
+
+    Returns
+    -------
+    str
+        Confirmation message in string.
     """
     # Check if the group exists
     if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
@@ -803,7 +1114,7 @@ def get_active_configuration(agent_id: str, component: str, configuration: str) 
         The active configuration the agent is currently using.
     """
     sockets_json_protocol = {'remote', 'analysis', 'wdb'}
-    component_socket_mapping = {'agent': 'agent', 'agentless': 'agentless', 'analysis': 'analysis', 'auth': 'auth',
+    component_socket_mapping = {'agent': 'analysis', 'agentless': 'agentless', 'analysis': 'analysis', 'auth': 'auth',
                                 'com': 'com', 'csyslog': 'csyslog', 'integrator': 'integrator',
                                 'logcollector': 'logcollector', 'mail': 'mail', 'monitor': 'monitor',
                                 'request': 'remote', 'syscheck': 'syscheck', 'wazuh-db': 'wdb', 'wmodules': 'wmodules'}
@@ -935,16 +1246,33 @@ def get_active_configuration(agent_id: str, component: str, configuration: str) 
 
 
 def write_ossec_conf(new_conf: str):
-    """
-    Replace the current wazuh configuration (ossec.conf) with the provided configuration.
+    """Replace the current wazuh configuration (ossec.conf) with the provided configuration.
 
     Parameters
     ----------
-    new_conf: str
+    new_conf : str
         The new configuration to be applied.
+
+    Raises
+    ------
+    WazuhError(1126)
+        Error updating ossec configuration.
     """
     try:
         with open(common.OSSEC_CONF, 'w') as f:
             f.writelines(new_conf)
     except Exception:
         raise WazuhError(1126)
+
+
+def update_check_is_enabled() -> bool:
+    """Read the ossec.conf and check UPDATE_CHECK_OSSEC_FIELD value.
+
+    Returns
+    -------
+    bool
+        True if UPDATE_CHECK_OSSEC_FIELD is 'yes' or isn't present, else False.
+    """
+    global_configurations = get_ossec_conf(section=GLOBAL_KEY).get(GLOBAL_KEY, {})
+
+    return global_configurations.get(UPDATE_CHECK_OSSEC_FIELD, YES_VALUE) == YES_VALUE

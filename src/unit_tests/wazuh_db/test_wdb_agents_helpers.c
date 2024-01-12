@@ -16,7 +16,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "wazuh_db/helpers/wdb_agents_helpers.h"
+#include "../wazuh_db/helpers/wdb_agents_helpers.h"
 #include "wazuhdb_op.h"
 
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
@@ -871,10 +871,11 @@ void test_wdb_remove_vuln_cves_by_status_error_json_result(void **state)
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     // Parsing JSON result
+    will_return(__wrap_cJSON_ParseWithOpts, "a JSON error");
     will_return(__wrap_cJSON_ParseWithOpts, NULL);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid vuln_cves JSON results syntax after removing vulnerabilities.");
-    expect_string(__wrap__mdebug2, formatted_msg, "JSON error near: (null)");
+    expect_string(__wrap__mdebug2, formatted_msg, "JSON error near: a JSON error");
 
     //Cleaning  memory
     expect_function_call(__wrap_cJSON_Delete);
@@ -918,6 +919,7 @@ void test_wdb_remove_vuln_cves_by_status_success_ok(void **state)
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     // Parsing JSON result
+    will_return(__wrap_cJSON_ParseWithOpts, NULL);
     will_return(__wrap_cJSON_ParseWithOpts, 1);
 
     //Cleaning  memory
@@ -977,6 +979,7 @@ void test_wdb_remove_vuln_cves_by_status_success_due(void **state)
     will_return(__wrap_wdbc_parse_result, WDBC_DUE);
 
     // Parsing JSON result
+    will_return(__wrap_cJSON_ParseWithOpts, NULL);
     will_return(__wrap_cJSON_ParseWithOpts, root1);
 
     //// Second call to Wazuh DB
@@ -992,7 +995,9 @@ void test_wdb_remove_vuln_cves_by_status_success_due(void **state)
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
     // Parsing JSON result
+    will_return(__wrap_cJSON_ParseWithOpts, NULL);
     will_return(__wrap_cJSON_ParseWithOpts, root2);
+
     will_return(__wrap_cJSON_Duplicate, row);
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);

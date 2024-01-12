@@ -9,7 +9,7 @@ import json
 import re
 import socket
 import struct
-from typing import List
+from typing import List, Union
 
 from wazuh.core import common
 from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE
@@ -39,7 +39,7 @@ class AsyncWazuhDBConnection:
 
     async def open_connection(self):
         """Establish a Unix socket connection."""
-        self._reader, self._writer = await asyncio.open_unix_connection(path=self.socket_path, loop=self.loop)
+        self._reader, self._writer = await asyncio.open_unix_connection(path=self.socket_path)
 
     def close(self):
         """Close writer socket."""
@@ -155,13 +155,22 @@ class WazuhDBConnection:
     def __del__(self):
         self.close()
 
-    def __query_input_validation(self, query):
-        """
-        Checks input queries have the correct format
+    def __query_input_validation(self, query: str):
+        """Check input queries have the correct format
 
         Accepted query formats:
         - agent 000 sql sql_sentence
         - global sql sql_sentence
+
+        Parameters
+        ----------
+        query : str
+            Query to check.
+
+        Raises
+        ------
+        WazuhError(2004)
+            Database query not valid.
         """
         query_elements = query.split(" ")
         sql_first_index = 2 if query_elements[0] == 'agent' else 1
@@ -195,9 +204,27 @@ class WazuhDBConnection:
             if not check:
                 raise WazuhError(2004, error_text)
 
-    def _send(self, msg, raw=False):
-        """
-        Send a message to the wdb socket
+    def _send(self, msg: str, raw: bool = False) -> dict:
+        """Send a message to the wdb socket.
+
+        Parameters
+        ----------
+        msg : str
+            Message to send.
+        raw : bool
+            Respond in raw format.
+
+        Raises
+        ------
+        WazuhInternalError(2009)
+            Pagination error. Response from wazuh-db was over the maximum socket buffer size.
+        WazuhError(2003)
+            Error in wdb request.
+
+        Returns
+        -------
+        dict
+            Data received.
         """
         encoded_msg = msg.encode(encoding='utf-8')
         packed_msg = struct.pack('<I', len(encoded_msg)) + encoded_msg
@@ -244,7 +271,7 @@ class WazuhDBConnection:
         return result
 
     @staticmethod
-    def loads(string):
+    def loads(string: str) -> dict:
         """Custom implementation for the JSON loads method with the class decoder.
         This method takes care of the possible emtpy objects that may be load.
 
@@ -255,7 +282,7 @@ class WazuhDBConnection:
 
         Returns
         -------
-        JSON
+        dict
             JSON object.
         """
         data = json.loads(string, object_hook=WazuhDBConnection.json_decoder)
@@ -265,9 +292,18 @@ class WazuhDBConnection:
 
         return data
 
-    def __query_lower(self, query):
-        """
-        Convert a query to lower except the words between ""
+    def __query_lower(self, query: str) -> str:
+        """Convert a query to lower except the words between "".
+
+        Parameters
+        ----------
+        query : str
+            Query to be converted.
+
+        Returns
+        -------
+        str
+            New query.
         """
 
         to_lower = True
@@ -287,21 +323,27 @@ class WazuhDBConnection:
 
         return new_query
 
-    def delete_agents_db(self, agents_id: List[str]):
-        """
-        Delete agents db through wazuh-db service
+    def delete_agents_db(self, agents_id: List[str]) -> dict:
+        """Delete agents db through wazuh-db service.
 
-        :param agents_id: strings of agents
-        :return: dict received from wazuh db in the form: {"agents": {"ID": "MESSAGE"}}, where MESSAGE may be one
-        of the following:
-        - Ok
-        - Invalid agent ID
-        - DB waiting for deletion
-        - DB not found
+        Parameters
+        ----------
+        agents_id : List[str]
+            List of agents.
+
+        Returns
+        -------
+        dict
+            Dict received from wazuh db in the form: {"agents": {"ID": "MESSAGE"}}, where MESSAGE may be one of the
+            following:
+                - Ok
+                - Invalid agent ID
+                - DB waiting for deletion
+                - DB not found
         """
         return self._send(f"wazuhdb remove {' '.join(agents_id)}")
 
-    def send(self, query, raw=True):
+    def send(self, query: str, raw: bool = True) -> Union[str, dict]:
         """Send a message to the wdb socket.
 
         Parameters
@@ -313,14 +355,14 @@ class WazuhDBConnection:
 
         Returns
         -------
-        str, dict
+        str or dict
             Result of the query.
         """
         return self._send(query, raw)
 
     def execute(self, query, count=False, delete=False, update=False):
         """
-        Sends a sql query to wdb socket
+        Send a SQL query to wdb socket.
         """
 
         def send_request_to_wdb(query_lower, step, off, response):
@@ -329,8 +371,8 @@ class WazuhDBConnection:
                                                                                          'offset {}'.format(off))
                 request_response = self._send(request, raw=True)[1]
                 response.extend(WazuhDBConnection.loads(request_response))
-                if len(request_response)*2 < MAX_SOCKET_BUFFER_SIZE:
-                    return step*2
+                if len(request_response) * 2 < MAX_SOCKET_BUFFER_SIZE:
+                    return step * 2
                 else:
                     return step
             except WazuhInternalError:

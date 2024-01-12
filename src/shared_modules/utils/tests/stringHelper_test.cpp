@@ -60,6 +60,11 @@ TEST_F(StringUtilsTest, SplitIndex)
     EXPECT_EQ(splitTextVector, "hello");
 }
 
+TEST_F(StringUtilsTest, SplitIndexRuntimeError)
+{
+    EXPECT_THROW(Utils::splitIndex("hello.world", '.', 2), std::runtime_error);
+}
+
 TEST_F(StringUtilsTest, AsciiToHexString)
 {
     const std::vector<unsigned char> data{0x2d, 0x53, 0x3b, 0x9d, 0x9f, 0x0f, 0x06, 0xef, 0x4e, 0x3c, 0x23, 0xfd, 0x49, 0x6c, 0xfe, 0xb2, 0x78, 0x0e, 0xda, 0x7f};
@@ -119,11 +124,28 @@ TEST_F(StringUtilsTest, Trim)
     EXPECT_EQ("Hello", Utils::trim(" \t\nHello\t\n ", " \t\n"));
 }
 
-TEST_F(StringUtilsTest, ToUpper)
+TEST_F(StringUtilsTest, ToUpperCase)
 {
     EXPECT_EQ("", Utils::toUpperCase(""));
     EXPECT_EQ("HELLO WORLD", Utils::toUpperCase("HeLlO WoRlD"));
     EXPECT_EQ("123", Utils::toUpperCase("123"));
+}
+
+TEST_F(StringUtilsTest, ToLowerCase)
+{
+    EXPECT_EQ("", Utils::toLowerCase(""));
+    EXPECT_EQ("hello world", Utils::toLowerCase("HeLlO WoRlD"));
+    EXPECT_EQ("123", Utils::toLowerCase("123"));
+}
+
+TEST_F(StringUtilsTest, ToSentenceCase)
+{
+    EXPECT_EQ("", Utils::toSentenceCase(""));
+    EXPECT_EQ("H", Utils::toSentenceCase("h"));
+    EXPECT_EQ("Hello", Utils::toSentenceCase("hello"));
+    EXPECT_EQ("Hello", Utils::toSentenceCase("HELLO"));
+    EXPECT_EQ("Hello world", Utils::toSentenceCase("HeLlO WoRlD"));
+    EXPECT_EQ("123", Utils::toSentenceCase("123"));
 }
 
 TEST_F(StringUtilsTest, StartsWith)
@@ -163,6 +185,61 @@ TEST_F(StringUtilsTest, SplitDelimiterNullTerminated)
     EXPECT_EQ(2ull, tokens.size());
     EXPECT_EQ(tokens[0], "hello");
     EXPECT_EQ(tokens[1], "world");
+}
+
+TEST_F(StringUtilsTest, SplitMapKeyValue)
+{
+    std::string buffer("PRETTY_NAME=\"Ubuntu 22.04.1 LTS\"\n\
+NAME=\"Ubuntu\"\n\
+VERSION_ID=\"22.04\"\n\
+VERSION=\"22.04.1 LTS (Jammy Jellyfish)\"\n\
+VERSION_CODENAME=jammy\n\
+ID=ubuntu\n\
+ID_LIKE=debian\n\
+HOME_URL=\"https://www.ubuntu.com/\"\n\
+SUPPORT_URL=\"https://help.ubuntu.com/\"\n\
+BUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\n\
+PRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\n\
+UBUNTU_CODENAME=jammy\n");
+    std::map<std::string, std::string> mapResult;
+    Utils::splitMapKeyValue(buffer, '=', mapResult);
+    std::map<std::string, std::string>::iterator itMapResult;
+    EXPECT_NE(itMapResult = mapResult.find("PRETTY_NAME"), mapResult.end());
+    EXPECT_EQ(itMapResult->first, "PRETTY_NAME");
+    EXPECT_EQ(itMapResult->second, "Ubuntu 22.04.1 LTS");
+    EXPECT_NE(itMapResult = mapResult.find("NAME"), mapResult.end());
+    EXPECT_EQ(itMapResult->first, "NAME");
+    EXPECT_EQ(itMapResult->second, "Ubuntu");
+    EXPECT_NE(itMapResult = mapResult.find("VERSION_ID"), mapResult.end());
+    EXPECT_EQ(itMapResult->first, "VERSION_ID");
+    EXPECT_EQ(itMapResult->second, "22.04");
+    EXPECT_NE(itMapResult = mapResult.find("VERSION"), mapResult.end());
+    EXPECT_EQ(itMapResult->first, "VERSION");
+    EXPECT_EQ(itMapResult->second, "22.04.1 LTS (Jammy Jellyfish)");
+    EXPECT_NE(itMapResult = mapResult.find("VERSION_CODENAME"), mapResult.end());
+    EXPECT_EQ(itMapResult->first, "VERSION_CODENAME");
+    EXPECT_EQ(itMapResult->second, "jammy");
+    EXPECT_NE(itMapResult = mapResult.find("ID"), mapResult.end());
+    EXPECT_EQ(itMapResult->first, "ID");
+    EXPECT_EQ(itMapResult->second, "ubuntu");
+    EXPECT_NE(itMapResult = mapResult.find("ID_LIKE"), mapResult.end());
+    EXPECT_EQ(itMapResult->first, "ID_LIKE");
+    EXPECT_EQ(itMapResult->second, "debian");
+    EXPECT_NE(itMapResult = mapResult.find("HOME_URL"), mapResult.end());
+    EXPECT_EQ(itMapResult->first, "HOME_URL");
+    EXPECT_EQ(itMapResult->second, "https://www.ubuntu.com/");
+    EXPECT_NE(itMapResult = mapResult.find("SUPPORT_URL"), mapResult.end());
+    EXPECT_EQ(itMapResult->first, "SUPPORT_URL");
+    EXPECT_EQ(itMapResult->second, "https://help.ubuntu.com/");
+    EXPECT_NE(itMapResult = mapResult.find("BUG_REPORT_URL"), mapResult.end());
+    EXPECT_EQ(itMapResult->first, "BUG_REPORT_URL");
+    EXPECT_EQ(itMapResult->second, "https://bugs.launchpad.net/ubuntu/");
+    EXPECT_NE(itMapResult = mapResult.find("PRIVACY_POLICY_URL"), mapResult.end());
+    EXPECT_EQ(itMapResult->first, "PRIVACY_POLICY_URL");
+    EXPECT_EQ(itMapResult->second, "https://www.ubuntu.com/legal/terms-and-policies/privacy-policy");
+    EXPECT_NE(itMapResult = mapResult.find("UBUNTU_CODENAME"), mapResult.end());
+    EXPECT_EQ(itMapResult->first, "UBUNTU_CODENAME");
+    EXPECT_EQ(itMapResult->second, "jammy");
 }
 
 TEST_F(StringUtilsTest, CheckMultiReplacement)
@@ -206,6 +283,62 @@ TEST_F(StringUtilsTest, substrOnFirstOccurrenceCorrectEscapeCharacter)
 TEST_F(StringUtilsTest, substrOnFirstOccurrenceCorrectEscapeCharacterEmptyResult)
 {
     EXPECT_EQ(Utils::substrOnFirstOccurrence("\n", "\n"), "");
+}
+
+TEST_F(StringUtilsTest, splitKeyValueNonEscapedSimple)
+{
+    std::string stringBase { "hello:world" };
+    const auto retVal { Utils::splitKeyValueNonEscapedDelimiter(stringBase, ':', '\\') };
+    EXPECT_EQ(retVal.first, "hello");
+    EXPECT_EQ(retVal.second, "world");
+}
+
+TEST_F(StringUtilsTest, splitKeyValueNonEscapedSimpleEnd)
+{
+    std::string stringBase { "hello:" };
+    const auto retVal { Utils::splitKeyValueNonEscapedDelimiter(stringBase, ':', '\\') };
+    EXPECT_EQ(retVal.first, "hello");
+    EXPECT_EQ(retVal.second, "");
+}
+
+TEST_F(StringUtilsTest, splitKeyValueNonEscapedSimpleDoubleDelimiterEnd)
+{
+    std::string stringBase { "hello:world:" };
+    const auto retVal { Utils::splitKeyValueNonEscapedDelimiter(stringBase, ':', '\\') };
+    EXPECT_EQ(retVal.first, "hello");
+    EXPECT_EQ(retVal.second, "world:");
+}
+
+TEST_F(StringUtilsTest, splitKeyValueNonEscapedSimpleDoubleEnd)
+{
+    std::string stringBase { "hello::" };
+    const auto retVal { Utils::splitKeyValueNonEscapedDelimiter(stringBase, ':', '\\') };
+    EXPECT_EQ(retVal.first, "hello");
+    EXPECT_EQ(retVal.second, ":");
+}
+
+TEST_F(StringUtilsTest, splitKeyValueNonEscapedSimpleEmptyDoubleEnd)
+{
+    std::string stringBase { "::" };
+    const auto retVal { Utils::splitKeyValueNonEscapedDelimiter(stringBase, ':', '\\') };
+    EXPECT_EQ(retVal.first, "");
+    EXPECT_EQ(retVal.second, ":");
+}
+
+TEST_F(StringUtilsTest, splitKeyValueNonEscapedComplex)
+{
+    std::string stringBase { "he\\:llo:world" };
+    const auto retVal { Utils::splitKeyValueNonEscapedDelimiter(stringBase, ':', '\\') };
+    EXPECT_EQ(retVal.first, "he\\:llo");
+    EXPECT_EQ(retVal.second, "world");
+}
+
+TEST_F(StringUtilsTest, splitKeyValueNonEscapedComplexEnd)
+{
+    std::string stringBase { "he\\:llo:" };
+    const auto retVal { Utils::splitKeyValueNonEscapedDelimiter(stringBase, ':', '\\') };
+    EXPECT_EQ(retVal.first, "he\\:llo");
+    EXPECT_EQ(retVal.second, "");
 }
 
 TEST_F(StringUtilsTest, findRegexInStringNotStartWith)
@@ -338,4 +471,97 @@ TEST_F(StringUtilsTest, rawUnicodeToUTF8)
               "LC_NUMERIC="
               "LC_CTYPE=",
               content);
+}
+
+TEST_F(StringUtilsTest, stringIsNumberFalse1)
+{
+    EXPECT_FALSE(Utils::isNumber("random_string"));
+}
+
+TEST_F(StringUtilsTest, stringIsNumberFalse2)
+{
+    EXPECT_FALSE(Utils::isNumber("r4nd0m_57r1n9"));
+}
+
+TEST_F(StringUtilsTest, stringIsNumberFalse3)
+{
+    EXPECT_FALSE(Utils::isNumber(""));
+}
+
+TEST_F(StringUtilsTest, stringIsNumberTrue)
+{
+    EXPECT_TRUE(Utils::isNumber("12345"));
+}
+
+TEST_F(StringUtilsTest, parseStrToBoolYes)
+{
+    EXPECT_TRUE(Utils::parseStrToBool("yes"));
+}
+
+TEST_F(StringUtilsTest, parseStrToBoolNo)
+{
+    EXPECT_FALSE(Utils::parseStrToBool("no"));
+}
+
+TEST_F(StringUtilsTest, parseStrToBoolSarasa)
+{
+    EXPECT_THROW(Utils::parseStrToBool("Sarasa"),std::runtime_error);
+}
+
+TEST_F(StringUtilsTest, parseStrToTimeEmpty)
+{
+  EXPECT_EQ(Utils::parseStrToTime("1"),1);
+}
+
+TEST_F(StringUtilsTest,parseStrToTimeOneSec)
+{
+  EXPECT_EQ(Utils::parseStrToTime("1s"),1);
+}
+
+TEST_F(StringUtilsTest,parseStrToTimeOneMin)
+{
+  EXPECT_EQ(Utils::parseStrToTime("1m"),60);
+}
+
+TEST_F(StringUtilsTest,parseStrToTimeOneHour)
+{
+  EXPECT_EQ(Utils::parseStrToTime("1h"),3600);
+}
+
+TEST_F(StringUtilsTest,parseStrToTimeOneDay)
+{
+  EXPECT_EQ(Utils::parseStrToTime("1d"),86400);
+}
+
+TEST_F(StringUtilsTest,parseStrToTimeOneWeek)
+{
+  EXPECT_EQ(Utils::parseStrToTime("1w"),604800);
+}
+
+TEST_F(StringUtilsTest,parseStrToTimeOneSarasa)
+{
+  EXPECT_EQ(Utils::parseStrToTime("1invalid"),-1);
+}
+
+/*
+ * isAlphaNumericWithSpecialCharacters() tests
+ */
+
+/**
+ * @brief Validates the string is alphanumeric and contains all of the special characters passed as argument.
+ *
+ */
+TEST_F(StringUtilsTest, IsAlphaNumericWithSpecialCharacters)
+{
+    const std::string stringBase1 {"random_string"};
+    const std::string stringBase2 {"r4nd0mS7r1n6"};
+    const std::string stringBase3 {"random-_-string"};
+    const std::string stringBase4 {"random*string"};
+    const std::string stringBase5 {""};
+    EXPECT_TRUE(Utils::isAlphaNumericWithSpecialCharacters(stringBase1, "_"));
+    EXPECT_TRUE(Utils::isAlphaNumericWithSpecialCharacters(stringBase1, "__"));
+    EXPECT_TRUE(Utils::isAlphaNumericWithSpecialCharacters(stringBase2, ""));
+    EXPECT_TRUE(Utils::isAlphaNumericWithSpecialCharacters(stringBase3, "-_"));
+    EXPECT_TRUE(Utils::isAlphaNumericWithSpecialCharacters(stringBase4, "*"));
+    EXPECT_FALSE(Utils::isAlphaNumericWithSpecialCharacters(stringBase5, "-_*"));
 }

@@ -38,6 +38,9 @@
 #include "packages/packagesWindowsParserHelper.h"
 #include "packages/packagesWindows.h"
 #include "packages/appxWindowsWrapper.h"
+#include "packages/packagesPYPI.hpp"
+#include "packages/packagesNPM.hpp"
+#include "packages/modernPackageDataRetriever.hpp"
 
 constexpr auto CENTRAL_PROCESSOR_REGISTRY {"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
 const std::string UNINSTALL_REGISTRY{"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"};
@@ -206,6 +209,49 @@ class SysInfoProcess final
                 }
             }
 
+            // At least one logical drive couldn't be mapped, trying another use of QueryDosDevice
+            if (logicalDrives.size() != ret.size())
+            {
+                // We avoid using OS_MAXSTR on Windows XP
+                const auto spPhysicalDevices { std::make_unique<char[]>(OS_SIZE_32768) };
+
+                if (QueryDosDevice(nullptr, spPhysicalDevices.get(), OS_SIZE_32768))
+                {
+                    const auto tokens = Utils::splitNullTerminatedStrings(spPhysicalDevices.get());
+                    const auto spDosDevice { std::make_unique<char[]>(OS_SIZE_32768) };
+
+                    for (const auto& token : tokens)
+                    {
+
+                        // Checking if token is found in logicalDrives to avoid a large map with unnecessary volumes.
+                        // logicalDrives contains a slash at the end but the result of QueryDosDevice doesn't.
+                        auto startsWithLambda = [&](const auto & logicalDrive)
+                        {
+                            return Utils::startsWith(logicalDrive, token);
+                        };
+
+                        if (std::find_if(logicalDrives.begin(),
+                                         logicalDrives.end(),
+                                         startsWithLambda) == logicalDrives.end())
+                        {
+                            continue;
+                        }
+
+                        res = QueryDosDevice(token.c_str(), spDosDevice.get(), OS_SIZE_32768);
+
+                        if (res && ret.find(spDosDevice.get()) == ret.end())
+                        {
+                            ret[spDosDevice.get()] = token + '\\';
+
+                            if (logicalDrives.size() == ret.size())
+                            {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
             return ret;
         }
 
@@ -290,8 +336,8 @@ static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
         SysInfoProcess process(pId, processHandle);
 
         // Current process information
-        jsProcessInfo["name"]       = processName(processEntry);
-        jsProcessInfo["cmd"]        = (isSystemProcess(pId)) ? "none" : process.cmd();
+        jsProcessInfo["name"]       = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(processName(processEntry));
+        jsProcessInfo["cmd"]        = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8((isSystemProcess(pId)) ? "none" : process.cmd());
         jsProcessInfo["stime"]      = process.kernelModeTime();
         jsProcessInfo["size"]       = process.pageFileUsage();
         jsProcessInfo["ppid"]       = processEntry.th32ParentProcessID;
@@ -344,12 +390,27 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::f
 
                 if (packageReg.string("InstallDate", value))
                 {
-                    install_time = value;
+                    try
+                    {
+                        install_time = Utils::normalizeTimestamp(value, packageReg.keyModificationDate());
+                    }
+                    catch (const std::exception& e)
+                    {
+                        install_time = packageReg.keyModificationDate();
+                    }
+                }
+                else
+                {
+                    install_time = packageReg.keyModificationDate();
                 }
 
                 if (packageReg.string("InstallLocation", value))
                 {
                     location = value;
+                }
+                else
+                {
+                    location = UNKNOWN_VALUE;
                 }
 
                 if (!name.empty())
@@ -368,10 +429,15 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::f
                     }
 
                     packageJson["name"]         = std::move(name);
-                    packageJson["version"]      = std::move(version);
-                    packageJson["vendor"]       = std::move(vendor);
-                    packageJson["install_time"] = std::move(install_time);
-                    packageJson["location"]     = std::move(location);
+                    packageJson["description"]  = UNKNOWN_VALUE;
+                    packageJson["version"]      = version.empty() ? UNKNOWN_VALUE : std::move(version);
+                    packageJson["groups"]       = UNKNOWN_VALUE;
+                    packageJson["priority"]       = UNKNOWN_VALUE;
+                    packageJson["size"]           = 0;
+                    packageJson["vendor"]       = vendor.empty() ? UNKNOWN_VALUE : std::move(vendor);
+                    packageJson["source"]       = UNKNOWN_VALUE;
+                    packageJson["install_time"] = install_time.empty() ? UNKNOWN_VALUE : std::move(install_time);
+                    packageJson["location"]     = location.empty() ? UNKNOWN_VALUE : std::move(location);
                     packageJson["architecture"] = std::move(architecture);
                     packageJson["format"]       = "win";
 
@@ -445,7 +511,7 @@ static std::string getSerialNumber()
                     {
                         PRawSMBIOSData smbios{reinterpret_cast<PRawSMBIOSData>(spBuff.get())};
                         // Parse SMBIOS structures
-                        ret = Utils::getSerialNumberFromSmbios(smbios->SMBIOSTableData, size);
+                        ret = Utils::getSerialNumberFromSmbios(smbios->SMBIOSTableData, smbios->Length);
                     }
                 }
             }
@@ -760,34 +826,110 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
     });
 }
 
+void expandFromRegistry(const HKEY key, const std::string& subKey, const std::string& field, std::function<void(const std::string&)> postAction)
+{
+    std::vector<std::string> installPaths;
+
+    // Get install path from registry
+    Utils::expandRegistryPath(key, subKey, installPaths);
+
+    // Get install path from registry expanded keys.
+    for (const auto& versionKey : installPaths)
+    {
+        try
+        {
+            // Get install path from registry, based on version key.
+            const auto dir {Utils::Registry {key, versionKey, KEY_READ | KEY_WOW64_64KEY}.string(field)};
+            // Add install path to dirList.
+            postAction(dir);
+        }
+        catch (const std::exception& e)
+        {
+            // Ignore errors.
+        }
+    }
+}
+
+const std::set<std::string> getPythonDirectories()
+{
+    std::set<std::string> pythonDirList;
+
+    const auto postAction = [&](const std::string & pythonDir)
+    {
+        pythonDirList.insert(pythonDir + R"(Lib\site-packages)");
+        pythonDirList.insert(pythonDir + R"(Lib\dist-packages)");
+    };
+
+    try
+    {
+        expandFromRegistry(HKEY_USERS, R"(*\SOFTWARE\Python\PythonCore\*\InstallPath)", "", postAction);
+        expandFromRegistry(HKEY_LOCAL_MACHINE, R"(SOFTWARE\Python\PythonCore\*\InstallPath)", "", postAction);
+    }
+    catch (const std::exception&)
+    {
+        // Ignore errors.
+    }
+
+    return pythonDirList;
+}
+
+const std::set<std::string> getNodeDirectories()
+{
+    std::set<std::string> nodeDirList;
+
+    const auto postAction = [&](const std::string & nodeDir)
+    {
+        nodeDirList.insert(nodeDir);
+    };
+
+    try
+    {
+        expandFromRegistry(HKEY_USERS, R"(*\SOFTWARE\Node.js)", "InstallPath", postAction);
+        expandFromRegistry(HKEY_LOCAL_MACHINE, R"(SOFTWARE\Node.js)", "InstallPath", postAction);
+        nodeDirList.insert(R"(C:\Users\*\AppData\Roaming\npm)");
+        nodeDirList.insert(R"(C:\Users\*)");
+    }
+    catch (const std::exception&)
+    {
+        // Ignore errors.
+    }
+
+    return nodeDirList;
+}
+
 void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 {
     std::set<std::string> set;
 
-    auto fillList
+    auto fillList {[&callback, &set](nlohmann::json & data)
     {
-        [&callback, &set](nlohmann::json & data)
-        {
-            const std::string key { data.at("name").get_ref<const std::string&>() + data.at("version").get_ref<const std::string&>() };
-            const auto result { set.insert(key) };
+        const std::string key {data.at("name").get_ref<const std::string&>() +
+                               data.at("version").get_ref<const std::string&>()};
+        const auto result {set.insert(key)};
 
-            if (result.second)
-            {
-                callback(data);
-            }
+        if (result.second)
+        {
+            callback(data);
         }
-    };
+    }};
 
     getPackagesFromReg(HKEY_LOCAL_MACHINE, UNINSTALL_REGISTRY, fillList, KEY_WOW64_64KEY);
     getPackagesFromReg(HKEY_LOCAL_MACHINE, UNINSTALL_REGISTRY, fillList, KEY_WOW64_32KEY);
 
-    for (const auto& user : Utils::Registry{HKEY_USERS, "", KEY_READ | KEY_ENUMERATE_SUB_KEYS}.enumerate())
+    for (const auto& user : Utils::Registry {HKEY_USERS, "", KEY_READ | KEY_ENUMERATE_SUB_KEYS}.enumerate())
     {
         getPackagesFromReg(HKEY_USERS, user + "\\" + UNINSTALL_REGISTRY, fillList);
         getStorePackages(HKEY_USERS, user, fillList);
     }
-}
 
+    const std::map<std::string, std::set<std::string>> searchPaths =
+    {
+        {"PYPI", getPythonDirectories()},
+        {"NPM", getNodeDirectories()}
+    };
+
+    ModernFactoryPackagesCreator<HAS_STDFILESYSTEM>::getPackages(searchPaths, callback);
+}
 nlohmann::json SysInfo::getHotfixes() const
 {
     std::set<std::string> hotfixes;

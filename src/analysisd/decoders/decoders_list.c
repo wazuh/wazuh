@@ -82,7 +82,7 @@ STATIC OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi,
                     goto error;
                 }
 
-                if ((tmp_node->osdecoder->regex || tmp_node->osdecoder->plugindecoder) 
+                if ((tmp_node->osdecoder->regex || tmp_node->osdecoder->plugindecoder)
                     && (pi->regex || pi->plugindecoder)) {
                     tmp_node->osdecoder->get_next = 1;
                 } else {
@@ -152,11 +152,12 @@ int OS_AddOSDecoder(OSDecoderInfo *pi, OSDecoderNode **pn_osdecodernode,
         /* List with p_name */
         while (tmp_node) {
             if (strcmp(tmp_node->osdecoder->name, pi->parent) == 0) {
-                tmp_node->child = _OS_AddOSDecoder(tmp_node->child, pi, log_msg);
-                if (!tmp_node->child) {
+                OSDecoderNode *new_node = _OS_AddOSDecoder(tmp_node->child, pi, log_msg);
+                if (!new_node) {
                     smerror(log_msg, DEC_PLUGIN_ERR);
-                    return (0);
+                    return -added;
                 }
+                tmp_node->child = new_node;
                 added = 1;
             }
             tmp_node = tmp_node->next;
@@ -166,11 +167,12 @@ int OS_AddOSDecoder(OSDecoderInfo *pi, OSDecoderNode **pn_osdecodernode,
         tmp_node = *npn_osdecodernode;
         while (tmp_node) {
             if (strcmp(tmp_node->osdecoder->name, pi->parent) == 0) {
-                tmp_node->child = _OS_AddOSDecoder(tmp_node->child, pi, log_msg);
-                if (!tmp_node->child) {
+                OSDecoderNode *new_node = _OS_AddOSDecoder(tmp_node->child, pi, log_msg);
+                if (!new_node) {
                     smerror(log_msg, DEC_PLUGIN_ERR);
-                    return (0);
+                    return -added;
                 }
+                tmp_node->child = new_node;
                 added = 1;
             }
             tmp_node = tmp_node->next;

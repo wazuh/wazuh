@@ -54,6 +54,7 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
         if (tries == OS_CSYSLOGD_MAX_TRIES) {
             merror("Could not open queue after %d tries.", tries);
             sources.alert_log = 0;
+            os_free(fileq);
         } else {
             mdebug1("File queue connected.");
         }
@@ -76,7 +77,11 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
 
     if (!(sources.alert_log || sources.alert_json)) {
         merror("No configurations available. Exiting.");
-        exit(EXIT_FAILURE);
+        #ifdef WAZUH_UNIT_TESTING
+            return;
+        #else
+            exit(EXIT_FAILURE);
+        #endif
     }
 
     /* Connect to syslog */
@@ -96,7 +101,7 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
     }
 
     /* Infinite loop reading the alerts and inserting them */
-    while (1) {
+    while (FOREVER()) {
         tm = time(NULL);
         localtime_r(&tm, &tm_result);
 
@@ -111,27 +116,36 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
             json_data = jqueue_next(&jfileq);
         }
 
-        /* Send via syslog */
+        if(al_data == NULL && json_data == NULL) {
+            sleep(1);
+        } else {
 
-        for (s = 0; syslog_config[s]; s++) {
-            if (syslog_config[s]->format == JSON_CSYSLOG) {
-                if (json_data) {
-                    OS_Alert_SendSyslog_JSON(json_data, syslog_config[s]);
+            /* Send via syslog */
+
+            for (s = 0; syslog_config[s]; s++) {
+                if (syslog_config[s]->format == JSON_CSYSLOG) {
+                    if (json_data) {
+                        OS_Alert_SendSyslog_JSON(json_data, syslog_config[s]);
+                    }
+                } else if (al_data) {
+                    OS_Alert_SendSyslog(al_data, syslog_config[s]);
                 }
-            } else if (al_data) {
-                OS_Alert_SendSyslog(al_data, syslog_config[s]);
+            }
+
+            /* Clear the memory */
+
+            if (al_data) {
+                FreeAlertData(al_data);
+            }
+
+            if (json_data) {
+                cJSON_Delete(json_data);
             }
         }
+    }
 
-        /* Clear the memory */
-
-        if (al_data) {
-            FreeAlertData(al_data);
-        }
-
-        if (json_data) {
-            cJSON_Delete(json_data);
-        }
+    if (sources.alert_log) {
+        os_free(fileq);
     }
 }
 

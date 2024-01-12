@@ -53,6 +53,7 @@ typedef struct wm_azure_container_t {
     char * blobs;           // Blobs
     char * content_type;    // Content type (plain | inline | file)
     char * time_offset;     // Offset to look for logs (minutes, hours, days)
+    char * path;          // Prefix to search into
     unsigned int timeout;   // Timeout for a single container
     struct wm_azure_container_t *next;
 } wm_azure_container_t;

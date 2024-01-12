@@ -22,6 +22,7 @@ set_target_properties(
 )
 
 target_link_libraries(WIN32 ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+link_directories(${SRC_FOLDER}/syscheckd/build/bin)
 
 #include wrappers
 include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
@@ -30,7 +31,12 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 list(APPEND win32_names "test_win_utils")
 list(APPEND win32_flags "-Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,cJSON_GetArraySize -Wl,--wrap,send_msg \
                         -Wl,--wrap,cJSON_GetArrayItem -Wl,--wrap,cJSON_GetStringValue -Wl,--wrap,time \
-                        ${DEBUG_OP_WRAPPERS}")
+                        -Wl,--wrap,fim_sync_push_msg -Wl,--wrap,fim_run_integrity -Wl,--wrap,fim_db_remove_path \
+                        -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck \ -Wl,--wrap=is_fim_shutdown \
+                        -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown \
+                        -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_transaction_start -Wl,--wrap,fim_db_transaction_deleted_rows \
+                        -Wl,--wrap,fim_db_transaction_sync_row -Wl,--wrap,fim_db_file_update -Wl,--wrap,fim_db_file_pattern_search \
+                        -Wl,--wrap,fim_db_init ${DEBUG_OP_WRAPPERS}")
 
 list(LENGTH win32_names count)
 math(EXPR count "${count} - 1")
@@ -46,6 +52,7 @@ foreach(counter RANGE ${count})
         ${WAZUHEXT}
         WIN32
         ${TEST_DEPS}
+        fimdb
     )
 
     if(NOT win32_test_flags STREQUAL " ")

@@ -23,7 +23,6 @@
 static FILE *fp = NULL;
 static char file_sum[34] = "";
 static char file[OS_SIZE_1024 + 1] = "";
-static const char * IGNORE_LIST[] = { SHAREDCFG_FILENAME, NULL };
 #ifdef WIN32
 w_queue_t * winexec_queue;
 #endif
@@ -136,16 +135,12 @@ int receive_msg()
             }
 
             /* Syscheck */
-            else if (strncmp(tmp_msg, HC_SK, strlen(HC_SK)) == 0) {
-                ag_send_syscheck(tmp_msg + strlen(HC_SK));
-                continue;
-            }
-            else if (strncmp(tmp_msg, HC_FIM_FILE, strlen(HC_FIM_FILE)) == 0) {
-                ag_send_syscheck(tmp_msg + strlen(HC_FIM_FILE));
-                continue;
-            }
-            else if (strncmp(tmp_msg, HC_FIM_REGISTRY, strlen(HC_FIM_REGISTRY)) == 0) {
-                ag_send_syscheck(tmp_msg + strlen(HC_FIM_REGISTRY));
+            else if (strncmp(tmp_msg, HC_SK, strlen(HC_SK)) == 0
+                    || strncmp(tmp_msg, HC_FIM_FILE, strlen(HC_FIM_FILE)) == 0
+                    || strncmp(tmp_msg, HC_FIM_REGISTRY, strlen(HC_FIM_REGISTRY)) == 0
+                    || strncmp(tmp_msg, HC_FIM_REGISTRY_KEY, strlen(HC_FIM_REGISTRY_KEY)) == 0
+                    || strncmp(tmp_msg, HC_FIM_REGISTRY_VALUE, strlen(HC_FIM_REGISTRY_VALUE)) == 0) {
+                ag_send_syscheck(tmp_msg);
                 continue;
             }
 
@@ -279,17 +274,19 @@ int receive_msg()
                         final_file = strrchr(file, '/');
                         if (final_file) {
                             if (strcmp(final_file + 1, SHAREDCFG_FILENAME) == 0) {
-                                if (cldir_ex_ignore(SHAREDCFG_DIR, IGNORE_LIST)) {
-                                    mwarn("Could not clean up shared directory.");
-                                }
-
-                                if(!UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT)){
+                                char **ignore_list;
+                                os_calloc(2, sizeof(char *), ignore_list);
+                                os_strdup(SHAREDCFG_FILENAME, *ignore_list);
+                                if (!UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT, &ignore_list)) {
                                     char msg_output[OS_MAXSTR];
 
                                     snprintf(msg_output, OS_MAXSTR, "%c:%s:%s",  LOCALFILE_MQ, "wazuh-agent", AG_IN_UNMERGE);
                                     send_msg(msg_output, -1);
                                 }
                                 else {
+                                    if (cldir_ex_ignore(SHAREDCFG_DIR, ignore_list)) {
+                                        mwarn("Could not clean up shared directory.");
+                                    }
                                     clear_merged_hash_cache();
                                     if (agt->flags.remote_conf && !verifyRemoteConf()) {
                                         if (agt->flags.auto_restart) {
@@ -300,6 +297,7 @@ int receive_msg()
                                         }
                                     }
                                 }
+                                free_strarray(ignore_list);
                             }
                         } else {
                             /* Remove file */

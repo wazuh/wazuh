@@ -6,10 +6,10 @@
 import logging
 
 from aiohttp import web
-from api.encoder import dumps, prettify
-from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 
 import wazuh.sca as sca
+from api.encoder import dumps, prettify
+from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import DATABASE_LIMIT
 
@@ -40,7 +40,7 @@ async def get_sca_agent(request, agent_id: str = None, pretty: bool = False, wai
     offset : int
         First element to return in the collection.
     limit : int
-        Maximum number of elements to return.
+        Maximum number of elements to return. Default: DATABASE_LIMIT
     sort : str
         Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending
         or descending order.
@@ -134,7 +134,7 @@ async def get_sca_checks(request, agent_id: str = None, pretty: bool = False, wa
     offset : int
         First element to return in the collection.
     limit : int
-        Maximum number of elements to return.
+        Maximum number of elements to return. Default: DATABASE_LIMIT
     sort : str
         Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending
         or descending order.

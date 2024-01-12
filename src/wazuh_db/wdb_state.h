@@ -40,9 +40,13 @@ typedef struct _agent_sync_t {
 typedef struct _agent_syscheck_t {
     uint64_t fim_file_queries;
     uint64_t fim_registry_queries;
+    uint64_t fim_registry_key_queries;
+    uint64_t fim_registry_value_queries;
     uint64_t syscheck_queries;
     struct timeval fim_file_time;
     struct timeval fim_registry_time;
+    struct timeval fim_registry_key_time;
+    struct timeval fim_registry_value_time;
     struct timeval syscheck_time;
 } agent_syscheck_t;
 
@@ -109,6 +113,7 @@ typedef struct _agent_breakdown_t {
     struct timeval sql_time;
     struct timeval vacuum_time;
     struct timeval get_fragmentation_time;
+    struct timeval open_calls_time;
     agent_ciscat_t ciscat;
     agent_rootcheck_t rootcheck;
     agent_sca_t sca;
@@ -138,6 +143,7 @@ typedef struct _global_agent_t {
     uint64_t update_agent_data_queries;
     uint64_t update_agent_name_queries;
     uint64_t update_connection_status_queries;
+    uint64_t update_status_code_queries;
     uint64_t update_keepalive_queries;
     struct timeval delete_agent_time;
     struct timeval disconnect_agents_time;
@@ -158,6 +164,7 @@ typedef struct _global_agent_t {
     struct timeval update_agent_data_time;
     struct timeval update_agent_name_time;
     struct timeval update_connection_status_time;
+    struct timeval update_status_code_time;
     struct timeval update_keepalive_time;
 } global_agent_t;
 
@@ -193,6 +200,7 @@ typedef struct _global_breakdown_t {
     struct timeval sql_time;
     struct timeval vacuum_time;
     struct timeval get_fragmentation_time;
+    struct timeval open_calls_time;
     global_agent_t agent;
     global_belongs_t belongs;
     global_group_t group;
@@ -285,6 +293,13 @@ void w_inc_wazuhdb_remove_time(struct timeval time);
  *
  */
 void w_inc_agent();
+
+/**
+ * @brief Increment open agent DB time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_agent_open_time(struct timeval time);
 
 /**
  * @brief Increment sql agent queries counter
@@ -482,6 +497,32 @@ void w_inc_agent_fim_registry();
 void w_inc_agent_fim_registry_time(struct timeval time);
 
 /**
+ * @brief Increment fim registry key agent queries counter
+ *
+ */
+void w_inc_agent_fim_registry_key();
+
+/**
+ * @brief Increment fim registry key agent time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_agent_fim_registry_key_time(struct timeval time);
+
+/**
+ * @brief Increment fim registry value agent queries counter
+ *
+ */
+void w_inc_agent_fim_registry_value();
+
+/**
+ * @brief Increment fim registry value agent time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_agent_fim_registry_value_time(struct timeval time);
+
+/**
  * @brief Increment syscollector processes agent queries counter
  *
  */
@@ -667,6 +708,13 @@ void w_inc_agent_syscollector_deprecated_osinfo_time(struct timeval time);
 void w_inc_global();
 
 /**
+ * @brief Increment open global time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_global_open_time(struct timeval time);
+
+/**
  * @brief Increment sql global queries counter
  *
  */
@@ -756,6 +804,19 @@ void w_inc_global_agent_update_connection_status();
  * @param time Value to increment the counter.
  */
 void w_inc_global_agent_update_connection_status_time(struct timeval time);
+
+/**
+ * @brief Increment update-status-code global agent queries counter
+ *
+ */
+void w_inc_global_agent_update_status_code();
+
+/**
+ * @brief Increment update-status-code global agent time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_global_agent_update_status_code_time(struct timeval time);
 
 /**
  * @brief Increment reset-agents-connection global agent queries counter

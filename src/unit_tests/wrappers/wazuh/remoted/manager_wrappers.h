@@ -13,7 +13,10 @@
 #define REM_MANAGER_WRAPPERS_H
 
 #include <cJSON.h>
+#include "shared.h"
 
 cJSON *__wrap_assign_group_to_agent(const char *agent_id, const char *md5);
+
+void __wrap_save_controlmsg(const keyentry * key, char *r_msg, __attribute__((unused)) size_t msg_length, int *wdb_sock);
 
 #endif /* REM_MANAGER_WRAPPERS_H */

@@ -12,7 +12,7 @@ file(GLOB SQLITE_UNIT_TEST_SRC
 file(GLOB SQLITE_SRC
     "${CMAKE_SOURCE_DIR}/src/sqlite/sqlite_wrapper.cpp")
 
-add_executable(sqlite_unit_test 
+add_executable(sqlite_unit_test
     ${SQLITE_UNIT_TEST_SRC}
     ${SQLITE_SRC})
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")

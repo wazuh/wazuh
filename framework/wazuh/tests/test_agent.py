@@ -5,12 +5,12 @@
 import os
 import shutil
 import sys
+import pytest
+
 from grp import getgrnam
 from json import dumps
 from pwd import getpwnam
 from unittest.mock import MagicMock, patch, call
-
-import pytest
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..'))
 
@@ -340,6 +340,35 @@ def test_agent_get_agents_in_group(socket_mock, send_mock, mock_get_groups, mock
             get_agents_in_group(group_list=[group])
 
 
+@pytest.mark.parametrize('group, q, expected_q', [
+    ('default', '(name~wazuh,status~active)', 'group=default;((name~wazuh,status~active))'),
+    ('default', 'name~wazuh,status~active', 'group=default;(name~wazuh,status~active)')
+])
+@patch('wazuh.agent.get_agents')
+@patch('wazuh.agent.get_groups')
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_agent_get_agents_in_group_q_formats(socket_mock, send_mock, mock_get_groups, mock_get_agents, group,
+                                             q, expected_q):
+    """Test the formatting of the `q` parameter in `get_agents_in_group` from agent module.
+
+    Parameters
+    ----------
+    group : str
+        Name of the group to which the agent belongs.
+    q : str
+        Value of the q parameter.
+    expected_q : str
+        Value of the expected q parameter used in the `get_agents` call.
+    """
+    mock_get_groups.return_value = ['default']
+    # Since the decorator is mocked, pass `group_list` using `call_args` from mock
+    get_agents_in_group(group_list=[group], q=q)
+    kwargs = mock_get_agents.call_args.kwargs
+
+    assert kwargs['q'] == expected_q
+
+
 @pytest.mark.parametrize('agent_list, expected_items', [
     (['001', '002', '003'], ['001', '002', '003']),
     (['001', '400', '002', '500'], ['001', '002'])
@@ -454,15 +483,18 @@ def test_agent_add_agent(manager_status_mock, socket_mock, name, agent_id, key, 
         assert e.code == 1738, 'The exception was raised as expected but "error_code" does not match.'
 
 
-@pytest.mark.parametrize('group_list, expected_result', [
-    (['group-1', 'group-2'], ['group-1', 'group-2']),
-    (['invalid_group'], [])
+@pytest.mark.parametrize('group_list, q, expected_result', [
+    (['group-1', 'group-2'], None, ['group-1', 'group-2']),
+    (['invalid_group'], None, []),
+    (['group-1', 'group-2'], 'name~1', ['group-1']),
+    (['group-1', 'group-2', 'group-3'], 'mergedSum=a336982f3c020cd558a16113f752fd5b', ['group-1', 'group-2']),
+    ([], '', []) # An empty group_list should return nothing
 ])
 @patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_get_agent_groups(socket_mock, send_mock, group_list, expected_result):
+def test_agent_get_agent_groups(socket_mock, send_mock, group_list, q, expected_result):
     """Test `get_agent_groups` from agent module.
 
     This will check if the provided groups exists.
@@ -474,7 +506,7 @@ def test_agent_get_agent_groups(socket_mock, send_mock, group_list, expected_res
     expected_result : List of str
         List of expected groups to be returned by 'get_agent_groups'.
     """
-    group_result = get_agent_groups(group_list)
+    group_result = get_agent_groups(group_list, q=q)
     assert len(group_result.affected_items) == len(expected_result)
     for item, group_name in zip(group_result.affected_items, group_list):
         assert item['name'] == group_name
@@ -1097,7 +1129,7 @@ def test_agent_upgrade_agents(mock_socket, mock_wdb, mock_client_keys, agent_set
     raise_error : bool
         Boolean variable used to indicate that the
     """
-    with patch('wazuh.agent.core_upgrade_agents') as core_upgrade_agents_mock:
+    with patch('wazuh.core.agent.core_upgrade_agents') as core_upgrade_agents_mock:
         core_upgrade_agents_mock.return_value = result_from_socket
 
         if raise_error:
@@ -1210,7 +1242,7 @@ def test_agent_get_upgrade_result(mock_socket, mock_wdb, mock_client_keys, agent
     raise_error : bool
         Boolean variable used to indicate that the
     """
-    with patch('wazuh.agent.core_upgrade_agents') as core_upgrade_agents_mock:
+    with patch('wazuh.core.agent.core_upgrade_agents') as core_upgrade_agents_mock:
         core_upgrade_agents_mock.return_value = result_from_socket
 
         if raise_error:

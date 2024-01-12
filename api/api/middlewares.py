@@ -5,16 +5,18 @@
 from json import JSONDecodeError
 from logging import getLogger
 
-from aiohttp import web
+from aiohttp import web, web_request
 from aiohttp.web_exceptions import HTTPException
-from connexion.exceptions import ProblemException, OAuthProblem, Unauthorized
+from connexion.exceptions import OAuthProblem, ProblemException, Unauthorized
 from connexion.problem import problem as connexion_problem
 from secure import SecureHeaders
+from wazuh.core.exception import WazuhPermissionError, WazuhTooManyRequests
+from wazuh.core.utils import get_utc_now
 
 from api.configuration import api_conf
 from api.util import raise_if_exc
-from wazuh.core.exception import WazuhTooManyRequests, WazuhPermissionError
-from wazuh.core.utils import get_utc_now
+
+MAX_REQUESTS_EVENTS_DEFAULT = 30
 
 # API secure headers
 secure_headers = SecureHeaders(server="Wazuh", csp="none", xfo="DENY")
@@ -22,7 +24,19 @@ secure_headers = SecureHeaders(server="Wazuh", csp="none", xfo="DENY")
 logger = getLogger('wazuh-api')
 
 
-def _cleanup_detail_field(detail):
+def _cleanup_detail_field(detail: str) -> str:
+    """Replace double endlines with '. ' and simple endlines with ''.
+
+    Parameters
+    ----------
+    detail : str
+        String to be modified.
+
+    Returns
+    -------
+    str
+        New value for the detail field.
+    """
     return ' '.join(str(detail).replace("\n\n", ". ").replace("\n", "").split())
 
 
@@ -35,12 +49,22 @@ async def set_secure_headers(request, handler):
 
 ip_stats = dict()
 ip_block = set()
-request_counter = 0
-current_time = None
+general_request_counter = 0
+general_current_time = None
+events_request_counter = 0
+events_current_time = None
 
 
-async def unlock_ip(request, block_time):
-    """This function blocks/unblocks the IPs that are requesting an API token"""
+async def unlock_ip(request: web_request.BaseRequest, block_time: int):
+    """This function blocks/unblocks the IPs that are requesting an API token.
+
+    Parameters
+    ----------
+    request : web_request.BaseRequest
+        API request.
+    block_time : int
+        Block time used to decide if the IP is going to be unlocked.
+    """
     global ip_block, ip_stats
     try:
         if get_utc_now().timestamp() - block_time >= ip_stats[request.remote]['timestamp']:
@@ -54,8 +78,16 @@ async def unlock_ip(request, block_time):
         raise_if_exc(WazuhPermissionError(6000))
 
 
-async def prevent_bruteforce_attack(request, attempts=5):
-    """This function checks that the IPs that are requesting an API token do not do so repeatedly"""
+async def prevent_bruteforce_attack(request: web_request.BaseRequest, attempts: int = 5):
+    """This function checks that the IPs that are requesting an API token do not do so repeatedly.
+
+    Parameters
+    ----------
+    request : web_request.BaseRequest
+        API request.
+    attempts : int
+        Number of attempts until an IP is blocked.
+    """
     global ip_stats, ip_block
     if request.path in {'/security/user/authenticate', '/security/user/authenticate/run_as'} and \
             request.method in {'GET', 'POST'}:
@@ -84,28 +116,68 @@ async def request_logging(request, handler):
 
 
 @web.middleware
-async def prevent_denial_of_service(request, max_requests=300):
-    """This function checks that the maximum number of requests per minute set in the configuration is not exceeded"""
-    global current_time, request_counter
-    if not current_time:
-        current_time = get_utc_now().timestamp()
+async def check_rate_limit(
+    request: web_request.BaseRequest,
+    request_counter_key: str,
+    current_time_key: str,
+    max_requests: int
+) -> None:
+    """This function checks that the maximum number of requests per minute passed in `max_requests` is not exceeded.
 
-    if get_utc_now().timestamp() - 60 <= current_time:
-        request_counter += 1
+    Parameters
+    ----------
+    request : web_request.BaseRequest
+        API request.
+    request_counter_key : str
+        Key of the request counter variable to get from globals() dict.
+    current_time_key : str
+        Key of the current time variable to get from globals() dict.
+    max_requests : int, optional
+        Maximum number of requests per minute permitted.
+    """
+
+    error_code_mapping = {
+        'general_request_counter': {'code': 6001},
+        'events_request_counter': {
+            'code': 6005,
+            'extra_message': f'For POST /events endpoint the limit is set to {max_requests} requests.'
+        }
+    }
+    if not globals()[current_time_key]:
+        globals()[current_time_key] = get_utc_now().timestamp()
+
+    if get_utc_now().timestamp() - 60 <= globals()[current_time_key]:
+        globals()[request_counter_key] += 1
     else:
-        request_counter = 0
-        current_time = get_utc_now().timestamp()
+        globals()[request_counter_key] = 0
+        globals()[current_time_key] = get_utc_now().timestamp()
 
-    if request_counter > max_requests:
+    if globals()[request_counter_key] > max_requests:
         logger.debug(f'Request rejected due to high request per minute: Source IP: {request.remote}')
-        raise_if_exc(WazuhTooManyRequests(6001))
+        raise_if_exc(WazuhTooManyRequests(**error_code_mapping[request_counter_key]))
 
 
 @web.middleware
 async def security_middleware(request, handler):
     access_conf = api_conf['access']
-    if access_conf['max_request_per_minute'] > 0:
-        await prevent_denial_of_service(request, max_requests=access_conf['max_request_per_minute'])
+    max_request_per_minute = access_conf['max_request_per_minute']
+
+    if max_request_per_minute > 0:
+        await check_rate_limit(
+            request,
+            'general_request_counter',
+            'general_current_time',
+            max_request_per_minute
+        )
+
+        if request.path == '/events':
+            await check_rate_limit(
+                request,
+                'events_request_counter',
+                'events_current_time',
+                MAX_REQUESTS_EVENTS_DEFAULT
+            )
+
     await unlock_ip(request, block_time=access_conf['block_time'])
 
     return await handler(request)
@@ -116,7 +188,8 @@ async def response_postprocessing(request, handler):
     """Remove unwanted fields from error responses like 400 or 403.
 
     Additionally, it cleans the output given by connexion's exceptions. If no exception is raised during the
-    'await handler(request) it means the output will be a 200 response and no fields needs to be removed."""
+    'await handler(request) it means the output will be a 200 response and no fields needs to be removed.
+    """
 
     def remove_unwanted_fields(fields_to_remove=None):
         fields_to_remove = fields_to_remove or ['status', 'type']

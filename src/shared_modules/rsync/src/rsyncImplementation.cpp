@@ -13,18 +13,24 @@
 #include "makeUnique.h"
 #include "stringHelper.h"
 #include "hashHelper.h"
+#include "loggerHelper.h"
 #include "messageCreatorFactory.h"
+#include "rsync.hpp"
+#include "synchronizationController.hpp"
 
 using namespace RSync;
+
+SynchronizationController RSyncImplementation::m_synchronizationController;
 
 void RSyncImplementation::release()
 {
     std::lock_guard<std::mutex> lock{ m_mutex };
+    m_synchronizationController.clear();
 
     for (const auto& ctx : m_remoteSyncContexts)
     {
         m_registrationController.removeComponentByHandle(ctx.first);
-        ctx.second->m_msgDispatcher.rundown();
+        ctx.second->m_msgDispatcher->rundown();
     }
 
     m_remoteSyncContexts.clear();
@@ -33,16 +39,17 @@ void RSyncImplementation::release()
 void RSyncImplementation::releaseContext(const RSYNC_HANDLE handle)
 {
     m_registrationController.removeComponentByHandle(handle);
-    remoteSyncContext(handle)->m_msgDispatcher.rundown();
+    remoteSyncContext(handle)->m_msgDispatcher->rundown();
     std::lock_guard<std::mutex> lock{ m_mutex };
+    m_synchronizationController.stop(handle);
     m_remoteSyncContexts.erase(handle);
 }
 
-RSYNC_HANDLE RSyncImplementation::create()
+RSYNC_HANDLE RSyncImplementation::create(const unsigned int threadPoolSize, const size_t maxQueueSize)
 {
     const auto spRSyncContext
     {
-        std::make_shared<RSyncContext>()
+        std::make_shared<RSyncContext>(threadPoolSize, maxQueueSize)
     };
     const RSYNC_HANDLE handle{ spRSyncContext.get() };
     std::lock_guard<std::mutex> lock{m_mutex};
@@ -56,12 +63,12 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
                                      const ResultCallback callbackWrapper)
 {
     const auto ctx                  { remoteSyncContext(handle) };
-    const auto& jsStartParams       { startConfiguration                     };
-    const auto& jsStartParamsTable  { jsStartParams.at("table")              };
-    const auto& firstQuery          { jsStartParams.find("first_query")      };
-    const auto& lastQuery           { jsStartParams.find("last_query")       };
 
-    if (!jsStartParamsTable.empty() && firstQuery != jsStartParams.end() && lastQuery != jsStartParams.end())
+    const auto& jsStartParamsTable  { startConfiguration.at("table")              };
+    const auto& firstQuery          { startConfiguration.find("first_query")      };
+    const auto& lastQuery           { startConfiguration.find("last_query")       };
+
+    if (!jsStartParamsTable.empty() && firstQuery != startConfiguration.end() && lastQuery != startConfiguration.end())
     {
         const auto& jsFirstLastOutput { executeSelectQuery(spDBSyncWrapper, jsStartParamsTable, firstQuery.value(), lastQuery.value()) };
         const auto& jsonFirstQueryResult { jsFirstLastOutput.at("first_result") };
@@ -76,7 +83,7 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
 
         if (!jsonFirstQueryResult.empty() && !jsonLastQueryResult.empty())
         {
-            const auto& indexField { jsStartParams.at("index").get_ref<const std::string&>() };
+            const auto& indexField { startConfiguration.at("index").get_ref<const std::string&>() };
             const auto& begin      { jsonFirstQueryResult.at(indexField) };
             const auto& end        { jsonLastQueryResult.at(indexField)  };
 
@@ -87,7 +94,7 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
             {
                 checksumCtx.rightCtx.begin = begin;
                 checksumCtx.rightCtx.end   = end;
-                fillChecksum(spDBSyncWrapper, jsStartParams, begin, end, checksumCtx);
+                fillChecksum(spDBSyncWrapper, startConfiguration, begin, end, checksumCtx);
             }
             else
             {
@@ -97,7 +104,7 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
                 const auto endString{std::to_string(endNumber)};
                 checksumCtx.rightCtx.begin = beginString;
                 checksumCtx.rightCtx.end   = endString;
-                fillChecksum(spDBSyncWrapper, jsStartParams, beginString, endString, checksumCtx);
+                fillChecksum(spDBSyncWrapper, startConfiguration, beginString, endString, checksumCtx);
             }
         }
         else
@@ -105,9 +112,12 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
             checksumCtx.rightCtx.type = IntegrityMsgType::INTEGRITY_CLEAR;
         }
 
+        m_synchronizationController.start(handle, jsStartParamsTable, checksumCtx.rightCtx.id);
         // rightCtx will have the final checksum based on fillChecksum method. After processing all checksum select data
         // checksumCtx.rightCtx will have the needed (final) information
-        messageCreator->send(callbackWrapper, jsStartParams, checksumCtx.rightCtx);
+        messageCreator->send(callbackWrapper, startConfiguration, checksumCtx.rightCtx);
+
+        logDebug2(RSYNC_LOG_TAG, "Remote sync started: %s", RSync::IntegrityCommands[checksumCtx.rightCtx.type].c_str());
     }
     else
     {
@@ -142,14 +152,16 @@ void RSyncImplementation::registerSyncId(const RSYNC_HANDLE handle,
     const auto ctx { remoteSyncContext(handle) };
     const SyncMsgBodyType syncMessageType { SyncMsgBodyTypeMap.at(syncConfiguration.at("decoder_type")) };
 
-    ctx->m_msgDispatcher.setMessageDecoderType(messageHeaderID, syncMessageType);
+    ctx->m_msgDispatcher->setMessageDecoderType(messageHeaderID, syncMessageType);
 
     const auto registerCallback
     {
-        [spDBSyncWrapper, syncConfiguration, callbackWrapper] (const SyncInputData & syncData)
+        [spDBSyncWrapper, syncConfiguration, callbackWrapper, handle] (const SyncInputData & syncData)
         {
             try
             {
+                m_synchronizationController.checkId(handle, syncConfiguration.at("table"), syncData.id);
+
                 if (0 == syncData.command.compare("checksum_fail"))
                 {
                     sendChecksumFail(spDBSyncWrapper, syncConfiguration, callbackWrapper, syncData);
@@ -171,7 +183,7 @@ void RSyncImplementation::registerSyncId(const RSYNC_HANDLE handle,
         }
     };
 
-    ctx->m_msgDispatcher.addCallback(messageHeaderID, registerCallback);
+    ctx->m_msgDispatcher->addCallback(messageHeaderID, registerCallback);
     m_registrationController.initComponentByHandle(handle, messageHeaderID);
 }
 
@@ -182,7 +194,7 @@ void RSyncImplementation::push(const RSYNC_HANDLE handle, const std::vector<unsi
     {
         remoteSyncContext(handle)
     };
-    spRSyncContext->m_msgDispatcher.push(data);
+    spRSyncContext->m_msgDispatcher->push(data);
 }
 
 void RSyncImplementation::sendChecksumFail(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
@@ -198,7 +210,7 @@ void RSyncImplementation::sendChecksumFail(const std::shared_ptr<DBSyncWrapper>&
 
         FactoryMessageCreator<nlohmann::json, MessageType::ROW_DATA>::create()->send(callbackWrapper, jsonSyncConfiguration, rowData);
     }
-    else if (1 <= size)
+    else if (1 < size)
     {
         auto messageCreator { FactoryMessageCreator<SplitContext, MessageType::CHECKSUM>::create() };
 

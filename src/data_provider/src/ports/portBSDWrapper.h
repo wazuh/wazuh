@@ -17,6 +17,7 @@
 
 #include "iportWrapper.h"
 #include "sharedDefs.h"
+#include "stringHelper.h"
 
 static const std::map<int32_t, std::string> PORTS_TYPE =
 {
@@ -84,20 +85,20 @@ class BSDPortWrapper final : public IPortWrapper
 
             if (AF_INET6 == m_spSocketInfo->psi.soi_family)
             {
-                sockaddr_in6 socketAddressIn6;
+                sockaddr_in6 socketAddressIn6{};
                 socketAddressIn6.sin6_family = m_spSocketInfo->psi.soi_family;
                 socketAddressIn6.sin6_addr = static_cast<in6_addr>(m_spSocketInfo->psi.soi_proto.pri_in.insi_laddr.ina_6);
                 getnameinfo(reinterpret_cast<sockaddr*>(&socketAddressIn6), sizeof(socketAddressIn6), ipAddress, sizeof(ipAddress), nullptr, 0, NI_NUMERICHOST);
             }
             else if (AF_INET == m_spSocketInfo->psi.soi_family)
             {
-                sockaddr_in socketAddressIn;
+                sockaddr_in socketAddressIn{};
                 socketAddressIn.sin_family = m_spSocketInfo->psi.soi_family;
                 socketAddressIn.sin_addr = static_cast<in_addr>(m_spSocketInfo->psi.soi_proto.pri_in.insi_laddr.ina_46.i46a_addr4);
                 getnameinfo(reinterpret_cast<sockaddr*>(&socketAddressIn), sizeof(socketAddressIn), ipAddress, sizeof(ipAddress), nullptr, 0, NI_NUMERICHOST);
             }
 
-            return ipAddress;
+            return Utils::substrOnFirstOccurrence(ipAddress, "%");
         }
         int32_t localPort() const override
         {
@@ -108,21 +109,22 @@ class BSDPortWrapper final : public IPortWrapper
             char ipAddress[NI_MAXHOST] { 0 };
 
             if (AF_INET6 == m_spSocketInfo->psi.soi_family)
+
             {
-                sockaddr_in6 socketAddressIn6;
+                sockaddr_in6 socketAddressIn6{};
                 socketAddressIn6.sin6_family = m_spSocketInfo->psi.soi_family;
                 socketAddressIn6.sin6_addr = static_cast<in6_addr>(m_spSocketInfo->psi.soi_proto.pri_in.insi_faddr.ina_6);
                 getnameinfo(reinterpret_cast<sockaddr*>(&socketAddressIn6), sizeof(socketAddressIn6), ipAddress, sizeof(ipAddress), nullptr, 0, NI_NUMERICHOST);
             }
             else if (AF_INET == m_spSocketInfo->psi.soi_family)
             {
-                sockaddr_in socketAddressIn;
+                sockaddr_in socketAddressIn{};
                 socketAddressIn.sin_family = m_spSocketInfo->psi.soi_family;
                 socketAddressIn.sin_addr = static_cast<in_addr>(m_spSocketInfo->psi.soi_proto.pri_in.insi_faddr.ina_46.i46a_addr4);
                 getnameinfo(reinterpret_cast<sockaddr*>(&socketAddressIn), sizeof(socketAddressIn), ipAddress, sizeof(ipAddress), nullptr, 0, NI_NUMERICHOST);
             }
 
-            return ipAddress;
+            return Utils::substrOnFirstOccurrence(ipAddress, "%");
         }
         int32_t remotePort() const override
         {

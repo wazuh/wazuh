@@ -12,8 +12,8 @@
 int main (int argc, char **argv) {
     (void)argc;
     char args[COMMANDSIZE_4096];
+    char *cmd_path = NULL;
     char log_msg[OS_MAXSTR];
-    char *command_ex = NULL;
     int action = OS_INVALID;
     cJSON *input_json = NULL;
     struct utsname uname_buffer;
@@ -70,15 +70,15 @@ int main (int argc, char **argv) {
 
     if (!strcmp("Linux", uname_buffer.sysname) || !strcmp("SunOS", uname_buffer.sysname)) {
         // Checking if passwd is present
-        if (access(PASSWD, F_OK) < 0) {
+        if (get_binary_path("passwd", &cmd_path) < 0) {
             memset(log_msg, '\0', OS_MAXSTR);
-            snprintf(log_msg, OS_MAXSTR - 1, "The passwd file '%s' is not accessible: %s (%d)", PASSWD, strerror(errno), errno);
+            snprintf(log_msg, OS_MAXSTR - 1, "The passwd file '%s' is not accessible: %s (%d)", cmd_path, strerror(errno), errno);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
+            os_free(cmd_path);
             return OS_SUCCESS;
         }
 
-        os_strdup(PASSWD, command_ex);
         memset(args, '\0', COMMANDSIZE_4096);
         if (action == ADD_COMMAND) {
             snprintf(args, COMMANDSIZE_4096 -1, "-l");
@@ -88,15 +88,15 @@ int main (int argc, char **argv) {
 
     } else if (!strcmp("AIX", uname_buffer.sysname)) {
         // Checking if chuser is present
-        if (access(CHUSER, F_OK) < 0) {
+        if (get_binary_path("chuser", &cmd_path) < 0) {
             memset(log_msg, '\0', OS_MAXSTR);
-            snprintf(log_msg, OS_MAXSTR - 1, "The chuser file '%s' is not accessible: %s (%d)", CHUSER, strerror(errno), errno);
+            snprintf(log_msg, OS_MAXSTR - 1, "The chuser file '%s' is not accessible: %s (%d)", cmd_path, strerror(errno), errno);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
+            os_free(cmd_path);
             return OS_SUCCESS;
         }
 
-        os_strdup(CHUSER, command_ex);
         // Disabling an account
         memset(args, '\0', COMMANDSIZE_4096);
         if (action == ADD_COMMAND) {
@@ -112,15 +112,15 @@ int main (int argc, char **argv) {
     }
 
     // Execute the command
-    char *exec_cmd1[4] = { command_ex, args, (char *)user, NULL };
+    char *exec_cmd1[4] = { cmd_path, args, (char *)user, NULL };
 
-    wfd_t *wfd = wpopenv(command_ex, exec_cmd1, W_BIND_STDERR);
+    wfd_t *wfd = wpopenv(cmd_path, exec_cmd1, W_BIND_STDERR);
     if (!wfd) {
         memset(log_msg, '\0', OS_MAXSTR);
-        snprintf(log_msg, OS_MAXSTR -1, "Error executing '%s': %s", command_ex, strerror(errno));
+        snprintf(log_msg, OS_MAXSTR -1, "Error executing '%s': %s", cmd_path, strerror(errno));
         write_debug_file(argv[0], log_msg);
         cJSON_Delete(input_json);
-        os_free(command_ex);
+        os_free(cmd_path);
         return OS_INVALID;
     }
     wpclose(wfd);
@@ -128,7 +128,7 @@ int main (int argc, char **argv) {
     write_debug_file(argv[0], "Ended");
 
     cJSON_Delete(input_json);
-    os_free(command_ex);
+    os_free(cmd_path);
 
     return OS_SUCCESS;
 }

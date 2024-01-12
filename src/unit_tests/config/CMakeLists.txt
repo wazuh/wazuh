@@ -19,12 +19,23 @@ set_target_properties(
 
 target_link_libraries(CONFIG_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
+if(${TARGET} STREQUAL "winagent")
+    link_directories(${SRC_FOLDER}/syscheckd/build/bin)
+endif(${TARGET} STREQUAL "winagent")
+
 # Include wrappers
 include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
 # Generate config tests
 list(APPEND config_names "test_client-config_validate_ipv6_link_local_interface")
-list(APPEND config_flags "-Wl,--wrap,OS_GetHost ${DEBUG_OP_WRAPPERS}")
+list(APPEND config_flags "-Wl,--wrap,OS_GetHost -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap,syscom_dispatch \
+                          -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                          -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown ${DEBUG_OP_WRAPPERS}")
+
+if(${TARGET} STREQUAL "server")
+    list(APPEND config_names "test_indexer")
+    list(APPEND config_flags " ")
+endif()
 
 # Compiling tests
 list(LENGTH config_names count)
@@ -42,6 +53,9 @@ foreach(counter RANGE ${count})
         CONFIG_O
         ${TEST_DEPS}
     )
+    if(${TARGET} STREQUAL "winagent")
+        target_link_libraries(${test_name} fimdb)
+    endif(${TARGET} STREQUAL "winagent")
 
     if(NOT test_flags STREQUAL " ")
         target_link_libraries(

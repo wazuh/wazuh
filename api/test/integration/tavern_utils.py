@@ -441,7 +441,7 @@ def check_agentd_started(response, agents_list):
         while tries < 80:
             try:
                 # Save agentd logs in a list
-                command = f"docker exec env_wazuh-agent{int(agent_id)}_1 grep agentd /var/ossec/logs/ossec.log"
+                command = f"docker exec env-wazuh-agent{int(agent_id)}-1 grep agentd /var/ossec/logs/ossec.log"
                 output = subprocess.check_output(command.split()).decode().strip().split('\n')
             except subprocess.SubprocessError as exc:
                 raise subprocess.SubprocessError(f"Error while trying to get logs from agent {agent_id}") from exc
@@ -475,7 +475,7 @@ def check_agent_active_status(agents_list):
     while tries < 25:
         try:
             # Get active agents
-            output = subprocess.check_output(f"docker exec env_wazuh-master_1 /var/ossec/framework/python/bin/python3 "
+            output = subprocess.check_output(f"docker exec env-wazuh-master-1 /var/ossec/framework/python/bin/python3 "
                                              f"{active_agents_script_path}".split()).decode().strip()
         except subprocess.SubprocessError as exc:
             raise subprocess.SubprocessError("Error while trying to get agents") from exc
@@ -508,3 +508,27 @@ def healthcheck_agent_restart(response, agents_list):
     time.sleep(20)
     # Wait for active agent status (up to 25 seconds)
     check_agent_active_status(agents_list)
+
+
+def validate_update_check_response(response):
+    """Check if the last_available_* dicts have the correct keys and values.
+
+    Parameters
+    ----------
+    response : Request response
+    """
+    available_update_keys = ["last_available_major", "last_available_minor", "last_available_patch"]
+    keys_to_check = [
+        ("tag", str), ("description", (str, type(None))), ("title", str), ("published_date", str), ("semver", dict)
+    ]
+
+    data = response.json()['data']
+
+    for available_update in available_update_keys:
+        available_update_data = data[available_update]
+
+        assert isinstance(available_update_data, dict)
+
+        if available_update_data != {}:
+            for key, value_type in keys_to_check:
+                assert isinstance(available_update_data[key], value_type)

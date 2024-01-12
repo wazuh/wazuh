@@ -6,22 +6,23 @@ list(APPEND wdb_tests_names "test_wdb_integrity")
 list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug1 -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_errmsg \
                          -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,EVP_DigestInit_ex -Wl,--wrap,EVP_DigestUpdate -Wl,--wrap,_DigestFinal_ex \
                          -Wl,--wrap,sqlite3_bind_int64 -Wl,--wrap,sqlite3_column_text -Wl,--wrap,_mdebug2 -Wl,--wrap,wdb_exec_stmt \
-                         -Wl,--wrap,time -Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,wdb_init_stmt_in_cache ${DEBUG_OP_WRAPPERS}")
+                         -Wl,--wrap,time -Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,wdb_init_stmt_in_cache ${DEBUG_OP_WRAPPERS} \
+                         -Wl,--wrap,router_provider_send_fb")
 
 # Add server specific tests to the list
 list(APPEND wdb_tests_names "test_wdb_fim")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_begin2 \
                         -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_bind_text \
-                        -Wl,--wrap,sqlite3_bind_int64 -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_bind_int \
+                        -Wl,--wrap,sqlite3_bind_int64 -Wl,--wrap,sqlite3_step -Wl,--wrap,wdb_step -Wl,--wrap,sqlite3_bind_int \
                         ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_parser")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_scan_info_get -Wl,--wrap,wdb_fim_update_date_entry -Wl,--wrap,wdb_fim_clean_old_entries \
                         -Wl,--wrap,wdb_scan_info_update -Wl,--wrap,wdb_scan_info_fim_checks_control -Wl,--wrap,wdb_syscheck_load \
                         -Wl,--wrap,wdb_fim_delete -Wl,--wrap,wdb_syscheck_save -Wl,--wrap,wdb_syscheck_save2 \
-                        -Wl,--wrap,wdbi_query_checksum -Wl,--wrap,wdbi_query_clear -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,wdb_step \
+                        -Wl,--wrap,wdbi_query_checksum -Wl,--wrap,wdbi_query_clear -Wl,--wrap,wdb_stmt_cache \
                         -Wl,--wrap,sqlite3_changes -Wl,--wrap,sqlite3_bind_int -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_last_insert_rowid \
-                        -Wl,--wrap,sqlite3_step -Wl,--wrap,wdb_open_agent2 -Wl,--wrap,wdb_leave -Wl,--wrap,wdb_agents_insert_vuln_cves \
+                        -Wl,--wrap,sqlite3_step -Wl,--wrap,wdb_step -Wl,--wrap,wdb_open_agent2 -Wl,--wrap,wdb_leave -Wl,--wrap,wdb_agents_insert_vuln_cves \
                         -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,wdb_open_global \
                         -Wl,--wrap,wdb_global_agent_exists  -Wl,--wrap,wdb_agents_update_vuln_cves_status \
                         -Wl,--wrap,wdb_agents_remove_vuln_cves -Wl,--wrap,wdb_agents_remove_vuln_cves_by_status  -Wl,--wrap,cJSON_PrintUnformatted \
@@ -36,13 +37,14 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_scan_info_get -Wl,--wrap,wdb_fim_upd
                         -Wl,--wrap,wdb_get_config -Wl,--wrap,wdb_get_internal_config -Wl,--wrap,wdb_finalize_all_statements \
                         -Wl,--wrap,wdb_global_create_backup -Wl,--wrap,wdb_commit2 -Wl,--wrap,wdb_vacuum -Wl,--wrap,wdb_get_db_state \
                         -Wl,--wrap,wdb_update_last_vacuum_data -Wl,--wrap,wdb_get_db_free_pages_percentage \
+                        -Wl,--wrap,w_is_file -Wl,--wrap,wdb_close\
                         ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_global_parser")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl,--wrap,wdb_exec -Wl,--wrap,sqlite3_errmsg \
                              -Wl,--wrap,wdb_global_insert_agent -Wl,--wrap,wdb_global_update_agent_name -Wl,--wrap,wdb_global_update_agent_version \
                              -Wl,--wrap,wdb_global_get_agent_labels -Wl,--wrap,wdb_global_del_agent_labels -Wl,--wrap,wdb_global_set_agent_label \
-                             -Wl,--wrap,wdb_global_update_agent_keepalive -Wl,--wrap,wdb_global_update_agent_connection_status \
+                             -Wl,--wrap,wdb_global_update_agent_keepalive -Wl,--wrap,wdb_global_update_agent_connection_status -Wl,--wrap,wdb_global_update_agent_status_code \
                              -Wl,--wrap,wdb_global_delete_agent -Wl,--wrap,wdb_global_select_agent_name -Wl,--wrap,wdb_global_select_agent_group \
                              -Wl,--wrap,wdb_global_delete_agent_belong -Wl,--wrap,wdb_global_find_agent -Wl,--wrap,wdb_global_find_group \
                              -Wl,--wrap,wdb_global_insert_agent_group -Wl,--wrap,wdb_global_insert_agent_belong -Wl,--wrap,wdb_global_delete_group_belong \
@@ -61,6 +63,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl
                              -Wl,--wrap,w_inc_global_labels_get_labels -Wl,--wrap,w_inc_global_labels_get_labels_time -Wl,--wrap,w_inc_global_agent_update_keepalive \
                              -Wl,--wrap,w_inc_global_agent_update_keepalive_time \
                              -Wl,--wrap,w_inc_global_agent_update_connection_status -Wl,--wrap,w_inc_global_agent_update_connection_status_time \
+                             -Wl,--wrap,w_inc_global_agent_update_status_code -Wl,--wrap,w_inc_global_agent_update_status_code_time \
                              -Wl,--wrap,w_inc_global_agent_delete_agent -Wl,--wrap,w_inc_global_agent_delete_agent_time -Wl,--wrap,w_inc_global_agent_select_agent_name \
                              -Wl,--wrap,w_inc_global_agent_select_agent_name_time -Wl,--wrap,w_inc_global_agent_select_agent_group \
                              -Wl,--wrap,w_inc_global_agent_select_agent_group_time -Wl,--wrap,w_inc_global_agent_find_agent -Wl,--wrap,w_inc_global_agent_find_agent_time \
@@ -80,7 +83,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl
                              -Wl,--wrap,wdb_commit2 -Wl,--wrap,wdb_vacuum -Wl,--wrap,wdb_get_db_state -Wl,--wrap,wdb_finalize_all_statements \
                              -Wl,--wrap,wdb_update_last_vacuum_data -Wl,--wrap,wdb_get_db_free_pages_percentage -Wl,--wrap,wdb_global_get_distinct_agent_groups \
                              -Wl,--wrap,w_inc_global_agent_get_distinct_groups -Wl,--wrap,w_inc_global_agent_get_distinct_groups_time \
-                             ${DEBUG_OP_WRAPPERS}")
+                             -Wl,--wrap,w_is_file -Wl,--wrap,wdb_close -Wl,--wrap,w_inc_global_open_time ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_global")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_exec -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,wdb_begin2 -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_bind_int \
@@ -125,11 +128,13 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,strerror \
 list(APPEND wdb_tests_names "test_wdb")
 list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,strerror -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,time_diff \
                              -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Delete_ex \
-                             -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,sqlite3_open_v2 -Wl,--wrap,sqlite3_close_v2 -Wl,--wrap,sqlite3_step \
+                             -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,sqlite3_open_v2 -Wl,--wrap,sqlite3_close_v2 -Wl,--wrap,sqlite3_step -Wl,--wrap,wdb_step \
                              -Wl,--wrap,sqlite3_column_count -Wl,--wrap,sqlite3_column_type -Wl,--wrap,sqlite3_column_name -Wl,--wrap,sqlite3_column_double \
                              -Wl,--wrap,sqlite3_column_text -Wl,--wrap,sqlite3_prepare_v2 -Wl,--wrap,sqlite3_finalize -Wl,--wrap,sqlite3_reset \
                              -Wl,--wrap,sqlite3_clear_bindings -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,sqlite3_sql -Wl,--wrap,OS_SendSecureTCP  \
-                             -Wl,--wrap,OS_SetSendTimeout -Wl,--wrap,time -Wl,--wrap,sqlite3_column_int -Wl,--wrap,sqlite3_bind_text ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
+                             -Wl,--wrap,gettimeofday -Wl,--wrap,w_inc_global_rollback -Wl,--wrap,w_inc_global_rollback_time \
+                             -Wl,--wrap,OS_SetSendTimeout -Wl,--wrap,time -Wl,--wrap,sqlite3_column_int -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,rwlock_lock_write \
+                             -Wl,--wrap,rwlock_lock_read -Wl,--wrap,rwlock_unlock ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_upgrade")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_count_tables_with_name \
@@ -158,7 +163,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_bind_t
 
 list(APPEND wdb_tests_names "test_wdb_syscollector")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_begin2 -Wl,--wrap,_mdebug1 -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_bind_text \
-                             -Wl,--wrap,sqlite3_bind_int -Wl,--wrap,sqlite3_bind_int64 -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_errmsg \
+                             -Wl,--wrap,sqlite3_bind_int -Wl,--wrap,sqlite3_bind_int64 -Wl,--wrap,sqlite3_step -Wl,--wrap,wdb_step -Wl,--wrap,sqlite3_errmsg \
                              -Wl,--wrap,sqlite3_column_text -Wl,--wrap,sqlite3_column_int -Wl,--wrap,sqlite3_bind_double \
                              -Wl,--wrap,sqlite3_bind_null -Wl,--wrap,cJSON_GetStringValue -Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,cJSON_Parse \
                              -Wl,--wrap,cJSON_Delete -Wl,--wrap,cJSON_IsNumber -Wl,--wrap,cJSON_IsString -Wl,--wrap,wdb_agents_get_sys_osinfo \
@@ -186,6 +191,11 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_create_state_json -Wl,--wrap,wdb_get
 
 # Add extra compiling flags
 add_compile_options(-Wall)
+link_directories(${SRC_FOLDER}/build/shared_modules/router)
+
+# Wazuh-DB objects
+FILE(GLOB wazuh_db_objects ${SRC_FOLDER}/wazuh_db/*.o)
+list(REMOVE_ITEM wazuh_db_objects ${SRC_FOLDER}/wazuh_db/main.o ${SRC_FOLDER}/wazuh_db/wdb_shared.o)
 
 # Compilig tests
 list(LENGTH wdb_tests_names count)
@@ -194,13 +204,14 @@ foreach(counter RANGE ${count})
     list(GET wdb_tests_names ${counter} test_name)
     list(GET wdb_tests_flags ${counter} test_flags)
 
-    add_executable(${test_name} ${test_name}.c)
+    add_executable(${test_name} ${test_name}.c ${wazuh_db_objects})
 
     target_link_libraries(
         ${test_name}
         ${WAZUHLIB}
         ${WAZUHEXT}
         ${TEST_DEPS}
+        router
     )
 
     if(NOT test_flags STREQUAL " ")

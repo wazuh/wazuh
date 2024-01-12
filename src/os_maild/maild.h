@@ -58,7 +58,7 @@ typedef struct _MailMsg {
 } MailMsg;
 
 #include "shared.h"
-#include "config/mail-config.h"
+#include "../config/mail-config.h"
 
 /* Config function */
 int MailConf(int test_config, const char *cfgfile, MailConfig *Mail) __attribute__((nonnull));
@@ -81,11 +81,11 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *mail, MailMsg **msg_sm
  * @brief Read cJSON and save in printed with email format
  * @param item Pointer to the cJSON to read
  * @param printed Body email
- * @param body_size Maximun body message size
+ * @param body_size Remaining body message size
  * @param tab Determine the number of tabs on each line
  * @param counter Count the number of times that is tabulated in a line
  */
-void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int counter);
+void PrintTable(cJSON *item, char *printed, size_t *body_size, char *tab, int counter);
 
 /* Send an email */
 int OS_Sendmail(MailConfig *mail, struct tm *p) __attribute__((nonnull));

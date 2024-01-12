@@ -174,7 +174,7 @@ int rootcheck_init(int test_config)
 
     /* Read configuration  --function specified twice (check makefile) */
     if (Read_Rootcheck_Config(cfg) < 0) {
-        merror(RCONFIG_ERROR, ARGV0, cfg);
+        mwarn(RCONFIG_ERROR, ARGV0, cfg);
         return (1);
     }
 

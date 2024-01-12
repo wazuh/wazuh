@@ -1,0 +1,29 @@
+- name: VALID_HOST_VALID_PORT
+  description: Check if the connection can be established correctly by setting a valid host/port combination.
+  configuration_parameters:
+    HOST: 0.0.0.0
+    PORT: 55000
+  metadata: null
+
+- name: INVALID_PORT_VALID_HOST
+  description: Check if the connection can be established correctly by setting an invalid port and a valid host.
+  configuration_parameters:
+    HOST: 0.0.0.0
+    PORT: 55111
+  metadata: null
+
+- name: INVALID_HOST_INVALID_PORT
+  description: Check if the connection cannot be established correctly by setting an invalid host/port combination.
+  configuration_parameters:
+    HOST: 123.45.6.78
+    PORT: 55111
+  metadata:
+    expected_exception: connection
+
+- name: INVALID_HOST_VALID_PORT
+  description: Check if the connection cannot be established correctly by setting an invalid host and a valid port.
+  configuration_parameters:
+    HOST: 123.45.6.78
+    PORT: 55000
+  metadata:
+    expected_exception: connection

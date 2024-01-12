@@ -8,6 +8,7 @@ import re
 import sys
 from copy import deepcopy
 from numbers import Number
+from typing import Union, Iterable
 
 import wazuh.core.exception as wexception
 from wazuh.core import utils
@@ -18,15 +19,22 @@ current_module = sys.modules[__name__]
 
 class AbstractWazuhResult(collections.abc.MutableMapping):
     """
-    Models a result returned by any framework function. This should be the class of object that every
+    Model a result returned by any framework function. This should be the class of object that every
     framework function returns.
     """
 
-    def __init__(self, dct):
-        """
-        Initializes an instance
+    def __init__(self, dct: Union[dict, object]):
+        """Initialize an instance.
 
-        :param dct: map to take key-values from
+        Parameters
+        ----------
+        dct : dict or object
+            Map to take key-values from.
+
+        Raises
+        ------
+        wexception.WazuhInternalError(1000)
+            If dct is of a wrong type.
         """
         if isinstance(dct, dict):
             self.dikt = dct
@@ -69,11 +77,22 @@ class AbstractWazuhResult(collections.abc.MutableMapping):
         return not self == other
 
     def __or__(self, other):
-        """
-        | operator used to merge two AbstractWazuhResult objects. When merged with a WazuhException,
-         the result is always a WazuhException
-        :param other: AbstractWazuhResult or WazuhException
-        :return: a new AbstractWazuhResult or WazuhException
+        """ | operator used to merge two AbstractWazuhResult objects. When merged with a WazuhException, the result is
+        always a WazuhException
+
+        Parameters
+        ----------
+        other : AbstractWazuhResult or wexception.WazuhException
+
+        Raises
+        ------
+        WazuhInternalError(1000)
+            Wazuh internal error when two object could not be merged.
+
+        Returns
+        -------
+        AbstractWazuhResult or wexception.WazuhException
+            Resultant object.
         """
         if isinstance(other, wexception.WazuhException):
             return other
@@ -97,86 +116,124 @@ class AbstractWazuhResult(collections.abc.MutableMapping):
 
         return result
 
-    def _merge_dict(self, self_field, other_field, key=None):
-        """Merges two dict objects when merging two results recursively converting
-        each of them to the specific AbstractWazuhResult subclass
-        This method may be redefined in subclasses.
+    def _merge_dict(self, self_field: dict, other_field: dict, key: str = None) -> dict:
+        """Merge two dict objects when merging two results recursively converting each of them to the specific
+        AbstractWazuhResult subclass. This method may be redefined in subclasses.
 
-        :param self_field: dict in the left item of the merge
-        :param other_field: dict in the right item of the merge
-        :param key: name of the key being merged
-        :return: dict
+        Parameters
+        ----------
+        self_field : dict
+            Dict in the left item of the merge.
+        other_field : dict
+            Dict in the right item of the merge.
+        key : str
+            Name of the key being merged.
+
+        Returns
+        -------
+        dict
+            Resultant dictionary.
         """
         return self.__class__(self_field) | self.__class__(other_field)
 
-    def _merge_list(self, self_field, other_field, key=None):
-        """Merges two list objects when merging two results by
-        concatenating them.
-        This method may be redefined in subclasses.
+    def _merge_list(self, self_field: list, other_field: list, key: str = None) -> list:
+        """Merge two list objects when merging two results by concatenating them. This method may be redefined in
+        subclasses.
 
-        :param self_field: list in the left item of the merge
-        :param other_field: list in the right item of the merge
-        :param key: name of the key being merged
-        :return: list
+        Parameters
+        ----------
+        self_field : list
+            List in the left item of the merge.
+        other_field : list
+            List in the right item of the merge.
+        key : str
+            Name of the key being merged.
+
+        Returns
+        -------
+        list
+            Resultant list.
         """
         return [*self_field, *[elem for elem in other_field if elem not in self_field]]
 
-    def _merge_number(self, self_field, other_field, key=None):
-        """Merges two numeric objects when merging two results by
-        adding them.
-        This method may be redefined in subclasses.
+    def _merge_number(self, self_field: int, other_field: int, key: str = None) -> int:
+        """Merge two numeric objects when merging two results by adding them. This method may be redefined in
+        subclasses.
 
-        :param self_field: number in the left item of the merge
-        :param other_field: number in the right item of the merge
-        :param key: name of the key being merged
-        :return: number
+        Parameters
+        ----------
+        self_field : int
+            Number in the left item of the merge.
+        other_field : int
+            Number in the right item of the merge.
+        key : str
+            Name of the key being merged.
+
+        Returns
+        -------
+        int
+            Resultant number.
         """
         return self_field + other_field
 
-    def _merge_str(self, self_field, other_field, key=None):
-        """Merges two string objects when merging two results by
-        concatenating them using a character '|' as separator.
+    def _merge_str(self, self_field: str, other_field: str, key: str = None) -> str:
+        """Merge two string objects when merging two results by concatenating them using a character '|' as separator.
         This method may be redefined in subclasses.
 
-        :param self_field: string in the left item of the merge
-        :param other_field: string in the right item of the merge
-        :param key: name of the key being merged
-        :return: string
+        Parameters
+        ----------
+        self_field : str
+            String in the left item of the merge.
+        other_field : str
+            String in the right item of the merge.
+        key : str
+            Name of the key being merged.
+
+        Returns
+        -------
+        str
+            Resultant string.
         """
         return "|".join([self_field, other_field]) if self_field != other_field else other_field
 
     def to_dict(self):
-        """
-        Translates the result into a dict
-
-        :return: dict
-        """
+        """Translate the result into a dict."""
         raise NotImplemented
 
-    def limit(self, limit=DATABASE_LIMIT, offset=0):
-        """
-        Should take the first `limit` results starting from `offset`
+    def limit(self, limit: int = DATABASE_LIMIT, offset: int = 0):
+        """Should take the first `limit` results starting from `offset`. To be redefined in WazuhResult subclasses.
 
-        To be redefined in WazuhResult subclasses.
+        Parameters
+        ----------
+        limit : int
+            Default: the value specified in wazuh.core.common.DATABASE_LIMIT
+        offset : int
+            Default: 0.
 
-        :param limit: integer. Default the value specified in wazuh.common.DATABASE_LIMIT
-        :param offset: integer. Default 0.
-        :return: filtered AbstractWazuhResult
+        Returns
+        -------
+        AbstractWazuhResult
+            Filtered AbstractWazuhResult
         """
         result = deepcopy(self)
         if 'data' in result and 'items' in result['data'] and isinstance(result['data']['items'], list):
             result['data']['items'] = result['data']['items'][offset:offset + limit]
         return result
 
-    def sort(self, fields=None, order='asc'):
-        """
-        Sorts according to `fields` in order `order`
+    def sort(self, fields: list = None, order: str = 'asc'):
+        """Sort according to `fields` in order `order`. To be redefined in WazuhResult subclasses.
 
-        To be redefined in WazuhResult subclasses.
+        Parameters
+        ----------
+        fields : list
+            Criteria for sorting the results.
+        order : str
+            Must be 'asc' or 'desc'.
 
-        :param fields: criteria for sorting the results
-        :param order: string. Must be 'asc' or 'desc'
-        :return: sorted AbstractWazuhResult
+        Returns
+        -------
+        AbstractWazuhResult
+            Sorted AbstractWazuhResult
         """
         fields = [] if fields is None else fields
         result = deepcopy(self)
@@ -184,26 +241,28 @@ class AbstractWazuhResult(collections.abc.MutableMapping):
             result['data']['items'] = utils.sort_array(result['data']['items'], fields, order)
         return result
 
-    def encode_json(self):
-        """Translates the result to a serializable dictionary
+    def encode_json(self) -> dict:
+        """Translate the result to a serializable dictionary.
 
-        :return dict
+        Returns
+        -------
+        dict
+            Serializable dict.
         """
         return self.to_dict()
 
     @classmethod
     def decode_json(cls, obj):
-        """Converts an encoded dictionary to the original object
-
-        :param obj: dict to be decoded
-        :return: a result preserving the original class
-        """
+        """Convert an encoded dictionary to the original object."""
         raise NotImplemented
 
-    def render(self):
-        """Translates the result to a readable format
+    def render(self) -> dict:
+        """Translate the result to a readable format.
 
-        :return: dict
+        Returns
+        -------
+        dict
+            Readable dict.
         """
         return self.to_dict()
 
@@ -218,14 +277,17 @@ class WazuhResult(AbstractWazuhResult):
      }
     """
 
-    def __init__(self, dct, str_priority=None):
-        """
-        Initializes an instance
+    def __init__(self, dct: Union[dict, object], str_priority: list = None):
+        """Initialize an instance.
 
-        :param dct: map to take key-values from
-        :param str_priority: list of strings. If not None, conflicts when merging str values in the result
-         are solved taking the first value found in str_priority. I.e.: {'foo': 'KO'} and {'foo': 'OK'} results in
-         {'foo': 'KO'} if str_priority is set to ['KO', 'OK'] because 'KO' takes a higher priority level than 'OK'
+        Parameters
+        ----------
+        dct : dict or object
+            Map to take key-values from.
+        str_priority : list
+            List of strings. If not None, conflicts when merging str values in the result are solved taking the first
+            value found in str_priority. I.e.: {'foo': 'KO'} and {'foo': 'OK'} results in {'foo': 'KO'} if str_priority
+            is set to ['KO', 'OK'] because 'KO' takes a higher priority level than 'OK'
         """
         self._str_priority = str_priority
         super().__init__(dct)
@@ -237,11 +299,13 @@ class WazuhResult(AbstractWazuhResult):
         else:
             return super()._merge_str(self_field, other_field)
 
-    def to_dict(self):
-        """
-        Translates the result into a dict
+    def to_dict(self) -> dict:
+        """Translate the result into a dict.
 
-        :return: dict
+        Returns
+        -------
+        dict
+            Result as a dictionary.
         """
         return {
             'str_priority': self._str_priority,
@@ -250,11 +314,17 @@ class WazuhResult(AbstractWazuhResult):
 
     @classmethod
     def decode_json(cls, obj):
-        """
-        Builds an instance from a dict
+        """Build an instance from a dict.
 
-        :param obj: dict
-        :return: instance of cls
+        Parameters
+        ----------
+        obj : dict
+            Dictionary for which we want to build an instance.
+
+        Returns
+        -------
+        cls
+            Instance of cls.
         """
         result = cls(obj['result'], str_priority=obj['str_priority'])
         return result
@@ -265,7 +335,7 @@ class WazuhResult(AbstractWazuhResult):
 
 
 class AffectedItemsWazuhResult(AbstractWazuhResult):
-    """Models a result in the form:
+    """Model a result in the form:
     {"affected_items": [item1, item2],
      "failed_items": [error1, error2, error3],
      "total_affected_items": 2,
@@ -274,23 +344,33 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
      }
     """
 
-    def __init__(self, dikt=None, affected_items=None,
-                 total_affected_items=None,
-                 sort_fields=None, sort_casting=None, sort_ascending=None,
-                 all_msg="", some_msg="", none_msg=""):
-        """Initialize method
-        :param dikt: dict with result data except affected and failed items
-        :param affected_items: list of affected items
-        :param total_affected_items: int total number of affected items.
-        It may not be the same as length of affected_items
-        :param sort_fields: list of strings with the field names to order by. The '.' is the nesting operator for fields
-        inside other. Example: 'a.b' -> {'a': {'b': 3}}
-        :param sort_casting list of strings. Each item must contain 'str' or 'int'.
-        Sets the conversion type to be considered when ordering.
-        :param sort_ascending list of booleans. True for ascending, False for descending.
-        :param all_msg: str message when all items were successful
-        :param some_msg: str message when some items were not successful
-        :param none_msg: str message when no items where successful
+    def __init__(self, dikt: dict = None, affected_items: list = None, total_affected_items: int = None,
+                 sort_fields: list = None, sort_casting: list = None, sort_ascending: list = None, all_msg: str = "",
+                 some_msg: str = "", none_msg: str = ""):
+        """Initialize method.
+
+        Parameters
+        ----------
+        dikt : dict
+            Dictionary with result data except affected and failed items.
+        affected_items : list
+            List of affected items.
+        total_affected_items : int
+            Total number of affected items. It may not be the same as length of affected_items.
+        sort_fields : list
+            List of strings with the field names to order by. The '.' is the nesting operator for fields inside other.
+            Example: 'a.b' -> {'a': {'b': 3}}
+        sort_casting : list
+            List of strings. Each item must contain 'str' or 'int'. Sets the conversion type to be considered when
+            ordering.
+        sort_ascending : list
+            List of booleans. True for ascending, False for descending.
+        all_msg : str
+            Message when all items were successful.
+        some_msg : str
+            Message when some items were not successful.
+        none_msg : str
+            Message when no items where successful.
         """
         dct = {} if dikt is None else dikt
         super().__init__(dct)
@@ -309,20 +389,20 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
         self._none_msg = none_msg
 
     def _recalculate_failed_items(self):
-        """Updates the failed items count in total_failed_items
-
-        :return: None
-        """
+        """Update the failed items count in total_failed_items."""
         self._total_failed_items = 0
         for ids in self._failed_items.values():
             self._total_failed_items += len(ids)
 
-    def add_failed_item(self, id_=None, error: wexception.WazuhException = None):
-        """Adds a new failed item. If the error is the same the id is added properly.
+    def add_failed_item(self, id_: str = None, error: wexception.WazuhException = None):
+        """Add a new failed item. If the error is the same the id is added properly.
 
-        :param id_: string identifier of the failed item
-        :param error: WazuhException instance containing the error description
-        :return: None
+        Parameters
+        ----------
+        id_ : str
+            Identifier of the failed item.
+        error : wexception.WazuhException
+            Instance containing the error description.
         """
         # Check if error is already added
         try:
@@ -332,10 +412,17 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
         self._recalculate_failed_items()
 
     def add_failed_items_from(self, other):
-        """Adds all failed items from other into the caller object
+        """Add all failed items from other into the caller object.
 
-        :param other: AffectedItemsWazuhResult instance
-        :return:
+        Parameters
+        ----------
+        other : AffectedItemsWazuhResult
+            Instance to copy the failed items from.
+
+        Raises
+        ------
+        wexception.WazuhInternalError(1000)
+            If dct is of a wrong type.
         """
         if not isinstance(other, AffectedItemsWazuhResult):
             raise wexception.WazuhInternalError(1000,
@@ -345,17 +432,31 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
             for id_ in ids:
                 self.add_failed_item(id_=id_, error=error)
 
-    def remove_failed_items(self, code=None):
-        """Removes all reference matching the code
+    def remove_failed_items(self, code: int = None):
+        """Remove all references matching the code.
 
-        :param code: int WazuhException code
-        :return: None
+        Parameters
+        ----------
+        code : int
+            WazuhException code
         """
         code = code if code is not None else set()
         self._failed_items = {e: ids for e, ids in self._failed_items.items() if e.code not in code}
         self._recalculate_failed_items()
 
     def __or__(self, other):
+        """Merge a AffectedItemsWazuhResult with self.
+
+        Parameters
+        ----------
+        other : AffectedItemsWazuhResult
+            AffectedItemsWazuhResult object to merge.
+
+        Raises
+        ------
+        wexception.WazuhInternalError(1000)
+            If dct is of a wrong type.
+        """
         result = super().__or__(other)
         if isinstance(other, wexception.WazuhError):
             if len(other.ids) > 0:
@@ -379,7 +480,14 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
 
         return result
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
+        """Return the AffectedItemsWazuhResult as a dict.
+
+        Returns
+        -------
+        dict
+            Result as a dictionary.
+        """
         return {
             'affected_items': self.affected_items,
             'failed_items': self.failed_items,
@@ -483,7 +591,19 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
             return super()._merge_str(self_field, other_field, key=key)
 
     @classmethod
-    def decode_json(cls, obj):
+    def decode_json(cls, obj: dict):
+        """Build an instance from a dict.
+
+        Parameters
+        ----------
+        obj : dict
+            Dictionary for which we want to build an instance.
+
+        Returns
+        -------
+        AbstractWazuhResult
+            Instance of AbstractWazuhResult.
+        """
         result = cls()
         result.affected_items = obj['affected_items']
         result.sort_fields = obj['sort_fields']
@@ -502,7 +622,14 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
                                        error=error)
         return result
 
-    def encode_json(self):
+    def encode_json(self) -> dict:
+        """Translate the result to a serializable dictionary.
+
+        Returns
+        -------
+        dict
+            Serializable dict.
+        """
         result = dict()
         result['affected_items'] = self.affected_items
         result['sort_fields'] = self.sort_fields
@@ -524,14 +651,41 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
 
         return result
 
-    def render(self):
-        def sort_ids(ids):
+    def render(self) -> dict:
+        """Render AffectedItemsWazuhResult object.
+
+        Returns
+        -------
+        dict
+            Return AffectedItemsWazuhResult as a dictionary with fields data, message and error.
+        """
+
+        def sort_ids(ids: list) -> list:
+            """Sort list of IDS.
+
+            Parameters
+            ----------
+            ids : list
+                List of IDs to sort.
+
+            Returns
+            -------
+            list
+                Sorted list.
+            """
             try:
                 return sorted(list(ids), key=int)
             except ValueError:
                 return sorted(list(ids))
 
-        def set_error_code():
+        def set_error_code() -> int:
+            """Set error code (0, 1 or 2) depending on the affected and failed items.
+
+            Returns
+            -------
+            int
+                Error code.
+            """
             COMPLETE = 0
             FAILED = 1
             PARTIAL = 2
@@ -550,7 +704,7 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
             'total_affected_items': self.total_affected_items,
             'total_failed_items': self.total_failed_items,
             'failed_items': [{'error': {'code': exc.code, 'message': exc.message} | (
-                                       {'remediation': exc.remediation} if exc.remediation is not None else {}),
+                {'remediation': exc.remediation} if exc.remediation is not None else {}),
                               'id': sort_ids(ids)
                               }
                              for exc, ids in ordered_failed_items],
@@ -564,8 +718,8 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
 
 
 def nested_itemgetter(*expressions):
-    """Builds a function to get items according to expressions. That getter function receives a dictionary
-    as the only positional argument and returns the referenced item.
+    """Build a function to get items according to expressions. That getter function receives a dictionary as the only
+    positional argument and returns the referenced item.
 
     Example:
     d = {'a': {'b': 3}, 'c.1': 5}
@@ -573,10 +727,17 @@ def nested_itemgetter(*expressions):
     print(items)
     (3, 5)
 
-    :param expressions: one or more strings referencing a value in a dictionary. For nested dictionaries use the '.' as
-    the key separator. If the key contains the '.' character escape it using the '\'. If more than one expressions is
-    provided a tuple is returned.
-    :return: object or tuple of objects
+    Parameters
+    ----------
+    expressions
+        One or more strings referencing a value in a dictionary. For nested dictionaries use the '.' as the key
+        separator. If the key contains the '.' character escape it using the '\'. If more than one expressions is
+        provided a tuple is returned.
+
+    Returns
+    -------
+    object or tuple
+        Object or tuple of objects.
     """
     getters = []
     for expr in expressions:
@@ -602,18 +763,29 @@ def nested_itemgetter(*expressions):
     return _nested_itemgetter
 
 
-def _goes_before_than(a, b, ascending=None, casters=None):
-    """Returns true if a should be placed before b according to ascending and casters. It is similar to a
-    a lexicographical order but taking into account ascending or descending order in each tuple position.
+def _goes_before_than(a: Union[tuple, list], b: Union[tuple, list], ascending: Union[tuple, list] = None,
+                      casters: Iterable = None) -> bool:
+    """Return true if a should be placed before b according to ascending and casters. It is similar to a lexicographical
+    order but taking into account ascending or descending order in each tuple position.
 
-    :param a: tuple or list
-    :param b: tuple or list
-    :param ascending: tuple or list of booleans with a length equal to the minimum length between a and b. True if
-    ascending, False otherwise.
-    :param casters: iterable of callables with a length equal to the minimum length between a and b. The callable
-    must fit any class in builtins module (int, str, float, ...). The class will be applied to each value of the
-    respective position in a and b before comparing.
-    :return: True if a should be placed before b, False otherwise
+    Parameters
+    ----------
+    a : tuple or list
+        First object to compare.
+    b : tuple or list
+        Second object to compare.
+    ascending : tuple or list
+        Tuple or list of booleans with a length equal to the minimum length between a and b. True if ascending, False
+        otherwise.
+    casters : Iterable
+        Iterable of callables with a length equal to the minimum length between a and b. The callable must fit any class
+        in builtins module (int, str, float, ...). The class will be applied to each value of the respective position in
+        a and b before comparing.
+
+    Returns
+    -------
+    bool
+        True if a should be placed before b, False otherwise.
     """
     if ascending is None:
         ascending = [True] * len(a)
@@ -634,16 +806,26 @@ def _goes_before_than(a, b, ascending=None, casters=None):
     return False
 
 
-def merge(*iterables, criteria=None, ascending=None, types=None):
-    """ Merges iterables in a single one assuming they are already ordered according to criteria, ascending and types
+def merge(*iterables, criteria: Union[tuple, list] = None, ascending: Union[tuple, list] = None,
+          types: Union[tuple, list] = None) -> Iterable:
+    """Merge iterables in a single one assuming they are already ordered according to criteria, ascending and types
 
-    :param iterables: list of lists to be merged
-    :param criteria: list or tuple of expressions accepted by the nested_itemgetter function.
-    :param ascending: list or tuple of booleans. Should have the same length as criteria.
-    True for ascending False otherwise.
-    :param types: list or tuple of strings. Should have the same length as criteria.
-    Must fit a class in builtins (int, float, str, ...)
-    :return: a new sorted iterable
+    Parameters
+    ----------
+    iterables
+        List of lists to be merged.
+    criteria : tuple or list
+        List or tuple of expressions accepted by the nested_itemgetter function.
+    ascending : tuple or list
+        List or tuple of booleans. Should have the same length as criteria. True for ascending False otherwise.
+    types : tuple or list
+        List or tuple of strings. Should have the same length as criteria. Must fit a class in builtins
+        (int, float, str, ...).
+
+    Returns
+    -------
+    Iterable
+        A new sorted iterable.
     """
     result = list()
     final_len = sum([len(iterable) for iterable in iterables])

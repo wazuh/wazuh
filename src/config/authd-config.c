@@ -18,8 +18,23 @@
 
 #ifndef WIN32
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 static short eval_bool(const char *str);
 int w_read_force_config(XML_NODE node, authd_config_t *config);
+
+/**
+ * @brief gets the auth agents configuration
+ *
+ * @param node XML node
+ * @param config auth configuration structure
+ */
+STATIC void w_authd_parse_agents(XML_NODE node, authd_config_t * config);
 
 int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     /* XML Definitions */
@@ -40,6 +55,7 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     static const char *xml_ssl_manager_key = "ssl_manager_key";
     static const char *xml_ssl_auto_negotiate = "ssl_auto_negotiate";
     static const char *xml_remote_enrollment = "remote_enrollment";
+    static const char *xml_agents = "agents";
 #ifndef CLIENT
     static const char *xml_key_request = "key_request";
 #endif
@@ -73,7 +89,11 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     config->force_options.disconnected_time_enabled = true;
     config->force_options.disconnected_time = 3600;
     config->force_options.after_registration_time = 3600;
+
     short legacy_force_insert = -1;
+    int legacy_force_time = -1;
+    bool new_force_read = false;
+
     if (!node)
         return 0;
 
@@ -119,7 +139,7 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
 
             config->flags.use_source_ip = b;
         } else if (!strcmp(node[i]->element, xml_force_insert)) {
-            mdebug1("The <%s> tag is deprecated since version 4.3.0.", xml_force_insert);
+            mwarn("The <%s> tag is deprecated. Use <%s> instead.", xml_force_insert, xml_force);
             short b = eval_bool(node[i]->content);
             if (b < 0) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
@@ -127,8 +147,17 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             }
             legacy_force_insert = b;
         } else if (!strcmp(node[i]->element, xml_force_time)) {
-             mdebug1("The <%s> tag is deprecated since version 4.3.0.", xml_force_time);
+            mwarn("The <%s> tag is deprecated. Use <%s> instead.", xml_force_time, xml_force);
+            char *end;
+            int b = strtol(node[i]->content, &end, 10);
+            if (b < 0) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return OS_INVALID;
+            }
+            legacy_force_time = b;
         } else if (!strcmp(node[i]->element, xml_force)) {
+            new_force_read = true;
+
             xml_node **chld_node = NULL;
 
             if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
@@ -212,18 +241,44 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             }
 
             config->flags.auto_negotiate = b;
+        } else if (strcasecmp(node[i]->element, xml_agents) == 0) {
+            xml_node **children = OS_GetElementsbyNode(xml, node[i]);
+            if (children == NULL) {
+                continue;
+            }
+
+            w_authd_parse_agents(children, config);
+
+            OS_ClearNode(children);
+
         } else {
             merror(XML_INVELEM, node[i]->element);
             return OS_INVALID;
         }
     }
 
-    if (legacy_force_insert != -1) {
-        mdebug1("Setting <force><enabled> tag to %s to comply with the legacy <%s> option found.",
-                legacy_force_insert ? "'yes'" : "'no'", xml_force_insert);
+    if (!new_force_read) {
+        if (legacy_force_insert != -1) {
+            config->force_options.enabled = legacy_force_insert;
 
-        config->force_options.enabled = legacy_force_insert;
+            mdebug1("Setting <force><enabled> tag to %s to comply with the legacy <%s> option found.",
+                    legacy_force_insert ? "'yes'" : "'no'", xml_force_insert);
+        }
+        if (legacy_force_time != -1) {
+            if (legacy_force_time == 0) {
+                config->force_options.disconnected_time_enabled = false;
+            }
+            config->force_options.disconnected_time = legacy_force_time;
+
+            mdebug1("Setting <force><disconnected_time> tag to '%d' to comply with the legacy <%s> option found.",
+                legacy_force_time, xml_force_time);
+        }
+        mdebug1("The tag <force><after_registration_time> is not defined. Applied default value: '%ld'",
+                config->force_options.after_registration_time);
+        mdebug1("The tag <force><key_mismatch> is not defined. Applied default value: '%s'",
+                config->force_options.key_mismatch ? "true" : "false");
     }
+
     return 0;
 }
 
@@ -342,4 +397,27 @@ int w_read_force_config(XML_NODE node, authd_config_t *config) {
     }
     return OS_SUCCESS;
 }
+
+STATIC void w_authd_parse_agents(XML_NODE node, authd_config_t * config) {
+    const char * ALLOW_HIGHER_VERSIONS = "allow_higher_versions";
+
+    int i = 0;
+    while (node[i]) {
+        if (strcasecmp(node[i]->element, ALLOW_HIGHER_VERSIONS) == 0) {
+            if (strcmp(node[i]->content, "no") == 0) {
+                config->allow_higher_versions = false;
+            }
+            else if (strcmp(node[i]->content, "yes") == 0) {
+                config->allow_higher_versions = true;
+            } else {
+                mwarn(REMOTED_INV_VALUE_IGNORE, node[i]->content, ALLOW_HIGHER_VERSIONS);
+            }
+        }
+        else {
+            mwarn(XML_INVELEM, node[i]->element);
+        }
+        i++;
+    }
+}
+
 #endif

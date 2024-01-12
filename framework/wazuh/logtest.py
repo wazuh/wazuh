@@ -8,7 +8,7 @@ from wazuh.rbac.decorators import expose_resources
 
 
 @expose_resources(actions=['logtest:run'], resources=['*:*:*'])
-def run_logtest(token=None, event=None, log_format=None, location=None):
+def run_logtest(token: str = None, event: str = None, log_format: str = None, location: str = None) -> dict:
     """Get the logtest output after sending a JSON to its socket.
 
     Parameters

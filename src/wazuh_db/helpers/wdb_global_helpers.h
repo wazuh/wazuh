@@ -21,6 +21,7 @@ typedef enum global_db_access {
     WDB_UPDATE_AGENT_DATA,
     WDB_UPDATE_AGENT_KEEPALIVE,
     WDB_UPDATE_AGENT_CONNECTION_STATUS,
+    WDB_UPDATE_AGENT_STATUS_CODE,
     WDB_GET_ALL_AGENTS,
     WDB_FIND_AGENT,
     WDB_GET_AGENT_INFO,
@@ -107,9 +108,22 @@ int wdb_update_agent_keepalive(int id, const char *connection_status, const char
  * @param[in] connection_status String with the connection status to be set.
  * @param[in] sync_status String with the cluster synchronization status to be set.
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+ * @param[in] status_code Enum with the status code to be set.
  * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_update_agent_connection_status(int id, const char *connection_status, const char *sync_status, int *sock);
+int wdb_update_agent_connection_status(int id, const char *connection_status, const char *sync_status, int *sock, agent_status_code_t status_code);
+
+/**
+ * @brief Update agent's last keepalive and modifies the cluster synchronization status.
+ *
+ * @param[in] id Id of the agent for whom the keepalive must be updated.
+ * @param[in] status_code Enum with the status code to be set.
+ * @param[in] version Agent version to be set.
+ * @param[in] sync_status String with the cluster synchronization status to be set.
+ * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+ * @return OS_SUCCESS on success or OS_INVALID on failure.
+ */
+int wdb_update_agent_status_code(int id, agent_status_code_t status_code, const char *version, const char *sync_status, int *sock);
 
 /**
  * @brief Returns an array containing the ID of every agent (except 0), ended with -1.

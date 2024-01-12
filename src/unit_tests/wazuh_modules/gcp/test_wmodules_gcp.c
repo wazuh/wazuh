@@ -746,7 +746,7 @@ static void test_wm_gcp_pubsub_read_credentials_file_tag_realpath_error(void **s
 
     will_return(__wrap_realpath, (char *) NULL);   //  realpath failed
 
-    expect_string(__wrap__mwarn, formatted_msg, "File '' from tag 'credentials_file' not found.");
+    expect_string(__wrap__merror, formatted_msg, "File '' from tag 'credentials_file' not found.");
 
     ret = wm_gcp_pubsub_read(data->nodes, data->module);
 
@@ -763,7 +763,7 @@ static void test_wm_gcp_pubsub_read_credentials_file_tag_file_not_found(void **s
     expect_string(__wrap_IsFile, file, "credentials.json");
     will_return(__wrap_IsFile, 1);
 
-    expect_string(__wrap__mwarn, formatted_msg, "File 'credentials.json' not found. Check your configuration.");
+    expect_string(__wrap__merror, formatted_msg, "File 'credentials.json' not found. Check your configuration.");
 
     ret = wm_gcp_pubsub_read(data->nodes, data->module);
 
@@ -915,7 +915,7 @@ static void test_wm_gcp_pubsub_read_invalid_nodes(void **state) {
     group_data_t *data = *state;
     int ret;
 
-    expect_string(__wrap__mwarn, formatted_msg, "Empty configuration at module 'gcp-pubsub'.");
+    expect_string(__wrap__merror, formatted_msg, "Empty configuration at module 'gcp-pubsub'.");
 
     ret = wm_gcp_pubsub_read(NULL, data->module);
 
@@ -1009,7 +1009,7 @@ static void test_wm_gcp_bucket_read_no_bucket(void **state) {
     expect_string(__wrap_sched_scan_read, MODULE_NAME, GCP_BUCKET_WM_NAME);
     will_return(__wrap_sched_scan_read, 0);
 
-    expect_string(__wrap__mwarn, formatted_msg, "No buckets or services definitions found at module 'gcp-bucket'.");
+    expect_string(__wrap__merror, formatted_msg, "No buckets or services definitions found at module 'gcp-bucket'.");
 
     ret = wm_gcp_bucket_read(data->xml, data->nodes, data->module);
 
@@ -1271,7 +1271,7 @@ static void test_wm_gcp_bucket_read_credentials_file_tag_realpath_error(void **s
 
     will_return(__wrap_realpath, (char *) NULL);   //  realpath failed
 
-    expect_string(__wrap__mwarn, formatted_msg, "File '' from tag 'credentials_file' not found.");
+    expect_string(__wrap__merror, formatted_msg, "File '' from tag 'credentials_file' not found.");
 
     ret = wm_gcp_bucket_read(data->xml, data->nodes, data->module);
 
@@ -1291,7 +1291,7 @@ static void test_wm_gcp_bucket_read_credentials_file_tag_file_not_found(void **s
     expect_string(__wrap_IsFile, file, "credentials.json");
     will_return(__wrap_IsFile, 1);
 
-    expect_string(__wrap__mwarn, formatted_msg, "File 'credentials.json' not found. Check your configuration.");
+    expect_string(__wrap__merror, formatted_msg, "File 'credentials.json' not found. Check your configuration.");
 
     ret = wm_gcp_bucket_read(data->xml, data->nodes, data->module);
 
@@ -1369,7 +1369,7 @@ static void test_wm_gcp_bucket_read_invalid_nodes(void **state) {
     group_data_t *data = *state;
     int ret;
 
-    expect_string(__wrap__mwarn, formatted_msg, "Empty configuration at module 'gcp-bucket'.");
+    expect_string(__wrap__merror, formatted_msg, "Empty configuration at module 'gcp-bucket'.");
 
     ret = wm_gcp_bucket_read(data->xml, NULL, data->module);
 

@@ -9,11 +9,21 @@
  */
 
 #include "shared.h"
-#include "os_net/os_net.h"
+#include "../os_net/os_net.h"
 #include "remoted.h"
 #include "state.h"
-#include "wazuh_db/helpers/wdb_global_helpers.h"
+#include "../wazuh_db/helpers/wdb_global_helpers.h"
+#include "router.h"
+#include "sym_load.h"
+#include "utils/flatbuffers/include/syscollector_synchronization_schema.h"
+#include "utils/flatbuffers/include/syscollector_deltas_schema.h"
+#include "agent_messages_adapter.h"
 
+enum msg_type {
+    MT_INVALID,
+    MT_SYS_DELTAS,
+    MT_SYS_SYNC,
+} msg_type_t;
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
 #define STATIC
@@ -31,14 +41,31 @@ wnotify_t * notify = NULL;
 
 size_t global_counter;
 
+_Atomic (time_t) current_ts;
+
 OSHash *remoted_agents_state;
 
 extern remoted_state_t remoted_state;
-
+ROUTER_PROVIDER_HANDLE router_rsync_handle = NULL;
+ROUTER_PROVIDER_HANDLE router_syscollector_handle = NULL;
 STATIC void handle_outgoing_data_to_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_storage * peer_info);
 STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storage * peer_info);
+
+// Headers for syscollector messages: DBSYNC_MQ + WM_SYS_LOCATION and SYSCOLLECTOR_MQ + WM_SYS_LOCATION
+#define DBSYNC_SYSCOLLECTOR_HEADER "5:syscollector:"
+#define SYSCOLLECTOR_HEADER "d:syscollector:"
+#define DBSYNC_SYSCOLLECTOR_HEADER_SIZE 15
+#define SYSCOLLECTOR_HEADER_SIZE 15
+
+// Router message forwarder
+void router_message_forward(char* msg, const char* agent_id, const char* agent_ip, const char* agent_name);
+
+// Duplicator method for hash table
+void *agent_data_hash_duplicator(void* data) {
+    return cJSON_Duplicate((cJSON*)data, true);
+}
 
 // Message handler thread
 static void * rem_handler_main(__attribute__((unused)) void * args);
@@ -51,6 +78,9 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock);
 
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
+
+/* Get current timestamp */
+STATIC void *current_timestamp(void *none);
 
 STATIC void * close_fp_main(void * args);
 
@@ -71,6 +101,19 @@ static void _push_request(const char *request,const char *type);
 #define KEY_RECONNECT_INTERVAL 300 // 5 minutes
 static int key_request_connect();
 static int key_request_reconnect();
+
+/* Family address reference */
+#define FAMILY_ADDRESS_SIZE 46
+char *str_family_address[FAMILY_ADDRESS_SIZE] = {
+    "AF_UNSPEC", "AF_LOCAL/AF_UNIX/AF_FILE", "AF_INET", "AF_AX25", "AF_IPX",
+    "AF_APPLETALK","AF_NETROM", "AF_BRIDGE", "AF_ATMPVC", "AF_X25", "AF_INET6",
+    "AF_ROSE", "AF_DECnet", "AF_NETBEUI", "AF_SECURITY", "AF_KEY",
+    "AF_NETLINK/AF_ROUTE", "AF_PACKET", "AF_ASH", "AF_ECONET", "AF_ATMSVC",
+    "AF_RDS", "AF_SNA", "AF_IRDA", "AF_PPPOX", "AF_WANPIPE", "AF_LLC", "AF_IB",
+    "AF_MPLS", "AF_CAN", "AF_TIPC", "AF_BLUETOOTH", "AF_IUCV", "AF_RXRPC",
+    "AF_ISDN", "AF_PHONET", "AF_IEEE802154", "AF_CAIF", "AF_ALG", "AF_NFC",
+    "AF_VSOCK", "AF_KCM", "AF_QIPCRTR", "AF_SMC", "AF_XDP", "AF_MCTP"
+};
 
 /* Handle secure connections */
 void HandleSecure()
@@ -101,6 +144,9 @@ void HandleSecure()
 
     /* Initialize the agent key table mutex */
     key_lock_init();
+
+    /* Create current timestamp getter thread */
+    w_create_thread(current_timestamp, NULL);
 
     /* Create shared file updating thread */
     w_create_thread(update_shared_files, NULL);
@@ -140,6 +186,18 @@ void HandleSecure()
     // The master will disconnect and alert the agents on its own DB. Thus, synchronization is not required.
     if (OS_SUCCESS != wdb_reset_agents_connection("synced", NULL))
         mwarn("Unable to reset the agents' connection status. Possible incorrect statuses until the agents get connected to the manager.");
+
+    // Router module logging initialization
+    router_initialize(taggedLogFunction);
+
+    // Router providers initialization
+    if (router_syscollector_handle = router_provider_create("deltas-syscollector", false), !router_syscollector_handle) {
+        mdebug2("Failed to create router handle for 'syscollector'.");
+    }
+
+    if (router_rsync_handle = router_provider_create("rsync-syscollector", false), !router_rsync_handle) {
+        mdebug2("Failed to create router handle for 'rsync'.");
+    }
 
     // Create message handler thread pool
     {
@@ -352,11 +410,7 @@ void * rem_handler_main(__attribute__((unused)) void * args) {
 
     while (1) {
         message = rem_msgpop();
-        if (message->sock == USING_UDP_NO_CLIENT_SOCKET || message->counter > rem_getCounter(message->sock)) {
-            HandleSecureMessage(message, &wdb_sock);
-        } else {
-            rem_inc_recv_dequeued();
-        }
+        HandleSecureMessage(message, &wdb_sock);
         rem_msgfree(message);
     }
 
@@ -426,6 +480,16 @@ STATIC void * close_fp_main(void * args) {
     return NULL;
 }
 
+STATIC const char * get_schema(const int type)
+{
+    if (type == MT_SYS_DELTAS) {
+        return syscollector_deltas_SCHEMA;
+    } else if (type == MT_SYS_SYNC) {
+        return syscollector_synchronization_SCHEMA;
+    }
+    return NULL;
+
+}
 STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
     int agentid;
     const int protocol = (message->sock == USING_UDP_NO_CLIENT_SOCKET) ? REMOTED_NET_PROTOCOL_UDP : REMOTED_NET_PROTOCOL_TCP;
@@ -434,12 +498,15 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
     char srcip[IPSIZE + 1] = {0};
     char agname[KEYSIZE + 1] = {0};
     char *agentid_str = NULL;
+    char *agent_ip = NULL;
+    char *agent_name = NULL;
     char buffer[OS_MAXSTR + 1] = "";
     char *tmp_msg;
     size_t msg_length;
     char ip_found = 0;
     int r;
     int recv_b = message->size;
+    int sock_idle = -1;
 
     /* Set the source IP */
     switch (message->addr.ss_family) {
@@ -450,7 +517,13 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
         get_ipv6_string(((struct sockaddr_in6 *)&message->addr)->sin6_addr, srcip, IPSIZE);
         break;
     default:
-        merror("IP address family not supported.");
+        if (message->addr.ss_family < sizeof(str_family_address)/sizeof(str_family_address[0])) {
+            merror("IP address family '%d':'%s' not supported.", message->addr.ss_family, str_family_address[message->addr.ss_family]);
+        }
+        else {
+            merror("IP address family '%d' not found.", message->addr.ss_family);
+        }
+
         rem_inc_recv_unknown();
         return;
     }
@@ -517,17 +590,25 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
             w_mutex_lock(&keys.keyentries[agentid]->mutex);
 
             if ((keys.keyentries[agentid]->sock >= 0) && (keys.keyentries[agentid]->sock != message->sock)) {
-                mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
+                if ((logr.connection_overtake_time > 0) && (current_ts - keys.keyentries[agentid]->rcvd) > logr.connection_overtake_time) {
+                    sock_idle = keys.keyentries[agentid]->sock;
 
-                w_mutex_unlock(&keys.keyentries[agentid]->mutex);
-                key_unlock();
+                    mdebug2("Idle socket [%d] from agent ID '%s' will be closed.", sock_idle, keys.keyentries[agentid]->id);
 
-                if (message->sock >= 0) {
-                    _close_sock(&keys, message->sock);
+                    keys.keyentries[agentid]->rcvd = current_ts;
+                } else {
+                    mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
+
+                    w_mutex_unlock(&keys.keyentries[agentid]->mutex);
+                    key_unlock();
+
+                    if (message->sock >= 0) {
+                        _close_sock(&keys, message->sock);
+                    }
+
+                    rem_inc_recv_unknown();
+                    return;
                 }
-
-                rem_inc_recv_unknown();
-                return;
             }
 
             w_mutex_unlock(&keys.keyentries[agentid]->mutex);
@@ -572,21 +653,28 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
             w_mutex_lock(&keys.keyentries[agentid]->mutex);
 
             if ((keys.keyentries[agentid]->sock >= 0) && (keys.keyentries[agentid]->sock != message->sock)) {
-                mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
+                if ((logr.connection_overtake_time > 0) && (current_ts - keys.keyentries[agentid]->rcvd) > logr.connection_overtake_time) {
+                    sock_idle = keys.keyentries[agentid]->sock;
 
-                w_mutex_unlock(&keys.keyentries[agentid]->mutex);
-                key_unlock();
+                    mdebug2("Idle socket [%d] from agent ID '%s' will be closed.", sock_idle, keys.keyentries[agentid]->id);
 
-                if (message->sock >= 0) {
-                    _close_sock(&keys, message->sock);
+                    keys.keyentries[agentid]->rcvd = current_ts;
+                } else {
+                    mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
+
+                    w_mutex_unlock(&keys.keyentries[agentid]->mutex);
+                    key_unlock();
+
+                    if (message->sock >= 0) {
+                        _close_sock(&keys, message->sock);
+                    }
+
+                    rem_inc_recv_unknown();
+                    return;
                 }
-
-                rem_inc_recv_unknown();
-                return;
-            } else {
-                ip_found = 1;
             }
 
+            ip_found = 1;
             w_mutex_unlock(&keys.keyentries[agentid]->mutex);
         }
 
@@ -598,6 +686,10 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
         key_unlock();
         if (message->sock >= 0) {
             _close_sock(&keys, message->sock);
+        }
+
+        if (sock_idle >= 0) {
+            _close_sock(&keys, sock_idle);
         }
 
         rem_inc_recv_unknown();
@@ -622,56 +714,74 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
             _close_sock(&keys, message->sock);
         }
 
+        if (sock_idle >= 0) {
+            _close_sock(&keys, sock_idle);
+        }
+
         rem_inc_recv_unknown();
         return;
     }
 
+    /* Recieved valid message timestamp updated. */
+    keys.keyentries[agentid]->rcvd = current_ts;
+
     /* Check if it is a control message */
     if (IsValidHeader(tmp_msg)) {
 
-        /* We need to save the peerinfo if it is a control msg */
+        /* let through new and shutdown messages */
+        if (message->sock == USING_UDP_NO_CLIENT_SOCKET || message->counter > rem_getCounter(message->sock) || (strncmp(tmp_msg, HC_SHUTDOWN, strlen(HC_SHUTDOWN)) == 0)) {
+            /* We need to save the peerinfo if it is a control msg */
 
-        w_mutex_lock(&keys.keyentries[agentid]->mutex);
-        keys.keyentries[agentid]->net_protocol = protocol;
-        keys.keyentries[agentid]->rcvd = time(0);
-        memcpy(&keys.keyentries[agentid]->peer_info, &message->addr, logr.peer_size);
+            w_mutex_lock(&keys.keyentries[agentid]->mutex);
+            keys.keyentries[agentid]->net_protocol = protocol;
+            memcpy(&keys.keyentries[agentid]->peer_info, &message->addr, logr.peer_size);
 
-        keyentry * key = OS_DupKeyEntry(keys.keyentries[agentid]);
+            keyentry * key = OS_DupKeyEntry(keys.keyentries[agentid]);
 
-        if (protocol == REMOTED_NET_PROTOCOL_TCP) {
-            if (message->counter > rem_getCounter(message->sock)) {
-                keys.keyentries[agentid]->sock = message->sock;
+            if (protocol == REMOTED_NET_PROTOCOL_TCP) {
+                if (sock_idle >= 0 || message->counter > rem_getCounter(message->sock)) {
+                    keys.keyentries[agentid]->sock = message->sock;
+                }
+
+                w_mutex_unlock(&keys.keyentries[agentid]->mutex);
+
+                if ((strncmp(tmp_msg, HC_SHUTDOWN, strlen(HC_SHUTDOWN)) != 0)) {
+                    r = OS_AddSocket(&keys, agentid, message->sock);
+
+                    switch (r) {
+                    case OS_ADDSOCKET_ERROR:
+                        merror("Couldn't add TCP socket to keystore.");
+                        break;
+                    case OS_ADDSOCKET_KEY_UPDATED:
+                        mdebug2("TCP socket %d already in keystore. Updating...", message->sock);
+                        break;
+                    case OS_ADDSOCKET_KEY_ADDED:
+                        mdebug2("TCP socket %d added to keystore.", message->sock);
+                        break;
+                    default:
+                        ;
+                    }
+                }
+            } else {
+                keys.keyentries[agentid]->sock = USING_UDP_NO_CLIENT_SOCKET;
+                w_mutex_unlock(&keys.keyentries[agentid]->mutex);
             }
 
-            w_mutex_unlock(&keys.keyentries[agentid]->mutex);
+            key_unlock();
 
-            r = OS_AddSocket(&keys, agentid, message->sock);
-
-            switch (r) {
-            case OS_ADDSOCKET_ERROR:
-                merror("Couldn't add TCP socket to keystore.");
-                break;
-            case OS_ADDSOCKET_KEY_UPDATED:
-                mdebug2("TCP socket %d already in keystore. Updating...", message->sock);
-                break;
-            case OS_ADDSOCKET_KEY_ADDED:
-                mdebug2("TCP socket %d added to keystore.", message->sock);
-                break;
-            default:
-                ;
+            if (sock_idle >= 0) {
+                _close_sock(&keys, sock_idle);
             }
+
+            // The critical section for readers closes within this function
+            save_controlmsg(key, tmp_msg, msg_length - 3, wdb_sock);
+            rem_inc_recv_ctrl(key->id);
+
+            OS_FreeKey(key);
         } else {
-            keys.keyentries[agentid]->sock = USING_UDP_NO_CLIENT_SOCKET;
-            w_mutex_unlock(&keys.keyentries[agentid]->mutex);
+            key_unlock();
+            rem_inc_recv_dequeued();
         }
-
-        key_unlock();
-
-        // The critical section for readers closes within this function
-        save_controlmsg(key, tmp_msg, msg_length - 3, wdb_sock);
-        rem_inc_recv_ctrl(key->id);
-
-        OS_FreeKey(key);
         return;
     }
 
@@ -681,8 +791,14 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
              keys.keyentries[agentid]->name, keys.keyentries[agentid]->ip->ip);
 
     os_strdup(keys.keyentries[agentid]->id, agentid_str);
+    os_strdup(keys.keyentries[agentid]->name, agent_name);
+    os_strdup(keys.keyentries[agentid]->ip->ip, agent_ip);
 
     key_unlock();
+
+    if (sock_idle >= 0) {
+        _close_sock(&keys, sock_idle);
+    }
 
     /* If we can't send the message, try to connect to the
      * socket again. If it not exit.
@@ -705,7 +821,59 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
         rem_inc_recv_evt(agentid_str);
     }
 
+    // Forwarding events to subscribers
+    router_message_forward(tmp_msg, agentid_str, agent_ip, agent_name);
+
     os_free(agentid_str);
+    os_free(agent_ip);
+    os_free(agent_name);
+}
+
+void router_message_forward(char* msg, const char* agent_id, const char* agent_ip, const char* agent_name) {
+    // Both syscollector delta and sync messages are sent to the router
+    ROUTER_PROVIDER_HANDLE router_handle = NULL;
+    int message_header_size = 0;
+    int schema_type = -1;
+
+    if(strncmp(msg, SYSCOLLECTOR_HEADER, SYSCOLLECTOR_HEADER_SIZE) == 0) {
+        if (!router_syscollector_handle) {
+            mdebug2("Router handle for 'syscollector' not available.");
+            return;
+        }
+        router_handle = router_syscollector_handle;
+        message_header_size = SYSCOLLECTOR_HEADER_SIZE;
+        schema_type = MT_SYS_DELTAS;
+    } else if(strncmp(msg, DBSYNC_SYSCOLLECTOR_HEADER, DBSYNC_SYSCOLLECTOR_HEADER_SIZE) == 0) {
+        if (!router_rsync_handle) {
+            mdebug2("Router handle for 'rsync' not available.");
+            return;
+        }
+        router_handle = router_rsync_handle;
+        message_header_size = DBSYNC_SYSCOLLECTOR_HEADER_SIZE;
+        schema_type = MT_SYS_SYNC;
+    }
+
+    if (!router_handle) {
+        return;
+    }
+
+    char* msg_to_send = NULL;
+    char* msg_start = msg + message_header_size;
+    size_t msg_size = strnlen(msg_start, OS_MAXSTR - message_header_size);
+    if ((msg_size + message_header_size) < OS_MAXSTR) {
+        if (schema_type == MT_SYS_DELTAS) {
+            msg_to_send = adapt_delta_message(msg_start, agent_name, agent_id, agent_ip, node_name);
+        } else if (schema_type == MT_SYS_SYNC) {
+            msg_to_send = adapt_sync_message(msg_start, agent_name, agent_id, agent_ip, node_name);
+        }
+
+        if (msg_to_send) {
+            if (router_provider_send_fb(router_handle, msg_to_send, get_schema(schema_type)) != 0) {
+                mdebug2("Unable to forward message for agent %s", agent_id);
+            }
+            cJSON_free(msg_to_send);
+        }
+    }
 }
 
 // Close and remove socket from keystore
@@ -804,4 +972,15 @@ void * key_request_thread(__attribute__((unused)) void * args) {
             }
         }
     }
+}
+
+/* Get current timestamp */
+void *current_timestamp(__attribute__((unused)) void *none)
+{
+    while (1) {
+        current_ts = time(NULL);
+        sleep(1);
+    }
+
+    return NULL;
 }

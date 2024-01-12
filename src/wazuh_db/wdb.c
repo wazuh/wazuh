@@ -30,14 +30,8 @@
 #define BUSY_SLEEP 1
 #define MAX_ATTEMPTS 1000
 
-/// Strings used with wdbc_result.
-const char* WDBC_RESULT[] = {
-    [WDBC_OK]      = "ok",
-    [WDBC_DUE]     = "due",
-    [WDBC_ERROR]   = "err",
-    [WDBC_IGNORE]  = "ign",
-    [WDBC_UNKNOWN] = "unk"
-};
+// Router provider variables
+ROUTER_PROVIDER_HANDLE router_syscollector_handle = NULL;
 
 static const char *SQL_CREATE_TEMP_TABLE = "CREATE TEMP TABLE IF NOT EXISTS s(rowid INTEGER PRIMARY KEY, pageno INT);";
 static const char *SQL_TRUNCATE_TEMP_TABLE = "DELETE FROM s;";
@@ -51,6 +45,7 @@ static const char *SQL_METADATA_GET_FRAGMENTATION_DATA = "SELECT key, value FROM
 static const char *SQL_INSERT_INFO = "INSERT INTO info (key, value) VALUES (?, ?);";
 static const char *SQL_BEGIN = "BEGIN;";
 static const char *SQL_COMMIT = "COMMIT;";
+static const char *SQL_ROLLBACK = "ROLLBACK;";
 static const char *SQL_STMT[] = {
     [WDB_STMT_FIM_LOAD] = "SELECT changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date, attributes, symbolic_path FROM fim_entry WHERE file = ?;",
     [WDB_STMT_FIM_FIND_ENTRY] = "SELECT 1 FROM fim_entry WHERE file = ?",
@@ -152,6 +147,16 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_FIM_REGISTRY_CLEAR] = "DELETE FROM fim_entry WHERE type='registry_key' OR type='registry_value';",
     [WDB_STMT_FIM_REGISTRY_DELETE_AROUND] = "DELETE FROM fim_entry WHERE (type='registry_key' OR type='registry_value') AND (full_path < ? OR full_path > ?);",
     [WDB_STMT_FIM_REGISTRY_DELETE_RANGE] = "DELETE FROM fim_entry WHERE (type='registry_key' OR type='registry_value') AND (full_path > ? AND full_path < ?);",
+    [WDB_STMT_FIM_REGISTRY_KEY_SELECT_CHECKSUM] = "SELECT checksum FROM fim_entry WHERE type='registry_key' ORDER BY full_path",
+    [WDB_STMT_FIM_REGISTRY_KEY_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM fim_entry WHERE type='registry_key' AND full_path BETWEEN ? AND ? ORDER BY full_path",
+    [WDB_STMT_FIM_REGISTRY_KEY_CLEAR] = "DELETE FROM fim_entry WHERE type='registry_key';",
+    [WDB_STMT_FIM_REGISTRY_KEY_DELETE_AROUND] = "DELETE FROM fim_entry WHERE type='registry_key' AND (full_path < ? OR full_path > ?);",
+    [WDB_STMT_FIM_REGISTRY_KEY_DELETE_RANGE] = "DELETE FROM fim_entry WHERE type='registry_key' AND (full_path > ? AND full_path < ?);",
+    [WDB_STMT_FIM_REGISTRY_VALUE_SELECT_CHECKSUM] = "SELECT checksum FROM fim_entry WHERE type='registry_value' ORDER BY full_path",
+    [WDB_STMT_FIM_REGISTRY_VALUE_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM fim_entry WHERE type='registry_value' AND full_path BETWEEN ? AND ? ORDER BY full_path",
+    [WDB_STMT_FIM_REGISTRY_VALUE_CLEAR] = "DELETE FROM fim_entry WHERE type='registry_value';",
+    [WDB_STMT_FIM_REGISTRY_VALUE_DELETE_AROUND] = "DELETE FROM fim_entry WHERE type='registry_value' AND (full_path < ? OR full_path > ?);",
+    [WDB_STMT_FIM_REGISTRY_VALUE_DELETE_RANGE] = "DELETE FROM fim_entry WHERE type='registry_value' AND (full_path > ? AND full_path < ?);",
     [WDB_STMT_FIM_REGISTRY_DELETE_BY_PK] = "DELETE FROM fim_entry WHERE full_path = ? AND type='registry_key' OR type='registry_value';",
     [WDB_STMT_ROOTCHECK_INSERT_PM] = "INSERT INTO pm_event (date_first, date_last, log, pci_dss, cis) VALUES (?, ?, ?, ?, ?);",
     [WDB_STMT_ROOTCHECK_UPDATE_PM] = "UPDATE pm_event SET date_last = ? WHERE log = ?;",
@@ -163,8 +168,9 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_LABELS_GET] = "SELECT * FROM labels WHERE id = ?;",
     [WDB_STMT_GLOBAL_LABELS_DEL] = "DELETE FROM labels WHERE id = ?;",
     [WDB_STMT_GLOBAL_LABELS_SET] = "INSERT INTO labels (id, key, value) VALUES (?,?,?);",
-    [WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE] = "UPDATE agent SET last_keepalive = STRFTIME('%s', 'NOW'), connection_status = ?, sync_status = ?, disconnection_time = 0 WHERE id = ?;",
-    [WDB_STMT_GLOBAL_UPDATE_AGENT_CONNECTION_STATUS] = "UPDATE agent SET connection_status = ?, sync_status = ?, disconnection_time = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE] = "UPDATE agent SET last_keepalive = STRFTIME('%s', 'NOW'), connection_status = ?, sync_status = ?, disconnection_time = 0, status_code = 0 WHERE id = ?;",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_CONNECTION_STATUS] = "UPDATE agent SET connection_status = ?, sync_status = ?, disconnection_time = ?, status_code = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS_CODE] = "UPDATE agent SET status_code = ?, version = ?, sync_status = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_DELETE_AGENT] = "DELETE FROM agent WHERE id = ?;",
     [WDB_STMT_GLOBAL_SELECT_AGENT_NAME] = "SELECT name FROM agent WHERE id = ?;",
     [WDB_STMT_GLOBAL_FIND_AGENT] = "SELECT id FROM agent WHERE name = ? AND (register_ip = ? OR register_ip LIKE ? || '/_%');",
@@ -179,7 +185,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_GROUP_BELONG_FIND] = "SELECT id_agent FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ?);",
     [WDB_STMT_GLOBAL_GROUP_BELONG_GET] = "SELECT id_agent FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ?) AND id_agent > ?;",
     [WDB_STMT_GLOBAL_SELECT_GROUPS] = "SELECT name FROM `group`;",
-    [WDB_STMT_GLOBAL_SYNC_REQ_GET] = "SELECT id, name, ip, os_name, os_version, os_major, os_minor, os_codename, os_build, os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, last_keepalive, connection_status, disconnection_time, group_config_status FROM agent WHERE id > ? AND sync_status = 'syncreq' LIMIT 1;",
+    [WDB_STMT_GLOBAL_SYNC_REQ_GET] = "SELECT id, name, ip, os_name, os_version, os_major, os_minor, os_codename, os_build, os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, last_keepalive, connection_status, disconnection_time, group_config_status, status_code FROM agent WHERE id > ? AND sync_status = 'syncreq' LIMIT 1;",
     [WDB_STMT_GLOBAL_SYNC_SET] = "UPDATE agent SET sync_status = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET] = "SELECT id FROM agent WHERE id > ? AND group_sync_status = 'syncreq' AND date_add < ? LIMIT 1;",
     [WDB_STMT_GLOBAL_GROUP_SYNC_ALL_GET] = "SELECT id FROM agent WHERE id > ? AND date_add < ? LIMIT 1;",
@@ -190,13 +196,13 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_GROUP_CSV_GET] = "SELECT `group` from agent where id = ?;",
     [WDB_STMT_GLOBAL_GROUP_CTX_SET] = "UPDATE agent SET 'group' = ?, group_hash = ?, group_sync_status = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_GROUP_HASH_GET] = "SELECT group_hash FROM agent WHERE id > 0 AND group_hash IS NOT NULL ORDER BY id;",
-    [WDB_STMT_GLOBAL_UPDATE_AGENT_INFO] = "UPDATE agent SET config_sum = :config_sum, ip = :ip, manager_host = :manager_host, merged_sum = :merged_sum, name = :name, node_name = :node_name, os_arch = :os_arch, os_build = :os_build, os_codename = :os_codename, os_major = :os_major, os_minor = :os_minor, os_name = :os_name, os_platform = :os_platform, os_uname = :os_uname, os_version = :os_version, version = :version, last_keepalive = :last_keepalive, connection_status = :connection_status, disconnection_time = :disconnection_time, group_config_status = :group_config_status, sync_status = :sync_status WHERE id = :id;",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_INFO] = "UPDATE agent SET config_sum = :config_sum, ip = :ip, manager_host = :manager_host, merged_sum = :merged_sum, name = :name, node_name = :node_name, os_arch = :os_arch, os_build = :os_build, os_codename = :os_codename, os_major = :os_major, os_minor = :os_minor, os_name = :os_name, os_platform = :os_platform, os_uname = :os_uname, os_version = :os_version, version = :version, last_keepalive = :last_keepalive, connection_status = :connection_status, disconnection_time = :disconnection_time, group_config_status = :group_config_status, status_code= :status_code, sync_status = :sync_status WHERE id = :id;",
     [WDB_STMT_GLOBAL_GET_GROUPS] = "SELECT DISTINCT `group`, group_hash from agent WHERE id > 0 AND group_hash > ? ORDER BY group_hash;",
     [WDB_STMT_GLOBAL_GET_AGENTS] = "SELECT id FROM agent WHERE id > ?;",
     [WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS] = "SELECT id FROM agent WHERE id > ? AND connection_status = ?;",
     [WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE] = "SELECT id FROM agent WHERE id > ? AND connection_status = ? AND node_name = ? ORDER BY id LIMIT ?;",
     [WDB_STMT_GLOBAL_GET_AGENT_INFO] = "SELECT * FROM agent WHERE id = ?;",
-    [WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS] = "UPDATE agent SET connection_status = 'disconnected', sync_status = ?, disconnection_time = STRFTIME('%s', 'NOW') where connection_status != 'disconnected' AND connection_status != 'never_connected' AND id != 0;",
+    [WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS] = "UPDATE agent SET connection_status = 'disconnected', status_code = ?, sync_status = ?, disconnection_time = STRFTIME('%s', 'NOW') where connection_status != 'disconnected' AND connection_status != 'never_connected' AND id != 0;",
     [WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT] = "SELECT id FROM agent WHERE id > ? AND (connection_status = 'active' OR connection_status = 'pending') AND last_keepalive < ?;",
     [WDB_STMT_GLOBAL_AGENT_EXISTS] = "SELECT EXISTS(SELECT 1 FROM agent WHERE id=?);",
     [WDB_STMT_TASK_INSERT_TASK] = "INSERT INTO TASKS VALUES(NULL,?,?,?,?,?,?,?,?);",
@@ -217,15 +223,15 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SYSCOLLECTOR_PROCESSES_CLEAR] = "DELETE FROM sys_processes;",
     [WDB_STMT_SYSCOLLECTOR_PACKAGES_SELECT_CHECKSUM] = "SELECT checksum FROM sys_programs WHERE checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
     [WDB_STMT_SYSCOLLECTOR_PACKAGES_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_programs WHERE item_id BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
-    [WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_AROUND] = "DELETE FROM sys_programs WHERE item_id < ? OR item_id > ? OR checksum = 'legacy' OR checksum = '';",
-    [WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_RANGE] = "DELETE FROM sys_programs WHERE item_id > ? AND item_id < ?;",
-    [WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_BY_PK] = "DELETE FROM sys_programs WHERE item_id = ?;",
+    [WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_AROUND] = "DELETE FROM sys_programs WHERE item_id < ? OR item_id > ? OR checksum = 'legacy' OR checksum = '' RETURNING name, version, architecture, format, location, item_id;",
+    [WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_RANGE] = "DELETE FROM sys_programs WHERE item_id > ? AND item_id < ? RETURNING name, version, architecture, format, location, item_id;",
+    [WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_BY_PK] = "DELETE FROM sys_programs WHERE item_id = ? RETURNING name, version, architecture, format, location, item_id;",
     [WDB_STMT_SYSCOLLECTOR_PACKAGES_CLEAR] = "DELETE FROM sys_programs;",
     [WDB_STMT_SYSCOLLECTOR_HOTFIXES_SELECT_CHECKSUM] = "SELECT checksum FROM sys_hotfixes WHERE checksum != 'legacy' AND checksum != '' ORDER BY hotfix;",
     [WDB_STMT_SYSCOLLECTOR_HOTFIXES_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_hotfixes WHERE hotfix BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY hotfix;",
-    [WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_AROUND] = "DELETE FROM sys_hotfixes WHERE hotfix < ? OR hotfix > ? OR checksum = 'legacy' OR checksum = '';",
-    [WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_RANGE] = "DELETE FROM sys_hotfixes WHERE hotfix > ? AND hotfix < ?;",
-    [WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_BY_PK] = "DELETE FROM sys_hotfixes WHERE hotfix = ?;",
+    [WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_AROUND] = "DELETE FROM sys_hotfixes WHERE hotfix < ? OR hotfix > ? OR checksum = 'legacy' OR checksum = '' RETURNING hotfix;",
+    [WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_RANGE] = "DELETE FROM sys_hotfixes WHERE hotfix > ? AND hotfix < ? RETURNING hotfix;",
+    [WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_BY_PK] = "DELETE FROM sys_hotfixes WHERE hotfix = ? RETURNING hotfix;",
     [WDB_STMT_SYSCOLLECTOR_HOTFIXES_CLEAR] = "DELETE FROM sys_hotfixes;",
     [WDB_STMT_SYSCOLLECTOR_PORTS_SELECT_CHECKSUM] = "SELECT checksum FROM sys_ports WHERE checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
     [WDB_STMT_SYSCOLLECTOR_PORTS_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_ports WHERE item_id BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
@@ -264,7 +270,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_BY_PK] = "DELETE FROM sys_osinfo WHERE os_name = ?;",
     [WDB_STMT_SYSCOLLECTOR_OSINFO_CLEAR] = "DELETE FROM sys_osinfo;",
     [WDB_STMT_VULN_CVES_INSERT] = "INSERT INTO vuln_cves (name, version, architecture, cve, reference, type, status, severity, cvss2_score, cvss3_score, detection_time, external_references, condition, title, published, updated) VALUES (?,?,?,?,?,?,?,?,?,?,strftime('%s', 'now'),?,?,?,?,?)"
-                                  "ON CONFLICT (reference, cve) DO UPDATE SET type = excluded.type, status = excluded.status, severity = excluded.severity, cvss2_score = excluded.cvss2_score, cvss3_score = excluded.cvss3_score, detection_time = detection_time, external_references = excluded.external_references, condition = excluded.condition, title = excluded.title, published = excluded.published, updated = excluded.updated;",
+                                  "ON CONFLICT (reference, cve) DO UPDATE SET version = excluded.version, type = excluded.type, status = excluded.status, severity = excluded.severity, cvss2_score = excluded.cvss2_score, cvss3_score = excluded.cvss3_score, detection_time = detection_time, external_references = excluded.external_references, condition = excluded.condition, title = excluded.title, published = excluded.published, updated = excluded.updated;",
     [WDB_STMT_VULN_CVES_UPDATE] = "UPDATE vuln_cves SET status = ? WHERE status = ?;",
     [WDB_STMT_VULN_CVES_UPDATE_BY_TYPE] = "UPDATE vuln_cves SET status = ? WHERE type = ?;",
     [WDB_STMT_VULN_CVES_UPDATE_ALL] = "UPDATE vuln_cves SET status = ?",
@@ -280,19 +286,19 @@ static const char *SQL_STMT[] = {
 /**
  * @brief Run a non-select query on the temporary table.
  *
- * @param[in] db Database to query for the table existence.
+ * @param[in] wdb Database to query for the table existence.
  * @param[in] query query to run.
  * @return Returns OS_SUCCESS on success or OS_INVALID on error.
  */
-STATIC int wdb_execute_non_select_query(sqlite3 *db, const char *query);
+STATIC int wdb_execute_non_select_query(wdb_t * wdb, const char *query);
 
 /**
  * @brief Run a select query on the temporary table.
  *
- * @param[in] db Database to query for the table existence.
+ * @param[in] wdb Database to query for the table existence.
  * @return Returns 0..100 on success or OS_INVALID on error.
  */
-STATIC int wdb_select_from_temp_table(sqlite3 *db);
+STATIC int wdb_select_from_temp_table(wdb_t * wdb);
 
 /**
  * @brief Execute a select query that returns a single integer value.
@@ -312,14 +318,57 @@ STATIC int wdb_execute_single_int_select_query(wdb_t * wdb, const char *query, i
  * @param[out] last_vacuum_value Integer where the last_vacuum_value value will be stored.
  * @return Returns OS_SUCCESS on success or OS_INVALID on error.
  */
-STATIC int wdb_get_last_vacuum_data(wdb_t* wdb, int *last_vacuum_time, int *last_vacuum_value);
+STATIC int wdb_get_last_vacuum_data(wdb_t * wdb, int *last_vacuum_time, int *last_vacuum_value);
 
-wdb_config wconfig;
-pthread_mutex_t pool_mutex = PTHREAD_MUTEX_INITIALIZER;
+/**
+ * @brief Execute any transaction
+ * @param[in] wdb Database to query for the table existence.
+ * @param[in] sql_transaction Query to be executed
+ * @return 0 when succeed, !=0 otherwise.
+*/
+STATIC int wdb_any_transaction(wdb_t * wdb, const char* sql_transaction);
+
+/**
+ * @brief write the status of the transaction
+ * @param[in] wdb Database to query for the table existence.
+ * @param[in] state 1 when is Begin-transaction, 0 other transactions
+ * @param[in] wdb_ptr_any_txn function that points to the transaction
+ * @return 0 when succeed, !=0 otherwise.
+*/
+STATIC int wdb_write_state_transaction(wdb_t * wdb, uint8_t state, wdb_ptr_any_txn_t wdb_ptr_any_txn);
+
+/**
+ * @brief Get a database from the database group
+ *
+ * @param[in] db_name Name of the database to search in the database pool.
+ * @return Returns the wdb object if it exists or NULL if it does not exist.
+ */
+STATIC wdb_t * wdb_get_db_from_pool(const char* db_name);
+
+rwlock_t pool_mutex;
 wdb_t * db_pool_begin;
 wdb_t * db_pool_last;
 int db_pool_size;
 OSHash * open_dbs;
+
+STATIC wdb_t * wdb_get_db_from_pool(const char* db_name) {
+    wdb_t * wdb = NULL;
+
+    if (db_name == NULL) {
+        merror("The database name cannot be null.");
+        return NULL;
+    }
+
+    // Finds DB in pool, locking pool_mutex for read
+    rwlock_lock_read(&pool_mutex);
+    if (wdb = (wdb_t *)OSHash_Get(open_dbs, db_name), wdb) {
+        // The corresponding w_mutex_unlock(&wdb->mutex) is called in wdb_leave(wdb_t * wdb)
+        w_mutex_lock(&wdb->mutex);
+        wdb->refcount++;
+    }
+    rwlock_unlock(&pool_mutex);
+    return wdb;
+}
 
 // Opens global database and stores it in DB pool. It returns a locked database or NULL
 wdb_t * wdb_open_global() {
@@ -327,14 +376,20 @@ wdb_t * wdb_open_global() {
     sqlite3 *db = NULL;
     wdb_t * wdb = NULL;
 
-    w_mutex_lock(&pool_mutex);
+    // Finds DB in pool, locking pool_mutex for read
+    if (wdb = wdb_get_db_from_pool(WDB_GLOB_NAME), wdb) {
+        return wdb;
+    }
+
+    // Now try locking pool_mutex for writing
+    rwlock_lock_write(&pool_mutex);
 
     // Finds DB in pool
     if (wdb = (wdb_t *)OSHash_Get(open_dbs, WDB_GLOB_NAME), wdb) {
         // The corresponding w_mutex_unlock(&wdb->mutex) is called in wdb_leave(wdb_t * wdb)
         w_mutex_lock(&wdb->mutex);
         wdb->refcount++;
-        w_mutex_unlock(&pool_mutex);
+        rwlock_unlock(&pool_mutex);
         return wdb;
     } else {
         // Try to open DB
@@ -347,7 +402,7 @@ wdb_t * wdb_open_global() {
             // Creating database
             if (OS_SUCCESS != wdb_create_global(path)) {
                 merror("Couldn't create SQLite database '%s'", path);
-                w_mutex_unlock(&pool_mutex);
+                rwlock_unlock(&pool_mutex);
                 return wdb;
             }
 
@@ -355,7 +410,7 @@ wdb_t * wdb_open_global() {
             if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
                 merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(db));
                 sqlite3_close_v2(db);
-                w_mutex_unlock(&pool_mutex);
+                rwlock_unlock(&pool_mutex);
                 return wdb;
             }
 
@@ -370,7 +425,7 @@ wdb_t * wdb_open_global() {
             w_mutex_lock(&wdb->mutex);
             wdb->refcount++;
             if (wdb = wdb_upgrade_global(wdb), !wdb) {
-                w_mutex_unlock(&pool_mutex);
+                rwlock_unlock(&pool_mutex);
                 return wdb;
             }
         }
@@ -378,7 +433,7 @@ wdb_t * wdb_open_global() {
         wdb_enable_foreign_keys(wdb->db);
     }
 
-    w_mutex_unlock(&pool_mutex);
+    rwlock_unlock(&pool_mutex);
     return wdb;
 }
 
@@ -387,9 +442,14 @@ wdb_t * wdb_open_mitre() {
     sqlite3 *db;
     wdb_t * wdb = NULL;
 
+    // Finds DB in pool, locking pool_mutex for read
+    if (wdb = wdb_get_db_from_pool(WDB_MITRE_NAME), wdb) {
+        return wdb;
+    }
+
     // Find BD in pool
 
-    w_mutex_lock(&pool_mutex);
+    rwlock_lock_write(&pool_mutex);
 
     if (wdb = (wdb_t *)OSHash_Get(open_dbs, WDB_MITRE_NAME), wdb) {
         goto success;
@@ -414,7 +474,7 @@ success:
     wdb->refcount++;
 
 end:
-    w_mutex_unlock(&pool_mutex);
+    rwlock_unlock(&pool_mutex);
     return wdb;
 }
 
@@ -427,9 +487,14 @@ wdb_t * wdb_open_agent2(int agent_id) {
 
     snprintf(sagent_id, sizeof(sagent_id), "%03d", agent_id);
 
+    // Finds DB in pool, locking pool_mutex for read
+    if (wdb = wdb_get_db_from_pool(sagent_id), wdb) {
+        return wdb;
+    }
+
     // Find BD in pool
 
-    w_mutex_lock(&pool_mutex);
+    rwlock_lock_write(&pool_mutex);
 
     if (wdb = (wdb_t *)OSHash_Get(open_dbs, sagent_id), wdb) {
         goto success;
@@ -474,7 +539,7 @@ success:
     wdb->refcount++;
 
 end:
-    w_mutex_unlock(&pool_mutex);
+    rwlock_unlock(&pool_mutex);
     return wdb;
 }
 
@@ -484,14 +549,19 @@ wdb_t * wdb_open_tasks() {
     sqlite3 *db = NULL;
     wdb_t * wdb = NULL;
 
-    w_mutex_lock(&pool_mutex);
+    // Finds DB in pool, locking pool_mutex for read
+    if (wdb = wdb_get_db_from_pool(WDB_TASK_NAME), wdb) {
+        return wdb;
+    }
+
+    rwlock_lock_write(&pool_mutex);
 
     // Finds DB in pool
     if (wdb = (wdb_t *)OSHash_Get(open_dbs, WDB_TASK_NAME), wdb) {
         // The corresponding w_mutex_unlock(&wdb->mutex) is called in wdb_leave(wdb_t * wdb)
         w_mutex_lock(&wdb->mutex);
         wdb->refcount++;
-        w_mutex_unlock(&pool_mutex);
+        rwlock_unlock(&pool_mutex);
         return wdb;
     } else {
         // Try to open DB
@@ -504,7 +574,7 @@ wdb_t * wdb_open_tasks() {
             // Creating database
             if (OS_SUCCESS != wdb_create_file(path, schema_task_manager_sql)) {
                 merror("Couldn't create SQLite database '%s'", path);
-                w_mutex_unlock(&pool_mutex);
+                rwlock_unlock(&pool_mutex);
                 return wdb;
             }
 
@@ -512,7 +582,7 @@ wdb_t * wdb_open_tasks() {
             if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
                 merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(db));
                 sqlite3_close_v2(db);
-                w_mutex_unlock(&pool_mutex);
+                rwlock_unlock(&pool_mutex);
                 return wdb;
             }
 
@@ -528,7 +598,7 @@ wdb_t * wdb_open_tasks() {
     // The corresponding w_mutex_unlock(&wdb->mutex) is called in wdb_leave(wdb_t * wdb)
     w_mutex_lock(&wdb->mutex);
     wdb->refcount++;
-    w_mutex_unlock(&pool_mutex);
+    rwlock_unlock(&pool_mutex);
     return wdb;
 }
 
@@ -624,69 +694,30 @@ int wdb_step(sqlite3_stmt *stmt) {
 }
 
 /* Begin transaction */
-int wdb_begin(sqlite3 *db) {
-    sqlite3_stmt *stmt = NULL;
-    int result = 0;
-
-    if (sqlite3_prepare_v2(db, SQL_BEGIN, -1, &stmt, NULL) != SQLITE_OK) {
-        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
-        return -1;
-    }
-
-    if (result = wdb_step(stmt) != SQLITE_DONE, result) {
-        mdebug1("wdb_step(): %s", sqlite3_errmsg(db));
-        result = -1;
-    }
-
-    sqlite3_finalize(stmt);
-    return result;
+int wdb_begin(wdb_t * wdb) {
+    return wdb_any_transaction(wdb, SQL_BEGIN);
 }
 
 int wdb_begin2(wdb_t * wdb) {
-    if (wdb->transaction) {
-        return 0;
-    }
-
-    if (wdb_begin(wdb->db) == -1) {
-        return -1;
-    }
-
-    wdb->transaction = 1;
-    wdb->transaction_begin_time = time(NULL);
-
-    return 0;
+    return wdb_write_state_transaction(wdb, 1, wdb_begin);
 }
 
 /* Commit transaction */
-int wdb_commit(sqlite3 *db) {
-    sqlite3_stmt * stmt = NULL;
-    int result = 0;
-
-    if (sqlite3_prepare_v2(db, SQL_COMMIT, -1, &stmt, NULL) != SQLITE_OK) {
-        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
-        return -1;
-    }
-
-    if (result = wdb_step(stmt) != SQLITE_DONE, result) {
-        mdebug1("wdb_step(): %s", sqlite3_errmsg(db));
-        result = -1;
-    }
-
-    sqlite3_finalize(stmt);
-    return result;
+int wdb_commit(wdb_t * wdb) {
+    return wdb_any_transaction(wdb, SQL_COMMIT);
 }
 
 int wdb_commit2(wdb_t * wdb) {
-    if (!wdb->transaction) {
-        return 0;
-    }
+    return wdb_write_state_transaction(wdb, 0, wdb_commit);
+}
 
-    if (wdb_commit(wdb->db) == -1) {
-        return -1;
-    }
+/* Rollback transaction */
+int wdb_rollback(wdb_t * wdb) {
+    return wdb_any_transaction(wdb, SQL_ROLLBACK);
+}
 
-    wdb->transaction = 0;
-    return 0;
+int wdb_rollback2(wdb_t * wdb) {
+    return wdb_write_state_transaction(wdb, 0, wdb_rollback);
 }
 
 /* Create global database */
@@ -728,7 +759,7 @@ int wdb_create_file(const char *path, const char *source) {
             return OS_INVALID;
         }
 
-        result = sqlite3_step(stmt);
+        result = wdb_step(stmt);
 
         switch (result) {
         case SQLITE_MISUSE:
@@ -783,15 +814,15 @@ int wdb_create_file(const char *path, const char *source) {
 }
 
 /* Rebuild database. Returns 0 on success or -1 on error. */
-int wdb_vacuum(sqlite3 *db) {
+int wdb_vacuum(wdb_t * wdb) {
     sqlite3_stmt *stmt;
     int result;
 
-    if (!wdb_prepare(db, SQL_VACUUM, -1, &stmt, NULL)) {
+    if (!wdb_prepare(wdb->db, SQL_VACUUM, -1, &stmt, NULL)) {
         result = wdb_step(stmt) == SQLITE_DONE ? 0 : -1;
         sqlite3_finalize(stmt);
     } else {
-        mdebug1("SQLite: %s", sqlite3_errmsg(db));
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
         result = -1;
     }
 
@@ -802,18 +833,18 @@ int wdb_vacuum(sqlite3 *db) {
 int wdb_get_db_state(wdb_t * wdb) {
     int result = OS_INVALID;
 
-    if (wdb_execute_non_select_query(wdb->db, SQL_CREATE_TEMP_TABLE) == OS_INVALID) {
+    if (wdb_execute_non_select_query(wdb, SQL_CREATE_TEMP_TABLE) == OS_INVALID) {
         mdebug1("Error creating temporary table.");
         return OS_INVALID;
     }
 
-    if (wdb_execute_non_select_query(wdb->db, SQL_TRUNCATE_TEMP_TABLE) == OS_INVALID) {
+    if (wdb_execute_non_select_query(wdb, SQL_TRUNCATE_TEMP_TABLE) == OS_INVALID) {
         mdebug1("Error truncate temporary table.");
         return OS_INVALID;
     }
 
-    if (wdb_execute_non_select_query(wdb->db, SQL_INSERT_INTO_TEMP_TABLE) != OS_INVALID) {
-        if (result = wdb_select_from_temp_table(wdb->db), result == OS_INVALID) {
+    if (wdb_execute_non_select_query(wdb, SQL_INSERT_INTO_TEMP_TABLE) != OS_INVALID) {
+        if (result = wdb_select_from_temp_table(wdb), result == OS_INVALID) {
             mdebug1("Error in select from temporary table.");
         }
     } else {
@@ -861,7 +892,7 @@ STATIC int wdb_execute_single_int_select_query(wdb_t * wdb, const char *query, i
         *value = sqlite3_column_int(stmt, 0);
         result = OS_SUCCESS;
     } else {
-        mdebug1("wdb_step(): %s", sqlite3_errmsg(wdb->db));
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
     }
 
     sqlite3_finalize(stmt);
@@ -870,7 +901,7 @@ STATIC int wdb_execute_single_int_select_query(wdb_t * wdb, const char *query, i
 }
 
 /* Run a query without selecting any fields */
-STATIC int wdb_execute_non_select_query(sqlite3 *db, const char *query) {
+STATIC int wdb_execute_non_select_query(wdb_t * wdb, const char *query) {
     sqlite3_stmt *stmt = NULL;
     int result = OS_SUCCESS;
 
@@ -879,13 +910,13 @@ STATIC int wdb_execute_non_select_query(sqlite3 *db, const char *query) {
         return OS_INVALID;
     }
 
-    if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK) {
-        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
+    if (sqlite3_prepare_v2(wdb->db, query, -1, &stmt, NULL) != SQLITE_OK) {
+        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
 
     if (result = wdb_step(stmt) != SQLITE_DONE, result) {
-        mdebug1("wdb_step(): %s", sqlite3_errmsg(db));
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
         result = OS_INVALID;
     }
 
@@ -894,19 +925,19 @@ STATIC int wdb_execute_non_select_query(sqlite3 *db, const char *query) {
 }
 
 /* Select from temp table */
-STATIC int wdb_select_from_temp_table(sqlite3 *db) {
+STATIC int wdb_select_from_temp_table(wdb_t * wdb) {
     sqlite3_stmt *stmt = NULL;
     int result = 0;
 
-    if (sqlite3_prepare_v2(db, SQL_SELECT_TEMP_TABLE, -1, &stmt, NULL) != SQLITE_OK) {
-        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
+    if (sqlite3_prepare_v2(wdb->db, SQL_SELECT_TEMP_TABLE, -1, &stmt, NULL) != SQLITE_OK) {
+        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
 
     if (result = wdb_step(stmt), SQLITE_ROW == result) {
         result = 100 - (int)(sqlite3_column_double(stmt, 0) * 100);
     } else {
-        mdebug1("wdb_step(): %s", sqlite3_errmsg(db));
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
         result = OS_INVALID;
     }
 
@@ -1030,7 +1061,7 @@ void wdb_close_all() {
     wdb_t * node;
 
     mdebug1("Closing all databases...");
-    w_mutex_lock(&pool_mutex);
+    rwlock_lock_write(&pool_mutex);
 
     while (node = db_pool_begin, node) {
         mdebug2("Closing database for agent %s", node->id);
@@ -1041,25 +1072,25 @@ void wdb_close_all() {
         }
     }
 
-    w_mutex_unlock(&pool_mutex);
+    rwlock_unlock(&pool_mutex);
 }
 
 void wdb_commit_old() {
     wdb_t * node;
     wdb_t * next;
 
-    w_mutex_lock(&pool_mutex);
+    rwlock_lock_read(&pool_mutex);
     wdb_t *copy = wdb_pool_copy();
-    w_mutex_unlock(&pool_mutex);
+    rwlock_unlock(&pool_mutex);
 
     for (wdb_t *i = copy; i != NULL; wdb_destroy(i), i = next) {
         next = i->next;
 
-        w_mutex_lock(&pool_mutex);
+        rwlock_lock_read(&pool_mutex);
         node = (wdb_t *)OSHash_Get(open_dbs, i->id);
 
         if (node == NULL) {
-            w_mutex_unlock(&pool_mutex);
+            rwlock_unlock(&pool_mutex);
             continue;
         }
 
@@ -1079,7 +1110,7 @@ void wdb_commit_old() {
         }
 
         w_mutex_unlock(&node->mutex);
-        w_mutex_unlock(&pool_mutex);
+        rwlock_unlock(&pool_mutex);
     }
 }
 
@@ -1087,9 +1118,9 @@ void wdb_check_fragmentation() {
     wdb_t * node;
     wdb_t * next;
 
-    w_mutex_lock(&pool_mutex);
+    rwlock_lock_read(&pool_mutex);
     wdb_t *copy = wdb_pool_copy();
-    w_mutex_unlock(&pool_mutex);
+    rwlock_unlock(&pool_mutex);
 
     for (wdb_t *i = copy; i != NULL; wdb_destroy(i), i = next) {
         int last_vacuum_time;
@@ -1099,11 +1130,11 @@ void wdb_check_fragmentation() {
         int fragmentation_after_vacuum;
         next = i->next;
 
-        w_mutex_lock(&pool_mutex);
+        rwlock_lock_read(&pool_mutex);
         node = (wdb_t *)OSHash_Get(open_dbs, i->id);
 
         if (node == NULL) {
-            w_mutex_unlock(&pool_mutex);
+            rwlock_unlock(&pool_mutex);
             continue;
         }
 
@@ -1133,21 +1164,21 @@ void wdb_check_fragmentation() {
                     if (wdb_commit2(node) < 0) {
                         merror("Couldn't execute commit statement, before vacuum, for the database '%s'", node->id);
                         w_mutex_unlock(&node->mutex);
-                        w_mutex_unlock(&pool_mutex);
+                        rwlock_unlock(&pool_mutex);
                         continue;
                     }
 
                     wdb_finalize_all_statements(node);
 
                     gettime(&ts_start);
-                    if (wdb_vacuum(node->db) < 0) {
+                    if (wdb_vacuum(node) < 0) {
                         merror("Couldn't execute vacuum for the database '%s'", node->id);
                         w_mutex_unlock(&node->mutex);
-                        w_mutex_unlock(&pool_mutex);
+                        rwlock_unlock(&pool_mutex);
                         continue;
                     }
                     gettime(&ts_end);
-                    mdebug2("Vacuum executed on the '%s' database. Time: %.3f ms.", node->id, time_diff(&ts_start, &ts_end) * 1e3);
+                    mdebug1("Vacuum executed on the '%s' database. Time: %.3f ms.", node->id, time_diff(&ts_start, &ts_end) * 1e3);
 
                     // save fragmentation after vacuum
                     if (fragmentation_after_vacuum = wdb_get_db_state(node), fragmentation_after_vacuum == OS_INVALID) {
@@ -1171,11 +1202,11 @@ void wdb_check_fragmentation() {
         }
 
         w_mutex_unlock(&node->mutex);
-        w_mutex_unlock(&pool_mutex);
+        rwlock_unlock(&pool_mutex);
     }
 }
 
-STATIC int wdb_get_last_vacuum_data(wdb_t* wdb, int *last_vacuum_time, int *last_vacuum_value) {
+STATIC int wdb_get_last_vacuum_data(wdb_t * wdb, int *last_vacuum_time, int *last_vacuum_value) {
    int result = OS_INVALID;
    cJSON *data = NULL;
 
@@ -1229,7 +1260,7 @@ STATIC int wdb_get_last_vacuum_data(wdb_t* wdb, int *last_vacuum_time, int *last
     return result;
 }
 
-int wdb_update_last_vacuum_data(wdb_t* wdb, const char *last_vacuum_time, const char *last_vacuum_value) {
+int wdb_update_last_vacuum_data(wdb_t * wdb, const char *last_vacuum_time, const char *last_vacuum_value) {
     sqlite3_stmt *stmt = NULL;
     int result = OS_INVALID;
 
@@ -1241,7 +1272,8 @@ int wdb_update_last_vacuum_data(wdb_t* wdb, const char *last_vacuum_time, const 
     sqlite3_bind_text(stmt, 1, last_vacuum_time, -1, NULL);
     sqlite3_bind_text(stmt, 2, last_vacuum_value, -1, NULL);
 
-    if (result = wdb_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
+    if (result = wdb_step(stmt),
+        result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
         merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
         sqlite3_finalize(stmt);
         return OS_INVALID;
@@ -1255,18 +1287,18 @@ void wdb_close_old() {
     wdb_t * node;
     wdb_t * next;
 
-    w_mutex_lock(&pool_mutex);
+    rwlock_lock_read(&pool_mutex);
     wdb_t *copy = wdb_pool_copy();
-    w_mutex_unlock(&pool_mutex);
+    rwlock_unlock(&pool_mutex);
 
     for (wdb_t *i = copy; i != NULL; wdb_destroy(i), i = next) {
         next = i->next;
 
-        w_mutex_lock(&pool_mutex);
+        rwlock_lock_write(&pool_mutex);
         node = (wdb_t *)OSHash_Get(open_dbs, i->id);
 
         if (node == NULL || db_pool_size <= wconfig.open_db_limit) {
-            w_mutex_unlock(&pool_mutex);
+            rwlock_unlock(&pool_mutex);
             continue;
         }
 
@@ -1280,7 +1312,7 @@ void wdb_close_old() {
             w_mutex_unlock(&node->mutex);
         }
 
-        w_mutex_unlock(&pool_mutex);
+        rwlock_unlock(&pool_mutex);
     }
 }
 
@@ -1297,9 +1329,9 @@ int wdb_exec_stmt_silent(sqlite3_stmt* stmt) {
 }
 
 cJSON* wdb_exec_row_stmt(sqlite3_stmt* stmt, int* status, bool column_mode) {
-    if(STMT_SINGLE_COLUMN == column_mode) {
+    if (STMT_SINGLE_COLUMN == column_mode) {
         return wdb_exec_row_stmt_single_column(stmt, status);
-    } else if (STMT_MULTI_COLUMN == column_mode){
+    } else if (STMT_MULTI_COLUMN == column_mode) {
         return wdb_exec_row_stmt_multi_column(stmt, status);
     } else {
         mdebug2("Invalid column mode");
@@ -1310,7 +1342,7 @@ cJSON* wdb_exec_row_stmt(sqlite3_stmt* stmt, int* status, bool column_mode) {
 cJSON* wdb_exec_row_stmt_multi_column(sqlite3_stmt* stmt, int* status) {
     cJSON* result = NULL;
 
-    int _status = sqlite3_step(stmt);
+    int _status = wdb_step(stmt);
     if (SQLITE_ROW == _status) {
         int count = sqlite3_column_count(stmt);
         if (count > 0) {
@@ -1463,7 +1495,7 @@ cJSON* wdb_exec_row_stmt_single_column(sqlite3_stmt* stmt, int* status) {
         return NULL;
     }
 
-    _status = sqlite3_step(stmt);
+    _status = wdb_step(stmt);
     if (SQLITE_ROW == _status) {
         int count = sqlite3_column_count(stmt);
         // Every step should return only one element. Extra columns will be ignored
@@ -1508,7 +1540,7 @@ cJSON* wdb_exec(sqlite3* db, const char * sql) {
     result = wdb_exec_stmt(stmt);
 
     if (!result) {
-        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(db));
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(db));
     }
 
     sqlite3_finalize(stmt);
@@ -1555,7 +1587,7 @@ void wdb_finalize_all_statements(wdb_t * wdb) {
 
     struct stmt_cache_list *node_stmt = wdb->cache_list;
     struct stmt_cache_list *temp = NULL;
-    while (node_stmt){
+    while (node_stmt) {
         if (node_stmt->value.stmt) {
             // value.stmt would be free in sqlite3_finalize.
             sqlite3_finalize(node_stmt->value.stmt);
@@ -1572,7 +1604,7 @@ void wdb_finalize_all_statements(wdb_t * wdb) {
 }
 
 void wdb_leave(wdb_t * wdb) {
-    if(wdb) {
+    if (wdb) {
         wdb->refcount--;
         wdb->last = time(NULL);
         w_mutex_unlock(&wdb->mutex);
@@ -1616,7 +1648,7 @@ int wdb_sql_exec(wdb_t *wdb, const char *sql_exec) {
 
     sqlite3_exec(wdb->db, sql_exec, NULL, NULL, &sql_error);
 
-    if(sql_error) {
+    if (sql_error) {
         mwarn("DB(%s) wdb_sql_exec returned error: '%s'", wdb->id, sql_error);
         sqlite3_free(sql_error);
         result = -1;
@@ -1677,7 +1709,7 @@ cJSON *wdb_remove_multiple_agents(char *agent_list) {
 
                 // Close the database only if it was open
 
-                w_mutex_lock(&pool_mutex);
+                rwlock_lock_write(&pool_mutex);
 
                 wdb = (wdb_t *)OSHash_Get(open_dbs, agent);
                 if (wdb) {
@@ -1686,7 +1718,7 @@ cJSON *wdb_remove_multiple_agents(char *agent_list) {
                     }
                 }
 
-                w_mutex_unlock(&pool_mutex);
+                rwlock_unlock(&pool_mutex);
 
                 mdebug1("Removing db for agent '%s'", agent);
 
@@ -1735,40 +1767,7 @@ int wdb_enable_foreign_keys(sqlite3 *db) {
     return 0;
 }
 
-/**
- * @brief Frees agent_info_data struct memory.
- *
- * @param[in] agent_data Pointer to the struct to be freed.
- */
-void wdb_free_agent_info_data(agent_info_data *agent_data) {
-    if (agent_data) {
-        os_free(agent_data->version);
-        os_free(agent_data->config_sum);
-        os_free(agent_data->merged_sum);
-        os_free(agent_data->manager_host);
-        os_free(agent_data->node_name);
-        os_free(agent_data->agent_ip);
-        os_free(agent_data->labels);
-        os_free(agent_data->connection_status);
-        os_free(agent_data->sync_status);
-        os_free(agent_data->group_config_status);
-        if (agent_data->osd) {
-            os_free(agent_data->osd->os_name);
-            os_free(agent_data->osd->os_version);
-            os_free(agent_data->osd->os_major);
-            os_free(agent_data->osd->os_minor);
-            os_free(agent_data->osd->os_codename);
-            os_free(agent_data->osd->os_platform);
-            os_free(agent_data->osd->os_build);
-            os_free(agent_data->osd->os_uname);
-            os_free(agent_data->osd->os_arch);
-            os_free(agent_data->osd);
-        }
-        os_free(agent_data);
-    }
-}
-
-sqlite3_stmt* wdb_init_stmt_in_cache(wdb_t* wdb, wdb_stmt statement_index){
+sqlite3_stmt* wdb_init_stmt_in_cache(wdb_t * wdb, wdb_stmt statement_index) {
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("Cannot begin transaction");
         return NULL;
@@ -1806,7 +1805,7 @@ sqlite3_stmt * wdb_get_cache_stmt(wdb_t * wdb, char const *query) {
                 new_item = wdb->cache_list;
             } else {
                 node_stmt = wdb->cache_list;
-                while (node_stmt->next){
+                while (node_stmt->next) {
                     node_stmt = node_stmt->next;
                 }
                 is_first_element = false;
@@ -1888,11 +1887,49 @@ bool wdb_check_backup_enabled() {
     bool result = false;
 
     for (int i = 0; i < WDB_LAST_BACKUP; i++) {
-        if(wconfig.wdb_backup_settings[i]->enabled) {
+        if (wconfig.wdb_backup_settings[i]->enabled) {
             result = true;
             break;
         }
     }
 
     return result;
+}
+
+STATIC int wdb_any_transaction(wdb_t * wdb, const char* sql_transaction) {
+    sqlite3_stmt *stmt = NULL;
+    int result = 0;
+
+    if (sqlite3_prepare_v2(wdb->db, sql_transaction, -1, &stmt, NULL) != SQLITE_OK) {
+        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+
+    if (result = wdb_step(stmt) != SQLITE_DONE, result) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
+        result = -1;
+    }
+
+    sqlite3_finalize(stmt);
+    return result;
+}
+
+STATIC int wdb_write_state_transaction(wdb_t * wdb, uint8_t state, wdb_ptr_any_txn_t wdb_ptr_any_txn) {
+    if (wdb != NULL) {
+        if (((state == 1) ? wdb->transaction : !wdb->transaction)) {
+            return 0;
+        }
+
+        if (wdb_ptr_any_txn != NULL) {
+            if (wdb_ptr_any_txn(wdb) == -1) {
+                return -1;
+            }
+        }
+
+        wdb->transaction = state;
+        if (1 == state) {
+            wdb->transaction_begin_time = time(NULL);
+        }
+    }
+    return 0;
 }

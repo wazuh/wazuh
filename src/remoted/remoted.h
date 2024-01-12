@@ -15,16 +15,19 @@
 #define ARGV0 "wazuh-remoted"
 #endif
 
-#include "config/config.h"
-#include "config/remote-config.h"
-#include "config/global-config.h"
-#include "os_crypto/md5/md5_op.h"
+#include "../config/config.h"
+#include "../config/remote-config.h"
+#include "../config/global-config.h"
+#include "../os_crypto/md5/md5_op.h"
 #include "sec.h"
 
 #define FD_LIST_INIT_VALUE 1024
 #define REMOTED_MSG_HEADER "1:" ARGV0 ":"
 #define AG_STOP_MSG REMOTED_MSG_HEADER OS_AG_STOPPED
 #define MAX_SHARED_PATH 200
+
+/* Hash table for agent data */
+extern OSHash *agent_data_hash;
 
 /* Pending data structure */
 
@@ -197,6 +200,7 @@ extern int request_pool;
 extern int request_timeout;
 extern int response_timeout;
 extern int INTERVAL;
+extern int disk_storage;
 extern rlim_t nofile;
 extern int guess_agent_group;
 extern unsigned receive_chunk;

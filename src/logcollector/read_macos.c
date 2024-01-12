@@ -129,6 +129,11 @@ void * read_macos(logreader * lf, int * rc, __attribute__((unused)) int drop_it)
 
         size = strlen(read_buffer);
         if (size > 0) {
+            /* Check ignore and restrict log regex, if configured. */
+            if (check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, read_buffer)) {
+                continue;
+            }
+
             w_msg_hash_queues_push(read_buffer, MACOS_LOG_NAME, size + 1, lf->log_target, LOCALFILE_MQ);
             memcpy(full_timestamp, read_buffer, OS_LOGCOLLECTOR_TIMESTAMP_FULL_LEN);
         } else {

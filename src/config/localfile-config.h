@@ -45,8 +45,9 @@
 #include <sys/types.h>
 #include "labels_op.h"
 #include "expression.h"
-#include "os_xml/os_xml.h"
+#include "../os_xml/os_xml.h"
 #include "exec_op.h"
+#include "list_op.h"
 
 extern int maximum_files;
 extern int total_files;
@@ -95,7 +96,7 @@ typedef enum {
 
 /**
  * @brief Context of a multiline log that was not completely written.
- * 
+ *
  * An instance of w_multiline_timeout_ctxt_t allow save the context of a log that have not yet matched with the regex.
  */
 typedef struct {
@@ -136,7 +137,7 @@ typedef struct {
 
 /**
  * @brief Stores `log` process instance info.
- * 
+ *
  */
 typedef struct {
     wfd_t * wfd;        ///< IPC connector
@@ -145,7 +146,7 @@ typedef struct {
 
 /**
  * @brief Store references of two main excecution of `log` process.
- * 
+ *
  */
 typedef struct {
     w_macos_log_pinfo_t stream;     ///< `log stream` process info
@@ -205,6 +206,8 @@ typedef struct _logreader {
     logtarget * log_target;
     int duplicated;
     char *exclude;
+    OSList *regex_ignore;
+    OSList *regex_restrict;
     wlabel_t *labels;
     pthread_mutex_t mutex;
     int exists;

@@ -13,7 +13,7 @@
 #include <cmocka.h>
 
 #include "../../wrappers/common.h"
-#include "syscheckd/syscheck.h"
+#include "../../../syscheckd/include/syscheck.h"
 
 #include "wrappers/externals/audit/libaudit_wrappers.h"
 #include "wrappers/externals/procpc/readproc_wrappers.h"

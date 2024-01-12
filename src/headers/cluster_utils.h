@@ -31,4 +31,7 @@ char *get_master_node(void);
 // Returns the node name of the manager in cluster. The memory should be freed by the caller.
 char *get_node_name(void);
 
+// Returns the name of the manager in cluster. The memory should be freed by the caller.
+char *get_cluster_name(void);
+
 #endif

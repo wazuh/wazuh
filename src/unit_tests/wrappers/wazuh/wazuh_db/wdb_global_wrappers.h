@@ -11,7 +11,7 @@
 #ifndef WDB_GLOBAL_WRAPPERS_H
 #define WDB_GLOBAL_WRAPPERS_H
 
-#include "wazuh_db/wdb.h"
+#include "../wazuh_db/wdb.h"
 
 int __wrap_wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* register_ip, char* internal_key,char* group, int date_add);
 
@@ -46,7 +46,9 @@ int __wrap_wdb_global_set_agent_label(wdb_t *wdb, int id, char* key, char* value
 
 int __wrap_wdb_global_update_agent_keepalive(wdb_t *wdb, int id, char* connection_status, char* status);
 
-int __wrap_wdb_global_update_agent_connection_status(wdb_t *wdb, int id, char* connection_status);
+int __wrap_wdb_global_update_agent_connection_status(wdb_t *wdb, int id, char* connection_status, char* sync_status, int status_code);
+
+int __wrap_wdb_global_update_agent_status_code(wdb_t *wdb, int id, int status_code, const char *version, const char *sync_status);
 
 int __wrap_wdb_global_delete_agent(wdb_t *wdb, int id);
 

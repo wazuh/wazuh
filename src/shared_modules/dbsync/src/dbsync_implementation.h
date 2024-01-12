@@ -15,6 +15,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include "dbengine_factory.h"
 #include "commonDefs.h"
 #include "json.hpp"
@@ -49,14 +50,16 @@ namespace DbSync
                                     const nlohmann::json&   json,
                                     const ResultCallback    callback);
 
-            DBSYNC_HANDLE initialize(const HostType     hostType,
-                                     const DbEngineType dbType,
-                                     const std::string& path,
-                                     const std::string& sqlStatement);
+            DBSYNC_HANDLE initialize(const HostType                  hostType,
+                                     const DbEngineType              dbType,
+                                     const std::string&              path,
+                                     const std::string&              sqlStatement,
+                                     const DbManagement              dbManagement,
+                                     const std::vector<std::string>& upgradeStatements);
 
             void setMaxRows(const DBSYNC_HANDLE handle,
                             const std::string& table,
-                            const unsigned long long maxRows);
+                            const long long maxRows);
 
             TXN_HANDLE createTransaction(const DBSYNC_HANDLE    handle,
                                          const nlohmann::json&  json);
@@ -122,6 +125,8 @@ namespace DbSync
                         std::lock_guard<std::mutex> lock{m_mutex};
                         m_transactionContexts.erase(txnHandle);
                     }
+
+                    std::shared_timed_mutex m_syncMutex;
                 private:
                     std::map<TXN_HANDLE, std::shared_ptr<TransactionContext>> m_transactionContexts;
                     std::mutex m_mutex;

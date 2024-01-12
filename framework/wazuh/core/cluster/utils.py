@@ -307,6 +307,29 @@ class ClusterLogger(WazuhLogger):
         self.logger.setLevel(debug_level)
 
 
+def log_subprocess_execution(logger_instance: logging.Logger, logs: dict):
+    """Log messages returned by functions that are executed in cluster's subprocesses.
+
+    Parameters
+    ----------
+    logger_instance: Logger object
+        Instance of the used logger.
+    logs: dict
+        Dict containing messages of different logging level.
+    """
+    if 'debug' in logs and logs['debug']:
+        logger_instance.debug(f"{dict(logs['debug'])}")
+    if 'debug2' in logs and logs['debug2']:
+        logger_instance.debug2(f"{dict(logs['debug2'])}")
+    if 'warning' in logs and logs['warning']:
+        logger_instance.warning(f"{dict(logs['warning'])}")
+    if 'error' in logs and logs['error']:
+        logger_instance.error(f"{dict(logs['error'])}")
+    if 'generic_errors' in logs and logs['generic_errors']:
+        for error in logs['generic_errors']:
+            logger_instance.error(error, exc_info=False)
+
+
 def process_spawn_sleep(child):
     """Task to force the cluster pool spawn all its children and create their PID files.
 
@@ -354,3 +377,16 @@ async def forward_function(func: callable, f_kwargs: dict = None, request_type: 
                           broadcasting=broadcasting)
     pool = concurrent.futures.ThreadPoolExecutor()
     return pool.submit(run, dapi.distribute_function()).result()
+
+
+def running_in_master_node() -> bool:
+    """Determine if cluster is disabled or API is running in a master node.
+
+    Returns
+    -------
+    bool
+        True if API is running in master node or if cluster is disabled else False.
+    """
+    cluster_config = read_cluster_config()
+
+    return cluster_config['disabled'] or cluster_config['node_type'] == 'master'

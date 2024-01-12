@@ -1,0 +1,8 @@
+{
+    "action": "CountEntries",
+    "body":
+    {
+        "filter_type": 0,
+        "table": "file_entry"
+    }
+}

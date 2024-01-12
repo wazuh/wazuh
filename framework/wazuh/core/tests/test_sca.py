@@ -197,6 +197,24 @@ def test_WazuhDBQuerySCACheckIDs__init__(mock_wdbqsca, query):
                                          else "policy_id=test_policy_id")
 
 
+@pytest.mark.parametrize('field, value, expected', [
+    ('condition', 'all', False),
+    ('condition', 'none', False),
+    ('condition', 'any', False),
+    ('rationale', 'all', True),
+    ('description', 'none', False),
+])
+@patch('wazuh.core.utils.WazuhDBBackend.__init__', return_value=None)
+@patch('wazuh.core.agent.Agent.get_basic_information')
+def test_WazuhDBQuerySCACheckIDs_protected_pass_filter(mock_get_basic_info, mock_backend, field, value, expected):
+    """Test WazuhDBQuerySCACheckIDs._pass_filter function."""
+    query = core_sca.WazuhDBQuerySCACheckIDs(agent_id='000', offset=10, limit=20, filters={'test': 'value'},
+                                     search={'value': 'test'}, query='', policy_id='test_policy_id', sort={})
+
+    skipped = query._pass_filter(field, value)
+    assert skipped == expected
+
+
 @pytest.mark.parametrize('sca_checks_test_list', [
     [1, 2, 3, 4], []
 ])
