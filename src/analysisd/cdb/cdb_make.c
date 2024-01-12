@@ -226,6 +226,7 @@ int cdb_make_finish(struct cdb_make *c)
     if (cdb_make_write(c, c->final, sizeof c->final) != 0) {
         return -1;
     }
-    return fflush(c->fp);
+    fflush(c->fp);
+    return fclose(c->fp);
     /* return buffer_putflush(&c->b,c->final,sizeof c->final); */
 }

@@ -56,6 +56,7 @@ void Lists_OP_MakeCDB(const char *txt_filename, const char *cdb_filename, const 
         cdb_make_start(&cdbm, tmp_fd);
         if (!(txt_fd = fopen(txt_filename, "r"))) {
             merror(FOPEN_ERROR, txt_filename, errno, strerror(errno));
+            fclose(tmp_fd);
             return;
         }
         while ((fgets(str, OS_MAXSTR - 1, txt_fd)) != NULL) {
