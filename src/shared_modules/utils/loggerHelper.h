@@ -75,6 +75,11 @@ namespace Log
         }
     }
 
+    static void deassignLogFunction()
+    {
+        GLOBAL_LOG_FUNCTION = nullptr;
+    }
+    
 #pragma GCC diagnostic pop
 
     /**
