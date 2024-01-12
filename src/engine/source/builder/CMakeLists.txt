@@ -123,7 +123,13 @@ add_executable(builder_utest
     ${UNIT_SRC_DIR}/policy/factory_test.cpp
     ${UNIT_SRC_DIR}/policy/assetBuilder_test.cpp
     ${UNIT_SRC_DIR}/builders/helperParser_test.cpp
-    ${UNIT_SRC_DIR}/exploratory_test.cpp # TODO: delete
+    ${UNIT_SRC_DIR}/builders/baseBuilders_test.cpp
+
+    # Filter Builders
+    ${UNIT_SRC_DIR}/builders/opfilter/filter_test.cpp
+
+    # Map Builders
+    ${UNIT_SRC_DIR}/builders/opmap/map_test.cpp
 )
 target_include_directories(builder_utest PUBLIC ${BUILDER_PUB_INCS} PRIVATE ${BUILDER_PRI_INCS} ${TEST_SRC_DIR} ${UNIT_SRC_DIR})
 target_link_libraries(builder_utest
