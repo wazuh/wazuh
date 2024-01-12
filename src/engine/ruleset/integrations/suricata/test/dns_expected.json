@@ -1,6 +1,5 @@
 [
   {
-    "@timestamp": "2021-06-15T23:48:27.924Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -15,20 +14,13 @@
       "id": "51803",
       "question": {
         "name": "google.com",
-        "subdomain": "google",
         "type": "A"
       },
       "type": "query"
     },
     "event": {
-      "category": [
-        "network"
-      ],
-      "created": "2021-06-15T23:48:27.924Z",
-      "kind": "event",
-      "module": "suricata",
       "type": [
-        "protocol"
+        "network_protocol"
       ]
     },
     "host": {
@@ -37,11 +29,6 @@
     "network": {
       "protocol": "dns",
       "transport": "udp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "ip": [
@@ -76,15 +63,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2021-06-15T23:48:27.924Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -99,20 +85,13 @@
       "id": "39523",
       "question": {
         "name": "google.com",
-        "subdomain": "google",
         "type": "AAAA"
       },
       "type": "query"
     },
     "event": {
-      "category": [
-        "network"
-      ],
-      "created": "2021-06-15T23:48:27.924Z",
-      "kind": "event",
-      "module": "suricata",
       "type": [
-        "protocol"
+        "network_protocol"
       ]
     },
     "host": {
@@ -121,11 +100,6 @@
     "network": {
       "protocol": "dns",
       "transport": "udp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "ip": [
@@ -160,15 +134,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2021-06-15T23:48:27.950Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -180,14 +153,6 @@
       "port": 36993
     },
     "dns": {
-      "answers": [
-        {
-          "rdata": "2a02:cf40:add:4002:91f2:a9b2:e09a:6fc6",
-          "rrname": "google.com",
-          "rrtype": "AAAA",
-          "ttl": 272
-        }
-      ],
       "header_flags": [
         "RD",
         "RA"
@@ -195,21 +160,14 @@
       "id": "39523",
       "question": {
         "name": "google.com",
-        "subdomain": "google",
         "type": "AAAA"
       },
       "response_code": "NOERROR",
       "type": "answer"
     },
     "event": {
-      "category": [
-        "network"
-      ],
-      "created": "2021-06-15T23:48:27.950Z",
-      "kind": "event",
-      "module": "suricata",
       "type": [
-        "protocol"
+        "network_protocol"
       ]
     },
     "host": {
@@ -218,11 +176,6 @@
     "network": {
       "protocol": "dns",
       "transport": "udp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "ip": [
@@ -275,15 +228,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2021-06-15T23:48:27.957Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -295,14 +247,6 @@
       "port": 46686
     },
     "dns": {
-      "answers": [
-        {
-          "rdata": "175.16.199.1",
-          "rrname": "google.com",
-          "rrtype": "A",
-          "ttl": 299
-        }
-      ],
       "header_flags": [
         "RD",
         "RA"
@@ -310,21 +254,14 @@
       "id": "51803",
       "question": {
         "name": "google.com",
-        "subdomain": "google",
         "type": "A"
       },
       "response_code": "NOERROR",
       "type": "answer"
     },
     "event": {
-      "category": [
-        "network"
-      ],
-      "created": "2021-06-15T23:48:27.957Z",
-      "kind": "event",
-      "module": "suricata",
       "type": [
-        "protocol"
+        "network_protocol"
       ]
     },
     "host": {
@@ -333,11 +270,6 @@
     "network": {
       "protocol": "dns",
       "transport": "udp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "ip": [
@@ -390,15 +322,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2021-06-15T23:48:48.839Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -413,22 +344,13 @@
       "id": "60273",
       "question": {
         "name": "www.elastic.co",
-        "registered_domain": "elastic.co",
-        "subdomain": "www",
-        "top_level_domain": "co",
         "type": "A"
       },
       "type": "query"
     },
     "event": {
-      "category": [
-        "network"
-      ],
-      "created": "2021-06-15T23:48:48.839Z",
-      "kind": "event",
-      "module": "suricata",
       "type": [
-        "protocol"
+        "network_protocol"
       ]
     },
     "host": {
@@ -437,11 +359,6 @@
     "network": {
       "protocol": "dns",
       "transport": "udp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "ip": [
@@ -476,15 +393,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2021-06-15T23:48:48.839Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -499,22 +415,13 @@
       "id": "4210",
       "question": {
         "name": "www.elastic.co",
-        "registered_domain": "elastic.co",
-        "subdomain": "www",
-        "top_level_domain": "co",
         "type": "AAAA"
       },
       "type": "query"
     },
     "event": {
-      "category": [
-        "network"
-      ],
-      "created": "2021-06-15T23:48:48.839Z",
-      "kind": "event",
-      "module": "suricata",
       "type": [
-        "protocol"
+        "network_protocol"
       ]
     },
     "host": {
@@ -523,11 +430,6 @@
     "network": {
       "protocol": "dns",
       "transport": "udp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "ip": [
@@ -562,15 +464,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2021-06-15T23:48:48.901Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -582,38 +483,6 @@
       "port": 50720
     },
     "dns": {
-      "answers": [
-        {
-          "rdata": "dualstack.r2.shared.global.fastly.net",
-          "rrname": "www.elastic.co",
-          "rrtype": "CNAME",
-          "ttl": 270
-        },
-        {
-          "rdata": "175.16.199.1",
-          "rrname": "dualstack.r2.shared.global.fastly.net",
-          "rrtype": "A",
-          "ttl": 29
-        },
-        {
-          "rdata": "175.16.199.1",
-          "rrname": "dualstack.r2.shared.global.fastly.net",
-          "rrtype": "A",
-          "ttl": 29
-        },
-        {
-          "rdata": "175.16.199.1",
-          "rrname": "dualstack.r2.shared.global.fastly.net",
-          "rrtype": "A",
-          "ttl": 29
-        },
-        {
-          "rdata": "175.16.199.1",
-          "rrname": "dualstack.r2.shared.global.fastly.net",
-          "rrtype": "A",
-          "ttl": 29
-        }
-      ],
       "header_flags": [
         "RD",
         "RA"
@@ -621,23 +490,14 @@
       "id": "60273",
       "question": {
         "name": "www.elastic.co",
-        "registered_domain": "elastic.co",
-        "subdomain": "www",
-        "top_level_domain": "co",
         "type": "A"
       },
       "response_code": "NOERROR",
       "type": "answer"
     },
     "event": {
-      "category": [
-        "network"
-      ],
-      "created": "2021-06-15T23:48:48.901Z",
-      "kind": "event",
-      "module": "suricata",
       "type": [
-        "protocol"
+        "network_protocol"
       ]
     },
     "host": {
@@ -646,11 +506,6 @@
     "network": {
       "protocol": "dns",
       "transport": "udp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "ip": [
@@ -733,15 +588,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2021-06-15T23:48:48.902Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -753,38 +607,6 @@
       "port": 41979
     },
     "dns": {
-      "answers": [
-        {
-          "rdata": "dualstack.r2.shared.global.fastly.net",
-          "rrname": "www.elastic.co",
-          "rrtype": "CNAME",
-          "ttl": 299
-        },
-        {
-          "rdata": "2a02:cf40:add:4002:91f2:a9b2:e09a:6fc6",
-          "rrname": "dualstack.r2.shared.global.fastly.net",
-          "rrtype": "AAAA",
-          "ttl": 29
-        },
-        {
-          "rdata": "2a02:cf40:add:4002:91f2:a9b2:e09a:6fc6",
-          "rrname": "dualstack.r2.shared.global.fastly.net",
-          "rrtype": "AAAA",
-          "ttl": 29
-        },
-        {
-          "rdata": "2a02:cf40:0200:0000:0000:0000:0000:0729",
-          "rrname": "dualstack.r2.shared.global.fastly.net",
-          "rrtype": "AAAA",
-          "ttl": 29
-        },
-        {
-          "rdata": "2a02:cf40:0400:0000:0000:0000:0000:0729",
-          "rrname": "dualstack.r2.shared.global.fastly.net",
-          "rrtype": "AAAA",
-          "ttl": 29
-        }
-      ],
       "header_flags": [
         "RD",
         "RA"
@@ -792,23 +614,14 @@
       "id": "4210",
       "question": {
         "name": "www.elastic.co",
-        "registered_domain": "elastic.co",
-        "subdomain": "www",
-        "top_level_domain": "co",
         "type": "AAAA"
       },
       "response_code": "NOERROR",
       "type": "answer"
     },
     "event": {
-      "category": [
-        "network"
-      ],
-      "created": "2021-06-15T23:48:48.902Z",
-      "kind": "event",
-      "module": "suricata",
       "type": [
-        "protocol"
+        "network_protocol"
       ]
     },
     "host": {
@@ -817,11 +630,6 @@
     "network": {
       "protocol": "dns",
       "transport": "udp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "ip": [
@@ -904,15 +712,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2021-06-15T01:22:31.812Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -927,22 +734,13 @@
       "id": "28329",
       "question": {
         "name": "www.yahoo.com",
-        "registered_domain": "yahoo.com",
-        "subdomain": "www",
-        "top_level_domain": "com",
         "type": "A"
       },
       "type": "query"
     },
     "event": {
-      "category": [
-        "network"
-      ],
-      "created": "2021-06-15T01:22:31.812Z",
-      "kind": "event",
-      "module": "suricata",
       "type": [
-        "protocol"
+        "network_protocol"
       ]
     },
     "host": {
@@ -951,11 +749,6 @@
     "network": {
       "protocol": "dns",
       "transport": "udp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "ip": [
@@ -990,15 +783,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2021-06-15T01:22:31.812Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -1013,22 +805,13 @@
       "id": "7050",
       "question": {
         "name": "www.yahoo.com",
-        "registered_domain": "yahoo.com",
-        "subdomain": "www",
-        "top_level_domain": "com",
         "type": "AAAA"
       },
       "type": "query"
     },
     "event": {
-      "category": [
-        "network"
-      ],
-      "created": "2021-06-15T01:22:31.812Z",
-      "kind": "event",
-      "module": "suricata",
       "type": [
-        "protocol"
+        "network_protocol"
       ]
     },
     "host": {
@@ -1037,11 +820,6 @@
     "network": {
       "protocol": "dns",
       "transport": "udp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "ip": [
@@ -1076,15 +854,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2021-06-15T01:22:31.846Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -1109,23 +886,12 @@
         "RA"
       ],
       "id": "28329",
-      "question": {
-        "registered_domain": "yahoo.com",
-        "subdomain": "www",
-        "top_level_domain": "com"
-      },
       "response_code": "NOERROR",
       "type": "answer"
     },
     "event": {
-      "category": [
-        "network"
-      ],
-      "created": "2021-06-15T01:22:31.846Z",
-      "kind": "event",
-      "module": "suricata",
       "type": [
-        "protocol"
+        "network_protocol"
       ]
     },
     "host": {
@@ -1134,11 +900,6 @@
     "network": {
       "protocol": "dns",
       "transport": "udp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "ip": [
@@ -1179,15 +940,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2021-06-15T01:22:31.846Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -1212,11 +972,6 @@
         "RA"
       ],
       "id": "28329",
-      "question": {
-        "registered_domain": "wg1.b",
-        "subdomain": "atsv2-fp-shed",
-        "top_level_domain": "b"
-      },
       "resolved_ip": [
         "175.16.199.1"
       ],
@@ -1224,14 +979,8 @@
       "type": "answer"
     },
     "event": {
-      "category": [
-        "network"
-      ],
-      "created": "2021-06-15T01:22:31.846Z",
-      "kind": "event",
-      "module": "suricata",
       "type": [
-        "protocol"
+        "network_protocol"
       ]
     },
     "host": {
@@ -1240,11 +989,6 @@
     "network": {
       "protocol": "dns",
       "transport": "udp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "ip": [
@@ -1285,15 +1029,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2021-06-15T01:22:31.846Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -1318,11 +1061,6 @@
         "RA"
       ],
       "id": "28329",
-      "question": {
-        "registered_domain": "wg1.b",
-        "subdomain": "atsv2-fp-shed",
-        "top_level_domain": "b"
-      },
       "resolved_ip": [
         "175.16.199.1"
       ],
@@ -1330,14 +1068,8 @@
       "type": "answer"
     },
     "event": {
-      "category": [
-        "network"
-      ],
-      "created": "2021-06-15T01:22:31.846Z",
-      "kind": "event",
-      "module": "suricata",
       "type": [
-        "protocol"
+        "network_protocol"
       ]
     },
     "host": {
@@ -1346,11 +1078,6 @@
     "network": {
       "protocol": "dns",
       "transport": "udp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "ip": [
@@ -1391,15 +1118,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2021-06-15T01:22:31.846Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -1424,11 +1150,6 @@
         "RA"
       ],
       "id": "28329",
-      "question": {
-        "registered_domain": "wg1.b",
-        "subdomain": "atsv2-fp-shed",
-        "top_level_domain": "b"
-      },
       "resolved_ip": [
         "175.16.199.1"
       ],
@@ -1436,14 +1157,8 @@
       "type": "answer"
     },
     "event": {
-      "category": [
-        "network"
-      ],
-      "created": "2021-06-15T01:22:31.846Z",
-      "kind": "event",
-      "module": "suricata",
       "type": [
-        "protocol"
+        "network_protocol"
       ]
     },
     "host": {
@@ -1452,11 +1167,6 @@
     "network": {
       "protocol": "dns",
       "transport": "udp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "ip": [
@@ -1497,15 +1207,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2021-06-15T01:22:31.846Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -1530,11 +1239,6 @@
         "RA"
       ],
       "id": "28329",
-      "question": {
-        "registered_domain": "wg1.b",
-        "subdomain": "atsv2-fp-shed",
-        "top_level_domain": "b"
-      },
       "resolved_ip": [
         "175.16.199.1"
       ],
@@ -1542,14 +1246,8 @@
       "type": "answer"
     },
     "event": {
-      "category": [
-        "network"
-      ],
-      "created": "2021-06-15T01:22:31.846Z",
-      "kind": "event",
-      "module": "suricata",
       "type": [
-        "protocol"
+        "network_protocol"
       ]
     },
     "host": {
@@ -1558,11 +1256,6 @@
     "network": {
       "protocol": "dns",
       "transport": "udp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "ip": [
@@ -1603,15 +1296,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2021-06-15T01:22:31.847Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -1636,23 +1328,12 @@
         "RA"
       ],
       "id": "7050",
-      "question": {
-        "registered_domain": "yahoo.com",
-        "subdomain": "www",
-        "top_level_domain": "com"
-      },
       "response_code": "NOERROR",
       "type": "answer"
     },
     "event": {
-      "category": [
-        "network"
-      ],
-      "created": "2021-06-15T01:22:31.847Z",
-      "kind": "event",
-      "module": "suricata",
       "type": [
-        "protocol"
+        "network_protocol"
       ]
     },
     "host": {
@@ -1661,11 +1342,6 @@
     "network": {
       "protocol": "dns",
       "transport": "udp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "ip": [
@@ -1706,15 +1382,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2021-06-15T01:22:31.847Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -1739,11 +1414,6 @@
         "RA"
       ],
       "id": "7050",
-      "question": {
-        "registered_domain": "wg1.b",
-        "subdomain": "atsv2-fp-shed",
-        "top_level_domain": "b"
-      },
       "resolved_ip": [
         "2a02:cf40:add:4002:91f2:a9b2:e09a:6fc6"
       ],
@@ -1751,14 +1421,8 @@
       "type": "answer"
     },
     "event": {
-      "category": [
-        "network"
-      ],
-      "created": "2021-06-15T01:22:31.847Z",
-      "kind": "event",
-      "module": "suricata",
       "type": [
-        "protocol"
+        "network_protocol"
       ]
     },
     "host": {
@@ -1767,11 +1431,6 @@
     "network": {
       "protocol": "dns",
       "transport": "udp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "ip": [
@@ -1812,15 +1471,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2021-06-15T01:22:31.847Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -1845,11 +1503,6 @@
         "RA"
       ],
       "id": "7050",
-      "question": {
-        "registered_domain": "wg1.b",
-        "subdomain": "atsv2-fp-shed",
-        "top_level_domain": "b"
-      },
       "resolved_ip": [
         "2a02:cf40:add:4002:91f2:a9b2:e09a:6fc6"
       ],
@@ -1857,14 +1510,8 @@
       "type": "answer"
     },
     "event": {
-      "category": [
-        "network"
-      ],
-      "created": "2021-06-15T01:22:31.847Z",
-      "kind": "event",
-      "module": "suricata",
       "type": [
-        "protocol"
+        "network_protocol"
       ]
     },
     "host": {
@@ -1873,11 +1520,6 @@
     "network": {
       "protocol": "dns",
       "transport": "udp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "ip": [
@@ -1918,15 +1560,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2021-06-15T01:22:31.847Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -1951,11 +1592,6 @@
         "RA"
       ],
       "id": "7050",
-      "question": {
-        "registered_domain": "wg1.b",
-        "subdomain": "atsv2-fp-shed",
-        "top_level_domain": "b"
-      },
       "resolved_ip": [
         "2a02:cf40:add:4002:91f2:a9b2:e09a:6fc6"
       ],
@@ -1963,14 +1599,8 @@
       "type": "answer"
     },
     "event": {
-      "category": [
-        "network"
-      ],
-      "created": "2021-06-15T01:22:31.847Z",
-      "kind": "event",
-      "module": "suricata",
       "type": [
-        "protocol"
+        "network_protocol"
       ]
     },
     "host": {
@@ -1979,11 +1609,6 @@
     "network": {
       "protocol": "dns",
       "transport": "udp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "ip": [
@@ -2024,15 +1649,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2021-06-15T01:22:31.847Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -2057,11 +1681,6 @@
         "RA"
       ],
       "id": "7050",
-      "question": {
-        "registered_domain": "wg1.b",
-        "subdomain": "atsv2-fp-shed",
-        "top_level_domain": "b"
-      },
       "resolved_ip": [
         "2a02:cf40:add:4002:91f2:a9b2:e09a:6fc6"
       ],
@@ -2069,14 +1688,8 @@
       "type": "answer"
     },
     "event": {
-      "category": [
-        "network"
-      ],
-      "created": "2021-06-15T01:22:31.847Z",
-      "kind": "event",
-      "module": "suricata",
       "type": [
-        "protocol"
+        "network_protocol"
       ]
     },
     "host": {
@@ -2085,11 +1698,6 @@
     "network": {
       "protocol": "dns",
       "transport": "udp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "ip": [
@@ -2130,15 +1738,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2021-06-15T02:03:36.578Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -2153,22 +1760,13 @@
       "id": "9104",
       "question": {
         "name": "www.elastic.co",
-        "registered_domain": "elastic.co",
-        "subdomain": "www",
-        "top_level_domain": "co",
         "type": "A"
       },
       "type": "query"
     },
     "event": {
-      "category": [
-        "network"
-      ],
-      "created": "2021-06-15T02:03:36.578Z",
-      "kind": "event",
-      "module": "suricata",
       "type": [
-        "protocol"
+        "network_protocol"
       ]
     },
     "host": {
@@ -2177,11 +1775,6 @@
     "network": {
       "protocol": "dns",
       "transport": "udp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "ip": [
@@ -2216,15 +1809,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2021-06-15T02:03:36.578Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -2239,22 +1831,13 @@
       "id": "12859",
       "question": {
         "name": "www.elastic.co",
-        "registered_domain": "elastic.co",
-        "subdomain": "www",
-        "top_level_domain": "co",
         "type": "AAAA"
       },
       "type": "query"
     },
     "event": {
-      "category": [
-        "network"
-      ],
-      "created": "2021-06-15T02:03:36.578Z",
-      "kind": "event",
-      "module": "suricata",
       "type": [
-        "protocol"
+        "network_protocol"
       ]
     },
     "host": {
@@ -2263,11 +1846,6 @@
     "network": {
       "protocol": "dns",
       "transport": "udp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "ip": [
@@ -2302,15 +1880,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2021-06-15T02:03:36.619Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -2322,62 +1899,21 @@
       "port": 48288
     },
     "dns": {
-      "answers": [
-        {
-          "rdata": "dualstack.r2.shared.global.fastly.net",
-          "rrname": "www.elastic.co",
-          "rrtype": "CNAME",
-          "ttl": 150
-        },
-        {
-          "rdata": "175.16.199.1",
-          "rrname": "dualstack.r2.shared.global.fastly.net",
-          "rrtype": "A",
-          "ttl": 29
-        },
-        {
-          "rdata": "175.16.199.1",
-          "rrname": "dualstack.r2.shared.global.fastly.net",
-          "rrtype": "A",
-          "ttl": 29
-        },
-        {
-          "rdata": "175.16.199.1",
-          "rrname": "dualstack.r2.shared.global.fastly.net",
-          "rrtype": "A",
-          "ttl": 29
-        },
-        {
-          "rdata": "175.16.199.1",
-          "rrname": "dualstack.r2.shared.global.fastly.net",
-          "rrtype": "A",
-          "ttl": 29
-        }
-      ],
       "header_flags": [
         "RD",
         "RA"
       ],
       "id": "9104",
       "question": {
-        "name": "www.elastic.co",
-        "registered_domain": "elastic.co",
-        "subdomain": "www",
-        "top_level_domain": "co",
+        "name": "dualstack.r2.shared.global.fastly.net",
         "type": "A"
       },
       "response_code": "NOERROR",
       "type": "answer"
     },
     "event": {
-      "category": [
-        "network"
-      ],
-      "created": "2021-06-15T02:03:36.619Z",
-      "kind": "event",
-      "module": "suricata",
       "type": [
-        "protocol"
+        "network_protocol"
       ]
     },
     "host": {
@@ -2386,11 +1922,6 @@
     "network": {
       "protocol": "dns",
       "transport": "udp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "ip": [
@@ -2445,7 +1976,7 @@
         "ra": true,
         "rcode": "NOERROR",
         "rd": true,
-        "rrname": "www.elastic.co",
+        "rrname": "dualstack.r2.shared.global.fastly.net",
         "rrtype": "A",
         "type": "answer",
         "version": 2
@@ -2462,15 +1993,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2021-06-15T02:03:36.626Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -2482,38 +2012,6 @@
       "port": 59203
     },
     "dns": {
-      "answers": [
-        {
-          "rdata": "dualstack.r2.shared.global.fastly.net",
-          "rrname": "www.elastic.co",
-          "rrtype": "CNAME",
-          "ttl": 269
-        },
-        {
-          "rdata": "2a02:cf40:add:4002:91f2:a9b2:e09a:6fc6",
-          "rrname": "dualstack.r2.shared.global.fastly.net",
-          "rrtype": "AAAA",
-          "ttl": 29
-        },
-        {
-          "rdata": "2a02:cf40:0200:0000:0000:0000:0000:0729",
-          "rrname": "dualstack.r2.shared.global.fastly.net",
-          "rrtype": "AAAA",
-          "ttl": 29
-        },
-        {
-          "rdata": "2a02:cf40:0400:0000:0000:0000:0000:0729",
-          "rrname": "dualstack.r2.shared.global.fastly.net",
-          "rrtype": "AAAA",
-          "ttl": 29
-        },
-        {
-          "rdata": "2a02:cf40:add:4002:91f2:a9b2:e09a:6fc6",
-          "rrname": "dualstack.r2.shared.global.fastly.net",
-          "rrtype": "AAAA",
-          "ttl": 29
-        }
-      ],
       "header_flags": [
         "RD",
         "RA"
@@ -2521,23 +2019,14 @@
       "id": "12859",
       "question": {
         "name": "www.elastic.co",
-        "registered_domain": "elastic.co",
-        "subdomain": "www",
-        "top_level_domain": "co",
         "type": "AAAA"
       },
       "response_code": "NOERROR",
       "type": "answer"
     },
     "event": {
-      "category": [
-        "network"
-      ],
-      "created": "2021-06-15T02:03:36.626Z",
-      "kind": "event",
-      "module": "suricata",
       "type": [
-        "protocol"
+        "network_protocol"
       ]
     },
     "host": {
@@ -2546,11 +2035,6 @@
     "network": {
       "protocol": "dns",
       "transport": "udp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "ip": [
@@ -2622,8 +2106,8 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"

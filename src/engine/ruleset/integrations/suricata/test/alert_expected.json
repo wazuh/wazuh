@@ -1,6 +1,5 @@
 [
   {
-    "@timestamp": "2018-10-03T14:42:44.836Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -19,11 +18,7 @@
         "network",
         "intrusion_detection"
       ],
-      "created": "2018-10-03T14:42:44.836Z",
       "kind": "alert",
-      "module": "suricata",
-      "severity": 2,
-      "start": "2018-10-03T14:42:44.613Z",
       "type": [
         "allowed"
       ]
@@ -49,11 +44,6 @@
       "packets": 7,
       "protocol": "http",
       "transport": "tcp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "hosts": [
@@ -128,15 +118,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2018-10-03T16:16:26.711Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -155,11 +144,7 @@
         "network",
         "intrusion_detection"
       ],
-      "created": "2018-10-03T16:16:26.711Z",
       "kind": "alert",
-      "module": "suricata",
-      "severity": 2,
-      "start": "2018-10-03T16:16:26.467Z",
       "type": [
         "allowed"
       ]
@@ -185,11 +170,6 @@
       "packets": 7,
       "protocol": "http",
       "transport": "tcp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "hosts": [
@@ -264,15 +244,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2018-10-03T16:44:50.813Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -291,11 +270,7 @@
         "network",
         "intrusion_detection"
       ],
-      "created": "2018-10-03T16:44:50.813Z",
       "kind": "alert",
-      "module": "suricata",
-      "severity": 2,
-      "start": "2018-10-03T16:44:50.580Z",
       "type": [
         "allowed"
       ]
@@ -321,11 +296,6 @@
       "packets": 7,
       "protocol": "http",
       "transport": "tcp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "hosts": [
@@ -400,15 +370,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2018-10-03T16:45:09.267Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -427,11 +396,7 @@
         "network",
         "intrusion_detection"
       ],
-      "created": "2018-10-03T16:45:09.267Z",
       "kind": "alert",
-      "module": "suricata",
-      "severity": 2,
-      "start": "2018-10-03T16:45:09.036Z",
       "type": [
         "allowed"
       ]
@@ -457,11 +422,6 @@
       "packets": 7,
       "protocol": "http",
       "transport": "tcp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "hosts": [
@@ -536,15 +496,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2018-10-03T16:45:34.481Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -563,11 +522,7 @@
         "network",
         "intrusion_detection"
       ],
-      "created": "2018-10-03T16:45:34.481Z",
       "kind": "alert",
-      "module": "suricata",
-      "severity": 2,
-      "start": "2018-10-03T16:45:34.252Z",
       "type": [
         "allowed"
       ]
@@ -593,11 +548,6 @@
       "packets": 7,
       "protocol": "http",
       "transport": "tcp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "hosts": [
@@ -672,15 +622,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2018-10-03T17:02:38.900Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -699,11 +648,7 @@
         "network",
         "intrusion_detection"
       ],
-      "created": "2018-10-03T17:02:38.900Z",
       "kind": "alert",
-      "module": "suricata",
-      "severity": 2,
-      "start": "2018-10-03T17:02:38.599Z",
       "type": [
         "allowed"
       ]
@@ -729,11 +674,6 @@
       "packets": 7,
       "protocol": "http",
       "transport": "tcp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "hosts": [
@@ -808,15 +748,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2018-10-04T09:34:59.009Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -835,11 +774,7 @@
         "network",
         "intrusion_detection"
       ],
-      "created": "2018-10-04T09:34:59.009Z",
       "kind": "alert",
-      "module": "suricata",
-      "severity": 3,
-      "start": "2018-10-04T09:34:58.924Z",
       "type": [
         "allowed"
       ]
@@ -865,11 +800,6 @@
       "packets": 7,
       "protocol": "http",
       "transport": "tcp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "hosts": [
@@ -943,15 +873,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2018-10-04T09:34:59.168Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -970,11 +899,7 @@
         "network",
         "intrusion_detection"
       ],
-      "created": "2018-10-04T09:34:59.168Z",
       "kind": "alert",
-      "module": "suricata",
-      "severity": 3,
-      "start": "2018-10-04T09:34:58.926Z",
       "type": [
         "allowed"
       ]
@@ -1000,11 +925,6 @@
       "packets": 7,
       "protocol": "http",
       "transport": "tcp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "hosts": [
@@ -1078,15 +998,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2018-10-04T09:34:59.288Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -1105,11 +1024,7 @@
         "network",
         "intrusion_detection"
       ],
-      "created": "2018-10-04T09:34:59.288Z",
       "kind": "alert",
-      "module": "suricata",
-      "severity": 3,
-      "start": "2018-10-04T09:34:58.926Z",
       "type": [
         "allowed"
       ]
@@ -1135,11 +1050,6 @@
       "packets": 11,
       "protocol": "http",
       "transport": "tcp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "hosts": [
@@ -1213,15 +1123,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2018-10-04T09:34:59.289Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -1240,11 +1149,7 @@
         "network",
         "intrusion_detection"
       ],
-      "created": "2018-10-04T09:34:59.289Z",
       "kind": "alert",
-      "module": "suricata",
-      "severity": 3,
-      "start": "2018-10-04T09:34:58.924Z",
       "type": [
         "allowed"
       ]
@@ -1270,11 +1175,6 @@
       "packets": 126,
       "protocol": "http",
       "transport": "tcp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "hosts": [
@@ -1348,15 +1248,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2018-10-04T09:34:59.356Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -1375,11 +1274,7 @@
         "network",
         "intrusion_detection"
       ],
-      "created": "2018-10-04T09:34:59.356Z",
       "kind": "alert",
-      "module": "suricata",
-      "severity": 3,
-      "start": "2018-10-04T09:34:58.924Z",
       "type": [
         "allowed"
       ]
@@ -1405,11 +1300,6 @@
       "packets": 185,
       "protocol": "http",
       "transport": "tcp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "hosts": [
@@ -1483,15 +1373,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2018-10-04T09:34:59.456Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -1510,11 +1399,7 @@
         "network",
         "intrusion_detection"
       ],
-      "created": "2018-10-04T09:34:59.456Z",
       "kind": "alert",
-      "module": "suricata",
-      "severity": 3,
-      "start": "2018-10-04T09:34:58.924Z",
       "type": [
         "allowed"
       ]
@@ -1540,11 +1425,6 @@
       "packets": 377,
       "protocol": "http",
       "transport": "tcp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "hosts": [
@@ -1618,15 +1498,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2018-10-04T09:34:59.747Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -1645,11 +1524,7 @@
         "network",
         "intrusion_detection"
       ],
-      "created": "2018-10-04T09:34:59.747Z",
       "kind": "alert",
-      "module": "suricata",
-      "severity": 3,
-      "start": "2018-10-04T09:34:58.926Z",
       "type": [
         "allowed"
       ]
@@ -1675,11 +1550,6 @@
       "packets": 131,
       "protocol": "http",
       "transport": "tcp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "hosts": [
@@ -1753,15 +1623,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2018-10-04T09:34:59.953Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -1780,11 +1649,7 @@
         "network",
         "intrusion_detection"
       ],
-      "created": "2018-10-04T09:34:59.953Z",
       "kind": "alert",
-      "module": "suricata",
-      "severity": 3,
-      "start": "2018-10-04T09:34:58.926Z",
       "type": [
         "allowed"
       ]
@@ -1810,11 +1675,6 @@
       "packets": 210,
       "protocol": "http",
       "transport": "tcp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "hosts": [
@@ -1888,15 +1748,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2018-10-04T09:35:00.250Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -1915,11 +1774,7 @@
         "network",
         "intrusion_detection"
       ],
-      "created": "2018-10-04T09:35:00.250Z",
       "kind": "alert",
-      "module": "suricata",
-      "severity": 3,
-      "start": "2018-10-04T09:34:58.926Z",
       "type": [
         "allowed"
       ]
@@ -1945,11 +1800,6 @@
       "packets": 412,
       "protocol": "http",
       "transport": "tcp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "hosts": [
@@ -2023,15 +1873,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2018-10-04T09:35:00.401Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -2050,11 +1899,7 @@
         "network",
         "intrusion_detection"
       ],
-      "created": "2018-10-04T09:35:00.401Z",
       "kind": "alert",
-      "module": "suricata",
-      "severity": 3,
-      "start": "2018-10-04T09:34:58.926Z",
       "type": [
         "allowed"
       ]
@@ -2080,11 +1925,6 @@
       "packets": 504,
       "protocol": "http",
       "transport": "tcp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "hosts": [
@@ -2158,15 +1998,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2018-10-04T09:35:00.776Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -2185,11 +2024,7 @@
         "network",
         "intrusion_detection"
       ],
-      "created": "2018-10-04T09:35:00.776Z",
       "kind": "alert",
-      "module": "suricata",
-      "severity": 3,
-      "start": "2018-10-04T09:34:58.926Z",
       "type": [
         "allowed"
       ]
@@ -2215,11 +2050,6 @@
       "packets": 916,
       "protocol": "http",
       "transport": "tcp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "hosts": [
@@ -2293,15 +2123,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2018-10-04T09:35:00.897Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -2320,11 +2149,7 @@
         "network",
         "intrusion_detection"
       ],
-      "created": "2018-10-04T09:35:00.897Z",
       "kind": "alert",
-      "module": "suricata",
-      "severity": 3,
-      "start": "2018-10-04T09:34:58.926Z",
       "type": [
         "allowed"
       ]
@@ -2350,11 +2175,6 @@
       "packets": 921,
       "protocol": "http",
       "transport": "tcp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "hosts": [
@@ -2428,15 +2248,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2018-10-04T09:35:01.362Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -2455,11 +2274,7 @@
         "network",
         "intrusion_detection"
       ],
-      "created": "2018-10-04T09:35:01.362Z",
       "kind": "alert",
-      "module": "suricata",
-      "severity": 3,
-      "start": "2018-10-04T09:34:58.926Z",
       "type": [
         "allowed"
       ]
@@ -2484,11 +2299,6 @@
       "packets": 1503,
       "protocol": "http",
       "transport": "tcp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "hosts": [
@@ -2561,15 +2371,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2018-10-04T09:35:01.575Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -2588,11 +2397,7 @@
         "network",
         "intrusion_detection"
       ],
-      "created": "2018-10-04T09:35:01.575Z",
       "kind": "alert",
-      "module": "suricata",
-      "severity": 3,
-      "start": "2018-10-04T09:34:58.926Z",
       "type": [
         "allowed"
       ]
@@ -2617,11 +2422,6 @@
       "packets": 1654,
       "protocol": "http",
       "transport": "tcp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "hosts": [
@@ -2694,15 +2494,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2018-10-04T09:35:02.796Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -2715,12 +2514,6 @@
       "port": 9080
     },
     "event": {
-      "category": [
-        "network"
-      ],
-      "created": "2018-10-04T09:35:02.796Z",
-      "kind": "event",
-      "module": "suricata",
       "type": [
         "protocol"
       ]
@@ -2731,11 +2524,6 @@
     "network": {
       "protocol": "tls",
       "transport": "tcp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "hash": [
@@ -2840,15 +2628,14 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"
     }
   },
   {
-    "@timestamp": "2020-06-26T15:00:03.342Z",
     "agent": {
       "id": "001",
       "name": "wazuh-agent-1",
@@ -2867,11 +2654,7 @@
         "network",
         "intrusion_detection"
       ],
-      "created": "2020-06-26T15:00:03.342Z",
       "kind": "alert",
-      "module": "suricata",
-      "severity": 3,
-      "start": "2020-06-26T15:00:02.970Z",
       "type": [
         "allowed"
       ]
@@ -2885,11 +2668,6 @@
       "packets": 15,
       "protocol": "tls",
       "transport": "tcp"
-    },
-    "observer": {
-      "product": "Suricata",
-      "type": "ids",
-      "vendor": "OISF"
     },
     "related": {
       "hash": [
@@ -3030,8 +2808,8 @@
       "decoders": [
         "suricata"
       ],
-      "location": "[001] (wazuh-agent-1) any->/test/eve.json",
-      "origin": "/test/eve.json",
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
       "queue": 49,
       "registered_ip": "any",
       "source": "logcollector"

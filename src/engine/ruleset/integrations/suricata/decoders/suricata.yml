@@ -4,8 +4,8 @@ metadata:
   module: suricata
   compatibility: v6.0.0 and higher
   versions:
-    - "6.0.0"
-    - "7.0.0"
+    - "6"
+    - "7"
   author:
     name: Wazuh Inc, info@wazuh.com
     date: May 18 2024
@@ -14,101 +14,12 @@ metadata:
   title: Suricata decoder
   description: Decoder for Suricata open source network analysis and threat detection software.
 
-definitions:
-  is_good_appProto: string_not_equal($suricata.app_proto,failed) AND string_not_equal($suricata.app_proto,template) AND string_not_equal($suricata.app_proto,template-rust)
-  script:
-    alert:
-      kind: alert
-      category:
-        - network
-        - intrusion_detection
-    dns:
-      type:
-        - protocol
-      network_protocol: dns
-    flow:
-      type:
-        - connection
-    ftp:
-      type:
-        - protocol
-      network_protocol: ftp
-    ftp_data:
-      type:
-        - protocol
-      network_protocol: ftp
-    http:
-      category:
-        - network
-        - web
-      type:
-        - access
-        - protocol
-      network_protocol: http
-    http2:
-      category:
-        - network
-        - web
-      type:
-        - access
-        - protocol
-      network_protocol: http
-    ikev2:
-      type:
-        - protocol
-      network_protocol: ikev2
-    krb5:
-      type:
-        - protocol
-      network_protocol: krb5
-    mqtt:
-      type:
-        - protocol
-      network_protocol: mqtt
-    smb:
-      type:
-        - protocol
-      network_protocol: smb
-    smtp:
-      type:
-        - protocol
-      network_protocol: smtp
-    snmp:
-      type:
-        - protocol
-      network_protocol: snmp
-    ssh:
-      type:
-        - protocol
-      network_protocol: ssh
-    stats:
-      kind: metric
-    tftp:
-      type:
-        - protocol
-      network_protocol: tftp
-    tls:
-      type:
-        - protocol
-      network_protocol: tls
-    rdp:
-      type:
-        - protocol
-      network_protocol: rdp
-    rfb: # RFB (Remote Framebuffer Protocol)
-      type:
-        - protocol
-      network_protocol: rdp
-
 check:
   - suricata: parse_json($event.original)
   - suricata.event_type: exists()
-#TODO: Once the events arrive tagged, uncomment these lines below and remove the above `event.original`
-# - event.module: suricata
 
 normalize:
   - map:
-      - \@timestamp: parse_date($suricata.timestamp, %FT%T%z)
       - destination.address: $suricata.dest_ip
       - destination.bytes: $suricata.flow.bytes_toclient
       - destination.domain: $suricata.http.hostname
@@ -121,10 +32,10 @@ normalize:
       - event.end: parse_date($suricata.flow.end, %FT%T%z)
       - event.kind: event
       - event.module: suricata
-      - event.created: $@timestamp
+      - event.created: parse_date($suricata.timestamp, %FT%T%z)
       - event.severity: $suricata.alert.severity
       - event.start: parse_date($suricata.flow.start, %FT%T%z)
-      - event: merge_value($script, $suricata.event_type)
+      - event: kvdb_get(suricata_event_id_to_info, $suricata.event_type)
       - file.name: $suricata.alert.metadata.filename
       - file.path: $suricata.fileinfo.filename
       - file.size: $suricata.fileinfo.size
@@ -136,9 +47,6 @@ normalize:
       - suricata.app_proto: downcase($suricata.app_proto)
       - network.transport: downcase($suricata.proto)
       - message: $suricata.alert.category
-      - observer.product: Suricata
-      - observer.type: ids
-      - observer.vendor: OISF
       - related.hosts: array_append($suricata.http.hostname)
       - related.ip: array_append($suricata.src_ip, $suricata.dest_ip)
       - related.hash: array_append($suricata.tls.server.ja3s, $suricata.tls.client.ja3)
@@ -161,6 +69,13 @@ normalize:
       - url.query: regex_extract($url.original, ^(?:[^?]*\\?(.*\)\)?)
       - wazuh.decoders: array_append(suricata)
 
+  # TODO: uncomment the lines below when the event field tag can be extracted
+  #- check: contains($tags, 'forwarded')
+  #  map:
+  #    - observer.product: Suricata
+  #    - observer.type: ids
+  #    - observer.vendor: OISF
+
   - check: exists($event.network_protocol)
     map:
       - network.protocol: $event.network_protocol
@@ -171,42 +86,42 @@ normalize:
       - network.protocol: ftp
 
   - check: >-
-        $suricata.app_proto != failed AND
-        $suricata.app_proto != template AND
-        $suricata.app_proto != template-rust
+        $suricata.app_proto != failed
+        AND $suricata.app_proto != template
+        AND $suricata.app_proto != template-rust
     map:
       - network.protocol: $suricata.app_proto
 
   - check: >-
-        $suricata.event_type == "http" AND
-        $suricata.http.status < 400
+        $suricata.event_type == http
+        AND $suricata.http.status < 400
     map:
       - event.outcome: success
 
   - check: >-
-        $suricata.event_type == "http" AND
-        $suricata.http.status > 400
+        $suricata.event_type == http
+        AND $suricata.http.status > 400
     map:
       - event.outcome: failure
 
-  - check: $suricata.flow.state == "new"
+  - check: $suricata.flow.state == new
     map:
       - event.type: array_append(start)
 
-  - check: $suricata.flow.state == "closed"
+  - check: $suricata.flow.state == closed
     map:
       - event.type: array_append(end)
 
   - check: is_number($suricata.alert.signature_id)
     map:
-      - rule.id: to_str($suricata.alert.signature_id)
+      - rule.id: to_string($suricata.alert.signature_id)
 
-  - check: $source.bytes>=0 OR $destination.bytes>=0
+  - check: $source.bytes >= 0 OR $destination.bytes >= 0
     map:
       - network.bytes: 0
       - network.bytes: int_calculate(sum, $source.bytes, $destination.bytes)
 
-  - check: $source.packets>=0 OR $destination.packets>=0
+  - check: $source.packets >= 0 OR $destination.packets >= 0
     map:
       - network.packets: 0
       - network.packets: int_calculate(sum, $source.packets, $destination.packets)
@@ -216,32 +131,33 @@ normalize:
     map:
       - event.type: array_append($suricata.alert.action)
 
-  - check: $network.protocol == "http"
+  - check: $network.protocol == http
     map:
       - url.domain: $destination.domain
 
   # DNS
-  - check: $network.protocol == "dns"
+  - check: $network.protocol == dns
     map:
-      - dns.id: to_str($suricata.dns.id)
+      - dns.id: to_string($suricata.dns.id)
       - dns.response_code: $suricata.dns.rcode
       - dns.type: $suricata.dns.type
-      - _name: $suricata.dns.rrname
-      - _domain_parts: split($_name, '.')
-      - dns.question.registered_domain: concat($_domain_parts.1, '.', $_domain_parts.2)
-      - dns.question.subdomain: $_domain_parts.0
-      - dns.question.top_level_domain: $_domain_parts.2
+      # TODO: It is necessary to read a field containing a hostname and then write the "registered domain"
+      # contained in the hostname into the destination field. This functionality needs to be implemented
+      #- _domain_parts: split($suricata.dns.rrname, '.')
+      #- dns.question.registered_domain: concat($_domain_parts.1, '.', $_domain_parts.2)
+      #- dns.question.subdomain: $_domain_parts.0
+      #- dns.question.top_level_domain: $_domain_parts.2
   - check: >-
-        $dns.type == "query" OR
-        $suricata.dns.version == 2
+        $dns.type == query
+        OR $suricata.dns.version == 2
     map:
       - dns.question.name: $suricata.dns.rrname
       - dns.question.type: $suricata.dns.rrtype
 
   # DNS ANSWER V1
   - check: >-
-        $dns.type == "answer" AND
-        not_exists($suricata.dns.version)
+        $dns.type == answer
+        AND not_exists($suricata.dns.version)
     map:
       - _answer.name: $suricata.dns.rrname
       - _answer.data: $suricata.dns.rdata
@@ -249,16 +165,18 @@ normalize:
       - _answer.ttl: $suricata.dns.ttl
       - dns.answer: array_append($_answer)
 
-  - check: $_answer.type == "A" OR $_answer.type == "AAAA"
+  - check: >-
+        $_answer.type == A
+        OR $_answer.type == AAAA
     map:
       - dns.resolved_ip: array_append($_answer.data)
 
   # DNS ANSWER V2
-  - check: >-
-        $dns.type == "answer" AND
-        $suricata.dns.version == 2
-    map:
-      - dns.answers: $suricata.dns.answers # TODO: For version 1 of DNS there is only one answer object with which it is
+  #- check: >-
+  #      $dns.type == answer
+  #      AND $suricata.dns.version == 2
+  #  map:
+  #    - dns.answers: $suricata.dns.answers # TODO: For version 1 of DNS there is only one answer object with which it is
                                            # possible to change the names from rdata to data, rrname to name, rtype to
                                            # type, etc. But in version 2 of DNS comes an array of answer objects and it
                                            # is no longer possible to change the name since iteration is needed.
@@ -267,7 +185,7 @@ normalize:
                                            # rtype will appear in the mapping instead of data, name and type
 
   # TODO: uncomment this when the iterators issue is solved
-  #- check: $suricata.dns.rrtype == "A" OR $suricata.dns.rrtype == "AAAA"
+  #- check: $suricata.dns.rrtype == A OR $suricata.dns.rrtype == AAAA
   #  map:
   #    - dns.resolved_ip: array_append($dns.answers.i.rdata)
 
@@ -288,7 +206,7 @@ normalize:
       - dns.header_flags: array_append(RA)
 
   # TLS
-  - check: $network.protocol == "tls"
+  - check: $network.protocol == tls
     map:
       # Subject
       - _subject: parse_key_value($suricata.tls.subject, '=', ',' , "'", \\)
@@ -330,7 +248,7 @@ normalize:
       - tls.server.not_after: parse_date($suricata.tls.notafter, %FT%T)
       - tls.server.not_before: parse_date($suricata.tls.notbefore, %FT%T)
 
-  - check: $suricata.tls.version != 'UNDETERMINED'
+  - check: $suricata.tls.version != UNDETERMINED
     map:
       - _version: split($suricata.tls.version, ' ')
       - tls.version: $_version.1
@@ -338,4 +256,3 @@ normalize:
 
   - map:
       - event.original: delete()
-      - ecs: delete()
