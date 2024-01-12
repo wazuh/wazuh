@@ -10,6 +10,7 @@ namespace builder::builders::mocks
 
 class MockBuildCtx : public IBuildCtx
 {
+public:
     MOCK_METHOD(std::shared_ptr<IBuildCtx>, clone, (), (const));
     MOCK_METHOD((const defs::IDefinitions&), definitions, (), (const));
     MOCK_METHOD(void, setDefinitions, (const std::shared_ptr<defs::IDefinitions>& definitions), ());
