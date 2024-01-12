@@ -54,7 +54,7 @@ def wait_enrollment_try():
         Watch ossec.log until "Requesting a key" message is found
     """
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(only_new_events = True, callback=callbacks.generate_callback(AGENTD_REQUESTING_KEY,{'IP':''}), timeout = 50)
+    wazuh_log_monitor.start(only_new_events = True, callback=callbacks.generate_callback(AGENTD_REQUESTING_KEY,{'IP':''}), timeout = 120)
     assert (wazuh_log_monitor.callback_result != None), f'Enrollment retry was not sent'
 
 

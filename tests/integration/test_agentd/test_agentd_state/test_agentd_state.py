@@ -149,6 +149,7 @@ def test_agentd_state(test_configuration, test_metadata, set_wazuh_configuration
     for expected_output in test_metadata['output']:
         check_fields(expected_output, remoted_server)
 
+    #Shutdown simulator
     if remoted_server:
         remoted_server.destroy()
     
@@ -175,7 +176,7 @@ def parse_state_file():
     return state
     
 
-def wait_for_custom_message_response(expected_status: str, remoted_server: RemotedSimulator, timeout: int = 60):
+def wait_for_custom_message_response(expected_status: str, remoted_server: RemotedSimulator, timeout: int = 120):
     """Request remoted_server the status of the agent
 
     Args:

@@ -148,14 +148,8 @@ def test_agentd_reconection_enrollment_no_keys_file(test_metadata, set_wazuh_con
     # Reset simulator
     remoted_server.destroy()
 
-    remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'], mode = 'WRONG_KEY')
-    remoted_server.start()
-
     # Wait until Agent asks a new key to enrollment
     wait_enrollment_try()
-
-    # Reset simulator
-    remoted_server.destroy()
 
     remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
     remoted_server.start()

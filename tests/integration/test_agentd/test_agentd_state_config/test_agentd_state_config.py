@@ -154,4 +154,4 @@ def test_agentd_state_config(test_configuration, test_metadata, remove_state_fil
     wazuh_log_monitor.start(callback=callbacks.generate_callback(str(test_metadata['event_monitor'])))
     assert (wazuh_log_monitor.callback_result != None), f'Error invalid configuration event not detected'
 
-    control_service('stop')
+    control_service('stop', AGENT_DAEMON)
