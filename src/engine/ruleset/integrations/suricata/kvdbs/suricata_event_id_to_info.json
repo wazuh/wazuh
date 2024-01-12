@@ -1,0 +1,123 @@
+{
+    "alert": {
+        "kind": "alert",
+        "category": [
+            "network",
+            "intrusion_detection"
+        ]
+    },
+    "dns": {
+        "type": [
+            "network_protocol"
+        ],
+        "network_protocol": "dns"
+    },
+    "flow": {
+        "type": [
+            "connection"
+        ]
+    },
+    "ftp": {
+        "type": [
+            "protocol"
+        ],
+        "network_protocol": "ftp"
+    },
+    "ftp_data": {
+        "type": [
+            "protocol"
+        ],
+        "network_protocol": "ftp"
+    },
+    "http": {
+        "category": [
+            "network",
+            "web"
+        ],
+        "type": [
+            "protocol",
+            "access"
+        ],
+        "network_protocol": "http"
+    },
+    "http2": {
+        "category": [
+            "network",
+            "web"
+        ],
+        "type": [
+            "protocol",
+            "access"
+        ],
+        "network_protocol": "http"
+    },
+    "ikev2": {
+        "type": [
+            "protocol"
+        ],
+        "network_protocol": "ikev2"
+    },
+    "krb5": {
+        "type": [
+            "protocol"
+        ],
+        "network_protocol": "krb5"
+    },
+    "mqtt": {
+        "type": [
+            "protocol"
+        ],
+        "network_protocol": "mqtt"
+    },
+    "smb": {
+        "type": [
+            "protocol"
+        ],
+        "network_protocol": "smb"
+    },
+    "smtp": {
+        "type": [
+            "protocol"
+        ],
+        "network_protocol": "smtp"
+    },
+    "snmp": {
+        "type": [
+            "protocol"
+        ],
+        "network_protocol": "snmp"
+    },
+    "ssh": {
+        "type": [
+            "protocol"
+        ],
+        "network_protocol": "ssh"
+    },
+    "stats": {
+        "kind": "metric"
+    },
+    "tftp": {
+        "type": [
+            "protocol"
+        ],
+        "network_protocol": "tftp"
+    },
+    "tls": {
+        "type": [
+            "protocol"
+        ],
+        "network_protocol": "tls"
+    },
+    "rdp": {
+        "type": [
+            "protocol"
+        ],
+        "network_protocol": "rdp"
+    },
+    "rfb": {
+        "type": [
+            "protocol"
+        ],
+        "network_protocol": "rdp"
+    }
+}
