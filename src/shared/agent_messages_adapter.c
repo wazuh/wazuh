@@ -26,8 +26,14 @@ char* adapt_delta_message(const char* data, const char* name, const char* id, co
     char* msg_to_send = NULL;
 
     j_msg = cJSON_Parse(data);
-    if(!j_msg) {
+    if (!j_msg) {
         return NULL;
+    } else {
+        // Legacy agents prior to 4.2 used a different message format that isn't supported
+        if (cJSON_GetObjectItem(j_msg, "ID") && cJSON_GetObjectItem(j_msg, "timestamp")) {
+            cJSON_Delete(j_msg);
+            return NULL;
+        }
     }
 
     j_msg_to_send = cJSON_CreateObject();
@@ -75,8 +81,14 @@ char* adapt_sync_message(const char* data, const char* name, const char* id, con
     char* msg_to_send = NULL;
 
     j_msg = cJSON_Parse(data);
-    if(!j_msg) {
+    if (!j_msg) {
         return NULL;
+    } else {
+        // Legacy agents prior to 4.2 used a different message format that isn't supported
+        if (cJSON_GetObjectItem(j_msg, "ID") && cJSON_GetObjectItem(j_msg, "timestamp")) {
+            cJSON_Delete(j_msg);
+            return NULL;
+        }
     }
 
     j_msg_to_send = cJSON_CreateObject();
