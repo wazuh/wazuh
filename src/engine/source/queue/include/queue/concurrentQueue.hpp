@@ -166,8 +166,6 @@ private:
                 }
                 std::this_thread::sleep_for(m_waitTime);
             }
-             // Puedo asegurarme de que T sea un tipo de shared ptr?
-             // Y ademas que si no tiene el metodo str no se descargye a disco? Es mejor un to_string?
             if (element != nullptr)
             {
                 m_floodingFile->write(element->str());

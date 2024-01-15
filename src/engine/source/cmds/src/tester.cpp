@@ -1,17 +1,16 @@
 #include "cmds/tester.hpp"
 
-#include "defaultSettings.hpp"
-#include "utils.hpp"
+#include <iostream>
 
 #include <google/protobuf/util/json_util.h>
 
-#include <iostream>
-
-// #include <api/test/handlers.hpp>
 #include <cmds/apiclnt/client.hpp>
 #include <cmds/details/stackExecutor.hpp>
 #include <eMessages/tester.pb.h>
 #include <yml/yml.hpp>
+
+#include "defaultSettings.hpp"
+#include "utils.hpp"
 
 namespace
 {
@@ -486,4 +485,3 @@ void configure(CLI::App_p app)
 }
 
 } // namespace cmd::test
-
