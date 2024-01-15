@@ -15,8 +15,6 @@
 #include <api/policy/mockPolicy.hpp>
 #include <router/mockRouter.hpp>
 
-#include "../../apiAuxiliarFunctions.hpp"
-
 using namespace api::policy::mocks;
 using namespace api::router::handlers;
 using namespace router::mocks;
@@ -28,7 +26,7 @@ using namespace router::mocks;
  */
 using GetHandlerToTest = std::function<api::HandlerSync(const std::shared_ptr<router::IRouterAPI>&)>;
 using GetHandlerToTestComplement = std::function<api::HandlerSync(const std::shared_ptr<router::IRouterAPI>&,
-                                                              const std::shared_ptr<api::policy::IPolicy>&)>;
+                                                                  const std::shared_ptr<api::policy::IPolicy>&)>;
 
 /**
  * @brief Represent the type signature of the expected function
@@ -183,6 +181,27 @@ const std::string EVENT = "I am a dummy event";
 
 namespace routerProduction
 {
+
+const std::string inline stateToString(router::env::State state)
+{
+    const std::unordered_map<router::env::State, std::string> stateStrings {{router::env::State::UNKNOWN, "UNKNOWN"},
+                                                                            {router::env::State::DISABLED, "DISABLED"},
+                                                                            {router::env::State::ENABLED, "ENABLED"}};
+
+    auto it = stateStrings.find(state);
+    return (it != stateStrings.end()) ? it->second : "InvalidState";
+}
+
+const std::string inline syncToString(router::env::Sync sync)
+{
+    const std::unordered_map<router::env::Sync, std::string> syncStrings {{router::env::Sync::UNKNOWN, "UNKNOWN"},
+                                                                          {router::env::Sync::UPDATED, "UPDATED"},
+                                                                          {router::env::Sync::OUTDATED, "OUTDATED"},
+                                                                          {router::env::Sync::ERROR, "ERROR"}};
+
+    auto it = syncStrings.find(sync);
+    return (it != syncStrings.end()) ? it->second : "InvalidSync";
+}
 /**
  * @brief User for build the params of the handler in a easy way
  *

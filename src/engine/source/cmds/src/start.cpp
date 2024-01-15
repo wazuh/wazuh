@@ -21,7 +21,6 @@
 #include <api/router/handlers.hpp>
 #include <api/tester/handlers.hpp>
 #include <bk/rx/controller.hpp>
-// #include <bk/taskf/controller.hpp>
 #include <builder/builder.hpp>
 #include <cmds/details/stackExecutor.hpp>
 #include <defs/defs.hpp>
@@ -175,7 +174,6 @@ void runStart(ConfHandler confManager)
     std::shared_ptr<api::Api> api;
     std::shared_ptr<engineserver::EngineServer> server;
     std::shared_ptr<store::Store> store;
-    std::shared_ptr<builder::internals::Registry<builder::internals::Builder>> registry;
     std::shared_ptr<builder::Builder> builder;
     std::shared_ptr<api::catalog::Catalog> catalog;
     std::shared_ptr<router::Orchestrator> orchestrator;
@@ -257,23 +255,17 @@ void runStart(ConfHandler confManager)
 
         // Builder and registry
         {
-            registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
-            builder::internals::dependencies deps;
-            deps.logparDebugLvl = 0;
-            deps.logpar = logpar;
-            deps.kvdbScopeName = "builder";
-            deps.kvdbManager = kvdbManager;
-            deps.helperRegistry = std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>();
-            deps.schema = schema;
-            deps.forceFieldNaming = false;
-            deps.sockFactory = std::make_shared<sockiface::UnixSocketFactory>();
-            deps.wdbManager =
-                std::make_shared<wazuhdb::WDBManager>(std::string(wazuhdb::WDB_SOCK_PATH), deps.sockFactory);
-            builder::internals::registerHelperBuilders(deps.helperRegistry, deps);
-            builder::internals::registerBuilders(registry, deps);
-            LOG_DEBUG("Builders registered.");
-
-            builder = std::make_shared<builder::Builder>(store, registry);
+            builder::BuilderDeps builderDeps;
+            builderDeps.logparDebugLvl = 0;
+            builderDeps.logpar = logpar;
+            builderDeps.kvdbScopeName = "builder";
+            builderDeps.kvdbManager = kvdbManager;
+            builderDeps.sockFactory = std::make_shared<sockiface::UnixSocketFactory>();
+            builderDeps.wdbManager =
+                std::make_shared<wazuhdb::WDBManager>(std::string(wazuhdb::WDB_SOCK_PATH), builderDeps.sockFactory);
+            auto defs = std::make_shared<defs::DefinitionsBuilder>();
+            auto schemaValidator = std::make_shared<schemval::Validator>(schema);
+            builder = std::make_shared<builder::Builder>(store, schema, defs, schemaValidator, builderDeps);
             LOG_INFO("Builder initialized.");
         }
 
@@ -317,7 +309,7 @@ void runStart(ConfHandler confManager)
 
             router::Orchestrator::Options config {.m_numThreads = routerThreads,
                                          .m_wStore = store,
-                                         .m_wRegistry = registry,
+                                         .m_builder = builder,
                                          .m_controllerMaker = std::make_shared<bk::rx::ControllerMaker>(),
                                          .m_prodQueue = eventQueue,
                                          .m_testQueue = testQueue,

@@ -4,6 +4,8 @@
 #include <memory>
 #include <shared_mutex>
 
+#include <builder/ibuilder.hpp>
+
 #include "table.hpp"
 #include "irouter.hpp"
 
@@ -48,7 +50,7 @@ public:
      * @brief Constructs a Router with the specified builder.
      * @param builder The shared pointer to the IBuilder interface.
      */
-    Router(const std::shared_ptr<IBuilder>& builder, std::shared_ptr<bk::IControllerMaker> controllerMaker)
+    Router(const std::weak_ptr<builder::IBuilder>& builder, std::shared_ptr<bk::IControllerMaker> controllerMaker)
         : m_table()
         , m_mutex()
         , m_envBuilder(std::make_shared<EnvironmentBuilder>(builder, controllerMaker)) {};

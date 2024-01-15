@@ -6,9 +6,9 @@
 #include <utility>
 
 #include <bk/icontroller.hpp>
+#include <builder/ibuilder.hpp>
 
 #include "environment.hpp"
-#include "ibuilder.hpp"
 
 namespace router
 {
@@ -21,7 +21,7 @@ class EnvironmentBuilder
 {
 private:
     // TODO Make a m_builder a weak_ptr when the IBuilder lifetime is managed by the engine start
-    std::shared_ptr<IBuilder> m_builder;                     ///< The builder used to construct the policy and filter.
+    std::weak_ptr<builder::IBuilder> m_builder;              ///< The builder used to construct the policy and filter.
     std::shared_ptr<bk::IControllerMaker> m_controllerMaker; ///< The controller maker used to construct the controller.
 
     /**
@@ -38,13 +38,14 @@ private:
         {
             throw std::runtime_error {"The asset name is empty or it is not a filter"};
         }
-        auto filter = m_builder->buildAsset(filterName);
-        if (base::isError(filter))
+
+        auto builder = m_builder.lock();
+        if (builder == nullptr)
         {
-            throw std::runtime_error {base::getError(filter).message};
+            throw std::runtime_error {"The builder is not available"};
         }
 
-        return base::getResponse(filter);
+        return builder->buildAsset(filterName);
     }
 
 public:
@@ -52,11 +53,11 @@ public:
      * @brief Create a new EnvironmentBuilder
      *
      */
-    EnvironmentBuilder(std::shared_ptr<IBuilder> builder, std::shared_ptr<bk::IControllerMaker> controllerMaker)
+    EnvironmentBuilder(std::weak_ptr<builder::IBuilder> builder, std::shared_ptr<bk::IControllerMaker> controllerMaker)
         : m_builder(std::move(builder))
         , m_controllerMaker(std::move(controllerMaker))
     {
-        if (m_builder == nullptr)
+        if (m_builder.expired() || m_builder.lock() == nullptr)
         {
             throw std::runtime_error {"Cannot create BuildEnvironment with a null builder"};
         }
@@ -85,13 +86,13 @@ public:
             throw std::runtime_error {"The asset name is empty or it is not a policy"};
         }
         // Build the policy and create the pipeline
-        auto newPolicy = m_builder->buildPolicy(policyName);
-        if (base::isError(newPolicy))
+        auto builder = m_builder.lock();
+        if (builder == nullptr)
         {
-            throw std::runtime_error {base::getError(newPolicy).message};
+            throw std::runtime_error {"The builder is not available"};
         }
 
-        auto policy = base::getResponse(newPolicy);
+        auto policy = builder->buildPolicy(policyName);
         if (policy->assets().empty())
         {
             throw std::runtime_error {fmt::format("Policy '{}' has no assets", policyName)};
