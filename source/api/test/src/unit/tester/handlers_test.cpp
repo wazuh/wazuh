@@ -19,12 +19,11 @@
 #include <api/adapter.hpp>
 #include <eMessages/tester.pb.h>
 
-#include "../../apiAuxiliarFunctions.hpp"
-
 using namespace api::policy::mocks;
 using namespace api::tester::handlers;
 using namespace store::mocks;
 using namespace tester::mocks;
+
 
 /***
  * @brief Represent the type signature of the all function to test
@@ -231,6 +230,28 @@ const std::string EVENT = "I am a dummy event";
 
 namespace routerTest
 {
+
+const std::string inline stateToString(router::env::State state)
+{
+    const std::unordered_map<router::env::State, std::string> stateStrings {{router::env::State::UNKNOWN, "UNKNOWN"},
+                                                                            {router::env::State::DISABLED, "DISABLED"},
+                                                                            {router::env::State::ENABLED, "ENABLED"}};
+
+    auto it = stateStrings.find(state);
+    return (it != stateStrings.end()) ? it->second : "InvalidState";
+}
+
+const std::string inline syncToString(router::env::Sync sync)
+{
+    const std::unordered_map<router::env::Sync, std::string> syncStrings {{router::env::Sync::UNKNOWN, "UNKNOWN"},
+                                                                          {router::env::Sync::UPDATED, "UPDATED"},
+                                                                          {router::env::Sync::OUTDATED, "OUTDATED"},
+                                                                          {router::env::Sync::ERROR, "ERROR"}};
+
+    auto it = syncStrings.find(sync);
+    return (it != syncStrings.end()) ? it->second : "InvalidSync";
+}
+
 /**
  * @brief User for build the params of the handler in a easy way
  *
@@ -607,7 +628,7 @@ INSTANTIATE_TEST_SUITE_P(
                     EXPECT_CALL(*policy, getHash(testing::_)).WillOnce(::testing::Return(error));
                     entry.policySync(router::env::Sync::ERROR);
                     auto res = json::Json(R"({})");
-                    res.setString(syncToString(entry.policySync()), "/policy_sync");
+                    res.setString(routerTest::syncToString(entry.policySync()), "/policy_sync");
                     return res;
                 })),
         TestRouterTComplement(
@@ -622,7 +643,7 @@ INSTANTIATE_TEST_SUITE_P(
                     EXPECT_CALL(*policy, getHash(testing::_)).WillOnce(::testing::Return("hash"));
                     entry.policySync(router::env::Sync::OUTDATED);
                     auto res = json::Json(R"({})");
-                    res.setString(syncToString(entry.policySync()), "/policy_sync");
+                    res.setString(routerTest::syncToString(entry.policySync()), "/policy_sync");
                     return res;
                 })),
         // [tableGet]: Success
@@ -641,7 +662,7 @@ INSTANTIATE_TEST_SUITE_P(
                     EXPECT_CALL(*policy, getHash(testing::_)).WillOnce(::testing::Return(error));
                     entry.policySync(router::env::Sync::ERROR);
                     auto res = json::Json(R"({})");
-                    res.setString(syncToString(entry.policySync()), "/policy_sync");
+                    res.setString(routerTest::syncToString(entry.policySync()), "/policy_sync");
                     return res;
                 }))));
 

@@ -6,11 +6,10 @@
 #include <shared_mutex>
 
 #include <bk/icontroller.hpp>
+#include <builder/ibuilder.hpp>
+#include <parseEvent.hpp>
 #include <queue/iqueue.hpp>
 #include <store/istore.hpp>
-
-#include <builder/registry.hpp>
-#include <parseEvent.hpp>
 
 #include <router/iapi.hpp>
 #include <router/types.hpp>
@@ -84,8 +83,8 @@ public:
     {
         int m_numThreads; ///< Number of workers to create
 
-        std::weak_ptr<store::IStore> m_wStore; ///< Store to read namespaces and configurations
-        std::weak_ptr<builder::internals::Registry<builder::internals::Builder>> m_wRegistry; ///< Registry of builders
+        std::weak_ptr<store::IStore> m_wStore;      ///< Store to read namespaces and configurations
+        std::weak_ptr<builder::IBuilder> m_builder; ///< Builder use for creating environments
 
         std::shared_ptr<bk::IControllerMaker> m_controllerMaker; ///< Controller maker for creating controllers
         std::shared_ptr<ProdQueueType> m_prodQueue;              ///< The event queue
@@ -216,15 +215,15 @@ public:
      * @copydoc router::ITesterAPI::ingestTest Synchronous
      */
     base::OptError ingestTest(base::Event&& event,
-                    const test::Options& opt,
-                    std::function<void(base::RespOrError<test::Output>&&)> callbackFn) override;
+                              const test::Options& opt,
+                              std::function<void(base::RespOrError<test::Output>&&)> callbackFn) override;
 
     /**
      * @copydoc router::ITesterAPI::ingestTest Synchronous
      */
     base::OptError ingestTest(std::string_view event,
-                    const test::Options& opt,
-                    std::function<void(base::RespOrError<test::Output>&&)> callbackFn) override;
+                              const test::Options& opt,
+                              std::function<void(base::RespOrError<test::Output>&&)> callbackFn) override;
 
     /**
      * @copydoc router::ITesterAPI::getAssets

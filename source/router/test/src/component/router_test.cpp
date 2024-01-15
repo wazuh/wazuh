@@ -1,14 +1,9 @@
 #include <gtest/gtest.h>
 
-#include <builder/register.hpp>
-#include <logpar/registerParsers.hpp>
-
 #include <bk/mockController.hpp>
+#include <builder/mockBuilder.hpp>
+#include <builder/mockPolicy.hpp>
 #include <queue/mockQueue.hpp>
-#include <schemf/mockSchema.hpp>
-#include <kvdb/mockKvdbManager.hpp>
-#include <wdb/mockWdbManager.hpp>
-#include <sockiface/mockSockFactory.hpp>
 #include <store/mockStore.hpp>
 
 #include <router/orchestrator.hpp>
@@ -18,71 +13,35 @@
 constexpr auto SERVER_API_TIMEOUT {100000};
 constexpr auto NUM_THREADS {1};
 
-void inline initLogging(void)
-{
-    static bool initialized = false;
-
-    if (!initialized)
-    {
-        // Logging setup
-        logging::LoggingConfig logConfig;
-        logConfig.logLevel = "off";
-        logConfig.filePath = "";
-        logging::loggingInit(logConfig);
-        initialized = true;
-    }
-}
-
 class OrchestratorRouterTest : public ::testing::Test
 {
 protected:
-    std::shared_ptr<builder::internals::Registry<builder::internals::Builder>> m_registry;
-    std::shared_ptr<hlp::logpar::Logpar> m_logpar;
-
+    std::shared_ptr<builder::mocks::MockBuilder> m_mockbuilder;
+    std::shared_ptr<builder::mocks::MockPolicy> m_mockPolicy;
     std::shared_ptr<store::mocks::MockStore> m_mockStore;
     std::shared_ptr<bk::mocks::MockMakerController> m_mockControllerMaker;
     std::shared_ptr<bk::mocks::MockController> m_mockController;
     std::shared_ptr<queue::mocks::MockQueue<base::Event>> m_mockQueueRouter;
     std::shared_ptr<queue::mocks::MockQueue<router::test::QueueType>> m_mockQueueTester;
-    std::shared_ptr<schemf::mocks::MockSchema> m_mockSchema;
 
     std::shared_ptr<router::Orchestrator> m_orchestrator;
 
 public:
     void SetUp() override
     {
-        initLogging();
+        logging::testInit();
 
         m_mockStore = std::make_shared<store::mocks::MockStore>();
+        m_mockbuilder = std::make_shared<builder::mocks::MockBuilder>();
+        m_mockPolicy = std::make_shared<builder::mocks::MockPolicy>();
         m_mockControllerMaker = std::make_shared<bk::mocks::MockMakerController>();
         m_mockController = std::make_shared<bk::mocks::MockController>();
         m_mockQueueRouter = std::make_shared<queue::mocks::MockQueue<base::Event>>();
         m_mockQueueTester = std::make_shared<queue::mocks::MockQueue<router::test::QueueType>>();
-        m_mockSchema = std::make_shared<schemf::mocks::MockSchema>();
-        m_logpar = std::make_shared<hlp::logpar::Logpar>(json::Json {WAZUH_LOGPAR_TYPES_JSON}, m_mockSchema);
-        hlp::registerParsers(m_logpar);
-
-        // Builder and registry
-        {
-            m_registry = std::make_shared<builder::internals::Registry<builder::internals::Builder>>();
-            builder::internals::dependencies deps;
-            deps.logparDebugLvl = 0;
-            deps.logpar = m_logpar;
-            deps.kvdbScopeName = "builder";
-            deps.kvdbManager = std::make_shared<kvdb::mocks::MockKVDBManager>();
-            deps.helperRegistry = std::make_shared<builder::internals::Registry<builder::internals::HelperBuilder>>();
-            deps.schema = m_mockSchema;
-            deps.forceFieldNaming = false;
-            deps.sockFactory = std::make_shared<sockiface::mocks::MockSockFactory>();
-            deps.wdbManager =
-                std::make_shared<MockWdbManager>();
-            builder::internals::registerHelperBuilders(deps.helperRegistry, deps);
-            builder::internals::registerBuilders(m_registry, deps);
-        }
 
         router::Orchestrator::Options config {.m_numThreads = NUM_THREADS,
                                               .m_wStore = m_mockStore,
-                                              .m_wRegistry = m_registry,
+                                              .m_builder = m_mockbuilder,
                                               .m_controllerMaker = m_mockControllerMaker,
                                               .m_prodQueue = m_mockQueueRouter,
                                               .m_testQueue = m_mockQueueTester,
@@ -96,19 +55,16 @@ public:
                     {
                         return json::Json {ROUTER_JSON};
                     }
-                    else if (name == "router/tester/0")
+                    if (name == "router/tester/0")
                     {
                         return json::Json {TESTER_JSON};
                     }
-                    else if (name == "policy/wazuh/0")
+                    if (name == "policy/wazuh/0")
                     {
                         // Handle other cases or return a default value
                         return json::Json {POLICY_JSON};
                     }
-                    else
-                    {
-                        return json::Json {};
-                    }
+                    return json::Json {};
                 }));
 
         EXPECT_CALL(*m_mockStore, readDoc(testing::_))
@@ -134,11 +90,6 @@ public:
                     }
                 }));
 
-        EXPECT_CALL(*m_mockSchema, hasField(testing::_)).WillRepeatedly(testing::Return(true));
-        EXPECT_CALL(*m_mockStore, getNamespace(testing::_)).WillRepeatedly(testing::Return(store::NamespaceId("system")));
-        auto json = json::Json {R"({})"};
-        json.setString("I am an fake decoder");
-        EXPECT_CALL(*m_mockSchema, validate(testing::_, json)).WillRepeatedly(testing::Return(std::nullopt));
         EXPECT_CALL(*m_mockControllerMaker, create()).WillRepeatedly(testing::Return(m_mockController));
         EXPECT_CALL(*m_mockController, build(testing::_, testing::_)).WillRepeatedly(::testing::Return());
 
@@ -150,10 +101,33 @@ public:
     }
 };
 
+namespace
+{
+void expectBuildPolicyOk(std::shared_ptr<builder::mocks::MockBuilder> mockbuilder,
+                         std::shared_ptr<builder::mocks::MockPolicy> mockPolicy,
+                         std::shared_ptr<bk::mocks::MockController> mockController)
+{
+    // Build policy controller
+    EXPECT_CALL(*mockbuilder, buildPolicy(testing::_)).WillOnce(testing::Return(mockPolicy));
+    auto emptyNames = std::unordered_set<base::Name> {"asset/test/0"};
+    EXPECT_CALL(*mockPolicy, assets()).WillRepeatedly(testing::ReturnRefOfCopy(emptyNames));
+    auto emptyExpression = base::Expression {};
+    EXPECT_CALL(*mockPolicy, expression()).WillOnce(::testing::ReturnRefOfCopy(emptyExpression));
+    EXPECT_CALL(*mockPolicy, hash()).WillOnce(::testing::ReturnRefOfCopy(std::string {"hash"}));
+    EXPECT_CALL(*mockController, build(testing::_, testing::_)).WillOnce(::testing::Return());
+
+    // Build filter
+    EXPECT_CALL(*mockbuilder, buildAsset(testing::_)).WillOnce(::testing::Return(emptyExpression));
+}
+} // namespace
 TEST_F(OrchestratorRouterTest, AddRoute)
 {
     router::prod::EntryPost entry("route", "policy/wazuh/0", "filter/allow-all/0", 10);
 
+    // Build Valid policy
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+
+    // DumpRouters()
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
     EXPECT_FALSE(m_orchestrator->postEntry(entry).has_value());
@@ -167,9 +141,12 @@ TEST_F(OrchestratorRouterTest, AddMultipleRoutes)
     router::prod::EntryPost entry("route", "policy/wazuh/0", "filter/allow-all/0", 10);
     router::prod::EntryPost entryTwo("routeTwo", "policy/wazuh/0", "filter/allow-all/0", 11);
 
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
-
     EXPECT_FALSE(m_orchestrator->postEntry(entry).has_value());
+
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+    EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
     EXPECT_FALSE(m_orchestrator->postEntry(entryTwo).has_value());
 
     EXPECT_CALL(*m_mockController, stop()).Times(2);
@@ -180,9 +157,13 @@ TEST_F(OrchestratorRouterTest, AddEqualRoute)
 {
     router::prod::EntryPost entry("route", "policy/wazuh/0", "filter/allow-all/0", 10);
 
+    // Add ok
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
-
     EXPECT_FALSE(m_orchestrator->postEntry(entry).has_value());
+
+    // Add equal (Fail to insert)
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
     EXPECT_CALL(*m_mockController, stop()).Times(1);
     EXPECT_TRUE(m_orchestrator->postEntry(entry).has_value());
 
@@ -203,6 +184,8 @@ TEST_F(OrchestratorRouterTest, DeleteRoute)
 {
     router::prod::EntryPost entry("route", "policy/wazuh/0", "filter/allow-all/0", 10);
 
+    // Insert route after delete
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
     EXPECT_FALSE(m_orchestrator->postEntry(entry).has_value());
@@ -213,18 +196,20 @@ TEST_F(OrchestratorRouterTest, DeleteRoute)
     m_orchestrator->stop();
 }
 
-
 TEST_F(OrchestratorRouterTest, DeleteTheEqualRouteTwoTimes)
 {
     router::prod::EntryPost entry("route", "policy/wazuh/0", "filter/allow-all/0", 10);
 
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
+    // Insert route after delete
     EXPECT_FALSE(m_orchestrator->postEntry(entry).has_value());
     EXPECT_CALL(*m_mockController, stop()).Times(1);
 
+    // Delete ok
     EXPECT_FALSE(m_orchestrator->deleteEntry("route").has_value());
-
+    // Delete equal (Fail to delete)
     EXPECT_TRUE(m_orchestrator->deleteEntry("route").has_value());
 
     m_orchestrator->stop();
@@ -246,11 +231,15 @@ TEST_F(OrchestratorRouterTest, GetEntry)
 
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
+    // Add two routes
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
     EXPECT_FALSE(m_orchestrator->postEntry(entry).has_value());
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
     EXPECT_FALSE(m_orchestrator->postEntry(entryTwo).has_value());
 
     EXPECT_CALL(*m_mockController, stop()).Times(2);
 
+    // Get routes
     EXPECT_STREQ(base::getResponse(m_orchestrator->getEntry("route")).name().c_str(), entry.name().c_str());
     EXPECT_STREQ(base::getResponse(m_orchestrator->getEntry("routeTwo")).name().c_str(), entryTwo.name().c_str());
 
@@ -272,9 +261,12 @@ TEST_F(OrchestratorRouterTest, ReloadEntry)
 
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
     EXPECT_FALSE(m_orchestrator->postEntry(entry).has_value());
+
     EXPECT_CALL(*m_mockController, stop()).Times(1);
 
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
     EXPECT_FALSE(m_orchestrator->reloadEntry("route").has_value());
 
     EXPECT_CALL(*m_mockController, stop()).Times(1);
@@ -285,6 +277,7 @@ TEST_F(OrchestratorRouterTest, ChangePriority)
 {
     router::prod::EntryPost entry("route", "policy/wazuh/0", "filter/allow-all/0", 10);
 
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
     EXPECT_FALSE(m_orchestrator->postEntry(entry).has_value());
@@ -302,8 +295,10 @@ TEST_F(OrchestratorRouterTest, ChangePriorityBusy)
     router::prod::EntryPost entryTwo("routeTwo", "policy/wazuh/0", "filter/allow-all/0", 11);
 
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
-
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
     m_orchestrator->postEntry(entry);
+
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
     m_orchestrator->postEntry(entryTwo);
 
     EXPECT_CALL(*m_mockController, stop()).Times(2);
@@ -320,6 +315,7 @@ TEST_F(OrchestratorRouterTest, PostStrEvent)
 
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
     m_orchestrator->postEntry(entry);
 
     EXPECT_CALL(*m_mockController, stop()).Times(1);

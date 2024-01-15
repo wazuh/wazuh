@@ -2,7 +2,7 @@
 
 #include <bk/mockController.hpp>
 #include <builder/mockPolicy.hpp>
-#include <router/mockBuilder.hpp>
+#include <builder/mockBuilder.hpp>
 
 #include "router.hpp"
 
@@ -11,10 +11,18 @@ const std::string POLICY_NAME = "policy/name/0";
 const std::string FILTER_NAME = "filter/name/0";
 const uint32_t PRIORITY = 99;
 
+namespace
+{
+ACTION(ThrowRuntimeError)
+{
+    throw std::runtime_error("generic error");
+}
+} // namespace
+
 class RouterTest : public ::testing::Test
 {
 protected:
-    std::shared_ptr<router::MockBuilder> m_mockBuilder;
+    std::shared_ptr<builder::mocks::MockBuilder> m_mockBuilder;
     std::shared_ptr<bk::mocks::MockMakerController> m_mockControllerMaker;
     std::shared_ptr<bk::mocks::MockController> m_mockController;
     std::shared_ptr<builder::mocks::MockPolicy> m_mockPolicy;
@@ -23,7 +31,7 @@ protected:
 public:
     void SetUp() override
     {
-        m_mockBuilder = std::make_shared<router::MockBuilder>();
+        m_mockBuilder = std::make_shared<builder::mocks::MockBuilder>();
         m_mockControllerMaker = std::make_shared<bk::mocks::MockMakerController>();
         m_mockController = std::make_shared<bk::mocks::MockController>();
         m_mockPolicy = std::make_shared<builder::mocks::MockPolicy>();
@@ -41,7 +49,7 @@ public:
 
     void makeControllerBuildPolicyFailture(router::prod::EntryPost entryPost)
     {
-        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_)).WillOnce(::testing::Return(base::Error {"error"}));
+        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_)).WillOnce(::testing::Throw(std::runtime_error("error")));
         auto error = m_router->addEntry(entryPost);
         EXPECT_TRUE(error.has_value());
     }
@@ -54,7 +62,8 @@ public:
     void makeControllerPolicyAssetsFailture(router::prod::EntryPost entryPost)
     {
         makeControllerBuildPolicySuccess();
-        EXPECT_CALL(*m_mockPolicy, assets()).WillRepeatedly(::testing::Return(std::unordered_set<base::Name> {}));
+        auto emptyNames = std::unordered_set<base::Name> {};
+        EXPECT_CALL(*m_mockPolicy, assets()).WillRepeatedly(::testing::ReturnRefOfCopy(emptyNames));
         auto error = m_router->addEntry(entryPost);
         EXPECT_TRUE(error.has_value());
     }
@@ -62,8 +71,9 @@ public:
     void makeControllerPolicyAssetsSuccess()
     {
         makeControllerBuildPolicySuccess();
+        auto assets = std::unordered_set<base::Name> {"asset/wazuh/0"};
         EXPECT_CALL(*m_mockPolicy, assets())
-            .WillRepeatedly(::testing::Return(std::unordered_set<base::Name> {"asset/wazuh/0"}));
+            .WillRepeatedly(::testing::ReturnRefOfCopy(assets));
     }
 
     void makeControllerNameFilterFailture(router::prod::EntryPost entryPost)
@@ -72,7 +82,8 @@ public:
         makeControllerPolicyAssetsSuccess();
         EXPECT_CALL(*m_mockControllerMaker, create()).WillOnce(::testing::Return(m_mockController));
         EXPECT_CALL(*m_mockController, build(testing::_, testing::_));
-        EXPECT_CALL(*m_mockPolicy, expression()).WillOnce(::testing::Return(base::Expression {}));
+        auto emptyExpression = base::Expression {};
+        EXPECT_CALL(*m_mockPolicy, expression()).WillOnce(::testing::ReturnRefOfCopy(emptyExpression));
         EXPECT_CALL(*m_mockPolicy, hash()).WillOnce(::testing::ReturnRef(hash));
         stopControllerCall();
         auto error = m_router->addEntry(entryPost);
@@ -85,14 +96,15 @@ public:
         makeControllerPolicyAssetsSuccess();
         EXPECT_CALL(*m_mockControllerMaker, create()).WillOnce(::testing::Return(m_mockController));
         EXPECT_CALL(*m_mockController, build(testing::_, testing::_));
-        EXPECT_CALL(*m_mockPolicy, expression()).WillOnce(::testing::Return(base::Expression {}));
+        auto emptyExpression = base::Expression {};
+        EXPECT_CALL(*m_mockPolicy, expression()).WillOnce(::testing::ReturnRefOfCopy(emptyExpression));
         EXPECT_CALL(*m_mockPolicy, hash()).WillOnce(::testing::ReturnRef(hash));
     }
 
     void makeControllerBuildAssetFailture(router::prod::EntryPost entryPost)
     {
         makeControllerNameFilterSuccess();
-        EXPECT_CALL(*m_mockBuilder, buildAsset(testing::_)).WillOnce(::testing::Return(base::Error {"error"}));
+        EXPECT_CALL(*m_mockBuilder, buildAsset(testing::_)).WillOnce(ThrowRuntimeError());
         stopControllerCall();
         auto error = m_router->addEntry(entryPost);
         EXPECT_TRUE(error.has_value());
@@ -127,14 +139,15 @@ public:
 
     void rebuildEntryBuildPolicyFailture(const std::string& name)
     {
-        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_)).WillOnce(::testing::Return(base::Error {"error"}));
+        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_)).WillOnce(ThrowRuntimeError());
         EXPECT_FALSE(rebuildEntry(name));
     }
 
     void rebuildEntryPolicyAssetsFailture(const std::string& name)
     {
         makeControllerBuildPolicySuccess();
-        EXPECT_CALL(*m_mockPolicy, assets()).WillRepeatedly(::testing::Return(std::unordered_set<base::Name> {}));
+        auto emptyNames = std::unordered_set<base::Name> {};
+        EXPECT_CALL(*m_mockPolicy, assets()).WillRepeatedly(::testing::ReturnRefOfCopy(emptyNames));
         EXPECT_FALSE(rebuildEntry(name));
     }
 

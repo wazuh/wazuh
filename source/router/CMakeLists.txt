@@ -31,14 +31,13 @@ target_include_directories(router_router
 target_link_libraries(router_router
     PUBLIC
     router::irouter
-    builder::ibuilder
+    builder2::ibuilder
     bk::ibk
     queue::iqueue
 
     PRIVATE
     base
     store::istore
-    builders # Todo delete after refactoring to builder
 )
 add_library(router::router ALIAS router_router)
 
@@ -57,24 +56,18 @@ if(ENGINE_BUILD_TEST)
 
     # Router component test
     add_executable(router_ctest
-    ${COMPONENT_SRC_DIR}/router_test.cpp
-    ${COMPONENT_SRC_DIR}/tester_test.cpp
+        ${COMPONENT_SRC_DIR}/router_test.cpp
+        ${COMPONENT_SRC_DIR}/tester_test.cpp
     )
     target_include_directories(router_ctest PRIVATE ${SRC_DIR})
     target_link_libraries(router_ctest
         gtest_main
         base
         router::router
-        builders # Todo delete after refactoring to builder
-        builder::mocks
+        builder2::mocks
         store::mocks
         bk::mocks
         queue::mocks
-        schemf::mocks
-        sockiface::mocks
-        wdb::mocks
-        kvdb::mocks
-        logpar
     )
 
     # Router unit test
@@ -93,8 +86,7 @@ if(ENGINE_BUILD_TEST)
         base
         router::router
         router::mocks # Todo delete
-        builders # Todo delete after refactoring to builder
-        builder::mocks
+        builder2::mocks
         store::mocks
         bk::mocks
         bk::rx
