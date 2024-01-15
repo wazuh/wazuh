@@ -19,7 +19,6 @@ target_link_libraries(cmds
     #bk::taskf
     bk::rx
     server
-    #router
     router::router
     store
     api

@@ -10,13 +10,6 @@ const std::string ENVIRONMENT_NAME = "Test";
 const std::string POLICY_NAME = "policy/name/0";
 const uint32_t LIFESPAM = 1234;
 
-namespace
-{
-ACTION(ThrowRuntimeError)
-{
-    throw std::runtime_error("Policy was not building");
-}
-} // namespace
 class TesterTest : public ::testing::Test
 {
 protected:
@@ -53,7 +46,7 @@ public:
 
     void rebuildEntryFailture()
     {
-        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_)).WillOnce(ThrowRuntimeError());
+        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_)).WillOnce(::testing::Throw(std::runtime_error("Policy was not building")));
     }
 
     void rebuildEntryCallersSuccess(const std::unordered_set<base::Name>& fakeAssets, const std::string& hash)

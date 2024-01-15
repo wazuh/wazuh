@@ -161,7 +161,6 @@ json::Json EntryConverter::toJsonArray(const std::list<EntryType>& entries)
     return jArray;
 }
 
-// Debes explicitar la instanciación de las plantillas para los tipos que usarás.
 template json::Json EntryConverter::toJsonArray<test::Entry>(const std::list<test::Entry>& entries);
 template json::Json EntryConverter::toJsonArray<prod::Entry>(const std::list<prod::Entry>& entries);
 
