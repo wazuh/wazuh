@@ -60,7 +60,7 @@ add_library(builder STATIC
 
     # Filter
     ${SRC_DIR}/builders/opfilter/filter.cpp
-    # ${SRC_DIR}/builders/opfilter/startsWith.cpp
+    ${SRC_DIR}/builders/opfilter/startsWith.cpp
     ${SRC_DIR}/builders/opfilter/exists.cpp
     # TODO: Move to separate files
     ${SRC_DIR}/builders/opfilter/opBuilderHelperFilter.cpp
@@ -127,6 +127,8 @@ add_executable(builder_utest
 
     # Filter Builders
     ${UNIT_SRC_DIR}/builders/opfilter/filter_test.cpp
+    ${UNIT_SRC_DIR}/builders/opfilter/exists_test.cpp
+    ${UNIT_SRC_DIR}/builders/opfilter/startsWith_test.cpp
 
     # Map Builders
     ${UNIT_SRC_DIR}/builders/opmap/map_test.cpp

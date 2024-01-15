@@ -56,6 +56,15 @@ FilterOp startsWithReference(const Reference& targetField,
                              const Reference& reference,
                              const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
+    const auto& schema = buildCtx->schema();
+    if (schema.hasField(reference.dotPath()) && schema.getType(reference.dotPath()) != schemf::Type::KEYWORD
+        && schema.getType(reference.dotPath()) != schemf::Type::TEXT)
+    {
+        throw std::runtime_error(fmt::format("Reference '{}' is of type '{}' but expected 'keyword' or 'text'",
+                                             reference.dotPath(),
+                                             schemf::typeToStr(schema.getType(reference.dotPath()))));
+    }
+
     const auto referenceNotFound =
         fmt::format("{} -> Reference '{}' not found", buildCtx->context().opName, reference.dotPath());
     const auto referenceNotString =
