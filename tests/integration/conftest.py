@@ -323,8 +323,8 @@ def restart_wazuh_daemon_after_finishing_module(daemon: str = None) -> None:
     services.control_service("restart", daemon=daemon)
 
 
-@pytest.fixture(scope='module')
-def configure_local_internal_options(request: pytest.FixtureRequest) -> None:
+@pytest.fixture()
+def configure_local_internal_options(request: pytest.FixtureRequest, test_metadata) -> None:
     """Configure the local internal options file.
 
     Takes the `local_internal_options` variable from the request.

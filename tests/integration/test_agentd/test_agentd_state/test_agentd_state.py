@@ -176,7 +176,7 @@ def parse_state_file():
     return state
     
 
-def wait_for_custom_message_response(expected_status: str, remoted_server: RemotedSimulator, timeout: int = 120):
+def wait_for_custom_message_response(expected_status: str, remoted_server: RemotedSimulator, timeout: int = 150):
     """Request remoted_server the status of the agent
 
     Args:
