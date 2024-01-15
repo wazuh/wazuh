@@ -608,8 +608,8 @@ checks:
       - cis: ["2.3.6.5"]
     condition: all
     rules:
-      - 'c:net.exe accounts -> n:Maximum password age (days):\s+(\d+) compare <= 30'
-      - 'c:net.exe accounts -> n:Maximum password age (days):\s+(\d+) compare > 0'
+      - 'c:net.exe accounts -> n:Maximum password age \(days\):\s+(\d+) compare <= 30'
+      - 'c:net.exe accounts -> n:Maximum password age \(days\):\s+(\d+) compare > 0'
 
   # 2.3.6.6 (L1) Ensure 'Domain member: Require strong (Windows 2000 or later) session key' is set to 'Enabled'. (Automated)
   - id: 27028
@@ -3448,7 +3448,7 @@ checks:
     impact: "If the option Enabled: Require DoH is chosen, this could limit third-party products from logging DNS traffic (in transit) as the traffic would be encrypted while in transit. The Require DoH option could also lead to domain-joined systems not functioning properly within the environment. The option Enabled: Allow DoH will perform DoH queries if the configured DNS servers support it. If they don´t support it, classic name resolution will be used. This is the safest option. Note: Per Microsoft, don't enable the Enabled: Require DoH option for domain-joined computers as Active Directory Domain Services is heavily reliant on DNS because the Windows Server DNS Server service does not support DoH queries."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Allow DoH (configuring to Enabled: Require DoH also conforms to the benchmark): Computer Configuration\\Policies\\Administrative Templates\\Network\\DNS Client\\Configure DNS over HTTPS (DoH) name resolution Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DnsClient.admx/adml that is included with the Microsoft Windows 11 Release 21H2 Administrative Templates (or newer)."
     references:
-      - "https://docs.microsoft.com/en-us/windows-server/networking/dns/doh-client-"
+      - "https://docs.microsoft.com/en-us/windows-server/networking/dns/doh-client-support"
     compliance:
       - cis: ["18.6.4.1"]
       - cis_csc_v8: ["3.10"]
@@ -3820,7 +3820,7 @@ checks:
     impact: "None - this is default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Redirection Guard Enabled: Computer Configuration\\Policies\\Administrative Templates\\Printers\\Configure Redirection Guard Note: This Group Policy path is provided by the Group Policy template Printing.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates (and newer)."
     references:
-      - "https://techcommunity.microsoft.com/t5/microsoft-security-baselines/windows-11-"
+      - "https://techcommunity.microsoft.com/t5/microsoft-security-baselines/windows-11-version-22h2-security-baseline/ba-p/3632520"
     compliance:
       - cis: ["18.7.2"]
     condition: all
@@ -3837,7 +3837,7 @@ checks:
     impact: "Warning: Many existing print configurations may be using the older named pipes protocol and therefore will cease to function."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: RPC over TCP: Computer Configuration\\Policies\\Administrative Templates\\Printers\\Configure RPC connection settings: Protocol to use for outgoing RPC connections Note: This Group Policy path is provided by the Group Policy template Printing.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates (and newer)."
     references:
-      - "https://learn.microsoft.com/en-us/troubleshoot/windows-client/printing/windows-"
+      - "https://learn.microsoft.com/en-us/troubleshoot/windows-client/printing/windows-11-rpc-connection-updates-for-print#allow-rpc-over-tcp-communication"
     compliance:
       - cis: ["18.7.3"]
     condition: all
@@ -3854,7 +3854,7 @@ checks:
     impact: "Warning: Many existing print configurations may be using the older named pipes protocol and therefore will cease to function."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Default: Computer Configuration\\Policies\\Administrative Templates\\Printers\\Configure RPC connection settings: Use authentication for outgoing RPC connections Note: This Group Policy path is provided by the Group Policy template Printing.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates (and newer)."
     references:
-      - "https://learn.microsoft.com/en-us/troubleshoot/windows-client/printing/windows-"
+      - "https://learn.microsoft.com/en-us/troubleshoot/windows-client/printing/windows-11-rpc-connection-updates-for-print#allow-rpc-over-tcp-communication"
     compliance:
       - cis: ["18.7.4"]
     condition: all
@@ -3915,8 +3915,8 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled. Computer Configuration\\Policies\\Administrative Templates\\Printers\\Limits print driver installation to Administrators Note: This Group Policy path is provided by the Group Policy template Printing.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (and newer)."
     references:
-      - "https://support.microsoft.com/en-us/topic/kb5005010-restricting-installation-of-"
-      - "https://support.microsoft.com/en-gb/topic/kb5005652-manage-new-point-and-"
+      - "https://support.microsoft.com/en-us/topic/kb5005010-restricting-installation-of-new-printer-drivers-after-applying-the-july-6-2021-updates-31b91c02-05bc-4ada-a7ea-183b129578a7"
+      - "https://support.microsoft.com/en-gb/topic/kb5005652-manage-new-point-and-print-default-driver-installation-behavior-cve-2021-34481-873642bf-2634-49c5-a23b-6d8e9a302872"
     compliance:
       - cis: ["18.7.8"]
     condition: any
@@ -3933,7 +3933,7 @@ checks:
     impact: "None - this is default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Limit Queue-specific files to Color profiles: Computer Configuration\\Policies\\Administrative Templates\\Printers\\Manage processing of Queue-specific files Note: This Group Policy path is provided by the Group Policy template Printing.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates (and newer)."
     references:
-      - "https://learn.microsoft.com/en-us/windows-hardware/drivers/print/installing-"
+      - "https://learn.microsoft.com/en-us/windows-hardware/drivers/print/installing-queue-specific-files"
       - "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-36958"
     compliance:
       - cis: ["18.7.9"]
@@ -3954,8 +3954,8 @@ checks:
       - "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34481"
       - "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34527"
       - "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-36958"
-      - "https://msrc-blog.microsoft.com/2021/08/10/point-and-print-default-behavior-"
-      - "https://support.microsoft.com/en-us/topic/kb5005652-manage-new-point-and-"
+      - "https://msrc-blog.microsoft.com/2021/08/10/point-and-print-default-behavior-change/"
+      - "https://support.microsoft.com/en-us/topic/kb5005652-manage-new-point-and-print-default-driver-installation-behavior-cve-2021-34481-873642bf-2634-49c5-a23b-6d8e9a302872"
     compliance:
       - cis: ["18.7.10"]
     condition: any
@@ -3976,8 +3976,8 @@ checks:
       - "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34481"
       - "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34527"
       - "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-36958"
-      - "https://msrc-blog.microsoft.com/2021/08/10/point-and-print-default-behavior-"
-      - "https://support.microsoft.com/en-us/topic/kb5005652-manage-new-point-and-"
+      - "https://msrc-blog.microsoft.com/2021/08/10/point-and-print-default-behavior-change/"
+      - "https://support.microsoft.com/en-us/topic/kb5005652-manage-new-point-and-print-default-driver-installation-behavior-cve-2021-34481-873642bf-2634-49c5-a23b-6d8e9a302872"
     compliance:
       - cis: ["18.7.11"]
     condition: any
@@ -4016,7 +4016,7 @@ checks:
     impact: 'Process command line information will be included in the event logs, which can contain sensitive or private information such as passwords or user data. Warning: There are potential risks of capturing credentials and sensitive information which could be exposed to users who have read-access to event logs. Microsoft provides a feature called "Protected Event Logging" to better secure event log data. For assistance with protecting event logging, visit: About Logging Windows - PowerShell | Microsoft Docs.'
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Audit Process Creation\\Include command line in process creation events Note: This Group Policy path may not exist by default. It is provided by the Group Policy template AuditSettings.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
     references:
-      - "https://docs.microsoft.com/en-"
+      - "https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_logging_windows?view=powershell-7.2#protected-event-logging"
     compliance:
       - cis: ["18.9.3.1"]
       - cis_csc_v8: ["8.8"]
@@ -4058,7 +4058,7 @@ checks:
     impact: "The host will support the Restricted Admin Mode and Windows Defender Remote Credential Guard features."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Credentials Delegation\\Remote host allows delegation of non-exportable credentials Note: This Group Policy path may not exist by default. It is provided by the Group Policy template CredSsp.admx/adml that is included with the Microsoft Windows 10 Release 1703 Administrative Templates (or newer)."
     references:
-      - "https://docs.microsoft.com/en-us/windows/security/identity-protection/remote-"
+      - "https://docs.microsoft.com/en-us/windows/security/identity-protection/remote-credential-guard"
     compliance:
       - cis: ["18.9.4.2"]
       - cis_csc_v8: ["10.5"]
@@ -5407,7 +5407,7 @@ checks:
     impact: "Note that setting values of 0 or 1 will degrade certain experiences on the device."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Diagnostic data off (not recommended) or Enabled: Send required diagnostic data: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Allow Diagnostic Data Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DataCollection.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer). Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Allow Telemetry, but it was renamed to Allow Diagnostic Data starting with the Windows 11 Release 21H2 Administrative Templates."
     references:
-      - "https://docs.microsoft.com/en-us/windows/privacy/configure-windows-diagnostic-"
+      - "https://docs.microsoft.com/en-us/windows/privacy/configure-windows-diagnostic-data-in-your-organization"
     compliance:
       - cis: ["18.10.15.1"]
       - cis_csc_v8: ["4.8"]
@@ -6846,8 +6846,8 @@ checks:
     impact: "Winlogon will not send Multiple Provider Router (MPR) notifications on the system."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Logon Options\\Enable MPR notifications for the system Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WinLogon.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates (or newer)."
     references:
-      - "https://techcommunity.microsoft.com/t5/microsoft-security-baselines/windows-11-"
-      - "https://learn.microsoft.com/en-us/windows/win32/secauthn/multiple-provider-"
+      - "https://techcommunity.microsoft.com/t5/microsoft-security-baselines/windows-11-version-22h2-security-baseline/ba-p/3632520"
+      - "https://learn.microsoft.com/en-us/windows/win32/secauthn/multiple-provider-router"
     compliance:
       - cis: ["18.10.82.1"]
       - cis_csc_v8: ["4.8"]
@@ -6909,7 +6909,7 @@ checks:
     impact: "PowerShell transcript input will be logged to the PowerShell_transcript output file, which is saved to the My Documents folder of each users' profile by default. Warning: There are potential risks of capturing credentials and sensitive information in the PowerShell_transcript output file, which could be exposed to users who have read-access to the file."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows PowerShell\\Turn on PowerShell Transcription Note: This Group Policy path may not exist by default. It is provided by the Group Policy template PowerShellExecutionPolicy.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer)."
     references:
-      - "https://docs.microsoft.com/en-"
+      - "https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_group_policy_settings?view=powershell-7.2#turn-on-powershell-transcription"
     compliance:
       - cis: ["18.10.87.2"]
     condition: all
