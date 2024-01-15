@@ -149,7 +149,7 @@ void Orchestrator::Options::validate() const
         throw std::runtime_error {"Configuration error: numThreads must be between 1 and 128"};
     }
     validatePointer(m_wStore, "store");
-    validatePointer(m_wRegistry, "registry");
+    validatePointer(m_builder, "builder");
     validatePointer(m_controllerMaker, "controllerMaker");
     validatePointer(m_prodQueue, "prodQueue");
     validatePointer(m_testQueue, "testQueue");
@@ -195,10 +195,7 @@ Orchestrator::Orchestrator(const Options& opt)
 {
     opt.validate();
 
-    // TODO Remove this builder after the builder is implemented
-    auto builder = std::make_shared<ConcreteBuilder>(opt.m_wStore, opt.m_wRegistry);
-
-    m_envBuilder = std::make_shared<EnvironmentBuilder>(builder, opt.m_controllerMaker);
+    m_envBuilder = std::make_shared<EnvironmentBuilder>(opt.m_builder, opt.m_controllerMaker);
     m_testTimeout = opt.m_testTimeout;
     m_wStore = opt.m_wStore;
 

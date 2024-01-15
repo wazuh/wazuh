@@ -2,7 +2,7 @@
 
 #include <bk/mockController.hpp>
 #include <builder/mockPolicy.hpp>
-#include <router/mockBuilder.hpp>
+#include <builder/mockBuilder.hpp>
 
 #include "tester.hpp"
 
@@ -10,10 +10,17 @@ const std::string ENVIRONMENT_NAME = "Test";
 const std::string POLICY_NAME = "policy/name/0";
 const uint32_t LIFESPAM = 1234;
 
+namespace
+{
+ACTION(ThrowRuntimeError)
+{
+    throw std::runtime_error("Policy was not building");
+}
+} // namespace
 class TesterTest : public ::testing::Test
 {
 protected:
-    std::shared_ptr<router::MockBuilder> m_mockBuilder;
+    std::shared_ptr<builder::mocks::MockBuilder> m_mockBuilder;
     std::shared_ptr<bk::mocks::MockMakerController> m_mockControllerMaker;
     std::shared_ptr<bk::mocks::MockController> m_mockController;
     std::shared_ptr<builder::mocks::MockPolicy> m_mockPolicy;
@@ -22,7 +29,7 @@ protected:
 public:
     void SetUp() override
     {
-        m_mockBuilder = std::make_shared<router::MockBuilder>();
+        m_mockBuilder = std::make_shared<builder::mocks::MockBuilder>();
         m_mockControllerMaker = std::make_shared<bk::mocks::MockMakerController>();
         m_mockController = std::make_shared<bk::mocks::MockController>();
         m_mockPolicy = std::make_shared<builder::mocks::MockPolicy>();
@@ -32,13 +39,13 @@ public:
 
     void TearDown() override { m_test.reset(); }
 
-    void addEntryCallers(std::unordered_set<base::Name> fakeAssets, const std::string& hash)
+    void addEntryCallers(const std::unordered_set<base::Name>& fakeAssets, const std::string& hash)
     {
         EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_)).WillOnce(::testing::Return(m_mockPolicy));
-        EXPECT_CALL(*m_mockPolicy, assets()).WillRepeatedly(::testing::Return(fakeAssets));
+        EXPECT_CALL(*m_mockPolicy, assets()).WillRepeatedly(::testing::ReturnRefOfCopy(fakeAssets));
         EXPECT_CALL(*m_mockControllerMaker, create()).WillOnce(::testing::Return(m_mockController));
         EXPECT_CALL(*m_mockController, build(testing::_, testing::_));
-        EXPECT_CALL(*m_mockPolicy, expression()).WillOnce(::testing::Return(base::Expression {}));
+        EXPECT_CALL(*m_mockPolicy, expression()).WillOnce(::testing::ReturnRefOfCopy(base::Expression {}));
         EXPECT_CALL(*m_mockPolicy, hash()).WillOnce(::testing::ReturnRef(hash));
     }
 
@@ -46,17 +53,16 @@ public:
 
     void rebuildEntryFailture()
     {
-        auto errorMsg = base::Error {"Policy was not building"};
-        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_)).WillOnce(::testing::Return(errorMsg));
+        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_)).WillOnce(ThrowRuntimeError());
     }
 
-    void rebuildEntryCallersSuccess(std::unordered_set<base::Name> fakeAssets, const std::string& hash)
+    void rebuildEntryCallersSuccess(const std::unordered_set<base::Name>& fakeAssets, const std::string& hash)
     {
         EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_)).WillOnce(::testing::Return(m_mockPolicy));
-        EXPECT_CALL(*m_mockPolicy, assets()).WillRepeatedly(::testing::Return(fakeAssets));
+        EXPECT_CALL(*m_mockPolicy, assets()).WillRepeatedly(::testing::ReturnRefOfCopy(fakeAssets));
         EXPECT_CALL(*m_mockControllerMaker, create()).WillOnce(::testing::Return(m_mockController));
         EXPECT_CALL(*m_mockController, build(testing::_, testing::_));
-        EXPECT_CALL(*m_mockPolicy, expression()).WillOnce(::testing::Return(base::Expression {}));
+        EXPECT_CALL(*m_mockPolicy, expression()).WillOnce(::testing::ReturnRefOfCopy(base::Expression {}));
         EXPECT_CALL(*m_mockPolicy, hash()).WillOnce(::testing::ReturnRef(hash));
     }
 
