@@ -53,7 +53,7 @@ public:
      * @note If the method throws an exception, the connection should be closed witout sending any data to the client.
      * @note The message is the response of processing the message received from the client.
      */
-    virtual void onMessage(const std::string& message, std::function<void(const base::utils::wazuhProtocol::WazuhResponse&)> callbackFn) = 0;
+    virtual void onMessage(const std::string& message, std::function<void(const std::string&)> callbackFn) = 0;
 
 
     /**
