@@ -21,7 +21,7 @@ from api import configuration
 from wazuh import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core import common
 from wazuh.core.cluster.utils import get_manager_status
-from wazuh.core.configuration import GLOBAL_KEY, get_active_configuration, get_ossec_conf
+from wazuh.core.configuration import get_active_configuration, get_cti_url
 from wazuh.core.utils import get_utc_now, get_utc_strptime, tail
 from wazuh.core.wazuh_socket import WazuhSocket
 
@@ -29,7 +29,7 @@ from wazuh.core.wazuh_socket import WazuhSocket
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 
 OSSEC_LOG_FIELDS = ['timestamp', 'tag', 'level', 'description']
-CTI_URL = get_ossec_conf(section=GLOBAL_KEY).get(GLOBAL_KEY, {}).get('cti-url', 'https://cti.wazuh.com')
+CTI_URL = get_cti_url()
 RELEASE_UPDATES_URL = os.path.join(CTI_URL, 'api', 'v1', 'ping')
 ONE_DAY_SLEEP = 60 * 60 * 24
 WAZUH_UID_KEY = 'wazuh-uid'
