@@ -85,7 +85,7 @@ if(ENGINE_BUILD_TEST)
         gtest_main
         base
         router::router
-        router::mocks # Todo delete
+        # router::mocks # Todo delete
         builder2::mocks
         store::mocks
         bk::mocks

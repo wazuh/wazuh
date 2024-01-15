@@ -20,7 +20,6 @@ namespace router
 class EnvironmentBuilder
 {
 private:
-    // TODO Make a m_builder a weak_ptr when the IBuilder lifetime is managed by the engine start
     std::weak_ptr<builder::IBuilder> m_builder;              ///< The builder used to construct the policy and filter.
     std::shared_ptr<bk::IControllerMaker> m_controllerMaker; ///< The controller maker used to construct the controller.
 
@@ -98,7 +97,6 @@ public:
             throw std::runtime_error {fmt::format("Policy '{}' has no assets", policyName)};
         }
 
-        // TODO Check de assets names policy api (Return a string instead of a base::Names?)
         std::unordered_set<std::string> assetNames;
         std::transform(policy->assets().begin(),
                        policy->assets().end(),

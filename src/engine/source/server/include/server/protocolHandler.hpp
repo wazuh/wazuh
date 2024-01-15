@@ -8,7 +8,6 @@
 #include <optional>
 #include <tuple>
 
-#include <utils/wazuhProtocol/wazuhProtocol.hpp>
 namespace engineserver
 {
 /**

@@ -11,14 +11,6 @@ const std::string POLICY_NAME = "policy/name/0";
 const std::string FILTER_NAME = "filter/name/0";
 const uint32_t PRIORITY = 99;
 
-namespace
-{
-ACTION(ThrowRuntimeError)
-{
-    throw std::runtime_error("generic error");
-}
-} // namespace
-
 class RouterTest : public ::testing::Test
 {
 protected:
@@ -104,7 +96,7 @@ public:
     void makeControllerBuildAssetFailture(router::prod::EntryPost entryPost)
     {
         makeControllerNameFilterSuccess();
-        EXPECT_CALL(*m_mockBuilder, buildAsset(testing::_)).WillOnce(ThrowRuntimeError());
+        EXPECT_CALL(*m_mockBuilder, buildAsset(testing::_)).WillOnce(::testing::Throw(std::runtime_error("Policy was not building")));
         stopControllerCall();
         auto error = m_router->addEntry(entryPost);
         EXPECT_TRUE(error.has_value());
@@ -139,7 +131,7 @@ public:
 
     void rebuildEntryBuildPolicyFailture(const std::string& name)
     {
-        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_)).WillOnce(ThrowRuntimeError());
+        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_)).WillOnce(::testing::Throw(std::runtime_error("Policy was not building")));
         EXPECT_FALSE(rebuildEntry(name));
     }
 
@@ -284,7 +276,6 @@ TEST_F(RouterTest, RebuildEntryBuildPolicyError)
     rebuildEntryBuildPolicyFailture(ENVIRONMENT_NAME);
 }
 
-// TODO: Check why this test not pass
 TEST_F(RouterTest, RebuildEntryBuildAssetError)
 {
     auto entryPost = router::prod::EntryPost {ENVIRONMENT_NAME, POLICY_NAME, FILTER_NAME, PRIORITY};
