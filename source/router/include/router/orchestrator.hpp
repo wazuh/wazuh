@@ -1,5 +1,5 @@
-#ifndef _ROUTER_ROUTERADMIN_HPP
-#define _ROUTER_ROUTERADMIN_HPP
+#ifndef _ROUTER_ORCHESTATOR_HPP
+#define _ROUTER_ORCHESTATOR_HPP
 
 #include <list>
 #include <memory>
@@ -238,4 +238,4 @@ public:
 
 } // namespace router
 
-#endif // _ROUTER_ROUTERADMIN_HPP
+#endif // _ROUTER_ORCHESTATOR_HPP

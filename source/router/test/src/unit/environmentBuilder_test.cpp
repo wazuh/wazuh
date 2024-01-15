@@ -10,13 +10,6 @@
 using namespace router;
 using namespace testing;
 
-namespace
-{
-ACTION(ThrowRuntimeError)
-{
-    throw std::runtime_error("error");
-}
-} // namespace
 TEST(EnvironmentBuilderTest, Create_ValidPolicyAndFilter)
 {
     auto builder = std::make_shared<builder::mocks::MockBuilder>();
@@ -65,7 +58,7 @@ TEST(EnvironmentBuilderTest, Create_inValidPolicy)
     auto policyName = base::Name("policy/test/0");
     auto filterName = base::Name("filter/test/0");
 
-    EXPECT_CALL(*builder, buildPolicy(policyName)).WillOnce(ThrowRuntimeError());
+    EXPECT_CALL(*builder, buildPolicy(policyName)).WillOnce(::testing::Throw(std::runtime_error("error")));
 
     ASSERT_THROW(eBuilder.create(policyName, filterName), std::runtime_error);
 }
@@ -99,7 +92,7 @@ TEST(EnvironmentBuilderTest, Create_ValidPolicyAndInvalidFilter)
     EXPECT_CALL(*mockPolicy, hash()).WillOnce(ReturnRef(hash));
     EXPECT_CALL(*mockController, build(_, _)).WillOnce(Return());
 
-    EXPECT_CALL(*builder, buildAsset(filterName)).WillOnce(ThrowRuntimeError());
+    EXPECT_CALL(*builder, buildAsset(filterName)).WillOnce(::testing::Throw(std::runtime_error("error")));
 
     EXPECT_CALL(*mockController, stop()).WillOnce(Return());
     ASSERT_THROW(eBuilder.create(policyName, filterName), std::runtime_error);
