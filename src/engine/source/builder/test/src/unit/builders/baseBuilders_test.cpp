@@ -9,13 +9,14 @@ TEST_P(FilterBuilderTest, Builds)
 
     if (expected)
     {
-        EXPECT_CALL(*ctx, context()).WillRepeatedly(testing::ReturnRef(context));
-        EXPECT_CALL(*ctx, runState()).WillRepeatedly(testing::Return(runState));
-        ASSERT_NO_THROW(builder(targetField, params, ctx));
+        expected.succCase()(*mocks);
+        expectBuildSuccess();
+        ASSERT_NO_THROW(builder(targetField, params, mocks->ctx));
     }
     else
     {
-        ASSERT_THROW(builder(targetField, params, ctx), std::exception);
+        expected.failCase()(*mocks);
+        ASSERT_THROW(builder(targetField, params, mocks->ctx), std::exception);
     }
 }
 } // namespace filterbuildtest
@@ -28,20 +29,19 @@ TEST_P(FilterOperationTest, Operates)
     auto event = std::make_shared<json::Json>(input.c_str());
     auto targetRef = Reference {target};
 
-    EXPECT_CALL(*ctx, context()).WillRepeatedly(testing::ReturnRef(context));
-    EXPECT_CALL(*ctx, runState()).WillRepeatedly(testing::Return(runState));
+    expectBuildSuccess();
 
     if (expected)
     {
-        expected.succCase()(ctx);
-        auto operation = builder(targetRef, opArgs, ctx);
+        expected.succCase()(*mocks);
+        auto operation = builder(targetRef, opArgs, mocks->ctx);
         auto result = operation(event);
         ASSERT_TRUE(result);
     }
     else
     {
-        expected.failCase()(ctx);
-        auto operation = builder(targetRef, opArgs, ctx);
+        expected.failCase()(*mocks);
+        auto operation = builder(targetRef, opArgs, mocks->ctx);
         auto result = operation(event);
         ASSERT_FALSE(result);
     }
@@ -57,13 +57,14 @@ TEST_P(MapBuilderTest, Builds)
 
     if (expected)
     {
-        EXPECT_CALL(*ctx, context()).WillRepeatedly(testing::ReturnRef(context));
-        EXPECT_CALL(*ctx, runState()).WillRepeatedly(testing::Return(runState));
-        ASSERT_NO_THROW(builder(params, ctx));
+        expected.succCase()(*mocks);
+        expectBuildSuccess();
+        ASSERT_NO_THROW(builder(params, mocks->ctx));
     }
     else
     {
-        ASSERT_THROW(builder(params, ctx), std::exception);
+        expected.failCase()(*mocks);
+        ASSERT_THROW(builder(params, mocks->ctx), std::exception);
     }
 }
 } // namespace mapbuildtest
@@ -75,21 +76,20 @@ TEST_P(MapOperationTest, Operates)
     auto [input, builder, opArgs, expected] = GetParam();
     auto event = std::make_shared<json::Json>(input.c_str());
 
-    EXPECT_CALL(*ctx, context()).WillRepeatedly(testing::ReturnRef(context));
-    EXPECT_CALL(*ctx, runState()).WillRepeatedly(testing::Return(runState));
+    expectBuildSuccess();
 
     if (expected)
     {
-        auto res = expected.succCase()(ctx);
-        auto operation = builder(opArgs, ctx);
+        auto res = expected.succCase()(*mocks);
+        auto operation = builder(opArgs, mocks->ctx);
         auto result = operation(event);
         ASSERT_TRUE(result);
         ASSERT_EQ(result.payload(), res);
     }
     else
     {
-        expected.failCase()(ctx);
-        auto operation = builder(opArgs, ctx);
+        expected.failCase()(*mocks);
+        auto operation = builder(opArgs, mocks->ctx);
         auto result = operation(event);
         ASSERT_FALSE(result);
     }
@@ -106,13 +106,14 @@ TEST_P(TransformBuilderTest, Builds)
 
     if (expected)
     {
-        EXPECT_CALL(*ctx, context()).WillRepeatedly(testing::ReturnRef(context));
-        EXPECT_CALL(*ctx, runState()).WillRepeatedly(testing::Return(runState));
-        ASSERT_NO_THROW(builder(targetField, params, ctx));
+        expected.succCase()(*mocks);
+        expectBuildSuccess();
+        ASSERT_NO_THROW(builder(targetField, params, mocks->ctx));
     }
     else
     {
-        ASSERT_THROW(builder(targetField, params, ctx), std::exception);
+        expected.failCase()(*mocks);
+        ASSERT_THROW(builder(targetField, params, mocks->ctx), std::exception);
     }
 }
 } // namespace transformbuildtest
@@ -125,21 +126,20 @@ TEST_P(TransformOperationTest, Operates)
     auto event = std::make_shared<json::Json>(input.c_str());
     auto targetRef = Reference {target};
 
-    EXPECT_CALL(*ctx, context()).WillRepeatedly(testing::ReturnRef(context));
-    EXPECT_CALL(*ctx, runState()).WillRepeatedly(testing::Return(runState));
+    expectBuildSuccess();
 
     if (expected)
     {
-        auto expectedEvent = expected.succCase()(ctx);
-        auto operation = builder(targetRef, opArgs, ctx);
+        auto expectedEvent = expected.succCase()(*mocks);
+        auto operation = builder(targetRef, opArgs, mocks->ctx);
         auto result = operation(event);
         ASSERT_TRUE(result);
         ASSERT_EQ(*result.payload(), *expectedEvent);
     }
     else
     {
-        expected.failCase()(ctx);
-        auto operation = builder(targetRef, opArgs, ctx);
+        expected.failCase()(*mocks);
+        auto operation = builder(targetRef, opArgs, mocks->ctx);
         auto result = operation(event);
         ASSERT_FALSE(result);
     }
