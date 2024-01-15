@@ -214,7 +214,7 @@ void UnixStream::processMessages(std::weak_ptr<uvw::PipeHandle> wClient,
         if (0 == m_taskQueueSize)
         {
             auto callbackFn =
-                [wClient, address = m_address, protocolHandler, metric = m_metric](const base::utils::wazuhProtocol::WazuhResponse& response) -> void
+                [wClient, address = m_address, protocolHandler, metric = m_metric](const std::string& response) -> void
             {
                 auto responseTimer = std::make_shared<base::chrono::Timer>();
 
@@ -233,7 +233,7 @@ void UnixStream::processMessages(std::weak_ptr<uvw::PipeHandle> wClient,
                 }
 
                 // Send the response
-                auto [buffer, size] = protocolHandler->streamToSend(response.toString());
+                auto [buffer, size] = protocolHandler->streamToSend(response);
                 client->write(std::move(buffer), size);
                 auto elapsedTime = responseTimer->elapsed<std::chrono::milliseconds>();
                 metric.m_responseTime->recordValue(static_cast<uint64_t>(elapsedTime));
@@ -332,9 +332,9 @@ void UnixStream::createAndEnqueueTask(std::weak_ptr<uvw::PipeHandle> wClient,
             }
         });
 
-    auto callbackFn = [asyncs, wAsync, address = m_address, response](const base::utils::wazuhProtocol::WazuhResponse& res) -> void
+    auto callbackFn = [asyncs, wAsync, address = m_address, response](const std::string& res) -> void
     {
-        *response = res.toString();
+        *response = res;
 
         auto async = wAsync.lock();
         if (!async)
