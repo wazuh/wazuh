@@ -1565,9 +1565,6 @@ stages:
 ---
 test_name: GET /manager/version/check
 
-marks:
-  - xfail
-
 stages:
   - name: Get wazuh version
     request:
