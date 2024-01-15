@@ -69,6 +69,38 @@ public:
     }
 
     /**
+     * @brief Processes a raw string request and invokes a callback function with the response.
+     * 
+     * @param message Raw string request
+     * @param callbackFn Callback function that will be invoked with the generated response
+     */
+    void processRequest(const std::string& message, std::function<void(const std::string&)> callbackFn)
+    {
+
+        json::Json jrequest {};
+        try
+        {
+            jrequest = json::Json {message.c_str()};
+        }
+        catch (const std::exception& e)
+        {
+            auto wresponse = base::utils::wazuhProtocol::WazuhResponse::invalidJsonRequest();
+            callbackFn(wresponse.toString());
+            return;
+        }
+
+        wpRequest wrequest {jrequest};
+        if (!wrequest.isValid())
+        {
+            auto wresponse = base::utils::wazuhProtocol::WazuhResponse::invalidRequest(wrequest.error().value());
+            callbackFn(wresponse.toString());
+            return;
+        }
+
+        processWazuhRequest(wrequest, [=](const wpResponse& wresponse) { callbackFn(wresponse.toString()); });
+    }
+
+    /**
      * @brief Processes a request and invokes a callback function with the response.
      *
      * This method takes a JSON-formatted request message, processes it, and generates
@@ -78,34 +110,13 @@ public:
      * @param callbackFn A callback function that will be invoked with the generated response.
      *
      */
-    void processRequest(const std::string& message, std::function<void(const wpResponse&)> callbackFn)
+    void processWazuhRequest(const wpRequest& wrequest, std::function<void(const wpResponse&)> callbackFn)
     {
         wpResponse wresponse {};
-        json::Json jrequest {};
 
         try
         {
-            jrequest = json::Json {message.c_str()};
-        }
-        catch (const std::exception& e)
-        {
-            wresponse = base::utils::wazuhProtocol::WazuhResponse::invalidJsonRequest();
-            callbackFn(wresponse);
-            return;
-        }
-
-        try
-        {
-            wpRequest wrequest {jrequest};
-            if (wrequest.isValid())
-            {
-                m_registry->getHandler(wrequest.getCommand().value())(wrequest, callbackFn);
-            }
-            else
-            {
-                wresponse = base::utils::wazuhProtocol::WazuhResponse::invalidRequest(wrequest.error().value());
-                callbackFn(wresponse);
-            }
+            m_registry->getHandler(wrequest.getCommand().value())(wrequest, callbackFn);
         }
         catch (const std::exception& e)
         {

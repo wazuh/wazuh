@@ -35,9 +35,9 @@ TEST_P(ApiTest, ProcessRequest)
     const std::string& expectedResponse = std::get<1>(GetParam());
 
     auto response = std::make_shared<std::string>();
-    auto callbackFn = [&response](const base::utils::wazuhProtocol::WazuhResponse& res)
+    auto callbackFn = [&response](const std::string& res)
     {
-        *response = res.toString();
+        *response = res;
     };
 
     m_api.processRequest(message, callbackFn);
