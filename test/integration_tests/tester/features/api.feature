@@ -43,10 +43,10 @@ Feature: Tester API Management
 
   Scenario: Send events to specific session with low debug via API
     Given I want create a session called "test" with a policy "policy/wazuh/0"
-    When I send a request to send the event "hi! i am an event test!" from "test" session with "ASSET_ONLY" debug "system" namespace and "decoder/test-message/0" asset trace
-    Then I should receive the next output: "{"assetTraces":[{"asset":"decoder/test-message/0","success":true}],"output":{"event":{"original":"hi! i am an event test!"},"wazuh":{"location":"any","queue":49.0}}}"
+    When I send a request to send the event "hi! i am an event test!" from "test" session with "ASSET_ONLY" debug "system" namespace, queue "2" and "decoder/other-test-message/0" asset trace
+    Then I should receive the next output: "{"output": {"wazuh": {"location": "any", "queue": 50.0}, "event": {"original": "hi! i am an event test!"}}, "assetTraces": [{"asset": "decoder/other-test-message/0", "success": true}]}"
 
   Scenario: Send events to specific session with high debug via API
     Given I want create a session called "test" with a policy "policy/wazuh/0"
-    When I send a request to send the event "hi! i am an event test!" from "test" session with "ALL" debug "system" namespace and "decoder/test-message/0" asset trace
-    Then I should receive the next output: "{"assetTraces":[{"asset":"decoder/test-message/0","success":true}],"output":{"event":{"original":"hi! i am an event test!"},"wazuh":{"location":"any","queue":49.0}}}"
+    When I send a request to send the event "hi! i am an event test!" from "test" session with "ALL" debug "system" namespace, queue "2" and "decoder/other-test-message/0" asset trace
+    Then I should receive the next output: "{"output": {"event": {"original": "hi! i am an event test!"}, "wazuh": {"queue": 50.0, "location": "any"}}, "assetTraces": [{"asset": "decoder/other-test-message/0", "success": true, "traces": ["[check: $wazuh.queue == 50] -> Success"]}]}"
