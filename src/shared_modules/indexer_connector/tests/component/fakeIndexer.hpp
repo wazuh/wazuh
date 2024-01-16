@@ -9,8 +9,8 @@
  * Foundation.
  */
 
-#ifndef _FAKE_OPEN_SEARCH_SERVER_HPP
-#define _FAKE_OPEN_SEARCH_SERVER_HPP
+#ifndef _FAKE_INDEXER_HPP
+#define _FAKE_INDEXER_HPP
 
 #include <external/cpp-httplib/httplib.h>
 #include <external/nlohmann/json.hpp>
@@ -31,7 +31,9 @@ private:
     int m_port;
     std::string m_host, m_health, m_indexName;
     bool m_indexerInitialized;
-    std::function<void(const std::string&)> m_initTemplateCallback, m_initIndexCallback, m_publishCallback;
+    std::function<void(const std::string&)> m_initTemplateCallback = {};
+    std::function<void(const std::string&)> m_initIndexCallback = {};
+    std::function<void(const std::string&)> m_publishCallback = {};
 
 public:
     /**
@@ -206,4 +208,4 @@ public:
     }
 };
 
-#endif // _FAKE_OPEN_SEARCH_SERVER_HPP
+#endif // _FAKE_INDEXER_HPP

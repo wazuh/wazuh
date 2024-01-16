@@ -18,10 +18,11 @@
 #define EXPORTED
 #endif
 
+static constexpr auto DEFAULT_INTERVAL = 60u;
+
 class ServerSelector;
 class SecureCommunication;
 
-#include "../src/monitoring.hpp"
 #include "threadEventDispatcher.hpp"
 #include <json.hpp>
 #include <string>
@@ -74,7 +75,7 @@ public:
                                                        const std::string&,
                                                        const std::string&,
                                                        va_list)>& logFunction = {},
-                              const uint32_t& timeout = INTERVAL);
+                              const uint32_t& timeout = DEFAULT_INTERVAL);
 
     ~IndexerConnector();
 
