@@ -195,8 +195,11 @@ FilterOp getIntCmpFunction(const std::string& targetField,
  *
  * @throws std::runtime_error if helper::base::Parameter::Type is not supported
  */
-FilterOp
-getStringCmpFunction(const std::string& targetField, Operator op, const OpArg& rightParameter, const std::string& name)
+FilterOp getStringCmpFunction(const std::string& targetField,
+                              Operator op,
+                              const OpArg& rightParameter,
+                              const std::string& name,
+                              const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     // Depending on the operator we return the correct function
     std::function<bool(const std::string& l, const std::string& r)> cmpFunction;
@@ -258,11 +261,30 @@ getStringCmpFunction(const std::string& targetField, Operator op, const OpArg& r
         default: break;
     }
 
-    if (rightParameter->isValue() && !std::static_pointer_cast<Value>(rightParameter)->value().isString())
+    if (rightParameter->isValue())
     {
-        throw std::runtime_error(fmt::format(R"( "{}" function: Parameter "{}" is not a string.)",
-                                             name,
-                                             std::static_pointer_cast<Value>(rightParameter)->value().str()));
+        if (!std::static_pointer_cast<Value>(rightParameter)->value().isString())
+        {
+            throw std::runtime_error(fmt::format(R"( "{}" function: Parameter "{}" is not a string.)",
+                                                 name,
+                                                 std::static_pointer_cast<Value>(rightParameter)->value().str()));
+        }
+    }
+    else
+    {
+        auto ref = std::static_pointer_cast<Reference>(rightParameter);
+        if (buildCtx->schema().hasField(ref->dotPath()))
+        {
+            auto jType = buildCtx->validator().getJsonType(buildCtx->schema().getType(ref->dotPath()));
+            if (jType != json::Json::Type::String)
+            {
+                throw std::runtime_error(
+                    fmt::format("Expected a reference of type '{}' but got reference '{}' of type '{}'",
+                                json::Json::typeToStr(json::Json::Type::String),
+                                ref->dotPath(),
+                                json::Json::typeToStr(jType)));
+            }
+        }
     }
 
     // Tracing messages
@@ -273,7 +295,7 @@ getStringCmpFunction(const std::string& targetField, Operator op, const OpArg& r
     const std::string failureTrace3 {fmt::format("[{}] -> Failure: Comparison is false", name)};
 
     // Function that implements the helper
-    return [=](base::ConstEvent event) -> FilterResult
+    return [=, runState = buildCtx->runState()](base::ConstEvent event) -> FilterResult
     {
         // We assert that references exists, checking if the optional from Json getter is
         // empty ot not. Then if is a reference we get the value from the event, otherwise
@@ -282,7 +304,7 @@ getStringCmpFunction(const std::string& targetField, Operator op, const OpArg& r
         const auto lValue {event->getString(targetField)};
         if (!lValue.has_value())
         {
-            return base::result::makeFailure(false, failureTrace1);
+            RETURN_FAILURE(runState, false, failureTrace1);
         }
 
         std::string rValue {};
@@ -296,7 +318,7 @@ getStringCmpFunction(const std::string& targetField, Operator op, const OpArg& r
                 event->getString(std::static_pointer_cast<Reference>(rightParameter)->jsonPath())};
             if (!resolvedRValue.has_value())
             {
-                return base::result::makeFailure(false, failureTrace2);
+                RETURN_FAILURE(runState, false, failureTrace2);
             }
 
             rValue = resolvedRValue.value();
@@ -304,11 +326,11 @@ getStringCmpFunction(const std::string& targetField, Operator op, const OpArg& r
 
         if (cmpFunction(lValue.value(), rValue))
         {
-            return base::result::makeSuccess(true, successTrace);
+            RETURN_SUCCESS(runState, true, successTrace);
         }
         else
         {
-            return base::result::makeFailure(false, failureTrace3);
+            RETURN_FAILURE(runState, false, failureTrace3);
         }
     };
 }
@@ -341,7 +363,7 @@ FilterOp opBuilderComparison(const std::string& targetField,
         }
         case Type::STRING:
         {
-            auto opFn = getStringCmpFunction(targetField, op, parameters[0], name);
+            auto opFn = getStringCmpFunction(targetField, op, parameters[0], name, buildCtx);
             return opFn;
         }
         default:

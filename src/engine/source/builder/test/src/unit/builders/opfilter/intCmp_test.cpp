@@ -426,4 +426,4 @@ INSTANTIATE_TEST_SUITE_P(
                 {makeRef("ref")},
                 FAILURE(customRefExpected()))),
     testNameFormatter<FilterOperationTest>("IntCmp"));
-}
+} // namespace filteroperatestest
