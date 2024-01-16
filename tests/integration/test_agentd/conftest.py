@@ -41,14 +41,14 @@ def autostart_simulators() -> None:
 @pytest.fixture()
 def start_remoted_simulators(test_metadata) -> None:
     # Servers paremeters
-    remoted_server_addresses = ["127.0.0.0","127.0.0.1","127.0.0.2"]
+    remoted_server_address = "127.0.0.1"
     remoted_server_ports = [1514,1516,1517]
     remoted_servers = [None,None,None]
 
     # Start Remoted Simulators
-    for i in range(len(remoted_server_addresses)):
+    for i in range(len(remoted_server_ports)):
         if(test_metadata['SIMULATOR_MODES'][i] != 'CLOSE'):
-            remoted_servers[i] = RemotedSimulator(protocol = test_metadata['PROTOCOL'], server_ip = remoted_server_addresses[i], 
+            remoted_servers[i] = RemotedSimulator(protocol = test_metadata['PROTOCOL'], server_ip = remoted_server_address, 
                                         port = remoted_server_ports[i], mode = test_metadata['SIMULATOR_MODES'][i])
             remoted_servers[i].start()
     

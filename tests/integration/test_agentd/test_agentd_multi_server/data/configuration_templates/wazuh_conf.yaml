@@ -14,7 +14,7 @@
             - server:
                 elements:
                 - address:
-                    value: 127.0.0.0
+                    value: 127.0.0.1
                 - port:
                     value: 1514
                 - protocol:
@@ -38,7 +38,7 @@
             - server:
                 elements:
                 - address:
-                    value: 127.0.0.2
+                    value: 127.0.0.1
                 - port:
                     value: 1517
                 - protocol:

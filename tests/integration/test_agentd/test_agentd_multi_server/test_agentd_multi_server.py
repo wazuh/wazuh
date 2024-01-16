@@ -155,12 +155,12 @@ def test_agentd_multi_server(test_configuration, test_metadata, set_wazuh_config
         - ssl
         - keys
     '''
-    remoted_server_addresses = ["127.0.0.0","127.0.0.1","127.0.0.2"]
+    remoted_server_address = "127.0.0.1"
     remoted_server_ports = [1514,1516,1517]
 
     # Configure keys
     if(test_metadata['SIMULATOR_MODES']['AUTHD'] == 'ACCEPT'):
-        authd_server = AuthdSimulator(server_ip = remoted_server_addresses[0], mode = test_metadata['SIMULATOR_MODES']['AUTHD'])
+        authd_server = AuthdSimulator(server_ip = remoted_server_address, mode = test_metadata['SIMULATOR_MODES']['AUTHD'])
         authd_server.start()
     else:
         if(test_metadata['SIMULATOR_MODES']['AUTHD_PREV_MODE'] == 'ACCEPT'):
@@ -176,7 +176,7 @@ def test_agentd_multi_server(test_configuration, test_metadata, set_wazuh_config
         for pattern in range(len(test_metadata['LOG_MONITOR_STR'][server])):
             # Build regex from expected pattern
             regex, values = get_regex(test_metadata['LOG_MONITOR_STR'][server][pattern],
-                              remoted_server_addresses[server],
+                              remoted_server_address,
                               remoted_server_ports[server])
             # Look for expected log
             log_monitor.start(callback=callbacks.generate_callback(regex,values), timeout = 120)
