@@ -8,11 +8,13 @@
 #include "builders/types.hpp"
 #include "mockBuildCtx.hpp"
 #include <schemf/mockSchema.hpp>
+#include <schemval/mockValidator.hpp>
 
 using namespace base::test;
 using namespace builder::builders;
 using namespace builder::builders::mocks;
 using namespace schemf::mocks;
+using namespace schemval::mocks;
 
 template<typename Builder, typename Expected>
 using BuilderT = std::tuple<std::vector<OpArg>, Builder, Expected>;
@@ -25,6 +27,7 @@ struct Mocks
     std::shared_ptr<const MockBuildCtx> ctx;
     std::shared_ptr<const RunState> runState;
     std::shared_ptr<MockSchema> schema;
+    std::shared_ptr<MockValidator> validator;
     Context context;
 };
 
@@ -40,10 +43,12 @@ protected:
         mocks->ctx = std::make_shared<const MockBuildCtx>();
         mocks->runState = std::make_shared<const RunState>();
         mocks->schema = std::make_shared<MockSchema>();
+        mocks->validator = std::make_shared<MockValidator>();
 
         ON_CALL(*mocks->ctx, context()).WillByDefault(testing::ReturnRef(mocks->context));
         ON_CALL(*mocks->ctx, runState()).WillByDefault(testing::Return(mocks->runState));
         ON_CALL(*mocks->ctx, schema()).WillByDefault(testing::ReturnRef(*(mocks->schema)));
+        ON_CALL(*mocks->ctx, validator()).WillByDefault(testing::ReturnRef(*(mocks->validator)));
     }
 
     void expectBuildSuccess()
