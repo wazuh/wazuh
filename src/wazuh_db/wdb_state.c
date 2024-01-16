@@ -193,18 +193,6 @@ void w_inc_agent_ciscat_time(struct timeval time) {
     w_mutex_unlock(&db_state_t_mutex);
 }
 
-void w_inc_agent_vul_detector() {
-    w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.agent_breakdown.vulnerability.vulnerability_detector_queries++;
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
-void w_inc_agent_vul_detector_time(struct timeval time) {
-    w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.agent_breakdown.vulnerability.vulnerability_detector_time, &time, &wdb_state.queries_breakdown.agent_breakdown.vulnerability.vulnerability_detector_time);
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
 void w_inc_agent_dbsync() {
     w_mutex_lock(&db_state_t_mutex);
     wdb_state.queries_breakdown.agent_breakdown.sync.dbsync_queries++;
@@ -1106,11 +1094,6 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_agent_tables_syscollector_deprecated, "port", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.deprecated.port_queries);
     cJSON_AddNumberToObject(_agent_tables_syscollector_deprecated, "process", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.deprecated.process_queries);
 
-    cJSON *_agent_tables_vulnerability = cJSON_CreateObject();
-    cJSON_AddItemToObject(_agent_tables, "vulnerability", _agent_tables_vulnerability);
-
-    cJSON_AddNumberToObject(_agent_tables_vulnerability, "vuln_cves", wdb_state_cpy.queries_breakdown.agent_breakdown.vulnerability.vulnerability_detector_queries);
-
     cJSON_AddNumberToObject(_received_breakdown, "global", wdb_state_cpy.queries_breakdown.global_queries);
 
     cJSON *_global_breakdown = cJSON_CreateObject();
@@ -1299,11 +1282,6 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_agent_tables_syscollector_deprecated_t, "port", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.deprecated.port_time));
     cJSON_AddNumberToObject(_agent_tables_syscollector_deprecated_t, "process", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.deprecated.process_time));
 
-    cJSON *_agent_tables_vulnerability_t = cJSON_CreateObject();
-    cJSON_AddItemToObject(_agent_tables_t, "vulnerability", _agent_tables_vulnerability_t);
-
-    cJSON_AddNumberToObject(_agent_tables_vulnerability_t, "vuln_cves", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.vulnerability.vulnerability_detector_time));
-
     cJSON_AddNumberToObject(_execution_breakdown, "global", get_global_time(&wdb_state_cpy));
 
     cJSON *_global_breakdown_t = cJSON_CreateObject();
@@ -1449,7 +1427,6 @@ STATIC uint64_t get_agent_time(wdb_state_t *state){
     timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscollector.deprecated.netinfo_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscollector.deprecated.hardware_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscollector.deprecated.osinfo_time, &task_time);
-    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.vulnerability.vulnerability_detector_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.agent_breakdown.sync.dbsync_time, &task_time);
 
     return timeval_to_milis(task_time);
