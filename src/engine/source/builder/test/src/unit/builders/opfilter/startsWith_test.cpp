@@ -217,7 +217,7 @@ INSTANTIATE_TEST_SUITE_P(
                 FAILURE(customRef())),
         // Missing target field
         FilterT(R"({"other": "value"})", opfilter::startsWithBuilder, "target", {makeValue(R"("v")")}, FAILURE()),
-        FilterT(R"({"ref": "value"})", opfilter::startsWithBuilder, "target", {makeRef("ref")}, FAILURE())),
+        FilterT(R"({"ref": "value"})", opfilter::startsWithBuilder, "target", {makeRef("ref")}, FAILURE(customRef()))),
     testNameFormatter<FilterOperationTest>("StartsWith"));
 
 } // namespace filteroperatestest
