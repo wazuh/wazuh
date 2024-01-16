@@ -130,6 +130,7 @@ add_executable(builder_utest
     ${UNIT_SRC_DIR}/builders/opfilter/exists_test.cpp
     ${UNIT_SRC_DIR}/builders/opfilter/startsWith_test.cpp
     ${UNIT_SRC_DIR}/builders/opfilter/intCmp_test.cpp
+    ${UNIT_SRC_DIR}/builders/opfilter/strCmp_test.cpp
 
     # Map Builders
     ${UNIT_SRC_DIR}/builders/opmap/map_test.cpp
@@ -143,6 +144,7 @@ target_link_libraries(builder_utest
     schemf::mocks
     store::mocks
     defs::mocks
+    schemval::mocks
 )
 gtest_discover_tests(builder_utest)
 
