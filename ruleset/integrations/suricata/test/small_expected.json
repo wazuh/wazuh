@@ -410,7 +410,7 @@
     },
     "event": {
       "type": [
-        "network_protocol"
+        "protocol"
       ]
     },
     "host": {
