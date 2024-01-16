@@ -20,7 +20,7 @@
     },
     "event": {
       "type": [
-        "network_protocol"
+        "protocol"
       ]
     },
     "host": {
@@ -91,7 +91,7 @@
     },
     "event": {
       "type": [
-        "network_protocol"
+        "protocol"
       ]
     },
     "host": {
@@ -167,7 +167,7 @@
     },
     "event": {
       "type": [
-        "network_protocol"
+        "protocol"
       ]
     },
     "host": {
@@ -261,7 +261,7 @@
     },
     "event": {
       "type": [
-        "network_protocol"
+        "protocol"
       ]
     },
     "host": {
@@ -350,7 +350,7 @@
     },
     "event": {
       "type": [
-        "network_protocol"
+        "protocol"
       ]
     },
     "host": {
@@ -421,7 +421,7 @@
     },
     "event": {
       "type": [
-        "network_protocol"
+        "protocol"
       ]
     },
     "host": {
@@ -497,7 +497,7 @@
     },
     "event": {
       "type": [
-        "network_protocol"
+        "protocol"
       ]
     },
     "host": {
@@ -621,7 +621,7 @@
     },
     "event": {
       "type": [
-        "network_protocol"
+        "protocol"
       ]
     },
     "host": {
@@ -740,7 +740,7 @@
     },
     "event": {
       "type": [
-        "network_protocol"
+        "protocol"
       ]
     },
     "host": {
@@ -811,7 +811,7 @@
     },
     "event": {
       "type": [
-        "network_protocol"
+        "protocol"
       ]
     },
     "host": {
@@ -891,7 +891,7 @@
     },
     "event": {
       "type": [
-        "network_protocol"
+        "protocol"
       ]
     },
     "host": {
@@ -980,7 +980,7 @@
     },
     "event": {
       "type": [
-        "network_protocol"
+        "protocol"
       ]
     },
     "host": {
@@ -1069,7 +1069,7 @@
     },
     "event": {
       "type": [
-        "network_protocol"
+        "protocol"
       ]
     },
     "host": {
@@ -1158,7 +1158,7 @@
     },
     "event": {
       "type": [
-        "network_protocol"
+        "protocol"
       ]
     },
     "host": {
@@ -1247,7 +1247,7 @@
     },
     "event": {
       "type": [
-        "network_protocol"
+        "protocol"
       ]
     },
     "host": {
@@ -1333,7 +1333,7 @@
     },
     "event": {
       "type": [
-        "network_protocol"
+        "protocol"
       ]
     },
     "host": {
@@ -1422,7 +1422,7 @@
     },
     "event": {
       "type": [
-        "network_protocol"
+        "protocol"
       ]
     },
     "host": {
@@ -1511,7 +1511,7 @@
     },
     "event": {
       "type": [
-        "network_protocol"
+        "protocol"
       ]
     },
     "host": {
@@ -1600,7 +1600,7 @@
     },
     "event": {
       "type": [
-        "network_protocol"
+        "protocol"
       ]
     },
     "host": {
@@ -1689,7 +1689,7 @@
     },
     "event": {
       "type": [
-        "network_protocol"
+        "protocol"
       ]
     },
     "host": {
@@ -1766,7 +1766,7 @@
     },
     "event": {
       "type": [
-        "network_protocol"
+        "protocol"
       ]
     },
     "host": {
@@ -1837,7 +1837,7 @@
     },
     "event": {
       "type": [
-        "network_protocol"
+        "protocol"
       ]
     },
     "host": {
@@ -1913,7 +1913,7 @@
     },
     "event": {
       "type": [
-        "network_protocol"
+        "protocol"
       ]
     },
     "host": {
@@ -2026,7 +2026,7 @@
     },
     "event": {
       "type": [
-        "network_protocol"
+        "protocol"
       ]
     },
     "host": {
