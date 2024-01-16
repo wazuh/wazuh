@@ -35,7 +35,7 @@ normalize:
       - event.created: parse_date($suricata.timestamp, %FT%T%z)
       - event.severity: $suricata.alert.severity
       - event.start: parse_date($suricata.flow.start, %FT%T%z)
-      - event: kvdb_get(suricata_event_id_to_info, $suricata.event_type)
+      - .: kvdb_get_merge(suricata_event_id_to_info, $suricata.event_type)
       - file.name: $suricata.alert.metadata.filename
       - file.path: $suricata.fileinfo.filename
       - file.size: $suricata.fileinfo.size
@@ -75,11 +75,6 @@ normalize:
   #    - observer.product: Suricata
   #    - observer.type: ids
   #    - observer.vendor: OISF
-
-  - check: exists($event.network_protocol)
-    map:
-      - network.protocol: $event.network_protocol
-      - event.network_protocol: delete()
 
   - check: $suricata.app_proto == ftp-data
     map:
