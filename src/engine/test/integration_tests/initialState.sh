@@ -30,7 +30,11 @@ update_conf() {
 create_dummy_integration() {
     local wazuh_core_test="$ENVIRONMENT_DIR/engine/wazuh-core-test"
     mkdir -p "$wazuh_core_test/decoders" "$wazuh_core_test/filters"
-    echo "name: decoder/test-message/0" > "$wazuh_core_test/decoders/test-message.yml"
+    cat <<- EOM > "$wazuh_core_test/decoders/test-message.yml"
+name: decoder/test-message/0
+check: \$wazuh.queue == 49 # "1"
+EOM
+
     echo "name: filter/allow-all/0" > "$wazuh_core_test/filters/allow-all.yml"
     cat <<- EOM > "$wazuh_core_test/manifest.yml"
 name: integration/wazuh-core-test/0
@@ -42,7 +46,12 @@ EOM
 create_other_dummy_integration() {
     local other_wazuh_core_test="$ENVIRONMENT_DIR/engine/other-wazuh-core-test"
     mkdir -p "$other_wazuh_core_test/decoders" "$other_wazuh_core_test/filters"
-    echo "name: decoder/other-test-message/0" > "$other_wazuh_core_test/decoders/other-test-message.yml"
+    cat <<- EOM > "$other_wazuh_core_test/decoders/other-test-message.yml"
+name: decoder/other-test-message/0
+check: \$wazuh.queue == 50 # "2"
+EOM
+
+
     echo "name: filter/allow-all/0" > "$other_wazuh_core_test/filters/allow-all.yml"
     cat <<- EOM > "$other_wazuh_core_test/manifest.yml"
 name: integration/other-wazuh-core-test/0
