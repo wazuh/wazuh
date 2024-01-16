@@ -4,15 +4,6 @@
 
 namespace
 {
-auto ctxExpected()
-{
-    return [](const Mocks& mocks)
-    {
-        EXPECT_CALL(*mocks.ctx, context());
-        return None {};
-    };
-}
-
 auto customRefExpected()
 {
     return [](const Mocks& mocks)
