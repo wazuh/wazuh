@@ -56,8 +56,11 @@ enum class Type
  *   - if the right parameter is a value and not a valid integer
  *   - if helper::base::Parameter::Type is not supported
  */
-FilterOp
-getIntCmpFunction(const std::string& targetField, Operator op, const OpArg& rightParameter, const std::string& name)
+FilterOp getIntCmpFunction(const std::string& targetField,
+                           Operator op,
+                           const OpArg& rightParameter,
+                           const std::string& name,
+                           const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     // Depending on rValue type we store the reference or the integer value
     std::variant<std::string, int64_t> rValue {};
@@ -79,6 +82,16 @@ getIntCmpFunction(const std::string& targetField, Operator op, const OpArg& righ
     }
     else
     {
+        auto ref = std::static_pointer_cast<Reference>(rightParameter);
+        if (buildCtx->schema().hasField(ref->dotPath())
+            && buildCtx->schema().getType(ref->dotPath()) != schemf::Type::INTEGER)
+        {
+            throw std::runtime_error(
+                fmt::format("Expected a reference of type '{}' but got reference '{}' of type '{}'",
+                            schemf::typeToStr(schemf::Type::INTEGER),
+                            ref->dotPath(),
+                            schemf::typeToStr(buildCtx->schema().getType(ref->dotPath()))));
+        }
         rValue = std::static_pointer_cast<Reference>(rightParameter)->jsonPath();
     }
 
@@ -133,7 +146,7 @@ getIntCmpFunction(const std::string& targetField, Operator op, const OpArg& righ
     const std::string failureTrace3 {fmt::format("[{}] -> Failure: Comparison is false", name)};
 
     // Function that implements the helper
-    return [=](base::ConstEvent event) -> FilterResult
+    return [=, runState = buildCtx->runState()](base::ConstEvent event) -> FilterResult
     {
         // We assert that references exists, checking if the optional from Json getter is
         // empty ot not. Then if is a reference we get the value from the event, otherwise
@@ -142,7 +155,7 @@ getIntCmpFunction(const std::string& targetField, Operator op, const OpArg& righ
         auto lValue = event->getIntAsInt64(targetField);
         if (!lValue.has_value())
         {
-            return base::result::makeFailure(false, failureTrace1);
+            RETURN_FAILURE(runState, false, failureTrace1);
         }
 
         int64_t resolvedValue {0};
@@ -151,7 +164,7 @@ getIntCmpFunction(const std::string& targetField, Operator op, const OpArg& righ
             auto resolvedRValue = event->getIntAsInt64(std::get<std::string>(rValue));
             if (!resolvedRValue.has_value())
             {
-                return base::result::makeFailure(false, failureTrace2);
+                RETURN_FAILURE(runState, false, failureTrace2);
             }
             resolvedValue = resolvedRValue.value();
         }
@@ -162,11 +175,11 @@ getIntCmpFunction(const std::string& targetField, Operator op, const OpArg& righ
 
         if (cmpFunction(lValue.value(), resolvedValue))
         {
-            return base::result::makeSuccess(true, successTrace);
+            RETURN_SUCCESS(runState, true, successTrace);
         }
         else
         {
-            return base::result::makeFailure(false, failureTrace3);
+            RETURN_FAILURE(runState, false, failureTrace3);
         }
     };
 }
@@ -245,7 +258,7 @@ getStringCmpFunction(const std::string& targetField, Operator op, const OpArg& r
         default: break;
     }
 
-    if (rightParameter->isValue() && !std::static_pointer_cast<Value>(rightParameter)->value().isString()) 
+    if (rightParameter->isValue() && !std::static_pointer_cast<Value>(rightParameter)->value().isString())
     {
         throw std::runtime_error(fmt::format(R"( "{}" function: Parameter "{}" is not a string.)",
                                              name,
@@ -308,8 +321,12 @@ getStringCmpFunction(const std::string& targetField, Operator op, const OpArg& r
  * @param type Type of the comparison
  * @return base::Expression
  */
-FilterOp opBuilderComparison(
-    const std::string& targetField, const std::string& name, const std::vector<OpArg>& parameters, Operator op, Type t)
+FilterOp opBuilderComparison(const std::string& targetField,
+                             const std::string& name,
+                             const std::vector<OpArg>& parameters,
+                             Operator op,
+                             Type t,
+                             const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     // Assert expected number of parameters
     utils::assertSize(parameters, 1);
@@ -319,7 +336,7 @@ FilterOp opBuilderComparison(
     {
         case Type::INT:
         {
-            auto opFn = getIntCmpFunction(targetField, op, parameters[0], name);
+            auto opFn = getIntCmpFunction(targetField, op, parameters[0], name, buildCtx);
             return opFn;
         }
         case Type::STRING:
@@ -342,7 +359,8 @@ FilterOp opBuilderHelperIntEqual(const Reference& targetField,
                                  const std::vector<OpArg>& opArgs,
                                  const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    auto op = opBuilderComparison(targetField.jsonPath(), buildCtx->context().opName, opArgs, Operator::EQ, Type::INT);
+    auto op = opBuilderComparison(
+        targetField.jsonPath(), buildCtx->context().opName, opArgs, Operator::EQ, Type::INT, buildCtx);
     return op;
 }
 
@@ -351,7 +369,8 @@ FilterOp opBuilderHelperIntNotEqual(const Reference& targetField,
                                     const std::vector<OpArg>& opArgs,
                                     const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    auto op = opBuilderComparison(targetField.jsonPath(), buildCtx->context().opName, opArgs, Operator::NE, Type::INT);
+    auto op = opBuilderComparison(
+        targetField.jsonPath(), buildCtx->context().opName, opArgs, Operator::NE, Type::INT, buildCtx);
     return op;
 }
 
@@ -360,7 +379,8 @@ FilterOp opBuilderHelperIntLessThan(const Reference& targetField,
                                     const std::vector<OpArg>& opArgs,
                                     const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    auto op = opBuilderComparison(targetField.jsonPath(), buildCtx->context().opName, opArgs, Operator::LT, Type::INT);
+    auto op = opBuilderComparison(
+        targetField.jsonPath(), buildCtx->context().opName, opArgs, Operator::LT, Type::INT, buildCtx);
     return op;
 }
 
@@ -369,7 +389,8 @@ FilterOp opBuilderHelperIntLessThanEqual(const Reference& targetField,
                                          const std::vector<OpArg>& opArgs,
                                          const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    auto op = opBuilderComparison(targetField.jsonPath(), buildCtx->context().opName, opArgs, Operator::LE, Type::INT);
+    auto op = opBuilderComparison(
+        targetField.jsonPath(), buildCtx->context().opName, opArgs, Operator::LE, Type::INT, buildCtx);
     return op;
 }
 
@@ -378,7 +399,8 @@ FilterOp opBuilderHelperIntGreaterThan(const Reference& targetField,
                                        const std::vector<OpArg>& opArgs,
                                        const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    auto op = opBuilderComparison(targetField.jsonPath(), buildCtx->context().opName, opArgs, Operator::GT, Type::INT);
+    auto op = opBuilderComparison(
+        targetField.jsonPath(), buildCtx->context().opName, opArgs, Operator::GT, Type::INT, buildCtx);
     return op;
 }
 
@@ -387,7 +409,8 @@ FilterOp opBuilderHelperIntGreaterThanEqual(const Reference& targetField,
                                             const std::vector<OpArg>& opArgs,
                                             const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    auto op = opBuilderComparison(targetField.jsonPath(), buildCtx->context().opName, opArgs, Operator::GE, Type::INT);
+    auto op = opBuilderComparison(
+        targetField.jsonPath(), buildCtx->context().opName, opArgs, Operator::GE, Type::INT, buildCtx);
     return op;
 }
 
@@ -400,8 +423,8 @@ FilterOp opBuilderHelperStringEqual(const Reference& targetField,
                                     const std::vector<OpArg>& opArgs,
                                     const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    auto op =
-        opBuilderComparison(targetField.jsonPath(), buildCtx->context().opName, opArgs, Operator::EQ, Type::STRING);
+    auto op = opBuilderComparison(
+        targetField.jsonPath(), buildCtx->context().opName, opArgs, Operator::EQ, Type::STRING, buildCtx);
     return op;
 }
 
@@ -410,8 +433,8 @@ FilterOp opBuilderHelperStringNotEqual(const Reference& targetField,
                                        const std::vector<OpArg>& opArgs,
                                        const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    auto op =
-        opBuilderComparison(targetField.jsonPath(), buildCtx->context().opName, opArgs, Operator::NE, Type::STRING);
+    auto op = opBuilderComparison(
+        targetField.jsonPath(), buildCtx->context().opName, opArgs, Operator::NE, Type::STRING, buildCtx);
     return op;
 }
 
@@ -420,8 +443,8 @@ FilterOp opBuilderHelperStringGreaterThan(const Reference& targetField,
                                           const std::vector<OpArg>& opArgs,
                                           const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    auto op =
-        opBuilderComparison(targetField.jsonPath(), buildCtx->context().opName, opArgs, Operator::GT, Type::STRING);
+    auto op = opBuilderComparison(
+        targetField.jsonPath(), buildCtx->context().opName, opArgs, Operator::GT, Type::STRING, buildCtx);
     return op;
 }
 
@@ -430,8 +453,8 @@ FilterOp opBuilderHelperStringGreaterThanEqual(const Reference& targetField,
                                                const std::vector<OpArg>& opArgs,
                                                const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    auto op =
-        opBuilderComparison(targetField.jsonPath(), buildCtx->context().opName, opArgs, Operator::GE, Type::STRING);
+    auto op = opBuilderComparison(
+        targetField.jsonPath(), buildCtx->context().opName, opArgs, Operator::GE, Type::STRING, buildCtx);
     return op;
 }
 
@@ -440,8 +463,8 @@ FilterOp opBuilderHelperStringLessThan(const Reference& targetField,
                                        const std::vector<OpArg>& opArgs,
                                        const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    auto op =
-        opBuilderComparison(targetField.jsonPath(), buildCtx->context().opName, opArgs, Operator::LT, Type::STRING);
+    auto op = opBuilderComparison(
+        targetField.jsonPath(), buildCtx->context().opName, opArgs, Operator::LT, Type::STRING, buildCtx);
     return op;
 }
 
@@ -450,8 +473,8 @@ FilterOp opBuilderHelperStringLessThanEqual(const Reference& targetField,
                                             const std::vector<OpArg>& opArgs,
                                             const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    auto op =
-        opBuilderComparison(targetField.jsonPath(), buildCtx->context().opName, opArgs, Operator::LE, Type::STRING);
+    auto op = opBuilderComparison(
+        targetField.jsonPath(), buildCtx->context().opName, opArgs, Operator::LE, Type::STRING, buildCtx);
     return op;
 }
 
@@ -460,8 +483,8 @@ FilterOp opBuilderHelperStringStarts(const Reference& targetField,
                                      const std::vector<OpArg>& opArgs,
                                      const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    auto op =
-        opBuilderComparison(targetField.jsonPath(), buildCtx->context().opName, opArgs, Operator::ST, Type::STRING);
+    auto op = opBuilderComparison(
+        targetField.jsonPath(), buildCtx->context().opName, opArgs, Operator::ST, Type::STRING, buildCtx);
     return op;
 }
 
@@ -470,8 +493,8 @@ FilterOp opBuilderHelperStringContains(const Reference& targetField,
                                        const std::vector<OpArg>& opArgs,
                                        const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    auto op =
-        opBuilderComparison(targetField.jsonPath(), buildCtx->context().opName, opArgs, Operator::CN, Type::STRING);
+    auto op = opBuilderComparison(
+        targetField.jsonPath(), buildCtx->context().opName, opArgs, Operator::CN, Type::STRING, buildCtx);
     return op;
 }
 
