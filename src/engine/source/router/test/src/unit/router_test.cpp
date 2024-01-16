@@ -76,7 +76,7 @@ public:
         EXPECT_CALL(*m_mockController, build(testing::_, testing::_));
         auto emptyExpression = base::Expression {};
         EXPECT_CALL(*m_mockPolicy, expression()).WillOnce(::testing::ReturnRefOfCopy(emptyExpression));
-        EXPECT_CALL(*m_mockPolicy, hash()).WillOnce(::testing::ReturnRef(hash));
+        EXPECT_CALL(*m_mockPolicy, hash()).WillOnce(::testing::ReturnRefOfCopy(hash));
         stopControllerCall();
         auto error = m_router->addEntry(entryPost);
         EXPECT_TRUE(error.has_value());
@@ -90,7 +90,7 @@ public:
         EXPECT_CALL(*m_mockController, build(testing::_, testing::_));
         auto emptyExpression = base::Expression {};
         EXPECT_CALL(*m_mockPolicy, expression()).WillOnce(::testing::ReturnRefOfCopy(emptyExpression));
-        EXPECT_CALL(*m_mockPolicy, hash()).WillOnce(::testing::ReturnRef(hash));
+        EXPECT_CALL(*m_mockPolicy, hash()).WillOnce(::testing::ReturnRefOfCopy(hash));
     }
 
     void makeControllerBuildAssetFailture(router::prod::EntryPost entryPost)
@@ -146,6 +146,8 @@ public:
     void rebuildEntryBuildAssetFailture(const std::string& name)
     {
         makeControllerNameFilterSuccess();
+        EXPECT_CALL(*m_mockBuilder, buildAsset(testing::_)).WillOnce(::testing::Throw(std::runtime_error("Filter was not building")));
+        stopControllerCall(2);
         EXPECT_FALSE(rebuildEntry(name));
     }
 
@@ -279,7 +281,7 @@ TEST_F(RouterTest, RebuildEntryBuildPolicyError)
 TEST_F(RouterTest, RebuildEntryBuildAssetError)
 {
     auto entryPost = router::prod::EntryPost {ENVIRONMENT_NAME, POLICY_NAME, FILTER_NAME, PRIORITY};
-    addEntry(entryPost);
+    addEntry(entryPost, false);
 
     rebuildEntryBuildAssetFailture(ENVIRONMENT_NAME);
 }

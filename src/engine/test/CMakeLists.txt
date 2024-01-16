@@ -25,6 +25,5 @@ add_subdirectory(${TEST_SOURCE_DIR}/hlp)
 add_subdirectory(${TEST_SOURCE_DIR}/logpar)
 add_subdirectory(${TEST_SOURCE_DIR}/json)
 add_subdirectory(${TEST_SOURCE_DIR}/yml)
-# add_subdirectory(${TEST_SOURCE_DIR}/router) TODO Delete after implement the new router/orchestator module
 add_subdirectory(${TEST_SOURCE_DIR}/conf)
 add_subdirectory(${TEST_SOURCE_DIR}/server)

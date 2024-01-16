@@ -304,8 +304,8 @@ def step_impl(context, response: str):
     assert normalized_actual == normalized_expected, f"Responses do not match: {normalized_actual} != {normalized_expected}"
 
 #Eighth Scenario And Nineth Scenario
-@when('I send a request to send the event "{message}" from "{sessionName}" session with "{debugLevel}" debug "{namespace}" namespace and "{assetTrace}" asset trace')
-def step_impl(context, message: str, sessionName: str, debugLevel: str, namespace: str, assetTrace: str):
+@when('I send a request to send the event "{message}" from "{sessionName}" session with "{debugLevel}" debug "{namespace}" namespace, queue "{queueChar}" and "{assetTrace}" asset trace')
+def step_impl(context, message: str, sessionName: str, debugLevel: str, queueChar: str, namespace: str, assetTrace: str):
     debugLevelToInt = {
         "NONE": 0,
         "ASSET_ONLY": 1,
@@ -315,7 +315,7 @@ def step_impl(context, message: str, sessionName: str, debugLevel: str, namespac
     request.name = sessionName
     request.trace_level = debugLevelToInt[debugLevel]
     request.message = message
-    request.queue = "1"
+    request.queue = queueChar
     request.location = "any"
     request.namespaces.extend([namespace])
     request.asset_trace.extend([assetTrace])
