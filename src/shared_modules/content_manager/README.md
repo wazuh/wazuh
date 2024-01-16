@@ -16,7 +16,6 @@ The input configuration of the Content Manager is described below:
   + `deleteDownloadedContent`: If `true`, the downloaded content will be deleted after being processed.
   + `url`: URL from where the content will be downloaded or copied. Depending on the `contentSource` type, it supports HTTP/S and filesystem paths.
   + `outputFolder`: If defined, the content (downloads and uncompressed content) will be downloaded in this folder.
-  + `dataFormat`: Content data format. Examples: `json`, `xml`, `txt`, etc.
   + `contentFileName`: Used as output content file name by the API and CTI API downloaders. If not provided, it will be defaulted as `<temp_dir>/output_folder`, being `<temp_dir>` a directory location suitable for temporary files.
   + `databasePath`: Path for the RocksDB database. The database stores the last offset fetched (when using the `cti-offset` content source).
 
@@ -357,8 +356,7 @@ In the offline mode, the compression type is deduced from the URL extension, ign
         "contentSource": "offline",
         "deleteDownloadedContent": false,
         "url": "file:///home/data/content.xz",
-        "outputFolder": "/tmp/output_folder",
-        "dataFormat": "xml"
+        "outputFolder": "/tmp/output_folder"
     }
 }
 ```
@@ -372,8 +370,7 @@ In the offline mode, the compression type is deduced from the URL extension, ign
         "contentSource": "offline",
         "deleteDownloadedContent": false,
         "url": "http://localhost:8888/content.xz",
-        "outputFolder": "/tmp/output_folder",
-        "dataFormat": "xml"
+        "outputFolder": "/tmp/output_folder"
     }
 }
 ```

@@ -61,7 +61,6 @@ protected:
                 "deleteDownloadedContent": false,
                 "url": "http://localhost:4444/raw",
                 "outputFolder": "/tmp/api-downloader-tests",
-                "dataFormat": "json",
                 "contentFileName": "sample.json"
             }
         )"_json;
