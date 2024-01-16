@@ -33,7 +33,7 @@ private:
 
         for (auto part : m_parts)
         {
-            if (part.empty())
+            if (part.empty() && m_str != ".")
             {
                 throw std::runtime_error("DotPath cannot have empty parts");
             }
