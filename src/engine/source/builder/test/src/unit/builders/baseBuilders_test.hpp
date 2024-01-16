@@ -67,12 +67,12 @@ auto testNameFormatter(const std::string& builderName)
     };
 }
 
-static OpArg makeValue()
+inline OpArg makeValue()
 {
     return std::make_shared<Value>();
 }
 
-static OpArg makeValue(const std::string& value)
+inline OpArg makeValue(const std::string& value)
 {
     return std::make_shared<Value>(json::Json(value.c_str()));
 }
@@ -81,6 +81,15 @@ template<typename... Args>
 auto makeRef(Args&&... args)
 {
     return std::make_shared<Reference>(std::forward<Args>(args)...);
+}
+
+inline auto ctxExpected()
+{
+    return [](const Mocks& mocks)
+    {
+        EXPECT_CALL(*mocks.ctx, context());
+        return None {};
+    };
 }
 
 namespace filterbuildtest
