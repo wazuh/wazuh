@@ -153,6 +153,14 @@
       "port": 36993
     },
     "dns": {
+      "answers": [
+        {
+          "rdata": "2a02:cf40:add:4002:91f2:a9b2:e09a:6fc6",
+          "rrname": "google.com",
+          "rrtype": "AAAA",
+          "ttl": 272
+        }
+      ],
       "header_flags": [
         "RD",
         "RA"
@@ -247,6 +255,14 @@
       "port": 46686
     },
     "dns": {
+      "answers": [
+        {
+          "rdata": "175.16.199.1",
+          "rrname": "google.com",
+          "rrtype": "A",
+          "ttl": 299
+        }
+      ],
       "header_flags": [
         "RD",
         "RA"
@@ -483,6 +499,38 @@
       "port": 50720
     },
     "dns": {
+      "answers": [
+        {
+          "rdata": "dualstack.r2.shared.global.fastly.net",
+          "rrname": "www.elastic.co",
+          "rrtype": "CNAME",
+          "ttl": 270
+        },
+        {
+          "rdata": "175.16.199.1",
+          "rrname": "dualstack.r2.shared.global.fastly.net",
+          "rrtype": "A",
+          "ttl": 29
+        },
+        {
+          "rdata": "175.16.199.1",
+          "rrname": "dualstack.r2.shared.global.fastly.net",
+          "rrtype": "A",
+          "ttl": 29
+        },
+        {
+          "rdata": "175.16.199.1",
+          "rrname": "dualstack.r2.shared.global.fastly.net",
+          "rrtype": "A",
+          "ttl": 29
+        },
+        {
+          "rdata": "175.16.199.1",
+          "rrname": "dualstack.r2.shared.global.fastly.net",
+          "rrtype": "A",
+          "ttl": 29
+        }
+      ],
       "header_flags": [
         "RD",
         "RA"
@@ -607,6 +655,38 @@
       "port": 41979
     },
     "dns": {
+      "answers": [
+        {
+          "rdata": "dualstack.r2.shared.global.fastly.net",
+          "rrname": "www.elastic.co",
+          "rrtype": "CNAME",
+          "ttl": 299
+        },
+        {
+          "rdata": "2a02:cf40:add:4002:91f2:a9b2:e09a:6fc6",
+          "rrname": "dualstack.r2.shared.global.fastly.net",
+          "rrtype": "AAAA",
+          "ttl": 29
+        },
+        {
+          "rdata": "2a02:cf40:add:4002:91f2:a9b2:e09a:6fc6",
+          "rrname": "dualstack.r2.shared.global.fastly.net",
+          "rrtype": "AAAA",
+          "ttl": 29
+        },
+        {
+          "rdata": "2a02:cf40:0200:0000:0000:0000:0000:0729",
+          "rrname": "dualstack.r2.shared.global.fastly.net",
+          "rrtype": "AAAA",
+          "ttl": 29
+        },
+        {
+          "rdata": "2a02:cf40:0400:0000:0000:0000:0000:0729",
+          "rrname": "dualstack.r2.shared.global.fastly.net",
+          "rrtype": "AAAA",
+          "ttl": 29
+        }
+      ],
       "header_flags": [
         "RD",
         "RA"
@@ -1899,6 +1979,38 @@
       "port": 48288
     },
     "dns": {
+      "answers": [
+        {
+          "rdata": "dualstack.r2.shared.global.fastly.net",
+          "rrname": "www.elastic.co",
+          "rrtype": "CNAME",
+          "ttl": 150
+        },
+        {
+          "rdata": "175.16.199.1",
+          "rrname": "dualstack.r2.shared.global.fastly.net",
+          "rrtype": "A",
+          "ttl": 29
+        },
+        {
+          "rdata": "175.16.199.1",
+          "rrname": "dualstack.r2.shared.global.fastly.net",
+          "rrtype": "A",
+          "ttl": 29
+        },
+        {
+          "rdata": "175.16.199.1",
+          "rrname": "dualstack.r2.shared.global.fastly.net",
+          "rrtype": "A",
+          "ttl": 29
+        },
+        {
+          "rdata": "175.16.199.1",
+          "rrname": "dualstack.r2.shared.global.fastly.net",
+          "rrtype": "A",
+          "ttl": 29
+        }
+      ],
       "header_flags": [
         "RD",
         "RA"
@@ -2012,6 +2124,38 @@
       "port": 59203
     },
     "dns": {
+      "answers": [
+        {
+          "rdata": "dualstack.r2.shared.global.fastly.net",
+          "rrname": "www.elastic.co",
+          "rrtype": "CNAME",
+          "ttl": 269
+        },
+        {
+          "rdata": "2a02:cf40:add:4002:91f2:a9b2:e09a:6fc6",
+          "rrname": "dualstack.r2.shared.global.fastly.net",
+          "rrtype": "AAAA",
+          "ttl": 29
+        },
+        {
+          "rdata": "2a02:cf40:0200:0000:0000:0000:0000:0729",
+          "rrname": "dualstack.r2.shared.global.fastly.net",
+          "rrtype": "AAAA",
+          "ttl": 29
+        },
+        {
+          "rdata": "2a02:cf40:0400:0000:0000:0000:0000:0729",
+          "rrname": "dualstack.r2.shared.global.fastly.net",
+          "rrtype": "AAAA",
+          "ttl": 29
+        },
+        {
+          "rdata": "2a02:cf40:add:4002:91f2:a9b2:e09a:6fc6",
+          "rrname": "dualstack.r2.shared.global.fastly.net",
+          "rrtype": "AAAA",
+          "ttl": 29
+        }
+      ],
       "header_flags": [
         "RD",
         "RA"

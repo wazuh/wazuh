@@ -136,12 +136,7 @@ normalize:
       - dns.id: to_string($suricata.dns.id)
       - dns.response_code: $suricata.dns.rcode
       - dns.type: $suricata.dns.type
-      # TODO: It is necessary to read a field containing a hostname and then write the "registered domain"
-      # contained in the hostname into the destination field. This functionality needs to be implemented
-      #- _domain_parts: split($suricata.dns.rrname, '.')
-      #- dns.question.registered_domain: concat($_domain_parts.1, '.', $_domain_parts.2)
-      #- dns.question.subdomain: $_domain_parts.0
-      #- dns.question.top_level_domain: $_domain_parts.2
+
   - check: >-
         $dns.type == query
         OR $suricata.dns.version == 2
@@ -167,22 +162,15 @@ normalize:
       - dns.resolved_ip: array_append($_answer.data)
 
   # DNS ANSWER V2
-  #- check: >-
-  #      $dns.type == answer
-  #      AND $suricata.dns.version == 2
-  #  map:
-  #    - dns.answers: $suricata.dns.answers # TODO: For version 1 of DNS there is only one answer object with which it is
-                                           # possible to change the names from rdata to data, rrname to name, rtype to
-                                           # type, etc. But in version 2 of DNS comes an array of answer objects and it
-                                           # is no longer possible to change the name since iteration is needed.
-                                           # This issue is similar to dns.resolved_ip.
-                                           # Due to the above, when a DNS version 2 event arrives, the names rdata, rrname,
-                                           # rtype will appear in the mapping instead of data, name and type
+  - check: >-
+        $dns.type == answer
+        AND $suricata.dns.version == 2
+    map:
+      - dns.answers: $suricata.dns.answers
 
-  # TODO: uncomment this when the iterators issue is solved
-  #- check: $suricata.dns.rrtype == A OR $suricata.dns.rrtype == AAAA
-  #  map:
-  #    - dns.resolved_ip: array_append($dns.answers.i.rdata)
+  - check: $suricata.dns.rrtype == A OR $suricata.dns.rrtype == AAAA
+    map:
+      - dns.resolved_ip: array_append($dns.answers.i.rdata)
 
   - check: $suricata.dns.aa == true
     map:
