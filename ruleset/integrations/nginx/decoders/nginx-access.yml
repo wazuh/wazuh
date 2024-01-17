@@ -148,9 +148,9 @@ normalize:
   # if all of them are private > append first of the list
   - check:
       - source.address: not_exists()
-      - ~ip1_private: is_true()
-      - ~ip2_private: is_true()
-      - ~ip3_private: is_true()
+      - ~ip1_private: true
+      - ~ip2_private: true
+      - ~ip3_private: true
     map:
       - source.address: $~ip1
 

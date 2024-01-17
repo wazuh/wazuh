@@ -401,7 +401,7 @@ normalize:
    map:
     - _is_binary_data: true
 
- - check:  ($event.code == '12' OR $event.code == '13' OR $event.code == '14') AND is_true($_is_binary_data)
+ - check:  ($event.code == '12' OR $event.code == '13' OR $event.code == '14') AND $_is_binary_data == true)
    map:
     - registry.data.type: REG_BINARY
     - registry.data.strings: $windows.EventData.Details

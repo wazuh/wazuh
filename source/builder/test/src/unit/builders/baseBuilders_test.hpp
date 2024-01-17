@@ -51,6 +51,15 @@ protected:
         ON_CALL(*mocks->ctx, validator()).WillByDefault(testing::ReturnRef(*(mocks->validator)));
     }
 
+    void TearDown() override
+    {
+        mocks->validator.reset();
+        mocks->schema.reset();
+        mocks->runState.reset();
+        mocks->ctx.reset();
+        mocks.reset();
+    }
+
     void expectBuildSuccess()
     {
         EXPECT_CALL(*mocks->ctx, context()).Times(testing::AtLeast(1));
