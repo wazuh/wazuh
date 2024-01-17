@@ -433,7 +433,7 @@ int main_analysisd(int argc, char **argv)
     }
 
 /* Check sockets */
-    if (Config.socket_list) {
+    if (Config.socket_list && Config.forwarders_list) {
         forwarder_socket_list = Config.socket_list;
 
         for(int num_sk = 0; forwarder_socket_list && forwarder_socket_list[num_sk].name; num_sk++) {
