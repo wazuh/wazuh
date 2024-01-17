@@ -77,38 +77,38 @@ normalize:
       - do_update_kvdb: false
 
     # Mapping result fields to wazuh.syscollector
-  - check: is_true($_query_response) AND string_equal($json_event.type,processes)
+  - check: $_query_response == true AND string_equal($json_event.type,processes)
     map:
       - wazuh.syscollector.process: $json_event.data
 
-  - check: is_true($_query_response) AND string_equal($json_event.type,ports)
+  - check: $_query_response == true AND string_equal($json_event.type,ports)
     map:
       - wazuh.syscollector.port: $json_event.data
 
-  - check: is_true($_query_response) AND string_equal($json_event.type,hotfixes)
+  - check: $_query_response == true AND string_equal($json_event.type,hotfixes)
     map:
       - wazuh.syscollector.hotfix: $json_event.data
 
-  - check: is_true($_query_response) AND string_equal($json_event.type,hwinfo)
+  - check: $_query_response == true AND string_equal($json_event.type,hwinfo)
     map:
       - wazuh.syscollector.hardware: $json_event.data
 
-  - check: is_true($_query_response) AND string_equal($json_event.type,network_address)
+  - check: $_query_response == true AND string_equal($json_event.type,network_address)
     map:
       - wazuh.syscollector.netinfo.addr: $json_event.data
 
-  - check: is_true($_query_response) AND string_equal($json_event.type,network_protocol)
+  - check: $_query_response == true AND string_equal($json_event.type,network_protocol)
     map:
       - wazuh.syscollector.netinfo.proto: $json_event.data
 
-  - check: is_true($_query_response) AND string_equal($json_event.type,network_iface)
+  - check: $_query_response == true AND string_equal($json_event.type,network_iface)
     map:
       - wazuh.syscollector.netinfo.iface: $json_event.data
 
-  - check: is_true($_query_response) AND string_equal($json_event.type,osinfo)
+  - check: $_query_response == true AND string_equal($json_event.type,osinfo)
     map:
       - wazuh.syscollector.os: $json_event.data
 
-  - check: is_true($_query_response) AND string_equal($json_event.type,packages)
+  - check: $_query_response == true AND string_equal($json_event.type,packages)
     map:
       - wazuh.syscollector.program: $json_event.data

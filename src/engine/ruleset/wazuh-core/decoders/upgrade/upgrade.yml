@@ -42,7 +42,7 @@ normalize:
       - event.outcome: failure
 
   - check:
-      - _send_result: is_true()
+      - _send_result: true
     map:
       - event.outcome: success
 

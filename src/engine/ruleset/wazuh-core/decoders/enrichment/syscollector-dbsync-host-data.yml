@@ -19,7 +19,7 @@ parents:
   - decoder/syscollector-dbsync/0
 
 check:
-  - do_update_kvdb: is_true()
+  - do_update_kvdb: true
   # TODO: Delete operation are not yet implemented
   - json_event.operation: string_not_equal(DELETED)
 
