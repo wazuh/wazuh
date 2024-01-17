@@ -832,12 +832,42 @@ FilterOp opBuilderHelperIPCIDR(const Reference& targetField,
 //*************************************************
 // TODO: update to handle any json type
 FilterOp opBuilderHelperArrayPresence(const Reference& targetField,
-                                      const std::string& name,
-                                      const std::vector<OpArg>& parameters,
-                                      bool checkPresence)
+                                      const std::vector<OpArg>& opArgs,
+                                      bool checkPresence,
+                                      const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     // Assert expected number of parameters
-    utils::assertSize(parameters, 1, utils::MAX_OP_ARGS);
+    utils::assertSize(opArgs, 1, utils::MAX_OP_ARGS);
+
+    for (const auto& arg : opArgs)
+    {
+        if (arg->isValue())
+        {
+            auto value = std::static_pointer_cast<Value>(arg)->value();
+            if (!value.isString())
+            {
+                throw std::runtime_error(fmt::format("Expected a string but got '{}'", value.str()));
+            }
+        }
+        else
+        {
+            auto ref = std::static_pointer_cast<Reference>(arg);
+            if (buildCtx->schema().hasField(ref->dotPath()))
+            {
+                auto jType = buildCtx->validator().getJsonType(buildCtx->schema().getType(ref->dotPath()));
+                if (jType != json::Json::Type::String)
+                {
+                    throw std::runtime_error(
+                        fmt::format("Expected a reference of type '{}' but got reference '{}' of type '{}'",
+                                    json::Json::typeToStr(json::Json::Type::String),
+                                    ref->dotPath(),
+                                    json::Json::typeToStr(jType)));
+                }
+            }
+        }
+    }
+
+    auto name = buildCtx->context().opName;
 
     // Tracing
     const std::string successTrace {fmt::format("[{}] -> Success", name)};
@@ -852,21 +882,21 @@ FilterOp opBuilderHelperArrayPresence(const Reference& targetField,
                                                  checkPresence ? "does not contain any" : "contain at least one")};
 
     // Return Op
-    return [=, targetField = targetField.jsonPath()](base::ConstEvent event) -> FilterResult
+    return [=, parameters = opArgs, runState = buildCtx->runState(), targetField = targetField.jsonPath()](
+               base::ConstEvent event) -> FilterResult
     {
         if (!event->exists(targetField))
         {
-            return base::result::makeFailure(false, failureTrace1);
+            RETURN_FAILURE(runState, false, failureTrace1);
         }
 
         const auto resolvedArray {event->getArray(targetField)};
         if (!resolvedArray.has_value())
         {
-            return base::result::makeFailure(false, failureTrace2);
+            RETURN_FAILURE(runState, false, failureTrace2);
         }
 
         json::Json cmpValue {};
-        auto result = base::result::makeSuccess(true, successTrace);
         for (const auto& parameter : parameters)
         {
             if (parameter->isReference())
@@ -895,17 +925,19 @@ FilterOp opBuilderHelperArrayPresence(const Reference& targetField,
             {
                 if (!checkPresence)
                 {
-                    result = base::result::makeFailure(false, failureTrace3);
+                    RETURN_FAILURE(runState, false, failureTrace3);
                 }
-                return result;
+
+                RETURN_SUCCESS(runState, true, successTrace);
             }
         }
 
         if (checkPresence)
         {
-            result = base::result::makeFailure(false, failureTrace3);
+            RETURN_FAILURE(runState, false, failureTrace3);
         }
-        return result;
+
+        RETURN_SUCCESS(runState, true, successTrace);
     };
 }
 
@@ -914,21 +946,7 @@ FilterOp opBuilderHelperContainsString(const Reference& targetField,
                                        const std::vector<OpArg>& opArgs,
                                        const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    for (const auto& arg : opArgs)
-    {
-        if (arg->isValue())
-        {
-            auto value = std::static_pointer_cast<Value>(arg)->value();
-            if (!value.isString())
-            {
-                throw std::runtime_error(fmt::format("\"{}\" function: "
-                                                     "Parameter \"{}\" is not a string.",
-                                                     buildCtx->context().opName,
-                                                     value.str()));
-            }
-        }
-    }
-    auto op = opBuilderHelperArrayPresence(targetField, buildCtx->context().opName, opArgs, true);
+    auto op = opBuilderHelperArrayPresence(targetField, opArgs, true, buildCtx);
     return op;
 }
 
@@ -937,21 +955,7 @@ FilterOp opBuilderHelperNotContainsString(const Reference& targetField,
                                           const std::vector<OpArg>& opArgs,
                                           const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    for (const auto& arg : opArgs)
-    {
-        if (arg->isValue())
-        {
-            auto value = std::static_pointer_cast<Value>(arg)->value();
-            if (!value.isString())
-            {
-                throw std::runtime_error(fmt::format("\"{}\" function: "
-                                                     "Parameter \"{}\" is not a string.",
-                                                     buildCtx->context().opName,
-                                                     value.str()));
-            }
-        }
-    }
-    auto op = opBuilderHelperArrayPresence(targetField, buildCtx->context().opName, opArgs, false);
+    auto op = opBuilderHelperArrayPresence(targetField, opArgs, false, buildCtx);
     return op;
 }
 
@@ -959,45 +963,54 @@ FilterOp opBuilderHelperNotContainsString(const Reference& targetField,
 //*                Type filters                   *
 //*************************************************
 
-// field: +is_number
-FilterOp opBuilderHelperIsNumber(const Reference& targetField,
-                                 const std::vector<OpArg>& opArgs,
-                                 const std::shared_ptr<const IBuildCtx>& buildCtx)
+FilterOp typeMatcher(const Reference& targetField,
+                     const std::vector<OpArg>& opArgs,
+                     const std::shared_ptr<const IBuildCtx>& buildCtx,
+                     json::Json::Type type,
+                     bool negated = false)
 {
     // Assert expected number of parameters
     utils::assertSize(opArgs, 0);
     const auto name = buildCtx->context().opName;
 
     // Tracing
-    const std::string successTrace {fmt::format("[{}] -> Success", name)};
-    const std::string failureTrace {
-        fmt::format("[{}] -> Failure: Target field '{}' is not a number", name, targetField.dotPath())};
-    const std::string failureMissingValueTrace {
-        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField.dotPath())};
+    const auto successTrace = fmt::format("[{}] -> Success", name);
+    const auto failureTrace =
+        negated ? fmt::format(
+            "[{}] -> Failure: Target field '{}' is a {}", name, targetField.dotPath(), json::Json::typeToStr(type))
+                : fmt::format("[{}] -> Failure: Target field '{}' is not a {}",
+                              name,
+                              targetField.dotPath(),
+                              json::Json::typeToStr(type));
+    const auto failureMissingValueTrace =
+        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField.dotPath());
 
     // Return Op
-    return [=, targetField = targetField.jsonPath()](base::ConstEvent event) -> FilterResult
+    return [=, runState = buildCtx->runState(), targetField = targetField.jsonPath()](
+               base::ConstEvent event) -> FilterResult
     {
         FilterResult result;
 
         if (event->exists(targetField))
         {
-            if (event->isNumber(targetField))
+            if ((event->type(targetField) == type) != negated)
             {
-                result = base::result::makeSuccess(true, successTrace);
+                RETURN_SUCCESS(runState, true, successTrace);
             }
-            else
-            {
-                result = base::result::makeFailure(false, failureTrace);
-            }
-        }
-        else
-        {
-            result = base::result::makeFailure(false, failureMissingValueTrace);
+
+            RETURN_FAILURE(runState, false, failureTrace);
         }
 
-        return result;
+        RETURN_FAILURE(runState, false, failureMissingValueTrace);
     };
+}
+
+// field: +is_number
+FilterOp opBuilderHelperIsNumber(const Reference& targetField,
+                                 const std::vector<OpArg>& opArgs,
+                                 const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    return typeMatcher(targetField, opArgs, buildCtx, json::Json::Type::Number);
 }
 
 // field: +is_not_number
@@ -1005,40 +1018,7 @@ FilterOp opBuilderHelperIsNotNumber(const Reference& targetField,
                                     const std::vector<OpArg>& opArgs,
                                     const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    // Assert expected number of parameters
-    utils::assertSize(opArgs, 0);
-    const auto name = buildCtx->context().opName;
-
-    // Tracing
-    const std::string successTrace {fmt::format("[{}] -> Success", name)};
-    const std::string failureTrace {
-        fmt::format("[{}] -> Failure: Target field '{}' is a number", name, targetField.dotPath())};
-    const std::string failureMissingValueTrace {
-        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField.dotPath())};
-
-    // Return op
-    return [=, targetField = targetField.jsonPath()](base::ConstEvent event) -> FilterResult
-    {
-        FilterResult result;
-
-        if (event->exists(targetField))
-        {
-            if (!event->isNumber(targetField))
-            {
-                result = base::result::makeSuccess(true, successTrace);
-            }
-            else
-            {
-                result = base::result::makeFailure(false, failureTrace);
-            }
-        }
-        else
-        {
-            result = base::result::makeFailure(false, failureMissingValueTrace);
-        }
-
-        return result;
-    };
+    return typeMatcher(targetField, opArgs, buildCtx, json::Json::Type::Number, true);
 }
 
 // field: +is_string
@@ -1046,40 +1026,7 @@ FilterOp opBuilderHelperIsString(const Reference& targetField,
                                  const std::vector<OpArg>& opArgs,
                                  const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    // Assert expected number of parameters
-    utils::assertSize(opArgs, 0);
-    const auto name = buildCtx->context().opName;
-
-    // Tracing
-    const std::string successTrace {fmt::format("[{}] -> Success", name)};
-    const std::string failureTrace {
-        fmt::format("[{}] -> Failure: Target field '{}' is not a string", name, targetField.dotPath())};
-    const std::string failureMissingValueTrace {
-        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField.dotPath())};
-
-    // Return op
-    return [=, targetField = targetField.jsonPath()](base::ConstEvent event) -> FilterResult
-    {
-        FilterResult result;
-
-        if (event->exists(targetField))
-        {
-            if (event->isString(targetField))
-            {
-                result = base::result::makeSuccess(true, successTrace);
-            }
-            else
-            {
-                result = base::result::makeFailure(false, failureTrace);
-            }
-        }
-        else
-        {
-            result = base::result::makeFailure(false, failureMissingValueTrace);
-        }
-
-        return result;
-    };
+    return typeMatcher(targetField, opArgs, buildCtx, json::Json::Type::String);
 }
 
 // field: +is_not_string
@@ -1087,40 +1034,7 @@ FilterOp opBuilderHelperIsNotString(const Reference& targetField,
                                     const std::vector<OpArg>& opArgs,
                                     const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    // Assert expected number of parameters
-    utils::assertSize(opArgs, 0);
-    const auto name = buildCtx->context().opName;
-
-    // Tracing
-    const std::string successTrace {fmt::format("[{}] -> Success", name)};
-    const std::string failureTrace {
-        fmt::format("[{}] -> Failure: Target field '{}' is a string", name, targetField.dotPath())};
-    const std::string failureMissingValueTrace {
-        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField.dotPath())};
-
-    // Return op
-    return [=, targetField = targetField.jsonPath()](base::ConstEvent event) -> FilterResult
-    {
-        FilterResult result;
-
-        if (event->exists(targetField))
-        {
-            if (!event->isString(targetField))
-            {
-                result = base::result::makeSuccess(true, successTrace);
-            }
-            else
-            {
-                result = base::result::makeFailure(false, failureTrace);
-            }
-        }
-        else
-        {
-            result = base::result::makeFailure(false, failureMissingValueTrace);
-        }
-
-        return result;
-    };
+    return typeMatcher(targetField, opArgs, buildCtx, json::Json::Type::String, true);
 }
 
 // field: +is_boolean
@@ -1128,40 +1042,7 @@ FilterOp opBuilderHelperIsBool(const Reference& targetField,
                                const std::vector<OpArg>& opArgs,
                                const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    // Assert expected number of parameters
-    utils::assertSize(opArgs, 0);
-    const auto name = buildCtx->context().opName;
-
-    // Tracing
-    const std::string successTrace {fmt::format("[{}] -> Success", name)};
-    const std::string failureTrace {
-        fmt::format("[{}] -> Failure: Target field '{}' is not a boolean", name, targetField.dotPath())};
-    const std::string failureMissingValueTrace {
-        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField.dotPath())};
-
-    // Return op
-    return [=, targetField = targetField.jsonPath()](base::ConstEvent event) -> FilterResult
-    {
-        FilterResult result;
-
-        if (event->exists(targetField))
-        {
-            if (event->isBool(targetField))
-            {
-                result = base::result::makeSuccess(true, successTrace);
-            }
-            else
-            {
-                result = base::result::makeFailure(false, failureTrace);
-            }
-        }
-        else
-        {
-            result = base::result::makeFailure(false, failureMissingValueTrace);
-        }
-
-        return result;
-    };
+    return typeMatcher(targetField, opArgs, buildCtx, json::Json::Type::Boolean);
 }
 
 // field: +is_not_boolean
@@ -1169,40 +1050,7 @@ FilterOp opBuilderHelperIsNotBool(const Reference& targetField,
                                   const std::vector<OpArg>& opArgs,
                                   const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    // Assert expected number of parameters
-    utils::assertSize(opArgs, 0);
-    const auto name = buildCtx->context().opName;
-
-    // Tracing
-    const std::string successTrace {fmt::format("[{}] -> Success", name)};
-    const std::string failureTrace {
-        fmt::format("[{}] -> Failure: Target field '{}' is a boolean", name, targetField.dotPath())};
-    const std::string failureMissingValueTrace {
-        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField.dotPath())};
-
-    // Return op
-    return [=, targetField = targetField.jsonPath()](base::ConstEvent event) -> FilterResult
-    {
-        FilterResult result;
-
-        if (event->exists(targetField))
-        {
-            if (!event->isBool(targetField))
-            {
-                result = base::result::makeSuccess(true, successTrace);
-            }
-            else
-            {
-                result = base::result::makeFailure(false, failureTrace);
-            }
-        }
-        else
-        {
-            result = base::result::makeFailure(false, failureMissingValueTrace);
-        }
-
-        return result;
-    };
+    return typeMatcher(targetField, opArgs, buildCtx, json::Json::Type::Boolean, true);
 }
 
 // field: +is_array
@@ -1210,40 +1058,7 @@ FilterOp opBuilderHelperIsArray(const Reference& targetField,
                                 const std::vector<OpArg>& opArgs,
                                 const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    // Assert expected number of parameters
-    utils::assertSize(opArgs, 0);
-    const auto name = buildCtx->context().opName;
-
-    // Tracing
-    const std::string successTrace {fmt::format("[{}] -> Success", name)};
-    const std::string failureTrace {
-        fmt::format("[{}] -> Failure: Target field '{}' is not an array", name, targetField.dotPath())};
-    const std::string failureMissingValueTrace {
-        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField.dotPath())};
-
-    // Return op
-    return [=, targetField = targetField.jsonPath()](base::ConstEvent event) -> FilterResult
-    {
-        FilterResult result;
-
-        if (event->exists(targetField))
-        {
-            if (event->isArray(targetField))
-            {
-                result = base::result::makeSuccess(true, successTrace);
-            }
-            else
-            {
-                result = base::result::makeFailure(false, failureTrace);
-            }
-        }
-        else
-        {
-            result = base::result::makeFailure(false, failureMissingValueTrace);
-        }
-
-        return result;
-    };
+    return typeMatcher(targetField, opArgs, buildCtx, json::Json::Type::Array);
 }
 
 // field: +is_not_array
@@ -1251,40 +1066,7 @@ FilterOp opBuilderHelperIsNotArray(const Reference& targetField,
                                    const std::vector<OpArg>& opArgs,
                                    const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    // Assert expected number of parameters
-    utils::assertSize(opArgs, 0);
-    const auto name = buildCtx->context().opName;
-
-    // Tracing
-    const std::string successTrace {fmt::format("[{}] -> Success", name)};
-    const std::string failureTrace {
-        fmt::format("[{}] -> Failure: Target field '{}' is an array", name, targetField.dotPath())};
-    const std::string failureMissingValueTrace {
-        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField.dotPath())};
-
-    // Return op
-    return [=, targetField = targetField.jsonPath()](base::ConstEvent event) -> FilterResult
-    {
-        FilterResult result;
-
-        if (event->exists(targetField))
-        {
-            if (!event->isArray(targetField))
-            {
-                result = base::result::makeSuccess(true, successTrace);
-            }
-            else
-            {
-                result = base::result::makeFailure(false, failureTrace);
-            }
-        }
-        else
-        {
-            result = base::result::makeFailure(false, failureMissingValueTrace);
-        }
-
-        return result;
-    };
+    return typeMatcher(targetField, opArgs, buildCtx, json::Json::Type::Array, true);
 }
 
 // field: +is_object
@@ -1292,40 +1074,7 @@ FilterOp opBuilderHelperIsObject(const Reference& targetField,
                                  const std::vector<OpArg>& opArgs,
                                  const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    // Assert expected number of parameters
-    utils::assertSize(opArgs, 0);
-    const auto name = buildCtx->context().opName;
-
-    // Tracing
-    const std::string successTrace {fmt::format("[{}] -> Success", name)};
-    const std::string failureTrace {
-        fmt::format("[{}] -> Failure: Target field '{}' is not an object", name, targetField.dotPath())};
-    const std::string failureMissingValueTrace {
-        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField.dotPath())};
-
-    // Return op
-    return [=, targetField = targetField.jsonPath()](base::ConstEvent event) -> FilterResult
-    {
-        FilterResult result;
-
-        if (event->exists(targetField))
-        {
-            if (event->isObject(targetField))
-            {
-                result = base::result::makeSuccess(true, successTrace);
-            }
-            else
-            {
-                result = base::result::makeFailure(false, failureTrace);
-            }
-        }
-        else
-        {
-            result = base::result::makeFailure(false, failureMissingValueTrace);
-        }
-
-        return result;
-    };
+    return typeMatcher(targetField, opArgs, buildCtx, json::Json::Type::Object);
 }
 
 // field: +is_not_object
@@ -1333,39 +1082,7 @@ FilterOp opBuilderHelperIsNotObject(const Reference& targetField,
                                     const std::vector<OpArg>& opArgs,
                                     const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    // Assert expected number of parameters
-    utils::assertSize(opArgs, 0);
-    const auto name = buildCtx->context().opName;
-
-    // Tracing
-    const std::string successTrace {fmt::format("[{}] -> Success", name)};
-    const std::string failureTrace {
-        fmt::format("[{}] -> Failure: Target field '{}' is an object", name, targetField.dotPath())};
-    const std::string failureMissingValueTrace {
-        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField.dotPath())};
-
-    // Return op
-    return [=, targetField = targetField.jsonPath()](base::ConstEvent event) -> FilterResult
-    {
-        FilterResult result;
-
-        if (event->exists(targetField))
-        {
-            if (!event->isObject(targetField))
-            {
-                result = base::result::makeSuccess(true, successTrace);
-            }
-            else
-            {
-                result = base::result::makeFailure(false, failureTrace);
-            }
-        }
-        else
-        {
-            result = base::result::makeFailure(false, failureMissingValueTrace);
-        }
-        return result;
-    };
+    return typeMatcher(targetField, opArgs, buildCtx, json::Json::Type::Object, true);
 }
 
 // field: +is_null
@@ -1373,39 +1090,7 @@ FilterOp opBuilderHelperIsNull(const Reference& targetField,
                                const std::vector<OpArg>& opArgs,
                                const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    // Assert expected number of parameters
-    utils::assertSize(opArgs, 0);
-    const auto name = buildCtx->context().opName;
-
-    // Tracing
-    const std::string successTrace {fmt::format("[{}] -> Success", name)};
-    const std::string failureTrace {
-        fmt::format("[{}] -> Failure: Target field '{}' is not null", name, targetField.dotPath())};
-    const std::string failureMissingValueTrace {
-        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField.dotPath())};
-
-    // Return op
-    return [=, targetField = targetField.jsonPath()](base::ConstEvent event) -> FilterResult
-    {
-        FilterResult result;
-
-        if (event->exists(targetField))
-        {
-            if (event->isNull(targetField))
-            {
-                result = base::result::makeSuccess(true, successTrace);
-            }
-            else
-            {
-                result = base::result::makeFailure(false, failureTrace);
-            }
-        }
-        else
-        {
-            result = base::result::makeFailure(false, failureMissingValueTrace);
-        }
-        return result;
-    };
+    return typeMatcher(targetField, opArgs, buildCtx, json::Json::Type::Null);
 }
 
 // field: +is_not_null
@@ -1413,124 +1098,7 @@ FilterOp opBuilderHelperIsNotNull(const Reference& targetField,
                                   const std::vector<OpArg>& opArgs,
                                   const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    // Assert expected number of parameters
-    utils::assertSize(opArgs, 0);
-    const auto name = buildCtx->context().opName;
-    // Tracing
-    const std::string successTrace {fmt::format("[{}] -> Success", name)};
-    const std::string failureTrace {
-        fmt::format("[{}] -> Failure: Target field '{}' is null", name, targetField.dotPath())};
-    const std::string failureMissingValueTrace {
-        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField.dotPath())};
-    // Return op
-    return [=, targetField = targetField.jsonPath()](base::ConstEvent event) -> FilterResult
-    {
-        FilterResult result;
-        if (event->exists(targetField))
-        {
-            if (!event->isNull(targetField))
-            {
-                result = base::result::makeSuccess(true, successTrace);
-            }
-            else
-            {
-                result = base::result::makeFailure(false, failureTrace);
-            }
-        }
-        else
-        {
-            result = base::result::makeFailure(false, failureMissingValueTrace);
-        }
-        return result;
-    };
-}
-
-// field: +is_true
-FilterOp opBuilderHelperIsTrue(const Reference& targetField,
-                               const std::vector<OpArg>& opArgs,
-                               const std::shared_ptr<const IBuildCtx>& buildCtx)
-{
-    // Assert expected number of parameters
-    utils::assertSize(opArgs, 0);
-    const auto name = buildCtx->context().opName;
-    // Tracing
-    const std::string successTrace {fmt::format("[{}] -> Success", name)};
-    const std::string failureTrace {
-        fmt::format("[{}] -> Failure: Target field '{}' is false", name, targetField.dotPath())};
-    const std::string failureMissingValueTrace {
-        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField.dotPath())};
-    // Return op
-    return [=, targetField = targetField.jsonPath()](base::ConstEvent event) -> FilterResult
-    {
-        FilterResult result;
-        if (event->exists(targetField))
-        {
-            if (event->isBool(targetField))
-            {
-                if (event->getBool(targetField).value())
-                {
-                    result = base::result::makeSuccess(true, successTrace);
-                }
-                else
-                {
-                    result = base::result::makeFailure(false, failureTrace);
-                }
-            }
-            else
-            {
-                result = base::result::makeFailure(false, failureTrace);
-            }
-        }
-        else
-        {
-            result = base::result::makeFailure(false, failureMissingValueTrace);
-        }
-        return result;
-    };
-}
-
-// field: +is_false
-FilterOp opBuilderHelperIsFalse(const Reference& targetField,
-                                const std::vector<OpArg>& opArgs,
-                                const std::shared_ptr<const IBuildCtx>& buildCtx)
-{
-    // Assert expected number of parameters
-    utils::assertSize(opArgs, 0);
-    const auto name = buildCtx->context().opName;
-    // Tracing
-    const std::string successTrace {fmt::format("[{}] -> Success", name)};
-    const std::string failureTrace {
-        fmt::format("[{}] -> Failure: Target field '{}' is true", name, targetField.dotPath())};
-    const std::string failureMissingValueTrace {
-        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField.dotPath())};
-    // Return op
-    return [=, targetField = targetField.jsonPath()](base::ConstEvent event) -> FilterResult
-    {
-        FilterResult result;
-        if (event->exists(targetField))
-        {
-            if (event->isBool(targetField))
-            {
-                if (!event->getBool(targetField).value())
-                {
-                    result = base::result::makeSuccess(true, successTrace);
-                }
-                else
-                {
-                    result = base::result::makeFailure(false, failureTrace);
-                }
-            }
-            else
-            {
-                result = base::result::makeFailure(false, failureTrace);
-            }
-        }
-        else
-        {
-            result = base::result::makeFailure(false, failureMissingValueTrace);
-        }
-        return result;
-    };
+    return typeMatcher(targetField, opArgs, buildCtx, json::Json::Type::Null, true);
 }
 
 //*************************************************
@@ -1545,10 +1113,25 @@ FilterOp opBuilderHelperMatchValue(const Reference& targetField,
     // Assert expected number of parameters
     utils::assertSize(opArgs, 1);
 
-    if (opArgs[0]->isValue() && !std::static_pointer_cast<Value>(opArgs[0])->value().isArray())
+    if (opArgs[0]->isValue())
     {
-        throw std::runtime_error(fmt::format("Expected 'array' type for parameter 1, got '{}'",
-                                             std::static_pointer_cast<Value>(opArgs[0])->value().typeName()));
+        if (!std::static_pointer_cast<Value>(opArgs[0])->value().isArray())
+        {
+            throw std::runtime_error(fmt::format("Expected 'array' type for parameter 1, got '{}'",
+                                                 std::static_pointer_cast<Value>(opArgs[0])->value().typeName()));
+        }
+    }
+    else
+    {
+        auto ref = std::static_pointer_cast<Reference>(opArgs[0]);
+        if (buildCtx->schema().hasField(ref->dotPath()))
+        {
+            if (!buildCtx->schema().isArray(ref->dotPath()))
+            {
+                throw std::runtime_error(fmt::format(
+                    "Expected a reference of an array but got reference '{}' which is not an array", ref->dotPath()));
+            }
+        }
     }
 
     const auto name = buildCtx->context().opName;
@@ -1565,11 +1148,12 @@ FilterOp opBuilderHelperMatchValue(const Reference& targetField,
     const std::string failureTrace5 {fmt::format("[{}] -> Failure", name)};
 
     // Return op
-    return [=, targetField = targetField.jsonPath(), parameter = opArgs[0]](base::ConstEvent event) -> FilterResult
+    return [=, runState = buildCtx->runState(), targetField = targetField.jsonPath(), parameter = opArgs[0]](
+               base::ConstEvent event) -> FilterResult
     {
         if (!event->exists(targetField))
         {
-            return base::result::makeFailure(false, failureTrace1);
+            RETURN_FAILURE(runState, false, failureTrace1);
         }
 
         // Get value
@@ -1582,7 +1166,7 @@ FilterOp opBuilderHelperMatchValue(const Reference& targetField,
             }
             else
             {
-                return base::result::makeFailure(false, failureTrace2);
+                RETURN_FAILURE(runState, false, failureTrace2);
             }
         }
 
@@ -1603,12 +1187,12 @@ FilterOp opBuilderHelperMatchValue(const Reference& targetField,
             auto refPath = std::static_pointer_cast<Reference>(parameter)->jsonPath();
             if (!event->exists(refPath))
             {
-                return base::result::makeFailure(false, failureTrace3);
+                RETURN_FAILURE(runState, false, failureTrace3);
             }
 
             if (!event->isArray(refPath))
             {
-                return base::result::makeFailure(false, failureTrace4);
+                RETURN_FAILURE(runState, false, failureTrace4);
             }
 
             isSuccess = searchCmpValue(event->getArray(refPath).value());
@@ -1623,11 +1207,11 @@ FilterOp opBuilderHelperMatchValue(const Reference& targetField,
         // Check if the array contains the value
         if (isSuccess)
         {
-            return base::result::makeSuccess(true, successTrace);
+            RETURN_SUCCESS(runState, true, successTrace);
         }
 
         // Not found
-        return base::result::makeFailure(false, failureTrace5);
+        RETURN_FAILURE(runState, false, failureTrace5);
     };
 }
 
@@ -1639,10 +1223,27 @@ FilterOp opBuilderHelperMatchKey(const Reference& targetField,
     // Assert expected number of parameters
     utils::assertSize(opArgs, 1);
 
-    if (opArgs[0]->isValue() && !std::static_pointer_cast<Value>(opArgs[0])->value().isObject())
+    if (opArgs[0]->isValue())
     {
-        throw std::runtime_error(fmt::format("Expected 'object' type for parameter 1, got '{}'",
-                                             std::static_pointer_cast<Value>(opArgs[0])->value().typeName()));
+        if (!std::static_pointer_cast<Value>(opArgs[0])->value().isObject())
+        {
+            throw std::runtime_error(fmt::format("Expected 'object' type for parameter 1, got '{}'",
+                                                 std::static_pointer_cast<Value>(opArgs[0])->value().typeName()));
+        }
+    }
+    else
+    {
+        auto ref = std::static_pointer_cast<Reference>(opArgs[0]);
+        if (buildCtx->schema().hasField(ref->dotPath()))
+        {
+            if (buildCtx->schema().getType(ref->dotPath()) != schemf::Type::OBJECT)
+            {
+                throw std::runtime_error(
+                    fmt::format("Expected a reference of an object but got reference '{}' which is of type '{}",
+                                ref->dotPath(),
+                                schemf::typeToStr(buildCtx->schema().getType(ref->dotPath()))));
+            }
+        }
     }
 
     const auto name = buildCtx->context().opName;
@@ -1662,17 +1263,18 @@ FilterOp opBuilderHelperMatchKey(const Reference& targetField,
         fmt::format("[{}] -> Failure: Object does not contain '{}'", name, targetField.dotPath())};
 
     // Return op
-    return [=, targetField = targetField.jsonPath(), parameter = opArgs[0]](base::ConstEvent event) -> FilterResult
+    return [=, runState = buildCtx->runState(), targetField = targetField.jsonPath(), parameter = opArgs[0]](
+               base::ConstEvent event) -> FilterResult
     {
         // Get key
         if (!event->exists(targetField))
         {
-            return base::result::makeFailure(false, failureTrace1);
+            RETURN_FAILURE(runState, false, failureTrace1);
         }
 
         if (!event->isString(targetField))
         {
-            return base::result::makeFailure(false, failureTrace2);
+            RETURN_FAILURE(runState, false, failureTrace2);
         }
 
         auto pointerPath = json::Json::formatJsonPath(event->getString(targetField).value());
@@ -1683,12 +1285,12 @@ FilterOp opBuilderHelperMatchKey(const Reference& targetField,
             auto refPath = std::static_pointer_cast<Reference>(parameter)->jsonPath();
             if (!event->exists(refPath))
             {
-                return base::result::makeFailure(false, failureTrace3);
+                RETURN_FAILURE(runState, false, failureTrace3);
             }
 
             if (!event->isObject(refPath))
             {
-                return base::result::makeFailure(false, failureTrace5);
+                RETURN_FAILURE(runState, false, failureTrace5);
             }
 
             exists = event->exists(refPath + pointerPath);
@@ -1702,10 +1304,10 @@ FilterOp opBuilderHelperMatchKey(const Reference& targetField,
         // Check if object contains the key
         if (!exists)
         {
-            return base::result::makeFailure(false, failureTrace6);
+            RETURN_FAILURE(runState, false, failureTrace6);
         }
 
-        return base::result::makeSuccess(true, successTrace);
+        RETURN_SUCCESS(runState, true, successTrace);
     };
 }
 
