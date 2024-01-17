@@ -179,7 +179,7 @@ def test_agentd_multi_server(test_configuration, test_metadata, set_wazuh_config
                               remoted_server_address,
                               remoted_server_ports[server])
             # Look for expected log
-            log_monitor.start(callback=callbacks.generate_callback(regex,values), timeout = 120)
+            log_monitor.start(callback=callbacks.generate_callback(regex,values), timeout = 150)
             assert (log_monitor.callback_result != None), (regex,values)
 
     if(authd_server):

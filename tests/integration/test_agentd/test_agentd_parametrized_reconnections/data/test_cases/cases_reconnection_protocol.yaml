@@ -5,7 +5,6 @@
     MAX_RETRIES: 3
     RETRY_INTERVAL: 3
     ENROLL: 'no'
-    DELETE_KEYS_FILE: false
   metadata:
 
 - name: Test_case_1

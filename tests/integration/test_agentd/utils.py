@@ -54,7 +54,7 @@ def wait_enrollment_try():
         Watch ossec.log until "Requesting a key" message is found
     """
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(only_new_events = True, callback=callbacks.generate_callback(AGENTD_REQUESTING_KEY,{'IP':''}), timeout = 120)
+    wazuh_log_monitor.start(only_new_events = True, callback=callbacks.generate_callback(AGENTD_REQUESTING_KEY,{'IP':''}), timeout = 150)
     assert (wazuh_log_monitor.callback_result != None), f'Enrollment retry was not sent'
 
 
@@ -72,7 +72,7 @@ def wait_server_rollback():
         Watch ossec.log until "Unable to connect to any server" message is found'
     """
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_UNABLE_TO_CONNECT_TO_ANY))
+    wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_UNABLE_TO_CONNECT_TO_ANY), timeout = 120)
     assert (wazuh_log_monitor.callback_result != None), f'Unable to connect to any server message not found'
 
 

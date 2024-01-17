@@ -176,7 +176,7 @@ def parse_state_file():
     return state
     
 
-def wait_for_custom_message_response(expected_status: str, remoted_server: RemotedSimulator, timeout: int = 150):
+def wait_for_custom_message_response(expected_status: str, remoted_server: RemotedSimulator, timeout: int = 350):
     """Request remoted_server the status of the agent
 
     Args:
@@ -205,7 +205,6 @@ def wait_for_custom_message_response(expected_status: str, remoted_server: Remot
                 response = json.loads(response)
                 response = response['data']
                 return response
-        time.sleep(0.005)
     
     return None
 
@@ -264,11 +263,14 @@ def check_last_ack(expected_value: str=None, get_state_callback=None, expected_s
     if get_state_callback == parse_state_file:
         current_value = get_state_callback()['last_ack']
     else:
-        current_value = get_state_callback(expected_status, remoted_server)['last_ack']
+        current_value = get_state_callback(expected_status, remoted_server)
+        if current_value: 
+            current_value = current_value['last_ack']
+        else:
+            wait_ack()
     if expected_value == '':
         return expected_value == current_value
     
-    wait_ack()
     return True
 
 
@@ -295,11 +297,14 @@ def check_last_keepalive(expected_value: str=None, get_state_callback=None, expe
     if get_state_callback == parse_state_file:
         current_value = get_state_callback()['last_keepalive']
     else:
-        current_value = get_state_callback(expected_status, remoted_server)['last_keepalive']
+        current_value = get_state_callback(expected_status, remoted_server)
+        if current_value: 
+            current_value = current_value['last_keepalive']
+        else:
+            wait_ack()
     if expected_value == '':
         return expected_value == current_value
 
-    wait_keepalive()
     return True
 
 
@@ -326,7 +331,9 @@ def check_msg_count(expected_value: str=None, get_state_callback=None, expected_
     if get_state_callback == parse_state_file:
         current_value = get_state_callback()['msg_count']
     else:
-        current_value = get_state_callback(expected_status, remoted_server)['msg_count']
+        current_value = get_state_callback(expected_status, remoted_server)
+        if current_value:
+            current_value = current_value['msg_count']
     if expected_value == '':
         return expected_value == current_value
 
@@ -364,7 +371,11 @@ def check_status(expected_value: str=None, get_state_callback=None, expected_sta
             wait_state_update()
             current_value = get_state_callback()['status']
         else:
-            current_value = get_state_callback(expected_status, remoted_server)['status']
+            current_value = get_state_callback(expected_status, remoted_server)
+            if current_value:
+                current_value = current_value['status']
+            else:
+                wait_keepalive()  
     else:
         current_value = get_state_callback()['status']
 

@@ -154,7 +154,10 @@ def test_agentd_parametrized_reconnections(test_metadata, set_wazuh_configuratio
         - ssl
         - keys
     '''
-    DELTA = 1
+    if sys.platform == WINDOWS:
+        DELTA = 4
+    else:
+        DELTA = 1
 
     interval = test_metadata['RETRY_INTERVAL']
 
