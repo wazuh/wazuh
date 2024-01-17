@@ -524,34 +524,6 @@ FilterOp opBuilderHelperIsNotNull(const Reference& targetField,
                                   const std::vector<OpArg>& opArgs,
                                   const std::shared_ptr<const IBuildCtx>& buildCtx);
 
-/**
- * @brief Create `is_true` helper function that filters events which field is not of the
- * expected type.
- *
- * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
- * @return FilterOp
- */
-FilterOp opBuilderHelperIsTrue(const Reference& targetField,
-                               const std::vector<OpArg>& opArgs,
-                               const std::shared_ptr<const IBuildCtx>& buildCtx);
-
-/**
- * @brief Create `is_false` helper function that filters events which field is not of
- * the expected type.
- *
- * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
- * @return FilterOp
- */
-FilterOp opBuilderHelperIsFalse(const Reference& targetField,
-                                const std::vector<OpArg>& opArgs,
-                                const std::shared_ptr<const IBuildCtx>& buildCtx);
-
 //*************************************************
 //*              Definition filters               *
 //*************************************************

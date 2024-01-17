@@ -20,7 +20,7 @@ parents:
   - decoder/syscollector-dbsync-host-data/0
 
 check:
-  - do_update_kvdb: is_true()
+  - do_update_kvdb: true
 
 normalize:
   - map:

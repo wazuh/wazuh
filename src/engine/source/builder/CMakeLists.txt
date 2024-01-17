@@ -133,6 +133,9 @@ add_executable(builder_utest
     ${UNIT_SRC_DIR}/builders/opfilter/strCmp_test.cpp
     ${UNIT_SRC_DIR}/builders/opfilter/regex_test.cpp
     ${UNIT_SRC_DIR}/builders/opfilter/ip_test.cpp
+    ${UNIT_SRC_DIR}/builders/opfilter/arrayContains_test.cpp
+    ${UNIT_SRC_DIR}/builders/opfilter/types_test.cpp
+    ${UNIT_SRC_DIR}/builders/opfilter/match_test.cpp
 
     # Map Builders
     ${UNIT_SRC_DIR}/builders/opmap/map_test.cpp

@@ -84,8 +84,6 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
     registry->template add<builders::OpBuilderEntry>(
         "is_boolean", {schemval::ValidationToken {}, builders::opfilter::opBuilderHelperIsBool});
     registry->template add<builders::OpBuilderEntry>(
-        "is_false", {schemval::ValidationToken {}, builders::opfilter::opBuilderHelperIsFalse});
-    registry->template add<builders::OpBuilderEntry>(
         "is_not_array", {schemval::ValidationToken {}, builders::opfilter::opBuilderHelperIsNotArray});
     registry->template add<builders::OpBuilderEntry>(
         "is_not_boolean", {schemval::ValidationToken {}, builders::opfilter::opBuilderHelperIsNotBool});
@@ -105,8 +103,6 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
         "is_object", {schemval::ValidationToken {}, builders::opfilter::opBuilderHelperIsObject});
     registry->template add<builders::OpBuilderEntry>(
         "is_string", {schemval::ValidationToken {}, builders::opfilter::opBuilderHelperIsString});
-    registry->template add<builders::OpBuilderEntry>(
-        "is_true", {schemval::ValidationToken {}, builders::opfilter::opBuilderHelperIsTrue});
     registry->template add<builders::OpBuilderEntry>(
         "binary_and",
         {schemval::ValidationToken {json::Json::Type::String}, builders::opfilter::opBuilderHelperBinaryAnd});
