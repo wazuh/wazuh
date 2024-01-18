@@ -12,6 +12,7 @@
 #ifndef _ROCKSDB_QUEUE_HPP
 #define _ROCKSDB_QUEUE_HPP
 
+#include "rocksDBWrapper.hpp"
 #include "rocksdb/db.h"
 #include <filesystem>
 #include <functional>
@@ -24,51 +25,36 @@ template<typename T>
 class RocksDBQueue final
 {
 public:
-    explicit RocksDBQueue(const std::string& connectorName)
+    explicit RocksDBQueue(const std::string& connectorName, const std::string& columnName = "")
     {
         // RocksDB initialization.
-        rocksdb::Options options;
-        rocksdb::DB* db;
-
-        // Create directories recursively if they do not exist
-        std::filesystem::create_directories(std::filesystem::path(connectorName));
-
-        options.create_if_missing = true;
-        rocksdb::Status status = rocksdb::DB::Open(options, connectorName, &db);
-
-        if (!status.ok())
-        {
-            throw std::runtime_error("Failed to open RocksDB database");
-        }
-
-        m_db.reset(db);
+        m_db = std::make_shared<Utils::RocksDBWrapper>(connectorName);
 
         // RocksDB counter initialization.
         m_size = 0;
 
-        auto it = std::unique_ptr<rocksdb::Iterator>(m_db->NewIterator(rocksdb::ReadOptions()));
-        it->SeekToFirst();
-        if (it->Valid())
+        try
         {
-            auto key = std::stoull(it->key().ToString());
+            auto key = std::stoull(m_db->getFirstKeyValue(columnName).first);
             m_first = key;
             m_last = key;
         }
-        else
+        catch (...)
         {
             m_first = 1;
             m_last = 0;
         }
 
-        for (; it->Valid(); it->Next())
+        std::shared_ptr<RocksDBIterator> it = m_db->begin(columnName);
+        for (; it->valid(); it->operator++())
         {
-            auto key = std::stoull(it->key().ToString());
+            auto key = std::stoull(it->key());
             if (key > m_last)
             {
                 m_last = key;
             }
 
-            if (key < m_first)
+            if (key < m_last)
             {
                 m_first = key;
             }
@@ -76,22 +62,34 @@ public:
         }
     }
 
-    void push(const T& data)
+    void push(const T& data, const std::string& columnName = "")
     {
         // RocksDB enqueue element.
-        auto status = m_db->Put(rocksdb::WriteOptions(), std::to_string(++m_last), data);
-
-        if (!status.ok())
+        try
+        {
+            m_db->put(std::to_string(++m_last), data, columnName);
+        }
+        catch (...)
         {
             throw std::runtime_error("Failed to enqueue element");
         }
+
         ++m_size;
     }
 
-    void pop()
+    void push(const T& data)
+    {
+        push(data, "");
+    }
+
+    void pop(const std::string& columnName = "")
     {
         // RocksDB dequeue element.
-        if (!m_db->Delete(rocksdb::WriteOptions(), std::to_string(m_first)).ok())
+        try
+        {
+            m_db->delete_(std::to_string(m_first), columnName);
+        }
+        catch (...)
         {
             throw std::runtime_error("Failed to dequeue element, can't delete it");
         }
@@ -106,6 +104,12 @@ public:
         }
     }
 
+    void pop()
+    {
+        // RocksDB dequeue element.
+        pop("");
+    }
+
     uint64_t size() const
     {
         return m_size;
@@ -116,19 +120,28 @@ public:
         return m_size == 0;
     }
 
-    T front() const
+    T front(const std::string& columnName = "") const
     {
         T value;
-        if (!m_db->Get(rocksdb::ReadOptions(), std::to_string(m_first), &value).ok())
+        try
+        {
+            m_db->get(std::to_string(m_first), &value, columnName);
+        }
+        catch (...)
         {
             throw std::runtime_error("Failed to get front element");
         }
+
+        /*if (!m_db->Get(rocksdb::ReadOptions(), std::to_string(m_first), &value).ok())
+        {
+            throw std::runtime_error("Failed to get front element");
+        }*/
 
         return value;
     }
 
 private:
-    std::unique_ptr<rocksdb::DB> m_db;
+    std::unique_ptr<Utils::RocksDBWrapper> m_db;
     uint64_t m_size;
     uint64_t m_first;
     uint64_t m_last;

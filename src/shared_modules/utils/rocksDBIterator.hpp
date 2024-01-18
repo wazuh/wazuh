@@ -89,6 +89,16 @@ public:
         return END_ITERATOR;
     }
 
+    bool valid()
+    {
+        return m_it->Valid();
+    }
+
+    std::string key()
+    {
+        return m_it->key().ToString();
+    }
+
     RocksDBIterator& operator++()
     {
         m_it->Next();

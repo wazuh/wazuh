@@ -25,33 +25,42 @@
 
 namespace Utils
 {
-    class RocksDBTransaction;
-    class IRocksDBWrapper
+    template<typename T = rocksdb::Slice, typename U = rocksdb::PinnableSlice>
+    class TRocksDBTransaction;
+    template<typename T = rocksdb::Slice, typename U = rocksdb::PinnableSlice>
+    class TIRocksDBWrapper
     {
     public:
-        virtual void put(const std::string& key, const rocksdb::Slice& value, const std::string& columnName) = 0;
-        virtual void put(const std::string& key, const rocksdb::Slice& value) = 0;
+        /*virtual void put(const std::string& key, const rocksdb::Slice& value, const std::string& columnName) = 0;
+        virtual void put(const std::string& key, const rocksdb::Slice& value) = 0;*/
+        virtual void put(const std::string& key, const T& value, const std::string& columnName) = 0;
+        virtual void put(const std::string& key, const T& value) = 0;
         virtual void delete_(const std::string& key, const std::string& columnName) = 0; // NOLINT
         virtual void delete_(const std::string& key) = 0;                                // NOLINT
         virtual void commit() = 0;
-        virtual bool get(const std::string& key, rocksdb::PinnableSlice& value, const std::string& columnName) = 0;
-        virtual bool get(const std::string& key, rocksdb::PinnableSlice& value) = 0;
+        /*virtual bool get(const std::string& key, rocksdb::PinnableSlice& value, const std::string& columnName) = 0;
+        virtual bool get(const std::string& key, rocksdb::PinnableSlice& value) = 0;*/
+        virtual bool get(const std::string& key, U& value, const std::string& columnName) = 0;
+        virtual bool get(const std::string& key, U& value) = 0;
         virtual void createColumn(const std::string& columnName) = 0;
         virtual bool columnExists(const std::string& columnName) const = 0;
         virtual void deleteAll() = 0;
         virtual void flush() = 0;
 
-        virtual ~IRocksDBWrapper() = default;
+        virtual ~TIRocksDBWrapper() = default;
     };
+
+    using IRocksDBWrapper = TIRocksDBWrapper<>;
 
     /**
      * @brief Wrapper class for RocksDB.
      *
      */
-    class RocksDBWrapper : public IRocksDBWrapper
+    template<typename T = rocksdb::Slice, typename U = rocksdb::PinnableSlice>
+    class TRocksDBWrapper : public IRocksDBWrapper
     {
     public:
-        explicit RocksDBWrapper(const std::string& dbPath, const bool enableWal = true)
+        explicit TRocksDBWrapper(const std::string& dbPath, const bool enableWal = true)
             : m_enableWal {enableWal}
         {
             rocksdb::Options options;
@@ -106,7 +115,7 @@ namespace Utils
          * but not freeing it ends up on memory leaks and ASAN errors. OTOH, no problems seem to appear freeing it.
          *
          */
-        ~RocksDBWrapper() override
+        ~TRocksDBWrapper() override
         {
             std::for_each(m_columnsHandles.begin(),
                           m_columnsHandles.end(),
@@ -130,7 +139,44 @@ namespace Utils
          *
          * @note If the key already exists, the value will be overwritten.
          */
-        void put(const std::string& key, const rocksdb::Slice& value, const std::string& columnName) override
+        /* void put(const std::string& key, const rocksdb::Slice& value, const std::string& columnName) override
+         {
+             if (key.empty())
+             {
+                 throw std::invalid_argument("Key is empty");
+             }
+
+             rocksdb::WriteOptions writeOptions;
+             writeOptions.disableWAL = !m_enableWal;
+
+             const auto status {m_db->Put(writeOptions, getColumnFamilyHandle(columnName), key, value)};
+             if (!status.ok())
+             {
+                 throw std::runtime_error("Error putting data: " + status.ToString());
+             }
+         }*/
+
+        /**
+         * @brief Put a key-value pair in the database.
+         * @param key Key to put.
+         * @param value Value to put.
+         *
+         * @note If the key already exists, the value will be overwritten.
+         */
+        /* void put(const std::string& key, const rocksdb::Slice& value) override
+         {
+             put(key, value, "");
+         }*/
+
+        /**
+         * @brief Put a key-value pair in the database.
+         * @param key Key to put.
+         * @param value Value to put.
+         * @param columnName Column name where the put will be performed. If empty, the default column will be used.
+         *
+         * @note If the key already exists, the value will be overwritten.
+         */
+        void put(const std::string& key, const T& value, const std::string& columnName) override
         {
             if (key.empty())
             {
@@ -154,7 +200,7 @@ namespace Utils
          *
          * @note If the key already exists, the value will be overwritten.
          */
-        void put(const std::string& key, const rocksdb::Slice& value) override
+        void put(const std::string& key, const T& value) override
         {
             put(key, value, "");
         }
@@ -200,7 +246,52 @@ namespace Utils
          * @return bool False if the key was not found.
          */
 
-        bool get(const std::string& key, rocksdb::PinnableSlice& value, const std::string& columnName) override
+        /*bool get(const std::string& key, rocksdb::PinnableSlice& value, const std::string& columnName) override
+        {
+            if (key.empty())
+            {
+                throw std::invalid_argument("Key is empty");
+            }
+
+            const auto status {m_db->Get(rocksdb::ReadOptions(), getColumnFamilyHandle(columnName), key, &value)};
+            if (status.IsNotFound())
+            {
+                return false;
+            }
+            else if (!status.ok())
+            {
+                throw std::runtime_error("Error getting data: " + status.ToString());
+            }
+            return true;
+        }*/
+
+        /**
+         * @brief Get a value from the database.
+         *
+         * @param key Key to get.
+         * @param value Value to get (rocksdb::PinnableSlice).
+         *
+         * @return bool True if the operation was successful.
+         * @return bool False if the key was not found.
+         */
+
+        /*bool get(const std::string& key, rocksdb::PinnableSlice& value) override
+        {
+            return get(key, value, "");
+        }*/
+
+        /**
+         * @brief Get a value from the database.
+         *
+         * @param key Key to get.
+         * @param value Value to get (rocksdb::PinnableSlice).
+         * @param columnName Column name from where to get. If empty, the default column will be used.
+         *
+         * @return bool True if the operation was successful.
+         * @return bool False if the key was not found.
+         */
+
+        bool get(const std::string& key, U& value, const std::string& columnName) override
         {
             if (key.empty())
             {
@@ -229,7 +320,7 @@ namespace Utils
          * @return bool False if the key was not found.
          */
 
-        bool get(const std::string& key, rocksdb::PinnableSlice& value) override
+        bool get(const std::string& key, U& value) override
         {
             return get(key, value, "");
         }
@@ -265,6 +356,28 @@ namespace Utils
         void delete_(const std::string& key) override // NOLINT
         {
             delete_(key, "");
+        }
+
+        /**
+         * @brief Get the first key-value pair from the database.
+         *
+         * @param columnName Column name from where to get. If empty, the default column will be used.
+         * @return std::pair<std::string, rocksdb::Slice> First key-value pair.
+         *
+         * @note The first element of the pair is the key, the second element is the value.
+         */
+        std::pair<std::string, rocksdb::Slice> getFirstKeyValue(const std::string& columnName = "")
+        {
+            std::unique_ptr<rocksdb::Iterator> it(
+                m_db->NewIterator(rocksdb::ReadOptions(), getColumnFamilyHandle(columnName)));
+
+            it->SeekToFirst();
+            if (it->Valid())
+            {
+                return {it->key().ToString(), it->value()};
+            }
+
+            throw std::runtime_error {"Error getting first key-value pair"};
         }
 
         /**
@@ -375,9 +488,9 @@ namespace Utils
          * @brief Initialize transaction.
          * @return RocksDBTransaction Transaction object.
          */
-        std::unique_ptr<RocksDBTransaction> createTransaction()
+        std::unique_ptr<TRocksDBTransaction<>> createTransaction()
         {
-            return std::make_unique<RocksDBTransaction>(this);
+            return std::make_unique<TRocksDBTransaction<>>(this);
         }
 
         void commit() override
@@ -501,14 +614,17 @@ namespace Utils
 
             throw std::runtime_error {"Couldn't find column family: '" + columnName + "'"};
         }
-        friend class RocksDBTransaction;
+        friend class TRocksDBTransaction<>;
     };
+
+    using RocksDBWrapper = TRocksDBWrapper<>;
 
     /**
      * @brief Wrapper class for RocksDB transactions.
      *
      */
-    class RocksDBTransaction final : public IRocksDBWrapper
+    template<typename T = rocksdb::Slice, typename U = rocksdb::PinnableSlice>
+    class TRocksDBTransaction final : public IRocksDBWrapper
     {
     public:
         /**
@@ -516,7 +632,7 @@ namespace Utils
          *
          * @param db RocksDB instance.
          */
-        explicit RocksDBTransaction(RocksDBWrapper* dbWrapper)
+        explicit TRocksDBTransaction(RocksDBWrapper* dbWrapper)
             : m_dbWrapper {dbWrapper}
         {
             if (!m_dbWrapper)
@@ -538,7 +654,7 @@ namespace Utils
          * @brief Destructor.
          * @note If the transaction has not been committed, it will be aborted.
          */
-        ~RocksDBTransaction() override
+        ~TRocksDBTransaction() override
         {
             if (!m_committed)
             {
@@ -554,7 +670,7 @@ namespace Utils
          *
          * @note If the key already exists, the value will be overwritten.
          */
-        void put(const std::string& key, const rocksdb::Slice& value, const std::string& columnName) override
+        void put(const std::string& key, const T& value, const std::string& columnName) override
         {
             const auto status {m_txn->Put(m_dbWrapper->getColumnFamilyHandle(columnName), key, value)};
             if (!status.ok())
@@ -570,7 +686,7 @@ namespace Utils
          *
          * @note If the key already exists, the value will be overwritten.
          */
-        void put(const std::string& key, const rocksdb::Slice& value) override
+        void put(const std::string& key, T& value) override
         {
             put(key, value, "");
         }
@@ -611,8 +727,7 @@ namespace Utils
          * @return bool True if the operation was successful.
          * @return bool False if the key was not found.
          */
-
-        bool get(const std::string& key, rocksdb::PinnableSlice& value, const std::string& columnName) override
+        bool get(const std::string& key, U& value, const std::string& columnName) override
         {
             if (key.empty())
             {
@@ -642,7 +757,7 @@ namespace Utils
          * @return bool False if the key was not found.
          */
 
-        bool get(const std::string& key, rocksdb::PinnableSlice& value) override
+        bool get(const std::string& key, U& value) override
         {
             return get(key, value, "");
         }
@@ -713,7 +828,9 @@ namespace Utils
         std::unique_ptr<rocksdb::Transaction> m_txn; ///< RocksDB transaction.
         bool m_committed {false};                    ///< Whether the transaction has been committed or not.
     };
+
+    // using RocksDBTransaction = TRocksDBTransaction<>;
+
 } // namespace Utils
 
 #endif // _ROCKS_DB_WRAPPER_HPP
-
