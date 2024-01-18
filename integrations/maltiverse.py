@@ -5,8 +5,7 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
-"""
-What is Maltiverse?
+"""What is Maltiverse?
 ###################
 
 Maltiverse works as a broker for Threat intelligence sources that are
@@ -475,8 +474,7 @@ def maltiverse_alert(
 
 
 def get_md5_in_alert(alert: dict, maltiverse_api: Maltiverse):
-    """
-    Extract MD5-related information from the alert and query Maltiverse API.
+    """Extract MD5-related information from the alert and query Maltiverse API.
 
     Parameters
     ----------
@@ -509,8 +507,7 @@ def get_md5_in_alert(alert: dict, maltiverse_api: Maltiverse):
 
 
 def get_sha1_in_alert(alert: dict, maltiverse_api: Maltiverse):
-    """
-    Extract SHA1-related information from the alert and query Maltiverse API.
+    """Extract SHA1-related information from the alert and query Maltiverse API.
 
     Parameters
     ----------
@@ -543,8 +540,7 @@ def get_sha1_in_alert(alert: dict, maltiverse_api: Maltiverse):
 
 
 def get_source_ip_in_alert(alert: dict, maltiverse_api: Maltiverse):
-    """
-    Extract source IP-related information from the alert and query Maltiverse API.
+    """Extract source IP-related information from the alert and query Maltiverse API.
 
     Parameters
     ----------
@@ -578,8 +574,7 @@ def get_source_ip_in_alert(alert: dict, maltiverse_api: Maltiverse):
 
 
 def get_hostname_in_alert(alert: dict, maltiverse_api: Maltiverse):
-    """
-    Extract hostname-related information from the alert and query Maltiverse API.
+    """Extract hostname-related information from the alert and query Maltiverse API.
 
     Parameters
     ----------
@@ -612,8 +607,7 @@ def get_hostname_in_alert(alert: dict, maltiverse_api: Maltiverse):
 
 
 def get_url_in_alert(alert: dict, maltiverse_api: Maltiverse):
-    """
-    Extract URL-related information from the alert and query Maltiverse API.
+    """Extract URL-related information from the alert and query Maltiverse API.
 
     Parameters
     ----------

@@ -97,8 +97,7 @@ def main(args):
 
 
 def process_args(args) -> None:
-    """
-    This is the core function, creates a message with all valid fields
+    """This is the core function, creates a message with all valid fields
     and overwrite or add with the optional fields
 
     Parameters
@@ -128,8 +127,7 @@ def process_args(args) -> None:
 
 
 def debug(msg: str) -> None:
-    """
-    Log the message in the log file with the timestamp, if debug flag
+    """Log the message in the log file with the timestamp, if debug flag
     is enabled
 
     Parameters
@@ -144,8 +142,7 @@ def debug(msg: str) -> None:
 
 
 def request_info_from_api(alert, alert_output, api_key):
-    """
-    Request information from an API using the provided alert and API key.
+    """Request information from an API using the provided alert and API key.
 
     Parameters
     ----------
@@ -187,8 +184,7 @@ def request_info_from_api(alert, alert_output, api_key):
 
 
 def request_virustotal_info(alert: any, apikey: str):
-    """
-    Generate the JSON object with the message to be send
+    """Generate the JSON object with the message to be send
 
     Parameters
     ----------
@@ -265,8 +261,7 @@ def in_database(data, hash):
 
 
 def query_api(hash: str, apikey: str) -> any:
-    """
-    Send a request to VT API and fetch information to build message
+    """Send a request to VT API and fetch information to build message
 
     Parameters
     ----------
@@ -339,8 +334,7 @@ def send_msg(msg: any, agent: any = None) -> None:
 
 
 def get_json_alert(file_location: str) -> any:
-    """
-    Read JSON alert object from file
+    """Read JSON alert object from file
 
     Parameters
     ----------

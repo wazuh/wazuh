@@ -255,9 +255,7 @@ def test_request_maltiverse_info_make_expected_calls(data, expected_call):
     'alert, expected', [({}, 0), ({'syscheck': {}}, 0), ({'syscheck': {'md5_after': '1'}, 'id': '1'}, 1)]
 )
 def test_get_md5_in_alert(alert, expected):
-    """
-    Test the function that extracts MD5-related information from an alert.
-    """
+    """Test the function that extracts MD5-related information from an alert."""
     example_token = 'example_token'
     testing_maltiverse = maltiverse.Maltiverse(example_token)
 
@@ -272,9 +270,7 @@ def test_get_md5_in_alert(alert, expected):
     'alert, expected', [({}, 0), ({'syscheck': {}}, 0), ({'syscheck': {'sha1_after': '1'}, 'id': '1'}, 1)]
 )
 def test_get_sha1_in_alert(alert, expected):
-    """
-    Test the function that extracts SHA-1-related information from an alert.
-    """
+    """Test the function that extracts SHA-1-related information from an alert."""
     example_token = 'example_token'
     testing_maltiverse = maltiverse.Maltiverse(example_token)
 
@@ -295,14 +291,13 @@ def test_get_sha1_in_alert(alert, expected):
     ],
 )
 def test_get_source_ip_in_alert(alert, is_private, expected):
-    """
-    Test the function that extracts source IP-related information from an alert.
-    """
+    """Test the function that extracts source IP-related information from an alert."""
     example_token = 'example_token'
     testing_maltiverse = maltiverse.Maltiverse(example_token)
 
-    with patch('maltiverse.maltiverse_alert') as alert_mock, patch('ipaddress.IPv4Address') as ip_mock, \
-            patch('maltiverse.requests.Session.get') as mock_get:
+    with patch('maltiverse.maltiverse_alert') as alert_mock, patch('ipaddress.IPv4Address') as ip_mock, patch(
+        'maltiverse.requests.Session.get'
+    ) as mock_get:
         alert_mock.return_value = {}
         ip_mock_instance = ip_mock.return_value
         ip_mock_instance.is_private = is_private
@@ -319,9 +314,7 @@ def test_get_source_ip_in_alert(alert, is_private, expected):
     'alert, expected', [({}, 0), ({'data': {}}, 0), ({'data': {'hostname': 'somehostname'}, 'id': 1}, 1)]
 )
 def test_get_hostname_in_alert(alert, expected):
-    """
-    Test the function that extracts hostname-related information from an alert.
-    """
+    """Test the function that extracts hostname-related information from an alert."""
     example_token = 'example_token'
     testing_maltiverse = maltiverse.Maltiverse(example_token)
 
@@ -334,9 +327,7 @@ def test_get_hostname_in_alert(alert, expected):
 
 @pytest.mark.parametrize('alert, expected', [({}, 0), ({'data': {}}, 0), ({'data': {'url': 'someurl'}, 'id': 1}, 1)])
 def test_get_url_in_alert(alert, expected):
-    """
-    Test the function that extracts URL-related information from an alert.
-    """
+    """Test the function that extracts URL-related information from an alert."""
     example_token = 'example_token'
     testing_maltiverse = maltiverse.Maltiverse(example_token)
 
