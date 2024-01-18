@@ -112,14 +112,22 @@ def main(argv):
                 if aws_config.has_option(profile, "region"):
                     options.regions.append(aws_config.get(profile, "region"))
                 else:
-                    aws_tools.debug("+++ Warning: No regions were specified, trying to get events from all regions", 1)
-                    options.regions = aws_tools.ALL_REGIONS
+                    if service_type == services.inspector.AWSInspector:
+                        aws_tools.debug(
+                            "+++ Warning: No regions were specified, trying to get events from supported regions", 1
+                        )
+                        options.regions = services.inspector.SUPPORTED_REGIONS
+                    else:
+                        aws_tools.debug(
+                            "+++ Warning: No regions were specified, trying to get events from all regions", 1
+                        )
+                        options.regions = aws_tools.ALL_REGIONS
 
             for region in options.regions:
                 try:
                     service_type.check_region(region)
-                except ValueError:
-                    aws_tools.debug(f"+++ ERROR: The region '{region}' is not a valid one.", 1)
+                except ValueError as exc:
+                    aws_tools.debug(f"+++ ERROR: {exc}", 1)
                     exit(22)
 
                 aws_tools.debug('+++ Getting alerts from "{}" region.'.format(region), 1)
