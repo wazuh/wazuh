@@ -43,7 +43,7 @@ protected:
     void TearDown() override;
 
     /**
-     * @brief Waits until the stop condition is true or the max sleep time is reached. In the later, an exception is
+     * @brief Waits until the stop condition is true or the max sleep time is reached. In the latter, an exception is
      * thrown.
      *
      * @param stopCondition Wait stop condition function.

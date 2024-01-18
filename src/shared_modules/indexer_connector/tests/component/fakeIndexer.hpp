@@ -30,7 +30,7 @@ private:
     std::thread m_thread;
     int m_port;
     std::string m_host, m_health, m_indexName;
-    bool m_indexerInitialized;
+    bool m_indexerInitialized = false;
     std::function<void(const std::string&)> m_initTemplateCallback = {};
     std::function<void(const std::string&)> m_initIndexCallback = {};
     std::function<void(const std::string&)> m_publishCallback = {};
@@ -50,10 +50,6 @@ public:
         , m_health(std::move(health))
         , m_port(port)
         , m_indexName(std::move(indexName))
-        , m_indexerInitialized(false)
-        , m_publishCallback({})
-        , m_initIndexCallback({})
-        , m_initTemplateCallback({})
     {
         // Wait until server is ready.
         while (!m_server.is_running())
@@ -112,7 +108,7 @@ public:
     }
 
     /**
-     * @brief Returns a the initialized variable.
+     * @brief Returns the indexer initialized flag.
      *
      * @return True if initialized, false otherwise.
      */
