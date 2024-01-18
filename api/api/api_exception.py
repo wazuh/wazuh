@@ -8,9 +8,7 @@ from api.constants import RELATIVE_CONFIG_FILE_PATH, RELATIVE_SECURITY_PATH
 
 
 class APIException(Exception):
-    """
-    Wazuh API exception class.
-    """
+    """Wazuh API exception class."""
 
     def __init__(self, code: int, details: str = None):
         """APIException class constructor.

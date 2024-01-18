@@ -310,9 +310,7 @@ def is_safe_path(path: str, basedir: str = common.WAZUH_PATH, relative: bool = T
 
 
 def check_component_configuration_pair(component: str, configuration: str) -> WazuhError:
-    """
-
-    Parameters
+    """Parameters
     ----------
     component : str
         Wazuh component name.

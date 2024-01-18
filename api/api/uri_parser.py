@@ -12,8 +12,7 @@ from api.util import parse_api_param, raise_if_exc
 
 class APIUriParser(connexion.decorators.uri_parsing.OpenAPIURIParser):
     def __call__(self, function):
-        """
-        :type function: types.FunctionType
+        """:type function: types.FunctionType
         :rtype: types.FunctionType
         """
 

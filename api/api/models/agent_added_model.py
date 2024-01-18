@@ -89,32 +89,26 @@ class AgentAddedModel(Body):
 
     @property
     def name(self) -> str:
-        """
-        :return: Agent name
+        """:return: Agent name
         :rtype: str
         """
         return self._name
 
     @name.setter
     def name(self, name):
-        """
-        :param name: Agent name
-        """
+        """:param name: Agent name"""
         self._name = name
 
     @property
     def ip(self) -> str:
-        """
-        :return: Agent IP value
+        """:return: Agent IP value
         :rtype: srt
         """
         return self._ip
 
     @ip.setter
     def ip(self, ip):
-        """
-        :param ip: Agent IP.
-        """
+        """:param ip: Agent IP."""
         self._ip = ip
 
     @property

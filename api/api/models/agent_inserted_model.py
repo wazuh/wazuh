@@ -41,83 +41,67 @@ class AgentInsertedModel(Body):
 
     @property
     def id(self) -> str:
-        """
-        :return: Agent id
+        """:return: Agent id
         :rtype: str
         """
         return self._id
 
     @id.setter
     def id(self, id):
-        """
-        :param id: Agent id
-        """
+        """:param id: Agent id"""
         self._id = id
 
     @property
     def name(self) -> str:
-        """
-        :return: Agent name
+        """:return: Agent name
         :rtype: str
         """
         return self._name
 
     @name.setter
     def name(self, name):
-        """
-        :param name: Agent name
-        """
+        """:param name: Agent name"""
         self._name = name
 
     @property
     def ip(self) -> str:
-        """
-        :return: Agent IP value
+        """:return: Agent IP value
         :rtype: srt
         """
         return self._ip
 
     @ip.setter
     def ip(self, ip):
-        """
-        :param ip: Agent IP.
-        """
+        """:param ip: Agent IP."""
         self._ip = ip
 
     @property
     def agent_id(self) -> str:
-        """
-        :return: Agent id
+        """:return: Agent id
         :rtype: str
         """
         return self._agent_id
 
     @agent_id.setter
     def agent_id(self, agent_id):
-        """
-        :param agent_id: Agent id
-        """
+        """:param agent_id: Agent id"""
         self._agent_id = agent_id
 
     @property
     def key(self) -> str:
-        """
-        :return: Agent key
+        """:return: Agent key
         :rtype: srt
         """
         return self._key
 
     @key.setter
     def key(self, key):
-        """
-        :param key: Agent key.
-        """
+        """:param key: Agent key."""
         self._key = key
 
     @property
     def force(self) -> Dict:
-        """
-        :return: Limit time to disconnect an agent with the same IP.
+        """:return: Limit time to disconnect an agent with the same IP.
         :rtype: dict
         """
         return self._force

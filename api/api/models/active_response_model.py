@@ -36,8 +36,7 @@ class ActiveResponseModel(Body):
 
     @property
     def command(self) -> str:
-        """
-        Returns
+        """Returns
         -------
         str
             Command to run in the agent.
@@ -46,8 +45,7 @@ class ActiveResponseModel(Body):
 
     @command.setter
     def command(self, command: str):
-        """
-        Parameters
+        """Parameters
         ----------
         command : str
             Command to run in the agent.
@@ -56,8 +54,7 @@ class ActiveResponseModel(Body):
 
     @property
     def arguments(self) -> list:
-        """
-        Returns
+        """Returns
         -------
         list
             Command arguments.
@@ -66,8 +63,7 @@ class ActiveResponseModel(Body):
 
     @arguments.setter
     def arguments(self, arguments: list):
-        """
-        Parameters
+        """Parameters
         ----------
         arguments : list
             Command arguments.
@@ -76,8 +72,7 @@ class ActiveResponseModel(Body):
 
     @property
     def alert(self) -> dict:
-        """
-        Returns
+        """Returns
         -------
         dict
             Alert data sent with the AR command.
@@ -86,8 +81,7 @@ class ActiveResponseModel(Body):
 
     @alert.setter
     def alert(self, alert: dict):
-        """
-        Parameters
+        """Parameters
         ----------
         alert : dict
             Alert data sent with the AR command.

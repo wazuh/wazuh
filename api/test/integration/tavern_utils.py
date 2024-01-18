@@ -35,8 +35,7 @@ def get_values(o):
 
 
 def test_distinct_key(response):
-    """
-    :param response: Request response
+    """:param response: Request response
     :return: True if all request response items are unique
     """
     assert not any(
@@ -45,9 +44,7 @@ def test_distinct_key(response):
 
 
 def test_token_raw_format(response):
-    """
-    :param response: Request response
-    """
+    """:param response: Request response"""
     assert isinstance(response.text, str)
 
 
@@ -138,8 +135,7 @@ def test_select_distinct_nested_sca_checks(response, select_key):
 
 
 def test_select_key_affected_items_with_agent_id(response, select_key):
-    """
-    :param response: Request response
+    """:param response: Request response
     :param select_key: Parametrized key used for select param in request
     :return: True if request response item key matches used select param
     """
@@ -249,8 +245,7 @@ def test_validate_data_dict_field(response, fields_dict):
 
 
 def test_count_elements(response, n_expected_items):
-    """
-    :param response: Request response
+    """:param response: Request response
     :param n_expected_items: Expected number of elements in affected_items
     """
     assert len(response.json()['data']['affected_items']) == n_expected_items
@@ -285,8 +280,7 @@ def test_expected_value(response, key, expected_values, empty_response_possible=
 
 
 def test_response_is_different(response, response_value, unexpected_value):
-    """
-    :param response_value: Value to compare
+    """:param response_value: Value to compare
     :param unexpected_value: Response value should be different to this.
     """
     assert response_value != unexpected_value, f"{response_value} and {unexpected_value} shouldn't be the same"

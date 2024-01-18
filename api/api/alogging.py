@@ -26,9 +26,7 @@ RUN_AS_LOGIN_ENDPOINT = '/security/user/authenticate/run_as'
 
 
 class AccessLogger(AbstractAccessLogger):
-    """
-    Define the log writer used by aiohttp.
-    """
+    """Define the log writer used by aiohttp."""
 
     def custom_logging(self, user, remote, method, path, query, body, time, status, hash_auth_context=''):
         """Provide the log entry structure depending on the logging format.
@@ -135,9 +133,7 @@ class AccessLogger(AbstractAccessLogger):
 
 
 class APILogger(WazuhLogger):
-    """
-    Define the logger used by wazuh-apid.
-    """
+    """Define the logger used by wazuh-apid."""
 
     def __init__(self, *args: dict, **kwargs: dict):
         """APIlogger class constructor."""
@@ -145,8 +141,7 @@ class APILogger(WazuhLogger):
         super().__init__(*args, **kwargs, custom_formatter=WazuhJsonFormatter if log_path.endswith('json') else None)
 
     def setup_logger(self, custom_handler: logging.Handler = None):
-        """
-        Set ups API logger. In addition to super().setup_logger() this method adds:
+        """Set ups API logger. In addition to super().setup_logger() this method adds:
             * Sets up log level based on the log level defined in API configuration file.
 
         :param custom_handler: custom handler that can be set instead of the default one from the WazuhLogger class.
@@ -170,9 +165,7 @@ class APILogger(WazuhLogger):
 
 
 class WazuhJsonFormatter(jsonlogger.JsonFormatter):
-    """
-    Define the custom JSON log formatter used by wlogging.
-    """
+    """Define the custom JSON log formatter used by wlogging."""
 
     def add_fields(self, log_record: collections.OrderedDict, record: logging.LogRecord, message_dict: dict):
         """Implement custom logic for adding fields in a log entry.
