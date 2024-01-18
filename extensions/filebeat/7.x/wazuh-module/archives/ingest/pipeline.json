@@ -7,7 +7,8 @@
         "field": "data.aws.region",
         "value": "{{data.aws.awsRegion}}",
         "override": false,
-        "ignore_failure": true
+        "ignore_failure": true,
+        "ignore_empty_value" : true
       }
     },
     {
@@ -15,7 +16,8 @@
         "field": "data.aws.accountId",
         "value": "{{data.aws.aws_account_id}}",
         "override": false,
-        "ignore_failure": true
+        "ignore_failure": true,
+        "ignore_empty_value" : true
       }
     },
     {
