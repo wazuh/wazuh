@@ -343,7 +343,7 @@ def get_json_alert(file_location: str) -> any:
 
     Returns
     -------
-    {}: any
+    dict: any
         The JSON object read it.
 
     Raises
