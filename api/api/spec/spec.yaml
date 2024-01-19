@@ -1865,10 +1865,6 @@ components:
                                     type: integer
                                     format: int32
                                     description: "Events coming from upgrade agent module (this agent)"
-                                  vulnerability:
-                                    type: integer
-                                    format: int32
-                                    description: "Events coming from vulnerability detector (this agent)"
                               monitor:
                                 type: integer
                                 format: int32
@@ -2602,10 +2598,6 @@ components:
                               type: integer
                               format: int32
                               description: "Events coming from upgrade agent module (upgrade responses)"
-                            vulnerability:
-                              type: integer
-                              format: int32
-                              description: "Events coming from vulnerability detector module"
                         monitor:
                           type: integer
                           format: int32
@@ -2726,10 +2718,6 @@ components:
                               type: integer
                               format: int32
                               description: "Events discarded from upgrade agent module because the queue was full"
-                            vulnerability:
-                              type: integer
-                              format: int32
-                              description: "Events discarded from vulnerability detector module because the queue was full"
                         monitor:
                           type: integer
                           format: int32
@@ -3095,12 +3083,6 @@ components:
                                     process:
                                       type: integer
                                       format: int32
-                            vulnerability:
-                              type: object
-                              properties:
-                                vuln_cves:
-                                  type: integer
-                                  format: int32
                     global:
                       type: integer
                       format: int32
@@ -3427,12 +3409,6 @@ components:
                                     process:
                                       type: integer
                                       format: int32
-                            vulnerability:
-                              type: object
-                              properties:
-                                vuln_cves:
-                                  type: integer
-                                  format: int32
                     global:
                       type: integer
                       format: int32
@@ -4156,8 +4132,6 @@ components:
           wazuh-modulesd:osquery:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:syscollector:
-            $ref: '#/components/schemas/LogSummary'
-          wazuh-modulesd:vulnerability-detection:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:task-manager:
             $ref: '#/components/schemas/LogSummary'
@@ -5521,13 +5495,6 @@ components:
         - wdb
         - wmodules
         - rule_test
-    cve:
-      in: query
-      name: cve
-      description: "Filter by CVE"
-      schema:
-        type: string
-        format: alphanumeric
     daemons_list:
       in: query
       name: daemons_list
@@ -6296,39 +6263,6 @@ components:
       schema:
         type: string
         format: alphanumeric
-    cve_version:
-      in: query
-      name: version
-      description: "Filter by CVE version"
-      schema:
-        type: string
-        format: alphanumeric_symbols
-    cve_status:
-      in: query
-      name: status
-      description: "Filter by CVE status"
-      schema:
-        type: string
-        enum:
-          - valid
-          - pending
-          - obsolete
-    cve_type:
-      in: query
-      name: type
-      description: "Filter by CVE type"
-      schema:
-        type: string
-        enum:
-          - os
-          - package
-    cve_severity:
-      in: query
-      name: severity
-      description: "Filter by CVE severity"
-      schema:
-        type: string
-        format: names
     wait_for_complete:
       in: query
       name: wait_for_complete
@@ -6390,7 +6324,6 @@ components:
         - socket
         - syscheck
         - syslog_output
-        - vulnerability-detection
         - indexer
         # Wodle sections
         - aws-s3
@@ -7069,29 +7002,6 @@ components:
       schema:
         type: string
         format: alphanumeric
-    vulnerability_field:
-      in: path
-      name: field
-      description: "Vulnerability inventory field"
-      required: true
-      schema:
-        type: string
-        enum:
-        - cve
-        - name
-        - version
-        - architecture
-        - detection_time
-        - severity
-        - cvss2_score
-        - cvss3_score
-        - external_references
-        - type
-        - status
-        - condition
-        - title
-        - published
-        - updated
     xml_filename:
       in: query
       name: filename
@@ -7920,7 +7830,6 @@ paths:
                                     syscheck: 0
                                     syscollector: 0
                                     upgrade: 0
-                                    vulnerability: 0
                                   monitor: 0
                                   remote: 0
                               written_breakdown:
@@ -10377,10 +10286,6 @@ paths:
                         scan_on_start: yes
                         interval: "12h"
                         skip_nfs: yes
-                      vulnerability-detection:
-                        enabled: yes
-                        index-status: yes
-                        feed-update-interval: "60m"
                       indexer:
                         enabled: yes
                         hosts:
@@ -12150,8 +12055,6 @@ paths:
                               netinfo_queries: 0
                               hardware_queries: 0
                               osinfo_queries: 0
-                            vulnerability_detector_queries:
-                              vuln_cves_queries: 0
                             dbsync_queries: 0
                             unknown_queries: 0
                           global_queries: 161
@@ -12253,8 +12156,6 @@ paths:
                               netinfo_time: 0
                               hardware_time: 0
                               osinfo_time: 0
-                            vulnerability_detector_time:
-                              vuln_cves_time: 0
                             dbsync_time: 0
                           global_time: 14
                           global_time_breakdown:
