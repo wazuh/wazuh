@@ -91,6 +91,11 @@ auto makeRef(Args&&... args)
     return std::make_shared<Reference>(std::forward<Args>(args)...);
 }
 
+inline auto makeEvent(const std::string& value)
+{
+    return std::make_shared<json::Json>(value.c_str());
+}
+
 namespace filterbuildtest
 {
 using SuccessExpected = InnerExpected<None, const BuildersMocks&>;
