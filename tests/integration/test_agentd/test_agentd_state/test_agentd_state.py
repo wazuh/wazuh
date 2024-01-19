@@ -52,9 +52,9 @@ from pathlib import Path
 import sys
 import time
 
-from wazuh_testing.constants.paths.variables import AGENTD_STATE
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
+from wazuh_testing.modules.agentd.utils import parse_state_file
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
@@ -79,6 +79,7 @@ else:
 
 daemons_handler_configuration = {'all_daemons': True}
 
+
 def start_remoted_server(test_metadata) -> None:
     """"Start RemotedSimulator if test case need it"""
     if 'remoted' in test_metadata and test_metadata['remoted']:
@@ -87,6 +88,7 @@ def start_remoted_server(test_metadata) -> None:
     else:
         remoted_server = None
     return remoted_server
+
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_agentd_state(test_configuration, test_metadata, set_wazuh_configuration, remove_state_file, configure_local_internal_options, 
@@ -152,28 +154,6 @@ def test_agentd_state(test_configuration, test_metadata, set_wazuh_configuration
     #Shutdown simulator
     if remoted_server:
         remoted_server.destroy()
-    
-    
-def parse_state_file():
-    """Parse state file
-
-    Returns:
-        state info
-    """
-    # Wait until state file is dumped
-    wait_state_update()
-    state = {}
-    with open(AGENTD_STATE) as state_file:
-        for line in state_file:
-            line = line.rstrip('\n')
-            # Remove empty lines or comments
-            if not line or line.startswith('#'):
-                continue
-            (key, value) = line.split('=', 1)
-            # Remove value's quotes
-            state[key] = value.strip("'")
-
-    return state
     
 
 def wait_for_custom_message_response(expected_status: str, remoted_server: RemotedSimulator, timeout: int = 350):
@@ -261,6 +241,7 @@ def check_last_ack(expected_value: str=None, get_state_callback=None, expected_s
         boolean: `True` if check was successfull. Otherwise asserts the test
     """
     if get_state_callback == parse_state_file:
+        wait_state_update()
         current_value = get_state_callback()['last_ack']
     else:
         current_value = get_state_callback(expected_status, remoted_server)
@@ -295,6 +276,7 @@ def check_last_keepalive(expected_value: str=None, get_state_callback=None, expe
         boolean: `True` if check was successfull. Otherwise the test asserts
     """
     if get_state_callback == parse_state_file:
+        wait_state_update()
         current_value = get_state_callback()['last_keepalive']
     else:
         current_value = get_state_callback(expected_status, remoted_server)
@@ -329,6 +311,7 @@ def check_msg_count(expected_value: str=None, get_state_callback=None, expected_
         boolean: `True` if check was successfull. Otherwise the test asserts
     """
     if get_state_callback == parse_state_file:
+        wait_state_update()
         current_value = get_state_callback()['msg_count']
     else:
         current_value = get_state_callback(expected_status, remoted_server)
@@ -375,8 +358,12 @@ def check_status(expected_value: str=None, get_state_callback=None, expected_sta
             if current_value:
                 current_value = current_value['status']
             else:
-                wait_keepalive()  
+                wait_keepalive()
+                return True  
     else:
+        # Sleep while file is updated
+        time.sleep(5)
+        wait_state_update()
         current_value = get_state_callback()['status']
 
     return expected_value == current_value

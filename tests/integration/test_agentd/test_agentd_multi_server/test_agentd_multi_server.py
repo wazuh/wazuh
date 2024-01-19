@@ -120,7 +120,13 @@ def test_agentd_multi_server(test_configuration, test_metadata, set_wazuh_config
             brief: Reset the 'ossec.log' file and start a new monitor.
         - remove_keys_file:
             type: fixture
-            brief: Deletes keys file if test configuration request it    
+            brief: Deletes keys file if test configuration request it
+        - start_remoted_simulators:
+            type: fixture
+            brief: Starts remoted simulators as requested  
+        - daemons_handler:
+            type: fixture
+            brief: Handler of Wazuh daemons.    
 
     assertions:
         - Agent without keys. Verify that all servers will refuse the connection to the 'wazuh-remoted' daemon

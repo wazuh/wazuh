@@ -279,6 +279,17 @@ def daemons_handler_module(request: pytest.FixtureRequest) -> None:
     yield from daemons_handler_implementation(request)
 
 
+@pytest.fixture(scope='module')
+def restart_wazuh_daemon_after_finishing_module(daemon: str = None) -> None:
+    """Restart a Wazuh daemons and clears the wazuh log after the test module finishes execution.
+    Args:
+        daemon (str): provide which daemon to restart. If None, all daemons will be restarted.
+    """
+    yield
+    file.truncate_file(WAZUH_LOG_PATH)
+    services.control_service("restart", daemon=daemon)
+
+
 def configure_local_internal_options_handler(request: pytest.FixtureRequest, test_metadata) -> None:
     """Configure the local internal options file.
 
@@ -311,16 +322,6 @@ def configure_local_internal_options_handler(request: pytest.FixtureRequest, tes
     yield
 
     configuration.set_local_internal_options_dict(backup_local_internal_options)
-
-@pytest.fixture(scope='module')
-def restart_wazuh_daemon_after_finishing_module(daemon: str = None) -> None:
-    """Restart a Wazuh daemons and clears the wazuh log after the test module finishes execution.
-    Args:
-        daemon (str): provide which daemon to restart. If None, all daemons will be restarted.
-    """
-    yield
-    file.truncate_file(WAZUH_LOG_PATH)
-    services.control_service("restart", daemon=daemon)
 
 
 @pytest.fixture()

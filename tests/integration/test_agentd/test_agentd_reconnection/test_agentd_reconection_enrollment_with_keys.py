@@ -81,7 +81,7 @@ daemons_handler_configuration = {'all_daemons': True}
 
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_agentd_reconection_enrollment_with_keys(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options, 
+def test_agentd_reconection_enrollment_with_keys(test_metadata, set_wazuh_configuration, configure_local_internal_options, 
                                                  truncate_monitored_files, clean_keys, add_keys, daemons_handler):
     '''
        description: Check how the agent behaves when losing communication with
