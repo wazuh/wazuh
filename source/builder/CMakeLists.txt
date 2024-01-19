@@ -139,6 +139,10 @@ add_executable(builder_utest
 
     # Map Builders
     ${UNIT_SRC_DIR}/builders/opmap/map_test.cpp
+    ${UNIT_SRC_DIR}/builders/opmap/strTransform_test.cpp
+
+    # Transform Builders
+    ${UNIT_SRC_DIR}/builders/optransform/strTransform_test.cpp
 )
 target_include_directories(builder_utest PUBLIC ${BUILDER_PUB_INCS} PRIVATE ${BUILDER_PRI_INCS} ${TEST_SRC_DIR} ${UNIT_SRC_DIR})
 target_link_libraries(builder_utest
