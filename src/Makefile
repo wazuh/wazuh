@@ -1012,6 +1012,9 @@ else
 ifeq (${uname_S},HP-UX)
 	cd ${EXTERNAL_OPENSSL} && MAKE=gmake ./Configure $(OPENSSL_FLAGS) hpux-ia64-gcc && ${MAKE} build_libs
 else
+ifeq (${uname_S},AIX)
+	cd ${EXTERNAL_OPENSSL} && ./config aix-gcc $(OPENSSL_FLAGS) && ${MAKE} build_libs
+else
 ifeq (${uname_S},SunOS)
 ifeq ($(uname_M),i86pc)
 	cd ${EXTERNAL_OPENSSL} && ./Configure $(OPENSSL_FLAGS) solaris-x86-gcc && ${MAKE} build_libs
@@ -1020,6 +1023,7 @@ else
 endif
 else
 	cd ${EXTERNAL_OPENSSL} && ./config $(OPENSSL_FLAGS) && ${MAKE} build_libs
+endif
 endif
 endif
 endif
@@ -1291,7 +1295,7 @@ TAR := tar -xf
 GUNZIP := gunzip
 GZIP := gzip
 CURL := curl -so
-DEPS_VERSION = 26
+DEPS_VERSION = 27
 RESOURCES_URL_BASE := https://packages.wazuh.com/deps/
 RESOURCES_URL := $(RESOURCES_URL_BASE)$(DEPS_VERSION)
 CPYTHON := cpython
@@ -1894,7 +1898,17 @@ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ $(LIBGCC_FLAGS) -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 endif
 else
-ifneq (,$(filter ${uname_S},AIX HP-UX))
+ifeq (${uname_S},AIX)
+$(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
+	mkdir -p libwazuhext;
+	find external/ -name \*.a -exec cp {} libwazuhext/ \;
+	for lib in libcjson.a libz.a libmsgpack.a libssl.a libcrypto.a libsqlite3.a libyaml.a libpcre2-8.a ; do \
+		ar -x libwazuhext/$$lib; \
+		mv *.o libwazuhext/; \
+	done
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) libwazuhext/*.o -o $@ -static-libgcc -latomic
+else
+ifeq (${uname_S},HP-UX)
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	mkdir -p libwazuhext;
 	find external/ -name \*.a -exec cp {} libwazuhext/ \;
@@ -1903,10 +1917,10 @@ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 		mv *.o libwazuhext/; \
 	done
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) libwazuhext/*.o -o $@ -static-libgcc
-
 else
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+endif
 endif
 endif
 endif
