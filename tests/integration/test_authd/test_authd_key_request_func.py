@@ -88,7 +88,7 @@ receiver_sockets, monitored_sockets = None, None
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_key_request_func(test_configuration, test_metadata, set_wazuh_configuration, connect_to_sockets,
-                          truncate_monitored_files_module, daemons_handler, configure_local_internal_options,
+                          truncate_monitored_files_module, configure_local_internal_options, daemons_handler,
                           copy_tmp_script, wait_for_authd_startup):
     '''
     description:

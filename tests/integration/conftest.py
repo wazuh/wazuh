@@ -290,8 +290,7 @@ def restart_wazuh_daemon_after_finishing_module(daemon: str = None) -> None:
     services.control_service("restart", daemon=daemon)
 
 
-@pytest.fixture(scope='module')
-def configure_local_internal_options(request: pytest.FixtureRequest) -> None:
+def configure_local_internal_options_handler(request: pytest.FixtureRequest, test_metadata) -> None:
     """Configure the local internal options file.
 
     Takes the `local_internal_options` variable from the request.
@@ -300,6 +299,7 @@ def configure_local_internal_options(request: pytest.FixtureRequest) -> None:
 
     Args:
         request (pytest.FixtureRequest): Provide information about the current test function which made the request.
+        test_metadata (map): Data with configuration parameters 
     """
     try:
         local_internal_options = request.param
@@ -313,11 +313,41 @@ def configure_local_internal_options(request: pytest.FixtureRequest) -> None:
 
     backup_local_internal_options = configuration.get_local_internal_options_dict()
 
+    if test_metadata and 'local_internal_options' in test_metadata:
+        for key in test_metadata['local_internal_options']:
+            local_internal_options[key] = test_metadata['local_internal_options'][key]
+
     configuration.set_local_internal_options_dict(local_internal_options)
 
     yield
 
     configuration.set_local_internal_options_dict(backup_local_internal_options)
+
+
+@pytest.fixture()
+def configure_local_internal_options(request: pytest.FixtureRequest, test_metadata) -> None:
+    """Configure the local internal options file.
+
+    Takes the `local_internal_options` variable from the request.
+    The `local_internal_options` is a dict with keys and values as the Wazuh `local_internal_options` format.
+    E.g.: local_internal_options = {'monitord.rotate_log': '0', 'syscheck.debug': '0' }
+
+    Args:
+        request (pytest.FixtureRequest): Provide information about the current test function which made the request.
+        test_metadata (map): Data with configuration parameters 
+    """
+    yield from configure_local_internal_options_handler(request, test_metadata)    
+
+
+@pytest.fixture(scope='module')
+def configure_local_internal_options_module(request: pytest.FixtureRequest, test_metadata) -> None:
+    """Wrapper of `configure_local_internal_options_handler` which contains the general implementation.
+
+    Args:
+        request (pytest.FixtureRequest): Provide information about the current test function which made the request.
+        test_metadata (map): Data with configuration parameters 
+    """
+    yield from configure_local_internal_options_handler(request, test_metadata)    
 
 
 def configure_sockets_environment_implementation(request: pytest.FixtureRequest) -> None:
