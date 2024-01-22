@@ -558,34 +558,36 @@ int restore_audit_policies() {
 
     // Get the current policies
     char *cmd_output = NULL;
-    int wm_exec_ret_code;
-    int i, retries = 5;
-
+    int wm_exec_ret_code, i;
+    int retries = 5;
+    int timeout = 5;
+    BOOL cmd_failed = 0;
     for (i = 0; i <= retries; i++) {
-        wm_exec_ret_code = wm_exec(command, &cmd_output, &result_code, 5+i, NULL);
-        if (wm_exec_ret_code > 1) {
+        wm_exec_ret_code = wm_exec(command, &cmd_output, &result_code, timeout+i, NULL);
+        if (wm_exec_ret_code < 0) {
+            merror(FIM_ERROR_WHODATA_AUDITPOL, "failed to execute command");
+            cmd_failed = 1;
+        } else if (wm_exec_ret_code == 1) {
+            merror(FIM_ERROR_WHODATA_AUDITPOL, "time overtaken while running the command");
+            os_free(cmd_output);
+            cmd_failed = 1;
+        } else if (!wm_exec_ret_code && result_code) {
+            char error_msg[OS_MAXSTR];
+            snprintf(error_msg, OS_MAXSTR, FIM_ERROR_WHODATA_AUDITPOL, "command returned failure'. Output: '%s");
+            merror(error_msg, cmd_output);
+            os_free(cmd_output);
+            cmd_failed = 1;
+        }
+        if (!cmd_failed) {
             break;
+        } else {
+            merror("Auditpol command failed, attempt number %d", i+1);
         }
     }
-
-    if (wm_exec_ret_code < 0) {
-        merror(FIM_ERROR_WHODATA_AUDITPOL, "failed to execute command");
-        return 1;
-    }
-
-    if (wm_exec_ret_code == 1) {
-        merror(FIM_ERROR_WHODATA_AUDITPOL, "time overtaken while running the command");
-        os_free(cmd_output);
-        return 1;
-    }
-
-    if (!wm_exec_ret_code && result_code) {
-        char error_msg[OS_MAXSTR];
-        snprintf(error_msg, OS_MAXSTR, FIM_ERROR_WHODATA_AUDITPOL, "command returned failure'. Output: '%s");
-        merror(error_msg, cmd_output);
-        os_free(cmd_output);
-        return 1;
-    }
+    
+    if (i == retries + 1) {
+       merror("After %d attempts the Auditpol command could not be executed successfully.", i);
+    } 
 
     return 0;
 }
@@ -1271,19 +1273,22 @@ int set_policies() {
     snprintf(command, OS_SIZE_1024, WPOL_BACKUP_COMMAND, WPOL_BACKUP_FILE);
 
     // Get the current policies
-
-    int wm_exec_ret_code;
-    int i, retries = 5;
-
+    int wm_exec_ret_code, i;
+    int retries = 5;
+    int timeout = 5;
     for (i = 0; i <= retries; i++) {
-        wm_exec_ret_code = wm_exec(command, NULL, &result_code, 5+i, NULL);
-        if (!(wm_exec_ret_code || result_code)) {
+        wm_exec_ret_code = wm_exec(command, NULL, &result_code, timeout+i, NULL);
+        if (wm_exec_ret_code || result_code) {
+            retval = 2;
+            merror("Auditpol command failed, attempt number %d", i+1);
+        }
+        else {
+            retval = 0;
             break;
         }
     }
 
-    if (wm_exec_ret_code || result_code) {
-        retval = 2;
+    if (retval == 2) {
         merror(FIM_WARN_WHODATA_AUTOCONF);
         goto end;
     }
@@ -1310,16 +1315,20 @@ int set_policies() {
 
     snprintf(command, OS_SIZE_1024, WPOL_RESTORE_COMMAND, WPOL_NEW_FILE);
 
-    // Set the new policies
+    // Set the new policies 
     for (i = 0; i <= retries; i++) {
-        wm_exec_ret_code = wm_exec(command, NULL, &result_code, 5+i, NULL);
-        if (!(wm_exec_ret_code || result_code)) {
+        wm_exec_ret_code = wm_exec(command, NULL, &result_code, timeout+i, NULL);
+        if (wm_exec_ret_code || result_code) {
+            retval = 2;
+            merror("Auditpol command failed, attempt number %d", i+1);
+        }
+        else {
+            retval = 0;
             break;
         }
     }
 
-    if (wm_exec_ret_code || result_code) {
-        retval = 2;
+    if (retval == 2) {
         merror(FIM_WARN_WHODATA_AUTOCONF);
         goto end;
     }
