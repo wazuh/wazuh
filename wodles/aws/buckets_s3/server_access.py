@@ -126,8 +126,6 @@ class AWSServerAccess(AWSCustomBucket):
                 print("ERROR: No files were found in '{0}'. No logs will be processed.".format(self.bucket_path))
                 exit(14)
         except botocore.exceptions.ClientError as error:
-            error_message = "Unknown"
-            exit_number = 1
             error_code = error.response.get("Error", {}).get("Code")
 
             if error_code == THROTTLING_EXCEPTION_ERROR_CODE:
@@ -139,6 +137,9 @@ class AWSServerAccess(AWSCustomBucket):
             elif error_code == INVALID_REQUEST_TIME_ERROR_CODE:
                 error_message = INVALID_REQUEST_TIME_ERROR_MESSAGE
                 exit_number = 19
+            else:
+                error_message = f"Unexpected error: {error}"
+                exit_number = 1
 
             print(f"ERROR: {error_message}")
             exit(exit_number)
