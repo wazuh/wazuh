@@ -30,6 +30,7 @@ INVALID_CREDENTIALS_ERROR_CODE = "SignatureDoesNotMatch"
 INVALID_REQUEST_TIME_ERROR_CODE = "RequestTimeTooSkewed"
 THROTTLING_EXCEPTION_ERROR_CODE = "ThrottlingException"
 
+UNKNOWN_ERROR_MESSAGE = "Unexpected error: '{error}'."
 INVALID_CREDENTIALS_ERROR_MESSAGE = "Invalid credentials to access S3 Bucket"
 INVALID_REQUEST_TIME_ERROR_MESSAGE = "The server datetime and datetime of the AWS environment differ"
 THROTTLING_EXCEPTION_ERROR_MESSAGE = "The '{name}' request was denied due to request throttling. " \
@@ -666,7 +667,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                 error_message = INVALID_REQUEST_TIME_ERROR_MESSAGE
                 exit_number = 19
             else:
-                error_message = f"Unexpected error: {error}"
+                error_message = UNKNOWN_ERROR_MESSAGE.format(error=error)
                 exit_number = 1
 
             print(f"ERROR: {error_message}")

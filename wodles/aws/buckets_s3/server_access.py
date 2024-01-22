@@ -10,6 +10,7 @@ import re
 from aws_bucket import INVALID_CREDENTIALS_ERROR_CODE, INVALID_CREDENTIALS_ERROR_MESSAGE
 from aws_bucket import INVALID_REQUEST_TIME_ERROR_CODE, INVALID_REQUEST_TIME_ERROR_MESSAGE
 from aws_bucket import THROTTLING_EXCEPTION_ERROR_CODE, THROTTLING_EXCEPTION_ERROR_MESSAGE
+from aws_bucket import UNKNOWN_ERROR_MESSAGE
 from aws_bucket import AWSCustomBucket
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
@@ -138,7 +139,7 @@ class AWSServerAccess(AWSCustomBucket):
                 error_message = INVALID_REQUEST_TIME_ERROR_MESSAGE
                 exit_number = 19
             else:
-                error_message = f"Unexpected error: {error}"
+                error_message = UNKNOWN_ERROR_MESSAGE.format(error=error)
                 exit_number = 1
 
             print(f"ERROR: {error_message}")
