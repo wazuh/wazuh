@@ -581,12 +581,12 @@ int restore_audit_policies() {
         if (!cmd_failed) {
             break;
         } else {
-            merror("Auditpol command failed, attempt number %d", i+1);
+            merror(FIM_AUDITPOL_ATTEMPT_FAIL, i+1);
         }
     }
     
     if (i == retries + 1) {
-       merror("After %d attempts the Auditpol command could not be executed successfully.", i);
+       merror(FIM_AUDITPOL_FINAL_FAIL, i);
     } 
 
     return 0;
@@ -1280,7 +1280,7 @@ int set_policies() {
         wm_exec_ret_code = wm_exec(command, NULL, &result_code, timeout+i, NULL);
         if (wm_exec_ret_code || result_code) {
             retval = 2;
-            merror("Auditpol command failed, attempt number %d", i+1);
+            merror(FIM_AUDITPOL_ATTEMPT_FAIL, i+1);
         }
         else {
             retval = 0;
@@ -1320,7 +1320,7 @@ int set_policies() {
         wm_exec_ret_code = wm_exec(command, NULL, &result_code, timeout+i, NULL);
         if (wm_exec_ret_code || result_code) {
             retval = 2;
-            merror("Auditpol command failed, attempt number %d", i+1);
+            merror(FIM_AUDITPOL_ATTEMPT_FAIL, i+1);
         }
         else {
             retval = 0;
