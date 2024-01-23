@@ -24,14 +24,10 @@ from wazuh_testing.tools.simulators.agent_simulator import create_agents, connec
 from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils import configuration, database, file, mocking, services
-from wazuh_testing.utils.file import remove_file, truncate_file, recursive_directory_creation
+from wazuh_testing.utils.file import remove_file
 from wazuh_testing.utils.manage_agents import remove_agents
-from wazuh_testing.utils.services import control_service
-from wazuh_testing.tools.monitors import file_monitor
 
-from wazuh_testing.utils import configuration as conf
-from wazuh_testing import global_parameters
-from wazuh_testing.utils.time import TimeMachine
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 
 
 #- - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - - -
@@ -656,45 +652,3 @@ def autostart_simulators(request: pytest.FixtureRequest) -> None:
     if services.get_service() is not WAZUH_MANAGER:
         authd.shutdown() if create_authd else None
         remoted.shutdown() if create_remoted else None
-
-
-@pytest.fixture()
-def simulate_agents(test_metadata):
-
-    agents_amount = test_metadata.get("agents_number", 1)
-    agents = create_agents(agents_amount , 'localhost')
-
-    yield agents
-
-    # Delete simulated agents
-    control_service('start')
-    remove_agents([a.id for a in agents],'manage_agents')
-    control_service('stop')
-
-
-@pytest.fixture(scope='module')
-def restart_wazuh_daemon(daemon=None):
-    """
-    Restart a Wazuh daemon
-    """
-    truncate_file(WAZUH_LOG_PATH)
-    control_service("restart", daemon=daemon)
-
-
-@pytest.fixture(scope='function')
-def remove_backups(request: pytest.FixtureRequest):
-    backups_path = getattr(request.module, 'backups_path')
-    "Creates backups folder in case it does not exist."
-    remove_file(backups_path)
-    recursive_directory_creation(backups_path)
-    os.chmod(backups_path, 0o777)
-    yield
-    remove_file(backups_path)
-    recursive_directory_creation(backups_path)
-    os.chmod(backups_path, 0o777)
-
-
-@pytest.fixture(scope='module')
-def clean_databases():
-    yield
-    database.delete_dbs()

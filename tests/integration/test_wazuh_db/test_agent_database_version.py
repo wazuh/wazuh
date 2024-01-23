@@ -57,7 +57,6 @@ import pytest
 from wazuh_testing.constants.executions import TIER0, SERVER, LINUX
 from wazuh_testing.utils.database import query_wdb
 from wazuh_testing.tools.simulators import agent_simulator as ag
-from wazuh_testing.utils.manage_agents import remove_all_agents
 
 
 # Marks
@@ -65,13 +64,6 @@ pytestmark = [TIER0, LINUX, SERVER]
 
 # Variables
 expected_database_version = '12'
-
-
-# Fixtures
-@pytest.fixture()
-def remove_agents():
-    yield
-    remove_all_agents('manage_agents')
 
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
