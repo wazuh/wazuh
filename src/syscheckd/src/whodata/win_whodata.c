@@ -561,8 +561,9 @@ int restore_audit_policies() {
     int wm_exec_ret_code, i;
     int retries = 5;
     int timeout = 5;
-    BOOL cmd_failed = 0;
+    BOOL cmd_failed;
     for (i = 0; i <= retries; i++) {
+        cmd_failed = 0;
         wm_exec_ret_code = wm_exec(command, &cmd_output, &result_code, timeout+i, NULL);
         if (wm_exec_ret_code < 0) {
             merror(FIM_ERROR_WHODATA_AUDITPOL, "failed to execute command");
@@ -589,7 +590,7 @@ int restore_audit_policies() {
        merror(FIM_AUDITPOL_FINAL_FAIL, i);
     } 
 
-    return 0;
+    return cmd_failed;
 }
 
 PEVT_VARIANT whodata_event_render(EVT_HANDLE event) {
@@ -1283,7 +1284,7 @@ int set_policies() {
             merror(FIM_AUDITPOL_ATTEMPT_FAIL, i+1);
         }
         else {
-            retval = 0;
+            retval = 1;
             break;
         }
     }
@@ -1323,7 +1324,7 @@ int set_policies() {
             merror(FIM_AUDITPOL_ATTEMPT_FAIL, i+1);
         }
         else {
-            retval = 0;
+            retval = 1;
             break;
         }
     }
