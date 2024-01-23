@@ -57,7 +57,7 @@ import time
 import pytest
 
 from wazuh_testing.utils.database import query_wdb
-from wazuh_testing.utils.db_queries.global_db import insert_agent_in_db, remove_db_agent
+from wazuh_testing.utils.db_queries.global_db import create_or_update_agent, delete_agent
 from wazuh_testing.utils import configuration
 
 from . import TEST_CASES_FOLDER_PATH
@@ -112,8 +112,7 @@ def test_get_groups_integrity(test_metadata, create_groups):
 
     # Insert test Agents
     for index, id in enumerate(agent_ids):
-        response = insert_agent_in_db(id=id+1, connection_status="disconnected",
-                                      registration_time=str(time.time()))
+        response = create_or_update_agent(agent_id=id+1, connection_status="disconnected")
         command = f'global set-agent-groups {{"mode":"append","sync_status":"{agent_status[index]}","source":"remote",\
                     "data":[{{"id":{id},"groups":["Test_group{id}"]}}]}}'
         response = query_wdb(command)
@@ -141,4 +140,4 @@ def test_get_groups_integrity(test_metadata, create_groups):
 
     # Remove test agents
     for id in agent_ids:
-        remove_db_agent(id)
+        delete_agent(id)

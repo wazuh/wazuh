@@ -47,13 +47,12 @@ from pathlib import Path
 
 from wazuh_testing.utils.database import query_wdb
 from wazuh_testing.utils.db_queries.global_db import calculate_global_hash
-from wazuh_testing.constants.executions import TIER0, SERVER, LINUX
 from wazuh_testing.utils import configuration
 
 from . import TEST_CASES_FOLDER_PATH
 
 # Marks
-pytestmark = [LINUX, TIER0, SERVER]
+pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 
 # Configurations
 t_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_sync_agent_groups_get.yaml')

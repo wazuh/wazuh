@@ -60,7 +60,7 @@ from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils import callbacks
 from wazuh_testing.utils.database import query_wdb
-from wazuh_testing.utils.db_queries.global_db import insert_agent_in_db
+from wazuh_testing.utils.db_queries.global_db import create_or_update_agent
 from wazuh_testing.utils import configuration
 
 from . import TEST_CASES_FOLDER_PATH
@@ -122,7 +122,7 @@ def test_set_agent_groups(clean_databases, daemons_handler, test_metadata, creat
     agent_id = test_metadata['agent_id']
 
     # Insert test Agent
-    response = insert_agent_in_db(id=agent_id, connection_status='disconnected', registration_time=str(time.time()))
+    response = create_or_update_agent(agent_id=agent_id, connection_status='disconnected')
 
     # Apply preconditions
     if 'pre_input' in test_metadata:

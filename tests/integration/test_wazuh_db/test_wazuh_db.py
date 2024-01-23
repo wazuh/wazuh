@@ -53,9 +53,6 @@ from wazuh_testing.constants.paths.sockets import WAZUH_DB_SOCKET_PATH
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.daemons import WAZUH_DB_DAEMON
 from wazuh_testing.tools.monitors import file_monitor
-from wazuh_testing.utils.database import delete_dbs
-from wazuh_testing.utils.manage_agents import remove_all_agents
-from wazuh_testing.utils.services import control_service
 from wazuh_testing.utils.callbacks import make_callback
 from wazuh_testing.modules.wazuh_db import WAZUH_DB_PREFIX
 from wazuh_testing.utils import configuration
@@ -102,27 +99,6 @@ def regex_match(regex, string):
     string = string.replace('(', '')
     string = string.replace(')', '')
     return re.match(regex, string)
-
-
-@pytest.fixture(scope='module')
-def clean_registered_agents():
-    remove_all_agents('wazuhdb')
-    time.sleep(5)
-
-
-@pytest.fixture(scope='module')
-def wait_range_checksum_avoided(line):
-    """Callback function to wait until the manager avoided the checksum calculus by using the last saved one."""
-    if 'range checksum avoided' in line:
-        return line
-    return None
-
-
-def wait_range_checksum_calculated(line):
-    """Callback function to wait until the manager calculates the new checksum."""
-    if 'range checksum: Time: ' in line:
-        return line
-    return None
 
 
 @pytest.fixture(scope='function')

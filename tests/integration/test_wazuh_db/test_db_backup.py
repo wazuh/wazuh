@@ -59,7 +59,6 @@ import pytest
 from wazuh_testing.constants.paths import WAZUH_PATH
 from wazuh_testing.constants.daemons import WAZUH_DB_DAEMON
 from wazuh_testing.constants.paths.sockets import WAZUH_DB_SOCKET_PATH
-from wazuh_testing.constants.executions import TIER0, SERVER, LINUX
 from wazuh_testing.utils.database import query_wdb
 from wazuh_testing.utils import configuration
 
@@ -67,7 +66,7 @@ from . import TEST_CASES_FOLDER_PATH
 
 
 # Marks
-pytestmark = [TIER0, LINUX, SERVER]
+pytestmark = [pytest.mark.tier(level=0), pytest.mark.linux, pytest.mark.server]
 
 # Configurations
 t_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_wazuh_db_backup_command.yaml')

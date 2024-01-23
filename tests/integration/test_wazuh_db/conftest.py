@@ -5,12 +5,12 @@ This program is free software; you can redistribute it and/or modify it under th
 """
 import pytest
 import os
+import time
 
 from wazuh_testing.utils.agent_groups import create_group, delete_group
 from wazuh_testing.utils.db_queries import global_db
 from wazuh_testing.utils.file import remove_file, recursive_directory_creation
 from wazuh_testing.utils import database
-from wazuh_testing.utils.manage_agents import remove_all_agents
 
 @pytest.fixture()
 def create_groups(test_metadata):
@@ -63,4 +63,10 @@ def clean_databases():
 @pytest.fixture()
 def remove_agents():
     yield
-    remove_all_agents('manage_agents')
+    global_db.clean_agents_from_db()
+
+
+@pytest.fixture(scope='module')
+def clean_registered_agents():
+    global_db.clean_agents_from_db()
+    time.sleep(5)

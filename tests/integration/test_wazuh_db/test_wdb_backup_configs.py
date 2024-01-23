@@ -61,7 +61,6 @@ from wazuh_testing.utils.services import control_service
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils import callbacks
 from wazuh_testing.constants.paths.logs import WAZUH_PATH, WAZUH_LOG_PATH
-from wazuh_testing.constants.executions import TIER0, SERVER, LINUX
 from wazuh_testing.utils.database import validate_interval_format
 from wazuh_testing.modules.wazuh_db import patterns
 from wazuh_testing.utils import configuration
@@ -69,7 +68,7 @@ from wazuh_testing.utils import configuration
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 # Marks
-pytestmark =  [TIER0, LINUX, SERVER]
+pytestmark =  [pytest.mark.tier(level=0), pytest.mark.linux, pytest.mark.server]
 
 # Configuration
 t_config_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_wazuh_db_backups_conf.yaml')

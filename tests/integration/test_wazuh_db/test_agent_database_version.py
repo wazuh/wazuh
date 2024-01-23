@@ -54,13 +54,12 @@ tags:
 '''
 import pytest
 
-from wazuh_testing.constants.executions import TIER0, SERVER, LINUX
 from wazuh_testing.utils.database import query_wdb
 from wazuh_testing.tools.simulators import agent_simulator as ag
 
 
 # Marks
-pytestmark = [TIER0, LINUX, SERVER]
+pytestmark = [pytest.mark.tier(level=0), pytest.mark.linux, pytest.mark.server]
 
 # Variables
 expected_database_version = '12'
