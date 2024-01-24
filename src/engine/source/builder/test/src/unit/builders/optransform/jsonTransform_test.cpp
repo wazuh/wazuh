@@ -41,7 +41,18 @@ INSTANTIATE_TEST_SUITE_P(Builders,
                              TransformT({}, opBuilderHelperMergeRecursively, FAILURE()),
                              TransformT({makeValue(R"("value")")}, opBuilderHelperMergeRecursively, FAILURE()),
                              TransformT({makeRef("ref")}, opBuilderHelperMergeRecursively, SUCCESS()),
-                             TransformT({makeRef("ref"), makeRef("ref")}, opBuilderHelperMergeRecursively, FAILURE())),
+                             TransformT({makeRef("ref"), makeRef("ref")}, opBuilderHelperMergeRecursively, FAILURE()),
+                             /*** Erase Custom Fields ***/
+                             TransformT({},
+                                        opBuilderHelperEraseCustomFields,
+                                        SUCCESS(
+                                            [](const Mocks& mocks)
+                                            {
+                                                EXPECT_CALL(*mocks.ctx, schemaPtr()).WillOnce(testing::Return(nullptr));
+                                                return None {};
+                                            })),
+                             TransformT({makeValue(R"("value")")}, opBuilderHelperEraseCustomFields, FAILURE()),
+                             TransformT({makeRef("ref")}, opBuilderHelperEraseCustomFields, FAILURE())),
                          testNameFormatter<TransformBuilderTest>("JsonTransform"));
 } // namespace transformbuildtest
 
@@ -191,6 +202,51 @@ INSTANTIATE_TEST_SUITE_P(
         TransformT(
             R"({"target": true, "ref": {}})", opBuilderHelperMergeRecursively, "target", {makeRef("ref")}, FAILURE()),
         TransformT(
-            R"({"target": null, "ref": {}})", opBuilderHelperMergeRecursively, "target", {makeRef("ref")}, FAILURE())),
+            R"({"target": null, "ref": {}})", opBuilderHelperMergeRecursively, "target", {makeRef("ref")}, FAILURE()),
+        /*** Erase Custom Fields ***/
+        TransformT(R"({"target": "value"})",
+                   opBuilderHelperEraseCustomFields,
+                   ".",
+                   {},
+                   SUCCESS(
+                       [](const Mocks& mocks)
+                       {
+                           EXPECT_CALL(*mocks.ctx, schemaPtr()).WillOnce(testing::Return(mocks.schema));
+                           EXPECT_CALL(*mocks.schema, hasField(DotPath("target"))).WillOnce(testing::Return(false));
+                           return makeEvent(R"({})");
+                       })),
+        TransformT(R"({"target": "value"})",
+                   opBuilderHelperEraseCustomFields,
+                   ".",
+                   {},
+                   SUCCESS(
+                       [](const Mocks& mocks)
+                       {
+                           EXPECT_CALL(*mocks.ctx, schemaPtr()).WillOnce(testing::Return(mocks.schema));
+                           EXPECT_CALL(*mocks.schema, hasField(DotPath("target"))).WillOnce(testing::Return(true));
+                           return makeEvent(R"({"target": "value"})");
+                       })),
+        TransformT(R"({"t1": "value", "t2": "value"})",
+                   opBuilderHelperEraseCustomFields,
+                   ".",
+                   {},
+                   SUCCESS(
+                       [](const Mocks& mocks)
+                       {
+                           EXPECT_CALL(*mocks.ctx, schemaPtr()).WillOnce(testing::Return(mocks.schema));
+                           EXPECT_CALL(*mocks.schema, hasField(DotPath("t1"))).WillOnce(testing::Return(true));
+                           EXPECT_CALL(*mocks.schema, hasField(DotPath("t2"))).WillOnce(testing::Return(false));
+                           return makeEvent(R"({"t1": "value"})");
+                       })),
+        TransformT(R"({"target": "value"})",
+                   opBuilderHelperEraseCustomFields,
+                   "notTarget",
+                   {},
+                   SUCCESS(
+                       [](const Mocks& mocks)
+                       {
+                           EXPECT_CALL(*mocks.ctx, schemaPtr()).WillOnce(testing::Return(mocks.schema));
+                           return makeEvent(R"({"target": "value"})");
+                       }))),
     testNameFormatter<TransformOperationTest>("JsonTransform"));
 } // namespace transformoperatestest
