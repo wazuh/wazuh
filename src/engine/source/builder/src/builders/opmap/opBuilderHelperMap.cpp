@@ -207,8 +207,6 @@ MapOp opBuilderHelperIntTransformation(IntOperator op,
     std::vector<int64_t> rValueVector {};
     std::vector<std::string> rReferenceVector {};
 
-    const auto name = buildCtx->context().opName;
-
     // Depending on rValue type we store the reference or the integer value, avoiding
     // iterating again through values inside lambda
     for (const auto& arg : opArgs)
@@ -227,17 +225,31 @@ MapOp opBuilderHelperIntTransformation(IntOperator op,
 
             if (IntOperator::DIV == op && 0 == rValue)
             {
-                throw std::runtime_error(fmt::format("\"{}\" function: Division by zero", name));
+                throw std::runtime_error("Division by zero");
             }
 
             rValueVector.emplace_back(rValue);
         }
         else
         {
-            rReferenceVector.emplace_back(std::static_pointer_cast<Reference>(arg)->jsonPath());
+            auto ref = std::static_pointer_cast<Reference>(arg);
+            if (buildCtx->schema().hasField(ref->dotPath()))
+            {
+                auto sType = buildCtx->schema().getType(ref->dotPath());
+                if (sType != schemf::Type::INTEGER && sType != schemf::Type::SHORT && sType != schemf::Type::LONG)
+                {
+                    throw std::runtime_error(fmt::format("Expected 'INTEGER', 'SHORT' or 'LONG' reference but got "
+                                                         "reference '{}' of type '{}'",
+                                                         ref->dotPath(),
+                                                         schemf::typeToStr(sType)));
+                }
+            }
+
+            rReferenceVector.emplace_back(ref->jsonPath());
         }
     }
     // Tracing messages
+    const auto name = buildCtx->context().opName;
     const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
     const std::string failureTrace2 {fmt::format(R"([{}] -> Failure: Reference not found: )", name)};
     const std::string failureTrace3 {fmt::format(R"([{}] -> Failure: Parameter is not integer: )", name)};
@@ -324,8 +336,10 @@ MapOp opBuilderHelperIntTransformation(IntOperator op,
     }
 
     // Function that implements the helper
-    return [=, rValueVector = std::move(rValueVector), rReferenceVector = std::move(rReferenceVector)](
-               base::ConstEvent event) -> MapResult
+    return [=,
+            runState = buildCtx->runState(),
+            rValueVector = std::move(rValueVector),
+            rReferenceVector = std::move(rReferenceVector)](base::ConstEvent event) -> MapResult
     {
         std::vector<int64_t> auxVector {};
         auxVector.insert(auxVector.begin(), rValueVector.begin(), rValueVector.end());
@@ -333,18 +347,21 @@ MapOp opBuilderHelperIntTransformation(IntOperator op,
         // Iterate throug all references and append them values to the value vector
         for (const auto& rValueItem : rReferenceVector)
         {
+            if (!event->exists(rValueItem))
+            {
+                RETURN_FAILURE(runState, json::Json {}, failureTrace2 + rValueItem);
+            }
+
             const auto resolvedRValue {event->getIntAsInt64(rValueItem)};
             if (!resolvedRValue.has_value())
             {
-                return base::result::makeFailure(json::Json {},
-                                                 (!event->exists(rValueItem)) ? (failureTrace2 + rValueItem)
-                                                                              : (failureTrace3 + rValueItem));
+                RETURN_FAILURE(runState, json::Json {}, failureTrace3 + rValueItem);
             }
             else
             {
                 if (IntOperator::DIV == op && 0 == resolvedRValue.value())
                 {
-                    return base::result::makeFailure(json::Json {}, failureTrace4 + rValueItem);
+                    RETURN_FAILURE(runState, json::Json {}, failureTrace4 + rValueItem);
                 }
 
                 auxVector.emplace_back(resolvedRValue.value());
@@ -358,12 +375,12 @@ MapOp opBuilderHelperIntTransformation(IntOperator op,
         }
         catch (const std::runtime_error& e)
         {
-            return base::result::makeFailure(json::Json {}, e.what());
+            RETURN_FAILURE(runState, json::Json {}, e.what());
         }
 
         json::Json result;
         result.setInt64(res);
-        return base::result::makeSuccess(result, successTrace);
+        RETURN_SUCCESS(runState, result, successTrace);
     };
 }
 
@@ -984,8 +1001,6 @@ MapOp opBuilderHelperIntCalc(const std::vector<OpArg>& opArgs, const std::shared
                                              std::static_pointer_cast<Value>(opArgs[0])->value().typeName()));
     }
 
-    // Format name for the tracer
-    const auto name = buildCtx->context().opName;
     auto op = strToOp(std::static_pointer_cast<Value>(opArgs[0])->value().getString().value());
 
     auto newArgs = std::vector<OpArg>(opArgs.begin() + 1, opArgs.end());
@@ -1069,43 +1084,44 @@ TransformOp opBuilderHelperMergeRecursively(const Reference& targetField,
     const auto refField = *std::static_pointer_cast<Reference>(opArgs[0]);
 
     // Tracing
-    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
-
-    const std::string failureTrace1 {fmt::format(TRACE_REFERENCE_NOT_FOUND, name, refField.dotPath())};
-    const std::string failureTrace2 {fmt::format(TRACE_TARGET_NOT_FOUND, name, targetField.dotPath())};
-    const std::string failureTrace3 {fmt::format("[{}] -> Failure: Fields type do not match", name)};
-    const std::string failureTrace4 {fmt::format("[{}] -> Failure: Fields type not supported", name)};
+    const auto successTrace = fmt::format("{} -> Success", name);
+    const auto failureTrace1 = fmt::format("{} -> Target field '{}' not found", name, targetField.dotPath());
+    const auto failureTrace2 = fmt::format("{} -> Source field '{}' not found", name, refField.dotPath());
+    const auto failureTrace3 = fmt::format("{} -> Field types do not match", name);
+    const auto failureTrace4 = fmt::format("{} -> Field types not supported", name);
 
     // Return Op
-    return [=, targetField = targetField.jsonPath(), fieldReference = refField.jsonPath()](
-               const base::Event& event) -> TransformResult
+    return [=,
+            runState = buildCtx->runState(),
+            targetField = targetField.jsonPath(),
+            fieldReference = refField.jsonPath()](base::Event event) -> TransformResult
     {
         // Check target and reference field exists
-        if (!event->exists(fieldReference))
-        {
-            return base::result::makeFailure(event, failureTrace1);
-        }
-
         if (!event->exists(targetField))
         {
-            return base::result::makeFailure(event, failureTrace2);
+            RETURN_FAILURE(runState, event, failureTrace1);
+        }
+
+        if (!event->exists(fieldReference))
+        {
+            RETURN_FAILURE(runState, event, failureTrace2);
         }
 
         // Check fields types
-        const auto targetType = event->type(targetField);
+        auto targetType = event->type(targetField);
         if (targetType != event->type(fieldReference))
         {
-            return base::result::makeFailure(event, failureTrace3);
+            RETURN_FAILURE(runState, event, failureTrace3);
         }
         if (targetType != json::Json::Type::Array && targetType != json::Json::Type::Object)
         {
-            return base::result::makeFailure(event, failureTrace4);
+            RETURN_FAILURE(runState, event, failureTrace4);
         }
 
         // Merge
         event->merge(json::RECURSIVE, fieldReference, targetField);
 
-        return base::result::makeSuccess(event, successTrace);
+        RETURN_SUCCESS(runState, event, successTrace);
     };
 }
 
@@ -1203,43 +1219,44 @@ TransformOp opBuilderHelperMerge(const Reference& targetField,
     const auto& refField = *std::static_pointer_cast<Reference>(opArgs[0]);
 
     // Tracing
-    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
-
-    const std::string failureTrace1 {fmt::format(TRACE_REFERENCE_NOT_FOUND, name, refField.dotPath())};
-    const std::string failureTrace2 {fmt::format(TRACE_TARGET_NOT_FOUND, name, targetField.dotPath())};
-    const std::string failureTrace3 {fmt::format("[{}] -> Failure: Fields type do not match", name)};
-    const std::string failureTrace4 {fmt::format("[{}] -> Failure: Fields type not supported", name)};
+    const auto successTrace = fmt::format("{} -> Success", name);
+    const auto failureTrace1 = fmt::format("{} -> Target field '{}' not found", name, targetField.dotPath());
+    const auto failureTrace2 = fmt::format("{} -> Source field '{}' not found", name, refField.dotPath());
+    const auto failureTrace3 = fmt::format("{} -> Field types do not match", name);
+    const auto failureTrace4 = fmt::format("{} -> Field types not supported", name);
 
     // Return Op
-    return [=, targetField = targetField.jsonPath(), fieldReference = refField.jsonPath()](
-               const base::Event& event) -> TransformResult
+    return [=,
+            runState = buildCtx->runState(),
+            targetField = targetField.jsonPath(),
+            fieldReference = refField.jsonPath()](base::Event event) -> TransformResult
     {
         // Check target and reference field exists
-        if (!event->exists(fieldReference))
-        {
-            return base::result::makeFailure(event, failureTrace1);
-        }
-
         if (!event->exists(targetField))
         {
-            return base::result::makeFailure(event, failureTrace2);
+            RETURN_FAILURE(runState, event, failureTrace1);
+        }
+
+        if (!event->exists(fieldReference))
+        {
+            RETURN_FAILURE(runState, event, failureTrace2);
         }
 
         // Check fields types
         auto targetType = event->type(targetField);
         if (targetType != event->type(fieldReference))
         {
-            return base::result::makeFailure(event, failureTrace3);
+            RETURN_FAILURE(runState, event, failureTrace3);
         }
         if (targetType != json::Json::Type::Array && targetType != json::Json::Type::Object)
         {
-            return base::result::makeFailure(event, failureTrace4);
+            RETURN_FAILURE(runState, event, failureTrace4);
         }
 
         // Merge
         event->merge(json::NOT_RECURSIVE, fieldReference, targetField);
 
-        return base::result::makeSuccess(event, successTrace);
+        RETURN_SUCCESS(runState, event, successTrace);
     };
 }
 
@@ -1267,7 +1284,8 @@ TransformOp opBuilderHelperDeleteField(const Reference& targetField,
         fmt::format("[{}] -> Failure: Target field '{}' could not be erased", name, targetField.dotPath())};
 
     // Return Op
-    return [=, targetField = targetField.jsonPath()](const base::Event& event) -> TransformResult
+    return
+        [=, runState = buildCtx->runState(), targetField = targetField.jsonPath()](base::Event event) -> TransformResult
     {
         bool result {false};
         try
@@ -1276,17 +1294,15 @@ TransformOp opBuilderHelperDeleteField(const Reference& targetField,
         }
         catch (const std::exception& e)
         {
-            return base::result::makeFailure(event, failureTrace1 + e.what());
+            RETURN_FAILURE(runState, event, failureTrace1 + e.what());
         }
 
         if (result)
         {
-            return base::result::makeSuccess(event, successTrace);
+            RETURN_SUCCESS(runState, event, successTrace);
         }
-        else
-        {
-            return base::result::makeFailure(event, failureTrace2);
-        }
+
+        RETURN_FAILURE(runState, event, failureTrace2);
     };
 }
 
@@ -1306,52 +1322,35 @@ TransformOp opBuilderHelperRenameField(const Reference& targetField,
     const auto name = buildCtx->context().opName;
 
     // Tracing messages
-    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
+    const auto successTrace = fmt::format("{} -> Success", name);
+    const auto failureTrace1 = fmt::format("{} -> Target field '{}' not found", name, targetField.dotPath());
+    const auto failureTrace2 = fmt::format("{} -> Source field '{}' already exists", name, srcField.dotPath());
+    const auto failureTrace3 = fmt::format("{} -> Target field '{}' could not be erased", name, targetField.dotPath());
 
-    const std::string failureTrace1 {
-        fmt::format("[{}] -> Failure: Target field '{}' could not be set: ", name, targetField.dotPath())};
-    const std::string failureTrace2 {fmt::format(TRACE_REFERENCE_NOT_FOUND, name, srcField.dotPath())};
-    const std::string failureTrace3 {fmt::format("[{}] -> Failure: ", name)};
-    const std::string failureTrace4 {
-        fmt::format("[{}] -> Failure: Target field '{}' could not be erased", name, targetField.dotPath())};
-
-    return [=, targetField = targetField.jsonPath(), sourceField = srcField.jsonPath()](
-               const base::Event& event) -> TransformResult
+    return
+        [=, runState = buildCtx->runState(), targetField = targetField.jsonPath(), sourceField = srcField.jsonPath()](
+            base::Event event) -> TransformResult
     {
+        if (!event->exists(targetField))
+        {
+            RETURN_FAILURE(runState, event, failureTrace1);
+        }
+
         if (event->exists(sourceField))
         {
-            try
-            {
-                event->set(targetField, sourceField);
-            }
-            catch (const std::exception& e)
-            {
-                return base::result::makeFailure(event, failureTrace1 + e.what());
-            }
-        }
-        else
-        {
-            return base::result::makeFailure(event, failureTrace2);
+            RETURN_FAILURE(runState, event, failureTrace2);
         }
 
-        bool result {false};
-        try
+        auto targetValue = event->getJson(targetField).value();
+
+        if (!event->erase(targetField))
         {
-            result = event->erase(sourceField);
-        }
-        catch (const std::exception& e)
-        {
-            return base::result::makeFailure(event, failureTrace3 + e.what());
+            RETURN_FAILURE(runState, event, failureTrace3);
         }
 
-        if (result)
-        {
-            return base::result::makeSuccess(event, successTrace);
-        }
-        else
-        {
-            return base::result::makeFailure(event, failureTrace4);
-        }
+        event->set(sourceField, targetValue);
+
+        RETURN_SUCCESS(runState, event, successTrace);
     };
 }
 
