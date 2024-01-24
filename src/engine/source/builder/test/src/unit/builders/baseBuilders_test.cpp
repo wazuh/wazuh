@@ -138,10 +138,12 @@ TEST_P(TransformOperationTest, Operates)
     }
     else
     {
+        auto expectedEvent = json::Json(*event);
         expected.failCase()(*mocks);
         auto operation = builder(targetRef, opArgs, mocks->ctx);
         auto result = operation(event);
         ASSERT_FALSE(result);
+        ASSERT_EQ(*event, expectedEvent);
     }
 }
 
