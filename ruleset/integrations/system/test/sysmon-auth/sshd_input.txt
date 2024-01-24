@@ -1,3 +1,0 @@
-Feb  9 21:19:40 precise32 sshd[8317]: subsystem request for sftp by user vagrant
-May 24 08:56:54 ubuntu2004 sshd[1238]: Accepted publickey for vagrant from 10.0.2.2 port 56902 ssh2: RSA SHA256:1M4RzhMyWuFS/86uPY/ce2prh/dVTHW7iD2RhpquOZA
-Feb  9 21:24:37 precise32 sshd[8302]: pam_unix(sshd:session): session closed for user vagrant

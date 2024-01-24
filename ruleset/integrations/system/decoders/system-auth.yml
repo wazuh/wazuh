@@ -30,19 +30,6 @@ definitions:
     OR $process.name == usermod
     OR $process.name == CRON
 
-#TODO: Once the events arrive tagged, uncommnet following line and comment previous
-#  isAuthProcess: >-
-#    (process.name == sshd
-#    OR process.name == sudo
-#    OR process.name == groupadd
-#    OR process.name == useradd
-#    OR process.name == groupdel
-#    OR process.name == groupmod
-#    OR process.name == userdel
-#    OR process.name == usermod
-#    OR process.name == CRON)
-#    AND event.module == system
-
 check: $isAuthProcess
 
 normalize:
@@ -72,7 +59,7 @@ normalize:
       - event.action: ssh_login
       - event.category: array_append(authentication, session)
       - event.outcome: success
-      - event.type: array_append(access, allowed)
+      - event.type: array_append(info)
 
   - check: $_system.auth.ssh.event == DEAD_PROCESS OR $_system.auth.ssh.event == disconnect
     map:
@@ -84,36 +71,64 @@ normalize:
   - check: $_system.auth.ssh.event == Invalid OR $_system.auth.ssh.event == Failed OR $_system.auth.ssh.event == failures OR $_system.auth.ssh.event == fatal
     map:
       - event.action: ssh_login
-      - event.category: array_append(authentication, session)
+      - event.category: array_append(authentication)
       - event.outcome: failure
-      - event.type: array_append(access, denied)
+      - event.type: array_append(info)
 
   - check:
       - process.name: sudo
     parse|message:
       - "<user.name> : <_system.auth.sudo.error> ; TTY=tty<~/literal/\\/>?<~/literal/s><_system.process.tty.char_device.major> ; PWD=<_system.auth.sudo.pwd> ; USER=<user.effective.name> ; COMMAND=<_system.auth.sudo.command>"
+      - "<user.name> : <_system.auth.sudo.error> ; TTY=<_system.auth.sudo.tty> ; PWD=<_system.auth.sudo.pwd> ; USER=<user.effective.name> ; COMMAND=<_system.auth.sudo.command>"
+      - "<user.name> : TTY=<_system.auth.sudo.tty> ; PWD=<_system.auth.sudo.pwd> ; USER=<user.effective.name> ; COMMAND=<_system.auth.sudo.command>"
       - "<user.name> : TTY=tty<~/literal/\\/>?<~/literal/s><_system.process.tty.char_device.major> ; PWD=<_system.auth.sudo.pwd> ; USER=<user.effective.name> ; COMMAND=<_system.auth.sudo.command>"
     map:
       - event.category: array_append(process)
-      - event.type: array_append(start)
+
+  - check:
+      - message: contains("session opened")
+    map:
+      - event.action: logged-on
+
+  - check:
+      - message: contains("session closed")
+    map:
+      - event.action: logged-off
 
   - check:
       - message: contains(pam_)
     parse|message:
-      - "pam_unix\\(<~>:<~>\\): session <_system.auth.pam.session.action> for user <_system.auth.pam.foruser.name> by <_system.auth.pam.byuser.name>\\(uid=\\)"
+      - "pam_unix\\(<~>:<~>\\): authentication <_system.auth.pam.session.action>; logname=<_system.auth.pam.foruser.name>?<~/literal/> uid=<user.id>?<~/literal/> euid=<user.effective.id>?<~/literal/> tty=<_system.auth.pam.tty>?<~/literal/> ruser=<_system.auth.pam.remote.user>?<~/literal/> rhost=<source.ip>?<~/literal/>  user=<user.name>?<~/literal/>"
+    map:
+      - event.category: array_append(authentication)
+
+  - check:
+      - message: contains(pam_)
+    parse|message:
+      - "pam_unix\\(<~>:<~>\\): session <_system.auth.pam.session.action> for user <_system.auth.pam.foruser.name> by <_system.auth.pam.byuser.name>\\(uid=<user.id>\\)"
       - "pam_unix\\(<~>:<~>\\): session <_system.auth.pam.session.action> for user <_system.auth.pam.foruser.name> by \\(uid=<user.id>\\)"
       - "pam_unix\\(<~>:<~>\\): session <_system.auth.pam.session.action> for user <_system.auth.pam.foruser.name>"
+    map:
+      - event.category: array_append(session)
+
+  - check:
+      - message: contains(pam_succeed_if)
+    parse|message:
       - "pam_succeed_if\\(<~>:<~>\\): requirement <~> not met by user <user.name>"
-      - "pam_unix\\(<~>:<~>\\): authentication <_system.auth.pam.session.action>; logname=<_system.auth.pam.foruser.name>?<~/literal/> uid=<user.id>?<~/literal/> euid=<user.effective.id>?<~/literal/> tty=<_system.auth.pam.tty>?<~/literal/> ruser=<_system.auth.pam.remote.user>?<~/literal/> rhost=<source.ip>?<~/literal/>  user=<user.name>?<~/literal/>"
+    map:
+      - event.outcome: failure
+
+  - check:
+      - message: contains(PAM)
+    parse|message:
+      - PAM <~> more authentication <_system.auth.pam.session.action>; logname=<_system.auth.pam.foruser.name>?<~/literal/> uid=<user.id>?<~/literal/> euid=<user.effective.id>?<~/literal/> tty=<_system.auth.pam.tty>?<~/literal/> ruser=<_system.auth.pam.remote.user>?<~/literal/> rhost=<source.ip>?<~/literal/> user=<user.name>?<~/literal/>
     map:
       - event.category: array_append(authentication, session)
 
   - check:
       - message: contains(PAM)
     parse|message:
-      - PAM <~> more authentication <_system.auth.pam.session.action>; logname=<_system.auth.pam.foruser.name>?<~/literal/> uid=<user.id>?<~/literal/> euid=<user.effective.id>?<~/literal/> tty=<_system.auth.pam.tty>?<~/literal/> ruser=<_system.auth.pam.remote.user>?<~/literal/> rhost=<source.ip>?<~/literal/>  user=<user.name>?<~/literal/>
-    map:
-      - event.category: array_append(authentication, session)
+      - "error: PAM: <~> authentication <~> user <user.name> from <source.address>"
 
   - check:
       - _system.auth.pam.byuser.name: string_not_equal($_empty)
@@ -126,10 +141,6 @@ normalize:
     map:
       - user.name: $_system.auth.pam.foruser.name
 
-  - check: $_system.auth.pam.session.action == opened OR $_system.auth.ssh.event == USER_PROCESS
-    map:
-      - event.type: array_append(start)
-
   - check: $_system.auth.pam.session.action == closed
     map:
       - event.type: array_append(end)
@@ -141,7 +152,12 @@ normalize:
       - 'group added to <file.name>: name=<group.name>(?, GID=<group.id>)'
       - <_system.auth.event.outcome> adding user '<user.name>'(?,<~>)
 
-  - check: $_system.auth.event.outcome == failed OR $_system.auth.pam.session.action == failure
+  - check: $process.name == userdel OR $process.name == usermod
+    parse|message:
+      - <~> user '<user.name>'
+      - <~> user '<user.name>'<~>
+
+  - check: $_system.auth.event.outcome == failed OR $_system.auth.pam.session.action == failure OR $_system.auth.pam.session.action == failures
     map:
       - event.outcome: failure
 
@@ -175,6 +191,7 @@ normalize:
       - user.effective.name: replace(",)
       - user.effective.name: replace(',)
       - source.address: $source.ip
+      - source.domain: parse_fqdn($source.address)
       - related.user: array_append($user.name, $user.effective.name)
       - related.ip: array_append($source.ip)
       - process.command_line: $_system.auth.sudo.command

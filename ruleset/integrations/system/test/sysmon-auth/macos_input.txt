@@ -1,2 +1,0 @@
-May 31 09:47:16 jal sshd: jizquierdo [priv][10917]: DEAD_PROCESS: 10922 ttys006
-May 31 09:47:16 jal sshd: jizquierdo [priv][10917]: USER_PROCESS: 10922 tty/006

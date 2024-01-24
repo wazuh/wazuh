@@ -1,8 +1,0 @@
-Feb 22 16:45:20 slave22 sshd[2738]: Failed password for root from 202.196.224.106 port 1786 ssh2
-Feb 22 16:45:26 slave22 sshd[2738]: fatal: Read from socket failed: Connection reset by peer [preauth]
-Feb 22 16:45:26 slave22 sshd[2738]: PAM 4 more authentication failures; logname= uid=0 euid=0 tty=ssh ruser= rhost=202.196.224.106  user=root
-Feb 22 16:45:32 slave22 sshd[2742]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=202.196.224.106  user=root
-Feb 22 16:46:03 slave22 sshd[2758]: Received disconnect from 216.160.83.58: 11:  [preauth]
-Feb 22 16:48:04 slave22 sshd[2805]: Accepted publickey for drewr from 69.245.39.97 port 34202 ssh2: RSA 01:67:32:d9:b3:20:5d:2d:5f:b4:35:c5:a5:8b:0a:5e
-Feb 22 16:48:04 slave22 sshd[2805]: pam_unix(sshd:session): session opened for user drewr by (uid=0)
-Feb 22 16:59:35 slave22 sshd[3064]: Disconnecting: Too many authentication failures for root [preauth]
