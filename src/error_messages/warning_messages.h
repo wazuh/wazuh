@@ -71,8 +71,6 @@
 #define FIM_WHODATA_POLICY_CHANGE_CHECKER       "(6952): Audit policy change detected. Switching directories to realtime."
 #define FIM_WHODATA_POLICY_CHANGE_CHANNEL       "(6953): Event 4719 received due to changes in audit policy. Switching directories to realtime."
 #define FIM_EMPTY_CHANGED_ATTRIBUTES            "(6954): Entry '%s' does not have any modified fields. No event will be generated."
-#define FIM_AUDITPOL_ATTEMPT_FAIL               "(6955): Auditpol command failed, attempt number: %d"
-#define FIM_AUDITPOL_FINAL_FAIL                 "(6956): After %d attempts the Auditpol command could not be executed successfully."
 
 /* Monitord warning messages */
 #define ROTATE_LOG_LONG_PATH                    "(7500): The path of the rotated log is too long."

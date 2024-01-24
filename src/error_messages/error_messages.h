@@ -561,6 +561,9 @@
 #define FIM_ERROR_TRANSACTION                       "(6719): Could not start DBSync transaction (%s)"
 #define FIM_ERROR_PATH_TOO_LONG                     "(6720): The path '%s%s' is too long. The maximum length is %d characters."
 
+#define FIM_AUDITPOL_ATTEMPT_FAIL                   "(6955): Auditpol command failed, attempt number: %d"
+#define FIM_AUDITPOL_FINAL_FAIL                     "(6956): After %d attempts the Auditpol command could not be executed successfully."
+
 /* Wazuh Logtest error messsages */
 #define LOGTEST_ERROR_BIND_SOCK                     "(7300): Unable to bind to socket '%s'. Errno: (%d) %s"
 #define LOGTEST_ERROR_ACCEPT_CONN                   "(7301): Failure to accept connection. Errno: %s"

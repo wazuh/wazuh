@@ -6347,47 +6347,15 @@ void test_run_whodata_scan_no_auto_audit_policies(void **state) {
     expect_string(__wrap_remove, filename, "tmp\\backup-policies");
     will_return(__wrap_remove, 0);
 
-    expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
-    expect_value(__wrap_wm_exec, secs, 5);
-    expect_value(__wrap_wm_exec, add_path, NULL);
-    will_return(__wrap_wm_exec, 1);
-    will_return(__wrap_wm_exec, 0);
-    expect_string(__wrap__merror, formatted_msg, "(6955): Auditpol command failed, attempt number: 1");
+    int i;
+    int retries = 5;
+    char error_msgs[retries + 1][OS_SIZE_1024];
 
-    expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
-    expect_value(__wrap_wm_exec, secs, 6);
-    expect_value(__wrap_wm_exec, add_path, NULL);
-    will_return(__wrap_wm_exec, 1);
-    will_return(__wrap_wm_exec, 0);
-    expect_string(__wrap__merror, formatted_msg, "(6955): Auditpol command failed, attempt number: 2");
-
-    expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
-    expect_value(__wrap_wm_exec, secs, 7);
-    expect_value(__wrap_wm_exec, add_path, NULL);
-    will_return(__wrap_wm_exec, 1);
-    will_return(__wrap_wm_exec, 0);
-    expect_string(__wrap__merror, formatted_msg, "(6955): Auditpol command failed, attempt number: 3");
-
-    expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
-    expect_value(__wrap_wm_exec, secs, 8);
-    expect_value(__wrap_wm_exec, add_path, NULL);
-    will_return(__wrap_wm_exec, 1);
-    will_return(__wrap_wm_exec, 0);
-    expect_string(__wrap__merror, formatted_msg, "(6955): Auditpol command failed, attempt number: 4");
-
-    expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
-    expect_value(__wrap_wm_exec, secs, 9);
-    expect_value(__wrap_wm_exec, add_path, NULL);
-    will_return(__wrap_wm_exec, 1);
-    will_return(__wrap_wm_exec, 0);
-    expect_string(__wrap__merror, formatted_msg, "(6955): Auditpol command failed, attempt number: 5");
-
-    expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
-    expect_value(__wrap_wm_exec, secs, 10);
-    expect_value(__wrap_wm_exec, add_path, NULL);
-    will_return(__wrap_wm_exec, 1);
-    will_return(__wrap_wm_exec, 0);
-    expect_string(__wrap__merror, formatted_msg, "(6955): Auditpol command failed, attempt number: 6");
+    for (i = 0;  i <= retries; i++) {
+        expect_wm_exec("auditpol /backup /file:\"tmp\\backup-policies\"", retries+i, NULL, NULL, 1, 0);
+        snprintf(error_msgs[i], sizeof(error_msgs[i]), "(6955): Auditpol command failed, attempt number: %d", i + 1);
+        expect_string(__wrap__merror, formatted_msg, error_msgs[i]);
+    }
 
     expect_string(__wrap__merror, formatted_msg,
         "(6915): Audit policies could not be auto-configured due to the Windows version. Check if they are correct for whodata mode.");
