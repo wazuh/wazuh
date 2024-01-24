@@ -89,6 +89,15 @@ def test_read_option():
         assert configuration._read_option('open-scap', data)[0] == 'synchronization'
         assert configuration._read_option('syscheck', data)[0] == 'synchronization'
 
+    with open(os.path.join(parent_directory, tmp_path, 'configuration/default/vulnerability_detection.conf')) as f:
+        data = fromstring(f.read())
+        EXPECTED_VALUES = MappingProxyType(
+            {'enabled': 'no', 'feed-update-interval': '60m', 'index-status': 'yes'}
+        )
+        for section in data:
+            assert configuration._read_option('vulnerability-detection', section) == (section.tag,
+                                                                                     EXPECTED_VALUES[section.tag])
+
     with open(os.path.join(parent_directory, tmp_path, 'configuration/default/indexer.conf')) as f:
         data = fromstring(f.read())
         EXPECTED_VALUES = MappingProxyType(
