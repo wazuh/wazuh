@@ -66,10 +66,10 @@ services:
       - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
-      - nginx-lb
+      - haproxy-lb
       - wazuh-agent1
     depends_on:
-      - nginx-lb
+      - haproxy-lb
 
   wazuh-agent2:
     profiles:
@@ -82,11 +82,11 @@ services:
       - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
-      - nginx-lb
+      - haproxy-lb
       - wazuh-agent2
     depends_on:
       - wazuh-agent1
-      - nginx-lb
+      - haproxy-lb
 
   wazuh-agent3:
     profiles:
@@ -99,11 +99,11 @@ services:
       - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
-      - nginx-lb
+      - haproxy-lb
       - wazuh-agent3
     depends_on:
-      - wazuh-agent1
-      - nginx-lb
+      - wazuh-agent2
+      - haproxy-lb
 
   wazuh-agent4:
     profiles:
@@ -116,11 +116,11 @@ services:
       - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
-      - nginx-lb
+      - haproxy-lb
       - wazuh-agent4
     depends_on:
-      - wazuh-agent1
-      - nginx-lb
+      - wazuh-agent3
+      - haproxy-lb
 
   wazuh-agent5:
     profiles:
@@ -136,11 +136,12 @@ services:
       - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
-      - nginx-lb
+      - haproxy-lb
       - wazuh-agent5
       - agent_old
     depends_on:
-      - nginx-lb
+      - wazuh-agent4
+      - haproxy-lb
 
   wazuh-agent6:
     profiles:
@@ -153,12 +154,12 @@ services:
       - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
-      - nginx-lb
+      - haproxy-lb
       - wazuh-agent6
       - agent_old
     depends_on:
       - wazuh-agent5
-      - nginx-lb
+      - haproxy-lb
 
   wazuh-agent7:
     profiles:
@@ -171,12 +172,12 @@ services:
       - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
-      - nginx-lb
+      - haproxy-lb
       - wazuh-agent7
       - agent_old
     depends_on:
-      - wazuh-agent5
-      - nginx-lb
+      - wazuh-agent6
+      - haproxy-lb
 
   wazuh-agent8:
     profiles:
@@ -189,21 +190,20 @@ services:
       - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
-      - nginx-lb
+      - haproxy-lb
       - wazuh-agent8
       - agent_old
     depends_on:
-      - wazuh-agent5
-      - nginx-lb
+      - wazuh-agent7
+      - haproxy-lb
 
-  nginx-lb:
+  haproxy-lb:
     profiles:
       - standalone
       - cluster
     build:
-      context: ./base/nginx-lb
-    image: integration_test_nginx-lb
-    restart: always
+      context: ./base/haproxy-lb
+    image: integration_test_haproxy-lb
     entrypoint:
       - /scripts/entrypoint.sh
       - ${ENV_MODE}
