@@ -147,7 +147,7 @@ Here you can find all the automation tools maintained by the Wazuh team.
 |[Linux Audit userspace](https://github.com/linux-audit/audit-userspace)|2.8.4|Rik Faith|LGPL (copyleft)|
 |[msgpack](https://github.com/msgpack/msgpack-c)|3.1.1|Sadayuki Furuhashi|Boost Software License version 1.0|
 |[nlohmann](https://github.com/nlohmann/json)|3.7.3|Niels Lohmann|MIT License|
-|[OpenSSL](https://github.com/openssl/openssl)|1.1.1t|OpenSSL Software Foundation|Apache 2.0 License|
+|[OpenSSL](https://github.com/openssl/openssl)|3.0.12|OpenSSL Software Foundation|Apache 2.0 License|
 |[pacman](https://gitlab.archlinux.org/pacman/pacman)|5.2.2|Judd Vinet|GNU Public License version 2 (copyleft)|
 |[popt](https://github.com/rpm-software-management/popt)|1.16|Jeff Johnson & Erik Troan|MIT License|
 |[procps](https://gitlab.com/procps-ng/procps)|2.8.3|Brian Edmonds et al.|LGPL (copyleft)|
