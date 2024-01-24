@@ -110,7 +110,7 @@ int nb_recv(netbuffer_t * buffer, int sock) {
 
     if (i > 0) {
         if (i < sockbuf->data_len) {
-            memcpy(sockbuf->data, sockbuf->data + i, sockbuf->data_len - i);
+            memmove(sockbuf->data, sockbuf->data + i, sockbuf->data_len - i);
         }
 
         sockbuf->data_len -= i;
