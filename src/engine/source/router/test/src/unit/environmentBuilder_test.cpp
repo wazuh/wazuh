@@ -31,13 +31,13 @@ TEST(EnvironmentBuilderTest, Create_ValidPolicyAndFilter)
     EXPECT_CALL(*mockPolicy, assets()).Times(3).WillRepeatedly(ReturnRef(fakeAssets));
 
     auto mockController = std::make_shared<bk::mocks::MockController>();
-    EXPECT_CALL(*controllerMaker, create()).WillOnce(Return(mockController));
+    EXPECT_CALL(*controllerMaker, create(testing::_, testing::_, testing::_))
+        .WillOnce(::testing::Return(mockController));
 
     auto emptyExpression = base::Expression {};
     EXPECT_CALL(*mockPolicy, expression()).WillOnce(ReturnRef(emptyExpression));
     std::string hash = "hash";
     EXPECT_CALL(*mockPolicy, hash()).WillOnce(ReturnRef(hash));
-    EXPECT_CALL(*mockController, build(_, _)).WillOnce(Return());
 
     EXPECT_CALL(*builder, buildAsset(filterName)).WillOnce(Return(emptyExpression));
 
@@ -84,13 +84,13 @@ TEST(EnvironmentBuilderTest, Create_ValidPolicyAndInvalidFilter)
     EXPECT_CALL(*mockPolicy, assets()).Times(3).WillRepeatedly(ReturnRef(fakeAssets));
 
     auto mockController = std::make_shared<bk::mocks::MockController>();
-    EXPECT_CALL(*controllerMaker, create()).WillOnce(Return(mockController));
+    EXPECT_CALL(*controllerMaker, create(testing::_, testing::_, testing::_))
+        .WillOnce(::testing::Return(mockController));
 
     auto emptyExpression = base::Expression {};
     EXPECT_CALL(*mockPolicy, expression()).WillOnce(ReturnRef(emptyExpression));
     std::string hash = "hash";
     EXPECT_CALL(*mockPolicy, hash()).WillOnce(ReturnRef(hash));
-    EXPECT_CALL(*mockController, build(_, _)).WillOnce(Return());
 
     EXPECT_CALL(*builder, buildAsset(filterName)).WillOnce(::testing::Throw(std::runtime_error("error")));
 

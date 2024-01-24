@@ -103,8 +103,7 @@ public:
                        std::inserter(assetNames, assetNames.begin()),
                        [](const auto& name) { return name.toStr(); });
 
-        auto controller = m_controllerMaker->create();
-        controller->build(policy->expression(), assetNames);
+        auto controller = m_controllerMaker->create(policy->expression(), assetNames);
         return {controller, policy->hash()};
     }
 

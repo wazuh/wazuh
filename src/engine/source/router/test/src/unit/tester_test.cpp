@@ -36,8 +36,8 @@ public:
     {
         EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_)).WillOnce(::testing::Return(m_mockPolicy));
         EXPECT_CALL(*m_mockPolicy, assets()).WillRepeatedly(::testing::ReturnRefOfCopy(fakeAssets));
-        EXPECT_CALL(*m_mockControllerMaker, create()).WillOnce(::testing::Return(m_mockController));
-        EXPECT_CALL(*m_mockController, build(testing::_, testing::_));
+        EXPECT_CALL(*m_mockControllerMaker, create(testing::_, testing::_, testing::_)).WillOnce(::testing::Return(m_mockController));
+
         EXPECT_CALL(*m_mockPolicy, expression()).WillOnce(::testing::ReturnRefOfCopy(base::Expression {}));
         EXPECT_CALL(*m_mockPolicy, hash()).WillOnce(::testing::ReturnRef(hash));
     }
@@ -53,8 +53,8 @@ public:
     {
         EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_)).WillOnce(::testing::Return(m_mockPolicy));
         EXPECT_CALL(*m_mockPolicy, assets()).WillRepeatedly(::testing::ReturnRefOfCopy(fakeAssets));
-        EXPECT_CALL(*m_mockControllerMaker, create()).WillOnce(::testing::Return(m_mockController));
-        EXPECT_CALL(*m_mockController, build(testing::_, testing::_));
+        EXPECT_CALL(*m_mockControllerMaker, create(testing::_, testing::_, testing::_)).WillOnce(::testing::Return(m_mockController));
+
         EXPECT_CALL(*m_mockPolicy, expression()).WillOnce(::testing::ReturnRefOfCopy(base::Expression {}));
         EXPECT_CALL(*m_mockPolicy, hash()).WillOnce(::testing::ReturnRef(hash));
     }

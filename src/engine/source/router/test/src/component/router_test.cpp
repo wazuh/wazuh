@@ -90,8 +90,8 @@ public:
                     }
                 }));
 
-        EXPECT_CALL(*m_mockControllerMaker, create()).WillRepeatedly(testing::Return(m_mockController));
-        EXPECT_CALL(*m_mockController, build(testing::_, testing::_)).WillRepeatedly(::testing::Return());
+        EXPECT_CALL(*m_mockControllerMaker, create(testing::_, testing::_, testing::_))
+            .WillRepeatedly(testing::Return(m_mockController));
 
         m_orchestrator = std::make_shared<router::Orchestrator>(config);
 
@@ -104,8 +104,7 @@ public:
 namespace
 {
 void expectBuildPolicyOk(std::shared_ptr<builder::mocks::MockBuilder> mockbuilder,
-                         std::shared_ptr<builder::mocks::MockPolicy> mockPolicy,
-                         std::shared_ptr<bk::mocks::MockController> mockController)
+                         std::shared_ptr<builder::mocks::MockPolicy> mockPolicy)
 {
     // Build policy controller
     EXPECT_CALL(*mockbuilder, buildPolicy(testing::_)).WillOnce(testing::Return(mockPolicy));
@@ -114,7 +113,6 @@ void expectBuildPolicyOk(std::shared_ptr<builder::mocks::MockBuilder> mockbuilde
     auto emptyExpression = base::Expression {};
     EXPECT_CALL(*mockPolicy, expression()).WillOnce(::testing::ReturnRefOfCopy(emptyExpression));
     EXPECT_CALL(*mockPolicy, hash()).WillOnce(::testing::ReturnRefOfCopy(std::string {"hash"}));
-    EXPECT_CALL(*mockController, build(testing::_, testing::_)).WillOnce(::testing::Return());
 
     // Build filter
     EXPECT_CALL(*mockbuilder, buildAsset(testing::_)).WillOnce(::testing::Return(emptyExpression));
@@ -125,7 +123,7 @@ TEST_F(OrchestratorRouterTest, AddRoute)
     router::prod::EntryPost entry("route", "policy/wazuh/0", "filter/allow-all/0", 10);
 
     // Build Valid policy
-    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
 
     // DumpRouters()
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
@@ -141,11 +139,11 @@ TEST_F(OrchestratorRouterTest, AddMultipleRoutes)
     router::prod::EntryPost entry("route", "policy/wazuh/0", "filter/allow-all/0", 10);
     router::prod::EntryPost entryTwo("routeTwo", "policy/wazuh/0", "filter/allow-all/0", 11);
 
-    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
     EXPECT_FALSE(m_orchestrator->postEntry(entry).has_value());
 
-    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
     EXPECT_FALSE(m_orchestrator->postEntry(entryTwo).has_value());
 
@@ -158,12 +156,12 @@ TEST_F(OrchestratorRouterTest, AddEqualRoute)
     router::prod::EntryPost entry("route", "policy/wazuh/0", "filter/allow-all/0", 10);
 
     // Add ok
-    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
     EXPECT_FALSE(m_orchestrator->postEntry(entry).has_value());
 
     // Add equal (Fail to insert)
-    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_CALL(*m_mockController, stop()).Times(1);
     EXPECT_TRUE(m_orchestrator->postEntry(entry).has_value());
 
@@ -185,7 +183,7 @@ TEST_F(OrchestratorRouterTest, DeleteRoute)
     router::prod::EntryPost entry("route", "policy/wazuh/0", "filter/allow-all/0", 10);
 
     // Insert route after delete
-    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
     EXPECT_FALSE(m_orchestrator->postEntry(entry).has_value());
@@ -200,7 +198,7 @@ TEST_F(OrchestratorRouterTest, DeleteTheEqualRouteTwoTimes)
 {
     router::prod::EntryPost entry("route", "policy/wazuh/0", "filter/allow-all/0", 10);
 
-    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
     // Insert route after delete
@@ -232,9 +230,9 @@ TEST_F(OrchestratorRouterTest, GetEntry)
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
     // Add two routes
-    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_FALSE(m_orchestrator->postEntry(entry).has_value());
-    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_FALSE(m_orchestrator->postEntry(entryTwo).has_value());
 
     EXPECT_CALL(*m_mockController, stop()).Times(2);
@@ -261,12 +259,12 @@ TEST_F(OrchestratorRouterTest, ReloadEntry)
 
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
-    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_FALSE(m_orchestrator->postEntry(entry).has_value());
 
     EXPECT_CALL(*m_mockController, stop()).Times(1);
 
-    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_FALSE(m_orchestrator->reloadEntry("route").has_value());
 
     EXPECT_CALL(*m_mockController, stop()).Times(1);
@@ -277,7 +275,7 @@ TEST_F(OrchestratorRouterTest, ChangePriority)
 {
     router::prod::EntryPost entry("route", "policy/wazuh/0", "filter/allow-all/0", 10);
 
-    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
     EXPECT_FALSE(m_orchestrator->postEntry(entry).has_value());
@@ -295,10 +293,10 @@ TEST_F(OrchestratorRouterTest, ChangePriorityBusy)
     router::prod::EntryPost entryTwo("routeTwo", "policy/wazuh/0", "filter/allow-all/0", 11);
 
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
-    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     m_orchestrator->postEntry(entry);
 
-    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     m_orchestrator->postEntry(entryTwo);
 
     EXPECT_CALL(*m_mockController, stop()).Times(2);
@@ -315,7 +313,7 @@ TEST_F(OrchestratorRouterTest, PostStrEvent)
 
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
-    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     m_orchestrator->postEntry(entry);
 
     EXPECT_CALL(*m_mockController, stop()).Times(1);
