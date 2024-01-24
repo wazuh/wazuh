@@ -1481,7 +1481,7 @@
                     "test_rbac_white_security_endpoints.tavern.yaml",
                     "test_rbac_white_syscheck_endpoints.tavern.yaml",
                     "test_rbac_white_syscollector_endpoints.tavern.yaml",
-                    "test_rbac_white_task_endpoints.tavern.yaml",
+                    "test_rbac_white_task_endpoints.tavern.yaml"
                 ]
             },
             {
@@ -2150,7 +2150,7 @@
         ]
     },
     {
-        "path": "api/test/integration/env/base/nginx-lb",
+        "path": "api/test/integration/env/base/haproxy-lb",
         "files": [
             {
                 "name": "entrypoint.sh",
