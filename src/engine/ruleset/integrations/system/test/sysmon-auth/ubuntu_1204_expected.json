@@ -1,0 +1,6269 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb  9 21:19:40 server01 sshd[1001]: subsystem request for sftp by user user01",
+      "outcome": "success",
+      "start": "2024-02-09T21:19:40.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "subsystem request for sftp by user user01",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "user": {
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb  9 21:19:40 server01 sudo:  user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/sh -c echo BECOME-SUCCESS-lhspyyxxlfzpytwsebjoegenjxyjombo; LANG=en_US.UTF-8 LC_CTYPE=en_US.UTF-8 /usr/bin/python /home/user01/.ansible/tmp/ansible-tmp-1486675177.72-26828938879074/get_url; rm -rf /home/user01/.ansible/tmp/ansible-tmp-1486675177.72-26828938879074/ >/dev/null 2>&1",
+      "outcome": "success",
+      "start": "2024-02-09T21:19:40.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/sh -c echo BECOME-SUCCESS-lhspyyxxlfzpytwsebjoegenjxyjombo; LANG=en_US.UTF-8 LC_CTYPE=en_US.UTF-8 /usr/bin/python /home/user01/.ansible/tmp/ansible-tmp-1486675177.72-26828938879074/get_url; rm -rf /home/user01/.ansible/tmp/ansible-tmp-1486675177.72-26828938879074/ >/dev/null 2>&1",
+    "process": {
+      "command_line": "/bin/sh -c echo BECOME-SUCCESS-lhspyyxxlfzpytwsebjoegenjxyjombo; LANG=en_US.UTF-8 LC_CTYPE=en_US.UTF-8 /usr/bin/python /home/user01/.ansible/tmp/ansible-tmp-1486675177.72-26828938879074/get_url; rm -rf /home/user01/.ansible/tmp/ansible-tmp-1486675177.72-26828938879074/ >/dev/null 2>&1",
+      "name": "sudo",
+      "working_directory": "/home/user01"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb  9 21:19:40 server01 sudo: pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+      "outcome": "success",
+      "start": "2024-02-09T21:19:40.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "id": "1000",
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb  9 21:19:41 server01 sudo: pam_unix(sudo:session): session closed for user root",
+      "outcome": "success",
+      "start": "2024-02-09T21:19:41.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session closed for user root",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb  9 21:21:02 server01 sudo:  user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/sh -c echo BECOME-SUCCESS-lwzhcvorajmjyxsrqydafzapoeescwaf; rc=flag; [ -r /etc/metricbeat/metricbeat.yml ] || rc=2; [ -f /etc/metricbeat/metricbeat.yml ] || rc=1; [ -d /etc/metricbeat/metricbeat.yml ] && rc=3; python -V 2>/dev/null || rc=4; [ x\"$rc\" != \"xflag\" ] && echo \"${rc}  \"/etc/metricbeat/metricbeat.yml && exit 0; (python -c 'import hashlib; BLOCKSIZE = 65536; hasher = hashlib.sha1();#012afile = open(\"'/etc/metricbeat/metricbeat.yml'\", \"rb\")#012buf = afile.read(BLOCKSIZE)#012while len(buf) > 0:#012#011hasher.update(buf)#012#011buf = afile.read(BLOCKSIZE)#012afile.close()#012print(hasher.hexdigest())' 2>/dev/null) || (python -c 'import sha; BLOCKSIZE = 65536; hasher = sha.sha();#012afile = open(\"'/etc/metricbeat/metricbeat.yml'\", \"rb\")#012buf = afile.read(BLOCKSIZE)#012while len(buf) > 0:#012#011hasher.update(buf)#012#011buf = afile.read(BLOCKSIZE)#012afile.close()#012print(hasher.hexdigest())' 2>/dev/null) || (echo '0",
+      "outcome": "success",
+      "start": "2024-02-09T21:21:02.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/sh -c echo BECOME-SUCCESS-lwzhcvorajmjyxsrqydafzapoeescwaf; rc=flag; [ -r /etc/metricbeat/metricbeat.yml ] || rc=2; [ -f /etc/metricbeat/metricbeat.yml ] || rc=1; [ -d /etc/metricbeat/metricbeat.yml ] && rc=3; python -V 2>/dev/null || rc=4; [ x\"$rc\" != \"xflag\" ] && echo \"${rc}  \"/etc/metricbeat/metricbeat.yml && exit 0; (python -c 'import hashlib; BLOCKSIZE = 65536; hasher = hashlib.sha1();#012afile = open(\"'/etc/metricbeat/metricbeat.yml'\", \"rb\")#012buf = afile.read(BLOCKSIZE)#012while len(buf) > 0:#012#011hasher.update(buf)#012#011buf = afile.read(BLOCKSIZE)#012afile.close()#012print(hasher.hexdigest())' 2>/dev/null) || (python -c 'import sha; BLOCKSIZE = 65536; hasher = sha.sha();#012afile = open(\"'/etc/metricbeat/metricbeat.yml'\", \"rb\")#012buf = afile.read(BLOCKSIZE)#012while len(buf) > 0:#012#011hasher.update(buf)#012#011buf = afile.read(BLOCKSIZE)#012afile.close()#012print(hasher.hexdigest())' 2>/dev/null) || (echo '0",
+    "process": {
+      "command_line": "/bin/sh -c echo BECOME-SUCCESS-lwzhcvorajmjyxsrqydafzapoeescwaf; rc=flag; [ -r /etc/metricbeat/metricbeat.yml ] || rc=2; [ -f /etc/metricbeat/metricbeat.yml ] || rc=1; [ -d /etc/metricbeat/metricbeat.yml ] && rc=3; python -V 2>/dev/null || rc=4; [ x\"$rc\" != \"xflag\" ] && echo \"${rc}  \"/etc/metricbeat/metricbeat.yml && exit 0; (python -c 'import hashlib; BLOCKSIZE = 65536; hasher = hashlib.sha1();#012afile = open(\"'/etc/metricbeat/metricbeat.yml'\", \"rb\")#012buf = afile.read(BLOCKSIZE)#012while len(buf) > 0:#012#011hasher.update(buf)#012#011buf = afile.read(BLOCKSIZE)#012afile.close()#012print(hasher.hexdigest())' 2>/dev/null) || (python -c 'import sha; BLOCKSIZE = 65536; hasher = sha.sha();#012afile = open(\"'/etc/metricbeat/metricbeat.yml'\", \"rb\")#012buf = afile.read(BLOCKSIZE)#012while len(buf) > 0:#012#011hasher.update(buf)#012#011buf = afile.read(BLOCKSIZE)#012afile.close()#012print(hasher.hexdigest())' 2>/dev/null) || (echo '0",
+      "name": "sudo",
+      "working_directory": "/home/user01"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb  9 21:21:02 server01 sudo:  user01 : (command continued) '/etc/metricbeat/metricbeat.yml)",
+      "outcome": "success",
+      "start": "2024-02-09T21:21:02.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "user01 : (command continued) '/etc/metricbeat/metricbeat.yml)",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ]
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb  9 21:21:02 server01 sudo: pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+      "outcome": "success",
+      "start": "2024-02-09T21:21:02.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "id": "1000",
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb  9 21:21:02 server01 sudo: pam_unix(sudo:session): session closed for user root",
+      "outcome": "success",
+      "start": "2024-02-09T21:21:02.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session closed for user root",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 10:21:42 server01 sshd[1001]: subsystem request for sftp by user user01",
+      "outcome": "success",
+      "start": "2024-02-22T10:21:42.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "subsystem request for sftp by user user01",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "user": {
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 10:21:43 server01 sshd[1001]: last message repeated 2 times",
+      "outcome": "success",
+      "start": "2024-02-22T10:21:43.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "last message repeated 2 times",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ]
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 10:24:49 server01 sudo:  user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/sh -c echo BECOME-SUCCESS-ippzqmywwjlstxlqlpyxbnzzgeigarma; rc=flag; [ -r /etc/heartbeat/heartbeat.yml ] || rc=2; [ -f /etc/heartbeat/heartbeat.yml ] || rc=1; [ -d /etc/heartbeat/heartbeat.yml ] && rc=3; python -V 2>/dev/null || rc=4; [ x\"$rc\" != \"xflag\" ] && echo \"${rc}  \"/etc/heartbeat/heartbeat.yml && exit 0; (python -c 'import hashlib; BLOCKSIZE = 65536; hasher = hashlib.sha1();#012afile = open(\"'/etc/heartbeat/heartbeat.yml'\", \"rb\")#012buf = afile.read(BLOCKSIZE)#012while len(buf) > 0:#012#011hasher.update(buf)#012#011buf = afile.read(BLOCKSIZE)#012afile.close()#012print(hasher.hexdigest())' 2>/dev/null) || (python -c 'import sha; BLOCKSIZE = 65536; hasher = sha.sha();#012afile = open(\"'/etc/heartbeat/heartbeat.yml'\", \"rb\")#012buf = afile.read(BLOCKSIZE)#012while len(buf) > 0:#012#011hasher.update(buf)#012#011buf = afile.read(BLOCKSIZE)#012afile.close()#012print(hasher.hexdigest())' 2>/dev/null) || (echo '0",
+      "outcome": "success",
+      "start": "2024-02-22T10:24:49.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/sh -c echo BECOME-SUCCESS-ippzqmywwjlstxlqlpyxbnzzgeigarma; rc=flag; [ -r /etc/heartbeat/heartbeat.yml ] || rc=2; [ -f /etc/heartbeat/heartbeat.yml ] || rc=1; [ -d /etc/heartbeat/heartbeat.yml ] && rc=3; python -V 2>/dev/null || rc=4; [ x\"$rc\" != \"xflag\" ] && echo \"${rc}  \"/etc/heartbeat/heartbeat.yml && exit 0; (python -c 'import hashlib; BLOCKSIZE = 65536; hasher = hashlib.sha1();#012afile = open(\"'/etc/heartbeat/heartbeat.yml'\", \"rb\")#012buf = afile.read(BLOCKSIZE)#012while len(buf) > 0:#012#011hasher.update(buf)#012#011buf = afile.read(BLOCKSIZE)#012afile.close()#012print(hasher.hexdigest())' 2>/dev/null) || (python -c 'import sha; BLOCKSIZE = 65536; hasher = sha.sha();#012afile = open(\"'/etc/heartbeat/heartbeat.yml'\", \"rb\")#012buf = afile.read(BLOCKSIZE)#012while len(buf) > 0:#012#011hasher.update(buf)#012#011buf = afile.read(BLOCKSIZE)#012afile.close()#012print(hasher.hexdigest())' 2>/dev/null) || (echo '0",
+    "process": {
+      "command_line": "/bin/sh -c echo BECOME-SUCCESS-ippzqmywwjlstxlqlpyxbnzzgeigarma; rc=flag; [ -r /etc/heartbeat/heartbeat.yml ] || rc=2; [ -f /etc/heartbeat/heartbeat.yml ] || rc=1; [ -d /etc/heartbeat/heartbeat.yml ] && rc=3; python -V 2>/dev/null || rc=4; [ x\"$rc\" != \"xflag\" ] && echo \"${rc}  \"/etc/heartbeat/heartbeat.yml && exit 0; (python -c 'import hashlib; BLOCKSIZE = 65536; hasher = hashlib.sha1();#012afile = open(\"'/etc/heartbeat/heartbeat.yml'\", \"rb\")#012buf = afile.read(BLOCKSIZE)#012while len(buf) > 0:#012#011hasher.update(buf)#012#011buf = afile.read(BLOCKSIZE)#012afile.close()#012print(hasher.hexdigest())' 2>/dev/null) || (python -c 'import sha; BLOCKSIZE = 65536; hasher = sha.sha();#012afile = open(\"'/etc/heartbeat/heartbeat.yml'\", \"rb\")#012buf = afile.read(BLOCKSIZE)#012while len(buf) > 0:#012#011hasher.update(buf)#012#011buf = afile.read(BLOCKSIZE)#012afile.close()#012print(hasher.hexdigest())' 2>/dev/null) || (echo '0",
+      "name": "sudo",
+      "working_directory": "/home/user01"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 10:24:49 server01 sudo: pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+      "outcome": "success",
+      "start": "2024-02-22T10:24:49.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "id": "1000",
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 10:26:52 server01 sshd[1001]: Received disconnect from 192.168.1.1: 11: disconnected by user",
+      "outcome": "success",
+      "start": "2024-02-22T10:26:52.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "Received disconnect from 192.168.1.1: 11: disconnected by user",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ]
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 10:26:52 server01 sshd[1001]: pam_unix(sshd:session): session closed for user user01",
+      "outcome": "success",
+      "start": "2024-02-22T10:26:52.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sshd:session): session closed for user user01",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "user": {
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "ssh_login",
+      "category": [
+        "authentication",
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 10:49:54 server01 sshd[1001]: Accepted publickey for user01 from 192.168.1.1 port 52059 ssh2",
+      "outcome": "success",
+      "start": "2024-02-22T10:49:54.000Z",
+      "type": [
+        "info"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "Accepted publickey for user01 from 192.168.1.1 port 52059 ssh2",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "ip": [
+        "192.168.1.1"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "source": {
+      "address": "192.168.1.1",
+      "domain": "192.168.1.1",
+      "ip": "192.168.1.1",
+      "port": 52059
+    },
+    "user": {
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 10:49:54 server01 sshd[1001]: pam_unix(sshd:session): session opened for user user01 by (uid=0)",
+      "outcome": "success",
+      "start": "2024-02-22T10:49:54.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sshd:session): session opened for user user01 by (uid=0)",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "user": {
+      "id": "0",
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 10:50:01 server01 sudo:  user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/usr/bin/vi /etc/apt/sources.list.d/elastic.list",
+      "outcome": "success",
+      "start": "2024-02-22T10:50:01.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/usr/bin/vi /etc/apt/sources.list.d/elastic.list",
+    "process": {
+      "command_line": "/usr/bin/vi /etc/apt/sources.list.d/elastic.list",
+      "name": "sudo",
+      "working_directory": "/home/user01"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 10:50:17 server01 sudo:  user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/usr/bin/apt-get update",
+      "outcome": "success",
+      "start": "2024-02-22T10:50:17.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/usr/bin/apt-get update",
+    "process": {
+      "command_line": "/usr/bin/apt-get update",
+      "name": "sudo",
+      "working_directory": "/home/user01"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 10:50:17 server01 sudo: pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+      "outcome": "success",
+      "start": "2024-02-22T10:50:17.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "id": "1000",
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 10:50:28 server01 sudo: pam_unix(sudo:session): session closed for user root",
+      "outcome": "success",
+      "start": "2024-02-22T10:50:28.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session closed for user root",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "ssh_login",
+      "category": [
+        "authentication",
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 11:04:28 server01 sshd[1001]: Accepted publickey for user01 from 192.168.1.1 port 52321 ssh2",
+      "outcome": "success",
+      "start": "2024-02-22T11:04:28.000Z",
+      "type": [
+        "info"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "Accepted publickey for user01 from 192.168.1.1 port 52321 ssh2",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "ip": [
+        "192.168.1.1"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "source": {
+      "address": "192.168.1.1",
+      "domain": "192.168.1.1",
+      "ip": "192.168.1.1",
+      "port": 52321
+    },
+    "user": {
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 11:04:28 server01 sshd[1001]: pam_unix(sshd:session): session opened for user user01 by (uid=0)",
+      "outcome": "success",
+      "start": "2024-02-22T11:04:28.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sshd:session): session opened for user user01 by (uid=0)",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "user": {
+      "id": "0",
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 11:04:32 server01 sshd[1001]: Received disconnect from 192.168.1.1: 11: disconnected by user",
+      "outcome": "success",
+      "start": "2024-02-22T11:04:32.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "Received disconnect from 192.168.1.1: 11: disconnected by user",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ]
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 11:04:32 server01 sshd[1001]: pam_unix(sshd:session): session closed for user user01",
+      "outcome": "success",
+      "start": "2024-02-22T11:04:32.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sshd:session): session closed for user user01",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "user": {
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 11:17:01 server01 CRON[1001]: pam_unix(cron:session): session opened for user root by (uid=0)",
+      "outcome": "success",
+      "start": "2024-02-22T11:17:01.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(cron:session): session opened for user root by (uid=0)",
+    "process": {
+      "name": "CRON",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "id": "0",
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 11:17:01 server01 CRON[1001]: pam_unix(cron:session): session closed for user root",
+      "outcome": "success",
+      "start": "2024-02-22T11:17:01.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(cron:session): session closed for user root",
+    "process": {
+      "name": "CRON",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "ssh_login",
+      "category": [
+        "authentication",
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 11:21:21 server01 sshd[1001]: Accepted publickey for user01 from 192.168.1.1 port 52747 ssh2",
+      "outcome": "success",
+      "start": "2024-02-22T11:21:21.000Z",
+      "type": [
+        "info"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "Accepted publickey for user01 from 192.168.1.1 port 52747 ssh2",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "ip": [
+        "192.168.1.1"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "source": {
+      "address": "192.168.1.1",
+      "domain": "192.168.1.1",
+      "ip": "192.168.1.1",
+      "port": 52747
+    },
+    "user": {
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 11:21:21 server01 sshd[1001]: pam_unix(sshd:session): session opened for user user01 by (uid=0)",
+      "outcome": "success",
+      "start": "2024-02-22T11:21:21.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sshd:session): session opened for user user01 by (uid=0)",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "user": {
+      "id": "0",
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 11:21:24 server01 sshd[1001]: Received disconnect from 192.168.1.1: 11: disconnected by user",
+      "outcome": "success",
+      "start": "2024-02-22T11:21:24.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "Received disconnect from 192.168.1.1: 11: disconnected by user",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ]
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 11:21:24 server01 sshd[1001]: pam_unix(sshd:session): session closed for user user01",
+      "outcome": "success",
+      "start": "2024-02-22T11:21:24.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sshd:session): session closed for user user01",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "user": {
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 11:24:43 server01 sudo:  user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/usr/bin/vi /etc/filebeat/filebeat.full.yml",
+      "outcome": "success",
+      "start": "2024-02-22T11:24:43.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/usr/bin/vi /etc/filebeat/filebeat.full.yml",
+    "process": {
+      "command_line": "/usr/bin/vi /etc/filebeat/filebeat.full.yml",
+      "name": "sudo",
+      "working_directory": "/home/user01"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 11:24:43 server01 sudo: pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+      "outcome": "success",
+      "start": "2024-02-22T11:24:43.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "id": "1000",
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 23:17:01 server01 CRON[1001]: pam_unix(cron:session): session opened for user root by (uid=0)",
+      "outcome": "success",
+      "start": "2024-02-22T23:17:01.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(cron:session): session opened for user root by (uid=0)",
+    "process": {
+      "name": "CRON",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "id": "0",
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 23:17:01 server01 CRON[1001]: pam_unix(cron:session): session closed for user root",
+      "outcome": "success",
+      "start": "2024-02-22T23:17:01.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(cron:session): session closed for user root",
+    "process": {
+      "name": "CRON",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 23:29:50 server01 sudo: pam_unix(sudo:session): session closed for user root",
+      "outcome": "success",
+      "start": "2024-02-22T23:29:50.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session closed for user root",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 23:29:50 server01 sshd[1001]: pam_unix(sshd:session): session closed for user user01",
+      "outcome": "success",
+      "start": "2024-02-22T23:29:50.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sshd:session): session closed for user user01",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "user": {
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 23 19:17:01 server01 CRON[1001]: pam_unix(cron:session): session opened for user root by (uid=0)",
+      "outcome": "success",
+      "start": "2024-02-23T19:17:01.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(cron:session): session opened for user root by (uid=0)",
+    "process": {
+      "name": "CRON",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "id": "0",
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 23 19:17:01 server01 CRON[1001]: pam_unix(cron:session): session closed for user root",
+      "outcome": "success",
+      "start": "2024-02-23T19:17:01.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(cron:session): session closed for user root",
+    "process": {
+      "name": "CRON",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "ssh_login",
+      "category": [
+        "authentication",
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 23 19:26:35 server01 sshd[1001]: Accepted publickey for user01 from 192.168.1.1 port 58363 ssh2",
+      "outcome": "success",
+      "start": "2024-02-23T19:26:35.000Z",
+      "type": [
+        "info"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "Accepted publickey for user01 from 192.168.1.1 port 58363 ssh2",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "ip": [
+        "192.168.1.1"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "source": {
+      "address": "192.168.1.1",
+      "domain": "192.168.1.1",
+      "ip": "192.168.1.1",
+      "port": 58363
+    },
+    "user": {
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 23 19:26:35 server01 sshd[1001]: pam_unix(sshd:session): session opened for user user01 by (uid=0)",
+      "outcome": "success",
+      "start": "2024-02-23T19:26:35.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sshd:session): session opened for user user01 by (uid=0)",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "user": {
+      "id": "0",
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 23 20:05:18 server01 sudo:  user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/usr/bin/less /var/log/auth.log",
+      "outcome": "success",
+      "start": "2024-02-23T20:05:18.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/usr/bin/less /var/log/auth.log",
+    "process": {
+      "command_line": "/usr/bin/less /var/log/auth.log",
+      "name": "sudo",
+      "working_directory": "/home/user01"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 23 20:05:18 server01 sudo: pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+      "outcome": "success",
+      "start": "2024-02-23T20:05:18.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "id": "1000",
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 23 20:15:04 server01 sudo: pam_unix(sudo:session): session closed for user root",
+      "outcome": "success",
+      "start": "2024-02-23T20:15:04.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session closed for user root",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 23 20:15:09 server01 sshd[1001]: Received disconnect from 192.168.1.1: 11: disconnected by user",
+      "outcome": "success",
+      "start": "2024-02-23T20:15:09.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "Received disconnect from 192.168.1.1: 11: disconnected by user",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ]
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 23 20:15:09 server01 sshd[1001]: pam_unix(sshd:session): session closed for user user01",
+      "outcome": "success",
+      "start": "2024-02-23T20:15:09.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sshd:session): session closed for user user01",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "user": {
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 23 23:17:01 server01 CRON[1001]: pam_unix(cron:session): session opened for user root by (uid=0)",
+      "outcome": "success",
+      "start": "2024-02-23T23:17:01.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(cron:session): session opened for user root by (uid=0)",
+    "process": {
+      "name": "CRON",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "id": "0",
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 23 23:17:01 server01 CRON[1001]: pam_unix(cron:session): session closed for user root",
+      "outcome": "success",
+      "start": "2024-02-23T23:17:01.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(cron:session): session closed for user root",
+    "process": {
+      "name": "CRON",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "ssh_login",
+      "category": [
+        "authentication",
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:11:15 server01 sshd[1001]: Accepted publickey for user01 from 192.168.1.1 port 60839 ssh2",
+      "outcome": "success",
+      "start": "2024-02-24T00:11:15.000Z",
+      "type": [
+        "info"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "Accepted publickey for user01 from 192.168.1.1 port 60839 ssh2",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "ip": [
+        "192.168.1.1"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "source": {
+      "address": "192.168.1.1",
+      "domain": "192.168.1.1",
+      "ip": "192.168.1.1",
+      "port": 60839
+    },
+    "user": {
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:11:15 server01 sshd[1001]: pam_unix(sshd:session): session opened for user user01 by (uid=0)",
+      "outcome": "success",
+      "start": "2024-02-24T00:11:15.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sshd:session): session opened for user user01 by (uid=0)",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "user": {
+      "id": "0",
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "ssh_login",
+      "category": [
+        "authentication",
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:11:24 server01 sshd[1001]: Accepted publickey for user01 from 192.168.1.1 port 60840 ssh2",
+      "outcome": "success",
+      "start": "2024-02-24T00:11:24.000Z",
+      "type": [
+        "info"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "Accepted publickey for user01 from 192.168.1.1 port 60840 ssh2",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "ip": [
+        "192.168.1.1"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "source": {
+      "address": "192.168.1.1",
+      "domain": "192.168.1.1",
+      "ip": "192.168.1.1",
+      "port": 60840
+    },
+    "user": {
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:11:24 server01 sshd[1001]: pam_unix(sshd:session): session opened for user user01 by (uid=0)",
+      "outcome": "success",
+      "start": "2024-02-24T00:11:24.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sshd:session): session opened for user user01 by (uid=0)",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "user": {
+      "id": "0",
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:11:26 server01 sudo:  user01 : TTY=pts/1 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/bash",
+      "outcome": "success",
+      "start": "2024-02-24T00:11:26.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "user01 : TTY=pts/1 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/bash",
+    "process": {
+      "command_line": "/bin/bash",
+      "name": "sudo",
+      "working_directory": "/home/user01"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:11:26 server01 sudo: pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+      "outcome": "success",
+      "start": "2024-02-24T00:11:26.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "id": "1000",
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "iam"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:12:02 server01 groupadd[1001]: group added to /etc/group: name=user02, GID=1003",
+      "outcome": "success",
+      "start": "2024-02-24T00:12:02.000Z",
+      "type": [
+        "group",
+        "creation"
+      ]
+    },
+    "file": {
+      "name": "/etc/group"
+    },
+    "group": {
+      "id": "1003",
+      "name": "user02"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "group added to /etc/group: name=user02, GID=1003",
+    "process": {
+      "name": "groupadd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ]
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "iam"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:12:02 server01 groupadd[1001]: group added to /etc/gshadow: name=user02",
+      "outcome": "success",
+      "start": "2024-02-24T00:12:02.000Z",
+      "type": [
+        "group",
+        "creation"
+      ]
+    },
+    "file": {
+      "name": "/etc/gshadow"
+    },
+    "group": {
+      "name": "user02"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "group added to /etc/gshadow: name=user02",
+    "process": {
+      "name": "groupadd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ]
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "iam"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:12:02 server01 groupadd[1001]: new group: name=user02, GID=1003",
+      "outcome": "success",
+      "start": "2024-02-24T00:12:02.000Z",
+      "type": [
+        "group",
+        "creation"
+      ]
+    },
+    "group": {
+      "id": "1003",
+      "name": "user02"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "new group: name=user02, GID=1003",
+    "process": {
+      "name": "groupadd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ]
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "iam"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:12:02 server01 useradd[1001]: new user: name=user02, UID=1001, GID=1003, home=/home/user02, shell=/bin/bash",
+      "outcome": "success",
+      "start": "2024-02-24T00:12:02.000Z",
+      "type": [
+        "user",
+        "creation"
+      ]
+    },
+    "group": {
+      "id": "1003"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "new user: name=user02, UID=1001, GID=1003, home=/home/user02, shell=/bin/bash",
+    "process": {
+      "name": "useradd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user02"
+      ]
+    },
+    "user": {
+      "id": "1001",
+      "name": "user02"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "kind": "event",
+      "original": "Feb 24 00:12:07 server01 passwd[1001]: pam_unix(passwd:chauthtok): password changed for user02",
+      "start": "2024-02-24T00:12:07.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(passwd:chauthtok): password changed for user02",
+    "process": {
+      "name": "passwd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ]
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "kind": "event",
+      "original": "Feb 24 00:12:10 server01 chfn[1001]: changed user 'user02' information",
+      "start": "2024-02-24T00:12:10.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "changed user 'user02' information",
+    "process": {
+      "name": "chfn",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ]
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "kind": "event",
+      "original": "Feb 24 00:12:14 server01 su[1001]: Successful su for user02 by root",
+      "start": "2024-02-24T00:12:14.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "Successful su for user02 by root",
+    "process": {
+      "name": "su",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ]
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "kind": "event",
+      "original": "Feb 24 00:12:14 server01 su[1001]: + /dev/pts/1 root:user02",
+      "start": "2024-02-24T00:12:14.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "+ /dev/pts/1 root:user02",
+    "process": {
+      "name": "su",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ]
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "kind": "event",
+      "original": "Feb 24 00:12:14 server01 su[1001]: pam_unix(su:session): session opened for user user02 by user01(uid=0)",
+      "start": "2024-02-24T00:12:14.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(su:session): session opened for user user02 by user01(uid=0)",
+    "process": {
+      "name": "su",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ]
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "authentication"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:12:20 server01 sudo: pam_unix(sudo:auth): authentication failure; logname=user01 uid=1001 euid=0 tty=/dev/pts/1 ruser=user02 rhost=  user=user02",
+      "outcome": "failure",
+      "start": "2024-02-24T00:12:20.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:auth): authentication failure; logname=user01 uid=1001 euid=0 tty=/dev/pts/1 ruser=user02 rhost=  user=user02",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "user": {
+      "effective": {
+        "id": "0"
+      },
+      "id": "1001",
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:12:37 server01 sudo:  user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/cat /var/log/auth.log",
+      "outcome": "success",
+      "start": "2024-02-24T00:12:37.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/cat /var/log/auth.log",
+    "process": {
+      "command_line": "/bin/cat /var/log/auth.log",
+      "name": "sudo",
+      "working_directory": "/home/user01"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:12:37 server01 sudo: pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+      "outcome": "success",
+      "start": "2024-02-24T00:12:37.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "id": "1000",
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:12:37 server01 sudo: pam_unix(sudo:session): session closed for user root",
+      "outcome": "success",
+      "start": "2024-02-24T00:12:37.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session closed for user root",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:12:42 server01 sudo:      user02 : 3 incorrect password attempts ; TTY=pts/1 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/ls",
+      "outcome": "success",
+      "start": "2024-02-24T00:12:42.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "user02 : 3 incorrect password attempts ; TTY=pts/1 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/ls",
+    "process": {
+      "command_line": "/bin/ls",
+      "name": "sudo",
+      "working_directory": "/home/user01"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user02",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "name": "user02"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:12:42 server01 sudo: unable to execute /usr/sbin/sendmail: No such file or directory",
+      "outcome": "success",
+      "start": "2024-02-24T00:12:42.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "unable to execute /usr/sbin/sendmail: No such file or directory",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ]
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:12:50 server01 sudo:  user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/cat /var/log/auth.log",
+      "outcome": "success",
+      "start": "2024-02-24T00:12:50.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/cat /var/log/auth.log",
+    "process": {
+      "command_line": "/bin/cat /var/log/auth.log",
+      "name": "sudo",
+      "working_directory": "/home/user01"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:12:50 server01 sudo: pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+      "outcome": "success",
+      "start": "2024-02-24T00:12:50.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "id": "1000",
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:12:50 server01 sudo: pam_unix(sudo:session): session closed for user root",
+      "outcome": "success",
+      "start": "2024-02-24T00:12:50.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session closed for user root",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:13:02 server01 sudo:      user02 : user NOT in sudoers ; TTY=pts/1 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/ls",
+      "outcome": "success",
+      "start": "2024-02-24T00:13:02.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "user02 : user NOT in sudoers ; TTY=pts/1 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/ls",
+    "process": {
+      "command_line": "/bin/ls",
+      "name": "sudo",
+      "working_directory": "/home/user01"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user02",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "name": "user02"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:13:02 server01 sudo: unable to execute /usr/sbin/sendmail: No such file or directory",
+      "outcome": "success",
+      "start": "2024-02-24T00:13:02.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "unable to execute /usr/sbin/sendmail: No such file or directory",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ]
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:13:06 server01 sudo:  user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/cat /var/log/auth.log",
+      "outcome": "success",
+      "start": "2024-02-24T00:13:06.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/cat /var/log/auth.log",
+    "process": {
+      "command_line": "/bin/cat /var/log/auth.log",
+      "name": "sudo",
+      "working_directory": "/home/user01"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:13:06 server01 sudo: pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+      "outcome": "success",
+      "start": "2024-02-24T00:13:06.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "id": "1000",
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:13:06 server01 sudo: pam_unix(sudo:session): session closed for user root",
+      "outcome": "success",
+      "start": "2024-02-24T00:13:06.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session closed for user root",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:17:01 server01 CRON[1001]: pam_unix(cron:session): session opened for user root by (uid=0)",
+      "outcome": "success",
+      "start": "2024-02-24T00:17:01.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(cron:session): session opened for user root by (uid=0)",
+    "process": {
+      "name": "CRON",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "id": "0",
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:17:01 server01 CRON[1001]: pam_unix(cron:session): session closed for user root",
+      "outcome": "success",
+      "start": "2024-02-24T00:17:01.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(cron:session): session closed for user root",
+    "process": {
+      "name": "CRON",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "kind": "event",
+      "original": "Feb 24 00:45:47 server01 su[1001]: pam_unix(su:session): session closed for user user02",
+      "start": "2024-02-24T00:45:47.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(su:session): session closed for user user02",
+    "process": {
+      "name": "su",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ]
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:45:48 server01 sudo: pam_unix(sudo:session): session closed for user root",
+      "outcome": "success",
+      "start": "2024-02-24T00:45:48.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session closed for user root",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:45:49 server01 sshd[1001]: Received disconnect from 192.168.1.1: 11: disconnected by user",
+      "outcome": "success",
+      "start": "2024-02-24T00:45:49.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "Received disconnect from 192.168.1.1: 11: disconnected by user",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ]
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:45:49 server01 sshd[1001]: pam_unix(sshd:session): session closed for user user01",
+      "outcome": "success",
+      "start": "2024-02-24T00:45:49.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sshd:session): session closed for user user01",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "user": {
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "ssh_login",
+      "category": [
+        "authentication",
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:46:32 server01 sshd[1001]: Accepted publickey for user01 from 192.168.1.1 port 61852 ssh2",
+      "outcome": "success",
+      "start": "2024-02-24T00:46:32.000Z",
+      "type": [
+        "info"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "Accepted publickey for user01 from 192.168.1.1 port 61852 ssh2",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "ip": [
+        "192.168.1.1"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "source": {
+      "address": "192.168.1.1",
+      "domain": "192.168.1.1",
+      "ip": "192.168.1.1",
+      "port": 61852
+    },
+    "user": {
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:46:32 server01 sshd[1001]: pam_unix(sshd:session): session opened for user user01 by (uid=0)",
+      "outcome": "success",
+      "start": "2024-02-24T00:46:32.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sshd:session): session opened for user user01 by (uid=0)",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "user": {
+      "id": "0",
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:46:32 server01 sshd[1001]: Received disconnect from 192.168.1.1: 11: disconnected by user",
+      "outcome": "success",
+      "start": "2024-02-24T00:46:32.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "Received disconnect from 192.168.1.1: 11: disconnected by user",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ]
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:46:32 server01 sshd[1001]: pam_unix(sshd:session): session closed for user user01",
+      "outcome": "success",
+      "start": "2024-02-24T00:46:32.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sshd:session): session closed for user user01",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "user": {
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 01:05:42 server01 sshd[1001]: pam_unix(sshd:session): session closed for user user01",
+      "outcome": "success",
+      "start": "2024-02-24T01:05:42.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sshd:session): session closed for user user01",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "user": {
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 08:17:01 server01 CRON[1001]: pam_unix(cron:session): session opened for user root by (uid=0)",
+      "outcome": "success",
+      "start": "2024-02-24T08:17:01.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(cron:session): session opened for user root by (uid=0)",
+    "process": {
+      "name": "CRON",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "id": "0",
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 08:17:01 server01 CRON[1001]: pam_unix(cron:session): session closed for user root",
+      "outcome": "success",
+      "start": "2024-02-24T08:17:01.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(cron:session): session closed for user root",
+    "process": {
+      "name": "CRON",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:17:01 server01 CRON[1001]: pam_unix(cron:session): session opened for user root by (uid=0)",
+      "outcome": "success",
+      "start": "2024-02-24T09:17:01.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(cron:session): session opened for user root by (uid=0)",
+    "process": {
+      "name": "CRON",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "id": "0",
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:17:01 server01 CRON[1001]: pam_unix(cron:session): session closed for user root",
+      "outcome": "success",
+      "start": "2024-02-24T09:17:01.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(cron:session): session closed for user root",
+    "process": {
+      "name": "CRON",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "ssh_login",
+      "category": [
+        "authentication",
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:18:35 server01 sshd[1001]: Accepted publickey for user01 from 192.168.1.1 port 53513 ssh2",
+      "outcome": "success",
+      "start": "2024-02-24T09:18:35.000Z",
+      "type": [
+        "info"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "Accepted publickey for user01 from 192.168.1.1 port 53513 ssh2",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "ip": [
+        "192.168.1.1"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "source": {
+      "address": "192.168.1.1",
+      "domain": "192.168.1.1",
+      "ip": "192.168.1.1",
+      "port": 53513
+    },
+    "user": {
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:18:35 server01 sshd[1001]: pam_unix(sshd:session): session opened for user user01 by (uid=0)",
+      "outcome": "success",
+      "start": "2024-02-24T09:18:35.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sshd:session): session opened for user user01 by (uid=0)",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "user": {
+      "id": "0",
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:18:40 server01 sudo:  user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/usr/bin/apt-get install nginx",
+      "outcome": "success",
+      "start": "2024-02-24T09:18:40.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/usr/bin/apt-get install nginx",
+    "process": {
+      "command_line": "/usr/bin/apt-get install nginx",
+      "name": "sudo",
+      "working_directory": "/home/user01"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:18:40 server01 sudo: pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+      "outcome": "success",
+      "start": "2024-02-24T09:18:40.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "id": "1000",
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:18:46 server01 sudo: pam_unix(sudo:session): session closed for user root",
+      "outcome": "success",
+      "start": "2024-02-24T09:18:46.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session closed for user root",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:18:53 server01 sudo:  user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/cat /var/log/auth.log",
+      "outcome": "success",
+      "start": "2024-02-24T09:18:53.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/cat /var/log/auth.log",
+    "process": {
+      "command_line": "/bin/cat /var/log/auth.log",
+      "name": "sudo",
+      "working_directory": "/home/user01"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:18:53 server01 sudo: pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+      "outcome": "success",
+      "start": "2024-02-24T09:18:53.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "id": "1000",
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:18:53 server01 sudo: pam_unix(sudo:session): session closed for user root",
+      "outcome": "success",
+      "start": "2024-02-24T09:18:53.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session closed for user root",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:19:04 server01 sudo:  user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/cat /var/log/auth.log",
+      "outcome": "success",
+      "start": "2024-02-24T09:19:04.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/cat /var/log/auth.log",
+    "process": {
+      "command_line": "/bin/cat /var/log/auth.log",
+      "name": "sudo",
+      "working_directory": "/home/user01"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:19:04 server01 sudo: pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+      "outcome": "success",
+      "start": "2024-02-24T09:19:04.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "id": "1000",
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:19:04 server01 sudo: pam_unix(sudo:session): session closed for user root",
+      "outcome": "success",
+      "start": "2024-02-24T09:19:04.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session closed for user root",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:19:09 server01 sudo:  user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/cat /var/log/auth.log",
+      "outcome": "success",
+      "start": "2024-02-24T09:19:09.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/cat /var/log/auth.log",
+    "process": {
+      "command_line": "/bin/cat /var/log/auth.log",
+      "name": "sudo",
+      "working_directory": "/home/user01"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:19:09 server01 sudo: pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+      "outcome": "success",
+      "start": "2024-02-24T09:19:09.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "id": "1000",
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:19:09 server01 sudo: pam_unix(sudo:session): session closed for user root",
+      "outcome": "success",
+      "start": "2024-02-24T09:19:09.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session closed for user root",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:19:29 server01 sudo:  user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/usr/bin/apt-get install user03-server",
+      "outcome": "success",
+      "start": "2024-02-24T09:19:29.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/usr/bin/apt-get install user03-server",
+    "process": {
+      "command_line": "/usr/bin/apt-get install user03-server",
+      "name": "sudo",
+      "working_directory": "/home/user01"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:19:29 server01 sudo: pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+      "outcome": "success",
+      "start": "2024-02-24T09:19:29.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "id": "1000",
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "iam"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:19:55 server01 groupadd[1001]: group added to /etc/group: name=user03, GID=111",
+      "outcome": "success",
+      "start": "2024-02-24T09:19:55.000Z",
+      "type": [
+        "group",
+        "creation"
+      ]
+    },
+    "file": {
+      "name": "/etc/group"
+    },
+    "group": {
+      "id": "111",
+      "name": "user03"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "group added to /etc/group: name=user03, GID=111",
+    "process": {
+      "name": "groupadd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ]
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "iam"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:19:55 server01 groupadd[1001]: group added to /etc/gshadow: name=user03",
+      "outcome": "success",
+      "start": "2024-02-24T09:19:55.000Z",
+      "type": [
+        "group",
+        "creation"
+      ]
+    },
+    "file": {
+      "name": "/etc/gshadow"
+    },
+    "group": {
+      "name": "user03"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "group added to /etc/gshadow: name=user03",
+    "process": {
+      "name": "groupadd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ]
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "iam"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:19:55 server01 groupadd[1001]: new group: name=user03, GID=111",
+      "outcome": "success",
+      "start": "2024-02-24T09:19:55.000Z",
+      "type": [
+        "group",
+        "creation"
+      ]
+    },
+    "group": {
+      "id": "111",
+      "name": "user03"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "new group: name=user03, GID=111",
+    "process": {
+      "name": "groupadd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ]
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "iam"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:19:55 server01 useradd[1001]: new user: name=user03, UID=106, GID=111, home=/nonexistent, shell=/bin/false",
+      "outcome": "success",
+      "start": "2024-02-24T09:19:55.000Z",
+      "type": [
+        "user",
+        "creation"
+      ]
+    },
+    "group": {
+      "id": "111"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "new user: name=user03, UID=106, GID=111, home=/nonexistent, shell=/bin/false",
+    "process": {
+      "name": "useradd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user03"
+      ]
+    },
+    "user": {
+      "id": "106",
+      "name": "user03"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "kind": "event",
+      "original": "Feb 24 09:19:55 server01 chage[1001]: changed password expiry for user03",
+      "start": "2024-02-24T09:19:55.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "changed password expiry for user03",
+    "process": {
+      "name": "chage",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ]
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "kind": "event",
+      "original": "Feb 24 09:19:55 server01 chfn[1001]: changed user 'user03' information",
+      "start": "2024-02-24T09:19:55.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "changed user 'user03' information",
+    "process": {
+      "name": "chfn",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ]
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:20:08 server01 sudo: pam_unix(sudo:session): session closed for user root",
+      "outcome": "success",
+      "start": "2024-02-24T09:20:08.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session closed for user root",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:20:10 server01 sudo:  user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/cat /var/log/auth.log",
+      "outcome": "success",
+      "start": "2024-02-24T09:20:10.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/cat /var/log/auth.log",
+    "process": {
+      "command_line": "/bin/cat /var/log/auth.log",
+      "name": "sudo",
+      "working_directory": "/home/user01"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:20:10 server01 sudo: pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+      "outcome": "success",
+      "start": "2024-02-24T09:20:10.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "id": "1000",
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:20:10 server01 sudo: pam_unix(sudo:session): session closed for user root",
+      "outcome": "success",
+      "start": "2024-02-24T09:20:10.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session closed for user root",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:26:29 server01 sudo:  user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/cat /var/log/auth.log",
+      "outcome": "success",
+      "start": "2024-02-24T09:26:29.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/cat /var/log/auth.log",
+    "process": {
+      "command_line": "/bin/cat /var/log/auth.log",
+      "name": "sudo",
+      "working_directory": "/home/user01"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:26:29 server01 sudo: pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+      "outcome": "success",
+      "start": "2024-02-24T09:26:29.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session opened for user root by user01(uid=1000)",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "id": "1000",
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-off",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:26:29 server01 sudo: pam_unix(sudo:session): session closed for user root",
+      "outcome": "success",
+      "start": "2024-02-24T09:26:29.000Z",
+      "type": [
+        "end"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sudo:session): session closed for user root",
+    "process": {
+      "name": "sudo"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "user": {
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "ssh_login",
+      "category": [
+        "authentication",
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:26:59 server01 sshd[1001]: Accepted publickey for user01 from 192.168.1.1 port 58988 ssh2",
+      "outcome": "success",
+      "start": "2024-02-24T09:26:59.000Z",
+      "type": [
+        "info"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "Accepted publickey for user01 from 192.168.1.1 port 58988 ssh2",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "ip": [
+        "192.168.1.1"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "source": {
+      "address": "192.168.1.1",
+      "domain": "192.168.1.1",
+      "ip": "192.168.1.1",
+      "port": 58988
+    },
+    "user": {
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "logged-on",
+      "category": [
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 09:26:59 server01 sshd[1001]: pam_unix(sshd:session): session opened for user user01 by (uid=0)",
+      "outcome": "success",
+      "start": "2024-02-24T09:26:59.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "pam_unix(sshd:session): session opened for user user01 by (uid=0)",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "user": {
+      "id": "0",
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  }
+]
