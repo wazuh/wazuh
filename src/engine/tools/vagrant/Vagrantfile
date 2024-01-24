@@ -59,6 +59,9 @@ Vagrant.configure("2") do |config|
         su vagrant -c "mkdir build"
         ENGINE_SRC_DIR=$(pwd)
 
+        # Compare dependencies
+        pip3 install --system pandas
+
         # Install engine tools python script
         pip3 install --system $ENGINE_SRC_DIR/tools/engine-suite
 
