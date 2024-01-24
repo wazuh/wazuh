@@ -28,6 +28,7 @@ include_directories(${SRC_FOLDER}/external/rocksdb/include)
 include_directories(${SHARED_MODULES}/utils)
 include_directories(${SHARED_MODULES}/common)
 include_directories(${SHARED_MODULES}/http-request/include)
+include_directories(${SHARED_MODULES}/keystore/include)
 
 # Link directories
 link_directories(${SRC_FOLDER})
@@ -42,7 +43,7 @@ add_library(indexer_connector SHARED
     ${INDEXER_CONNECTOR_SRC}
     )
 
-target_link_libraries(indexer_connector rocksdb urlrequest gcc_s wazuhext)
+target_link_libraries(indexer_connector rocksdb urlrequest gcc_s wazuhext keystore)
 
 set_target_properties(indexer_connector PROPERTIES
         BUILD_RPATH_USE_ORIGIN TRUE
