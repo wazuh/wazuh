@@ -8,7 +8,14 @@ file(GLOB KEYSTORE_SRC
     "src/*.cpp"
     )
 
-include_directories("../include")
+
+if (NOT SRC_FOLDER)
+    get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
+endif()
+
+include_directories(include/)
+include_directories(../utils/)
+include_directories(${SRC_FOLDER}/external/rocksdb/include)
 
 add_library(keystore STATIC
     ${KEYSTORE_SRC}
