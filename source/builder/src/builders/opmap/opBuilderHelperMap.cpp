@@ -1146,12 +1146,12 @@ TransformOp opBuilderHelperEraseCustomFields(const Reference& targetField,
     };
 
     // Return Op
-    return
-        [isCustomField, targetField = targetField.jsonPath(), successTrace](const base::Event& event) -> TransformResult
+    return [runState = buildCtx->runState(), isCustomField, targetField = targetField.jsonPath(), successTrace](
+               base::Event event) -> TransformResult
     {
         // Erase custom fields
         event->eraseIfKey(isCustomField, false, targetField);
-        return base::result::makeSuccess(event, successTrace);
+        RETURN_SUCCESS(runState, event, successTrace);
     };
 }
 
