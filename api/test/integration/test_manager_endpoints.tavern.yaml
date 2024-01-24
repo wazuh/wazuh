@@ -89,6 +89,7 @@ marks:
        - sca
        - syscheck
        - syscollector
+       - vulnerability-detection
        - indexer
 
 stages:
@@ -159,6 +160,7 @@ stages:
               sca: !anything
               syscheck: !anything
               syscollector: !anything
+              vulnerability-detection: !anything
               indexer: !anything
           failed_items: []
           total_affected_items: 1
