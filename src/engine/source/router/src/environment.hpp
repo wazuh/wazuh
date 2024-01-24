@@ -64,6 +64,7 @@ public:
      * @brief Ingest an event into the environment and return the result
      *
      * @param event Event to ingest
+     * @return base::Event the processed event
      */
     base::Event ingestGet(base::Event&& event) const { return m_controller->ingestGet(std::move(event)); }
 
