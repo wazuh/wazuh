@@ -52,8 +52,7 @@ template<typename BackEnd>
 inline void buildIngestTest(const base::Expression& expression, const Path& expected)
 {
     auto counter = 0;
-    auto controller = BackEnd();
-    controller.build(expression, {}, [&]() { ++counter; });
+    auto controller = BackEnd(expression, {}, [&]() { ++counter; });
     auto event = std::make_shared<json::Json>();
     ASSERT_NO_THROW(event = controller.ingestGet(std::move(event)));
 
@@ -857,8 +856,7 @@ struct Subscriber
 template<typename Controller>
 void subscribeTest()
 {
-    Controller c;
-    c.build(EasyExp::term("term", true), {"term"});
+    Controller c(EasyExp::term("term", true), {"term"});
     Subscriber<Controller> s;
     auto subRes = c.subscribe("term", s.getSubscriber());
     ASSERT_FALSE(base::isError(subRes)) << "Error subscribing: " << base::getError(subRes).message;
@@ -874,8 +872,7 @@ TEST(BKTraceTest, Subscribe)
 template<typename Controller>
 void subscribeTraceableNotFoundTest()
 {
-    Controller c;
-    c.build(EasyExp::term("term", true), {"term"});
+    Controller c(EasyExp::term("term", true), {"term"});
     Subscriber<Controller> s;
     auto subRes = c.subscribe("term2", s.getSubscriber());
     ASSERT_TRUE(base::isError(subRes));
@@ -891,8 +888,7 @@ TEST(BKTraceTest, SubscribeTraceableNotFound)
 template<typename Controller>
 void multipleSubscribersTest()
 {
-    Controller c;
-    c.build(EasyExp::term("term", true), {"term"});
+    Controller c(EasyExp::term("term", true), {"term"});
     Subscriber<Controller> s;
     auto subRes = c.subscribe("term", s.getSubscriber());
     ASSERT_FALSE(base::isError(subRes)) << "Error subscribing: " << base::getError(subRes).message;
@@ -910,8 +906,7 @@ TEST(BKTraceTest, MultipleSubscribers)
 template<typename Controller>
 void unsubscribeTest()
 {
-    Controller c;
-    c.build(EasyExp::term("term", true), {"term"});
+    Controller c(EasyExp::term("term", true), {"term"});
     Subscriber<Controller> s;
     auto subRes = c.subscribe("term", s.getSubscriber());
     ASSERT_FALSE(base::isError(subRes)) << "Error subscribing: " << base::getError(subRes).message;
@@ -928,8 +923,7 @@ TEST(BKTraceTest, Unsubscribe)
 template<typename Controller>
 void unsubscribeNotExistsTest()
 {
-    Controller c;
-    c.build(EasyExp::term("term", true), {"term"});
+    Controller c(EasyExp::term("term", true), {"term"});
     Subscriber<Controller> s;
     auto subRes = c.subscribe("term", s.getSubscriber());
     ASSERT_FALSE(base::isError(subRes)) << "Error subscribing: " << base::getError(subRes).message;

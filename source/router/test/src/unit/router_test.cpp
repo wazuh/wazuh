@@ -72,8 +72,7 @@ public:
     {
         std::string hash = "hash";
         makeControllerPolicyAssetsSuccess();
-        EXPECT_CALL(*m_mockControllerMaker, create()).WillOnce(::testing::Return(m_mockController));
-        EXPECT_CALL(*m_mockController, build(testing::_, testing::_));
+        EXPECT_CALL(*m_mockControllerMaker, create(testing::_, testing::_, testing::_)).WillOnce(::testing::Return(m_mockController));
         auto emptyExpression = base::Expression {};
         EXPECT_CALL(*m_mockPolicy, expression()).WillOnce(::testing::ReturnRefOfCopy(emptyExpression));
         EXPECT_CALL(*m_mockPolicy, hash()).WillOnce(::testing::ReturnRefOfCopy(hash));
@@ -86,8 +85,8 @@ public:
     {
         std::string hash = "hash";
         makeControllerPolicyAssetsSuccess();
-        EXPECT_CALL(*m_mockControllerMaker, create()).WillOnce(::testing::Return(m_mockController));
-        EXPECT_CALL(*m_mockController, build(testing::_, testing::_));
+        EXPECT_CALL(*m_mockControllerMaker, create(testing::_, testing::_, testing::_)).WillOnce(::testing::Return(m_mockController));
+
         auto emptyExpression = base::Expression {};
         EXPECT_CALL(*m_mockPolicy, expression()).WillOnce(::testing::ReturnRefOfCopy(emptyExpression));
         EXPECT_CALL(*m_mockPolicy, hash()).WillOnce(::testing::ReturnRefOfCopy(hash));

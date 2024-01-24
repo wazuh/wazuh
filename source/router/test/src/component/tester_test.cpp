@@ -91,8 +91,8 @@ public:
                     }
                 }));
 
-        EXPECT_CALL(*m_mockControllerMaker, create()).WillRepeatedly(testing::Return(m_mockController));
-        EXPECT_CALL(*m_mockController, build(testing::_, testing::_)).WillRepeatedly(::testing::Return());
+        EXPECT_CALL(*m_mockControllerMaker, create(testing::_, testing::_, testing::_))
+            .WillRepeatedly(testing::Return(m_mockController));
 
         m_orchestrator = std::make_shared<router::Orchestrator>(config);
 
@@ -105,8 +105,7 @@ public:
 namespace
 {
 void expectBuildPolicyOk(std::shared_ptr<builder::mocks::MockBuilder> mockbuilder,
-                         std::shared_ptr<builder::mocks::MockPolicy> mockPolicy,
-                         std::shared_ptr<bk::mocks::MockController> mockController)
+                         std::shared_ptr<builder::mocks::MockPolicy> mockPolicy)
 {
     // Build policy controller
     EXPECT_CALL(*mockbuilder, buildPolicy(testing::_)).WillOnce(testing::Return(mockPolicy));
@@ -115,7 +114,6 @@ void expectBuildPolicyOk(std::shared_ptr<builder::mocks::MockBuilder> mockbuilde
     auto emptyExpression = base::Expression {};
     EXPECT_CALL(*mockPolicy, expression()).WillOnce(::testing::ReturnRefOfCopy(emptyExpression));
     EXPECT_CALL(*mockPolicy, hash()).WillOnce(::testing::ReturnRefOfCopy(std::string {"hash"}));
-    EXPECT_CALL(*mockController, build(testing::_, testing::_)).WillOnce(::testing::Return());
 }
 } // namespace
 TEST_F(OrchestratorTesterTest, AddTestEntry)
@@ -125,7 +123,7 @@ TEST_F(OrchestratorTesterTest, AddTestEntry)
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
     // Build Valid policy
-    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_FALSE(m_orchestrator->postTestEntry(entry).has_value());
 
     EXPECT_CALL(*m_mockController, stop()).Times(1);
@@ -139,10 +137,10 @@ TEST_F(OrchestratorTesterTest, AddMultipleTestEntry)
 
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
-    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_FALSE(m_orchestrator->postTestEntry(entry).has_value());
 
-    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_FALSE(m_orchestrator->postTestEntry(entryTwo).has_value());
 
     EXPECT_CALL(*m_mockController, stop()).Times(2);
@@ -155,11 +153,11 @@ TEST_F(OrchestratorTesterTest, AddEqualTestEntry)
 
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
-    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_FALSE(m_orchestrator->postTestEntry(entry).has_value());
     EXPECT_CALL(*m_mockController, stop()).Times(1);
     
-    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_TRUE(m_orchestrator->postTestEntry(entry).has_value());
 
     EXPECT_CALL(*m_mockController, stop()).Times(1);
@@ -181,7 +179,7 @@ TEST_F(OrchestratorTesterTest, DeleteTestEntry)
 
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
-    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_FALSE(m_orchestrator->postTestEntry(entry).has_value());
     EXPECT_CALL(*m_mockController, stop()).Times(1);
 
@@ -197,7 +195,7 @@ TEST_F(OrchestratorTesterTest, DeleteTheEqualTestEntryTwoTimes)
 
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
-    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_FALSE(m_orchestrator->postTestEntry(entry).has_value());
     EXPECT_CALL(*m_mockController, stop()).Times(1);
 
@@ -224,9 +222,9 @@ TEST_F(OrchestratorTesterTest, GetTestEntry)
 
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
-    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_FALSE(m_orchestrator->postTestEntry(entry).has_value());
-    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_FALSE(m_orchestrator->postTestEntry(entryTwo).has_value());
 
     EXPECT_CALL(*m_mockController, stop()).Times(2);
@@ -252,11 +250,11 @@ TEST_F(OrchestratorTesterTest, ReloadTestEntry)
 
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
-    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_FALSE(m_orchestrator->postTestEntry(entry).has_value());
     EXPECT_CALL(*m_mockController, stop()).Times(1);
 
-    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_FALSE(m_orchestrator->reloadTestEntry("test").has_value());
 
     m_orchestrator->stop();
@@ -277,7 +275,7 @@ TEST_F(OrchestratorTesterTest, GetAssetsTestEntry)
 
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
-    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_FALSE(m_orchestrator->postTestEntry(entry).has_value());
     EXPECT_CALL(*m_mockController, stop()).Times(1);
 
@@ -299,7 +297,7 @@ TEST_F(OrchestratorTesterTest, IngestTest)
 
     EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
 
-    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy, m_mockController);
+    expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_FALSE(m_orchestrator->postTestEntry(entry).has_value());
     EXPECT_CALL(*m_mockController, stop()).Times(1);
 
