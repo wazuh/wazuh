@@ -52,8 +52,6 @@ IndexerConnector::IndexerConnector(
     std::string caRootCertificate;
     std::string sslCertificate;
     std::string sslKey;
-    std::string username;
-    std::string password;
 
     auto secureCommunication = SecureCommunication::builder();
 
@@ -76,14 +74,7 @@ IndexerConnector::IndexerConnector(
         }
     }
 
-    if (config.contains("username") && config.contains("password"))
-    {
-        username = config.at("username").get_ref<const std::string&>();
-        password = config.at("password").get_ref<const std::string&>();
-    }
-
-    secureCommunication.basicAuth(username + ":" + password)
-        .sslCertificate(sslCertificate)
+    secureCommunication.sslCertificate(sslCertificate)
         .sslKey(sslKey)
         .caRootCertificate(caRootCertificate);
 
