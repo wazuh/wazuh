@@ -3666,9 +3666,6 @@ components:
         version:
           type: string
           description: "Wazuh version"
-        compilation_date:
-          type: string
-          format: date-time
         type:
           type: string
           description: "Wazuh installation type"
@@ -10255,7 +10252,6 @@ paths:
                   affected_items:
                     - path: /var/ossec
                       version: v4.3.0
-                      compilation_date: "2021-05-27T09:06:48Z"
                       type: server
                       max_agents: unlimited
                       openssl_support: yes
@@ -11932,7 +11928,6 @@ paths:
                   affected_items:
                     - path: /var/ossec
                       version: v4.3.0
-                      compilation_date: "2021-05-27T09:06:48Z"
                       type: server
                       max_agents: unlimited
                       openssl_support: yes

@@ -6,10 +6,11 @@
 from copy import deepcopy
 from typing import Union
 
-from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE, WAZUH_VERSION, AGENT_NAME_LEN_LIMIT, MAX_GROUPS_PER_MULTIGROUP
+from wazuh.core.cluster import __version__
+from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE, AGENT_NAME_LEN_LIMIT, MAX_GROUPS_PER_MULTIGROUP
 
 GENERIC_ERROR_MSG = "Wazuh Internal Error. See log for more detail"
-DOCU_VERSION = 'current' if WAZUH_VERSION == '' else '.'.join(WAZUH_VERSION.split('.')[:2]).lstrip('v')
+DOCU_VERSION = 'current' if __version__ == '' else '.'.join(__version__.split('.')[:2]).lstrip('v')
 
 class WazuhException(Exception):
     """

@@ -57,8 +57,7 @@ stages:
         error: 0
         data:
           affected_items:
-            - compilation_date: !anystr
-              max_agents: !anystr
+            - max_agents: !anystr
               openssl_support: !anystr
               path: !anystr
               type: !anystr
