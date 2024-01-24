@@ -8,3 +8,14 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+
+#include "keyStore.hpp"
+
+
+void Keystore::put(const std::string& columnFamily, const std::string& key, const rocksdb::Slice& value)
+{
+}
+
+void Keystore::get(const std::string& columnFamily, const std::string& key, rocksdb::PinnableSlice& value)
+{
+}
