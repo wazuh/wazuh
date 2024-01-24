@@ -73,6 +73,7 @@ eTester::Sync getHashSatus(const ::router::test::Entry& entry, const std::weak_p
  * @brief Transform a router::test::Entry to a eTester::Session
  *
  * @param entry Entry to transform
+ * @param wPolicyManager Policy manager to get the policy hash
  * @return eTester::Session
  */
 eTester::Session toSession(const ::router::test::Entry& entry, const std::weak_ptr<api::policy::IPolicy>& wPolicyManager)

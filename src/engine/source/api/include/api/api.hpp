@@ -106,8 +106,8 @@ public:
      * This method takes a JSON-formatted request message, processes it, and generates
      * a response. The response is then passed to the provided callback function.
      *
-     * @param message The JSON-formatted request message.
-     * @param callbackFn A callback function that will be invoked with the generated response.
+     * @param wrequest A Wazuh request
+     * @param callbackFn A callback function that will be invoked with the generated response to respond to the request
      *
      */
     void processWazuhRequest(const wpRequest& wrequest, std::function<void(const wpResponse&)> callbackFn)
