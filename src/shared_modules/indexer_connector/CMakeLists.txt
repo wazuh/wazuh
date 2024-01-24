@@ -34,6 +34,7 @@ include_directories(${SHARED_MODULES}/keystore/include)
 link_directories(${SRC_FOLDER})
 link_directories(${SRC_FOLDER}/external/rocksdb/build)
 link_directories(${SHARED_MODULES}/http-request/build)
+link_directories(${SHARED_MODULES}/keystore/build)
 
 file(GLOB INDEXER_CONNECTOR_SRC
     "src/*.cpp"
