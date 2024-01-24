@@ -1,6 +1,6 @@
-FROM nginx
+FROM haproxy
 
-COPY nginx.conf /etc/nginx/nginx.conf
+COPY haproxy.conf /etc/haproxy/haproxy.conf
 
 ADD entrypoint.sh /scripts/entrypoint.sh
 
