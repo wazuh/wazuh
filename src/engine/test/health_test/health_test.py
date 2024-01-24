@@ -53,6 +53,21 @@ def execute_integration_test(github_working_dir, env_dir, os_path, input_file_pa
 
     return parsed_results
 
+def replace_single_quotes(json_obj):
+    if isinstance(json_obj, dict):
+        new_dict = {}
+        for key, value in json_obj.items():
+            if isinstance(key, str):
+                new_key = key.replace("'", "\"")
+                new_dict[new_key] = replace_single_quotes(value)
+            else:
+                new_dict[key] = replace_single_quotes(value)
+        return new_dict
+    elif isinstance(json_obj, list):
+        return [replace_single_quotes(item) for item in json_obj]
+    else:
+        return json_obj
+
 def compare_results(parsed_results, expected_json, input_file_name, mismatches):
     if len(parsed_results) != len(expected_json):
         mismatches.append((input_file_name, 0))
@@ -63,6 +78,7 @@ def compare_results(parsed_results, expected_json, input_file_name, mismatches):
             del event_json['TestSessionID']
         try:
             if event_json != expected_json[i]:
+                print(json.dumps(replace_single_quotes(event_json)))
                 mismatches.append((input_file_name, i))
                 continue
         except json.JSONDecodeError as e:

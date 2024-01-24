@@ -6,95 +6,39 @@
       "type": "wazuh-agent"
     },
     "event": {
-      "dataset": "system-auth",
-      "kind": "event",
-      "module": "system",
-      "original": "Feb  9 21:19:40 precise32 sshd[8317]: subsystem request for sftp by user vagrant",
-      "outcome": "success",
-      "start": "2024-02-09T21:19:40.000Z"
-    },
-    "host": {
-      "hostname": "precise32",
-      "id": "001"
-    },
-    "message": "subsystem request for sftp by user vagrant",
-    "process": {
-      "name": "sshd",
-      "pid": 8317
-    },
-    "related": {
-      "hosts": [
-        "precise32"
-      ],
-      "user": [
-        "vagrant"
-      ]
-    },
-    "user": {
-      "name": "vagrant"
-    },
-    "wazuh": {
-      "decoders": [
-        "syslog",
-        "system-auth"
-      ],
-      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
-      "origin": "/test/auth.log",
-      "queue": 49,
-      "registered_ip": "any",
-      "source": "logcollector"
-    }
-  },
-  {
-    "agent": {
-      "id": "001",
-      "name": "wazuh-agent-1",
-      "type": "wazuh-agent"
-    },
-    "event": {
-      "action": "ssh_login",
       "category": [
-        "authentication",
-        "session"
+        "iam"
       ],
       "dataset": "system-auth",
       "kind": "event",
       "module": "system",
-      "original": "May 24 08:56:54 ubuntu2004 sshd[1238]: Accepted publickey for vagrant from 10.0.2.2 port 56902 ssh2: RSA SHA256:1M4RzhMyWuFS/86uPY/ce2prh/dVTHW7iD2RhpquOZA",
-      "outcome": "success",
-      "start": "2024-05-24T08:56:54.000Z",
+      "original": "Oct 11 09:10:48 server01 useradd[10001]: failed adding user 'user01', exit code: 4",
+      "outcome": "failure",
+      "start": "2024-10-11T09:10:48.000Z",
       "type": [
-        "access",
-        "allowed"
+        "user",
+        "creation"
       ]
     },
     "host": {
-      "hostname": "ubuntu2004",
+      "hostname": "server01",
       "id": "001"
     },
-    "message": "Accepted publickey for vagrant from 10.0.2.2 port 56902 ssh2: RSA SHA256:1M4RzhMyWuFS/86uPY/ce2prh/dVTHW7iD2RhpquOZA",
+    "message": "failed adding user 'user01', exit code: 4",
     "process": {
-      "name": "sshd",
-      "pid": 1238
+      "name": "useradd",
+      "pid": 10001
     },
     "related": {
       "hosts": [
-        "ubuntu2004"
-      ],
-      "ip": [
-        "10.0.2.2"
+        "server01"
       ],
       "user": [
-        "vagrant"
+        "user01"
       ]
     },
-    "source": {
-      "address": "10.0.2.2",
-      "ip": "10.0.2.2",
-      "port": 56902
-    },
     "user": {
-      "name": "vagrant"
+      "name": "user01"
     },
     "wazuh": {
       "decoders": [
@@ -116,38 +60,91 @@
     },
     "event": {
       "category": [
-        "authentication",
-        "session"
+        "iam"
       ],
       "dataset": "system-auth",
       "kind": "event",
       "module": "system",
-      "original": "Feb  9 21:24:37 precise32 sshd[8302]: pam_unix(sshd:session): session closed for user vagrant",
+      "original": "Oct 14 16:49:59 server02 userdel[10002]: delete user 'user02'",
       "outcome": "success",
-      "start": "2024-02-09T21:24:37.000Z",
+      "start": "2024-10-14T16:49:59.000Z",
       "type": [
-        "end"
+        "user",
+        "deletion"
       ]
     },
     "host": {
-      "hostname": "precise32",
+      "hostname": "server02",
       "id": "001"
     },
-    "message": "pam_unix(sshd:session): session closed for user vagrant",
+    "message": "delete user 'user02'",
     "process": {
-      "name": "sshd",
-      "pid": 8302
+      "name": "userdel",
+      "pid": 10002
     },
     "related": {
       "hosts": [
-        "precise32"
+        "server02"
       ],
       "user": [
-        "vagrant"
+        "user02"
       ]
     },
     "user": {
-      "name": "vagrant"
+      "name": "user02"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "iam"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Oct 19 12:54:40 server03 usermod[10003]: change user 'user03' expiration from '2001-01-01' to '2243-10-16'",
+      "outcome": "success",
+      "start": "2024-10-19T12:54:40.000Z",
+      "type": [
+        "user",
+        "change"
+      ]
+    },
+    "host": {
+      "hostname": "server03",
+      "id": "001"
+    },
+    "message": "change user 'user03' expiration from '2001-01-01' to '2243-10-16'",
+    "process": {
+      "name": "usermod",
+      "pid": 10003
+    },
+    "related": {
+      "hosts": [
+        "server03"
+      ],
+      "user": [
+        "user03"
+      ]
+    },
+    "user": {
+      "name": "user03"
     },
     "wazuh": {
       "decoders": [
