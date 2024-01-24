@@ -10,6 +10,10 @@
 namespace router
 {
 
+/**
+ * @brief Interface for the Router API
+ *
+ */
 class IRouterAPI
 {
 public:
@@ -49,11 +53,11 @@ public:
 
     // Testing: Ingest Asynchronous
     virtual base::OptError ingestTest(base::Event&& event,
-                            const test::Options& opt,
-                            std::function<void(base::RespOrError<test::Output>&&)> callbackFn) = 0;
+                                      const test::Options& opt,
+                                      std::function<void(base::RespOrError<test::Output>&&)> callbackFn) = 0;
     virtual base::OptError ingestTest(std::string_view event,
-                            const test::Options& opt,
-                            std::function<void(base::RespOrError<test::Output>&&)> callbackFn) = 0;
+                                      const test::Options& opt,
+                                      std::function<void(base::RespOrError<test::Output>&&)> callbackFn) = 0;
 
     // Get the assets of the policy of the entry
     virtual base::RespOrError<std::unordered_set<std::string>> getAssets(const std::string& name) const = 0;
