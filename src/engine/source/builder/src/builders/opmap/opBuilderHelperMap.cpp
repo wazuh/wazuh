@@ -1020,41 +1020,52 @@ MapOp opBuilderHelperRegexExtract(const std::vector<OpArg>& opArgs, const std::s
     // Parameter type check
     builder::builders::utils::assertRef(opArgs, 0);
     builder::builders::utils::assertValue(opArgs, 1);
+
+    // Get regex
     if (!std::static_pointer_cast<Value>(opArgs[1])->value().isString())
     {
         throw std::runtime_error(fmt::format("Expected 'string' parameter but got type '{}'",
                                              std::static_pointer_cast<Value>(opArgs[1])->value().typeName()));
     }
-
-    // Format name for the tracer
-    const auto name = buildCtx->context().opName;
-
-    const auto refField = *std::static_pointer_cast<Reference>(opArgs[0]);
-
     auto regex_ptr = std::make_shared<RE2>(std::static_pointer_cast<Value>(opArgs[1])->value().getString().value());
     if (!regex_ptr->ok())
     {
-        throw std::runtime_error(fmt::format("\"{}\" function: Error compiling regex \"{}\": {}",
-                                             name,
-                                             std::static_pointer_cast<Value>(opArgs[1])->value().getString().value(),
-                                             regex_ptr->error()));
+        throw std::runtime_error(fmt::format("Invalid regex: {}", regex_ptr->error()));
+    }
+
+    // Get field reference
+    const auto refField = *std::static_pointer_cast<Reference>(opArgs[0]);
+    if (buildCtx->schema().hasField(refField.dotPath()))
+    {
+        auto jType = buildCtx->validator().getJsonType(buildCtx->schema().getType(refField.dotPath()));
+        if (jType != json::Json::Type::String)
+        {
+            throw std::runtime_error(fmt::format("Expected 'string' reference but got reference '{}' of type '{}'",
+                                                 refField.dotPath(),
+                                                 json::Json::typeToStr(jType)));
+        }
     }
 
     // Tracing
-    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
-
-    const std::string failureTrace1 {fmt::format(TRACE_REFERENCE_NOT_FOUND, name, refField.dotPath())};
-    const std::string failureTrace2 {fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, "string", name, refField.dotPath())};
-    const std::string failureTrace3 {fmt::format("[{}] -> Failure: Regex did not match", name)};
+    const auto name = buildCtx->context().opName;
+    const auto successTrace = fmt::format("{} -> Success", name);
+    const auto failureTrace1 = fmt::format("{} -> Reference '{}' not found", name, refField.dotPath());
+    const auto failureTrace2 = fmt::format("{} -> Reference '{}' is not a string", name, refField.dotPath());
+    const auto failureTrace3 = fmt::format("[{}] -> Regex did not match", name);
 
     // Return Op
-    return [=, refField = refField.jsonPath()](base::ConstEvent event) -> MapResult
+    return [=, runState = buildCtx->runState(), refField = refField.jsonPath()](base::ConstEvent event) -> MapResult
     {
+        if (!event->exists(refField))
+        {
+            RETURN_FAILURE(runState, json::Json {}, failureTrace1);
+        }
+
         const auto resolvedField = event->getString(refField);
 
         if (!resolvedField.has_value())
         {
-            return base::result::makeFailure(json::Json {}, (!event->exists(refField)) ? failureTrace1 : failureTrace2);
+            RETURN_FAILURE(runState, json::Json {}, failureTrace2);
         }
 
         std::string match {};
@@ -1063,10 +1074,10 @@ MapOp opBuilderHelperRegexExtract(const std::vector<OpArg>& opArgs, const std::s
             json::Json result;
             result.setString(match);
 
-            return base::result::makeSuccess(result, successTrace);
+            RETURN_SUCCESS(runState, result, successTrace);
         }
 
-        return base::result::makeFailure(json::Json {}, failureTrace3);
+        RETURN_FAILURE(runState, json::Json {}, failureTrace3);
     };
 }
 

@@ -141,6 +141,7 @@ add_executable(builder_utest
     ${UNIT_SRC_DIR}/builders/opmap/map_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/strTransform_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/intCalc_test.cpp
+    ${UNIT_SRC_DIR}/builders/opmap/regex_test.cpp
 
     # Transform Builders
     ${UNIT_SRC_DIR}/builders/optransform/strTransform_test.cpp
