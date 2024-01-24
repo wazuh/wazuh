@@ -13,3 +13,5 @@ include_directories("../include")
 add_library(keystore STATIC
     ${KEYSTORE_SRC}
     )
+
+target_link_libraries(keystore rocksdb)

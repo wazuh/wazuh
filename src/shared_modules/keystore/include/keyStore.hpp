@@ -15,6 +15,7 @@
 
 class Keystore
 {
+public:
     /**
      * Insert or update a key-value pair in the specified column family.
      *
