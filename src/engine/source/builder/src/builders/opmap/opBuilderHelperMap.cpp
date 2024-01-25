@@ -1395,26 +1395,39 @@ MapOp opBuilderHelperIPVersionFromIPStr(const std::vector<OpArg>& opArgs,
     builder::builders::utils::assertRef(opArgs);
 
     const auto& ipRef = *std::static_pointer_cast<Reference>(opArgs[0]);
+    if (buildCtx->schema().hasField(ipRef.dotPath()))
+    {
+        auto sType = buildCtx->schema().getType(ipRef.dotPath());
+        auto jType = buildCtx->validator().getJsonType(sType);
+
+        if (jType != json::Json::Type::String)
+        {
+            throw std::runtime_error(fmt::format("Expected 'string' reference but got reference '{}' of type '{}'",
+                                                 ipRef.dotPath(),
+                                                 json::Json::typeToStr(jType)));
+        }
+    }
 
     // Tracing
     const auto name = buildCtx->context().opName;
-
-    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
-
-    const std::string failureTrace1 {fmt::format(TRACE_REFERENCE_NOT_FOUND, name, ipRef.dotPath())};
-    const std::string failureTrace2 {fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, "string", name, ipRef.dotPath())};
-    const std::string failureTrace3 {fmt::format("[{}] -> Failure: ", name)
-                                     + "The string \"{}\" is not a valid IP address"};
+    const auto successTrace = fmt::format("{} -> Success", name);
+    const auto failureTrace1 = fmt::format("{} -> Reference '{}' not found", name, ipRef.dotPath());
+    const auto failureTrace2 = fmt::format("{} -> Reference '{}' is not a string", name, ipRef.dotPath());
+    const auto failureTrace3 =
+        fmt::format("{} -> Reference '{}' value is not a valid IP address", name, ipRef.dotPath());
 
     // Return Op
-    return [=, name = std::move(name), ipStrPath = ipRef.jsonPath()](base::ConstEvent event) -> MapResult
+    return [=, runState = buildCtx->runState(), ipStrPath = ipRef.jsonPath()](base::ConstEvent event) -> MapResult
     {
+        // Check if reference exists
+        if (!event->exists(ipStrPath))
+        {
+            RETURN_FAILURE(runState, json::Json {}, failureTrace1);
+        }
         const auto strIP = event->getString(ipStrPath);
-
         if (!strIP)
         {
-            return base::result::makeFailure(json::Json {},
-                                             (!event->exists(ipStrPath)) ? failureTrace1 : failureTrace2);
+            RETURN_FAILURE(runState, json::Json {}, failureTrace2);
         }
 
         std::string result;
@@ -1428,13 +1441,12 @@ MapOp opBuilderHelperIPVersionFromIPStr(const std::vector<OpArg>& opArgs,
         }
         else
         {
-            return base::result::makeFailure(
-                json::Json {}, failureTrace3 + fmt::format("The string '{}' is not a valid IP address", strIP.value()));
+            RETURN_FAILURE(runState, json::Json {}, failureTrace3);
         }
 
         json::Json resultJson;
         resultJson.setString(result);
-        return base::result::makeSuccess(resultJson, successTrace);
+        RETURN_SUCCESS(runState, resultJson, successTrace);
     };
 }
 
@@ -1451,12 +1463,11 @@ MapOp opBuilderHelperEpochTimeFromSystem(const std::vector<OpArg>& opArgs,
 
     // Tracing
     const auto name = buildCtx->context().opName;
-
-    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
-    const std::string failureTrace {fmt::format("[{}] -> Failure: Value overflow", name)};
+    const auto successTrace = fmt::format("{} -> Success", name);
+    const auto failureTrace = fmt::format("{} -> Value overflow", name);
 
     // Return Op
-    return [=](base::ConstEvent event) -> MapResult
+    return [=, runState = buildCtx->runState()](base::ConstEvent event) -> MapResult
     {
         auto sec = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch())
                        .count();
@@ -1464,13 +1475,13 @@ MapOp opBuilderHelperEpochTimeFromSystem(const std::vector<OpArg>& opArgs,
         // Number of any type (fix concat helper)
         if (sec > std::numeric_limits<int64_t>::max())
         {
-            return base::result::makeFailure(json::Json {}, failureTrace);
+            RETURN_FAILURE(runState, json::Json {}, failureTrace);
         }
 
         json::Json result;
         result.setInt64(sec);
 
-        return base::result::makeSuccess(result, successTrace);
+        RETURN_SUCCESS(runState, result, successTrace);
     };
 }
 
@@ -1480,56 +1491,55 @@ MapOp opBuilderHelperDateFromEpochTime(const std::vector<OpArg>& opArgs,
 {
     // Check parameters
     builder::builders::utils::assertSize(opArgs, 1);
-    if (opArgs[0]->isValue() && !std::static_pointer_cast<Value>(opArgs[0])->value().isInt64())
+    builder::builders::utils::assertRef(opArgs);
+
+    const auto& epochRef = *std::static_pointer_cast<Reference>(opArgs[0]);
+    if (buildCtx->schema().hasField(epochRef.dotPath()))
     {
-        throw std::runtime_error(fmt::format("Expected 'int64' parameter but got type '{}'",
-                                             std::static_pointer_cast<Value>(opArgs[0])->value().typeName()));
+        auto sType = buildCtx->schema().getType(epochRef.dotPath());
+        auto jType = buildCtx->validator().getJsonType(sType);
+
+        if (jType != json::Json::Type::Number)
+        {
+            throw std::runtime_error(fmt::format("Expected 'number' reference but got reference '{}' of type '{}'",
+                                                 epochRef.dotPath(),
+                                                 json::Json::typeToStr(jType)));
+        }
     }
 
-    const auto name = buildCtx->context().opName;
-    const auto epochParam = opArgs[0];
-
     // Tracing
-    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
-    const std::string failureTrace1 {fmt::format("{} -> Failure, reference not found", name)};
-    const std::string failureTrace2 {fmt::format("{} -> Failure, reference type is not number", name)};
-    const std::string failureTrace3 {fmt::format("[{}] -> Failure: Value overflow", name)};
-    const std::string failureTrace4 {fmt::format("[{}] -> Failure: Couldn't create int from parameter", name)};
+    const auto name = buildCtx->context().opName;
+    const auto successTrace = fmt::format("{} -> Success", name);
+    const auto failureTrace1 = fmt::format("{} -> Reference '{}' not found", name, epochRef.dotPath());
+    const auto failureTrace2 = fmt::format("{} -> Reference '{}' is not a number", name, epochRef.dotPath());
+    const auto failureTrace3 =
+        fmt::format("{} -> Reference '{}' does not hold a valid integer epoch number", name, epochRef.dotPath());
 
     // Return Op
-    return [=, parameter = epochParam](base::ConstEvent event) -> MapResult
+    return [=, runState = buildCtx->runState(), refPath = epochRef.jsonPath()](base::ConstEvent event) -> MapResult
     {
-        int64_t IntResolvedParameter;
-        // Check parameter
-        if (parameter->isReference())
+        // Check if reference exists
+        if (!event->exists(refPath))
         {
-            const auto& ref = std::static_pointer_cast<Reference>(parameter)->jsonPath();
-            const auto paramValue = event->getIntAsInt64(ref);
-            if (paramValue.has_value())
-            {
-                IntResolvedParameter = paramValue.value();
-            }
-            else
-            {
-                return base::result::makeFailure(json::Json {}, (!event->exists(ref) ? failureTrace1 : failureTrace2));
-            }
-        }
-        else
-        {
-            IntResolvedParameter = std::static_pointer_cast<Value>(parameter)->value().getInt64().value();
+            RETURN_FAILURE(runState, json::Json {}, failureTrace1);
         }
 
-        if (IntResolvedParameter < 0 || IntResolvedParameter > std::numeric_limits<int64_t>::max())
+        const auto epoch = event->getIntAsInt64(refPath);
+        if (!epoch.has_value())
         {
-            return base::result::makeFailure(json::Json {}, failureTrace3);
+            RETURN_FAILURE(runState, json::Json {}, failureTrace2);
         }
 
-        date::sys_time<std::chrono::seconds> tp {std::chrono::seconds {IntResolvedParameter}};
+        date::sys_time<std::chrono::seconds> tp {std::chrono::seconds {epoch.value()}};
         auto result = date::format("%Y-%m-%dT%H:%M:%SZ", tp);
+        if (result.empty())
+        {
+            RETURN_FAILURE(runState, json::Json {}, failureTrace3);
+        }
 
         json::Json resultJson;
         resultJson.setString(result);
-        return base::result::makeSuccess(resultJson, successTrace);
+        RETURN_SUCCESS(runState, resultJson, successTrace);
     };
 }
 
