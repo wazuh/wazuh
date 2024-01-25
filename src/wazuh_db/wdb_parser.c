@@ -761,9 +761,9 @@ int wdb_parse(char * input, char * output, int peer) {
             snprintf(path, sizeof(path), "%s/%s.db", WDB2_DIR, wdb->id);
             if (!w_is_file(path)) {
                 mwarn("DB(%s) not found. This behavior is unexpected, the database will be recreated.", path);
-                w_mutex_lock(&pool_mutex);
+                rwlock_lock_write(&pool_mutex);
                 wdb_close(wdb, FALSE);
-                w_mutex_unlock(&pool_mutex);
+                rwlock_unlock(&pool_mutex);
             }
         }
         return result;
@@ -1404,9 +1404,9 @@ int wdb_parse(char * input, char * output, int peer) {
             snprintf(path, sizeof(path), "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
             if (!w_is_file(path)) {
                 mwarn("DB(%s) not found. This behavior is unexpected, the database will be recreated.", path);
-                w_mutex_lock(&pool_mutex);
+                rwlock_lock_write(&pool_mutex);
                 wdb_close(wdb, FALSE);
-                w_mutex_unlock(&pool_mutex);
+                rwlock_unlock(&pool_mutex);
             }
         }
         return result;
