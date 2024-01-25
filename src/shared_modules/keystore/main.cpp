@@ -14,21 +14,26 @@
 
 int main(const int argc, const char* argv[])
 {
+    std::string family;
+    std::string key;
+    std::string value;
+
     try
     {
         CmdLineArgs args(argc, argv);
 
-        std::string family = args.getColumnFamily();
-        std::string key = args.getKey();
-        std::string value = args.getValue();
-
-        Keystore keystore;
-        keystore.put(family, key, value);
+        family = args.getColumnFamily();
+        key = args.getKey();
+        value = args.getValue();
     }
     catch (const std::exception& e)
     {
         CmdLineArgs::showHelp();
         return 1;
     }
+
+    Keystore keystore;
+    keystore.put(family, key, value);
+
     return 0;
 }
