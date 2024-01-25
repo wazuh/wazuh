@@ -65,11 +65,6 @@ Json::Json(const Json& other)
     m_document.CopyFrom(other.m_document, m_document.GetAllocator());
 }
 
-bool Json::operator==(const Json& other) const
-{
-    return m_document == other.m_document;
-}
-
 std::string Json::formatJsonPath(std::string_view dotPath, bool skipDot)
 {
     // TODO: Handle array indices and pointer path operators.
