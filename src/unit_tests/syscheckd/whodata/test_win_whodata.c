@@ -3904,15 +3904,18 @@ void test_restore_audit_policies_command_failed(void **state) {
     expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
     will_return(__wrap_IsFile, 0);
 
-    expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\backup-policies\"");
-    expect_value(__wrap_wm_exec, secs, 5);
-    expect_value(__wrap_wm_exec, add_path, NULL);
-    will_return(__wrap_wm_exec, "OUTPUT COMMAND");
-    will_return(__wrap_wm_exec, -1);
-    will_return(__wrap_wm_exec, -1);
+    int i;
+    int retries = 5;
+    char error_msgs[retries + 1][OS_SIZE_1024];
 
-    expect_string(__wrap__merror, formatted_msg, "(6635): Auditpol backup error: 'failed to execute command'.");
+    for (i = 0;  i <= retries; i++) {
+	    expect_wm_exec("auditpol /restore /file:\"tmp\\backup-policies\"", retries+i, NULL, "OUTPUT COMMAND", -1, -1);
+        expect_string(__wrap__merror, formatted_msg, "(6635): Auditpol backup error: 'failed to execute command'.");
+        snprintf(error_msgs[i], sizeof(error_msgs[i]), "(6955): Auditpol command failed, attempt number: %d", i + 1);
+        expect_string(__wrap__merror, formatted_msg, error_msgs[i]);
+    }
 
+    expect_string(__wrap__merror, formatted_msg, "(6956): After 6 attempts the Auditpol command could not be executed successfully.");
     int ret = restore_audit_policies();
     assert_int_equal(ret, 1);
 }
@@ -3921,15 +3924,19 @@ void test_restore_audit_policies_command2_failed(void **state) {
     expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
     will_return(__wrap_IsFile, 0);
 
-    expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\backup-policies\"");
-    expect_value(__wrap_wm_exec, secs, 5);
-    expect_value(__wrap_wm_exec, add_path, NULL);
-    will_return(__wrap_wm_exec, "OUTPUT COMMAND");
-    will_return(__wrap_wm_exec, -1);
-    will_return(__wrap_wm_exec, 1);
+    int i;
+    int retries = 5;
+    char error_msgs[retries + 1][OS_SIZE_1024];
 
-    expect_string(__wrap__merror, formatted_msg, "(6635): Auditpol backup error: 'time overtaken while running the command'.");
 
+    for (i = 0;  i <= retries; i++) {
+        expect_wm_exec("auditpol /restore /file:\"tmp\\backup-policies\"", retries+i, NULL, "OUTPUT COMMAND", -1, 1);
+        expect_string(__wrap__merror, formatted_msg, "(6635): Auditpol backup error: 'time overtaken while running the command'.");
+        snprintf(error_msgs[i], sizeof(error_msgs[i]), "(6955): Auditpol command failed, attempt number: %d", i + 1);
+        expect_string(__wrap__merror, formatted_msg, error_msgs[i]);
+    }
+
+    expect_string(__wrap__merror, formatted_msg, "(6956): After 6 attempts the Auditpol command could not be executed successfully.");
     int ret = restore_audit_policies();
     assert_int_equal(ret, 1);
 }
@@ -3938,15 +3945,18 @@ void test_restore_audit_policies_command3_failed(void **state) {
     expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
     will_return(__wrap_IsFile, 0);
 
-    expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\backup-policies\"");
-    expect_value(__wrap_wm_exec, secs, 5);
-    expect_value(__wrap_wm_exec, add_path, NULL);
-    will_return(__wrap_wm_exec, "OUTPUT COMMAND");
-    will_return(__wrap_wm_exec, -1);
-    will_return(__wrap_wm_exec, 0);
+    int i;
+    int retries = 5;
+    char error_msgs[retries + 1][OS_SIZE_1024];
 
-    expect_string(__wrap__merror, formatted_msg, "(6635): Auditpol backup error: 'command returned failure'. Output: 'OUTPUT COMMAND'.");
+    for (i = 0;  i <= retries; i++) {
+        expect_wm_exec("auditpol /restore /file:\"tmp\\backup-policies\"", retries+i, NULL, "OUTPUT COMMAND", -1, 0);
+        expect_string(__wrap__merror, formatted_msg, "(6635): Auditpol backup error: 'command returned failure'. Output: 'OUTPUT COMMAND'.");
+        snprintf(error_msgs[i], sizeof(error_msgs[i]), "(6955): Auditpol command failed, attempt number: %d", i + 1);
+        expect_string(__wrap__merror, formatted_msg, error_msgs[i]);
+    }
 
+    expect_string(__wrap__merror, formatted_msg, "(6956): After 6 attempts the Auditpol command could not be executed successfully.");
     int ret = restore_audit_policies();
     assert_int_equal(ret, 1);
 }
@@ -6337,16 +6347,20 @@ void test_run_whodata_scan_no_auto_audit_policies(void **state) {
     expect_string(__wrap_remove, filename, "tmp\\backup-policies");
     will_return(__wrap_remove, 0);
 
-    expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
-    expect_value(__wrap_wm_exec, secs, 5);
-    expect_value(__wrap_wm_exec, add_path, NULL);
-    will_return(__wrap_wm_exec, 1);
-    will_return(__wrap_wm_exec, 0);
+    int i;
+    int retries = 5;
+    char error_msgs[retries + 1][OS_SIZE_1024];
+
+    for (i = 0;  i <= retries; i++) {
+        expect_wm_exec("auditpol /backup /file:\"tmp\\backup-policies\"", retries+i, NULL, NULL, 1, 0);
+        snprintf(error_msgs[i], sizeof(error_msgs[i]), "(6955): Auditpol command failed, attempt number: %d", i + 1);
+        expect_string(__wrap__merror, formatted_msg, error_msgs[i]);
+    }
 
     expect_string(__wrap__merror, formatted_msg,
         "(6915): Audit policies could not be auto-configured due to the Windows version. Check if they are correct for whodata mode.");
-}
 
+}
     expect_string(__wrap__merror, formatted_msg, "(6916): Local audit policies could not be configured.");
 
     ret = run_whodata_scan();
@@ -6600,11 +6614,15 @@ void test_set_policies_fail_getting_policies(void **state) {
     expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
     will_return(__wrap_IsFile, 1);
 
-    expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
-    expect_value(__wrap_wm_exec, secs, 5);
-    expect_value(__wrap_wm_exec, add_path, NULL);
-    will_return(__wrap_wm_exec, 1);
-    will_return(__wrap_wm_exec, 0);
+    int i;
+    int retries = 5;
+    char error_msgs[retries+1][OS_SIZE_1024];
+
+    for (i = 0;  i <= retries; i++) {
+        expect_wm_exec("auditpol /backup /file:\"tmp\\backup-policies\"", retries+i, NULL, NULL, 1, 0);
+        snprintf(error_msgs[i], sizeof(error_msgs[i]), "(6955): Auditpol command failed, attempt number: %d", i + 1);
+        expect_string(__wrap__merror, formatted_msg, error_msgs[i]);
+    }
 
     expect_string(__wrap__merror, formatted_msg,
     "(6915): Audit policies could not be auto-configured due to the Windows version. Check if they are correct for whodata mode.");
@@ -6712,11 +6730,16 @@ void test_set_policies_unable_to_restore_policies(void **state) {
     expect_value(__wrap_fclose, _File, (FILE*)2345);
     will_return(__wrap_fclose, 0);
 
-    expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\new-policies\"");
-    expect_value(__wrap_wm_exec, secs, 5);
-    expect_value(__wrap_wm_exec, add_path, NULL);
-    will_return(__wrap_wm_exec, 1);
-    will_return(__wrap_wm_exec, 0);
+    int i;
+    int retries = 5;
+    char error_msgs[retries+1][OS_SIZE_1024];
+
+    for (i = 0;  i <= retries; i++) {
+        expect_wm_exec("auditpol /restore /file:\"tmp\\new-policies\"", retries+i, NULL, NULL, 1, 0);
+        snprintf(error_msgs[i], sizeof(error_msgs[i]), "(6955): Auditpol command failed, attempt number: %d", i + 1);
+        expect_string(__wrap__merror, formatted_msg, error_msgs[i]);
+    }
+
     expect_string(__wrap__merror, formatted_msg,
         "(6915): Audit policies could not be auto-configured due to the Windows version. Check if they are correct for whodata mode.");
 
@@ -6727,6 +6750,7 @@ void test_set_policies_unable_to_restore_policies(void **state) {
 
     assert_int_equal(ret, 2);
 }
+
 void test_set_policies_success(void **state) {
     int ret;
 
