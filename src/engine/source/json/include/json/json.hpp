@@ -182,7 +182,9 @@ public:
      */
     Json& operator=(const Json& other) = delete;
 
-    bool operator==(const Json& other) const;
+    friend bool operator==(const Json& lhs, const Json& rhs) { return lhs.m_document == rhs.m_document; }
+
+    friend bool operator!=(const Json& lhs, const Json& rhs) { return !(lhs == rhs); }
 
     /************************************************************************************/
     // Static Helpers
