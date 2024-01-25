@@ -23,3 +23,5 @@ add_library(keystore STATIC
     )
 
 target_link_libraries(keystore rocksdb)
+
+add_executable(keystore_tool main.cpp src/keyStore.cpp)
