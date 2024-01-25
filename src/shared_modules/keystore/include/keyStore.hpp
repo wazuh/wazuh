@@ -17,6 +17,8 @@
 #include "rocksDBWrapper.hpp"
 // #include "rsaHelper.hpp" // INCLUDE WHEN IT'S READY
 
+constexpr auto DATABASE_PATH {"queue/keystore"};
+
 class Keystore
 {
 public:

@@ -37,7 +37,15 @@ void Keystore::put(const std::string& columnFamily, const std::string& key, cons
     std::string encryptedValue(encryptedValueVector.begin(), encryptedValueVector.end());
 
     // Insert to DB
-    std::cout << "Original: " << value << std::endl << "Encrypted: " << encryptedValue << std::endl; //MOCK, MUST DELETE
+    Utils::RocksDBWrapper keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
+
+    if (!keystoreDB.columnExists(columnFamily)) {
+        keystoreDB.createColumn(columnFamily);
+    }
+
+    keystoreDB.put(key, rocksdb::Slice(encryptedValue), columnFamily);
+
+    // std::cout << "Original: " << value << std::endl << "Encrypted: " << encryptedValue << std::endl; //MOCK, MUST DELETE
 
 }
 
