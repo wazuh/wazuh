@@ -1552,50 +1552,54 @@ MapOp opBuilderHelperHashSHA1(const std::vector<OpArg>& opArgs, const std::share
 {
     // Assert expected minimun number of parameters
     builder::builders::utils::assertSize(opArgs, 1);
-    if (opArgs[0]->isValue() && !std::static_pointer_cast<Value>(opArgs[0])->value().isString())
+    builder::builders::utils::assertRef(opArgs);
+
+    const auto& ref = *std::static_pointer_cast<Reference>(opArgs[0]);
+    if (buildCtx->schema().hasField(ref.dotPath()))
     {
-        throw std::runtime_error(fmt::format("Expected 'string' parameter but got type '{}'",
-                                             std::static_pointer_cast<Value>(opArgs[0])->value().typeName()));
+        auto sType = buildCtx->schema().getType(ref.dotPath());
+        auto jType = buildCtx->validator().getJsonType(sType);
+
+        if (jType != json::Json::Type::String)
+        {
+            throw std::runtime_error(fmt::format("Expected 'string' reference but got reference '{}' of type '{}'",
+                                                 ref.dotPath(),
+                                                 json::Json::typeToStr(jType)));
+        }
     }
 
-    // Format name for the tracer
-    const auto name = buildCtx->context().opName;
-
     // Tracing
-    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
-    const std::string failureTrace1 {fmt::format("{} -> Failure, reference not found", name)};
-    const std::string failureTrace2 {fmt::format("{} -> Failure, reference type is not string", name)};
-    const std::string failureTrace3 {fmt::format("[{}] -> Failure: Couldn't create HASH from string", name)};
+    const auto name = buildCtx->context().opName;
+    const auto successTrace = fmt::format("{} -> Success", name);
+    const auto failureTrace1 = fmt::format("{} -> Reference '{}' not found", name, ref.dotPath());
+    const auto failureTrace2 = fmt::format("{} -> Reference '{}' is not a string", name, ref.dotPath());
+    const auto failureTrace3 = fmt::format("{} -> Could not hash string", name);
 
     // Return Op
-    return [=, parameter = opArgs[0]](base::ConstEvent event) -> MapResult
+    return [=, runState = buildCtx->runState(), refPath = ref.jsonPath()](base::ConstEvent event) -> MapResult
     {
-        std::string resolvedParameter;
-        // Check parameter
-        if (parameter->isReference())
+        // Check if reference exists
+        if (!event->exists(refPath))
         {
-            const auto& ref = std::static_pointer_cast<Reference>(parameter)->jsonPath();
-            const auto paramValue = event->getString(ref);
-            if (!paramValue.has_value())
-            {
-                return base::result::makeFailure(json::Json {}, (!event->exists(ref) ? failureTrace1 : failureTrace2));
-            }
-            resolvedParameter = paramValue.value();
-        }
-        else
-        {
-            resolvedParameter = std::static_pointer_cast<Value>(parameter)->value().getString().value();
+            RETURN_FAILURE(runState, json::Json {}, failureTrace1);
         }
 
-        const auto resultHash = hashStringSHA1(resolvedParameter);
-        if (!resultHash.has_value())
+        auto str = event->getString(refPath);
+        if (!str.has_value())
         {
-            return base::result::makeFailure(json::Json {}, failureTrace3);
+            RETURN_FAILURE(runState, json::Json {}, failureTrace2);
+        }
+
+        auto resultHash = hashStringSHA1(str.value());
+        if (!resultHash.has_value() || resultHash.value().empty())
+        {
+            RETURN_FAILURE(runState, json::Json {}, failureTrace3);
         }
 
         json::Json resultJson;
-        resultJson.setString(resultHash.value());
-        return base::result::makeSuccess(resultJson, successTrace);
+        resultJson.setString(std::move(resultHash.value()));
+
+        RETURN_SUCCESS(runState, resultJson, successTrace);
     };
 }
 
@@ -1608,91 +1612,119 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
                                            const std::shared_ptr<const IBuildCtx>& buildCtx,
                                            bool isMerge)
 {
+    // TODO: add runtime validation
     // Assert expected number of parameters
     builder::builders::utils::assertSize(opArgs, 2);
     // Parameter type check
     builder::builders::utils::assertRef(opArgs, 1);
-    if (opArgs[0]->isValue() && !std::static_pointer_cast<Value>(opArgs[0])->value().isObject())
+    if (opArgs[0]->isValue())
     {
-        throw std::runtime_error(fmt::format("Expected 'object' parameter but got type '{}'",
-                                             std::static_pointer_cast<Value>(opArgs[0])->value().typeName()));
+        if (!std::static_pointer_cast<Value>(opArgs[0])->value().isObject())
+        {
+            throw std::runtime_error(fmt::format("Expected 'object' parameter but got type '{}'",
+                                                 std::static_pointer_cast<Value>(opArgs[0])->value().typeName()));
+        }
+    }
+    else
+    {
+        const auto& ref = *std::static_pointer_cast<Reference>(opArgs[0]);
+        if (buildCtx->schema().hasField(ref.dotPath()))
+        {
+            auto sType = buildCtx->schema().getType(ref.dotPath());
+            if (sType != schemf::Type::OBJECT)
+            {
+                throw std::runtime_error(fmt::format("Expected 'object' reference but got reference '{}' of type '{}'",
+                                                     ref.dotPath(),
+                                                     schemf::typeToStr(sType)));
+            }
+        }
     }
 
-    const auto name = buildCtx->context().opName;
-
     const auto& keyRef = *std::static_pointer_cast<Reference>(opArgs[1]);
-    // If key field is a schema field, the value should be a string
-    const auto& schema = buildCtx->schema();
-    if (schema.hasField(keyRef.dotPath())
-        && (schema.getType(keyRef.dotPath()) != schemf::Type::KEYWORD
-            && schema.getType(keyRef.dotPath()) != schemf::Type::TEXT
-            && schema.getType(keyRef.dotPath()) != schemf::Type::IP))
+    if (buildCtx->schema().hasField(keyRef.dotPath()))
     {
-        throw std::runtime_error(
-            fmt::format("Engine helper builder: [{}] failed schema validation: Field '{}' value is not a string",
-                        name,
-                        keyRef.dotPath()));
+        auto sType = buildCtx->schema().getType(keyRef.dotPath());
+        auto jType = buildCtx->validator().getJsonType(sType);
+
+        if (jType != json::Json::Type::String)
+        {
+            throw std::runtime_error(fmt::format("Expected 'string' reference but got reference '{}' of type '{}'",
+                                                 keyRef.dotPath(),
+                                                 json::Json::typeToStr(jType)));
+        }
     }
 
     // Tracing
-    const std::string successTrace {fmt::format("[{}] -> Success", name)};
-
-    const std::string failureTrace1 {fmt::format("[{}] -> Failure: Reference '{}' not found", name, keyRef.dotPath())};
-    const std::string failureTrace2 {fmt::format("[{}] -> Failure: Reference Object not found", name)};
-    const std::string failureTrace3 {fmt::format("[{}] -> Failure: Reference Object has an invalid type", name)};
-    const std::string failureTrace4 {fmt::format("[{}] -> Failure: Reference is not an object", name)};
-    const std::string failureTrace5 {
-        fmt::format("[{}] -> Failure: Reference Object does not contain '{}'", name, keyRef.dotPath())};
-    const std::string failureTrace6 {
-        fmt::format("[{}] -> Failure: fields dont match type or type is not supported (array or object)", name)};
+    const auto name = buildCtx->context().opName;
+    const auto successTrace = fmt::format("{} -> Success", name);
+    const auto failureTrace1 = fmt::format("{} -> Reference '{}' not found", name, keyRef.dotPath());
+    const auto failureTrace2 = fmt::format("{} -> Reference '{}' is not a string", name, keyRef.dotPath());
+    const auto failureTrace3 = fmt::format("{} -> Reference Object not found", name);
+    const auto failureTrace4 = fmt::format("{} -> Reference Object has an invalid type", name);
+    const auto failureTrace5 = fmt::format("{} -> Error retreiving key: ", name);
+    const auto failureTrace6 = fmt::format("{} -> Key not found", name);
+    const auto failureTrace7 = fmt::format("{} -> Merge error: ", name);
 
     // Return Op
-    return [=, targetField = targetField.jsonPath(), parameter = opArgs[0], key = keyRef.jsonPath()](
-               const base::Event& event) -> TransformResult
+    return [=,
+            runState = buildCtx->runState(),
+            targetField = targetField.jsonPath(),
+            parameter = opArgs[0],
+            key = keyRef.jsonPath()](base::Event event) -> TransformResult
     {
         // Get key
-        std::string resolvedKey;
-        const auto value = event->getString(key);
-        if (value)
+        if (!event->exists(key))
         {
-            resolvedKey = value.value();
+            RETURN_FAILURE(runState, event, failureTrace1);
         }
-        else
+        const auto resolvedKey = event->getString(key);
+        if (!resolvedKey.has_value())
         {
-            return base::result::makeFailure(event, failureTrace1);
+            RETURN_FAILURE(runState, event, failureTrace2);
         }
 
-        auto pointerPath = json::Json::formatJsonPath(resolvedKey);
+        auto pointerPath = json::Json::formatJsonPath(resolvedKey.value());
 
         // Get object
-        std::optional<json::Json> resolvedValue {std::nullopt};
+        std::optional<json::Json> resolvedObject {std::nullopt};
 
         if (parameter->isReference())
         {
             // Parameter is a reference
-            const auto& refPath = std::static_pointer_cast<Reference>(parameter)->jsonPath();
-            const auto resolvedJson = event->getJson(refPath);
-            if (!resolvedJson.has_value())
+            const auto& ref = *std::static_pointer_cast<Reference>(parameter);
+
+            // Get reference object
+            if (!event->exists(ref.jsonPath()))
             {
-                return base::result::makeFailure(event, (!event->exists(refPath)) ? failureTrace2 : failureTrace3);
+                RETURN_FAILURE(runState, event, failureTrace3);
             }
-            if (!resolvedJson->isObject())
+            resolvedObject = event->getJson(ref.jsonPath());
+            if (!resolvedObject.value().isObject())
             {
-                return base::result::makeFailure(event, failureTrace4);
+                RETURN_FAILURE(runState, event, failureTrace4);
             }
-            resolvedValue = resolvedJson->getJson(pointerPath);
         }
         else
         {
-            // Parameter is a definition
-            const auto& definitionObject = std::static_pointer_cast<Value>(parameter)->value();
-            resolvedValue = definitionObject.getJson(pointerPath);
+            // Parameter is a value
+            resolvedObject = std::static_pointer_cast<Value>(parameter)->value();
         }
 
-        // Check if object contains the key
+        // Get value from object
+        std::optional<json::Json> resolvedValue {std::nullopt};
+
+        try
+        {
+            resolvedValue = resolvedObject->getJson(pointerPath);
+        }
+        catch (const std::exception& e)
+        {
+            RETURN_FAILURE(runState, event, failureTrace5 + e.what());
+        }
+
         if (!resolvedValue.has_value())
         {
-            return base::result::makeFailure(event, failureTrace5);
+            RETURN_FAILURE(runState, event, failureTrace6);
         }
 
         if (!isMerge)
@@ -1707,12 +1739,11 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
             }
             catch (std::runtime_error& e)
             {
-                return base::result::makeFailure(event, failureTrace6);
+                RETURN_FAILURE(runState, event, failureTrace7 + e.what());
             }
-            return base::result::makeSuccess(event, successTrace);
         }
 
-        return base::result::makeSuccess(event, successTrace);
+        RETURN_SUCCESS(runState, event, successTrace);
     };
 }
 
