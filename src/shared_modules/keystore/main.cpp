@@ -28,6 +28,7 @@ int main(const int argc, const char* argv[])
     }
     catch (const std::exception& e)
     {
+        std::cerr << e.what() << std::endl;
         CmdLineArgs::showHelp();
         return 1;
     }
