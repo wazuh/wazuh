@@ -13,11 +13,14 @@
 #define _KEYSTORE_H
 
 #include <string>
+#include <fstream>
 
 #include "rocksDBWrapper.hpp"
 // #include "rsaHelper.hpp" // INCLUDE WHEN IT'S READY
 
 constexpr auto DATABASE_PATH {"queue/keystore"};
+constexpr auto KEYFILE  {"etc/sslmanager.key"};
+constexpr auto CERTFILE {"etc/sslmanager.cert"};
 
 class Keystore
 {

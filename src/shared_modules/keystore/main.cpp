@@ -32,8 +32,15 @@ int main(const int argc, const char* argv[])
         return 1;
     }
 
-    Keystore keystore;
-    keystore.put(family, key, value);
+    try
+    {
+        Keystore keystore;
+        keystore.put(family, key, value);
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << e.what() << std::endl;
+    }
 
     return 0;
 }

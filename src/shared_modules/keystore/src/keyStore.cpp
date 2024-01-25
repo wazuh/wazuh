@@ -28,7 +28,24 @@ void Keystore::put(const std::string& columnFamily, const std::string& key, cons
     std::vector<char> encryptedValueVector;
 
     // Get key from file
-    std::string keyCert("KEY"); // GET KEY FROM sslmanager.cert and sslmanager.key
+    std::string keyCert;
+    
+    std::ifstream keyFile(KEYFILE);
+    if (!keyFile.is_open())
+    {
+        // throw std::runtime_error("Could not open key file: " + std::string(KEYFILE));    // UNCOMMENT LATER
+        keyCert = "KEY";   // DELETE LATER
+    }
+    else
+    {
+        std::string line;
+        while ( std::getline (keyFile,line) )
+        {
+            keyCert.append(line);
+        }
+        keyFile.close();
+    }
+
 
     // Encrypt value
     Utils::rsaEncrypt(keyCert, valueVector, encryptedValueVector);
