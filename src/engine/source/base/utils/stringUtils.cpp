@@ -13,7 +13,10 @@ std::vector<std::string> split(std::string_view str, const char delimiter)
         {
             break;
         }
-        ret.emplace_back(str.substr(0, pos));
+        if (pos > 0)
+        {
+            ret.emplace_back(str.substr(0, pos));
+        }
         str = str.substr(pos + 1);
     }
 
@@ -78,7 +81,7 @@ std::string
 unescapeString(std::string_view str, char escapeChar, const std::string& escapedChars, const bool strictMode)
 {
     std::string result;
-    result.reserve(str.size());  // Reserve memory upfront to avoid reallocations
+    result.reserve(str.size()); // Reserve memory upfront to avoid reallocations
 
     auto it = str.begin();
     while (it != str.end())
@@ -89,7 +92,7 @@ unescapeString(std::string_view str, char escapeChar, const std::string& escaped
             if (nextChar == escapeChar || escapedChars.find(nextChar) != std::string::npos)
             {
                 result += nextChar;
-                ++it;  // Skip the next character since it's already handled
+                ++it; // Skip the next character since it's already handled
             }
             else
             {
