@@ -12,4 +12,4 @@
         - queue_size:
             value: 131072
         - rids_closing_time:
-            value: 60
+            value: 30
