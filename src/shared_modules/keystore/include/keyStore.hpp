@@ -16,11 +16,10 @@
 #include <fstream>
 
 #include "rocksDBWrapper.hpp"
-// #include "rsaHelper.hpp" // INCLUDE WHEN IT'S READY
 
 constexpr auto DATABASE_PATH {"queue/keystore"};
-constexpr auto KEYFILE  {"etc/sslmanager.key"};
-constexpr auto CERTFILE {"etc/sslmanager.cert"};
+constexpr auto PRIVATE_KEY_FILE  {"etc/sslmanager.key"};
+constexpr auto CERTIFICATE_FILE {"etc/sslmanager.cert"};
 
 class Keystore
 {
