@@ -1188,22 +1188,39 @@ TransformOp opBuilderHelperAppendSplitString(const Reference& targetField,
     }
 
     const auto ref = *std::static_pointer_cast<Reference>(opArgs[0]);
-    const auto name = buildCtx->context().opName;
+    if (buildCtx->schema().hasField(ref.dotPath()))
+    {
+        auto jType = buildCtx->validator().getJsonType(buildCtx->schema().getType(ref.dotPath()));
+        if (jType != json::Json::Type::String)
+        {
+            throw std::runtime_error(fmt::format("Expected 'string' reference but got reference '{}' of type '{}'",
+                                                 ref.dotPath(),
+                                                 json::Json::typeToStr(jType)));
+        }
+    }
 
     // Tracing
-    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
-
-    const std::string failureTrace1 {fmt::format(TRACE_REFERENCE_NOT_FOUND, name, ref.dotPath())};
-    const std::string failureTrace2 {fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, "string", name, ref.dotPath())};
+    const auto name = buildCtx->context().opName;
+    const auto successTrace = fmt::format("{} -> Success", name);
+    const auto failureTrace1 = fmt::format("{} -> Reference '{}' not found", name, ref.dotPath());
+    const auto failureTrace2 = fmt::format("{} -> Reference '{}' is not a string", name, ref.dotPath());
 
     // Return Op
-    return [=, targetField = targetField.jsonPath(), fieldReference = ref.jsonPath(), separator = separator[0]](
-               const base::Event& event) -> TransformResult
+    return [=,
+            runState = buildCtx->runState(),
+            targetField = targetField.jsonPath(),
+            fieldReference = ref.jsonPath(),
+            separator = separator[0]](base::Event event) -> TransformResult
     {
+        // Check if reference exists
+        if (!event->exists(fieldReference))
+        {
+            RETURN_FAILURE(runState, event, failureTrace1);
+        }
         const auto resolvedReference = event->getString(fieldReference);
         if (!resolvedReference.has_value())
         {
-            return base::result::makeFailure(event, (!event->exists(fieldReference)) ? failureTrace1 : failureTrace2);
+            RETURN_FAILURE(runState, event, failureTrace2);
         }
 
         const auto splitted = base::utils::string::split(resolvedReference.value(), separator);
@@ -1213,7 +1230,7 @@ TransformOp opBuilderHelperAppendSplitString(const Reference& targetField,
             event->appendString(value, targetField);
         }
 
-        return base::result::makeSuccess(event, successTrace);
+        RETURN_SUCCESS(runState, event, successTrace);
     };
 }
 
