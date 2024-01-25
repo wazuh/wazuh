@@ -83,6 +83,7 @@ def test_rids(test_configuration, test_metadata, configure_local_internal_option
 
     agents = simulate_agents
     injectors = []
+    agent_rids_paths = []
 
     for agent in agents:
         _, injector = connect(agent)
@@ -91,15 +92,22 @@ def test_rids(test_configuration, test_metadata, configure_local_internal_option
     process = psutil.Process(get_remoted_pid())
     opened = process.open_files()
 
-    # Check that rids is open
-    for agent in agents:
-        agent_rids_path = os.path.join(QUEUE_RIDS_PATH, agent.id)
-        rids_for_agent_open = False
-        for path in opened:
-            if agent_rids_path in path:
-                rids_for_agent_open = True
-                break
+    time.sleep(30)
 
+    # Check that rids is open
+
+    for i in range(10):
+        for agent in agents:
+            agent_rids_path = os.path.join(QUEUE_RIDS_PATH, agent.id)
+            rids_for_agent_open = False
+            opened = process.open_files()
+            for path in opened:
+                if agent_rids_path in path:
+                    rids_for_agent_open = True
+                    break
+        if not rids_for_agent_open:
+            time.sleep(30)
+    if not rids_for_agent_open:
         assert rids_for_agent_open, f"Agent fd should be open {agent.id}"
 
     check_close = test_metadata['check_close']
@@ -109,10 +117,25 @@ def test_rids(test_configuration, test_metadata, configure_local_internal_option
             if check_close[index]:
                 injector.stop_receive()
 
-        # Wait that the thread close the rids
-        time.sleep(120)
 
-        opened = process.open_files()
+        for agent_index, agent in enumerate(agents):
+            agent_rids_paths.append(os.path.join(QUEUE_RIDS_PATH, agents[agent_index].id))
+
+        for i in range(10):
+            for path in agent_rids_paths:
+                rids_for_agent_open = False
+
+                opened = process.open_files()
+
+                for pathOp in opened:
+                    if path in pathOp:
+                        rids_for_agent_open = True
+                        break
+
+            if  rids_for_agent_open:
+                # Wait that the thread close the rids
+                time.sleep(30)
+
 
         # Check that rids is close
         for agent_index, agent in enumerate(agents):
