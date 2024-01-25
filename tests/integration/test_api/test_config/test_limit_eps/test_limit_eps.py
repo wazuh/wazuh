@@ -89,7 +89,7 @@ def test_limit_eps(test_configuration, test_metadata, set_wazuh_configuration, a
 
     # Get url and token for the request
     url = get_base_url()
-    authentication_headers, _ = login(password="vLNjwBkDVRgg9W+YYkK+RrpyvGIjrGNX")
+    authentication_headers, _ = login()
     authentication_headers['Content-Type'] = 'application/octet-stream'
 
     # Makes an API request for uploading the new configuration
