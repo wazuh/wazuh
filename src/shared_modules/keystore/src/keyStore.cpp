@@ -10,48 +10,47 @@
  */
 
 #include "keyStore.hpp"
+#include "rsaHelper.hpp"
 
-#include <vector>
-
-namespace Utils{void rsaEncrypt(const std::string& key, std::vector<char>& input, std::vector<char>& output){
-    for(auto& inputs : input){
-        output.push_back(inputs + 5);
-    }
-};} //MOCK FUNCTION DELETE WHEN IT'S READY
-
+#include <array>
 
 void Keystore::put(const std::string& columnFamily, const std::string& key, const std::string& value)
 {
-    //Convert to vector
-    std::vector<char> valueVector(value.begin(), value.end());
+    // Convert to array
+    std::array<unsigned char,128> valueArray;
+    int i = 0;
+    for(auto& chars : value){
+        valueArray[i] = chars;
+        i++;
+    }
+    valueArray[i] = '\0';
 
-    std::vector<char> encryptedValueVector;
+    std::array<unsigned char,256> encryptedValueArray;
 
     // Get key from file
-    std::string keyCert;
+    std::string keyString;
     
-    std::ifstream keyFile(KEYFILE);
+    std::ifstream keyFile(CERTIFICATE_FILE);
     if (!keyFile.is_open())
     {
-        // throw std::runtime_error("Could not open key file: " + std::string(KEYFILE));    // UNCOMMENT LATER
-        keyCert = "KEY";   // DELETE LATER
+        throw std::runtime_error("Could not open key file: " + std::string(CERTIFICATE_FILE));
     }
     else
     {
         std::string line;
         while ( std::getline (keyFile,line) )
         {
-            keyCert.append(line);
+            keyString.append(line);
         }
         keyFile.close();
     }
 
 
-    // Encrypt value
-    Utils::rsaEncrypt(keyCert, valueVector, encryptedValueVector);
+    // // Encrypt value
+    int result = Utils::rsaEncrypt(keyString, valueArray, encryptedValueArray);
 
     // Convert to string/Slice
-    std::string encryptedValue(encryptedValueVector.begin(), encryptedValueVector.end());
+    std::string encryptedValue(encryptedValueArray.begin(), encryptedValueArray.end());
 
     // Insert to DB
     Utils::RocksDBWrapper keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
@@ -62,7 +61,7 @@ void Keystore::put(const std::string& columnFamily, const std::string& key, cons
 
     keystoreDB.put(key, rocksdb::Slice(encryptedValue), columnFamily);
 
-    // std::cout << "Original: " << value << std::endl << "Encrypted: " << encryptedValue << std::endl; //MOCK, MUST DELETE
+    // std::cout << "Original: " << value << std::endl << "Encrypted: " << encryptedValue << std::endl; // DEBUG MUST DELETE
 
 }
 
