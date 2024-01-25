@@ -847,6 +847,8 @@ stages:
         content-type: application/octet-stream
     response:
       status_code: 200
+      json:
+        error: 0
     delay_after: !float "{cluster_sync_delay}"
 
   - name: Request validation
