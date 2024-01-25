@@ -32,7 +32,7 @@ public:
      * @param key The key to be inserted or updated.
      * @param value The corresponding value.
      */
-    void put(const std::string& columnFamily, const std::string& key, const std::string& value);
+    static void put(const std::string& columnFamily, const std::string& key, const std::string& value);
 
     /**
      * Get the key value in the specified column family.
@@ -41,7 +41,7 @@ public:
      * @param key The key to be inserted or updated.
      * @param value The corresponding value to be returned.
      */
-    void get(const std::string& columnFamily, const std::string& key, rocksdb::PinnableSlice& value);
+    static void get(const std::string& columnFamily, const std::string& key, rocksdb::PinnableSlice& value);
 };
 
 #endif // _KEYSTORE_H

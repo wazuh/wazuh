@@ -34,8 +34,7 @@ int main(const int argc, const char* argv[])
 
     try
     {
-        Keystore keystore;
-        keystore.put(family, key, value);
+        Keystore::put(family, key, value);
     }
     catch (const std::exception& e)
     {
