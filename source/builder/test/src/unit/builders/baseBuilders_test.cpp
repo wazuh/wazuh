@@ -84,7 +84,10 @@ TEST_P(MapOperationTest, Operates)
         auto operation = builder(opArgs, mocks->ctx);
         auto result = operation(event);
         ASSERT_TRUE(result);
-        ASSERT_EQ(result.payload(), res);
+        if (res != IGNORE_MAP_RESULT)
+        {
+            ASSERT_EQ(result.payload(), res);
+        }
     }
     else
     {

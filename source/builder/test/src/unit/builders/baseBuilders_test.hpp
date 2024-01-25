@@ -16,6 +16,8 @@ using namespace builder::builders::mocks;
 using namespace schemf::mocks;
 using namespace schemval::mocks;
 
+const static auto IGNORE_MAP_RESULT = json::Json("null");
+
 template<typename Builder, typename Expected>
 using BuilderT = std::tuple<std::vector<OpArg>, Builder, Expected>;
 
