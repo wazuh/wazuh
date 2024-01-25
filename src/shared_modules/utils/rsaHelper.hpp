@@ -17,7 +17,10 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <array>
 
+constexpr int RSA_PUBLIC  {1};
+constexpr int RSA_PRIVATE {0};
 
 namespace Utils
 {
@@ -52,23 +55,26 @@ namespace Utils
      * @param key    The public key string to encrypt the value
      * @param input  The entry to be encrypted
      * @param output The resulting encrypted value
+     * @return       The size of the encrypted output, -1 if error
      */
-    void rsaEncrypt(const std::string& key, std::vector<char>& input, std::vector<char>& output){
+    int rsaEncrypt(const std::string& key, std::array<unsigned char, 128>& input, std::array<unsigned char, 256>& output){
         int result;
+        unsigned char c_output[256];
 
-        if(output.size() < 256){
-            throw std::runtime_error("Ouput vector too small");
-        }
-
-        RSA * rsa = createRSA((unsigned char *)key.c_str(), 1);
+        RSA * rsa = createRSA((unsigned char *)key.c_str(), RSA_PUBLIC);
         if(!rsa){
-            throw std::runtime_error("Failed to obtain RSA");
+            throw std::runtime_error("Failed to obtain RSA for encryption");
         }
 
-        result = RSA_public_encrypt(input.size(), (const unsigned char *)&input[0], (unsigned char *)&output[0], rsa, RSA_PKCS1_PADDING);
-        if(result){
+        result = RSA_public_encrypt(input.size(), input.data(), c_output, rsa, RSA_PKCS1_PADDING);
+        if(result < 0){
             throw std::runtime_error("RSA encryption failed");
         }
+        std::copy(std::begin(c_output), std::end(c_output), output.begin());
+
+        RSA_free(rsa);
+
+        return result;
     }
 
     /**
@@ -77,23 +83,26 @@ namespace Utils
      * @param key    The private key string to encrypt the value
      * @param input  The entry to be decrypted
      * @param output The resulting decrypted value
+     * @return       The size of the decrypted output, -1 if error
      */
-    void rsaDecrypt(const std::string& key, std::vector<char>& input, std::vector<char>& output){
+    int rsaDecrypt(const std::string& key, std::array<unsigned char, 256>& input, std::array<char, 256>& output){
         int result;
+        unsigned char c_output[256];
 
-        if(output.size() < 256){
-            throw std::runtime_error("Ouput vector too small");
-        }
-
-        RSA * rsa = createRSA((unsigned char *)key.c_str(), 0);
+        RSA * rsa = createRSA((unsigned char *)key.c_str(), RSA_PRIVATE);
         if(!rsa){
-            throw std::runtime_error("Failed to obtain RSA");
+            throw std::runtime_error("Failed to obtain RSA for decryption");
         }
 
-        RSA_private_decrypt(input.size(), (const unsigned char *)&input[0], (unsigned char *)&output[0], rsa, RSA_PKCS1_PADDING);
-        if(result){
+        RSA_private_decrypt(input.size(), input.data(), c_output, rsa, RSA_PKCS1_PADDING);
+        if(result < 0){
             throw std::runtime_error("RSA encryption failed");
         }
+        std::copy(std::begin(c_output), std::end(c_output), output.begin());
+
+        RSA_free(rsa);
+
+        return result;
     }
 }
 
