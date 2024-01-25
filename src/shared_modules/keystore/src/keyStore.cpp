@@ -11,9 +11,34 @@
 
 #include "keyStore.hpp"
 
+#include <vector>
 
-void Keystore::put(const std::string& columnFamily, const std::string& key, const rocksdb::Slice& value)
+namespace Utils{void rsaEncrypt(const std::string& key, std::vector<char>& input, std::vector<char>& output){
+    for(auto& inputs : input){
+        output.push_back(inputs + 5);
+    }
+};} //MOCK FUNCTION DELETE WHEN IT'S READY
+
+
+void Keystore::put(const std::string& columnFamily, const std::string& key, const std::string& value)
 {
+    //Convert to vector
+    std::vector<char> valueVector(value.begin(), value.end());
+
+    std::vector<char> encryptedValueVector;
+
+    // Get key from file
+    std::string keyCert("KEY"); // GET KEY FROM sslmanager.cert and sslmanager.key
+
+    // Encrypt value
+    Utils::rsaEncrypt(keyCert, valueVector, encryptedValueVector);
+
+    // Convert to string/Slice
+    std::string encryptedValue(encryptedValueVector.begin(), encryptedValueVector.end());
+
+    // Insert to DB
+    std::cout << "Original: " << value << std::endl << "Encrypted: " << encryptedValue << std::endl; //MOCK, MUST DELETE
+
 }
 
 void Keystore::get(const std::string& columnFamily, const std::string& key, rocksdb::PinnableSlice& value)
