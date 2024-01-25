@@ -22,7 +22,8 @@ add_library(keystore STATIC
     ${KEYSTORE_SRC}
     )
 
-target_link_libraries(keystore rocksdb)
+find_package(OpenSSL REQUIRED)
+target_link_libraries(keystore rocksdb OpenSSL::SSL)
 
 add_executable(wazuh-keystore main.cpp)
 target_link_libraries(wazuh-keystore keystore)
