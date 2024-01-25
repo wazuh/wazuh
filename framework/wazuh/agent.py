@@ -633,7 +633,7 @@ def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None
                             select=select, distinct=distinct, required_fields=GROUP_REQUIRED_FIELDS)
         result.affected_items = data['items']
         result.total_affected_items = query_data['totalItems'] if limit == data['totalItems'] else data['totalItems']
-        
+
     return result
 
 
