@@ -558,11 +558,11 @@ int restore_audit_policies() {
 
     // Get the current policies
     char *cmd_output = NULL;
-    int wm_exec_ret_code, i;
+    int wm_exec_ret_code, i = 0;
     int retries = 5;
     int timeout = 5;
     BOOL cmd_failed;
-    for (i = 0; i <= retries; i++) {
+    do {
         cmd_failed = 0;
         wm_exec_ret_code = wm_exec(command, &cmd_output, &result_code, timeout+i, NULL);
         if (wm_exec_ret_code < 0) {
@@ -579,12 +579,11 @@ int restore_audit_policies() {
             os_free(cmd_output);
             cmd_failed = 1;
         }
-        if (!cmd_failed) {
-            break;
-        } else {
+        if (cmd_failed) {
             merror(FIM_AUDITPOL_ATTEMPT_FAIL, i+1);
         }
-    }
+        i++;
+    } while (i <= retries && cmd_failed);
     
     if (i == retries + 1) {
        merror(FIM_AUDITPOL_FINAL_FAIL, i);
@@ -1274,20 +1273,19 @@ int set_policies() {
     snprintf(command, OS_SIZE_1024, WPOL_BACKUP_COMMAND, WPOL_BACKUP_FILE);
 
     // Get the current policies
-    int wm_exec_ret_code, i;
+    int wm_exec_ret_code, i = 0;
     int retries = 5;
     int timeout = 5;
-    for (i = 0; i <= retries; i++) {
+    do {
         wm_exec_ret_code = wm_exec(command, NULL, &result_code, timeout+i, NULL);
         if (wm_exec_ret_code || result_code) {
             retval = 2;
             merror(FIM_AUDITPOL_ATTEMPT_FAIL, i+1);
-        }
-        else {
+        } else {
             retval = 1;
-            break;
         }
-    }
+        i++;
+    } while (i <= retries && (wm_exec_ret_code || result_code));
 
     if (retval == 2) {
         merror(FIM_WARN_WHODATA_AUTOCONF);
@@ -1316,18 +1314,18 @@ int set_policies() {
 
     snprintf(command, OS_SIZE_1024, WPOL_RESTORE_COMMAND, WPOL_NEW_FILE);
 
-    // Set the new policies 
-    for (i = 0; i <= retries; i++) {
+    // Set the new policies
+    i = 0;
+    do { 
         wm_exec_ret_code = wm_exec(command, NULL, &result_code, timeout+i, NULL);
         if (wm_exec_ret_code || result_code) {
             retval = 2;
             merror(FIM_AUDITPOL_ATTEMPT_FAIL, i+1);
-        }
-        else {
+        } else {
             retval = 1;
-            break;
         }
-    }
+        i++;
+    } while (i <= retries && (wm_exec_ret_code || result_code));
 
     if (retval == 2) {
         merror(FIM_WARN_WHODATA_AUTOCONF);
