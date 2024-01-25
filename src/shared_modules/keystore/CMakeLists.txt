@@ -24,4 +24,5 @@ add_library(keystore STATIC
 
 target_link_libraries(keystore rocksdb)
 
-add_executable(wazuh-keystore main.cpp src/keyStore.cpp)
+add_executable(wazuh-keystore main.cpp)
+target_link_libraries(wazuh-keystore keystore)
