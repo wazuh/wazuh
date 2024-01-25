@@ -89,7 +89,11 @@ private:
             if (currentValue == switchValue && i + 1 < argc)
             {
                 // Switch found
-                return argv[i + 1];
+                std::string returnValue = argv[i + 1];
+                    if(returnValue == "") {
+                        throw std::runtime_error {"Switch value: " + switchValue + " is empty."};
+                    }
+                return returnValue;
             }
         }
 
