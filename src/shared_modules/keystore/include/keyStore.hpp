@@ -9,9 +9,13 @@
  * Foundation.
  */
 
+#ifndef _KEYSTORE_H
+#define _KEYSTORE_H
+
 #include <string>
 
 #include "rocksDBWrapper.hpp"
+// #include "rsaHelper.hpp" // INCLUDE WHEN IT'S READY
 
 class Keystore
 {
@@ -23,7 +27,7 @@ public:
      * @param key The key to be inserted or updated.
      * @param value The corresponding value.
      */
-    void put(const std::string& columnFamily, const std::string& key, const rocksdb::Slice& value);
+    void put(const std::string& columnFamily, const std::string& key, const std::string& value);
 
     /**
      * Get the key value in the specified column family.
@@ -34,3 +38,5 @@ public:
      */
     void get(const std::string& columnFamily, const std::string& key, rocksdb::PinnableSlice& value);
 };
+
+#endif // _KEYSTORE_H
