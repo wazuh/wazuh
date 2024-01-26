@@ -13,13 +13,13 @@ INSTANTIATE_TEST_SUITE_P(
         FilterT({makeValue(R"("str")"), makeValue(R"("str")")}, opfilter::opBuilderHelperRegexMatch, FAILURE()),
         FilterT({makeValue(R"("str")")}, opfilter::opBuilderHelperRegexMatch, SUCCESS()),
         FilterT({makeRef("ref")}, opfilter::opBuilderHelperRegexMatch, FAILURE()),
-        FilterT({makeValue(R"("InvalidRegex[")")}, opfilter::opBuilderHelperRegexMatch, FAILURE(ctxExpected())),
+        FilterT({makeValue(R"("InvalidRegex[")")}, opfilter::opBuilderHelperRegexMatch, FAILURE()),
         /*** RegexNotMatch ***/
         FilterT({}, opfilter::opBuilderHelperRegexNotMatch, FAILURE()),
         FilterT({makeValue(R"("str")"), makeValue(R"("str")")}, opfilter::opBuilderHelperRegexNotMatch, FAILURE()),
         FilterT({makeValue(R"("str")")}, opfilter::opBuilderHelperRegexNotMatch, SUCCESS()),
         FilterT({makeRef("ref")}, opfilter::opBuilderHelperRegexNotMatch, FAILURE()),
-        FilterT({makeValue(R"("InvalidRegex[")")}, opfilter::opBuilderHelperRegexNotMatch, FAILURE(ctxExpected()))),
+        FilterT({makeValue(R"("InvalidRegex[")")}, opfilter::opBuilderHelperRegexNotMatch, FAILURE())),
     testNameFormatter<FilterBuilderTest>("Regex"));
 } // namespace filterbuildtest
 
