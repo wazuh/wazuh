@@ -10,7 +10,6 @@
  */
 
 #include "keyStore.hpp"
-#include "rsaHelper.hpp"
 
 
 void Keystore::put(const std::string& columnFamily, const std::string& key, const rocksdb::Slice& value)
