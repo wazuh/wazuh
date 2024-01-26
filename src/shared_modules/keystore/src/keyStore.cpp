@@ -9,60 +9,50 @@
  * Foundation.
  */
 
+#include <array>
+
 #include "keyStore.hpp"
 #include "rsaHelper.hpp"
+#include "loggerHelper.h"
 
-#include <array>
+constexpr auto KS_NAME {"keystore"};
+
+namespace Log
+{
+    std::function<void(
+        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
+    GLOBAL_LOG_FUNCTION;
+};
 
 void Keystore::put(const std::string& columnFamily, const std::string& key, const std::string& value)
 {
-    // Convert to array
-    std::array<unsigned char,128> valueArray;
-    int i = 0;
-    for(auto& chars : value){
-        valueArray[i] = chars;
-        i++;
-    }
-    valueArray[i] = '\0';
+    std::string encryptedValue;
 
-    std::array<unsigned char,256> encryptedValueArray;
-
-    // Get key from file
-    std::string keyString;
-    
-    std::ifstream keyFile(CERTIFICATE_FILE);
-    if (!keyFile.is_open())
+    // Encrypt value
+    try
     {
-        throw std::runtime_error("Could not open key file: " + std::string(CERTIFICATE_FILE));
+        int encrypted_len = Utils::rsaEncrypt(CERTIFICATE_FILE, value, encryptedValue, true);
     }
-    else
+    catch (std::exception& e)
     {
-        std::string line;
-        while ( std::getline (keyFile,line) )
-        {
-            keyString.append(line);
-        }
-        keyFile.close();
+        logError(KS_NAME, "%s", e.what());
     }
-
-
-    // // Encrypt value
-    int result = Utils::rsaEncrypt(keyString, valueArray, encryptedValueArray);
-
-    // Convert to string/Slice
-    std::string encryptedValue(encryptedValueArray.begin(), encryptedValueArray.end());
 
     // Insert to DB
-    Utils::RocksDBWrapper keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
+    try
+    {
+        Utils::RocksDBWrapper keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
 
-    if (!keystoreDB.columnExists(columnFamily)) {
-        keystoreDB.createColumn(columnFamily);
+        if (!keystoreDB.columnExists(columnFamily)) {
+            keystoreDB.createColumn(columnFamily);
+        }
+
+        keystoreDB.put(key, rocksdb::Slice(encryptedValue), columnFamily);
     }
-
-    keystoreDB.put(key, rocksdb::Slice(encryptedValue), columnFamily);
-
-    // std::cout << "Original: " << value << std::endl << "Encrypted: " << encryptedValue << std::endl; // DEBUG MUST DELETE
-
+    catch (std::exception& e)
+    {
+        logError(KS_NAME, "%s", e.what());
+    }
 }
 
 void Keystore::get(const std::string& columnFamily, const std::string& key, rocksdb::PinnableSlice& value)
