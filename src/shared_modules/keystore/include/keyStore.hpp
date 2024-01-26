@@ -39,7 +39,7 @@ public:
      * @param key The key to be inserted or updated.
      * @param value The corresponding value to be returned.
      */
-    static void get(const std::string& columnFamily, const std::string& key, rocksdb::PinnableSlice& value);
+    static void get(const std::string& columnFamily, const std::string& key, std::string& value);
 };
 
 #endif // _KEYSTORE_H
