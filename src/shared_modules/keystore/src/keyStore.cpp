@@ -50,7 +50,7 @@ void Keystore::get(const std::string& columnFamily, const std::string& key, std:
         Utils::RocksDBWrapper keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
 
         if(!keystoreDB.columnExists(columnFamily)) {
-            logError("Column %s does not exists in the database.", columnFamily);
+            logError(KS_NAME, "Column %d does not exists in the database.", columnFamily.c_str());
             return;
         }
 
