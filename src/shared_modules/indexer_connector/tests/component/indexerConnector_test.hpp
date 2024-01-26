@@ -26,7 +26,7 @@ class IndexerConnectorTest : public ::testing::Test
 {
 protected:
     IndexerConnectorTest() = default;
-    ~IndexerConnectorTest() = default;
+    ~IndexerConnectorTest() override = default;
 
     std::vector<std::unique_ptr<FakeIndexer>> m_indexerServers; ///< List of indexer servers.
 

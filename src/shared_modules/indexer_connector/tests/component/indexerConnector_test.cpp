@@ -89,7 +89,12 @@ static void logFunction(const int logLevel,
                         va_list args)
 {
     std::ignore = logLevel;
+    std::ignore = tag;
+    std::ignore = file;
+    std::ignore = line;
+    std::ignore = func;
     std::ignore = logMessage;
+    std::ignore = args;
 }
 
 void IndexerConnectorTest::SetUp()
@@ -150,7 +155,8 @@ TEST_F(IndexerConnectorTest, Connection)
     // Callback used to check if the indexer connector is correctly initialized.
     // This callback should be called twice: The first time to initialize the template and the second one to initialize
     // the index.
-    nlohmann::json indexData, templateData;
+    nlohmann::json indexData;
+    nlohmann::json templateData;
     unsigned int callbackCalled {0};
     const auto checkInitDataCallback {[&callbackCalled, &indexData, &templateData](const std::string& data)
                                       {
@@ -284,6 +290,7 @@ TEST_F(IndexerConnectorTest, ConnectionInitTemplateErrorFromServer)
     auto callbackCalled {false};
     const auto forceErrorCallback {[&callbackCalled](const std::string& data)
                                    {
+                                       std::ignore = data;
                                        callbackCalled = true;
                                        throw std::runtime_error {"Forced server error"};
                                    }};
@@ -308,6 +315,7 @@ TEST_F(IndexerConnectorTest, ConnectionInitIndexErrorFromServer)
     auto callbackCalled {false};
     const auto forceErrorCallback {[&callbackCalled](const std::string& data)
                                    {
+                                       std::ignore = data;
                                        callbackCalled = true;
                                        throw std::runtime_error {"Forced server error"};
                                    }};
@@ -413,6 +421,7 @@ TEST_F(IndexerConnectorTest, PublishUnavailableServer)
     auto callbackCalled {false};
     const auto checkPublishedData {[&callbackCalled](const std::string& data)
                                    {
+                                       std::ignore = data;
                                        callbackCalled = true;
                                    }};
     m_indexerServers[B_IDX]->setPublishCallback(checkPublishedData);
@@ -440,6 +449,7 @@ TEST_F(IndexerConnectorTest, PublishInvalidData)
     auto callbackCalled {false};
     const auto checkCallbackCalled {[&callbackCalled](const std::string& data)
                                     {
+                                        std::ignore = data;
                                         callbackCalled = true;
                                     }};
     m_indexerServers[A_IDX]->setPublishCallback(checkCallbackCalled);
@@ -500,7 +510,7 @@ TEST_F(IndexerConnectorTest, PublishTwoIndexes)
     ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
     ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS));
 
-    // Publish content to INDEX_ID_B and wait until is finished..
+    // Publish content to INDEX_ID_B and wait until is finished.
     const auto INDEX_DATA_B = R"({"contentB":true})"_json;
     publishData["id"] = INDEX_ID_B;
     publishData["data"] = INDEX_DATA_B;
@@ -531,6 +541,7 @@ TEST_F(IndexerConnectorTest, PublishErrorFromServer)
     auto callbackCalled {false};
     const auto forceErrorCallback {[&callbackCalled](const std::string& data)
                                    {
+                                       std::ignore = data;
                                        callbackCalled = true;
                                        throw std::runtime_error {"Forced server error"};
                                    }};

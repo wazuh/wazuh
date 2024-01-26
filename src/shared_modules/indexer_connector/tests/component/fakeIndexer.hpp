@@ -13,7 +13,6 @@
 #define _FAKE_INDEXER_HPP
 
 #include <external/cpp-httplib/httplib.h>
-#include <external/nlohmann/json.hpp>
 #include <functional>
 #include <sstream>
 #include <string>
@@ -29,7 +28,9 @@ private:
     httplib::Server m_server;
     std::thread m_thread;
     int m_port;
-    std::string m_host, m_health, m_indexName;
+    std::string m_host;
+    std::string m_health;
+    std::string m_indexName;
     bool m_indexerInitialized = false;
     std::function<void(const std::string&)> m_initTemplateCallback = {};
     std::function<void(const std::string&)> m_initIndexCallback = {};
@@ -46,9 +47,9 @@ public:
      */
     FakeIndexer(std::string host, int port, std::string health, std::string indexName)
         : m_thread(&FakeIndexer::run, this)
+        , m_port(port)
         , m_host(std::move(host))
         , m_health(std::move(health))
-        , m_port(port)
         , m_indexName(std::move(indexName))
     {
         // Wait until server is ready.
@@ -74,7 +75,7 @@ public:
      */
     void setHealth(std::string health)
     {
-        m_health = health;
+        m_health = std::move(health);
     }
 
     /**
@@ -84,7 +85,7 @@ public:
      */
     void setPublishCallback(std::function<void(const std::string&)> callback)
     {
-        m_publishCallback = callback;
+        m_publishCallback = std::move(callback);
     }
 
     /**
@@ -94,7 +95,7 @@ public:
      */
     void setInitIndexCallback(std::function<void(const std::string&)> callback)
     {
-        m_initIndexCallback = callback;
+        m_initIndexCallback = std::move(callback);
     }
 
     /**
@@ -104,7 +105,7 @@ public:
      */
     void setInitTemplateCallback(std::function<void(const std::string&)> callback)
     {
-        m_initTemplateCallback = callback;
+        m_initTemplateCallback = std::move(callback);
     }
 
     /**
@@ -131,6 +132,7 @@ public:
             "/_cat/health",
             [this](const httplib::Request& req, httplib::Response& res)
             {
+                std::ignore = req;
                 std::stringstream ss;
                 ss << "epoch      timestamp cluster            status node.total node.data discovered_cluster_manager "
                       "shards pri relo init unassign pending_tasks max_task_wait_time active_shards_percent\n";
@@ -200,7 +202,7 @@ public:
                       });
 
         m_server.set_keep_alive_max_count(1);
-        m_server.listen(m_host.c_str(), m_port);
+        m_server.listen(m_host, m_port);
     }
 };
 
