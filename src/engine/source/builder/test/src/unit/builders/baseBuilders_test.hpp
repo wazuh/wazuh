@@ -65,6 +65,9 @@ protected:
         EXPECT_CALL(*mocks->ctx, context()).Times(testing::AtLeast(1));
         EXPECT_CALL(*mocks->ctx, runState()).Times(testing::AtLeast(1));
     }
+
+public:
+    virtual ~BaseBuilderTest() = default;
 };
 
 template<typename TestClass>
@@ -92,15 +95,6 @@ auto makeRef(Args&&... args)
     return std::make_shared<Reference>(std::forward<Args>(args)...);
 }
 
-inline auto ctxExpected()
-{
-    return [](const Mocks& mocks)
-    {
-        EXPECT_CALL(*mocks.ctx, context());
-        return None {};
-    };
-}
-
 namespace filterbuildtest
 {
 using SuccessExpected = InnerExpected<None, const Mocks&>;
@@ -111,9 +105,7 @@ static auto FAILURE = Expc::failure();
 
 using FilterT = BuilderT<FilterBuilder, Expc>;
 
-class FilterBuilderTest : public BaseBuilderTest<FilterT>
-{
-};
+using FilterBuilderTest = BaseBuilderTest<FilterT>;
 } // namespace filterbuildtest
 
 namespace filteroperatestest
@@ -126,9 +118,7 @@ static auto FAILURE = Expc::failure();
 
 using FilterT = OperationT<FilterBuilder, Expc>;
 
-class FilterOperationTest : public BaseBuilderTest<FilterT>
-{
-};
+using FilterOperationTest = BaseBuilderTest<FilterT>;
 } // namespace filteroperatestest
 
 namespace mapbuildtest
@@ -141,9 +131,7 @@ static auto FAILURE = Expc::failure();
 
 using MapT = BuilderT<MapBuilder, Expc>;
 
-class MapBuilderTest : public BaseBuilderTest<MapT>
-{
-};
+using MapBuilderTest = BaseBuilderTest<MapT>;
 } // namespace mapbuildtest
 
 namespace mapoperatestest
@@ -171,9 +159,7 @@ static auto FAILURE = Expc::failure();
 
 using TransformT = BuilderT<TransformBuilder, Expc>;
 
-class TransformBuilderTest : public BaseBuilderTest<TransformT>
-{
-};
+using TransformBuilderTest = BaseBuilderTest<TransformT>;
 } // namespace transformbuildtest
 
 namespace transformoperatestest
@@ -186,9 +172,7 @@ static auto FAILURE = Expc::failure();
 
 using TransformT = OperationT<TransformBuilder, Expc>;
 
-class TransformOperationTest : public BaseBuilderTest<TransformT>
-{
-};
+using TransformOperationTest = BaseBuilderTest<TransformT>;
 } // namespace transformoperatestest
 
 #endif // _BUILDER_TEST_BASEBUILDERS_HPP

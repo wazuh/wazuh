@@ -18,10 +18,6 @@ auto typeRefExpected(schemf::Type type, bool success = true)
 {
     return [=](const Mocks& mocks)
     {
-        if (!success)
-        {
-            EXPECT_CALL(*mocks.ctx, context());
-        }
         EXPECT_CALL(*mocks.ctx, schema()).Times(testing::AtLeast(1));
         EXPECT_CALL(*mocks.schema, hasField(DotPath("ref"))).WillOnce(testing::Return(true));
         EXPECT_CALL(*mocks.schema, getType(DotPath("ref"))).WillRepeatedly(testing::Return(type));
@@ -39,18 +35,18 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Values(
         /*** IntEqual ***/
         // Wrong number of arguments
-        FilterT({makeValue("1"), makeValue("1")}, opfilter::opBuilderHelperIntEqual, FAILURE(ctxExpected())),
-        FilterT({}, opfilter::opBuilderHelperIntEqual, FAILURE(ctxExpected())),
+        FilterT({makeValue("1"), makeValue("1")}, opfilter::opBuilderHelperIntEqual, FAILURE()),
+        FilterT({}, opfilter::opBuilderHelperIntEqual, FAILURE()),
         // Values
         FilterT({makeValue("1")}, opfilter::opBuilderHelperIntEqual, SUCCESS()),
-        FilterT({makeValue(R"("1")")}, opfilter::opBuilderHelperIntEqual, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(1.1)")}, opfilter::opBuilderHelperIntEqual, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(1.0)")}, opfilter::opBuilderHelperIntEqual, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(true)")}, opfilter::opBuilderHelperIntEqual, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(false)")}, opfilter::opBuilderHelperIntEqual, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"([])")}, opfilter::opBuilderHelperIntEqual, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"({})")}, opfilter::opBuilderHelperIntEqual, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(null)")}, opfilter::opBuilderHelperIntEqual, FAILURE(ctxExpected())),
+        FilterT({makeValue(R"("1")")}, opfilter::opBuilderHelperIntEqual, FAILURE()),
+        FilterT({makeValue(R"(1.1)")}, opfilter::opBuilderHelperIntEqual, FAILURE()),
+        FilterT({makeValue(R"(1.0)")}, opfilter::opBuilderHelperIntEqual, FAILURE()),
+        FilterT({makeValue(R"(true)")}, opfilter::opBuilderHelperIntEqual, FAILURE()),
+        FilterT({makeValue(R"(false)")}, opfilter::opBuilderHelperIntEqual, FAILURE()),
+        FilterT({makeValue(R"([])")}, opfilter::opBuilderHelperIntEqual, FAILURE()),
+        FilterT({makeValue(R"({})")}, opfilter::opBuilderHelperIntEqual, FAILURE()),
+        FilterT({makeValue(R"(null)")}, opfilter::opBuilderHelperIntEqual, FAILURE()),
         // References
         FilterT({makeRef("ref")}, opfilter::opBuilderHelperIntEqual, SUCCESS(customRefExpected())),
         FilterT({makeRef("ref")}, opfilter::opBuilderHelperIntEqual, SUCCESS(typeRefExpected(schemf::Type::INTEGER))),
@@ -59,18 +55,18 @@ INSTANTIATE_TEST_SUITE_P(
                 FAILURE(typeRefExpected(schemf::Type::TEXT, false))),
         /*** IntGreaterThan ***/
         // Wrong number of arguments
-        FilterT({makeValue("1"), makeValue("1")}, opfilter::opBuilderHelperIntGreaterThan, FAILURE(ctxExpected())),
-        FilterT({}, opfilter::opBuilderHelperIntGreaterThan, FAILURE(ctxExpected())),
+        FilterT({makeValue("1"), makeValue("1")}, opfilter::opBuilderHelperIntGreaterThan, FAILURE()),
+        FilterT({}, opfilter::opBuilderHelperIntGreaterThan, FAILURE()),
         // Values
         FilterT({makeValue("1")}, opfilter::opBuilderHelperIntGreaterThan, SUCCESS()),
-        FilterT({makeValue(R"("1")")}, opfilter::opBuilderHelperIntGreaterThan, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(1.1)")}, opfilter::opBuilderHelperIntGreaterThan, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(1.0)")}, opfilter::opBuilderHelperIntGreaterThan, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(true)")}, opfilter::opBuilderHelperIntGreaterThan, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(false)")}, opfilter::opBuilderHelperIntGreaterThan, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"([])")}, opfilter::opBuilderHelperIntGreaterThan, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"({})")}, opfilter::opBuilderHelperIntGreaterThan, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(null)")}, opfilter::opBuilderHelperIntGreaterThan, FAILURE(ctxExpected())),
+        FilterT({makeValue(R"("1")")}, opfilter::opBuilderHelperIntGreaterThan, FAILURE()),
+        FilterT({makeValue(R"(1.1)")}, opfilter::opBuilderHelperIntGreaterThan, FAILURE()),
+        FilterT({makeValue(R"(1.0)")}, opfilter::opBuilderHelperIntGreaterThan, FAILURE()),
+        FilterT({makeValue(R"(true)")}, opfilter::opBuilderHelperIntGreaterThan, FAILURE()),
+        FilterT({makeValue(R"(false)")}, opfilter::opBuilderHelperIntGreaterThan, FAILURE()),
+        FilterT({makeValue(R"([])")}, opfilter::opBuilderHelperIntGreaterThan, FAILURE()),
+        FilterT({makeValue(R"({})")}, opfilter::opBuilderHelperIntGreaterThan, FAILURE()),
+        FilterT({makeValue(R"(null)")}, opfilter::opBuilderHelperIntGreaterThan, FAILURE()),
         // References
         FilterT({makeRef("ref")}, opfilter::opBuilderHelperIntGreaterThan, SUCCESS(customRefExpected())),
         FilterT({makeRef("ref")},
@@ -81,18 +77,18 @@ INSTANTIATE_TEST_SUITE_P(
                 FAILURE(typeRefExpected(schemf::Type::TEXT, false))),
         /*** IntGreaterThanOrEqual ***/
         // Wrong number of arguments
-        FilterT({makeValue("1"), makeValue("1")}, opfilter::opBuilderHelperIntGreaterThanEqual, FAILURE(ctxExpected())),
-        FilterT({}, opfilter::opBuilderHelperIntGreaterThanEqual, FAILURE(ctxExpected())),
+        FilterT({makeValue("1"), makeValue("1")}, opfilter::opBuilderHelperIntGreaterThanEqual, FAILURE()),
+        FilterT({}, opfilter::opBuilderHelperIntGreaterThanEqual, FAILURE()),
         // Values
         FilterT({makeValue("1")}, opfilter::opBuilderHelperIntGreaterThanEqual, SUCCESS()),
-        FilterT({makeValue(R"("1")")}, opfilter::opBuilderHelperIntGreaterThanEqual, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(1.1)")}, opfilter::opBuilderHelperIntGreaterThanEqual, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(1.0)")}, opfilter::opBuilderHelperIntGreaterThanEqual, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(true)")}, opfilter::opBuilderHelperIntGreaterThanEqual, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(false)")}, opfilter::opBuilderHelperIntGreaterThanEqual, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"([])")}, opfilter::opBuilderHelperIntGreaterThanEqual, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"({})")}, opfilter::opBuilderHelperIntGreaterThanEqual, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(null)")}, opfilter::opBuilderHelperIntGreaterThanEqual, FAILURE(ctxExpected())),
+        FilterT({makeValue(R"("1")")}, opfilter::opBuilderHelperIntGreaterThanEqual, FAILURE()),
+        FilterT({makeValue(R"(1.1)")}, opfilter::opBuilderHelperIntGreaterThanEqual, FAILURE()),
+        FilterT({makeValue(R"(1.0)")}, opfilter::opBuilderHelperIntGreaterThanEqual, FAILURE()),
+        FilterT({makeValue(R"(true)")}, opfilter::opBuilderHelperIntGreaterThanEqual, FAILURE()),
+        FilterT({makeValue(R"(false)")}, opfilter::opBuilderHelperIntGreaterThanEqual, FAILURE()),
+        FilterT({makeValue(R"([])")}, opfilter::opBuilderHelperIntGreaterThanEqual, FAILURE()),
+        FilterT({makeValue(R"({})")}, opfilter::opBuilderHelperIntGreaterThanEqual, FAILURE()),
+        FilterT({makeValue(R"(null)")}, opfilter::opBuilderHelperIntGreaterThanEqual, FAILURE()),
         // References
         FilterT({makeRef("ref")}, opfilter::opBuilderHelperIntGreaterThanEqual, SUCCESS(customRefExpected())),
         FilterT({makeRef("ref")},
@@ -103,18 +99,18 @@ INSTANTIATE_TEST_SUITE_P(
                 FAILURE(typeRefExpected(schemf::Type::TEXT, false))),
         /*** IntLessThan ***/
         // Wrong number of arguments
-        FilterT({makeValue("1"), makeValue("1")}, opfilter::opBuilderHelperIntLessThan, FAILURE(ctxExpected())),
-        FilterT({}, opfilter::opBuilderHelperIntLessThan, FAILURE(ctxExpected())),
+        FilterT({makeValue("1"), makeValue("1")}, opfilter::opBuilderHelperIntLessThan, FAILURE()),
+        FilterT({}, opfilter::opBuilderHelperIntLessThan, FAILURE()),
         // Values
         FilterT({makeValue("1")}, opfilter::opBuilderHelperIntLessThan, SUCCESS()),
-        FilterT({makeValue(R"("1")")}, opfilter::opBuilderHelperIntLessThan, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(1.1)")}, opfilter::opBuilderHelperIntLessThan, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(1.0)")}, opfilter::opBuilderHelperIntLessThan, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(true)")}, opfilter::opBuilderHelperIntLessThan, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(false)")}, opfilter::opBuilderHelperIntLessThan, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"([])")}, opfilter::opBuilderHelperIntLessThan, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"({})")}, opfilter::opBuilderHelperIntLessThan, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(null)")}, opfilter::opBuilderHelperIntLessThan, FAILURE(ctxExpected())),
+        FilterT({makeValue(R"("1")")}, opfilter::opBuilderHelperIntLessThan, FAILURE()),
+        FilterT({makeValue(R"(1.1)")}, opfilter::opBuilderHelperIntLessThan, FAILURE()),
+        FilterT({makeValue(R"(1.0)")}, opfilter::opBuilderHelperIntLessThan, FAILURE()),
+        FilterT({makeValue(R"(true)")}, opfilter::opBuilderHelperIntLessThan, FAILURE()),
+        FilterT({makeValue(R"(false)")}, opfilter::opBuilderHelperIntLessThan, FAILURE()),
+        FilterT({makeValue(R"([])")}, opfilter::opBuilderHelperIntLessThan, FAILURE()),
+        FilterT({makeValue(R"({})")}, opfilter::opBuilderHelperIntLessThan, FAILURE()),
+        FilterT({makeValue(R"(null)")}, opfilter::opBuilderHelperIntLessThan, FAILURE()),
         // References
         FilterT({makeRef("ref")}, opfilter::opBuilderHelperIntLessThan, SUCCESS(customRefExpected())),
         FilterT({makeRef("ref")},
@@ -125,18 +121,18 @@ INSTANTIATE_TEST_SUITE_P(
                 FAILURE(typeRefExpected(schemf::Type::TEXT, false))),
         /*** IntLessThanOrEqual ***/
         // Wrong number of arguments
-        FilterT({makeValue("1"), makeValue("1")}, opfilter::opBuilderHelperIntLessThanEqual, FAILURE(ctxExpected())),
-        FilterT({}, opfilter::opBuilderHelperIntLessThanEqual, FAILURE(ctxExpected())),
+        FilterT({makeValue("1"), makeValue("1")}, opfilter::opBuilderHelperIntLessThanEqual, FAILURE()),
+        FilterT({}, opfilter::opBuilderHelperIntLessThanEqual, FAILURE()),
         // Values
         FilterT({makeValue("1")}, opfilter::opBuilderHelperIntLessThanEqual, SUCCESS()),
-        FilterT({makeValue(R"("1")")}, opfilter::opBuilderHelperIntLessThanEqual, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(1.1)")}, opfilter::opBuilderHelperIntLessThanEqual, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(1.0)")}, opfilter::opBuilderHelperIntLessThanEqual, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(true)")}, opfilter::opBuilderHelperIntLessThanEqual, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(false)")}, opfilter::opBuilderHelperIntLessThanEqual, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"([])")}, opfilter::opBuilderHelperIntLessThanEqual, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"({})")}, opfilter::opBuilderHelperIntLessThanEqual, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(null)")}, opfilter::opBuilderHelperIntLessThanEqual, FAILURE(ctxExpected())),
+        FilterT({makeValue(R"("1")")}, opfilter::opBuilderHelperIntLessThanEqual, FAILURE()),
+        FilterT({makeValue(R"(1.1)")}, opfilter::opBuilderHelperIntLessThanEqual, FAILURE()),
+        FilterT({makeValue(R"(1.0)")}, opfilter::opBuilderHelperIntLessThanEqual, FAILURE()),
+        FilterT({makeValue(R"(true)")}, opfilter::opBuilderHelperIntLessThanEqual, FAILURE()),
+        FilterT({makeValue(R"(false)")}, opfilter::opBuilderHelperIntLessThanEqual, FAILURE()),
+        FilterT({makeValue(R"([])")}, opfilter::opBuilderHelperIntLessThanEqual, FAILURE()),
+        FilterT({makeValue(R"({})")}, opfilter::opBuilderHelperIntLessThanEqual, FAILURE()),
+        FilterT({makeValue(R"(null)")}, opfilter::opBuilderHelperIntLessThanEqual, FAILURE()),
         // References
         FilterT({makeRef("ref")}, opfilter::opBuilderHelperIntLessThanEqual, SUCCESS(customRefExpected())),
         FilterT({makeRef("ref")},
@@ -147,18 +143,18 @@ INSTANTIATE_TEST_SUITE_P(
                 FAILURE(typeRefExpected(schemf::Type::TEXT, false))),
         /*** IntNotEqual ***/
         // Wrong number of arguments
-        FilterT({makeValue("1"), makeValue("1")}, opfilter::opBuilderHelperIntNotEqual, FAILURE(ctxExpected())),
-        FilterT({}, opfilter::opBuilderHelperIntNotEqual, FAILURE(ctxExpected())),
+        FilterT({makeValue("1"), makeValue("1")}, opfilter::opBuilderHelperIntNotEqual, FAILURE()),
+        FilterT({}, opfilter::opBuilderHelperIntNotEqual, FAILURE()),
         // Values
         FilterT({makeValue("1")}, opfilter::opBuilderHelperIntNotEqual, SUCCESS()),
-        FilterT({makeValue(R"("1")")}, opfilter::opBuilderHelperIntNotEqual, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(1.1)")}, opfilter::opBuilderHelperIntNotEqual, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(1.0)")}, opfilter::opBuilderHelperIntNotEqual, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(true)")}, opfilter::opBuilderHelperIntNotEqual, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(false)")}, opfilter::opBuilderHelperIntNotEqual, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"([])")}, opfilter::opBuilderHelperIntNotEqual, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"({})")}, opfilter::opBuilderHelperIntNotEqual, FAILURE(ctxExpected())),
-        FilterT({makeValue(R"(null)")}, opfilter::opBuilderHelperIntNotEqual, FAILURE(ctxExpected())),
+        FilterT({makeValue(R"("1")")}, opfilter::opBuilderHelperIntNotEqual, FAILURE()),
+        FilterT({makeValue(R"(1.1)")}, opfilter::opBuilderHelperIntNotEqual, FAILURE()),
+        FilterT({makeValue(R"(1.0)")}, opfilter::opBuilderHelperIntNotEqual, FAILURE()),
+        FilterT({makeValue(R"(true)")}, opfilter::opBuilderHelperIntNotEqual, FAILURE()),
+        FilterT({makeValue(R"(false)")}, opfilter::opBuilderHelperIntNotEqual, FAILURE()),
+        FilterT({makeValue(R"([])")}, opfilter::opBuilderHelperIntNotEqual, FAILURE()),
+        FilterT({makeValue(R"({})")}, opfilter::opBuilderHelperIntNotEqual, FAILURE()),
+        FilterT({makeValue(R"(null)")}, opfilter::opBuilderHelperIntNotEqual, FAILURE()),
         // References
         FilterT({makeRef("ref")}, opfilter::opBuilderHelperIntNotEqual, SUCCESS(customRefExpected())),
         FilterT({makeRef("ref")},
