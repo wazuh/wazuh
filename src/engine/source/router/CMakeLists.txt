@@ -31,7 +31,7 @@ target_include_directories(router_router
 target_link_libraries(router_router
     PUBLIC
     router::irouter
-    builder2::ibuilder
+    builder::ibuilder
     bk::ibk
     queue::iqueue
 
