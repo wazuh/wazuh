@@ -19,90 +19,170 @@
 #include <vector>
 #include <array>
 
-constexpr int RSA_PUBLIC  {1};
 constexpr int RSA_PRIVATE {0};
+constexpr int RSA_PUBLIC  {1};
+constexpr int RSA_CERT    {2};
 
 namespace Utils
 {
-    static RSA * createRSA(unsigned char * key,int pub)
+    /**
+     * Extracts the public key from a X.509 certificate
+     *
+     * @param certFile  The file pointer to the certificate 
+     * @return          The RSA structure
+     */
+    static RSA * getPubKeyFromCert(FILE *certFile)
     {
-        RSA *rsa= NULL;
-        BIO *keybio ;
+        // Read the X.509 certificate from the file
+        X509 *x509Certificate = PEM_read_X509(certFile, NULL, NULL, NULL);
 
-        keybio = BIO_new_mem_buf(key, -1);
-        if (keybio==NULL)
-        {
-            return 0;
+        if (!x509Certificate) {
+            throw std::runtime_error("Error reading X.509 certificate");
         }
 
-        if(pub)
-        {
-            rsa = PEM_read_bio_RSA_PUBKEY(keybio, &rsa,NULL, NULL);
-        }
-        else
-        {
-            rsa = PEM_read_bio_RSAPrivateKey(keybio, &rsa,NULL, NULL);
+        // Extract the public key from the X.509 certificate
+        EVP_PKEY *evpPublicKey = X509_get_pubkey(x509Certificate);
+
+        if (!evpPublicKey) {
+            throw std::runtime_error("Error reading public key");
         }
 
-        BIO_free(keybio);
+        RSA *rsaPublicKey;
+        // Check the type of key
+        if (EVP_PKEY_base_id(evpPublicKey) == EVP_PKEY_RSA) {
+            // Extract RSA structure from the EVP_PKEY
+            rsaPublicKey = EVP_PKEY_get1_RSA(evpPublicKey);
 
-        return rsa;
+            if (!rsaPublicKey) {
+                EVP_PKEY_free(evpPublicKey);
+                throw std::runtime_error("Error extracting RSA public key from EVP_PKEY");
+            }
+
+        } else {
+            throw std::runtime_error("Unsupported key type");
+        }
+
+        EVP_PKEY_free(evpPublicKey);
+
+        return rsaPublicKey;
+    }
+
+
+    /**
+     * Creates the RSA structure from a certificate or key file
+     *
+     * @param filePath  The path to the file key string to encrypt the value
+     * @param type      The type of file (RSA_PRIVATE, RSA_PUBLIC, RSA_CERT)
+     * @return          The size of the encrypted output, -1 if error
+     */
+    static RSA * createRSA(std::string filePath, int type)
+    {
+
+        FILE *keyFile = fopen(filePath.c_str(), "r");
+        if (!keyFile) {
+            throw std::runtime_error("Failed to open RSA file");
+        }
+
+        RSA *rsaKey;
+
+        switch (type) {
+            case RSA_PRIVATE:
+                rsaKey = PEM_read_RSAPrivateKey(keyFile, NULL, NULL, NULL);
+                fclose(keyFile);
+
+                if (!rsaKey) {
+                    fclose(keyFile);
+                    throw std::runtime_error("Error reading RSA private key");
+                }
+                break;
+            case RSA_PUBLIC:
+                rsaKey = PEM_read_RSA_PUBKEY(keyFile, NULL, NULL, NULL);
+                fclose(keyFile);
+                if (!rsaKey) {
+                    fclose(keyFile);
+                    throw std::runtime_error("Error reading RSA public key");
+                }
+                break;
+            case RSA_CERT:
+                rsaKey = getPubKeyFromCert(keyFile);
+                break;
+            default:
+                break;
+        }
+
+        fclose(keyFile);
+
+        return rsaKey;
     }
 
     /**
      * Encrypts the input vector with the provided key
      *
-     * @param key    The public key string to encrypt the value
-     * @param input  The entry to be encrypted
-     * @param output The resulting encrypted value
-     * @return       The size of the encrypted output, -1 if error
+     * @param filePath  The path to the file key string to encrypt the value
+     * @param input     The entry to be encrypted
+     * @param output    The resulting encrypted value
+     * @param cert      If the public key is in a certificate
+     * @return          The size of the encrypted output, -1 if error
      */
-    int rsaEncrypt(const std::string& key, std::array<unsigned char, 128>& input, std::array<unsigned char, 256>& output){
-        int result;
-        unsigned char c_output[256];
+    int rsaEncrypt(const std::string& filePath, const std::string& input, 
+                   std::string& output, bool cert = false) {
 
-        RSA * rsa = createRSA((unsigned char *)key.c_str(), RSA_PUBLIC);
+        RSA * rsa = createRSA(filePath, cert ? RSA_CERT : RSA_PUBLIC);
         if(!rsa){
             throw std::runtime_error("Failed to obtain RSA for encryption");
         }
 
-        result = RSA_public_encrypt(input.size(), input.data(), c_output, rsa, RSA_PKCS1_PADDING);
-        if(result < 0){
+        const char *plaintext = input.c_str();
+        size_t plaintext_len = strlen(plaintext);
+
+        // Allocate memory for the encryptedValue
+        unsigned char *encryptedValue = (unsigned char *)malloc(RSA_size(rsa));
+
+
+        int encrypted_len = RSA_public_encrypt(plaintext_len, (const unsigned char *)plaintext, encryptedValue, rsa, RSA_PKCS1_PADDING);
+        
+        if(encrypted_len < 0){
             throw std::runtime_error("RSA encryption failed");
         }
-        std::copy(std::begin(c_output), std::end(c_output), output.begin());
+
+        output = std::string(reinterpret_cast<char const*>(encryptedValue),encrypted_len);
 
         RSA_free(rsa);
 
-        return result;
+        return encrypted_len;
     }
 
     /**
      * Decrypts the input vector with the provided key
      *
-     * @param key    The private key string to encrypt the value
+     * @param filePath  The path to the file key string to decrypt the value
      * @param input  The entry to be decrypted
      * @param output The resulting decrypted value
      * @return       The size of the decrypted output, -1 if error
      */
-    int rsaDecrypt(const std::string& key, std::array<unsigned char, 256>& input, std::array<char, 256>& output){
-        int result;
-        unsigned char c_output[256];
+    int rsaDecrypt(const std::string& filePath, std::string& input, std::string& output){
 
-        RSA * rsa = createRSA((unsigned char *)key.c_str(), RSA_PRIVATE);
+        RSA * rsa = createRSA(filePath, RSA_PRIVATE);
         if(!rsa){
             throw std::runtime_error("Failed to obtain RSA for decryption");
         }
 
-        RSA_private_decrypt(input.size(), input.data(), c_output, rsa, RSA_PKCS1_PADDING);
-        if(result < 0){
-            throw std::runtime_error("RSA encryption failed");
+        std::string decrypted_text(RSA_size(rsa), 0); // Initialize with zeros
+
+        // Decrypt the ciphertext using RSA private key
+        int decrypted_len = RSA_private_decrypt(256,  reinterpret_cast<const unsigned char *>(input.data()),
+                                                reinterpret_cast<unsigned char *>(&decrypted_text[0]), rsa, RSA_PKCS1_PADDING);
+        
+        if(decrypted_len < 0){
+            throw std::runtime_error("RSA decryption failed");
         }
-        std::copy(std::begin(c_output), std::end(c_output), output.begin());
+
+        // Display the decrypted plaintext
+        output = decrypted_text.substr(0, decrypted_len);
 
         RSA_free(rsa);
 
-        return result;
+        return decrypted_len;
     }
 }
 
