@@ -9,8 +9,6 @@
  * Foundation.
  */
 
-#include <array>
-
 #include "keyStore.hpp"
 #include "rsaHelper.hpp"
 #include "loggerHelper.h"
