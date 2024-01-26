@@ -72,7 +72,7 @@ public:
                   << "\t-k KEY\t\t\tSpecifies the key for the key-value pair.\n"
                   << "\t-v VALUE\t\tSpecifies the value associated with the key.\n"
                   << "\nExample:"
-                  << "\n\t./wazuh-keystore -f indexer -k user -v admin\n"
+                  << "\n\t./wazuh-keystore -f indexer -k username -v admin\n"
                   << std::endl;
     }
 
