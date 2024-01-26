@@ -57,6 +57,8 @@ IndexerConnector::IndexerConnector(
     std::string caRootCertificate;
     std::string sslCertificate;
     std::string sslKey;
+    std::string username;
+    std::string password;
 
     auto secureCommunication = SecureCommunication::builder();
 
@@ -84,7 +86,7 @@ IndexerConnector::IndexerConnector(
         Keystore::get(INDEXER_COLUMN, USER_KEY, username);
         Keystore::get(INDEXER_COLUMN, PASSWORD_KEY, password);
     }
-    catch
+    catch (const std::exception& e)
     {
         logError(IC_NAME, "%s", e.what());
     }
