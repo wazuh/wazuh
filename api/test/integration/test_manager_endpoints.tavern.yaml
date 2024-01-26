@@ -1002,9 +1002,7 @@ test_name: GET /manager/validation (KO)
 
 stages:
 
-  #### Upload corrupted rules file
-  # PUT /rules/files
-  - name: Upload corrupted
+  - name: Upload corrupted rules file
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/rules/files/new-rules_corrupted.xml"
