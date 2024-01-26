@@ -134,6 +134,18 @@ def load_wazuh_basic_configuration():
 
 
 @pytest.fixture()
+def backup_wazuh_configuration() -> None:
+    """Backup wazuh configuration. Saves the initial configuration and restores it after the test."""
+    # Save configuration
+    backup_config = configuration.get_wazuh_conf()
+
+    yield
+
+    # Restore configuration
+    configuration.write_wazuh_conf(backup_config)
+
+
+@pytest.fixture()
 def set_wazuh_configuration(test_configuration: dict) -> None:
     """Set wazuh configuration
 
