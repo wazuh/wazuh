@@ -1,5 +1,5 @@
 - name: UPLOAD_ONE_BLOCK_CONFIG_NOT_ALLOWED
-  description: Upload one block configuration
+  description: Upload one block configuration with a forbidden section
   configuration_parameters:
     ALLOWED: no
   metadata:
@@ -24,7 +24,7 @@
       </ossec_config>
 
 - name: UPLOAD_ONE_BLOCK_CONFIG_ALLOWED
-  description: Upload ones block configuration
+  description: Upload one block configuration without a forbidden section
   configuration_parameters:
     ALLOWED: yes
   metadata:
@@ -49,7 +49,7 @@
       </ossec_config>
 
 - name: UPLOAD_TWO_BLOCKS_CONFIG_FIRST_BLOCK_NOT_ALLOWED
-  description: Upload two blocks configuration
+  description: Upload two blocks configuration with a forbidden section in the first block
   configuration_parameters:
     ALLOWED: no
   metadata:
@@ -77,7 +77,7 @@
       </ossec_config>
 
 - name: UPLOAD_TWO_BLOCKS_CONFIG_FIRST_BLOCK_ALLOWED
-  description: Upload two blocks configuration
+  description: Upload two blocks configuration without a forbidden section in the first block
   configuration_parameters:
     ALLOWED: yes
   metadata:
@@ -105,7 +105,7 @@
       </ossec_config>
 
 - name: UPLOAD_TWO_BLOCKS_CONFIG_SECOND_NOT_ALLOWED
-  description: Upload two blocks configuration
+  description: Upload two blocks configuration with a forbidden section in the second block
   configuration_parameters:
     ALLOWED: no
   metadata:
@@ -133,7 +133,7 @@
       </ossec_config>
 
 - name: UPLOAD_TWO_BLOCKS_CONFIG_SECOND_BLOCK_ALLOWED
-  description: Upload two blocks configuration
+  description: Upload two blocks configuration without a forbidden section in the second block
   configuration_parameters:
     ALLOWED: yes
   metadata:

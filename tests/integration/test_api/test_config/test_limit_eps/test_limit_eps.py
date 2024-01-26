@@ -1,3 +1,51 @@
+"""
+copyright: Copyright (C) 2015, Wazuh Inc.
+
+           Created by Wazuh, Inc. <info@wazuh.com>.
+
+           This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+type: integration
+
+brief: This test checks that the API works as expected when uploading configurations with forbidden sections
+
+components:
+    - api
+
+suite: config
+
+targets:
+    - manager
+
+daemons:
+    - wazuh-apid
+    - wazuh-modulesd
+    - wazuh-analysisd
+    - wazuh-execd
+    - wazuh-db
+    - wazuh-remoted
+
+os_platform:
+    - linux
+
+os_version:
+    - Arch Linux
+    - Amazon Linux 2
+    - Amazon Linux 1
+    - CentOS 8
+    - CentOS 7
+    - Debian Buster
+    - Red Hat 8
+    - Ubuntu Focal
+    - Ubuntu Bionic
+
+references:
+    - https://documentation.wazuh.com/current/user-manual/api/getting-started.html
+    - https://documentation.wazuh.com/current/user-manual/api/configuration.html
+
+tags:
+    - api
+"""
 import pytest
 from pathlib import Path
 import requests
@@ -16,8 +64,8 @@ pytestmark = pytest.mark.server
 configuration_type = CONFIGURATION_TYPES[0]
 
 # Paths
-test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'limit_eps_api_config.yaml')
-test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'limit_eps_config.yaml')
+test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_limit_eps_api_config.yaml')
+test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_limit_eps_config.yaml')
 
 # Configurations
 test_configuration, test_metadata, test_cases_id = get_test_cases_data(test_cases_path)
