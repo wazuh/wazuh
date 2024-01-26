@@ -13,7 +13,6 @@
 #define _KEYSTORE_H
 
 #include <string>
-#include <fstream>
 
 #include "rocksDBWrapper.hpp"
 
