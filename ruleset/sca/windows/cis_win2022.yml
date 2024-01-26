@@ -702,7 +702,9 @@ checks:
       - cis: ["2.3.7.4"]
     condition: all
     rules:
-      - 'not c:reg query HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system /v legalnoticetext -> r:\s+legalnoticetext\s+REG_SZ\s+$'
+      - 'r:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system'
+      - 'r:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system -> legalnoticetext'
+      - 'r:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system -> legalnoticetext-> r:\w+'
 
   # 2.3.7.5 (L1) Configure 'Interactive logon: Message title for users attempting to log on'. (Automated)
   - id: 27033
@@ -715,7 +717,9 @@ checks:
       - cis: ["2.3.7.5"]
     condition: all
     rules:
-      - 'not c:reg query HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system /v legalnoticecaption -> r:\s+legalnoticecaption\s+REG_SZ\s+$'
+      - 'r:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system'
+      - 'r:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system -> legalnoticecaption'
+      - 'r:HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system -> legalnoticecaption -> r:\w+'
 
   # 2.3.7.6 (L2) Ensure 'Interactive logon: Number of previous logons to cache (in case domain controller is not available)' is set to '4 or fewer logon(s)' (MS only) (Automated)
   - id: 27034
@@ -1206,11 +1210,14 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: Configure encryption types allowed for Kerberos."
     compliance:
       - cis: ["2.3.11.4"]
-      - cis_csc: ["3.10"]
-      - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
-      - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+      - cis_csc_v8: ["3.10"]
+      - cis_csc_v7: ["14.4", "18.5"]
+      - cmmc_v2.0: ["AC.L2-3.1.17", "AC.L2-3.1.13", "IA.L2-3.5.10", "SC.L2-3.13.11", "SC.L2-3.13.8", "SC.L2-3.13.15"]
+      - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(1)", "164.312(e)(2)(i)", "164.312(e)(2)(ii)"]
+      - iso_27001-2013: ["A.13.1.1", "A.10.1.1"]
+      - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
+      - pci_dss_3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
+      - pci_dss_4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System\Kerberos\Parameters'
@@ -1288,6 +1295,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LDAP'
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LDAP -> LDAPClientIntegrity'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LDAP -> LDAPClientIntegrity -> n:(\d+) compare >= 1'
+
   # 2.3.11.9 (L1) Ensure 'Network security: Minimum session security for NTLM SSP based (including secure RPC) clients' is set to 'Require NTLMv2 session security, Require 128-bit encryption' (Automated)
   - id: 27066
     title: "Ensure 'Network security: Minimum session security for NTLM SSP based (including secure RPC) clients' is set to 'Require NTLMv2 session security, Require 128-bit encryption'."
@@ -1296,11 +1304,14 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Require NTLMv2 session security, Require 128-bit encryption: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: Minimum session security for NTLM SSP based (including secure RPC) clients."
     compliance:
       - cis: ["2.3.11.9"]
-      - cis_csc: ["3.10"]
-      - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
-      - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+      - cis_csc_v8: ["3.10"]
+      - cis_csc_v7: ["18.5"]
+      - cmmc_v2.0: ["AC.L2-3.1.13", "AC.L2-3.1.17", "IA.L2-3.5.10", "SC.L2-3.13.11", "SC.L2-3.13.15", "SC.L2-3.13.8"]
+      - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(1)", "164.312(e)(2)(i)", "164.312(e)(2)(ii)"]
+      - iso_27001-2013: ["A.10.1.1"]
+      - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
+      - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
+      - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0'
@@ -1315,11 +1326,14 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Require NTLMv2 session security, Require 128-bit encryption: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: Minimum session security for NTLM SSP based (including secure RPC) servers."
     compliance:
       - cis: ["2.3.11.10"]
-      - cis_csc: ["3.10"]
-      - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
-      - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+      - cis_csc_v8: ["3.10"]
+      - cis_csc_v7: ["18.5"]
+      - cmmc_v2.0: ["AC.L2-3.1.13", "AC.L2-3.1.17", "IA.L2-3.5.10", "SC.L2-3.13.11", "SC.L2-3.13.15", "SC.L2-3.13.8"]
+      - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(1)", "164.312(e)(2)(i)", "164.312(e)(2)(ii)"]
+      - iso_27001-2013: ["A.10.1.1"]
+      - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
+      - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
+      - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0'
@@ -1401,13 +1415,11 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Prompt for consent on the secure desktop: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\User Account Control: Behavior of the elevation prompt for administrators in Admin Approval Mode."
     compliance:
       - cis: ["2.3.17.2"]
-      - pci_dss: ["7.1"]
-      - tsc: ["CC6.4"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> ConsentPromptBehaviorAdmin'
-      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> ConsentPromptBehaviorAdmin -> r:^2$'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> ConsentPromptBehaviorAdmin -> r:^1$|^2$'
 
   # 2.3.17.3 (L1) Ensure 'User Account Control: Behavior of the elevation prompt for standard users' is set to 'Automatically deny elevation requests'. (Automated)
   - id: 27073
@@ -2961,7 +2973,6 @@ checks:
       - cis_csc_v7: ["16.10"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\GPExtensions\{D76B9641-3288-4f75-942D-087DE603E3EA} -> DllName'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PwdExpirationProtectionEnabled'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PwdExpirationProtectionEnabled -> 1'
@@ -2985,7 +2996,6 @@ checks:
       - soc_2: ["CC6.1", "CC6.3"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\GPExtensions\{D76B9641-3288-4f75-942D-087DE603E3EA} -> DllName'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> AdmPwdEnabled'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> AdmPwdEnabled -> 1'
@@ -3007,7 +3017,6 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\GPExtensions\{D76B9641-3288-4f75-942D-087DE603E3EA} -> DllName'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordComplexity'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordComplexity -> 4'
@@ -3029,7 +3038,6 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\GPExtensions\{D76B9641-3288-4f75-942D-087DE603E3EA} -> DllName'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordLength'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordLength -> n:^(\d+) compare >= 15'
@@ -3050,7 +3058,6 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\GPExtensions\{D76B9641-3288-4f75-942D-087DE603E3EA} -> DllName'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordAgeDays'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordAgeDays -> n:^(\d+) compare <= 30'
@@ -3091,9 +3098,9 @@ checks:
       - cis: ["18.4.2"]
     condition: any
     rules:
-      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\mrxsmb10'
-      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\mrxsmb10 -> Start'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\mrxsmb10 -> Start -> 4'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Print'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Print -> RpcAuthnLevelPrivacyEnabled'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Print -> RpcAuthnLevelPrivacyEnabled -> 1'
 
   # 18.4.3 (L1) Ensure 'Configure SMB v1 client driver' is set to 'Enabled: Disable driver (recommended)'. (Automated)
   - id: 27153
@@ -3111,11 +3118,11 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: all
+    condition: any
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters -> SMB1'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters -> SMB1 -> 0'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\mrxsmb10'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\mrxsmb10 -> Start'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\mrxsmb10 -> Start -> 4'
 
   # 18.4.4 (L1) Ensure 'Configure SMB v1 server' is set to 'Disabled'. (Automated)
   - id: 27154
@@ -3238,11 +3245,14 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Highest protection, source routing is completely disabled: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (DisableIPSourceRouting IPv6) IP source routing protection level (protects against packet spoofing) Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required."
     compliance:
       - cis: ["18.5.2"]
-      - cis_csc: ["4.8"]
-      - pci_dss: ["1.3.3"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
-      - nist_800_53: ["SC.8"]
-      - tsc: ["A1.1", "CC6.1", "CC7.2"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
+      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_v3.2.1: ["11.5", "2.2"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
+      - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters'
@@ -3257,11 +3267,14 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Highest protection, source routing is completely disabled: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (DisableIPSourceRouting) IP source routing protection level (protects against packet spoofing) Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required."
     compliance:
       - cis: ["18.5.3"]
-      - cis_csc: ["4.8"]
-      - pci_dss: ["1.3.3"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
-      - nist_800_53: ["SC.8"]
-      - tsc: ["A1.1", "CC6.1", "CC7.2"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
+      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_v3.2.1: ["11.5", "2.2"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
+      - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters'
@@ -3379,9 +3392,14 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 5 or fewer seconds: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (ScreenSaverGracePeriod) The time in seconds before the screen saver grace period expires (0 recommended) Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required."
     compliance:
       - cis: ["18.5.9"]
-      - cis_csc: ["4.3"]
-      - pci_dss: ["8.1.8"]
-      - tsc: ["CC6.1"]
+      - cis_csc_v8: ["4.3"]
+      - cis_csc_v7: ["16.11"]
+      - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
+      - hipaa: ["164.312(a)(2)(iii)"]
+      - iso_27001-2013: ["A.8.1.3"]
+      - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
+      - pci_dss_v3.2.1: ["8.1.8"]
+      - pci_dss_v4.0: ["8.2.8"]
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon'
@@ -3448,7 +3466,7 @@ checks:
     title: "Ensure 'Configure DNS over HTTPS (DoH) name resolution' is set to 'Enabled: Allow DoH' or higher."
     description: "This setting determines if DNS over HTTPS (DoH) is used by the system. DNS over HTTPS (DoH) is a protocol for performing remote Domain Name System (DNS) resolution over the Hypertext Transfer Protocol Secure (HTTPS). For additional information on DNS over HTTPS (DoH), visit: Secure DNS Client over HTTPS (DoH) on Windows Server 2022 | Microsoft Docs. The recommended state for this setting is: Enabled: Allow DoH. Configuring this setting to Enabled: Require DoH also conforms to the benchmark."
     rationale: "DNS over HTTPS (DoH) helps protect against DNS spoofing. Spoofing makes a transmission appear to come from a user other than the user who performed the action. It can also help prevent man-in-the-middle (MitM) attacks because the session in-between is encrypted."
-    impact: "If the option Enabled: Require DoH is chosen, this could limit third-party products from logging DNS traffic (in transit) as the traffic would be encrypted while in transit. The Require DoH option could also lead to domain-joined systems not functioning properly within the environment. The option Enabled: Allow DoH will perform DoH queries if the configured DNS servers support it. If they don´t support it, classic name resolution will be used. This is the safest option. Note: Per Microsoft, don't enable the Enabled: Require DoH option for domain-joined computers as Active Directory Domain Services is heavily reliant on DNS because the Windows Server DNS Server service does not support DoH queries."
+    impact: "If the option Enabled: Require DoH is chosen, this could limit third-party products from logging DNS traffic (in transit) as the traffic would be encrypted while in transit. The Require DoH option could also lead to domain-joined systems not functioning properly within the environment. The option Enabled: Allow DoH will perform DoH queries if the configured DNS servers support it. If they don't support it, classic name resolution will be used. This is the safest option. Note: Per Microsoft, don't enable the Enabled: Require DoH option for domain-joined computers as Active Directory Domain Services is heavily reliant on DNS because the Windows Server DNS Server service does not support DoH queries."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Allow DoH (configuring to Enabled: Require DoH also conforms to the benchmark): Computer Configuration\\Policies\\Administrative Templates\\Network\\DNS Client\\Configure DNS over HTTPS (DoH) name resolution Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DnsClient.admx/adml that is included with the Microsoft Windows 11 Release 21H2 Administrative Templates (or newer)."
     references:
       - "https://docs.microsoft.com/en-us/windows-server/networking/dns/doh-client-support"
@@ -3564,6 +3582,8 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> EnableLLTDIO'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> EnableLLTDIO -> 0'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> ProhibitLLTDIOOnPrivateNet -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> AllowLLTDIOOnDomain -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> AllowLLTDIOOnPublicNet -> 0'
 
   # 18.6.9.2 (L2) Ensure 'Turn on Responder (RSPNDR) driver' is set to 'Disabled'. (Automated)
   - id: 27176
@@ -3588,6 +3608,8 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> EnableRspndr'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> EnableRspndr -> 0'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> ProhibitRspndrOnPrivateNet -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> AllowRspndrOnDomain -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> AllowRspndrOnPublicNet -> 0'
 
   # 18.6.10.2 (L2) Ensure 'Turn off Microsoft Peer-to-Peer Networking Services' is set to 'Enabled'. (Automated)
   - id: 27177
@@ -3771,10 +3793,14 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 3 = Prevent Wi-Fi when on Ethernet: Computer Configuration\\Policies\\Administrative Templates\\Network\\Windows Connection Manager\\Minimize the number of simultaneous connections to the Internet or a Windows Domain Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WCM.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates. It was updated with a new Minimize Policy Options sub-setting starting with the Windows 10 Release 1903 Administrative Templates."
     compliance:
       - cis: ["18.6.21.1"]
-      - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
-      - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["15.5"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
+      - iso_27001-2013: ["A.8.1.3"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_v3.2.1: ["11.5", "2.2"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
+      - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy'
@@ -3864,6 +3890,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers'
       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RpcAuthentication'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RpcAuthentication -> 1'
 
   # 18.7.5 (L1) Ensure 'Configure RPC listener settings: Protocols to allow for incoming RPC connections' is set to 'Enabled: RPC over TCP'. (Automated)
   - id: 27191
@@ -3944,6 +3971,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers'
       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> CopyFilesPolicy'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> CopyFilesPolicy -> 1'
 
   # 18.7.10 (L1) Ensure 'Point and Print Restrictions: When installing drivers for a new connection' is set to 'Enabled: Show warning and elevation prompt'. (Automated)
   - id: 27196
@@ -5434,10 +5462,13 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Disable Authenticated Proxy usage: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Configure Authenticated Proxy usage for the Connected User Experience and Telemetry service Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DataCollection.admx/adml that is included with the Microsoft Windows 10 Release 1703 Administrative Templates (or newer)."
     compliance:
       - cis: ["18.9.17.2"]
-      - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
-      - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection'
