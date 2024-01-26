@@ -14,9 +14,13 @@
 #include "loggerHelper.h"
 #include "secureCommunication.hpp"
 #include "serverSelector.hpp"
+#include "keyStore.hpp"
 #include <fstream>
 
 constexpr auto NOT_USED {-1};
+constexpr auto INDEXER_COLUMN {"indexer"};
+constexpr auto USER_KEY {"username"};
+constexpr auto PASSWORD_KEY {"password"};
 
 namespace Log
 {
@@ -75,7 +79,18 @@ IndexerConnector::IndexerConnector(
         }
     }
 
-    secureCommunication.sslCertificate(sslCertificate)
+    try
+    {
+        Keystore::get(INDEXER_COLUMN, USER_KEY, username);
+        Keystore::get(INDEXER_COLUMN, PASSWORD_KEY, password);
+    }
+    catch
+    {
+        logError(IC_NAME, "%s", e.what());
+    }
+
+    secureCommunication.basicAuth(username + ":" + password)
+        .sslCertificate(sslCertificate)
         .sslKey(sslKey)
         .caRootCertificate(caRootCertificate);
 
