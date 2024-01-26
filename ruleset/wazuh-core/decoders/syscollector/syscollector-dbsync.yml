@@ -72,7 +72,7 @@ normalize:
 
 # TODO: what is this for?
   - check:
-      - _query_response: is_false()
+      - _query_response: false
     map:
       - do_update_kvdb: false
 
