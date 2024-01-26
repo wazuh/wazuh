@@ -113,7 +113,7 @@ normalize:
     map:
       - ~ip1_private: false
   - check:
-      - ~ip1_private: is_false()
+      - ~ip1_private: false
     map:
       - source.address: $~ip1
 
@@ -127,7 +127,7 @@ normalize:
       - ~ip2_private: false
   - check:
       - source.address: not_exists()
-      - ~ip2_private: is_false()
+      - ~ip2_private: false
     map:
       - source.address: $~ip2
 
@@ -141,7 +141,7 @@ normalize:
       - ~ip3_private: false
   - check:
       - source.address: not_exists()
-      - ~ip3_private: is_false()
+      - ~ip3_private: false
     map:
       - source.address: $~ip3
 
