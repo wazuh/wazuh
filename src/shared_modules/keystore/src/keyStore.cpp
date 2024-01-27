@@ -27,6 +27,7 @@ void Keystore::put(const std::string& columnFamily, const std::string& key, cons
     catch (std::exception& e)
     {
         logError(KS_NAME, "%s", e.what());
+        throw std::runtime_error(e.what());
     }
 
     // Insert to DB
@@ -43,6 +44,7 @@ void Keystore::put(const std::string& columnFamily, const std::string& key, cons
     catch (std::exception& e)
     {
         logError(KS_NAME, "%s", e.what());
+        throw std::runtime_error(e.what());
     }
 }
 
