@@ -15,13 +15,6 @@
 
 constexpr auto KS_NAME {"keystore"};
 
-namespace Log
-{
-    std::function<void(
-        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
-    GLOBAL_LOG_FUNCTION;
-};
-
 void Keystore::put(const std::string& columnFamily, const std::string& key, const std::string& value)
 {
     std::string encryptedValue;
