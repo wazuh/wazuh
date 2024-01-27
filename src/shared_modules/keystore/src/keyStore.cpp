@@ -50,12 +50,17 @@ void Keystore::get(const std::string& columnFamily, const std::string& key, std:
         Utils::RocksDBWrapper keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
 
         if(!keystoreDB.columnExists(columnFamily)) {
-            logError(KS_NAME, "Column %d does not exists in the database.", columnFamily.c_str());
-            return;
+            char msg[100];
+            sprintf(msg, "Column %d does not exists in the database.", columnFamily.c_str());
+            logError(KS_NAME, msg);
+            throw std::runtime_error(msg);
         }
 
         if (!keystoreDB.get(key, encryptedValue, columnFamily)) {
-            logError(KS_NAME, "Could not find key '%s' in column '%s'.", key, columnFamily);
+            char msg[100];
+            sprintf(msg, "Could not find key '%s' in column '%s'.", key, columnFamily);
+            logError(KS_NAME, msg);
+            throw std::runtime_error(msg);
         }
         else {
             logDebug2(KS_NAME, "Successfully retrieved the value from key '%s' in column '%s'.", key, columnFamily);
@@ -64,6 +69,7 @@ void Keystore::get(const std::string& columnFamily, const std::string& key, std:
     catch(std::exception& e)
     {
         logError(KS_NAME, "%s", e.what());
+        throw std::runtime_error(e.what());
     }
     
     // Decrypt value
@@ -74,5 +80,6 @@ void Keystore::get(const std::string& columnFamily, const std::string& key, std:
     catch (std::exception& e)
     {
         logError(KS_NAME, "%s", e.what());
+        throw std::runtime_error(e.what());
     }
 }
