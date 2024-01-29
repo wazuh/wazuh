@@ -67,7 +67,7 @@ void Keystore::get(const std::string& columnFamily, const std::string& key, std:
         }
         
         // Decrypt value
-        int decrypted_len = Utils::rsaDecrypt(PRIVATE_KEY_FILE, encryptedValue, value);
+        Utils::rsaDecrypt(PRIVATE_KEY_FILE, encryptedValue, value);
     }
     catch(std::exception& e)
     {
