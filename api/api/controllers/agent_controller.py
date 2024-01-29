@@ -1360,7 +1360,7 @@ async def get_group_files(request, group_id: str, pretty: bool = False, wait_for
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_group_file(request, group_id: str, file_name: str, return_format: str = 'json', pretty: bool = False,
+async def get_group_file(request, group_id: str, file_name: str, return_format: str = 'plain', pretty: bool = False,
                               wait_for_complete: bool = False) -> web.Response:
     """Get the files placed under the group directory in the specified format.
 
@@ -1398,7 +1398,7 @@ async def get_group_file(request, group_id: str, file_name: str, return_format: 
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    if return_format and return_format.lower() == 'plain':
+    if return_format == 'plain':
         return ConnexionResponse(body=data["data"], mimetype='text/plain')
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)

@@ -1411,7 +1411,7 @@ def get_file_conf(group_list: list = None, type_conf: str = None, return_format:
     type_conf : str
         Type of file.
     return_format : str
-        Format of the answer (xml or json).
+        Response content format.
     filename : str
         Filename to read config from.
 

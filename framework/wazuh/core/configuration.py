@@ -678,7 +678,7 @@ def get_agent_conf(group_id: str = None, offset: int = 0, limit: int = common.DA
     filename : str
         Name of the file to get. Default: 'agent.conf'
     return_format : str
-        Return format.
+        Response content format.
 
     Raises
     ------
@@ -703,9 +703,9 @@ def get_agent_conf(group_id: str = None, offset: int = 0, limit: int = common.DA
 
     try:
         # Read RAW file
-        if filename == 'agent.conf' and return_format and 'xml' == return_format.lower():
-            with open(agent_conf, 'r') as xml_data:
-                data = xml_data.read()
+        if filename == 'agent.conf' and return_format and return_format.lower() == 'plain':
+            with open(agent_conf, 'r') as raw_data:
+                data = raw_data.read()
                 return data
         # Parse XML to JSON
         else:
@@ -771,7 +771,7 @@ def get_agent_conf_multigroup(multigroup_id: str = None, offset: int = 0, limit:
 
 
 def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, return_format: str = None) -> dict:
-    """Return the configuration file as dictionary.
+    """Return the configuration file content.
 
     Parameters
     ----------
@@ -779,10 +779,10 @@ def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, re
         ID of the group with the file we want to get.
     filename : str
         Name of the file to get.
-    return_format : str
-        Return format.
     type_conf : str
         Type of the configuration we want to get.
+    return_format : str
+        Response content format.
 
     Raises
     ------
@@ -796,7 +796,7 @@ def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, re
     Returns
     -------
     dict
-        Configuration file as dictionary.
+        File content as plain text or dictionary.
     """
     if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
@@ -805,6 +805,11 @@ def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, re
 
     if not os_path.exists(file_path):
         raise WazuhError(1006, file_path)
+    
+    if return_format == 'plain':
+        with open(file_path, 'r') as raw_data:
+            data = raw_data.read()
+            return data
 
     types = {
         'conf': get_agent_conf,
