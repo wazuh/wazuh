@@ -15,6 +15,25 @@
 #include <iostream>
 #include <string>
 
+
+class CmdLineArgsException : public std::exception
+{
+public:
+    explicit CmdLineArgsException(const std::string& message)
+        : m_message(message)
+    {
+    }
+
+    // Override what() method to provide exception message
+    const char* what() const noexcept override
+    {
+        return m_message.c_str();
+    }
+
+private:
+    std::string m_message;
+};
+
 /**
  * @brief Class to parse command line arguments.
  */
@@ -94,9 +113,9 @@ private:
             if (currentValue == switchValue && i + 1 < argc)
             {
                 // Switch found
-                auto returnValue = argv[i + 1];
+                std::string returnValue = argv[i + 1];
                     if(returnValue == "") {
-                        throw std::runtime_error {"Switch value: " + switchValue + " is empty."};
+                        throw CmdLineArgsException {"Switch value: " + switchValue + " is empty."};
                     }
                 return returnValue;
             }
@@ -104,7 +123,7 @@ private:
 
         if (required.first)
         {
-            throw std::runtime_error {"Switch value: " + switchValue + " not found."};
+            throw CmdLineArgsException {"Switch value: " + switchValue + " not found."};
         }
 
         return required.second;

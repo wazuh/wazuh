@@ -32,17 +32,13 @@ int main(const int argc, const char* argv[])
         family = args.getColumnFamily();
         key = args.getKey();
         value = args.getValue();
+
+        Keystore::put(family, key, value);
     }
-    catch (const std::exception& e)
-    {
+    catch (const CmdLineArgsException& e) {
         std::cerr << e.what() << std::endl;
         CmdLineArgs::showHelp();
         return 1;
-    }
-
-    try
-    {
-        Keystore::put(family, key, value);
     }
     catch (const std::exception& e)
     {
