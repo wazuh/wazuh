@@ -21,9 +21,8 @@ if (NOT SHARED_MODULES)
 endif()
 
 include_directories(include)
-
 include_directories(${SRC_FOLDER}/external/rocksdb/include)
-
+include_directories(${SRC_FOLDER}/external/cJSON)
 include_directories(${SHARED_MODULES}/utils)
 include_directories(${SHARED_MODULES}/common)
 
