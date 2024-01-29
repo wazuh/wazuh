@@ -90,6 +90,10 @@ IndexerConnector::IndexerConnector(
         logError(IC_NAME, "%s", e.what());
     }
 
+    if(username == "" || password == ""){
+        throw std::runtime_error("Empty indexer username or password");
+    }
+
     secureCommunication.basicAuth(username + ":" + password)
         .sslCertificate(sslCertificate)
         .sslKey(sslKey)
