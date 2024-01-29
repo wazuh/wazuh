@@ -19,20 +19,12 @@ void Keystore::put(const std::string& columnFamily, const std::string& key, cons
 {
     std::string encryptedValue;
 
-    // Encrypt value
     try
     {
+        // Encrypt value
         auto encrypted_len = Utils::rsaEncrypt(CERTIFICATE_FILE, value, encryptedValue, true);
-    }
-    catch (std::exception& e)
-    {
-        logError(KS_NAME, "%s", e.what());
-        throw std::runtime_error(e.what());
-    }
 
-    // Insert to DB
-    try
-    {
+        // Insert to DB
         Utils::RocksDBWrapper keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
 
         if (!keystoreDB.columnExists(columnFamily)) {
