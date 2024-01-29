@@ -22,7 +22,7 @@ void Keystore::put(const std::string& columnFamily, const std::string& key, cons
     try
     {
         // Encrypt value
-        auto encrypted_len = Utils::rsaEncrypt(CERTIFICATE_FILE, value, encryptedValue, true);
+        Utils::rsaEncrypt(CERTIFICATE_FILE, value, encryptedValue, true);
 
         // Insert to DB
         Utils::RocksDBWrapper keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
