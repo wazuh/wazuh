@@ -136,9 +136,7 @@ namespace Utils
         }
         catch(const std::exception& e)
         {
-            char msg[100];
-            sprintf(msg, "Failed to obtain RSA for encryption: %s", e.what());
-            throw std::runtime_error(msg);
+            throw std::runtime_error("Failed to obtain RSA for encryption: " + std::string(e.what()));
         }
 
         const char *plaintext = input.c_str();
@@ -180,9 +178,7 @@ namespace Utils
         }
         catch(const std::exception& e)
         {
-            char msg[100];
-            sprintf(msg, "Failed to obtain RSA for decryption: %s", e.what());
-            throw std::runtime_error(msg);
+            throw std::runtime_error("Failed to obtain RSA for decryption: " + std::string(e.what()));
         }
 
         std::string decrypted_text(RSA_size(rsa), 0); // Initialize with zeros
