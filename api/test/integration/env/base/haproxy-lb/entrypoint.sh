@@ -5,6 +5,5 @@ if [ $1 == "standalone" ]; then
   sed -i -E '/wazuh-worker1|wazuh-worker2/d' /etc/haproxy/haproxy.conf;
 fi
 
-mkdir -p /run/haproxy/
-
-exec haproxy -f /etc/haproxy/haproxy.conf
+haproxy -f /etc/haproxy/haproxy.conf
+tail -f /dev/null
