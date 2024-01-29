@@ -81,15 +81,8 @@ IndexerConnector::IndexerConnector(
         }
     }
 
-    try
-    {
-        Keystore::get(INDEXER_COLUMN, USER_KEY, username);
-        Keystore::get(INDEXER_COLUMN, PASSWORD_KEY, password);
-    }
-    catch (const std::exception& e)
-    {
-        logError(IC_NAME, "%s", e.what());
-    }
+    Keystore::get(INDEXER_COLUMN, USER_KEY, username);
+    Keystore::get(INDEXER_COLUMN, PASSWORD_KEY, password);
 
     if(username == "" || password == ""){
         throw std::runtime_error("Empty indexer username or password");
