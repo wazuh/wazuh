@@ -82,14 +82,19 @@ private:
                                     const std::string& switchValue,
                                     const std::pair<bool, std::string>& required = std::make_pair(true, ""))
     {
-        for (int i = 1; i < argc; ++i)
+        for (auto i = 1; i < argc; ++i)
         {
             const std::string currentValue {argv[i]};
+
+            if (currentValue == "-h") {
+                showHelp();
+                std::exit(0);
+            }
 
             if (currentValue == switchValue && i + 1 < argc)
             {
                 // Switch found
-                std::string returnValue = argv[i + 1];
+                auto returnValue = argv[i + 1];
                     if(returnValue == "") {
                         throw std::runtime_error {"Switch value: " + switchValue + " is empty."};
                     }
