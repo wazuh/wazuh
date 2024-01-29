@@ -1360,9 +1360,9 @@ async def get_group_files(request, group_id: str, pretty: bool = False, wait_for
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_group_file_json(request, group_id: str, file_name: str, pretty: bool = False,
+async def get_group_file(request, group_id: str, file_name: str, return_format: str = 'json', pretty: bool = False,
                               wait_for_complete: bool = False) -> web.Response:
-    """Get the files placed under the group directory in JSON format.
+    """Get the files placed under the group directory in the specified format.
 
     Parameters
     ----------
@@ -1371,6 +1371,8 @@ async def get_group_file_json(request, group_id: str, file_name: str, pretty: bo
         Group ID.
     file_name : str
         Name of the file to be obtained.
+    return_format : str
+        Response content format.
     pretty: bool
         Show results in human-readable format.
     wait_for_complete : bool
@@ -1384,7 +1386,7 @@ async def get_group_file_json(request, group_id: str, file_name: str, pretty: bo
     f_kwargs = {'group_list': [group_id],
                 'filename': file_name,
                 'type_conf': request.query.get('type', None),
-                'return_format': 'json'}
+                'return_format': return_format}
 
     dapi = DistributedAPI(f=agent.get_file_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -1395,49 +1397,11 @@ async def get_group_file_json(request, group_id: str, file_name: str, pretty: bo
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
+
+    if return_format and return_format.lower() == 'plain':
+        return ConnexionResponse(body=data["data"], mimetype='text/plain')
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
-
-
-async def get_group_file_xml(request, group_id: str, file_name: str, pretty: bool = False,
-                             wait_for_complete: bool = False) -> ConnexionResponse:
-    """Get the files placed under the group directory in XML format.
-
-    Parameters
-    ----------
-    request : connexion.request
-    group_id : str
-        Group ID.
-    file_name : str
-        Name of the file to be obtained.
-    pretty: bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-
-    Returns
-    -------
-    connexion.lifecycle.ConnexionResponse
-        API response.
-    """
-    f_kwargs = {'group_list': [group_id],
-                'filename': file_name,
-                'type_conf': request.query.get('type', None),
-                'return_format': 'xml'}
-
-    dapi = DistributedAPI(f=agent.get_file_conf,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-    response = ConnexionResponse(body=data["data"], mimetype='application/xml')
-
-    return response
-
 
 async def restart_agents_by_group(request, group_id: str, pretty: bool = False,
                                   wait_for_complete: bool = False) -> web.Response:
