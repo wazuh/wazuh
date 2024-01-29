@@ -1486,27 +1486,13 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: GET /groups/{group_id}/files/{filename}/json
+test_name: GET /groups/{group_id}/files/{filename}
 
 stages:
   - name: Try to get one file of a group
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/default/files/agent.conf/json"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
-test_name: GET /groups/{group_id}/files/{filename}/xml
-
-stages:
-  - name: Try to get one file of a group
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/group2/files/agent.conf/xml"
+      url: "{protocol:s}://{host:s}:{port:d}/groups/default/files/agent.conf"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
