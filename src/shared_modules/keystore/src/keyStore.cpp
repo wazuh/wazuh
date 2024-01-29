@@ -44,9 +44,9 @@ void Keystore::get(const std::string& columnFamily, const std::string& key, std:
 {
     std::string encryptedValue;
 
-    // Get from DB
     try
-    {
+    {        
+        // Get from DB
         Utils::RocksDBWrapper keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
 
         if(!keystoreDB.columnExists(columnFamily)) {
@@ -65,19 +65,11 @@ void Keystore::get(const std::string& columnFamily, const std::string& key, std:
         else {
             logDebug2(KS_NAME, "Successfully retrieved the value from key '%s' in column '%s'.", key, columnFamily);
         }
-    }
-    catch(std::exception& e)
-    {
-        logError(KS_NAME, "%s", e.what());
-        throw std::runtime_error(e.what());
-    }
-    
-    // Decrypt value
-    try
-    {
+        
+        // Decrypt value
         int decrypted_len = Utils::rsaDecrypt(PRIVATE_KEY_FILE, encryptedValue, value);
     }
-    catch (std::exception& e)
+    catch(std::exception& e)
     {
         logError(KS_NAME, "%s", e.what());
         throw std::runtime_error(e.what());
