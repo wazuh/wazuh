@@ -6,7 +6,7 @@ namespace
 {
 auto customRef()
 {
-    return [](const Mocks& mocks)
+    return [](const BuildersMocks& mocks)
     {
         EXPECT_CALL(*mocks.ctx, schema());
         EXPECT_CALL(*mocks.schema, hasField(DotPath("ref"))).WillRepeatedly(testing::Return(false));
@@ -37,7 +37,7 @@ INSTANTIATE_TEST_SUITE_P(
         FilterT({makeRef("ref")},
                 opfilter::startsWithBuilder,
                 SUCCESS(
-                    [](const Mocks& mocks)
+                    [](const BuildersMocks& mocks)
                     {
                         EXPECT_CALL(*mocks.ctx, schema());
                         EXPECT_CALL(*mocks.schema, hasField(DotPath("ref"))).WillRepeatedly(testing::Return(false));
@@ -46,7 +46,7 @@ INSTANTIATE_TEST_SUITE_P(
         FilterT({makeRef("ref")},
                 opfilter::startsWithBuilder,
                 SUCCESS(
-                    [](const Mocks& mocks)
+                    [](const BuildersMocks& mocks)
                     {
                         EXPECT_CALL(*mocks.ctx, schema());
                         EXPECT_CALL(*mocks.schema, hasField(DotPath("ref"))).WillRepeatedly(testing::Return(true));
@@ -57,7 +57,7 @@ INSTANTIATE_TEST_SUITE_P(
         FilterT({makeRef("ref")},
                 opfilter::startsWithBuilder,
                 SUCCESS(
-                    [](const Mocks& mocks)
+                    [](const BuildersMocks& mocks)
                     {
                         EXPECT_CALL(*mocks.ctx, schema());
                         EXPECT_CALL(*mocks.schema, hasField(DotPath("ref"))).WillRepeatedly(testing::Return(true));
@@ -68,7 +68,7 @@ INSTANTIATE_TEST_SUITE_P(
         FilterT({makeRef("ref")},
                 opfilter::startsWithBuilder,
                 FAILURE(
-                    [](const Mocks& mocks)
+                    [](const BuildersMocks& mocks)
                     {
                         EXPECT_CALL(*mocks.ctx, schema());
                         EXPECT_CALL(*mocks.schema, hasField(DotPath("ref"))).WillRepeatedly(testing::Return(true));
