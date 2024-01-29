@@ -22,7 +22,7 @@ void Keystore::put(const std::string& columnFamily, const std::string& key, cons
     // Encrypt value
     try
     {
-        int encrypted_len = Utils::rsaEncrypt(CERTIFICATE_FILE, value, encryptedValue, true);
+        auto encrypted_len = Utils::rsaEncrypt(CERTIFICATE_FILE, value, encryptedValue, true);
     }
     catch (std::exception& e)
     {
