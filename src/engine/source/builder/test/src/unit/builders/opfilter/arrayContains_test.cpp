@@ -6,7 +6,7 @@ namespace
 {
 auto customRef()
 {
-    return [](const Mocks& mocks)
+    return [](const BuildersMocks& mocks)
     {
         EXPECT_CALL(*mocks.ctx, schema()).Times(testing::AtLeast(1));
         EXPECT_CALL(*mocks.schema, hasField(testing::_)).WillRepeatedly(testing::Return(false));
@@ -16,7 +16,7 @@ auto customRef()
 
 auto typeRefExpected(schemf::Type sType, json::Json::Type jType, bool success = true)
 {
-    return [=](const Mocks& mocks)
+    return [=](const BuildersMocks& mocks)
     {
         if (!success)
         {
