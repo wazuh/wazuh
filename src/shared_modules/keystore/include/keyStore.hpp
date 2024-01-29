@@ -9,9 +9,16 @@
  * Foundation.
  */
 
+#ifndef _KEYSTORE_H
+#define _KEYSTORE_H
+
 #include <string>
 
 #include "rocksDBWrapper.hpp"
+
+constexpr auto DATABASE_PATH {"queue/keystore"};
+constexpr auto PRIVATE_KEY_FILE  {"etc/sslmanager.key"};
+constexpr auto CERTIFICATE_FILE {"etc/sslmanager.cert"};
 
 class Keystore
 {
@@ -23,7 +30,7 @@ public:
      * @param key The key to be inserted or updated.
      * @param value The corresponding value.
      */
-    void put(const std::string& columnFamily, const std::string& key, const rocksdb::Slice& value);
+    static void put(const std::string& columnFamily, const std::string& key, const std::string& value);
 
     /**
      * Get the key value in the specified column family.
@@ -32,5 +39,7 @@ public:
      * @param key The key to be inserted or updated.
      * @param value The corresponding value to be returned.
      */
-    void get(const std::string& columnFamily, const std::string& key, rocksdb::PinnableSlice& value);
+    static void get(const std::string& columnFamily, const std::string& key, rocksdb::PinnableSlice& value);
 };
+
+#endif // _KEYSTORE_H
