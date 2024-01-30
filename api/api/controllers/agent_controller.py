@@ -1363,7 +1363,7 @@ async def get_group_files(request, group_id: str, pretty: bool = False, wait_for
 
 async def get_group_file(request, group_id: str, file_name: str, raw: bool = None, pretty: bool = False,
                               wait_for_complete: bool = False) -> web.Response:
-    """Get the files placed under the group directory in the specified format.
+    """Get the files placed under the group directory.
 
     Parameters
     ----------

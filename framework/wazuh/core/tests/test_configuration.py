@@ -150,6 +150,7 @@ def test_rootkit_trojans2json():
 
 
 def test_merged_mg2json():
+    """Checks that _merged_mg2json parses the file content correctly."""
     with patch('builtins.open', return_value=Exception):
         with pytest.raises(WazuhError, match=".* 1101 .*"):
             configuration._merged_mg2json(file_path=os.path.join(
