@@ -62,17 +62,6 @@ typedef enum agent_status_code_t {
         RESET_BY_MANAGER,       ///< Connection reset by manager
 } agent_status_code_t;
 
-#define VULN_CVES_STATUS_VALID              "VALID"
-#define VULN_CVES_STATUS_PENDING            "PENDING"
-#define VULN_CVES_STATUS_OBSOLETE           "OBSOLETE"
-#define VULN_CVES_STATUS_SOLVED_LOWERCASE   "Solved"
-#define VULN_CVES_STATUS_ACTIVE_LOWERCASE   "Active"
-
-#define VULN_CVES_TYPE_OS         "OS"
-#define VULN_CVES_TYPE_PACKAGE    "PACKAGE"
-
-#define VULN_CVES_MAX_REFERENCES OS_SIZE_20480
-
 /* wdb_exec_row_stmt modes */
 #define STMT_MULTI_COLUMN 0
 #define STMT_SINGLE_COLUMN 1
@@ -130,7 +119,6 @@ typedef enum wdb_stmt {
     WDB_STMT_OSINFO_INSERT2,
     WDB_STMT_OSINFO_DEL,
     WDB_STMT_OSINFO_GET,
-    WDB_STMT_OSINFO_SET_TRIAGED,
     WDB_STMT_PROGRAM_INSERT,
     WDB_STMT_PROGRAM_INSERT2,
     WDB_STMT_PROGRAM_DEL,
@@ -338,17 +326,8 @@ typedef enum wdb_stmt {
     WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_RANGE,
     WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_BY_PK,
     WDB_STMT_SYSCOLLECTOR_OSINFO_CLEAR,
-    WDB_STMT_VULN_CVES_INSERT,
-    WDB_STMT_VULN_CVES_UPDATE,
-    WDB_STMT_VULN_CVES_UPDATE_BY_TYPE,
-    WDB_STMT_VULN_CVES_UPDATE_ALL,
-    WDB_STMT_VULN_CVES_FIND_CVE,
-    WDB_STMT_VULN_CVES_SELECT_BY_STATUS,
-    WDB_STMT_VULN_CVES_DELETE_ENTRY,
     WDB_STMT_SYS_HOTFIXES_GET,
     WDB_STMT_SYS_PROGRAMS_GET,
-    WDB_STMT_SYS_PROGRAMS_GET_NOT_TRIAGED,
-    WDB_STMT_SYS_PROGRAMS_SET_TRIAGED,
     WDB_STMT_SIZE // This must be the last constant
 } wdb_stmt;
 
@@ -435,6 +414,7 @@ extern char *schema_upgrade_v9_sql;
 extern char *schema_upgrade_v10_sql;
 extern char *schema_upgrade_v11_sql;
 extern char *schema_upgrade_v12_sql;
+extern char *schema_upgrade_v13_sql;
 extern char *schema_global_upgrade_v1_sql;
 extern char *schema_global_upgrade_v2_sql;
 extern char *schema_global_upgrade_v3_sql;
@@ -821,7 +801,7 @@ int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, const char * iface, in
 int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, const char * iface, int proto, const char * address, const char * netmask, const char * broadcast, const char * checksum, const char * item_id, const bool replace);
 
 // Insert OS info tuple. Return 0 on success or -1 on error.
-int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * os_display_version, const char * checksum, const bool replace, os_sha1 hexdigest, int triaged);
+int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * os_display_version, const char * checksum, const bool replace, os_sha1 hexdigest);
 
 // Save OS info into DB.
 int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * os_display_version, const char * checksum, const bool replace);
@@ -833,7 +813,7 @@ int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_tim
 int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, double cpu_mhz, uint64_t ram_total, uint64_t ram_free, int ram_usage, const char * checksum, const bool replace);
 
 // Insert package info tuple. Return 0 on success or -1 on error.
-int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location, const char triaged, const char * checksum, const char * item_id, const bool replace);
+int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location, const char * checksum, const char * item_id, const bool replace);
 
 // Save Packages info into DB.
 int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location, const char* checksum, const char * item_id, const bool replace);
@@ -1102,19 +1082,6 @@ int wdb_parse_agents_get_sys_osinfo(wdb_t* wdb, char* output);
  * @return -1 on error, and 0 on success.
  */
 int wdb_parse_agents_set_sys_osinfo(wdb_t * wdb, char * input, char * output);
-
-
-/**
- * @brief Function to parse set triaged over the sys_osinfo database table.
- *
- * @param wdb The Global struct database.
- * @param output Buffer output, on success responses are:
- *        "ok" -> If sql statement was processed.
- *        "err <error_message>" -> If sql statement wasn't processed.
- * @return -1 on error, and 0 on success.
- */
-int wdb_parse_agents_set_sys_osinfo_triaged(wdb_t* wdb, char* output);
-
 
 /**
  * @brief Function to parse generic dbsync message operation, and generate
@@ -2424,52 +2391,6 @@ int wdb_parse_task_set_timeout(wdb_t* wdb, const cJSON *parameters, char* output
  *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output);
-
-/**
- * @brief Function to parse the vuln_cves requests.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with the action and the data if needed.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
- int wdb_parse_vuln_cves(wdb_t* wdb, char* input, char* output);
-
- /**
- * @brief Function to parse the vuln_cves insert action.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with the the data in json format.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
- int wdb_parse_agents_insert_vuln_cves(wdb_t* wdb, char* input, char* output);
-
-/**
- * @brief Function to parse the vuln_cves update status action.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with the the data in json format.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
- int wdb_parse_agents_update_vuln_cves_status(wdb_t* wdb, char* input, char* output);
-
- /**
- * @brief Function to parse the vuln_cves remove action.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with the the data in json format. It could receive a status to remove all the vulnerabilities
- *                   with that status. Example:
- *                   - To remove by status: {"status":"OBSOLETE"}
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
- int wdb_parse_agents_remove_vuln_cves(wdb_t* wdb, char* input, char* output);
 
 /**
  * Update old tasks with status in progress to status timeout
