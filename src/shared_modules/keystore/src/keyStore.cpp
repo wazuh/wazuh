@@ -60,9 +60,6 @@ void Keystore::get(const std::string& columnFamily, const std::string& key, std:
             logError(KS_NAME, msg.c_str());
             throw std::runtime_error(msg);
         }
-        else {
-            logDebug2(KS_NAME, "Successfully retrieved the value from key '%s' at column '%s'.", key, columnFamily);
-        }
         
         // Decrypt value
         Utils::rsaDecrypt(PRIVATE_KEY_FILE, encryptedValue, value);
