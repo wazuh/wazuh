@@ -149,6 +149,20 @@ def test_rootkit_trojans2json():
         parent_directory, tmp_path, 'configuration/trojan.txt'))[0]['filename'] == 'trojan'
 
 
+def test_merged_mg2json():
+    with patch('builtins.open', return_value=Exception):
+        with pytest.raises(WazuhError, match=".* 1101 .*"):
+            configuration._merged_mg2json(file_path=os.path.join(
+                parent_directory, tmp_path, 'configuration/default/merged.mg'))
+
+    item = configuration._merged_mg2json(file_path=os.path.join(
+        parent_directory, tmp_path, 'configuration/default/merged.mg'))[0]
+
+    assert item['file_name'] == 'ar.conf'
+    assert item['file_size'] == 77
+    assert item['file_content'] == 'restart-ossec0 - restart-ossec.sh - 0\nrestart-ossec0 - restart-ossec.cmd - 0\n'
+
+
 def test_get_ossec_conf():
     with patch('wazuh.core.configuration.load_wazuh_xml', return_value=Exception):
         with pytest.raises(WazuhError, match=".* 1101 .*"):
@@ -243,36 +257,33 @@ def test_get_file_conf():
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'noexists')):
         with pytest.raises(WazuhError, match=".* 1710 .*"):
             configuration.get_file_conf(filename='ossec.conf', group_id='default', type_conf='conf',
-                                        return_format='plain')
+                                        raw=True)
 
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
         with pytest.raises(WazuhError, match=".* 1006 .*"):
             configuration.get_file_conf(filename='noexists.conf', group_id='default', type_conf='conf',
-                                        return_format='plain')
+                                        raw=True)
 
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
-        assert isinstance(configuration.get_file_conf(filename='agent.conf', group_id='default', type_conf='conf',
-                                                      return_format='json'), dict)
-        assert isinstance(configuration.get_file_conf(filename='agent.conf', group_id='default', type_conf='rcl',
-                                                      return_format='json'), dict)
+        assert isinstance(configuration.get_file_conf(filename='agent.conf', group_id='default', type_conf='conf'),
+                          dict)
+        assert isinstance(configuration.get_file_conf(filename='agent.conf', group_id='default', type_conf='rcl'),
+                          dict)
         assert isinstance(configuration.get_file_conf(filename='agent.conf', group_id='default',
-                                                      return_format='plain'), str)
+                                                      raw=True), str)
         rootkit_files = [{'filename': 'NEW_ELEMENT', 'name': 'FOR', 'link': 'TESTING'}]
-        assert configuration.get_file_conf(filename='rootkit_files.txt', group_id='default',
-                                           return_format='json') == rootkit_files
+        assert configuration.get_file_conf(filename='rootkit_files.txt', group_id='default') == rootkit_files
         rootkit_trojans = [{'filename': 'NEW_ELEMENT', 'name': 'FOR', 'description': 'TESTING'}]
-        assert configuration.get_file_conf(filename='rootkit_trojans.txt', group_id='default',
-                                           return_format='json') == rootkit_trojans
+        assert configuration.get_file_conf(filename='rootkit_trojans.txt', group_id='default',) == rootkit_trojans
         ar_list = ['restart-ossec0 - restart-ossec.sh - 0', 'restart-ossec0 - restart-ossec.cmd - 0',
                    'restart-wazuh0 - restart-ossec.sh - 0', 'restart-wazuh0 - restart-ossec.cmd - 0',
                    'restart-wazuh0 - restart-wazuh - 0', 'restart-wazuh0 - restart-wazuh.exe - 0']
-        assert configuration.get_file_conf(filename='ar.conf', group_id='default', return_format='json') == ar_list
+        assert configuration.get_file_conf(filename='ar.conf', group_id='default') == ar_list
         rcl = {'vars': {}, 'controls': [{}, {'name': 'NEW_ELEMENT', 'cis': [], 'pci': [], 'condition': 'FOR',
                                              'reference': 'TESTING', 'checks': []}]}
-        assert configuration.get_file_conf(filename='rcl.conf', group_id='default', return_format='json') == rcl
+        assert configuration.get_file_conf(filename='rcl.conf', group_id='default') == rcl
         with pytest.raises(WazuhError, match=".* 1104 .*"):
-            configuration.get_file_conf(filename='agent.conf', group_id='default', type_conf='noconf',
-                                        return_format='json')
+            configuration.get_file_conf(filename='agent.conf', group_id='default', type_conf='noconf')
 
 
 def test_parse_internal_options():
