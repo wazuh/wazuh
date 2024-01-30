@@ -14,9 +14,13 @@
 #include "loggerHelper.h"
 #include "secureCommunication.hpp"
 #include "serverSelector.hpp"
+#include "keyStore.hpp"
 #include <fstream>
 
 constexpr auto NOT_USED {-1};
+constexpr auto INDEXER_COLUMN {"indexer"};
+constexpr auto USER_KEY {"username"};
+constexpr auto PASSWORD_KEY {"password"};
 
 namespace Log
 {
@@ -53,6 +57,8 @@ IndexerConnector::IndexerConnector(
     std::string caRootCertificate;
     std::string sslCertificate;
     std::string sslKey;
+    std::string username;
+    std::string password;
 
     auto secureCommunication = SecureCommunication::builder();
 
@@ -75,7 +81,15 @@ IndexerConnector::IndexerConnector(
         }
     }
 
-    secureCommunication.sslCertificate(sslCertificate)
+    Keystore::get(INDEXER_COLUMN, USER_KEY, username);
+    Keystore::get(INDEXER_COLUMN, PASSWORD_KEY, password);
+
+    if(username == "" || password == ""){
+        throw std::runtime_error("Empty indexer username or password");
+    }
+
+    secureCommunication.basicAuth(username + ":" + password)
+        .sslCertificate(sslCertificate)
         .sslKey(sslKey)
         .caRootCertificate(caRootCertificate);
 

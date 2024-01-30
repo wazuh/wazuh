@@ -40,6 +40,33 @@ void Keystore::put(const std::string& columnFamily, const std::string& key, cons
     }
 }
 
-void Keystore::get(const std::string& columnFamily, const std::string& key, rocksdb::PinnableSlice& value)
+void Keystore::get(const std::string& columnFamily, const std::string& key, std::string& value)
 {
+    std::string encryptedValue;
+
+    try
+    {        
+        // Get from DB
+        Utils::RocksDBWrapper keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
+
+        if(!keystoreDB.columnExists(columnFamily)) {
+            std::string msg = "Column '" + columnFamily + "' does not exists at the database.";
+            logError(KS_NAME, msg.c_str());
+            throw std::runtime_error(msg);
+        }
+
+        if (!keystoreDB.get(key, encryptedValue, columnFamily)) {
+            std::string msg = "Could not find key '" + key + " at column '" + columnFamily + "'.";
+            logError(KS_NAME, msg.c_str());
+            throw std::runtime_error(msg);
+        }
+        
+        // Decrypt value
+        Utils::rsaDecrypt(PRIVATE_KEY_FILE, encryptedValue, value);
+    }
+    catch(std::exception& e)
+    {
+        logError(KS_NAME, "%s", e.what());
+        throw std::runtime_error(e.what());
+    }
 }
