@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12.4)
 
-project(indexer_connector_unit_tests)
+project(indexer_connector_component_tests)
 
 file(GLOB SOURCES
         *.cpp
