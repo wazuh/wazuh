@@ -35,25 +35,29 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
 
     // Second argument is key
     auto key = opArgs[1];
-    if (key->isValue() && !std::static_pointer_cast<Value>(key)->value().isString())
+    if (key->isValue())
     {
-        throw std::runtime_error(fmt::format("Expected key 'string' as second argument but got '{}'",
-                                             std::static_pointer_cast<Value>(key)->value().str()));
+        if (!std::static_pointer_cast<Value>(key)->value().isString())
+        {
+            throw std::runtime_error(fmt::format("Expected key 'string' as second argument but got '{}'",
+                                                 std::static_pointer_cast<Value>(key)->value().str()));
+        }
+    }
+    else
+    {
+        const auto& ref = *std::static_pointer_cast<const Reference>(key);
+        if (buildCtx->schema().hasField(ref.dotPath()))
+        {
+            auto jType = buildCtx->validator().getJsonType(buildCtx->schema().getType(ref.dotPath()));
+            if (jType != json::Json::Type::String)
+            {
+                throw std::runtime_error(fmt::format("Expected reference field of 'string' type but got '{}'",
+                                                     json::Json::typeToStr(jType)));
+            }
+        }
     }
 
-    // Format name for the tracer
-    const auto name = buildCtx->context().opName;
-
-    // Trace messages
-    const std::string successTrace {fmt::format("{} -> Success", name)};
-    const std::string failureTrace1 = fmt::format("{} -> Failure: field reference for field not found", name);
-    const std::string failureTrace2 =
-        fmt::format("{} -> Failure: key could not be found on database '{}'", name, dbName);
-    const std::string failureTrace3 =
-        fmt::format("{} -> Failure: Target field '{}' not found", name, targetField.dotPath());
-    const std::string failureTrace4 = fmt::format("{} -> Failure: fields type mismatch when merging", name);
-    const std::string failureTrace5 = fmt::format("{} -> Failure: malformed JSON for key", name);
-
+    // Get KVDB handler
     auto resultHandler = kvdbManager->getKVDBHandler(dbName, kvdbScopeName);
 
     if (std::holds_alternative<base::Error>(resultHandler))
@@ -61,8 +65,41 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
         throw std::runtime_error(fmt::format("Engine KVDB builder: {}.", std::get<base::Error>(resultHandler).message));
     }
 
+    // Format name for the tracer
+    const auto name = buildCtx->context().opName;
+
+    // Trace messages
+    const auto successTrace {fmt::format("{} -> Success", name)};
+
+    const auto failureTrace1 = fmt::format("{} -> Target field '{}' not found", name, targetField.dotPath());
+    const auto failureTrace2 = [=]()
+    {
+        if (key->isReference())
+        {
+            return fmt::format(
+                "{} -> Reference for key '{}' not found", name, std::static_pointer_cast<Reference>(key)->dotPath());
+        }
+
+        return std::string("");
+    }();
+    const auto failureTrace3 = [=]()
+    {
+        if (key->isReference())
+        {
+            return fmt::format("{} -> Reference for key '{}' is not a string",
+                               name,
+                               std::static_pointer_cast<Reference>(key)->dotPath());
+        }
+
+        return std::string("");
+    }();
+    const auto failureTrace4 = fmt::format("{} -> Key not found in DB", name);
+    const auto failureTrace5 = fmt::format("{} -> Type mismatch between target field and value when merging", name);
+    const auto failureTrace6 = fmt::format("{} -> Malformed JSON for value in DB", name);
+
     // Return Op
     return [=,
+            runState = buildCtx->runState(),
             targetField = targetField.jsonPath(),
             kvdbHandler = std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler)](
                base::Event event) -> TransformResult
@@ -71,41 +108,46 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
         std::string resolvedKey;
         if (key->isReference())
         {
-            const auto& keyRef = std::static_pointer_cast<const Reference>(key)->jsonPath();
-            const auto value = event->getString(keyRef);
-            if (value)
+            const auto& keyRef = *std::static_pointer_cast<Reference>(key);
+            if (!event->exists(keyRef.jsonPath()))
             {
-                resolvedKey = value.value();
+                RETURN_FAILURE(runState, event, failureTrace2)
             }
-            else
+
+            const auto value = event->getString(keyRef.jsonPath());
+            if (!value)
             {
-                return base::result::makeFailure(event, failureTrace1);
+                RETURN_FAILURE(runState, event, failureTrace3)
             }
+
+            resolvedKey = value.value();
         }
         else
         {
             resolvedKey = std::static_pointer_cast<const Value>(key)->value().getString().value();
         }
 
+        // Get value from KVDB
         auto resultValue = kvdbHandler->get(resolvedKey);
 
-        if (std::holds_alternative<base::Error>(resultValue))
+        if (base::isError(resultValue))
         {
-            return base::result::makeFailure(event, failureTrace2);
+            RETURN_FAILURE(runState, event, failureTrace4)
         }
+
         try
         {
-            json::Json value {std::get<std::string>(resultValue).c_str()};
+            json::Json value {base::getResponse<std::string>(resultValue).c_str()};
             if (doMerge)
             {
-                // Failure cases on merge
                 if (!event->exists(targetField))
                 {
-                    return base::result::makeFailure(event, failureTrace3);
+                    RETURN_FAILURE(runState, event, failureTrace1)
                 }
-                else if (event->type(targetField) != value.type() || (!value.isObject() && !value.isArray()))
+
+                if (event->type(targetField) != value.type() || (!value.isObject() && !value.isArray()))
                 {
-                    return base::result::makeFailure(event, failureTrace4);
+                    RETURN_FAILURE(runState, event, failureTrace5)
                 }
                 event->merge(json::NOT_RECURSIVE, value, targetField);
             }
@@ -116,10 +158,10 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
         }
         catch (const std::runtime_error& e)
         {
-            return base::result::makeFailure(event, failureTrace5);
+            RETURN_FAILURE(runState, event, failureTrace6)
         }
 
-        return base::result::makeSuccess(event, successTrace);
+        RETURN_SUCCESS(runState, event, successTrace)
     };
 }
 
@@ -152,6 +194,10 @@ FilterOp existanceCheck(std::shared_ptr<IKVDBManager> kvdbManager,
                         const std::shared_ptr<const IBuildCtx>& buildCtx,
                         const bool shouldMatch)
 {
+    if (!kvdbManager)
+    {
+        throw std::runtime_error("Got null KVDB manager");
+    }
 
     // Assert expected number of parameters
     utils::assertSize(opArgs, 1);
@@ -165,54 +211,61 @@ FilterOp existanceCheck(std::shared_ptr<IKVDBManager> kvdbManager,
     }
 
     auto dbName = std::static_pointer_cast<const Value>(opArgs[0])->value().getString().value();
-
-    const auto name = buildCtx->context().opName;
-
-    const std::string successTrace {fmt::format("{} -> Success", name)};
-    const std::string failureTrace {fmt::format(
-        "{} -> Failure: Target field '{}' does not exist or it is not a string", name, targetField.dotPath())};
-
     auto resultHandler = kvdbManager->getKVDBHandler(dbName, kvdbScopeName);
-
-    if (std::holds_alternative<base::Error>(resultHandler))
+    if (base::isError(resultHandler))
     {
-        throw std::runtime_error(fmt::format("Engine KVDB builder: {}.", std::get<base::Error>(resultHandler).message));
+        throw std::runtime_error(fmt::format("Error getting KVDB handler: {}", base::getError(resultHandler).message));
     }
 
+    // Trace messages
+    const auto name = buildCtx->context().opName;
+    const auto successTrace = fmt::format("{} -> Success", name);
+    const auto failureTrace1 = fmt::format("{} -> Target field '{}' not found", name, targetField.dotPath());
+    const auto failureTrace2 = fmt::format("{} -> Target field '{}' is not a string", name, targetField.dotPath());
+    const auto failureTrace3 = fmt::format("{} -> Error quering db: ", name);
+    const auto failureTraceMatch = fmt::format("{} -> Key not found in DB", name);
+    const auto failureTraceNotMatch = fmt::format("{} -> Key found in DB", name);
+
     return [=,
+            runState = buildCtx->runState(),
             targetField = targetField.jsonPath(),
             kvdbHandler = std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler)](
                base::ConstEvent event) -> FilterResult
     {
-        bool found = false;
-        std::optional<std::string> value;
-
-        try
+        if (!event->exists(targetField))
         {
-            value = event->getString(targetField);
-        }
-        catch (std::exception& e)
-        {
-            return base::result::makeFailure(false, failureTrace + ": " + e.what());
+            RETURN_FAILURE(runState, false, failureTrace1)
         }
 
-        if (value.has_value())
+        auto key = event->getString(targetField);
+        if (!key.has_value())
         {
-            auto result = kvdbHandler->contains(value.value());
-            if (std::holds_alternative<base::Error>(result))
+            RETURN_FAILURE(runState, false, failureTrace2)
+        }
+
+        auto value = kvdbHandler->contains(key.value());
+        if (base::isError(value))
+        {
+            RETURN_FAILURE(runState, false, failureTrace3 + std::get<base::Error>(value).message)
+        }
+
+        auto found = base::getResponse<bool>(value);
+        if (shouldMatch)
+        {
+            if (!found)
             {
-                return base::result::makeFailure(false, failureTrace + ": " + std::get<base::Error>(result).message);
+                RETURN_FAILURE(runState, false, failureTraceMatch)
             }
-
-            found = std::get<bool>(result);
         }
-
-        if ((shouldMatch && found) || (!shouldMatch && !found))
+        else
         {
-            return base::result::makeSuccess(true, successTrace);
+            if (found)
+            {
+                RETURN_FAILURE(runState, false, failureTraceNotMatch)
+            }
         }
 
-        return base::result::makeFailure(false, failureTrace);
+        RETURN_SUCCESS(runState, true, successTrace)
     };
 }
 

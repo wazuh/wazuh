@@ -8,7 +8,7 @@ namespace
 {
 auto customRefExpected()
 {
-    return [](const Mocks& mocks)
+    return [](const BuildersMocks& mocks)
     {
         EXPECT_CALL(*mocks.ctx, schema());
         EXPECT_CALL(*mocks.schema, hasField(DotPath("ref"))).WillOnce(testing::Return(false));
@@ -46,7 +46,7 @@ INSTANTIATE_TEST_SUITE_P(Builders,
                              TransformT({},
                                         opBuilderHelperEraseCustomFields,
                                         SUCCESS(
-                                            [](const Mocks& mocks)
+                                            [](const BuildersMocks& mocks)
                                             {
                                                 EXPECT_CALL(*mocks.ctx, schemaPtr()).WillOnce(testing::Return(nullptr));
                                                 return None {};
@@ -209,7 +209,7 @@ INSTANTIATE_TEST_SUITE_P(
                    ".",
                    {},
                    SUCCESS(
-                       [](const Mocks& mocks)
+                       [](const BuildersMocks& mocks)
                        {
                            EXPECT_CALL(*mocks.ctx, schemaPtr()).WillOnce(testing::Return(mocks.schema));
                            EXPECT_CALL(*mocks.schema, hasField(DotPath("target"))).WillOnce(testing::Return(false));
@@ -220,7 +220,7 @@ INSTANTIATE_TEST_SUITE_P(
                    ".",
                    {},
                    SUCCESS(
-                       [](const Mocks& mocks)
+                       [](const BuildersMocks& mocks)
                        {
                            EXPECT_CALL(*mocks.ctx, schemaPtr()).WillOnce(testing::Return(mocks.schema));
                            EXPECT_CALL(*mocks.schema, hasField(DotPath("target"))).WillOnce(testing::Return(true));
@@ -231,7 +231,7 @@ INSTANTIATE_TEST_SUITE_P(
                    ".",
                    {},
                    SUCCESS(
-                       [](const Mocks& mocks)
+                       [](const BuildersMocks& mocks)
                        {
                            EXPECT_CALL(*mocks.ctx, schemaPtr()).WillOnce(testing::Return(mocks.schema));
                            EXPECT_CALL(*mocks.schema, hasField(DotPath("t1"))).WillOnce(testing::Return(true));
@@ -243,7 +243,7 @@ INSTANTIATE_TEST_SUITE_P(
                    "notTarget",
                    {},
                    SUCCESS(
-                       [](const Mocks& mocks)
+                       [](const BuildersMocks& mocks)
                        {
                            EXPECT_CALL(*mocks.ctx, schemaPtr()).WillOnce(testing::Return(mocks.schema));
                            return makeEvent(R"({"target": "value"})");
