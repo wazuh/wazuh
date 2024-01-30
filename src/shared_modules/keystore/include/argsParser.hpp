@@ -45,7 +45,7 @@ public:
      * @param argc Number of arguments.
      * @param argv Arguments.
      */
-    explicit CmdLineArgs(const int argc, const char* argv[])
+    explicit CmdLineArgs(int argc, char* argv[])
         : m_columnFamily {paramValueOf(argc, argv, "-f")}
         , m_key {paramValueOf(argc, argv, "-k")}
         , m_value {paramValueOf(argc, argv, "-v")}
@@ -96,8 +96,8 @@ public:
     }
 
 private:
-    static std::string paramValueOf(const int argc,
-                                    const char* argv[],
+    static std::string paramValueOf(int argc,
+                                    char* argv[],
                                     const std::string& switchValue,
                                     const std::pair<bool, std::string>& required = std::make_pair(true, ""))
     {

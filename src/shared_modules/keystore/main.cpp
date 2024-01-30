@@ -11,6 +11,8 @@
 
 #include "keyStore.hpp"
 #include "argsParser.hpp"
+#include "homedirHelper.hpp"
+#include <filesystem>
 
 namespace Log
 {
@@ -19,8 +21,12 @@ namespace Log
         GLOBAL_LOG_FUNCTION;
 };
 
-int main(const int argc, const char* argv[])
+int main(int argc, char* argv[])
 {
+    // Define current working directory
+    char* home_path = Utils::w_homedir(argv[0]);
+    std::filesystem::current_path((char*)home_path);
+
     std::string family;
     std::string key;
     std::string value;
