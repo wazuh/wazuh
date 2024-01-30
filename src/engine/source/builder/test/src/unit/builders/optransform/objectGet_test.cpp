@@ -9,7 +9,7 @@ namespace
 template<typename... Refs>
 auto customRefExpected(base::Event value, Refs... refs)
 {
-    return [=](const Mocks& mocks)
+    return [=](const BuildersMocks& mocks)
     {
         EXPECT_CALL(*mocks.ctx, schema()).Times(testing::AtLeast(1));
         for (auto ref : {refs...})
@@ -24,7 +24,7 @@ auto customRefExpected(base::Event value, Refs... refs)
 template<typename... Refs>
 auto customRefExpected(Refs... refs)
 {
-    return [=](const Mocks& mocks)
+    return [=](const BuildersMocks& mocks)
     {
         EXPECT_CALL(*mocks.ctx, schema()).Times(testing::AtLeast(1));
         for (auto ref : {refs...})

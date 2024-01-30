@@ -8,7 +8,7 @@ namespace
 {
 auto customRefExpected()
 {
-    return [](const Mocks& mocks)
+    return [](const BuildersMocks& mocks)
     {
         EXPECT_CALL(*mocks.ctx, schema());
         EXPECT_CALL(*mocks.schema, hasField(DotPath("ref"))).WillOnce(testing::Return(false));
@@ -18,7 +18,7 @@ auto customRefExpected()
 
 auto customRefExpected(base::Event value)
 {
-    return [value](const Mocks& mocks)
+    return [value](const BuildersMocks& mocks)
     {
         EXPECT_CALL(*mocks.ctx, schema());
         EXPECT_CALL(*mocks.schema, hasField(DotPath("ref"))).WillOnce(testing::Return(false));
@@ -28,7 +28,7 @@ auto customRefExpected(base::Event value)
 
 auto jTypeRefExpected(json::Json::Type jType)
 {
-    return [jType](const Mocks& mocks)
+    return [jType](const BuildersMocks& mocks)
     {
         EXPECT_CALL(*mocks.ctx, schema()).Times(testing::AtLeast(1));
         EXPECT_CALL(*mocks.schema, hasField(DotPath("ref"))).WillOnce(testing::Return(true));
