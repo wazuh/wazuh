@@ -3,6 +3,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "-fPIC")
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER})
+
 project(keystore)
 
 # enable_testing()
@@ -37,3 +39,8 @@ target_link_libraries(keystore rocksdb wazuhext)
 add_executable(wazuh-keystore main.cpp)
 
 target_link_libraries(wazuh-keystore keystore)
+
+set_target_properties(wazuh-keystore PROPERTIES
+    BUILD_RPATH_USE_ORIGIN TRUE
+    BUILD_RPATH "$ORIGIN/../lib"
+)
