@@ -1,4 +1,4 @@
-FROM haproxytech/haproxy-ubuntu:2.7.8
+FROM haproxytech/haproxy-ubuntu:2.7
 
 COPY haproxy.conf /etc/haproxy/haproxy.conf
 
