@@ -6018,15 +6018,6 @@ components:
       schema:
         type: string
         format: alphanumeric
-    return_format:
-      in: query
-      name: return_format
-      description: "Response content format"
-      schema:
-        type: string
-        enum:
-          - json
-          - plain
     condition:
       in: query
       name: condition
@@ -8879,7 +8870,7 @@ paths:
         - $ref: '#/components/parameters/group_id'
         - $ref: '#/components/parameters/file_name'
         - $ref: '#/components/parameters/type_agents'
-        - $ref: '#/components/parameters/return_format'
+        - $ref: '#/components/parameters/raw'
       responses:
         '200':
           description: "Get group file in json format"

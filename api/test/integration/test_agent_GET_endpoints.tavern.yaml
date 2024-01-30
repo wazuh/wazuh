@@ -3796,8 +3796,6 @@ stages:
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
-      params:
-        return_format: json
     response:
       status_code: 200
       json:
@@ -3812,7 +3810,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        return_format: plain
+        raw: true
     response:
       status_code: 200
       headers:
@@ -3851,20 +3849,6 @@ stages:
       status_code: 400
       json:
         error: 1006
-
-  - name: Try to get one file of a group, invalid format
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/default/files/agent.conf"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        return_format: xml
-    response:
-      status_code: 400
-      json:
-        <<: *error_spec
 
 ---
 test_name: GET /agents?name=agent_name

@@ -938,12 +938,11 @@ async def test_get_group_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
     """Verify 'get_group_file' endpoint is working as expected."""
     result = await get_group_file(request=mock_request,
                                        group_id='001',
-                                       file_name='filename_value',
-                                       return_format='json')
+                                       file_name='filename_value')
     f_kwargs = {'group_list': ['001'],
                 'filename': 'filename_value',
                 'type_conf': mock_request.query.get('type', None),
-                'return_format': 'json'
+                'raw': None
                 }
     mock_dapi.assert_called_once_with(f=agent.get_file_conf,
                                       f_kwargs=mock_remove.return_value,

@@ -1400,7 +1400,7 @@ def get_agents_sync_group(agent_list: list = None) -> AffectedItemsWazuhResult:
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
-def get_file_conf(group_list: list = None, type_conf: str = None, return_format: str = None,
+def get_file_conf(group_list: list = None, type_conf: str = None, raw: bool = None,
                   filename: str = None) -> WazuhResult:
     """Read configuration file for a specified group.
 
@@ -1410,8 +1410,8 @@ def get_file_conf(group_list: list = None, type_conf: str = None, return_format:
         List with the group ID.
     type_conf : str
         Type of file.
-    return_format : str
-        Response content format.
+    raw : bool
+        Respond in raw format.
     filename : str
         Filename to read config from.
 
@@ -1425,7 +1425,7 @@ def get_file_conf(group_list: list = None, type_conf: str = None, return_format:
     group_id = group_list[0]
 
     return WazuhResult({'data': configuration.get_file_conf(filename, group_id=group_id, type_conf=type_conf,
-                                                            return_format=return_format)})
+                                                            raw=raw)})
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)

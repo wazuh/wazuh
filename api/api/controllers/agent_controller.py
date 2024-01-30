@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import logging
+import mimetypes
 from typing import Union
 
 from aiohttp import web
@@ -1360,7 +1361,7 @@ async def get_group_files(request, group_id: str, pretty: bool = False, wait_for
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_group_file(request, group_id: str, file_name: str, return_format: str = 'plain', pretty: bool = False,
+async def get_group_file(request, group_id: str, file_name: str, raw: bool = None, pretty: bool = False,
                               wait_for_complete: bool = False) -> web.Response:
     """Get the files placed under the group directory in the specified format.
 
@@ -1371,8 +1372,8 @@ async def get_group_file(request, group_id: str, file_name: str, return_format: 
         Group ID.
     file_name : str
         Name of the file to be obtained.
-    return_format : str
-        Response content format.
+    raw : bool
+        Respond in raw format.
     pretty: bool
         Show results in human-readable format.
     wait_for_complete : bool
@@ -1386,7 +1387,7 @@ async def get_group_file(request, group_id: str, file_name: str, return_format: 
     f_kwargs = {'group_list': [group_id],
                 'filename': file_name,
                 'type_conf': request.query.get('type', None),
-                'return_format': return_format}
+                'raw': raw}
 
     dapi = DistributedAPI(f=agent.get_file_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -1398,8 +1399,12 @@ async def get_group_file(request, group_id: str, file_name: str, return_format: 
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    if return_format == 'plain':
-        return ConnexionResponse(body=data["data"], mimetype='text/plain')
+    if raw:
+        mimetype, _ = mimetypes.guess_type(file_name)
+        if mimetype is None:
+            mimetype = 'text/plain'
+
+        return ConnexionResponse(body=data["data"], mimetype=mimetype)
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
