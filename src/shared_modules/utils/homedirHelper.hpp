@@ -9,8 +9,8 @@
  * Foundation.
  */
 
-#ifndef _HOMEDIR_H
-#define _HOMEDIR_H
+#ifndef _HOMEDIR_HPP
+#define _HOMEDIR_HPP
 
 #include <iostream>
 #include <cstring>
@@ -89,4 +89,4 @@ namespace Utils
     }
 }
 
-#endif // _HOMEDIR_H
+#endif // _HOMEDIR_HPP

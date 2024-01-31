@@ -15,7 +15,6 @@
 #include <iostream>
 #include <string>
 
-
 class CmdLineArgsException : public std::exception
 {
 public:
@@ -105,7 +104,8 @@ private:
         {
             const std::string currentValue {argv[i]};
 
-            if (currentValue == "-h") {
+            if (currentValue == "-h")
+            {
                 showHelp();
                 std::exit(0);
             }
@@ -114,9 +114,10 @@ private:
             {
                 // Switch found
                 std::string returnValue = argv[i + 1];
-                    if(returnValue == "") {
-                        throw CmdLineArgsException {"Switch value: " + switchValue + " is empty."};
-                    }
+                if (returnValue == "")
+                {
+                    throw CmdLineArgsException {"Switch value: " + switchValue + " is empty."};
+                }
                 return returnValue;
             }
         }

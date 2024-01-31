@@ -11,10 +11,10 @@
 
 #include "indexerConnector.hpp"
 #include "HTTPRequest.hpp"
+#include "keyStore.hpp"
 #include "loggerHelper.h"
 #include "secureCommunication.hpp"
 #include "serverSelector.hpp"
-#include "keyStore.hpp"
 #include <fstream>
 
 constexpr auto NOT_USED {-1};
@@ -84,7 +84,8 @@ IndexerConnector::IndexerConnector(
     Keystore::get(INDEXER_COLUMN, USER_KEY, username);
     Keystore::get(INDEXER_COLUMN, PASSWORD_KEY, password);
 
-    if(username == "" || password == ""){
+    if (username == "" || password == "")
+    {
         throw std::runtime_error("Empty indexer username or password");
     }
 

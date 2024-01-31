@@ -9,9 +9,9 @@
  * Foundation.
  */
 
-#include "keyStore.hpp"
 #include "argsParser.hpp"
 #include "homedirHelper.hpp"
+#include "keyStore.hpp"
 #include <filesystem>
 
 namespace Log
@@ -41,7 +41,8 @@ int main(int argc, char* argv[])
 
         Keystore::put(family, key, value);
     }
-    catch (const CmdLineArgsException& e) {
+    catch (const CmdLineArgsException& e)
+    {
         std::cerr << e.what() << std::endl;
         CmdLineArgs::showHelp();
         return 1;
