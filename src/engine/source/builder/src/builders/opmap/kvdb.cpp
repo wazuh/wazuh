@@ -308,121 +308,136 @@ TransformOp KVDBSet(std::shared_ptr<IKVDBManager> kvdbManager,
         throw std::runtime_error(fmt::format("Expected db name 'string' as first argument but got '{}'",
                                              std::static_pointer_cast<Value>(opArgs[0])->value().str()));
     }
-
     auto dbName = std::static_pointer_cast<const Value>(opArgs[0])->value().getString().value();
+
     auto key = opArgs[1];
     auto value = opArgs[2];
 
-    if (key->isValue() && !std::static_pointer_cast<Value>(key)->value().isString())
+    if (key->isValue())
     {
-        throw std::runtime_error(fmt::format("Expected key 'string' as second argument but got '{}'",
-                                             std::static_pointer_cast<Value>(key)->value().str()));
+        if (!std::static_pointer_cast<Value>(key)->value().isString())
+        {
+            throw std::runtime_error(fmt::format("Expected key 'string' as second argument but got '{}'",
+                                                 std::static_pointer_cast<Value>(key)->value().str()));
+        }
     }
-    if (value->isValue() && !std::static_pointer_cast<Value>(value)->value().isString())
+    else
     {
-        throw std::runtime_error(fmt::format("Expected value 'string' as third argument but got '{}'",
-                                             std::static_pointer_cast<Value>(value)->value().str()));
+        const auto& ref = *std::static_pointer_cast<const Reference>(key);
+        if (buildCtx->schema().hasField(ref.dotPath()))
+        {
+            auto jType = buildCtx->validator().getJsonType(buildCtx->schema().getType(ref.dotPath()));
+            if (jType != json::Json::Type::String)
+            {
+                throw std::runtime_error(fmt::format("Expected reference field of 'string' type but got '{}'",
+                                                     json::Json::typeToStr(jType)));
+            }
+        }
     }
-
-    const auto name = buildCtx->context().opName;
-
-    // Trace messages
-    const std::string successTrace {fmt::format("{} -> Success", name)};
-
-    const std::string failureTrace {fmt::format("{} -> Failure: ", name)};
-    const std::string failureTrace2 {fmt::format("{} -> Failure: key field reference not found", name)};
-    const std::string failureTrace3 {fmt::format("{} -> Failure: value field reference not found", name)};
-    const std::string failureTrace4 {fmt::format("{} -> ", name) + "Failure: Database '{}' could not be loaded: {}"};
 
     auto resultHandler = kvdbManager->getKVDBHandler(dbName, kvdbScopeName);
-
-    if (std::holds_alternative<base::Error>(resultHandler))
+    if (base::isError(resultHandler))
     {
-        throw std::runtime_error(fmt::format("Engine KVDB builder: {}.", std::get<base::Error>(resultHandler).message));
+        throw std::runtime_error(fmt::format("Error getting KVDB handler: {}", base::getError(resultHandler).message));
     }
+
+    // Trace messages
+    const auto name = buildCtx->context().opName;
+    const auto successTrace = fmt::format("{} -> Success", name);
+
+    const auto failureTrace1 = [&]()
+    {
+        if (key->isReference())
+        {
+            return fmt::format(
+                "{} -> Reference for key '{}' not found", name, std::static_pointer_cast<Reference>(key)->dotPath());
+        }
+
+        return std::string("");
+    }();
+
+    const auto failureTrace2 = [&]()
+    {
+        if (key->isReference())
+        {
+            return fmt::format("{} -> Reference for key '{}' is not a string",
+                               name,
+                               std::static_pointer_cast<Reference>(key)->dotPath());
+        }
+
+        return std::string("");
+    }();
+
+    const auto failureTrace3 = [&]()
+    {
+        if (value->isReference())
+        {
+            return fmt::format("{} -> Reference for value '{}' not found",
+                               name,
+                               std::static_pointer_cast<Reference>(value)->dotPath());
+        }
+
+        return std::string("");
+    }();
+
+    const auto failureTrace4 = fmt::format("{} -> Could not set value in DB: ", name);
 
     // Return Op
     return [=,
+            runState = buildCtx->runState(),
             targetField = targetField.jsonPath(),
             kvdbHandler = std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler)](
                base::Event event) -> TransformResult
     {
-        event->setBool(false, targetField);
-
         // Get key name
         std::string resolvedKey;
         if (key->isReference())
         {
-            const auto keyRef = std::static_pointer_cast<const Reference>(key)->jsonPath();
-            const auto retval = event->getString(keyRef);
-            if (retval)
+            const auto& keyRef = *std::static_pointer_cast<Reference>(key);
+            if (!event->exists(keyRef.jsonPath()))
             {
-                resolvedKey = retval.value();
+                RETURN_FAILURE(runState, event, failureTrace1);
             }
-            else
+
+            const auto value = event->getString(keyRef.jsonPath());
+            if (!value)
             {
-                return base::result::makeFailure(event, failureTrace2);
+                RETURN_FAILURE(runState, event, failureTrace2);
             }
+
+            resolvedKey = value.value();
         }
         else
         {
             resolvedKey = std::static_pointer_cast<const Value>(key)->value().getString().value();
         }
 
-        // Get value
-        std::string resolvedStrValue;
-        json::Json resolvedJsonValue {};
-        bool isValueRef {false};
+        // Get value and perform the set in the DB
+        base::OptError error = base::noError();
         if (value->isReference())
         {
-            const auto valueRef = std::static_pointer_cast<const Reference>(value)->jsonPath();
-            const auto refExists = event->exists(valueRef);
-            if (refExists)
+            const auto& valueRef = *std::static_pointer_cast<Reference>(value);
+            if (!event->exists(valueRef.jsonPath()))
             {
-                auto retvalObject = event->getJson(valueRef);
+                RETURN_FAILURE(runState, event, failureTrace3);
+            }
 
-                if (retvalObject)
-                {
-                    resolvedJsonValue = std::move(retvalObject.value());
-                    resolvedStrValue = resolvedJsonValue.str();
-                    isValueRef = true;
-                }
-                else
-                {
-                    // This should never happen, as the field existance was previously checked
-                    return base::result::makeFailure(event, failureTrace3);
-                }
-            }
-            else
-            {
-                return base::result::makeFailure(event, failureTrace3);
-            }
+            const auto value = event->getJson(valueRef.jsonPath());
+            error = kvdbHandler->set(resolvedKey, value.value());
         }
         else
         {
-            resolvedStrValue = std::static_pointer_cast<const Value>(value)->value().getString().value();
+            error = kvdbHandler->set(resolvedKey, std::static_pointer_cast<const Value>(value)->value());
         }
 
-        std::optional<base::Error> kvdbSetError;
-
-        kvdbSetError = isValueRef ? kvdbHandler->set(resolvedKey, resolvedJsonValue)
-                                  : kvdbHandler->set(resolvedKey, resolvedStrValue);
-
-        if (kvdbSetError)
+        // Set value in KVDB
+        if (error)
         {
-            return base::result::makeFailure(
-                event,
-                failureTrace
-                    + fmt::format("Failure: Key '{}' and value '{}' could not be written to database '{}': {}",
-                                  resolvedKey,
-                                  resolvedStrValue,
-                                  dbName,
-                                  kvdbSetError.value().message));
+            RETURN_FAILURE(runState, event, failureTrace4 + error.value().message);
         }
 
         event->setBool(true, targetField);
-
-        return base::result::makeSuccess(event, successTrace);
+        RETURN_SUCCESS(runState, event, successTrace);
     };
 }
 
@@ -458,19 +473,27 @@ TransformOp KVDBDelete(std::shared_ptr<IKVDBManager> kvdbManager,
     auto dbName = std::static_pointer_cast<const Value>(opArgs[0])->value().getString().value();
 
     auto key = opArgs[1];
-    if (key->isValue() && !std::static_pointer_cast<Value>(key)->value().isString())
+    if (key->isValue())
     {
-        throw std::runtime_error(fmt::format("Expected key 'string' as second argument but got '{}'",
-                                             std::static_pointer_cast<Value>(key)->value().str()));
+        if (!std::static_pointer_cast<Value>(key)->value().isString())
+        {
+            throw std::runtime_error(fmt::format("Expected key 'string' as second argument but got '{}'",
+                                                 std::static_pointer_cast<Value>(key)->value().str()));
+        }
     }
-
-    const auto name = buildCtx->context().opName;
-
-    // Trace messages
-    const std::string successTrace {fmt::format("[{}] -> Success", name)};
-    const std::string failureTrace1 = fmt::format("[{}] -> Failure: filed reference for key '{}' not found", name);
-    const std::string failureTrace2 =
-        fmt::format("[{}] -> Failure: key could not be found on database '{}'", name, dbName);
+    else
+    {
+        const auto& ref = *std::static_pointer_cast<const Reference>(key);
+        if (buildCtx->schema().hasField(ref.dotPath()))
+        {
+            auto jType = buildCtx->validator().getJsonType(buildCtx->schema().getType(ref.dotPath()));
+            if (jType != json::Json::Type::String)
+            {
+                throw std::runtime_error(fmt::format("Expected reference field of 'string' type but got '{}'",
+                                                     json::Json::typeToStr(jType)));
+            }
+        }
+    }
 
     auto resultHandler = kvdbManager->getKVDBHandler(dbName, kvdbScopeName);
 
@@ -480,8 +503,36 @@ TransformOp KVDBDelete(std::shared_ptr<IKVDBManager> kvdbManager,
             fmt::format("Database is not available for usage: {}.", std::get<base::Error>(resultHandler).message));
     }
 
+    // Trace messages
+    const auto name = buildCtx->context().opName;
+    const auto successTrace = fmt::format("{} -> Success", name);
+    const auto failureTrace1 = [&]()
+    {
+        if (key->isReference())
+        {
+            return fmt::format(
+                "{} -> Reference for key '{}' not found", name, std::static_pointer_cast<Reference>(key)->dotPath());
+        }
+
+        return std::string("");
+    }();
+    const auto failureTrace2 = [&]()
+    {
+        if (key->isReference())
+        {
+            return fmt::format("{} -> Reference for key '{}' is not a string",
+                               name,
+                               std::static_pointer_cast<Reference>(key)->dotPath());
+        }
+
+        return std::string("");
+    }();
+
+    const auto failureTrace3 = fmt::format("{} -> Could not remove entry in DB: ", name);
+
     // Return Op
     return [=,
+            runState = buildCtx->runState(),
             targetField = targetField.jsonPath(),
             kvdbHandler = std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler)](
                base::Event event) -> TransformResult
@@ -489,34 +540,35 @@ TransformOp KVDBDelete(std::shared_ptr<IKVDBManager> kvdbManager,
         std::string resolvedKey;
         if (key->isReference())
         {
-            const auto keyRef = std::static_pointer_cast<const Reference>(key)->jsonPath();
-            const auto value = event->getString(keyRef);
-            if (value.has_value())
+            const auto& keyRef = *std::static_pointer_cast<Reference>(key);
+            if (!event->exists(keyRef.jsonPath()))
             {
-                resolvedKey = value.value();
+                RETURN_FAILURE(runState, event, failureTrace1);
             }
-            else
+
+            const auto value = event->getString(keyRef.jsonPath());
+            if (!value)
             {
-                event->setBool(false, targetField);
-                return base::result::makeFailure(event, failureTrace1);
+                RETURN_FAILURE(runState, event, failureTrace2);
             }
+
+            resolvedKey = value.value();
         }
         else
         {
             resolvedKey = std::static_pointer_cast<const Value>(key)->value().getString().value();
         }
 
-        const auto resultValue = kvdbHandler->remove(resolvedKey);
+        auto error = kvdbHandler->remove(resolvedKey);
 
-        if (resultValue)
+        if (error)
         {
-            event->setBool(false, targetField);
-            return base::result::makeFailure(event, failureTrace2);
+            RETURN_FAILURE(runState, event, failureTrace3 + error.value().message);
         }
 
         event->setBool(true, targetField);
 
-        return base::result::makeSuccess(event, successTrace);
+        RETURN_SUCCESS(runState, event, successTrace);
     };
 }
 
@@ -551,18 +603,44 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
         }
         const auto dbName = std::static_pointer_cast<const Value>(opArgs[0])->value().getString().value();
 
-        // Second argument is a reference to an array of keys
-        utils::assertRef(opArgs, 1);
-        const auto& keyArrayRef = *std::static_pointer_cast<const Reference>(opArgs[1]);
+        // Second argument is key array
+        auto keyArray = opArgs[1];
 
-        const auto name = buildCtx->context().opName;
-
-        // Check array reference is an array
-        const auto& schema = buildCtx->schema();
-        if (schema.hasField(keyArrayRef.dotPath()) && !schema.isArray(keyArrayRef.dotPath()))
+        if (keyArray->isValue())
         {
-            throw std::runtime_error(fmt::format("Expected array reference as second argument but got type '{}'",
-                                                 schemf::typeToStr(schema.getType(keyArrayRef.dotPath()))));
+            if (!std::static_pointer_cast<Value>(keyArray)->value().isArray())
+            {
+                throw std::runtime_error(fmt::format("Expected key array 'array' as second argument but got '{}'",
+                                                     std::static_pointer_cast<Value>(keyArray)->value().str()));
+            }
+
+            auto asArray = std::static_pointer_cast<Value>(keyArray)->value().getArray().value();
+            for (auto& value : asArray)
+            {
+                if (!value.isString())
+                {
+                    throw std::runtime_error(fmt::format("Expected an array of strings but found '{}'",
+                                                         json::Json::typeToStr(value.type())));
+                }
+            }
+        }
+        else
+        {
+            const auto& ref = *std::static_pointer_cast<const Reference>(keyArray);
+            if (buildCtx->schema().hasField(ref.dotPath()))
+            {
+                if (!buildCtx->schema().isArray(ref.dotPath()))
+                {
+                    throw std::runtime_error(fmt::format("Reference field '{}' is not an array", ref.dotPath()));
+                }
+
+                auto jType = buildCtx->validator().getJsonType(buildCtx->schema().getType(ref.dotPath()));
+                if (jType != json::Json::Type::String)
+                {
+                    throw std::runtime_error(
+                        fmt::format("Reference field '{}' is not an array of strings", ref.dotPath()));
+                }
+            }
         }
 
         // Get KVDB handler
@@ -574,74 +652,108 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
         }
 
         // Trace messages
-        auto referenceNotFound = fmt::format("Reference '{}' not found or not array", keyArrayRef.dotPath());
-        auto emptyArray = fmt::format("Empty array in reference '{}'", keyArrayRef.dotPath());
-        auto notKeyStr = fmt::format("Found non-string key in reference '{}'", keyArrayRef.dotPath());
-        auto heterogeneousTypes = fmt::format("Heterogeneous types when obtaining values from database '{}'", dbName);
-        auto malformedJson = fmt::format("Malformed JSON found in database '{}'", dbName);
-        auto keyNotMatched = fmt::format("Key not found in DB '{}'", dbName);
+        const auto name = buildCtx->context().opName;
+        const auto successTrace = fmt::format("{} -> Success", name);
 
-        auto successTrace = fmt::format("{} -> Success", name);
+        const auto failureTrace1 = [&]()
+        {
+            if (keyArray->isReference())
+            {
+                return fmt::format("{} -> Reference for key array '{}' not found",
+                                   name,
+                                   std::static_pointer_cast<Reference>(keyArray)->dotPath());
+            }
+
+            return std::string("");
+        }();
+
+        const auto failureTrace2 = [&]()
+        {
+            if (keyArray->isReference())
+            {
+                return fmt::format("{} -> Reference for key array '{}' is not an heterogeneous string array",
+                                   name,
+                                   std::static_pointer_cast<Reference>(keyArray)->dotPath());
+            }
+
+            return std::string("");
+        }();
+
+        const auto failureTrace3 = fmt::format("{} -> Could not get value from DB: ", name);
+        const auto failureTrace4 = fmt::format("{} -> Malformed JSON for value in DB: ", name);
+        const auto failureTrace5 = fmt::format("{} -> Array of values from DB is not homogeneous", name);
 
         // Return Op
         return [=,
+                runState = buildCtx->runState(),
                 targetField = targetField.jsonPath(),
-                arrayRef = keyArrayRef.jsonPath(),
                 kvdbHandler = std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler)](
-                   const base::Event& event) -> TransformResult
+                   base::Event event) -> TransformResult
         {
-            // Resolve array of keys reference
-            auto keys = event->getArray(arrayRef);
-            if (!keys)
+            // Resolve array of keys
+            std::vector<json::Json> keys;
+            if (keyArray->isReference())
             {
-                return base::result::makeFailure(event, referenceNotFound);
+                const auto& keyArrayRef = *std::static_pointer_cast<Reference>(keyArray);
+                if (!event->exists(keyArrayRef.jsonPath()))
+                {
+                    RETURN_FAILURE(runState, event, failureTrace1);
+                }
+
+                const auto value = event->getArray(keyArrayRef.jsonPath());
+                if (!value)
+                {
+                    RETURN_FAILURE(runState, event, failureTrace2);
+                }
+
+                for (const auto& key : value.value())
+                {
+                    if (!key.isString())
+                    {
+                        RETURN_FAILURE(runState, event, failureTrace2);
+                    }
+
+                    keys.emplace_back(key);
+                }
             }
-            if (keys.value().empty())
+            else
             {
-                return base::result::makeFailure(event, emptyArray);
+                keys = std::static_pointer_cast<const Value>(keyArray)->value().getArray().value();
             }
 
             // Get values from KVDB
             bool first = true;
             json::Json::Type type;
             std::vector<json::Json> values;
-            for (auto& jKey : keys.value())
+            for (const auto& jKey : keys)
             {
-                if (!jKey.isString())
-                {
-                    return base::result::makeFailure(event, notKeyStr);
-                }
-
                 auto resultValue = kvdbHandler->get(jKey.getString().value());
-                if (!base::isError(resultValue))
+                if (base::isError(resultValue))
                 {
-                    json::Json jValue;
-                    try
-                    {
-                        jValue = json::Json {std::get<std::string>(resultValue).c_str()};
-                    }
-                    catch (...)
-                    {
-                        return base::result::makeFailure(event, malformedJson);
-                    }
-
-                    if (first)
-                    {
-                        type = jValue.type();
-                        first = false;
-                    }
-
-                    if (jValue.type() != type)
-                    {
-                        return base::result::makeFailure(event, heterogeneousTypes);
-                    }
-
-                    values.emplace_back(std::move(jValue));
+                    RETURN_FAILURE(runState, event, failureTrace3 + std::get<base::Error>(resultValue).message);
                 }
-                else
+
+                json::Json jValue;
+                try
                 {
-                    return base::result::makeFailure(event, keyNotMatched);
+                    jValue = json::Json {std::get<std::string>(resultValue).c_str()};
                 }
+                catch (const std::runtime_error& e)
+                {
+                    RETURN_FAILURE(runState, event, failureTrace4 + e.what());
+                }
+
+                if (first)
+                {
+                    type = jValue.type();
+                    first = false;
+                }
+                else if (jValue.type() != type)
+                {
+                    RETURN_FAILURE(runState, event, failureTrace5);
+                }
+
+                values.emplace_back(std::move(jValue));
             }
 
             // Append values to target field
@@ -650,7 +762,7 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
                 event->appendJson(value, targetField);
             }
 
-            return base::result::makeSuccess(event, successTrace);
+            RETURN_SUCCESS(runState, event, successTrace);
         };
     };
 }
