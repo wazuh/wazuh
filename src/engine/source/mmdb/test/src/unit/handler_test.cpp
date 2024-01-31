@@ -4,29 +4,50 @@
 
 namespace
 {
-auto maxmindDbPath = "/root/repos/wazuh/src/engine/test/source/zz_cpp_test/maxmind/GeoLite2-City.mmdb";
+const std::string g_maxmindDbPath {MMDB_PATH_TEST};
+const std::string g_ipFullData {"1.2.3.4"};
+const std::string g_ipMinimalData {"1.2.3.5"};
+const std::string g_ipNotFound {"1.2.3.6"};
 }
 
-TEST(MMDBHandlerTest, open)
+TEST(HandlerTest, openOk)
 {
-    mmdb::MMDBHandler mmdbHandler {maxmindDbPath};
+    mmdb::Handler handler(g_maxmindDbPath);
+    ASSERT_FALSE(handler.isAvailable());
+    auto error = handler.open();
+    ASSERT_FALSE(error);
+    ASSERT_TRUE(handler.isAvailable());
+}
 
-    auto err = mmdbHandler.open();
-    EXPECT_FALSE(err.has_value());
+TEST(HandlerTest, openFail)
+{
+    mmdb::Handler handler("invalid_path");
+    ASSERT_FALSE(handler.isAvailable());
+    auto error = handler.open();
+    ASSERT_TRUE(error);
+    ASSERT_FALSE(handler.isAvailable());
+}
 
-    auto result = mmdbHandler.lookup("181.96.193.10");
-    // auto result = mmdbHandler.lookup("1.1.1.1");
-    // auto result = mmdbHandler.lookup("8.8.4.4");
+TEST(HandlerTest, close)
+{
+    mmdb::Handler handler(g_maxmindDbPath);
+    ASSERT_FALSE(handler.isAvailable());
+    auto error = handler.open();
+    ASSERT_FALSE(error);
+    ASSERT_TRUE(handler.isAvailable());
+    handler.close();
+    ASSERT_FALSE(handler.isAvailable());
+}
 
-    EXPECT_TRUE(result->hasData());
-    std::cout << base::getResponse<std::string>(result->getString("city.names.en")) << "\n";
-    std::cout << std::to_string(base::getResponse<uint32_t>(result->getUint32("city.geoname_id"))) << "\n";
-    std::cout << std::to_string(base::getResponse<double>(result->getDouble("location.latitude"))) << "\n";
-    std::cout << std::to_string(base::getResponse<double>(result->getDouble("location.longitude"))) << "\n";
+TEST(HandlerTest, lookupOk)
+{
+    mmdb::Handler handler(g_maxmindDbPath);
+    auto error = handler.open();
+    ASSERT_FALSE(error);
+    ASSERT_TRUE(handler.isAvailable());
 
-    std::cout << result->mmDump().prettyStr() << "\n";
-    std::cout << base::getResponse<json::Json>(result->getAsJson("location.time_zone")).prettyStr() << "\n";
-    std::cout << base::getResponse<json::Json>(result->getAsJson("location.longitude")).prettyStr() << "\n";
-    std::cout << base::getResponse<json::Json>(result->getAsJson("location.accuracy_radius")).prettyStr() << "\n";
-    mmdbHandler.close();
+    ASSERT_TRUE(handler.lookup(g_ipFullData)->hasData());
+    ASSERT_TRUE(handler.lookup(g_ipMinimalData)->hasData());
+    ASSERT_FALSE(handler.lookup(g_ipNotFound)->hasData());
+    ASSERT_THROW(handler.lookup("invalid_ip"), std::runtime_error);
 }

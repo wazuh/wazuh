@@ -1,5 +1,5 @@
-#ifndef _MMBDB_HANDLER_HPP
-#define _MMBDB_HANDLER_HPP
+#ifndef _MMBDB_IHANDLER_HPP
+#define _MMBDB_IHANDLER_HPP
 
 #include <string>
 #include <memory>

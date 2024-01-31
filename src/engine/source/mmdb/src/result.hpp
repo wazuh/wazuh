@@ -1,5 +1,5 @@
-#ifndef _MMDB_MMDBRESULT_HPP // Use _MMDB and not MMDB to avoid conflict with MaxMindDB
-#define _MMDB_MMDBRESULT_HPP
+#ifndef _MMDB_RESULT_HPP // Use _MMDB and not MMDB to avoid conflict with MaxMindDB
+#define _MMDB_RESULT_HPP
 
 #include <memory>
 #include <utility>
@@ -67,4 +67,4 @@ public:
 
 } // namespace mmdb
 
-#endif // _MMDB_MMDBRESULT_HPP
+#endif // _MMDB_RESULT_HPP

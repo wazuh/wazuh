@@ -3,7 +3,7 @@
 namespace mmdb
 {
 
-base::OptError MMDBHandler::open()
+base::OptError Handler::open()
 {
     if (isOpen)
     {
@@ -20,7 +20,7 @@ base::OptError MMDBHandler::open()
     return std::nullopt;
 }
 
-void MMDBHandler::close()
+void Handler::close()
 {
     if (isOpen)
     {
@@ -29,7 +29,7 @@ void MMDBHandler::close()
     }
 }
 
-std::shared_ptr<IResult> MMDBHandler::lookup(const std::string& ipStr) const
+std::shared_ptr<IResult> Handler::lookup(const std::string& ipStr) const
 {
     if (!isOpen)
     {

@@ -1,5 +1,5 @@
-#ifndef _MMDB_MMDBHANDLER_HPP
-#define _MMDB_MMDBHANDLER_HPP
+#ifndef _MMDB_HANDLER_HPP
+#define _MMDB_HANDLER_HPP
 
 #include <memory>
 #include <string>
@@ -15,7 +15,7 @@
 
 namespace mmdb
 {
-class MMDBHandler : public IHandler
+class Handler : public IHandler
 {
 private:
     bool isOpen;
@@ -24,17 +24,17 @@ private:
 
 public:
     /**
-     * @brief Create a new MMDBHandler.
+     * @brief Create a new Handler.
      * @param dbPath The path to the MMDB database.
      */
-    MMDBHandler(const std::string& dbPath)
+    Handler(const std::string& dbPath)
         : isOpen(false)
         , dbPath(dbPath)
         , mmdb(std::make_unique<MMDB_s>())
     {
     }
 
-    ~MMDBHandler() { close(); }
+    ~Handler() { close(); }
 
     /**
      * @brief Open the MMDB database.
@@ -59,4 +59,4 @@ public:
 };
 } // namespace mmdb
 
-#endif // _MMDB_MMDBHANDLER_HPP
+#endif // _MMDB_HANDLER_HPP
