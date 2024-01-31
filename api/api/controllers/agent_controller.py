@@ -1361,7 +1361,7 @@ async def get_group_files(request, group_id: str, pretty: bool = False, wait_for
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_group_file(request, group_id: str, file_name: str, raw: bool = None, pretty: bool = False,
+async def get_group_file(request, group_id: str, file_name: str, raw: bool = False, pretty: bool = False,
                               wait_for_complete: bool = False) -> web.Response:
     """Get the files placed under the group directory.
 

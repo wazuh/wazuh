@@ -714,7 +714,7 @@ def get_ossec_conf(section: str = None, field: str = None, conf_file: str = comm
 
 
 def get_agent_conf(group_id: str = None, offset: int = 0, limit: int = common.DATABASE_LIMIT,
-                   filename: str = 'agent.conf', raw: bool = None) -> Union[dict, str]:
+                   filename: str = 'agent.conf', raw: bool = False) -> Union[dict, str]:
     """Return agent.conf as dictionary.
 
     Parameters
@@ -820,7 +820,7 @@ def get_agent_conf_multigroup(multigroup_id: str = None, offset: int = 0, limit:
     return {'totalItems': len(data), 'items': cut_array(data, offset=offset, limit=limit)}
 
 
-def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, raw: bool = None) -> dict:
+def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, raw: bool = False) -> dict:
     """Return the configuration file content.
 
     Parameters

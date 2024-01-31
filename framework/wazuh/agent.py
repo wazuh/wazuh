@@ -1400,7 +1400,7 @@ def get_agents_sync_group(agent_list: list = None) -> AffectedItemsWazuhResult:
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
-def get_file_conf(group_list: list = None, type_conf: str = None, raw: bool = None,
+def get_file_conf(group_list: list = None, type_conf: str = None, raw: bool = False,
                   filename: str = None) -> WazuhResult:
     """Read configuration file for a specified group.
 
