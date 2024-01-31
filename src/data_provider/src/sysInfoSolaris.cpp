@@ -24,6 +24,9 @@
 #include "network/networkSolarisHelper.hpp"
 #include "network/networkSolarisWrapper.hpp"
 #include "network/networkFamilyDataAFactory.h"
+#include "ports/portSolarisHelper.hpp"
+#include "ports/portSolarisWrapper.h"
+#include "ports/portImpl.h"
 #include "UtilsWrapperUnix.hpp"
 #include "uniqueFD.hpp"
 
@@ -211,10 +214,81 @@ nlohmann::json SysInfo::getNetworks() const
 
     return networks;
 }
+
 nlohmann::json SysInfo::getPorts() const
 {
-    return nlohmann::json();
+    nlohmann::json ports{};
+    std::deque<mibItem> items;
+
+    // Open /dev/arp and push into ioctl()
+    int sd = PortSolarisHelper::mibOpen();
+
+    if (sd != -1)
+    {
+        // Get all connections available
+        PortSolarisHelper::mibGetItems(sd, items);
+
+        // Extract constant sizes - need do once only
+        PortSolarisHelper::mibGetConstants(items);
+
+        for (auto item : items)
+        {
+            if (item.group == MIB2_TCP)
+            {
+                mib2_tcpConnEntry_t* connPtr = reinterpret_cast<mib2_tcpConnEntry_t*>(item.val.get());
+                std::deque<mib2_tcpConnEntry_t> entries(connPtr, connPtr + item.length / PortSolarisHelper::tcpConnEntrySize);
+
+                for (auto entry : entries)
+                {
+                    nlohmann::json port {};
+                    std::make_unique<PortImpl>(std::make_shared<SolarisPortWrapper>(&entry))->buildPortData(port);
+                    ports.push_back(port);
+                }
+            }
+            else if (item.group == MIB2_TCP6)
+            {
+                mib2_tcp6ConnEntry_t* connPtr = reinterpret_cast<mib2_tcp6ConnEntry_t*>(item.val.get());
+                std::deque<mib2_tcp6ConnEntry_t> entries(connPtr, connPtr + item.length / PortSolarisHelper::tcp6ConnEntrySize);
+
+                for (auto entry : entries)
+                {
+                    nlohmann::json port {};
+                    std::make_unique<PortImpl>(std::make_shared<SolarisPortWrapper>(&entry))->buildPortData(port);
+                    ports.push_back(port);
+                }
+            }
+            else if (item.group == MIB2_UDP)
+            {
+                mib2_udpEntry_t* connPtr = reinterpret_cast<mib2_udpEntry_t*>(item.val.get());
+                std::deque<mib2_udpEntry_t> entries(connPtr, connPtr + item.length / PortSolarisHelper::udpEntrySize);
+
+                for (auto entry : entries)
+                {
+                    nlohmann::json port {};
+                    std::make_unique<PortImpl>(std::make_shared<SolarisPortWrapper>(&entry))->buildPortData(port);
+                    ports.push_back(port);
+                }
+            }
+            else if (item.group == MIB2_UDP6)
+            {
+                mib2_udp6Entry_t* connPtr = reinterpret_cast<mib2_udp6Entry_t*>(item.val.get());
+                std::deque<mib2_udp6Entry_t> entries(connPtr, connPtr + item.length / PortSolarisHelper::udp6EntrySize);
+
+                for (auto entry : entries)
+                {
+                    nlohmann::json port {};
+                    std::make_unique<PortImpl>(std::make_shared<SolarisPortWrapper>(&entry))->buildPortData(port);
+                    ports.push_back(port);
+                }
+            }
+        }
+
+        close(sd);
+    }
+
+    return ports;
 }
+
 void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> /*callback*/) const
 {
     // TODO
