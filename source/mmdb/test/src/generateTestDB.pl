@@ -1,5 +1,6 @@
 #!perl
 # Script for creating a test MaxMind DB file.
+# Dependencies: MaxMind::DB::Writer (cpan)
 
 use strict;
 use warnings;
