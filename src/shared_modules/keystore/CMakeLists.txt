@@ -23,6 +23,7 @@ if (NOT SHARED_MODULES)
 endif()
 
 include_directories(include)
+include_directories(src)
 include_directories(${SRC_FOLDER}/external/rocksdb/include)
 include_directories(${SRC_FOLDER}/external/openssl/include)
 include_directories(${SRC_FOLDER}/external/cJSON)
@@ -36,7 +37,7 @@ add_library(keystore STATIC ${KEYSTORE_SRC})
 
 target_link_libraries(keystore rocksdb wazuhext)
 
-add_executable(wazuh-keystore main.cpp)
+add_executable(wazuh-keystore src/main.cpp)
 
 target_link_libraries(wazuh-keystore keystore)
 

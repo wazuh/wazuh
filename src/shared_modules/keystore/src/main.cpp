@@ -24,8 +24,8 @@ namespace Log
 int main(int argc, char* argv[])
 {
     // Define current working directory
-    char* home_path = Utils::w_homedir(argv[0]);
-    std::filesystem::current_path((char*)home_path);
+    std::filesystem::path home_path = Utils::findHomeDirectory();
+    std::filesystem::current_path(home_path);
 
     std::string family;
     std::string key;
