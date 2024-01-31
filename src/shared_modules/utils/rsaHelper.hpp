@@ -77,7 +77,7 @@ namespace Utils
      * @param filePath  The path to the file key string to encrypt the value
      * @param type      The type of file (RSA_PRIVATE, RSA_PUBLIC, RSA_CERT)
      */
-    static void createRSA(RSA* &rsaKey, std::string filePath, int type)
+    static void createRSA(RSA* &rsaKey, const std::string& filePath, const int type)
     {
 
         FILE *keyFile = fopen(filePath.c_str(), "r");
@@ -127,7 +127,7 @@ namespace Utils
      * @return          The size of the encrypted output, -1 if error
      */
     int rsaEncrypt(const std::string& filePath, const std::string& input, 
-                   std::string& output, bool cert = false) {
+                   std::string& output, const bool cert = false) {
 
         RSA* rsa = nullptr;
 
@@ -163,7 +163,7 @@ namespace Utils
      * @param output The resulting decrypted value
      * @return       The size of the decrypted output, -1 if error
      */
-    int rsaDecrypt(const std::string& filePath, std::string& input, std::string& output){
+    int rsaDecrypt(const std::string& filePath, const std::string& input, std::string& output){
 
         RSA* rsa = nullptr;
 
