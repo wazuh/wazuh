@@ -101,15 +101,7 @@ namespace Utils
                 }
                 break;
             case RSA_CERT:
-                try
-                {
-                    getPubKeyFromCert(rsaKey, keyFile);
-                }
-                catch(std::exception& e)
-                {
-                    fclose(keyFile);
-                    throw std::runtime_error("Error getting RSA public key from certificate");
-                }
+                getPubKeyFromCert(rsaKey, keyFile);
                 break;
             default:
                 break;
@@ -133,13 +125,10 @@ namespace Utils
 
         createRSA(rsa, filePath, cert ? RSA_CERT : RSA_PUBLIC);
 
-        const char *plaintext = input.c_str();
-        size_t plaintext_len = strlen(plaintext);
-
         // Allocate memory for the encryptedValue
         unsigned char *encryptedValue = (unsigned char *)malloc(RSA_size(rsa));
 
-        const auto encryptedLen = RSA_public_encrypt(plaintext_len, (const unsigned char *)plaintext, encryptedValue, rsa, RSA_PKCS1_PADDING);
+        const auto encryptedLen = RSA_public_encrypt(input.size(), (const unsigned char *)input.c_str(), encryptedValue, rsa, RSA_PKCS1_PADDING);
         
         if (encryptedLen < 0) {
             RSA_free(rsa);
