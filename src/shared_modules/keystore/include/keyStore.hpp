@@ -9,18 +9,18 @@
  * Foundation.
  */
 
-#ifndef _KEYSTORE_H
-#define _KEYSTORE_H
+#ifndef _KEYSTORE_HPP
+#define _KEYSTORE_HPP
 
 #include <string>
 
 #include "rocksDBWrapper.hpp"
 
 constexpr auto DATABASE_PATH {"queue/keystore"};
-constexpr auto PRIVATE_KEY_FILE  {"etc/sslmanager.key"};
+constexpr auto PRIVATE_KEY_FILE {"etc/sslmanager.key"};
 constexpr auto CERTIFICATE_FILE {"etc/sslmanager.cert"};
 
-class Keystore
+class Keystore final
 {
 public:
     /**
@@ -42,4 +42,4 @@ public:
     static void get(const std::string& columnFamily, const std::string& key, std::string& value);
 };
 
-#endif // _KEYSTORE_H
+#endif // _KEYSTORE_HPP
