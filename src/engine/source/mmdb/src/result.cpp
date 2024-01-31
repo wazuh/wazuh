@@ -161,9 +161,10 @@ MMDB_entry_data_list_s* dumpArray(MMDB_entry_data_list_s* eDataList, json::Json&
     jDump.setArray(path);
 
     uint32_t size = eDataList->entry_data.data_size;
+    uint32_t index = 0;
     for (eDataList = eDataList->next; size && eDataList; size--)
     {
-        std::string fullKey = path + "/" + std::to_string(size - 1); // TODO CHECK
+        std::string fullKey = path + "/" + std::to_string(index++);
         eDataList = dumpEntryDataList(eDataList, jDump, fullKey);
     }
 
@@ -202,7 +203,7 @@ MMDB_entry_data_list_s* dumpEntryDataList(MMDB_entry_data_list_s* eDataList, jso
             eDataList = eDataList->next;
             break;
         case MMDB_DATA_TYPE_FLOAT:
-            jDump.setDouble(eDataList->entry_data.float_value, path);
+            jDump.setFloat(eDataList->entry_data.float_value, path);
             eDataList = eDataList->next;
             break;
         case MMDB_DATA_TYPE_UINT16:

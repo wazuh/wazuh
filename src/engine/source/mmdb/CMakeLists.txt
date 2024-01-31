@@ -51,6 +51,7 @@ if(ENGINE_BUILD_TEST)
     set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/mocks)
     set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
     set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
+    set(MMDB_PATH_TEST "${TEST_SRC_DIR}/testdb.mmdb")
 
     # Mocks
     # add_library(mmdb_mocks INTERFACE)
@@ -72,7 +73,7 @@ if(ENGINE_BUILD_TEST)
     # mmdb unit test
     add_executable(mmdb_utest
         ${UNIT_SRC_DIR}/handler_test.cpp
-    #    ${UNIT_SRC_DIR}/mmdb_test.cpp
+        ${UNIT_SRC_DIR}/result_test.cpp
     )
     target_include_directories(mmdb_utest PRIVATE ${SRC_DIR})
     target_link_libraries(mmdb_utest
@@ -80,5 +81,7 @@ if(ENGINE_BUILD_TEST)
         mmdb::mmdb
         maxminddb::maxminddb
     )
+    target_compile_definitions(mmdb_utest PRIVATE MMDB_PATH_TEST="${MMDB_PATH_TEST}")
+
     gtest_discover_tests(mmdb_utest mmdb_ctest)
 endif(ENGINE_BUILD_TEST)
