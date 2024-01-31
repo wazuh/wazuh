@@ -129,15 +129,9 @@ namespace Utils
     int rsaEncrypt(const std::string& filePath, const std::string& input, 
                    std::string& output, bool cert = false) {
 
-        RSA* rsa;
-        try
-        {
-            createRSA(rsa, filePath, cert ? RSA_CERT : RSA_PUBLIC);
-        }
-        catch(const std::exception& e)
-        {
-            throw std::runtime_error("Failed to obtain RSA for encryption: " + std::string(e.what()));
-        }
+        RSA* rsa = nullptr;
+
+        createRSA(rsa, filePath, cert ? RSA_CERT : RSA_PUBLIC);
 
         const char *plaintext = input.c_str();
         size_t plaintext_len = strlen(plaintext);
@@ -145,20 +139,20 @@ namespace Utils
         // Allocate memory for the encryptedValue
         unsigned char *encryptedValue = (unsigned char *)malloc(RSA_size(rsa));
 
-        int encrypted_len = RSA_public_encrypt(plaintext_len, (const unsigned char *)plaintext, encryptedValue, rsa, RSA_PKCS1_PADDING);
+        const auto encryptedLen = RSA_public_encrypt(plaintext_len, (const unsigned char *)plaintext, encryptedValue, rsa, RSA_PKCS1_PADDING);
         
-        if (encrypted_len < 0) {
+        if (encryptedLen < 0) {
             RSA_free(rsa);
             free(encryptedValue);
             throw std::runtime_error("RSA encryption failed");
         }
 
-        output = std::string(reinterpret_cast<char const*>(encryptedValue),encrypted_len);
+        output = std::string(reinterpret_cast<char const*>(encryptedValue), encryptedLen);
 
         RSA_free(rsa);
         free(encryptedValue);
 
-        return encrypted_len;
+        return encryptedLen;
     }
 
     /**
@@ -171,33 +165,27 @@ namespace Utils
      */
     int rsaDecrypt(const std::string& filePath, std::string& input, std::string& output){
 
-        RSA* rsa;
-        try
-        {
-            createRSA(rsa, filePath, RSA_PRIVATE);
-        }
-        catch(const std::exception& e)
-        {
-            throw std::runtime_error("Failed to obtain RSA for decryption: " + std::string(e.what()));
-        }
+        RSA* rsa = nullptr;
 
-        std::string decrypted_text(RSA_size(rsa), 0); // Initialize with zeros
+        createRSA(rsa, filePath, RSA_PRIVATE);
+
+        std::string decryptedText(RSA_size(rsa), 0); // Initialize with zeros
 
         // Decrypt the ciphertext using RSA private key
-        int decrypted_len = RSA_private_decrypt(256,  reinterpret_cast<const unsigned char *>(input.data()),
-                                                reinterpret_cast<unsigned char *>(&decrypted_text[0]), rsa, RSA_PKCS1_PADDING);
+        const auto decryptedLen = RSA_private_decrypt(256,  reinterpret_cast<const unsigned char *>(input.data()),
+                                                reinterpret_cast<unsigned char *>(&decryptedText[0]), rsa, RSA_PKCS1_PADDING);
         
-        if(decrypted_len < 0){
+        if(decryptedLen < 0){
             RSA_free(rsa);
             throw std::runtime_error("RSA decryption failed");
         }
 
         // Display the decrypted plaintext
-        output = decrypted_text.substr(0, decrypted_len);
+        output = decryptedText.substr(0, decryptedLen);
 
         RSA_free(rsa);
 
-        return decrypted_len;
+        return decryptedLen;
     }
 }
 
