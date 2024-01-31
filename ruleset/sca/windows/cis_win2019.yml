@@ -3237,6 +3237,23 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> TcpMaxDataRetransmissions'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> TcpMaxDataRetransmissions -> 3'
 
+  # 18.5.12 Ensure 'MSS: (WarningLevel) Percentage threshold for the security event log at which the system will generate a warning' is set to 'Enabled: 90% or less'
+  - id: 16615
+    title: "Ensure 'MSS: (WarningLevel) Percentage threshold for the security event log at which the system will generate a warning' is set to 'Enabled: 90% or less'."
+    description: "This setting can generate a security audit in the Security event log when the log reaches a user-defined threshold. The recommended state for this setting is: Enabled: 90% or less. Note: If log settings are configured to Overwrite events as needed or Overwrite events older than x days, this event will not be generated."
+    rationale: "If the Security log reaches 90 percent of its capacity and the computer has not been configured to overwrite events as needed, more recent events will not be written to the log. If the log reaches its capacity and the computer has been configured to shut down when it can no longer record events to the Security log, the computer will shut down and will no longer be available to provide network services."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 90% or less: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (WarningLevel) Percentage threshold for the security event log at which the system will generate a warning Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required - it is available from this TechNet blog post: The MSS settings - Microsoft Security Guidance blog."
+    compliance:
+      - cis: ["18.5.12"]
+      - cis_csc_v8: ["8.3"]
+      - cis_csc_v7: ["6.4", "6.3"]
+      - iso_27001-2013: ["A.12.4.1"]
+      - pci_dss_v3.2.1: ["10.7"]
+      - soc_2: ["A1.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Eventlog\Security -> WarningLevel -> n:^(\d+) compare <= 90'
+
   # 18.6.4.1 (L1) Ensure 'Configure NetBIOS settings' is set to 'Enabled: Disable NetBIOS name resolution on public networks'. (Automated)
   - id: 18707
     title: "Ensure 'Configure NetBIOS settings' is set to 'Enabled: Disable NetBIOS name resolution on public networks'."
@@ -3663,7 +3680,7 @@ checks:
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint'
       - 'not r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint -> RestrictDriverInstallationToAdministrators'
-      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint -> RestrictDriverInstallationToAdministrators -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint -> RestrictDriverInstallationToAdministrators -> 1'
 
   # 18.7.9 (L1) Ensure 'Manage processing of Queue-specific files' is set to 'Enabled: Limit Queue-specific files to Color profiles'. (Automated)
   - id: 18728
@@ -6410,7 +6427,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.8"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging -> EnableScriptBlockLogging -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging -> EnableScriptBlockLogging -> 1'
 
   # 18.10.87.2 (L1) Ensure 'Turn on PowerShell Transcription' is set to 'Enabled'. (Automated)
   - id: 18870
@@ -6425,7 +6442,7 @@ checks:
       - cis: ["18.10.87.2"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Transcription -> EnableTranscripting -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Transcription -> EnableTranscripting -> 1'
 
   # 18.10.89.1.1 (L1) Ensure 'Allow Basic authentication' is set to 'Disabled'. (Automated)
   - id: 18871
