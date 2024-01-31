@@ -12,81 +12,41 @@
 #ifndef _HOMEDIR_HPP
 #define _HOMEDIR_HPP
 
-#include <iostream>
-#include <cstring>
-#include <climits>
-#include <cstdlib>
-#include <sys/stat.h>
-#include <libgen.h>
-
+#include <filesystem>
 
 namespace Utils
 {
-    char* w_strtok_delim(const char* delim, char** remaining_str) {
-        if (!*remaining_str) {
-            return nullptr;
+    std::filesystem::path findHomeDirectory()
+    {
+        std::filesystem::path homeDir;
+        std::error_code ec;
+
+        homeDir = std::filesystem::read_symlink("/proc/self/exe", ec).parent_path();
+        if (homeDir.filename() == "bin")
+        {
+            homeDir.remove_filename();
         }
-
-        if (!delim || *delim == '\0') {
-            char* str = *remaining_str;
-            *remaining_str = nullptr;
-            return str;
-        }
-
-        char* delim_found = nullptr;
-        size_t delim_len = std::strlen(delim);
-
-        while ((delim_found = std::strstr(*remaining_str, delim))) {
-            if (*remaining_str == delim_found) {
-                *remaining_str += delim_len;
-                continue;
+        if (ec)
+        {
+            const char* envHome = std::getenv("WAZUH_HOME");
+            if (envHome != nullptr)
+            {
+                homeDir = envHome;
             }
-            break;
-        }
-
-        if (**remaining_str == '\0') {
-            return nullptr;
-        }
-
-        char* token = *remaining_str;
-
-        if ((delim_found = std::strstr(*remaining_str, delim))) {
-            *delim_found = '\0';
-            *remaining_str = delim_found + delim_len;
-        } else {
-            *remaining_str = nullptr;
-        }
-
-        return token;
-    }
-
-    char* w_homedir(char* arg) {
-        char* buff = nullptr;
-        struct stat buff_stat;
-        const char* delim = "/bin";
-        
-        buff = new char[PATH_MAX];
-
-        if (realpath("/proc/self/exe", buff) || realpath("/proc/curproc/file", buff) ||
-            realpath("/proc/self/path/a.out", buff) || (realpath(arg, buff) != nullptr)) {
-            dirname(buff);
-            buff = w_strtok_delim(delim, &buff);
-        } else {
-            // The path was not found, so read WAZUH_HOME env var
-            char* home_env = nullptr;
-            if ((home_env = getenv("WAZUH_HOME")) != nullptr) {
-                std::snprintf(buff, PATH_MAX, "%s", home_env);
+            else
+            {
+                throw std::runtime_error(ec.message());
             }
         }
 
-        if ((stat(buff, &buff_stat) < 0) || !S_ISDIR(buff_stat.st_mode)) {
-            delete[] buff;
-            std::cerr << "HOME_ERROR" << std::endl;
-            std::exit(EXIT_FAILURE);
+        // Check if exists and if it is a directory
+        if (!std::filesystem::is_directory(homeDir, ec))
+        {
+            throw std::runtime_error(ec.message());
         }
 
-        return buff;
+        return homeDir;
     }
-}
+} // namespace Utils
 
 #endif // _HOMEDIR_HPP

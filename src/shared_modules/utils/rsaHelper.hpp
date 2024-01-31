@@ -9,8 +9,8 @@
  * Foundation.
  */
 
-#ifndef _RSA_HELPER_H
-#define _RSA_HELPER_H
+#ifndef _RSA_HELPER_HPP
+#define _RSA_HELPER_HPP
 
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
@@ -201,4 +201,4 @@ namespace Utils
     }
 }
 
-#endif // _RSA_HELPER_H
+#endif // _RSA_HELPER_HPP
