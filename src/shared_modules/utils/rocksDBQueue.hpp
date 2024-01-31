@@ -20,7 +20,7 @@
 #include <string>
 
 // RocksDB integration as queue
-template<typename T>
+template<typename T, typename U = T>
 class RocksDBQueue final
 {
 public:
@@ -116,10 +116,10 @@ public:
         return m_size == 0;
     }
 
-    T front() const
+    U front() const
     {
-        T value;
-        if (!m_db->Get(rocksdb::ReadOptions(), std::to_string(m_first), &value).ok())
+        U value;
+        if (!m_db->Get(rocksdb::ReadOptions(), m_db->DefaultColumnFamily(), std::to_string(m_first), &value).ok())
         {
             throw std::runtime_error("Failed to get front element");
         }
