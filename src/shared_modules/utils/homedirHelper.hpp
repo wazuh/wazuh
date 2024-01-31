@@ -47,6 +47,6 @@ namespace Utils
 
         return homeDir;
     }
-} // namespace Utils
+}
 
 #endif // _HOMEDIR_HPP
