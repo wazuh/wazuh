@@ -6,6 +6,11 @@ namespace base::utils::string
 std::vector<std::string> split(std::string_view str, const char delimiter)
 {
     std::vector<std::string> ret;
+    if (!str.empty() && str[0] == delimiter)
+    {
+        str = str.substr(1);
+    }
+
     while (true)
     {
         auto pos = str.find(delimiter);
@@ -13,10 +18,7 @@ std::vector<std::string> split(std::string_view str, const char delimiter)
         {
             break;
         }
-        if (pos > 0)
-        {
-            ret.emplace_back(str.substr(0, pos));
-        }
+        ret.emplace_back(str.substr(0, pos));
         str = str.substr(pos + 1);
     }
 
