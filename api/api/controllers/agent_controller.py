@@ -1362,7 +1362,7 @@ async def get_group_files(request, group_id: str, pretty: bool = False, wait_for
 
 
 async def get_group_file(request, group_id: str, file_name: str, raw: bool = False, pretty: bool = False,
-                              wait_for_complete: bool = False) -> web.Response:
+                              wait_for_complete: bool = False) -> web.Response | ConnexionResponse:
     """Get the files placed under the group directory.
 
     Parameters
@@ -1403,8 +1403,11 @@ async def get_group_file(request, group_id: str, file_name: str, raw: bool = Fal
         mimetype, _ = mimetypes.guess_type(file_name)
         if mimetype is None:
             mimetype = 'text/plain'
+        if file_name == 'agent.conf':
+            mimetype = 'application/xml'
 
-        return ConnexionResponse(body=data["data"], mimetype=mimetype)
+        return ConnexionResponse(body=data['data'], mimetype=mimetype)
+
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 

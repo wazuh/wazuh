@@ -604,20 +604,19 @@ def _merged_mg2json(file_path: str) -> List[dict]:
 
     # ![file_size] [file_name]
     regex_header = re.compile(r"^!(\d+)\s*(.*)")
-    regex_comment = re.compile(r"^\s*#")
 
     try:
         item = {}
         file_content = []
 
         with open(file_path) as f:
-            for line in f:
-                if re.search(regex_comment, line):
-                    continue
+            # Skip first line
+            next(f)
 
+            for line in f:
                 if match_header := re.search(regex_header, line):
-                    # Append previous item
                     if item:
+                        # Append previous item
                         item['file_content'] = ''.join(file_content)
                         data.append(item)
 
@@ -820,7 +819,7 @@ def get_agent_conf_multigroup(multigroup_id: str = None, offset: int = 0, limit:
     return {'totalItems': len(data), 'items': cut_array(data, offset=offset, limit=limit)}
 
 
-def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, raw: bool = False) -> dict:
+def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, raw: bool = False) -> dict | str:
     """Return the configuration file content.
 
     Parameters
@@ -845,7 +844,7 @@ def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, ra
 
     Returns
     -------
-    dict
+    dict or str
         File content as plain text or dictionary.
     """
     if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):

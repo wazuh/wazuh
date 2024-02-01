@@ -3802,10 +3802,24 @@ stages:
         error: 0
         data: !anything
 
-  - name: Get one file of a group (plain text)
+  - name: Get one file of a group (XML)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/groups/default/files/agent.conf"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        raw: true
+    response:
+      status_code: 200
+      headers:
+        content-type: application/xml; charset=utf-8
+  
+  - name: Get one file of a group (plain text)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups/default/files/merged.mg"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
