@@ -48,12 +48,11 @@ namespace Utils
         // Extract the public key from the X.509 certificate
         EVP_PKEY* evpPublicKey = X509_get_pubkey(x509Certificate);
 
-        DEFER([evpPublicKey]() { EVP_PKEY_free(evpPublicKey); });
-
         if (!evpPublicKey)
         {
             throw std::runtime_error("Error reading public key");
         }
+        DEFER([evpPublicKey]() { EVP_PKEY_free(evpPublicKey); });
 
         // Check the type of key
         if (EVP_PKEY_base_id(evpPublicKey) == EVP_PKEY_RSA)
@@ -121,15 +120,12 @@ namespace Utils
      * @param cert      If the public key is in a certificate
      * @return          The size of the encrypted output, -1 if error
      */
-    int rsaEncrypt(const std::string& filePath, const std::string& input, std::string& output, bool cert = false)
+    int rsaEncrypt(const std::string& filePath, const std::string& input, std::string& output, const bool cert = false)
     {
 
         RSA* rsa = nullptr;
 
         createRSA(rsa, filePath, cert ? RSA_CERT : RSA_PUBLIC);
-
-        // const char *plaintext = input.c_str();
-        // size_t plaintext_len = strlen(plaintext);
 
         // Allocate memory for the encryptedValue
         unsigned char* encryptedValue = (unsigned char*)malloc(RSA_size(rsa));
