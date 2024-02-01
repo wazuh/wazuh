@@ -1351,32 +1351,32 @@ TransformOp opBuilderHelperRenameField(const Reference& targetField,
 
     // Tracing messages
     const auto successTrace = fmt::format("{} -> Success", name);
-    const auto failureTrace1 = fmt::format("{} -> Target field '{}' not found", name, targetField.dotPath());
-    const auto failureTrace2 = fmt::format("{} -> Source field '{}' already exists", name, srcField.dotPath());
-    const auto failureTrace3 = fmt::format("{} -> Target field '{}' could not be erased", name, targetField.dotPath());
+    const auto failureTrace1 = fmt::format("{} -> Target field '{}' already exists", name, targetField.dotPath());
+    const auto failureTrace2 = fmt::format("{} -> Source field '{}' does not exists", name, srcField.dotPath());
+    const auto failureTrace3 = fmt::format("{} -> Source field '{}' could not be erased", name, targetField.dotPath());
 
     return
         [=, runState = buildCtx->runState(), targetField = targetField.jsonPath(), sourceField = srcField.jsonPath()](
             base::Event event) -> TransformResult
     {
-        if (!event->exists(targetField))
+        if (event->exists(targetField))
         {
             RETURN_FAILURE(runState, event, failureTrace1);
         }
 
-        if (event->exists(sourceField))
+        if (!event->exists(sourceField))
         {
             RETURN_FAILURE(runState, event, failureTrace2);
         }
 
-        auto targetValue = event->getJson(targetField).value();
+        auto refValue = event->getJson(sourceField).value();
 
-        if (!event->erase(targetField))
+        if (!event->erase(sourceField))
         {
             RETURN_FAILURE(runState, event, failureTrace3);
         }
 
-        event->set(sourceField, targetValue);
+        event->set(targetField, refValue);
 
         RETURN_SUCCESS(runState, event, successTrace);
     };
