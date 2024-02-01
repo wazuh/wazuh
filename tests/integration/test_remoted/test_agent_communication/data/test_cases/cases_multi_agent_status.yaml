@@ -6,7 +6,7 @@
   metadata:
     protocol: 'TCP'
     port: '1514'
-
+    agents_number: 2
 
 - name: test multi agent status
   description: test multi agent status
@@ -16,7 +16,7 @@
   metadata:
     protocol: 'TCP'
     port: '56000'
-
+    agents_number: 2
 
 - name: test multi agent status
   description: test multi agent status
@@ -26,7 +26,7 @@
   metadata:
     protocol: 'UDP'
     port: '1514'
-
+    agents_number: 2
 
 - name: test multi agent status
   description: test multi agent status
@@ -36,7 +36,7 @@
   metadata:
     protocol: 'UDP'
     port: '56000'
-
+    agents_number: 2
 
 - name: test multi agent status
   description: test multi agent status
@@ -46,6 +46,7 @@
   metadata:
     protocol: 'TCP'
     port: '1514'
+    agents_number: 2
 
 - name: test multi agent status
   description: test multi agent status
@@ -55,6 +56,7 @@
   metadata:
     protocol: 'UDP'
     port: '1514'
+    agents_number: 2
 
 - name: test multi agent status
   description: test multi agent status
@@ -64,6 +66,7 @@
   metadata:
     protocol: 'TCP'
     port: '56000'
+    agents_number: 2
 
 - name: test multi agent status
   description: test multi agent status
@@ -73,3 +76,4 @@
   metadata:
     protocol: 'UDP'
     port: '56000'
+    agents_number: 2
