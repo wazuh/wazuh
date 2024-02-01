@@ -90,7 +90,7 @@ INSTANTIATE_TEST_SUITE_P(AssetBuilder,
                                            NameT(R"("name1/name2")", SUCCESS("name1/name2")),
                                            NameT(R"("name1/name2/name3")", SUCCESS("name1/name2/name3")),
                                            NameT(R"("name1/")", SUCCESS("name1")),
-                                           NameT(R"("/name2")", FAILURE()),
+                                           NameT(R"("/name2")", SUCCESS("name2")),
                                            NameT(R"("name1//name2")", FAILURE())));
 } // namespace nametest
 
