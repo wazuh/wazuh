@@ -59,6 +59,7 @@ void DBSyncTest::SetUp()
 void DBSyncTest::TearDown()
 {
     EXPECT_NO_THROW(dbsync_teardown());
+    std::remove(DATABASE_TEMP);
 };
 
 TEST_F(DBSyncTest, Initialization)
@@ -2309,4 +2310,128 @@ TEST_F(DBSyncTest, InitializationCPP)
     ASSERT_NE(0, S_ISREG(stStat.st_mode));
     EXPECT_EQ(DATABASE_PERMISSIONS, stStat.st_mode & 0777);
 #endif
+}
+
+TEST_F(DBSyncTest, TestVolatileMode)
+{
+    const auto sql{"CREATE TABLE simple_test(`name` TEXT, `value` BIGINT, PRIMARY KEY (`name`));"};
+    std::vector<std::string> updates;
+
+    auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql, DbManagement::VOLATILE, updates);
+    dbSync->insertData(nlohmann::json::parse(R"({"table":"simple_test","data":[{"name":"test1","value":1}]})"));
+
+    auto selectQuery
+    {
+        SelectQuery::builder()
+        .table("simple_test")
+        .columnList({"name", "value"})
+        .rowFilter("WHERE name = 'test1'")
+        .orderByOpt("name")
+        .distinctOpt(false)
+        .countOpt(1)
+        .build()
+    };
+
+    CallbackMock wrapper;
+    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"test1","value":1})"))).Times(1);
+
+    ResultCallbackData selectCallbackData
+    {
+        [&wrapper](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+        {
+            wrapper.callbackMock(type, jsonResult);
+        }
+    };
+
+    EXPECT_NO_THROW(dbSync->selectRows(selectQuery.query(), selectCallbackData));
+
+    // We expect no data after re-initializing the DB in VOLATILE mode
+    dbSync.reset();
+    dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql, DbManagement::VOLATILE, updates);
+    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse("{}"))).Times(0);
+
+    EXPECT_NO_THROW(dbSync->selectRows(selectQuery.query(), selectCallbackData));
+}
+
+TEST_F(DBSyncTest, TestPersistentMode)
+{
+    const auto sql{"CREATE TABLE simple_test(`name` TEXT, `value` BIGINT, PRIMARY KEY (`name`));"};
+    std::vector<std::string> updates;
+
+    auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql, DbManagement::PERSISTENT, updates);
+    dbSync->insertData(nlohmann::json::parse(R"({"table":"simple_test","data":[{"name":"test1","value":1}]})"));
+
+    auto selectQuery
+    {
+        SelectQuery::builder()
+        .table("simple_test")
+        .columnList({"name", "value"})
+        .rowFilter("WHERE name = 'test1'")
+        .orderByOpt("name")
+        .distinctOpt(false)
+        .countOpt(1)
+        .build()
+    };
+
+    CallbackMock wrapper;
+    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"test1","value":1})"))).Times(1);
+
+    ResultCallbackData selectCallbackData
+    {
+        [&wrapper](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+        {
+            wrapper.callbackMock(type, jsonResult);
+        }
+    };
+
+    EXPECT_NO_THROW(dbSync->selectRows(selectQuery.query(), selectCallbackData));
+
+    // We expect the same data after re-initializing the DB in PERSISTENT mode
+    dbSync.reset();
+    dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql, DbManagement::PERSISTENT, updates);
+    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"test1","value":1})"))).Times(1);
+
+    EXPECT_NO_THROW(dbSync->selectRows(selectQuery.query(), selectCallbackData));
+}
+
+TEST_F(DBSyncTest, TestUpgrade)
+{
+    const auto sql{"CREATE TABLE simple_test(`name` TEXT, `value` BIGINT, PRIMARY KEY (`name`));"};
+    std::vector<std::string> updates;
+
+    auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql, DbManagement::PERSISTENT, updates);
+
+    // After the re-initialization, we expect the upgrades to run
+    const auto update1{"ALTER TABLE simple_test ADD COLUMN `new_column` TEXT;"};
+    updates.push_back(update1);
+
+    dbSync.reset();
+    dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql, DbManagement::PERSISTENT, updates);
+
+    dbSync->insertData(nlohmann::json::parse(R"({"table":"simple_test","data":[{"name":"test1","value":1,"new_column":"new_value"}]})"));
+
+    auto selectQuery
+    {
+        SelectQuery::builder()
+        .table("simple_test")
+        .columnList({"name", "value", "new_column"})
+        .rowFilter("WHERE name = 'test1'")
+        .orderByOpt("name")
+        .distinctOpt(false)
+        .countOpt(1)
+        .build()
+    };
+
+    CallbackMock wrapper;
+    EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"test1","value":1,"new_column":"new_value"})"))).Times(1);
+
+    ResultCallbackData selectCallbackData
+    {
+        [&wrapper](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+        {
+            wrapper.callbackMock(type, jsonResult);
+        }
+    };
+
+    EXPECT_NO_THROW(dbSync->selectRows(selectQuery.query(), selectCallbackData));
 }

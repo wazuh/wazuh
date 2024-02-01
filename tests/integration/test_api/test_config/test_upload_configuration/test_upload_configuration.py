@@ -76,8 +76,8 @@ daemons_handler_configuration = {'daemons': API_DAEMONS_REQUIREMENTS}
 # Tests
 @pytest.mark.tier(level=0)
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_upload_configuration(test_configuration, test_metadata, add_configuration, truncate_monitored_files,
-                              daemons_handler, wait_for_api_start):
+def test_upload_configuration(test_configuration, test_metadata, backup_wazuh_configuration, add_configuration,
+                              truncate_monitored_files, daemons_handler, wait_for_api_start):
     """
     description: Check if the API works when uploading configurations.
 
@@ -107,6 +107,9 @@ def test_upload_configuration(test_configuration, test_metadata, add_configurati
         - test_metadata:
             type: dict
             brief: Metadata from the test case.
+        - backup_wazuh_configuration:
+            type: fixture
+            brief: Save the initial wazuh configuration and restore it after the test.
         - add_configuration:
             type: fixture
             brief: Add configuration to the Wazuh API configuration files.

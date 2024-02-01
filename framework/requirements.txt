@@ -1,4 +1,4 @@
-aiohttp==3.8.5
+aiohttp==3.9.1
 aiohttp-cache==2.2.0
 aiohttp-cors==0.7.0
 aiohttp-jinja2==1.5.1
@@ -61,9 +61,8 @@ packaging==20.9
 pathlib==1.0.1
 protobuf==3.19.6
 proto-plus==1.19.0
+pyarrow==14.0.1
 psutil==5.9.0
-pyarrow==13.0.0
-pyarrow_hotfix==0.5
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
 pycparser==2.21
@@ -78,11 +77,11 @@ rsa==4.7.2
 s3transfer==0.4.2
 secure==0.2.1
 six==1.16.0
-SQLAlchemy==2.0.0
+SQLAlchemy==2.0.23
 tabulate==0.8.9
 typing-extensions==4.5.0
 typing-inspect==0.7.1
-urllib3==1.26.5
+urllib3==1.26.18
 uvloop==0.17.0
 websocket-client==0.57.0
 Werkzeug==2.2.3

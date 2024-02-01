@@ -23,13 +23,15 @@ namespace DbSync
     class FactoryDbEngine
     {
         public:
-            static std::unique_ptr<IDbEngine> create(const DbEngineType dbType,
-                                                     const std::string& path,
-                                                     const std::string& sqlStatement)
+            static std::unique_ptr<IDbEngine> create(const DbEngineType              dbType,
+                                                     const std::string&              path,
+                                                     const std::string&              sqlStatement,
+                                                     const DbManagement              dbManagement,
+                                                     const std::vector<std::string>& upgradeStatements)
             {
                 if (SQLITE3 == dbType)
                 {
-                    return std::make_unique<SQLiteDBEngine>(std::make_shared<SQLiteFactory>(), path, sqlStatement);
+                    return std::make_unique<SQLiteDBEngine>(std::make_shared<SQLiteFactory>(), path, sqlStatement, dbManagement, upgradeStatements);
                 }
 
                 throw dbsync_error

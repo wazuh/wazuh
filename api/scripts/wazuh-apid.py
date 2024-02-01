@@ -8,10 +8,13 @@ import argparse
 import os
 import signal
 import sys
+import warnings
 
 from api.constants import API_LOG_PATH
 from wazuh.core.wlogging import TimeBasedFileRotatingHandler, SizeBasedFileRotatingHandler
 from wazuh.core import pyDaemonModule
+
+SSL_DEPRECATED_MESSAGE = 'The `{ssl_protocol}` SSL protocol is deprecated.'
 
 API_MAIN_PROCESS = 'wazuh-apid'
 API_LOCAL_REQUEST_PROCESS = 'wazuh-apid_exec'
@@ -107,6 +110,7 @@ def start():
 
     # Add application signals
     app.app.on_response_prepare.append(modify_response_headers)
+    app.app.cleanup_ctx.append(register_background_tasks)
 
     # API configuration logging
     logger.debug(f'Loaded API configuration: {api_conf}')
@@ -263,7 +267,7 @@ if __name__ == '__main__':
     # noinspection PyUnresolvedReferences
     from api.constants import CONFIG_FILE_PATH
     from api.middlewares import security_middleware, response_postprocessing, request_logging, set_secure_headers
-    from api.signals import modify_response_headers
+    from api.signals import modify_response_headers, register_background_tasks
     from api.uri_parser import APIUriParser
     from api.util import to_relative_path
     from wazuh.rbac.orm import check_database_integrity
@@ -298,11 +302,18 @@ if __name__ == '__main__':
                 'tls': ssl.PROTOCOL_TLS,
                 'tlsv1': ssl.PROTOCOL_TLSv1,
                 'tlsv1.1': ssl.PROTOCOL_TLSv1_1,
-                'tlsv1.2': ssl.PROTOCOL_TLSv1_2
+                'tlsv1.2': ssl.PROTOCOL_TLSv1_2,
+                'auto': ssl.PROTOCOL_TLS_SERVER
             }
 
-            ssl_protocol = allowed_ssl_protocols[api_conf['https']['ssl_protocol'].lower()]
-            ssl_context = ssl.SSLContext(protocol=ssl_protocol)
+            config_ssl_protocol = api_conf['https']['ssl_protocol']
+            ssl_protocol = allowed_ssl_protocols[config_ssl_protocol.lower()]
+
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=DeprecationWarning)
+                if ssl_protocol in (ssl.PROTOCOL_TLSv1, ssl.PROTOCOL_TLSv1_1):
+                    logger.warning(SSL_DEPRECATED_MESSAGE.format(ssl_protocol=config_ssl_protocol))
+                ssl_context = ssl.SSLContext(protocol=ssl_protocol)
 
             if api_conf['https']['use_ca']:
                 ssl_context.verify_mode = ssl.CERT_REQUIRED

@@ -150,3 +150,24 @@ char *get_node_name(void) {
 
     return node_name;
 }
+
+char *get_cluster_name(void) {
+    OS_XML xml;
+    const char * xmlf[] = {"ossec_config", "cluster", "name", NULL};
+    const char *cfgfile = OSSECCONF;
+    char *cluster_name = NULL;
+
+    if (OS_ReadXML(cfgfile, &xml) < 0) {
+        mdebug1(XML_ERROR, cfgfile, xml.err, xml.err_line);
+    } else {
+        cluster_name = OS_GetOneContentforElement(&xml, xmlf);
+    }
+
+    OS_ClearXML(&xml);
+
+    if (!cluster_name) {
+        cluster_name = strdup("undefined");
+    }
+
+    return cluster_name;
+}

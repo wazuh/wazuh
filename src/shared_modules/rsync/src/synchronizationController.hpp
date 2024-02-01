@@ -18,6 +18,7 @@
 #include <mutex>
 #include <shared_mutex>
 #include <unordered_map>
+#include "rsync.hpp"
 
 namespace RSync
 {
@@ -68,8 +69,7 @@ namespace RSync
 
                         if (value > itTable->second)
                         {
-                            Log::debugVerbose << "Sync id: " << std::to_string(value) << " is not the current id: "
-                                              << std::to_string(itTable->second) << " for table: " << table << LogEndl;
+                            logDebug2(RSYNC_LOG_TAG, "Sync id: %d is not the current id: %d for table: %s", value, itTable->second, table.c_str());
                             throw std::runtime_error { "Sync id is not the current id" };
                         }
                     }

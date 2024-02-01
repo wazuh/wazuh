@@ -433,7 +433,7 @@ int main_analysisd(int argc, char **argv)
     }
 
 /* Check sockets */
-    if (Config.socket_list) {
+    if (Config.socket_list && Config.forwarders_list) {
         forwarder_socket_list = Config.socket_list;
 
         for(int num_sk = 0; forwarder_socket_list && forwarder_socket_list[num_sk].name; num_sk++) {
@@ -442,7 +442,7 @@ int main_analysisd(int argc, char **argv)
 
         for (int target_num = 0; Config.forwarders_list[target_num]; target_num++) {
             int found = -1;
-            for (int num_sk = 0; forwarder_socket_list && forwarder_socket_list->name; num_sk++) {
+            for (int num_sk = 0; forwarder_socket_list && forwarder_socket_list[num_sk].name; num_sk++) {
                 found = strcmp(forwarder_socket_list[num_sk].name, Config.forwarders_list[target_num]);
                 if (found == 0) {
                     break;
