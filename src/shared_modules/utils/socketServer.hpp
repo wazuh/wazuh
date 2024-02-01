@@ -67,7 +67,7 @@ private:
         }
         catch (const std::exception& e)
         {
-            std::cerr << "Failed to send pending messages: " << e.what() << std::endl;
+            // Error sending pending messages
         }
     }
 

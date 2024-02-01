@@ -46,6 +46,8 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
     unsigned char md[SHA_DIGEST_LENGTH];
     unsigned char md256[SHA256_DIGEST_LENGTH];
 
+    bool sum_file_ok = true;
+
     /* Clear the memory */
     memset(logfilesum, '\0', OS_FLSIZE + 1);
     memset(logfilesum_old, '\0', OS_FLSIZE + 1);
@@ -64,23 +66,25 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
 
     /* Generate MD5 of the old file */
     if (OS_MD5_File(logfilesum_old, mf_sum_old, OS_TEXT) < 0) {
-        minfo("No previous md5 checksum found: '%s'. "
-               "Starting over.", logfilesum_old);
+        sum_file_ok = false;
         strncpy(mf_sum_old, "none", 6);
     }
 
     /* Generate SHA-1 of the old file  */
     if (OS_SHA1_File(logfilesum_old, sf_sum_old, OS_TEXT) < 0) {
-        minfo("No previous sha1 checksum found: '%s'. "
-               "Starting over.", logfilesum_old);
+        sum_file_ok = false;
         strncpy(sf_sum_old, "none", 6);
     }
 
     /* Generate SHA-256 of the old file  */
     if (OS_SHA256_File(logfilesum_old, sf256_sum_old, OS_TEXT) < 0) {
-        minfo("No previous sha256 checksum found: '%s'. "
-               "Starting over.", logfilesum_old);
+        sum_file_ok = false;
         strncpy(sf256_sum_old, "none", 6);
+    }
+
+    if (!sum_file_ok) {
+        mdebug1("Checksum for previous log file is missing: '%s'. "
+                "Starting new sequence.", logfilesum_old);
     }
 
     /* Generate MD5, SHA-1, and SHA-256 of the current file */

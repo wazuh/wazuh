@@ -34,7 +34,6 @@ private:
     std::unique_ptr<MsgDispatcher> m_msgDispatcher {};
 
 public:
-    // LCOV_EXCL_START
     /**
      * @brief Class constructor. Initializes server socket and listen from it.
      *
@@ -79,7 +78,6 @@ public:
                 }
             });
     }
-    // LCOV_EXCL_STOP
 
     /**
      * @brief Pushes data into the message dispatcher.

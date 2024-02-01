@@ -361,8 +361,6 @@ wmodule * wm_find_module(const char * name) {
 // Run a query in a module
 
 size_t wm_module_query(char * query, char ** output) {
-    // vulnerability-detector run_now
-
     char * module_name = query;
     char * args = strchr(query, ' ');
 

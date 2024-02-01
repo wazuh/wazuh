@@ -2405,6 +2405,28 @@ void test_router_message_forward_valid_delta_hotfixes_json_message(void **state)
     router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
 }
 
+void test_router_message_forward_legacy_agent_message(void **state) {
+    test_agent_info* data = (test_agent_info*)(*state);
+    char* message = "d:syscollector:{\"type\":\"program\",\"ID\":710378877,\"timestamp\":\"2024/01/12 22:47:29\",\"program\":{\"format\":\"deb\","
+                    "\"name\":\"isc-dhcp-common\",\"priority\":\"important\",\"group\":\"net\",\"size\":163,\"vendor\":\"Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>\""
+                    ",\"architecture\":\"amd64\",\"source\":\"isc-dhcp\",\"version\":\"4.4.1-2.1ubuntu9\",\"description\":\"common manpages relevant to all of the isc-dhcp packages\"}}";
+
+    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
+
+    // This type of message must be discarded
+    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
+}
+
+void test_router_message_forward_legacy_agent_end_message(void **state) {
+    test_agent_info* data = (test_agent_info*)(*state);
+    char* message = "d:syscollector:{\"type\":\"process_end\",\"ID\":1998297930,\"timestamp\":\"2024/01/13 00:08:55\"}";
+
+    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
+
+    // This type of message must be discarded
+    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -2474,6 +2496,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_router_message_forward_valid_delta_ports_json_message, setup_remoted_configuration, teardown_remoted_configuration),
         cmocka_unit_test_setup_teardown(test_router_message_forward_valid_delta_processes_json_message, setup_remoted_configuration, teardown_remoted_configuration),
         cmocka_unit_test_setup_teardown(test_router_message_forward_valid_delta_hotfixes_json_message, setup_remoted_configuration, teardown_remoted_configuration),
+        cmocka_unit_test_setup_teardown(test_router_message_forward_legacy_agent_message, setup_remoted_configuration, teardown_remoted_configuration),
+        cmocka_unit_test_setup_teardown(test_router_message_forward_legacy_agent_end_message, setup_remoted_configuration, teardown_remoted_configuration),
         };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
