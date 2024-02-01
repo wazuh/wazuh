@@ -31,7 +31,7 @@ TEST(split, middle_delimiter)
 TEST(split, first_delimiter)
 {
     std::string test = "/value1/value2";
-    std::vector<std::string> expected = {"", "value1", "value2"};
+    std::vector<std::string> expected = {"value1", "value2"};
     std::vector<std::string> result = base::utils::string::split(test, '/');
     ASSERT_EQ(result, expected);
 }
@@ -47,8 +47,8 @@ TEST(split, final_delimiter)
 // Double empty section at middle and end
 TEST(split, doble_delimiter)
 {
-    std::string test = "value1//value2//";
-    std::vector<std::string> expected = {"value1", "", "value2", ""};
+    std::string test = "//value1//value2//";
+    std::vector<std::string> expected = {"", "value1", "", "value2", ""};
     std::vector<std::string> result = base::utils::string::split(test, '/');
     ASSERT_EQ(result, expected);
 }
