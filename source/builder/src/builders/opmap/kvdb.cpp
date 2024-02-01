@@ -772,15 +772,14 @@ namespace
 // TODO Change this to use an vector instead of a map
 std::function<std::optional<json::Json>(uint64_t pos)> getFnSearchMap(const json::Json& jMap)
 {
-    const std::string throwTrace {"Engine KBDB Decode bit mask: "};
-
     std::vector<std::optional<json::Json>> buildedMap(std::numeric_limits<uint64_t>::digits);
     // Fill the map with empty values
     std::fill(buildedMap.begin(), buildedMap.end(), std::nullopt);
     {
         if (!jMap.isObject())
         {
-            throw std::runtime_error(throwTrace + "Expected object as map.");
+            throw std::runtime_error(
+                fmt::format("Expected map 'object' as value from DB but got '{}'", jMap.typeName()));
         }
 
         auto jMapObj = jMap.getObject().value();
@@ -789,7 +788,7 @@ std::function<std::optional<json::Json>(uint64_t pos)> getFnSearchMap(const json
 
         if (jMapObj.empty())
         {
-            throw std::runtime_error(throwTrace + "Malformed map (Empty map provided)");
+            throw std::runtime_error("Empty map value from DB");
         }
 
         for (auto& [key, value] : jMapObj)
@@ -798,11 +797,11 @@ std::function<std::optional<json::Json>(uint64_t pos)> getFnSearchMap(const json
             // Validate key
             if (key.empty())
             {
-                throw std::runtime_error(throwTrace + "Malformed map (Empty key on map provided)");
+                throw std::runtime_error("Found empty key on map value from DB");
             }
             if (key[0] == '-')
             {
-                throw std::runtime_error(throwTrace + "Malformed map (Negative number as key on map provided)");
+                throw std::runtime_error("Found negative key on map value from DB");
             }
 
             try
@@ -811,14 +810,12 @@ std::function<std::optional<json::Json>(uint64_t pos)> getFnSearchMap(const json
             }
             catch (const std::exception& e)
             {
-                throw std::runtime_error(throwTrace + "Malformed map (Expected number as key on map provided)");
+                throw std::runtime_error(fmt::format("Could not convert key '{}' to number: {}", key, e.what()));
             }
             if (index >= std::numeric_limits<uint64_t>::digits)
             {
-                throw std::runtime_error(fmt::format(throwTrace + "Malformed map (Key out of range {}-{}: {})",
-                                                     0,
-                                                     std::numeric_limits<uint64_t>::digits,
-                                                     index));
+                throw std::runtime_error(fmt::format(
+                    "Malformed map Key '{}' out of range {}-{})", key, 0, std::numeric_limits<uint64_t>::digits));
             }
 
             // Validate value
@@ -829,7 +826,7 @@ std::function<std::optional<json::Json>(uint64_t pos)> getFnSearchMap(const json
             }
             else if (mapValueType != value.type())
             {
-                throw std::runtime_error(throwTrace + "Malformed map (Heterogeneous types on map)");
+                throw std::runtime_error(fmt::format("Found heterogeneous values on the map value from DB"));
             }
 
             buildedMap[index] = std::move(value);
@@ -854,17 +851,6 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
                                              std::shared_ptr<IKVDBManager> kvdbManager,
                                              const std::string& kvdbScopeName)
 {
-    // Identify references and build JSON pointer paths
-    const auto name = buildCtx->context().opName;
-
-    // Tracing
-    const std::string throwTrace {"Engine KBDB Decode bit mask: "};
-    const std::string successTrace {fmt::format("{} -> Success", name)};
-    const std::string failureTrace1 {fmt::format("{} -> Failure: Expected hexa number as mask", name)};
-    const std::string failureTrace2 {fmt::format("{} -> Failure: Reference to mask not found", name)};
-    const std::string failureTrace3 {fmt::format("{} -> Failure: value of mask out of range", name)};
-    const std::string failureTrace4 {fmt::format("{} -> Failure: no value found for the mask", name)};
-
     // Verify parameters size and types
     utils::assertSize(opArgs, 3);
     utils::assertValue(opArgs, 0, 1);
@@ -873,12 +859,12 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
     // Extract parameters
     if (!std::static_pointer_cast<Value>(opArgs[0])->value().isString())
     {
-        throw std::runtime_error(fmt::format(throwTrace + "Expected db name 'string' as first argument but got '{}'",
+        throw std::runtime_error(fmt::format("Expected db name 'string' as first argument but got '{}'",
                                              std::static_pointer_cast<Value>(opArgs[0])->value().str()));
     }
     if (!std::static_pointer_cast<Value>(opArgs[1])->value().isString())
     {
-        throw std::runtime_error(fmt::format(throwTrace + "Expected key map 'string' as second argument but got '{}'",
+        throw std::runtime_error(fmt::format("Expected key map 'string' as second argument but got '{}'",
                                              std::static_pointer_cast<Value>(opArgs[1])->value().str()));
     }
     const auto dbName = std::static_pointer_cast<Value>(opArgs[0])->value().getString().value();
@@ -887,15 +873,27 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
 
     // Verify the schema fields
     const auto& schema = buildCtx->schema();
-    if (schema.hasField(targetField.dotPath()) && !schema.isArray(targetField.dotPath()))
+    if (schema.hasField(targetField.dotPath()))
     {
-        throw std::runtime_error(throwTrace + "failed schema validation: Target field must be an array.");
+        if (!schema.isArray(targetField.dotPath()))
+        {
+            throw std::runtime_error(fmt::format("Expected target field '{}' to be an array", targetField.dotPath()));
+        }
+        auto jType = buildCtx->validator().getJsonType(schema.getType(targetField.dotPath()));
+        if (jType != json::Json::Type::String)
+        {
+            throw std::runtime_error(
+                fmt::format("Expected target field '{}' to be an array of strings", targetField.dotPath()));
+        }
     }
-    if (schema.hasField(maskRef.dotPath()) && schema.getType(maskRef.dotPath()) != schemf::Type::KEYWORD
-        && schema.getType(maskRef.dotPath()) != schemf::Type::TEXT
-        && schema.getType(maskRef.dotPath()) != schemf::Type::IP)
+
+    if (schema.hasField(maskRef.dotPath()))
     {
-        throw std::runtime_error(throwTrace + "failed schema validation: Mask reference must be a string.");
+        auto jType = buildCtx->validator().getJsonType(schema.getType(maskRef.dotPath()));
+        if (jType != json::Json::Type::String)
+        {
+            throw std::runtime_error(fmt::format("Expected mask field '{}' to be a string", maskRef.dotPath()));
+        }
     }
 
     // Get the json map from KVDB
@@ -904,66 +902,85 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
         auto resultHandler = kvdbManager->getKVDBHandler(dbName, kvdbScopeName);
         if (std::holds_alternative<base::Error>(resultHandler))
         {
-            throw std::runtime_error(fmt::format(throwTrace + "{}.", std::get<base::Error>(resultHandler).message));
+            throw std::runtime_error(
+                fmt::format("Could not get KVDB handler: {}.", std::get<base::Error>(resultHandler).message));
         }
         auto kvdbHandler = std::get<std::shared_ptr<kvdbManager::IKVDBHandler>>(resultHandler);
 
         auto resultValue = kvdbHandler->get(keyMap);
         if (std::holds_alternative<base::Error>(resultValue))
         {
-            throw std::runtime_error(fmt::format(throwTrace + "{}.", std::get<base::Error>(resultValue).message));
+            throw std::runtime_error(
+                fmt::format("Could not get map from KVDB: {}.", std::get<base::Error>(resultValue).message));
         }
         try
         {
             jMap = json::Json {std::get<std::string>(resultValue).c_str()};
         }
-        catch (...)
+        catch (const std::runtime_error& e)
         {
-            throw std::runtime_error(throwTrace + "Malformed JSON found in database.");
+            throw std::runtime_error(fmt::format("Malformed JSON value for key '{}' in DB: {}", keyMap, e.what()));
         }
     }
 
     // Get the function to search in the map
     auto getValueFn = getFnSearchMap(jMap);
 
+    // Tracing
+    const auto name = buildCtx->context().opName;
+    const auto successTrace = fmt::format("{} -> Success", name);
+    const auto failureTrace1 = fmt::format("{} -> Reference '{}' not found", name, maskRef.dotPath());
+    const auto failureTrace2 = fmt::format("{} -> Reference '{}' is not a string", name, maskRef.dotPath());
+    const auto failureTrace3 =
+        fmt::format("{} -> Reference '{}' is not a valid hexadecimal number", name, maskRef.dotPath());
+    const auto failureTrace4 =
+        fmt::format("{} -> Reference '{}' values is out of range 0-0xFFFFFFFFFFFFFFFF", name, maskRef.dotPath());
+
     // Get the function to get the value from the event
-    auto getMaskFn = [maskRef = maskRef.jsonPath(), failureTrace1, failureTrace2, failureTrace3](
-                         const base::Event& event) -> std::variant<uint64_t, std::string>
+    auto getMaskFn = [maskRef = maskRef.jsonPath(), failureTrace1, failureTrace2, failureTrace3, failureTrace4](
+                         const base::Event& event) -> base::RespOrError<uint64_t>
     {
+        // Check if the mask exists
+        if (!event->exists(maskRef))
+        {
+            return base::Error {failureTrace1};
+        }
+
         // If is a string, get the mask as hexa in range 0-0xFFFFFFFFFFFFFFFF
         const auto maskStr = event->getString(maskRef);
-        if (maskStr.has_value())
+        if (!maskStr.has_value())
         {
-            try
-            {
-                auto rMask = std::stoul(maskStr.value(), nullptr, 16);
-                if (rMask <= std::numeric_limits<uint64_t>::max())
-                {
-                    return static_cast<uint64_t>(rMask);
-                }
-                return failureTrace3;
-            }
-            catch (const std::exception&)
-            {
-                return failureTrace1;
-            }
+            return base::Error {failureTrace2};
         }
-        return failureTrace2;
+
+        try
+        {
+            auto rMask = std::stoul(maskStr.value(), nullptr, 16);
+            if (rMask <= std::numeric_limits<uint64_t>::max())
+            {
+                return static_cast<uint64_t>(rMask);
+            }
+            return base::Error {failureTrace4};
+        }
+        catch (const std::exception&)
+        {
+            return base::Error {failureTrace3};
+        }
     };
 
     // Return Op
-    return [targetField = targetField.jsonPath(), getValueFn, getMaskFn, successTrace, failureTrace4](
-               const base::Event& event) -> TransformResult
+    return
+        [=, runState = buildCtx->runState(), targetField = targetField.jsonPath()](base::Event event) -> TransformResult
     {
         // Get mask in hexa
         uint64_t mask {};
         {
             auto resultMask = getMaskFn(event);
-            if (std::holds_alternative<std::string>(resultMask))
+            if (base::isError(resultMask))
             {
-                return base::result::makeFailure(event, std::move(std::get<std::string>(resultMask)));
+                RETURN_FAILURE(runState, event, base::getError(resultMask).message);
             }
-            mask = std::get<uint64_t>(resultMask);
+            mask = base::getResponse(resultMask);
         }
 
         // iterate over the bits of the mask
@@ -984,10 +1001,10 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
         }
         if (isResultEmpty)
         {
-            return base::result::makeFailure(event, failureTrace4);
+            RETURN_FAILURE(runState, event, failureTrace4);
         }
 
-        return base::result::makeSuccess(event, successTrace);
+        RETURN_SUCCESS(runState, event, successTrace);
     };
 }
 
