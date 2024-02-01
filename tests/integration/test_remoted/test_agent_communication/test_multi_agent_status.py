@@ -66,10 +66,17 @@ def test_multi_agent_status(test_configuration, test_metadata, configure_local_i
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
     '''
-    agent = simulate_agents[0]
+    agents = simulate_agents
+    senders = []
+    injectors = []
 
-    sender, injector = connect(agent,manager_port = test_metadata['port'], protocol = test_metadata['protocol'])
+    for agent in agents:
+        sender, injector = connect(agent,manager_port = test_metadata['port'], protocol = test_metadata['protocol'])
+        senders.append(sender)
+        injectors.append(injector)
 
-    assert agent.get_connection_status() == 'active'
+    for agent in agents:
+        assert agent.get_connection_status() == 'active'
 
-    injector.stop_receive()
+    for injector in injectors:
+        injector.stop_receive()
