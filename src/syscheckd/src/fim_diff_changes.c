@@ -210,6 +210,7 @@ char *fim_registry_value_diff(const char *key_name,
     if (data_type == REG_NONE || data_type == REG_BINARY || data_type == REG_LINK ||
         data_type == REG_RESOURCE_LIST || data_type == REG_FULL_RESOURCE_DESCRIPTOR ||
         data_type == REG_RESOURCE_REQUIREMENTS_LIST) {
+            mdebug2(FIM_REG_VAL_INVALID_TYPE, key_name, value_name);
             return NULL;
     }
 
