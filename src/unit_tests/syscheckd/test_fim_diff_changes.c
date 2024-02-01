@@ -1232,6 +1232,10 @@ void test_fim_registry_value_diff_wrong_data_type(void **state) {
     DWORD data_type = REG_NONE;
     registry_t *configuration = &syscheck.registry[0];
 
+    char debug2_message[OS_SIZE_1024];
+    snprintf(debug2_message, OS_SIZE_1024, FIM_REG_VAL_INVALID_TYPE, key_name, value_name);
+    expect_string(__wrap__mdebug2, formatted_msg, debug2_message);
+
     char *diff_str = fim_registry_value_diff(key_name, value_name, value_data, data_type, configuration);
 
     assert_ptr_equal(diff_str, NULL);
