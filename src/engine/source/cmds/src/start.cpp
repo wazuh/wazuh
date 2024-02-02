@@ -34,7 +34,7 @@
 #include <queue/concurrentQueue.hpp>
 #include <rbac/rbac.hpp>
 #include <router/orchestrator.hpp>
-
+#include <mmdb/manager.hpp>
 #include <schemf/schema.hpp>
 #include <server/endpoints/unixDatagram.hpp> // Event
 #include <server/endpoints/unixStream.hpp>   //API
@@ -79,6 +79,10 @@ struct Options
     std::string fileStorage;
     // KVDB
     std::string kvdbPath;
+    // Maxmind db paths
+    std::string mmdbASNPath;
+    std::string mmdbCityPath;
+    // Orchestration
     int routerThreads;
     // Queue
     int queueSize;
@@ -140,6 +144,10 @@ void runStart(ConfHandler confManager)
     // KVDB config
     const auto kvdbPath = confManager->get<std::string>("server.kvdb_path");
 
+    // Maxmind db paths
+    const auto mmdbASNPath = confManager->get<std::string>("server.mmdb_asn_path");
+    const auto mmdbCityPath = confManager->get<std::string>("server.mmdb_city_path");
+
     // Router Config
     const auto routerThreads = confManager->get<int>("server.router_threads");
 
@@ -183,6 +191,7 @@ void runStart(ConfHandler confManager)
     std::shared_ptr<hlp::logpar::Logpar> logpar;
     std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
     std::shared_ptr<metricsManager::MetricsManager> metrics;
+    std::shared_ptr<mmdb::Manager> mmdbManager;
     std::shared_ptr<schemf::Schema> schema;
     std::shared_ptr<sockiface::UnixSocketFactory> sockFactory;
     std::shared_ptr<wazuhdb::WDBManager> wdbManager;
@@ -218,6 +227,39 @@ void runStart(ConfHandler confManager)
                     kvdbManager->finalize();
                     LOG_INFO("KVDB terminated.");
                 });
+        }
+
+        // MMDB
+        {
+            // TODO: This is a optional right now, but it be mandatory in the future
+            mmdbManager = std::make_shared<mmdb::Manager>();
+            if (!mmdbASNPath.empty())
+            {
+                LOG_INFO("Loading ASN MMDB database from: {}", mmdbASNPath);
+                mmdbManager->addHandler("mm-geolite2-asn", mmdbASNPath);
+            }
+            else
+            {
+                LOG_WARNING("ASN MMDB database path is empty, MMDB will not be available.");
+            }
+
+            if (!mmdbCityPath.empty())
+            {
+                LOG_INFO("Loading City MMDB database from: {}", mmdbCityPath);
+                mmdbManager->addHandler("mm-geolite2-city", mmdbCityPath);
+            }
+            else
+            {
+                LOG_WARNING("City MMDB database path is empty, MMDB will not be available.");
+            }
+            if (!mmdbASNPath.empty() || !mmdbCityPath.empty())
+            {
+                LOG_INFO("MMDB initialized.");
+            }
+            else
+            {
+                LOG_WARNING("MMDB not initialized.");
+            }
         }
 
         // Schema
@@ -269,6 +311,7 @@ void runStart(ConfHandler confManager)
             builderDeps.sockFactory = std::make_shared<sockiface::UnixSocketFactory>();
             builderDeps.wdbManager =
                 std::make_shared<wazuhdb::WDBManager>(std::string(wazuhdb::WDB_SOCK_PATH), builderDeps.sockFactory);
+            builderDeps.mmdbManager = mmdbManager;
             auto defs = std::make_shared<defs::DefinitionsBuilder>();
             builder = std::make_shared<builder::Builder>(store, schema, defs, builderDeps);
             LOG_INFO("Builder initialized.");
@@ -512,6 +555,21 @@ void configure(CLI::App_p app)
     serverApp->add_option("--tzdb_path", options->tzdbPath, "Sets the install path to the time zone database.")
         ->default_val(ENGINE_TZDB_PATH)
         ->envname(ENGINE_TZDB_PATH_ENV);
+
+    // Maxmind db paths
+    serverApp
+        ->add_option(
+            "--mmdb_asn_path", options->mmdbASNPath, "Sets the path to the Maxmind ASN database in mmdb format.")
+        ->default_val(ENGINE_MMDB_ASN_PATH)
+        ->check(CLI::ExistingFile)
+        ->envname(ENGINE_MMDB_ASN_PATH_ENV);
+
+    serverApp
+        ->add_option(
+            "--mmdb_city_path", options->mmdbCityPath, "Sets the path to the Maxmind City database in mmdb format.")
+        ->default_val(ENGINE_MMDB_CITY_PATH)
+        ->check(CLI::ExistingFile)
+        ->envname(ENGINE_MMDB_CITY_PATH_ENV);
 
     // Router module
     serverApp

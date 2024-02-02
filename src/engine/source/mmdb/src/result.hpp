@@ -11,7 +11,7 @@
 namespace mmdb
 {
 
-class MMDBResult : public IResult
+class Result : public IResult
 {
 private:
     MMDB_lookup_result_s m_result; ///< The MMDB lookup result.
@@ -24,12 +24,12 @@ private:
     base::RespOrError<MMDB_entry_data_s> getEData(const DotPath& path) const;
 
 public:
-    MMDBResult(MMDB_lookup_result_s result)
+    Result(MMDB_lookup_result_s result)
         : m_result(result)
     {
     }
 
-    ~MMDBResult()
+    ~Result()
     {
         // MMDB_free_entry_data_list(result.entry_data_list);
     }
