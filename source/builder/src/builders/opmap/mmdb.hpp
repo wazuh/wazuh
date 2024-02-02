@@ -19,8 +19,8 @@ namespace builder::builders::mmdb
  * @param schema schema
  * @return HelperBuilder
  */
-TransformBuilder getMMDBGeoBuilder(const std::shared_ptr<::mmdb::IManager>& mmdbManager);
-TransformBuilder getMMDBASNBuilder(const std::shared_ptr<::mmdb::IManager>& mmdbManager);
+MapBuilder getMMDBGeoBuilder(const std::shared_ptr<::mmdb::IManager>& mmdbManager);
+MapBuilder getMMDBASNBuilder(const std::shared_ptr<::mmdb::IManager>& mmdbManager);
 
 } // namespace builder::builders
 
