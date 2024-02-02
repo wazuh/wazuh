@@ -42,18 +42,12 @@ void Keystore::get(const std::string& columnFamily, const std::string& key, std:
 
     if (!keystoreDB.columnExists(columnFamily))
     {
-        std::string msg = "Column '" + columnFamily + "' does not exist at the database.";
-        logError(KS_NAME, msg.c_str());
-        throw std::runtime_error(msg);
+        keystoreDB.createColumn(columnFamily);
     }
 
-    if (!keystoreDB.get(key, encryptedValue, columnFamily))
+    if (keystoreDB.get(key, encryptedValue, columnFamily))
     {
-        std::string msg = "Could not find key '" + key + " at column '" + columnFamily + "'.";
-        logError(KS_NAME, msg.c_str());
-        throw std::runtime_error(msg);
+        // Decrypt value
+        Utils::rsaDecrypt(PRIVATE_KEY_FILE, encryptedValue, value);
     }
-
-    // Decrypt value
-    Utils::rsaDecrypt(PRIVATE_KEY_FILE, encryptedValue, value);
 }
