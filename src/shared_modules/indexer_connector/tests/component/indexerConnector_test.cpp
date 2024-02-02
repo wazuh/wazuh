@@ -13,7 +13,6 @@
 #include "fakeIndexer.hpp"
 #include "indexerConnector.hpp"
 #include "json.hpp"
-#include "keyStore.hpp"
 #include "stringHelper.h"
 #include "gtest/gtest.h"
 #include <chrono>
@@ -109,10 +108,6 @@ void IndexerConnectorTest::SetUp()
     m_indexerServers.push_back(std::make_unique<FakeIndexer>(INDEXER_HOSTNAME, A_PORT, "green", INDEXER_NAME));
     m_indexerServers.push_back(std::make_unique<FakeIndexer>(INDEXER_HOSTNAME, B_PORT, "red", INDEXER_NAME));
     m_indexerServers.push_back(std::make_unique<FakeIndexer>(INDEXER_HOSTNAME, C_PORT, "red", INDEXER_NAME));
-
-    // Store indexer credentials into DB
-    Keystore::put("indexer", "username", "admin");
-    Keystore::put("indexer", "password", "admin");
 }
 
 void IndexerConnectorTest::TearDown()
