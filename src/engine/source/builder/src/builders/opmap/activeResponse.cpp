@@ -34,7 +34,6 @@ constexpr auto TRACE_REFERENCE_TYPE_IS_NOT_STR = "[{}] -> Failure: Reference '{}
 // ar_message: +active_response_create/<command-name>/<location>/<timeout>/<extra-args>
 MapOp CreateARBuilder(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-
     const auto& name = buildCtx->context().opName;
 
     // Validate parameters
@@ -55,6 +54,7 @@ MapOp CreateARBuilder(const std::vector<OpArg>& opArgs, const std::shared_ptr<co
         throw std::runtime_error(fmt::format("Expected 'string' parameter but got type '{}'",
                                              std::static_pointer_cast<Value>(opArgs[1])->value().typeName()));
     }
+
     auto getLocationFn = [locationSrc = opArgs[1], name](base::ConstEvent event) -> std::string
     {
         if (locationSrc->isReference())
@@ -161,8 +161,9 @@ MapOp CreateARBuilder(const std::vector<OpArg>& opArgs, const std::shared_ptr<co
     };
 
     // TODO This should be rewritten, do a better way to handle the different cases (LOCAL, ALL, ID) and use the api
-    return [commandName, getLocationFn, getTimeoutFn, getExtraArgsFn, getAgentID, name](
-               base::ConstEvent event) -> MapResult
+    return
+        [runState = buildCtx->runState(), commandName, getLocationFn, getTimeoutFn, getExtraArgsFn, getAgentID, name](
+            base::ConstEvent event) -> MapResult
     {
         std::string location {};
         std::int64_t timeout {};
@@ -176,7 +177,7 @@ MapOp CreateARBuilder(const std::vector<OpArg>& opArgs, const std::shared_ptr<co
         }
         catch (const std::exception& e)
         {
-            return base::result::makeFailure(json::Json {}, e.what());
+            RETURN_FAILURE(runState, json::Json {}, e.what());
         }
 
         auto cmd = commandName + std::to_string(timeout);
@@ -194,7 +195,7 @@ MapOp CreateARBuilder(const std::vector<OpArg>& opArgs, const std::shared_ptr<co
             }
             catch (const std::exception& e)
             {
-                return base::result::makeFailure(json::Json {}, e.what());
+                RETURN_FAILURE(runState, json::Json {}, e.what());
             }
             isLocal = true;
         }
@@ -217,7 +218,7 @@ MapOp CreateARBuilder(const std::vector<OpArg>& opArgs, const std::shared_ptr<co
             }
             catch (const std::exception& e)
             {
-                return base::result::makeFailure(json::Json {}, e.what());
+                RETURN_FAILURE(runState, json::Json {}, e.what());
             }
         }
 
@@ -225,13 +226,17 @@ MapOp CreateARBuilder(const std::vector<OpArg>& opArgs, const std::shared_ptr<co
         try
         {
             json::Json jsonEvent {event->str().c_str()};
+            // Append extra args
+            for (const auto& arg : extraArgs)
+            {
+                jsonParams.appendString(arg, "/extra_args");
+            }
             jsonParams.merge(json::NOT_RECURSIVE, jsonEvent, std::string_view {"/alert"});
         }
         catch (const std::exception& e)
         {
             // Should never happen
-            return base::result::makeFailure(
-                json::Json {}, fmt::format("[{}] -> Failure: Error trying to merge json: ", name) + e.what());
+            RETURN_FAILURE(runState, json::Json {}, fmt::format("{} -> Error trying to merge json: ", name) + e.what());
         }
 
         auto payload = base::utils::wazuhProtocol::WazuhRequest::create(cmd, ar::ORIGIN_NAME, jsonParams);
@@ -246,7 +251,7 @@ MapOp CreateARBuilder(const std::vector<OpArg>& opArgs, const std::shared_ptr<co
         json::Json result {};
         result.setString(completeMesage);
 
-        return base::result::makeSuccess(std::move(result), fmt::format(ar::TRACE_SUCCESS, name));
+        RETURN_SUCCESS(runState, result, fmt::format(ar::TRACE_SUCCESS, name));
     };
 }
 
@@ -282,8 +287,14 @@ MapOp SendAR(std::shared_ptr<sockiface::ISockFactory> sockFactory,
     const auto failureTrace3 = fmt::format("[{}] -> Failure: AR message could not be send", name);
     const auto failureTrace4 = fmt::format("[{}] -> Failure: Error trying to send AR message: ", name);
 
-    return [socketAR, rightParameter, success, failureTrace1, failureTrace2, failureTrace3, failureTrace4](
-               base::ConstEvent event) -> MapResult
+    return [runState = buildCtx->runState(),
+            socketAR,
+            rightParameter,
+            success,
+            failureTrace1,
+            failureTrace2,
+            failureTrace3,
+            failureTrace4](base::ConstEvent event) -> MapResult
     {
         std::string query {};
         bool messageSent {false};
@@ -293,7 +304,7 @@ MapOp SendAR(std::shared_ptr<sockiface::ISockFactory> sockFactory,
             auto reference = event->getString(std::static_pointer_cast<Reference>(rightParameter)->jsonPath());
             if (!reference)
             {
-                return base::result::makeFailure(json::Json {}, failureTrace1);
+                RETURN_FAILURE(runState, json::Json {}, failureTrace1);
             }
             query = std::move(reference.value());
         }
@@ -304,7 +315,7 @@ MapOp SendAR(std::shared_ptr<sockiface::ISockFactory> sockFactory,
 
         if (query.empty())
         {
-            return base::result::makeFailure(json::Json {}, failureTrace2);
+            RETURN_FAILURE(runState, json::Json {}, failureTrace2);
         }
 
         try
@@ -312,16 +323,16 @@ MapOp SendAR(std::shared_ptr<sockiface::ISockFactory> sockFactory,
             if (SendRetval::SUCCESS == socketAR->sendMsg(query))
             {
                 json::Json result("true");
-                return base::result::makeSuccess(std::move(result), success);
+                RETURN_SUCCESS(runState, result, success);
             }
             else
             {
-                return base::result::makeFailure(json::Json {}, failureTrace3);
+                RETURN_FAILURE(runState, json::Json {}, failureTrace3);
             }
         }
         catch (const std::exception& e)
         {
-            return base::result::makeFailure(json::Json {}, failureTrace4 + e.what());
+            RETURN_FAILURE(runState, json::Json {}, failureTrace4 + e.what());
         }
     };
 }
