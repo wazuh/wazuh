@@ -29,10 +29,7 @@ public:
     {
     }
 
-    ~Result()
-    {
-        // MMDB_free_entry_data_list(result.entry_data_list);
-    }
+    ~Result() = default;
 
     /**
      * @copydoc IResult::hasData()
