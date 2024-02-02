@@ -83,9 +83,17 @@ IndexerConnector::IndexerConnector(
     Keystore::get(INDEXER_COLUMN, USER_KEY, username);
     Keystore::get(INDEXER_COLUMN, PASSWORD_KEY, password);
 
-    if (username.empty() || password.empty())
+    if (username.empty() && password.empty())
     {
-        throw std::runtime_error("Empty indexer username or password");
+        username = "admin";
+        password = "admin";
+        logWarn(IC_NAME, "No username and password found in the keystore, using default values.");
+    }
+
+    if (username.empty())
+    {
+        username = "admin";
+        logWarn(IC_NAME, "No username found in the keystore, using default value.");
     }
 
     secureCommunication.basicAuth(username + ":" + password)
