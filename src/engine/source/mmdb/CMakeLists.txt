@@ -61,15 +61,23 @@ if(ENGINE_BUILD_TEST)
     # add_library(mmdb::mocks ALIAS mmdb_mocks)
 
     # mmdb component test
-    # add_executable(mmdb_ctest
-    #     ${COMPONENT_SRC_DIR}/mmdb_test.cpp
-    # )
-    # target_include_directories(mmdb_ctest PRIVATE ${SRC_DIR})
-    # target_link_libraries(mmdb_ctest
-    #     gtest_main
-    #     base
-    #     mmdb::mmdb
-    # )
+    add_executable(mmdb_ctest
+        ${COMPONENT_SRC_DIR}/manager_test.cpp
+        ${COMPONENT_SRC_DIR}/handler_test.cpp
+        #${COMPONENT_SRC_DIR}/result_test.cpp
+    )
+    target_include_directories(mmdb_ctest PRIVATE ${SRC_DIR})
+    target_link_libraries(mmdb_ctest
+        PUBLIC
+        gtest_main
+        base
+        mmdb::mmdb
+
+        PRIVATE
+        maxminddb::maxminddb
+    )
+    target_compile_definitions(mmdb_ctest PRIVATE MMDB_PATH_TEST="${MMDB_PATH_TEST}")
+
 
     # mmdb unit test
     add_executable(mmdb_utest
@@ -78,8 +86,11 @@ if(ENGINE_BUILD_TEST)
     )
     target_include_directories(mmdb_utest PRIVATE ${SRC_DIR})
     target_link_libraries(mmdb_utest
+        PUBLIC
         gtest_main
         mmdb::mmdb
+
+        PRIVATE
         maxminddb::maxminddb
     )
     target_compile_definitions(mmdb_utest PRIVATE MMDB_PATH_TEST="${MMDB_PATH_TEST}")
