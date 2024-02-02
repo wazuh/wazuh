@@ -1215,9 +1215,7 @@ void test_fim_diff_registry_tmp_default_type(void **state) {
 
     expect_fopen(diff->file_origin, "w", fp);
 
-    char warn_message[OS_SIZE_1024];
-    snprintf(warn_message, OS_SIZE_1024, FIM_REG_VAL_WRONG_TYPE, diff->file_origin);
-    expect_string(__wrap__mwarn, formatted_msg, warn_message);
+    expect_string(__wrap__mwarn, formatted_msg, FIM_REG_VAL_WRONG_TYPE);
 
     expect_fclose(fp, 0);
 
