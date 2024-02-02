@@ -278,6 +278,7 @@ json::Json Result::mmDump() const
 
     json::Json jDump {};
     dumpEntryDataList(eDataList, jDump, "");
+    MMDB_free_entry_data_list(eDataList);
     return jDump;
 }
 
