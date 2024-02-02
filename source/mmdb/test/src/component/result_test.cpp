@@ -1,6 +1,9 @@
 #include <gtest/gtest.h>
 
-#include <handler.hpp>
+#include <logging/logging.hpp>
+
+#include <mmdb/manager.hpp>
+
 
 namespace
 {
@@ -54,6 +57,7 @@ protected:
         m_handler = base::getResponse(manager.getHandler("test"));
 
         m_jDumpFull = json::Json {JSON_IP_FULLDATA};
+        m_jDumpFull.setFloat(122.0838, "/test_float");
         m_jDumpMinimal = json::Json  {JSON_IP_MINDATA};
     }
 };
