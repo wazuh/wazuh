@@ -55,16 +55,16 @@ if(ENGINE_BUILD_TEST)
     set(MMDB_PATH_TEST "${TEST_SRC_DIR}/testdb.mmdb")
 
     # Mocks
-    # add_library(mmdb_mocks INTERFACE)
-    # target_include_directories(mmdb_mocks INTERFACE ${TEST_MOCK_DIR})
-    # target_link_libraries(mmdb_mocks INTERFACE gmock mmdb::immdb)
-    # add_library(mmdb::mocks ALIAS mmdb_mocks)
+    add_library(mmdb_mocks INTERFACE)
+    target_include_directories(mmdb_mocks INTERFACE ${TEST_MOCK_DIR})
+    target_link_libraries(mmdb_mocks INTERFACE gmock mmdb::immdb)
+    add_library(mmdb::mocks ALIAS mmdb_mocks)
 
     # mmdb component test
     add_executable(mmdb_ctest
         ${COMPONENT_SRC_DIR}/manager_test.cpp
         ${COMPONENT_SRC_DIR}/handler_test.cpp
-        #${COMPONENT_SRC_DIR}/result_test.cpp
+        ${COMPONENT_SRC_DIR}/result_test.cpp
     )
     target_include_directories(mmdb_ctest PRIVATE ${SRC_DIR})
     target_link_libraries(mmdb_ctest
