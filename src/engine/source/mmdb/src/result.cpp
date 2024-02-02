@@ -240,7 +240,7 @@ MMDB_entry_data_list_s* dumpEntryDataList(MMDB_entry_data_list_s* eDataList, jso
 
 } // namespace
 
-base::RespOrError<MMDB_entry_data_s> MMDBResult::getEData(const DotPath& path) const
+base::RespOrError<MMDB_entry_data_s> Result::getEData(const DotPath& path) const
 {
     if (!m_result.found_entry)
     {
@@ -262,7 +262,7 @@ base::RespOrError<MMDB_entry_data_s> MMDBResult::getEData(const DotPath& path) c
 /*******************************************************************************
  *                             DUMP METHODS
  ******************************************************************************/
-json::Json MMDBResult::mmDump() const
+json::Json Result::mmDump() const
 {
     if (!m_result.found_entry)
     {
@@ -284,7 +284,7 @@ json::Json MMDBResult::mmDump() const
 /*******************************************************************************
  *                              GET VALUE METHODS
  ******************************************************************************/
-base::RespOrError<std::string> MMDBResult::getString(const DotPath& path) const
+base::RespOrError<std::string> Result::getString(const DotPath& path) const
 {
     auto eDataRes = getEData(path);
     if (base::isError(eDataRes))
@@ -301,7 +301,7 @@ base::RespOrError<std::string> MMDBResult::getString(const DotPath& path) const
     return std::string {eData.utf8_string, eData.data_size};
 }
 
-base::RespOrError<uint32_t> MMDBResult::getUint32(const DotPath& path) const
+base::RespOrError<uint32_t> Result::getUint32(const DotPath& path) const
 {
     auto eDataRes = getEData(path);
     if (base::isError(eDataRes))
@@ -318,7 +318,7 @@ base::RespOrError<uint32_t> MMDBResult::getUint32(const DotPath& path) const
     return eData.uint32;
 }
 
-base::RespOrError<double> MMDBResult::getDouble(const DotPath& path) const
+base::RespOrError<double> Result::getDouble(const DotPath& path) const
 {
     auto eDataRes = getEData(path);
     if (base::isError(eDataRes))
@@ -335,7 +335,7 @@ base::RespOrError<double> MMDBResult::getDouble(const DotPath& path) const
     return eData.double_value;
 }
 
-base::RespOrError<json::Json> MMDBResult::getAsJson(const DotPath& path) const
+base::RespOrError<json::Json> Result::getAsJson(const DotPath& path) const
 {
     auto eDataRes = getEData(path);
     if (base::isError(eDataRes))
