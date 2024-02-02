@@ -12,6 +12,7 @@
 #include "keyStore.hpp"
 #include "loggerHelper.h"
 #include "rsaHelper.hpp"
+#include <filesystem>
 
 constexpr auto KS_NAME {"keystore"};
 
@@ -19,6 +20,11 @@ void Keystore::put(const std::string& columnFamily, const std::string& key, cons
 {
     std::string encryptedValue;
 
+    if (!std::filesystem::exists(CERTIFICATE_FILE))
+    {
+        logWarn(KS_NAME, "No certificate was found.");
+        return;
+    }
     // Encrypt value
     Utils::rsaEncrypt(CERTIFICATE_FILE, value, encryptedValue, true);
 
@@ -47,6 +53,11 @@ void Keystore::get(const std::string& columnFamily, const std::string& key, std:
 
     if (keystoreDB.get(key, encryptedValue, columnFamily))
     {
+        if (!std::filesystem::exists(PRIVATE_KEY_FILE))
+        {
+            logWarn(KS_NAME, "No private key was found.");
+            return;
+        }
         // Decrypt value
         Utils::rsaDecrypt(PRIVATE_KEY_FILE, encryptedValue, value);
     }
