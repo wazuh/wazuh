@@ -254,7 +254,7 @@ def args_valid_iam_role_arn(iam_role_arn):
     """
     pattern = r'^arn:(?P<Partition>[^:\n]*):(?P<Service>[^:\n]*):(?P<Region>[^:\n]*):(?P<AccountID>[^:\n]*):(?P<Ignore>(?P<ResourceType>[^:\/\n]*)[:\/])?(?P<Resource>.*)$'
 
-    if not re.match(pattern, iam_role_arn):
+    if not re.match(pattern, iam_role_arn, re.IGNORECASE):
         raise argparse.ArgumentTypeError("Invalid ARN Role specified. Value must be a valid ARN Role.")
 
     return iam_role_arn
