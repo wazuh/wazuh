@@ -23,6 +23,7 @@ MapOp SendAR(std::shared_ptr<sockiface::ISockFactory> sockFactory,
 
 MapBuilder getOpBuilderSendAr(std::shared_ptr<sockiface::ISockFactory> sockFactory);
 
+// TODO: this helper is not used in the codebase
 /**
  * @brief Helper Function for creating the base event that will be sent through  * Active Response socket with
  * active_response_send

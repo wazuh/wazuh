@@ -287,8 +287,9 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
     // Active Response builders
     registry->template add<builders::OpBuilderEntry>(
         "active_response_send", {schemval::ValidationToken {}, builders::getOpBuilderSendAr(deps.sockFactory)});
-    registry->template add<builders::OpBuilderEntry>("active_response_create",
-                                                     {schemval::ValidationToken {}, builders::CreateARBuilder});
+    // TODO: this builder is not used in the ruleset
+    // registry->template add<builders::OpBuilderEntry>("active_response_create",
+    //                                                  {schemval::ValidationToken {}, builders::CreateARBuilder});
 
     // Upgrade confirmation builder
     registry->template add<builders::OpBuilderEntry>(
