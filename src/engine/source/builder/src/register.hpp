@@ -23,6 +23,7 @@
 #include "builders/opmap/kvdb.hpp"
 #include "builders/optransform/array.hpp"
 #include "builders/optransform/hlp.hpp"
+#include "builders/optransform/mmdb.hpp"
 #include "builders/optransform/sca.hpp"
 #include "builders/optransform/windows.hpp"
 
@@ -221,6 +222,11 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
         "get_key_in", {schemf::runtimeValidation(), builders::opBuilderHelperGetValue}); // TODO: add validation
     registry->template add<builders::OpBuilderEntry>(
         "merge_key_in", {schemf::STypeToken::create(schemf::Type::OBJECT), builders::opBuilderHelperMergeValue});
+    // Transform helpers: MMDB functions
+    registry->template add<builders::OpBuilderEntry>(
+        "geoip", {schemf::STypeToken::create(schemf::Type::OBJECT), builders::mmdb::getMMDBGeoBuilder(deps.mmdbManager)});
+    registry->template add<builders::OpBuilderEntry>(
+        "as", {schemf::STypeToken::create(schemf::Type::OBJECT), builders::mmdb::getMMDBASNBuilder(deps.mmdbManager)});
     // Global event helpers
     registry->template add<builders::OpBuilderEntry>(
         "erase_custom_fields", {schemf::runtimeValidation(), builders::opBuilderHelperEraseCustomFields});
