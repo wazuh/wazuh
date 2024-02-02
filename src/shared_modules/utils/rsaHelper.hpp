@@ -128,25 +128,20 @@ namespace Utils
         createRSA(rsa, filePath, cert ? RSA_CERT : RSA_PUBLIC);
 
         // Allocate memory for the encryptedValue
-        unsigned char* encryptedValue = (unsigned char*)malloc(RSA_size(rsa));
+        std::vector<unsigned char> encryptedValue(RSA_size(rsa));
 
         // Defered free
-        DEFER(
-            [encryptedValue, rsa]()
-            {
-                RSA_free(rsa);
-                free(encryptedValue);
-            });
+        DEFER([rsa]() { RSA_free(rsa); });
 
         const auto encryptedLen = RSA_public_encrypt(
-            input.length(), (const unsigned char*)input.data(), encryptedValue, rsa, RSA_PKCS1_PADDING);
+            input.length(), (const unsigned char*)input.data(), encryptedValue.data(), rsa, RSA_PKCS1_PADDING);
 
         if (encryptedLen < 0)
         {
             throw std::runtime_error("RSA encryption failed");
         }
 
-        output = std::string(reinterpret_cast<char const*>(encryptedValue), encryptedLen);
+        output = std::string(encryptedValue.begin(), encryptedValue.end());
 
         return encryptedLen;
     }

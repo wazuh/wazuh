@@ -42,7 +42,7 @@ void Keystore::get(const std::string& columnFamily, const std::string& key, std:
 
     if (!keystoreDB.columnExists(columnFamily))
     {
-        std::string msg = "Column '" + columnFamily + "' does not exists at the database.";
+        std::string msg = "Column '" + columnFamily + "' does not exist at the database.";
         logError(KS_NAME, msg.c_str());
         throw std::runtime_error(msg);
     }
