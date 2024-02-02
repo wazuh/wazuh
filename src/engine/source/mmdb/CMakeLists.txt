@@ -25,6 +25,7 @@ add_library(mmdb::immdb ALIAS mmdb_immdb)
 add_library(mmdb_mmdb STATIC
     ${SRC_DIR}/result.cpp
     ${SRC_DIR}/handler.cpp
+    ${SRC_DIR}/manager.cpp
 )
 
 

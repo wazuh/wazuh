@@ -68,6 +68,7 @@ add_library(builder STATIC
     # Transform
     ${SRC_DIR}/builders/optransform/array.cpp
     ${SRC_DIR}/builders/optransform/hlp.cpp
+    ${SRC_DIR}/builders/optransform/mmdb.cpp
     ${SRC_DIR}/builders/optransform/sca.cpp
     ${SRC_DIR}/builders/optransform/windows.cpp
 )
@@ -85,12 +86,12 @@ target_link_libraries(builder
     logpar
     date::date
     kvdb::mocks
+    mmdb::immdb
     sockiface::mocks
     wdb::mocks
     schemf::mocks
 
     PRIVATE
-
     schemf::ischema
 
 )

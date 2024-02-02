@@ -23,7 +23,7 @@ class IHandler
          * @brief Search a IP address in the MMDB database.
          *
          * @param ip The IP address to search.
-         * @return A MMDBResult object containing the result of the search.
+         * @return A Result object containing the result of the search.
          */
         virtual std::shared_ptr<IResult> lookup(const std::string& ip) const = 0;
 };
