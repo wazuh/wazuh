@@ -53,6 +53,7 @@ add_library(builder STATIC
     # TODO: Move to separate files
     ${SRC_DIR}/builders/opmap/opBuilderHelperMap.cpp
     ${SRC_DIR}/builders/opmap/kvdb.cpp
+    ${SRC_DIR}/builders/opmap/mmdb.cpp
     ${SRC_DIR}/builders/opmap/activeResponse.cpp
     ${SRC_DIR}/builders/opmap/upgradeConfirmation.cpp
     ${SRC_DIR}/builders/opmap/wdb.cpp
@@ -67,7 +68,7 @@ add_library(builder STATIC
     # Transform
     ${SRC_DIR}/builders/optransform/array.cpp
     ${SRC_DIR}/builders/optransform/hlp.cpp
-    ${SRC_DIR}/builders/optransform/mmdb.cpp
+    ${SRC_DIR}/builders/optransform/netinfoAddress.cpp
     ${SRC_DIR}/builders/optransform/sca.cpp
     ${SRC_DIR}/builders/optransform/windows.cpp
 )
