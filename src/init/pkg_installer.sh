@@ -149,6 +149,12 @@ mkdir -p ./backup
 
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Generating Backup." >> ./logs/upgrade.log
 
+# Check tar dependency
+if ! which tar &> /dev/null; then
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - The tar package is required for this operation, exiting." >> ./logs/upgrade.log
+    exit 1
+fi
+
 FOLDERS_TO_BACKUP=($WAZUH_HOME/{active-response,bin,etc,lib,queue,ruleset,wodles,agentless,logs/{ossec,wazuh},var/selinux} \
                    $OSSEC_INIT_FILE \
                    $SYSTEMD_SERVICE_UNIT_PATH \
