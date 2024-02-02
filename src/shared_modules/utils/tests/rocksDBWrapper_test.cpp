@@ -549,3 +549,21 @@ TEST_F(RocksDBWrapperTest, PutAndGetLastKeyValueFromColumn)
     EXPECT_EQ(lastPair.first, KEY_B);
     EXPECT_EQ(lastPair.second, VALUE_B);
 }
+
+TEST_F(RocksDBWrapperTest, GetAllColumnFamiliesTest)
+{
+    constexpr auto COLUMN_NAME_A {"column_A"};
+    constexpr auto COLUMN_NAME_B {"column_B"};
+    constexpr auto COLUMN_NAME_C {"column_C"};
+
+    db_wrapper->createColumn(COLUMN_NAME_A);
+    db_wrapper->createColumn(COLUMN_NAME_B);
+    db_wrapper->createColumn(COLUMN_NAME_C);
+
+    const auto columnFamilies {db_wrapper->getAllColumns()};
+    EXPECT_EQ(columnFamilies.size(), 4);
+    EXPECT_EQ(columnFamilies[0], rocksdb::kDefaultColumnFamilyName);
+    EXPECT_EQ(columnFamilies[1], COLUMN_NAME_A);
+    EXPECT_EQ(columnFamilies[2], COLUMN_NAME_B);
+    EXPECT_EQ(columnFamilies[3], COLUMN_NAME_C);
+}
