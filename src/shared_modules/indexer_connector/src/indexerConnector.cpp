@@ -11,12 +11,16 @@
 
 #include "indexerConnector.hpp"
 #include "HTTPRequest.hpp"
+#include "keyStore.hpp"
 #include "loggerHelper.h"
 #include "secureCommunication.hpp"
 #include "serverSelector.hpp"
 #include <fstream>
 
 constexpr auto NOT_USED {-1};
+constexpr auto INDEXER_COLUMN {"indexer"};
+constexpr auto USER_KEY {"username"};
+constexpr auto PASSWORD_KEY {"password"};
 
 namespace Log
 {
@@ -76,10 +80,20 @@ IndexerConnector::IndexerConnector(
         }
     }
 
-    if (config.contains("username") && config.contains("password"))
+    Keystore::get(INDEXER_COLUMN, USER_KEY, username);
+    Keystore::get(INDEXER_COLUMN, PASSWORD_KEY, password);
+
+    if (username.empty() && password.empty())
     {
-        username = config.at("username").get_ref<const std::string&>();
-        password = config.at("password").get_ref<const std::string&>();
+        username = "admin";
+        password = "admin";
+        logWarn(IC_NAME, "No username and password found in the keystore, using default values.");
+    }
+
+    if (username.empty())
+    {
+        username = "admin";
+        logWarn(IC_NAME, "No username found in the keystore, using default value.");
     }
 
     secureCommunication.basicAuth(username + ":" + password)

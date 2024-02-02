@@ -10290,8 +10290,6 @@ paths:
                         enabled: yes
                         hosts:
                           host: http://127.0.0.1:9200
-                        username: admin
-                        password: admin
                       syscheck:
                         disabled: no
                         frequency: 43200
