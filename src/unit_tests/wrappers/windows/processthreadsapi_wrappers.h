@@ -20,6 +20,7 @@
 #define GetCurrentThread    wrap_GetCurrentThread
 #define CreateThread        wrap_CreateThread
 #define CreateProcessW      wrap_CreateProcessW
+#undef TerminateProcess
 #define TerminateProcess    wrap_TerminateProcess
 
 WINBOOL wrap_SetThreadPriority(HANDLE hThread, int nPriority);
@@ -39,7 +40,7 @@ BOOL wrap_OpenProcessToken(HANDLE ProcessHandle,
                            DWORD DesiredAccess,
                            PHANDLE TokenHandle);
 
-BOOL wrap_TerminateProcess(__UNUSED_PARAM(HANDLE hProcess), 
+BOOL wrap_TerminateProcess(__UNUSED_PARAM(HANDLE hProcess),
                            __UNUSED_PARAM(UINT uExitCode));
 
 /**

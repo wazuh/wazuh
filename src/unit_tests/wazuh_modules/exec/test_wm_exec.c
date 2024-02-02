@@ -19,10 +19,6 @@
 #include "../../wrappers/wazuh/shared/list_op_wrappers.h"
 #include "../../wrappers/posix/signal_wrappers.h"
 
-#ifdef TEST_WINAGENT
-#include "../../wrappers/windows/processthreadsapi_wrappers.h"
-#endif
-
 #define COMMAND u8"Powershell -c \"@{ winCounter = (Get-Counter '\\mémoire\\mégaoctets disponibles').CounterSamples[0] } | ConvertTo-Json -compress\""
 #define COMMAND2 u8"Powershell -c \"@{ winCounter = (Get-Counter '\\processeur(_total)\\% temps processeur').CounterSamples[0] } | ConvertTo-Json -compress\""
 
@@ -328,7 +324,7 @@ static void test_wm_remove_handle_success(void ** state) {
 }
 
 static void test_wm_kill_children_win_empty_list(void ** state) {
-    
+
     will_return(__wrap_OSList_GetFirstNode, NULL);
 
     test_mode = false;
@@ -336,7 +332,7 @@ static void test_wm_kill_children_win_empty_list(void ** state) {
     wm_kill_children();
 }
 
-static void test_wm_kill_children_win_empty_node(void ** state) {    
+static void test_wm_kill_children_win_empty_node(void ** state) {
     OSListNode *node;
 
     node = (OSListNode *) calloc(1, sizeof(OSListNode));
@@ -351,7 +347,7 @@ static void test_wm_kill_children_win_empty_node(void ** state) {
     os_free(node);
 }
 
-static void test_wm_kill_children_win_success(void ** state) {    
+static void test_wm_kill_children_win_success(void ** state) {
     HANDLE hProcess = (HANDLE)10;
     HANDLE * p_hProcess = NULL;
     OSListNode *node;
@@ -364,6 +360,7 @@ static void test_wm_kill_children_win_success(void ** state) {
     will_return(__wrap_OSList_GetFirstNode, node);
 
     expect_function_call(wrap_TerminateProcess);
+    will_return(wrap_TerminateProcess, true);
 
     test_mode = false;
 
@@ -395,7 +392,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_append_handle_success, setup_modules, teardown_modules),
         cmocka_unit_test_setup_teardown(test_wm_remove_handle_null_list, NULL, NULL),
         cmocka_unit_test_setup_teardown(test_wm_remove_handle_not_found, setup_modules, teardown_modules),
-        cmocka_unit_test_setup_teardown(test_wm_remove_handle_success, setup_modules, teardown_modules),        
+        cmocka_unit_test_setup_teardown(test_wm_remove_handle_success, setup_modules, teardown_modules),
         cmocka_unit_test_setup_teardown(test_wm_kill_children_win_empty_list, setup_modules, NULL),
         cmocka_unit_test_setup_teardown(test_wm_kill_children_win_empty_node, setup_modules, NULL),
         cmocka_unit_test_setup_teardown(test_wm_kill_children_win_success, setup_modules, NULL)
