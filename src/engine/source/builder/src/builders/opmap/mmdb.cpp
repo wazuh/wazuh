@@ -5,12 +5,12 @@ namespace builder::builders::mmdb
 
 namespace
 {
-TransformOp dumpFailTransform(const std::string& trace, const std::shared_ptr<const RunState>& runstate)
+MapOp dumpFailTransform(const std::string& trace, const std::shared_ptr<const RunState>& runstate)
 {
 
-    return [trace, runstate](base::Event event) -> TransformResult
+    return [trace, runstate](base::ConstEvent event) -> MapResult
     {
-        RETURN_FAILURE(runstate, event, trace);
+        RETURN_FAILURE(runstate, json::Json {}, trace);
     };
 }
 
@@ -24,55 +24,55 @@ json::Json getGeoCityECS(const std::shared_ptr<::mmdb::IResult>& result)
     auto city = result->getString("city.names.en");
     if (!base::isError(city))
     {
-        cityData.setString(getResponse(city), "/geo/city_name");
+        cityData.setString(getResponse(city), "/city_name");
     }
 
     auto continentCode = result->getString("continent.code");
     if (!base::isError(continentCode))
     {
-        cityData.setString(getResponse(continentCode), "/geo/continent_code");
+        cityData.setString(getResponse(continentCode), "/continent_code");
     }
 
     auto continentName = result->getString("continent.names.en");
     if (!base::isError(continentName))
     {
-        cityData.setString(getResponse(continentName), "/geo/continent_name");
+        cityData.setString(getResponse(continentName), "/continent_name");
     }
 
     auto countryIsoCode = result->getString("country.iso_code");
     if (!base::isError(countryIsoCode))
     {
-        cityData.setString(getResponse(countryIsoCode), "/geo/country_iso_code");
+        cityData.setString(getResponse(countryIsoCode), "/country_iso_code");
     }
 
     auto countryName = result->getString("country.names.en");
     if (!base::isError(countryName))
     {
-        cityData.setString(getResponse(countryName), "/geo/country_name");
+        cityData.setString(getResponse(countryName), "/country_name");
     }
 
     auto lat = result->getDouble("location.latitude");
     if (!base::isError(lat))
     {
-        cityData.setDouble(getResponse(lat), "/geo/location/lat");
+        cityData.setDouble(getResponse(lat), "/location/lat");
     }
 
     auto lon = result->getDouble("location.longitude");
     if (!base::isError(lon))
     {
-        cityData.setDouble(getResponse(lon), "/geo/location/lon");
+        cityData.setDouble(getResponse(lon), "/location/lon");
     }
 
     auto postalCode = result->getString("postal.code");
     if (!base::isError(postalCode))
     {
-        cityData.setString(getResponse(postalCode), "/geo/postal_code");
+        cityData.setString(getResponse(postalCode), "/postal_code");
     }
 
     auto timeZone = result->getString("location.time_zone");
     if (!base::isError(timeZone))
     {
-        cityData.setString(getResponse(timeZone), "/geo/timezone");
+        cityData.setString(getResponse(timeZone), "/timezone");
     }
 
     return cityData;
@@ -86,13 +86,13 @@ json::Json getASECS(const std::shared_ptr<::mmdb::IResult>& result)
     auto asn = result->getUint32("autonomous_system_number");
     if (!base::isError(asn))
     {
-        asData.setInt64(getResponse(asn), "/as/number");
+        asData.setInt64(getResponse(asn), "/number");
     }
 
     auto asnOrg = result->getString("autonomous_system_organization");
     if (!base::isError(asnOrg))
     {
-        asData.setString(getResponse(asnOrg), "/as/organization/name");
+        asData.setString(getResponse(asnOrg), "/organization/name");
     }
 
     return asData;
@@ -100,11 +100,10 @@ json::Json getASECS(const std::shared_ptr<::mmdb::IResult>& result)
 
 } // namespace
 
-TransformBuilder getMMDBGeoBuilder(const std::shared_ptr<::mmdb::IManager>& mmdbManager)
+MapBuilder getMMDBGeoBuilder(const std::shared_ptr<::mmdb::IManager>& mmdbManager)
 {
-    return [mmdbManager](const Reference& targetField,
-                         const std::vector<OpArg>& opArgs,
-                         const std::shared_ptr<const IBuildCtx>& buildCtx) -> TransformOp
+    return [mmdbManager](const std::vector<OpArg>& opArgs,
+                         const std::shared_ptr<const IBuildCtx>& buildCtx) -> MapOp
     {
         const auto name = buildCtx->context().opName;
 
@@ -119,6 +118,7 @@ TransformBuilder getMMDBGeoBuilder(const std::shared_ptr<::mmdb::IManager>& mmdb
             fmt::format("[{}] -> Failure: Reference to ip [{}] not found or not an string", name, ipRef.dotPath())};
         const std::string notValidIPTrace {fmt::format("[{}] -> Failure: IP string is not a valid IP.", name)};
         const std::string notFoundDBTrace {fmt::format("[{}] -> Failure: IP Not found in DB", name)};
+        const std::string emptyDataTrace {fmt::format("[{}] -> Failure: Empty wcs data", name)};
 
         // Geo only accepts IP
         if (schema.hasField(ipRef.dotPath()) && schema.getType(ipRef.dotPath()) != schemf::Type::IP)
@@ -128,25 +128,22 @@ TransformBuilder getMMDBGeoBuilder(const std::shared_ptr<::mmdb::IManager>& mmdb
 
         auto resDB = mmdbManager->getHandler("mm-geolite2-city");
         // TODO Temporary error handling, this should be mandatory
+        auto runstate = buildCtx->runState();
         if (base::isError(resDB))
         {
-            const auto& runState = buildCtx->runState();
-            return dumpFailTransform(
-                fmt::format("[{}] -> Failure: handler error: {}", name, base::getError(resDB).message), runState);
+            const auto trace =  fmt::format("[{}] -> Failure: handler error: {}", name, base::getError(resDB).message);
+            return dumpFailTransform(trace, runstate);
         }
 
         // auto dbHandler = base::getResponse<std::shared_ptr<::mmdb::IHandler>>(resDB);
-        return [=,
-                targetField = targetField.jsonPath(),
-                dbHandler = base::getResponse(resDB),
-                srcRef = ipRef.jsonPath(),
-                runState = buildCtx->runState()](base::Event event) -> TransformResult
+        return [=, dbHandler = base::getResponse(resDB), srcRef = ipRef.jsonPath()](
+                   base::ConstEvent event) -> MapResult
         {
             // Get the ip
             auto ipStr = event->getString(srcRef);
             if (!ipStr)
             {
-                RETURN_FAILURE(runState, event, notFoundTrace);
+                RETURN_FAILURE(runstate, json::Json {}, notFoundTrace);
             }
 
             // Check if the ip is valid
@@ -157,35 +154,30 @@ TransformBuilder getMMDBGeoBuilder(const std::shared_ptr<::mmdb::IManager>& mmdb
             }
             catch (std::runtime_error& e)
             {
-                RETURN_FAILURE(runState, event, notValidIPTrace + " " + e.what());
+                RETURN_FAILURE(runstate, json::Json {}, notValidIPTrace + " " + e.what());
             }
 
             if (!result->hasData())
             {
-                RETURN_FAILURE(runState, event, notFoundDBTrace);
+                RETURN_FAILURE(runstate, json::Json {}, notFoundDBTrace);
             }
 
             auto geo = getGeoCityECS(result);
 
-            if (event->exists(targetField))
+            if (geo.size() == 0)
             {
-                event->merge(false, geo, targetField);
-            }
-            else
-            {
-                event->set(targetField, geo);
+                RETURN_FAILURE(runstate, json::Json {}, emptyDataTrace);
             }
 
-            RETURN_SUCCESS(runState, event, successTrace);
+            RETURN_SUCCESS(runstate, geo, successTrace);
         };
     };
 };
 
-TransformBuilder getMMDBASNBuilder(const std::shared_ptr<::mmdb::IManager>& mmdbManager)
+MapBuilder getMMDBASNBuilder(const std::shared_ptr<::mmdb::IManager>& mmdbManager)
 {
-    return [mmdbManager](const Reference& targetField,
-                         const std::vector<OpArg>& opArgs,
-                         const std::shared_ptr<const IBuildCtx>& buildCtx) -> TransformOp
+    return [mmdbManager](const std::vector<OpArg>& opArgs,
+                         const std::shared_ptr<const IBuildCtx>& buildCtx) -> MapOp
     {
         const auto name = buildCtx->context().opName;
 
@@ -200,6 +192,7 @@ TransformBuilder getMMDBASNBuilder(const std::shared_ptr<::mmdb::IManager>& mmdb
             fmt::format("[{}] -> Failure: Reference to ip [{}] not found or not an string", name, ipRef.dotPath())};
         const std::string notValidIPTrace {fmt::format("[{}] -> Failure: IP string is not a valid IP.", name)};
         const std::string notFoundDBTrace {fmt::format("[{}] -> Failure: IP Not found in DB", name)};
+        const std::string emptyDataTrace {fmt::format("[{}] -> Failure: Empty wcs data", name)};
 
         // Geo only accepts IP
         if (schema.hasField(ipRef.dotPath()) && schema.getType(ipRef.dotPath()) != schemf::Type::IP)
@@ -209,24 +202,21 @@ TransformBuilder getMMDBASNBuilder(const std::shared_ptr<::mmdb::IManager>& mmdb
 
         auto resDB = mmdbManager->getHandler("mm-geolite2-asn");
         // TODO Temporary error handling, this should be mandatory
+        auto runstate = buildCtx->runState();
         if (base::isError(resDB))
         {
-            const auto& runState = buildCtx->runState();
-            return dumpFailTransform("Error getting mmdb handler: " + base::getError(resDB).message, runState);
+            return dumpFailTransform("Error getting mmdb handler: " + base::getError(resDB).message, runstate);
         }
 
         // auto dbHandler = base::getResponse<std::shared_ptr<::mmdb::IHandler>>(resDB);
-        return [=,
-                targetField = targetField.jsonPath(),
-                dbHandler = base::getResponse(resDB),
-                srcRef = ipRef.jsonPath(),
-                runState = buildCtx->runState()](base::Event event) -> TransformResult
+        return [=, dbHandler = base::getResponse(resDB), srcRef = ipRef.jsonPath()](
+                   base::ConstEvent event) -> MapResult
         {
             // Get the ip
             auto ipStr = event->getString(srcRef);
             if (!ipStr)
             {
-                RETURN_FAILURE(runState, event, notFoundTrace);
+                RETURN_FAILURE(runstate, json::Json {}, notFoundTrace);
             }
 
             // Check if the ip is valid
@@ -237,26 +227,22 @@ TransformBuilder getMMDBASNBuilder(const std::shared_ptr<::mmdb::IManager>& mmdb
             }
             catch (std::runtime_error& e)
             {
-                RETURN_FAILURE(runState, event, notValidIPTrace + " " + e.what());
+                RETURN_FAILURE(runstate, json::Json {}, notValidIPTrace + " " + e.what());
             }
 
             if (!result->hasData())
             {
-                RETURN_FAILURE(runState, event, notFoundDBTrace);
+                RETURN_FAILURE(runstate, json::Json {}, notFoundDBTrace);
             }
 
             auto as = getASECS(result);
 
-            if(event->exists(targetField))
+            if (as.size() == 0)
             {
-                event->merge(false, as, targetField);
-            }
-            else
-            {
-                event->set(targetField, as);
+                RETURN_FAILURE(runstate, json::Json {}, emptyDataTrace);
             }
 
-            RETURN_SUCCESS(runState, event, successTrace);
+            RETURN_SUCCESS(runstate, as, successTrace);
         };
     };
 };

@@ -16,6 +16,7 @@
 #include "builders/opmap/activeResponse.hpp"
 #include "builders/opmap/map.hpp"
 #include "builders/opmap/opBuilderHelperMap.hpp"
+#include "builders/opmap/mmdb.hpp"
 #include "builders/opmap/upgradeConfirmation.hpp"
 #include "builders/opmap/wdb.hpp"
 
@@ -23,7 +24,6 @@
 #include "builders/opmap/kvdb.hpp"
 #include "builders/optransform/array.hpp"
 #include "builders/optransform/hlp.hpp"
-#include "builders/optransform/mmdb.hpp"
 #include "builders/optransform/netinfoAddress.hpp"
 #include "builders/optransform/sca.hpp"
 #include "builders/optransform/windows.hpp"
