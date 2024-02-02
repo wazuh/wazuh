@@ -99,7 +99,8 @@ static void logFunction(const int logLevel,
 }
 
 void IndexerConnectorTest::SetUp()
-{
+{   
+    //Dummy change
     // Create dummy template file.
     std::ofstream outputFile(TEMPLATE_FILE_PATH);
     outputFile << TEMPLATE_DATA.dump();
