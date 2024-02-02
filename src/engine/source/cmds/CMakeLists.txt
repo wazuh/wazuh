@@ -28,6 +28,7 @@ target_link_libraries(cmds
     conf::iconf
     eMessages
     metrics
+    mmdb::mmdb
     schemf
     wdb
     sockiface

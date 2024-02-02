@@ -45,6 +45,7 @@ protected:
 
     void SetUp() override
     {
+        logging::testInit();
         auto handler = std::make_shared<mmdb::Handler>(g_maxmindDbPath);
         auto error = handler->open();
         if (error)

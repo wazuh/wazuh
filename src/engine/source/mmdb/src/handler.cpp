@@ -1,3 +1,5 @@
+#include <logging/logging.hpp>
+
 #include "handler.hpp"
 
 namespace mmdb
@@ -24,6 +26,7 @@ void Handler::close()
 {
     if (isOpen)
     {
+        LOG_DEBUG("Closing {} database", dbPath);
         MMDB_close(mmdb.get());
         isOpen = false;
     }
@@ -41,21 +44,21 @@ std::shared_ptr<IResult> Handler::lookup(const std::string& ipStr) const
 
     if (0 != gai_error) // translation error
     {
-        std::string msg {"Error from getaddrinfo for "};
+        std::string msg {"Error translating IP address "};
         msg += ipStr;
         msg += ": ";
         msg += gai_strerror(gai_error);
         throw std::runtime_error(msg);
     }
 
-    if (MMDB_SUCCESS != mmdb_error) // libmaxminddb error
+    if (MMDB_SUCCESS != mmdb_error) // libmaxminddb error, should not happen
     {
-        std::string msg {"Got an error from libmaxminddb: "};
+        std::string msg {"Error from libmaxminddb: "};
         msg += MMDB_strerror(mmdb_error);
         throw std::runtime_error(msg);
     }
 
-    return std::make_shared<MMDBResult>(result);
+    return std::make_shared<Result>(result);
 }
 
 } // namespace mmdb

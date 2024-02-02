@@ -8,9 +8,18 @@ const std::string g_maxmindDbPath {MMDB_PATH_TEST};
 const std::string g_ipFullData {"1.2.3.4"};
 const std::string g_ipMinimalData {"1.2.3.5"};
 const std::string g_ipNotFound {"1.2.3.6"};
-}
+} // namespace
 
-TEST(HandlerTest, openOk)
+class HandlerTest : public ::testing::Test
+{
+protected:
+    void SetUp() override
+    {
+        logging::testInit();
+    }
+};
+
+TEST_F(HandlerTest, openOk)
 {
     mmdb::Handler handler(g_maxmindDbPath);
     ASSERT_FALSE(handler.isAvailable());
@@ -19,7 +28,7 @@ TEST(HandlerTest, openOk)
     ASSERT_TRUE(handler.isAvailable());
 }
 
-TEST(HandlerTest, openFail)
+TEST_F(HandlerTest, openFail)
 {
     mmdb::Handler handler("invalid_path");
     ASSERT_FALSE(handler.isAvailable());
@@ -28,7 +37,7 @@ TEST(HandlerTest, openFail)
     ASSERT_FALSE(handler.isAvailable());
 }
 
-TEST(HandlerTest, close)
+TEST_F(HandlerTest, close)
 {
     mmdb::Handler handler(g_maxmindDbPath);
     ASSERT_FALSE(handler.isAvailable());
@@ -39,7 +48,7 @@ TEST(HandlerTest, close)
     ASSERT_FALSE(handler.isAvailable());
 }
 
-TEST(HandlerTest, lookupOk)
+TEST_F(HandlerTest, lookupOk)
 {
     mmdb::Handler handler(g_maxmindDbPath);
     auto error = handler.open();
