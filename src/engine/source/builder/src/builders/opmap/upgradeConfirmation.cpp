@@ -22,16 +22,13 @@ MapBuilder getUpgradeConfirmationBUilder(const std::shared_ptr<sockiface::ISockF
         auto socketUC = sockFactory->getHandler(sockiface::ISockHandler::Protocol::STREAM, WM_UPGRADE_SOCK);
 
         // Tracing
-        const auto successTrace {fmt::format("{} -> Success", name)};
+        const auto successTrace = fmt::format("{} -> Success", name);
 
-        const std::string failureTrace1 {
-            fmt::format("{} -> Failure: Message reference '{}' not found", name, refParam.dotPath())};
-        const std::string failureTrace2 {fmt::format("[{}] -> Failure: The message is empty", name)};
-        const std::string failureTrace3 {
-            fmt::format("{} -> Failure: Upgrade confirmation message could not be sent", name)};
-        const std::string failureTrace4 {
-            fmt::format("{} -> Failure: Error trying to send upgrade confirmation message: ", name)};
-        const std::string failureTrace5 {fmt::format("{} -> Failure: Message should be a JSON object: ", name)};
+        const auto failureTrace1 = fmt::format("{} -> Message reference '{}' not found", name, refParam.dotPath());
+        const auto failureTrace2 = fmt::format("{} -> The message is empty", name);
+        const auto failureTrace3 = fmt::format("{} -> Upgrade confirmation message could not be sent", name);
+        const auto failureTrace4 = fmt::format("{} -> Error trying to send upgrade confirmation message: ", name);
+        const auto failureTrace5 = fmt::format("{} -> Message should be a JSON object: ", name);
 
         // Return Op
         return [=, ref = refParam.jsonPath(), runState = buildCtx->runState()](base::ConstEvent event) -> MapResult
