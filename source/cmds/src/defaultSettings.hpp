@@ -55,6 +55,13 @@ constexpr auto ENGINE_KVDB_CLI_RECORDS = 50;
 constexpr auto ENGINE_ROUTER_THREADS = 1;
 constexpr auto ENGINE_ROUTER_THREADS_ENV = "WZE_ROUTER_THREADS";
 
+// Maxmind module
+constexpr auto ENGINE_MMDB_ASN_PATH = "";
+constexpr auto ENGINE_MMDB_ASN_PATH_ENV = "WZE_MMDB_ASN_PATH";
+
+constexpr auto ENGINE_MMDB_CITY_PATH = "";
+constexpr auto ENGINE_MMDB_CITY_PATH_ENV = "WZE_MMDB_CITY_PATH";
+
 // Queue Module
 constexpr auto ENGINE_QUEUE_SIZE = 1000000;
 constexpr auto ENGINE_QUEUE_SIZE_ENV = "WZE_QUEUE_SIZE";
