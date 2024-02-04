@@ -1484,6 +1484,8 @@ components:
         affected_items:
           type: array
           description: "List of removed groups, agents belonging exclusively to the removed groups will be reassigned to group default"
+          items:
+            type: string
 
     AgentIdKey:
       type: object
@@ -2314,6 +2316,8 @@ components:
         roles:
           type: array
           description: "User's roles"
+          items:
+            type: string
     Token:
       type: object
       properties:
@@ -3179,7 +3183,7 @@ components:
                                 sync-agent-info-get:
                                   type: integer
                                   format: int32
-                                sync-agent-info-set":
+                                sync-agent-info-set:
                                   type: integer
                                   format: int32
                                 update-agent-data:
@@ -3511,7 +3515,7 @@ components:
                                 sync-agent-info-get:
                                   type: integer
                                   format: int32
-                                sync-agent-info-set":
+                                sync-agent-info-set:
                                   type: integer
                                   format: int32
                                 update-agent-data:
@@ -3779,48 +3783,46 @@ components:
 
     WazuhStats:
       type: object
-      items:
-        type: object
-        properties:
-          alerts:
-            type: array
-            items:
-              type: object
-              properties:
-                sigid:
-                  type: integer
-                  format: int32
-                  description: "Rule ID that matched the event"
-                level:
-                  type: integer
-                  format: int32
-                  minimum: 0
-                  maximum: 15
-                  description: "Alert level"
-                times:
-                  type: integer
-                  format: int32
-                  description: "Number of times the alert was raised during the specified hour"
-          events:
-            type: integer
-            format: int32
-            description: "Number of events processed during the specified hour"
-          firewall:
-            type: integer
-            format: int32
-            description: "Number of firewall alerts raised during the specified hour"
-          hour:
-            type: integer
-            format: int32
-            description: "Hour of the day in 24h format"
-          syscheck:
-            type: integer
-            format: int32
-            description: "Number of syscheck alerts raised during the specified hour"
-          totalAlerts:
-            type: integer
-            format: int32
-            description: "Number of alerts raised during the specified hour"
+      properties:
+        alerts:
+          type: array
+          items:
+            type: object
+            properties:
+              sigid:
+                type: integer
+                format: int32
+                description: "Rule ID that matched the event"
+              level:
+                type: integer
+                format: int32
+                minimum: 0
+                maximum: 15
+                description: "Alert level"
+              times:
+                type: integer
+                format: int32
+                description: "Number of times the alert was raised during the specified hour"
+        events:
+          type: integer
+          format: int32
+          description: "Number of events processed during the specified hour"
+        firewall:
+          type: integer
+          format: int32
+          description: "Number of firewall alerts raised during the specified hour"
+        hour:
+          type: integer
+          format: int32
+          description: "Hour of the day in 24h format"
+        syscheck:
+          type: integer
+          format: int32
+          description: "Number of syscheck alerts raised during the specified hour"
+        totalAlerts:
+          type: integer
+          format: int32
+          description: "Number of alerts raised during the specified hour"
 
     WazuhHourlyStats:
       type: object
@@ -8790,6 +8792,10 @@ paths:
                   data:
                     oneOf:
                       - type: array
+                        items:
+                          oneOf:
+                            - type: object
+                            - type: string
                       - type: object
                         description: "The output format depends on the type of file that has been requested: rootkit
                         file, rootkit trojans or rcl"
@@ -11788,7 +11794,7 @@ paths:
                       wazuh-authd: "running"
                       wazuh-csyslogd: "stopped"
                       wazuh-dbd: "stopped"
-                      wazuh-monitor": "running"
+                      wazuh-monitor: "running"
                       wazuh-execd: "running"
                       wazuh-integratord: "stopped"
                       wazuh-logcollector: "running"
@@ -13265,7 +13271,7 @@ paths:
                       references:
                         - url: "https://attack.mitre.org/mitigations/T1151"
                           source: "mitre-attack"
-                          external_id": "T1151"
+                          external_id: "T1151"
                   total_affected_items: 266
                   total_failed_items: 0
                   failed_items: []
