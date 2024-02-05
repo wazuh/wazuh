@@ -147,6 +147,7 @@ add_executable(builder_utest
     ${UNIT_SRC_DIR}/builders/opmap/time_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/hash_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/kvdb_test.cpp
+    ${UNIT_SRC_DIR}/builders/opmap/mmdb_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/activeResponse_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/upgradeConfirmation_test.cpp
 
@@ -167,6 +168,7 @@ target_link_libraries(builder_utest
     store::mocks
     defs::mocks
     schemval::mocks
+    mmdb::mocks
 )
 gtest_discover_tests(builder_utest)
 
