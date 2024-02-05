@@ -10,16 +10,39 @@ using namespace sockiface;
 
 namespace
 {
-auto sockFactoryMock = std::make_shared<MockSockFactory>();
-auto sockHandlerMock = std::make_shared<MockSockHandler>();
 
-auto expectSockHandler()
+mapbuildtest::BuilderGetter getBuilder()
 {
-    return [](const BuildersMocks& mocks)
+    return []()
     {
+        auto sockFactoryMock = std::make_shared<MockSockFactory>();
+        return getOpBuilderSendAr(sockFactoryMock);
+    };
+}
+
+mapbuildtest::BuilderGetter getBuilderExpectSockHandler()
+{
+    return []()
+    {
+        auto sockFactoryMock = std::make_shared<MockSockFactory>();
+        auto sockHandlerMock = std::make_shared<MockSockHandler>();
         EXPECT_CALL(*sockFactoryMock, getHandler(ISockHandler::Protocol::DATAGRAM, "/var/ossec/queue/alerts/ar"))
             .WillOnce(testing::Return(sockHandlerMock));
-        return None {};
+        return getOpBuilderSendAr(sockFactoryMock);
+    };
+}
+
+template<typename Behaviour>
+mapbuildtest::BuilderGetter getBuilderExpectSockHandler(Behaviour&& behaviour)
+{
+    return [=]()
+    {
+        auto sockFactoryMock = std::make_shared<MockSockFactory>();
+        auto sockHandlerMock = std::make_shared<MockSockHandler>();
+        EXPECT_CALL(*sockFactoryMock, getHandler(ISockHandler::Protocol::DATAGRAM, "/var/ossec/queue/alerts/ar"))
+            .WillOnce(testing::Return(sockHandlerMock));
+        behaviour(sockHandlerMock);
+        return getOpBuilderSendAr(sockFactoryMock);
     };
 }
 
@@ -29,15 +52,6 @@ auto customRefExpected(const std::string& ref)
     {
         EXPECT_CALL(*mocks.ctx, schema());
         EXPECT_CALL(*mocks.schema, hasField(DotPath(ref))).WillOnce(testing::Return(false));
-        return None {};
-    };
-}
-
-auto expectArQuery(const std::string& query)
-{
-    return [=](const BuildersMocks& mocks)
-    {
-        EXPECT_CALL(*sockHandlerMock, sendMsg(query)).WillOnce(testing::Return(successSendMsgRes()));
         return None {};
     };
 }
@@ -54,16 +68,21 @@ auto expectContext()
 
 namespace mapbuildtest
 {
+INSTANTIATE_TEST_SUITE_P(Builders,
+                         MapBuilderWithDepsTest,
+                         testing::Values(
+                             /*** Send AR ***/
+                             MapDepsT({}, getBuilder(), FAILURE()),
+                             MapDepsT({makeValue(R"("query")")}, getBuilderExpectSockHandler(), SUCCESS()),
+                             MapDepsT({makeRef("ref")}, getBuilderExpectSockHandler(), SUCCESS()),
+                             MapDepsT({makeRef("ref"), makeRef("ref")}, getBuilder(), FAILURE()),
+                             MapDepsT({makeValue(R"("query")"), makeValue(R"("other")")}, getBuilder(), FAILURE())),
+                         testNameFormatter<MapBuilderWithDepsTest>("ActiveResponse"));
+
 INSTANTIATE_TEST_SUITE_P(
     Builders,
     MapBuilderTest,
     testing::Values(
-        /*** Send AR ***/
-        MapT({}, getOpBuilderSendAr(sockFactoryMock), FAILURE()),
-        MapT({makeValue(R"("query")")}, getOpBuilderSendAr(sockFactoryMock), SUCCESS(expectSockHandler())),
-        MapT({makeRef("ref")}, getOpBuilderSendAr(sockFactoryMock), SUCCESS(expectSockHandler())),
-        MapT({makeRef("ref"), makeRef("ref")}, getOpBuilderSendAr(sockFactoryMock), FAILURE()),
-        MapT({makeValue(R"("query")"), makeValue(R"("other")")}, getOpBuilderSendAr(sockFactoryMock), FAILURE()),
         /*** Create AR ***/
         MapT({}, CreateARBuilder, FAILURE(expectContext())),
         MapT({makeValue(R"("command")")}, CreateARBuilder, FAILURE(expectContext())),
@@ -103,52 +122,6 @@ INSTANTIATE_TEST_SUITE_P(
     Builders,
     MapOperationTest,
     testing::Values(
-        /*** Send AR ***/
-        MapT(R"({})",
-             getOpBuilderSendAr(sockFactoryMock),
-             {makeValue(R"("query")")},
-             SUCCESS(
-                 [](const BuildersMocks& mocks)
-                 {
-                     expectSockHandler()(mocks);
-                     expectArQuery("query")(mocks);
-                     return json::Json {R"(true)"};
-                 })),
-        MapT(R"({"ref": "query"})",
-             getOpBuilderSendAr(sockFactoryMock),
-             {makeRef("ref")},
-             SUCCESS(
-                 [](const BuildersMocks& mocks)
-                 {
-                     expectSockHandler()(mocks);
-                     expectArQuery("query")(mocks);
-                     return json::Json {R"(true)"};
-                 })),
-        MapT(R"({})", getOpBuilderSendAr(sockFactoryMock), {makeRef("ref")}, FAILURE(expectSockHandler())),
-        MapT(R"({"ref": 1})", getOpBuilderSendAr(sockFactoryMock), {makeRef("ref")}, FAILURE(expectSockHandler())),
-        MapT(R"({"ref": ""})", getOpBuilderSendAr(sockFactoryMock), {makeRef("ref")}, FAILURE(expectSockHandler())),
-        MapT(R"({})", getOpBuilderSendAr(sockFactoryMock), {makeValue(R"("")")}, FAILURE(expectSockHandler())),
-        MapT(R"({})",
-             getOpBuilderSendAr(sockFactoryMock),
-             {makeValue(R"("query")")},
-             FAILURE(
-                 [](const BuildersMocks& mocks)
-                 {
-                     expectSockHandler()(mocks);
-                     EXPECT_CALL(*sockHandlerMock, sendMsg("query"))
-                         .WillOnce(testing::Throw(std::runtime_error("error")));
-                     return None {};
-                 })),
-        MapT(R"({})",
-             getOpBuilderSendAr(sockFactoryMock),
-             {makeValue(R"("query")")},
-             FAILURE(
-                 [](const BuildersMocks& mocks)
-                 {
-                     expectSockHandler()(mocks);
-                     EXPECT_CALL(*sockHandlerMock, sendMsg("query")).WillOnce(testing::Return(socketErrorSendMsgRes()));
-                     return None {};
-                 })),
         /*** Create AR ***/
         // TODO: this helper is never used, check if it's needed and update the tests
         MapT(
@@ -174,8 +147,42 @@ INSTANTIATE_TEST_SUITE_P(
             CreateARBuilder,
             {makeValue(R"("command")"), makeValue(R"("001")"), makeValue(R"(1)"), makeValue(R"(["test-arg","2"])")},
             SUCCESS(json::Json {
-                R"("(local_source) [] NNS 001 {\"version\":1,\"command\":\"command1\",\"parameters\":{\"extra_args\":[\"test-arg\",\"2\"],\"alert\":{}},\"origin\":{\"module\":\"wazuh-engine\",\"name\":\"node01\"}}")"}))
-
-            ),
+                R"("(local_source) [] NNS 001 {\"version\":1,\"command\":\"command1\",\"parameters\":{\"extra_args\":[\"test-arg\",\"2\"],\"alert\":{}},\"origin\":{\"module\":\"wazuh-engine\",\"name\":\"node01\"}}")"}))),
     testNameFormatter<MapOperationTest>("ActiveResponse"));
+
+INSTANTIATE_TEST_SUITE_P(
+    Builders,
+    MapOperationWithDepsTest,
+    testing::Values(
+        /*** Send AR ***/
+        MapDepsT(R"({})",
+                 getBuilderExpectSockHandler(
+                     [](const std::shared_ptr<MockSockHandler>& handler)
+                     { EXPECT_CALL(*handler, sendMsg("query")).WillOnce(testing::Return(successSendMsgRes())); }),
+                 {makeValue(R"("query")")},
+                 SUCCESS(json::Json {R"(true)"})),
+        MapDepsT(R"({"ref": "query"})",
+                 getBuilderExpectSockHandler(
+                     [](const std::shared_ptr<MockSockHandler>& handler)
+                     { EXPECT_CALL(*handler, sendMsg("query")).WillOnce(testing::Return(successSendMsgRes())); }),
+                 {makeRef("ref")},
+                 SUCCESS(json::Json {R"(true)"})),
+        MapDepsT(R"({})", getBuilderExpectSockHandler(), {makeRef("ref")}, FAILURE()),
+        MapDepsT(R"({"ref": 1})", getBuilderExpectSockHandler(), {makeRef("ref")}, FAILURE()),
+        MapDepsT(R"({"ref": ""})", getBuilderExpectSockHandler(), {makeRef("ref")}, FAILURE()),
+        MapDepsT(R"({})", getBuilderExpectSockHandler(), {makeValue(R"("")")}, FAILURE()),
+        MapDepsT(R"({})",
+                 getBuilderExpectSockHandler(
+                     [](const std::shared_ptr<MockSockHandler>& handler) {
+                         EXPECT_CALL(*handler, sendMsg("query")).WillOnce(testing::Throw(std::runtime_error("error")));
+                     }),
+                 {makeValue(R"("query")")},
+                 FAILURE()),
+        MapDepsT(R"({})",
+                 getBuilderExpectSockHandler(
+                     [](const std::shared_ptr<MockSockHandler>& handler)
+                     { EXPECT_CALL(*handler, sendMsg("query")).WillOnce(testing::Return(socketErrorSendMsgRes())); }),
+                 {makeValue(R"("query")")},
+                 FAILURE())),
+    testNameFormatter<MapOperationWithDepsTest>("ActiveResponse"));
 } // namespace mapoperatestest
