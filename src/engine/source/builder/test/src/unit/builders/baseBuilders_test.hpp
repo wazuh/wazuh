@@ -116,6 +116,15 @@ class FilterBuilderTest
     , public testing::WithParamInterface<FilterT>
 {
 };
+
+using BuilderGetter = BuilderWithDeps<FilterBuilder>;
+using FilterDepsT = BuilderT<BuilderGetter, Expc>;
+
+class FilterBuilderWithDepsTest
+    : public BaseBuilderTest
+    , public testing::WithParamInterface<FilterDepsT>
+{
+};
 } // namespace filterbuildtest
 
 namespace filteroperatestest
@@ -131,6 +140,15 @@ using FilterT = OperationT<FilterBuilder, Expc>;
 class FilterOperationTest
     : public BaseBuilderTest
     , public testing::WithParamInterface<FilterT>
+{
+};
+
+using BuilderGetter = BuilderWithDeps<FilterBuilder>;
+using FilterDepsT = OperationT<BuilderGetter, Expc>;
+
+class FilterOperationWithDepsTest
+    : public BaseBuilderTest
+    , public testing::WithParamInterface<FilterDepsT>
 {
 };
 } // namespace filteroperatestest
@@ -196,10 +214,18 @@ static auto SUCCESS = Expc::success();
 static auto FAILURE = Expc::failure();
 
 using TransformT = BuilderT<TransformBuilder, Expc>;
-
 class TransformBuilderTest
     : public BaseBuilderTest
     , public testing::WithParamInterface<TransformT>
+{
+};
+
+using BuilderGetter = BuilderWithDeps<TransformBuilder>;
+using TransformDepsT = BuilderT<BuilderGetter, Expc>;
+
+class TransformBuilderWithDepsTest
+    : public BaseBuilderTest
+    , public testing::WithParamInterface<TransformDepsT>
 {
 };
 } // namespace transformbuildtest
@@ -217,6 +243,15 @@ using TransformT = OperationT<TransformBuilder, Expc>;
 class TransformOperationTest
     : public BaseBuilderTest
     , public testing::WithParamInterface<TransformT>
+{
+};
+
+using BuilderGetter = BuilderWithDeps<TransformBuilder>;
+using TransformDepsT = OperationT<BuilderGetter, Expc>;
+
+class TransformOperationWithDepsTest
+    : public BaseBuilderTest
+    , public testing::WithParamInterface<TransformDepsT>
 {
 };
 } // namespace transformoperatestest
