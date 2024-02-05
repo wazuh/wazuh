@@ -32,6 +32,7 @@ option(ENGINE_BUILD_COVERAGE "Enables the coverage report" OFF)
 option(ENGINE_PROFILE_BUILD "Enables profiling through Tracy" OFF)
 option(ENGINE_PROFILE_MEMORY "Enables memory profiling in Tracy" OFF)
 option(ENGINE_ASSERT_WITH_SYMBOLS "Exports exe symbols to have asserts with full symbolicated functions" ON)
+option(ENGINE_GENERATE_PROTOBUF "Generate code using Protocol Buffers" ON)
 
 # TODO put this in a better place together with other global options like warnings
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
