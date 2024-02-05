@@ -15,6 +15,7 @@ public:
     MOCK_METHOD(base::RespOrError<uint32_t>, getUint32, (const DotPath& path), (const, override));
     MOCK_METHOD(base::RespOrError<double>, getDouble, (const DotPath& path), (const, override));
     MOCK_METHOD(base::RespOrError<json::Json>, getAsJson, (const DotPath& path), (const, override));
+    MOCK_METHOD(json::Json, mmDump, (), (const, override));
 };
 } // namespace mmdb
 
