@@ -207,9 +207,13 @@ char *fim_registry_value_diff(const char *key_name,
     int limits_reached;
 
     // Invalid types for report_changes
-    if (data_type == REG_NONE || data_type == REG_BINARY || data_type == REG_LINK ||
-        data_type == REG_RESOURCE_LIST || data_type == REG_FULL_RESOURCE_DESCRIPTOR ||
-        data_type == REG_RESOURCE_REQUIREMENTS_LIST) {
+    if (!(data_type == REG_SZ ||
+          data_type == REG_EXPAND_SZ ||
+          data_type == REG_MULTI_SZ ||
+          data_type == REG_DWORD ||
+          data_type == REG_DWORD_BIG_ENDIAN ||
+          data_type == REG_QWORD)) {
+            mdebug2(FIM_REG_VAL_INVALID_TYPE, key_name, value_name);
             return NULL;
     }
 
