@@ -67,6 +67,25 @@ TEST_P(MapBuilderTest, Builds)
         ASSERT_THROW(builder(params, mocks->ctx), std::exception);
     }
 }
+
+TEST_P(MapBuilderWithDepsTest, Builds)
+{
+    auto [params, builderDeps, expected] = GetParam();
+
+    auto builder = builderDeps();
+
+    if (expected)
+    {
+        expected.succCase()(*mocks);
+        expectBuildSuccess();
+        ASSERT_NO_THROW(builder(params, mocks->ctx));
+    }
+    else
+    {
+        expected.failCase()(*mocks);
+        ASSERT_THROW(builder(params, mocks->ctx), std::exception);
+    }
+}
 } // namespace mapbuildtest
 
 namespace mapoperatestest
@@ -74,6 +93,34 @@ namespace mapoperatestest
 TEST_P(MapOperationTest, Operates)
 {
     auto [input, builder, opArgs, expected] = GetParam();
+    auto event = std::make_shared<json::Json>(input.c_str());
+
+    expectBuildSuccess();
+
+    if (expected)
+    {
+        auto res = expected.succCase()(*mocks);
+        auto operation = builder(opArgs, mocks->ctx);
+        auto result = operation(event);
+        ASSERT_TRUE(result);
+        if (res != IGNORE_MAP_RESULT)
+        {
+            ASSERT_EQ(result.payload(), res);
+        }
+    }
+    else
+    {
+        expected.failCase()(*mocks);
+        auto operation = builder(opArgs, mocks->ctx);
+        auto result = operation(event);
+        ASSERT_FALSE(result);
+    }
+}
+
+TEST_P(MapOperationWithDepsTest, Operates)
+{
+    auto [input, builderGetter, opArgs, expected] = GetParam();
+    auto builder = builderGetter();
     auto event = std::make_shared<json::Json>(input.c_str());
 
     expectBuildSuccess();

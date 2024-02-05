@@ -24,6 +24,9 @@ using BuilderT = std::tuple<std::vector<OpArg>, Builder, Expected>;
 template<typename Builder, typename Expected>
 using OperationT = std::tuple<std::string, Builder, std::string, std::vector<OpArg>, Expected>;
 
+template<typename Builder>
+using BuilderWithDeps = std::function<Builder(void)>;
+
 struct BuildersMocks
 {
     std::shared_ptr<const MockBuildCtx> ctx;
@@ -147,6 +150,15 @@ class MapBuilderTest
     , public testing::WithParamInterface<MapT>
 {
 };
+
+using BuilderGetter = BuilderWithDeps<MapBuilder>;
+using MapDepsT = BuilderT<BuilderGetter, Expc>;
+
+class MapBuilderWithDepsTest
+    : public BaseBuilderTest
+    , public testing::WithParamInterface<MapDepsT>
+{
+};
 } // namespace mapbuildtest
 
 namespace mapoperatestest
@@ -162,6 +174,15 @@ using MapT = std::tuple<std::string, MapBuilder, std::vector<OpArg>, Expc>;
 class MapOperationTest
     : public BaseBuilderTest
     , public testing::WithParamInterface<MapT>
+{
+};
+
+using BuilderGetter = BuilderWithDeps<MapBuilder>;
+using MapDepsT = std::tuple<std::string, BuilderGetter, std::vector<OpArg>, Expc>;
+
+class MapOperationWithDepsTest
+    : public BaseBuilderTest
+    , public testing::WithParamInterface<MapDepsT>
 {
 };
 } // namespace mapoperatestest
