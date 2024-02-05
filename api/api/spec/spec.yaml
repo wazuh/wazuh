@@ -4133,6 +4133,8 @@ components:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:syscollector:
             $ref: '#/components/schemas/LogSummary'
+          wazuh-modulesd:vulnerability-detection:
+            $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:task-manager:
             $ref: '#/components/schemas/LogSummary'
 
@@ -6324,6 +6326,7 @@ components:
         - socket
         - syscheck
         - syslog_output
+        - vulnerability-detection
         - indexer
         # Wodle sections
         - aws-s3
@@ -10286,6 +10289,10 @@ paths:
                         scan_on_start: yes
                         interval: "12h"
                         skip_nfs: yes
+                      vulnerability-detection:
+                        enabled: yes
+                        index-status: yes
+                        feed-update-interval: "60m"
                       indexer:
                         enabled: yes
                         hosts:
