@@ -1,4 +1,5 @@
 set(ENGINE_EMESSAGES_INCLUDE_DIR ${ENGINE_SOURCE_DIR}/proto/include)
+set(GENERATE_PROTOBUF_SCRIPT ${ENGINE_SOURCE_DIR}/proto/generateCode.sh)
 
 # ###################################################################################################
 # Dependencies
@@ -25,15 +26,14 @@ CPMAddPackage(
 # Sources - Includes
 # ###################################################################################################
 file(GLOB EMESSAGE_AUTO_SOURCES "${ENGINE_EMESSAGES_INCLUDE_DIR}/eMessages/*.cc")
-file(GLOB EMESSAGE_AUTO_HEADERS "${ENGINE_EMESSAGES_INCLUDE_DIR}/eMessages/*.h")
 
-add_library(eMessages STATIC ${EMESSAGE_AUTO_SOURCES} ${EMESSAGE_AUTO_HEADERS})
+message(STATUS "${PROTO_FILES}")
+
+add_library(eMessages STATIC)
 
 target_sources(eMessages
-    PUBLIC
-    ${EMESSAGE_HEADERS}
     PRIVATE
-    ${EMESSAGE_SOURCES}
+    ${EMESSAGE_AUTO_SOURCES}
 )
 
 target_include_directories(eMessages
@@ -42,3 +42,19 @@ target_include_directories(eMessages
 )
 
 target_link_libraries(eMessages PUBLIC protobuf::libprotobuf base)
+
+# ###################################################################################################
+# Add custom target for code generation trigger
+# ###################################################################################################
+if(ENGINE_GENERATE_PROTOBUF)
+    message(STATUS "Protobuf code generation is enabled")
+    add_custom_target(generate_protobuf_code
+        COMMAND /bin/sh ${GENERATE_PROTOBUF_SCRIPT}
+    )
+else()
+    message(STATUS "Protobuf code generation is disabled")
+endif()
+# ###################################################################################################
+# Add dependency on the custom target
+# ###################################################################################################
+add_dependencies(eMessages generate_protobuf_code)
