@@ -45,19 +45,12 @@ monitored_sockets_params = [(ANALYSISD_DAEMON, mitm_analysisd, True)]
 receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 
 
-@pytest.fixture(scope='module')
-def wait_for_analysisd_startup(request):
-    """Wait until analysisd has begun and alerts.json is created."""
-    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-    log_monitor.start(callback=callbacks.generate_callback(ANALYSISD_STARTED))
-
-
 
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
 def test_protocols_communication(test_configuration, test_metadata, configure_local_internal_options, truncate_monitored_files,
                             set_wazuh_configuration, daemons_handler, simulate_agents, configure_sockets_environment_module,
-                       connect_to_sockets_module, wait_for_analysisd_startup):
+                       connect_to_sockets_module, waiting_for_analysisd_startup):
 
     '''
     description: Check agent-manager communication via TCP, UDP or both.
@@ -92,7 +85,7 @@ def test_protocols_communication(test_configuration, test_metadata, configure_lo
         - connect_to_sockets_module:
             type: fixture
             brief: Connect to a given list of sockets.
-        - wait_for_analysisd_startup:
+        - waiting_for_analysisd_startup:
             type: fixture
             brief: Wait until the 'wazuh-analysisd' has begun and the 'alerts.json' file is created.
 
