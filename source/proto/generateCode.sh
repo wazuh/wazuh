@@ -1,4 +1,4 @@
-#!bash
+#!/bin/bash
 
 # check if protobuf is installed
 if ! [ -x "$(command -v protoc)" ]; then
@@ -35,9 +35,23 @@ if [ "$target" = "cpp" ]; then
   cd "${CLANG_DIR}"
   $CLANG_FORMAT -i -style=file "${SRC_PROTO_DIR}"/*.proto
 
-  # Generate CPP code (Move for relative paths)
+  # Get list of modified, new and deleted files
+  MODIFIED_FILES=$(git ls-files --modified "${SRC_PROTO_DIR}"/*.proto | cut -f2- | xargs -n1 basename)
+  NEW_FILES=$(git ls-files --others --exclude-standard "${SRC_PROTO_DIR}"/*.proto | xargs -n1 basename)
+  DELETED_FILES=$(git ls-files --deleted "${SRC_PROTO_DIR}")
+
+  # Change to working directory
   cd "${SRC_PROTO_DIR}"
-  protoc --proto_path=$PROTO_DEPS_SRC_DIR --proto_path="${SRC_PROTO_DIR}" --cpp_out=$CPP_DIR *.proto
+
+  # Delete .cc and .h files for deleted/renamed .proto files
+  for deleted_file in $DELETED_FILES; do
+      base_name=$(basename "$deleted_file" .proto)
+      rm -f "${CPP_DIR}${base_name}.pb.cc" "${CPP_DIR}${base_name}.pb.h"
+  done
+
+  # Generate CPP code only for modified or new .proto files
+  cd "${SRC_PROTO_DIR}"
+  protoc --proto_path=$PROTO_DEPS_SRC_DIR --proto_path="${SRC_PROTO_DIR}" --cpp_out=$CPP_DIR $MODIFIED_FILES $NEW_FILES
 
   # Go back
   cd $OLD_PWD
@@ -46,8 +60,12 @@ elif [ "$target" = "py" ]; then
   echo "Generating Python code"
   PYTHON_DIR="${SCRIPT_DIR}/../../tools/api-communication/src/api_communication/proto"
 
+  # Get the list of modified or renamed proto files
+  MODIFIED_FILES=$(git diff --name-status "${SRC_PROTO_DIR}"/*.proto | grep -E '^(M|R)' | cut -f2-)
+
+  # Generate Python code only for modified or renamed proto files
   cd "${SRC_PROTO_DIR}"
-  protoc --proto_path=$PROTO_DEPS_SRC_DIR --proto_path="${SRC_PROTO_DIR}" --python_out=$PYTHON_DIR --pyi_out=$PYTHON_DIR *.proto 
+  protoc --proto_path=$PROTO_DEPS_SRC_DIR --proto_path="${SRC_PROTO_DIR}" --python_out=$PYTHON_DIR --pyi_out=$PYTHON_DIR $MODIFIED_FILES
 
   # Go back
   cd $OLD_PWD
