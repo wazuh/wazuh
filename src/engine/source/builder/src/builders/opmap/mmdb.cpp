@@ -15,7 +15,7 @@ MapOp dumpFailTransform(const std::string& trace, const std::shared_ptr<const Ru
 }
 
 // Only for the MMDB City / Country db
-json::Json getGeoCityECS(const std::shared_ptr<::mmdb::IResult>& result)
+json::Json mapGeoToECS(const std::shared_ptr<::mmdb::IResult>& result)
 {
     json::Json cityData;
     cityData.setObject();
@@ -78,7 +78,7 @@ json::Json getGeoCityECS(const std::shared_ptr<::mmdb::IResult>& result)
     return cityData;
 }
 
-json::Json getASECS(const std::shared_ptr<::mmdb::IResult>& result)
+json::Json mapAStoECS(const std::shared_ptr<::mmdb::IResult>& result)
 {
     json::Json asData;
     asData.setObject();
@@ -113,12 +113,12 @@ MapBuilder getMMDBGeoBuilder(const std::shared_ptr<::mmdb::IManager>& mmdbManage
         const auto& ipRef = *std::static_pointer_cast<Reference>(opArgs[0]);
         const auto& schema = buildCtx->schema();
 
-        const std::string successTrace {fmt::format("[{}] -> Success", name)};
+        const std::string successTrace {fmt::format("{} -> Success", name)};
         const std::string notFoundTrace {
-            fmt::format("[{}] -> Failure: Reference to ip [{}] not found or not an string", name, ipRef.dotPath())};
-        const std::string notValidIPTrace {fmt::format("[{}] -> Failure: IP string is not a valid IP.", name)};
-        const std::string notFoundDBTrace {fmt::format("[{}] -> Failure: IP Not found in DB", name)};
-        const std::string emptyDataTrace {fmt::format("[{}] -> Failure: Empty wcs data", name)};
+            fmt::format("{} -> Failure: Reference to ip {} not found or not an string", name, ipRef.dotPath())};
+        const std::string notValidIPTrace {fmt::format("{} -> Failure: IP string is not a valid IP.", name)};
+        const std::string notFoundDBTrace {fmt::format("{} -> Failure: IP Not found in DB", name)};
+        const std::string emptyDataTrace {fmt::format("{} -> Failure: Empty wcs data", name)};
 
         // Geo only accepts IP
         if (schema.hasField(ipRef.dotPath()) && schema.getType(ipRef.dotPath()) != schemf::Type::IP)
@@ -131,7 +131,7 @@ MapBuilder getMMDBGeoBuilder(const std::shared_ptr<::mmdb::IManager>& mmdbManage
         auto runstate = buildCtx->runState();
         if (base::isError(resDB))
         {
-            const auto trace =  fmt::format("[{}] -> Failure: handler error: {}", name, base::getError(resDB).message);
+            const auto trace =  fmt::format("{} -> Failure: handler error: {}", name, base::getError(resDB).message);
             return dumpFailTransform(trace, runstate);
         }
 
@@ -162,7 +162,7 @@ MapBuilder getMMDBGeoBuilder(const std::shared_ptr<::mmdb::IManager>& mmdbManage
                 RETURN_FAILURE(runstate, json::Json {}, notFoundDBTrace);
             }
 
-            auto geo = getGeoCityECS(result);
+            auto geo = mapGeoToECS(result);
 
             if (geo.size() == 0)
             {
@@ -187,12 +187,12 @@ MapBuilder getMMDBASNBuilder(const std::shared_ptr<::mmdb::IManager>& mmdbManage
         const auto& ipRef = *std::static_pointer_cast<Reference>(opArgs[0]);
         const auto& schema = buildCtx->schema();
 
-        const std::string successTrace {fmt::format("[{}] -> Success", name)};
+        const std::string successTrace {fmt::format("{} -> Success", name)};
         const std::string notFoundTrace {
-            fmt::format("[{}] -> Failure: Reference to ip [{}] not found or not an string", name, ipRef.dotPath())};
-        const std::string notValidIPTrace {fmt::format("[{}] -> Failure: IP string is not a valid IP.", name)};
-        const std::string notFoundDBTrace {fmt::format("[{}] -> Failure: IP Not found in DB", name)};
-        const std::string emptyDataTrace {fmt::format("[{}] -> Failure: Empty wcs data", name)};
+            fmt::format("{} -> Failure: Reference to ip {} not found or not an string", name, ipRef.dotPath())};
+        const std::string notValidIPTrace {fmt::format("{} -> Failure: IP string is not a valid IP.", name)};
+        const std::string notFoundDBTrace {fmt::format("{} -> Failure: IP Not found in DB", name)};
+        const std::string emptyDataTrace {fmt::format("{} -> Failure: Empty wcs data", name)};
 
         // Geo only accepts IP
         if (schema.hasField(ipRef.dotPath()) && schema.getType(ipRef.dotPath()) != schemf::Type::IP)
@@ -235,7 +235,7 @@ MapBuilder getMMDBASNBuilder(const std::shared_ptr<::mmdb::IManager>& mmdbManage
                 RETURN_FAILURE(runstate, json::Json {}, notFoundDBTrace);
             }
 
-            auto as = getASECS(result);
+            auto as = mapAStoECS(result);
 
             if (as.size() == 0)
             {
