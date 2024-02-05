@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 - Updated API and framework packages installation commands to use pip instead of direct invocation of setuptools. ([#18466](https://github.com/wazuh/wazuh/pull/18466))
 - Upgraded docker-compose V1 to V2 in API Integration test scripts. ([#17750](https://github.com/wazuh/wazuh/pull/17750))
 - Refactored how cluster status dates are treated in the cluster. ([#17015](https://github.com/wazuh/wazuh/pull/17015))
+- The log message about file rotation and signature from wazuh-monitord has been updated. ([#21602](https://github.com/wazuh/wazuh/pull/21602))
 
 #### Fixed
 - Updated cluster connection cleanup to remove temporary files when the connection between a worker and a master is broken. ([#17886](https://github.com/wazuh/wazuh/pull/17886))
