@@ -27,9 +27,6 @@ from wazuh_testing.utils import configuration, database, file, mocking, services
 from wazuh_testing.utils.file import remove_file
 from wazuh_testing.utils.manage_agents import remove_agents
 
-from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-
-
 #- - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - - -
 
 

@@ -85,15 +85,6 @@ get_backups_command = 'global backup get'
 sql_select_command = 'global sql select * from metadata'
 
 
-# Fixtures
-@pytest.fixture(scope='function')
-def add_database_values(request):
-    "Add test values to database"
-    response = query_wdb(f'global sql insert into metadata (key,value) VALUES ("{test_values[0]}","{test_values[1]}")')
-    yield
-    response = query_wdb(f'global sql delete from metadata where key="{test_values[0]}"')
-
-
 # Tests
 @pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
 def test_wdb_backup_command(configure_sockets_environment, connect_to_sockets_module, remove_backups,

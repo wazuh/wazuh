@@ -53,7 +53,6 @@ tags:
     - wazuh_db
 '''
 from pathlib import Path
-import time
 import pytest
 
 from wazuh_testing.utils.database import query_wdb
