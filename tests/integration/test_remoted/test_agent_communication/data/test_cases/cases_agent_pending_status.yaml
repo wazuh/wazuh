@@ -1,0 +1,81 @@
+- name: agetn pending status
+  description: agetn pending status
+  configuration_parameters:
+    PORT: '1514'
+    PROTOCOL: TCP
+  metadata:
+    port: '1514'
+    protocol: TCP
+    agents_number: 2
+
+
+- name: agetn pending status
+  description: agetn pending status
+  configuration_parameters:
+    PORT: '56000'
+    PROTOCOL: TCP
+  metadata:
+    port: '56000'
+    protocol: TCP
+    agents_number: 2
+
+- name: agetn pending status
+  description: agetn pending status
+  configuration_parameters:
+    PORT: '1514'
+    PROTOCOL: UDP
+  metadata:
+    port: '1514'
+    protocol: UDP
+    agents_number: 2
+
+- name: agetn pending status
+  description: agetn pending status
+  configuration_parameters:
+    PORT: '56000'
+    PROTOCOL: UDP
+  metadata:
+    port: '56000'
+    protocol: UDP
+    agents_number: 2
+
+
+- name: agetn pending status
+  description: agetn pending status
+  configuration_parameters:
+    PORT: '1514'
+    PROTOCOL: 'TCP,UDP'
+  metadata:
+    port: '1514'
+    protocol: TCP
+    agents_number: 2
+
+- name: agetn pending status
+  description: agetn pending status
+  configuration_parameters:
+    PORT: '56000'
+    PROTOCOL: 'TCP,UDP'
+  metadata:
+    port: '56000'
+    protocol: TCP
+    agents_number: 2
+
+- name: agetn pending status
+  description: agetn pending status
+  configuration_parameters:
+    PORT: '1514'
+    PROTOCOL: 'TCP,UDP'
+  metadata:
+    port: '1514'
+    protocol: UDP
+    agents_number: 2
+
+- name: agetn pending status
+  description: agetn pending status
+  configuration_parameters:
+    PORT: '56000'
+    PROTOCOL: 'TCP,UDP'
+  metadata:
+    port: '56000'
+    protocol: UDP
+    agents_number: 2
