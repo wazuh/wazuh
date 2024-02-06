@@ -1,0 +1,68 @@
+
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "wazuh": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "api": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "address": {"type": "string"},
+            "port": {"type": "integer"},
+            "user": {"type":  "string"},
+            "password": {"type": "string"}
+          }
+        },
+
+        "connection": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "port": {"type": "integer"}
+          }
+        },
+
+        "excluded_nodes": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+
+
+    "proxy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "api": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "address": {"type": "string"},
+            "port": {"type": "integer"},
+            "user": {"type": "string"},
+            "password": {"type": "string"}
+          }
+        },
+
+        "backend": {"type": "string"},
+        "resolver": {"type": "string"}
+      }
+    },
+
+
+    "coordinator": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sleep_time": {"type": "integer", "minimum": 10},
+        "agent_reconnection_stability_time": {"type": "integer", "minimum": 10},
+        "agent_reconnection_chunk_size": {"type": "integer", "minimum": 100},
+        "agent_reconnection_time": {"type": "integer", "minimum": 0},
+        "agent_tolerance": {"type": "number", "minimum": 0, "exclusiveMinimum": true, "maximum": 1},
+        "remove_disconnected_node_after": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}
