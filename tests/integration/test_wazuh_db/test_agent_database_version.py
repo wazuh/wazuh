@@ -88,6 +88,9 @@ def test_agent_database_version(daemons_handler, remove_agents):
         - daemons_handler:
             type: fixture
             brief: Restart the wazuh service.
+        - remove_agents:
+            type: fixture
+            brief: Removes all agents.
 
     assertions:
         - Verify that database version is the expected one.

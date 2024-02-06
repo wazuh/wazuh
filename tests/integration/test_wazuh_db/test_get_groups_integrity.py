@@ -82,8 +82,8 @@ def test_get_groups_integrity(test_metadata, create_groups):
 
     parameters:
         - test_metadata:
-            type: fixture
-            brief: List of test_metadata stages (dicts with input, output and agent_id and expected_groups keys).
+            type: dict
+            brief: Test case metadata.
         - create_groups:
             type: fixture
             brief: Create required groups

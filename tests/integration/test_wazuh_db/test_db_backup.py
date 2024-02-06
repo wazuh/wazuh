@@ -113,8 +113,8 @@ def test_wdb_backup_command(configure_sockets_environment, connect_to_sockets_mo
             type: fixture
             brief: Add values to check that the restore procedure has worked and the DB has the expected data.
         - test_metadata:
-            type: parameter
-            brief: List of test_metadata stages (dicts with number of backups, restore, restore_response, and other keys).
+            type: dict
+            brief: Test case metadata.
     assertions:
         - Verify that the socket response matches the expected response.
         - Verify that the backup file has been created.

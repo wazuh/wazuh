@@ -73,9 +73,9 @@ def test_sync_agent_groups(configure_sockets_environment, connect_to_sockets_mod
         - connect_to_sockets_module:
             type: fixture
             brief: Module scope version of 'connect_to_sockets' fixture.
-        - test_case:
-            type: fixture
-            brief: List of test_case stages (dicts with input, output and agent_id and expected_groups keys).
+        - test_metadata:
+            type: dict
+            brief: Test case metadata.
     assertions:
         - Verify that the socket response matches the expected output.
     input_description:

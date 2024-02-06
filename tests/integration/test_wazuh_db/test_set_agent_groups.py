@@ -93,10 +93,10 @@ def test_set_agent_groups(clean_databases, daemons_handler, test_metadata, creat
             brief: Delete databases.
         - daemons_handler:
             type: fixture
-            brief: Reset the 'ossec.log' file and restart Wazuh.
+            brief: Handler of Wazuh daemons.
         - test_metadata:
-            type: fixture
-            brief: List of test_metadata stages (dicts with input, output and agent_id and expected_groups keys).
+            type: dict
+            brief: Test case metadata.
         - create_groups:
             type: fixture:
             brief: Create required groups.

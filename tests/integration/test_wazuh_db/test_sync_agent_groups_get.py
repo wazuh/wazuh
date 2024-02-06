@@ -71,10 +71,10 @@ def test_sync_agent_groups(daemons_handler, test_metadata, create_groups, pre_in
     parameters:
         - daemons_handler:
             type: fixture
-            brief: Truncate ossec.log and restart Wazuh.
+            brief: Handler of Wazuh daemons.
         - test_metadata:
-            type: fixture
-            brief: List of test_metadata stages (dicts with input, output and agent_id and expected_groups keys).
+            type: dict
+            brief: Test case metadata.
         - pre_insert_agents_into_group:
             type: fixture
             brief: fixture in charge of insert agents and groups into DB.

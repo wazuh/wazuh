@@ -96,15 +96,18 @@ def test_wdb_backup_configs(test_configuration, test_metadata, set_wazuh_configu
     wazuh_min_version: 4.4.0
 
     parameters:
-        - get_configuration:
+        - test_configuration:
+            type: dict
+            brief: Configuration loaded from `configuration_templates`.
+        - test_metadata:
+            type: dict
+            brief: Test case metadata.
+        - set_wazuh_configuration:
             type: fixture
-            brief: Get configurations from the module.
-        - configure_enviroment:
+            brief: Apply changes to the ossec.conf configuration.
+        - truncate_monitored_files:
             type: fixture
-            brief: Configure a custom environment for testing.
-        - clear_logs:
-            type: fixture
-            brief: Clears the ossec.log file and starts a new File_Monitor.
+            brief: Truncate all the log files and json alerts files before and after the test execution.
         - remove_backups:
             type: fixture
             brief: Creates the folder where the backups will be stored in case it doesn't exist. It clears it when the

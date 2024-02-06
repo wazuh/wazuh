@@ -138,9 +138,12 @@ def test_wazuh_db_messages_agent(daemons_handler_module, clean_databases, clean_
     tier: 0
 
     parameters:
-        - restart_wazuh:
+        - daemons_handler_module:
             type: fixture
-            brief: Reset the 'ossec.log' file and start a new monitor.
+            brief: Handler of Wazuh daemons.
+        - clean_databases:
+            type: fixture
+            brief: Delete databases.
         - clean_registered_agents:
             type: fixture
             brief: Remove all agents of wazuhdb.
@@ -153,9 +156,9 @@ def test_wazuh_db_messages_agent(daemons_handler_module, clean_databases, clean_
         - insert_agents_test:
             type: fixture
             brief: Insert agents. Only used for the agent queries.
-        - test_case:
-            type: fixture
-            brief: List of test_case stages (dicts with input, output and stage keys).
+        - test_metadata:
+            type: dict
+            brief: Test case metadata.
 
     assertions:
         - Verify that the socket response matches the expected output.
@@ -205,15 +208,18 @@ def test_wazuh_db_messages_global(connect_to_sockets_module, daemons_handler_mod
     tier: 0
 
     parameters:
-        - restart_wazuh:
+        - daemons_handler_module:
             type: fixture
-            brief: Reset the 'ossec.log' file and start a new monitor.
+            brief: Handler of Wazuh daemons.
         - connect_to_sockets_module:
             type: fixture
             brief: Module scope version of 'connect_to_sockets' fixture.
-        - test_case:
+        - clean_databases:
             type: fixture
-            brief: List of test_case stages (dicts with input, output and stage keys).
+            brief: Delete databases.
+        - test_metadata:
+            type: dict
+            brief: Test case metadata.
 
     assertions:
         - Verify that the socket response matches the expected output of the yaml input file.
@@ -260,9 +266,12 @@ def test_wazuh_db_chunks(daemons_handler_module, clean_databases, configure_sock
     tier: 0
 
     parameters:
-        - restart_wazuh:
+        - daemons_handler_module:
             type: fixture
-            brief: Reset the 'ossec.log' file and start a new monitor.
+            brief: Handler of Wazuh daemons.
+        - clean_databases:
+            type: fixture
+            brief: Delete databases.
         - configure_sockets_environment:
             type: fixture
             brief: Configure environment for sockets and MITM.
@@ -320,9 +329,12 @@ def test_wazuh_db_range_checksum(daemons_handler_module, clean_databases, config
     tier: 0
 
     parameters:
-        - restart_wazuh:
+        - daemons_handler_module:
             type: fixture
-            brief: Reset the 'ossec.log' file and start a new monitor.
+            brief: Handler of Wazuh daemons.
+        - clean_databases:
+            type: fixture
+            brief: Delete databases.
         - configure_sockets_environment:
             type: fixture
             brief: Configure environment for sockets and MITM.
@@ -342,9 +354,9 @@ def test_wazuh_db_range_checksum(daemons_handler_module, clean_databases, config
 
     expected_output:
         - r'range checksum Time:  .*'
-        - 'Checksum Range wasn´t calculated the first time'
+        - 'Checksum Range was not calculated the first time'
         - 'range checksum avoided'
-        - 'Checksum Range wasn´t avoided the second time'
+        - 'Checksum Range was not avoided the second time'
 
     tags:
         - wazuh_db
