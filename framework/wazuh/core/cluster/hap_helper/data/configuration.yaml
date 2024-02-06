@@ -1,0 +1,53 @@
+---
+wazuh:
+  # Wazuh API configuration
+  api:
+    # Wazuh API address
+    address: localhost
+    # Wazuh API port
+    port: 55000
+    # Wazuh API username. It must have read permissions for cluster and agents and reconnect permissions for agents
+    user: wazuh
+    # Wazuh API password
+    password: wazuh
+  # Wazuh cluster configuration
+  connection:
+    # Wazuh agents connection service port (TCP)
+    port: 1514
+  # Wazuh cluster nodes to exclude on auto mode
+  excluded_nodes: [ ]
+
+proxy:
+  # Wazuh Proxy API configuration
+  api:
+    # Wazuh Proxy API address
+    address: localhost
+    # Wazuh Proxy API port
+    port: 7777
+    # Wazuh Proxy API username
+    user: wazuh
+    # Wazuh Proxy API password
+    password: wazuh
+
+  # Defined Proxy backend (frontend will append '_front' to it)
+  backend: wazuh_cluster
+
+  # Defines the list of DNS servers to translate DNS names to IP adresses.
+  # This configuration is recommended but not mandatory.
+  # If it is configured, a resolvers section must be properly defined in
+  # the haproxy.cfg file.
+  # resolver: wazuh_resolver
+
+coordinator:
+  # Seconds to sleep between each coordinator iteration
+  sleep_time: 60
+  # Seconds to sleep after the end of the agent reconnection phase
+  agent_reconnection_stability_time: 60
+  # Agent chunk size (each chunk defines the max number of agents to be reconnected at once)
+  agent_reconnection_chunk_size: 100
+  # Seconds to sleep after an agent chunk reconnection (if there is more than one)
+  agent_reconnection_time: 5
+  # Agent imbalance tolerance
+  agent_tolerance: 0.1
+  # Time in minutes before removing a disconnected Wazuh node from the backend
+  remove_disconnected_node_after: 60
