@@ -50,6 +50,30 @@ bool checkStrIsIPv4(const std::string& ip);
  */
 bool checkStrIsIPv6(const std::string& ip);
 
+/**
+ * @brief Check if a IPv4 is a special address
+ *
+ * A special IPv4 address can be a loopback address or a private address
+ * @param ip
+ * @return true if the ip is a special address
+ * @throw std::invalid_argument if the ip is not valid
+ */
+bool isSpecialIPv4Address(const std::string& ip);
+
+/**
+ * @brief Checks if the given IPv6 address is a special address.
+ *
+ * A special IPv6 address can be:
+ * - loopback address (::1/128)
+ * - link-local address (fe80::/10),
+ * - Unique Local Address (ULA) (fc00::/7).
+ *
+ * @param ip The IPv6 address to check.
+ * @return True if the address is a special IPv6 address, false otherwise.
+ * @throws std::invalid_argument If the given IP address is not a valid IPv6 address.
+ */
+bool isSpecialIPv6Address(const std::string& ip);
+
 } // namespace utils::ip
 
 #endif // _IP_UTILS_H

@@ -798,6 +798,61 @@ FilterOp opBuilderHelperIPCIDR(const Reference& targetField,
     };
 }
 
+FilterOp opBuilderHelperPublicIP(const Reference& targetField,
+                                 const std::vector<OpArg>& opArgs,
+                                 const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    // Assert expected number of parameters
+    utils::assertSize(opArgs, 0);
+    // Format name for the tracer
+    const auto name = buildCtx->context().opName;
+
+    // Tracing
+    const std::string successTrace {fmt::format("{} -> Success", name)};
+    const std::string failureTrace1 {
+        fmt::format("{} -> Failure: Target field '{}' not found or not a string", name, targetField.dotPath())};
+    const std::string failureTrace2 {fmt::format("{} -> Failure: IP address is not public", name)};
+    const std::string failureTrace3 {fmt::format("{} -> Failure: Not a valid IP address", name)};
+
+    auto checkFn = [](const std::string& ip) -> base::RespOrError<bool>
+    {
+        using namespace ::utils::ip;
+        if (checkStrIsIPv4(ip))
+        {
+            return !isSpecialIPv4Address(ip);
+        }
+
+        if (checkStrIsIPv6(ip))
+        {
+            return !isSpecialIPv6Address(ip);
+        }
+        return base::Error {};
+    };
+
+    // Return Op
+    return [=, runState = buildCtx->runState(), targetField = targetField.jsonPath()](
+               base::ConstEvent event) -> FilterResult
+    {
+        const auto resolvedField {event->getString(targetField)};
+        if (!resolvedField.has_value())
+        {
+            RETURN_FAILURE(runState, false, failureTrace1);
+        }
+
+        // Check for IPv4
+        auto checkResult = checkFn(resolvedField.value());
+        if (base::isError(checkResult))
+        {
+            RETURN_FAILURE(runState, false, failureTrace3);
+        }
+
+        if (base::getResponse(checkResult))
+        {
+            RETURN_SUCCESS(runState, true, successTrace);
+        }
+        RETURN_FAILURE(runState, false, failureTrace2);
+    };
+}
 //*************************************************
 //*               Array filters                   *
 //*************************************************
