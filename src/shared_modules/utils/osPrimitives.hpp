@@ -89,6 +89,16 @@ protected:
     inline int chmod(const char* path, mode_t mode) {
         return ::chmod(path, mode);
     }
+
+    inline FILE* fopen(const char * filename, const char * mode)
+    {
+        return ::fopen(filename, mode);
+    }
+
+    inline int fclose(FILE* stream)
+    {
+        return ::fclose(stream);
+    }
 };
 
 #endif // _OS_PRIMITIVES_HPP

@@ -16,6 +16,9 @@
 #include <array>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
+#include <osPrimitives.hpp>
+#include <opensslPrimitives.hpp>
+#include <array>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -24,8 +27,91 @@ constexpr int RSA_PRIVATE {0};
 constexpr int RSA_PUBLIC {1};
 constexpr int RSA_CERT {2};
 
-namespace Utils
+template<typename T = OpenSSLPrimitives, typename U = OSPrimitives>
+class OpenSSL final : public T, public U
 {
+public:
+    explicit OpenSSL() {}
+    virtual ~OpenSSL() {}
+
+    /**
+     * Encrypts the input vector with the provided key
+     *
+     * @param filePath  The path to the file key string to encrypt the value
+     * @param input     The entry to be encrypted
+     * @param output    The resulting encrypted value
+     * @param cert      If the public key is in a certificate
+     * @return          The size of the encrypted output, -1 if error
+     */
+    int rsaEncrypt(const std::string& filePath, const std::string& input, std::string& output, bool cert = false)
+    {
+        RSA* rsa = nullptr;
+
+        createRSA(rsa, filePath, cert ? RSA_CERT : RSA_PUBLIC);
+
+        // Allocate memory for the encryptedValue
+        unsigned char* encryptedValue = (unsigned char*)malloc(T::RSA_size(rsa));
+
+        // Defered free
+        DEFER(
+            [&]()
+            {
+                T::RSA_free(rsa);
+                free(encryptedValue);
+            });
+
+        const auto encryptedLen = T::RSA_public_encrypt(
+            input.length(), (const unsigned char*)input.data(), encryptedValue, rsa, RSA_PKCS1_PADDING);
+
+        if (encryptedLen < 0)
+        {
+            throw std::runtime_error("RSA encryption failed");
+        }
+
+        output = std::string(reinterpret_cast<char const*>(encryptedValue), encryptedLen);
+
+        return encryptedLen;
+    }
+
+    /**
+     * Decrypts the input vector with the provided key
+     *
+     * @param filePath  The path to the file key string to decrypt the value
+     * @param input  The entry to be decrypted
+     * @param output The resulting decrypted value
+     * @return       The size of the decrypted output, -1 if error
+     */
+    int rsaDecrypt(const std::string& filePath, const std::string& input, std::string& output)
+    {
+
+        RSA* rsa = nullptr;
+
+        createRSA(rsa, filePath, RSA_PRIVATE);
+
+        std::string decryptedText(T::RSA_size(rsa), 0); // Initialize with zeros
+
+        // Defered free
+        DEFER([&]() { T::RSA_free(rsa); });
+
+        // Decrypt the ciphertext using RSA private key
+        const auto decryptedLen = T::RSA_private_decrypt(256,
+                                                      reinterpret_cast<const unsigned char*>(input.data()),
+                                                      reinterpret_cast<unsigned char*>(&decryptedText[0]),
+                                                      rsa,
+                                                      RSA_PKCS1_PADDING);
+
+        if (decryptedLen < 0)
+        {
+            throw std::runtime_error("RSA decryption failed");
+        }
+
+        // Display the decrypted plaintext
+        output = decryptedText.substr(0, decryptedLen);
+
+        return decryptedLen;
+    }
+
+public:
     /**
      * Extracts the public key from a X.509 certificate
      *
@@ -80,15 +166,14 @@ namespace Utils
      */
     static void createRSA(RSA*& rsaKey, const std::string& filePath, const int type)
     {
-
-        FILE* keyFile = fopen(filePath.c_str(), "r");
+        FILE* keyFile = U::fopen(filePath.c_str(), "r");
         if (!keyFile)
         {
             throw std::runtime_error("Failed to open RSA file");
         }
 
         // Defered close
-        DEFER([keyFile]() { fclose(keyFile); });
+        DEFER([&]() { U::fclose(keyFile); });
 
         switch (type)
         {

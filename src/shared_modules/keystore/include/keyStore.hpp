@@ -14,12 +14,15 @@
 
 #include <string>
 
+#include "opensslWrapper.hpp"
 #include "rocksDBWrapper.hpp"
 
 constexpr auto DATABASE_PATH {"queue/keystore"};
 constexpr auto PRIVATE_KEY_FILE {"etc/sslmanager.key"};
 constexpr auto CERTIFICATE_FILE {"etc/sslmanager.cert"};
 
+constexpr auto KS_NAME {"keystore"};
+template<typename TOSSLPrimitive>
 class Keystore final
 {
 public:
