@@ -61,7 +61,7 @@ from wazuh_testing.utils.services import control_service
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils import callbacks
 from wazuh_testing.constants.paths.logs import WAZUH_PATH, WAZUH_LOG_PATH
-from wazuh_testing.utils.database import validate_interval_format
+from wazuh_testing.utils.time import validate_interval_format
 from wazuh_testing.modules.wazuh_db import patterns
 from wazuh_testing.utils import configuration
 
