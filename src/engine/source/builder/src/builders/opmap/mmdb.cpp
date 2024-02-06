@@ -105,20 +105,12 @@ MapBuilder getMMDBGeoBuilder(const std::shared_ptr<::mmdb::IManager>& mmdbManage
     return [mmdbManager](const std::vector<OpArg>& opArgs,
                          const std::shared_ptr<const IBuildCtx>& buildCtx) -> MapOp
     {
-        const auto name = buildCtx->context().opName;
 
         utils::assertSize(opArgs, 1, utils::MAX_OP_ARGS);
         utils::assertRef(opArgs, 0);
 
         const auto& ipRef = *std::static_pointer_cast<Reference>(opArgs[0]);
         const auto& schema = buildCtx->schema();
-
-        const std::string successTrace {fmt::format("{} -> Success", name)};
-        const std::string notFoundTrace {
-            fmt::format("{} -> Failure: Reference to ip {} not found or not an string", name, ipRef.dotPath())};
-        const std::string notValidIPTrace {fmt::format("{} -> Failure: IP string is not a valid IP.", name)};
-        const std::string notFoundDBTrace {fmt::format("{} -> Failure: IP Not found in DB", name)};
-        const std::string emptyDataTrace {fmt::format("{} -> Failure: Empty wcs data", name)};
 
         // Geo only accepts IP
         if (schema.hasField(ipRef.dotPath()) && schema.getType(ipRef.dotPath()) != schemf::Type::IP)
@@ -129,11 +121,19 @@ MapBuilder getMMDBGeoBuilder(const std::shared_ptr<::mmdb::IManager>& mmdbManage
         auto resDB = mmdbManager->getHandler("mm-geolite2-city");
         // TODO Temporary error handling, this should be mandatory
         auto runstate = buildCtx->runState();
+        const auto name = buildCtx->context().opName;
         if (base::isError(resDB))
         {
             const auto trace =  fmt::format("{} -> Failure: handler error: {}", name, base::getError(resDB).message);
             return dumpFailTransform(trace, runstate);
         }
+
+        const std::string successTrace {fmt::format("{} -> Success", name)};
+        const std::string notFoundTrace {
+            fmt::format("{} -> Failure: Reference to ip {} not found or not an string", name, ipRef.dotPath())};
+        const std::string notValidIPTrace {fmt::format("{} -> Failure: IP string is not a valid IP.", name)};
+        const std::string notFoundDBTrace {fmt::format("{} -> Failure: IP Not found in DB", name)};
+        const std::string emptyDataTrace {fmt::format("{} -> Failure: Empty wcs data", name)};
 
         // auto dbHandler = base::getResponse<std::shared_ptr<::mmdb::IHandler>>(resDB);
         return [=, dbHandler = base::getResponse(resDB), srcRef = ipRef.jsonPath()](

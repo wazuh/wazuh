@@ -30,11 +30,11 @@ auto customRefExpected()
     };
 }
 
-auto expectTypeRef(schemf::Type type, bool success = false)
+auto expectTypeRef(schemf::Type type, bool expContxt = false)
 {
     return [=](const BuildersMocks& mocks)
     {
-        if (!success)
+        if (!expContxt)
         {
             EXPECT_CALL(*mocks.ctx, context());
         }
@@ -347,13 +347,13 @@ INSTANTIATE_TEST_SUITE_P(
     MapBuilderWithDepsTest,
     testing::Values(
         // Only accept a ref with a ip to map an object
-        MapDepsT({}, geo::getBuilderNoHandler(), FAILURE(expectContext())),
-        MapDepsT({makeValue(R"("value")")}, geo::getBuilderNoHandler(), FAILURE(expectContext())),
-        MapDepsT({makeRef("ref")}, geo::getBuilderNoHandler(), FAILURE(expectTypeRef(schemf::Type::TEXT))),
-        MapDepsT({makeRef("ref")}, geo::getBuilderNoHandler(), FAILURE(expectTypeRef(schemf::Type::KEYWORD))),
-        MapDepsT({makeRef("ref")}, geo::getBuilderNoHandler(), FAILURE(expectTypeRef(schemf::Type::INTEGER))),
-        MapDepsT({makeRef("ref")}, geo::getBuilderNoHandler(), FAILURE(expectTypeRef(schemf::Type::OBJECT))),
-        MapDepsT({makeRef("ref")}, geo::getBuilderNoHandler(), FAILURE(expectTypeRef(schemf::Type::NESTED))),
+        MapDepsT({}, geo::getBuilderNoHandler(), FAILURE()),
+        MapDepsT({makeValue(R"("value")")}, geo::getBuilderNoHandler(), FAILURE()),
+        MapDepsT({makeRef("ref")}, geo::getBuilderNoHandler(), FAILURE(expectTypeRef(schemf::Type::TEXT, true))),
+        MapDepsT({makeRef("ref")}, geo::getBuilderNoHandler(), FAILURE(expectTypeRef(schemf::Type::KEYWORD, true))),
+        MapDepsT({makeRef("ref")}, geo::getBuilderNoHandler(), FAILURE(expectTypeRef(schemf::Type::INTEGER, true))),
+        MapDepsT({makeRef("ref")}, geo::getBuilderNoHandler(), FAILURE(expectTypeRef(schemf::Type::OBJECT, true))),
+        MapDepsT({makeRef("ref")}, geo::getBuilderNoHandler(), FAILURE(expectTypeRef(schemf::Type::NESTED, true))),
         MapDepsT({makeRef("ref")}, geo::getBuilderWHandler(), SUCCESS(customRefExpected())),
         // #TODO: Fail Handler, Temporary error handling, this should be mandatory
         MapDepsT({makeRef("ref")}, geo::getBuilderWHandler(), SUCCESS(expectTypeRef(schemf::Type::IP, true))),
