@@ -440,11 +440,10 @@ const char descriptor_table_protodef_tester_2eproto[] PROTOBUF_SECTION_VARIABLE(
   "\022\022\n\005error\030\002 \001(\tH\000\210\001\001\0228\n\006result\030\003 \001(\0132#.c"
   "om.wazuh.api.engine.tester.ResultH\001\210\001\001B\010"
   "\n\006_errorB\t\n\007_result*5\n\005State\022\021\n\rSTATE_UN"
-  "KNOWN\020\000\022\014\n\010DISABLED\020\001\022\013\n\007ENABLED\020\002*K\n\004Sy"
+  "KNOWN\020\000\022\014\n\010DISABLED\020\001\022\013\n\007ENABLED\020\002*>\n\004Sy"
   "nc\022\020\n\014SYNC_UNKNOWN\020\000\022\013\n\007UPDATED\020\001\022\014\n\010OUT"
-  "DATED\020\002\022\013\n\007DELETED\020\003\022\t\n\005ERROR\020\004*/\n\nTrace"
-  "Level\022\010\n\004NONE\020\000\022\016\n\nASSET_ONLY\020\001\022\007\n\003ALL\020\002"
-  "b\006proto3"
+  "DATED\020\002\022\t\n\005ERROR\020\003*/\n\nTraceLevel\022\010\n\004NONE"
+  "\020\000\022\016\n\nASSET_ONLY\020\001\022\007\n\003ALL\020\002b\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_tester_2eproto_deps[2] = {
   &::descriptor_table_engine_2eproto,
@@ -452,7 +451,7 @@ static const ::_pbi::DescriptorTable* const descriptor_table_tester_2eproto_deps
 };
 static ::_pbi::once_flag descriptor_table_tester_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_tester_2eproto = {
-    false, false, 1728, descriptor_table_protodef_tester_2eproto,
+    false, false, 1715, descriptor_table_protodef_tester_2eproto,
     "tester.proto",
     &descriptor_table_tester_2eproto_once, descriptor_table_tester_2eproto_deps, 2, 13,
     schemas, file_default_instances, TableStruct_tester_2eproto::offsets,
@@ -495,7 +494,6 @@ bool Sync_IsValid(int value) {
     case 1:
     case 2:
     case 3:
-    case 4:
       return true;
     default:
       return false;
