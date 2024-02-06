@@ -89,6 +89,8 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
     registry->template add<builders::OpBuilderEntry>(
         "ip_cidr_match", {schemf::STypeToken::create(schemf::Type::IP), builders::opfilter::opBuilderHelperIPCIDR});
     registry->template add<builders::OpBuilderEntry>(
+        "is_public_ip", {schemval::STypeToken::create(schemf::Type::IP), builders::opfilter::opBuilderHelperPublicIP});
+    registry->template add<builders::OpBuilderEntry>(
         "is_array", {schemf::runtimeValidation(), builders::opfilter::opBuilderHelperIsArray});
     registry->template add<builders::OpBuilderEntry>(
         "is_boolean", {schemf::runtimeValidation(), builders::opfilter::opBuilderHelperIsBool});
