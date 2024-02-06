@@ -1,0 +1,5 @@
+- blocks:
+    logs:
+      max_size:
+        enabled: ENABLED
+        size: SIZE
