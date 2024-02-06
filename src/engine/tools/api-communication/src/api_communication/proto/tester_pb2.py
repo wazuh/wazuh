@@ -12,7 +12,6 @@ _sym_db = _symbol_database.Default()
 
 
 import api_communication.proto.engine_pb2 as _engine_pb2
-
 from google.protobuf import struct_pb2 as google_dot_protobuf_dot_struct__pb2
 
 
