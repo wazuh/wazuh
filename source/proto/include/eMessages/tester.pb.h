@@ -148,8 +148,7 @@ enum Sync : int {
   SYNC_UNKNOWN = 0,
   UPDATED = 1,
   OUTDATED = 2,
-  DELETED = 3,
-  ERROR = 4,
+  ERROR = 3,
   Sync_INT_MIN_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::min(),
   Sync_INT_MAX_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::max()
 };
