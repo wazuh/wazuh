@@ -7,47 +7,7 @@ using namespace kvdb::mocks;
 
 namespace
 {
-auto kvdbMock = std::make_shared<MockKVDBManager>();
-auto kvdbHandlerMock = std::make_shared<MockKVDBHandler>();
 constexpr auto SCOPE = "test_scope";
-
-auto expectKvdb(const std::string& name)
-{
-    return [=](const BuildersMocks& mocks)
-    {
-        EXPECT_CALL(*kvdbMock, getKVDBHandler(name, SCOPE)).WillOnce(testing::Return(kvdbHandlerMock));
-        return None {};
-    };
-}
-
-auto expectKvdbError()
-{
-    return [=](const BuildersMocks& mocks)
-    {
-        EXPECT_CALL(*kvdbMock, getKVDBHandler(testing::_, SCOPE)).WillOnce(testing::Return(base::Error {"error"}));
-        return None {};
-    };
-}
-
-auto expectKvdbContainsKey(const std::string& name, const std::string& key, bool contains = true)
-{
-    return [=](const BuildersMocks& mocks)
-    {
-        EXPECT_CALL(*kvdbMock, getKVDBHandler(name, SCOPE)).WillOnce(testing::Return(kvdbHandlerMock));
-        EXPECT_CALL(*kvdbHandlerMock, contains(key)).WillOnce(testing::Return(contains));
-        return None {};
-    };
-}
-
-auto expectKvdbContainsError(const std::string& name)
-{
-    return [=](const BuildersMocks& mocks)
-    {
-        EXPECT_CALL(*kvdbMock, getKVDBHandler(name, SCOPE)).WillOnce(testing::Return(kvdbHandlerMock));
-        EXPECT_CALL(*kvdbHandlerMock, contains(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
-        return None {};
-    };
-}
 
 template<typename... T>
 auto customRefExpected(T... refs)
@@ -87,61 +47,202 @@ auto jTypeRefExpected(const std::string& ref, json::Json::Type jType)
     };
 }
 
-auto expectKvdbGetValue(const std::string& name, const std::string& key, const std::string& value, base::Event event)
+filterbuildtest::BuilderGetter getMatch()
 {
-    return [=](const BuildersMocks& mocks)
+    return []()
     {
-        EXPECT_CALL(*kvdbMock, getKVDBHandler(name, SCOPE)).WillOnce(testing::Return(kvdbHandlerMock));
-        EXPECT_CALL(*kvdbHandlerMock, get(key)).WillOnce(testing::Return(value));
-        return event;
+        auto kvdbMock = std::make_shared<MockKVDBManager>();
+        return getOpBuilderKVDBMatch(kvdbMock, SCOPE);
     };
 }
 
-auto expectKvdbGetError(const std::string& name, const std::string& key)
+filterbuildtest::BuilderGetter getNotMatch()
 {
-    return [=](const BuildersMocks& mocks)
+    return []()
     {
+        auto kvdbMock = std::make_shared<MockKVDBManager>();
+        return getOpBuilderKVDBNotMatch(kvdbMock, SCOPE);
+    };
+}
+
+filterbuildtest::BuilderGetter getMatchExpectHandler(const std::string& name)
+{
+    return [=]()
+    {
+        auto kvdbMock = std::make_shared<MockKVDBManager>();
+        auto kvdbHandlerMock = std::make_shared<MockKVDBHandler>();
         EXPECT_CALL(*kvdbMock, getKVDBHandler(name, SCOPE)).WillOnce(testing::Return(kvdbHandlerMock));
-        EXPECT_CALL(*kvdbHandlerMock, get(key)).WillOnce(testing::Return(base::Error {"error"}));
-        return None {};
+        return getOpBuilderKVDBMatch(kvdbMock, SCOPE);
+    };
+}
+
+template<typename Behaviour>
+filterbuildtest::BuilderGetter getMatchExpectHandler(const std::string& name, Behaviour&& behaviour)
+{
+    return [=]()
+    {
+        auto kvdbMock = std::make_shared<MockKVDBManager>();
+        auto kvdbHandlerMock = std::make_shared<MockKVDBHandler>();
+        EXPECT_CALL(*kvdbMock, getKVDBHandler(name, SCOPE)).WillOnce(testing::Return(kvdbHandlerMock));
+        behaviour(kvdbHandlerMock);
+        return getOpBuilderKVDBMatch(kvdbMock, SCOPE);
+    };
+}
+
+filterbuildtest::BuilderGetter getNotMatchExpectHandler(const std::string& name)
+{
+    return [=]()
+    {
+        auto kvdbMock = std::make_shared<MockKVDBManager>();
+        auto kvdbHandlerMock = std::make_shared<MockKVDBHandler>();
+        EXPECT_CALL(*kvdbMock, getKVDBHandler(name, SCOPE)).WillOnce(testing::Return(kvdbHandlerMock));
+        return getOpBuilderKVDBNotMatch(kvdbMock, SCOPE);
+    };
+}
+
+template<typename Behaviour>
+filterbuildtest::BuilderGetter getNotMatchExpectHandler(const std::string& name, Behaviour&& behaviour)
+{
+    return [=]()
+    {
+        auto kvdbMock = std::make_shared<MockKVDBManager>();
+        auto kvdbHandlerMock = std::make_shared<MockKVDBHandler>();
+        EXPECT_CALL(*kvdbMock, getKVDBHandler(name, SCOPE)).WillOnce(testing::Return(kvdbHandlerMock));
+        behaviour(kvdbHandlerMock);
+        return getOpBuilderKVDBNotMatch(kvdbMock, SCOPE);
+    };
+}
+
+filterbuildtest::BuilderGetter getMatchExpectHandlerError(const std::string& name)
+{
+    return [=]()
+    {
+        auto kvdbMock = std::make_shared<MockKVDBManager>();
+        EXPECT_CALL(*kvdbMock, getKVDBHandler(name, SCOPE)).WillOnce(testing::Return(base::Error {"error"}));
+        return getOpBuilderKVDBMatch(kvdbMock, SCOPE);
+    };
+}
+
+filterbuildtest::BuilderGetter getNotMatchExpectHandlerError(const std::string& name)
+{
+    return [=]()
+    {
+        auto kvdbMock = std::make_shared<MockKVDBManager>();
+        EXPECT_CALL(*kvdbMock, getKVDBHandler(name, SCOPE)).WillOnce(testing::Return(base::Error {"error"}));
+        return getOpBuilderKVDBNotMatch(kvdbMock, SCOPE);
+    };
+}
+
+auto expectContainsKey(const std::string& name, const std::string& key, bool contains = true)
+{
+    return [=](const std::shared_ptr<MockKVDBHandler>& handler)
+    {
+        EXPECT_CALL(*handler, contains(key)).WillOnce(testing::Return(contains));
+    };
+}
+
+auto expectContainsError(const std::string& name, const std::string& key)
+{
+    return [=](const std::shared_ptr<MockKVDBHandler>& handler)
+    {
+        EXPECT_CALL(*handler, contains(key)).WillOnce(testing::Return(base::Error {"error"}));
+    };
+}
+
+template<typename TrBuilder>
+transformbuildtest::BuilderGetter getTrBuilder(TrBuilder&& builder)
+{
+    return [=]()
+    {
+        auto kvdbMock = std::make_shared<MockKVDBManager>();
+        return builder(kvdbMock, SCOPE);
+    };
+}
+
+template<typename TrBuilder>
+transformbuildtest::BuilderGetter getTrBuilderExpectHandler(TrBuilder&& builder, const std::string& name)
+{
+    return [=]()
+    {
+        auto kvdbMock = std::make_shared<MockKVDBManager>();
+        auto kvdbHandlerMock = std::make_shared<MockKVDBHandler>();
+        EXPECT_CALL(*kvdbMock, getKVDBHandler(name, SCOPE)).WillOnce(testing::Return(kvdbHandlerMock));
+        return builder(kvdbMock, SCOPE);
+    };
+}
+
+template<typename TrBuilder, typename Behaviour>
+transformbuildtest::BuilderGetter
+getTrBuilderExpectHandler(TrBuilder&& builder, const std::string& name, Behaviour&& behaviour)
+{
+    return [=]()
+    {
+        auto kvdbMock = std::make_shared<MockKVDBManager>();
+        auto kvdbHandlerMock = std::make_shared<MockKVDBHandler>();
+        EXPECT_CALL(*kvdbMock, getKVDBHandler(name, SCOPE)).WillOnce(testing::Return(kvdbHandlerMock));
+        behaviour(kvdbHandlerMock);
+        return builder(kvdbMock, SCOPE);
+    };
+}
+
+template<typename TrBuilder>
+transformbuildtest::BuilderGetter getTrBuilderExpectHandlerError(TrBuilder&& builder, const std::string& name)
+{
+    return [=]()
+    {
+        auto kvdbMock = std::make_shared<MockKVDBManager>();
+        EXPECT_CALL(*kvdbMock, getKVDBHandler(name, SCOPE)).WillOnce(testing::Return(base::Error {"error"}));
+        return builder(kvdbMock, SCOPE);
+    };
+}
+
+auto expectKvdbGetValue(const std::string& key, const std::string& value)
+{
+    return [=](const std::shared_ptr<MockKVDBHandler>& handler)
+    {
+        EXPECT_CALL(*handler, get(key)).WillOnce(testing::Return(value));
+    };
+}
+
+auto expectKvdbGetError(const std::string& key)
+{
+    return [=](const std::shared_ptr<MockKVDBHandler>& handler)
+    {
+        EXPECT_CALL(*handler, get(key)).WillOnce(testing::Return(base::Error {"error"}));
     };
 }
 
 auto expectKvdbSet(const std::string& key, const std::string& jValue)
 {
     json::Json value {jValue.c_str()};
-    return [=](const BuildersMocks& mocks)
+    return [=](const std::shared_ptr<MockKVDBHandler>& handler)
     {
-        EXPECT_CALL(*kvdbHandlerMock, set(key, value)).WillOnce(testing::Return(base::noError()));
-        return None {};
+        EXPECT_CALL(*handler, set(key, value)).WillOnce(testing::Return(base::noError()));
     };
 }
 
 auto expectKvdbSetError(const std::string& key, const std::string& jValue)
 {
     json::Json value {jValue.c_str()};
-    return [=](const BuildersMocks& mocks)
+    return [=](const std::shared_ptr<MockKVDBHandler>& handler)
     {
-        EXPECT_CALL(*kvdbHandlerMock, set(key, value)).WillOnce(testing::Return(base::Error {"error"}));
-        return None {};
+        EXPECT_CALL(*handler, set(key, value)).WillOnce(testing::Return(base::Error {"error"}));
     };
 }
 
 auto expectKvdbDelete(const std::string& key)
 {
-    return [=](const BuildersMocks& mocks)
+    return [=](const std::shared_ptr<MockKVDBHandler>& handler)
     {
-        EXPECT_CALL(*kvdbHandlerMock, remove(key)).WillOnce(testing::Return(base::noError()));
-        return None {};
+        EXPECT_CALL(*handler, remove(key)).WillOnce(testing::Return(base::noError()));
     };
 }
 
 auto expectKvdbDeleteError(const std::string& key)
 {
-    return [=](const BuildersMocks& mocks)
+    return [=](const std::shared_ptr<MockKVDBHandler>& handler)
     {
-        EXPECT_CALL(*kvdbHandlerMock, remove(key)).WillOnce(testing::Return(base::Error {"error"}));
-        return None {};
+        EXPECT_CALL(*handler, remove(key)).WillOnce(testing::Return(base::Error {"error"}));
     };
 }
 
@@ -149,994 +250,753 @@ auto expectKvdbDeleteError(const std::string& key)
 
 namespace filterbuildtest
 {
-INSTANTIATE_TEST_SUITE_P(
-    Builders,
-    FilterBuilderTest,
-    testing::Values(
-        /*** MATCH ***/
-        FilterT({}, getOpBuilderKVDBMatch(kvdbMock, SCOPE), FAILURE()),
-        FilterT({makeRef("ref")}, getOpBuilderKVDBMatch(kvdbMock, SCOPE), FAILURE()),
-        FilterT({makeValue(R"("name")")}, getOpBuilderKVDBMatch(kvdbMock, SCOPE), SUCCESS(expectKvdb("name"))),
-        FilterT({makeValue(R"("name")"), makeValue(R"("value")")}, getOpBuilderKVDBMatch(kvdbMock, SCOPE), FAILURE()),
-        FilterT({makeValue(R"(1)")}, getOpBuilderKVDBMatch(kvdbMock, SCOPE), FAILURE()),
-        FilterT({makeValue(R"(1.1)")}, getOpBuilderKVDBMatch(kvdbMock, SCOPE), FAILURE()),
-        FilterT({makeValue(R"(true)")}, getOpBuilderKVDBMatch(kvdbMock, SCOPE), FAILURE()),
-        FilterT({makeValue(R"(null)")}, getOpBuilderKVDBMatch(kvdbMock, SCOPE), FAILURE()),
-        FilterT({makeValue(R"([])")}, getOpBuilderKVDBMatch(kvdbMock, SCOPE), FAILURE()),
-        FilterT({makeValue(R"({})")}, getOpBuilderKVDBMatch(kvdbMock, SCOPE), FAILURE()),
-        FilterT({makeValue(R"("name")")}, getOpBuilderKVDBMatch(kvdbMock, SCOPE), FAILURE(expectKvdbError())),
-        FilterT({makeValue(R"("name")")}, getOpBuilderKVDBMatch(nullptr, SCOPE), FAILURE()),
-        /*** NOT MATCH ***/
-        FilterT({}, getOpBuilderKVDBNotMatch(kvdbMock, SCOPE), FAILURE()),
-        FilterT({makeRef("ref")}, getOpBuilderKVDBNotMatch(kvdbMock, SCOPE), FAILURE()),
-        FilterT({makeValue(R"("name")")}, getOpBuilderKVDBNotMatch(kvdbMock, SCOPE), SUCCESS(expectKvdb("name"))),
-        FilterT({makeValue(R"("name")"), makeValue(R"("value")")},
-                getOpBuilderKVDBNotMatch(kvdbMock, SCOPE),
-                FAILURE()),
-        FilterT({makeValue(R"(1)")}, getOpBuilderKVDBNotMatch(kvdbMock, SCOPE), FAILURE()),
-        FilterT({makeValue(R"(1.1)")}, getOpBuilderKVDBNotMatch(kvdbMock, SCOPE), FAILURE()),
-        FilterT({makeValue(R"(true)")}, getOpBuilderKVDBNotMatch(kvdbMock, SCOPE), FAILURE()),
-        FilterT({makeValue(R"(null)")}, getOpBuilderKVDBNotMatch(kvdbMock, SCOPE), FAILURE()),
-        FilterT({makeValue(R"([])")}, getOpBuilderKVDBNotMatch(kvdbMock, SCOPE), FAILURE()),
-        FilterT({makeValue(R"({})")}, getOpBuilderKVDBNotMatch(kvdbMock, SCOPE), FAILURE()),
-        FilterT({makeValue(R"("name")")}, getOpBuilderKVDBNotMatch(kvdbMock, SCOPE), FAILURE(expectKvdbError())),
-        FilterT({makeValue(R"("name")")}, getOpBuilderKVDBNotMatch(nullptr, SCOPE), FAILURE())),
-    testNameFormatter<FilterBuilderTest>("KVDB"));
+INSTANTIATE_TEST_SUITE_P(Builders,
+                         FilterBuilderWithDepsTest,
+                         testing::Values(
+                             /*** MATCH ***/
+                             FilterDepsT({}, getMatch(), FAILURE()),
+                             FilterDepsT({makeRef("ref")}, getMatch(), FAILURE()),
+                             FilterDepsT({makeValue(R"("name")")}, getMatchExpectHandler("name"), SUCCESS()),
+                             FilterDepsT({makeValue(R"("name")"), makeValue(R"("value")")}, getMatch(), FAILURE()),
+                             FilterDepsT({makeValue(R"(1)")}, getMatch(), FAILURE()),
+                             FilterDepsT({makeValue(R"(1.1)")}, getMatch(), FAILURE()),
+                             FilterDepsT({makeValue(R"(true)")}, getMatch(), FAILURE()),
+                             FilterDepsT({makeValue(R"(null)")}, getMatch(), FAILURE()),
+                             FilterDepsT({makeValue(R"([])")}, getMatch(), FAILURE()),
+                             FilterDepsT({makeValue(R"({})")}, getMatch(), FAILURE()),
+                             FilterDepsT({makeValue(R"("name")")}, getMatchExpectHandlerError("name"), FAILURE()),
+                             /*** NOT MATCH ***/
+                             FilterDepsT({}, getNotMatch(), FAILURE()),
+                             FilterDepsT({makeRef("ref")}, getNotMatch(), FAILURE()),
+                             FilterDepsT({makeValue(R"("name")")}, getNotMatchExpectHandler("name"), SUCCESS()),
+                             FilterDepsT({makeValue(R"("name")"), makeValue(R"("value")")}, getNotMatch(), FAILURE()),
+                             FilterDepsT({makeValue(R"(1)")}, getNotMatch(), FAILURE()),
+                             FilterDepsT({makeValue(R"(1.1)")}, getNotMatch(), FAILURE()),
+                             FilterDepsT({makeValue(R"(true)")}, getNotMatch(), FAILURE()),
+                             FilterDepsT({makeValue(R"(null)")}, getNotMatch(), FAILURE()),
+                             FilterDepsT({makeValue(R"([])")}, getNotMatch(), FAILURE()),
+                             FilterDepsT({makeValue(R"({})")}, getNotMatch(), FAILURE()),
+                             FilterDepsT({makeValue(R"("name")")}, getNotMatchExpectHandlerError("name"), FAILURE())),
+                         testNameFormatter<FilterBuilderWithDepsTest>("KVDB"));
 } // namespace filterbuildtest
 
 namespace filteroperatestest
 {
-INSTANTIATE_TEST_SUITE_P(Builders,
-                         FilterOperationTest,
-                         testing::Values(
-                             /*** MATCH ***/
-                             FilterT(R"({"target": "key"})",
-                                     getOpBuilderKVDBMatch(kvdbMock, SCOPE),
-                                     "target",
-                                     {makeValue(R"("dbname")")},
-                                     SUCCESS(expectKvdbContainsKey("dbname", "key"))),
-                             FilterT(R"({"target": "key"})",
-                                     getOpBuilderKVDBMatch(kvdbMock, SCOPE),
-                                     "notTarget",
-                                     {makeValue(R"("dbname")")},
-                                     FAILURE(expectKvdb("dbname"))),
-                             FilterT(R"({"target": 1})",
-                                     getOpBuilderKVDBMatch(kvdbMock, SCOPE),
-                                     "target",
-                                     {makeValue(R"("dbname")")},
-                                     FAILURE(expectKvdb("dbname"))),
-                             FilterT(R"({"target": "key"})",
-                                     getOpBuilderKVDBMatch(kvdbMock, SCOPE),
-                                     "target",
-                                     {makeValue(R"("dbname")")},
-                                     FAILURE(expectKvdbContainsError("dbname"))),
-                             FilterT(R"({"target": "key"})",
-                                     getOpBuilderKVDBMatch(kvdbMock, SCOPE),
-                                     "target",
-                                     {makeValue(R"("dbname")")},
-                                     FAILURE(expectKvdbContainsKey("dbname", "key", false))),
-                             /*** NOT MATCH ***/
-                             FilterT(R"({"target": "key"})",
-                                     getOpBuilderKVDBNotMatch(kvdbMock, SCOPE),
-                                     "target",
-                                     {makeValue(R"("dbname")")},
-                                     SUCCESS(expectKvdbContainsKey("dbname", "key", false))),
-                             FilterT(R"({"target": "key"})",
-                                     getOpBuilderKVDBNotMatch(kvdbMock, SCOPE),
-                                     "notTarget",
-                                     {makeValue(R"("dbname")")},
-                                     FAILURE(expectKvdb("dbname"))),
-                             FilterT(R"({"target": 1})",
-                                     getOpBuilderKVDBNotMatch(kvdbMock, SCOPE),
-                                     "target",
-                                     {makeValue(R"("dbname")")},
-                                     FAILURE(expectKvdb("dbname"))),
-                             FilterT(R"({"target": "key"})",
-                                     getOpBuilderKVDBNotMatch(kvdbMock, SCOPE),
-                                     "target",
-                                     {makeValue(R"("dbname")")},
-                                     FAILURE(expectKvdbContainsError("dbname"))),
-                             FilterT(R"({"target": "key"})",
-                                     getOpBuilderKVDBNotMatch(kvdbMock, SCOPE),
-                                     "target",
-                                     {makeValue(R"("dbname")")},
-                                     FAILURE(expectKvdbContainsKey("dbname", "key")))
-
-                                 ),
-                         testNameFormatter<FilterOperationTest>("KVDB"));
+INSTANTIATE_TEST_SUITE_P(
+    Builders,
+    FilterOperationWithDepsTest,
+    testing::Values(
+        /*** MATCH ***/
+        FilterDepsT(R"({"target": "key"})",
+                    getMatchExpectHandler("dbname", expectContainsKey("dbname", "key", true)),
+                    "target",
+                    {makeValue(R"("dbname")")},
+                    SUCCESS()),
+        FilterDepsT(R"({"target": "key"})",
+                    getMatchExpectHandler("dbname"),
+                    "notTarget",
+                    {makeValue(R"("dbname")")},
+                    FAILURE()),
+        FilterDepsT(
+            R"({"target": 1})", getMatchExpectHandler("dbname"), "target", {makeValue(R"("dbname")")}, FAILURE()),
+        FilterDepsT(R"({"target": "key"})",
+                    getMatchExpectHandler("dbname", expectContainsError("dbname", "key")),
+                    "target",
+                    {makeValue(R"("dbname")")},
+                    FAILURE()),
+        FilterDepsT(R"({"target": "key"})",
+                    getMatchExpectHandler("dbname", expectContainsKey("dbname", "key", false)),
+                    "target",
+                    {makeValue(R"("dbname")")},
+                    FAILURE()),
+        /*** NOT MATCH ***/
+        FilterDepsT(R"({"target": "key"})",
+                    getNotMatchExpectHandler("dbname", expectContainsKey("dbname", "key", false)),
+                    "target",
+                    {makeValue(R"("dbname")")},
+                    SUCCESS()),
+        FilterDepsT(R"({"target": "key"})",
+                    getNotMatchExpectHandler("dbname"),
+                    "notTarget",
+                    {makeValue(R"("dbname")")},
+                    FAILURE()),
+        FilterDepsT(
+            R"({"target": 1})", getNotMatchExpectHandler("dbname"), "target", {makeValue(R"("dbname")")}, FAILURE()),
+        FilterDepsT(R"({"target": "key"})",
+                    getNotMatchExpectHandler("dbname", expectContainsError("dbname", "key")),
+                    "target",
+                    {makeValue(R"("dbname")")},
+                    FAILURE()),
+        FilterDepsT(R"({"target": "key"})",
+                    getNotMatchExpectHandler("dbname", expectContainsKey("dbname", "key", true)),
+                    "target",
+                    {makeValue(R"("dbname")")},
+                    FAILURE())),
+    testNameFormatter<FilterOperationWithDepsTest>("KVDB"));
 } // namespace filteroperatestest
 
 namespace transformbuildtest
 {
 INSTANTIATE_TEST_SUITE_P(
     Builders,
-    TransformBuilderTest,
+    TransformBuilderWithDepsTest,
     testing::Values(
         /*** GET ***/
-        TransformT({}, getOpBuilderKVDBGet(kvdbMock, SCOPE), FAILURE()),
-        TransformT({makeValue(R"("dbname")")}, getOpBuilderKVDBGet(kvdbMock, SCOPE), FAILURE()),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")")},
-                   getOpBuilderKVDBGet(kvdbMock, SCOPE),
-                   SUCCESS(expectKvdb("dbname"))),
-        TransformT({makeRef("ref"), makeValue(R"("key")")}, getOpBuilderKVDBGet(kvdbMock, SCOPE), FAILURE()),
-        TransformT({makeValue(R"("dbname")"), makeRef("ref")},
-                   getOpBuilderKVDBGet(kvdbMock, SCOPE),
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("ref")(mocks);
-                           expectKvdb("dbname")(mocks);
-                           return None {};
-                       })),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"("other")")},
-                   getOpBuilderKVDBGet(kvdbMock, SCOPE),
-                   FAILURE()),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"(1)")}, getOpBuilderKVDBGet(kvdbMock, SCOPE), FAILURE()),
-        TransformT({makeValue(R"("dbname")"), makeRef("ref")},
-                   getOpBuilderKVDBGet(kvdbMock, SCOPE),
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           jTypeRefExpected("ref", json::Json::Type::String)(mocks);
-                           expectKvdb("dbname")(mocks);
-                           return None {};
-                       })),
-        TransformT({makeValue(R"("dbname")"), makeRef("ref")},
-                   getOpBuilderKVDBGet(kvdbMock, SCOPE),
-                   FAILURE(jTypeRefExpected("ref", json::Json::Type::Number))),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")")},
-                   getOpBuilderKVDBGet(kvdbMock, SCOPE),
-                   FAILURE(expectKvdbError())),
+        TransformDepsT({}, getTrBuilder(getOpBuilderKVDBGet), FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")")}, getTrBuilder(getOpBuilderKVDBGet), FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")")},
+                       getTrBuilderExpectHandler(getOpBuilderKVDBGet, "dbname"),
+                       SUCCESS()),
+        TransformDepsT({makeRef("ref"), makeValue(R"("key")")}, getTrBuilder(getOpBuilderKVDBGet), FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
+                       getTrBuilderExpectHandler(getOpBuilderKVDBGet, "dbname"),
+                       SUCCESS(customRefExpected("ref"))),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"("other")")},
+                       getTrBuilder(getOpBuilderKVDBGet),
+                       FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"(1)")}, getTrBuilder(getOpBuilderKVDBGet), FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
+                       getTrBuilderExpectHandler(getOpBuilderKVDBGet, "dbname"),
+                       SUCCESS(jTypeRefExpected("ref", json::Json::Type::String))),
+        TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
+                       getTrBuilder(getOpBuilderKVDBGet),
+                       FAILURE(jTypeRefExpected("ref", json::Json::Type::Number))),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")")},
+                       getTrBuilderExpectHandlerError(getOpBuilderKVDBGet, "dbname"),
+                       FAILURE()),
         /*** GET MERGE ***/
-        TransformT({}, getOpBuilderKVDBGetMerge(kvdbMock, SCOPE), FAILURE()),
-        TransformT({makeValue(R"("dbname")")}, getOpBuilderKVDBGetMerge(kvdbMock, SCOPE), FAILURE()),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")")},
-                   getOpBuilderKVDBGetMerge(kvdbMock, SCOPE),
-                   SUCCESS(expectKvdb("dbname"))),
-        TransformT({makeRef("ref"), makeValue(R"("key")")}, getOpBuilderKVDBGetMerge(kvdbMock, SCOPE), FAILURE()),
-        TransformT({makeValue(R"("dbname")"), makeRef("ref")},
-                   getOpBuilderKVDBGetMerge(kvdbMock, SCOPE),
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("ref")(mocks);
-                           expectKvdb("dbname")(mocks);
-                           return None {};
-                       })),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"("other")")},
-                   getOpBuilderKVDBGetMerge(kvdbMock, SCOPE),
-                   FAILURE()),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"(1)")}, getOpBuilderKVDBGetMerge(kvdbMock, SCOPE), FAILURE()),
-        TransformT({makeValue(R"("dbname")"), makeRef("ref")},
-                   getOpBuilderKVDBGetMerge(kvdbMock, SCOPE),
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           jTypeRefExpected("ref", json::Json::Type::String)(mocks);
-                           expectKvdb("dbname")(mocks);
-                           return None {};
-                       })),
-        TransformT({makeValue(R"("dbname")"), makeRef("ref")},
-                   getOpBuilderKVDBGetMerge(kvdbMock, SCOPE),
-                   FAILURE(jTypeRefExpected("ref", json::Json::Type::Number))),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")")},
-                   getOpBuilderKVDBGetMerge(kvdbMock, SCOPE),
-                   FAILURE(expectKvdbError())),
+        TransformDepsT({}, getTrBuilder(getOpBuilderKVDBGetMerge), FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")")}, getTrBuilder(getOpBuilderKVDBGetMerge), FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")")},
+                       getTrBuilderExpectHandler(getOpBuilderKVDBGetMerge, "dbname"),
+                       SUCCESS()),
+        TransformDepsT({makeRef("ref"), makeValue(R"("key")")}, getTrBuilder(getOpBuilderKVDBGetMerge), FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
+                       getTrBuilderExpectHandler(getOpBuilderKVDBGetMerge, "dbname"),
+                       SUCCESS(customRefExpected("ref"))),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"("other")")},
+                       getTrBuilder(getOpBuilderKVDBGetMerge),
+                       FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"(1)")},
+                       getTrBuilder(getOpBuilderKVDBGetMerge),
+                       FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
+                       getTrBuilderExpectHandler(getOpBuilderKVDBGetMerge, "dbname"),
+                       SUCCESS(jTypeRefExpected("ref", json::Json::Type::String))),
+        TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
+                       getTrBuilder(getOpBuilderKVDBGetMerge),
+                       FAILURE(jTypeRefExpected("ref", json::Json::Type::Number))),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")")},
+                       getTrBuilderExpectHandlerError(getOpBuilderKVDBGetMerge, "dbname"),
+                       FAILURE()),
         /*** SET ***/
-        TransformT({}, getOpBuilderKVDBSet(kvdbMock, SCOPE), FAILURE()),
-        TransformT({makeValue(R"("dbname")")}, getOpBuilderKVDBSet(kvdbMock, SCOPE), FAILURE()),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")")}, getOpBuilderKVDBSet(kvdbMock, SCOPE), FAILURE()),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"("value")")},
-                   getOpBuilderKVDBSet(kvdbMock, SCOPE),
-                   SUCCESS(expectKvdb("dbname"))),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"("value")"), makeValue(R"("other")")},
-                   getOpBuilderKVDBSet(kvdbMock, SCOPE),
-                   FAILURE()),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"(1)")},
-                   getOpBuilderKVDBSet(kvdbMock, SCOPE),
-                   SUCCESS(expectKvdb("dbname"))),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"(1)"), makeValue(R"("value")")},
-                   getOpBuilderKVDBSet(kvdbMock, SCOPE),
-                   FAILURE()),
-        TransformT({makeValue(R"(1)"), makeValue(R"("key")"), makeValue(R"("value")")},
-                   getOpBuilderKVDBSet(kvdbMock, SCOPE),
-                   FAILURE()),
-        TransformT({makeValue(R"("dbname")"), makeRef("keyRef"), makeRef("valueRef")},
-                   getOpBuilderKVDBSet(kvdbMock, SCOPE),
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("keyRef")(mocks);
-                           expectKvdb("dbname")(mocks);
-                           return None {};
-                       })),
-        TransformT({makeValue(R"("dbname")"), makeRef("keyRef"), makeRef("valueRef")},
-                   getOpBuilderKVDBSet(kvdbMock, SCOPE),
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           jTypeRefExpected("keyRef", json::Json::Type::String)(mocks);
-                           expectKvdb("dbname")(mocks);
-                           return None {};
-                       })),
-        TransformT({makeValue(R"("dbname")"), makeRef("keyRef"), makeRef("valueRef")},
-                   getOpBuilderKVDBSet(kvdbMock, SCOPE),
-                   FAILURE(jTypeRefExpected("keyRef", json::Json::Type::Number))),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"("value")")},
-                   getOpBuilderKVDBSet(kvdbMock, SCOPE),
-                   FAILURE(expectKvdbError())),
+        TransformDepsT({}, getTrBuilder(getOpBuilderKVDBSet), FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")")}, getTrBuilder(getOpBuilderKVDBSet), FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")")}, getTrBuilder(getOpBuilderKVDBSet), FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"("value")")},
+                       getTrBuilderExpectHandler(getOpBuilderKVDBSet, "dbname"),
+                       SUCCESS()),
+        TransformDepsT(
+            {makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"("value")"), makeValue(R"("other")")},
+            getTrBuilder(getOpBuilderKVDBSet),
+            FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"(1)")},
+                       getTrBuilderExpectHandler(getOpBuilderKVDBSet, "dbname"),
+                       SUCCESS()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"(1)"), makeValue(R"("value")")},
+                       getTrBuilder(getOpBuilderKVDBSet),
+                       FAILURE()),
+        TransformDepsT({makeValue(R"(1)"), makeValue(R"("key")"), makeValue(R"("value")")},
+                       getTrBuilder(getOpBuilderKVDBSet),
+                       FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeRef("keyRef"), makeRef("valueRef")},
+                       getTrBuilderExpectHandler(getOpBuilderKVDBSet, "dbname"),
+                       SUCCESS(customRefExpected("keyRef"))),
+        TransformDepsT({makeValue(R"("dbname")"), makeRef("keyRef"), makeRef("valueRef")},
+                       getTrBuilderExpectHandler(getOpBuilderKVDBSet, "dbname"),
+                       SUCCESS(jTypeRefExpected("keyRef", json::Json::Type::String))),
+        TransformDepsT({makeValue(R"("dbname")"), makeRef("keyRef"), makeRef("valueRef")},
+                       getTrBuilder(getOpBuilderKVDBSet),
+                       FAILURE(jTypeRefExpected("keyRef", json::Json::Type::Number))),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"("value")")},
+                       getTrBuilderExpectHandlerError(getOpBuilderKVDBSet, "dbname"),
+                       FAILURE()),
         /*** DELETE ***/
-        TransformT({}, getOpBuilderKVDBDelete(kvdbMock, SCOPE), FAILURE()),
-        TransformT({makeValue(R"("dbname")")}, getOpBuilderKVDBDelete(kvdbMock, SCOPE), FAILURE()),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")")},
-                   getOpBuilderKVDBDelete(kvdbMock, SCOPE),
-                   SUCCESS(expectKvdb("dbname"))),
-        TransformT({makeValue(R"("dbname")"), makeRef("ref")},
-                   getOpBuilderKVDBDelete(kvdbMock, SCOPE),
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("ref")(mocks);
-                           expectKvdb("dbname")(mocks);
-                           return None {};
-                       })),
-        TransformT({makeValue(R"("dbname")"), makeRef("ref")},
-                   getOpBuilderKVDBDelete(kvdbMock, SCOPE),
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           jTypeRefExpected("ref", json::Json::Type::String)(mocks);
-                           expectKvdb("dbname")(mocks);
-                           return None {};
-                       })),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"("other")")},
-                   getOpBuilderKVDBDelete(kvdbMock, SCOPE),
-                   FAILURE()),
-        TransformT({makeValue(R"(1)"), makeValue(R"("key")")}, getOpBuilderKVDBDelete(kvdbMock, SCOPE), FAILURE()),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"(1)")}, getOpBuilderKVDBDelete(kvdbMock, SCOPE), FAILURE()),
-        TransformT({makeValue(R"("dbname")"), makeRef("ref")},
-                   getOpBuilderKVDBDelete(kvdbMock, SCOPE),
-                   FAILURE(jTypeRefExpected("ref", json::Json::Type::Number))),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")")},
-                   getOpBuilderKVDBDelete(kvdbMock, SCOPE),
-                   FAILURE(expectKvdbError())),
+        TransformDepsT({}, getTrBuilder(getOpBuilderKVDBDelete), FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")")}, getTrBuilder(getOpBuilderKVDBDelete), FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")")},
+                       getTrBuilderExpectHandler(getOpBuilderKVDBDelete, "dbname"),
+                       SUCCESS()),
+        TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
+                       getTrBuilderExpectHandler(getOpBuilderKVDBDelete, "dbname"),
+                       SUCCESS(customRefExpected("ref"))),
+        TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
+                       getTrBuilderExpectHandler(getOpBuilderKVDBDelete, "dbname"),
+                       SUCCESS(jTypeRefExpected("ref", json::Json::Type::String))),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"("other")")},
+                       getTrBuilder(getOpBuilderKVDBDelete),
+                       FAILURE()),
+        TransformDepsT({makeValue(R"(1)"), makeValue(R"("key")")}, getTrBuilder(getOpBuilderKVDBDelete), FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"(1)")}, getTrBuilder(getOpBuilderKVDBDelete), FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
+                       getTrBuilder(getOpBuilderKVDBDelete),
+                       FAILURE(jTypeRefExpected("ref", json::Json::Type::Number))),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")")},
+                       getTrBuilderExpectHandlerError(getOpBuilderKVDBDelete, "dbname"),
+                       FAILURE()),
         /*** GET ARRAY ***/
-        TransformT({}, getOpBuilderKVDBGetArray(kvdbMock, SCOPE), FAILURE()),
-        TransformT({makeValue(R"("dbname")")}, getOpBuilderKVDBGetArray(kvdbMock, SCOPE), FAILURE()),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"(["k0", "k1"])")},
-                   getOpBuilderKVDBGetArray(kvdbMock, SCOPE),
-                   SUCCESS(expectKvdb("dbname"))),
-        TransformT({makeValue(R"("dbname")"), makeRef("ref")},
-                   getOpBuilderKVDBGetArray(kvdbMock, SCOPE),
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("ref")(mocks);
-                           expectKvdb("dbname")(mocks);
-                           return None {};
-                       })),
-        TransformT({makeValue(R"(1)"), makeValue(R"(["k0", "k1"])")},
-                   getOpBuilderKVDBGetArray(kvdbMock, SCOPE),
-                   FAILURE()),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"(["k0", "k1"])"), makeValue(R"("other")")},
-                   getOpBuilderKVDBGetArray(kvdbMock, SCOPE),
-                   FAILURE()),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("not an array")")},
-                   getOpBuilderKVDBGetArray(kvdbMock, SCOPE),
-                   FAILURE()),
-        TransformT({makeValue(R"("dbname")"), makeRef("ref")},
-                   getOpBuilderKVDBGetArray(kvdbMock, SCOPE),
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           jTypeRefExpected("ref", json::Json::Type::String)(mocks);
-                           EXPECT_CALL(*mocks.schema, isArray(DotPath("ref"))).WillOnce(testing::Return(true));
-                           expectKvdb("dbname")(mocks);
-                           return None {};
-                       })),
-        TransformT({makeValue(R"("dbname")"), makeRef("ref")},
-                   getOpBuilderKVDBGetArray(kvdbMock, SCOPE),
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           EXPECT_CALL(*mocks.schema, isArray(DotPath("ref"))).WillOnce(testing::Return(true));
-                           jTypeRefExpected("ref", json::Json::Type::Number)(mocks);
-                           return None {};
-                       })),
-        TransformT({makeValue(R"("dbname")"), makeRef("ref")},
-                   getOpBuilderKVDBGetArray(kvdbMock, SCOPE),
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           EXPECT_CALL(*mocks.ctx, schema()).Times(testing::AtLeast(1));
-                           EXPECT_CALL(*mocks.schema, hasField(DotPath("ref"))).WillOnce(testing::Return(true));
-                           EXPECT_CALL(*mocks.schema, isArray(DotPath("ref"))).WillOnce(testing::Return(false));
-                           return None {};
-                       })),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"(["k0", "k1"])")},
-                   getOpBuilderKVDBGetArray(kvdbMock, SCOPE),
-                   FAILURE(expectKvdbError())),
+        TransformDepsT({}, getTrBuilder(getOpBuilderKVDBGetArray), FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")")}, getTrBuilder(getOpBuilderKVDBGetArray), FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"(["k0", "k1"])")},
+                       getTrBuilderExpectHandler(getOpBuilderKVDBGetArray, "dbname"),
+                       SUCCESS()),
+        TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
+                       getTrBuilderExpectHandler(getOpBuilderKVDBGetArray, "dbname"),
+                       SUCCESS(customRefExpected("ref"))),
+        TransformDepsT({makeValue(R"(1)"), makeValue(R"(["k0", "k1"])")},
+                       getTrBuilder(getOpBuilderKVDBGetArray),
+                       FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"(["k0", "k1"])"), makeValue(R"("other")")},
+                       getTrBuilder(getOpBuilderKVDBGetArray),
+                       FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("not an array")")},
+                       getTrBuilder(getOpBuilderKVDBGetArray),
+                       FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
+                       getTrBuilderExpectHandler(getOpBuilderKVDBGetArray, "dbname"),
+                       SUCCESS(
+                           [](const BuildersMocks& mocks)
+                           {
+                               jTypeRefExpected("ref", json::Json::Type::String)(mocks);
+                               EXPECT_CALL(*mocks.schema, isArray(DotPath("ref"))).WillOnce(testing::Return(true));
+                               return None {};
+                           })),
+        TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
+                       getTrBuilder(getOpBuilderKVDBGetArray),
+                       FAILURE(
+                           [](const BuildersMocks& mocks)
+                           {
+                               EXPECT_CALL(*mocks.schema, isArray(DotPath("ref"))).WillOnce(testing::Return(true));
+                               jTypeRefExpected("ref", json::Json::Type::Number)(mocks);
+                               return None {};
+                           })),
+        TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
+                       getTrBuilder(getOpBuilderKVDBGetArray),
+                       FAILURE(
+                           [](const BuildersMocks& mocks)
+                           {
+                               EXPECT_CALL(*mocks.ctx, schema()).Times(testing::AtLeast(1));
+                               EXPECT_CALL(*mocks.schema, hasField(DotPath("ref"))).WillOnce(testing::Return(true));
+                               EXPECT_CALL(*mocks.schema, isArray(DotPath("ref"))).WillOnce(testing::Return(false));
+                               return None {};
+                           })),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"(["k0", "k1"])")},
+                       getTrBuilderExpectHandlerError(getOpBuilderKVDBGetArray, "dbname"),
+                       FAILURE()),
         /*** BITMASK TO TABLE ***/
-        TransformT({}, getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE), FAILURE()),
-        TransformT({makeValue(R"("dbname")")}, getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE), FAILURE()),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")")},
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   FAILURE()),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("targetField", "ref")(mocks);
-                           expectKvdb("dbname")(mocks);
-                           expectKvdbGetValue("dbname", "key", R"({"001": "val1"})", nullptr)(mocks);
-                           return None {};
-                       })),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           jTypeRefExpected("targetField", json::Json::Type::String)(mocks);
-                           EXPECT_CALL(*mocks.schema, isArray(DotPath("targetField"))).WillOnce(testing::Return(true));
-                           EXPECT_CALL(*mocks.schema, hasField(DotPath("ref"))).WillOnce(testing::Return(false));
-                           expectKvdb("dbname")(mocks);
-                           expectKvdbGetValue("dbname", "key", R"({"001": "val1"})", nullptr)(mocks);
-                           return None {};
-                       })),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           EXPECT_CALL(*mocks.schema, hasField(DotPath("targetField")))
-                               .WillOnce(testing::Return(false));
-                           jTypeRefExpected("ref", json::Json::Type::String)(mocks);
-                           expectKvdb("dbname")(mocks);
-                           expectKvdbGetValue("dbname", "key", R"({"001": "val1"})", nullptr)(mocks);
-                           return None {};
-                       })),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"("other")")},
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   FAILURE()),
-        TransformT({makeValue(R"("dbname")"), makeRef("ref"), makeRef("ref")},
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   FAILURE()),
-        TransformT({makeRef("ref"), makeValue(R"("key")"), makeRef("ref")},
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   FAILURE()),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref"), makeValue(R"("other")")},
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   FAILURE()),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref"), makeRef("ref")},
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   FAILURE()),
-        TransformT({makeValue(R"(1)"), makeValue(R"("key")"), makeRef("ref")},
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   FAILURE()),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"(1)"), makeRef("ref")},
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   FAILURE()),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           EXPECT_CALL(*mocks.ctx, schema()).Times(testing::AtLeast(1));
-                           EXPECT_CALL(*mocks.schema, hasField(DotPath("targetField"))).WillOnce(testing::Return(true));
-                           EXPECT_CALL(*mocks.schema, isArray(DotPath("targetField"))).WillOnce(testing::Return(false));
-                           return None {};
-                       })),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           jTypeRefExpected("targetField", json::Json::Type::Number)(mocks);
-                           EXPECT_CALL(*mocks.schema, isArray(DotPath("targetField"))).WillOnce(testing::Return(true));
-                           return None {};
-                       })),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           jTypeRefExpected("ref", json::Json::Type::Boolean)(mocks);
-                           EXPECT_CALL(*mocks.schema, hasField(DotPath("targetField")))
-                               .WillOnce(testing::Return(false));
-                           return None {};
-                       })),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("targetField", "ref")(mocks);
-                           expectKvdbError()(mocks);
-                           return None {};
-                       })),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("targetField", "ref")(mocks);
-                           expectKvdbGetError("dbname", "key")(mocks);
-                           return None {};
-                       })),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("targetField", "ref")(mocks);
-                           expectKvdbGetValue("dbname", "key", R"("malformed"Json")", nullptr)(mocks);
-                           return None {};
-                       })),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("targetField", "ref")(mocks);
-                           expectKvdbGetValue("dbname", "key", R"("notObject")", nullptr)(mocks);
-                           return None {};
-                       })),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("targetField", "ref")(mocks);
-                           expectKvdbGetValue("dbname", "key", R"({})", nullptr)(mocks);
-                           return None {};
-                       })),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("targetField", "ref")(mocks);
-                           expectKvdbGetValue("dbname", "key", R"({"": "emptyKey"})", nullptr)(mocks);
-                           return None {};
-                       })),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("targetField", "ref")(mocks);
-                           expectKvdbGetValue("dbname", "key", R"({"-00001": "value"})", nullptr)(mocks);
-                           return None {};
-                       })),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("targetField", "ref")(mocks);
-                           expectKvdbGetValue("dbname", "key", R"({"notNumber": "value"})", nullptr)(mocks);
-                           return None {};
-                       })),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           auto maxDigits = std::to_string(std::numeric_limits<uint64_t>::max());
-                           maxDigits += "1";
-                           auto value = fmt::format(R"({{"{}": "value"}})", maxDigits);
-                           customRefExpected("targetField", "ref")(mocks);
-                           expectKvdbGetValue("dbname", "key", value, nullptr)(mocks);
-                           return None {};
-                       })),
-        TransformT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("targetField", "ref")(mocks);
-                           expectKvdbGetValue("dbname", "key", R"({"00001": "heterogeneus", "00002": 2})", nullptr)(
-                               mocks);
-                           return None {};
-                       }))),
-    testNameFormatter<TransformBuilderTest>("KVDB"));
+        TransformDepsT({}, getTrBuilder(getOpBuilderHelperKVDBDecodeBitmask), FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")")}, getTrBuilder(getOpBuilderHelperKVDBDecodeBitmask), FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")")},
+                       getTrBuilder(getOpBuilderHelperKVDBDecodeBitmask),
+                       FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
+                       getTrBuilderExpectHandler(getOpBuilderHelperKVDBDecodeBitmask,
+                                                 "dbname",
+                                                 expectKvdbGetValue("key", R"({"001":"val1"})")),
+                       SUCCESS(customRefExpected("targetField", "ref"))),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
+                       getTrBuilderExpectHandler(getOpBuilderHelperKVDBDecodeBitmask,
+                                                 "dbname",
+                                                 expectKvdbGetValue("key", R"({"001":"val1"})")),
+                       SUCCESS(
+                           [](const BuildersMocks& mocks)
+                           {
+                               jTypeRefExpected("targetField", json::Json::Type::String)(mocks);
+                               EXPECT_CALL(*mocks.schema, isArray(DotPath("targetField")))
+                                   .WillOnce(testing::Return(true));
+                               EXPECT_CALL(*mocks.schema, hasField(DotPath("ref"))).WillOnce(testing::Return(false));
+                               return None {};
+                           })),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
+                       getTrBuilderExpectHandler(getOpBuilderHelperKVDBDecodeBitmask,
+                                                 "dbname",
+                                                 expectKvdbGetValue("key", R"({"001":"val1"})")),
+                       SUCCESS(
+                           [](const BuildersMocks& mocks)
+                           {
+                               EXPECT_CALL(*mocks.schema, hasField(DotPath("targetField")))
+                                   .WillOnce(testing::Return(false));
+                               jTypeRefExpected("ref", json::Json::Type::String)(mocks);
+                               return None {};
+                           })),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"("other")")},
+                       getTrBuilder(getOpBuilderHelperKVDBDecodeBitmask),
+                       FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeRef("ref"), makeRef("ref")},
+                       getTrBuilder(getOpBuilderHelperKVDBDecodeBitmask),
+                       FAILURE()),
+        TransformDepsT({makeRef("ref"), makeValue(R"("key")"), makeRef("ref")},
+                       getTrBuilder(getOpBuilderHelperKVDBDecodeBitmask),
+                       FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref"), makeValue(R"("other")")},
+                       getTrBuilder(getOpBuilderHelperKVDBDecodeBitmask),
+                       FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref"), makeRef("ref")},
+                       getTrBuilder(getOpBuilderHelperKVDBDecodeBitmask),
+                       FAILURE()),
+        TransformDepsT({makeValue(R"(1)"), makeValue(R"("key")"), makeRef("ref")},
+                       getTrBuilder(getOpBuilderHelperKVDBDecodeBitmask),
+                       FAILURE()),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"(1)"), makeRef("ref")},
+                       getTrBuilder(getOpBuilderHelperKVDBDecodeBitmask),
+                       FAILURE()),
+        TransformDepsT(
+            {makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
+            getTrBuilder(getOpBuilderHelperKVDBDecodeBitmask),
+            FAILURE(
+                [](const BuildersMocks& mocks)
+                {
+                    EXPECT_CALL(*mocks.ctx, schema()).Times(testing::AtLeast(1));
+                    EXPECT_CALL(*mocks.schema, hasField(DotPath("targetField"))).WillOnce(testing::Return(true));
+                    EXPECT_CALL(*mocks.schema, isArray(DotPath("targetField"))).WillOnce(testing::Return(false));
+                    return None {};
+                })),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
+                       getTrBuilder(getOpBuilderHelperKVDBDecodeBitmask),
+                       FAILURE(
+                           [](const BuildersMocks& mocks)
+                           {
+                               jTypeRefExpected("targetField", json::Json::Type::Number)(mocks);
+                               EXPECT_CALL(*mocks.schema, isArray(DotPath("targetField")))
+                                   .WillOnce(testing::Return(true));
+                               return None {};
+                           })),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
+                       getTrBuilder(getOpBuilderHelperKVDBDecodeBitmask),
+                       FAILURE(
+                           [](const BuildersMocks& mocks)
+                           {
+                               jTypeRefExpected("ref", json::Json::Type::Boolean)(mocks);
+                               EXPECT_CALL(*mocks.schema, hasField(DotPath("targetField")))
+                                   .WillOnce(testing::Return(false));
+                               return None {};
+                           })),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
+                       getTrBuilderExpectHandlerError(getOpBuilderHelperKVDBDecodeBitmask, "dbname"),
+                       FAILURE(
+                           [](const BuildersMocks& mocks)
+                           {
+                               customRefExpected("targetField", "ref")(mocks);
+                               return None {};
+                           })),
+        TransformDepsT(
+            {makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
+            getTrBuilderExpectHandler(getOpBuilderHelperKVDBDecodeBitmask, "dbname", expectKvdbGetError("key")),
+            FAILURE(customRefExpected("targetField", "ref"))),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
+                       getTrBuilderExpectHandler(getOpBuilderHelperKVDBDecodeBitmask,
+                                                 "dbname",
+                                                 expectKvdbGetValue("key", R"("malformed"Json")")),
+                       FAILURE(customRefExpected("targetField", "ref"))),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
+                       getTrBuilderExpectHandler(
+                           getOpBuilderHelperKVDBDecodeBitmask, "dbname", expectKvdbGetValue("key", R"("notObject")")),
+                       FAILURE(customRefExpected("targetField", "ref"))),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
+                       getTrBuilderExpectHandler(
+                           getOpBuilderHelperKVDBDecodeBitmask, "dbname", expectKvdbGetValue("key", R"({})")),
+                       FAILURE(customRefExpected("targetField", "ref"))),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
+                       getTrBuilderExpectHandler(getOpBuilderHelperKVDBDecodeBitmask,
+                                                 "dbname",
+                                                 expectKvdbGetValue("key", R"({"":"emptyKey"})")),
+                       FAILURE(customRefExpected("targetField", "ref"))),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
+                       getTrBuilderExpectHandler(getOpBuilderHelperKVDBDecodeBitmask,
+                                                 "dbname",
+                                                 expectKvdbGetValue("key", R"({"-0001":"negativeKey"})")),
+                       FAILURE(customRefExpected("targetField", "ref"))),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
+                       getTrBuilderExpectHandler(getOpBuilderHelperKVDBDecodeBitmask,
+                                                 "dbname",
+                                                 expectKvdbGetValue("key", R"({"notNumber":"value"})")),
+                       FAILURE(customRefExpected("targetField", "ref"))),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
+                       getTrBuilderExpectHandler(getOpBuilderHelperKVDBDecodeBitmask,
+                                                 "dbname",
+                                                 [](const std::shared_ptr<MockKVDBHandler>& handler)
+                                                 {
+                                                     auto maxDigits =
+                                                         std::to_string(std::numeric_limits<uint64_t>::max());
+                                                     maxDigits += "1";
+                                                     auto value = fmt::format(R"({{"{}": "value"}})", maxDigits);
+                                                     expectKvdbGetValue("key", value)(handler);
+                                                 }),
+                       FAILURE(customRefExpected("targetField", "ref"))),
+        TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
+                       getTrBuilderExpectHandler(getOpBuilderHelperKVDBDecodeBitmask,
+                                                 "dbname",
+                                                 expectKvdbGetValue("key", R"({"00001": "heterogeneus", "00002": 2})")),
+                       FAILURE(customRefExpected("targetField", "ref")))),
+    testNameFormatter<TransformBuilderWithDepsTest>("KVDB"));
 } // namespace transformbuildtest
 
 namespace transformoperatestest
 {
 INSTANTIATE_TEST_SUITE_P(
     Builders,
-    TransformOperationTest,
+    TransformOperationWithDepsTest,
     testing::Values(
         /*** GET ***/
-        TransformT(R"({})",
-                   getOpBuilderKVDBGet(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeValue(R"("key")")},
-                   SUCCESS(expectKvdbGetValue("dbname", "key", R"("value")", makeEvent(R"({"target": "value"})")))),
-        TransformT(R"({"ref": "key"})",
-                   getOpBuilderKVDBGet(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeRef("ref")},
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("ref")(mocks);
-                           expectKvdbGetValue("dbname", "key", R"("value")", nullptr)(mocks);
-                           return makeEvent(R"({"ref": "key", "target": "value"})");
-                       })),
-        TransformT(R"({})",
-                   getOpBuilderKVDBGet(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeRef("ref")},
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("ref")(mocks);
-                           expectKvdb("dbname")(mocks);
-                           return None {};
-                       })),
-        TransformT(R"({"ref": 1})",
-                   getOpBuilderKVDBGet(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeRef("ref")},
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("ref")(mocks);
-                           expectKvdb("dbname")(mocks);
-                           return None {};
-                       })),
-        TransformT(R"({"ref": "key"})",
-                   getOpBuilderKVDBGet(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeRef("ref")},
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("ref")(mocks);
-                           expectKvdbGetError("dbname", "key")(mocks);
-                           return None {};
-                       })),
-        TransformT(R"({"ref": "key"})",
-                   getOpBuilderKVDBGet(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeRef("ref")},
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("ref")(mocks);
-                           expectKvdbGetValue("dbname", "key", "malformedJsonValue", nullptr)(mocks);
-                           return None {};
-                       })),
+        TransformDepsT(
+            R"({})",
+            getTrBuilderExpectHandler(getOpBuilderKVDBGet, "dbname", expectKvdbGetValue("key", R"("value")")),
+            "target",
+            {makeValue(R"("dbname")"), makeValue(R"("key")")},
+            SUCCESS(makeEvent(R"({"target": "value"})"))),
+        TransformDepsT(
+            R"({"ref": "key"})",
+            getTrBuilderExpectHandler(getOpBuilderKVDBGet, "dbname", expectKvdbGetValue("key", R"("value")")),
+            "target",
+            {makeValue(R"("dbname")"), makeRef("ref")},
+            SUCCESS(
+                [](const BuildersMocks& mocks)
+                {
+                    customRefExpected("ref")(mocks);
+                    return makeEvent(R"({"ref": "key", "target": "value"})");
+                })),
+        TransformDepsT(R"({})",
+                       getTrBuilderExpectHandler(getOpBuilderKVDBGet, "dbname"),
+                       "target",
+                       {makeValue(R"("dbname")"), makeRef("ref")},
+                       FAILURE(customRefExpected("ref"))),
+        TransformDepsT(R"({"ref": 1})",
+                       getTrBuilderExpectHandler(getOpBuilderKVDBGet, "dbname"),
+                       "target",
+                       {makeValue(R"("dbname")"), makeRef("ref")},
+                       FAILURE(customRefExpected("ref"))),
+        TransformDepsT(R"({"ref": "key"})",
+                       getTrBuilderExpectHandler(getOpBuilderKVDBGet, "dbname", expectKvdbGetError("key")),
+                       "target",
+                       {makeValue(R"("dbname")"), makeRef("ref")},
+                       FAILURE(customRefExpected("ref"))),
+        TransformDepsT(
+            R"({"ref": "key"})",
+            getTrBuilderExpectHandler(getOpBuilderKVDBGet, "dbname", expectKvdbGetValue("key", "malformedJsonValue")),
+            "target",
+            {makeValue(R"("dbname")"), makeRef("ref")},
+            FAILURE(customRefExpected("ref"))),
         /*** GET MERGE ***/
-        TransformT(R"({"target": [0, 2]})",
-                   getOpBuilderKVDBGetMerge(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeValue(R"("key")")},
-                   SUCCESS(expectKvdbGetValue("dbname", "key", R"([1, 3])", makeEvent(R"({"target": [0, 2, 1, 3]})")))),
-        TransformT(R"({"target": {"a": 0, "b": 2}, "ref": "key"})",
-                   getOpBuilderKVDBGetMerge(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeRef("ref")},
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("ref")(mocks);
-                           expectKvdbGetValue("dbname", "key", R"({"b": 3, "c": 4})", nullptr)(mocks);
-                           return makeEvent(R"({"target": {"a": 0, "b": 3, "c": 4}, "ref": "key"})");
-                       })),
-        TransformT(R"({})",
-                   getOpBuilderKVDBGetMerge(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeValue(R"("key")")},
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           expectKvdbGetValue("dbname", "key", R"([1, 3])", nullptr)(mocks);
-                           return None {};
-                       })),
-        TransformT(R"({"target": []})",
-                   getOpBuilderKVDBGetMerge(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeValue(R"("key")")},
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           expectKvdbGetValue("dbname", "key", R"({"a": 0})", nullptr)(mocks);
-                           return None {};
-                       })),
-        TransformT(R"({"target": "value"})",
-                   getOpBuilderKVDBGetMerge(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeValue(R"("key")")},
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           expectKvdbGetValue("dbname", "key", R"("othervalue")", nullptr)(mocks);
-                           return None {};
-                       })),
+        TransformDepsT(
+            R"({"target": [0, 2]})",
+            getTrBuilderExpectHandler(getOpBuilderKVDBGetMerge, "dbname", expectKvdbGetValue("key", R"([1, 3])")),
+            "target",
+            {makeValue(R"("dbname")"), makeValue(R"("key")")},
+            SUCCESS(makeEvent(R"({"target": [0, 2, 1, 3]})"))),
+        TransformDepsT(R"({"target": {"a": 0, "b": 2}, "ref": "key"})",
+                       getTrBuilderExpectHandler(
+                           getOpBuilderKVDBGetMerge, "dbname", expectKvdbGetValue("key", R"({"b": 3, "c": 4})")),
+                       "target",
+                       {makeValue(R"("dbname")"), makeRef("ref")},
+                       SUCCESS(
+                           [](const BuildersMocks& mocks)
+                           {
+                               customRefExpected("ref")(mocks);
+                               return makeEvent(R"({"target": {"a": 0, "b": 3, "c": 4}, "ref": "key"})");
+                           })),
+        TransformDepsT(
+            R"({})",
+            getTrBuilderExpectHandler(getOpBuilderKVDBGetMerge, "dbname", expectKvdbGetValue("key", R"([1, 3])")),
+            "target",
+            {makeValue(R"("dbname")"), makeValue(R"("key")")},
+            FAILURE()),
+        TransformDepsT(
+            R"({"target": []})",
+            getTrBuilderExpectHandler(getOpBuilderKVDBGetMerge, "dbname", expectKvdbGetValue("key", R"({"a": 0})")),
+            "target",
+            {makeValue(R"("dbname")"), makeValue(R"("key")")},
+            FAILURE()),
+        TransformDepsT(
+            R"({"target": "value"})",
+            getTrBuilderExpectHandler(getOpBuilderKVDBGetMerge, "dbname", expectKvdbGetValue("key", R"("othervalue")")),
+            "target",
+            {makeValue(R"("dbname")"), makeValue(R"("key")")},
+            FAILURE()),
         /*** SET ***/
-        TransformT(R"({})",
-                   getOpBuilderKVDBSet(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"("value")")},
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           expectKvdb("dbname")(mocks);
-                           expectKvdbSet("key", R"("value")")(mocks);
-                           return makeEvent(R"({"target": true})");
-                       })),
-        TransformT(R"({"ref": "key"})",
-                   getOpBuilderKVDBSet(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeRef("ref"), makeValue(R"("value")")},
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("ref")(mocks);
-                           expectKvdb("dbname")(mocks);
-                           expectKvdbSet("key", R"("value")")(mocks);
-                           return makeEvent(R"({"ref": "key", "target": true})");
-                       })),
-        TransformT(R"({"ref": "value"})",
-                   getOpBuilderKVDBSet(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           expectKvdb("dbname")(mocks);
-                           expectKvdbSet("key", R"("value")")(mocks);
-                           return makeEvent(R"({"ref": "value", "target": true})");
-                       })),
-        TransformT(R"({"keyRef": "key", "valueRef": "value"})",
-                   getOpBuilderKVDBSet(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeRef("keyRef"), makeRef("valueRef")},
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("keyRef")(mocks);
-                           expectKvdb("dbname")(mocks);
-                           expectKvdbSet("key", R"("value")")(mocks);
-                           return makeEvent(R"({"keyRef": "key", "valueRef": "value", "target": true})");
-                       })),
-        TransformT(R"({})",
-                   getOpBuilderKVDBSet(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeRef("keyRef"), makeValue(R"("value")")},
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("keyRef")(mocks);
-                           expectKvdb("dbname")(mocks);
-                           return None {};
-                       })),
-        TransformT(R"({"ref": 1})",
-                   getOpBuilderKVDBSet(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeRef("ref"), makeValue(R"("value")")},
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("ref")(mocks);
-                           expectKvdb("dbname")(mocks);
-                           return None {};
-                       })),
-        TransformT(R"({})",
-                   getOpBuilderKVDBSet(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
-                   FAILURE(expectKvdb("dbname"))),
-        TransformT(R"({"ref": "value"})",
-                   getOpBuilderKVDBSet(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           expectKvdb("dbname")(mocks);
-                           expectKvdbSetError("key", R"("value")")(mocks);
-                           return None {};
-                       })),
-        TransformT(R"({})",
-                   getOpBuilderKVDBSet(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"("value")")},
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           expectKvdb("dbname")(mocks);
-                           expectKvdbSetError("key", R"("value")")(mocks);
-                           return None {};
-                       })),
+        TransformDepsT(R"({})",
+                       getTrBuilderExpectHandler(getOpBuilderKVDBSet, "dbname", expectKvdbSet("key", R"("value")")),
+                       "target",
+                       {makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"("value")")},
+                       SUCCESS(makeEvent(R"({"target": true})"))),
+        TransformDepsT(R"({"ref": "key"})",
+                       getTrBuilderExpectHandler(getOpBuilderKVDBSet, "dbname", expectKvdbSet("key", R"("value")")),
+                       "target",
+                       {makeValue(R"("dbname")"), makeRef("ref"), makeValue(R"("value")")},
+                       SUCCESS(
+                           [](const BuildersMocks& mocks)
+                           {
+                               customRefExpected("ref")(mocks);
+                               return makeEvent(R"({"ref": "key", "target": true})");
+                           })),
+        TransformDepsT(R"({"ref": "value"})",
+                       getTrBuilderExpectHandler(getOpBuilderKVDBSet, "dbname", expectKvdbSet("key", R"("value")")),
+                       "target",
+                       {makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
+                       SUCCESS(makeEvent(R"({"ref": "value", "target": true})"))),
+        TransformDepsT(R"({"keyRef": "key", "valueRef": "value"})",
+                       getTrBuilderExpectHandler(getOpBuilderKVDBSet, "dbname", expectKvdbSet("key", R"("value")")),
+                       "target",
+                       {makeValue(R"("dbname")"), makeRef("keyRef"), makeRef("valueRef")},
+                       SUCCESS(
+                           [](const BuildersMocks& mocks)
+                           {
+                               customRefExpected("keyRef")(mocks);
+                               return makeEvent(R"({"keyRef": "key", "valueRef": "value", "target": true})");
+                           })),
+        TransformDepsT(R"({})",
+                       getTrBuilderExpectHandler(getOpBuilderKVDBSet, "dbname"),
+                       "target",
+                       {makeValue(R"("dbname")"), makeRef("keyRef"), makeValue(R"("value")")},
+                       FAILURE(customRefExpected("keyRef"))),
+        TransformDepsT(R"({"ref": 1})",
+                       getTrBuilderExpectHandler(getOpBuilderKVDBSet, "dbname"),
+                       "target",
+                       {makeValue(R"("dbname")"), makeRef("ref"), makeValue(R"("value")")},
+                       FAILURE(customRefExpected("ref"))),
+        TransformDepsT(R"({})",
+                       getTrBuilderExpectHandler(getOpBuilderKVDBSet, "dbname"),
+                       "target",
+                       {makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
+                       FAILURE()),
+        TransformDepsT(
+            R"({"ref": "value"})",
+            getTrBuilderExpectHandler(getOpBuilderKVDBSet, "dbname", expectKvdbSetError("key", R"("value")")),
+            "target",
+            {makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
+            FAILURE()),
+        TransformDepsT(
+            R"({})",
+            getTrBuilderExpectHandler(getOpBuilderKVDBSet, "dbname", expectKvdbSetError("key", R"("value")")),
+            "target",
+            {makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"("value")")},
+            FAILURE()),
         /*** DELETE ***/
-        TransformT(R"({})",
-                   getOpBuilderKVDBDelete(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeValue(R"("key")")},
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           expectKvdb("dbname")(mocks);
-                           expectKvdbDelete("key")(mocks);
-                           return makeEvent(R"({"target": true})");
-                       })),
-        TransformT(R"({"ref": "key"})",
-                   getOpBuilderKVDBDelete(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeRef("ref")},
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("ref")(mocks);
-                           expectKvdb("dbname")(mocks);
-                           expectKvdbDelete("key")(mocks);
-                           return makeEvent(R"({"ref": "key", "target": true})");
-                       })),
-        TransformT(R"({})",
-                   getOpBuilderKVDBDelete(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeRef("ref")},
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("ref")(mocks);
-                           expectKvdb("dbname")(mocks);
-                           return None {};
-                       })),
-        TransformT(R"({"ref": 1})",
-                   getOpBuilderKVDBDelete(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeRef("ref")},
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("ref")(mocks);
-                           expectKvdb("dbname")(mocks);
-                           return None {};
-                       })),
-        TransformT(R"({"ref": "key"})",
-                   getOpBuilderKVDBDelete(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeRef("ref")},
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("ref")(mocks);
-                           expectKvdb("dbname")(mocks);
-                           expectKvdbDeleteError("key")(mocks);
-                           return None {};
-                       })),
+        TransformDepsT(R"({})",
+                       getTrBuilderExpectHandler(getOpBuilderKVDBDelete, "dbname", expectKvdbDelete("key")),
+                       "target",
+                       {makeValue(R"("dbname")"), makeValue(R"("key")")},
+                       SUCCESS(makeEvent(R"({"target": true})"))),
+        TransformDepsT(R"({"ref": "key"})",
+                       getTrBuilderExpectHandler(getOpBuilderKVDBDelete, "dbname", expectKvdbDelete("key")),
+                       "target",
+                       {makeValue(R"("dbname")"), makeRef("ref")},
+                       SUCCESS(
+                           [](const BuildersMocks& mocks)
+                           {
+                               customRefExpected("ref")(mocks);
+                               return makeEvent(R"({"ref": "key", "target": true})");
+                           })),
+        TransformDepsT(R"({})",
+                       getTrBuilderExpectHandler(getOpBuilderKVDBDelete, "dbname"),
+                       "target",
+                       {makeValue(R"("dbname")"), makeRef("ref")},
+                       FAILURE(customRefExpected("ref"))),
+        TransformDepsT(R"({"ref": 1})",
+                       getTrBuilderExpectHandler(getOpBuilderKVDBDelete, "dbname"),
+                       "target",
+                       {makeValue(R"("dbname")"), makeRef("ref")},
+                       FAILURE(customRefExpected("ref"))),
+        TransformDepsT(R"({"ref": "key"})",
+                       getTrBuilderExpectHandler(getOpBuilderKVDBDelete, "dbname", expectKvdbDeleteError("key")),
+                       "target",
+                       {makeValue(R"("dbname")"), makeRef("ref")},
+                       FAILURE(customRefExpected("ref"))),
         /*** GET ARRAY ***/
-        TransformT(R"({})",
-                   getOpBuilderKVDBGetArray(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeValue(R"(["k0", "k1"])")},
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           expectKvdbGetValue("dbname", "k0", R"("v0")", nullptr)(mocks);
-                           expectKvdbGetValue("dbname", "k1", R"("v1")", nullptr)(mocks);
-                           return makeEvent(R"({"target": ["v0", "v1"]})");
-                       })),
-        TransformT(R"({"target": ["v2"]})",
-                   getOpBuilderKVDBGetArray(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeValue(R"(["k0", "k1"])")},
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           expectKvdbGetValue("dbname", "k0", R"("v0")", nullptr)(mocks);
-                           expectKvdbGetValue("dbname", "k1", R"("v1")", nullptr)(mocks);
-                           return makeEvent(R"({"target": ["v2", "v0", "v1"]})");
-                       })),
-        TransformT(R"({"ref": ["k0", "k1"]})",
-                   getOpBuilderKVDBGetArray(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeRef("ref")},
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("ref")(mocks);
-                           expectKvdbGetValue("dbname", "k0", R"("v0")", nullptr)(mocks);
-                           expectKvdbGetValue("dbname", "k1", R"("v1")", nullptr)(mocks);
-                           return makeEvent(R"({"ref": ["k0", "k1"], "target": ["v0", "v1"]})");
-                       })),
-        TransformT(R"({"target": ["v2"], "ref": ["k0", "k1"]})",
-                   getOpBuilderKVDBGetArray(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeRef("ref")},
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("ref")(mocks);
-                           expectKvdbGetValue("dbname", "k0", R"("v0")", nullptr)(mocks);
-                           expectKvdbGetValue("dbname", "k1", R"("v1")", nullptr)(mocks);
-                           return makeEvent(R"({"ref": ["k0", "k1"], "target": ["v2", "v0", "v1"]})");
-                       })),
-        TransformT(R"({})",
-                   getOpBuilderKVDBGetArray(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeRef("ref")},
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("ref")(mocks);
-                           expectKvdb("dbname")(mocks);
-                           return None {};
-                       })),
-        TransformT(R"({"ref": "notArray"})",
-                   getOpBuilderKVDBGetArray(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeRef("ref")},
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("ref")(mocks);
-                           expectKvdb("dbname")(mocks);
-                           return None {};
-                       })),
-        TransformT(R"({"ref": ["k0", 1]})",
-                   getOpBuilderKVDBGetArray(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeRef("ref")},
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("ref")(mocks);
-                           expectKvdb("dbname")(mocks);
-                           return None {};
-                       })),
-        TransformT(R"({})",
-                   getOpBuilderKVDBGetArray(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeValue(R"(["k0", "k1"])")},
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           expectKvdb("dbname")(mocks);
-                           expectKvdbGetValue("dbname", "k0", R"("v0")", nullptr)(mocks);
-                           expectKvdbGetError("dbname", "k1")(mocks);
-                           return None {};
-                       })),
-        TransformT(R"({})",
-                   getOpBuilderKVDBGetArray(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeValue(R"(["k0", "k1"])")},
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           expectKvdb("dbname")(mocks);
-                           expectKvdbGetValue("dbname", "k0", R"("v0")", nullptr)(mocks);
-                           expectKvdbGetValue("dbname", "k1", R"("malformed"json")", nullptr)(mocks);
-                           return None {};
-                       })),
-        TransformT(R"({})",
-                   getOpBuilderKVDBGetArray(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeValue(R"(["k0", "k1"])")},
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           expectKvdb("dbname")(mocks);
-                           expectKvdbGetValue("dbname", "k0", R"(1)", nullptr)(mocks);
-                           expectKvdbGetValue("dbname", "k1", R"("nonHomogeneus")", nullptr)(mocks);
-                           return None {};
-                       })),
+        TransformDepsT(R"({})",
+                       getTrBuilderExpectHandler(getOpBuilderKVDBGetArray,
+                                                 "dbname",
+                                                 [](const std::shared_ptr<MockKVDBHandler>& handler)
+                                                 {
+                                                     expectKvdbGetValue("k0", R"("v0")")(handler);
+                                                     expectKvdbGetValue("k1", R"("v1")")(handler);
+                                                 }),
+                       "target",
+                       {makeValue(R"("dbname")"), makeValue(R"(["k0", "k1"])")},
+                       SUCCESS(makeEvent(R"({"target": ["v0", "v1"]})"))),
+        TransformDepsT(R"({"target": ["v2"]})",
+                       getTrBuilderExpectHandler(getOpBuilderKVDBGetArray,
+                                                 "dbname",
+                                                 [](const std::shared_ptr<MockKVDBHandler>& handler)
+                                                 {
+                                                     expectKvdbGetValue("k0", R"("v0")")(handler);
+                                                     expectKvdbGetValue("k1", R"("v1")")(handler);
+                                                 }),
+                       "target",
+                       {makeValue(R"("dbname")"), makeValue(R"(["k0", "k1"])")},
+                       SUCCESS(makeEvent(R"({"target": ["v2", "v0", "v1"]})"))),
+        TransformDepsT(R"({"ref": ["k0", "k1"]})",
+                       getTrBuilderExpectHandler(getOpBuilderKVDBGetArray,
+                                                 "dbname",
+                                                 [](const std::shared_ptr<MockKVDBHandler>& handler)
+                                                 {
+                                                     expectKvdbGetValue("k0", R"("v0")")(handler);
+                                                     expectKvdbGetValue("k1", R"("v1")")(handler);
+                                                 }),
+                       "target",
+                       {makeValue(R"("dbname")"), makeRef("ref")},
+                       SUCCESS(
+                           [](const BuildersMocks& mocks)
+                           {
+                               customRefExpected("ref")(mocks);
+                               return makeEvent(R"({"ref": ["k0", "k1"], "target": ["v0", "v1"]})");
+                           })),
+        TransformDepsT(R"({"target": ["v2"], "ref": ["k0", "k1"]})",
+                       getTrBuilderExpectHandler(getOpBuilderKVDBGetArray,
+                                                 "dbname",
+                                                 [](const std::shared_ptr<MockKVDBHandler>& handler)
+                                                 {
+                                                     expectKvdbGetValue("k0", R"("v0")")(handler);
+                                                     expectKvdbGetValue("k1", R"("v1")")(handler);
+                                                 }),
+                       "target",
+                       {makeValue(R"("dbname")"), makeRef("ref")},
+                       SUCCESS(
+                           [](const BuildersMocks& mocks)
+                           {
+                               customRefExpected("ref")(mocks);
+                               return makeEvent(R"({"ref": ["k0", "k1"], "target": ["v2", "v0", "v1"]})");
+                           })),
+        TransformDepsT(R"({})",
+                       getTrBuilderExpectHandler(getOpBuilderKVDBGetArray, "dbname"),
+                       "target",
+                       {makeValue(R"("dbname")"), makeRef("ref")},
+                       FAILURE(customRefExpected("ref"))),
+        TransformDepsT(R"({"ref": "notArray"})",
+                       getTrBuilderExpectHandler(getOpBuilderKVDBGetArray, "dbname"),
+                       "target",
+                       {makeValue(R"("dbname")"), makeRef("ref")},
+                       FAILURE(customRefExpected("ref"))),
+        TransformDepsT(R"({"ref": ["k0", 1]})",
+                       getTrBuilderExpectHandler(getOpBuilderKVDBGetArray, "dbname"),
+                       "target",
+                       {makeValue(R"("dbname")"), makeRef("ref")},
+                       FAILURE(customRefExpected("ref"))),
+        TransformDepsT(R"({})",
+                       getTrBuilderExpectHandler(getOpBuilderKVDBGetArray,
+                                                 "dbname",
+                                                 [](const std::shared_ptr<MockKVDBHandler>& handler)
+                                                 {
+                                                     expectKvdbGetValue("k0", R"("v0")")(handler);
+                                                     expectKvdbGetError("k1")(handler);
+                                                 }),
+                       "target",
+                       {makeValue(R"("dbname")"), makeValue(R"(["k0", "k1"])")},
+                       FAILURE()),
+        TransformDepsT(R"({})",
+                       getTrBuilderExpectHandler(getOpBuilderKVDBGetArray,
+                                                 "dbname",
+                                                 [](const std::shared_ptr<MockKVDBHandler>& handler)
+                                                 {
+                                                     expectKvdbGetValue("k0", R"("v0")")(handler);
+                                                     expectKvdbGetValue("k1", R"("malformed"json")")(handler);
+                                                 }),
+                       "target",
+                       {makeValue(R"("dbname")"), makeValue(R"(["k0", "k1"])")},
+                       FAILURE()),
+        TransformDepsT(R"({})",
+                       getTrBuilderExpectHandler(getOpBuilderKVDBGetArray,
+                                                 "dbname",
+                                                 [](const std::shared_ptr<MockKVDBHandler>& handler)
+                                                 {
+                                                     expectKvdbGetValue("k0", R"(1)")(handler);
+                                                     expectKvdbGetValue("k1", R"("nonHomogeneus")")(handler);
+                                                 }),
+                       "target",
+                       {makeValue(R"("dbname")"), makeValue(R"(["k0", "k1"])")},
+                       FAILURE()),
         /*** BITMASK TO TABLE ***/
-        TransformT(R"({"ref": "0x1"})",
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("target", "ref")(mocks);
-                           expectKvdb("dbname")(mocks);
-                           expectKvdbGetValue("dbname", "key", R"({"0": "val1"})", nullptr)(mocks);
-                           return makeEvent(R"({"ref": "0x1", "target": ["val1"]})");
-                       })),
-        TransformT(R"({"ref": "0x2"})",
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("target", "ref")(mocks);
-                           expectKvdb("dbname")(mocks);
-                           expectKvdbGetValue("dbname", "key", R"({"1": "val1"})", nullptr)(mocks);
-                           return makeEvent(R"({"ref": "0x2", "target": ["val1"]})");
-                       })),
-        TransformT(R"({"ref": "0x3"})",
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("target", "ref")(mocks);
-                           expectKvdb("dbname")(mocks);
-                           expectKvdbGetValue("dbname", "key", R"({"0": "val1", "1": "val2"})", nullptr)(mocks);
-                           return makeEvent(R"({"ref": "0x3", "target": ["val1", "val2"]})");
-                       })),
-        TransformT(R"({})",
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("target", "ref")(mocks);
-                           expectKvdb("dbname")(mocks);
-                           expectKvdbGetValue("dbname", "key", R"({"0": "val1"})", nullptr)(mocks);
-                           return None {};
-                       })),
-        TransformT(R"({"ref": 1})",
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("target", "ref")(mocks);
-                           expectKvdb("dbname")(mocks);
-                           expectKvdbGetValue("dbname", "key", R"({"0": "val1"})", nullptr)(mocks);
-                           return None {};
-                       })),
-        TransformT(R"({"ref": "nothexa"})",
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("target", "ref")(mocks);
-                           expectKvdb("dbname")(mocks);
-                           expectKvdbGetValue("dbname", "key", R"({"0": "val1"})", nullptr)(mocks);
-                           return None {};
-                       })),
-        TransformT(fmt::format(R"({{"ref": "0x{}"}})", std::string(std::numeric_limits<uint64_t>::digits + 1, '1')),
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("target", "ref")(mocks);
-                           expectKvdb("dbname")(mocks);
-                           expectKvdbGetValue("dbname", "key", R"({"0": "val1"})", nullptr)(mocks);
-                           return None {};
-                       })),
-        TransformT(R"({"ref": "0x1"})",
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
-                   FAILURE(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("target", "ref")(mocks);
-                           expectKvdb("dbname")(mocks);
-                           expectKvdbGetValue("dbname", "key", R"({"1": "val1"})", nullptr)(mocks);
-                           return None {};
-                       })),
-        TransformT(R"({"ref": "0x3"})",
-                   getOpBuilderHelperKVDBDecodeBitmask(kvdbMock, SCOPE),
-                   "target",
-                   {makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
-                   SUCCESS(
-                       [](const BuildersMocks& mocks)
-                       {
-                           customRefExpected("target", "ref")(mocks);
-                           expectKvdb("dbname")(mocks);
-                           expectKvdbGetValue("dbname", "key", R"({"0": "val1"})", nullptr)(mocks);
-                           return makeEvent(R"({"ref": "0x3", "target": ["val1"]})");
-                       }))
-
-            ),
-    testNameFormatter<TransformOperationTest>("KVDB"));
+        TransformDepsT(R"({"ref": "0x1"})",
+                       getTrBuilderExpectHandler(getOpBuilderHelperKVDBDecodeBitmask,
+                                                 "dbname",
+                                                 expectKvdbGetValue("key", R"({"0": "val1"})")),
+                       "target",
+                       {makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
+                       SUCCESS(
+                           [](const BuildersMocks& mocks)
+                           {
+                               customRefExpected("target", "ref")(mocks);
+                               return makeEvent(R"({"ref": "0x1", "target": ["val1"]})");
+                           })),
+        TransformDepsT(R"({"ref": "0x2"})",
+                       getTrBuilderExpectHandler(getOpBuilderHelperKVDBDecodeBitmask,
+                                                 "dbname",
+                                                 expectKvdbGetValue("key", R"({"1": "val1"})")),
+                       "target",
+                       {makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
+                       SUCCESS(
+                           [](const BuildersMocks& mocks)
+                           {
+                               customRefExpected("target", "ref")(mocks);
+                               return makeEvent(R"({"ref": "0x2", "target": ["val1"]})");
+                           })),
+        TransformDepsT(R"({"ref": "0x3"})",
+                       getTrBuilderExpectHandler(getOpBuilderHelperKVDBDecodeBitmask,
+                                                 "dbname",
+                                                 expectKvdbGetValue("key", R"({"0": "val1", "1": "val2"})")),
+                       "target",
+                       {makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
+                       SUCCESS(
+                           [](const BuildersMocks& mocks)
+                           {
+                               customRefExpected("target", "ref")(mocks);
+                               return makeEvent(R"({"ref": "0x3", "target": ["val1", "val2"]})");
+                           })),
+        TransformDepsT(R"({})",
+                       getTrBuilderExpectHandler(getOpBuilderHelperKVDBDecodeBitmask,
+                                                 "dbname",
+                                                 expectKvdbGetValue("key", R"({"0": "val1"})")),
+                       "target",
+                       {makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
+                       FAILURE(customRefExpected("target", "ref"))),
+        TransformDepsT(R"({"ref": 1})",
+                       getTrBuilderExpectHandler(getOpBuilderHelperKVDBDecodeBitmask,
+                                                 "dbname",
+                                                 expectKvdbGetValue("key", R"({"0": "val1"})")),
+                       "target",
+                       {makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
+                       FAILURE(customRefExpected("target", "ref"))),
+        TransformDepsT(R"({"ref": "nothexa"})",
+                       getTrBuilderExpectHandler(getOpBuilderHelperKVDBDecodeBitmask,
+                                                 "dbname",
+                                                 expectKvdbGetValue("key", R"({"0": "val1"})")),
+                       "target",
+                       {makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
+                       FAILURE(customRefExpected("target", "ref"))),
+        TransformDepsT(fmt::format(R"({{"ref": "0x{}"}})", std::string(std::numeric_limits<uint64_t>::digits + 1, '1')),
+                       getTrBuilderExpectHandler(getOpBuilderHelperKVDBDecodeBitmask,
+                                                 "dbname",
+                                                 expectKvdbGetValue("key", R"({"0": "val1"})")),
+                       "target",
+                       {makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
+                       FAILURE(customRefExpected("target", "ref"))),
+        TransformDepsT(R"({"ref": "0x1"})",
+                       getTrBuilderExpectHandler(getOpBuilderHelperKVDBDecodeBitmask,
+                                                 "dbname",
+                                                 expectKvdbGetValue("key", R"({"1": "val1"})")),
+                       "target",
+                       {makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
+                       FAILURE(customRefExpected("target", "ref"))),
+        TransformDepsT(R"({"ref": "0x3"})",
+                       getTrBuilderExpectHandler(getOpBuilderHelperKVDBDecodeBitmask,
+                                                 "dbname",
+                                                 expectKvdbGetValue("key", R"({"0": "val1"})")),
+                       "target",
+                       {makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
+                       SUCCESS(
+                           [](const BuildersMocks& mocks)
+                           {
+                               customRefExpected("target", "ref")(mocks);
+                               return makeEvent(R"({"ref": "0x3", "target": ["val1"]})");
+                           }))),
+    testNameFormatter<TransformOperationWithDepsTest>("KVDB"));
 } // namespace transformoperatestest
