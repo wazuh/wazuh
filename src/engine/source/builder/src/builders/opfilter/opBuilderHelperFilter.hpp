@@ -314,11 +314,27 @@ FilterOp opBuilderHelperRegexNotMatch(const Reference& targetField,
  * @param rawParameters vector of parameters as present in the raw definition
  * @param definitions handler with definitions
  * @return Expression The lifter with the `ip_cidr_match` filter.
- * @throw  std::runtime_error if the parameter is not a cidr.
  */
 FilterOp opBuilderHelperIPCIDR(const Reference& targetField,
                                const std::vector<OpArg>& opArgs,
                                const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
+ * @brief Create `is_public_ip` helper function that filters events if the field
+ * is a public IP address.
+ *
+ * This helper filters events if the field is a public IP address IPv4 or if the field is a
+ * IPv6 address then a filter is created to check if the field is not a special IPv6 address (like loopback, link-local,
+ * etc.).
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
+ * @param definitions handler with definitions
+ * @return FilterOp The lifter with the `is_public_ip` filter.
+ */
+FilterOp opBuilderHelperPublicIP(const Reference& targetField,
+                                 const std::vector<OpArg>& opArgs,
+                                 const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
  * @brief Create `array_contains` helper function that filters events if the field
