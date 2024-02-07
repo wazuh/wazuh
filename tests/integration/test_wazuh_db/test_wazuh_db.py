@@ -185,7 +185,7 @@ def test_wazuh_db_messages_agent(daemons_handler_module, clean_databases, clean_
         command = stage['input']
         expected_output = stage['output']
 
-        response = query_wdb(command, False)
+        response = query_wdb(command)
 
         if 'use_regex' in stage and stage['use_regex'] == 'yes':
             match = True if regex_match(expected_output, response) else False
@@ -244,7 +244,7 @@ def test_wazuh_db_messages_global(connect_to_sockets_module, daemons_handler_mod
         command = stage['input']
         expected_output = stage['output']
 
-        response = query_wdb(command, False)
+        response = query_wdb(command)
 
         if 'use_regex' in stage and stage['use_regex'] == 'yes':
             match = True if regex_match(expected_output, response) else False
