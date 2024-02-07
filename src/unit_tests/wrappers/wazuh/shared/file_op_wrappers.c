@@ -98,9 +98,13 @@ void expect_w_uncompress_gzfile(const char * gzfilesrc, const char * gzfiledst, 
 }
 
 FILE *__wrap_wfopen(const char * __filename, const char * __modes) {
-    check_expected(__filename);
-    check_expected(__modes);
-    return mock_type(FILE *);
+    if(test_mode) {
+        check_expected(__filename);
+        check_expected(__modes);
+        return mock_type(FILE *);
+    } else {
+        return wfopen(path, mode);
+    }
 }
 
 void expect_wfopen(const char * __filename, const char * __modes, FILE *ret) {

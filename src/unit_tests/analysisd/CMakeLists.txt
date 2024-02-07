@@ -56,7 +56,7 @@ list(APPEND analysisd_flags "-Wl,--wrap,OS_SendUnix -Wl,--wrap,wdb_get_agent_inf
                              ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND analysisd_names "test_log")
-list(APPEND analysisd_flags "-Wl,--wrap,fprintf,-wrap,fflush,--wrap,fclose,--wrap,fgets,--wrap,fgetpos,--wrap,fopen \
+list(APPEND analysisd_flags "-Wl,--wrap,fprintf,-wrap,fflush,--wrap,fclose,--wrap,fgets,--wrap,fgetpos,--wrap,wfopen \
                              -Wl,--wrap,fread,--wrap,fseek,--wrap,fwrite,--wrap,remove,--wrap,fgetc,--wrap,fputc \
                              -Wl,--wrap,ctime_r")
 
