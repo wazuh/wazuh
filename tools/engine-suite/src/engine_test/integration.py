@@ -151,7 +151,7 @@ class Integration(CrudIntegration):
         return response
 
     def response_to_yml(self, response):
-        response = yaml.dump(response, sort_keys=True, Dumper=EngineDumper)
+        response = yaml.dump(response, sort_keys=True, Dumper=EngineDumper, allow_unicode=True)
         return response
 
     def write_output_file(self, events_parsed):
