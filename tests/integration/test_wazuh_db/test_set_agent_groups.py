@@ -76,6 +76,22 @@ t_config_parameters, t_config_metadata, t_case_ids = configuration.get_test_case
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
 
+
+def insert_agent_in_db(id=1, name='TestAgent', ip='any', registration_time=0, connection_status=0,
+                       disconnection_time=0):
+    """
+    Write agent in global.db
+    """
+    insert_command = f'global insert-agent {{"id":{id},"name":"{name}","ip":"{ip}","date_add":{registration_time}}}'
+    update_command = f'global sql UPDATE agent SET connection_status = "{connection_status}",\
+                       disconnection_time = "{disconnection_time}" WHERE id = {id};'
+    try:
+        query_wdb(insert_command)
+        query_wdb(update_command)
+    except Exception:
+        raise Exception(f"Unable to add agent {id}")
+
+
 # Tests
 @pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
 def test_set_agent_groups(clean_databases, daemons_handler, test_metadata, create_groups):
@@ -122,7 +138,7 @@ def test_set_agent_groups(clean_databases, daemons_handler, test_metadata, creat
     agent_id = test_metadata['agent_id']
 
     # Insert test Agent
-    response = create_or_update_agent(agent_id=agent_id, connection_status='disconnected')
+    response = insert_agent_in_db(id=agent_id, connection_status='disconnected', disconnection_time=str(time.time()))
 
     # Apply preconditions
     if 'pre_input' in test_metadata:
