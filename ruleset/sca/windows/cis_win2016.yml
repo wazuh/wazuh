@@ -141,7 +141,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> NoConnectedUser'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> NoConnectedUser -> 3'
 
-  # 2.3.1.2 (L1) Ensure 'Accounts: Guest account status' is set to 'Disabled' (MS only). (Automated) - Not Implemented
+  # 2.3.1.2 (L1) Ensure 'Accounts: Guest account status' is set to 'Disabled' (MS only). (Automated)
   - id: 16002
     title: "Ensure 'Accounts: Guest account status' is set to 'Disabled' (MS only)."
     description: "This policy setting determines whether the Guest account is enabled or disabled. The Guest account allows unauthenticated network users to gain access to the system. The recommended state for this setting is: Disabled. Note: This setting will have no impact when applied to the Domain Controllers organizational unit via group policy because Domain Controllers have no local account database. It can be configured at the domain level via group policy, similar to account lockout and password policy settings."
