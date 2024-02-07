@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "file_op.h"
 #include "os_xml.h"
 #include "os_xml_internal.h"
 

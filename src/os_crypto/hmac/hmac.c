@@ -11,13 +11,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-
-
-#include "headers/defs.h"
-#include "../sha1/sha1_op.h"
 #include <openssl/sha.h>
 #include <openssl/evp.h>
 #include <openssl/core_names.h>
+
+#include "file_op.h"
+#include "headers/defs.h"
+#include "../sha1/sha1_op.h"
 #include "hmac.h"
 
 int OS_HMAC_SHA1_Str(const char *key, const char *text, os_sha1 output)

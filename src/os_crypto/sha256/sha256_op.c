@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "file_op.h"
 #include "sha256_op.h"
 #include "headers/defs.h"
 

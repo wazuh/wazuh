@@ -37,6 +37,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include "file_op.h"
 #include <stdlib.h>
 #include <string.h>
 #include <locale.h>

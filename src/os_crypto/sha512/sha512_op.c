@@ -12,6 +12,7 @@
 #include <string.h>
 #include <openssl/evp.h>
 
+#include "file_op.h"
 #include "sha512_op.h"
 #include "headers/defs.h"
 
