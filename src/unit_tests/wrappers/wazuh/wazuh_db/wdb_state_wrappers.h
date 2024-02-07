@@ -124,9 +124,9 @@ void __wrap_w_inc_global_agent_get_groups_integrity();
 
 void __wrap_w_inc_global_agent_get_groups_integrity_time(__attribute__((unused))struct timeval diff);
 
-void __wrap_w_inc_global_agent_get_distinct_groups();
+void __wrap_w_inc_global_agent_get_distinct_multi_groups();
 
-void __wrap_w_inc_global_agent_get_distinct_groups_time(__attribute__((unused))struct timeval diff);
+void __wrap_w_inc_global_agent_get_distinct_multi_groups_time(__attribute__((unused))struct timeval diff);
 
 // Global group counters
 
@@ -141,10 +141,6 @@ void __wrap_w_inc_global_group_delete_group_time(__attribute__((unused))struct t
 void __wrap_w_inc_global_group_select_groups();
 
 void __wrap_w_inc_global_group_select_groups_time(__attribute__((unused))struct timeval diff);
-
-void __wrap_w_inc_global_group_find_group();
-
-void __wrap_w_inc_global_group_find_group_time(__attribute__((unused))struct timeval diff);
 
 // Global belongs counters
 

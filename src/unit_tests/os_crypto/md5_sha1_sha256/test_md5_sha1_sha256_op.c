@@ -42,7 +42,7 @@ void test_md5_sha1_sha256_file(void **state)
     /* create tmp file */
     char file_name[256] = "/tmp/tmp_file-XXXXXX";
 
-    FILE * fp = 0x1;
+    FILE * fp = (FILE *)0x1;
     expect_wfopen(file_name, "r", fp);
     expect_fread(string, strlen(string));
     expect_fread(string, 0);

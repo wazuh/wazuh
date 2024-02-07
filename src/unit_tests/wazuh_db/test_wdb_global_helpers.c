@@ -133,14 +133,13 @@ void test_wdb_insert_agent_error_json(void **state)
     const char *ip = "192.168.0.101";
     const char *register_ip = "any";
     const char *internal_key = "e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301";
-    const char *group = "default";
     int keep_date = 0;
 
     will_return(__wrap_cJSON_CreateObject, NULL);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Error creating data JSON for Wazuh DB.");
 
-    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, group, keep_date, NULL);
+    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, keep_date, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -153,13 +152,12 @@ void test_wdb_insert_agent_error_socket(void **state)
     const char *ip = "192.168.0.101";
     const char *register_ip = "any";
     const char *internal_key = "e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301";
-    const char *group = "default";
     int keep_date = 0;
 
     const char *json_str = strdup("{\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
-\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}");
+\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"date_add\":1}");
     const char *query_str = "global insert-agent {\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
-\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}";
+\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"date_add\":1}";
     const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
@@ -177,8 +175,6 @@ void test_wdb_insert_agent_error_socket(void **state)
     expect_string(__wrap_cJSON_AddStringToObject, string, "any");
     expect_string(__wrap_cJSON_AddStringToObject, name, "internal_key");
     expect_string(__wrap_cJSON_AddStringToObject, string, "e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301");
-    expect_string(__wrap_cJSON_AddStringToObject, name, "group");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "default");
     expect_string(__wrap_cJSON_AddNumberToObject, name, "date_add");
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
 
@@ -197,9 +193,9 @@ void test_wdb_insert_agent_error_socket(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global insert-agent {\"id\":1,\
 \"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
-\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}");
+\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"date_add\":1}");
 
-    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, group, keep_date, NULL);
+    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, keep_date, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -212,13 +208,12 @@ void test_wdb_insert_agent_error_sql_execution(void **state)
     const char *ip = "192.168.0.101";
     const char *register_ip = "any";
     const char *internal_key = "e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301";
-    const char *group = "default";
     int keep_date = 0;
 
     const char *json_str = strdup("{\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
-\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}");
+\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"date_add\":1}");
     const char *query_str = "global insert-agent {\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
-\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}";
+\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"date_add\":1}";
     const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
@@ -236,8 +231,6 @@ void test_wdb_insert_agent_error_sql_execution(void **state)
     expect_string(__wrap_cJSON_AddStringToObject, string, "any");
     expect_string(__wrap_cJSON_AddStringToObject, name, "internal_key");
     expect_string(__wrap_cJSON_AddStringToObject, string, "e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301");
-    expect_string(__wrap_cJSON_AddStringToObject, name, "group");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "default");
     expect_string(__wrap_cJSON_AddNumberToObject, name, "date_add");
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
 
@@ -256,9 +249,9 @@ void test_wdb_insert_agent_error_sql_execution(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global insert-agent {\"id\":1,\
 \"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
-\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}");
+\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"date_add\":1}");
 
-    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, group, keep_date, NULL);
+    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, keep_date, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -271,13 +264,12 @@ void test_wdb_insert_agent_error_result(void **state)
     const char *ip = "192.168.0.101";
     const char *register_ip = "any";
     const char *internal_key = "e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301";
-    const char *group = "default";
     int keep_date = 0;
 
     const char *json_str = strdup("{\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
-\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}");
+\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"date_add\":1}");
     const char *query_str = "global insert-agent {\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
-\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}";
+\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"date_add\":1}";
     const char *response = "err";
 
     will_return(__wrap_cJSON_CreateObject, 1);
@@ -295,8 +287,6 @@ void test_wdb_insert_agent_error_result(void **state)
     expect_string(__wrap_cJSON_AddStringToObject, string, "any");
     expect_string(__wrap_cJSON_AddStringToObject, name, "internal_key");
     expect_string(__wrap_cJSON_AddStringToObject, string, "e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301");
-    expect_string(__wrap_cJSON_AddStringToObject, name, "group");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "default");
     expect_string(__wrap_cJSON_AddNumberToObject, name, "date_add");
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
 
@@ -316,7 +306,7 @@ void test_wdb_insert_agent_error_result(void **state)
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error reported in the result of the query");
 
-    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, group, keep_date, NULL);
+    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, keep_date, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -329,13 +319,12 @@ void test_wdb_insert_agent_success(void **state)
     const char *ip = "192.168.0.101";
     const char *register_ip = "any";
     const char *internal_key = "e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301";
-    const char *group = "default";
     int keep_date = 0;
 
     const char *json_str = strdup("{\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
-\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}");
+\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"date_add\":1}");
     const char *query_str = "global insert-agent {\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
-\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1}";
+\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"date_add\":1}";
     const char *response = "ok";
 
     will_return(__wrap_cJSON_CreateObject, 1);
@@ -353,8 +342,6 @@ void test_wdb_insert_agent_success(void **state)
     expect_string(__wrap_cJSON_AddStringToObject, string, "any");
     expect_string(__wrap_cJSON_AddStringToObject, name, "internal_key");
     expect_string(__wrap_cJSON_AddStringToObject, string, "e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301");
-    expect_string(__wrap_cJSON_AddStringToObject, name, "group");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "default");
     expect_string(__wrap_cJSON_AddNumberToObject, name, "date_add");
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
 
@@ -373,7 +360,7 @@ void test_wdb_insert_agent_success(void **state)
     expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
-    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, group, keep_date, NULL);
+    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, keep_date, NULL);
 
     assert_int_equal(OS_SUCCESS, ret);
 }
@@ -386,15 +373,14 @@ void test_wdb_insert_agent_success_keep_date(void **state)
     const char *ip = "192.168.0.101";
     const char *register_ip = "any";
     const char *internal_key = "e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301";
-    const char *group = "default";
     int keep_date = 1;
     struct tm test_time;
     time_t date_returned = 0;
 
     const char *json_str = strdup("{\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
-\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1577851261}");
+\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"date_add\":1577851261}");
     const char *query_str = "global insert-agent {\"id\":1,\"name\":\"agent1\",\"ip\":\"192.168.0.101\",\"register_ip\":\"any\",\
-\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1577851261}";
+\"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"date_add\":1577851261}";
     const char *response = "ok";
 
     // Opening destination database file
@@ -435,8 +421,6 @@ void test_wdb_insert_agent_success_keep_date(void **state)
     expect_string(__wrap_cJSON_AddStringToObject, string, "any");
     expect_string(__wrap_cJSON_AddStringToObject, name, "internal_key");
     expect_string(__wrap_cJSON_AddStringToObject, string, "e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301");
-    expect_string(__wrap_cJSON_AddStringToObject, name, "group");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "default");
     expect_string(__wrap_cJSON_AddNumberToObject, name, "date_add");
     expect_value(__wrap_cJSON_AddNumberToObject, number, date_returned);
 
@@ -455,7 +439,7 @@ void test_wdb_insert_agent_success_keep_date(void **state)
     expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
-    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, group, keep_date, NULL);
+    ret = wdb_insert_agent(id, name, ip, register_ip, internal_key, keep_date, NULL);
 
     assert_int_equal(OS_SUCCESS, ret);
 }
@@ -2029,23 +2013,17 @@ void test_wdb_get_agent_group_error_no_json_response(void **state) {
 
 void test_wdb_get_agent_group_success(void **state) {
     cJSON *root = NULL;
-    cJSON *row = NULL;
     cJSON *str = NULL;
     int id = 1;
     char *name = NULL;
 
     root = __real_cJSON_CreateArray();
-    row = __real_cJSON_CreateObject();
     str = __real_cJSON_CreateString("default");
-    __real_cJSON_AddItemToObject(row, "group", str);
-    __real_cJSON_AddItemToArray(root, row);
+    __real_cJSON_AddItemToArray(root, str);
 
     // Calling Wazuh DB
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, root);
-
-    // Getting JSON data
-    will_return(__wrap_cJSON_GetObjectItem, str);
 
     expect_function_call(__wrap_cJSON_Delete);
 
@@ -2330,48 +2308,6 @@ void test_wdb_get_all_agents_rbtree_success(void **state) {
     // Cleaning payload
     set_payload = 0;
     memset(test_payload, '\0', OS_MAXSTR);
-}
-
-/* Tests wdb_find_group */
-
-void test_wdb_find_group_error_no_json_response(void **state) {
-    int id = 0;
-    char *name = "test_group";
-
-    // Calling Wazuh DB
-    will_return(__wrap_wdbc_query_parse_json, 0);
-    will_return(__wrap_wdbc_query_parse_json, NULL);
-
-    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the agent group id.");
-
-    id = wdb_find_group(name, NULL);
-
-    assert_int_equal(OS_INVALID, id);
-}
-
-void test_wdb_find_group_success(void **state) {
-    int id = 0;
-    char *name = "test_group";
-
-    cJSON *root = __real_cJSON_CreateArray();
-    cJSON *row = __real_cJSON_CreateObject();
-    __real_cJSON_AddNumberToObject(row, "id", 1);
-    __real_cJSON_AddItemToArray(root, row);
-
-    // Calling Wazuh DB
-    will_return(__wrap_wdbc_query_parse_json, 0);
-    will_return(__wrap_wdbc_query_parse_json, root);
-
-    // Getting JSON data
-    will_return(__wrap_cJSON_GetObjectItem, __real_cJSON_GetObjectItem(root->child, "id"));
-
-    expect_function_call(__wrap_cJSON_Delete);
-
-    id = wdb_find_group(name, NULL);
-
-    assert_int_equal(1, id);
-
-    __real_cJSON_Delete(root);
 }
 
 /* Tests wdb_insert_group */
@@ -2743,13 +2679,6 @@ void test_wdb_update_groups_success(void **state) {
     will_return(__wrap_readdir, dir_ent);
     expect_string(__wrap_IsDir, file, "etc/shared/test_group");
     will_return(__wrap_IsDir, 0);
-
-    //// Call to wdb_find_group
-    // Calling Wazuh DB
-    will_return(__wrap_wdbc_query_parse_json, 0);
-    will_return(__wrap_wdbc_query_parse_json, NULL);
-
-    expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to get the agent group id.");
 
     //// Call to wdb_insert_group
     const char *query_str = "global insert-agent-group test_group";
@@ -3747,11 +3676,11 @@ void test_wdb_set_agent_groups_success(void **state) {
     assert_int_equal(OS_SUCCESS,res);
 }
 
-/* Tests wdb_get_distinct_agent_groups */
+/* Tests wdb_get_distinct_agent_multi_groups */
 
 void test_wdb_get_distinct_agent_groups_error_no_json_response(void **state) {
     cJSON *root = NULL;
-    const char *query_str = "global get-distinct-groups ";
+    const char *query_str = "global get-distinct-multi-groups ";
     const char *response = "err";
 
     will_return(__wrap_cJSON_CreateArray, NULL);
@@ -3767,14 +3696,14 @@ void test_wdb_get_distinct_agent_groups_error_no_json_response(void **state) {
 
     expect_function_call(__wrap_cJSON_Delete);
 
-    root = wdb_get_distinct_agent_groups(NULL);
+    root = wdb_get_distinct_agent_multi_groups(NULL);
 
     assert_null(root);
 }
 
 void test_wdb_get_distinct_agent_groups_error_parse_chunk(void **state) {
     cJSON *root = NULL;
-    const char *query_str = "global get-distinct-groups ";
+    const char *query_str = "global get-distinct-multi-groups ";
     const char *response = "ok []";
 
     will_return(__wrap_cJSON_CreateArray, NULL);
@@ -3792,17 +3721,17 @@ void test_wdb_get_distinct_agent_groups_error_parse_chunk(void **state) {
 
     expect_function_call(__wrap_cJSON_Delete);
 
-    root = wdb_get_distinct_agent_groups(NULL);
+    root = wdb_get_distinct_agent_multi_groups(NULL);
 
     assert_null(root);
 }
 
 void test_wdb_get_distinct_agent_groups_success(void **state) {
     cJSON *root = NULL;
-    const char *query_str = "global get-distinct-groups ";
-    const char *response = "ok [{\"group\":\"group3,group4\",\"group_hash\":\"abcdef\"}]";
+    const char *query_str = "global get-distinct-multi-groups ";
+    const char *response = "ok [{\"group\":\"group3,group4\"}]";
     cJSON *str_obj = __real_cJSON_CreateString("abcdef");
-    cJSON *parse_json = __real_cJSON_Parse("[{\"group\":\"group3,group4\",\"group_hash\":\"abcdef\"}]");
+    cJSON *parse_json = __real_cJSON_Parse("[{\"group\":\"group3,group4\"}]");
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
 
@@ -3823,7 +3752,7 @@ void test_wdb_get_distinct_agent_groups_success(void **state) {
 
     will_return(__wrap_cJSON_GetObjectItem, str_obj);
 
-    root = wdb_get_distinct_agent_groups(NULL);
+    root = wdb_get_distinct_agent_multi_groups(NULL);
 
     __real_cJSON_Delete(root);
     __real_cJSON_Delete(parse_json);
@@ -3832,14 +3761,14 @@ void test_wdb_get_distinct_agent_groups_success(void **state) {
 
 void test_wdb_get_distinct_agent_groups_success_due_ok(void **state) {
     cJSON *root = NULL;
-    const char *query_str1 = "global get-distinct-groups ";
-    const char *query_str2 = "global get-distinct-groups ef48b4cd";
-    const char *response1 = "ok [{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]";
-    const char *response2 = "ok [{\"group\":\"group3,group4\",\"group_hash\":\"abcdef\"}]";
+    const char *query_str1 = "global get-distinct-multi-groups ";
+    const char *query_str2 = "global get-distinct-multi-groups ef48b4cd";
+    const char *response1 = "ok [{\"group\":\"group1,group2\"}]";
+    const char *response2 = "ok [{\"group\":\"group3,group4\"}]";
     cJSON *str_obj1 = __real_cJSON_CreateString("ef48b4cd");
     cJSON *str_obj2 = __real_cJSON_CreateString("abcdef");
-    cJSON *parse_json1 = __real_cJSON_Parse("[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]");
-    cJSON *parse_json2 = __real_cJSON_Parse("[{\"group\":\"group3,group4\",\"group_hash\":\"abcdef\"}]");
+    cJSON *parse_json1 = __real_cJSON_Parse("[{\"group\":\"group1,group2\"}]");
+    cJSON *parse_json2 = __real_cJSON_Parse("[{\"group\":\"group3,group4\"}]");
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
 
@@ -3877,7 +3806,7 @@ void test_wdb_get_distinct_agent_groups_success_due_ok(void **state) {
 
     will_return(__wrap_cJSON_GetObjectItem, str_obj2);
 
-    root = wdb_get_distinct_agent_groups(NULL);
+    root = wdb_get_distinct_agent_multi_groups(NULL);
 
     __real_cJSON_Delete(root);
     __real_cJSON_Delete(parse_json1);
@@ -3889,19 +3818,19 @@ void test_wdb_get_distinct_agent_groups_success_due_ok(void **state) {
 /* Tests wdb_parse_chunk_to_json_by_string_item */
 
 void test_wdb_parse_chunk_to_json_by_string_item_output_json_null(void **state) {
-    char *input = "ok [{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]";
+    char *input = "ok [{\"group\":\"group1,group2\"}]";
     char *last_item_value;
     wdbc_result result;
 
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid JSON array.");
 
-    result = wdb_parse_chunk_to_json_by_string_item(input, NULL, "group_hash", &last_item_value);
+    result = wdb_parse_chunk_to_json_by_string_item(input, NULL, "group", &last_item_value);
 
     assert_int_equal(result, WDBC_ERROR);
 }
 
 void test_wdb_parse_chunk_to_json_by_string_item_item_null(void **state) {
-    char *input = "ok [{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]";
+    char *input = "ok [{\"group\":\"group1,group2\"}]";
     cJSON *output_json = __real_cJSON_CreateArray();
     char *last_item_value;
     wdbc_result result;
@@ -3915,14 +3844,14 @@ void test_wdb_parse_chunk_to_json_by_string_item_item_null(void **state) {
 }
 
 void test_wdb_parse_chunk_to_json_by_string_item_output_json_no_array(void **state) {
-    char *input = "ok [{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]";
+    char *input = "ok [{\"group\":\"group1,group2\"}]";
     cJSON *output_json = __real_cJSON_CreateString("wrong object");
     char *last_item_value;
     wdbc_result result;
 
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid JSON array.");
 
-    result = wdb_parse_chunk_to_json_by_string_item(input, &output_json, "group_hash", &last_item_value);
+    result = wdb_parse_chunk_to_json_by_string_item(input, &output_json, "group", &last_item_value);
 
     assert_int_equal(result, WDBC_ERROR);
     __real_cJSON_Delete(output_json);
@@ -3930,7 +3859,7 @@ void test_wdb_parse_chunk_to_json_by_string_item_output_json_no_array(void **sta
 
 void test_wdb_parse_chunk_to_json_by_string_item_parse_result_error(void **state) {
     char *input = NULL;
-    os_strdup("ok [{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]", input);
+    os_strdup("ok [{\"group\":\"group1,group2\"}]", input);
     cJSON *output_json = __real_cJSON_CreateArray();
     char *last_item_value;
     wdbc_result exc_result;
@@ -3938,7 +3867,7 @@ void test_wdb_parse_chunk_to_json_by_string_item_parse_result_error(void **state
     expect_string(__wrap_wdbc_parse_result, result, input);
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
 
-    exc_result = wdb_parse_chunk_to_json_by_string_item(input, &output_json, "group_hash", &last_item_value);
+    exc_result = wdb_parse_chunk_to_json_by_string_item(input, &output_json, "group", &last_item_value);
 
     assert_int_equal(exc_result, WDBC_ERROR);
     __real_cJSON_Delete(output_json);
@@ -3947,7 +3876,7 @@ void test_wdb_parse_chunk_to_json_by_string_item_parse_result_error(void **state
 
 void test_wdb_parse_chunk_to_json_by_string_item_cjson_parse_error(void **state) {
     char *input = NULL;
-    os_strdup("ok [{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]", input);
+    os_strdup("ok [{\"group\":\"group1,group2\"}]", input);
     cJSON *output_json = __real_cJSON_CreateArray();
     char *last_item_value;
     wdbc_result exc_result;
@@ -3957,7 +3886,7 @@ void test_wdb_parse_chunk_to_json_by_string_item_cjson_parse_error(void **state)
 
     will_return(__wrap_cJSON_Parse, NULL);
 
-    exc_result = wdb_parse_chunk_to_json_by_string_item(input, &output_json, "group_hash", &last_item_value);
+    exc_result = wdb_parse_chunk_to_json_by_string_item(input, &output_json, "group", &last_item_value);
 
     assert_int_equal(exc_result, WDBC_ERROR);
     __real_cJSON_Delete(output_json);
@@ -3966,7 +3895,7 @@ void test_wdb_parse_chunk_to_json_by_string_item_cjson_parse_error(void **state)
 
 void test_wdb_parse_chunk_to_json_by_string_item_empty_array(void **state) {
     char *input = NULL;
-    os_strdup("ok [{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]", input);
+    os_strdup("ok [{\"group\":\"group1,group2\"}]", input);
     cJSON *output_json = __real_cJSON_CreateArray();
     cJSON *parse_json = __real_cJSON_CreateArray();
     char *last_item_value;
@@ -3979,7 +3908,7 @@ void test_wdb_parse_chunk_to_json_by_string_item_empty_array(void **state) {
 
     expect_function_call(__wrap_cJSON_Delete);
 
-    exc_result = wdb_parse_chunk_to_json_by_string_item(input, &output_json, "group_hash", &last_item_value);
+    exc_result = wdb_parse_chunk_to_json_by_string_item(input, &output_json, "group", &last_item_value);
 
     assert_int_equal(exc_result, WDBC_OK);
     __real_cJSON_Delete(output_json);
@@ -3989,9 +3918,9 @@ void test_wdb_parse_chunk_to_json_by_string_item_empty_array(void **state) {
 
 void test_wdb_parse_chunk_to_json_by_string_item_last_item_json_null(void **state) {
     char *input = NULL;
-    os_strdup("ok [{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]", input);
+    os_strdup("ok [{\"group\":\"group1,group2\"}]", input);
     cJSON *output_json = __real_cJSON_CreateArray();
-    cJSON *parse_json = __real_cJSON_Parse("[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]");
+    cJSON *parse_json = __real_cJSON_Parse("[{\"group\":\"group1,group2\"}]");
     char *last_item_value = NULL;
     wdbc_result exc_result;
 
@@ -4005,7 +3934,7 @@ void test_wdb_parse_chunk_to_json_by_string_item_last_item_json_null(void **stat
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
-    exc_result = wdb_parse_chunk_to_json_by_string_item(input, &output_json, "group_hash", &last_item_value);
+    exc_result = wdb_parse_chunk_to_json_by_string_item(input, &output_json, "group", &last_item_value);
 
     assert_int_equal(exc_result, WDBC_OK);
     assert_null(last_item_value);
@@ -4016,9 +3945,9 @@ void test_wdb_parse_chunk_to_json_by_string_item_last_item_json_null(void **stat
 
 void test_wdb_parse_chunk_to_json_by_string_item_string_value_fail(void **state) {
     char *input = NULL;
-    os_strdup("ok [{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]", input);
+    os_strdup("ok [{\"group\":\"group1,group2\"}]", input);
     cJSON *output_json = __real_cJSON_CreateArray();
-    cJSON *parse_json = __real_cJSON_Parse("[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]");
+    cJSON *parse_json = __real_cJSON_Parse("[{\"group\":\"group1,group2\"}]");
     char *last_item_value = NULL;
     wdbc_result exc_result;
     cJSON *int_obj = cJSON_CreateNumber(1);
@@ -4033,7 +3962,7 @@ void test_wdb_parse_chunk_to_json_by_string_item_string_value_fail(void **state)
 
     will_return(__wrap_cJSON_GetObjectItem, int_obj);
 
-    exc_result = wdb_parse_chunk_to_json_by_string_item(input, &output_json, "group_hash", &last_item_value);
+    exc_result = wdb_parse_chunk_to_json_by_string_item(input, &output_json, "group", &last_item_value);
 
     assert_int_equal(exc_result, WDBC_OK);
     assert_null(last_item_value);
@@ -4045,9 +3974,9 @@ void test_wdb_parse_chunk_to_json_by_string_item_string_value_fail(void **state)
 
 void test_wdb_parse_chunk_to_json_by_string_last_item_value_null(void **state) {
     char *input = NULL;
-    os_strdup("ok [{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]", input);
+    os_strdup("ok [{\"group\":\"group1,group2\"}]", input);
     cJSON *output_json = __real_cJSON_CreateArray();
-    cJSON *parse_json = __real_cJSON_Parse("[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]");
+    cJSON *parse_json = __real_cJSON_Parse("[{\"group\":\"group1,group2\"}]");
     char *last_item_value = NULL;
     wdbc_result exc_result;
     cJSON *str_obj = __real_cJSON_CreateString("ef48b4cd");
@@ -4062,7 +3991,7 @@ void test_wdb_parse_chunk_to_json_by_string_last_item_value_null(void **state) {
 
     will_return(__wrap_cJSON_GetObjectItem, str_obj);
 
-    exc_result = wdb_parse_chunk_to_json_by_string_item(input, &output_json, "group_hash", NULL);
+    exc_result = wdb_parse_chunk_to_json_by_string_item(input, &output_json, "group", NULL);
 
     assert_int_equal(exc_result, WDBC_OK);
     assert_null(last_item_value);
@@ -4074,9 +4003,9 @@ void test_wdb_parse_chunk_to_json_by_string_last_item_value_null(void **state) {
 
 void test_wdb_parse_chunk_to_json_by_string_item_success(void **state) {
     char *input = NULL;
-    os_strdup("ok [{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]", input);
+    os_strdup("ok [{\"group\":\"group1,group2\"}]", input);
     cJSON *output_json = __real_cJSON_CreateArray();
-    cJSON *parse_json = __real_cJSON_Parse("[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]");
+    cJSON *parse_json = __real_cJSON_Parse("[{\"group\":\"group1,group2\"}]");
     char *last_item_value;
     wdbc_result exc_result;
     cJSON *str_obj = __real_cJSON_CreateString("ef48b4cd");
@@ -4091,7 +4020,7 @@ void test_wdb_parse_chunk_to_json_by_string_item_success(void **state) {
 
     will_return(__wrap_cJSON_GetObjectItem, str_obj);
 
-    exc_result = wdb_parse_chunk_to_json_by_string_item(input, &output_json, "group_hash", &last_item_value);
+    exc_result = wdb_parse_chunk_to_json_by_string_item(input, &output_json, "group", &last_item_value);
 
     assert_int_equal(exc_result, WDBC_OK);
     assert_string_equal(last_item_value, "ef48b4cd");
@@ -4176,9 +4105,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_rbtree_wdbc_query_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_rbtree_wdbc_parse_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_rbtree_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        /* Tests wdb_find_group */
-        cmocka_unit_test_setup_teardown(test_wdb_find_group_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_find_group_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_insert_group */
         cmocka_unit_test_setup_teardown(test_wdb_insert_group_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_insert_group_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
@@ -4236,7 +4162,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_groups_error_no_mode, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_groups_query_error, setup_wdb_global_helpers_add_agent, teardown_wdb_global_helpers_add_agent),
         cmocka_unit_test_setup_teardown(test_wdb_set_agent_groups_socket_error, setup_wdb_global_helpers_add_agent, teardown_wdb_global_helpers_add_agent),
-        /* Tests wdb_get_distinct_agent_groups */
+        /* Tests wdb_get_distinct_agent_multi_groups */
         cmocka_unit_test_setup_teardown(test_wdb_get_distinct_agent_groups_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_distinct_agent_groups_error_parse_chunk, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_distinct_agent_groups_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),

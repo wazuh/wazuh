@@ -32,8 +32,6 @@ CREATE TABLE IF NOT EXISTS agent (
     node_name TEXT DEFAULT 'unknown',
     date_add INTEGER NOT NULL,
     last_keepalive INTEGER,
-    `group` TEXT DEFAULT 'default',
-    group_hash TEXT default NULL,
     group_sync_status TEXT NOT NULL CHECK (group_sync_status IN ('synced', 'syncreq')) DEFAULT 'synced',
     sync_status TEXT NOT NULL CHECK (sync_status IN ('synced', 'syncreq')) DEFAULT 'synced',
     connection_status TEXT NOT NULL CHECK (connection_status IN ('pending', 'never_connected', 'active', 'disconnected')) DEFAULT 'never_connected',
@@ -44,9 +42,8 @@ CREATE TABLE IF NOT EXISTS agent (
 
 CREATE INDEX IF NOT EXISTS agent_name ON agent (name);
 CREATE INDEX IF NOT EXISTS agent_ip ON agent (ip);
-CREATE INDEX IF NOT EXISTS agent_group_hash ON agent (group_hash);
 
-INSERT INTO agent (id, ip, register_ip, name, date_add, last_keepalive, `group`, connection_status) VALUES (0, '127.0.0.1', '127.0.0.1', 'localhost', strftime('%s','now'), 253402300799, NULL, 'active');
+INSERT INTO agent (id, ip, register_ip, name, date_add, last_keepalive, connection_status) VALUES (0, '127.0.0.1', '127.0.0.1', 'localhost', strftime('%s','now'), 253402300799, 'active');
 
 CREATE TABLE IF NOT EXISTS labels (
     id INTEGER,
@@ -61,27 +58,25 @@ CREATE TABLE IF NOT EXISTS info (
 );
 
 CREATE TABLE IF NOT EXISTS `group` (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT,
-    UNIQUE (name)
+    name TEXT PRIMARY KEY
 );
 
 CREATE INDEX IF NOT EXISTS group_name ON `group` (name);
 
 CREATE TABLE IF NOT EXISTS belongs (
     id_agent INTEGER REFERENCES agent (id) ON DELETE CASCADE,
-    id_group INTEGER REFERENCES `group` (id) ON DELETE CASCADE,
+    name_group TEXT REFERENCES `group` (name) ON DELETE CASCADE,
     priority INTEGER NOT NULL DEFAULT 0,
     UNIQUE (id_agent, priority),
-    PRIMARY KEY (id_agent, id_group)
+    PRIMARY KEY (id_agent, name_group)
 );
 
 CREATE INDEX IF NOT EXISTS belongs_id_agent ON belongs (id_agent);
-CREATE INDEX IF NOT EXISTS belongs_id_group ON belongs (id_group);
+CREATE INDEX IF NOT EXISTS belongs_name_group ON belongs (name_group);
 
 CREATE TABLE IF NOT EXISTS metadata (
     key TEXT PRIMARY KEY,
     value TEXT
 );
 
-INSERT INTO metadata (key, value) VALUES ('db_version', '5');
+INSERT INTO metadata (key, value) VALUES ('db_version', '6');

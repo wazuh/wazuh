@@ -252,10 +252,6 @@ def test_WazuhDBQueryAgents_process_filter(mock_socket_conn, field_name, field_f
     q_filter : dict
         Query to filter in database.
     """
-    equal_regex = r"\(',' || [\w`]+ || ','\) LIKE :\w+"
-    not_equal_regex = f"NOT {equal_regex}"
-    like_regex = r"[\w`]+ LIKE :\w+"
-
     query_agent = WazuhDBQueryAgents()
     try:
         query_agent._process_filter(field_name, field_filter, q_filter)
@@ -264,12 +260,17 @@ def test_WazuhDBQueryAgents_process_filter(mock_socket_conn, field_name, field_f
         return
 
     if field_name == 'group':
-        if q_filter['operator'] == '=':
-            assert re.search(equal_regex, query_agent.query)
-        elif q_filter['operator'] == '!=':
-            assert re.search(not_equal_regex, query_agent.query)
-        elif q_filter['operator'] == 'LIKE':
-            assert re.search(like_regex, query_agent.query)
+        operator = q_filter['operator']
+        value = q_filter['value']
+        if operator == '=':
+            assert re.search(r"id IN \(.* name_group = :\w+", query_agent.query)
+            assert query_agent.request[field_filter] == value
+        elif operator == '!=':
+            assert re.search(r"id NOT IN \(.* name_group = :\w+", query_agent.query)
+            assert query_agent.request[field_filter] == value
+        elif operator == 'LIKE':
+            assert re.search(r"id IN \(.* name_group LIKE :\w+", query_agent.query)
+            assert query_agent.request[field_filter] == f"%{value}%"
         else:
             pytest.fail('Unexpected operator')
     else:
@@ -378,7 +379,7 @@ def test_WazuhDBQueryGroup__add_sort_to_query(mock_socket_conn, send_mock):
     query_group = WazuhDBQueryGroup()
     query_group._add_sort_to_query()
 
-    assert 'count' in query_group.fields and query_group.fields['count'] == 'count(id_group)'
+    assert 'count' in query_group.fields and query_group.fields['count'] == 'count(name_group)'
 
 
 @patch('socket.socket.connect')
@@ -1106,8 +1107,8 @@ def test_agent_set_agent_group_relationship(socket_connect_mock, send_mock, remo
     """
     agent_id = '001'
     group_id = 'default'
-    wdb_command = r'global set-agent-groups {\"mode\":\"(.+)\",\"sync_status\":\"syncreq\",\"data\":\[{\"id\":(.+),' \
-                  r'\"groups\":\[\"(.+)\"]}]}'
+    wdb_command = r'global set-agent-groups {\"mode\":\"(.+)\",\"sync_status\":\"syncreq\",\"data\":\[{' \
+        r'\"id\":(.+),\"groups\":\[\"(.+)\"\]}]}'
 
     # Default relationship -> add an agent to a group
     Agent.set_agent_group_relationship(agent_id, group_id, remove, override)

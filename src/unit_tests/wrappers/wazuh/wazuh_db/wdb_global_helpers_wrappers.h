@@ -44,10 +44,10 @@ char* __wrap_wdb_get_agent_name(int id, __attribute__((unused)) int *wdb_sock);
 
 int __wrap_wdb_remove_agent_db(int id, const char* name);
 
-cJSON* __wrap_wdb_get_distinct_agent_groups(__attribute__((unused)) int *sock);
+cJSON* __wrap_wdb_get_distinct_agent_multi_groups(__attribute__((unused)) int *sock);
 
 int __wrap_wdb_insert_agent(int id, const char *name, __attribute__((unused)) const char *ip, const char *register_ip,
-                            const char *internal_key, const char *group, int keep_date, __attribute__((unused)) int *sock);
+                            const char *internal_key, int keep_date, __attribute__((unused)) int *sock);
 
 int __wrap_wdb_remove_agent(int id, __attribute__((unused)) int *sock);
 
