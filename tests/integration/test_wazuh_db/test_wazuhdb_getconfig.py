@@ -62,12 +62,12 @@ receiver_sockets = None  # Set in the fixtures
 
 # Tests
 @pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
-def test_sync_agent_groups(configure_sockets_environment, connect_to_sockets_module, test_metadata):
+def test_sync_agent_groups(configure_sockets_environment_module, connect_to_sockets_module, test_metadata):
     '''
     description: Check that commands about wazuhdb getconfig works properly.
     wazuh_min_version: 4.4.0
     parameters:
-        - configure_sockets_environment:
+        - configure_sockets_environment_module:
             type: fixture
             brief: Configure environment for sockets and MITM.
         - connect_to_sockets_module:
