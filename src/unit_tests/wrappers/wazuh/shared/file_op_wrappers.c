@@ -14,6 +14,8 @@
 #include <cmocka.h>
 #include <string.h>
 #include <errno.h>
+#include "file_op.h"
+#include "../../common.h"
 
 int __wrap_abspath(const char *path, char *buffer, size_t size) {
     check_expected(path);
@@ -103,7 +105,7 @@ FILE *__wrap_wfopen(const char * __filename, const char * __modes) {
         check_expected(__modes);
         return mock_type(FILE *);
     } else {
-        return wfopen(path, mode);
+        return wfopen(__filename, __modes);
     }
 }
 
