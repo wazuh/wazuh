@@ -14,6 +14,7 @@
 
 #include <string>
 
+#include "loggerHelper.h"
 #include "opensslWrapper.hpp"
 #include "rocksDBWrapper.hpp"
 
@@ -25,6 +26,8 @@ constexpr auto KS_NAME {"keystore"};
 template<typename TOSSLPrimitive>
 class Keystore final
 {
+    static std::shared_ptr<TOSSLPrimitive> m_openssl;
+
 public:
     /**
      * Insert or update a key-value pair in the specified column family.
