@@ -8,18 +8,31 @@
 namespace builder::builders::mmdb
 {
 /**
- * @brief Get the Windows Helper Builder object
+ * @brief Get the builder for the MMDB Geo operation.
  *
- * Obtains the helper that maps A SidList to a SidListDesc, where Sid identifiers for common Windows SIDs are replaced
- * by their names.
- * This helpers needs a kvdb where the mappings between the different parts of the SID and the SID names are stored.
+ * This builder is used to create a Geo operation that uses the MaxMind DB file format, offered by MaxMind Inc.
+ * http://www.maxmind.com for looking up IP addresses in MMDB databases. The extract the fields from the MMDB database
+ * according to the Wazuh schema.
  *
- * @param kvdb kvdb manager to obtain the kvdb handler
- * @param kvdbScopeName kvdb scope name
- * @param schema schema
- * @return HelperBuilder
+ * @param mmdbManager The MMDB manager.
+ * @return The builder for the MMDB Geo operation.
+ * @see mmdb::IManager
  */
 MapBuilder getMMDBGeoBuilder(const std::shared_ptr<::mmdb::IManager>& mmdbManager);
+
+/**
+ * @brief Get the builder for the MMDB ASN operation.
+ *
+ * This builder is used to create an ASN operation that uses the MaxMind DB file format, offered by MaxMind Inc.
+ * http://www.maxmind.com for looking up IP addresses in MMDB databases. The extract the fields from the MMDB database
+ * according to the Wazuh schema:
+ * - as.organization.name: The name of the organization that owns the ASN.
+ * - as.number: The ASN number.
+ *
+ * @param mmdbManager The MMDB manager.
+ * @return The builder for the MMDB ASN operation.
+ * @see mmdb::IManager
+ */
 MapBuilder getMMDBASNBuilder(const std::shared_ptr<::mmdb::IManager>& mmdbManager);
 
 } // namespace builder::builders

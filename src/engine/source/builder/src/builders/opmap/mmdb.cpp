@@ -75,6 +75,18 @@ json::Json mapGeoToECS(const std::shared_ptr<::mmdb::IResult>& result)
         cityData.setString(getResponse(timeZone), "/timezone");
     }
 
+    auto regionIsoCode = result->getString("subdivisions.0.iso_code");
+    if (!base::isError(regionIsoCode))
+    {
+        cityData.setString(getResponse(regionIsoCode), "/region_iso_code");
+    }
+
+    auto regionName = result->getString("subdivisions.0.names.en");
+    if (!base::isError(regionName))
+    {
+        cityData.setString(getResponse(regionName), "/region_name");
+    }
+
     return cityData;
 }
 
