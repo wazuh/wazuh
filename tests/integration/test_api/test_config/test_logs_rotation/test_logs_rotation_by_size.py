@@ -52,13 +52,15 @@ tags:
 import pytest
 from pathlib import Path
 from datetime import datetime
+import os
 
-from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH, MONTHS_MAPPING_DICT, delete_api_logs_folder_contents
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH, MONTHS_MAPPING_DICT
 from wazuh_testing.constants.api import CONFIGURATION_TYPES
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 from wazuh_testing.constants.paths.logs import WAZUH_API_LOG_FILE_PATH
 from wazuh_testing.constants.daemons import API_DAEMONS_REQUIREMENTS
 from wazuh_testing.utils import file
+from wazuh_testing.constants.paths.logs import BASE_LOGS_PATH
 from wazuh_testing.modules.api.utils import login
 
 # Marks
@@ -76,6 +78,17 @@ test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_log_rotate_by_size.yaml')
 test_configuration, test_metadata, test_cases_id = get_test_cases_data(test_cases_path)
 test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 daemons_handler_configuration = {'daemons': API_DAEMONS_REQUIREMENTS}
+
+
+@pytest.fixture
+def delete_api_logs_folder_contents() -> None:
+    """Deletes the API logs for the current year"""
+    api_logs_folder = os.path.join(BASE_LOGS_PATH, "api", str(datetime.now().year))
+    file.delete_path_recursively(api_logs_folder)
+
+    yield
+
+    file.delete_path_recursively(api_logs_folder)
 
 
 @pytest.mark.tier(level=0)
@@ -137,7 +150,7 @@ def test_logs_rotate_to_expected_path(test_configuration, test_metadata, add_con
 
     # Fill the file until it reaches the required size
     total_size_in_kb = size_to_replicate * 1024
-    file.write_file(WAZUH_API_LOG_FILE_PATH, ["a" for _ in range(total_size_in_kb)])
+    file.write_file(WAZUH_API_LOG_FILE_PATH, [" " for _ in range(total_size_in_kb)])
 
     # Makes a request
     authentication_headers, _ = login(password="reyF9KpULKMwLT*iylevo9?hlS7Ma?ac")
