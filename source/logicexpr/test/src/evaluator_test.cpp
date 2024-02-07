@@ -71,3 +71,39 @@ TEST(LogicExpressionEvaluator, getDijstraEvaluator)
     EXPECT_TRUE(evaluator(6));
     EXPECT_FALSE(evaluator(7));
 }
+
+TEST(LogicExpressionEvaluator, getDijstraEvaluatorNotTerm)
+{
+    // True if: not pair
+    auto root = Expression<int>::create(ExpressionType::NOT);
+    root->m_left = Expression<int>::create([](int i) { return i % 2 == 0; });
+
+    std::function<bool(int)> evaluator;
+    ASSERT_NO_THROW(evaluator = getDijstraEvaluator<int>(root));
+
+    EXPECT_FALSE(evaluator(0));
+    EXPECT_TRUE(evaluator(1));
+    EXPECT_FALSE(evaluator(2));
+    EXPECT_TRUE(evaluator(3));
+    EXPECT_FALSE(evaluator(4));
+    EXPECT_TRUE(evaluator(5));
+    EXPECT_FALSE(evaluator(6));
+    EXPECT_TRUE(evaluator(7));
+}
+
+TEST(LogicExpressionEvaluator, getDijstraEvaluatorSingleTerm)
+{
+    // True if: not pair
+    auto root = Expression<int>::create([](int i) { return i % 2 == 0; });
+    std::function<bool(int)> evaluator;
+    ASSERT_NO_THROW(evaluator = getDijstraEvaluator<int>(root));
+
+    EXPECT_TRUE(evaluator(0));
+    EXPECT_FALSE(evaluator(1));
+    EXPECT_TRUE(evaluator(2));
+    EXPECT_FALSE(evaluator(3));
+    EXPECT_TRUE(evaluator(4));
+    EXPECT_FALSE(evaluator(5));
+    EXPECT_TRUE(evaluator(6));
+    EXPECT_FALSE(evaluator(7));
+}
