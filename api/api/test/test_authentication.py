@@ -7,7 +7,6 @@ import json
 import os
 import sys
 from copy import deepcopy
-from datetime import datetime
 from unittest.mock import patch, MagicMock, ANY, call
 
 from werkzeug.exceptions import Unauthorized

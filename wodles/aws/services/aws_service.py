@@ -135,6 +135,14 @@ class AWSService(wazuh_integration.WazuhAWSDatabase):
 
     @staticmethod
     def check_region(region: str) -> None:
+        """
+        Check if the region is valid.
+        
+        Parameters
+        ----------
+        region : str
+            AWS region.
+        """
         if region not in aws_tools.ALL_REGIONS:
             raise ValueError(f"Invalid region '{region}'")
 

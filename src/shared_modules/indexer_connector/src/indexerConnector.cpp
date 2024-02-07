@@ -11,10 +11,16 @@
 
 #include "indexerConnector.hpp"
 #include "HTTPRequest.hpp"
+#include "keyStore.hpp"
 #include "loggerHelper.h"
 #include "secureCommunication.hpp"
 #include "serverSelector.hpp"
 #include <fstream>
+
+constexpr auto NOT_USED {-1};
+constexpr auto INDEXER_COLUMN {"indexer"};
+constexpr auto USER_KEY {"username"};
+constexpr auto PASSWORD_KEY {"password"};
 
 namespace Log
 {
@@ -22,11 +28,9 @@ namespace Log
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
         GLOBAL_LOG_FUNCTION;
 };
-constexpr auto IC_NAME {"indexer-connnector"};
-constexpr auto MAX_WAIT_TIME {30};
+constexpr auto IC_NAME {"indexer-connector"};
+constexpr auto MAX_WAIT_TIME {60};
 
-// TODO: remove the LCOV flags when the implementation of this class is completed
-// LCOV_EXCL_START
 std::unordered_map<IndexerConnector*, std::unique_ptr<ThreadDispatchQueue>> QUEUE_MAP;
 
 // Single thread because the events needs to be processed in order.
@@ -38,7 +42,8 @@ IndexerConnector::IndexerConnector(
     const std::string& templatePath,
     const std::function<void(
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
-        logFunction)
+        logFunction,
+    const uint32_t& timeout)
 {
     if (logFunction)
     {
@@ -75,10 +80,20 @@ IndexerConnector::IndexerConnector(
         }
     }
 
-    if (config.contains("username") && config.contains("password"))
+    Keystore::get(INDEXER_COLUMN, USER_KEY, username);
+    Keystore::get(INDEXER_COLUMN, PASSWORD_KEY, password);
+
+    if (username.empty() && password.empty())
     {
-        username = config.at("username").get_ref<const std::string&>();
-        password = config.at("password").get_ref<const std::string&>();
+        username = "admin";
+        password = "admin";
+        logWarn(IC_NAME, "No username and password found in the keystore, using default values.");
+    }
+
+    if (username.empty())
+    {
+        username = "admin";
+        logWarn(IC_NAME, "No username found in the keystore, using default value.");
     }
 
     secureCommunication.basicAuth(username + ":" + password)
@@ -95,7 +110,7 @@ IndexerConnector::IndexerConnector(
     nlohmann::json templateData = nlohmann::json::parse(templateFile);
 
     // Initialize publisher.
-    auto selector {std::make_shared<ServerSelector>(config.at("hosts"), INTERVAL, secureCommunication)};
+    auto selector {std::make_shared<ServerSelector>(config.at("hosts"), timeout, secureCommunication)};
 
     QUEUE_MAP[this] = std::make_unique<ThreadDispatchQueue>(
         [=](std::queue<std::string>& dataQueue)
@@ -188,10 +203,10 @@ IndexerConnector::IndexerConnector(
                 }
                 catch (const std::exception& e)
                 {
-                    logDebug2(IC_NAME,
-                              "Error initializing IndexerConnector: %s, we will try again after %ld seconds.",
-                              e.what(),
-                              sleepTime.count());
+                    logWarn(IC_NAME,
+                            "Error initializing IndexerConnector: %s, we will try again after %ld seconds.",
+                            e.what(),
+                            sleepTime.count());
                 }
             } while (!m_initialized && !m_cv.wait_for(lock, sleepTime, [&]() { return m_stopping.load(); }));
         });
@@ -225,7 +240,13 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
         HttpURL(selector->getNext() + "/_index_template/" + indexName + "_template"),
         templateData,
         [&](const std::string& response) {},
-        [&](const std::string& error, const long) { throw std::runtime_error(error); },
+        [&](const std::string& error, const long statusCode)
+        {
+            if (statusCode != 400)
+            {
+                throw std::runtime_error(statusCode != NOT_USED ? error + ": " + std::to_string(statusCode) : error);
+            }
+        },
         "",
         DEFAULT_HEADERS,
         secureCommunication);
@@ -239,7 +260,7 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
         {
             if (statusCode != 400)
             {
-                throw std::runtime_error(error);
+                throw std::runtime_error(statusCode != NOT_USED ? error + ": " + std::to_string(statusCode) : error);
             }
         },
         "",
@@ -249,4 +270,3 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
     m_initialized = true;
     logInfo(IC_NAME, "IndexerConnector initialized.");
 }
-// LCOV_EXCL_STOP

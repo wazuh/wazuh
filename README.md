@@ -134,7 +134,7 @@ Here you can find all the automation tools maintained by the Wazuh team.
 |---|---|---|---|
 |[bzip2](https://github.com/libarchive/bzip2)|1.0.8|Julian Seward|BSD License|
 |[cJSON](https://github.com/DaveGamble/cJSON)|1.7.12|Dave Gamble|MIT License|
-|[cPython](https://github.com/python/cpython)|3.9.9|Guido van Rossum|Python Software Foundation License version 2|
+|[cPython](https://github.com/python/cpython)|3.10.13|Guido van Rossum|Python Software Foundation License version 2|
 |[cURL](https://github.com/curl/curl)|7.88.1|Daniel Stenberg|MIT License|
 |[GoogleTest](https://github.com/google/googletest)|1.11.0|Google Inc.|3-Clause "New" BSD License|
 |[jemalloc](https://github.com/jemalloc/jemalloc)|5.2.1|Jason Evans|2-Clause "Simplified" BSD License|
@@ -147,7 +147,7 @@ Here you can find all the automation tools maintained by the Wazuh team.
 |[Linux Audit userspace](https://github.com/linux-audit/audit-userspace)|2.8.4|Rik Faith|LGPL (copyleft)|
 |[msgpack](https://github.com/msgpack/msgpack-c)|3.1.1|Sadayuki Furuhashi|Boost Software License version 1.0|
 |[nlohmann](https://github.com/nlohmann/json)|3.7.3|Niels Lohmann|MIT License|
-|[OpenSSL](https://github.com/openssl/openssl)|1.1.1t|OpenSSL Software Foundation|Apache 2.0 License|
+|[OpenSSL](https://github.com/openssl/openssl)|3.0.12|OpenSSL Software Foundation|Apache 2.0 License|
 |[pacman](https://gitlab.archlinux.org/pacman/pacman)|5.2.2|Judd Vinet|GNU Public License version 2 (copyleft)|
 |[popt](https://github.com/rpm-software-management/popt)|1.16|Jeff Johnson & Erik Troan|MIT License|
 |[procps](https://gitlab.com/procps-ng/procps)|2.8.3|Brian Edmonds et al.|LGPL (copyleft)|

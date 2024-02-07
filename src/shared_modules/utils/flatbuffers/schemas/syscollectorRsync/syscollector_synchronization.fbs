@@ -42,7 +42,7 @@ table syscollector_network_iface {
     checksum:string;
     item_id:string;
     mac:string;
-    mtu:uint32;
+    mtu:long;
     name:string;
     rx_bytes:long;
     rx_dropped:long;

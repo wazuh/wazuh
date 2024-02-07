@@ -56,8 +56,6 @@ void test_read_full_configuration(void **state) {
             "<host>http://10.2.20.2:9200</host>"
             "<host>https://10.2.20.42:9200</host>"
         "</hosts>"
-        "<username>user</username>"
-        "<password>pwd</password>"
         "<ssl>"
         "<certificate_authorities>"
             "<ca>/var/ossec/</ca>"
@@ -71,7 +69,81 @@ void test_read_full_configuration(void **state) {
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(Read_Indexer(&(test->xml), test->nodes), 0);
     char * json_result = cJSON_PrintUnformatted(indexer_config);
-    assert_string_equal(json_result, "{\"enabled\":\"yes\",\"hosts\":[\"http://10.2.20.2:9200\",\"https://10.2.20.42:9200\"],\"username\":\"user\",\"password\":\"pwd\",\"ssl\":{\"certificate_authorities\":[\"/var/ossec/\",\"/var/ossec_cert/\"],\"certificate\":\"cert\",\"key\":\"key_example\"}}");
+    assert_string_equal(json_result, "{\"enabled\":\"yes\",\"hosts\":[\"http://10.2.20.2:9200\",\"https://10.2.20.42:9200\"],\"ssl\":{\"certificate_authorities\":[\"/var/ossec/\",\"/var/ossec_cert/\"],\"certificate\":\"cert\",\"key\":\"key_example\"}}");
+    cJSON_free(json_result);
+}
+
+void test_read_duplicate_configuration(void **state) {
+    const char *string =
+        "<enabled>yes</enabled>"
+        "<hosts>"
+        "<host>http://10.2.20.2:9200</host>"
+        "<host>https://10.2.20.42:9200</host>"
+        "</hosts>"
+        "<ssl>"
+        "<certificate_authorities>"
+        "<ca>/var/ossec/</ca>"
+        "<ca>/var/ossec_cert/</ca>"
+        "</certificate_authorities>"
+        "<certificate>cert</certificate>"
+        "<key>key_example</key>"
+        "</ssl>"
+        "<enabled>yes</enabled>"
+        "<hosts>"
+        "<host>http://10.2.20.2:9200</host>"
+        "<host>https://10.2.20.42:9200</host>"
+        "</hosts>"
+        "<ssl>"
+        "<certificate_authorities>"
+        "<ca>/var/ossec/</ca>"
+        "<ca>/var/ossec_cert/</ca>"
+        "</certificate_authorities>"
+        "<certificate>cert</certificate>"
+        "<key>key_example</key>"
+        "</ssl>"
+        ;
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(Read_Indexer(&(test->xml), test->nodes), 0);
+    char * json_result = cJSON_PrintUnformatted(indexer_config);
+    assert_string_equal(json_result, "{\"enabled\":\"yes\",\"hosts\":[\"http://10.2.20.2:9200\",\"https://10.2.20.42:9200\"],\"ssl\":{\"certificate_authorities\":[\"/var/ossec/\",\"/var/ossec_cert/\"],\"certificate\":\"cert\",\"key\":\"key_example\"}}");
+    cJSON_free(json_result);
+}
+
+void test_read_multiple_configuration(void **state) {
+    const char *string =
+        "<enabled>yes</enabled>"
+        "<hosts>"
+        "<host>http://10.1.10.1:9200</host>"
+        "<host>https://10.1.10.41:9200</host>"
+        "</hosts>"
+        "<ssl>"
+        "<certificate_authorities>"
+        "<ca>/var/ossec/</ca>"
+        "<ca>/var/ossec_cert/</ca>"
+        "</certificate_authorities>"
+        "<certificate>cert</certificate>"
+        "<key>key_example</key>"
+        "</ssl>"
+        "<enabled>yes</enabled>"
+        "<hosts>"
+        "<host>http://10.2.20.2:9200</host>"
+        "<host>https://10.2.20.42:9200</host>"
+        "</hosts>"
+        "<ssl>"
+        "<certificate_authorities>"
+        "<ca>/var/ossec2/</ca>"
+        "<ca>/var/ossec_cert2/</ca>"
+        "</certificate_authorities>"
+        "<certificate>cert_2</certificate>"
+        "<key>key_example_2</key>"
+        "</ssl>"
+        ;
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(Read_Indexer(&(test->xml), test->nodes), 0);
+    char * json_result = cJSON_PrintUnformatted(indexer_config);
+    assert_string_equal(json_result, "{\"enabled\":\"yes\",\"hosts\":[\"http://10.2.20.2:9200\",\"https://10.2.20.42:9200\"],\"ssl\":{\"certificate_authorities\":[\"/var/ossec2/\",\"/var/ossec_cert2/\"],\"certificate\":\"cert_2\",\"key\":\"key_example_2\"}}");
     cJSON_free(json_result);
 }
 
@@ -92,8 +164,6 @@ void test_read_empty_field_configuration(void **state) {
             "<host>http://10.2.20.2:9200</host>"
             "<host>https://10.2.20.42:9200</host>"
         "</hosts>"
-        "<username>user</username>"
-        "<password>pwd</password>"
         "<ssl>"
         "<certificate_authorities>"
             "<ca>/var/ossec/</ca>"
@@ -107,7 +177,7 @@ void test_read_empty_field_configuration(void **state) {
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(Read_Indexer(&(test->xml), test->nodes), 0);
     char * json_result = cJSON_PrintUnformatted(indexer_config);
-    assert_string_equal(json_result, "{\"enabled\":\"yes\",\"hosts\":[\"http://10.2.20.2:9200\",\"https://10.2.20.42:9200\"],\"username\":\"user\",\"password\":\"pwd\",\"ssl\":{\"certificate_authorities\":[\"/var/ossec/\",\"/var/ossec_cert/\"],\"certificate\":\"cert\",\"key\":\"\"}}");
+    assert_string_equal(json_result, "{\"enabled\":\"yes\",\"hosts\":[\"http://10.2.20.2:9200\",\"https://10.2.20.42:9200\"],\"ssl\":{\"certificate_authorities\":[\"/var/ossec/\",\"/var/ossec_cert/\"],\"certificate\":\"cert\",\"key\":\"\"}}");
     cJSON_free(json_result);
 }
 
@@ -116,8 +186,6 @@ void test_read_field_host_0_entries_configuration(void **state) {
         "<enabled>yes</enabled>"
         "<hosts>"
         "</hosts>"
-        "<username>user</username>"
-        "<password>pwd</password>"
         "<ssl>"
         "<certificate_authorities>"
             "<ca>/var/ossec/</ca>"
@@ -131,7 +199,7 @@ void test_read_field_host_0_entries_configuration(void **state) {
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(Read_Indexer(&(test->xml), test->nodes), 0);
     char * json_result = cJSON_PrintUnformatted(indexer_config);
-    assert_string_equal(json_result, "{\"enabled\":\"yes\",\"hosts\":[],\"username\":\"user\",\"password\":\"pwd\",\"ssl\":{\"certificate_authorities\":[\"/var/ossec/\",\"/var/ossec_cert/\"],\"certificate\":\"cert\",\"key\":\"key_example\"}}");
+    assert_string_equal(json_result, "{\"enabled\":\"yes\",\"hosts\":[],\"ssl\":{\"certificate_authorities\":[\"/var/ossec/\",\"/var/ossec_cert/\"],\"certificate\":\"cert\",\"key\":\"key_example\"}}");
     cJSON_free(json_result);
 }
 
@@ -141,8 +209,6 @@ void test_read_field_host_1_entries_configuration(void **state) {
         "<hosts>"
             "<host>http://10.2.20.2:9200</host>"
         "</hosts>"
-        "<username>user</username>"
-        "<password>pwd</password>"
         "<ssl>"
         "<certificate_authorities>"
             "<ca>/var/ossec/</ca>"
@@ -156,7 +222,7 @@ void test_read_field_host_1_entries_configuration(void **state) {
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(Read_Indexer(&(test->xml), test->nodes), 0);
     char * json_result = cJSON_PrintUnformatted(indexer_config);
-    assert_string_equal(json_result, "{\"enabled\":\"yes\",\"hosts\":[\"http://10.2.20.2:9200\"],\"username\":\"user\",\"password\":\"pwd\",\"ssl\":{\"certificate_authorities\":[\"/var/ossec/\",\"/var/ossec_cert/\"],\"certificate\":\"cert\",\"key\":\"key_example\"}}");
+    assert_string_equal(json_result, "{\"enabled\":\"yes\",\"hosts\":[\"http://10.2.20.2:9200\"],\"ssl\":{\"certificate_authorities\":[\"/var/ossec/\",\"/var/ossec_cert/\"],\"certificate\":\"cert\",\"key\":\"key_example\"}}");
     cJSON_free(json_result);
 }
 
@@ -167,8 +233,6 @@ void test_read_field_certificate_authorities_0_entries_configuration(void **stat
             "<host>http://10.2.20.2:9200</host>"
             "<host>https://10.2.20.42:9200</host>"
         "</hosts>"
-        "<username>user</username>"
-        "<password>pwd</password>"
         "<ssl>"
         "<certificate_authorities>"
         "</certificate_authorities>"
@@ -180,7 +244,7 @@ void test_read_field_certificate_authorities_0_entries_configuration(void **stat
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(Read_Indexer(&(test->xml), test->nodes), 0);
     char * json_result = cJSON_PrintUnformatted(indexer_config);
-    assert_string_equal(json_result, "{\"enabled\":\"yes\",\"hosts\":[\"http://10.2.20.2:9200\",\"https://10.2.20.42:9200\"],\"username\":\"user\",\"password\":\"pwd\",\"ssl\":{\"certificate_authorities\":[],\"certificate\":\"cert\",\"key\":\"key_example\"}}");
+    assert_string_equal(json_result, "{\"enabled\":\"yes\",\"hosts\":[\"http://10.2.20.2:9200\",\"https://10.2.20.42:9200\"],\"ssl\":{\"certificate_authorities\":[],\"certificate\":\"cert\",\"key\":\"key_example\"}}");
     cJSON_free(json_result);
 }
 
@@ -191,8 +255,6 @@ void test_read_field_certificate_authorities_1_entries_configuration(void **stat
             "<host>http://10.2.20.2:9200</host>"
             "<host>https://10.2.20.42:9200</host>"
         "</hosts>"
-        "<username>user</username>"
-        "<password>pwd</password>"
         "<ssl>"
         "<certificate_authorities>"
             "<ca>/var/ossec/</ca>"
@@ -205,13 +267,15 @@ void test_read_field_certificate_authorities_1_entries_configuration(void **stat
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(Read_Indexer(&(test->xml), test->nodes), 0);
     char * json_result = cJSON_PrintUnformatted(indexer_config);
-    assert_string_equal(json_result, "{\"enabled\":\"yes\",\"hosts\":[\"http://10.2.20.2:9200\",\"https://10.2.20.42:9200\"],\"username\":\"user\",\"password\":\"pwd\",\"ssl\":{\"certificate_authorities\":[\"/var/ossec/\"],\"certificate\":\"cert\",\"key\":\"key_example\"}}");
+    assert_string_equal(json_result, "{\"enabled\":\"yes\",\"hosts\":[\"http://10.2.20.2:9200\",\"https://10.2.20.42:9200\"],\"ssl\":{\"certificate_authorities\":[\"/var/ossec/\"],\"certificate\":\"cert\",\"key\":\"key_example\"}}");
     cJSON_free(json_result);
 }
 
 int main(void) {
     const struct CMUnitTest tests_configuration[] = {
         cmocka_unit_test_setup_teardown(test_read_full_configuration, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_duplicate_configuration, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_multiple_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_empty_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_empty_field_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_field_host_0_entries_configuration, setup_test_read, teardown_test_read),

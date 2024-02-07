@@ -769,6 +769,7 @@ BUILD_SERVER+=wazuh-dbd -
 BUILD_SERVER+=wazuh-integratord
 BUILD_SERVER+=wazuh-modulesd
 BUILD_SERVER+=wazuh-db
+BUILD_SERVER+=wazuh-keystore
 
 BUILD_AGENT+=wazuh-agentd
 BUILD_AGENT+=agent-auth
@@ -1012,6 +1013,9 @@ else
 ifeq (${uname_S},HP-UX)
 	cd ${EXTERNAL_OPENSSL} && MAKE=gmake ./Configure $(OPENSSL_FLAGS) hpux-ia64-gcc && ${MAKE} build_libs
 else
+ifeq (${uname_S},AIX)
+	cd ${EXTERNAL_OPENSSL} && ./config aix-gcc $(OPENSSL_FLAGS) && ${MAKE} build_libs
+else
 ifeq (${uname_S},SunOS)
 ifeq ($(uname_M),i86pc)
 	cd ${EXTERNAL_OPENSSL} && ./Configure $(OPENSSL_FLAGS) solaris-x86-gcc && ${MAKE} build_libs
@@ -1020,6 +1024,7 @@ else
 endif
 else
 	cd ${EXTERNAL_OPENSSL} && ./config $(OPENSSL_FLAGS) && ${MAKE} build_libs
+endif
 endif
 endif
 endif
@@ -1754,7 +1759,6 @@ ifeq (${TARGET},agent)
 else ifeq (${TARGET},winagent)
 	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/agent_upgrade/agent/*.c)
 else
-	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/vulnerability_detector/*.c)
 	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/task_manager/*.c)
 	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/agent_upgrade/manager/*.c)
 endif
@@ -1891,7 +1895,17 @@ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ $(LIBGCC_FLAGS) -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 endif
 else
-ifneq (,$(filter ${uname_S},AIX HP-UX))
+ifeq (${uname_S},AIX)
+$(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
+	mkdir -p libwazuhext;
+	find external/ -name \*.a -exec cp {} libwazuhext/ \;
+	for lib in libcjson.a libz.a libmsgpack.a libssl.a libcrypto.a libsqlite3.a libyaml.a libpcre2-8.a ; do \
+		ar -x libwazuhext/$$lib; \
+		mv *.o libwazuhext/; \
+	done
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) libwazuhext/*.o -o $@ -static-libgcc -latomic
+else
+ifeq (${uname_S},HP-UX)
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	mkdir -p libwazuhext;
 	find external/ -name \*.a -exec cp {} libwazuhext/ \;
@@ -1900,10 +1914,10 @@ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 		mv *.o libwazuhext/; \
 	done
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) libwazuhext/*.o -o $@ -static-libgcc
-
 else
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+endif
 endif
 endif
 endif

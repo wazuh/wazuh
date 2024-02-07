@@ -13,7 +13,7 @@
 #include <string.h>
 
 #include "md5_sha1_sha256_op.h"
-#include <openssl/md5.h>
+#include <openssl/evp.h>
 #include <openssl/sha.h>
 #include "headers/defs.h"
 
@@ -34,9 +34,9 @@ int OS_MD5_SHA1_SHA256_File(const char *fname,
     unsigned char md5_digest[16];
     unsigned char sha256_digest[SHA256_DIGEST_LENGTH];
 
-    SHA_CTX sha1_ctx;
-    MD5_CTX md5_ctx;
-    SHA256_CTX sha256_ctx;
+    EVP_MD_CTX *sha1_ctx = NULL;
+    EVP_MD_CTX *md5_ctx = NULL;
+    EVP_MD_CTX *sha256_ctx = NULL;
 
     /* Clear the memory */
     md5output[0] = '\0';
@@ -73,10 +73,13 @@ int OS_MD5_SHA1_SHA256_File(const char *fname,
         fp = wfd->file_out;
     }
 
-    /* Initialize both hashes */
-    MD5_Init(&md5_ctx);
-    SHA1_Init(&sha1_ctx);
-    SHA256_Init(&sha256_ctx);
+    /* Initialize all hashes */
+    sha1_ctx = EVP_MD_CTX_new();
+    md5_ctx = EVP_MD_CTX_new();
+    sha256_ctx = EVP_MD_CTX_new();
+    EVP_DigestInit(sha1_ctx, EVP_sha1());
+    EVP_DigestInit(md5_ctx, EVP_md5());
+    EVP_DigestInit(sha256_ctx, EVP_sha256());
 
     /* Update for each one */
     while ((n = fread(buf, 1, OS_BUFFER_SIZE, fp)) > 0) {
@@ -90,20 +93,27 @@ int OS_MD5_SHA1_SHA256_File(const char *fname,
                 } else {
                     wpclose(wfd);
                 }
+                EVP_MD_CTX_free(sha1_ctx);
+                EVP_MD_CTX_free(md5_ctx);
+                EVP_MD_CTX_free(sha256_ctx);
                 return (-1);
             }
         }
 
         buf[n] = '\0';
 
-        SHA1_Update(&sha1_ctx, buf, n);
-        SHA256_Update(&sha256_ctx, buf, n);
-        MD5_Update(&md5_ctx, buf, (unsigned)n);
+        EVP_DigestUpdate(sha1_ctx, buf, n);
+        EVP_DigestUpdate(md5_ctx, buf, n);
+        EVP_DigestUpdate(sha256_ctx, buf, n);
     }
 
-    SHA1_Final(&(sha1_digest[0]), &sha1_ctx);
-    SHA256_Final(&(sha256_digest[0]), &sha256_ctx);
-    MD5_Final(md5_digest, &md5_ctx);
+    EVP_DigestFinal(sha1_ctx, sha1_digest, NULL);
+    EVP_DigestFinal(md5_ctx, md5_digest, NULL);
+    EVP_DigestFinal(sha256_ctx, sha256_digest, NULL);
+
+    EVP_MD_CTX_free(sha1_ctx);
+    EVP_MD_CTX_free(md5_ctx);
+    EVP_MD_CTX_free(sha256_ctx);
 
     /* Set output for MD5 */
     for (n = 0; n < 16; n++) {

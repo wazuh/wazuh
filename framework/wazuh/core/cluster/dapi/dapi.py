@@ -102,9 +102,7 @@ class DistributedAPI:
         self.origin_module = 'API'
         self.nodes = nodes if nodes is not None else list()
         if not basic_services:
-            self.basic_services = ('wazuh-modulesd', 'wazuh-analysisd', 'wazuh-execd', 'wazuh-db')
-            if common.WAZUH_INSTALL_TYPE != "local":
-                self.basic_services += ('wazuh-remoted',)
+            self.basic_services = ('wazuh-modulesd', 'wazuh-analysisd', 'wazuh-execd', 'wazuh-db', 'wazuh-remoted')
         else:
             self.basic_services = basic_services
 

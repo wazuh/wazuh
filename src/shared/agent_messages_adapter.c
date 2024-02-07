@@ -11,25 +11,51 @@
 
 #include "agent_messages_adapter.h"
 #include "cJSON.h"
+#include "defs.h"
 #include <stdbool.h>
 
-char* adapt_delta_message(const char* data, const char* name, const char* id, const char* ip, const char* node_name) {
+void *agent_data_hash_duplicator(void* data) {
+    return cJSON_Duplicate((cJSON*)data, true);
+}
+
+char* adapt_delta_message(const char* data, const char* name, const char* id, const char* ip, const char* node_name, const OSHash *agent_data_hash) {
     cJSON* j_msg_to_send = NULL;
     cJSON* j_agent_info = NULL;
     cJSON* j_msg = NULL;
+    cJSON* j_agent_data = NULL;
     char* msg_to_send = NULL;
 
     j_msg = cJSON_Parse(data);
-    if(!j_msg) {
+    if (!j_msg) {
         return NULL;
+    } else {
+        // Legacy agents prior to 4.2 used a different message format that isn't supported
+        if (cJSON_GetObjectItem(j_msg, "ID") && cJSON_GetObjectItem(j_msg, "timestamp")) {
+            cJSON_Delete(j_msg);
+            return NULL;
+        }
     }
 
     j_msg_to_send = cJSON_CreateObject();
 
     j_agent_info = cJSON_CreateObject();
+
     cJSON_AddStringToObject(j_agent_info, "agent_id", id);
     cJSON_AddStringToObject(j_agent_info, "agent_ip", ip);
     cJSON_AddStringToObject(j_agent_info, "agent_name", name);
+
+    if (NULL != agent_data_hash) {
+        // Getting agent context
+        j_agent_data = OSHash_Get_ex_dup(agent_data_hash, id, agent_data_hash_duplicator);
+        if (cJSON_IsString(cJSON_GetObjectItem(j_agent_data, "version"))) {
+            cJSON_AddItemToObject(j_agent_info, "agent_version", cJSON_DetachItemFromObject(j_agent_data, "version"));
+        }
+        cJSON_Delete(j_agent_data);
+    } else {
+        // A NULL agent_data_hash is received when the helper is executed from the manager side. Syscollector messages are not received by remoted module for agent 000.
+        cJSON_AddItemToObject(j_agent_info, "agent_version", cJSON_CreateString(__ossec_version));
+    }
+
     cJSON_AddStringToObject(j_agent_info, "node_name", node_name);
     cJSON_AddItemToObject(j_msg_to_send, "agent_info", j_agent_info);
 
@@ -46,24 +72,45 @@ char* adapt_delta_message(const char* data, const char* name, const char* id, co
     return msg_to_send;
 }
 
-char* adapt_sync_message(const char* data, const char* name, const char* id, const char* ip, const char* node_name) {
+char* adapt_sync_message(const char* data, const char* name, const char* id, const char* ip, const char* node_name, const OSHash *agent_data_hash) {
     cJSON* j_msg_to_send = NULL;
     cJSON* j_agent_info = NULL;
     cJSON* j_msg = NULL;
     cJSON* j_data = NULL;
+    cJSON* j_agent_data = NULL;
     char* msg_to_send = NULL;
 
     j_msg = cJSON_Parse(data);
-    if(!j_msg) {
+    if (!j_msg) {
         return NULL;
+    } else {
+        // Legacy agents prior to 4.2 used a different message format that isn't supported
+        if (cJSON_GetObjectItem(j_msg, "ID") && cJSON_GetObjectItem(j_msg, "timestamp")) {
+            cJSON_Delete(j_msg);
+            return NULL;
+        }
     }
 
     j_msg_to_send = cJSON_CreateObject();
 
     j_agent_info = cJSON_CreateObject();
+
     cJSON_AddStringToObject(j_agent_info, "agent_id", id);
     cJSON_AddStringToObject(j_agent_info, "agent_ip", ip);
     cJSON_AddStringToObject(j_agent_info, "agent_name", name);
+
+    if (NULL != agent_data_hash) {
+        // Getting agent context
+        j_agent_data = OSHash_Get_ex_dup(agent_data_hash, id, agent_data_hash_duplicator);
+        if (cJSON_IsString(cJSON_GetObjectItem(j_agent_data, "version"))) {
+                cJSON_AddItemToObject(j_agent_info, "agent_version", cJSON_DetachItemFromObject(j_agent_data, "version"));
+        }
+        cJSON_Delete(j_agent_data);
+    } else {
+        // A NULL agent_data_hash is received when the helper is executed from the manager side. Syscollector messages are not received by remoted module for agent 000.
+        cJSON_AddItemToObject(j_agent_info, "agent_version", cJSON_CreateString(__ossec_version));
+    }
+
     cJSON_AddStringToObject(j_agent_info, "node_name", node_name);
     cJSON_AddItemToObject(j_msg_to_send, "agent_info", j_agent_info);
 
