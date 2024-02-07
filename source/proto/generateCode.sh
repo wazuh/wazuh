@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# Function to check if protoc is installed
 check_protoc_installed() {
     if ! [ -x "$(command -v protoc)" ]; then
         echo 'Error: protoc is not installed.' >&2
@@ -7,44 +8,18 @@ check_protoc_installed() {
     fi
 }
 
-move_to_script_directory() {
+# Function to set up paths and variables
+initialize_variables() {
+    OLD_PWD=$(pwd)
+    PROTO_DEPS_SRC_DIR=../../../build/_deps/protobuf-src/src
     SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
     SRC_PROTO_DIR="${SCRIPT_DIR}/src"
-    PROTO_DEPS_SRC_DIR=../../../build/_deps/protobuf-src/src
-
-    cd "$SRC_PROTO_DIR" || exit 1
+    CLANG_DIR="${SCRIPT_DIR}/../../"
+    CPP_DIR="${SCRIPT_DIR}/include/eMessages/"
+    PYTHON_DIR="${SCRIPT_DIR}/../../tools/api-communication/src/api_communication/proto"
 }
 
-verify_changes_in_proto_directory() {
-    # Get the current timestamp and the list of .proto files
-    current_modification_time=$(find . -name "*.proto" -exec stat -c "%Y" {} + | md5sum | awk '{print $1}')
-    current_file_list=$(find . -name "*.proto" | sort)
-
-    # Read the stored timestamp and file list (if they exist)
-    previous_modification_time=""
-    previous_file_list=""
-    if [ -f "$TMPDIR/previous_modification_time" ]; then
-        previous_modification_time=$(cat "$TMPDIR/previous_modification_time")
-    fi
-    if [ -f "$TMPDIR/previous_file_list" ]; then
-        previous_file_list=$(cat "$TMPDIR/previous_file_list")
-    fi
-
-    # Compare timestamps and file lists
-    if [ "$current_modification_time" = "$previous_modification_time" ] && [ "$current_file_list" = "$previous_file_list" ]; then
-        echo "No changes in .proto files."
-        exit 0
-    fi
-
-    # Store the current timestamp and file list in temporary files
-    echo "$current_modification_time" > "$TMPDIR/previous_modification_time"
-    echo "$current_file_list" > "$TMPDIR/previous_file_list"
-
-    # Export environment variables with the values from the temporary files
-    export previous_modification_time="$(cat "$TMPDIR/previous_modification_time")"
-    export previous_file_list="$(cat "$TMPDIR/previous_file_list")"
-}
-
+# Function to select the appropriate clang-format version
 select_clang_format_version() {
     if [ -x "$(command -v clang-format-11)" ]; then
         CLANG_FORMAT=clang-format-11
@@ -58,15 +33,13 @@ select_clang_format_version() {
     fi
 }
 
+# Function to format code using clang-format
 format_code() {
-    CLANG_DIR="${SCRIPT_DIR}/../../"
-    CPP_DIR="${SCRIPT_DIR}/include/eMessages/"
-    PYTHON_DIR="${SCRIPT_DIR}/../../tools/api-communication/src/api_communication/proto"
-
     cd "$CLANG_DIR" || exit 1
     $CLANG_FORMAT -i -style=file "${SRC_PROTO_DIR}"/*.proto
 }
 
+# Function to clean up unnecessary files
 clean_up_files() {
     clean_directory() {
         local dir="$1"
@@ -81,14 +54,14 @@ clean_up_files() {
     clean_directory "$PYTHON_DIR" "__init__.py"
 }
 
+# Function to generate code using protoc
 generate_code() {
-    PROTO_DEPS_SRC_DIR=../../../build/_deps/protobuf-src/src
-
     cd "${SRC_PROTO_DIR}" || exit 1
     protoc --proto_path="$PROTO_DEPS_SRC_DIR" --proto_path="${SRC_PROTO_DIR}" --cpp_out="$CPP_DIR" *.proto
     protoc --proto_path="$PROTO_DEPS_SRC_DIR" --proto_path="${SRC_PROTO_DIR}" --python_out="$PYTHON_DIR" --pyi_out="$PYTHON_DIR" *.proto
 }
 
+# Function to modify Python imports
 modify_python_imports() {
     python_files=$(grep -rl '^import .*_pb2' --include="*.py" "$PYTHON_DIR")
 
@@ -99,8 +72,7 @@ modify_python_imports() {
 
 # Main script starts here
 check_protoc_installed
-move_to_script_directory
-verify_changes_in_proto_directory
+initialize_variables
 select_clang_format_version
 format_code
 clean_up_files
@@ -108,4 +80,4 @@ generate_code
 modify_python_imports
 
 # Go back to the original working directory
-cd - || exit 1
+cd $OLD_PWD || exit 1
