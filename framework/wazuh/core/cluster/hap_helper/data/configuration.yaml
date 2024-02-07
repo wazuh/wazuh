@@ -38,7 +38,7 @@ proxy:
   # the haproxy.cfg file.
   # resolver: wazuh_resolver
 
-coordinator:
+hap_helper:
   # Seconds to sleep between each coordinator iteration
   sleep_time: 60
   # Seconds to sleep after the end of the agent reconnection phase
