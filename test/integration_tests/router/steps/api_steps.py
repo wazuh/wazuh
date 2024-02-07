@@ -9,266 +9,213 @@ from api_communication.proto import engine_pb2 as api_engine
 from behave import given, when, then
 import os
 import subprocess
+from typing import Optional, Tuple
 
-ENGINE_DIR = os.environ.get("ENGINE_DIR", "")
 ENV_DIR = os.environ.get("ENV_DIR", "")
 SOCKET_PATH = ENV_DIR + "/queue/sockets/engine-api"
 RULESET_DIR = ENV_DIR + "/engine"
 
 api_client = APIClient(SOCKET_PATH)
 
+def run_command(command):
+    result = subprocess.run(
+        command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    assert result.returncode == 0, f"{result.stderr}"
+
+def send_recv(request, expected_response_type) -> Tuple[Optional[str], dict]:
+    error, response = api_client.send_recv(request)
+    assert error is None, f"{err}"
+    parse_response = ParseDict(response, expected_response_type)
+    if parse_response == api_engine.ERROR:
+        return parse_response.error, {}
+    else:
+        return None, parse_response
+
+def add_integration(integration_name: str):
+    command = f"engine-integration add -a {SOCKET_PATH} -n system {RULESET_DIR}/{integration_name}/"
+    run_command(command)
+
+def create_policy(policy_name: str):
+    request = api_policy.StorePost_Request()
+    request.policy = policy_name
+    error, response = send_recv(request, api_engine.GenericStatus_Response())
+    assert error is None, f"{error}"
+
+def add_integration_to_policy(integration_name: str, policy_name: str):
+    request = api_policy.AssetPost_Request()
+    request.policy = policy_name
+    request.asset = f"integration/{integration_name}/0"
+    request.namespace = "system"
+    error, response = send_recv(request, api_engine.GenericStatus_Response())
+    assert error is None, f"{error}"
+
+def policy_tear_down(policy_name: str, integration_name: str):
+    # Check if the policy "policy_name" was created
+    request = api_policy.PoliciesGet_Request()
+    error, response = send_recv(request, api_policy.PoliciesGet_Response())
+    if error is not None or len(response.data) == 0:
+        return
+
+    # Remove policy "policy_name"
+    request = api_policy.StoreDelete_Request()
+    request.policy = policy_name
+    error, response = send_recv(request, api_policy.PoliciesGet_Response())
+    assert error is None, f"{error}"
+
+    # Delete all assets and kvdbs
+    command = f"engine-clear -f --api-sock {SOCKET_PATH}"
+    run_command(command)
+
+def create_filter(filter_name: str):
+    request = api_catalog.ResourcePost_Request()
+    request.type = "filter"
+    request.format = "yaml"
+    # Load content from file
+    with open(f"{RULESET_DIR}/wazuh-core-test/filters/allow-all.yml", "r") as f:
+        request.content = f.read()
+    request.namespaceid = "system"
+    error, response = send_recv(request, api_engine.GenericStatus_Response())
+    assert error is None, f"{error}"
+
+def create_route(route_name: str, policy_name: str, filter_name: str, priority: int) -> api_engine.GenericStatus_Response:
+    request = api_router.RoutePost_Request()
+    request.route.name = route_name
+    request.route.filter = filter_name
+    request.route.priority = priority
+    request.route.policy = policy_name
+    error, response = send_recv(request, api_engine.GenericStatus_Response())
+    return response
+
+def router_tear_down():
+    # Check if there are routes to delete
+    request = api_router.TableGet_Request()
+    error, response = send_recv(request, api_router.TableGet_Response())
+    assert error is None, f"{error}"
+    if len(response.table) == 0:
+        return
+
+    # Delete all routes
+    for entry in response.table:
+        request = api_router.RouteDelete_Request()
+        request.name = entry.name
+        error, response = send_recv(request, api_engine.GenericStatus_Response())
+        assert error is None, f"{error}"
 
 # First Scenario
+@given('I have a policy "{policy_name}" that has an integration called "{integration_name}" loaded')
+def step_impl(context, policy_name: str, integration_name: str):
+    # TearDown
+    policy_tear_down(policy_name, integration_name)
 
+    # Setup
+    add_integration(integration_name)
+    create_policy(policy_name)
+    add_integration_to_policy(integration_name, policy_name)
 
-@given('I am authenticated with the router API "{name}"')
-def step_impl(context, name: str):
-    # Check if the policy exists, if not, create it
-    request = api_policy.PoliciesGet_Request()
-    err, response = api_client.send_recv(request)
-    if err:
-        context.result = err
-        print(err)
-        assert False
+@given('I create a "{route_name}" route with priority "{priority}" that uses the filter "{filter_name}" and points to policy "{policy_name}"')
+def step_impl(context, route_name: str, policy_name: str, filter_name: str, priority: str):
+    # TearDown
+    router_tear_down()
 
-    policy_resp = ParseDict(response, api_policy.PoliciesGet_Response())
-    if policy_resp.status == api_engine.ERROR or len(policy_resp.data) == 0:
-        request = api_kvdb.managerDelete_Request()
-        request.name = "agents_host_data"
-        err, response = api_client.send_recv(request)
-        if err:
-            context.result = err
-            print(err)
-            assert False
-        command = f"engine-integration add -a {SOCKET_PATH} -n system {RULESET_DIR}/wazuh-core-test/"
-        result = subprocess.run(
-            command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        assert result.returncode == 0, f"{result.stderr}"
+    # Setup
+    create_filter(filter_name)
+    create_route(route_name, policy_name, filter_name, int(priority))
 
-        request = api_policy.StorePost_Request()
-        request.policy = "policy/wazuh/0"
-        err, response = api_client.send_recv(request)
-        if err:
-            context.result = err
-            print(err)
-            assert False
+@when('I send a request to the router to add a new route called "{route_name}" with the data from policy:"{policy_name}" filter:"{filter_name}" priority:"{priority}"')
+def step_impl(context, route_name: str, policy_name: str, filter_name: str, priority: str):
+    context.result = create_route(route_name, policy_name, filter_name, int(priority))
 
-        request = api_policy.AssetPost_Request()
-        request.policy = "policy/wazuh/0"
-        request.asset = "integration/wazuh-core-test/0"
-        request.namespace = "system"
-        err, response = api_client.send_recv(request)
-        if err:
-            context.result = err
-            print(err)
-            assert False
-
-    # Check if the filter exists, if not, create it
-    request = api_catalog.ResourceGet_Request()
-    request.name = "filter/allow-all/0"
-    request.format = "json"
-    request.namespaceid = "system"
-    err, response = api_client.send_recv(request)
-    if err:
-        context.result = err
-        print(err)
-        assert False
-
-    filter_resp = ParseDict(response, api_catalog.ResourceGet_Response())
-    if filter_resp.status == api_engine.ERROR or len(filter_resp.content) == 0:
-        request = api_catalog.ResourcePost_Request()
-        request.type = "filter"
-        request.format = "yaml"
-        # Load content from file
-        with open(f"{RULESET_DIR}/wazuh-core-test/filters/allow-all.yml", "r") as f:
-            request.content = f.read()
-        request.namespaceid = "system"
-        err, response = api_client.send_recv(request)
-        if err:
-            context.result = err
-            print(err)
-            assert False
-
-    # Check if the route exists, if not, create it
-    request = api_router.RouteGet_Request()
-    request.name = name
-    err, response = api_client.send_recv(request)
-    if err:
-        context.result = err
-        print(err)
-        assert False
-
-    route_resp = ParseDict(response, api_router.RouteGet_Response())
-    if route_resp.status != api_engine.OK:
-        request = api_router.RoutePost_Request()
-        request.route.name = "default"
-        request.route.filter = "filter/allow-all/0"
-        request.route.priority = 255
-        request.route.policy = "policy/wazuh/0"
-        err, response = api_client.send_recv(request)
-        if err:
-            context.result = err
-            print(err)
-            assert False
-
-
-@when('I send a request to the router to add a new route called "{route}" with the data from policy:"{policy}" filter:"{filter}" priority:"{priority}"')
-def step_impl(context, route: str, policy: str, filter: str, priority: str):
-    post = api_router.RoutePost_Request()
-    post.route.name = route
-    post.route.filter = filter
-    post.route.priority = int(priority)
-    post.route.policy = policy
-    err, response = api_client.send_recv(post)
-    assert err is None, f"{err}"
-    context.result = ParseDict(response, api_engine.GenericStatus_Response())
-
-
-@then('I should receive an {response} response indicating that the policy already exists')
-def step_impl(context, response: str):
-    if response == "error":
-        route_response: api_engine.GenericStatus_Response = context.result
-        assert route_response.status == api_engine.ERROR, f"{route_response}"
-
+@then('I should receive an {status} response indicating "{response}"')
+def step_impl(context, status: str, response: str):
+    if status == "error":
+        assert context.result.status == api_engine.ERROR, f"{context.result}"
+        assert context.result.error == response
 
 # Second Scenario
-@when('I send a request to update the priority from route "{name}" to value of "{priority}"')
-def step_impl(context, name: str, priority: str):
-    patch = api_router.RoutePatchPriority_Request()
-    patch.name = name
-    patch.priority = int(priority)
-    err, response = api_client.send_recv(patch)
-    assert err is None, f"{err}"
-    context.result = ParseDict(response, api_engine.GenericStatus_Response())
-
+@when('I send a request to update the priority from route "{route_name}" to value of "{priority}"')
+def step_impl(context, route_name: str, priority: str):
+    request = api_router.RoutePatchPriority_Request()
+    request.name = route_name
+    request.priority = int(priority)
+    error, context.result = send_recv(request, api_engine.GenericStatus_Response())
+    assert error is None, f"{error}"
+    context.route_name = route_name
 
 @then('I should receive a {response} response indicating that the route was updated')
 def step_impl(context, response: str):
     if (response == "success"):
-        route_response: api_engine.GenericStatus_Response = context.result
-        assert route_response.status == api_engine.OK, f"{route_response}"
-
+        assert context.result.status == api_engine.OK, f"{context.result}"
 
 @then('I should check if the new priority is {priority}')
 def step_impl(context, priority: str):
-    get = api_router.RouteGet_Request()
-    get.name = "default"
-    err, response = api_client.send_recv(get)
-    assert err is None, f"{err}"
-    route_response = ParseDict(response, api_router.RouteGet_Response())
-    assert route_response.status == api_engine.OK, f"{route_response}"
-    assert route_response.route.priority == int(priority)
-
+    request = api_router.RouteGet_Request()
+    request.name = context.route_name
+    error, response = send_recv(request, api_router.RouteGet_Response())
+    assert error is None, f"{error}"
+    assert response.route.priority == int(priority)
 
 # Third Scenario
-@when('I send a request to delete the route "{name}"')
-def step_impl(context, name: str):
-    delete = api_router.RouteDelete_Request()
-    delete.name = name
-    err, response = api_client.send_recv(delete)
-    assert err is None, f"{err}"
-    context.result = ParseDict(response, api_engine.GenericStatus_Response())
-
+@when('I send a request to delete the route "{route_name}"')
+def step_impl(context, route_name: str):
+    request = api_router.RouteDelete_Request()
+    request.name = route_name
+    error, context.result = send_recv(request, api_engine.GenericStatus_Response())
 
 @then('I should receive a {response} response indicating that the route was deleted')
 def step_impl(context, response: str):
     if (response == "success"):
-        route_response: api_engine.GenericStatus_Response = context.result
-        assert route_response.status == api_engine.OK, f"{route_response}"
-
+        assert context.result.status == api_engine.OK, f"{route_response}"
 
 # Fourth Scenario
-@when('I send a request to get the route "{name}"')
-def step_impl(context, name: str):
-    get = api_router.RouteGet_Request()
-    get.name = name
-    err, response = api_client.send_recv(get)
-    assert err is None, f"{err}"
-    context.result = ParseDict(response, api_router.RouteGet_Response())
-
+@when('I send a request to get the route "{route_name}"')
+def step_impl(context, route_name: str):
+    request = api_router.RouteGet_Request()
+    request.name = route_name
+    error, context.result = send_recv(request, api_router.RouteGet_Response())
+    assert error is None, f"{error}"
 
 @then('I should receive a list of routes with their filters, priorities, and security policies')
 def step_impl(context):
-    get_response: api_router.RouteGet_Response = context.result
-    assert get_response.status == api_engine.OK, f"{get_response}"
-    assert get_response.route.name == "default"
-    assert get_response.route.filter == "filter/allow-all/0"
-    assert get_response.route.priority == 255
-    assert get_response.route.policy == "policy/wazuh/0"
-
+    assert context.result.route.name == "default"
+    assert context.result.route.filter == "filter/allow-all/0"
+    assert context.result.route.priority == 255
+    assert context.result.route.policy == "policy/wazuh/0"
 
 # Fifth Scenario
-@then('I should receive an {response} response indicating that "{message}"')
-def step_impl(context, response: str, message: str):
-    if response == "error":
-        route_response: api_engine.GenericStatus_Response = context.result
-        assert route_response.status == api_engine.ERROR, f"{route_response}"
-        assert route_response.error == message
+# When Scenario II
+# Then Scenario I
 
 # Sixth Scenario
-@when('I send a request to the policy "{policyName}" to add an integration called "{integrationName}"')
-def step_impl(context, policyName: str, integrationName: str):
-    # Query if the integration already exist
-    request = api_policy.AssetGet_Request()
-    request.policy = policyName
-    request.namespace = "system"
-    err, response = api_client.send_recv(request)
-    assert err is None, f"{err}"
-    context.result = ParseDict(response, api_policy.AssetGet_Response())
-    policy_response: api_engine.GenericStatus_Response = context.result
+# When Scenario II
+# Then Scenario I
 
-    if integrationName in policy_response.data:
-        request = api_policy.AssetDelete_Request()
-        request.policy = policyName
-        request.asset = integrationName
-        request.namespace = "system"
-        err, response = api_client.send_recv(request)
-        if err:
-            context.result = err
-            print(err)
-            assert False
-    else:
-        # Add new integration
-        command = f"engine-integration add -a {SOCKET_PATH} -n system {RULESET_DIR}/other-wazuh-core-test/"
-        result = subprocess.run(
-            command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        assert result.returncode == 0, f"{result.stderr}"
+# Seventh Scenario
+@when('I send a request to the policy "{policy_name}" to add an integration called "{integration_name}"')
+def step_impl(context, policy_name: str, integration_name: str):
+    add_integration(integration_name)
+    add_integration_to_policy(integration_name, policy_name)
 
-        # Add integration to policy
-        request = api_policy.AssetPost_Request()
-        request.policy = policyName
-        request.asset = "integration/other-wazuh-core-test/0"
-        request.namespace = "system"
-        err, response = api_client.send_recv(request)
-        if err:
-            context.result = err
-            print(err)
-            assert False
-
-@then('I should receive a route with sync "{policySync}"')
-def step_impl(context, policySync: str):
+@then('I should receive a route with sync "{policy_sync}"')
+def step_impl(context, policy_sync: str):
     policySyncToString = {
         0: "SYNC_UNKNOWN",
         1: "UPDATED",
         2: "OUTDATED",
         3: "ERROR"
     }
-    router_response: api_engine.GenericStatus_Response = context.result
-    assert policySyncToString[router_response.route.policy_sync] == policySync, f"{router_response.route.policy_sync}"
+    assert policySyncToString[context.result.route.policy_sync] == policy_sync, f"{context.result.route}"
 
-@then('I send a request to the router to reload the "{routeName}" route and the sync change to "{policySync}" again')
-def step_impl(context, routeName: str, policySync: str):
+@then('I send a request to the router to reload the "{route_name}" route and the sync change to "{policy_sync}" again')
+def step_impl(context, route_name: str, policy_sync: str):
     request = api_router.RouteReload_Request()
-    request.name = routeName
-    err, response = api_client.send_recv(request)
-    assert err is None, f"{err}"
-    context.result = ParseDict(response, api_engine.GenericStatus_Response())
+    request.name = route_name
+    error, response = send_recv(request, api_engine.GenericStatus_Response())
+    assert error is None, f"{error}"
 
     request = api_router.RouteGet_Request()
-    request.name = routeName
-    err, response = api_client.send_recv(request)
-    assert err is None, f"{err}"
-    context.result = ParseDict(response, api_router.RouteGet_Response())
+    request.name = route_name
+    error, response = send_recv(request, api_router.RouteGet_Response())
+    assert error is None, f"{error}"
 
     policySyncToString = {
         0: "SYNC_UNKNOWN",
@@ -276,5 +223,4 @@ def step_impl(context, routeName: str, policySync: str):
         2: "OUTDATED",
         3: "ERROR"
     }
-    router_response: api_engine.GenericStatus_Response = context.result
-    assert policySyncToString[router_response.route.policy_sync] == policySync, f"{router_response.route.policy_sync}"
+    assert policySyncToString[response.route.policy_sync] == policy_sync, f"{response.route.policy_sync}"
