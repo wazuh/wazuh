@@ -148,6 +148,7 @@ add_executable(builder_utest
     ${UNIT_SRC_DIR}/builders/opmap/kvdb_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/activeResponse_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/upgradeConfirmation_test.cpp
+    ${UNIT_SRC_DIR}/builders/opmap/wdb_test.cpp
 
     # Transform Builders
     ${UNIT_SRC_DIR}/builders/optransform/strTransform_test.cpp

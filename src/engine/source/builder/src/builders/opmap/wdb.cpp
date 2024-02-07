@@ -17,22 +17,66 @@ static inline MapOp opBuilderWdbGenericQuery(const std::vector<OpArg>& opArgs,
 {
     utils::assertSize(opArgs, 1);
 
-    if (opArgs[0]->isValue() && !std::static_pointer_cast<Value>(opArgs[0])->value().isString())
+    if (opArgs[0]->isValue())
     {
-        throw std::runtime_error("WDB query must be a string or a reference");
+        if (!std::static_pointer_cast<Value>(opArgs[0])->value().isString())
+        {
+            throw std::runtime_error(fmt::format("Expected 'string' parameter with query but got '{}'",
+                                                 std::static_pointer_cast<Value>(opArgs[0])->value().str()));
+        }
+
+        if (std::static_pointer_cast<Value>(opArgs[0])->value().getString().value().empty())
+        {
+            throw std::runtime_error("Empty value parameter query");
+        }
     }
+    else
+    {
+        const auto& ref = *std::static_pointer_cast<Reference>(opArgs[0]);
+        const auto& schema = buildCtx->schema();
 
-    const auto name = buildCtx->context().opName;
-
-    // Tracing
-    const std::string successTrace {fmt::format("{} -> Success", name)};
-
-    const std::string failureTrace {fmt::format("{} -> Failure: ", name)};
-    const std::string failureTrace1 {fmt::format("{} -> Failure: parameter reference not found", name)};
-    const std::string failureTrace2 {fmt::format("{} -> Failure: parameter reference contains empty query", name)};
+        if (schema.hasField(ref.dotPath()))
+        {
+            auto jType = buildCtx->validator().getJsonType(schema.getType(ref.dotPath()));
+            if (jType != json::Json::Type::String)
+            {
+                throw std::runtime_error(fmt::format(
+                    "Expected reference to 'string' parameter with query but got reference '{}' of type '{}'",
+                    ref.dotPath(),
+                    json::Json::typeToStr(jType)));
+            }
+        }
+    }
 
     // instantiate WDB
     auto wdb = wdbManager->connection();
+
+    // Tracing
+    const auto name = buildCtx->context().opName;
+    const auto successTrace = fmt::format("{} -> Success", name);
+
+    const auto failureTrace = fmt::format("{} -> Failed to perform query: ", name);
+    const auto failureTrace1 = [&]()
+    {
+        if (opArgs[0]->isReference())
+        {
+            return fmt::format("{} -> Field reference '{}' not found",
+                               name,
+                               std::static_pointer_cast<Reference>(opArgs[0])->dotPath());
+        }
+        return std::string {};
+    }();
+    const auto failureTrace2 = [&]()
+    {
+        if (opArgs[0]->isReference())
+        {
+            return fmt::format("{} -> Field reference '{}' is not a string",
+                               name,
+                               std::static_pointer_cast<Reference>(opArgs[0])->dotPath());
+        }
+        return std::string {};
+    }();
+    const auto failureTrace3 = fmt::format("{} -> Empty query", name);
 
     // Return Op
     return [=, wdb = std::move(wdb), param = opArgs[0], runState = buildCtx->runState()](
@@ -43,20 +87,22 @@ static inline MapOp opBuilderWdbGenericQuery(const std::vector<OpArg>& opArgs,
         // Check if the value comes from a reference
         if (param->isReference())
         {
-            const auto& path = std::static_pointer_cast<Reference>(param)->jsonPath();
-            auto resolvedRValue = event->getString(path);
-
-            if (resolvedRValue.has_value())
-            {
-                completeQuery = resolvedRValue.value();
-                if (completeQuery.empty())
-                {
-                    RETURN_FAILURE(runState, json::Json {}, failureTrace2);
-                }
-            }
-            else
+            auto refPath = std::static_pointer_cast<Reference>(param)->jsonPath();
+            if (!event->exists(refPath))
             {
                 RETURN_FAILURE(runState, json::Json {}, failureTrace1);
+            }
+
+            auto resolvedRValue = event->getString(refPath);
+            if (!resolvedRValue.has_value())
+            {
+                RETURN_FAILURE(runState, json::Json {}, failureTrace2);
+            }
+
+            completeQuery = resolvedRValue.value();
+            if (completeQuery.empty())
+            {
+                RETURN_FAILURE(runState, json::Json {}, failureTrace3);
             }
         }
         else // Direct value
@@ -97,7 +143,13 @@ static inline MapOp opBuilderWdbGenericQuery(const std::vector<OpArg>& opArgs,
         else
         {
             json::Json result;
-            result.setBool(wazuhdb::QueryResultCodes::OK == resultCode);
+            auto ok = wazuhdb::QueryResultCodes::OK == resultCode;
+            result.setBool(ok);
+            if (!ok)
+            {
+                RETURN_FAILURE(
+                    runState, result, failureTrace + fmt::format("Result code is '{}'", wazuhdb::qrcToStr(resultCode)));
+            }
             RETURN_SUCCESS(runState, result, successTrace);
         }
     };
