@@ -12,6 +12,11 @@ namespace mmdb
 /**
  * @brief A manager for MMDB handlers, which are used to look up IP addresses in MMDB databases.
  * The manager is responsible for creating and managing the handlers.
+ *
+ * mmdb is the module that provides the interface to the MaxMind DB file format, offered by MaxMind Inc.
+ * https://www.maxmind.com
+ * This module also uses the MaxMind DB C library, which is a C library for reading MaxMind DB files.
+ * https://maxmind.github.io/libmaxminddb/
  * @see IHandler
  * @note thread-safe if is compiled with free and malloc thread-safe
  */

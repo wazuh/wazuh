@@ -150,3 +150,10 @@ TEST_F(ResultTest, getAsJson)
     ASSERT_FALSE(base::isError(j));
     ASSERT_EQ(base::getResponse(j), json::Json {R"("1234567890")"});
 }
+
+TEST_F(ResultTest, getArrayStr)
+{
+    auto res = m_handler->lookup(g_ipFullData)->getString("test_array.0");
+    ASSERT_FALSE(base::isError(res));
+    ASSERT_EQ(base::getResponse(res), "a");
+}

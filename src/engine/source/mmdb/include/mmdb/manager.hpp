@@ -7,7 +7,9 @@
 
 namespace mmdb
 {
-
+/**
+ * @copydoc IManager
+ */
 class Manager : public IManager
 {
 
