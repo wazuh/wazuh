@@ -138,7 +138,7 @@ def pre_set_sync_info():
 
     command = "agent 000 sql UPDATE sync_info SET last_completion = 10, last_attempt = 10 " \
               "where component = 'syscollector-packages'"
-    response = database.query_wdb(command)
+    response = database.query_wdb(command, False)
     data = response.split()
     assert data[0] == 'ok', 'Unable to set sync_info table'
 
@@ -152,5 +152,5 @@ def pre_insert_packages():
         agent_db.insert_package(scan_id='0', scan_time='2021/04/07 22:00:00', format='deb', name=f'test_package_{pkg_n}',
                                 priority='optional', section='utils', size=f'{random.randint(200,1000)}', vendor='Wazuh wazuh@wazuh.com',
                                 install_time='NULL', version=f'{random.randint(1,10)}.0.0', architecture='all', multiarch='NULL', source='NULL',
-                                description=f'Test package {pkg_n}', location='NULL', triaged='0', msu_name='NULL',
+                                description=f'Test package {pkg_n}', location='NULL', triaged='0',
                                 checksum=f'{random.getrandbits(128)}', item_id=f'{random.getrandbits(128)}')

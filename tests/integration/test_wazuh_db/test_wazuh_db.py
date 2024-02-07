@@ -184,9 +184,7 @@ def test_wazuh_db_messages_agent(daemons_handler_module, clean_databases, clean_
 
         command = stage['input']
         expected_output = stage['output']
-
-        response = query_wdb(command)
-
+        response = query_wdb(command, False, True)
         if 'use_regex' in stage and stage['use_regex'] == 'yes':
             match = True if regex_match(expected_output, response) else False
         else:
@@ -244,7 +242,7 @@ def test_wazuh_db_messages_global(connect_to_sockets_module, daemons_handler_mod
         command = stage['input']
         expected_output = stage['output']
 
-        response = query_wdb(command)
+        response = query_wdb(command, False, True)
 
         if 'use_regex' in stage and stage['use_regex'] == 'yes':
             match = True if regex_match(expected_output, response) else False
@@ -301,7 +299,7 @@ def test_wazuh_db_chunks(daemons_handler_module, clean_databases, configure_sock
         - wdb_socket
     '''
     def send_chunk_command(command):
-        response = query_wdb(command)
+        response = query_wdb(command, False)
         status = response.split()[0]
 
         assert status == 'due', 'Failed chunks check on < {} >. Expected: {}. Response: {}' \
@@ -366,19 +364,19 @@ def test_wazuh_db_range_checksum(daemons_handler_module, clean_databases, config
                  \"checksum\":\"2a41be94762b4dc57d98e8262e85f0b90917d6be\",\"id\":1}"""
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
     # Checksum Range calculus expected the first time
-    query_wdb(command)
+    query_wdb(command, False)
     log_monitor.start(callback=make_callback('range checksum: Time: ', prefix=WAZUH_DB_PREFIX,
                                              escape=True), timeout=WAZUH_DB_CHECKSUM_CALCULUS_TIMEOUT)
     assert log_monitor.callback_result, 'Checksum Range wasn´t calculated the first time'
 
     # Checksum Range avoid expected the next times
-    query_wdb(command)
+    query_wdb(command, False)
     log_monitor.start(callback=make_callback('range checksum avoided', prefix=WAZUH_DB_PREFIX,
                                              escape=True), timeout=WAZUH_DB_CHECKSUM_CALCULUS_TIMEOUT)
     assert log_monitor.callback_result, 'Checksum Range wasn´t avoided the second time'
 
 
-def test_wazuh_db_timeout(configure_sockets_environment, connect_to_sockets_module,
+def test_wazuh_db_timeout(configure_sockets_environment_module, connect_to_sockets_module,
                           pre_insert_packages, pre_set_sync_info):
     """Check that effectively the socket is closed after timeout is reached"""
     wazuh_db_send_sleep = 2
