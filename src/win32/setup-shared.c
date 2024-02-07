@@ -29,7 +29,7 @@ int fileexist(char *file)
     FILE *fp;
 
     /* Open file */
-    fp = fopen(file, "r");
+    fp = wfopen(file, "r");
     if (!fp) {
         return (0);
     }
@@ -45,7 +45,7 @@ int dogrep(char *file, char *str)
     FILE *fp;
 
     /* Open file */
-    fp = fopen(file, "r");
+    fp = wfopen(file, "r");
     if (!fp) {
         return (0);
     }

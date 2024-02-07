@@ -270,7 +270,7 @@ static int checking_if_its_configured(const char *log_prog_name, const char *pat
 static int write_cmd_to_file(const char *path, const char *cmd) {
     int retVal = 0;
     if (path != NULL && cmd != NULL) {
-        FILE *fp = fopen(path, "a+");
+        FILE *fp = wfopen(path, "a+");
         if (fp != NULL) {
             fprintf(fp, "%s\n", cmd);
             retVal = 1;
