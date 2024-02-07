@@ -13,6 +13,7 @@
 #define _ROCKS_DB_WRAPPER_HPP
 
 #include "rocksDBIterator.hpp"
+#include "stringHelper.h"
 #include <algorithm>
 #include <filesystem>
 #include <memory>
@@ -508,8 +509,15 @@ namespace Utils
                 {
                     auto keyStr = std::string(it->key().data(), it->key().size());
 
-                    // Invoke the callback function with the deleted key
-                    callback(keyStr);
+                    // Extract the list of CVEs from the key
+                    auto listCve = Utils::split(it->value().ToString(), ',');
+
+                    for (const auto& cve : listCve)
+                    {
+                        std::string elementKey = keyStr + "_" + cve;
+                        // Invoke the callback function with the deleted key
+                        callback(elementKey);
+                    }
 
                     // Mark the key for deletion in the batch
                     batch.Delete(keyStr);
