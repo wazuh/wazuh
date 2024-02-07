@@ -27,8 +27,6 @@ CPMAddPackage(
 # ###################################################################################################
 file(GLOB EMESSAGE_AUTO_SOURCES "${ENGINE_EMESSAGES_INCLUDE_DIR}/eMessages/*.cc")
 
-message(STATUS "${PROTO_FILES}")
-
 add_library(eMessages STATIC)
 
 target_sources(eMessages
@@ -47,11 +45,9 @@ target_link_libraries(eMessages PUBLIC protobuf::libprotobuf base)
 # Add custom target for code generation trigger
 # ###################################################################################################
 if(ENGINE_GENERATE_PROTOBUF)
-    message(STATUS "Protobuf code generation is enabled")
+    message(STATUS "Regenerate Protobuf code")
     add_custom_target(generate_protobuf_code
         COMMAND /bin/sh ${GENERATE_PROTOBUF_SCRIPT}
     )
     add_dependencies(eMessages generate_protobuf_code)
-else()
-    message(STATUS "Protobuf code generation is disabled")
 endif()
