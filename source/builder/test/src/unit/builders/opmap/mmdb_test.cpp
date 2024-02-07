@@ -206,7 +206,10 @@ mapbuildtest::BuilderGetter getBuilderHandlerResult(bool hasCity,
                                                     bool hasLatitude,
                                                     bool hasLongitude,
                                                     bool hasPostalCode,
-                                                    bool hasTimeZone)
+                                                    bool hasTimeZone,
+                                                    bool hasRegionCode,
+                                                    bool hasRegionName
+                                                    )
 {
     // Path from the root MaxMind object
     const DotPath cityPath {"city.names.en"};
@@ -218,6 +221,8 @@ mapbuildtest::BuilderGetter getBuilderHandlerResult(bool hasCity,
     const DotPath longitudePath {"location.longitude"};
     const DotPath postalCodePath {"postal.code"};
     const DotPath timeZonePath {"location.time_zone"};
+    const DotPath regionCodePath {"subdivisions.0.iso_code"};
+    const DotPath regionNamePath {"subdivisions.0.names.en"};
 
     return [=]()
     {
@@ -305,6 +310,24 @@ mapbuildtest::BuilderGetter getBuilderHandlerResult(bool hasCity,
         else
         {
             EXPECT_CALL(*mmdbResult, getString(timeZonePath)).WillOnce(testing::Return(base::Error {"Not found"}));
+        }
+
+        if (hasRegionCode)
+        {
+            EXPECT_CALL(*mmdbResult, getString(regionCodePath)).WillOnce(testing::Return("RC"));
+        }
+        else
+        {
+            EXPECT_CALL(*mmdbResult, getString(regionCodePath)).WillOnce(testing::Return(base::Error {"Not found"}));
+        }
+
+        if (hasRegionName)
+        {
+            EXPECT_CALL(*mmdbResult, getString(regionNamePath)).WillOnce(testing::Return("Region"));
+        }
+        else
+        {
+            EXPECT_CALL(*mmdbResult, getString(regionNamePath)).WillOnce(testing::Return(base::Error {"Not found"}));
         }
 
         EXPECT_CALL(*mmdbResult, hasData()).WillOnce(testing::Return(true));
@@ -429,47 +452,55 @@ INSTANTIATE_TEST_SUITE_P(
                  FAILURE(customRefExpected())),
         // Partial result
         MapDepsT(R"({"ref": "1.2.3.4"})",
-                 geo::getBuilderHandlerResult(false, false, false, false, false, false, false, false, false),
+                 geo::getBuilderHandlerResult(false, false, false, false, false, false, false, false, false, false, false),
                  {makeRef("ref")},
                  FAILURE(customRefExpected())),
         MapDepsT(R"({"ref": "1.2.3.4"})",
-                 geo::getBuilderHandlerResult(true, false, false, false, false, false, false, false, false),
+                 geo::getBuilderHandlerResult(true, false, false, false, false, false, false, false, false, false, false),
                  {makeRef("ref")},
                  SUCCESS(customRefExpected(json::Json {R"({"city_name": "City"})"}))),
         MapDepsT(R"({"ref": "1.2.3.4"})",
-                 geo::getBuilderHandlerResult(false, true, false, false, false, false, false, false, false),
+                 geo::getBuilderHandlerResult(false, true, false, false, false, false, false, false, false, false, false),
                  {makeRef("ref")},
                  SUCCESS(customRefExpected(json::Json {R"({"continent_code": "CC"})"}))),
         MapDepsT(R"({"ref": "1.2.3.4"})",
-                 geo::getBuilderHandlerResult(false, false, true, false, false, false, false, false, false),
+                 geo::getBuilderHandlerResult(false, false, true, false, false, false, false, false, false, false, false),
                  {makeRef("ref")},
                  SUCCESS(customRefExpected(json::Json {R"({"continent_name": "Continent"})"}))),
         MapDepsT(R"({"ref": "1.2.3.4"})",
-                 geo::getBuilderHandlerResult(false, false, false, true, false, false, false, false, false),
+                 geo::getBuilderHandlerResult(false, false, false, true, false, false, false, false, false, false, false),
                  {makeRef("ref")},
                  SUCCESS(customRefExpected(json::Json {R"({"country_iso_code": "CI"})"}))),
         MapDepsT(R"({"ref": "1.2.3.4"})",
-                 geo::getBuilderHandlerResult(false, false, false, false, true, false, false, false, false),
+                 geo::getBuilderHandlerResult(false, false, false, false, true, false, false, false, false, false, false),
                  {makeRef("ref")},
                  SUCCESS(customRefExpected(json::Json {R"({"country_name": "Country"})"}))),
         MapDepsT(R"({"ref": "1.2.3.4"})",
-                 geo::getBuilderHandlerResult(false, false, false, false, false, true, false, false, false),
+                 geo::getBuilderHandlerResult(false, false, false, false, false, true, false, false, false, false, false),
                  {makeRef("ref")},
                  SUCCESS(customRefExpected(json::Json {R"({"location": {"lat": 1.23}})"}))),
         MapDepsT(R"({"ref": "1.2.3.4"})",
-                 geo::getBuilderHandlerResult(false, false, false, false, false, false, true, false, false),
+                 geo::getBuilderHandlerResult(false, false, false, false, false, false, true, false, false, false, false),
                  {makeRef("ref")},
                  SUCCESS(customRefExpected(json::Json {R"({"location": {"lon": 4.56}})"}))),
         MapDepsT(R"({"ref": "1.2.3.4"})",
-                 geo::getBuilderHandlerResult(false, false, false, false, false, false, false, true, false),
+                 geo::getBuilderHandlerResult(false, false, false, false, false, false, false, true, false, false, false),
                  {makeRef("ref")},
                  SUCCESS(customRefExpected(json::Json {R"({"postal_code": "12345"})"}))),
         MapDepsT(R"({"ref": "1.2.3.4"})",
-                 geo::getBuilderHandlerResult(false, false, false, false, false, false, false, false, true),
+                 geo::getBuilderHandlerResult(false, false, false, false, false, false, false, false, true, false, false),
                  {makeRef("ref")},
                  SUCCESS(customRefExpected(json::Json {R"({"timezone": "TZ"})"}))),
         MapDepsT(R"({"ref": "1.2.3.4"})",
-                 geo::getBuilderHandlerResult(true, true, true, true, true, true, true, true, true),
+                 geo::getBuilderHandlerResult(false, false, false, false, false, false, false, false, false, true, false),
+                {makeRef("ref")},
+                SUCCESS(customRefExpected(json::Json {R"({"region_iso_code": "RC"})"}))),
+        MapDepsT(R"({"ref": "1.2.3.4"})",
+                geo::getBuilderHandlerResult(false, false, false, false, false, false, false, false, false, false, true),
+                {makeRef("ref")},
+                SUCCESS(customRefExpected(json::Json {R"({"region_name": "Region"})"}))),
+        MapDepsT(R"({"ref": "1.2.3.4"})",
+                 geo::getBuilderHandlerResult(true, true, true, true, true, true, true, true, true, true, true),
                  {makeRef("ref")},
                  SUCCESS(customRefExpected(json::Json {R"(
                     {
@@ -483,7 +514,9 @@ INSTANTIATE_TEST_SUITE_P(
                             "lon": 4.56
                         },
                         "postal_code": "12345",
-                        "timezone": "TZ"
+                        "timezone": "TZ",
+                        "region_iso_code": "RC",
+                        "region_name": "Region"
                     }
                 )"})))
         // End of test values
