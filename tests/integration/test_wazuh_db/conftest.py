@@ -94,7 +94,7 @@ def add_database_values(request):
 def prepare_range_checksum_data():
     AGENT_ID = "1"
     name = f"TestName{AGENT_ID}"
-    global_db.create_or_update_agent(agent_id=AGENT_ID, agent_name=name, date_add='1599223378', sync_status='syncreq')
+    global_db.create_or_update_agent(agent_id=AGENT_ID, name=name, date_add='1599223378', sync_status='syncreq')
     agent_db.agent_checksum_data(AGENT_ID, '/home/test/file1')
     agent_db.agent_checksum_data(AGENT_ID, '/home/test/file2')
 
@@ -110,7 +110,7 @@ def pre_insert_agents():
     AGENTS_OFFSET = 20
     for id in range(AGENTS_OFFSET, AGENTS_OFFSET + AGENTS_CANT):
         name = f"TestName{id}"
-        global_db.create_or_update_agent(agent_id=id, agent_name=name, date_add='1599223378', sync_status='syncreq')
+        global_db.create_or_update_agent(agent_id=id, name=name, date_add='1599223378', sync_status='syncreq')
 
     yield
 
@@ -124,7 +124,7 @@ def insert_agents_test():
     agent_list = [1, 2, 3]
     for agent in agent_list:
         name = f"TestName{agent}"
-        global_db.create_or_update_agent(agent_id=agent, agent_name=name, date_add='1599223378', sync_status='syncreq')
+        global_db.create_or_update_agent(agent_id=agent, name=name, date_add='1599223378', sync_status='syncreq')
 
     yield
 
