@@ -87,7 +87,7 @@ sql_select_command = 'global sql select * from metadata'
 
 # Tests
 @pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
-def test_wdb_backup_command(configure_sockets_environment, connect_to_sockets_module, remove_backups,
+def test_wdb_backup_command(configure_sockets_environment_module, connect_to_sockets_module, remove_backups,
                             add_database_values, test_metadata):
     '''
     description: Check that every input message using the 'backup' command in wazuh-db socket generates
