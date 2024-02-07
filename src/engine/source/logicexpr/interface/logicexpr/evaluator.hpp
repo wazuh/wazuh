@@ -185,9 +185,9 @@ typename Expression<Event>::FunctionType getDijstraEvaluator(const std::shared_p
                     }
                     break;
                 case ExpressionType::NOT:
-                    result = operands.top();
+                    result = !operands.top();
                     operands.pop();
-                    operands.push(!result);
+                    operands.push(result);
                     break;
                 case ExpressionType::AND:
                     result = operands.top();
