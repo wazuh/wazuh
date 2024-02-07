@@ -2710,6 +2710,14 @@ FILE * wfopen(const char * pathname, const char * mode) {
     FILE * fp;
     int i;
 
+    if (pathname[0] == '\\' || pathname[0] == '/') {
+        char nextChar = pathname[1];
+        if (nextChar != '\0' && strchr("\\/?\"<>|", nextChar)) {
+            errno = EINVAL;
+            return NULL;
+        }
+    }
+
     for (i = 0; mode[i]; ++i) {
         switch (mode[i]) {
         case '+':
