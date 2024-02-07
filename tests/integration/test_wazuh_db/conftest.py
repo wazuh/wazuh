@@ -39,7 +39,7 @@ def pre_insert_agents_into_group():
         id = i + 1
         name = 'Agent-test' + str(id)
         date = time.time()
-        global_db.create_or_update_agent(id=id, name=name, date_add=date)
+        global_db.create_or_update_agent(agent_id=id, name=name, date_add=date)
         groups = [f"Test_group{id}"]
         global_db.insert_agent_into_group(agent_id=id, groups_list=groups)
 
