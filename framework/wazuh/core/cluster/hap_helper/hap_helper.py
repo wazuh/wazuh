@@ -1,17 +1,17 @@
-import argparse
 import logging
 import time
 from math import ceil, floor
+from os import path
 
-from wazuh_coordinator.configuration import parse_configuration
-from wazuh_coordinator.custom_logging import CustomLogger
-from wazuh_coordinator.exception import CoordinatorError, ProxyError, WazuhError
-from wazuh_coordinator.process import run_in_background
-from wazuh_coordinator.proxy import Proxy, ProxyAPI, ProxyServerState
-from wazuh_coordinator.wazuh import WazuhAgent, WazuhAPI
+from wazuh.core import common
+from wazuh.core.cluster.hap_helper.configuration import parse_configuration
+from wazuh.core.cluster.hap_helper.custom_logging import CustomLogger
+from wazuh.core.cluster.hap_helper.exception import CoordinatorError, ProxyError, WazuhError
+from wazuh.core.cluster.hap_helper.proxy import Proxy, ProxyAPI, ProxyServerState
+from wazuh.core.cluster.hap_helper.wazuh import WazuhAgent, WazuhAPI
 
 
-class Coordinator:
+class HAPHelper:
     UPDATED_BACKEND_STATUS_TIMEOUT: int = 60
     AGENT_STATUS_SYNC_TIME: int = 25  # Default agent notify time + cluster sync + 5s
     SERVER_ADMIN_STATE_DELAY: int = 5
@@ -291,8 +291,56 @@ class Coordinator:
                 )
                 time.sleep(self.sleep_time)
 
+    @classmethod
+    async def run(cls):
+        try:
+            configuration = parse_configuration()
+            main_logger, proxy_logger, wazuh_api_logger = setup_loggers(
+                log_level=configuration['hap_helper'].get('log_level', logging.INFO)
+            )
 
-def setup_loggers(log_file_path: str, log_level: int) -> tuple[logging.Logger, logging.Logger, logging.Logger]:
+            proxy_api = ProxyAPI(
+                username=configuration['proxy']['api']['user'],
+                password=configuration['proxy']['api']['password'],
+                address=configuration['proxy']['api']['address'],
+                port=configuration['proxy']['api']['port'],
+            )
+            proxy = Proxy(
+                wazuh_backend=configuration['proxy']['backend'],
+                wazuh_connection_port=configuration['wazuh']['connection']['port'],
+                proxy_api=proxy_api,
+                logger=proxy_logger,
+                resolver=configuration['proxy'].get('resolver', None),
+            )
+
+            wazuh_api = WazuhAPI(
+                address=configuration['wazuh']['api']['address'],
+                port=configuration['wazuh']['api']['port'],
+                username=configuration['wazuh']['api']['user'],
+                password=configuration['wazuh']['api']['password'],
+                excluded_nodes=configuration['wazuh']['excluded_nodes'],
+                logger=wazuh_api_logger,
+            )
+
+            helper = cls(proxy=proxy, wazuh_api=wazuh_api, logger=main_logger, options=configuration['hap_helper'])
+
+            helper.initialize_components()
+            helper.initialize_wazuh_cluster_configuration()
+
+            main_logger.info('Starting HAProxy Helper on auto mode')
+            await helper.manage_wazuh_cluster_nodes()
+        except (CoordinatorError, ProxyError) as main_exc:
+            main_logger.error(str(main_exc))
+        except KeyboardInterrupt:
+            pass
+        except Exception as unexpected_exc:
+            main_logger.critical(f'Unexpected exception: {unexpected_exc}', exc_info=True)
+        finally:
+            main_logger.info('Process ended')
+
+
+def setup_loggers(str, log_level: int) -> tuple[logging.Logger, logging.Logger, logging.Logger]:
+    log_file_path = path.join(common.WAZUH_LOGS, 'hap_helper.log')
     main_logger = CustomLogger('wazuh-coordinator', file_path=log_file_path, level=log_level).get_logger()
     proxy_logger = CustomLogger('proxy-logger', file_path=log_file_path, level=log_level, tag='Proxy').get_logger()
     wazuh_api_logger = CustomLogger(
@@ -300,158 +348,3 @@ def setup_loggers(log_file_path: str, log_level: int) -> tuple[logging.Logger, l
     ).get_logger()
 
     return main_logger, proxy_logger, wazuh_api_logger
-
-
-def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description='Wazuh coordinator')
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument(
-        '--auto',
-        dest='auto',
-        action='store_true',
-        help='Run coordinator capabilities on auto mode (full functionality)',
-    )
-    group.add_argument(
-        '-a',
-        '--add-server',
-        dest='add_server',
-        action='store',
-        type=str,
-        nargs=2,
-        metavar=('SERVER_NAME', 'SERVER_ADDRESS'),
-        help='Add a new server to configured backend',
-    )
-    group.add_argument(
-        '-r',
-        '--remove-server',
-        dest='remove_server',
-        action='store',
-        type=str,
-        metavar='SERVER_NAME',
-        help='Remove server from configured backend',
-    )
-    group.add_argument(
-        '-cb',
-        '--check-balance',
-        dest='check_for_balance',
-        action='store_true',
-        help='Check if the environment needs to be balanced',
-    )
-    parser.add_argument(
-        '-c',
-        '--configuration-file',
-        dest='configuration_file',
-        action='store',
-        default='',
-        help='Path to the test result file',
-    )
-    parser.add_argument('-l', '--log-file', dest='log_file', action='store', help='Path to the logging file')
-    parser.add_argument(
-        '-b', '--background', dest='background', action='store_true', help='Run coordinator on background'
-    )
-    parser.add_argument(
-        '-d',
-        '--debug',
-        dest='log_debug',
-        action='store',
-        type=str,
-        choices=['debug', 'trace'],
-        help='Enable debug logging',
-    )
-
-    return parser.parse_args()
-
-
-def main():
-    arguments = parse_arguments()
-
-    user_config_path = arguments.configuration_file
-    log_file = arguments.log_file
-    log_level = (
-        CustomLogger.TRACE_LEVEL
-        if arguments.log_debug == 'trace'
-        else logging.DEBUG
-        if arguments.log_debug == 'debug'
-        else logging.INFO
-    )
-
-    if arguments.background:
-        run_in_background()
-
-    main_logger, proxy_logger, wazuh_api_logger = setup_loggers(log_file_path=log_file, log_level=log_level)
-
-    try:
-        configuration = parse_configuration(custom_configuration_path=user_config_path)
-        resolver = configuration['proxy'].get('resolver', None)
-
-        proxy_api = ProxyAPI(
-            username=configuration['proxy']['api']['user'],
-            password=configuration['proxy']['api']['password'],
-            address=configuration['proxy']['api']['address'],
-            port=configuration['proxy']['api']['port'],
-        )
-        proxy = Proxy(
-            wazuh_backend=configuration['proxy']['backend'],
-            wazuh_connection_port=configuration['wazuh']['connection']['port'],
-            proxy_api=proxy_api,
-            logger=proxy_logger,
-            resolver=resolver,
-        )
-
-        wazuh_api = WazuhAPI(
-            address=configuration['wazuh']['api']['address'],
-            port=configuration['wazuh']['api']['port'],
-            username=configuration['wazuh']['api']['user'],
-            password=configuration['wazuh']['api']['password'],
-            excluded_nodes=configuration['wazuh']['excluded_nodes'],
-            logger=wazuh_api_logger,
-        )
-
-        coordinator = Coordinator(
-            proxy=proxy, wazuh_api=wazuh_api, logger=main_logger, options=configuration['coordinator']
-        )
-
-        coordinator.initialize_components()
-        coordinator.initialize_wazuh_cluster_configuration()
-        if arguments.auto:
-            main_logger.info('Starting coordinator on auto mode')
-            coordinator.manage_wazuh_cluster_nodes()
-        elif arguments.add_server:
-            server_name, server_address = arguments.add_server
-            coordinator.backend_servers_state_healthcheck()
-            proxy.add_wazuh_manager(manager_name=server_name, manager_address=server_address, resolver=resolver)
-            main_logger.info(f"Server '{server_name}' was successfully added")
-            main_logger.info(f'Attempting to migrate connections')
-            coordinator.migrate_old_connections(new_servers=[server_name], deleted_servers=[])
-        elif arguments.remove_server:
-            server_name = arguments.remove_server
-            coordinator.backend_servers_state_healthcheck()
-            proxy.remove_wazuh_manager(manager_name=server_name)
-            main_logger.info(f"Server '{server_name}' was successfully removed")
-            main_logger.info(f'Attempting to migrate connections')
-            coordinator.migrate_old_connections(new_servers=[], deleted_servers=[server_name])
-        elif arguments.check_for_balance:
-            if coordinator.check_proxy_processes():
-                main_logger.info(f'Sleeping {coordinator.AGENT_STATUS_SYNC_TIME}s before continuing...')
-                time.sleep(coordinator.AGENT_STATUS_SYNC_TIME)
-            unbalanced_connections = coordinator.check_for_balance(
-                current_connections_distribution=proxy.get_wazuh_backend_server_connections()
-            )
-            if not unbalanced_connections:
-                main_logger.info('Load balancer backend is balanced')
-                exit(0)
-            main_logger.info(f'Agent imbalance detected. Surplus agents per node: {unbalanced_connections}')
-            if input('  Do you wish to balance agents? (y/N): ').lower() == 'y':
-                coordinator.balance_agents(affected_servers=unbalanced_connections)
-    except (CoordinatorError, ProxyError) as main_exc:
-        main_logger.error(str(main_exc))
-    except KeyboardInterrupt:
-        pass
-    except Exception as unexpected_exc:
-        main_logger.critical(f'Unexpected exception: {unexpected_exc}', exc_info=True)
-    finally:
-        main_logger.info('Process ended')
-
-
-if __name__ == '__main__':
-    main()
