@@ -11,7 +11,7 @@ from wazuh_testing.constants.paths import ruleset
 from . import TEST_RULES_PATH
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture()
 def configure_rules_list(test_metadata):
     """Configure a custom rules for testing.
 

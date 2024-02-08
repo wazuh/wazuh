@@ -9,7 +9,7 @@ from shutil import copy
 from wazuh_testing.constants.paths import WAZUH_PATH
 from . import TEST_RULES_DECODERS_PATH
 
-@pytest.fixture(scope='function')
+@pytest.fixture()
 def configure_rules_list(test_metadata):
     """Configure a custom rules and log alert level for testing.
     Restarting Wazuh is not needed for applying the configuration, it is optional.
@@ -33,7 +33,7 @@ def configure_rules_list(test_metadata):
         os.rmdir(rules_dir)
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture()
 def configure_cdbs_list(test_metadata):
     """Configure a custom cdbs for testing.
 
@@ -71,7 +71,7 @@ def configure_cdbs_list(test_metadata):
         os.rmdir(rule_dir)
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture()
 def configure_decoders_list(test_metadata):
     """Configure a custom decoder in local_decoder.xml for testing.
 
