@@ -172,6 +172,7 @@ def test_wdb_backup_configs(test_configuration, test_metadata, set_wazuh_configu
 
 
         assert len(result) == int(test_max_files)+1, f'Expected {test_max_files} backup creation messages, but got {result}.'
-        total_files = len(os.listdir(backups_path))
-        assert total_files == int(test_max_files), f'Wrong backup file ammount, expected {test_max_files} \
-                                                but {total_files} are present in folder.'
+        files = os.listdir(backups_path)
+        total_files = len(files)
+        assert total_files == int(test_max_files), f'Wrong backup file ammount, expected {test_max_files}' \
+                                                f' but {total_files} are present in folder: {files}'
