@@ -61,6 +61,11 @@ namespace Log
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 
+    /**
+     * @brief Assign the global log function.
+     *        
+     * @param logFunction callback function that is going to be called on every message logging operation.
+     */
     static void assignLogFunction(const std::function<void(const int,
                                                            const std::string&,
                                                            const std::string&,
@@ -75,6 +80,17 @@ namespace Log
         }
     }
 
+    /**
+     * @brief Deassign the global log function.
+     *        Use it with care!
+     *        Take into account that running it, you will disable the previous set logging functionality in the running executable.
+     *
+     */
+    static void deassignLogFunction()
+    {
+        GLOBAL_LOG_FUNCTION = nullptr;
+    }
+    
 #pragma GCC diagnostic pop
 
     /**

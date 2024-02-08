@@ -102,7 +102,7 @@ static void wm_sys_send_message(const void* data, const char queue_id) {
 static void wm_sys_send_diff_message(const void* data) {
     wm_sys_send_message(data, SYSCOLLECTOR_MQ);
 #ifndef CLIENT
-    char* msg_to_send = adapt_delta_message(data, "localhost", "000", "127.0.0.1", manager_node_name);
+    char* msg_to_send = adapt_delta_message(data, "localhost", "000", "127.0.0.1", manager_node_name, NULL);
     if (msg_to_send && router_provider_send_fb_func_ptr) {
         router_provider_send_fb_func_ptr(syscollector_handle, msg_to_send, syscollector_deltas_SCHEMA);
     }
@@ -113,7 +113,7 @@ static void wm_sys_send_diff_message(const void* data) {
 static void wm_sys_send_dbsync_message(const void* data) {
     wm_sys_send_message(data, DBSYNC_MQ);
 #ifndef CLIENT
-    char* msg_to_send = adapt_sync_message(data, "localhost", "000", "127.0.0.1", manager_node_name);
+    char* msg_to_send = adapt_sync_message(data, "localhost", "000", "127.0.0.1", manager_node_name, NULL);
     if (msg_to_send && router_provider_send_fb_func_ptr) {
         router_provider_send_fb_func_ptr(rsync_handle, msg_to_send, syscollector_synchronization_SCHEMA);
     }

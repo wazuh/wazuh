@@ -1251,6 +1251,29 @@ stages:
           total_failed_items: 1
         error: 1
 
+  - name: Upload empty xml decoder
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/empty_file.xml"
+      method: PUT
+      data: "{empty_file_xml:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: [ ]
+          failed_items:
+            - error:
+                code: 1113
+              id:
+                - "etc/decoders/empty_file.xml"
+          total_affected_items: 0
+          total_failed_items: 1
+        error: 1
+
 ---
 test_name: DELETE /decoders/files/{filename}
 

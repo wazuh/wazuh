@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(indexer_connector_unit_tests)
 
-set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage -fsanitize=address,leak,undefined")
-
 file(GLOB SOURCES
         *.cpp
 )

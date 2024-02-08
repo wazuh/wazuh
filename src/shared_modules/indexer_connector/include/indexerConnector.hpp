@@ -18,6 +18,8 @@
 #define EXPORTED
 #endif
 
+static constexpr auto DEFAULT_INTERVAL = 60u;
+
 class ServerSelector;
 class SecureCommunication;
 
@@ -62,6 +64,7 @@ public:
      * @param config Indexer configuration, including database_path and servers.
      * @param templatePath Path to the template file.
      * @param logFunction Callback function to be called when trying to log a message.
+     * @param timeout Server selector time interval.
      */
     explicit IndexerConnector(const nlohmann::json& config,
                               const std::string& templatePath,
@@ -71,7 +74,8 @@ public:
                                                        const int,
                                                        const std::string&,
                                                        const std::string&,
-                                                       va_list)>& logFunction = {});
+                                                       va_list)>& logFunction = {},
+                              const uint32_t& timeout = DEFAULT_INTERVAL);
 
     ~IndexerConnector();
 

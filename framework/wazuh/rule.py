@@ -19,6 +19,7 @@ from wazuh.core.rule import check_status, load_rules_from_file, format_rule_deco
     RULE_REQUIREMENTS, SORT_FIELDS, RULE_FIELDS, RULE_FILES_FIELDS, RULE_FILES_REQUIRED_FIELDS
 from wazuh.core.utils import process_array, safe_move, \
     validate_wazuh_xml, upload_file, full_copy, to_relative_path
+from wazuh.core.logtest import validate_dummy_logtest
 from wazuh.rbac.decorators import expose_resources
 
 cluster_enabled = not read_cluster_config(from_import=True)['disabled']
@@ -489,6 +490,16 @@ def upload_rule_file(filename: str, content: str, relative_dirname: str = None,
             delete_rule_file(filename=filename, relative_dirname=relative_dirname)
 
         upload_file(content, to_relative_path(full_path))
+
+        # After uploading the file, validate it using a logtest dummy msg
+        try:
+            validate_dummy_logtest()
+        except WazuhError as exc:
+            if not overwrite and exists(full_path):
+                delete_rule_file(filename=filename, relative_dirname=relative_dirname)
+
+            raise exc
+
         result.affected_items.append(to_relative_path(full_path))
         result.total_affected_items = len(result.affected_items)
         backup_file and exists(backup_file) and remove(backup_file)
