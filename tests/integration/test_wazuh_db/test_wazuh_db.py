@@ -376,7 +376,7 @@ def test_wazuh_db_range_checksum(daemons_handler_module, clean_databases, config
     assert log_monitor.callback_result, 'Checksum Range wasn´t avoided the second time'
 
 
-def test_wazuh_db_timeout(configure_sockets_environment_module, connect_to_sockets_module,
+def test_wazuh_db_timeout(daemons_handler_module, connect_to_sockets_module,
                           pre_insert_packages, pre_set_sync_info):
     """Check that effectively the socket is closed after timeout is reached"""
     wazuh_db_send_sleep = 2
