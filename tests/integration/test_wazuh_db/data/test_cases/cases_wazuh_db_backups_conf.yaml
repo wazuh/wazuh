@@ -42,7 +42,7 @@
     interval: 'value'
     max_files: '1'
 
-- name: Backup Enabled Interval 5s Max_Files 1
+- name: Backup Disabled Interval 5s Max_Files 1
   description:
   configuration_parameters:
     ENABLED: 'no'
