@@ -53,7 +53,7 @@ from time import sleep
 from json import dumps
 
 from wazuh_testing.constants.paths.sockets import LOGTEST_SOCKET_PATH
-from wazuh_testing.global_parameters import GlobalParameters
+from wazuh_testing import session_parameters
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.analysisd.configuration import ANALYSISD_DEBUG
 from wazuh_testing.tools.monitors import file_monitor
@@ -86,7 +86,6 @@ msg_create_session = dumps(create_session_data)
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
 
-global_parameters = GlobalParameters()
 wazuh_log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
 
@@ -149,12 +148,12 @@ def test_remove_old_session_for_inactivity(configure_local_internal_options, tes
     msg_recived = receiver_sockets[0].receive()[4:]
     msg_recived = msg_recived.decode()
 
-    wazuh_log_monitor.start(timeout=global_parameters.default_timeout,
+    wazuh_log_monitor.start(timeout=session_parameters.default_timeout,
                       callback=generate_callback(patterns.LOGTEST_SESSION_INIT))
     assert wazuh_log_monitor.callback_result, "Session initialization event not found"
 
     sleep(session_timeout)
 
-    wazuh_log_monitor.start(timeout=global_parameters.default_timeout,
+    wazuh_log_monitor.start(timeout=session_parameters.default_timeout,
                       callback=generate_callback(patterns.LOGTEST_REMOVE_SESSION))
     assert wazuh_log_monitor.callback_result, "Session removal event not found"

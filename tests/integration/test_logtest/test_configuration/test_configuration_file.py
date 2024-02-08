@@ -49,7 +49,7 @@ tags:
 from pathlib import Path
 import pytest
 
-from wazuh_testing.global_parameters import GlobalParameters
+from wazuh_testing import session_parameters
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils import configuration
@@ -70,7 +70,6 @@ t_configurations = configuration.load_configuration_template(t_config_path, t_co
 
 # Variables
 wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-global_parameters = GlobalParameters()
 
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
@@ -123,5 +122,5 @@ def test_configuration_file(test_configuration, test_metadata, set_wazuh_configu
     else:
         callback = patterns.LOGTEST_CONFIG_ERROR
 
-    wazuh_log_monitor.start(callback=generate_callback(callback), timeout=global_parameters.default_timeout)
+    wazuh_log_monitor.start(callback=generate_callback(callback), timeout=session_parameters.default_timeout)
     assert wazuh_log_monitor.callback_result, 'Event not found'
