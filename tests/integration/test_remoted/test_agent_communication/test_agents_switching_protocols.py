@@ -107,5 +107,3 @@ def test_agents_switching_protocols(test_configuration, test_metadata, configure
 
     finally:
         stop_all(agents_connections)
-
-

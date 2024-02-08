@@ -18,7 +18,6 @@
     port: '1514'
     agents_number: 2
 
-
 - name: test invalid protocols communication
   description: test invalid protocols communication
   configuration_parameters:
@@ -28,7 +27,6 @@
     protocol: 'UDP'
     port: '56000'
     agents_number: 2
-
 
 - name: test invalid protocols communication
   description: test invalid protocols communication

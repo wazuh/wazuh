@@ -7,7 +7,6 @@
     port: '1514'
     protocol1: 'TCP'
 
-
 - name: test protocols communication
   description: test protocols communication
   configuration_parameters:
@@ -17,7 +16,6 @@
     port: '1514'
     protocol1: 'UDP'
 
-
 - name: test protocols communication
   description: test protocols communication
   configuration_parameters:
@@ -26,7 +24,6 @@
   metadata:
     port: '1514'
     protocol1: 'TCP'
-
 
 - name: test protocols communication
   description: test protocols communication
@@ -37,9 +34,6 @@
     port: '1514'
     protocol1: 'TCP'
 
-
-
-
 - name: test protocols communication
   description: test protocols communication
   configuration_parameters:
@@ -48,7 +42,6 @@
   metadata:
     port: '56000'
     protocol1: 'TCP'
-
 
 - name: test protocols communication
   description: test protocols communication
@@ -59,7 +52,6 @@
     port: '56000'
     protocol1: 'UDP'
 
-
 - name: test protocols communication
   description: test protocols communication
   configuration_parameters:
@@ -68,7 +60,6 @@
   metadata:
     port: '56000'
     protocol1: 'TCP'
-
 
 - name: test protocols communication
   description: test protocols communication
