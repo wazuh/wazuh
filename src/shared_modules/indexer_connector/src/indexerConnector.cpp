@@ -199,10 +199,7 @@ IndexerConnector::IndexerConnector(
                         sleepTime = std::chrono::seconds(MAX_WAIT_TIME);
                     }
 
-                    initialize(std::move(templateData),
-                               std::move(indexName),
-                               std::move(selector),
-                               std::move(secureCommunication));
+                    initialize(templateData, indexName, selector, secureCommunication);
                 }
                 catch (const std::exception& e)
                 {
