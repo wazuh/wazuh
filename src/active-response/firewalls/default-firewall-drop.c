@@ -48,6 +48,7 @@ int main (int argc, char **argv) {
 
         action2 = send_keys_and_check_message(argv, keys);
 
+        os_free(keys[0]);
         os_free(keys);
 
         // If necessary, abort execution
@@ -97,8 +98,8 @@ int main (int argc, char **argv) {
          */
 
         // Following variables are both used for ip(6)tables and nftables
-        char lock_path[COMMANDSIZE_4096];
-        char lock_pid_path[COMMANDSIZE_4096];
+        char lock_path[COMMANDSIZE_4096] = "";
+        char lock_pid_path[COMMANDSIZE_4096] = "";
         wfd_t *wfd = NULL;
 
         // Checking if iptables is present
@@ -288,7 +289,7 @@ int main (int argc, char **argv) {
                             i--; // Decrement i so the next iteration would still be i
                         }
                     } else {
-                        char nft_stdout_buf[OS_MAXSTR];
+                        char nft_stdout_buf[OS_MAXSTR] = "";
                         memset(nft_stdout_buf, '\0', OS_MAXSTR);
 
                         // Read and replace on the fly the stdout stream to scan it later
@@ -306,8 +307,8 @@ int main (int argc, char **argv) {
                         // once per delete command only.
 
                         // We first prepare our sscanf format
-                        char format_tmp[OS_MAXSTR] = "\0";
-                        snprintf(format_tmp, OS_MAXSTR - 1, "%s saddr %s drop", ip_version == 6 ? "ip6" : "ip", srcip);
+                        char format_tmp[200] = ""; format_tmp[199] = '\0';
+                        snprintf(format_tmp, 199, "%s saddr %s drop", ip_version == 6 ? "ip6" : "ip", srcip);
 
                         // We now look for our rule in the nft output to scan it afterward
                         char *scan_base = strstr(nft_stdout_buf, format_tmp);
@@ -333,10 +334,10 @@ int main (int argc, char **argv) {
                         }
 
                         // Prepare the format for the scan, now that we have located the rule in the ruleset
-                        snprintf(format_tmp, OS_MAXSTR - 1, "%s saddr %s drop # handle %%s",
+                        snprintf(format_tmp, 199, "%s saddr %s drop # handle %%s",
                                  ip_version == 6 ? "ip6" : "ip", srcip);
                         // We use a 21 maximum chars integer, which is sufficient for 8-bytes long storage
-                        char handle_tmp[21];
+                        char handle_tmp[21] = "";
                         errno = 0; // Explicitly set errno to check matching error later
                         if (sscanf(scan_base, format_tmp, handle_tmp) <= 0) {
                             memset(log_msg, '\0', OS_MAXSTR);
