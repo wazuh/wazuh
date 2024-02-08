@@ -28,7 +28,6 @@ local_internal_options = {REMOTED_DEBUG: '2'}
 
 
 
-
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
 def test_multi_agent_status(test_configuration, test_metadata, configure_local_internal_options, truncate_monitored_files,
@@ -74,7 +73,6 @@ def test_multi_agent_status(test_configuration, test_metadata, configure_local_i
         sender, injector = connect(agent,manager_port = test_metadata['port'], protocol = test_metadata['protocol'], wait_status='active')
         senders.append(sender)
         injectors.append(injector)
-
 
     for injector in injectors:
         injector.stop_receive()

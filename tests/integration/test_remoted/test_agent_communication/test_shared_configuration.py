@@ -21,8 +21,6 @@ from wazuh_testing.utils.agent_groups import create_group, delete_group, add_age
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
 
-
-
 # Set pytest marks.
 pytestmark = [pytest.mark.server, pytest.mark.tier(level=1)]
 
@@ -40,6 +38,7 @@ def check_queue_monitor(agent, pattern):
     log_queue_monitor = queue_monitor.QueueMonitor(agent.rcv_msg_queue)
     log_queue_monitor.start(timeout=60, callback=generate_callback(regex=pattern))
     assert log_queue_monitor.callback_result
+
 
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
@@ -80,7 +79,6 @@ def test_shared_configuration(test_configuration, test_metadata, configure_local
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
     '''
-
 
     agent = simulate_agents[0]
 

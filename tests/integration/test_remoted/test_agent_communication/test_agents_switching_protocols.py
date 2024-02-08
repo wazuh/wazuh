@@ -11,7 +11,6 @@ from pathlib import Path
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.agent_simulator import connect
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
-from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.remoted.configuration import REMOTED_DEBUG
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
@@ -46,6 +45,7 @@ def stop_all(connections):
     """
     for agent in connections:
         connections[agent]['injector'].stop_receive()
+
 
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
@@ -83,14 +83,8 @@ def test_agents_switching_protocols(test_configuration, test_metadata, configure
 
     '''
 
-    log_monitor = FileMonitor(WAZUH_LOG_PATH)
-
     agents = simulate_agents
-
-
     agents_connections = {}
-
-    use_tcp = False
 
     try:
         protocol = test_metadata['protocol1']

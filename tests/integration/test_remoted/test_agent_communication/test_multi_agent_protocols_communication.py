@@ -18,7 +18,6 @@ from wazuh_testing.tools.thread_executor import ThreadExecutor
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
 
-
 # Set pytest marks.
 pytestmark = [pytest.mark.server, pytest.mark.tier(level=1)]
 
@@ -115,14 +114,8 @@ def test_multi_agent_protocols_communication(test_configuration, test_metadata, 
     for thread in send_event_threads:
         thread.join()
 
-
-
-
-
     log_monitor_archives.start(timeout=30, callback=generate_callback(r".*"))
-
     assert log_monitor_archives.callback_result
-
 
     for injector in injectors:
         injector.stop_receive()
