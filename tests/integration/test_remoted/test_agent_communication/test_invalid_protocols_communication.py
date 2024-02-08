@@ -20,7 +20,6 @@ from wazuh_testing.utils import callbacks
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
 
-
 # Set pytest marks.
 pytestmark = [pytest.mark.server, pytest.mark.tier(level=1)]
 
@@ -111,10 +110,9 @@ def test_invalid_protocols_communication(test_configuration, test_metadata, conf
         agent_custom_message = f"1:/test.log:Feb 23 17:18:20 manager sshd[40657]: {search_pattern}"
         event = agent.create_event(agent_custom_message)
 
-
         # Create sender event threads
         send_event_thread = ThreadExecutor(send_event, {'event': event, 'protocol': protocol,
-                                                            'manager_port': manager_port, 'agent': agent})
+                                                        'manager_port': manager_port, 'agent': agent})
 
             # If protocol is TCP, then just send the message as the attempt to establish the connection will fail.
         if protocol == 'TCP':

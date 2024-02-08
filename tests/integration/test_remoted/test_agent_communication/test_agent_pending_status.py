@@ -13,12 +13,11 @@ from wazuh_testing.modules.remoted.patterns import KEY_UPDATE
 from wazuh_testing.tools.simulators.agent_simulator import connect
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 from wazuh_testing.modules.remoted.configuration import REMOTED_DEBUG
-from wazuh_testing.constants.paths.logs import ARCHIVES_LOG_PATH, WAZUH_LOG_PATH
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.tools.thread_executor import ThreadExecutor
 from . import CONFIGS_PATH, TEST_CASES_PATH
-
 
 
 # Set pytest marks.
@@ -95,7 +94,7 @@ def test_agent_pending_status(test_configuration, test_metadata, configure_local
 
         # Create sender event threads
         send_event_threads.append(ThreadExecutor(send_event, {'protocol': protocol,
-                                                            'manager_port': manager_port, 'agent': agent}))
+                                                              'manager_port': manager_port, 'agent': agent}))
 
     # Wait 10 seconds until remoted is fully initialized
     time.sleep(10)
@@ -107,7 +106,6 @@ def test_agent_pending_status(test_configuration, test_metadata, configure_local
     # Wait until sender event threads finish
     for thread in send_event_threads:
         thread.join()
-
 
     for injector in injectors:
         injector.stop_receive()
