@@ -7,7 +7,7 @@ from pathlib import Path
 import shutil
 
 from wazuh_testing.constants import users
-from wazuh_testing.constants.paths import ruleset
+from wazuh_testing.constants.paths.configurations import CUSTOM_RULES_FILE
 from . import TEST_RULES_PATH
 
 
@@ -19,15 +19,15 @@ def configure_rules_list(test_metadata):
     """
 
     # save current rules
-    shutil.copy(ruleset.LOCAL_RULES_PATH, ruleset.LOCAL_RULES_PATH + '.cpy')
+    shutil.copy(CUSTOM_RULES_FILE, CUSTOM_RULES_FILE + '.cpy')
 
     file_test = Path(TEST_RULES_PATH, test_metadata['rule_file'])
     # copy test rules
-    shutil.copy(file_test, ruleset.LOCAL_RULES_PATH)
-    shutil.chown(ruleset.LOCAL_RULES_PATH, users.WAZUH_UNIX_USER, users.WAZUH_UNIX_GROUP)
+    shutil.copy(file_test, CUSTOM_RULES_FILE)
+    shutil.chown(CUSTOM_RULES_FILE, users.WAZUH_UNIX_USER, users.WAZUH_UNIX_GROUP)
 
     yield
 
     # restore previous configuration
-    shutil.move(ruleset.LOCAL_RULES_PATH + '.cpy', ruleset.LOCAL_RULES_PATH)
-    shutil.chown(ruleset.LOCAL_RULES_PATH, users.WAZUH_UNIX_USER, users.WAZUH_UNIX_GROUP)
+    shutil.move(CUSTOM_RULES_FILE + '.cpy', CUSTOM_RULES_FILE)
+    shutil.chown(CUSTOM_RULES_FILE, users.WAZUH_UNIX_USER, users.WAZUH_UNIX_GROUP)
