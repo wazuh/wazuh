@@ -6,6 +6,11 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.8.1]
 
+### Agent
+
+#### Fixed
+
+- Fixed loading of whodata through timeouts and retries. ([#21455](https://github.com/wazuh/wazuh/pull/21455))
 
 ## [v4.8.0]
 
@@ -25,6 +30,7 @@ All notable changes to this project will be documented in this file.
 - Updated API and framework packages installation commands to use pip instead of direct invocation of setuptools. ([#18466](https://github.com/wazuh/wazuh/pull/18466))
 - Upgraded docker-compose V1 to V2 in API Integration test scripts. ([#17750](https://github.com/wazuh/wazuh/pull/17750))
 - Refactored how cluster status dates are treated in the cluster. ([#17015](https://github.com/wazuh/wazuh/pull/17015))
+- The log message about file rotation and signature from wazuh-monitord has been updated. ([#21602](https://github.com/wazuh/wazuh/pull/21602))
 
 #### Fixed
 - Updated cluster connection cleanup to remove temporary files when the connection between a worker and a master is broken. ([#17886](https://github.com/wazuh/wazuh/pull/17886))
@@ -37,6 +43,8 @@ All notable changes to this project will be documented in this file.
 - Added event size validation for the external integrations. ([#17932](https://github.com/wazuh/wazuh/pull/17932))
 - Added new unit tests for the AWS integration. ([#17623](https://github.com/wazuh/wazuh/pull/17623))
 - Added mapping geolocation for AWS WAF integration. ([#20649](https://github.com/wazuh/wazuh/pull/20649))
+- Added a validation to reject unsupported regions when using the inspector service. ([#21530](https://github.com/wazuh/wazuh/pull/21530))
+- Added additional information on some AWS integration errors. ([#21561](https://github.com/wazuh/wazuh/pull/21561))
 
 #### Changed
 
@@ -66,6 +74,7 @@ All notable changes to this project will be documented in this file.
 #### Removed
 
 - Removed `PUT /vulnerability`, `GET /vulnerability/{agent_id}`, `GET /vulnerability/{agent_id}/last_scan` and `GET /vulnerability/{agent_id}/summary/{field}` API endpoints as they were deprecated in version 4.7.0. Use the Wazuh indexer REST API instead. ([#20119](https://github.com/wazuh/wazuh/pull/20119))
+- Removed the `compilation_date` field from `GET /cluster/{node_id}/info` and `GET /manager/info` endpoints. ([#21572](https://github.com/wazuh/wazuh/pull/21572))
 
 ### Ruleset
 
@@ -98,10 +107,13 @@ All notable changes to this project will be documented in this file.
 #### Changed
 
 - Upgraded external aiohttp library dependency version to 3.8.5. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
-- Upgraded external cryptography library dependency version to 41.0.4. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
+- Upgraded external cryptography library dependency version to 41.0.7. ([#21055](https://github.com/wazuh/wazuh/pull/21055))
 - Upgraded external numpy library dependency version to 1.26.0. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
 - Upgraded external grpcio library dependency version to 1.58.0. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
 - Upgraded external pyarrow library dependency version to 14.0.1. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
+- Upgraded external urllib3 library dependency version to 1.26.18. ([#20630](https://github.com/wazuh/wazuh/pull/20630))
+- Upgraded external SQLAlchemy library dependency version to 2.0.23. ([#20741](https://github.com/wazuh/wazuh/pull/20741))
+- Upgraded external Jinja2 library dependency version to 3.1.3. ([#21684](https://github.com/wazuh/wazuh/pull/21684))
 - Upgraded embedded Python version to 3.10.13. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
 
 ## [v4.7.2]

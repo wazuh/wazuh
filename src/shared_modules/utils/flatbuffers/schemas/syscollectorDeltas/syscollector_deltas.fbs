@@ -35,7 +35,7 @@ table dbsync_network_iface {
     adapter:string;
     type:string;
     state:string;
-    mtu:uint32;
+    mtu:long;
     mac:string;
     tx_packets:long;
     rx_packets:long;

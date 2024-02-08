@@ -5,6 +5,7 @@
 import asyncio
 import hashlib
 import json
+import jwt
 import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
@@ -12,7 +13,6 @@ from typing import Union
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
-from jose import JWTError, jwt
 from werkzeug.exceptions import Unauthorized
 
 import api.configuration as conf
@@ -295,5 +295,5 @@ def decode_token(token: str) -> dict:
             raise Unauthorized
 
         return payload
-    except JWTError as e:
+    except jwt.exceptions.PyJWTError as e:
         raise Unauthorized from e
