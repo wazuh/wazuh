@@ -164,13 +164,14 @@ def test_wdb_backup_configs(test_configuration, test_metadata, set_wazuh_configu
             pytest.fail("Error: A file was found in backups_path. No backups where expected when enabled is 'no'.")
     # Manage if backup generation is enabled - one or more backups expected
     else:
-        result = wazuh_log_monitor.start(callback=callbacks.generate_callback(patterns.BACKUP_CREATION_CALLBACK),
+        wazuh_log_monitor.start(callback=callbacks.generate_callback(patterns.BACKUP_CREATION_CALLBACK),
                                         timeout=timeout, accumulations=int(test_max_files)+1)
-        assert wazuh_log_monitor.callback_result, 'Did not receive expected\
-                                                        "Created Global database..." event'
+        result = wazuh_log_monitor.callback_result
+        assert result, 'Did not receive expected\
+                        "Created Global database..." event'
 
 
-        assert result == int(test_max_files)+1, f'Expected {test_max_files} backup creation messages, but got {result}.'
+        assert len(result) == int(test_max_files)+1, f'Expected {test_max_files} backup creation messages, but got {result}.'
         total_files=0
         for file in os.listdir(backups_path):
             total_files = total_files+1
