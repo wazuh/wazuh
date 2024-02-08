@@ -27,6 +27,7 @@ from wazuh_testing.utils import configuration, database, file, mocking, services
 from wazuh_testing.utils.file import remove_file
 from wazuh_testing.utils.manage_agents import remove_agents
 
+
 #- - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - - -
 
 
