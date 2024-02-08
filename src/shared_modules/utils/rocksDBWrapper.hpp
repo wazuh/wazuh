@@ -494,7 +494,7 @@ namespace Utils
          *
          * @throws std::runtime_error if an error occurs during data deletion.
          */
-        void deleteAll(std::function<void(std::string&)> callback)
+        void deleteAll(std::function<void(std::string&,std::string&)> callback)
         {
             // Delete data from all family columns
             for (const auto& columnHandle : m_columnsHandles)
@@ -508,16 +508,9 @@ namespace Utils
                 for (it->SeekToFirst(); it->Valid(); it->Next())
                 {
                     auto keyStr = std::string(it->key().data(), it->key().size());
+                    auto valueStr = it->value().ToString();
 
-                    // Extract the list of CVEs from the key
-                    auto listCve = Utils::split(it->value().ToString(), ',');
-
-                    for (const auto& cve : listCve)
-                    {
-                        std::string elementKey = keyStr + "_" + cve;
-                        // Invoke the callback function with the deleted key
-                        callback(elementKey);
-                    }
+                    callback(keyStr, valueStr);
 
                     // Mark the key for deletion in the batch
                     batch.Delete(keyStr);
