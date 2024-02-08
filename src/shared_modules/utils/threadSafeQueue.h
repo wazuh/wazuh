@@ -20,7 +20,7 @@
 namespace Utils
 {
 
-    template<typename T, typename U, typename Tq = std::queue<T>>
+    template<typename T, typename U, typename Tq=std::queue<T>>
     class TSafeQueue
     {
         public:
@@ -101,11 +101,11 @@ namespace Utils
                 return nullptr;
             }
 
-            std::queue<T> popBulk(const uint64_t elementsQuantity,
+            std::queue<U> popBulk(const uint64_t elementsQuantity,
                                   const std::chrono::seconds& timeout = std::chrono::seconds(5))
             {
                 std::unique_lock<std::mutex> lock{ m_mutex };
-                std::queue<T> bulkQueue;
+                std::queue<U> bulkQueue;
 
                 auto timeoutReached = false;
 
