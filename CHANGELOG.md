@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.8.2]
 
+### Agent
+
+#### Fixed
+
+- Fixed using memmove instead of memcpy to avoid unwanted behavior. ([#21595](https://github.com/wazuh/wazuh/pull/21595))
 
 ## [v4.8.1]
 
