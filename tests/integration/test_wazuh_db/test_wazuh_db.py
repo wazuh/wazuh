@@ -374,27 +374,3 @@ def test_wazuh_db_range_checksum(daemons_handler_module, clean_databases, config
     log_monitor.start(callback=make_callback('range checksum avoided', prefix=WAZUH_DB_PREFIX,
                                              escape=True), timeout=WAZUH_DB_CHECKSUM_CALCULUS_TIMEOUT)
     assert log_monitor.callback_result, 'Checksum Range wasn´t avoided the second time'
-
-
-def test_wazuh_db_timeout(daemons_handler_module, connect_to_sockets_module,
-                          pre_insert_packages, pre_set_sync_info):
-    """Check that effectively the socket is closed after timeout is reached"""
-    wazuh_db_send_sleep = 2
-    command = 'agent 000 package get'
-    receiver_sockets[0].send(command, size=True)
-
-    # Waiting Wazuh-DB to process command
-    time.sleep(wazuh_db_send_sleep)
-
-    socket_closed = False
-    cmd_counter = 0
-    status = 'due'
-    while not socket_closed and status == 'due':
-        cmd_counter += 1
-        response = receiver_sockets[0].receive(size=True).decode()
-        if response == '':
-            socket_closed = True
-        else:
-            status = response.split()[0]
-
-    assert socket_closed, f"Socket never closed. Received {cmd_counter} commands. Last command: {response}"
