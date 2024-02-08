@@ -126,4 +126,3 @@ def test_multi_agent_protocols_communication(test_configuration, test_metadata, 
 
     for injector in injectors:
         injector.stop_receive()
-

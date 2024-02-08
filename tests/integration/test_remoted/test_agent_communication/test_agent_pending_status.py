@@ -111,5 +111,3 @@ def test_agent_pending_status(test_configuration, test_metadata, configure_local
 
     for injector in injectors:
         injector.stop_receive()
-
-
