@@ -52,7 +52,7 @@ from json import dumps
 
 from wazuh_testing.tools.socket_controller import SocketController
 from wazuh_testing.constants.paths.sockets import LOGTEST_SOCKET_PATH
-from wazuh_testing.global_parameters import GlobalParameters
+from wazuh_testing import session_parameters
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.analysisd.configuration import ANALYSISD_DEBUG
 from wazuh_testing.tools.monitors import file_monitor
@@ -79,7 +79,6 @@ create_session_data = {'version': 1, 'command': 'log_processing',
                                       'log_format': 'syslog',
                                       'location': 'master->/var/log/syslog'}}
 msg_create_session = dumps(create_session_data)
-global_parameters = GlobalParameters()
 wazuh_log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
 # Test daemons to restart.
@@ -156,11 +155,11 @@ def test_remove_old_session(configure_local_internal_options, test_configuration
         del receiver_socket
 
         if i == 0:
-            first_session_token = wazuh_log_monitor.start(timeout=global_parameters.default_timeout,
+            first_session_token = wazuh_log_monitor.start(timeout=session_parameters.default_timeout,
                                                     callback=generate_callback(patterns.LOGTEST_SESSION_INIT))
             assert wazuh_log_monitor.callback_result, 'Session initialization event not found'
         else:
-            wazuh_log_monitor.start(timeout=global_parameters.default_timeout,
+            wazuh_log_monitor.start(timeout=session_parameters.default_timeout,
                               callback=generate_callback(patterns.LOGTEST_SESSION_INIT))
             assert wazuh_log_monitor.callback_result,'Session initialization event not found'
 
@@ -172,12 +171,12 @@ def test_remove_old_session(configure_local_internal_options, test_configuration
     receiver_socket.close()
     del receiver_socket
 
-    remove_session_token = wazuh_log_monitor.start(timeout=global_parameters.default_timeout,
+    remove_session_token = wazuh_log_monitor.start(timeout=session_parameters.default_timeout,
                                              callback=generate_callback(patterns.LOGTEST_REMOVE_SESSION))
     assert wazuh_log_monitor.callback_result, 'Session removal event not found'
 
     assert first_session_token == remove_session_token, "Incorrect session removed"
 
-    wazuh_log_monitor.start(timeout=global_parameters.default_timeout,
+    wazuh_log_monitor.start(timeout=session_parameters.default_timeout,
                       callback=generate_callback(patterns.LOGTEST_SESSION_INIT))
     assert wazuh_log_monitor.callback_result, 'Session initialization event not found'
