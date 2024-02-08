@@ -7,8 +7,7 @@ from os import remove
 from pathlib import Path
 from shutil import copy
 
-from wazuh_testing.constants.paths.ruleset import CUSTOM_DECODERS_PATH
-from wazuh_testing.constants.paths.ruleset import CUSTOM_RULES_PATH
+from wazuh_testing.constants.paths.configurations import CUSTOM_DECODERS_PATH, CUSTOM_RULES_PATH
 from . import TEST_RULES_DECODERS_PATH, TEST_RULES_DECODERS_PATH
 
 
