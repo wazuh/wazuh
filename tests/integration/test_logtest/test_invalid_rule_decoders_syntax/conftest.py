@@ -12,7 +12,7 @@ from wazuh_testing.constants.paths.ruleset import CUSTOM_RULES_PATH
 from . import TEST_RULES_DECODERS_PATH, TEST_RULES_DECODERS_PATH
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture()
 def configure_local_decoders(test_metadata):
     """Configure a custom decoder for testing."""
 
@@ -28,7 +28,7 @@ def configure_local_decoders(test_metadata):
     remove(target_file_test)
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture()
 def configure_local_rules(test_metadata):
     """Configure a custom rule in local_rules.xml for testing."""
 
