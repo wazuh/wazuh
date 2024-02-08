@@ -1616,6 +1616,7 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
     key_unlock();
     if (protocol < 0) {
         merror(AR_NOAGENT_ERROR, agent_id);
+        fclose(fp);
         return OS_INVALID;
     }
 

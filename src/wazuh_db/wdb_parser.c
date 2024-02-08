@@ -123,7 +123,7 @@ static struct column_list const TABLE_PORTS[PORTS_FIELD_COUNT+1] = {
     { .value = { FIELD_TEXT, 15, false, false, NULL, "item_id", {.text = ""}, true}, .next = NULL},
 };
 
-#define PACKAGES_FIELD_COUNT 19
+#define PACKAGES_FIELD_COUNT 18
 static struct column_list const TABLE_PACKAGES[PACKAGES_FIELD_COUNT+1] = {
     { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}, true}, .next = &TABLE_PACKAGES[1] },
     { .value = { FIELD_TEXT, 2, false, false, NULL, "scan_time", {.text = ""}, true}, .next = &TABLE_PACKAGES[2] },
@@ -140,14 +140,13 @@ static struct column_list const TABLE_PACKAGES[PACKAGES_FIELD_COUNT+1] = {
     { .value = { FIELD_TEXT, 13, false, false, NULL, "source", {.text = ""}, true}, .next = &TABLE_PACKAGES[13] },
     { .value = { FIELD_TEXT, 14, false, false, NULL, "description", {.text = ""}, true}, .next = &TABLE_PACKAGES[14] },
     { .value = { FIELD_TEXT, 15, false, true, NULL, "location", {.text = ""}, false}, .next = &TABLE_PACKAGES[15] },
-    { .value = { FIELD_INTEGER, 16, true, false, NULL, "triaged", {.integer = 0}, true}, .next = &TABLE_PACKAGES[16] },
-    { .value = { FIELD_TEXT, 17, true, false, NULL, "cpe", {.text = ""}, true}, .next = &TABLE_PACKAGES[17] },
-    { .value = { FIELD_TEXT, 18, true, false, NULL, "msu_name", {.text = ""}, true}, .next = &TABLE_PACKAGES[18] },
-    { .value = { FIELD_TEXT, 19, false, false, NULL, "checksum", {.text = ""}, false}, .next = &TABLE_PACKAGES[19] },
-    { .value = { FIELD_TEXT, 20, false, false, NULL, "item_id", {.text = ""}, true}, .next = NULL },
+    { .value = { FIELD_TEXT, 16, true, false, NULL, "cpe", {.text = ""}, true}, .next = &TABLE_PACKAGES[16] },
+    { .value = { FIELD_TEXT, 17, true, false, NULL, "msu_name", {.text = ""}, true}, .next = &TABLE_PACKAGES[17] },
+    { .value = { FIELD_TEXT, 18, false, false, NULL, "checksum", {.text = ""}, false}, .next = &TABLE_PACKAGES[18] },
+    { .value = { FIELD_TEXT, 19, false, false, NULL, "item_id", {.text = ""}, true}, .next = NULL },
 };
 
-#define OS_FIELD_COUNT 19
+#define OS_FIELD_COUNT 18
 static struct column_list const TABLE_OS[OS_FIELD_COUNT+1] = {
     { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}, true}, .next = &TABLE_OS[1] },
     { .value = { FIELD_TEXT, 2, false, false, NULL, "scan_time", {.text = ""}, true}, .next = &TABLE_OS[2] },
@@ -167,8 +166,7 @@ static struct column_list const TABLE_OS[OS_FIELD_COUNT+1] = {
     { .value = { FIELD_TEXT, 16, false, false, NULL, "os_release", {.text = ""}, true}, .next = &TABLE_OS[16] },
     { .value = { FIELD_TEXT, 17, false, false, NULL, "checksum", {.text = ""}, false}, .next = &TABLE_OS[17] },
     { .value = { FIELD_TEXT, 18, false, false, NULL, "os_display_version", {.text = ""}, true}, .next = &TABLE_OS[18] },
-    { .value = { FIELD_INTEGER, 19, true, false, NULL, "triaged", {.integer = 0}, true}, .next = &TABLE_OS[19] },
-    { .value = { FIELD_TEXT, 20, true, false, NULL, "reference", {.text = ""}, false}, .next = NULL },
+    { .value = { FIELD_TEXT, 19, true, false, NULL, "reference", {.text = ""}, false}, .next = NULL },
 };
 
 #define HARDWARE_FIELD_COUNT 9
@@ -555,20 +553,6 @@ int wdb_parse(char * input, char * output, int peer) {
                 timersub(&end, &begin, &diff);
                 w_inc_agent_rootcheck_time(diff);
             }
-        } else if (strcmp(query, "vuln_cves") == 0) {
-            w_inc_agent_vul_detector();
-            if (!next) {
-                mdebug1("DB(%s) Invalid vuln_cves query syntax.", sagent_id);
-                mdebug2("DB(%s) vuln_cves query error near: %s", sagent_id, query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid vuln_cves query syntax, near '%.32s'", query);
-                result = OS_INVALID;
-            } else {
-                gettimeofday(&begin, 0);
-                result = wdb_parse_vuln_cves(wdb, next, output);
-                gettimeofday(&end, 0);
-                timersub(&end, &begin, &diff);
-                w_inc_agent_vul_detector_time(diff);
-            }
         } else if (strcmp(query, "sql") == 0) {
             w_inc_agent_sql();
             if (!next) {
@@ -761,9 +745,9 @@ int wdb_parse(char * input, char * output, int peer) {
             snprintf(path, sizeof(path), "%s/%s.db", WDB2_DIR, wdb->id);
             if (!w_is_file(path)) {
                 mwarn("DB(%s) not found. This behavior is unexpected, the database will be recreated.", path);
-                w_mutex_lock(&pool_mutex);
+                rwlock_lock_write(&pool_mutex);
                 wdb_close(wdb, FALSE);
-                w_mutex_unlock(&pool_mutex);
+                rwlock_unlock(&pool_mutex);
             }
         }
         return result;
@@ -1404,9 +1388,9 @@ int wdb_parse(char * input, char * output, int peer) {
             snprintf(path, sizeof(path), "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
             if (!w_is_file(path)) {
                 mwarn("DB(%s) not found. This behavior is unexpected, the database will be recreated.", path);
-                w_mutex_lock(&pool_mutex);
+                rwlock_lock_write(&pool_mutex);
                 wdb_close(wdb, FALSE);
-                w_mutex_unlock(&pool_mutex);
+                rwlock_unlock(&pool_mutex);
             }
         }
         return result;
@@ -3477,25 +3461,11 @@ int wdb_parse_osinfo(wdb_t* wdb, char* input, char* output) {
     else if (strcmp(next, "set") == 0) {
         result = wdb_parse_agents_set_sys_osinfo(wdb, tail, output);
     }
-    else if (strcmp(next, "set_triaged") == 0) {
-        result = wdb_parse_agents_set_sys_osinfo_triaged(wdb, output);
-    }
     else {
         snprintf(output, OS_MAXSTR + 1, "err Invalid osinfo action: %s", next);
     }
 
     return result;
-}
-
-int wdb_parse_agents_set_sys_osinfo_triaged(wdb_t* wdb, char* output) {
-    int ret = wdb_agents_set_sys_osinfo_triaged(wdb);
-    if (OS_SUCCESS != ret) {
-        snprintf(output, OS_MAXSTR + 1, "err Cannot set sys_osinfo as triaged; SQL err: %s", sqlite3_errmsg(wdb->db));
-    }
-    else {
-        snprintf(output, OS_MAXSTR + 1, "ok");
-    }
-    return ret;
 }
 
 int wdb_parse_agents_get_sys_osinfo(wdb_t* wdb, char* output) {
@@ -4218,13 +4188,8 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
 
     }
     else if (strcmp(action, "get") == 0) {
-        bool not_triaged_only = FALSE;
-        if (!strcmp(tail, "not_triaged")) {
-            not_triaged_only = TRUE;
-        }
-
         cJSON* status_response = NULL;
-        result = wdb_agents_get_packages(wdb, not_triaged_only, &status_response);
+        result = wdb_agents_get_packages(wdb, &status_response);
         if (status_response) {
             char *out = cJSON_PrintUnformatted(status_response);
             if (OS_SUCCESS == result) {
@@ -6657,157 +6622,4 @@ int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output)
     cJSON_Delete(response);
 
     return result;
-}
-
-// 'agents' DB command parsing
-
-int wdb_parse_vuln_cves(wdb_t* wdb, char* input, char* output) {
-    int result = OS_INVALID;
-    char * next;
-    const char delim[] = " ";
-    char *tail = NULL;
-
-    next = strtok_r(input, delim, &tail);
-
-    if (!next) {
-        snprintf(output, OS_MAXSTR + 1, "err Missing vuln_cves action");
-    } else if (strcmp(next, "insert") == 0) {
-        result = wdb_parse_agents_insert_vuln_cves(wdb, tail, output);
-    } else if (strcmp(next, "update_status") == 0) {
-        result = wdb_parse_agents_update_vuln_cves_status(wdb, tail, output);
-    } else if (strcmp(next, "remove") == 0) {
-        result = wdb_parse_agents_remove_vuln_cves(wdb, tail, output);
-    } else {
-        snprintf(output, OS_MAXSTR + 1, "err Invalid vuln_cves action: %s", next);
-    }
-
-    return result;
-}
-
-int wdb_parse_agents_insert_vuln_cves(wdb_t* wdb, char* input, char* output) {
-    cJSON *data = NULL;
-    const char *error = NULL;
-    int ret = OS_INVALID;
-
-    data = cJSON_ParseWithOpts(input, &error, TRUE);
-    if (!data) {
-        mdebug1("Invalid vuln_cves JSON syntax when inserting vulnerable package.");
-        mdebug2("JSON error near: %s", error);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
-    }
-    else {
-        cJSON* j_name = cJSON_GetObjectItem(data, "name");
-        cJSON* j_version = cJSON_GetObjectItem(data, "version");
-        cJSON* j_architecture = cJSON_GetObjectItem(data, "architecture");
-        cJSON* j_cve = cJSON_GetObjectItem(data, "cve");
-        cJSON* j_reference = cJSON_GetObjectItem(data, "reference");
-        cJSON* j_type = cJSON_GetObjectItem(data, "type");
-        cJSON* j_status = cJSON_GetObjectItem(data, "status");
-        cJSON* j_check_pkg_existence = cJSON_GetObjectItem(data, "check_pkg_existence");
-        cJSON* j_severity = cJSON_GetObjectItem(data, "severity");
-        cJSON* j_cvss2_score = cJSON_GetObjectItem(data, "cvss2_score");
-        cJSON* j_cvss3_score = cJSON_GetObjectItem(data, "cvss3_score");
-        cJSON* j_external_references = cJSON_GetObjectItem(data, "external_references");
-        cJSON* j_condition = cJSON_GetObjectItem(data, "condition");
-        cJSON* j_title = cJSON_GetObjectItem(data, "title");
-        cJSON* j_published = cJSON_GetObjectItem(data, "published");
-        cJSON* j_updated = cJSON_GetObjectItem(data, "updated");
-
-        // Required fields
-        if (!cJSON_IsString(j_name) || !cJSON_IsString(j_version) || !cJSON_IsString(j_architecture) ||!cJSON_IsString(j_cve) ||
-            !cJSON_IsString(j_reference) || !cJSON_IsString(j_type) || !cJSON_IsString(j_status) ||!cJSON_IsBool(j_check_pkg_existence)) {
-            mdebug1("Invalid vuln_cves JSON data when inserting vulnerable package. Not compliant with constraints defined in the database.");
-            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, missing required fields");
-        } else {
-            char* str_external_references = cJSON_PrintUnformatted(j_external_references);
-
-            cJSON* result = wdb_agents_insert_vuln_cves(wdb, cJSON_GetStringValue(j_name), cJSON_GetStringValue(j_version), cJSON_GetStringValue(j_architecture), cJSON_GetStringValue(j_cve),
-                                                        cJSON_GetStringValue(j_reference), cJSON_GetStringValue(j_type), cJSON_GetStringValue(j_status), (bool)j_check_pkg_existence->valueint,
-                                                        cJSON_GetStringValue(j_severity), cJSON_IsNumber(j_cvss2_score) ? j_cvss2_score->valuedouble : 0,
-                                                        cJSON_IsNumber(j_cvss3_score) ? j_cvss3_score->valuedouble : 0, str_external_references, cJSON_GetStringValue(j_condition),
-                                                        cJSON_GetStringValue(j_title), cJSON_GetStringValue(j_published), cJSON_GetStringValue(j_updated));
-
-            if (result) {
-                char *out = cJSON_PrintUnformatted(result);
-                snprintf(output, OS_MAXSTR + 1, "ok %s", out);
-                os_free(out);
-                cJSON_Delete(result);
-                ret = OS_SUCCESS;
-            } else {
-                mdebug1("Error inserting vulnerability in vuln_cves.");
-                snprintf(output, OS_MAXSTR + 1, "err Error inserting vulnerability in vuln_cves.");
-            }
-            os_free(str_external_references);
-        }
-    }
-
-    cJSON_Delete(data);
-    return ret;
-}
-
-int wdb_parse_agents_update_vuln_cves_status(wdb_t* wdb, char* input, char* output) {
-    cJSON *data = NULL;
-    const char *error = NULL;
-    int ret = OS_INVALID;
-
-    data = cJSON_ParseWithOpts(input, &error, TRUE);
-
-    if (!data) {
-        mdebug1("Invalid vuln_cves JSON syntax when updating status value.");
-        mdebug2("JSON error near: %s", error);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
-    }
-    else {
-        const char *old_status = cJSON_GetStringValue(cJSON_GetObjectItem(data, "old_status"));
-        const char *new_status = cJSON_GetStringValue(cJSON_GetObjectItem(data, "new_status"));
-        const char *type = cJSON_GetStringValue(cJSON_GetObjectItem(data, "type"));
-
-        if (new_status && ((type && !old_status) || (!type && old_status))) {
-            ret = wdb_agents_update_vuln_cves_status(wdb, old_status, new_status, type);
-            if (OS_SUCCESS != ret) {
-                mdebug1("DB(%s) Cannot execute vuln_cves update_status command; SQL err: %s", wdb->id, sqlite3_errmsg(wdb->db));
-                snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cves update_status command; SQL err: %s", sqlite3_errmsg(wdb->db));
-            } else {
-                snprintf(output, OS_MAXSTR + 1, "ok");
-            }
-        } else {
-            mdebug1("Invalid vuln_cves JSON data when updating CVE's status.");
-            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, missing or wrong required fields");
-        }
-    }
-
-    cJSON_Delete(data);
-    return ret;
-}
-
-int wdb_parse_agents_remove_vuln_cves(wdb_t* wdb, char* input, char* output) {
-    cJSON *data = NULL;
-    const char *error = NULL;
-    int ret = OS_INVALID;
-
-    data = cJSON_ParseWithOpts(input, &error, TRUE);
-
-    if (!data) {
-        mdebug1("Invalid vuln_cves JSON syntax when removing vulnerabilities.");
-        mdebug2("JSON error near: %s", error);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
-    }
-    else {
-        cJSON* status = cJSON_GetObjectItem(data, "status");
-
-        if (cJSON_IsString(status)) {
-            char* remove_out_str = NULL;
-
-            wdbc_result wdb_res = wdb_agents_remove_vuln_cves_by_status(wdb, status->valuestring, &remove_out_str);
-            snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[wdb_res], remove_out_str);
-            os_free(remove_out_str)
-            ret = OS_SUCCESS;
-        } else {
-            mdebug1("Invalid vuln_cves JSON data to remove vulnerabilities.");
-            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data");
-        }
-    }
-
-    cJSON_Delete(data);
-    return ret;
 }

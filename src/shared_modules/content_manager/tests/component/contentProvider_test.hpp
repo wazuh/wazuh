@@ -50,7 +50,6 @@ protected:
                     "deleteDownloadedContent": false,
                     "url": "http://localhost:4444/raw/consumers",
                     "outputFolder": "/tmp/content-provider-tests",
-                    "dataFormat": "json",
                     "contentFileName": "sample.json"
                 }
             }

@@ -1476,7 +1476,6 @@ stages:
           affected_items:
             - path: !anystr
               version: !anystr
-              compilation_date: !anystr
               type: !anystr
               max_agents: !anystr
               openssl_support: !anystr

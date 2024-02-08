@@ -100,8 +100,7 @@ class TestingLogger:
     {'api_timeout': 15},
     {'api_timeout': 5}
 ])
-@patch('wazuh.core.cluster.dapi.dapi.common.WAZUH_INSTALL_TYPE', return_value='local')
-def test_DistributedAPI(install_type_mock, kwargs):
+def test_DistributedAPI(kwargs):
     """Test constructor from DistributedAPI class.
 
     Parameters
