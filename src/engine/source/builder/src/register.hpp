@@ -23,7 +23,6 @@
 #include "builders/opmap/kvdb.hpp"
 #include "builders/optransform/array.hpp"
 #include "builders/optransform/hlp.hpp"
-#include "builders/optransform/netinfoAddress.hpp"
 #include "builders/optransform/sca.hpp"
 #include "builders/optransform/windows.hpp"
 
@@ -296,14 +295,6 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
         "send_upgrade_confirmation",
         {schemval::ValidationToken {json::Json::Type::Boolean},
          builders::opmap::getUpgradeConfirmationBUilder(deps.sockFactory)});
-
-    // Netinfo address builder
-    registry->template add<builders::OpBuilderEntry>(
-        "sysc_ni_save_ipv4",
-        {schemval::ValidationToken {}, builders::optransform::getSaveNetInfoIPv4Builder(deps.wdbManager)});
-    registry->template add<builders::OpBuilderEntry>(
-        "sysc_ni_save_ipv6",
-        {schemval::ValidationToken {}, builders::optransform::getSaveNetInfoIPv6Builder(deps.wdbManager)});
 
     // WDB builders
     registry->template add<builders::OpBuilderEntry>(
