@@ -30,16 +30,6 @@ OSListNode *__wrap_OSList_GetFirstNode(__attribute__((unused))OSList *list) {
     return mock_type(OSListNode *);
 }
 
-// TODO: Should this be part of signal_wrappers
-pid_t __wrap_fork(void) {
-    return mock_type(pid_t);
-}
-
-void __wrap_exit(__attribute__((unused))int code) {
-    function_called();
-    return ;
-}
-
 extern void __real_OSList_Destroy(__attribute__((unused))OSList *list);
 void __wrap_OSList_Destroy(__attribute__((unused))OSList *list) {
     if(test_mode) {

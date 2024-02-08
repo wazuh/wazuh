@@ -26,6 +26,15 @@ int __wrap_sleep (unsigned int __seconds) {
     return mock();
 }
 
+pid_t __wrap_fork(void) {
+    return mock_type(pid_t);
+}
+
+void __wrap_exit(__attribute__((unused))int code) {
+    function_called();
+    return;
+}
+
 static int setup_modules(void ** state) {
     *state = NULL;
     // wm_kill_timeout to default value

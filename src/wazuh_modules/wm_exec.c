@@ -22,8 +22,9 @@
 #include "../../unit_tests/wrappers/windows/libc/kernel32_wrappers.h"
 #endif
 
-// Data structure to share with the reader thread
 static pthread_mutex_t wm_children_mutex;   // Mutex for child process pool
+
+// Data structure to share with the reader thread
 
 typedef struct ThreadInfo {
 #ifdef WIN32
@@ -642,7 +643,7 @@ void wm_append_sid(pid_t sid) {
         }
     }
     merror("Child process sid %d could not be registered.", sid);
-    os_free(p_sid);    
+    os_free(p_sid);
 }
 
 // Remove process group from pool

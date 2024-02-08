@@ -19,10 +19,6 @@ void __wrap_OSList_DeleteThisNode(__attribute__((unused))OSList *list, __attribu
 
 OSListNode *__wrap_OSList_GetFirstNode(__attribute__((unused))OSList *list);
 
-pid_t __wrap_fork(void);
-
-void __wrap_exit(__attribute__((unused))int code);
-
 void __wrap_OSList_Destroy(__attribute__((unused))OSList *list);
 
 #endif // LIST_OP_WRAPPERS_H
