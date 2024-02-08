@@ -311,9 +311,11 @@ namespace Utils
          */
         RocksDBIterator begin(const std::string& columnName = "")
         {
-            return RocksDBIterator {std::shared_ptr<rocksdb::Iterator>(
-                                        m_db->NewIterator(rocksdb::ReadOptions(), getColumnFamilyHandle(columnName))),
-                                    ""};
+            RocksDBIterator rocksDBIterator(std::shared_ptr<rocksdb::Iterator>(m_db->NewIterator(
+                                                rocksdb::ReadOptions(), getColumnFamilyHandle(columnName))),
+                                            "");
+            rocksDBIterator.begin();
+            return rocksDBIterator;
         }
 
         /**
