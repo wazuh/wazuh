@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.8.1]
 
+### Agent
+
+#### Fixed
+
+- Fixed loading of whodata through timeouts and retries. ([#21455](https://github.com/wazuh/wazuh/pull/21455))
 
 ## [v4.8.0]
 
