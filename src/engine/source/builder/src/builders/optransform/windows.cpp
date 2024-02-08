@@ -6,8 +6,6 @@ using namespace builder::builders;
 
 namespace
 {
-const std::string ACC_SID_DESC_KEY = "accountSIDDescription";
-const std::string DOM_SPC_SID_KEY = "domainSpecificSID";
 
 /**
  * @brief Parse the list of SID, the list must be in the format:
@@ -54,9 +52,6 @@ TransformBuilder getWindowsSidListDescHelperBuilder(const std::shared_ptr<kvdbMa
                const std::vector<OpArg>& opArgs,
                const std::shared_ptr<const IBuildCtx> buildCtx) -> TransformOp
     {
-        // Format name
-        const auto name = buildCtx->context().opName;
-
         // Check parameters
         utils::assertSize(opArgs, 2);
         utils::assertValue(opArgs, 0);
@@ -73,12 +68,13 @@ TransformBuilder getWindowsSidListDescHelperBuilder(const std::shared_ptr<kvdbMa
 
         auto kvdbName = kvdbNameArg.value().getString().value();
         const auto& schema = buildCtx->schema();
-        if (schema.hasField(sidListRef.dotPath())
-            && (schema.getType(sidListRef.dotPath()) != schemf::Type::TEXT
-                && schema.getType(sidListRef.dotPath()) != schemf::Type::KEYWORD
-                && schema.getType(sidListRef.dotPath()) != schemf::Type::IP))
+        if (schema.hasField(sidListRef.dotPath()))
         {
-            throw std::runtime_error(fmt::format("The reference '{}' is not an string.", sidListRef.dotPath()));
+            auto jType = buildCtx->validator().getJsonType(schema.getType(sidListRef.dotPath()));
+            if (jType != json::Json::Type::String)
+            {
+                throw std::runtime_error(fmt::format("The reference '{}' is not an string.", sidListRef.dotPath()));
+            }
         }
 
         // Get the kvdb handler
@@ -128,16 +124,17 @@ TransformBuilder getWindowsSidListDescHelperBuilder(const std::shared_ptr<kvdbMa
         };
 
         // Account SID Description
-        auto asdMap = parseDbJsonToMap(ACC_SID_DESC_KEY, "accountSIDDescription");
+        auto asdMap = parseDbJsonToMap(detail::ACC_SID_DESC_KEY, "accountSIDDescription");
         // Domain Specific SID
-        auto dssMap = parseDbJsonToMap(DOM_SPC_SID_KEY, "DomainSpecificSID");
+        auto dssMap = parseDbJsonToMap(detail::DOM_SPC_SID_KEY, "DomainSpecificSID");
 
         // Trace messages
-        const std::string successTrace {fmt::format("{} -> Success", name)};
-        const std::string referenceNotFoundTrace {
-            fmt::format("{} -> Failure: Reference to array {} not found", name, sidListRef.dotPath())};
-        const std::string failureRefErrorParsing {
-            fmt::format("{} -> Failure: Error parsing reference '{}' as sidList", name, sidListRef.dotPath())};
+        const auto name = buildCtx->context().opName;
+        const auto successTrace = fmt::format("{} -> Success", name);
+        const auto referenceNotFoundTrace =
+            fmt::format("{} -> Reference to array {} not found", name, sidListRef.dotPath());
+        const auto failureRefErrorParsing =
+            fmt::format("{} -> Error parsing reference '{}' as sidList", name, sidListRef.dotPath());
         // const std::string failureItemNotString {
         //     fmt::format("[{}] -> Failure: Item in array {} is not a string", name, sidListRef)};
         std::regex endRegex("\\d{1,5}$");
