@@ -64,7 +64,6 @@ WAZUH_AGENT="../src/init/wazuh-client.sh"
 WAZUH_LOCAL="../src/init/wazuh-local.sh"
 NSIS_FILE="../src/win32/wazuh-installer.nsi"
 MSI_FILE="../src/win32/wazuh-installer.wxs"
-FW_SETUP="../framework/setup.py"
 FW_INIT="../framework/wazuh/__init__.py"
 CLUSTER_INIT="../framework/wazuh/core/cluster/__init__.py"
 API_SETUP="../api/setup.py"
@@ -123,7 +122,6 @@ then
 
     # Framework
 
-    sed -E -i'' -e "s/WAZUH_VERSION='.+'/WAZUH_VERSION='${version:1}'/g" $FW_SETUP
     sed -E -i'' -e "s/__version__ = '.+'/__version__ = '${version:1}'/g" $FW_INIT
 
     # Cluster

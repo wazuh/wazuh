@@ -178,6 +178,7 @@ checks:
     condition: all
     rules:
       - 'c:net user guest -> r:Account active\s+No'
+      - 'c:net user guest -> r:The user name could not be found.'
 
   - id: 26012
     title: "Ensure 'Accounts: Limit local account use of blank passwords to console logon only' is set to 'Enabled'."
@@ -361,8 +362,9 @@ checks:
       - cis: ["2.3.6.5"]
     condition: all
     rules:
-      - 'c:net.exe accounts -> n:Maximum password age (days):\s+(\d+) compare <= 30'
-      - 'c:net.exe accounts -> n:Maximum password age (days):\s+(\d+) compare > 0'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> n:^(\d+) compare <= 30'
 
   - id: 26024
     title: "Ensure 'Domain member: Require strong (Windows 2000 or later) session key' is set to 'Enabled'."

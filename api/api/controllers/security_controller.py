@@ -17,10 +17,9 @@ from api.models.security_model import (CreateUserModel, PolicyModel, RoleModel,
 from api.models.security_token_response_model import TokenResponseModel
 from api.util import (deprecate_endpoint, parse_api_param, raise_if_exc,
                       remove_nones_to_dict)
-from wazuh import security
+from wazuh import security, __version__
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.core.common import WAZUH_VERSION
 from wazuh.core.exception import WazuhException, WazuhPermissionError
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.security import revoke_tokens
@@ -30,7 +29,7 @@ logger = logging.getLogger('wazuh-api')
 auth_re = re.compile(r'basic (.*)', re.IGNORECASE)
 
 
-@deprecate_endpoint(link=f'https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/reference.html#'
+@deprecate_endpoint(link=f'https://documentation.wazuh.com/{__version__}/user-manual/api/reference.html#'
                          f'operation/api.controllers.security_controller.login_user')
 async def deprecated_login_user(user: str, raw: bool = False) -> web.Response:
     """User/password authentication to get an access token.

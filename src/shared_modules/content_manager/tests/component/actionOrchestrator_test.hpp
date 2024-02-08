@@ -61,7 +61,6 @@ protected:
                     "deleteDownloadedContent": false,
                     "url": "http://localhost:4444/raw/consumers",
                     "outputFolder": "/tmp/action-orchestrator-tests",
-                    "dataFormat": "json",
                     "contentFileName": "sample.json"
                 }
             }

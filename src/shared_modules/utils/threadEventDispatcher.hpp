@@ -93,7 +93,7 @@ private:
         {
             while (m_running)
             {
-                std::queue<Type> data = m_queue->popBulk(ELEMENTS_PER_BULK);
+                std::queue<Type> data = m_queue->popBulk(m_bulkSize);
                 if (!data.empty())
                 {
                     m_functor(data);

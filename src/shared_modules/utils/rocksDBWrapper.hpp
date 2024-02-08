@@ -40,6 +40,8 @@ namespace Utils
         virtual bool columnExists(const std::string& columnName) const = 0;
         virtual void deleteAll() = 0;
         virtual void flush() = 0;
+        virtual std::vector<std::string> getAllColumns() = 0;
+        virtual RocksDBIterator seek(std::string_view key, const std::string& columnName = "") = 0;
 
         virtual ~IRocksDBWrapper() = default;
     };
@@ -53,12 +55,13 @@ namespace Utils
     public:
         explicit RocksDBWrapper(const std::string& dbPath, const bool enableWal = true)
             : m_enableWal {enableWal}
+            , m_path {dbPath}
         {
             rocksdb::Options options;
             options.create_if_missing = true;
             rocksdb::TransactionDB* dbRawPtr;
             std::vector<rocksdb::ColumnFamilyDescriptor> columnsDescriptors;
-            const std::filesystem::path databasePath {dbPath};
+            const std::filesystem::path databasePath {m_path};
 
             // Create directories recursively if they do not exist
             std::filesystem::create_directories(databasePath);
@@ -69,7 +72,7 @@ namespace Utils
             {
                 // Read columns names.
                 std::vector<std::string> columnsNames;
-                const auto listStatus {rocksdb::TransactionDB::ListColumnFamilies(options, dbPath, &columnsNames)};
+                const auto listStatus {rocksdb::TransactionDB::ListColumnFamilies(options, m_path, &columnsNames)};
                 if (!listStatus.ok())
                 {
                     throw std::runtime_error("Failed to list columns: " + std::string {listStatus.getState()});
@@ -89,7 +92,7 @@ namespace Utils
 
             // Open database with a list of columns descriptors.
             const auto status {rocksdb::TransactionDB::Open(
-                options, rocksdb::TransactionDBOptions(), dbPath, columnsDescriptors, &m_columnsHandles, &dbRawPtr)};
+                options, rocksdb::TransactionDBOptions(), m_path, columnsDescriptors, &m_columnsHandles, &dbRawPtr)};
             if (!status.ok())
             {
                 throw std::runtime_error("Failed to open RocksDB database. Reason: " + std::string {status.getState()});
@@ -295,7 +298,7 @@ namespace Utils
          * @param key Key to seek.
          * @return RocksDBIterator Iterator to the database.
          */
-        RocksDBIterator seek(std::string_view key, const std::string& columnName = "")
+        RocksDBIterator seek(std::string_view key, const std::string& columnName = "") override
         {
             return {std::shared_ptr<rocksdb::Iterator>(
                         m_db->NewIterator(rocksdb::ReadOptions(), getColumnFamilyHandle(columnName))),
@@ -309,7 +312,8 @@ namespace Utils
         RocksDBIterator begin(const std::string& columnName = "")
         {
             return RocksDBIterator {std::shared_ptr<rocksdb::Iterator>(
-                m_db->NewIterator(rocksdb::ReadOptions(), getColumnFamilyHandle(columnName)))};
+                                        m_db->NewIterator(rocksdb::ReadOptions(), getColumnFamilyHandle(columnName))),
+                                    ""};
         }
 
         /**
@@ -433,6 +437,23 @@ namespace Utils
         }
 
         /**
+         * @brief Get all the column family names of the DB.
+         *
+         * @return std::vector<std::string>
+         */
+        std::vector<std::string> getAllColumns()
+        {
+            std::vector<std::string> columnsNames;
+            rocksdb::Options options;
+            const auto listStatus {rocksdb::TransactionDB::ListColumnFamilies(options, m_path, &columnsNames)};
+            if (!listStatus.ok())
+            {
+                throw std::runtime_error("Failed to list columns: " + std::string {listStatus.getState()});
+            }
+            return columnsNames;
+        }
+
+        /**
          * @brief Delete all key-value pairs from the database.
          */
         void deleteAll() override
@@ -474,6 +495,7 @@ namespace Utils
         std::unique_ptr<rocksdb::TransactionDB> m_db;               ///< RocksDB instance.
         std::vector<rocksdb::ColumnFamilyHandle*> m_columnsHandles; ///< List of column family handles.
         const bool m_enableWal;                                     ///< Whether to enable WAL or not.
+        const std::string m_path;                                   ///< Location of the DB.
 
         /**
          * @brief Returns the column family handle identified by its name.
@@ -700,6 +722,28 @@ namespace Utils
         }
 
         /**
+         * @brief Retrieves all the column families from the DB.
+         *
+         * @return std::vector<std::string> Vector of strings with all the column names.
+         */
+        std::vector<std::string> getAllColumns() override
+        {
+            return m_dbWrapper->getAllColumns();
+        }
+
+        /**
+         * @brief Seek to specific key
+         *
+         * @param key Key to seek.
+         * @param columnName Column family name.
+         * @return RocksDBIterator  RocksDBIterator Iterator to the database.
+         */
+        RocksDBIterator seek(std::string_view key, const std::string& columnName = "") override
+        {
+            return m_dbWrapper->seek(key, columnName);
+        }
+
+        /**
          * @brief Flushes the transaction.
          */
         void flush() override
@@ -716,4 +760,3 @@ namespace Utils
 } // namespace Utils
 
 #endif // _ROCKS_DB_WRAPPER_HPP
-

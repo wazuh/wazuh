@@ -93,11 +93,6 @@ typedef struct _agent_syscollector_t {
     agent_syscollector_deprecated_t deprecated;
 } agent_syscollector_t;
 
-typedef struct _agent_vulnerability_t {
-    uint64_t vulnerability_detector_queries;
-    struct timeval vulnerability_detector_time;
-} agent_vulnerability_t;
-
 typedef struct _agent_breakdown_t {
     uint64_t begin_queries;
     uint64_t close_queries;
@@ -120,7 +115,6 @@ typedef struct _agent_breakdown_t {
     agent_sync_t sync;
     agent_syscheck_t syscheck;
     agent_syscollector_t syscollector;
-    agent_vulnerability_t vulnerability;
 } agent_breakdown_t;
 
 typedef struct _global_agent_t {
@@ -430,19 +424,6 @@ void w_inc_agent_ciscat();
  * @param time Value to increment the counter.
  */
 void w_inc_agent_ciscat_time(struct timeval time);
-
-/**
- * @brief Increment vulnerability detector agent queries counter
- *
- */
-void w_inc_agent_vul_detector();
-
-/**
- * @brief Increment vulnerability detector agent time counter
- *
- * @param time Value to increment the counter.
- */
-void w_inc_agent_vul_detector_time(struct timeval time);
 
 /**
  * @brief Increment dbsync agent queries counter

@@ -26,7 +26,6 @@ defusedxml==0.6.0
 docker==6.0.0
 docker-pycreds==0.4.0
 docutils==0.15.2
-ecdsa==0.16.1
 envparse==0.2.0
 Flask==2.2.5
 frozenlist==1.2.0
@@ -66,9 +65,9 @@ psutil==5.9.0
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
 pycparser==2.21
+PyJWT==2.8.0
 pyparsing==2.4.7
 python-dateutil==2.8.1
-python-jose==3.1.0
 python-json-logger==2.0.2
 pytz==2020.1
 PyYAML==5.4.1

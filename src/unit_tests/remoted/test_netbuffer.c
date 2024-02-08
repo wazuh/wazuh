@@ -24,6 +24,7 @@
 #include "../wrappers/wazuh/shared/bqueue_op_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/notify_op_wrappers.h"
+#include "../wrappers/wazuh/remoted/queue_wrappers.h"
 
 extern wnotify_t * notify;
 extern unsigned int send_chunk;
@@ -331,6 +332,64 @@ void test_nb_send_err(void ** state) {
     assert_int_equal(retval, -1);
 }
 
+void test_nb_recv_incomplete_first_message(void ** state) {
+    netbuffer_t *netbuffer = *state;
+    char buffer_data[14] = {0xFB,0x03,0x00,0x00,0x21,0x31,0x36,0x30,0x37,0x21,0x23,0x41,0x45,0x53};
+
+    void *buffer = &buffer_data;
+    os_calloc(14, sizeof(char*), netbuffer->buffers[sock].data);
+    memcpy((char*)netbuffer->buffers[sock].data, (char*)buffer, 14);
+
+    netbuffer->buffers[sock].data_len = 0;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    will_return(__wrap_recv, 14);
+
+    expect_value(__wrap_wnet_order, value, 1019);
+    will_return(__wrap_wnet_order, 1019);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    int retval = nb_recv(netbuffer, sock);
+
+    assert_int_equal(retval, 14);
+}
+
+void test_nb_recv_incomplete_second_message(void ** state) {
+    netbuffer_t *netbuffer = *state;
+    char buffer_data[26] = {0x08,0x00,0x00,0x00,0x21,0x31,0x36,0x30,0x37,0x37,0x31,0x36,0xFB,0x03,0x00,0x00,0x21,0x31,0x36,0x30,0x37,0x21,0x23,0x41,0x45,0x53};
+
+    void *buffer = &buffer_data;
+    os_calloc(26, sizeof(char*), netbuffer->buffers[sock].data);
+    memcpy((char*)netbuffer->buffers[sock].data, (char*)buffer, 26);
+
+    netbuffer->buffers[sock].data_len = 0;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    will_return(__wrap_recv, 26);
+
+    expect_value(__wrap_wnet_order, value, 8);
+    will_return(__wrap_wnet_order, 8);
+
+    expect_value(__wrap_rem_msgpush, size, 8);
+    expect_value(__wrap_rem_msgpush, addr, (struct sockaddr_storage *)&netbuffer->buffers[sock].peer_info);
+    expect_value(__wrap_rem_msgpush, sock, 15);
+    will_return(__wrap_rem_msgpush, 0);
+
+    expect_value(__wrap_wnet_order, value, 1019);
+    will_return(__wrap_wnet_order, 1019);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    int retval = nb_recv(netbuffer, sock);
+
+    assert_int_equal(retval, 26);
+    assert_int_equal(*(uint32_t *)netbuffer->buffers[sock].data, 1019);
+    assert_int_equal(netbuffer->buffers[sock].data_len, 14);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_nb_queue_ok, test_setup, test_teardown),
@@ -340,6 +399,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_nb_send_ok, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_nb_send_would_block_ok, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_nb_send_err, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_nb_recv_incomplete_first_message, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_nb_recv_incomplete_second_message, test_setup, test_teardown),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

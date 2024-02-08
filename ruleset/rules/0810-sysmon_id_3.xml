@@ -82,7 +82,7 @@
 
   <rule id="92108" level="0">
     <if_group>sysmon_event3</if_group>
-    <field name="win.eventdata.destinationPort" type="pcre2">3389</field>
+    <field name="win.eventdata.destinationPort" type="pcre2">^3389$</field>
     <options>no_full_log</options>
     <description>Detected RDP port network activity from $(win.eventdata.sourceIp) to $(win.eventdata.destinationIp)</description>
     <mitre>
