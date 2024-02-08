@@ -68,7 +68,6 @@ add_library(builder STATIC
     # Transform
     ${SRC_DIR}/builders/optransform/array.cpp
     ${SRC_DIR}/builders/optransform/hlp.cpp
-    ${SRC_DIR}/builders/optransform/netinfoAddress.cpp
     ${SRC_DIR}/builders/optransform/sca.cpp
     ${SRC_DIR}/builders/optransform/windows.cpp
 )
@@ -155,6 +154,10 @@ add_executable(builder_utest
     ${UNIT_SRC_DIR}/builders/optransform/jsonTransform_test.cpp
     ${UNIT_SRC_DIR}/builders/optransform/array_test.cpp
     ${UNIT_SRC_DIR}/builders/optransform/objectGet_test.cpp
+    ${UNIT_SRC_DIR}/builders/optransform/sca_test.cpp
+    ${UNIT_SRC_DIR}/builders/optransform/windows_test.cpp
+    ${UNIT_SRC_DIR}/builders/optransform/hlp_test.cpp
+
 
 )
 target_include_directories(builder_utest PUBLIC ${BUILDER_PUB_INCS} PRIVATE ${BUILDER_PRI_INCS} ${TEST_SRC_DIR} ${UNIT_SRC_DIR})

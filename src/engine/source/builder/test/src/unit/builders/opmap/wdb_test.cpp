@@ -12,9 +12,9 @@ namespace
 template<typename Builder>
 auto getBuilder(Builder&& builder)
 {
-    auto mockWdbManager = std::make_shared<MockWdbManager>();
     return [=]()
     {
+        auto mockWdbManager = std::make_shared<MockWdbManager>();
         return builder(mockWdbManager);
     };
 }
@@ -22,11 +22,11 @@ auto getBuilder(Builder&& builder)
 template<typename Builder>
 auto getBuilderExpectHandler(Builder&& builder)
 {
-    auto mockWdbManager = std::make_shared<MockWdbManager>();
-    auto mockWdbHandler = std::make_shared<MockWdbHandler>();
-
     return [=]()
     {
+        auto mockWdbManager = std::make_shared<MockWdbManager>();
+        auto mockWdbHandler = std::make_shared<MockWdbHandler>();
+
         EXPECT_CALL(*mockWdbManager, connection()).WillOnce(testing::Return(mockWdbHandler));
         return builder(mockWdbManager);
     };
@@ -35,11 +35,11 @@ auto getBuilderExpectHandler(Builder&& builder)
 template<typename Builder, typename Behaviour>
 auto getBuilderExpectHandler(Builder&& builder, Behaviour&& behaviour)
 {
-    auto mockWdbManager = std::make_shared<MockWdbManager>();
-    auto mockWdbHandler = std::make_shared<MockWdbHandler>();
-
     return [=]()
     {
+        auto mockWdbManager = std::make_shared<MockWdbManager>();
+        auto mockWdbHandler = std::make_shared<MockWdbHandler>();
+
         EXPECT_CALL(*mockWdbManager, connection()).WillOnce(testing::Return(mockWdbHandler));
         behaviour(mockWdbHandler);
         return builder(mockWdbManager);
@@ -127,7 +127,7 @@ INSTANTIATE_TEST_SUITE_P(
                  getBuilderExpectHandler(getWdbQueryBuilder),
                  SUCCESS(expectJTypeRef("ref", json::Json::Type::String))),
         MapDepsT({makeRef("ref")},
-                 getBuilderExpectHandler(getWdbQueryBuilder),
+                 getBuilder(getWdbQueryBuilder),
                  FAILURE(expectJTypeRef("ref", json::Json::Type::Number))),
         /*** Update ***/
         MapDepsT({}, getBuilder(getWdbUpdateBuilder), FAILURE()),
@@ -141,7 +141,7 @@ INSTANTIATE_TEST_SUITE_P(
                  getBuilderExpectHandler(getWdbUpdateBuilder),
                  SUCCESS(expectJTypeRef("ref", json::Json::Type::String))),
         MapDepsT({makeRef("ref")},
-                 getBuilderExpectHandler(getWdbUpdateBuilder),
+                 getBuilder(getWdbUpdateBuilder),
                  FAILURE(expectJTypeRef("ref", json::Json::Type::Number)))),
     testNameFormatter<MapBuilderWithDepsTest>("WDB"));
 } // namespace mapbuildtest

@@ -7,6 +7,13 @@
 
 namespace builder::builders
 {
+
+namespace detail
+{
+constexpr auto ACC_SID_DESC_KEY = "accountSIDDescription";
+constexpr auto DOM_SPC_SID_KEY = "domainSpecificSID";
+} // namespace detail
+
 /**
  * @brief Get the Windows Helper Builder object
  *
