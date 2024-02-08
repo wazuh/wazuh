@@ -50,7 +50,6 @@ tags:
 '''
 import json
 from pathlib import Path
-import shutil
 
 import pytest
 from wazuh_testing.tools.socket_controller import SocketController
@@ -58,7 +57,7 @@ from wazuh_testing.constants.paths.sockets import LOGTEST_SOCKET_PATH
 from wazuh_testing.constants.daemons import ANALYSISD_DAEMON, WAZUH_DB_DAEMON
 from wazuh_testing.utils import configuration
 
-from . import TEST_CASES_FOLDER_PATH, TEST_RULES_DECODERS_PATH
+from . import TEST_CASES_FOLDER_PATH
 
 # Marks
 
@@ -87,7 +86,8 @@ def create_dummy_session():
 
 # Tests
 @pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
-def test_load_rules_decoders(test_metadata, daemons_handler_module, wait_for_logtest_startup):
+def test_load_rules_decoders(test_metadata, daemons_handler_module, wait_for_logtest_startup,
+                             setup_local_rules, setup_local_decoders):
     '''
     description: Check if 'wazuh-logtest' does produce the right decoder/rule matching when processing a log under
                  different sets of configurations. To do this, it creates backup rules and decoders and copies the test
@@ -128,26 +128,6 @@ def test_load_rules_decoders(test_metadata, daemons_handler_module, wait_for_log
     '''
     # List to store assert messages
     errors = []
-
-    if 'local_rules' in test_metadata:
-        # save current rules
-        shutil.copy('/var/ossec/etc/rules/local_rules.xml',
-                    '/var/ossec/etc/rules/local_rules.xml.cpy')
-
-        file_test = test_metadata['local_rules']
-        # copy test rules
-        shutil.copy(Path(TEST_RULES_DECODERS_PATH, file_test), '/var/ossec/etc/rules/local_rules.xml')
-        shutil.chown('/var/ossec/etc/rules/local_rules.xml', "wazuh", "wazuh")
-
-    if 'local_decoders' in test_metadata:
-        # save current decoders
-        shutil.copy('/var/ossec/etc/decoders/local_decoder.xml',
-                    '/var/ossec/etc/decoders/local_decoder.xml.cpy')
-
-        file_test = test_metadata['local_decoders']
-        # copy test decoder
-        shutil.copy(Path(TEST_RULES_DECODERS_PATH, file_test), '/var/ossec/etc/decoders/local_decoder.xml')
-        shutil.chown('/var/ossec/etc/decoders/local_decoder.xml', "wazuh", "wazuh")
 
     # Create session token
     if 'same_session' in test_metadata and test_metadata['same_session']:
@@ -206,17 +186,5 @@ def test_load_rules_decoders(test_metadata, daemons_handler_module, wait_for_log
             # Check alert
             if 'output_alert' in stage and stage['output_alert'] != result["data"]['alert']:
                 errors.append(stage['stage'])
-
-    if 'local_rules' in test_metadata:
-        # restore previous rules
-        shutil.move('/var/ossec/etc/rules/local_rules.xml.cpy',
-                    '/var/ossec/etc/rules/local_rules.xml')
-    shutil.chown('/var/ossec/etc/rules/local_rules.xml', "wazuh", "wazuh")
-
-    if 'local_decoders' in test_metadata:
-        # restore previous decoders
-        shutil.move('/var/ossec/etc/decoders/local_decoder.xml.cpy',
-                    '/var/ossec/etc/decoders/local_decoder.xml')
-        shutil.chown('/var/ossec/etc/decoders/local_decoder.xml', "wazuh", "wazuh")
 
     assert not errors, "Failed stage(s) :{}".format("\n".join(errors))
