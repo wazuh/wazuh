@@ -2724,7 +2724,7 @@ FILE * wfopen(const char * pathname, const char * mode) {
         case 'a':
             dwDesiredAccess = GENERIC_WRITE;
             dwCreationDisposition = OPEN_ALWAYS;
-            flags = _O_CREAT;
+            flags = _O_APPEND;
             break;
         case 'b':
             flags &= ~_O_TEXT;
