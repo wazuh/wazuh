@@ -10,6 +10,7 @@ from google.protobuf.json_format import MessageToJson
 import json
 import os
 import subprocess
+from typing import Optional, Tuple
 
 ENGINE_DIR = os.environ.get("ENGINE_DIR", "")
 ENV_DIR = os.environ.get("ENV_DIR", "")
@@ -18,278 +19,204 @@ RULESET_DIR = ENV_DIR + "/engine"
 
 api_client = APIClient(SOCKET_PATH)
 
+def run_command(command):
+    result = subprocess.run(
+        command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    assert result.returncode == 0, f"{result.stderr}"
 
-# First Scenario
-@given('I want create a session called "{sessionName}" with a policy "{policyName}"')
-def step_impl(context, sessionName: str, policyName: str):
-    # Check if the policy exists, if not, create it
-    request = api_policy.PoliciesGet_Request()
-    err, response = api_client.send_recv(request)
-    if err:
-        context.result = err
-        print(err)
-        assert False
+def send_recv(request, expected_response_type) -> Tuple[Optional[str], dict]:
+    error, response = api_client.send_recv(request)
+    assert error is None, f"{err}"
+    parse_response = ParseDict(response, expected_response_type)
+    if parse_response == api_engine.ERROR:
+        return parse_response.error, {}
+    else:
+        return None, parse_response
 
-    policy_resp = ParseDict(response, api_policy.PoliciesGet_Response())
-    if policy_resp.status == api_engine.ERROR or len(policy_resp.data) == 0:
-        request = api_kvdb.managerDelete_Request()
-        request.name = "agents_host_data"
-        err, response = api_client.send_recv(request)
-        if err:
-            context.result = err
-            print(err)
-            assert False
-        command = f"engine-integration add -a {SOCKET_PATH} -n system {RULESET_DIR}/wazuh-core-test/"
-        result = subprocess.run(
-            command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        assert result.returncode == 0, f"{result.stderr}"
+def add_integration(integration_name: str):
+    command = f"engine-integration add -a {SOCKET_PATH} -n system {RULESET_DIR}/{integration_name}/"
+    run_command(command)
 
-        request = api_policy.StorePost_Request()
-        request.policy = policyName
-        err, response = api_client.send_recv(request)
-        if err:
-            context.result = err
-            print(err)
-            assert False
+def create_policy(policy_name: str):
+    request = api_policy.StorePost_Request()
+    request.policy = policy_name
+    error, response = send_recv(request, api_engine.GenericStatus_Response())
+    assert error is None, f"{error}"
 
-        request = api_policy.AssetPost_Request()
-        request.policy = policyName
-        request.asset = "integration/wazuh-core-test/0"
-        request.namespace = "system"
-        err, response = api_client.send_recv(request)
-        if err:
-            context.result = err
-            print(err)
-            assert False
+def delete_policy(policy_name: str):
+    request = api_policy.StoreDelete_Request()
+    request.policy = policy_name
+    error, response = send_recv(request, api_policy.PoliciesGet_Response())
+    assert error is None, f"{error}"
 
-    # Check if the session exists, if not, create it
-    request = api_tester.SessionGet_Request()
-    request.name = sessionName
-    err, response = api_client.send_recv(request)
-    if err:
-        context.result = err
-        print(err)
-        assert False
+def add_integration_to_policy(integration_name: str, policy_name: str):
+    request = api_policy.AssetPost_Request()
+    request.policy = policy_name
+    request.asset = f"integration/{integration_name}/0"
+    request.namespace = "system"
+    error, response = send_recv(request, api_engine.GenericStatus_Response())
+    assert error is None, f"{error}"
 
-    session_resp = ParseDict(response, api_tester.SessionGet_Response())
-    if session_resp.status != api_engine.OK:
-        request = api_tester.SessionPost_Request()
-        request.session.name = sessionName
-        request.session.policy = policyName
-        err, response = api_client.send_recv(request)
-        if err:
-            context.result = err
-            print(err)
-            assert False
+def policy_tear_down(policy_name: str, integration_name: str):
+    # Remove policy "policy_name"
+    delete_policy(policy_name)
 
-@when('I send a request to the tester to add a new session called "{sessionName}" with the data from policy:"{policyName}"')
-def step_impl(context, sessionName: str, policyName: str):
+    # Delete all assets and kvdbs
+    command = f"engine-clear -f --api-sock {SOCKET_PATH}"
+    run_command(command)
+
+def create_session(session_name: str, policy_name: str) -> api_engine.GenericStatus_Response:
     request = api_tester.SessionPost_Request()
-    request.session.name = sessionName
-    request.session.policy = policyName
-    err, response = api_client.send_recv(request)
-    assert err is None, f"{err}"
-    context.result = ParseDict(response, api_engine.GenericStatus_Response())
-    context.session = sessionName
+    request.session.name = session_name
+    request.session.policy = policy_name
+    error, response = send_recv(request, api_engine.GenericStatus_Response())
+    return response
+
+def get_session(context, session_name: str):
+    request = api_tester.SessionGet_Request()
+    request.name = session_name
+    error, context.result = send_recv(request, api_tester.SessionGet_Response())
+    assert error is None, f"{error}"
+
+def session_tear_down():
+    # Check if there are sessions to delete
+    request = api_tester.TableGet_Request()
+    error, response = send_recv(request, api_tester.TableGet_Response())
+    assert error is None, f"{error}"
+    if len(response.sessions) == 0:
+        return
+
+    # Delete all sessions
+    for session in response.sessions:
+        request = api_tester.SessionDelete_Request()
+        request.name = session.name
+        error, response = send_recv(request, api_engine.GenericStatus_Response())
+        assert error is None, f"{error}"
+
+
+@given('I have a policy "{policy_name}" that has an integration called "{integration_name}" loaded')
+def step_impl(context, policy_name: str, integration_name: str):
+    # TearDown
+    policy_tear_down(policy_name, integration_name)
+
+    # Setup
+    add_integration(integration_name)
+    create_policy(policy_name)
+    add_integration_to_policy(integration_name, policy_name)
+
+@given('I create a "{session_name}" session that points to policy "{policy_name}"')
+def step_impl(context, session_name: str, policy_name: str):
+    # TearDown
+    session_tear_down()
+
+    # Setup
+    create_session(session_name, policy_name)
+
+@when('I send a request to the tester to add a new session called "{session_name}" with the data from policy:"{policy_name}"')
+def step_impl(context, session_name: str, policy_name: str):
+    context.result = create_session(session_name, policy_name)
+
+@when('I send a request to the tester to add {sessions} sessions called "{session_name}" with policy "{policy_name}"')
+def step_impl(context, sessions: str, session_name: str, policy_name: str):
+    for i in range(int(sessions)):
+        create_session(session_name + str(i), policy_name)
+
+@when('I send a request to the tester to delete the session "{session_name}"')
+def step_impl(context, session_name: str):
+    request = api_tester.SessionDelete_Request()
+    request.name = session_name
+    error, context.result = send_recv(request, api_engine.GenericStatus_Response())
+    assert error is None, f"{error}"
+
+@when('I send a request to the tester to get the session "{session_name}"')
+def step_impl(context, session_name: str):
+    get_session(context, session_name)
+
+@when('I send a request to the policy "{policy_name}" to add an integration called "{integration_name}"')
+def step_impl(context, policy_name: str, integration_name: str):
+    add_integration(integration_name)
+    add_integration_to_policy(integration_name, policy_name)
+
+@when('I send a request to delete the policy "{policy_name}"')
+def step_impl(context, policy_name: str):
+    delete_policy(policy_name)
+
+@when('I send a request to send the event "{message}" from "{session_name}" session with "{debug_level}" debug "{namespace}" namespace, queue "{queue_char}" and "{asset_trace}" asset trace')
+def step_impl(context, message: str, session_name: str, debug_level: str, queue_char: str, namespace: str, asset_trace: str):
+    debug_level_to_int = {
+        "NONE": 0,
+        "ASSET_ONLY": 1,
+        "ALL": 2
+    }
+    request = api_tester.RunPost_Request()
+    request.name = session_name
+    request.trace_level = debug_level_to_int[debug_level]
+    request.message = message
+    request.queue = queue_char
+    request.location = "any"
+    request.namespaces.extend([namespace])
+    request.asset_trace.extend([asset_trace])
+    error, context.result = send_recv(request, api_tester.RunPost_Response())
+    assert error is None, f"{error}"
 
 @then('I should receive a {status} response indicating that "{message}"')
 def step_impl(context, status: str, message: str):
     if status == "failture":
-        route_response: api_engine.GenericStatus_Response = context.result
-        assert route_response.status == api_engine.ERROR, f"{route_response}"
-        assert route_response.error == message, f"{route_response}"
+        assert context.result.status == api_engine.ERROR, f"{context.result}"
+        assert context.result.error == message, f"{context.result}"
 
-# Second Scenario
 @then('I should receive a {status} response')
 def step_impl(context, status: str):
     if status == "success":
-        route_response: api_engine.GenericStatus_Response = context.result
-        assert route_response.status == api_engine.OK, f"{route_response}"
-
-        # Delete session for the next run
-        request = api_tester.SessionDelete_Request()
-        request.name = context.session
-        err, response = api_client.send_recv(request)
-        assert err is None, f"{err}"
-
-# Third Scenario
-@when('I send a request to the tester to add {sessions} sessions called "{sessionName}" with policy "{policyName}"')
-def step_impl(context, sessions: str, sessionName: str, policyName: str):
-    for i in range(int(sessions)):
-        request = api_tester.SessionPost_Request()
-        request.session.name = sessionName + str(i)
-        request.session.policy = policyName
-        err, response = api_client.send_recv(request)
-        assert err is None, f"{err}"
-        context.session = sessionName
-
-@when('I send a request to the tester to get all sessions')
-def step_impl(context):
-    request = api_tester.TableGet_Request()
-    err, response = api_client.send_recv(request)
-    assert err is None, f"{err}"
-    context.result = ParseDict(response, api_tester.TableGet_Response())
+        assert context.result.status == api_engine.OK, f"{context.result}"
 
 @then('I should receive a size list of {size}')
 def step_impl(context, size: str):
-    tester_response: api_engine.GenericStatus_Response = context.result
-    assert len(tester_response.sessions) - 1 == int(size) , f"{len(tester_response.sessions)}"
-
-    # Delete sessions for the next run
-    for i in range(int(size)):
-
-        #Query if the session yet exist
-        request = api_tester.SessionGet_Request()
-        request.name = context.session
-        err, response = api_client.send_recv(request)
-        assert err is None, f"{err}"
-        context.result = ParseDict(response, api_tester.SessionGet_Response())
-        tester_response: api_engine.GenericStatus_Response = context.result
-
-        if (tester_response.status == api_engine.OK):
-            # Delete
-            request = api_tester.SessionDelete_Request()
-            request.name = context.session + str(i)
-            err, response = api_client.send_recv(request)
-            assert err is None, f"{err}"
-    context.size = size
-
-# Fourth Scenario
-@when('I send a request to the tester to get the session "{sessionName}"')
-def step_impl(context, sessionName: str):
-    request = api_tester.SessionGet_Request()
-    request.name = sessionName
-    err, response = api_client.send_recv(request)
-    assert err is None, f"{err}"
-    context.result = ParseDict(response, api_tester.SessionGet_Response())
-
-@then('I should receive a session with name "{sessionName}"')
-def step_impl(context, sessionName: str):
-    tester_response: api_engine.GenericStatus_Response = context.result
-    assert tester_response.session.name == sessionName, f"{tester_response.session.name}"
-
-    # Get size list
     request = api_tester.TableGet_Request()
-    err, response = api_client.send_recv(request)
-    assert err is None, f"{err}"
-    context.result = ParseDict(response, api_tester.TableGet_Response())
-    tester_response: api_engine.GenericStatus_Response = context.result
-    size = len(tester_response.sessions)
+    error, response = send_recv(request, api_tester.TableGet_Response())
+    assert error is None, f"{error}"
+    assert len(response.sessions)  == int(size), f"{response.sessions}"
 
-    # Delete sessions for the next run
-    for i in range(size):
-        request = api_tester.SessionDelete_Request()
-        request.name = context.session + str(i)
-        err, response = api_client.send_recv(request)
-        assert err is None, f"{err}"
+@then('I should receive a session with name "{session_name}"')
+def step_impl(context, session_name: str):
+    assert context.result.session.name == session_name, f"{context.result}"
 
-# Fifth Scenario
-@when('I send a request to the tester to delete the session "{sessionName}"')
-def step_impl(context, sessionName: str):
-    request = api_tester.SessionDelete_Request()
-    request.name = sessionName
-    err, response = api_client.send_recv(request)
-    assert err is None, f"{err}"
-
-    request = api_tester.TableGet_Request()
-    err, response = api_client.send_recv(request)
-    assert err is None, f"{err}"
-    context.result = ParseDict(response, api_tester.TableGet_Response())
-
-# Sixth Scenario
-@when('I send a request to the policy "{policyName}" to add an integration called "{integrationName}"')
-def step_impl(context, policyName: str, integrationName: str):
-    # Query if the integration already exist
-    request = api_policy.AssetGet_Request()
-    request.policy = policyName
-    request.namespace = "system"
-    err, response = api_client.send_recv(request)
-    assert err is None, f"{err}"
-    context.result = ParseDict(response, api_policy.AssetGet_Response())
-    policy_response: api_engine.GenericStatus_Response = context.result
-
-    if integrationName in policy_response.data:
-        request = api_policy.AssetDelete_Request()
-        request.policy = policyName
-        request.asset = integrationName
-        request.namespace = "system"
-        err, response = api_client.send_recv(request)
-        if err:
-            context.result = err
-            print(err)
-            assert False
-    else:
-        # Add new integration
-        command = f"engine-integration add -a {SOCKET_PATH} -n system {RULESET_DIR}/other-wazuh-core-test/"
-        result = subprocess.run(
-            command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        assert result.returncode == 0, f"{result.stderr}"
-
-        # Add integration to policy
-        request = api_policy.AssetPost_Request()
-        request.policy = policyName
-        request.asset = "integration/other-wazuh-core-test/0"
-        request.namespace = "system"
-        err, response = api_client.send_recv(request)
-        if err:
-            context.result = err
-            print(err)
-            assert False
-
-@when('I send a request to get the session "{sessionName}"')
-def step_impl(context, sessionName: str):
-    request = api_tester.SessionGet_Request()
-    request.name = sessionName
-    err, response = api_client.send_recv(request)
-    assert err is None, f"{err}"
-    context.result = ParseDict(response, api_tester.SessionGet_Response())
-
-@then('I should receive a session with sync "{policySync}"')
-def step_impl(context, policySync: str):
-    policySyncToString = {
+@then('I should receive a session with sync "{policy_sync}"')
+def step_impl(context, policy_sync: str):
+    policy_sync_to_string = {
         0: "SYNC_UNKNOWN",
         1: "UPDATED",
         2: "OUTDATED",
         3: "ERROR"
     }
-    tester_response: api_engine.GenericStatus_Response = context.result
-    assert policySyncToString[tester_response.session.policy_sync] == policySync, f"{tester_response.session.policy_sync}"
+    assert policy_sync_to_string[context.result.session.policy_sync] == policy_sync, f"{context.result.session.policy_sync}"
 
-@then('I send a request to the tester to reload the "{sessionName}" session and the sync change to "{policySync}" again')
-def step_impl(context, sessionName: str, policySync: str):
+@then('I send a request to the tester to reload the "{session_name}" session and the sync change to "{policy_sync}" again')
+def step_impl(context, session_name: str, policy_sync: str):
     request = api_tester.SessionReload_Request()
-    request.name = sessionName
-    err, response = api_client.send_recv(request)
-    assert err is None, f"{err}"
-    context.result = ParseDict(response, api_engine.GenericStatus_Response())
+    request.name = session_name
+    error, response = send_recv(request, api_engine.GenericStatus_Response())
+    assert error is None, f"{error}"
 
-    request = api_tester.SessionGet_Request()
-    request.name = sessionName
-    err, response = api_client.send_recv(request)
-    assert err is None, f"{err}"
-    context.result = ParseDict(response, api_tester.SessionGet_Response())
+    get_session(context, session_name)
 
-    policySyncToString = {
+    policy_sync_to_string = {
         0: "SYNC_UNKNOWN",
         1: "UPDATED",
         2: "OUTDATED",
         3: "ERROR"
     }
-    tester_response: api_engine.GenericStatus_Response = context.result
-    assert policySyncToString[tester_response.session.policy_sync] == policySync, f"{tester_response.session.policy_sync}"
+    assert policy_sync_to_string[context.result.session.policy_sync] == policy_sync, f"{context.result.session.policy_sync}"
 
-#Seventh Scenario
-@when('I send a request to send the event "{message}" from "{sessionName}" session without debug level')
-def step_impl(context, message: str, sessionName: str):
-    request = api_tester.RunPost_Request()
-    request.name = sessionName
-    request.trace_level = 0
-    request.message = message
-    request.queue = "1"
-    request.location = "any"
-    err, response = api_client.send_recv(request)
-    assert err is None, f"{err}"
-    context.result = ParseDict(response, api_tester.RunPost_Response())
+@then('I send a request to the tester to reload the "{session_name}"')
+def step_impl(context, session_name: str):
+    request = api_tester.SessionReload_Request()
+    request.name = session_name
+    error, context.result = send_recv(request, api_engine.GenericStatus_Response())
+
+@then('I should receive an error response')
+def step_impl(context):
+    assert context.result.status == api_engine.ERROR, f"{context.result}"
 
 @then('I should receive the next output: "{response}"')
 def step_impl(context, response: str):
@@ -302,23 +229,3 @@ def step_impl(context, response: str):
     normalized_actual = json.dumps(actual_response, sort_keys=True, separators=(",", ":"))
 
     assert normalized_actual == normalized_expected, f"Responses do not match: {normalized_actual} != {normalized_expected}"
-
-#Eighth Scenario And Nineth Scenario
-@when('I send a request to send the event "{message}" from "{sessionName}" session with "{debugLevel}" debug "{namespace}" namespace, queue "{queueChar}" and "{assetTrace}" asset trace')
-def step_impl(context, message: str, sessionName: str, debugLevel: str, queueChar: str, namespace: str, assetTrace: str):
-    debugLevelToInt = {
-        "NONE": 0,
-        "ASSET_ONLY": 1,
-        "ALL": 2
-    }
-    request = api_tester.RunPost_Request()
-    request.name = sessionName
-    request.trace_level = debugLevelToInt[debugLevel]
-    request.message = message
-    request.queue = queueChar
-    request.location = "any"
-    request.namespaces.extend([namespace])
-    request.asset_trace.extend([assetTrace])
-    err, response = api_client.send_recv(request)
-    assert err is None, f"{err}"
-    context.result = ParseDict(response, api_tester.RunPost_Response())

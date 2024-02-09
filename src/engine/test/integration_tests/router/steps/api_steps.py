@@ -98,7 +98,6 @@ def router_tear_down():
         error, response = send_recv(request, api_engine.GenericStatus_Response())
         assert error is None, f"{error}"
 
-# First Scenario
 @given('I have a policy "{policy_name}" that has an integration called "{integration_name}" loaded')
 def step_impl(context, policy_name: str, integration_name: str):
     # TearDown
@@ -122,19 +121,6 @@ def step_impl(context, route_name: str, policy_name: str, filter_name: str, prio
 def step_impl(context, route_name: str, policy_name: str, filter_name: str, priority: str):
     context.result = create_route(route_name, policy_name, filter_name, int(priority))
 
-@then('I should receive an {status} response indicating "{response}"')
-def step_impl(context, status: str, response: str):
-    if status == "error":
-        assert context.result.status == api_engine.ERROR, f"{context.result}"
-        assert context.result.error == response, f"{context.result}"
-
-# 3 Scenario
-@then('I should receive a {response} response')
-def step_impl(context, response: str):
-    if (response == "success"):
-        assert context.result.status == api_engine.OK, f"{context.result}"
-
-# Second Scenario
 @when('I send a request to update the priority from route "{route_name}" to value of "{priority}"')
 def step_impl(context, route_name: str, priority: str):
     request = api_router.RoutePatchPriority_Request()
@@ -144,35 +130,18 @@ def step_impl(context, route_name: str, priority: str):
     assert error is None, f"{error}"
     context.route_name = route_name
 
-@then('I should check if the new priority is {priority}')
-def step_impl(context, priority: str):
-    request = api_router.RouteGet_Request()
-    request.name = context.route_name
-    error, response = send_recv(request, api_router.RouteGet_Response())
-    assert error is None, f"{error}"
-    assert response.route.priority == int(priority)
-
-# Third Scenario
 @when('I send a request to delete the route "{route_name}"')
 def step_impl(context, route_name: str):
     request = api_router.RouteDelete_Request()
     request.name = route_name
     error, context.result = send_recv(request, api_engine.GenericStatus_Response())
 
-# Fourth Scenario
 @when('I send a request to get the route "{route_name}"')
 def step_impl(context, route_name: str):
     request = api_router.RouteGet_Request()
     request.name = route_name
     error, context.result = send_recv(request, api_router.RouteGet_Response())
     assert error is None, f"{error}"
-
-@then('I should receive all the "{route_name}" route information. Filter "{filter_name}", policy "{policy_name}", priority "{priority}"')
-def step_impl(context, route_name: str, filter_name: str, policy_name: str, priority: str):
-    assert context.result.route.name == route_name, f"{context.result.route}"
-    assert context.result.route.filter == filter_name, f"{context.result.route}"
-    assert context.result.route.priority == int(priority), f"{context.result.route}"
-    assert context.result.route.policy == policy_name, f"{context.result.route}"
 
 @when('I send a request to get the list of routes')
 def step_impl(context):
@@ -181,15 +150,50 @@ def step_impl(context):
     assert error is None, f"{error}"
     context.size = len(response.table)
 
-@then('I should receive a list with size equal to "{size_list}"')
-def step_impl(context, size_list: str):
-    assert context.size == int(size_list), f"{context.size}"
-
-# Seventh Scenario
 @when('I send a request to the policy "{policy_name}" to add an integration called "{integration_name}"')
 def step_impl(context, policy_name: str, integration_name: str):
     add_integration(integration_name)
     add_integration_to_policy(integration_name, policy_name)
+
+@when('I send a request to delete the policy "{policy_name}"')
+def step_impl(context, policy_name: str):
+    delete_policy(policy_name)
+
+@when('I send a request to send event "{event}" to the route "{route_name}"')
+def step_impl(context, event: str, route_name: str):
+    request = api_router.QueuePost_Request()
+    request.wazuh_event = event
+    error, context.result = send_recv(request, api_engine.GenericStatus_Response())
+
+@then('I should receive an {status} response indicating "{response}"')
+def step_impl(context, status: str, response: str):
+    if status == "error":
+        assert context.result.status == api_engine.ERROR, f"{context.result}"
+        assert context.result.error == response, f"{context.result}"
+
+@then('I should receive a {response} response')
+def step_impl(context, response: str):
+    if (response == "success"):
+        assert context.result.status == api_engine.OK, f"{context.result}"
+
+@then('I should check if the new priority is {priority}')
+def step_impl(context, priority: str):
+    request = api_router.RouteGet_Request()
+    request.name = context.route_name
+    error, response = send_recv(request, api_router.RouteGet_Response())
+    assert error is None, f"{error}"
+    assert response.route.priority == int(priority)
+
+@then('I should receive all the "{route_name}" route information. Filter "{filter_name}", policy "{policy_name}", priority "{priority}"')
+def step_impl(context, route_name: str, filter_name: str, policy_name: str, priority: str):
+    assert context.result.route.name == route_name, f"{context.result.route}"
+    assert context.result.route.filter == filter_name, f"{context.result.route}"
+    assert context.result.route.priority == int(priority), f"{context.result.route}"
+    assert context.result.route.policy == policy_name, f"{context.result.route}"
+
+@then('I should receive a list with size equal to "{size_list}"')
+def step_impl(context, size_list: str):
+    assert context.size == int(size_list), f"{context.size}"
 
 @then('I should receive a route with sync "{policy_sync}"')
 def step_impl(context, policy_sync: str):
@@ -230,10 +234,6 @@ def step_impl(context, state: str):
     }
     assert state_to_string[context.result.route.entry_status] == state, f"{context.result.route}"
 
-@when('I send a request to delete the policy "{policy_name}"')
-def step_impl(context, policy_name: str):
-    delete_policy(policy_name)
-
 @then('I send a request to the router to reload the "{route_name}"')
 def step_impl(context, route_name: str):
     request = api_router.RouteReload_Request()
@@ -243,9 +243,3 @@ def step_impl(context, route_name: str):
 @then('I should receive an error response')
 def step_impl(context):
     assert context.result.status == api_engine.ERROR, f"{context.result}"
-
-@when('I send a request to send event "{event}" to the route "{route_name}"')
-def step_impl(context, event: str, route_name: str):
-    request = api_router.QueuePost_Request()
-    request.wazuh_event = event
-    error, context.result = send_recv(request, api_engine.GenericStatus_Response())
