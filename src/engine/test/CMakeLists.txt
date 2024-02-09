@@ -19,7 +19,6 @@ include(GoogleTest)
 add_subdirectory(${TEST_SOURCE_DIR}/mocks)
 add_subdirectory(${TEST_SOURCE_DIR}/base)
 add_subdirectory(${TEST_SOURCE_DIR}/defs)
-# add_subdirectory(${TEST_SOURCE_DIR}/builder) TODO migrate to de builder module
 add_subdirectory(${TEST_SOURCE_DIR}/cmds)
 add_subdirectory(${TEST_SOURCE_DIR}/hlp)
 add_subdirectory(${TEST_SOURCE_DIR}/logpar)
