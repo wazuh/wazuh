@@ -223,7 +223,7 @@ class AWSSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler):
                                     f'The event will be skipped.', 2)
                 else:
                     print(f'WARNING: The "{self.discard_regex.pattern}" regex did not find a match. '
-                          f'The event will be processed.')             
+                          f'The event will be processed.')
                     continue
             elif self.event_should_be_skipped(log):
                 aws_tools.debug(f'+++ The "{self.discard_regex.pattern}" regex found a match '
@@ -305,3 +305,78 @@ class AWSSLSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler)
         for event in events_in_file:
             self.send_msg(event, dump_json=False)
         aws_tools.debug(f'{len(events_in_file)} events sent to Analysisd', 2)
+
+
+class AWSSecurityHubSubscriberBucket(AWSSubscriberBucket):
+    """Class for processing events from AWS S3 buckets containing Security Hub related logs."""
+    def process_findings(self):
+        pass
+    def obtain_logs(self, bucket: str, log_path: str) -> List[dict]:
+        """Fetch a file from a bucket and obtain a list of events from it.
+
+        Parameters
+        ----------
+        bucket : str
+            Bucket to get the file from.
+        log_path : str
+            Relative path of the file inside the bucket.
+
+        Returns
+        -------
+        List[dict]
+            List of extracted events to send to Wazuh.
+        """
+        with self.decompress_file(bucket, log_key=log_path) as f:
+            try: # Only processes Imported type of Events
+                extracted_events = []
+                for event in self._json_event_generator(f.read()):
+                    event_detail = event.get('detail', event)
+                    detail_type = event.get("detail-type")
+
+                    # The 'findings' key is only present in `Security Hub Findings - Imported` and
+                    # `Security Hub Findings - Custom Action` event types
+                    finding = event_detail.get('findings')[0]
+
+                    extracted_events.append(dict(finding=finding, source="securityhub", detail_type=detail_type))
+
+                return extracted_events
+
+            except (json.JSONDecodeError, AttributeError):
+                print(f"ERROR: Data in the file does not contain JSON objects.")
+                sys.exit(9)
+
+    def process_file(self, message_body: dict) -> None:
+        """Parse an SQS message, obtain the events associated, and send them to Analysisd.
+
+        Parameters
+        ----------
+        message_body : dict
+            An SQS message received from the queue.
+        """
+
+        log_path = message_body['log_path']
+        bucket_path = message_body['bucket_path']
+
+        msg = {
+            'integration': 'aws',
+            'aws': {
+                'log_info': {
+                    'log_file': log_path,
+                    's3bucket': bucket_path
+                }
+            }
+        }
+        formatted_logs = self.obtain_logs(bucket=bucket_path, log_path=log_path)
+        for log in formatted_logs:
+            self._remove_none_fields(log)
+            if self.event_should_be_skipped(log):
+                aws_tools.debug(f'+++ The "{self.discard_regex.pattern}" regex found a match '
+                                f'in the "{self.discard_field}" field. The event will be skipped.', 2)
+                continue
+            else:
+                aws_tools.debug(
+                                f'+++ The "{self.discard_regex.pattern}" regex did not find a match in the '
+                                f'"{self.discard_field}" field. The event will be processed.', 3)
+
+            msg['aws'].update(log)
+            self.send_msg(msg)

@@ -183,6 +183,20 @@ def main(argv):
                     discard_regex=options.discard_regex,
                     bucket_handler=bucket_handler,
                     message_processor=subscribers.sqs_message_processor.AWSS3MessageProcessor)
+            elif options.subscriber.lower() == "security_hub":
+                bucket_handler = subscribers.s3_log_handler.AWSSecurityHubSubscriberBucket
+                asl_queue = subscribers.sqs_queue.AWSSQSQueue(
+                    iam_role_arn=options.iam_role_arn,
+                    iam_role_duration=options.iam_role_duration,
+                    profile=options.aws_profile,
+                    sts_endpoint=options.sts_endpoint,
+                    service_endpoint=options.service_endpoint,
+                    name=options.queue,
+                    skip_on_error=options.skip_on_error,
+                    discard_field=options.discard_field,
+                    discard_regex=options.discard_regex,
+                    bucket_handler=bucket_handler,
+                    message_processor=subscribers.sqs_message_processor.AWSS3MessageProcessor)
             else:
                 raise Exception("Invalid type of subscriber")
             asl_queue.sync_events()
