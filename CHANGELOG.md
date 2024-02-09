@@ -19,6 +19,11 @@ All notable changes to this project will be documented in this file.
 
 ### Agent
 
+#### Added
+
+- Added debug logging in FIM to detect invalid report change registry values. Thanks to Zafer Balkan (@zbalkan). ([#21690](https://github.com/wazuh/wazuh/pull/21690))
+- Added Amazon Linux 1 and 2023 support for the installation script. ([#21287](https://github.com/wazuh/wazuh/pull/21287))
+
 #### Fixed
 
 - Fixed command wodle to support UTF-8 characters on windows agent. ([#19146](https://github.com/wazuh/wazuh/pull/19146))
@@ -34,6 +39,10 @@ All notable changes to this project will be documented in this file.
 - The solved vulnerability rule has been clarified. ([#19754](https://github.com/wazuh/wazuh/pull/19754))
 
 ### Other
+
+#### Changed
+
+- Upgraded external OpenSSL library dependency version to 3.0. ([#20778](https://github.com/wazuh/wazuh/pull/20778))
 
 #### Fixed
 
