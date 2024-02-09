@@ -1088,6 +1088,7 @@ TransformBuilder getBuilderSCAdecoder(const std::shared_ptr<wazuhdb::IWDBManager
 
         // Return Op
         return [=,
+                runState = buildCtx->runState(),
                 targetField = targetField.jsonPath(),
                 sourceSCApath = jsonRef.jsonPath(),
                 agentIdPath = agentIdRef.jsonPath(),
@@ -1144,14 +1145,11 @@ TransformBuilder getBuilderSCAdecoder(const std::shared_ptr<wazuhdb::IWDBManager
             // message
             if (error)
             {
-                event->setBool(false, targetField);
-                return base::result::makeFailure(event, error.value());
+                RETURN_FAILURE(runState, event, error.value());
             }
-            else
-            {
-                event->setBool(true, targetField);
-                return base::result::makeSuccess(event, successTrace);
-            }
+
+            event->setBool(true, targetField);
+            RETURN_SUCCESS(runState, event, successTrace);
         };
     };
 }

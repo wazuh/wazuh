@@ -179,7 +179,6 @@ INSTANTIATE_TEST_SUITE_P(
     Builders,
     TransformOperationWithDepsTest,
     testing::Values(
-
         TransformDepsT(R"({"ref": "%{key}"})",
                        getBuilderExpectHandler("dbname",
                                                [](const std::shared_ptr<MockKVDBHandler>& kvdbHandler)
