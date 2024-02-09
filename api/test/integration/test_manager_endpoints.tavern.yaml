@@ -873,30 +873,7 @@ stages:
       json:
         error: 0
         data:
-          affected_items:
-            - sca: !anything
-            - wazuh-agentlessd: !anything
-            - wazuh-analysisd: !anything
-            - wazuh-authd: !anything
-            - wazuh-csyslogd: !anything
-            - wazuh-db: !anything
-            - wazuh-dbd: !anything
-            - wazuh-execd: !anything
-            - wazuh-integratord: !anything
-            - wazuh-logcollector: !anything
-            - wazuh-modulesd: !anything
-            - wazuh-modulesd:agent-upgrade: !anything
-            - wazuh-modulesd:ciscat: !anything
-            - wazuh-modulesd:control: !anything
-            - wazuh-modulesd:database: !anything
-            - wazuh-modulesd:download: !anything
-            - wazuh-modulesd:osquery: !anything
-            - wazuh-modulesd:syscollector: !anything
-            - wazuh-modulesd:task-manager: !anything
-            - wazuh-monitord: !anything
-            - wazuh-remoted: !anything
-            - wazuh-rootcheck: !anything
-            - wazuh-syscheckd: !anything
+          affected_items: !anything
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
