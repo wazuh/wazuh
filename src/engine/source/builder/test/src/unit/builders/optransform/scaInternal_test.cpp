@@ -6,24 +6,44 @@
 
 #include <baseTypes.hpp>
 #include <defs/mocks/failDef.hpp>
+#include <logging/logging.hpp>
 #include <sockiface/mockSockFactory.hpp>
 #include <sockiface/mockSockHandler.hpp>
-#include <testsCommon.hpp>
 #include <wdb/mockWdbHandler.hpp>
 #include <wdb/mockWdbManager.hpp>
 
-#include "opBuilderSCAdecoder.hpp"
+#include "builders/baseBuilders_test.hpp"
+#include "builders/optransform/sca.hpp"
 
 using namespace base;
 using namespace wazuhdb::mocks;
 using namespace sockiface::mocks;
-using namespace builder::internals::builders;
+using namespace builder::builders::optransform;
+using namespace builder::builders;
+using namespace builder::builders::mocks;
 
 using std::string;
 
-const string targetField {"/wdb/result"};
-const string helperFunctionName {"sca_decoder"};
-const std::vector<string> commonArguments {"$event.original", "$agent.id"};
+namespace
+{
+const Reference targetField {"wdb.result"};
+const std::vector<OpArg> commonArguments {makeRef("event.original"), makeRef("agent.id")};
+
+void inline initLogging(void)
+{
+    static bool initialized = false;
+
+    if (!initialized)
+    {
+        // Logging setup
+        logging::LoggingConfig logConfig;
+        logConfig.logLevel = "off";
+        logConfig.filePath = "";
+        logging::loggingInit(logConfig);
+        initialized = true;
+    }
+}
+} // namespace
 
 class opBuilderSCAdecoder_Functions : public ::testing::Test
 {
@@ -57,6 +77,9 @@ protected:
     std::shared_ptr<MockWdbHandler> wdb {};
     std::shared_ptr<MockSockFactory> sockFactory {};
     std::shared_ptr<MockSockHandler> cfg {};
+    std::shared_ptr<const MockBuildCtx> ctx {};
+    std::shared_ptr<const RunState> runState;
+    Context context {"test","test","test","test"};
 
     void SetUp() override
     {
@@ -66,9 +89,13 @@ protected:
         wdb = std::make_shared<MockWdbHandler>();
         sockFactory = std::make_shared<MockSockFactory>();
         cfg = std::make_shared<MockSockHandler>();
+        ctx = std::make_shared<const MockBuildCtx>();
+        runState = std::make_shared<const RunState>();
 
         ON_CALL(*wdbManager, connection()).WillByDefault(testing::Return(wdb));
         ON_CALL(*sockFactory, getHandler(testing::_, testing::_)).WillByDefault(testing::Return(cfg));
+        ON_CALL(*ctx, context()).WillByDefault(testing::ReturnRef(context));
+        ON_CALL(*ctx, runState()).WillByDefault(testing::Return(runState));
     }
 
     void TearDown() override {}
@@ -81,6 +108,9 @@ protected:
     std::shared_ptr<MockWdbHandler> wdb {};
     std::shared_ptr<MockSockFactory> sockFactory {};
     std::shared_ptr<MockSockHandler> cfg {};
+    std::shared_ptr<const MockBuildCtx> ctx {};
+    std::shared_ptr<const RunState> runState;
+    Context context {"test","test","test","test"};
 
     void SetUp() override
     {
@@ -89,9 +119,14 @@ protected:
         wdb = std::make_shared<MockWdbHandler>();
         sockFactory = std::make_shared<MockSockFactory>();
         cfg = std::make_shared<MockSockHandler>();
+        ctx = std::make_shared<const MockBuildCtx>();
+        runState = std::make_shared<const RunState>();
+
 
         ON_CALL(*wdbManager, connection()).WillByDefault(testing::Return(wdb));
         ON_CALL(*sockFactory, getHandler(testing::_, testing::_)).WillByDefault(testing::Return(cfg));
+        ON_CALL(*ctx, context()).WillByDefault(testing::ReturnRef(context));
+        ON_CALL(*ctx, runState()).WillByDefault(testing::Return(runState));
     }
 
     void TearDown() override {}
@@ -104,6 +139,9 @@ protected:
     std::shared_ptr<MockWdbHandler> wdb {};
     std::shared_ptr<MockSockFactory> sockFactory {};
     std::shared_ptr<MockSockHandler> cfg {};
+    std::shared_ptr<const MockBuildCtx> ctx {};
+    std::shared_ptr<const RunState> runState;
+    Context context {"test","test","test","test"};
 
     void SetUp() override
     {
@@ -112,9 +150,13 @@ protected:
         wdb = std::make_shared<MockWdbHandler>();
         sockFactory = std::make_shared<MockSockFactory>();
         cfg = std::make_shared<MockSockHandler>();
+        ctx = std::make_shared<const MockBuildCtx>();
+        runState = std::make_shared<const RunState>();
 
         ON_CALL(*wdbManager, connection()).WillByDefault(testing::Return(wdb));
         ON_CALL(*sockFactory, getHandler(testing::_, testing::_)).WillByDefault(testing::Return(cfg));
+        ON_CALL(*ctx, context()).WillByDefault(testing::ReturnRef(context));
+        ON_CALL(*ctx, runState()).WillByDefault(testing::Return(runState));
     }
 
     void TearDown() override {}
@@ -127,6 +169,9 @@ protected:
     std::shared_ptr<MockWdbHandler> wdb {};
     std::shared_ptr<MockSockFactory> sockFactory {};
     std::shared_ptr<MockSockHandler> cfg {};
+    std::shared_ptr<const MockBuildCtx> ctx {};
+    std::shared_ptr<const RunState> runState;
+    Context context {"test","test","test","test"};
 
     void SetUp() override
     {
@@ -135,9 +180,13 @@ protected:
         wdb = std::make_shared<MockWdbHandler>();
         sockFactory = std::make_shared<MockSockFactory>();
         cfg = std::make_shared<MockSockHandler>();
+        ctx = std::make_shared<const MockBuildCtx>();
+        runState = std::make_shared<const RunState>();
 
         ON_CALL(*wdbManager, connection()).WillByDefault(testing::Return(wdb));
         ON_CALL(*sockFactory, getHandler(testing::_, testing::_)).WillByDefault(testing::Return(cfg));
+        ON_CALL(*ctx, context()).WillByDefault(testing::ReturnRef(context));
+        ON_CALL(*ctx, runState()).WillByDefault(testing::Return(runState));
     }
 
     void TearDown() override {}
@@ -150,6 +199,9 @@ protected:
     std::shared_ptr<MockWdbHandler> wdb {};
     std::shared_ptr<MockSockFactory> sockFactory {};
     std::shared_ptr<MockSockHandler> cfg {};
+    std::shared_ptr<const MockBuildCtx> ctx {};
+    std::shared_ptr<const RunState> runState;
+    Context context {"test","test","test","test"};
 
     void SetUp() override
     {
@@ -158,9 +210,13 @@ protected:
         wdb = std::make_shared<MockWdbHandler>();
         sockFactory = std::make_shared<MockSockFactory>();
         cfg = std::make_shared<MockSockHandler>();
+        ctx = std::make_shared<const MockBuildCtx>();
+        runState = std::make_shared<const RunState>();
 
         ON_CALL(*wdbManager, connection()).WillByDefault(testing::Return(wdb));
         ON_CALL(*sockFactory, getHandler(testing::_, testing::_)).WillByDefault(testing::Return(cfg));
+        ON_CALL(*ctx, context()).WillByDefault(testing::ReturnRef(context));
+        ON_CALL(*ctx, runState()).WillByDefault(testing::Return(runState));
     }
 
     void TearDown() override {}
@@ -1157,86 +1213,53 @@ TEST_F(opBuilderSCAdecoder_Functions, FillScanInfo_OnlyNameFieldPresent)
     ASSERT_FALSE(event->exists("/sca/file"));
 }
 
-TEST_F(opBuilderSCAdecoderInit, BuildSimplest)
-{
-    const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
-
-    EXPECT_CALL(*wdbManager, connection());
-    EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
-
-    ASSERT_NO_THROW(std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple));
-}
-
-TEST_F(opBuilderSCAdecoderInit, checkWrongQttyParams)
-{
-    const std::vector<string> arguments {"$event.original"};
-
-    const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>())};
-
-    ASSERT_THROW(std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple), std::runtime_error);
-}
-
-TEST_F(opBuilderSCAdecoderInit, checkNoParams)
-{
-    const std::vector<string> arguments {};
-
-    const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>())};
-
-    ASSERT_THROW(std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple), std::runtime_error);
-}
-
 TEST_F(opBuilderSCAdecoderInit, gettingEmptyReference)
 {
-    const std::vector<string> arguments {"$_event_json", "$agent.id"};
+    const std::vector<OpArg> arguments {makeRef("_event_json"), makeRef("agent.id")};
 
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, arguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, arguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(R"({"_event_json": ""})")};
 
     result::Result<Event> result {op(event)};
 
     ASSERT_FALSE(result);
-    ASSERT_TRUE(result.payload().get()->exists("/wdb/result"));
-    ASSERT_FALSE(result.payload().get()->getBool("/wdb/result").value());
+    ASSERT_FALSE(result.payload().get()->exists("/wdb/result"));
 }
 
 TEST_F(opBuilderSCAdecoderInit, gettingNonExistingReference)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(R"({"$_not_event_json": "event"})")};
 
     result::Result<Event> result {op(event)};
 
     ASSERT_FALSE(result);
-    ASSERT_TRUE(result.payload().get()->exists("/wdb/result"));
-    ASSERT_FALSE(result.payload().get()->getBool("/wdb/result").value());
+    ASSERT_FALSE(result.payload().get()->exists("/wdb/result"));
 }
 
 TEST_F(opBuilderSCAdecoderInit, unexpectedType)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1252,8 +1275,7 @@ TEST_F(opBuilderSCAdecoderInit, unexpectedType)
     result::Result<Event> result {op(event)};
 
     ASSERT_FALSE(result);
-    ASSERT_TRUE(result.payload().get()->exists("/wdb/result"));
-    ASSERT_FALSE(result.payload().get()->getBool("/wdb/result").value());
+    ASSERT_FALSE(result.payload().get()->exists("/wdb/result"));
 }
 
 /* ************************************************************************************ */
@@ -1289,12 +1311,12 @@ const auto checkTypeEvtWithMandatoryFields {
 TEST_F(checkTypeDecoderSCA, missingFields)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1316,12 +1338,12 @@ TEST_F(checkTypeDecoderSCA, missingFields)
 TEST_F(checkTypeDecoderSCA, missingIDField)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1355,12 +1377,12 @@ TEST_F(checkTypeDecoderSCA, missingIDField)
 TEST_F(checkTypeDecoderSCA, missingPolicyField)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1394,12 +1416,12 @@ TEST_F(checkTypeDecoderSCA, missingPolicyField)
 TEST_F(checkTypeDecoderSCA, missingPolicyIDField)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1433,12 +1455,12 @@ TEST_F(checkTypeDecoderSCA, missingPolicyIDField)
 TEST_F(checkTypeDecoderSCA, missingCheckField)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1467,12 +1489,12 @@ TEST_F(checkTypeDecoderSCA, missingCheckField)
 TEST_F(checkTypeDecoderSCA, missingCheckIDField)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1506,12 +1528,12 @@ TEST_F(checkTypeDecoderSCA, missingCheckIDField)
 TEST_F(checkTypeDecoderSCA, missingCheckTitleField)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1545,12 +1567,12 @@ TEST_F(checkTypeDecoderSCA, missingCheckTitleField)
 TEST_F(checkTypeDecoderSCA, missingCheckResultField)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1587,12 +1609,12 @@ TEST_F(checkTypeDecoderSCA, missingCheckResultField)
 TEST_F(checkTypeDecoderSCA, FindEventcheckUnexpectedAnswer)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(checkTypeEvtWithMandatoryFields)};
 
@@ -1608,12 +1630,12 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckUnexpectedAnswer)
 TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutComplianceNorRules)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(checkTypeEvtWithMandatoryFields)};
 
@@ -1641,12 +1663,12 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutComplianceNorRules)
 TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithResultEqualResponse)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(checkTypeEvtWithMandatoryFields)};
 
@@ -1665,12 +1687,12 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithResultEqualResponse)
 TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutResult)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto checkTypeEvtWithoutResult {
         R"({
@@ -1713,12 +1735,12 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutResult)
 TEST_F(checkTypeDecoderSCA, FindEventcheckOkNotFoundWithoutComplianceNorRules)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(checkTypeEvtWithMandatoryFields)};
 
@@ -1745,12 +1767,12 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkNotFoundWithoutComplianceNorRules)
 TEST_F(checkTypeDecoderSCA, SaveACompliance)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1812,12 +1834,12 @@ TEST_F(checkTypeDecoderSCA, SaveACompliance)
 TEST_F(checkTypeDecoderSCA, SaveCompliances)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1873,12 +1895,12 @@ TEST_F(checkTypeDecoderSCA, SaveCompliances)
 TEST_F(checkTypeDecoderSCA, SaveFileRule)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1928,12 +1950,12 @@ TEST_F(checkTypeDecoderSCA, SaveFileRule)
 TEST_F(checkTypeDecoderSCA, SaveDirectoryRule)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -1983,12 +2005,12 @@ TEST_F(checkTypeDecoderSCA, SaveDirectoryRule)
 TEST_F(checkTypeDecoderSCA, SaveRegistryRule)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2038,12 +2060,12 @@ TEST_F(checkTypeDecoderSCA, SaveRegistryRule)
 TEST_F(checkTypeDecoderSCA, SaveCommandRule)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2093,12 +2115,12 @@ TEST_F(checkTypeDecoderSCA, SaveCommandRule)
 TEST_F(checkTypeDecoderSCA, SaveProcessRule)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2148,12 +2170,12 @@ TEST_F(checkTypeDecoderSCA, SaveProcessRule)
 TEST_F(checkTypeDecoderSCA, SaveNumericRule)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2203,12 +2225,12 @@ TEST_F(checkTypeDecoderSCA, SaveNumericRule)
 TEST_F(checkTypeDecoderSCA, InvalidRules)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2356,12 +2378,12 @@ TEST_F(checkTypeDecoderSCA, InvalidRules)
 TEST_F(checkTypeDecoderSCA, SaveRules)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2466,12 +2488,12 @@ TEST_F(checkTypeDecoderSCA, SaveRules)
 TEST_F(summaryTypeDecoderSCA, missingFields)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2492,12 +2514,12 @@ TEST_F(summaryTypeDecoderSCA, missingFields)
 TEST_F(summaryTypeDecoderSCA, missingFieldPolicyId)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2530,12 +2552,12 @@ TEST_F(summaryTypeDecoderSCA, missingFieldPolicyId)
 TEST_F(summaryTypeDecoderSCA, missingFieldScanId)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2568,12 +2590,12 @@ TEST_F(summaryTypeDecoderSCA, missingFieldScanId)
 TEST_F(summaryTypeDecoderSCA, missingFieldStartTime)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2606,12 +2628,12 @@ TEST_F(summaryTypeDecoderSCA, missingFieldStartTime)
 TEST_F(summaryTypeDecoderSCA, missingFieldEndTime)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2644,12 +2666,12 @@ TEST_F(summaryTypeDecoderSCA, missingFieldEndTime)
 TEST_F(summaryTypeDecoderSCA, missingFieldPassed)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2682,12 +2704,12 @@ TEST_F(summaryTypeDecoderSCA, missingFieldPassed)
 TEST_F(summaryTypeDecoderSCA, missingFieldFailed)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2720,12 +2742,12 @@ TEST_F(summaryTypeDecoderSCA, missingFieldFailed)
 TEST_F(summaryTypeDecoderSCA, missingFieldInvalid)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2758,12 +2780,12 @@ TEST_F(summaryTypeDecoderSCA, missingFieldInvalid)
 TEST_F(summaryTypeDecoderSCA, missingFieldTotalChecks)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2795,12 +2817,12 @@ TEST_F(summaryTypeDecoderSCA, missingFieldTotalChecks)
 TEST_F(summaryTypeDecoderSCA, missingFieldScore)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2833,12 +2855,12 @@ TEST_F(summaryTypeDecoderSCA, missingFieldScore)
 TEST_F(summaryTypeDecoderSCA, missingFieldHash)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2871,12 +2893,12 @@ TEST_F(summaryTypeDecoderSCA, missingFieldHash)
 TEST_F(summaryTypeDecoderSCA, missingFieldHashFile)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2909,12 +2931,12 @@ TEST_F(summaryTypeDecoderSCA, missingFieldHashFile)
 TEST_F(summaryTypeDecoderSCA, missingFieldFile)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -2947,12 +2969,12 @@ TEST_F(summaryTypeDecoderSCA, missingFieldFile)
 TEST_F(summaryTypeDecoderSCA, missingFieldName)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -3075,12 +3097,12 @@ static inline void ignoreCodeSection(const FuncName function,
 TEST_F(summaryTypeDecoderSCA, AllUnexpectedAnswers)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(firstScanSummaryEvt)};
 
@@ -3103,12 +3125,12 @@ TEST_F(summaryTypeDecoderSCA, AllUnexpectedAnswers)
 TEST_F(summaryTypeDecoderSCA, FindScanInfoOkFound)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(firstScanSummaryEvt)};
 
@@ -3145,12 +3167,12 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkFound)
 TEST_F(summaryTypeDecoderSCA, scoreFloatFindScanInfoOkFound)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto firstScanSummaryEvt {
         R"({
@@ -3220,12 +3242,12 @@ TEST_F(summaryTypeDecoderSCA, scoreFloatFindScanInfoOkFound)
 TEST_F(summaryTypeDecoderSCA, FindScanInfoOkFoundSameHashNoForced)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto notFirstScanNoForceSummaryEvt {
         R"({
@@ -3282,12 +3304,12 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkFoundSameHashNoForced)
 TEST_F(summaryTypeDecoderSCA, scoreFloatFindScanInfoOkFoundSameHashNoForced)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto notFirstScanNoForceSummaryEvt {
         R"({
@@ -3345,12 +3367,12 @@ TEST_F(summaryTypeDecoderSCA, scoreFloatFindScanInfoOkFoundSameHashNoForced)
 TEST_F(summaryTypeDecoderSCA, FindScanInfoOkNotFoundFirstScan)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(firstScanSummaryEvt)};
 
@@ -3392,12 +3414,12 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkNotFoundFirstScan)
 TEST_F(summaryTypeDecoderSCA, FindScanInfoOkNotFoundNotFirstScan)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
@@ -3434,12 +3456,12 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkNotFoundNotFirstScan)
 TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkNotFound)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
@@ -3467,12 +3489,12 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkNotFound)
 TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256UnexpectedAnswer)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
@@ -3497,12 +3519,12 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256UnexpectedAns
 TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkNotFound)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
@@ -3527,12 +3549,12 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkNotFound)
 TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundSameHashFile)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
@@ -3557,12 +3579,12 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundSameHa
 TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDeletePolicyUnexpectedAnswer)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
@@ -3596,12 +3618,12 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDelete
 TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDeletePolicyErr)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
@@ -3628,12 +3650,12 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDelete
 TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDeletePolicyOk)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
@@ -3669,12 +3691,12 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDelete
 TEST_F(summaryTypeDecoderSCA, FindCheckResultsUnexpectedAnswer)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
@@ -3697,12 +3719,12 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsUnexpectedAnswer)
 TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundFirstScan)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(firstScanSummaryEvt)};
 
@@ -3730,12 +3752,12 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundFirstScan)
 TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundNotFirstScan)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
@@ -3763,12 +3785,12 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundNotFirstScan)
 TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkFoundSameHash)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
@@ -3791,12 +3813,12 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkFoundSameHash)
 TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashFirstScan)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(firstScanSummaryEvt)};
 
@@ -3824,12 +3846,12 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashFirstScan)
 TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashNotFirstScan)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(notFirstScanSummaryEvt)};
 
@@ -3861,12 +3883,12 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashNotFirstScan)
 TEST_F(policiesTypeDecoderSCA, missingFields)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -3888,12 +3910,12 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsUnexpectedAnswer)
 {
 
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -3924,12 +3946,12 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkNotFound)
 {
 
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -3960,12 +3982,12 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundSamePolicy)
 {
 
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -3996,12 +4018,12 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundSamePolicies)
 {
 
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4032,12 +4054,12 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyError)
 {
 
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4073,12 +4095,12 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyUnexpectedAn
 {
 
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4114,12 +4136,12 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyOkDeletePoli
 {
 
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4160,12 +4182,12 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePoli
 {
 
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4203,12 +4225,12 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePoli
 TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePolicyCheckII)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4247,12 +4269,12 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePoli
 {
 
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4328,12 +4350,12 @@ const auto dumpEndTypeEvent {
 TEST_F(dumpEndTypeDecoderSCA, missingFields)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4354,12 +4376,12 @@ TEST_F(dumpEndTypeDecoderSCA, missingFields)
 TEST_F(dumpEndTypeDecoderSCA, missingPolicyIDField)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4382,12 +4404,12 @@ TEST_F(dumpEndTypeDecoderSCA, missingPolicyIDField)
 TEST_F(dumpEndTypeDecoderSCA, missingElementsSentField)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4410,12 +4432,12 @@ TEST_F(dumpEndTypeDecoderSCA, missingElementsSentField)
 TEST_F(dumpEndTypeDecoderSCA, missingScanIDField)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(
         R"({
@@ -4438,12 +4460,12 @@ TEST_F(dumpEndTypeDecoderSCA, missingScanIDField)
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerFindCheckResultsUnexpectedAnswer)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
@@ -4460,19 +4482,19 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerFindCheck
     result::Result<Event> result {op(event)};
 
     ASSERT_TRUE(result);
-    ASSERT_TRUE(result.payload()->isBool(targetField));
-    ASSERT_TRUE(result.payload()->getBool(targetField).value());
+    ASSERT_TRUE(result.payload()->isBool(targetField.jsonPath()));
+    ASSERT_TRUE(result.payload()->getBool(targetField.jsonPath()).value());
 }
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerFindCheckResultsOkNotFound)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
@@ -4489,19 +4511,19 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerFindCheck
     result::Result<Event> result {op(event)};
 
     ASSERT_TRUE(result);
-    ASSERT_TRUE(result.payload()->isBool(targetField));
-    ASSERT_TRUE(result.payload()->getBool(targetField).value());
+    ASSERT_TRUE(result.payload()->isBool(targetField.jsonPath()));
+    ASSERT_TRUE(result.payload()->getBool(targetField.jsonPath()).value());
 }
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindCheckResultsOkNotFound)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
@@ -4518,19 +4540,19 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindCheckResultsOkNotF
     result::Result<Event> result {op(event)};
 
     ASSERT_TRUE(result);
-    ASSERT_TRUE(result.payload()->isBool(targetField));
-    ASSERT_TRUE(result.payload()->getBool(targetField).value());
+    ASSERT_TRUE(result.payload()->isBool(targetField.jsonPath()));
+    ASSERT_TRUE(result.payload()->getBool(targetField.jsonPath()).value());
 }
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindCheckResultsUnexpectedAnswer)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
@@ -4547,19 +4569,19 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindCheckResultsUnexpec
     result::Result<Event> result {op(event)};
 
     ASSERT_TRUE(result);
-    ASSERT_TRUE(result.payload()->isBool(targetField));
-    ASSERT_TRUE(result.payload()->getBool(targetField).value());
+    ASSERT_TRUE(result.payload()->isBool(targetField.jsonPath()));
+    ASSERT_TRUE(result.payload()->getBool(targetField.jsonPath()).value());
 }
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindCheckResultsOkNotFound)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
@@ -4576,19 +4598,19 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindCheckResultsOkNotFo
     result::Result<Event> result {op(event)};
 
     ASSERT_TRUE(result);
-    ASSERT_TRUE(result.payload()->isBool(targetField));
-    ASSERT_TRUE(result.payload()->getBool(targetField).value());
+    ASSERT_TRUE(result.payload()->isBool(targetField.jsonPath()));
+    ASSERT_TRUE(result.payload()->getBool(targetField.jsonPath()).value());
 }
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerFindScanInfoUnexpectedAnswer)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
@@ -4609,19 +4631,19 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerFindScanI
     result::Result<Event> result {op(event)};
 
     ASSERT_TRUE(result);
-    ASSERT_TRUE(result.payload()->isBool(targetField));
-    ASSERT_TRUE(result.payload()->getBool(targetField).value());
+    ASSERT_TRUE(result.payload()->isBool(targetField.jsonPath()));
+    ASSERT_TRUE(result.payload()->getBool(targetField.jsonPath()).value());
 }
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerFindScanInfoOkNotFound)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
@@ -4642,19 +4664,19 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerFindScanI
     result::Result<Event> result {op(event)};
 
     ASSERT_TRUE(result);
-    ASSERT_TRUE(result.payload()->isBool(targetField));
-    ASSERT_TRUE(result.payload()->getBool(targetField).value());
+    ASSERT_TRUE(result.payload()->isBool(targetField.jsonPath()));
+    ASSERT_TRUE(result.payload()->getBool(targetField.jsonPath()).value());
 }
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindScanInfoUnexpectedAnswer)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
@@ -4675,19 +4697,19 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindScanInfoUnexpected
     result::Result<Event> result {op(event)};
 
     ASSERT_TRUE(result);
-    ASSERT_TRUE(result.payload()->isBool(targetField));
-    ASSERT_TRUE(result.payload()->getBool(targetField).value());
+    ASSERT_TRUE(result.payload()->isBool(targetField.jsonPath()));
+    ASSERT_TRUE(result.payload()->getBool(targetField.jsonPath()).value());
 }
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindScanInfoOkNotFound)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
@@ -4708,19 +4730,19 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindScanInfoOkNotFound
     result::Result<Event> result {op(event)};
 
     ASSERT_TRUE(result);
-    ASSERT_TRUE(result.payload()->isBool(targetField));
-    ASSERT_TRUE(result.payload()->getBool(targetField).value());
+    ASSERT_TRUE(result.payload()->isBool(targetField.jsonPath()));
+    ASSERT_TRUE(result.payload()->getBool(targetField.jsonPath()).value());
 }
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindScanInfoOkNotFound)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
@@ -4741,19 +4763,19 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindScanInfoOkNotFound)
     result::Result<Event> result {op(event)};
 
     ASSERT_TRUE(result);
-    ASSERT_TRUE(result.payload()->isBool(targetField));
-    ASSERT_TRUE(result.payload()->getBool(targetField).value());
+    ASSERT_TRUE(result.payload()->isBool(targetField.jsonPath()));
+    ASSERT_TRUE(result.payload()->getBool(targetField.jsonPath()).value());
 }
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindScanInfoUnexpectedAnswer)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
@@ -4774,19 +4796,19 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindScanInfoUnexpectedA
     result::Result<Event> result {op(event)};
 
     ASSERT_TRUE(result);
-    ASSERT_TRUE(result.payload()->isBool(targetField));
-    ASSERT_TRUE(result.payload()->getBool(targetField).value());
+    ASSERT_TRUE(result.payload()->isBool(targetField.jsonPath()));
+    ASSERT_TRUE(result.payload()->getBool(targetField.jsonPath()).value());
 }
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerStrcmpIsZero)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
@@ -4807,19 +4829,19 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerStrcmpIsZ
     result::Result<Event> result {op(event)};
 
     ASSERT_TRUE(result);
-    ASSERT_TRUE(result.payload()->isBool(targetField));
-    ASSERT_TRUE(result.payload()->getBool(targetField).value());
+    ASSERT_TRUE(result.payload()->isBool(targetField.jsonPath()));
+    ASSERT_TRUE(result.payload()->getBool(targetField.jsonPath()).value());
 }
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrStrcmpIsZero)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
@@ -4840,19 +4862,19 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrStrcmpIsZero)
     result::Result<Event> result {op(event)};
 
     ASSERT_TRUE(result);
-    ASSERT_TRUE(result.payload()->isBool(targetField));
-    ASSERT_TRUE(result.payload()->getBool(targetField).value());
+    ASSERT_TRUE(result.payload()->isBool(targetField.jsonPath()));
+    ASSERT_TRUE(result.payload()->getBool(targetField.jsonPath()).value());
 }
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkStrcmpIsZero)
 {
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
@@ -4873,20 +4895,20 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkStrcmpIsZero)
     result::Result<Event> result {op(event)};
 
     ASSERT_TRUE(result);
-    ASSERT_TRUE(result.payload()->isBool(targetField));
-    ASSERT_TRUE(result.payload()->getBool(targetField).value());
+    ASSERT_TRUE(result.payload()->isBool(targetField.jsonPath()));
+    ASSERT_TRUE(result.payload()->getBool(targetField.jsonPath()).value());
 }
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerStrcmpIsNotZero)
 {
 
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
@@ -4912,20 +4934,20 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerStrcmpIsN
     result::Result<Event> result {op(event)};
 
     ASSERT_TRUE(result);
-    ASSERT_TRUE(result.payload()->isBool(targetField));
-    ASSERT_TRUE(result.payload()->getBool(targetField).value());
+    ASSERT_TRUE(result.payload()->isBool(targetField.jsonPath()));
+    ASSERT_TRUE(result.payload()->getBool(targetField.jsonPath()).value());
 }
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrStrcmpIsNotZero)
 {
 
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
@@ -4951,20 +4973,20 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrStrcmpIsNotZero)
     result::Result<Event> result {op(event)};
 
     ASSERT_TRUE(result);
-    ASSERT_TRUE(result.payload()->isBool(targetField));
-    ASSERT_TRUE(result.payload()->getBool(targetField).value());
+    ASSERT_TRUE(result.payload()->isBool(targetField.jsonPath()));
+    ASSERT_TRUE(result.payload()->getBool(targetField.jsonPath()).value());
 }
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkStrcmpIsNotZero)
 {
 
     const auto tuple {
-        std::make_tuple(targetField, helperFunctionName, commonArguments, std::make_shared<defs::mocks::FailDef>())};
+        std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
 
-    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)->getPtr<Term<EngineOp>>()->getFn()};
+    const auto op {std::apply(getBuilderSCAdecoder(wdbManager, sockFactory), tuple)};
 
     const auto event {std::make_shared<json::Json>(dumpEndTypeEvent)};
 
@@ -4990,6 +5012,6 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkStrcmpIsNotZero)
     result::Result<Event> result {op(event)};
 
     ASSERT_TRUE(result);
-    ASSERT_TRUE(result.payload()->isBool(targetField));
-    ASSERT_TRUE(result.payload()->getBool(targetField).value());
+    ASSERT_TRUE(result.payload()->isBool(targetField.jsonPath()));
+    ASSERT_TRUE(result.payload()->getBool(targetField.jsonPath()).value());
 }
