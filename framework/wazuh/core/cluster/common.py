@@ -128,8 +128,8 @@ class SendStringTask:
     """
     Create an asyncio task that can be identified by a task_id specified in advance.
     """
-    # Due to a CPython bug in the Streams library, tasks must be hard-referenced so that they are not deleted
-    # by the garbage collector (https://github.com/python/cpython/issues/90467). It should be fixed in Python 3.10.8.
+    # Due to a CPython bug in the asyncio library, tasks must be hard-referenced so that they are not deleted
+    # by the garbage collector (https://github.com/python/cpython/issues/91887).
     tasks_hard_reference = set()
 
     def __init__(self, wazuh_common, logger):

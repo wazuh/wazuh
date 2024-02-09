@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import logging
+import mimetypes
 from typing import Union
 
 from aiohttp import web
@@ -1360,9 +1361,9 @@ async def get_group_files(request, group_id: str, pretty: bool = False, wait_for
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_group_file_json(request, group_id: str, file_name: str, pretty: bool = False,
-                              wait_for_complete: bool = False) -> web.Response:
-    """Get the files placed under the group directory in JSON format.
+async def get_group_file(request, group_id: str, file_name: str, raw: bool = False, pretty: bool = False,
+                              wait_for_complete: bool = False) -> web.Response | ConnexionResponse:
+    """Get the files placed under the group directory.
 
     Parameters
     ----------
@@ -1371,6 +1372,8 @@ async def get_group_file_json(request, group_id: str, file_name: str, pretty: bo
         Group ID.
     file_name : str
         Name of the file to be obtained.
+    raw : bool
+        Respond in raw format.
     pretty: bool
         Show results in human-readable format.
     wait_for_complete : bool
@@ -1384,7 +1387,7 @@ async def get_group_file_json(request, group_id: str, file_name: str, pretty: bo
     f_kwargs = {'group_list': [group_id],
                 'filename': file_name,
                 'type_conf': request.query.get('type', None),
-                'return_format': 'json'}
+                'raw': raw}
 
     dapi = DistributedAPI(f=agent.get_file_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -1395,49 +1398,18 @@ async def get_group_file_json(request, group_id: str, file_name: str, pretty: bo
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
+
+    if raw:
+        mimetype, _ = mimetypes.guess_type(file_name)
+        if mimetype is None:
+            mimetype = 'text/plain'
+        if file_name == 'agent.conf':
+            mimetype = 'application/xml'
+
+        return ConnexionResponse(body=data['data'], mimetype=mimetype)
+
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
-
-
-async def get_group_file_xml(request, group_id: str, file_name: str, pretty: bool = False,
-                             wait_for_complete: bool = False) -> ConnexionResponse:
-    """Get the files placed under the group directory in XML format.
-
-    Parameters
-    ----------
-    request : connexion.request
-    group_id : str
-        Group ID.
-    file_name : str
-        Name of the file to be obtained.
-    pretty: bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-
-    Returns
-    -------
-    connexion.lifecycle.ConnexionResponse
-        API response.
-    """
-    f_kwargs = {'group_list': [group_id],
-                'filename': file_name,
-                'type_conf': request.query.get('type', None),
-                'return_format': 'xml'}
-
-    dapi = DistributedAPI(f=agent.get_file_conf,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-    response = ConnexionResponse(body=data["data"], mimetype='application/xml')
-
-    return response
-
 
 async def restart_agents_by_group(request, group_id: str, pretty: bool = False,
                                   wait_for_complete: bool = False) -> web.Response:

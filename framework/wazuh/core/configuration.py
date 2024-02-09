@@ -13,7 +13,7 @@ from configparser import RawConfigParser, NoOptionError
 from io import StringIO
 from os import remove, path as os_path
 from types import MappingProxyType
-from typing import Union
+from typing import Union, List
 
 from defusedxml.ElementTree import tostring
 from defusedxml.minidom import parseString
@@ -587,6 +587,55 @@ def _ar_conf2json(file_path: str) -> dict:
     return data
 
 
+def _merged_mg2json(file_path: str) -> List[dict]:
+    """Parse the merged.mg file.
+
+    Parameters
+    ----------
+    file_path : str
+        Path to the merged.mg file.
+
+    Returns
+    -------
+    dict
+        merged.mg file as a list of dictionaries.
+    """
+    data = []
+
+    # ![file_size] [file_name]
+    regex_header = re.compile(r"^!(\d+)\s*(.*)")
+
+    try:
+        item = {}
+        file_content = []
+
+        with open(file_path) as f:
+            # Skip first line
+            next(f)
+
+            for line in f:
+                if match_header := re.search(regex_header, line):
+                    if item:
+                        # Append previous item
+                        item['file_content'] = ''.join(file_content)
+                        data.append(item)
+
+                    file_size = match_header.group(1)
+                    file_name = match_header.group(2)
+                    file_content = []
+                    item = {'file_name': file_name, 'file_size': int(file_size)}
+                    continue
+
+                file_content.append(line)
+
+        # Append last item
+        data.append(item)
+    except Exception as e:
+        raise WazuhError(1101, str(e))
+
+    return data
+
+
 # Main functions
 def get_ossec_conf(section: str = None, field: str = None, conf_file: str = common.OSSEC_CONF,
                    from_import: bool = False, distinct: bool = False) -> dict:
@@ -664,7 +713,7 @@ def get_ossec_conf(section: str = None, field: str = None, conf_file: str = comm
 
 
 def get_agent_conf(group_id: str = None, offset: int = 0, limit: int = common.DATABASE_LIMIT,
-                   filename: str = 'agent.conf', return_format: str = None) -> Union[dict, str]:
+                   filename: str = 'agent.conf', raw: bool = False) -> Union[dict, str]:
     """Return agent.conf as dictionary.
 
     Parameters
@@ -677,8 +726,8 @@ def get_agent_conf(group_id: str = None, offset: int = 0, limit: int = common.DA
         Maximum number of elements to return.
     filename : str
         Name of the file to get. Default: 'agent.conf'
-    return_format : str
-        Return format.
+    raw : bool
+        Respond in raw format.
 
     Raises
     ------
@@ -703,9 +752,9 @@ def get_agent_conf(group_id: str = None, offset: int = 0, limit: int = common.DA
 
     try:
         # Read RAW file
-        if filename == 'agent.conf' and return_format and 'xml' == return_format.lower():
-            with open(agent_conf, 'r') as xml_data:
-                data = xml_data.read()
+        if filename == 'agent.conf' and raw:
+            with open(agent_conf, 'r') as raw_data:
+                data = raw_data.read()
                 return data
         # Parse XML to JSON
         else:
@@ -770,8 +819,8 @@ def get_agent_conf_multigroup(multigroup_id: str = None, offset: int = 0, limit:
     return {'totalItems': len(data), 'items': cut_array(data, offset=offset, limit=limit)}
 
 
-def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, return_format: str = None) -> dict:
-    """Return the configuration file as dictionary.
+def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, raw: bool = False) -> dict | str:
+    """Return the configuration file content.
 
     Parameters
     ----------
@@ -779,24 +828,24 @@ def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, re
         ID of the group with the file we want to get.
     filename : str
         Name of the file to get.
-    return_format : str
-        Return format.
     type_conf : str
         Type of the configuration we want to get.
+    raw : bool
+        Respond in raw format.
 
     Raises
     ------
     WazuhResourceNotFound(1710)
         Group was not found.
     WazuhError(1006)
-        agent.conf does not exist or there is a problem with the permissions.
+        The file does not exist or there is a problem with the permissions.
     WazuhError(1104)
         Invalid file type.
 
     Returns
     -------
-    dict
-        Configuration file as dictionary.
+    dict or str
+        File content as plain text or dictionary.
     """
     if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
@@ -805,6 +854,11 @@ def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, re
 
     if not os_path.exists(file_path):
         raise WazuhError(1006, file_path)
+    
+    if raw:
+        with open(file_path, 'r') as raw_data:
+            data = raw_data.read()
+            return data
 
     types = {
         'conf': get_agent_conf,
@@ -816,20 +870,22 @@ def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, re
     if type_conf:
         if type_conf in types:
             if type_conf == 'conf':
-                data = types[type_conf](group_id, limit=None, filename=filename, return_format=return_format)
+                data = types[type_conf](group_id, limit=None, filename=filename, raw=raw)
             else:
                 data = types[type_conf](file_path)
         else:
             raise WazuhError(1104, f'{type_conf}. Valid types: {types.keys()}')
     else:
-        if filename == "agent.conf":
-            data = get_agent_conf(group_id, limit=None, filename=filename, return_format=return_format)
-        elif filename == "rootkit_files.txt":
+        if filename == 'agent.conf':
+            data = get_agent_conf(group_id, limit=None, filename=filename, raw=raw)
+        elif filename == 'rootkit_files.txt':
             data = _rootkit_files2json(file_path)
-        elif filename == "rootkit_trojans.txt":
+        elif filename == 'rootkit_trojans.txt':
             data = _rootkit_trojans2json(file_path)
-        elif filename == "ar.conf":
+        elif filename == 'ar.conf':
             data = _ar_conf2json(file_path)
+        elif filename == 'merged.mg':
+            data = _merged_mg2json(file_path)
         else:
             data = _rcl2json(file_path)
 
