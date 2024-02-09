@@ -15,6 +15,7 @@
 #include "archive.h"
 #include "archive_entry.h"
 #include "customDeleter.hpp"
+#include <filesystem>
 
 namespace Utils
 {
@@ -59,8 +60,10 @@ namespace Utils
          *
          * @param filePath Compressed (.tar) file path.
          */
-        static void
-        decompress(const std::string& filename, const std::string& outputDir = "", int flags = ARCHIVE_EXTRACT_UNLINK)
+        static void decompress(const std::string& filename,
+                               const std::string& output = "",
+                               const std::vector<std::string>& extractOnly = {},
+                               int flags = ARCHIVE_EXTRACT_UNLINK)
         {
             struct archive* a;
             struct archive* ext;
@@ -91,25 +94,33 @@ namespace Utils
                     exit(1);
                 }
 
-                if (outputDir.compare("") != 0)
-                {
-                    std::string fullPath = outputDir + "/" + archive_entry_pathname(entry);
-                    archive_entry_set_pathname(entry, fullPath.c_str());
-                }
+                std::filesystem::path outputDir(std::filesystem::current_path() / output /
+                                                archive_entry_pathname(entry));
 
-                r = archive_write_header(ext, entry);
-                if (r != ARCHIVE_OK)
+                if (std::find_if(extractOnly.cbegin(),
+                                 extractOnly.cend(),
+                                 [&outputDir](const std::string& path)
+                                 {
+                                     size_t pos = outputDir.string().find(path);
+                                     return pos != std::string::npos;
+                                 }) != extractOnly.cend() ||
+                    extractOnly.empty())
                 {
-                    fprintf(stderr, "archive_write_header(): %s", archive_error_string(ext));
-                }
-                else
-                {
-                    copy_data(a, ext);
-                    r = archive_write_finish_entry(ext);
+                    archive_entry_set_pathname(entry, outputDir.c_str());
+                    r = archive_write_header(ext, entry);
                     if (r != ARCHIVE_OK)
                     {
-                        fprintf(stderr, "archive_write_finish_entry(): %s", archive_error_string(ext));
-                        exit(1);
+                        fprintf(stderr, "archive_write_header(): %s", archive_error_string(ext));
+                    }
+                    else
+                    {
+                        copy_data(a, ext);
+                        r = archive_write_finish_entry(ext);
+                        if (r != ARCHIVE_OK)
+                        {
+                            fprintf(stderr, "archive_write_finish_entry(): %s", archive_error_string(ext));
+                            exit(1);
+                        }
                     }
                 }
             }

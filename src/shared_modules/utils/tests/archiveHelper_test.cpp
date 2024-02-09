@@ -220,3 +220,31 @@ TEST(ArchiveHelperTest, SuccessfulDecompressionDirectoryCustomNestedTargetPaths)
     EXPECT_STREQ(decompressedFile2.c_str(), originalFile2.c_str());
     EXPECT_TRUE(std::filesystem::remove_all(OUTPUT_DIR_PATH));
 }
+
+TEST(ArchiveHelperTest, SuccessfulDecompressionExtractOnly)
+{
+    std::vector<std::string> extractOnly;
+    extractOnly.emplace_back("content_dir/content_example1.json");
+
+    Utils::ArchiveHelper::decompress(COMPRESSED_DIR_PATH, OUTPUT_DIR_PATH.string(), extractOnly);
+
+    std::ifstream inputFile(DECOMPRESSED_OUTPUT_DIR_FILE1_PATH);
+    ASSERT_TRUE(inputFile.is_open());
+    std::string decompressedFile1;
+    getline(inputFile, decompressedFile1);
+    inputFile.close();
+    ASSERT_FALSE(inputFile.is_open());
+
+    inputFile.open(DECOMPRESSED_OUTPUT_DIR_FILE2_PATH);
+    EXPECT_FALSE(inputFile.is_open());
+
+    inputFile.open(BASE_EXAMPLE1_PATH);
+    ASSERT_TRUE(inputFile.is_open());
+    std::string originalFile1;
+    getline(inputFile, originalFile1);
+    inputFile.close();
+    ASSERT_FALSE(inputFile.is_open());
+
+    EXPECT_STREQ(decompressedFile1.c_str(), originalFile1.c_str());
+    EXPECT_TRUE(std::filesystem::remove_all(OUTPUT_DIR_PATH));
+}
