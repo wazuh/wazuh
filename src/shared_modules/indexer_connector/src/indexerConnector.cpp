@@ -13,7 +13,6 @@
 #include "HTTPRequest.hpp"
 #include "keyStore.hpp"
 #include "loggerHelper.h"
-#include "opensslWrapper.hpp"
 #include "secureCommunication.hpp"
 #include "serverSelector.hpp"
 #include <fstream>
