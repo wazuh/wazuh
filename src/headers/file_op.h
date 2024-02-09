@@ -89,6 +89,18 @@ ino_t File_Inode(const char *file) __attribute__((nonnull));
 wino_t get_fp_inode(FILE * fp);
 
 
+#ifdef WIN32
+/**
+ * @brief Get the file information of the specified file pointer.
+ *
+ * @param fp File pointer.
+ * @param fileInfo File information.
+ * @return 0 in case of error, not 0 in success.
+ */
+int get_fp_file_information(FILE * fp, BY_HANDLE_FILE_INFORMATION fileInfo);
+#endif
+
+
 /**
  * @brief Get the size of the specified file.
  *

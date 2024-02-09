@@ -20,8 +20,8 @@ endif()
 
 list(APPEND shared_tests_names "test_file_op")
 if(NOT ${TARGET} STREQUAL "winagent")
-    set(FILE_OP_BASE_FLAGS "-Wl,--wrap,stat,--wrap,chmod,--wrap,getpid \
-                            -Wl,--wrap,unlink,--wrap,wfopen,--wrap,fflush,--wrap,fclose \
+    set(FILE_OP_BASE_FLAGS "-Wl,--wrap,stat,--wrap,chmod,--wrap,getpid,--wrap,wfopen \
+                            -Wl,--wrap,unlink,--wrap,fopen,--wrap,fflush,--wrap,fclose \
                             -Wl,--wrap,fread,--wrap,ftell,--wrap,fseek,--wrap,fwrite,--wrap,remove \
                             -Wl,--wrap,fprintf,--wrap,fgets,--wrap,File_DateofChange \
                             -Wl,--wrap,bzip2_uncompress,--wrap,lstat \
@@ -81,7 +81,7 @@ list(APPEND shared_tests_flags "${EXPRESSION_BASE_FLAGS}")
 endif()
 
 list(APPEND shared_tests_names "test_version_op")
-set(VERSION_OP_BASE_FLAGS "-Wl,--wrap,wfopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fread \
+set(VERSION_OP_BASE_FLAGS "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fread -Wl,--wrap,wfopen \
                            -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fprintf -Wl,--wrap,fgets \
                            -Wl,--wrap,fgetpos -Wl,--wrap,fgetc -Wl,--wrap,popen -Wl,--wrap,pclose \
                            -Wl,--wrap,get_binary_path")
@@ -131,9 +131,10 @@ list(APPEND shared_tests_names "test_enrollment_op")
 set(ENROLLMENT_OP_BASE_FLAGS "-Wl,--wrap=OS_IsValidIP,--wrap=_merror,--wrap=_mwarn,--wrap=check_x509_cert \
                               -Wl,--wrap=_minfo,--wrap=_mdebug1,--wrap=OS_GetHost,--wrap=os_ssl_keys,--wrap=OS_ConnectTCP \
                               -Wl,--wrap=SSL_new,--wrap=SSL_connect,--wrap=SSL_get_error,--wrap=SSL_set_bio \
-                              -Wl,--wrap=SSL_write,--wrap=wfopen,--wrap=fclose,--wrap=SSL_read \
+                              -Wl,--wrap=SSL_write,--wrap=fopen,--wrap=fclose,--wrap=SSL_read \
                               -Wl,--wrap=BIO_new_socket,--wrap=_merror_exit,--wrap=TempFile,--wrap=OS_MoveFile \
-                              -Wl,--wrap=fgets -Wl,--wrap,OS_CloseSocket")
+                              -Wl,--wrap=fgets -Wl,--wrap,OS_CloseSocket,--wrap=wfopen,--wrap=fflush,--wrap=fgetpos \
+                              -Wl,--wrap=fread,--wrap=fseek,--wrap=fwrite,--wrap=remove,--wrap=fgetc")
 
 if(${TARGET} STREQUAL "winagent")
     list(APPEND shared_tests_flags "${ENROLLMENT_OP_BASE_FLAGS} -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
@@ -198,11 +199,11 @@ endif()
 
 if(${TARGET} STREQUAL "server")
 list(APPEND shared_tests_names "test_bzip2_op")
-list(APPEND shared_tests_flags "-Wl,--wrap=wfopen,--wrap=fread,--wrap=fclose,--wrap=fwrite,--wrap=BZ2_bzWriteOpen \
+list(APPEND shared_tests_flags "-Wl,--wrap=fopen,--wrap=fread,--wrap=fclose,--wrap=fwrite,--wrap=BZ2_bzWriteOpen \
                                 -Wl,--wrap=BZ2_bzWriteClose -Wl,--wrap=BZ2_bzReadClose,--wrap=BZ2_bzReadOpen \
                                 -Wl,--wrap=BZ2_bzRead,--wrap=BZ2_bzWrite,--wrap=_mdebug2,--wrap=fflush \
                                 -Wl,--wrap=fgets,--wrap=fprintf,--wrap=fseek,--wrap=remove -Wl,--wrap,fgetpos \
-                                -Wl,--wrap=fgetc")
+                                -Wl,--wrap=fgetc,--wrap=wfopen")
 
 list(APPEND shared_tests_names "test_schedule_scan")
 list(APPEND shared_tests_flags "-Wl,--wrap=OS_StrIsNum,--wrap=_merror,--wrap=w_time_delay,--wrap=time,--wrap=_mwarn \
@@ -240,8 +241,8 @@ endif()
 if(NOT ${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_names "test_json_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,w_get_file_content -Wl,--wrap,cJSON_ParseWithOpts \
-                                -Wl,--wrap,cJSON_PrintUnformatted -Wl,--wrap,wfopen \
-                                -Wl,--wrap,fwrite -Wl,--wrap,fclose \
+                                -Wl,--wrap,cJSON_PrintUnformatted -Wl,--wrap,fopen \
+                                -Wl,--wrap,fwrite -Wl,--wrap,fclose -Wl,--wrap,wfopen \
                                 -Wl,--wrap,fflush -Wl,--wrap,fgets \
                                 -Wl,--wrap,fgetpos -Wl,--wrap,fgetc \
                                 -Wl,--wrap,fread -Wl,--wrap,remove \
@@ -251,8 +252,8 @@ list(APPEND shared_tests_names "test_audit_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,audit_send \
                                 -Wl,--wrap,select -Wl,--wrap,audit_get_reply -Wl,--wrap,wpopenv -Wl,--wrap,fgets \
                                 -Wl,--wrap,wpclose -Wl,--wrap,audit_open -Wl,--wrap,audit_add_watch_dir \
-                                -Wl,--wrap,audit_update_watch_perms -Wl,--wrap,audit_errno_to_name \
-                                -Wl,--wrap,audit_rule_fieldpair_data -Wl,--wrap,wfopen -Wl,--wrap,audit_add_rule_data \
+                                -Wl,--wrap,audit_update_watch_perms -Wl,--wrap,audit_errno_to_name -Wl,--wrap,wfopen \
+                                -Wl,--wrap,audit_rule_fieldpair_data -Wl,--wrap,fopen -Wl,--wrap,audit_add_rule_data \
                                 -Wl,--wrap,audit_delete_rule_data -Wl,--wrap,audit_close -Wl,--wrap,fclose \
                                 -Wl,--wrap,fflush -Wl,--wrap,fprintf -Wl,--wrap,fread -Wl,--wrap,fseek \
                                 -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetpos -Wl,--wrap=fgetc \
@@ -272,7 +273,7 @@ endif()
 
 if(${TARGET} STREQUAL "server")
 list(APPEND shared_tests_names "test_json-queue")
-list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,wfopen -Wl,--wrap,fclose \
+list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,wfopen \
                                 -Wl,--wrap,fflush -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite \
                                 -Wl,--wrap,remove -Wl,--wrap,fprintf -Wl,--wrap,fgets -Wl,--wrap,w_ftell \
                                 -Wl,--wrap,fgetpos -Wl,--wrap,fgetc,--wrap,stat,--wrap,sleep,--wrap,getpid,--wrap,clearerr")

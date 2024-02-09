@@ -2630,6 +2630,24 @@ wino_t get_fp_inode(FILE * fp) {
 }
 
 
+#ifdef WIN32
+int get_fp_file_information(FILE * fp, BY_HANDLE_FILE_INFORMATION fileInfo) {
+    int fd;
+    HANDLE h;
+
+    if (fd = _fileno(fp), fd < 0) {
+        return 0;
+    }
+
+    if (h = (HANDLE)_get_osfhandle(fd), h == INVALID_HANDLE_VALUE) {
+        return 0;
+    }
+
+    return GetFileInformationByHandle(h, &fileInfo);
+}
+#endif
+
+
 long get_fp_size(FILE * fp) {
     long offset;
     long size;

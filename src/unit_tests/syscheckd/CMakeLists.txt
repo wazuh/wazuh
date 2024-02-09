@@ -130,7 +130,7 @@ endif()
 
 # fim_diff_changes.c tests
 set(FIM_DIFF_CHANGES_BASE_FLAGS "-Wl,--wrap,lstat -Wl,--wrap,stat \
-                                 -Wl,--wrap,wfopen -Wl,--wrap,fread -Wl,--wrap,fclose -Wl,--wrap,fwrite \
+                                 -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fclose -Wl,--wrap,fwrite -Wl,--wrap,wfopen \
                                  -Wl,--wrap,w_compress_gzfile -Wl,--wrap,IsDir -Wl,--wrap,mkdir_ex -Wl,--wrap,fflush \
                                  -Wl,--wrap,w_uncompress_gzfile -Wl,--wrap,OS_MD5_File -Wl,--wrap,File_DateofChange \
                                  -Wl,--wrap,rename -Wl,--wrap,system -Wl,--wrap,fseek -Wl,--wrap,remove,--wrap=fprintf \

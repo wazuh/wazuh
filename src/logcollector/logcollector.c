@@ -982,7 +982,6 @@ int update_fname(int i, int j)
 /* Open, get the fileno, seek to the end and update mtime */
 int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
 {
-    int fd;
     logreader *lf;
 
     if (j < 0) {
@@ -994,9 +993,7 @@ int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
     /* We must be able to open the file, fseek and get the
      * time of change from it.
      */
-#ifndef WIN32
-    struct stat stat_fd = { .st_mode = 0 };
-
+    
     lf->fp = wfopen(lf->file, "r");
     if (!lf->fp) {
         if (do_log == 1 && lf->exists == 1) {
@@ -1005,6 +1002,11 @@ int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
         }
         goto error;
     }
+
+#ifndef WIN32
+    struct stat stat_fd = { .st_mode = 0 };
+    int fd;
+
     /* Get inode number for fp */
     fd = fileno(lf->fp);
     if (fstat(fd, &stat_fd) == -1) {
@@ -1022,37 +1024,10 @@ int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
     BY_HANDLE_FILE_INFORMATION lpFileInformation;
     memset(&lpFileInformation, 0, sizeof(BY_HANDLE_FILE_INFORMATION));
 
-    lf->fp = NULL;
-    lf->h = CreateFile(lf->file, GENERIC_READ,
-                            FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
-                            NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (lf->h == INVALID_HANDLE_VALUE) {
-        if (do_log == 1) {
-            DWORD error = GetLastError();
-            merror(FOPEN_ERROR, lf->file, (int)error, win_strerror(error));
-        }
-        goto error;
-    }
-
-    fd = _open_osfhandle((intptr_t)lf->h, 0);
-
-    if (fd == -1) {
-        merror(FOPEN_ERROR, lf->file, errno, strerror(errno));
-        CloseHandle(lf->h);
-        goto error;
-    }
-    lf->fp = _fdopen(fd, "r");
-    if (!lf->fp) {
-        merror(FOPEN_ERROR, lf->file, errno, strerror(errno));
-        _close(fd);
-        goto error;
-    }
-
-
     /* On windows, we also need the real inode, which is the combination
      * of the index low + index high numbers.
      */
-    if (GetFileInformationByHandle(lf->h, &lpFileInformation) == 0) {
+    if (!get_fp_file_information(lf->fp, lpFileInformation)) {
         merror("Unable to get file information by handle.");
         fclose(lf->fp);
         lf->fp = NULL;
@@ -1106,37 +1081,11 @@ error:
 
 /* Reload file: open after close, and restore position */
 int reload_file(logreader * lf) {
-#ifndef WIN32
     lf->fp = wfopen(lf->file, "r");
 
     if (!lf->fp) {
         return -1;
     }
-#else
-    int fd;
-
-    lf->h = CreateFile(lf->file, GENERIC_READ,
-                            FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
-                            NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-
-    if (lf->h == INVALID_HANDLE_VALUE) {
-        return (-1);
-    }
-
-    fd = _open_osfhandle((intptr_t)lf->h, 0);
-
-    if (fd == -1) {
-        CloseHandle(lf->h);
-        return (-1);
-    }
-
-    lf->fp = _fdopen(fd, "r");
-
-    if (!lf->fp) {
-        _close(fd);
-        return (-1);
-    }
-#endif
 
     fsetpos(lf->fp, &lf->position);
     return 0;

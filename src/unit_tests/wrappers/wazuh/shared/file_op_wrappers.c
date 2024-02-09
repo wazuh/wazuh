@@ -99,19 +99,19 @@ void expect_w_uncompress_gzfile(const char * gzfilesrc, const char * gzfiledst, 
     will_return(__wrap_w_uncompress_gzfile, ret);
 }
 
-FILE *__wrap_wfopen(const char * __filename, const char * __modes) {
+FILE *__wrap_wfopen(const char * path, const char * mode) {
     if(test_mode) {
-        check_expected(__filename);
-        check_expected(__modes);
+        check_expected(path);
+        check_expected(mode);
         return mock_type(FILE *);
     } else {
-        return wfopen(__filename, __modes);
+        return wfopen(path, mode);
     }
 }
 
-void expect_wfopen(const char * __filename, const char * __modes, FILE *ret) {
-    expect_string(__wrap_wfopen, __filename, __filename);
-    expect_string(__wrap_wfopen, __modes, __modes);
+void expect_wfopen(const char * path, const char * mode, FILE *ret) {
+    expect_string(__wrap_wfopen, path, path);
+    expect_string(__wrap_wfopen, mode, mode);
     will_return(__wrap_wfopen, ret);
 }
 

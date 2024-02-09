@@ -771,8 +771,8 @@ void test_w_save_file_status_wfopen_error(void ** state) {
 
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_wfopen, __filename, "queue/logcollector/file_status.json");
-    expect_string(__wrap_wfopen, __modes, "w");
+    expect_string(__wrap_wfopen, path, "queue/logcollector/file_status.json");
+    expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, 0);
 
     expect_string(__wrap__merror_exit, formatted_msg, "(1103): Could not open file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
@@ -838,8 +838,8 @@ void test_w_save_file_status_fwrite_error(void ** state) {
 
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_wfopen, __filename, "queue/logcollector/file_status.json");
-    expect_string(__wrap_wfopen, __modes, "w");
+    expect_string(__wrap_wfopen, path, "queue/logcollector/file_status.json");
+    expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, "test");
 
     will_return(__wrap_fwrite, 0);
@@ -913,8 +913,8 @@ void test_w_save_file_status_OK(void ** state) {
 
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_wfopen, __filename, "queue/logcollector/file_status.json");
-    expect_string(__wrap_wfopen, __modes, "w");
+    expect_string(__wrap_wfopen, path, "queue/logcollector/file_status.json");
+    expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, "test");
 
     will_return(__wrap_fwrite, 1);
