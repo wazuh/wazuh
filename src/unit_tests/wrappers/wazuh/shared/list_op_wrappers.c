@@ -16,8 +16,9 @@
 void *__wrap_OSList_AddData(__attribute__((unused))OSList *list, __attribute__((unused))void *data) {
 
     bool must_free = mock();
-    if(must_free)
+    if (must_free) {
         os_free(data);
+    }
     return mock_type(void *);
 }
 
@@ -32,7 +33,7 @@ OSListNode *__wrap_OSList_GetFirstNode(__attribute__((unused))OSList *list) {
 
 extern void __real_OSList_Destroy(__attribute__((unused))OSList *list);
 void __wrap_OSList_Destroy(__attribute__((unused))OSList *list) {
-    if(test_mode) {
+    if (test_mode) {
         function_called();
     }
     else {

@@ -110,7 +110,6 @@ static void test_wm_append_sid_null_list(void ** state) {
 }
 
 static void test_wm_append_sid_fail(void ** state) {
-
     pid_t sid = 10;
 
     will_return(__wrap_OSList_AddData, false);
@@ -122,9 +121,8 @@ static void test_wm_append_sid_fail(void ** state) {
 }
 
 static void test_wm_append_sid_success(void ** state) {
-
     pid_t sid = 10;
-    OSListNode *node;
+    OSListNode * node;
 
     will_return(__wrap_OSList_AddData, true);
     will_return(__wrap_OSList_AddData, node);
@@ -152,7 +150,7 @@ static void test_wm_remove_sid_not_found(void ** state) {
 static void test_wm_remove_sid_success(void ** state) {
     pid_t sid = 10;
     pid_t * p_sid = NULL;
-    OSListNode *node;
+    OSListNode * node = NULL;
 
     os_calloc(1, sizeof(pid_t), p_sid);
     *p_sid = sid;
@@ -170,7 +168,7 @@ static void test_wm_remove_sid_success(void ** state) {
 static void test_wm_kill_children_fork_failed(void ** state) {
     pid_t sid = 10;
     pid_t * p_sid = NULL;
-    OSListNode *node;
+    OSListNode * node = NULL;
 
     os_calloc(1, sizeof(pid_t), p_sid);
     *p_sid = sid;
@@ -196,7 +194,7 @@ static void test_wm_kill_children_fork_failed(void ** state) {
 static void test_wm_kill_children_timeout_kill_child(void ** state) {
     pid_t sid = 10;
     pid_t * p_sid = NULL;
-    OSListNode *node;
+    OSListNode * node = NULL;
 
     wm_kill_timeout = 1;
 
@@ -247,7 +245,7 @@ static void test_wm_kill_children_timeout_kill_child(void ** state) {
 static void test_wm_kill_children_parent(void ** state) {
     pid_t sid = 10;
     pid_t * p_sid = NULL;
-    OSListNode *node;
+    OSListNode * node = NULL;
 
     os_calloc(1, sizeof(pid_t), p_sid);
     *p_sid = sid;
@@ -289,7 +287,7 @@ static void test_wm_append_handle_fail(void ** state) {
 
 static void test_wm_append_handle_success(void ** state) {
     HANDLE hProcess = (HANDLE)0x00112233;
-    OSListNode *node;
+    OSListNode * node;
 
     will_return(__wrap_OSList_AddData, true);
     will_return(__wrap_OSList_AddData, node);
@@ -317,7 +315,7 @@ static void test_wm_remove_handle_not_found(void ** state) {
 static void test_wm_remove_handle_success(void ** state) {
     HANDLE hProcess = (HANDLE) 10;
     HANDLE * p_hProcess = NULL;
-    OSListNode *node;
+    OSListNode * node = NULL;
 
     os_calloc(1, sizeof(HANDLE), p_hProcess);
     *p_hProcess = hProcess;
@@ -342,7 +340,7 @@ static void test_wm_kill_children_win_empty_list(void ** state) {
 }
 
 static void test_wm_kill_children_win_empty_node(void ** state) {
-    OSListNode *node;
+    OSListNode * node = NULL;
 
     node = (OSListNode *) calloc(1, sizeof(OSListNode));
     node->data = NULL;
@@ -359,7 +357,7 @@ static void test_wm_kill_children_win_empty_node(void ** state) {
 static void test_wm_kill_children_win_success(void ** state) {
     HANDLE hProcess = (HANDLE)10;
     HANDLE * p_hProcess = NULL;
-    OSListNode *node;
+    OSListNode * node = NULL;
 
     os_calloc(1, sizeof(HANDLE), p_hProcess);
     *p_hProcess = hProcess;
