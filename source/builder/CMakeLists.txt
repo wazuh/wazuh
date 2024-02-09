@@ -155,6 +155,7 @@ add_executable(builder_utest
     ${UNIT_SRC_DIR}/builders/optransform/array_test.cpp
     ${UNIT_SRC_DIR}/builders/optransform/objectGet_test.cpp
     ${UNIT_SRC_DIR}/builders/optransform/sca_test.cpp
+    ${UNIT_SRC_DIR}/builders/optransform/scaInternal_test.cpp
     ${UNIT_SRC_DIR}/builders/optransform/windows_test.cpp
     ${UNIT_SRC_DIR}/builders/optransform/hlp_test.cpp
 
