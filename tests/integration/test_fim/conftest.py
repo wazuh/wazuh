@@ -25,8 +25,9 @@ from wazuh_testing.utils.services import get_service
 def file_to_monitor(test_metadata: dict) -> Any:
     path = test_metadata.get('file_to_monitor')
     path = os.path.abspath(path)
+    data = test_metadata.setdefault('content', '')
 
-    file.write_file(path)
+    file.write_file(path, data)
 
     yield path
 
