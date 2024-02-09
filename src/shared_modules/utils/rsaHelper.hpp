@@ -34,8 +34,8 @@ class OpenSSL final
     , public U
 {
 public:
-    explicit OpenSSL() {}
-    virtual ~OpenSSL() {}
+    explicit OpenSSL() = default;
+    virtual ~OpenSSL() = default;
 
     /**
      * Encrypts the input vector with the provided key
