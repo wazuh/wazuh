@@ -91,6 +91,12 @@ namespace Utils
                     exit(1);
                 }
 
+                if (outputDir.compare("") != 0)
+                {
+                    std::string fullPath = outputDir + "/" + archive_entry_pathname(entry);
+                    archive_entry_set_pathname(entry, fullPath.c_str());
+                }
+
                 r = archive_write_header(ext, entry);
                 if (r != ARCHIVE_OK)
                 {

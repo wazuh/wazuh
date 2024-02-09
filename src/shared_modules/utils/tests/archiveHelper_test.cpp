@@ -16,6 +16,7 @@
 
 const auto BASE_PATH {std::filesystem::current_path() / "input_files/archiveHelper/"};
 const auto OUTPUT_DIR_PATH {std::filesystem::current_path() / "output_dir"};
+const auto OUTPUT_NESTED_DIRS_PATH {std::filesystem::current_path() / "output_dir/output_subdir"};
 
 const auto COMPRESSED_SINGLE_FILE_PATH {BASE_PATH / "content_example1.json.tar"};
 const auto COMPRESSED_MULTIPLE_FILES_PATH {BASE_PATH / "content_examples.tar"};
@@ -32,6 +33,11 @@ const auto DECOMPRESSED_DIR_FILE2_PATH {std::filesystem::current_path() / DECOMP
                                         "content_example2.json"};
 const auto DECOMPRESSED_OUTPUT_DIR_FILE1_PATH {OUTPUT_DIR_PATH / DECOMPRESSED_DIR_PATH / "content_example1.json"};
 const auto DECOMPRESSED_OUTPUT_DIR_FILE2_PATH {OUTPUT_DIR_PATH / DECOMPRESSED_DIR_PATH / "content_example2.json"};
+
+const auto DECOMPRESSED_OUTPUT_NESTED_DIRS_FILE1_PATH {OUTPUT_NESTED_DIRS_PATH / DECOMPRESSED_DIR_PATH /
+                                                       "content_example1.json"};
+const auto DECOMPRESSED_OUTPUT_NESTED_DIRS_FILE2_PATH {OUTPUT_NESTED_DIRS_PATH / DECOMPRESSED_DIR_PATH /
+                                                       "content_example2.json"};
 
 TEST(ArchiveHelperTest, InvalidInputPath)
 {
@@ -141,9 +147,8 @@ TEST(ArchiveHelperTest, SuccessfulDecompressionDirectory)
     EXPECT_TRUE(std::filesystem::remove_all(DECOMPRESSED_DIR_PATH));
 }
 
-TEST(ArchiveHelperTest, DISABLED_SuccessfulDecompressionDirectoryCustomTargetPath)
+TEST(ArchiveHelperTest, SuccessfulDecompressionDirectoryCustomTargetPath)
 {
-    std::filesystem::create_directory(OUTPUT_DIR_PATH);
     Utils::ArchiveHelper::decompress(COMPRESSED_DIR_PATH, OUTPUT_DIR_PATH.string());
 
     std::ifstream inputFile(DECOMPRESSED_OUTPUT_DIR_FILE1_PATH);
@@ -154,6 +159,43 @@ TEST(ArchiveHelperTest, DISABLED_SuccessfulDecompressionDirectoryCustomTargetPat
     ASSERT_FALSE(inputFile.is_open());
 
     inputFile.open(DECOMPRESSED_OUTPUT_DIR_FILE2_PATH);
+    ASSERT_TRUE(inputFile.is_open());
+    std::string decompressedFile2;
+    getline(inputFile, decompressedFile2);
+    inputFile.close();
+    ASSERT_FALSE(inputFile.is_open());
+
+    inputFile.open(BASE_EXAMPLE1_PATH);
+    ASSERT_TRUE(inputFile.is_open());
+    std::string originalFile1;
+    getline(inputFile, originalFile1);
+    inputFile.close();
+    ASSERT_FALSE(inputFile.is_open());
+
+    inputFile.open(BASE_EXAMPLE2_PATH);
+    ASSERT_TRUE(inputFile.is_open());
+    std::string originalFile2;
+    getline(inputFile, originalFile2);
+    inputFile.close();
+    ASSERT_FALSE(inputFile.is_open());
+
+    EXPECT_STREQ(decompressedFile1.c_str(), originalFile1.c_str());
+    EXPECT_STREQ(decompressedFile2.c_str(), originalFile2.c_str());
+    EXPECT_TRUE(std::filesystem::remove_all(OUTPUT_DIR_PATH));
+}
+
+TEST(ArchiveHelperTest, SuccessfulDecompressionDirectoryCustomNestedTargetPaths)
+{
+    Utils::ArchiveHelper::decompress(COMPRESSED_DIR_PATH, OUTPUT_NESTED_DIRS_PATH.string());
+
+    std::ifstream inputFile(DECOMPRESSED_OUTPUT_NESTED_DIRS_FILE1_PATH);
+    ASSERT_TRUE(inputFile.is_open());
+    std::string decompressedFile1;
+    getline(inputFile, decompressedFile1);
+    inputFile.close();
+    ASSERT_FALSE(inputFile.is_open());
+
+    inputFile.open(DECOMPRESSED_OUTPUT_NESTED_DIRS_FILE2_PATH);
     ASSERT_TRUE(inputFile.is_open());
     std::string decompressedFile2;
     getline(inputFile, decompressedFile2);
