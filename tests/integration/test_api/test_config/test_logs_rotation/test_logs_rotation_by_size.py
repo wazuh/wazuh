@@ -153,7 +153,7 @@ def test_logs_rotate_to_expected_path(test_configuration, test_metadata, add_con
     file.write_file(WAZUH_API_LOG_FILE_PATH, [" " for _ in range(total_size_in_kb)])
 
     # Makes a request
-    authentication_headers, _ = login(password="reyF9KpULKMwLT*iylevo9?hlS7Ma?ac")
+    authentication_headers, _ = login()
 
     # Format the expected log file path
     year = datetime.now().year
