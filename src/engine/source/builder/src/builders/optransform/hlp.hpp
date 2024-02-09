@@ -10,6 +10,14 @@
 namespace builder::builders::optransform
 {
 
+namespace detail
+{
+TransformOp specificHLPBuilder(const Reference& targetField,
+                               const std::vector<OpArg>& opArgs,
+                               const std::shared_ptr<const IBuildCtx>& buildCtx,
+                               const std::function<hlp::parser::Parser(const hlp::Params&)>& parserBuilder);
+} // namespace detail
+
 /**
  * @brief Helper function of boolean parser from HLP
  *
