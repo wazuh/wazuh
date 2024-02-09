@@ -185,6 +185,7 @@ IndexerConnector::IndexerConnector(
         DATABASE_WORKERS);
 
     m_initializeThread = std::thread(
+        // coverity[copy_constructor_call]
         [=]()
         {
             auto sleepTime = std::chrono::seconds(1);
