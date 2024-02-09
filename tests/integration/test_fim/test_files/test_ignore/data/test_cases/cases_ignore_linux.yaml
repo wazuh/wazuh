@@ -1,0 +1,296 @@
+- name: not_ignore_sregex_scheduled
+  description: Check ignore sregex triggers event because there is no match
+  configuration_parameters:
+    TEST_DIR: '/testdir1,/testdir2'
+    IGNORE:
+        ignore:
+          value: '.ignore$'
+          attributes:
+          - type: 'sregex'
+    REALTIME: 'no'
+    WHODATA: 'no'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/testdir1]
+    file_to_monitor: !!python/object/apply:os.path.join [/testdir1, testfile]
+    content: 'Sample content'
+    is_pattern : !!python/object/apply:eval ['False']
+    triggers_event: !!python/object/apply:eval ['True']
+    fim_mode: scheduled
+
+- name: not_ignore_sregex_realtime
+  description: Check ignore sregex triggers event because there is no match
+  configuration_parameters:
+    TEST_DIR: '/testdir1,/testdir2'
+    IGNORE:
+        ignore:
+          value: '.ignore$'
+          attributes:
+          - type: 'sregex'
+    REALTIME: 'yes'
+    WHODATA: 'no'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/testdir1]
+    file_to_monitor: !!python/object/apply:os.path.join [/testdir1, testfile]
+    content: 'Sample content'
+    is_pattern : !!python/object/apply:eval ['False']
+    triggers_event: !!python/object/apply:eval ['True']
+    fim_mode: realtime
+
+- name: not_ignore_sregex_whodata
+  description: Check ignore sregex triggers event because there is no match
+  configuration_parameters:
+    TEST_DIR: '/testdir1,/testdir2'
+    IGNORE:
+        ignore:
+          value: '.ignore$'
+          attributes:
+          - type: 'sregex'
+    REALTIME: 'no'
+    WHODATA: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/testdir1]
+    file_to_monitor: !!python/object/apply:os.path.join [/testdir1, testfile]
+    content: 'Sample content'
+    is_pattern : !!python/object/apply:eval ['False']
+    triggers_event: !!python/object/apply:eval ['True']
+    fim_mode: whodata
+
+- name: not_ignore_sregex_with_OR_scheduled
+  description: Check ignore sregex with OR triggers event because there is no match
+  configuration_parameters:
+    TEST_DIR: '/testdir1,/testdir2'
+    IGNORE:
+        ignore:
+          value: '.ignore$|.ignore2$'
+          attributes:
+          - type: 'sregex'
+    REALTIME: 'no'
+    WHODATA: 'no'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/testdir1]
+    file_to_monitor: !!python/object/apply:os.path.join [/testdir1, testfile]
+    content: 'Sample content'
+    is_pattern : !!python/object/apply:eval ['False']
+    triggers_event: !!python/object/apply:eval ['True']
+    fim_mode: scheduled
+
+- name: not_ignore_sregex_with_OR_realtime
+  description: Check ignore sregex with OR triggers event because there is no match
+  configuration_parameters:
+    TEST_DIR: '/testdir1,/testdir2'
+    IGNORE:
+        ignore:
+          value: '.ignore$|.ignore2$'
+          attributes:
+          - type: 'sregex'
+    REALTIME: 'yes'
+    WHODATA: 'no'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/testdir1]
+    file_to_monitor: !!python/object/apply:os.path.join [/testdir1, testfile]
+    content: 'Sample content'
+    is_pattern : !!python/object/apply:eval ['False']
+    triggers_event: !!python/object/apply:eval ['True']
+    fim_mode: realtime
+
+- name: not_ignore_sregex_with_OR_whodata
+  description: Check ignore sregex with OR triggers event because there is no match
+  configuration_parameters:
+    TEST_DIR: '/testdir1,/testdir2'
+    IGNORE:
+        ignore:
+          value: '.ignore$|.ignore2$'
+          attributes:
+          - type: 'sregex'
+    REALTIME: 'no'
+    WHODATA: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/testdir1]
+    file_to_monitor: !!python/object/apply:os.path.join [/testdir1, testfile]
+    content: 'Sample content'
+    is_pattern : !!python/object/apply:eval ['False']
+    triggers_event: !!python/object/apply:eval ['True']
+    fim_mode: whodata
+
+- name: not_ignore_2_sregex_scheduled
+  description: Check ignore with 2sregex triggers event because there is no match
+  configuration_parameters:
+    TEST_DIR: '/testdir1,/testdir2'
+    IGNORE:
+        ignore:
+          value: '.ignore$'
+          attributes:
+          - type: 'sregex'
+        ignore:
+          value: '.ignore2$'
+          attributes:
+          - type: 'sregex'
+    REALTIME: 'no'
+    WHODATA: 'no'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/testdir1]
+    file_to_monitor: !!python/object/apply:os.path.join [/testdir1, testfile]
+    content: 'Sample content'
+    is_pattern : !!python/object/apply:eval ['False']
+    triggers_event: !!python/object/apply:eval ['True']
+    fim_mode: scheduled
+
+- name: not_ignore_2_sregex_realtime
+  description: Check ignore with 2 sregex triggers event because there is no match
+  configuration_parameters:
+    TEST_DIR: '/testdir1,/testdir2'
+    IGNORE:
+        ignore:
+          value: '.ignore$'
+          attributes:
+          - type: 'sregex'
+        ignore:
+          value: '.ignore2$'
+          attributes:
+          - type: 'sregex'
+    REALTIME: 'yes'
+    WHODATA: 'no'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/testdir1]
+    file_to_monitor: !!python/object/apply:os.path.join [/testdir1, testfile]
+    content: 'Sample content'
+    is_pattern : !!python/object/apply:eval ['False']
+    triggers_event: !!python/object/apply:eval ['True']
+    fim_mode: realtime
+
+- name: not_ignore_2_sregex_whodata
+  description: Check ignore with 2 sregex triggers event because there is no match
+  configuration_parameters:
+    TEST_DIR: '/testdir1,/testdir2'
+    IGNORE:
+        ignore:
+          value: '.ignore$'
+          attributes:
+          - type: 'sregex'
+        ignore:
+          value: '.ignore2$'
+          attributes:
+          - type: 'sregex'
+    REALTIME: 'no'
+    WHODATA: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/testdir1]
+    file_to_monitor: !!python/object/apply:os.path.join [/testdir1, testfile]
+    content: 'Sample content'
+    is_pattern : !!python/object/apply:eval ['False']
+    triggers_event: !!python/object/apply:eval ['True']
+    fim_mode: whodata
+
+- name: not_ignore_sregex_prefix_scheduled
+  description: Check ignore sregex with prefix triggers event because there is no match
+  configuration_parameters:
+    TEST_DIR: '/testdir1,/testdir2'
+    IGNORE:
+        ignore:
+          value: '^ignore_prefix'
+          attributes:
+          - type: 'sregex'
+    REALTIME: 'no'
+    WHODATA: 'no'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/testdir1]
+    file_to_monitor: !!python/object/apply:os.path.join [/testdir1, testfile]
+    content: 'Sample content'
+    is_pattern : !!python/object/apply:eval ['False']
+    triggers_event: !!python/object/apply:eval ['True']
+    fim_mode: scheduled
+
+- name: not_ignore_sregex_prefix_realtime
+  description: Check ignore with sregex with prefix triggers event because there is no match
+  configuration_parameters:
+    TEST_DIR: '/testdir1,/testdir2'
+    IGNORE:
+        ignore:
+          value: '^ignore_prefix'
+          attributes:
+          - type: 'sregex'
+    REALTIME: 'yes'
+    WHODATA: 'no'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/testdir1]
+    file_to_monitor: !!python/object/apply:os.path.join [/testdir1, testfile]
+    content: 'Sample content'
+    is_pattern : !!python/object/apply:eval ['False']
+    triggers_event: !!python/object/apply:eval ['True']
+    fim_mode: realtime
+
+- name: not_ignore_sregex_prefix_whodata
+  description: Check ignore with sregex with prefix triggers event because there is no match
+  configuration_parameters:
+    TEST_DIR: '/testdir1,/testdir2'
+    IGNORE:
+        ignore:
+          value: '^ignore_prefix'
+          attributes:
+          - type: 'sregex'
+    REALTIME: 'no'
+    WHODATA: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/testdir1]
+    file_to_monitor: !!python/object/apply:os.path.join [/testdir1, testfile]
+    content: 'Sample content'
+    is_pattern : !!python/object/apply:eval ['False']
+    triggers_event: !!python/object/apply:eval ['True']
+    fim_mode: whodata
+
+- name: not_ignore_sregex_path_prefix_scheduled
+  description: Check ignore sregex with path and prefix triggers event because there is no match
+  configuration_parameters:
+    TEST_DIR: '/testdir1,/testdir2'
+    IGNORE:
+        ignore:
+          value: '^/testdir1/ignore_prefix'
+          attributes:
+          - type: 'sregex'
+    REALTIME: 'no'
+    WHODATA: 'no'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/testdir1]
+    file_to_monitor: !!python/object/apply:os.path.join [/testdir1, testfile]
+    content: 'Sample content'
+    is_pattern : !!python/object/apply:eval ['False']
+    triggers_event: !!python/object/apply:eval ['True']
+    fim_mode: scheduled
+
+- name: not_ignore_sregex_path_prefix_realtime
+  description: Check ignore with sregex with path and prefix triggers event because there is no match
+  configuration_parameters:
+    TEST_DIR: '/testdir1,/testdir2'
+    IGNORE:
+        ignore:
+          value: '^/testdir1/ignore_prefix'
+          attributes:
+          - type: 'sregex'
+    REALTIME: 'yes'
+    WHODATA: 'no'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/testdir1]
+    file_to_monitor: !!python/object/apply:os.path.join [/testdir1, testfile]
+    content: 'Sample content'
+    is_pattern : !!python/object/apply:eval ['False']
+    triggers_event: !!python/object/apply:eval ['True']
+    fim_mode: realtime
+
+- name: not_ignore_sregex_path_prefix_whodata
+  description: Check ignore with sregex with path and prefix triggers event because there is no match
+  configuration_parameters:
+    TEST_DIR: '/testdir1,/testdir2'
+    IGNORE:
+        ignore:
+          value: '^/testdir1/ignore_prefix'
+          attributes:
+          - type: 'sregex'
+    REALTIME: 'no'
+    WHODATA: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/testdir1]
+    file_to_monitor: !!python/object/apply:os.path.join [/testdir1, testfile]
+    content: 'Sample content'
+    is_pattern : !!python/object/apply:eval ['False']
+    triggers_event: !!python/object/apply:eval ['True']
+    fim_mode: whodata
