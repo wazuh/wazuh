@@ -70,6 +70,12 @@ void indexer_config_subnode_read(const OS_XML *xml, XML_NODE node, cJSON *output
 
         if(indexer_config_is_special_array_key(subnode_keypath))
         {
+            if(cJSON_GetObjectItem(output_json, node[i]->element))
+            {
+                // Delete the existing element.
+                cJSON_Delete(cJSON_DetachItemFromObject(output_json, node[i]->element));
+            }
+
             subnode = cJSON_CreateArray();
             if((children = OS_GetElementsbyNode(xml, node[i])))
             {
@@ -82,6 +88,12 @@ void indexer_config_subnode_read(const OS_XML *xml, XML_NODE node, cJSON *output
         {
             if((children = OS_GetElementsbyNode(xml, node[i])))
             {
+                if(cJSON_GetObjectItem(output_json, node[i]->element))
+                {
+                    // Delete the existing element.
+                    cJSON_Delete(cJSON_DetachItemFromObject(output_json, node[i]->element));
+                }
+
                 subnode = cJSON_CreateObject();
                 indexer_config_subnode_read(xml, children, subnode, subnode_keypath);
                 cJSON_AddItemToObject(output_json, node[i]->element, subnode);
@@ -99,12 +111,9 @@ void indexer_config_subnode_read(const OS_XML *xml, XML_NODE node, cJSON *output
                     }
                     else
                     {
-                        // Item is not an array. Convert existing item to array and then add the new item to it
-                        existing_item = cJSON_DetachItemFromObject(output_json, node[i]->element);
-                        array_item = cJSON_AddArrayToObject(output_json, node[i]->element);
-                        cJSON_AddItemToArray(array_item, cJSON_CreateString(cJSON_GetStringValue(existing_item)));
-                        cJSON_AddItemToArray(array_item, cJSON_CreateString(node[i]->content));
-                        cJSON_Delete(existing_item);
+                        // Overwrite the existing element.
+                        cJSON_Delete(cJSON_DetachItemFromObject(output_json, node[i]->element));
+                        cJSON_AddStringToObject(output_json, node[i]->element, node[i]->content);
                     }
                 }
                 else

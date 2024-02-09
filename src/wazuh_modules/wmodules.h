@@ -218,7 +218,6 @@ wmodule * wm_find_module(const char * name);
  *
  * Run a command into a module structure, not in the same thread.
  * Query format: <module name> <command>
- * Example: "vulnerability-detector run_now"
  *
  * @param query Command query
  * @param output Output payload

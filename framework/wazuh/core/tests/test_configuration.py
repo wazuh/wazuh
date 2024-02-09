@@ -514,7 +514,8 @@ def test_write_ossec_conf_exceptions():
         [{configuration.GLOBAL_KEY: {configuration.UPDATE_CHECK_OSSEC_FIELD: 'yes'}}, True],
         [{configuration.GLOBAL_KEY: {configuration.UPDATE_CHECK_OSSEC_FIELD: 'no'}}, False],
         [{configuration.GLOBAL_KEY: {}}, True],
-        [{}, True]
+        [{}, True],
+        [{'ossec_config': {}}, True]
     )
 )
 @patch('wazuh.core.configuration.get_ossec_conf')
@@ -526,3 +527,54 @@ def test_update_check_is_enabled(get_ossec_conf_mock, update_check_config, expec
     get_ossec_conf_mock.return_value = update_check_config
 
     assert configuration.update_check_is_enabled() == expected
+
+
+@pytest.mark.parametrize("error_id, value", [
+    (1101, None),
+    (1102, None),
+    (1103, None),
+    (1106, True)
+])
+def test_update_check_is_enabled_exceptions(error_id, value):
+    """Test update_check_is_enabled exception handling."""
+    with patch('wazuh.core.configuration.get_ossec_conf', side_effect=WazuhError(error_id), return_value=value):
+        if value is not None:
+            assert configuration.update_check_is_enabled() == value
+        else:
+            with pytest.raises(WazuhError, match=f'.* {error_id} .*'):
+                configuration.update_check_is_enabled()
+
+
+@pytest.mark.parametrize(
+    'config, expected',
+    (
+        [{configuration.GLOBAL_KEY: {configuration.CTI_URL_FIELD: configuration.DEFAULT_CTI_URL}},
+         configuration.DEFAULT_CTI_URL],
+        [{configuration.GLOBAL_KEY: {configuration.CTI_URL_FIELD: 'https://test-cti.com'}}, 'https://test-cti.com'],
+        [{configuration.GLOBAL_KEY: {}}, configuration.DEFAULT_CTI_URL],
+        [{}, configuration.DEFAULT_CTI_URL],
+        [{'ossec_config': {}}, configuration.DEFAULT_CTI_URL]
+    )
+)
+@patch('wazuh.core.configuration.get_ossec_conf')
+def test_get_cti_url(get_ossec_conf_mock, config, expected):
+    """Check that get_cti_url function returns the expected value, based on the CTI_URL_FIELD."""
+    get_ossec_conf_mock.return_value = config
+
+    assert configuration.get_cti_url() == expected
+
+
+@pytest.mark.parametrize("error_id, value", [
+    (1101, None),
+    (1102, None),
+    (1103, None),
+    (1106, configuration.DEFAULT_CTI_URL)
+])
+def test_get_cti_url_exceptions(error_id, value):
+    """Test get_cti_url exception handling."""
+    with patch('wazuh.core.configuration.get_ossec_conf', side_effect=WazuhError(error_id), return_value=value):
+        if value is not None:
+            assert configuration.get_cti_url() == value
+        else:
+            with pytest.raises(WazuhError, match=f'.* {error_id} .*'):
+                configuration.get_cti_url()

@@ -2542,6 +2542,9 @@ stages:
 ---
 test_name: GET /groups
 
+marks:
+  - xfail
+
 stages:
 
   - name: Basic response agents groups

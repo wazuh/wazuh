@@ -13,6 +13,12 @@ sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_tools
 
 
+SUPPORTED_REGIONS = (
+    'ap-northeast-1', 'ap-northeast-2', 'ap-south-1', 'ap-southeast-2', 'eu-central-1', 'eu-north-1', 'eu-west-1',
+    'eu-west-2', 'us-east-1', 'us-east-2', 'us-west-1', 'us-west-2'
+)
+
+
 class AWSInspector(aws_service.AWSService):
     """
     Class for getting AWS Inspector logs
@@ -137,3 +143,16 @@ class AWSInspector(aws_service.AWSService):
             'retain_db_records': self.retain_db_records})
         # close connection with DB
         self.close_db()
+
+    @staticmethod
+    def check_region(region: str) -> None:
+        """
+        Check if the region is supported.
+        
+        Parameters
+        ----------
+        region : str
+            AWS region.
+        """
+        if region not in SUPPORTED_REGIONS:
+            raise ValueError(f"Unsupported region '{region}'")

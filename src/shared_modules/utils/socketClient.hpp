@@ -54,7 +54,7 @@ private:
         }
         catch (const std::exception& e)
         {
-            std::cerr << "Failed to send pending messages: " << e.what() << std::endl;
+            // Error sending pending messages
         }
     }
 
@@ -207,7 +207,7 @@ public:
             }
             catch (const std::exception& e)
             {
-                std::cerr << "Failed to connect to socket: " << e.what() << std::endl;
+                // Failure to connect to socket
                 delay = std::min(delay * 2, MAX_DELAY);
             }
         } while (!m_cv.wait_for(lock, std::chrono::seconds(delay), [&]() { return m_shouldStop.load(); }));
@@ -222,7 +222,7 @@ public:
         }
         catch (const std::exception& e)
         {
-            std::cerr << "Failed to send message: " << e.what() << std::endl;
+            // Error sending message
             m_epoll->modifyDescriptor(m_socket->fileDescriptor(), EPOLLIN | EPOLLOUT);
         }
     }
