@@ -60,6 +60,7 @@ static const char *CLOUDWATCHLOGS_SERVICE_TYPE = "cloudwatchlogs";
 static const char *CISCO_UMBRELLA_BUCKET_TYPE = "cisco_umbrella";
 static const char *SECURITY_LAKE_SUBSCRIBER_TYPE = "security_lake";
 static const char *BUCKETS_SUBSCRIBER_TYPE = "buckets";
+static const char *SECURITY_HUB_SUBSCRIBER_TYPE = "security_hub";
 
 static const char *AUTHENTICATION_OPTIONS_URL = "https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html";
 static const char *DEPRECATED_MESSAGE = "Deprecated tag <%s> found at module '%s'. This tag was deprecated in %s; please use a different authentication method. Check %s for more information.";
@@ -540,12 +541,12 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             // type is an attribute of the subscriber tag
             if (!strcmp(*nodes[i]->attributes, XML_SUBSCRIBER_TYPE)) {
                 if (!nodes[i]->values) {
-                    mterror(WM_AWS_LOGTAG, "Empty subscriber type. Valid ones are '%s' or '%s'", SECURITY_LAKE_SUBSCRIBER_TYPE, BUCKETS_SUBSCRIBER_TYPE);
+                    mterror(WM_AWS_LOGTAG, "Empty subscriber type. Valid ones are '%s' or '%s'", SECURITY_LAKE_SUBSCRIBER_TYPE, BUCKETS_SUBSCRIBER_TYPE, SECURITY_HUB_SUBSCRIBER_TYPE);
                     return OS_INVALID;
-                } else if (!strcmp(*nodes[i]->values, SECURITY_LAKE_SUBSCRIBER_TYPE) || !strcmp(*nodes[i]->values, BUCKETS_SUBSCRIBER_TYPE)) {
+                } else if (!strcmp(*nodes[i]->values, SECURITY_LAKE_SUBSCRIBER_TYPE) || !strcmp(*nodes[i]->values, BUCKETS_SUBSCRIBER_TYPE) || !strcmp(*nodes[i]->values, SECURITY_HUB_SUBSCRIBER_TYPE)) {
                     os_strdup(*nodes[i]->values, cur_subscriber->type);
                 } else {
-                    mterror(WM_AWS_LOGTAG, "Invalid subscriber type '%s'. Valid ones are '%s' or '%s'", *nodes[i]->values, SECURITY_LAKE_SUBSCRIBER_TYPE, BUCKETS_SUBSCRIBER_TYPE);
+                    mterror(WM_AWS_LOGTAG, "Invalid subscriber type '%s'. Valid ones are '%s' or '%s'", *nodes[i]->values, SECURITY_LAKE_SUBSCRIBER_TYPE, BUCKETS_SUBSCRIBER_TYPE, SECURITY_HUB_SUBSCRIBER_TYPE);
                     return OS_INVALID;
                 }
             } else {
