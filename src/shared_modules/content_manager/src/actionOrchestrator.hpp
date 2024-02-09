@@ -182,7 +182,7 @@ private:
         }
 
         // Store last file hash.
-        const auto lastDownloadedFileHash {spUpdaterContext->spUpdaterBaseContext->downloadedFileHash};
+        const std::string lastDownloadedFileHash {spUpdaterContext->spUpdaterBaseContext->downloadedFileHash};
 
         // Run the updater chain
         m_spUpdaterOrchestration->handleRequest(spUpdaterContext);

@@ -21,6 +21,7 @@
 #include <rocksdb/utilities/transaction_db.h>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace Utils
@@ -41,7 +42,7 @@ namespace Utils
         virtual void deleteAll() = 0;
         virtual void flush() = 0;
         virtual std::vector<std::string> getAllColumns() = 0;
-        virtual RocksDBIterator seek(std::string_view key, const std::string& columnName = "") = 0;
+        virtual RocksDBIterator seek(std::string_view key, const std::string& columnName = "") = 0; // NOLINT
 
         virtual ~IRocksDBWrapper() = default;
     };
@@ -53,9 +54,9 @@ namespace Utils
     class RocksDBWrapper : public IRocksDBWrapper
     {
     public:
-        explicit RocksDBWrapper(const std::string& dbPath, const bool enableWal = true)
+        explicit RocksDBWrapper(std::string dbPath, const bool enableWal = true)
             : m_enableWal {enableWal}
-            , m_path {dbPath}
+            , m_path {std::move(dbPath)}
         {
             rocksdb::Options options;
             options.create_if_missing = true;
@@ -298,7 +299,7 @@ namespace Utils
          * @param key Key to seek.
          * @return RocksDBIterator Iterator to the database.
          */
-        RocksDBIterator seek(std::string_view key, const std::string& columnName = "") override
+        RocksDBIterator seek(std::string_view key, const std::string& columnName = "") override // NOLINT
         {
             return {std::shared_ptr<rocksdb::Iterator>(
                         m_db->NewIterator(rocksdb::ReadOptions(), getColumnFamilyHandle(columnName))),
@@ -311,9 +312,11 @@ namespace Utils
          */
         RocksDBIterator begin(const std::string& columnName = "")
         {
-            return RocksDBIterator {std::shared_ptr<rocksdb::Iterator>(
-                                        m_db->NewIterator(rocksdb::ReadOptions(), getColumnFamilyHandle(columnName))),
-                                    ""};
+            RocksDBIterator rocksDBIterator(std::shared_ptr<rocksdb::Iterator>(m_db->NewIterator(
+                                                rocksdb::ReadOptions(), getColumnFamilyHandle(columnName))),
+                                            "");
+            rocksDBIterator.begin();
+            return rocksDBIterator;
         }
 
         /**
@@ -441,7 +444,7 @@ namespace Utils
          *
          * @return std::vector<std::string>
          */
-        std::vector<std::string> getAllColumns()
+        std::vector<std::string> getAllColumns() override
         {
             std::vector<std::string> columnsNames;
             rocksdb::Options options;
@@ -738,7 +741,7 @@ namespace Utils
          * @param columnName Column family name.
          * @return RocksDBIterator  RocksDBIterator Iterator to the database.
          */
-        RocksDBIterator seek(std::string_view key, const std::string& columnName = "") override
+        RocksDBIterator seek(std::string_view key, const std::string& columnName = "") override // NOLINT
         {
             return m_dbWrapper->seek(key, columnName);
         }
