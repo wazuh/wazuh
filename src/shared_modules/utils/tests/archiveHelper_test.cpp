@@ -18,7 +18,6 @@ const auto BASE_PATH {std::filesystem::current_path() / "input_files/archiveHelp
 const auto OUTPUT_DIR_PATH {std::filesystem::current_path() / "output_dir"};
 const auto OUTPUT_NESTED_DIRS_PATH {std::filesystem::current_path() / "output_dir/output_subdir"};
 
-const auto COMPRESSED_SINGLE_FILE_PATH {BASE_PATH / "content_example1.json.tar"};
 const auto COMPRESSED_MULTIPLE_FILES_PATH {BASE_PATH / "content_examples.tar"};
 const auto COMPRESSED_DIR_PATH {BASE_PATH / "content_dir.tar"};
 const auto BASE_EXAMPLE1_PATH {BASE_PATH / "content_example1.json"};
