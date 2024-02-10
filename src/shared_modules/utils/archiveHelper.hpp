@@ -17,6 +17,26 @@
 #include "customDeleter.hpp"
 #include <filesystem>
 
+template<typename F, typename G, F func1, G func2>
+struct Deleter
+{
+    template<typename T>
+    constexpr void operator()(T* arg) const
+    {
+        func1(arg);
+        func2(arg);
+    }
+};
+
+using ArchiveReadPtr = std::unique_ptr<
+    struct archive,
+    Deleter<decltype(&archive_read_close), decltype(&archive_read_free), archive_read_close, archive_read_free>>;
+using ArchiveWritePtr = std::unique_ptr<
+    struct archive,
+    Deleter<decltype(&archive_write_close), decltype(&archive_write_free), archive_write_close, archive_write_free>>;
+
+using ArchiveEntryPtr = std::unique_ptr<struct archive_entry>;
+
 namespace Utils
 {
     /**
@@ -26,7 +46,7 @@ namespace Utils
     class ArchiveHelper
     {
     private:
-        static int copy_data(struct archive* ar, struct archive* aw)
+        static void copyData(struct archive* ar, struct archive* aw)
         {
             int r;
             const void* buff;
@@ -37,14 +57,12 @@ namespace Utils
             {
                 r = archive_read_data_block(ar, &buff, &size, &offset);
                 if (r == ARCHIVE_EOF)
-                    return (ARCHIVE_OK);
+                    return;
                 if (r != ARCHIVE_OK)
-                    return (r);
-                r = archive_write_data_block(aw, buff, size, offset);
-                if (r != ARCHIVE_OK)
+                    throw std::runtime_error("Couldn't read file");
+                if (archive_write_data_block(aw, buff, size, offset) != ARCHIVE_OK)
                 {
-                    fprintf(stderr, "archive_write_data_block(): %s", archive_error_string(aw));
-                    return (r);
+                    throw std::runtime_error(archive_error_string(aw));
                 }
             }
         }
@@ -65,18 +83,15 @@ namespace Utils
                                const std::vector<std::string>& extractOnly = {},
                                int flags = ARCHIVE_EXTRACT_UNLINK)
         {
-            struct archive* a;
-            struct archive* ext;
             struct archive_entry* entry;
             int r;
+            ArchiveReadPtr archiveRead(archive_read_new());
+            ArchiveWritePtr archiveWrite(archive_write_disk_new());
 
-            a = archive_read_new();
-            ext = archive_write_disk_new();
+            archive_write_disk_set_options(archiveRead.get(), flags);
+            archive_read_support_format_tar(archiveRead.get());
 
-            archive_write_disk_set_options(ext, flags);
-            archive_read_support_format_tar(a);
-
-            r = archive_read_open_filename(a, filename.c_str(), 0);
+            r = archive_read_open_filename(archiveRead.get(), filename.c_str(), 0);
 
             if (r != ARCHIVE_OK)
             {
@@ -85,13 +100,12 @@ namespace Utils
 
             for (;;)
             {
-                r = archive_read_next_header(a, &entry);
+                r = archive_read_next_header(archiveRead.get(), &entry);
                 if (r == ARCHIVE_EOF)
                     break;
                 if (r != ARCHIVE_OK)
                 {
-                    perror("Couldn't read file");
-                    exit(1);
+                    throw std::runtime_error("Couldn't read file");
                 }
 
                 std::filesystem::path outputDir(std::filesystem::current_path() / output /
@@ -107,29 +121,22 @@ namespace Utils
                     extractOnly.empty())
                 {
                     archive_entry_set_pathname(entry, outputDir.c_str());
-                    r = archive_write_header(ext, entry);
+                    r = archive_write_header(archiveWrite.get(), entry);
                     if (r != ARCHIVE_OK)
                     {
-                        fprintf(stderr, "archive_write_header(): %s", archive_error_string(ext));
+                        throw std::runtime_error(archive_error_string(archiveWrite.get()));
                     }
                     else
                     {
-                        copy_data(a, ext);
-                        r = archive_write_finish_entry(ext);
+                        copyData(archiveRead.get(), archiveWrite.get());
+                        r = archive_write_finish_entry(archiveWrite.get());
                         if (r != ARCHIVE_OK)
                         {
-                            fprintf(stderr, "archive_write_finish_entry(): %s", archive_error_string(ext));
-                            exit(1);
+                            throw std::runtime_error(archive_error_string(archiveWrite.get()));
                         }
                     }
                 }
             }
-
-            archive_read_close(a);
-            archive_read_free(a);
-
-            archive_write_close(ext);
-            archive_write_free(ext);
         }
     };
 } // namespace Utils
