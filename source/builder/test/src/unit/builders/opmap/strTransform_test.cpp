@@ -341,6 +341,7 @@ INSTANTIATE_TEST_SUITE_P(
              {makeRef("ref")},
              FAILURE(customRefExpected())),
         MapT(R"({"ref": null})", opBuilderHelperStringFromHexa, {makeRef("ref")}, FAILURE(customRefExpected())),
+        MapT(R"({"ref": "FF"})", opBuilderHelperStringFromHexa, {makeRef("ref")}, FAILURE(customRefExpected())),
         /*** Hex to Number*/
         MapT(R"({"ref": "48656C"})",
              opBuilderHelperHexToNumber,

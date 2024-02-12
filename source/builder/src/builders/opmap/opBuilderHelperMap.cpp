@@ -748,7 +748,8 @@ MapOp opBuilderHelperStringFromHexa(const std::vector<OpArg>& opArgs, const std:
     const std::string failureTrace2 {fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, "array", traceName, hexRef.dotPath())};
     const std::string failureTrace3 {
         fmt::format("[{}] -> Failure: Hexa string has not an even quantity of digits", traceName)};
-    const std::string failureTrace4 {fmt::format("[{}] -> Failure: ", traceName)};
+    const std::string failureTrace4 {fmt::format("{} -> Failure: ", traceName)};
+    const auto failureTrace5 = fmt::format("{} -> Found non ascii character", traceName);
 
     // Return Op
     return [=, runState = buildCtx->runState(), sourceField = hexRef.jsonPath()](base::ConstEvent event) -> MapResult
@@ -791,6 +792,11 @@ MapOp opBuilderHelperStringFromHexa(const std::vector<OpArg>& opArgs, const std:
                 RETURN_FAILURE(runState,
                                json::Json {},
                                failureTrace4 + fmt::format("Character '{}' is not a valid hexa digit", err));
+            }
+
+            if (chr < 0 || chr > 127)
+            {
+                RETURN_FAILURE(runState, json::Json {}, failureTrace5);
             }
 
             strASCII[iASCII] = chr;
