@@ -186,7 +186,7 @@ list(APPEND shared_tests_flags " ")
 endif()
 
 list(APPEND shared_tests_names "test_binaries_op")
-set(BINARIES_OP_BASE_FLAGS "-Wl,--wrap,IsFile")
+set(BINARIES_OP_BASE_FLAGS "-Wl,--wrap,IsFile -Wl,--wrap,wfopen")
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "${BINARIES_OP_BASE_FLAGS} -Wl,--wrap,get_windows_file_time_epoch,--wrap,mdebug2 \
                                 -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
@@ -228,12 +228,12 @@ endif()
 list(APPEND shared_tests_names "test_syscheck_op")
 set(SYSCHECK_OP_BASE_FLAGS "-Wl,--wrap,rmdir_ex -Wl,--wrap,wreaddir -Wl,--wrap,getpwuid_r -Wl,--wrap,w_getgrgid \
                             -Wl,--wrap,wstr_split -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP \
-                            -Wl,--wrap,sysconf -Wl,--wrap,win_strerror ${DEBUG_OP_WRAPPERS}")
+                            -Wl,--wrap,sysconf -Wl,--wrap,win_strerror -Wl,--wrap,wfopen ${DEBUG_OP_WRAPPERS}")
 if(${TARGET} STREQUAL "winagent")
     # cJSON_CreateArray@0 instead of cJSON_CreateArray since linker will be looking for cdecl forma
     # More info at: (https://devblogs.microsoft.com/oldnewthing/20040108-00/?p=41163)
-    list(APPEND shared_tests_flags "${SYSCHECK_OP_BASE_FLAGS} -Wl,--wrap=syscom_dispatch \
-                                    -Wl,--wrap,cJSON_CreateArray@0 -Wl,--wrap,cJSON_CreateObject@0")
+    list(APPEND shared_tests_flags "${SYSCHECK_OP_BASE_FLAGS} -Wl,--wrap=syscom_dispatch -Wl,--wrap=is_fim_shutdown \
+                                    -Wl,--wrap,cJSON_CreateArray@0 -Wl,--wrap,cJSON_CreateObject@0 -Wl,--wrap=Start_win32_Syscheck")
 else()
     list(APPEND shared_tests_flags "${SYSCHECK_OP_BASE_FLAGS} -Wl,--wrap=cJSON_CreateArray,--wrap=cJSON_CreateObject -Wl,--wrap,getpid")
 endif()
@@ -296,7 +296,7 @@ endif()
 
 list(APPEND shared_tests_names "test_url")
 list(APPEND shared_tests_flags "-Wl,--wrap,curl_slist_free_all -Wl,--wrap,curl_easy_cleanup \
-                                -Wl,--wrap,curl_easy_init -Wl,--wrap,curl_easy_setopt \
+                                -Wl,--wrap,curl_easy_init -Wl,--wrap,curl_easy_setopt -Wl,--wrap,wfopen \
                                 -Wl,--wrap,curl_slist_append -Wl,--wrap,curl_easy_perform \
                                 -Wl,--wrap,curl_easy_getinfo -Wl,--wrap,FileSize ${DEBUG_OP_WRAPPERS}")
 

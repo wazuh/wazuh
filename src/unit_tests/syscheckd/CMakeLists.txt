@@ -158,7 +158,7 @@ endif()
 set(RUN_REALTIME_BASE_FLAGS "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watch -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_file_pattern_search \
                              -Wl,--wrap,read -Wl,--wrap,rbtree_insert -Wl,--wrap,fim_db_init -Wl,--wrap,fim_db_file_update \
                              -Wl,--wrap,W_Vector_insert_unique -Wl,--wrap,send_log_msg  -Wl,--wrap,fim_db_remove_path \
-                             -Wl,--wrap,rbtree_keys -Wl,--wrap,fim_realtime_event -Wl,--wrap=pthread_mutex_lock \
+                             -Wl,--wrap,rbtree_keys -Wl,--wrap,fim_realtime_event -Wl,--wrap=pthread_mutex_lock -Wl,--wrap,wfopen \
                              -Wl,--wrap=pthread_mutex_unlock -Wl,--wrap=getpid -Wl,--wrap=atexit -Wl,--wrap=os_random \
                              -Wl,--wrap,inotify_rm_watch -Wl,--wrap,pthread_rwlock_wrlock -Wl,--wrap,pthread_rwlock_unlock \
                              -Wl,--wrap,fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode -Wl,--wrap,fim_db_get_count_file_entry \
@@ -211,7 +211,7 @@ else()
 endif()
 
 # syscheck.c tests
-set(SYSCHECK_BASE_FLAGS "-Wl,--wrap,fim_db_init -Wl,--wrap,getDefine_Int \
+set(SYSCHECK_BASE_FLAGS "-Wl,--wrap,fim_db_init -Wl,--wrap,getDefine_Int -Wl,--wrap,wfopen \
                          -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
                          -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                          -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
@@ -353,7 +353,7 @@ set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck
                           -Wl,--wrap,HasFilesystem -Wl,--wrap,fim_db_get_path \
                           -Wl,--wrap,delete_target_file -Wl,--wrap,OS_MD5_SHA1_SHA256_File \
                           -Wl,--wrap,seechanges_addfile -Wl,--wrap,fim_db_delete_not_scanned \
-                          -Wl,--wrap,get_group,--wrap,mdebug2 \
+                          -Wl,--wrap,get_group,--wrap,mdebug2 -Wl,--wrap,wfopen \
                           -Wl,--wrap,send_log_msg -Wl,--wrap,IsDir \
                           -Wl,--wrap,DirSize -Wl,--wrap,seechanges_get_diff_path -Wl,--wrap,stat \
                           -Wl,--wrap,fim_file_diff -Wl,--wrap,fim_diff_process_delete_file \

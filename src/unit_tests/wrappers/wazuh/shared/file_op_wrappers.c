@@ -99,13 +99,14 @@ void expect_w_uncompress_gzfile(const char * gzfilesrc, const char * gzfiledst, 
     will_return(__wrap_w_uncompress_gzfile, ret);
 }
 
+FILE *__real_wfopen(const char * path, const char * mode);
 FILE *__wrap_wfopen(const char * path, const char * mode) {
     if(test_mode) {
         check_expected(path);
         check_expected(mode);
         return mock_type(FILE *);
     } else {
-        return wfopen(path, mode);
+        return __real_wfopen(path, mode);
     }
 }
 

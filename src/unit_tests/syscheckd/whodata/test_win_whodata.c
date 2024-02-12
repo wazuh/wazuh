@@ -230,6 +230,7 @@ int test_group_setup(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
+    test_mode = 0;
     ret = Read_Syscheck_Config("../test_syscheck.conf");
 
     SIZE_EVENTS = sizeof(EVT_VARIANT) * NUM_EVENTS;
