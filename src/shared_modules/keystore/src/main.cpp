@@ -12,7 +12,6 @@
 #include "argsParser.hpp"
 #include "homedirHelper.hpp"
 #include "keyStore.hpp"
-#include "opensslWrapper.hpp"
 #include <filesystem>
 
 namespace Log

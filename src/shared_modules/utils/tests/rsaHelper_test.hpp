@@ -9,19 +9,19 @@
  * Foundation.
  */
 
-#ifndef _OPENSSL_WRAPPER_TEST_H
-#define _OPENSSL_WRAPPER_TEST_H
+#ifndef _RSAHELPER_WRAPPER_TEST_H
+#define _RSAHELPER_WRAPPER_TEST_H
 
 #include "gtest/gtest.h"
 
-class OpenSSLWrapperTest : public ::testing::Test
+class RSAHelperTest : public ::testing::Test
 {
 protected:
-    OpenSSLWrapperTest() = default;
-    virtual ~OpenSSLWrapperTest() = default;
+    RSAHelperTest() = default;
+    virtual ~RSAHelperTest() = default;
 
     void SetUp() override;
     void TearDown() override;
 };
 
-#endif //_OPENSSL_WRAPPER_TEST_H
+#endif //_RSAHELPER_WRAPPER_TEST_H

@@ -9,15 +9,12 @@
  * Foundation.
  */
 
-#ifndef _RSA_HELPER_HPP
-#define _RSA_HELPER_HPP
+#ifndef _RSAHELPER_WRAPPER_HPP
+#define _RSAHELPER_WRAPPER_HPP
 
 #include "defer.hpp"
-<<<<<<< HEAD:src/shared_modules/utils/rsaHelper.hpp
 #include <array>
-#include <openssl/pem.h>
-#include <openssl/rsa.h>
-#include <osPrimitives.hpp>
+#include <openssl/evp.h>
 #include <opensslPrimitives.hpp>
 #include <osPrimitives.hpp>
 #include <stdexcept>
@@ -29,13 +26,13 @@ constexpr int RSA_PUBLIC {1};
 constexpr int RSA_CERT {2};
 
 template<typename T = OpenSSLPrimitives, typename U = OSPrimitives>
-class OpenSSL final
+class RSAHelper final
     : public T
     , public U
 {
 public:
-    explicit OpenSSL() = default;
-    virtual ~OpenSSL() = default;
+    explicit RSAHelper() = default;
+    virtual ~RSAHelper() = default;
 
     /**
      * Encrypts the input vector with the provided key
@@ -53,25 +50,20 @@ public:
         createRSA(rsa, filePath, cert ? RSA_CERT : RSA_PUBLIC);
 
         // Allocate memory for the encryptedValue
-        unsigned char* encryptedValue = (unsigned char*)malloc(T::RSA_size(rsa));
+        auto encryptedValue {std::make_unique<unsigned char[]>(T::RSA_size(rsa))};
 
         // Defered free
-        DEFER(
-            [&]()
-            {
-                T::RSA_free(rsa);
-                free(encryptedValue);
-            });
+        DEFER([&]() { T::RSA_free(rsa); });
 
         const auto encryptedLen = T::RSA_public_encrypt(
-            input.length(), (const unsigned char*)input.data(), encryptedValue, rsa, RSA_PKCS1_PADDING);
+            input.length(), (const unsigned char*)input.data(), &encryptedValue[0], rsa, RSA_PKCS1_PADDING);
 
         if (encryptedLen < 0)
         {
             throw std::runtime_error("RSA encryption failed");
         }
 
-        output = std::string(reinterpret_cast<char const*>(encryptedValue), encryptedLen);
+        output = std::string(reinterpret_cast<char const*>(&encryptedValue[0]), encryptedLen);
 
         return encryptedLen;
     }
@@ -124,10 +116,10 @@ private:
      * @param rsaPublicKey  The RSA structure for the public key
      * @param certFile      The file pointer to the certificate
      */
-    static void getPubKeyFromCert(RSA*& rsaPublicKey, FILE* certFile)
+    void getPubKeyFromCert(RSA*& rsaPublicKey, FILE* certFile)
     {
         // Read the X.509 certificate from the file
-        X509* x509Certificate = PEM_read_X509(certFile, NULL, NULL, NULL);
+        X509* x509Certificate = T::PEM_read_X509(certFile, NULL, NULL, NULL);
 
         if (!x509Certificate)
         {
@@ -135,22 +127,23 @@ private:
         }
 
         // Defered free
-        DEFER([x509Certificate]() { X509_free(x509Certificate); });
+        DEFER([&]() { T::X509_free(x509Certificate); });
 
         // Extract the public key from the X.509 certificate
-        EVP_PKEY* evpPublicKey = X509_get_pubkey(x509Certificate);
+        EVP_PKEY* evpPublicKey = T::X509_get_pubkey(x509Certificate);
+
+        DEFER([&]() { T::EVP_PKEY_free(evpPublicKey); });
 
         if (!evpPublicKey)
         {
             throw std::runtime_error("Error reading public key");
         }
-        DEFER([evpPublicKey]() { EVP_PKEY_free(evpPublicKey); });
 
         // Check the type of key
         if (EVP_PKEY_base_id(evpPublicKey) == EVP_PKEY_RSA)
         {
             // Extract RSA structure from the EVP_PKEY
-            rsaPublicKey = EVP_PKEY_get1_RSA(evpPublicKey);
+            rsaPublicKey = T::EVP_PKEY_get1_RSA(evpPublicKey);
 
             if (!rsaPublicKey)
             {
@@ -170,12 +163,12 @@ private:
      * @param filePath  The path to the file key string to encrypt the value
      * @param type      The type of file (RSA_PRIVATE, RSA_PUBLIC, RSA_CERT)
      */
-    static void createRSA(RSA*& rsaKey, const std::string& filePath, const int type)
+    void createRSA(RSA*& rsaKey, const std::string& filePath, const int type)
     {
         FILE* keyFile = U::fopen(filePath.c_str(), "r");
         if (!keyFile)
         {
-            throw std::runtime_error("Failed to open RSA file");
+            throw std::runtime_error("Failed to open RSA file: " + filePath);
         }
 
         // Defered close
@@ -184,14 +177,14 @@ private:
         switch (type)
         {
             case RSA_PRIVATE:
-                rsaKey = PEM_read_RSAPrivateKey(keyFile, NULL, NULL, NULL);
+                rsaKey = T::PEM_read_RSAPrivateKey(keyFile, NULL, NULL, NULL);
                 if (!rsaKey)
                 {
                     throw std::runtime_error("Error reading RSA private key");
                 }
                 break;
             case RSA_PUBLIC:
-                rsaKey = PEM_read_RSA_PUBKEY(keyFile, NULL, NULL, NULL);
+                rsaKey = T::PEM_read_RSA_PUBKEY(keyFile, NULL, NULL, NULL);
                 if (!rsaKey)
                 {
                     throw std::runtime_error("Error reading RSA public key");
@@ -203,4 +196,4 @@ private:
     }
 };
 
-#endif // _OPENSSL_WRAPPER_HPP
+#endif // _RSAHELPER_WRAPPER_HPP

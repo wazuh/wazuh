@@ -15,15 +15,15 @@
 #include <string>
 
 #include "loggerHelper.h"
-#include "opensslWrapper.hpp"
 #include "rocksDBWrapper.hpp"
+#include "rsaHelper.hpp"
 
 constexpr auto DATABASE_PATH {"queue/keystore"};
 constexpr auto PRIVATE_KEY_FILE {"etc/sslmanager.key"};
 constexpr auto CERTIFICATE_FILE {"etc/sslmanager.cert"};
 
 constexpr auto KS_NAME {"keystore"};
-template<typename TOSSLPrimitive = OpenSSL<>>
+template<typename TRSAPrimitive = RSAHelper<>>
 class TKeystore final
 {
 
@@ -47,7 +47,7 @@ public:
             return;
         }
         // Encrypt value
-        TOSSLPrimitive().rsaEncrypt(CERTIFICATE_FILE, value, encryptedValue, true);
+        TRSAPrimitive().rsaEncrypt(CERTIFICATE_FILE, value, encryptedValue, true);
 
         // Insert to DB
         Utils::RocksDBWrapper keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
@@ -87,7 +87,7 @@ public:
                 return;
             }
             // Decrypt value
-            TOSSLPrimitive().rsaDecrypt(PRIVATE_KEY_FILE, encryptedValue, value);
+            TRSAPrimitive().rsaDecrypt(PRIVATE_KEY_FILE, encryptedValue, value);
         }
     }
 };
