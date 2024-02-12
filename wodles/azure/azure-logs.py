@@ -841,11 +841,16 @@ def send_message(message: str):
     try:
         msg_tmp = loads(message)
         # Copy the status fields into a azureSignInStatus field and put a dummy keyword in status field
-        # only if we have an signIn log from Microsoft Entra ID. Otherwise, the log remain unmodified
+        # only if we have an signIn log from Microsoft Entra ID. Otherwise, the log remains unmodified.
         if msg_tmp['azure_aad_tag'] == 'azure-active_directory_signIns':
             msg_tmp['azureSignInStatus'] = msg_tmp["status"]
             msg_tmp['status'] = 'None'
         msg = dumps(msg_tmp)
+        encoded_msg = f'{SOCKET_HEADER}{msg}'.encode(errors='replace')
+
+        # Logs warning if event is bigger than max size
+        if len(encoded_msg) > MAX_EVENT_SIZE:
+            logging.warning(f"WARNING: Event size exceeds the maximum allowed limit of {MAX_EVENT_SIZE} bytes.")
         s.connect(ANALYSISD)
         s.send(encoded_msg)
     except socket_error as e:
