@@ -26,7 +26,14 @@ void Worker::start()
                 {
                     auto& [event, opt, callback] = *testEvent;
                     auto output = m_tester->ingestTest(std::move(event), opt);
-                    callback(std::move(output));
+                    try
+                    {
+                        callback(std::move(output));
+                    }
+                    catch (const std::exception& e)
+                    {
+                        LOG_ERROR("Error when executing API callback: ", e.what());
+                    }
                 }
 
                 // Process production queue
