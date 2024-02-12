@@ -209,8 +209,8 @@ def arg_valid_iam_role_duration(arg_string):
 
     # Convert to integer and check range
     num_seconds = int(arg_string)
-    if not (900 <= num_seconds <= 3600):
-        raise argparse.ArgumentTypeError("Invalid session duration specified. Value must be between 900 and 3600.")
+    if not (900 <= num_seconds <= 43200):
+        raise argparse.ArgumentTypeError("Invalid session duration specified. Value must be between 900 and 43200.")
 
     return num_seconds
 
