@@ -21,6 +21,11 @@ base::Expression normalizeBuilder(const json::Json& definition, const std::share
     }
 
     auto blocks = definition.getArray().value();
+    if (blocks.empty())
+    {
+        throw std::runtime_error(fmt::format("Stage '{}' expects at least one block", syntax::asset::NORMALIZE_KEY));
+    }
+
     std::vector<base::Expression> blockExpressions;
     // Normalize blocks
     std::transform(
