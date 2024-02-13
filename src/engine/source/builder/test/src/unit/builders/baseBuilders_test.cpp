@@ -1,5 +1,7 @@
 #include "baseBuilders_test.hpp"
 
+#include "expressionCmp.hpp"
+
 namespace filterbuildtest
 {
 TEST_P(FilterBuilderTest, Builds)
@@ -289,3 +291,25 @@ TEST_P(TransformOperationWithDepsTest, Operates)
 }
 
 } // namespace transformoperatestest
+
+namespace stagebuildtest
+{
+TEST_P(StageBuilderTest, Builds)
+{
+    auto [definition, builder, expected] = GetParam();
+    auto jDefinition = json::Json(definition.c_str());
+
+    if (expected)
+    {
+        auto expectedExpr = expected.succCase()(*mocks);
+        base::Expression got;
+        ASSERT_NO_THROW(got = builder(jDefinition, mocks->ctx));
+        builder::test::assertEqualExpr(expectedExpr, got);
+    }
+    else
+    {
+        expected.failCase()(*mocks);
+        ASSERT_THROW(builder(jDefinition, mocks->ctx), std::exception);
+    }
+}
+} // namespace stagebuildtest

@@ -155,6 +155,10 @@ add_executable(builder_utest
     ${UNIT_SRC_DIR}/builders/optransform/array_test.cpp
     ${UNIT_SRC_DIR}/builders/optransform/objectGet_test.cpp
 
+    # Stage Builders
+    ${UNIT_SRC_DIR}/builders/stage/check_test.cpp
+    ${UNIT_SRC_DIR}/builders/stage/map_test.cpp
+
 )
 target_include_directories(builder_utest PUBLIC ${BUILDER_PUB_INCS} PRIVATE ${BUILDER_PRI_INCS} ${TEST_SRC_DIR} ${UNIT_SRC_DIR})
 target_link_libraries(builder_utest
