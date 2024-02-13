@@ -7,14 +7,19 @@
 
 #include "builders/types.hpp"
 #include "mockBuildCtx.hpp"
+#include "mockRegistry.hpp"
+
+#include <defs/mockDefinitions.hpp>
 #include <schemf/mockSchema.hpp>
 #include <schemval/mockValidator.hpp>
 
 using namespace base::test;
 using namespace builder::builders;
+using namespace builder::mocks;
 using namespace builder::builders::mocks;
 using namespace schemf::mocks;
 using namespace schemval::mocks;
+using namespace defs::mocks;
 
 const static auto IGNORE_MAP_RESULT = json::Json("null");
 
@@ -33,6 +38,8 @@ struct BuildersMocks
     std::shared_ptr<const RunState> runState;
     std::shared_ptr<MockSchema> schema;
     std::shared_ptr<MockValidator> validator;
+    std::shared_ptr<MockMetaRegistry<OpBuilderEntry, StageBuilder>> registry;
+    std::shared_ptr<MockDefinitions> definitions;
     Context context;
 };
 
@@ -48,6 +55,8 @@ protected:
         mocks->runState = std::make_shared<const RunState>();
         mocks->schema = std::make_shared<MockSchema>();
         mocks->validator = std::make_shared<MockValidator>();
+        mocks->registry = MockMetaRegistry<OpBuilderEntry, StageBuilder>::createMock();
+        mocks->definitions = std::make_shared<MockDefinitions>();
 
         ON_CALL(*mocks->ctx, context()).WillByDefault(testing::ReturnRef(mocks->context));
         ON_CALL(*mocks->ctx, runState()).WillByDefault(testing::Return(mocks->runState));
@@ -61,6 +70,10 @@ protected:
         mocks->schema.reset();
         mocks->runState.reset();
         mocks->ctx.reset();
+        mocks->runState.reset();
+        mocks->validator.reset();
+        mocks->registry.reset();
+        mocks->definitions.reset();
         mocks.reset();
     }
 
@@ -255,5 +268,152 @@ class TransformOperationWithDepsTest
 {
 };
 } // namespace transformoperatestest
+
+template<typename Builder>
+auto expectFilterHelper(const std::string& name, Builder builder)
+{
+    return [=](const BuildersMocks& mocks)
+    {
+        const auto& innerRegistry = mocks.registry->getRegistry<Builder>();
+        std::shared_ptr<MockBuildCtx> ctx = std::make_shared<MockBuildCtx>();
+        EXPECT_CALL(*mocks.ctx, clone()).WillOnce(testing::Return(ctx));
+
+        EXPECT_CALL(*ctx, context()).WillOnce(testing::ReturnRefOfCopy(mocks.context));
+        EXPECT_CALL(*ctx, validator()).Times(testing::AtLeast(1)).WillRepeatedly(testing::ReturnRef(*mocks.validator));
+        EXPECT_CALL(*mocks.validator, validate(testing::_, testing::_))
+            .Times(testing::AtLeast(1))
+            .WillRepeatedly(testing::Return(base::noError()));
+
+        EXPECT_CALL(*mocks.ctx, registry()).WillOnce(testing::ReturnRef(*mocks.registry));
+        EXPECT_CALL(innerRegistry, get(name)).WillOnce(testing::Return(builder));
+
+        return None {};
+    };
+}
+
+template<typename Builder>
+auto expectMapHelper(const std::string& name, Builder builder)
+{
+    return [=](const BuildersMocks& mocks)
+    {
+        const auto& innerRegistry = mocks.registry->getRegistry<Builder>();
+        std::shared_ptr<MockBuildCtx> ctx = std::make_shared<MockBuildCtx>();
+        EXPECT_CALL(*mocks.ctx, clone()).WillOnce(testing::Return(ctx));
+
+        EXPECT_CALL(*ctx, context()).WillRepeatedly(testing::ReturnRefOfCopy(mocks.context));
+        std::shared_ptr<const MockBuildCtx> constCtx = ctx;
+        EXPECT_CALL(*constCtx, context()).WillRepeatedly(testing::ReturnRefOfCopy(mocks.context));
+        EXPECT_CALL(*ctx, validator()).Times(testing::AtLeast(1)).WillRepeatedly(testing::ReturnRef(*mocks.validator));
+        EXPECT_CALL(*mocks.validator, validate(testing::_, testing::_))
+            .Times(testing::AtLeast(1))
+            .WillRepeatedly(testing::Return(base::noError()));
+        EXPECT_CALL(*mocks.validator, getRuntimeValidator(testing::_, testing::_)).WillOnce(testing::Return(nullptr));
+
+        EXPECT_CALL(*mocks.ctx, registry()).WillOnce(testing::ReturnRef(*mocks.registry));
+        EXPECT_CALL(innerRegistry, get(name)).WillOnce(testing::Return(builder));
+
+        return None {};
+    };
+}
+
+template<typename Builder>
+auto expectTransformHelper(const std::string& name, Builder builder)
+{
+    return expectFilterHelper(name, builder);
+}
+
+template<typename Builder>
+struct Helper
+{
+    std::string name;
+    Builder builder;
+};
+
+template<typename Builder, typename... Builders>
+auto expectAnyFilterHelper(Builders... builders)
+{
+    return [=](const BuildersMocks& mocks)
+    {
+        const auto& innerRegistry = mocks.registry->getRegistry<Builder>();
+        std::shared_ptr<MockBuildCtx> ctx = std::make_shared<MockBuildCtx>();
+        EXPECT_CALL(*mocks.ctx, clone()).WillRepeatedly(testing::Return(ctx));
+
+        EXPECT_CALL(*ctx, context()).WillRepeatedly(testing::ReturnRefOfCopy(mocks.context));
+        EXPECT_CALL(*ctx, validator()).Times(testing::AtLeast(1)).WillRepeatedly(testing::ReturnRef(*mocks.validator));
+        EXPECT_CALL(*mocks.validator, validate(testing::_, testing::_))
+            .Times(testing::AtLeast(1))
+            .WillRepeatedly(testing::Return(base::noError()));
+
+        EXPECT_CALL(*mocks.ctx, registry()).WillRepeatedly(testing::ReturnRef(*mocks.registry));
+
+        (
+            [&]()
+            {
+                std::string name = builders.name;
+                Builder builder = builders.builder;
+                EXPECT_CALL(innerRegistry, get(name)).WillOnce(testing::Return(builder));
+            }(),
+            ...);
+
+        return None {};
+    };
+}
+
+template<typename Builder, typename... Builders>
+auto expectAnyMapHelper(Builders... builders)
+{
+    return [=](const BuildersMocks& mocks)
+    {
+        const auto& innerRegistry = mocks.registry->getRegistry<Builder>();
+        std::shared_ptr<MockBuildCtx> ctx = std::make_shared<MockBuildCtx>();
+        EXPECT_CALL(*mocks.ctx, clone()).WillRepeatedly(testing::Return(ctx));
+
+        EXPECT_CALL(*ctx, context()).WillRepeatedly(testing::ReturnRefOfCopy(mocks.context));
+        std::shared_ptr<const MockBuildCtx> constCtx = ctx;
+        EXPECT_CALL(*constCtx, context()).WillRepeatedly(testing::ReturnRefOfCopy(mocks.context));
+        EXPECT_CALL(*ctx, validator()).Times(testing::AtLeast(1)).WillRepeatedly(testing::ReturnRef(*mocks.validator));
+        EXPECT_CALL(*mocks.validator, validate(testing::_, testing::_))
+            .Times(testing::AtLeast(1))
+            .WillRepeatedly(testing::Return(base::noError()));
+        EXPECT_CALL(*mocks.validator, getRuntimeValidator(testing::_, testing::_)).WillRepeatedly(testing::Return(nullptr));
+
+        EXPECT_CALL(*mocks.ctx, registry()).WillRepeatedly(testing::ReturnRef(*mocks.registry));
+
+        (
+            [&]()
+            {
+                std::string name = builders.name;
+                Builder builder = builders.builder;
+                EXPECT_CALL(innerRegistry, get(name)).WillOnce(testing::Return(builder));
+            }(),
+            ...);
+
+        return None {};
+    };
+}
+
+inline auto dummyTerm(const std::string& name)
+{
+    return base::Term<TransformOp>::create(
+        name, [](base::Event e) -> TransformResult { return base::result::makeSuccess(e, ""); });
+}
+
+namespace stagebuildtest
+{
+using SuccessExpected = InnerExpected<base::Expression, const BuildersMocks&>;
+using FailureExpected = InnerExpected<None, const BuildersMocks&>;
+using Expc = Expected<SuccessExpected, FailureExpected>;
+static auto SUCCESS = Expc::success();
+static auto FAILURE = Expc::failure();
+
+using StageT = std::tuple<std::string, StageBuilder, Expc>;
+
+class StageBuilderTest
+    : public BaseBuilderTest
+    , public testing::WithParamInterface<StageT>
+{
+};
+
+} // namespace stagebuildtest
 
 #endif // _BUILDER_TEST_BASEBUILDERS_HPP

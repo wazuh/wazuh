@@ -19,6 +19,11 @@ using namespace builder::builders::detail;
 
 base::Expression checkListBuilder(const std::vector<json::Json>& list, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
+    if (list.empty())
+    {
+        throw std::runtime_error("Stage check cannot be empty");
+    }
+
     std::vector<base::Expression> conditionExpressions;
     std::transform(list.begin(),
                    list.end(),
