@@ -13,7 +13,7 @@ from content_size_limit_asgi.errors import ContentSizeExceeded
 
 from api import configuration
 from api.middlewares import ip_block, ip_stats, access_log, LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT
-from api.api_exception import BlockedIPException
+from api.api_exception import BlockedIPException, MaxRequestsException
 from wazuh.core.utils import get_utc_now
 
 ERROR_CONTENT_TYPE="application/problem+json; charset=utf-8"
@@ -97,14 +97,14 @@ async def unauthorized_error_handler(request: ConnexionRequest,
     return response
 
 
-async def bad_request_error_handler(_: ConnexionRequest, exc: exceptions.BadRequestProblem) -> ConnexionResponse:
+async def bad_request_error_handler(request: ConnexionRequest,
+                                    exc: exceptions.BadRequestProblem) -> ConnexionResponse:
     """Bad Request Exception Error handler.
     
     Parameters
     ----------
-    _ : ConnexionRequest
+    request : ConnexionRequest
         Incomming request.
-        Unnamed parameter not used.
     exc : BadRequestProblem
         Raised exception.
 
@@ -119,19 +119,21 @@ async def bad_request_error_handler(_: ConnexionRequest, exc: exceptions.BadRequ
     }
     if exc.detail:
         problem['detail'] = exc.detail
-    return ConnexionResponse(status_code=exc.status_code,
-                             body=json.dumps(problem),
-                             content_type=ERROR_CONTENT_TYPE)
+    response = ConnexionResponse(status_code=exc.status_code,
+                                 body=json.dumps(problem),
+                                 content_type=ERROR_CONTENT_TYPE)
+    await access_log(request, response, time.time())
+    return response
 
 
-async def http_error_handler(_: ConnexionRequest, exc: exceptions.HTTPException) -> ConnexionResponse:
+async def http_error_handler(request: ConnexionRequest,
+                             exc: exceptions.HTTPException) -> ConnexionResponse:
     """HTTPError Exception Error handler.
     
     Parameters
     ----------
-    _ : ConnexionRequest
+    request : ConnexionRequest
         Incomming request.
-        Unnamed parameter not used.
     exc : HTTPException
         Raised exception.
 
@@ -145,20 +147,21 @@ async def http_error_handler(_: ConnexionRequest, exc: exceptions.HTTPException)
         'title': exc.detail,
         "detail": f"{exc.status_code}: {exc.detail}",
     }
-    return ConnexionResponse(status_code=exc.status_code,
-                             body=json.dumps(problem),
-                             content_type=ERROR_CONTENT_TYPE)
+    response = ConnexionResponse(status_code=exc.status_code,
+                                 body=json.dumps(problem),
+                                 content_type=ERROR_CONTENT_TYPE)
+    await access_log(request, response, time.time())
+    return response
 
 
-async def jwt_error_handler(_: ConnexionRequest, __: JWTError) -> ConnexionResponse:
+async def jwt_error_handler(request: ConnexionRequest, _: JWTError) -> ConnexionResponse:
     """JWTException Error handler.
     
     Parameters
     ----------
-    _ : ConnexionRequest
+    request : ConnexionRequest
         Incomming request.
-        Unnamed parameter not used.
-    __ : JWTError
+    _ : JWTError
         Raised exception.
         Unnamed parameter not used.
 
@@ -171,20 +174,20 @@ async def jwt_error_handler(_: ConnexionRequest, __: JWTError) -> ConnexionRespo
         "title": "Unauthorized",
         "detail": "No authorization token provided"
     }
+    response = ConnexionResponse(status_code=401,
+                                 body=json.dumps(problem),
+                                 content_type=ERROR_CONTENT_TYPE)
+    await access_log(request, response, time.time())
+    return response
 
-    return ConnexionResponse(status_code=401,
-                             body=json.dumps(problem),
-                             content_type=ERROR_CONTENT_TYPE)
 
-
-async def problem_error_handler(_: ConnexionRequest, exc: exceptions.ProblemException) -> ConnexionResponse:
+async def problem_error_handler(request: ConnexionRequest, exc: exceptions.ProblemException) -> ConnexionResponse:
     """ProblemException Error handler.
     
     Parameters
     ----------
-    _ : ConnexionRequest
+    request : ConnexionRequest
         Incomming request.
-        Unnamed parameter not used.
     exc : ProblemException
         Raised exception.
 
@@ -209,19 +212,20 @@ async def problem_error_handler(_: ConnexionRequest, exc: exceptions.ProblemExce
     if not problem['detail']:
         del problem['detail']
 
-    return  ConnexionResponse(body=json.dumps(problem),
-                              status_code=exc.__dict__['status'],
-                              content_type=ERROR_CONTENT_TYPE)
+    response = ConnexionResponse(body=json.dumps(problem),
+                                 status_code=exc.__dict__['status'],
+                                 content_type=ERROR_CONTENT_TYPE)
+    await access_log(request, response, time.time())
+    return response
 
 
-async def content_size_handler(_: ConnexionRequest, exc: ContentSizeExceeded) -> ConnexionResponse:
+async def content_size_handler(request: ConnexionRequest, exc: ContentSizeExceeded) -> ConnexionResponse:
     """Content size error handler.
     
     Parameters
     ----------
-    _ : ConnexionRequest
+    request : ConnexionRequest
         Incomming request.
-        Unnamed parameter not used.
     exc : ContentSizeExceeded
         Raised exception.
 
@@ -234,47 +238,48 @@ async def content_size_handler(_: ConnexionRequest, exc: ContentSizeExceeded) ->
         "title": "Content size exceeded.",
         "detail": str(exc)
     }
+    response = ConnexionResponse(status_code=413,
+                                 body=json.dumps(problem),
+                                 content_type=ERROR_CONTENT_TYPE)
+    await access_log(request, response, time.time())
+    return response
 
-    return ConnexionResponse(status_code=413,
-                             body=json.dumps(problem),
-                             content_type=ERROR_CONTENT_TYPE)
 
-
-async def exceeded_requests_handler(_: ConnexionRequest, exc: exceptions.ProblemException) -> ConnexionResponse:
+async def exceeded_requests_handler(request: ConnexionRequest, exc: MaxRequestsException) -> ConnexionResponse:
     """Exceeded requests error handler.
     
     Parameters
     ----------
-    _ : ConnexionRequest
+    request : ConnexionRequest
         Incomming request.
-        Unnamed parameter not used.
-    exc : ProblemException
+    exc : MaxRequestsException
         Raised exception.
 
     Returns
     -------
     Response
-        Returns status code 429 if the maximum requests per minutes was exceeded.
+        Returns status code 429 - maximum requests per minutes was exceeded.
     """
     problem = {
         "title": exc.title,
-        "error": exc.detail,
+        "detail": exc.detail,
+        "error": exc.ext['code'],
+        "remediation": exc.ext['remediation']
     }
-    response = ConnexionResponse(status_code=429,
+    response = ConnexionResponse(status_code=exc.status,
                                  body=json.dumps(problem),
                                  content_type=ERROR_CONTENT_TYPE)
-    await access_log(exc.ext, response, time.time())
+    await access_log(request, response, time.time())
     return response
 
 
-async def blocked_ip_handler(_: ConnexionRequest, exc: BlockedIPException) -> ConnexionResponse:
+async def blocked_ip_handler(request: ConnexionRequest, exc: BlockedIPException) -> ConnexionResponse:
     """Content size error handler.
     
     Parameters
     ----------
-    _ : ConnexionRequest
+    request : ConnexionRequest
         Incomming request.
-        Unnamed parameter not used.
     exc : ProblemException
         Raised exception.
 
@@ -291,5 +296,5 @@ async def blocked_ip_handler(_: ConnexionRequest, exc: BlockedIPException) -> Co
     response = ConnexionResponse(status_code=403,
                                  body=json.dumps(problem),
                                  content_type=ERROR_CONTENT_TYPE)
-    await access_log(exc.ext, response, time.time())
+    await access_log(request, response, time.time())
     return response
