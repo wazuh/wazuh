@@ -30,6 +30,7 @@ from wazuh.rbac.orm import AuthenticationManager, TokenManager, UserRolesManager
 from wazuh.rbac.preprocessor import optimize_resources
 
 INVALID_TOKEN = "Invalid token"
+EXPIRED_TOKEN = "Token expired"
 pool = ThreadPoolExecutor(max_workers=1)
 
 
@@ -293,7 +294,7 @@ def decode_token(token: str) -> dict:
         current_expiration_time = result['auth_token_exp_timeout']
         if payload['rbac_policies']['rbac_mode'] != current_rbac_mode \
                 or (payload['exp'] - payload['nbf']) != current_expiration_time:
-            raise Unauthorized("Token Expired")
+            raise Unauthorized(EXPIRED_TOKEN)
 
         return payload
     except JWTError as exc:
