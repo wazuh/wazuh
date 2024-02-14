@@ -8,7 +8,7 @@ import time
 import contextlib
 import logging
 import base64
-from jose import jwt
+from jose import jwt, JOSEError
 
 from starlette.requests import Request
 from starlette.responses import Response
@@ -78,19 +78,22 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
     if 'key' in body and '/agents' in path:
         body['key'] = '****'
 
-    # Get the user name from the request. If it is not found in the context, 
-    # try to get it from the headers using basic or bearer authentication methods.
+    # Get the username from the request. If it is not found in the context, try
+    # to get it from the headers using basic or bearer authentication methods.
     user = UNKNOWN_USER_STRING
-    if  headers and not (user:= context.get('user', None)):
+    if headers and not (user := context.get('user', None)):
         auth_type, user_passw = AbstractSecurityHandler.get_auth_header_value(request)
         if auth_type == 'basic':
             user, _ = base64.b64decode(user_passw).decode("latin1").split(":", 1)
         elif auth_type == 'bearer':
-            s = jwt.decode(user_passw, generate_keypair()[1],
-                           algorithms=[JWT_ALGORITHM],
-                           audience='Wazuh API REST',
-                           options={'verify_exp': False})
-            user = s['sub']
+            try:
+                s = jwt.decode(user_passw, generate_keypair()[1],
+                            algorithms=[JWT_ALGORITHM],
+                            audience='Wazuh API REST',
+                            options={'verify_exp': False})
+                user = s['sub']
+            except JOSEError:
+                pass
 
     # Get or create authorization context hash
     hash_auth_context = context.get('token_info', {}).get('hash_auth_context', '')
@@ -100,9 +103,8 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
         hash_auth_context = hashlib.blake2b(json.dumps(body).encode(),
                                             digest_size=16).hexdigest()
 
-    custom_logging(user, host, method,
-                    path, query, body, time_diff, response.status_code,
-                    hash_auth_context=hash_auth_context, headers=headers)
+    custom_logging(user, host, method, path, query, body, time_diff, response.status_code,
+                   hash_auth_context=hash_auth_context, headers=headers)
     if response.status_code == 403 and \
         path in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} and \
             method in {'GET', 'POST'}:
@@ -122,7 +124,7 @@ def check_blocked_ip(request: Request):
     """
     global ip_block, ip_stats
     access_conf = configuration.api_conf['access']
-    block_time=access_conf['block_time']
+    block_time = access_conf['block_time']
     try:
         if get_utc_now().timestamp() - block_time >= ip_stats[request.client.host]['timestamp']:
             del ip_stats[request.client.host]
