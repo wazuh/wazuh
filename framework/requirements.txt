@@ -42,6 +42,7 @@ greenlet==2.0.2
 grpc-google-iam-v1==0.12.3
 grpcio==1.58.0
 hiredis==2.2.3
+httpx==0.26.0
 idna==2.9
 importlib-metadata==3.10.1
 inflection==0.3.1

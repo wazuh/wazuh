@@ -6,7 +6,7 @@ import shutil
 from copy import copy
 from glob import glob
 from logging.handlers import TimedRotatingFileHandler
-from os import chmod, unlink, path, makedirs
+from os import chmod, makedirs, path, unlink
 
 
 class CustomFileRotatingHandler(TimedRotatingFileHandler):

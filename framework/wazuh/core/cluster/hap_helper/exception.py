@@ -12,7 +12,7 @@ class CustomException(Exception):
         return f'({self.PREFIX}{self._code}) {self._message}'
 
 
-class CoordinatorError(CustomException):
+class HAPHelperError(CustomException):
     PREFIX = 'C'
     ERRORS = {100: 'Server status check timed out after adding new servers', 101: 'User configuration is not valid'}
 
