@@ -91,7 +91,6 @@ TEST_F(RSAHelperTest, getPubKeyFromCertMissingPublicKey)
     EXPECT_CALL(rsaHelper, fclose((FILE*)1)).WillOnce(Return(0));
     EXPECT_CALL(rsaHelper, PEM_read_X509((FILE*)1, NULL, NULL, NULL)).WillOnce(Return((X509*)2));
     EXPECT_CALL(rsaHelper, X509_get_pubkey((X509*)2)).WillOnce(ReturnNull());
-    EXPECT_CALL(rsaHelper, EVP_PKEY_free(NULL)).WillOnce(Return());
     EXPECT_CALL(rsaHelper, X509_free((X509*)2)).WillOnce(Return());
 
     try

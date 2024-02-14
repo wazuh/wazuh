@@ -51,7 +51,7 @@ IndexerConnector::IndexerConnector(
     }
 
     // Get index name.
-    auto indexName {config.at("name").get_ref<const std::string&>()};
+    const auto indexName {config.at("name").get_ref<const std::string&>()};
 
     std::string caRootCertificate;
     std::string sslCertificate;
@@ -185,6 +185,7 @@ IndexerConnector::IndexerConnector(
         DATABASE_WORKERS);
 
     m_initializeThread = std::thread(
+        // coverity[copy_constructor_call]
         [=]()
         {
             auto sleepTime = std::chrono::seconds(1);

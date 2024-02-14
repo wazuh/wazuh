@@ -9,8 +9,8 @@
  * Foundation.
  */
 
-#ifndef _RSAHELPER_WRAPPER_HPP
-#define _RSAHELPER_WRAPPER_HPP
+#ifndef _RSAHELPER_HPP
+#define _RSAHELPER_HPP
 
 #include "defer.hpp"
 #include <array>
@@ -50,13 +50,18 @@ public:
         createRSA(rsa, filePath, cert ? RSA_CERT : RSA_PUBLIC);
 
         // Allocate memory for the encryptedValue
-        auto encryptedValue {std::make_unique<unsigned char[]>(T::RSA_size(rsa))};
+        auto encryptedValue {std::vector<unsigned char>()};
+        encryptedValue.reserve(T::RSA_size(rsa));
 
         // Defered free
         DEFER([&]() { T::RSA_free(rsa); });
 
-        const auto encryptedLen = T::RSA_public_encrypt(
-            input.length(), (const unsigned char*)input.data(), &encryptedValue[0], rsa, RSA_PKCS1_PADDING);
+        const auto encryptedLen =
+            T::RSA_public_encrypt(input.length(),
+                                  reinterpret_cast<unsigned char*>(const_cast<char*>(input.data())),
+                                  &encryptedValue[0],
+                                  rsa,
+                                  RSA_PKCS1_PADDING);
 
         if (encryptedLen < 0)
         {
@@ -89,11 +94,12 @@ public:
         DEFER([&]() { T::RSA_free(rsa); });
 
         // Decrypt the ciphertext using RSA private key
-        const auto decryptedLen = T::RSA_private_decrypt(256,
-                                                         reinterpret_cast<const unsigned char*>(input.data()),
-                                                         reinterpret_cast<unsigned char*>(&decryptedText[0]),
-                                                         rsa,
-                                                         RSA_PKCS1_PADDING);
+        const auto decryptedLen =
+            T::RSA_private_decrypt(256,
+                                   reinterpret_cast<unsigned char*>(const_cast<char*>(input.data())),
+                                   reinterpret_cast<unsigned char*>(&decryptedText[0]),
+                                   rsa,
+                                   RSA_PKCS1_PADDING);
 
         if (decryptedLen < 0)
         {
@@ -132,12 +138,12 @@ private:
         // Extract the public key from the X.509 certificate
         EVP_PKEY* evpPublicKey = T::X509_get_pubkey(x509Certificate);
 
-        DEFER([&]() { T::EVP_PKEY_free(evpPublicKey); });
-
         if (!evpPublicKey)
         {
             throw std::runtime_error("Error reading public key");
         }
+
+        DEFER([&]() { T::EVP_PKEY_free(evpPublicKey); });
 
         // Check the type of key
         if (EVP_PKEY_base_id(evpPublicKey) == EVP_PKEY_RSA)
@@ -196,4 +202,4 @@ private:
     }
 };
 
-#endif // _RSAHELPER_WRAPPER_HPP
+#endif // _RSAHELPER_HPP
