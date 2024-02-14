@@ -214,7 +214,7 @@ def start(params: dict):
     app.add_error_handler(JWTError, error_handler.jwt_error_handler)
     app.add_error_handler(Unauthorized, error_handler.unauthorized_error_handler)
     app.add_error_handler(HTTPException, error_handler.http_error_handler)
-    app.add_error_handler(429, error_handler.exceeded_requests_handler)
+    app.add_error_handler(error_handler.MaxRequestsException, error_handler.exceeded_requests_handler)
     app.add_error_handler(error_handler.BlockedIPException, error_handler.blocked_ip_handler)
     app.add_error_handler(ProblemException, error_handler.problem_error_handler)
 
