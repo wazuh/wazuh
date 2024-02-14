@@ -80,7 +80,7 @@ StageBuilder getParseBuilder(std::shared_ptr<hlp::logpar::Logpar> logpar, size_t
             try
             {
                 parseExpression = base::Term<base::EngineOp>::create(
-                    "parse.logpar",
+                    logparExpr,
                     [=, parser = std::move(parser)](base::Event event)
                     {
                         if (!event->exists(field))
@@ -114,7 +114,7 @@ StageBuilder getParseBuilder(std::shared_ptr<hlp::logpar::Logpar> logpar, size_t
             parsersExpressions.push_back(parseExpression);
         }
 
-        return base::Or::create("parse.logpar", parsersExpressions);
+        return base::Or::create("parse", parsersExpressions);
     };
 }
 
