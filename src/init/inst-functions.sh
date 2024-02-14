@@ -1120,7 +1120,7 @@ TransferShared()
 checkDownloadContent()
 {
     VD_FILENAME='vd_1.0.0_vd_4.8.0.tar.xz'
-    VD_FULL_PATH=${INSTALLDIR}/${VD_FILENAME}
+    VD_FULL_PATH=${INSTALLDIR}/tmp/${VD_FILENAME}
 
     if [ "X${DOWNLOAD_CONTENT}" = "Xy" ]; then
         echo "Download ${VD_FILENAME} file"
