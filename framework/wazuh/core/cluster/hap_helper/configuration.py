@@ -3,7 +3,7 @@ from os import path
 
 import jsonschema
 import yaml
-from wazuh_coordinator.exception import CoordinatorError
+from wazuh.core.cluster.hap_helper.exception import HAPHelperError
 
 
 def validate_custom_configuration(custom_configuration: dict):
@@ -15,7 +15,7 @@ def validate_custom_configuration(custom_configuration: dict):
     try:
         jsonschema.validate(instance=custom_configuration, schema=json_schema)
     except jsonschema.ValidationError as validation_err:
-        raise CoordinatorError(101, extra_msg=f"({'> '.join(validation_err.path)}) {validation_err.message}")
+        raise HAPHelperError(101, extra_msg=f"({'> '.join(validation_err.path)}) {validation_err.message}")
 
 
 def merge_configurations(default: dict, config: dict) -> dict:
