@@ -94,10 +94,10 @@ wino_t get_fp_inode(FILE * fp);
  * @brief Get the file information of the specified file pointer.
  *
  * @param fp File pointer.
- * @param fileInfo File information.
+ * @param fileInfo Pointer to file information.
  * @return 0 in case of error, not 0 in success.
  */
-int get_fp_file_information(FILE * fp, BY_HANDLE_FILE_INFORMATION fileInfo);
+int get_fp_file_information(FILE * fp, LPBY_HANDLE_FILE_INFORMATION fileInfo);
 #endif
 
 

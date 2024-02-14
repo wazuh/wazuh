@@ -1027,7 +1027,7 @@ int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
     /* On windows, we also need the real inode, which is the combination
      * of the index low + index high numbers.
      */
-    if (!get_fp_file_information(lf->fp, lpFileInformation)) {
+    if (!get_fp_file_information(lf->fp, &lpFileInformation)) {
         merror("Unable to get file information by handle.");
         fclose(lf->fp);
         lf->fp = NULL;

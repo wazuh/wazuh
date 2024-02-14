@@ -2631,7 +2631,7 @@ wino_t get_fp_inode(FILE * fp) {
 
 
 #ifdef WIN32
-int get_fp_file_information(FILE * fp, BY_HANDLE_FILE_INFORMATION fileInfo) {
+int get_fp_file_information(FILE * fp, LPBY_HANDLE_FILE_INFORMATION fileInfo) {
     int fd;
     HANDLE h;
 
@@ -2643,7 +2643,7 @@ int get_fp_file_information(FILE * fp, BY_HANDLE_FILE_INFORMATION fileInfo) {
         return 0;
     }
 
-    return GetFileInformationByHandle(h, &fileInfo);
+    return GetFileInformationByHandle(h, fileInfo);
 }
 #endif
 
