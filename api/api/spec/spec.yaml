@@ -11495,7 +11495,7 @@ paths:
         '403':
           $ref: '#/components/responses/PermissionDeniedResponse'
         '404':
-          $ref: '#/components/responses/InvalidUriResponse'          
+          $ref: '#/components/responses/InvalidUriResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
