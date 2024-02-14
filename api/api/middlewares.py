@@ -26,7 +26,7 @@ from wazuh.core.utils import get_utc_now
 from api import configuration
 from api.alogging import custom_logging
 from api.authentication import generate_keypair, JWT_ALGORITHM
-from api.api_exception import BlockedIPException
+from api.api_exception import BlockedIPException, MaxRequestsException
 
 # Default of the max event requests allowed per minute
 MAX_REQUESTS_EVENTS_DEFAULT = 30
@@ -200,11 +200,7 @@ class CheckRateLimitsMiddleware(BaseHTTPMiddleware):
                 6005)
 
         if error_code:
-            raise ProblemException(
-                    status=429,
-                    title="Maximum number of requests per minute reached",
-                    detail=error_code,
-                    ext=ConnexionRequest.from_starlette_request(request))
+            raise MaxRequestsException(code=error_code)
         else:
             return await call_next(request)
 
@@ -215,7 +211,9 @@ class CheckBlockedIP(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """"Update and check if the client IP is locked."""
 
-        check_blocked_ip(request)
+        if request.url.path in {'/security/user/authenticate', '/security/user/authenticate/run_as'} \
+           and request.method in {'GET', 'POST'}:
+            check_blocked_ip(request)
         return await call_next(request)
 
 
