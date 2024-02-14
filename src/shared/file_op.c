@@ -2769,15 +2769,18 @@ FILE * wfopen(const char * pathname, const char * mode) {
     hFile = CreateFile(pathname, dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition, dwFlagsAndAttributes, NULL);
 
     if (hFile == INVALID_HANDLE_VALUE) {
+        errno = GetLastError();
         return NULL;
     }
 
     if (fd = _open_osfhandle((intptr_t)hFile, flags), fd < 0) {
+        errno = GetLastError();
         CloseHandle(hFile);
         return NULL;
     }
 
     if (fp = _fdopen(fd, mode), fp == NULL) {
+        errno = GetLastError();
         CloseHandle(hFile);
         return NULL;
     }
