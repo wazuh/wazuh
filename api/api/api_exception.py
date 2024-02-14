@@ -4,7 +4,7 @@
 
 from connexion.exceptions import ProblemException
 from api.constants import RELATIVE_CONFIG_FILE_PATH, RELATIVE_SECURITY_PATH
-from wazuh.core.exception import DOCU_VERSION
+from wazuh.core.exception import DOCU_VERSION, WazuhTooManyRequests
 
 
 class APIException(Exception):
@@ -68,3 +68,10 @@ class APIError(APIException):
 class BlockedIPException(ProblemException):
     """Bocked IP Exception Class."""
 
+class MaxRequestsException(ProblemException):
+    """Bocked IP Exception Class."""
+    def __init__(self, code):
+        exc = WazuhTooManyRequests(code=code)
+        ext = {"code": exc.code}
+        ext.update({"remediation": exc.remediation} if hasattr(exc, 'remediation') else {})
+        super().__init__(status=429, title=exc.title, detail=exc.message, type=exc.type, ext=ext)
