@@ -117,19 +117,19 @@ def set_logging(log_filepath, log_level='INFO', foreground_mode=False) -> dict:
     }
     if foreground_mode:
         handlers.update({'console': {}})
-    else:
-        if 'json' in api_conf['logs']['format']:
-            handlers["jsonfile"] = {
-                'filename': f"{log_filepath}.json",
-                'formatter': 'json',
-                'filters': ['json-filter'],
-            }
-        if 'plain' in api_conf['logs']['format']:
-            handlers["plainfile"] = {
-                'filename': f"{log_filepath}.log",
-                'formatter': 'log',
-                'filters': ['plain-filter'],
-            }
+
+    if 'json' in api_conf['logs']['format']:
+        handlers["jsonfile"] = {
+            'filename': f"{log_filepath}.json",
+            'formatter': 'json',
+            'filters': ['json-filter'],
+        }
+    if 'plain' in api_conf['logs']['format']:
+        handlers["plainfile"] = {
+            'filename': f"{log_filepath}.log",
+            'formatter': 'log',
+            'filters': ['plain-filter'],
+        }
 
     hdls = [k for k, v in handlers.items() if isinstance(v, dict)]
     if not hdls:
@@ -151,7 +151,7 @@ def set_logging(log_filepath, log_level='INFO', foreground_mode=False) -> dict:
             "log": {
                 "()": "uvicorn.logging.DefaultFormatter",
                 "fmt": "%(asctime)s %(levelname)s: %(message)s",
-                "datefmt": "%Y-%m-%d %H:%M:%S",
+                "datefmt": "%Y/%m/%d %H:%M:%S",
                 "use_colors": None,
             },
             "json" : {
@@ -266,8 +266,8 @@ def custom_logging(user, remote, method, path, query,
         body = {'events': len(events)}
         json_info['body'] = body
 
-    log_info += f'with parameters {json.dumps(query)} and body'\
-            f' {json.dumps(body)} done in {elapsed_time:.3f}s: {status}'
+    log_info += f'with parameters {json.dumps(query)} and body '\
+                f'{json.dumps(body)} done in {elapsed_time:.3f}s: {status}'
 
     logger.info(log_info, extra={'log_type': 'log'})
     logger.info(json_info, extra={'log_type': 'json'})
