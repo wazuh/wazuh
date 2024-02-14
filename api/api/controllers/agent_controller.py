@@ -16,12 +16,11 @@ from api.models.agent_inserted_model import AgentInsertedModel
 from api.models.base_model_ import Body
 from api.util import deprecate_endpoint, parse_api_param, raise_if_exc, remove_nones_to_dict
 from api.validator import check_component_configuration_pair
-from wazuh import agent
+from wazuh import agent, stats
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import DATABASE_LIMIT
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh import stats
 
 logger = logging.getLogger('wazuh-api')
 
