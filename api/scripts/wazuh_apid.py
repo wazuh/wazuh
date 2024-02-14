@@ -372,8 +372,8 @@ if __name__ == '__main__':
     # Set up logger file
     try:
         uvicorn_params['log_config'] = set_logging(log_filepath=API_LOG_PATH,
-                                                log_level=api_conf['logs']['level'].upper(),
-                                                foreground_mode=args.foreground)
+                                                   log_level=api_conf['logs']['level'].upper(),
+                                                   foreground_mode=args.foreground)
     except APIError as e:
         print(f"Configuration error in the API log format: {api_conf['logs']['format']}.")
         sys.exit(1)
