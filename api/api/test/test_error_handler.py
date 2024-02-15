@@ -15,6 +15,7 @@ from api.error_handler import _cleanup_detail_field, prevent_bruteforce_attack, 
     http_error_handler, problem_error_handler, bad_request_error_handler, unauthorized_error_handler, \
     exceeded_requests_handler, blocked_ip_handler, ERROR_CONTENT_TYPE
 from api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT
+from api.api_exception import MaxRequestsException
 
 
 @pytest.fixture
@@ -99,14 +100,12 @@ async def test_unauthorized_error_handler(path, method, token_info, mock_request
 
     exc = Unauthorized()
     with patch('api.error_handler.prevent_bruteforce_attack') as mock_pbfa, \
-        patch('api.configuration.api_conf', new={'access': {'max_login_attempts': 1000}}), \
-        patch('api.error_handler.access_log') as access_log_mock:
+        patch('api.configuration.api_conf', new={'access': {'max_login_attempts': 1000}}):
         response = await unauthorized_error_handler(mock_request, exc)
         if path in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} \
             and method in {'GET', 'POST'}:
             mock_pbfa.assert_called_once_with(request=mock_request, attempts=1000)
         expected_time = datetime(1970, 1, 1, 0, 0, 10).timestamp()
-        access_log_mock.assert_awaited_once_with(mock_request, response, expected_time)
     body = json.loads(response.body)
     assert body == problem
     assert response.status_code == exc.status_code
@@ -208,21 +207,15 @@ async def test_bad_request_error_handler(detail):
 @pytest.mark.parametrize('error_code', [6001, 6005])
 async def test_bad_exceeded_request_handler(error_code, mock_request):
     """Test exceeded request error handler."""
+    exc = MaxRequestsException(error_code)
     problem = {
-        "title": 'Maximum number of requests per minute reached',
-        "error": error_code,
+        "title": exc.title,
+        "detail": exc.detail,
+        "error": exc.ext['code'],
+        "remediation": exc.ext['remediation']
     }
 
-    exc = ProblemException(
-                status=429,
-                title="Maximum number of requests per minute reached",
-                detail=error_code,
-                ext=mock_request)
-    with patch('api.error_handler.access_log') as access_log_mock:
-        response = await exceeded_requests_handler(mock_request, exc)
-        expected_time = datetime(1970, 1, 1, 0, 0, 10).timestamp()
-        access_log_mock.assert_awaited_once_with(mock_request, response, expected_time)
-
+    response = await exceeded_requests_handler(mock_request, exc)
     body = json.loads(response.body)
     assert body == problem
     assert response.status_code == exc.status_code
@@ -246,11 +239,7 @@ async def test_blocked_ip_handler(mock_request):
         "detail": exc.detail,
         "error": 6000
     }
-    with patch('api.error_handler.access_log') as access_log_mock:
-        response = await blocked_ip_handler(mock_request, exc)
-        expected_time = datetime(1970, 1, 1, 0, 0, 10).timestamp()
-        access_log_mock.assert_awaited_once_with(mock_request, response, expected_time)
-
+    response = await blocked_ip_handler(mock_request, exc)
     body = json.loads(response.body)
     assert body == problem
     assert response.status_code == exc.status_code

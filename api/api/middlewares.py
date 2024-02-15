@@ -15,7 +15,6 @@ from starlette.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
 from connexion import ConnexionMiddleware
-from connexion.exceptions import ProblemException
 from connexion.lifecycle import ConnexionRequest
 from connexion.security import AbstractSecurityHandler
 
@@ -210,8 +209,7 @@ class CheckBlockedIP(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """"Update and check if the client IP is locked."""
-
-        if request.url.path in {'/security/user/authenticate', '/security/user/authenticate/run_as'} \
+        if request.url.path in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} \
            and request.method in {'GET', 'POST'}:
             check_blocked_ip(request)
         return await call_next(request)

@@ -19,9 +19,6 @@ logger = logging.getLogger('wazuh-api')
 # Variable used to specify an unknown user
 UNKNOWN_USER_STRING = "unknown_user"
 
-# Run_as login endpoint path
-RUN_AS_LOGIN_ENDPOINT = "/security/user/authenticate/run_as"
-
 
 class APILoggerSize:
     size_regex = re.compile(r"(\d+)([KM])")
