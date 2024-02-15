@@ -41,6 +41,7 @@ cluster_env_mode = 'cluster'
 
 def pytest_addoption(parser):
     parser.addoption('--nobuild', action='store_false', help='Do not run docker compose build.')
+    parser.addoption('--build-managers-only', action='store_true', help='Build only the managers images.')
 
 
 def pytest_collection_modifyitems(items: list):
@@ -81,7 +82,7 @@ def pytest_tavern_beta_before_every_test_run(test_dict, variables):
 
 
 def build_and_up(env_mode: str, interval: int = 10, interval_build_env: int = 10,
-                 build: bool = True) -> dict:
+                 build: bool = True, build_managers_only: bool = False) -> dict:
     """Build all Docker environments needed for the current test.
 
     Parameters
@@ -94,6 +95,8 @@ def build_and_up(env_mode: str, interval: int = 10, interval_build_env: int = 10
         Time interval between every docker environment healthcheck.
     build : bool
         Flag to indicate if images need to be built.
+    build_managers_only : bool
+        Flag to indicate if only the managers image needs to be built.
 
     Returns
     -------
@@ -116,11 +119,18 @@ def build_and_up(env_mode: str, interval: int = 10, interval_build_env: int = 10
     os.makedirs(test_logs_path, exist_ok=True)
     with open(docker_log_path, mode='w') as f_docker:
         while values_build_env['retries'] < values_build_env['max_retries']:
-            if build:
+            if build and not build_managers_only:
                 current_process = subprocess.Popen(["docker", "compose", "--profile", env_mode,
                     "build", "--build-arg", f"WAZUH_BRANCH={current_branch}", 
                     "--build-arg", f"ENV_MODE={env_mode}",
                     "--no-cache"],
+                    stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
+                current_process.wait()
+            if build_managers_only:
+                current_process = subprocess.Popen(["docker", "compose", "--profile", env_mode,
+                    "build", "wazuh-master", "wazuh-worker1", "wazuh-worker2",
+                    "--build-arg", f"WAZUH_BRANCH={current_branch}", "--build-arg",
+                    f"ENV_MODE={env_mode}"],
                     stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
                 current_process.wait()
             current_process = subprocess.Popen(
