@@ -5,10 +5,11 @@
 """
 This module contain all necessary components (fixtures, classes, methods) to configure the test for its execution.
 """
+
 import pytest
-from uuid import uuid4
 from time import time
 from botocore.exceptions import ClientError
+from uuid import uuid4
 
 # qa-integration-framework imports
 from wazuh_testing.logger import logger
@@ -22,7 +23,6 @@ from wazuh_testing.modules.aws.utils import (
     delete_s3_db,
     delete_services_db,
     upload_bucket_file,
-    delete_resources,
     generate_file
 )
 from wazuh_testing.utils.services import control_service
@@ -47,15 +47,130 @@ def restart_wazuh_function_without_exception(daemon=None):
     control_service('stop', daemon=daemon)
 
 
+"""Session fixtures"""
+
+
+@pytest.fixture(scope="session", autouse=True)
+def buckets_manager():
+    """Initializes a set to manage the creation and deletion of the buckets used throughout the test session.
+
+    Yields
+    ------
+    buckets : set
+        Set of buckets
+    """
+    # Create buckets set
+    buckets: set = set()
+
+    yield buckets
+
+    # Delete all resources created during execution
+    for bucket in buckets:
+        try:
+            delete_bucket(bucket_name=bucket)
+        except ClientError as error:
+            logger.warning({
+                "message": "Client error deleting bucket, delete manually",
+                "resource_name": bucket,
+                "error": str(error)
+            })
+
+        except Exception as error:
+            logger.warning({
+                "message": "Broad error deleting bucket, delete manually",
+                "resource_name": bucket,
+                "error": str(error)
+            })
+
+
+@pytest.fixture(scope="session", autouse=True)
+def log_groups_manager():
+    """Initializes a set to manage the creation and deletion of the log groups used throughout the test session.
+
+    Yields
+    ------
+    log_groups : set
+        Set of log groups.
+    """
+    # Create log groups set
+    log_groups: set = set()
+
+    yield log_groups
+
+    # Delete all resources created during execution
+    for log_group in log_groups:
+        try:
+            delete_log_group(log_group_name=log_group)
+        except ClientError as error:
+            logger.warning({
+                "message": "Client error deleting log_group, delete manually",
+                "resource_name": log_group,
+                "error": str(error)
+            })
+            raise
+
+        except Exception as error:
+            logger.warning({
+                "message": "Broad error deleting log_group, delete manually",
+                "resource_name": log_group,
+                "error": str(error)
+            })
+
+
 """S3 fixtures"""
 
 
+@pytest.fixture()
+def create_test_bucket(buckets_manager,
+                       metadata: dict):
+    """Create a bucket.
+
+    Parameters
+    ----------
+    buckets_manager : fixture
+        Set of buckets.
+    metadata : dict
+        Bucket information.
+
+    """
+    bucket_name = metadata["bucket_name"]
+    bucket_type = metadata["bucket_type"]
+
+    try:
+        # Create bucket
+        create_bucket(bucket_name=bucket_name)
+        logger.debug(f"Created new bucket: type {bucket_name}")
+
+        # Append created bucket to resource set
+        buckets_manager.add(bucket_name)
+
+    except ClientError as error:
+        logger.error({
+            "message": "Client error creating bucket",
+            "bucket_name": bucket_name,
+            "bucket_type": bucket_type,
+            "error": str(error)
+        })
+        raise
+
+    except Exception as error:
+        logger.error({
+            "message": "Broad error creating bucket",
+            "bucket_name": bucket_name,
+            "bucket_type": bucket_type,
+            "error": str(error)
+        })
+        raise
+
+
 @pytest.fixture
-def upload_file_to_bucket(metadata):
+def upload_file_to_bucket(metadata: dict):
     """Upload a file to S3 bucket and delete after the test ends.
 
-    Args:
-        metadata (dict): Metadata to get the parameters.
+    Parameters
+    ----------
+    metadata : dict
+        Metadata to get the parameters.
     """
     # Get bucket name
     bucket_name = metadata['bucket_name']
@@ -101,39 +216,27 @@ def upload_file_to_bucket(metadata):
 
 
 @pytest.fixture()
-def create_test_log_group(create_session_id: str, create_and_delete_resources_list: list, metadata: dict):
+def create_test_log_group(log_groups_manager,
+                          metadata: dict) -> None:
     """Create a bucket.
 
     Parameters
     ----------
-        create_session_id (str): Test session id.
-        create_and_delete_resources_list (list): Resources list.
-        metadata (dict): Log group information.
-
-    Returns
-    -------
-        None
+    log_groups_manager : fixture
+        Log groups set.
+    metadata : dict
+        Log group information.
     """
-    # Set variables from fixture
-    test_session_id = create_session_id
-    resources_list = create_and_delete_resources_list
-
-    # Get log group information and add session id
-    log_group_name = metadata["log_group_name"] + f"-{test_session_id}"
+    # Get log group name
+    log_group_name = metadata["log_group_name"]
 
     try:
         # Create log group
         create_log_group(log_group_name=log_group_name)
         logger.debug(f"Created log group: {log_group_name}")
 
-        # Create resource dict
-        resource = {
-            "type": "log_group",
-            "name": log_group_name
-        }
-
-        # Append created log group to resources list
-        resources_list.append(log_group_name)
+        # Append created bucket to resource list
+        log_groups_manager.add(log_group_name)
 
     except ClientError as error:
         logger.error({
