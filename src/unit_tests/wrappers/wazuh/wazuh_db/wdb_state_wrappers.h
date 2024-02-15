@@ -24,8 +24,6 @@ void __wrap_w_inc_queries_total();
 
 void __wrap_w_inc_global();
 
-void __wrap_w_inc_global_open_time();
-
 void __wrap_w_inc_global_sql();
 
 void __wrap_w_inc_global_sql_time();
