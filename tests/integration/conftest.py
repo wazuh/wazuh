@@ -29,7 +29,6 @@ from wazuh_testing.utils.manage_agents import remove_agents
 import wazuh_testing.utils.configuration as wazuh_configuration
 from wazuh_testing.utils.services import control_service
 
-
 # - - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - -
 
 

@@ -3,6 +3,7 @@
   configuration_parameters:
     SQS_NAME: wazuh-sqs-integration-tests
   metadata:
+    resource_type: bucket
     sqs_name: wazuh-sqs-integration-tests
-    bucket_name: wazuh-sqs-integration-test
+    bucket_name: wazuh-sqs-bucket-integration-test
     bucket_type: cloudtrail

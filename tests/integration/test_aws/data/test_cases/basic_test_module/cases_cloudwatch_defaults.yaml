@@ -1,7 +1,6 @@
 - name: cloudwatchlogs_defaults
   description: CloudWatch default configurations
   configuration_parameters:
-    RESOURCE_TYPE: log_group
     SERVICE_TYPE: cloudwatchlogs
     LOG_GROUP_NAME: wazuh-cloudwatchlogs-integration-tests
   metadata:

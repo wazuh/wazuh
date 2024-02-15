@@ -1,7 +1,6 @@
 - name: cloudtrail_defaults
   description: CloudTrail default configurations
   configuration_parameters:
-    RESOURCE_TYPE: bucket
     BUCKET_TYPE: cloudtrail
     BUCKET_NAME: wazuh-cloudtrail-integration-tests
   metadata:
@@ -12,7 +11,6 @@
 - name: vpc_defaults
   description: VPC default configurations
   configuration_parameters:
-    RESOURCE_TYPE: bucket
     BUCKET_TYPE: vpcflow
     BUCKET_NAME: wazuh-vpcflow-integration-tests
   metadata:
@@ -33,7 +31,6 @@
 - name: alb_defaults
   description: ALB default configurations
   configuration_parameters:
-    RESOURCE_TYPE: bucket
     BUCKET_TYPE: alb
     BUCKET_NAME: wazuh-alb-integration-tests
   metadata:
@@ -44,7 +41,6 @@
 - name: clb_defaults
   description: CLB default configurations
   configuration_parameters:
-    RESOURCE_TYPE: bucket
     BUCKET_TYPE: clb
     BUCKET_NAME: wazuh-clb-integration-tests
   metadata:
@@ -55,7 +51,6 @@
 - name: nlb_defaults
   description: NLB default configurations
   configuration_parameters:
-    RESOURCE_TYPE: bucket
     BUCKET_TYPE: nlb
     BUCKET_NAME: wazuh-nlb-integration-tests
   metadata:
@@ -66,7 +61,6 @@
 - name: kms_defaults
   description: KMS default configurations
   configuration_parameters:
-    RESOURCE_TYPE: bucket
     BUCKET_TYPE: custom
     BUCKET_NAME: wazuh-kms-integration-tests
   metadata:
@@ -77,7 +71,6 @@
 - name: macie_defaults
   description: CloudTrail default configurations
   configuration_parameters:
-    RESOURCE_TYPE: bucket
     BUCKET_TYPE: custom
     BUCKET_NAME: wazuh-macie-integration-tests
   metadata:
@@ -88,7 +81,6 @@
 - name: trusted_advisor_defaults
   description: Trusted Advisor default configurations
   configuration_parameters:
-    RESOURCE_TYPE: bucket
     BUCKET_TYPE: custom
     BUCKET_NAME: wazuh-trusted-advisor-integration-tests
   metadata:
@@ -99,7 +91,6 @@
 - name: guardduty_defaults
   description: GuardDuty default configurations
   configuration_parameters:
-    RESOURCE_TYPE: bucket
     BUCKET_TYPE: guardduty
     BUCKET_NAME: wazuh-guardduty-integration-tests
   metadata:
@@ -110,7 +101,6 @@
 - name: native_guardduty_defaults
   description: Native GuardDuty default configurations
   configuration_parameters:
-    RESOURCE_TYPE: bucket
     BUCKET_TYPE: guardduty
     BUCKET_NAME: wazuh-native-guardduty-integration-tests
   metadata:
@@ -121,7 +111,6 @@
 - name: waf_defaults
   description: WAF default configurations
   configuration_parameters:
-    RESOURCE_TYPE: bucket
     BUCKET_TYPE: waf
     BUCKET_NAME: wazuh-waf-integration-tests
   metadata:
@@ -132,7 +121,6 @@
 - name: server_access_defaults
   description: Server Access default configurations
   configuration_parameters:
-    RESOURCE_TYPE: bucket
     BUCKET_TYPE: server_access
     BUCKET_NAME: wazuh-server-access-integration-tests
   metadata:
@@ -143,7 +131,6 @@
 - name: cisco_umbrella_defaults
   description: Umbrella default configurations
   configuration_parameters:
-    RESOURCE_TYPE: bucket
     BUCKET_TYPE: cisco_umbrella
     BUCKET_NAME: wazuh-umbrella-integration-tests
   metadata:
