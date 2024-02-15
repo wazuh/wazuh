@@ -27,7 +27,7 @@ def setup_local_rules(test_metadata):
         # restore previous rules
         shutil.move(CUSTOM_RULES_FILE + '.cpy',
                     CUSTOM_RULES_FILE)
-    shutil.chown(CUSTOM_RULES_FILE, "wazuh", "wazuh")
+        shutil.chown(CUSTOM_RULES_FILE, "wazuh", "wazuh")
 
 
 @pytest.fixture()
