@@ -34,14 +34,14 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
 # Tests list and flags
 list(APPEND tests_names "test_wm_exec")
-list(APPEND tests_flags "-Wl,--wrap,fim_db_init -Wl,--wrap=syscom_dispatch \
-                         -Wl,--wrap=fim_db_teardown -Wl,--wrap=Start_win32_Syscheck \
-                         -Wl,--wrap=is_fim_shutdown -Wl,--wrap,OSList_AddData \
-                         -Wl,--wrap,OSList_DeleteThisNode -Wl,--wrap,OSList_GetFirstNode \
-                         -Wl,--wrap,OSList_Destroy ${DEBUG_OP_WRAPPERS}")
+list(APPEND WM_EXEC_BASE_FLAGS "-Wl,--wrap,OSList_AddData -Wl,--wrap,OSList_DeleteThisNode \
+                                -Wl,--wrap,OSList_GetFirstNode -Wl,--wrap,OSList_Destroy ${DEBUG_OP_WRAPPERS}")
 
-if(NOT ${TARGET} STREQUAL "winagent")
-    list(APPEND tests_flags "-Wl,--wrap,fork -Wl,--wrap,kill -Wl,--wrap,exit -Wl,--wrap,sleep")
+if(${TARGET} STREQUAL "winagent")
+    list(APPEND tests_flags "${WM_EXEC_BASE_FLAGS} -Wl,--wrap,fim_db_init -Wl,--wrap=syscom_dispatch \
+                               -Wl,--wrap=fim_db_teardown -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown")
+else()
+    list(APPEND tests_flags "${WM_EXEC_BASE_FLAGS} -Wl,--wrap,fork -Wl,--wrap,kill -Wl,--wrap,exit -Wl,--wrap,sleep")
 endif()
 
 # Compiling tests
