@@ -994,7 +994,8 @@ int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
      * time of change from it.
      */
     
-    lf->fp = wfopen(lf->file, "r");
+    /* TODO: Support text mode on Windows */
+    lf->fp = wfopen(lf->file, "rb");
     if (!lf->fp) {
         if (do_log == 1 && lf->exists == 1) {
             merror(FOPEN_ERROR, lf->file, errno, strerror(errno));
@@ -1081,7 +1082,9 @@ error:
 
 /* Reload file: open after close, and restore position */
 int reload_file(logreader * lf) {
-    lf->fp = wfopen(lf->file, "r");
+    
+    /* TODO: Support text mode on Windows */
+    lf->fp = wfopen(lf->file, "rb");
 
     if (!lf->fp) {
         return -1;
