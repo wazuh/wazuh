@@ -1,13 +1,20 @@
 cmake_minimum_required(VERSION 3.12.4)
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_FLAGS "-fPIC")
-
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER})
 
 project(keystore)
 
 # enable_testing()
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_FLAGS "-fPIC")
+
+if(FSANITIZE)
+  set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
+endif(FSANITIZE)
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER})
+
+
 
 file(GLOB KEYSTORE_SRC
     "src/*.cpp"
