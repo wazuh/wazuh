@@ -386,8 +386,8 @@ if __name__ == '__main__':
             os.chmod(handler['filename'], 0o660)
 
     # Configure and create the wazuh-api logger
-    logging.config.dictConfig(uvicorn_params['log_config'])
     add_debug2_log_level_and_error()
+    logging.config.dictConfig(uvicorn_params['log_config'])
     logger = logging.getLogger('wazuh-api')
 
     # Check deprecated options. To delete after expected versions
