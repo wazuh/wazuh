@@ -262,11 +262,11 @@ class ProxyAPI:
 
 
 def check_proxy_api(func):
-    def wrapper(self, *args, **kwargs):
+    async def wrapper(self, *args, **kwargs):
         if self.api is None:
             raise ProxyError(103)
 
-        return func(self, *args, **kwargs)
+        return await func(self, *args, **kwargs)
 
     return wrapper
 
