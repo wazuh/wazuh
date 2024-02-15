@@ -2592,10 +2592,10 @@ win32/manage_agents.exe: win32/manage_agents_resource.o win32/version-app.o win3
 win32/setup-windows.exe: win32/win_service_rk.o win32/setup-win.o win32/setup-shared.o
 	${OSSEC_CCBIN} -DARGV0=\"setup-windows\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-win32/setup-syscheck.exe: win32/setup-syscheck.o win32/setup-shared.o
+win32/setup-syscheck.exe: win32/win_service_rk.o win32/setup-syscheck.o win32/setup-shared.o
 	${OSSEC_CCBIN} -DARGV0=\"setup-syscheck\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-win32/setup-iis.exe: win32/setup-iis.o
+win32/setup-iis.exe: win32/win_service_rk.o win32/setup-iis.o
 	${OSSEC_CCBIN} -DARGV0=\"setup-iis\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 win32/ui_resource.o: win32/ui/win32ui.rc

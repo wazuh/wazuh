@@ -57,7 +57,7 @@ char *cat_file(char *file, FILE *fp2)
     FILE *fp;
 
     if (!fp2) {
-        fp = fopen(file, "r");
+        fp = wfopen(file, "r");
     } else {
         fp = fp2;
     }
@@ -94,7 +94,7 @@ char *cat_file(char *file, FILE *fp2)
 int is_file(char *file)
 {
     FILE *fp;
-    fp = fopen(file, "r");
+    fp = wfopen(file, "r");
     if (fp) {
         fclose(fp);
         return (1);
@@ -499,7 +499,7 @@ int set_ossec_key(char *key, HWND hwnd)
         return (0);
     }
 
-    fp = fopen(tmp_path, "w");
+    fp = wfopen(tmp_path, "w");
     if (fp) {
         fprintf(fp, "%s", key);
         fclose(fp);

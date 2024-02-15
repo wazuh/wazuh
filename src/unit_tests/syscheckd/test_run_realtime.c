@@ -1702,11 +1702,15 @@ void test_realtime_adddir_success(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
 
     expect_value(__wrap_OSHash_Get_ex, self, syscheck.realtime->dirtb);
     expect_string(__wrap_OSHash_Get_ex, key, "C:\\a\\path");
     will_return(__wrap_OSHash_Get_ex, 0);
+
+    OSHash_Add_ex_check_data = 0;
+    expect_value(__wrap_OSHash_Add_ex, self, syscheck.realtime->dirtb);
+    expect_string(__wrap_OSHash_Add_ex, key, "C:\\a\\path");
+    will_return(__wrap_OSHash_Add_ex, 1);
 
     expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
     will_return(wrap_CreateFile, (HANDLE)123456);
@@ -1718,9 +1722,7 @@ void test_realtime_adddir_success(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg,
                   "(6227): Directory added for real time monitoring: 'C:\\a\\path'");
 
-    test_mode = 0;
     ret = realtime_adddir("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
-    test_mode = 1;
 
     assert_int_equal(ret, 1);
 }

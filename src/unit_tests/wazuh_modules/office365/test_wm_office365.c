@@ -29,6 +29,9 @@
 #include "../../wrappers/wazuh/shared/time_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/url_wrappers.h"
 #include "../../wrappers/libc/time_wrappers.h"
+#ifdef WIN32
+#include "../../wrappers/wazuh/shared/file_op_wrappers.h"
+#endif
 
 int __wrap_access(const char *__name, int __type) {
     check_expected(__name);
@@ -1322,7 +1325,9 @@ void test_wm_office365_get_access_token_with_auth_secret_path(void **state) {
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
     expect_string(__wrap__mtdebug1, formatted_msg, "Unknown error while getting access token.");
 
+    test_mode = 0;
     access_token = wm_office365_get_access_token(data->office365_config->auth, max_size, &error_msg);
+    test_mode = 1;
 
     fclose(outfile);
 

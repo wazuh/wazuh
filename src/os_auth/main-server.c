@@ -237,7 +237,7 @@ int main(int argc, char **argv)
                     }
                     else {
                         if (w_str_is_number(optarg)) {
-                            merror_exit("-%c needs a valid list of SSL ciphers", c); 
+                            merror_exit("-%c needs a valid list of SSL ciphers", c);
                         }
                         ciphers = optarg;
                     }
@@ -296,7 +296,7 @@ int main(int argc, char **argv)
                         }
                     }
                     else {
-                        merror_exit("-%c needs a numeric argument", c);   
+                        merror_exit("-%c needs a numeric argument", c);
                     }
                     break;
 
@@ -304,7 +304,7 @@ int main(int argc, char **argv)
                     if (!optarg) {
                         merror_exit("-%c needs an argument", c);
                     }
-                    
+
                     if (w_str_is_number(optarg)) {
                         generate_certificate = true;
                         if (snprintf(cert_key_bits, OS_SIZE_32 + 1, "%s", optarg) > OS_SIZE_32) {
@@ -514,7 +514,7 @@ int main(int argc, char **argv)
     minfo(STARTUP_MSG, (int)getpid());
 
     /* Checking client keys file */
-    fp = fopen(KEYS_FILE, "a");
+    fp = wfopen(KEYS_FILE, "a");
     if (!fp) {
         merror("Unable to open %s (key file)", KEYS_FILE);
         exit(1);
@@ -536,7 +536,7 @@ int main(int argc, char **argv)
 
         /* Check if password is enabled */
         if (config.flags.use_password) {
-            fp = fopen(AUTHD_PASS, "r");
+            fp = wfopen(AUTHD_PASS, "r");
             buf[0] = '\0';
 
             /* Checking if there is a custom password file */

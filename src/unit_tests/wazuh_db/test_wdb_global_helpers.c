@@ -398,9 +398,9 @@ void test_wdb_insert_agent_success_keep_date(void **state)
     const char *response = "ok";
 
     // Opening destination database file
-    expect_string(__wrap_fopen, path, "queue/agents-timestamp");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, path, "queue/agents-timestamp");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
 
     // Getting data
     expect_value(__wrap_fgets, __stream, 1);
@@ -2783,9 +2783,9 @@ void test_get_agent_date_added_error_open_file(void **state) {
     int agent_id = 1;
 
     // Opening destination database file
-    expect_string(__wrap_fopen, path, "queue/agents-timestamp");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 0);
+    expect_string(__wrap_wfopen, path, "queue/agents-timestamp");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 0);
 
     date_add = get_agent_date_added(agent_id);
 
@@ -2797,9 +2797,9 @@ void test_get_agent_date_added_error_no_data(void **state) {
     int agent_id = 1;
 
     // Opening destination database file
-    expect_string(__wrap_fopen, path, "queue/agents-timestamp");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, path, "queue/agents-timestamp");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
 
     // Getting data
     expect_value(__wrap_fgets, __stream, 1);
@@ -2818,9 +2818,9 @@ void test_get_agent_date_added_error_no_date(void **state) {
     int agent_id = 1;
 
     // Opening destination database file
-    expect_string(__wrap_fopen, path, "queue/agents-timestamp");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, path, "queue/agents-timestamp");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
 
     // Getting data
     expect_value(__wrap_fgets, __stream, 1);
@@ -2839,9 +2839,9 @@ void test_get_agent_date_added_error_invalid_date(void **state) {
     int agent_id = 1;
 
     // Opening destination database file
-    expect_string(__wrap_fopen, path, "queue/agents-timestamp");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, path, "queue/agents-timestamp");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
 
     // Getting data
     expect_value(__wrap_fgets, __stream, 1);
@@ -2864,9 +2864,9 @@ void test_get_agent_date_added_success(void **state) {
     time_t date_returned = 0;
 
     // Opening destination database file
-    expect_string(__wrap_fopen, path, "queue/agents-timestamp");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, path, "queue/agents-timestamp");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
 
     // Getting data
     expect_value(__wrap_fgets, __stream, 1);

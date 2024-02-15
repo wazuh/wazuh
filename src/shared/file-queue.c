@@ -60,7 +60,7 @@ static int Handle_Queue(file_queue *fileq, int flags)
         /* We must be able to open the file, fseek and get the
          * time of change from it.
          */
-        fileq->fp = fopen(fileq->file_name, "r");
+        fileq->fp = wfopen(fileq->file_name, "r");
         if (!fileq->fp) {
             /* Queue not available */
             return (0);

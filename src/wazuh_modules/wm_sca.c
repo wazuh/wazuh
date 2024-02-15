@@ -362,7 +362,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
             int cis_db_index = i;
             char **sorted_variables = NULL;
 
-            FILE *fp = fopen(data->policies[i]->policy_path, "r");
+            FILE *fp = wfopen(data->policies[i]->policy_path, "r");
 
             if(!fp) {
                 mwarn("Policy file not found: '%s'. Skipping it.", data->policies[i]->policy_path);
@@ -1549,7 +1549,7 @@ static int wm_sca_check_file_contents(const char * const file,
     }
     #endif
 
-    FILE *fp = fopen(realpath_buffer, "r");
+    FILE *fp = wfopen(realpath_buffer, "r");
     const int fopen_errno = errno;
     if (!fp) {
         if (*reason == NULL) {
@@ -2036,7 +2036,7 @@ int wm_sca_pattern_matches(const char * const str,
 
         const int minterm_result = negated ^ wm_sca_test_positive_minterm (minterm, str, reason, regex);
         w_free_expression_t(&regex);
-        
+
         test_result *= minterm_result;
         mdebug2("Testing minterm (%s%s)(%s) -> %d", negated ? "!" : "", minterm, *str != '\0' ? str : "EMPTY_LINE", minterm_result);
     }

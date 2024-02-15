@@ -53,7 +53,7 @@ void generate_reports(int cday, int cmon, int cyear, const struct tm *p)
                 snprintf(fname, 255, "/logs/.report-%d.log", (int)getpid());
 
                 minfo("Starting daily reporting for '%s'", mond.reports[s]->title);
-                mond.reports[s]->r_filter.fp = fopen(fname, "w+");
+                mond.reports[s]->r_filter.fp = wfopen(fname, "w+");
                 if (!mond.reports[s]->r_filter.fp) {
                     merror("Unable to open temporary reports file.");
                     s++;
