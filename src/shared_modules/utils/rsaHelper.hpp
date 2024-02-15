@@ -24,6 +24,7 @@
 constexpr int RSA_PRIVATE {0};
 constexpr int RSA_PUBLIC {1};
 constexpr int RSA_CERT {2};
+constexpr int RSA_SIZE {256};
 
 template<typename T = OpenSSLPrimitives, typename U = OSPrimitives>
 class RSAHelper final
@@ -50,25 +51,23 @@ public:
         createRSA(rsa, filePath, cert ? RSA_CERT : RSA_PUBLIC);
 
         // Allocate memory for the encryptedValue
-        auto encryptedValue {std::vector<unsigned char>()};
-        encryptedValue.reserve(T::RSA_size(rsa));
+        std::vector<unsigned char> encryptedValue(T::RSA_size(rsa), 0);
 
         // Defered free
         DEFER([&]() { T::RSA_free(rsa); });
 
-        const auto encryptedLen =
-            T::RSA_public_encrypt(input.length(),
-                                  reinterpret_cast<unsigned char*>(const_cast<char*>(input.data())),
-                                  &encryptedValue[0],
-                                  rsa,
-                                  RSA_PKCS1_PADDING);
+        const auto encryptedLen = T::RSA_public_encrypt(input.length(),
+                                                        reinterpret_cast<const unsigned char*>(input.data()),
+                                                        encryptedValue.data(),
+                                                        rsa,
+                                                        RSA_PKCS1_PADDING);
 
         if (encryptedLen < 0)
         {
             throw std::runtime_error("RSA encryption failed");
         }
 
-        output = std::string(reinterpret_cast<char const*>(&encryptedValue[0]), encryptedLen);
+        output = std::string(encryptedValue.begin(), encryptedValue.end());
 
         return encryptedLen;
     }
@@ -94,12 +93,11 @@ public:
         DEFER([&]() { T::RSA_free(rsa); });
 
         // Decrypt the ciphertext using RSA private key
-        const auto decryptedLen =
-            T::RSA_private_decrypt(256,
-                                   reinterpret_cast<unsigned char*>(const_cast<char*>(input.data())),
-                                   reinterpret_cast<unsigned char*>(&decryptedText[0]),
-                                   rsa,
-                                   RSA_PKCS1_PADDING);
+        const auto decryptedLen = T::RSA_private_decrypt(RSA_SIZE,
+                                                         reinterpret_cast<const unsigned char*>(input.data()),
+                                                         reinterpret_cast<unsigned char*>(decryptedText.data()),
+                                                         rsa,
+                                                         RSA_PKCS1_PADDING);
 
         if (decryptedLen < 0)
         {

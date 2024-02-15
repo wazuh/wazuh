@@ -51,7 +51,7 @@ IndexerConnector::IndexerConnector(
     }
 
     // Get index name.
-    const auto indexName {config.at("name").get_ref<const std::string&>()};
+    const auto& indexName {config.at("name").get_ref<const std::string&>()};
 
     std::string caRootCertificate;
     std::string sslCertificate;
