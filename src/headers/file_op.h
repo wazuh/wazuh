@@ -587,7 +587,7 @@ char * abspath(const char * path, char * buffer, size_t size);
  * @return The content of the file
  * @retval NULL The file doesn't exist or its size exceeds the maximum allowed
  */
-char * w_get_file_content(const char * path, long max_size);
+char * w_get_file_content(const char * path, unsigned long max_size);
 
 
 /**
