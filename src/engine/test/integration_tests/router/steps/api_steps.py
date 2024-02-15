@@ -24,10 +24,10 @@ def run_command(command):
 
 def send_recv(request, expected_response_type) -> Tuple[Optional[str], dict]:
     error, response = api_client.send_recv(request)
-    assert error is None, f"{err}"
+    assert error is None, f"{error}"
     parse_response = ParseDict(response, expected_response_type)
     if parse_response == api_engine.ERROR:
-        return parse_response.error, {}
+        return parse_response.error, parse_response
     else:
         return None, parse_response
 

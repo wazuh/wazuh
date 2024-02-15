@@ -21,10 +21,9 @@ def run_command(command):
 
 def send_recv(request, expected_response_type) -> Tuple[Optional[str], dict]:
     error, response = api_client.send_recv(request)
-    assert error is None, f"{err}"
     parse_response = ParseDict(response, expected_response_type)
-    if parse_response == api_engine.ERROR:
-        return parse_response.error, {}
+    if parse_response.status == api_engine.ERROR:
+        return parse_response.error, parse_response
     else:
         return None, parse_response
 
@@ -62,7 +61,6 @@ def add_integration_to_policy(integration_name: str, policy_name: str, namespace
     request.asset = f"integration/{integration_name}/0"
     request.namespace = namespace
     error, response = send_recv(request, api_engine.GenericStatus_Response())
-    assert error is None, f"{error}"
     return response
 
 def remove_integration_to_policy(integration_name: str, policy_name: str, namespace: str):
@@ -71,6 +69,27 @@ def remove_integration_to_policy(integration_name: str, policy_name: str, namesp
     request.asset = f"integration/{integration_name}/0"
     request.namespace = namespace
     error, response = send_recv(request, api_engine.GenericStatus_Response())
+    return response
+
+def add_default_parent(default_parent_name: str, namespace: str):
+    request = api_policy.DefaultParentPost_Request()
+    request.policy = "policy/wazuh/0"
+    request.namespace = namespace
+    request.parent = default_parent_name
+    error, response = send_recv(request, api_engine.GenericStatus_Response())
+    return response
+
+def get_default_parent(policy_name: str, namespace: str):
+    request = api_policy.DefaultParentGet_Request()
+    request.policy = policy_name
+    request.namespace = namespace
+    error, response = send_recv(request, api_policy.DefaultParentGet_Response())
+    return response
+
+def get_namespace_policy(policy_name: str):
+    request = api_policy.NamespacesGet_Request()
+    request.policy = policy_name
+    error, response = send_recv(request, api_policy.NamespacesGet_Response())
     return response
 
 def policy_tear_down():
@@ -116,15 +135,30 @@ def step_impl(context, integration_name: str, policy_name: str, namespace: str):
     add_integration(integration_name, namespace)
     context.result = add_integration_to_policy(integration_name, policy_name, namespace)
 
-@then('I should receive a {status} response indicating "{response}"')
-def step_impl(context, status: str, response: str):
-    if status == "failed":
-        assert context.result.status == api_engine.ERROR, f"{context.result}"
-        assert context.result.error == response, f"{context.result}"
-
 @when('I send a request to delete the asset "{integration_name}" from the policy called "{policy_name}" in the namespace "{namespace}"')
 def step_impl(context, integration_name: str, policy_name: str, namespace: str):
     context.result = remove_integration_to_policy(integration_name, policy_name, namespace)
+
+@when('I send a request to set the default parent called "{default_parent_name}" in the namespace "{namespace}"')
+def step_impl(context, default_parent_name: str, namespace: str):
+    context.result = add_default_parent(default_parent_name, namespace)
+
+@when('I send a request to get the default parent of policy "{policy_name}" in the namespace "{namespace}"')
+def step_impl(context, policy_name: str, namespace: str):
+    context.result = get_default_parent(policy_name, namespace)
+
+@when('I send a request to get namespaces of policy "{policy_name}"')
+def step_impl(context, policy_name: str):
+    context.result = get_namespace_policy(policy_name)
+
+@then('I should receive a {status} response indicating "{response}"')
+def step_impl(context, status: str, response: str):
+    if status == "failed":
+        if isinstance(context.result, str):
+            assert context.result == response, f"{context.result}"
+        else:
+            assert context.result.status == api_engine.ERROR, f"{context.result}"
+            assert context.result.error == response, f"{context.result}"
 
 @then('I should receive a {status} response')
 def step_impl(context, status: str):
@@ -145,3 +179,7 @@ def step_impl(context, assets: str):
 def step_impl(context, size: str):
     policies = list_policies()
     assert len(policies.data) == int(size)
+
+@then('I should receive a list of namespace with size {size}')
+def step_impl(context, size: str):
+    assert len(context.result.data) == int(size), f"{context.result}"
