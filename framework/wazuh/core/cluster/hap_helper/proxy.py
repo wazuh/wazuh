@@ -5,6 +5,7 @@ from typing import Optional, TypeAlias
 
 import httpx
 from wazuh.core.cluster.hap_helper.exception import ProxyError
+from wazuh.core.cluster.utils import ClusterFilter
 
 JSON_TYPE: TypeAlias = dict | list[dict]
 PROXY_API_RESPONSE: TypeAlias = JSON_TYPE
@@ -276,15 +277,21 @@ class Proxy:
         self,
         wazuh_backend: str,
         proxy_api: ProxyAPI,
-        logger: logging.Logger,
         wazuh_connection_port: int = 1514,
         resolver: str = None,
     ):
-        self.logger = logger
+        self.logger = self._get_logger()
         self.wazuh_backend = wazuh_backend
         self.wazuh_connection_port = wazuh_connection_port
         self.api = proxy_api
         self.resolver = resolver
+
+    @staticmethod
+    def _get_logger() -> logging.Logger:
+        logger = logging.getLogger('wazuh').getChild('HAPHelper Proxy')
+        logger.addFilter(ClusterFilter(tag='Cluster', subtag='HAPHelper Proxy'))
+
+        return logger
 
     async def initialize(self):
         await self.api.initialize()
@@ -300,7 +307,7 @@ class Proxy:
     @check_proxy_api
     async def get_current_backends(self) -> dict:
         api_response = await self.api.get_backends()
-        self.logger.trace('Obtained proxy backends')
+        self.logger.debug2('Obtained proxy backends')
         return {backend['name']: backend for backend in api_response['data']}
 
     async def exists_backend(self, backend_name: str) -> bool:
@@ -309,7 +316,7 @@ class Proxy:
     @check_proxy_api
     async def get_current_frontends(self) -> dict:
         api_response = await self.api.get_frontends()
-        self.logger.trace('Obtained proxy frontends')
+        self.logger.debug2('Obtained proxy frontends')
         return {frontend['name']: frontend for frontend in api_response['data'] if 'default_backend' in frontend}
 
     async def exists_frontend(self, frontend_name: str) -> bool:
@@ -323,19 +330,19 @@ class Proxy:
         algorithm: ProxyBalanceAlgorithm = ProxyBalanceAlgorithm.LEAST_CONNECTIONS,
     ):
         await self.api.add_backend(name=name, mode=mode, algorithm=algorithm)
-        self.logger.trace(f"Added new proxy backend: '{name}'")
+        self.logger.debug2(f"Added new proxy backend: '{name}'")
 
     @check_proxy_api
     async def add_new_frontend(
         self, name: str, port: int, backend: str, mode: CommunicationProtocol = CommunicationProtocol.TCP
     ):
         await self.api.add_frontend(name=name, port=port, backend=backend, mode=mode)
-        self.logger.trace(f"Added new proxy frontend: '{name}'")
+        self.logger.debug2(f"Added new proxy frontend: '{name}'")
 
     @check_proxy_api
     async def get_current_backend_servers(self) -> dict:
         api_response = await self.api.get_backend_servers(self.wazuh_backend)
-        self.logger.trace('Obtained proxy servers')
+        self.logger.debug2('Obtained proxy servers')
         return {server['name']: server['address'] for server in api_response['data']}
 
     @check_proxy_api
@@ -347,7 +354,7 @@ class Proxy:
             port=self.wazuh_connection_port,
             resolver=resolver,
         )
-        self.logger.trace(
+        self.logger.debug2(
             f"Added new server '{manager_name}' {manager_address}:{self.wazuh_connection_port} to backend"
             f" '{self.wazuh_backend}'"
         )
@@ -357,7 +364,7 @@ class Proxy:
     async def remove_wazuh_manager(self, manager_name: str) -> dict:
         api_response = await self.api.remove_server_from_backend(backend=self.wazuh_backend, server_name=manager_name)
 
-        self.logger.trace(f"Removed server {manager_name} from backend '{self.wazuh_backend}'")
+        self.logger.debug2(f"Removed server {manager_name} from backend '{self.wazuh_backend}'")
         return api_response
 
     @check_proxy_api
@@ -365,7 +372,7 @@ class Proxy:
         api_response = await self.api.change_backend_server_state(
             backend_name=self.wazuh_backend, server_name=server_name, state=ProxyServerState.DRAIN
         )
-        self.logger.trace(f"Changed Wazuh server '{server_name}' to {ProxyServerState.DRAIN.value.upper()} state")
+        self.logger.debug2(f"Changed Wazuh server '{server_name}' to {ProxyServerState.DRAIN.value.upper()} state")
         return api_response
 
     @check_proxy_api
@@ -373,7 +380,7 @@ class Proxy:
         api_response = await self.api.change_backend_server_state(
             backend_name=self.wazuh_backend, server_name=server_name, state=ProxyServerState.READY
         )
-        self.logger.trace(f"Changed Wazuh server '{server_name}' to {ProxyServerState.READY.value.upper()} state")
+        self.logger.debug2(f"Changed Wazuh server '{server_name}' to {ProxyServerState.READY.value.upper()} state")
         return api_response
 
     @check_proxy_api
@@ -382,7 +389,7 @@ class Proxy:
             await self.api.get_backend_server_stats(backend_name=self.wazuh_backend, server_name=server_name)
         )[0]['stats'][0]['stats']
 
-        self.logger.trace(f"Obtained server '{server_name}' stats")
+        self.logger.debug2(f"Obtained server '{server_name}' stats")
         return server_stats
 
     @check_proxy_api

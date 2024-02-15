@@ -2,14 +2,12 @@ import logging
 import time
 from asyncio import sleep
 from math import ceil, floor
-from os import path
 
-from wazuh.core import common
 from wazuh.core.cluster.hap_helper.configuration import parse_configuration
-from wazuh.core.cluster.hap_helper.custom_logging import CustomLogger
 from wazuh.core.cluster.hap_helper.exception import HAPHelperError, ProxyError, WazuhError
 from wazuh.core.cluster.hap_helper.proxy import Proxy, ProxyAPI, ProxyServerState
 from wazuh.core.cluster.hap_helper.wazuh import WazuhAgent, WazuhAPI
+from wazuh.core.cluster.utils import ClusterFilter
 
 
 class HAPHelper:
@@ -17,8 +15,8 @@ class HAPHelper:
     AGENT_STATUS_SYNC_TIME: int = 25  # Default agent notify time + cluster sync + 5s
     SERVER_ADMIN_STATE_DELAY: int = 5
 
-    def __init__(self, proxy: Proxy, wazuh_api: WazuhAPI, logger: logging.Logger, options: dict):
-        self.logger = logger
+    def __init__(self, proxy: Proxy, wazuh_api: WazuhAPI, options: dict):
+        self.logger = self._get_logger()
         self.proxy = proxy
         self.wazuh_api = wazuh_api
 
@@ -28,6 +26,13 @@ class HAPHelper:
         self.agent_reconnection_time: int = options['agent_reconnection_time']
         self.agent_tolerance: float = options['agent_tolerance']
         self.remove_disconnected_node_after: int = options['remove_disconnected_node_after']
+
+    @staticmethod
+    def _get_logger() -> logging.Logger:
+        logger = logging.getLogger('wazuh').getChild('HAPHelper')
+        logger.addFilter(ClusterFilter(tag='Cluster', subtag='HAPHelper Main'))
+
+        return logger
 
     async def initialize_components(self):
         try:
@@ -56,7 +61,7 @@ class HAPHelper:
 
     async def check_node_to_delete(self, node_name: str) -> bool:
         node_downtime = (await self.proxy.get_wazuh_server_stats(server_name=node_name))['lastchg']
-        self.logger.trace(f"Server '{node_name}' has been disconnected for {node_downtime}s")
+        self.logger.debug2(f"Server '{node_name}' has been disconnected for {node_downtime}s")
 
         if node_downtime < self.remove_disconnected_node_after * 60:
             self.logger.info(f"Server '{node_name}' has not been disconnected enough time to remove it")
@@ -299,9 +304,6 @@ class HAPHelper:
     async def run(cls):
         try:
             configuration = parse_configuration()
-            main_logger, proxy_logger, wazuh_api_logger = setup_loggers(
-                log_level=configuration['hap_helper'].get('log_level', 'INFO')
-            )
 
             proxy_api = ProxyAPI(
                 username=configuration['proxy']['api']['user'],
@@ -313,7 +315,6 @@ class HAPHelper:
                 wazuh_backend=configuration['proxy']['backend'],
                 wazuh_connection_port=configuration['wazuh']['connection']['port'],
                 proxy_api=proxy_api,
-                logger=proxy_logger,
                 resolver=configuration['proxy'].get('resolver', None),
             )
 
@@ -323,10 +324,9 @@ class HAPHelper:
                 username=configuration['wazuh']['api']['user'],
                 password=configuration['wazuh']['api']['password'],
                 excluded_nodes=configuration['wazuh']['excluded_nodes'],
-                logger=wazuh_api_logger,
             )
 
-            helper = cls(proxy=proxy, wazuh_api=wazuh_api, logger=main_logger, options=configuration['hap_helper'])
+            helper = cls(proxy=proxy, wazuh_api=wazuh_api, options=configuration['hap_helper'])
 
             await helper.initialize_components()
             await helper.initialize_wazuh_cluster_configuration()
@@ -341,16 +341,3 @@ class HAPHelper:
             helper.logger.critical(f'Unexpected exception: {unexpected_exc}', exc_info=True)
         finally:
             helper.logger.info('Process ended')
-
-
-def setup_loggers(log_level: str) -> tuple[logging.Logger, logging.Logger, logging.Logger]:
-    log_level = logging.getLevelName(log_level.upper())
-
-    log_file_path = path.join(common.WAZUH_LOGS, 'hap_helper.log')
-    main_logger = CustomLogger('wazuh-haphelper', file_path=log_file_path, level=log_level).get_logger()
-    proxy_logger = CustomLogger('proxy-logger', file_path=log_file_path, level=log_level, tag='Proxy').get_logger()
-    wazuh_api_logger = CustomLogger(
-        'wazuh-api-logger', file_path=log_file_path, level=log_level, tag='Wazuh API'
-    ).get_logger()
-
-    return main_logger, proxy_logger, wazuh_api_logger

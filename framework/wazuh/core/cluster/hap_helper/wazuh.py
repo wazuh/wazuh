@@ -8,6 +8,7 @@ from wazuh.agent import get_agents, reconnect_agents
 from wazuh.cluster import get_nodes_info
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.cluster.utils import ClusterFilter
 
 
 class WazuhAPIMethod(Enum):
@@ -40,13 +41,12 @@ class WazuhAPI:
     def __init__(
         self,
         address: str,
-        logger: logging.Logger,
         port: int = 55000,
         username: str = 'wazuh',
         password: str = 'wazuh',
         excluded_nodes: list | None = None,
     ):
-        self.logger = logger
+        self.logger = self._get_logger()
         self.address = address
         self.port = port
         self.username = username
@@ -54,6 +54,13 @@ class WazuhAPI:
         self.excluded_nodes = excluded_nodes or []
 
         self.token = ''
+
+    @staticmethod
+    def _get_logger() -> logging.Logger:
+        logger = logging.getLogger('wazuh').getChild('HAPHelper DAPI')
+        logger.addFilter(ClusterFilter(tag='Cluster', subtag='HAPHelper DAPI'))
+
+        return logger
 
     async def _make_dapi_call(self, f: Callable, f_kwargs: Optional[dict] = None, **kwargs) -> dict:
         ret_val = await DistributedAPI(f=f, f_kwargs=f_kwargs, logger=self.logger, **kwargs).distribute_function()
