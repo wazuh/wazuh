@@ -20,25 +20,25 @@
 namespace Utils
 {
 
-    template<typename T, typename Tq=std::queue<T>>
-    class SafeQueue
+    template<typename T, typename U, typename Tq=std::queue<T>>
+    class TSafeQueue
     {
         public:
-            SafeQueue()
+            TSafeQueue()
                 : m_canceled{ false }
             {}
-            SafeQueue& operator=(const SafeQueue&) = delete;
-            SafeQueue(SafeQueue& other)
-                : SafeQueue{}
+            TSafeQueue& operator=(const TSafeQueue&) = delete;
+            TSafeQueue(TSafeQueue& other)
+                : TSafeQueue{}
             {
                 std::lock_guard<std::mutex> lock{ other.m_mutex };
                 m_queue = other.m_queue;
             }
-            explicit SafeQueue(Tq&& queue)
+            explicit TSafeQueue(Tq&& queue)
                 : m_queue{ std::move(queue) }
                 , m_canceled{ false }
             {}
-            ~SafeQueue()
+            ~TSafeQueue()
             {
                 cancel();
             }
@@ -54,7 +54,7 @@ namespace Utils
                 }
             }
 
-            bool pop(T& value, const bool wait = true)
+            bool pop(U& value, const bool wait = true)
             {
                 std::unique_lock<std::mutex> lock{ m_mutex };
 
@@ -77,7 +77,7 @@ namespace Utils
                 return ret;
             }
 
-            std::shared_ptr<T> pop(const bool wait = true)
+            std::shared_ptr<U> pop(const bool wait = true)
             {
                 std::unique_lock<std::mutex> lock{ m_mutex };
 
@@ -93,7 +93,7 @@ namespace Utils
 
                 if (ret)
                 {
-                    const auto spData{ std::make_shared<T>(m_queue.front()) };
+                    const auto spData{ std::make_shared<U>(m_queue.front()) };
                     m_queue.pop();
                     return spData;
                 }
@@ -101,11 +101,11 @@ namespace Utils
                 return nullptr;
             }
 
-            std::queue<T> popBulk(const uint64_t elementsQuantity,
+            std::queue<U> popBulk(const uint64_t elementsQuantity,
                                   const std::chrono::seconds& timeout = std::chrono::seconds(5))
             {
                 std::unique_lock<std::mutex> lock{ m_mutex };
-                std::queue<T> bulkQueue;
+                std::queue<U> bulkQueue;
 
                 auto timeoutReached = false;
 
@@ -177,6 +177,9 @@ namespace Utils
             std::atomic<bool> m_canceled{};
             Tq m_queue;
     };
+
+    template<typename T, typename Tq = std::queue<T>>
+    using SafeQueue = TSafeQueue<T, T, Tq>;
 }//namespace Utils
 
 #endif //THREAD_SAFE_QUEUE_H
