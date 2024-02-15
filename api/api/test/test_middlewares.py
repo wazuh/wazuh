@@ -273,19 +273,35 @@ async def test_secure_headers_middleware(mock_req):
 
 
 @pytest.mark.asyncio
-async def test_check_block_ip_middleware(mock_req):
+@pytest.mark.parametrize("endpoint, method, call_check", [
+    (LOGIN_ENDPOINT, 'POST', True),
+    (RUN_AS_LOGIN_ENDPOINT, 'POST', True),
+    (LOGIN_ENDPOINT, 'GET', True),
+    (RUN_AS_LOGIN_ENDPOINT, 'GET', True),
+    (LOGIN_ENDPOINT, 'DELETE', False),
+    (RUN_AS_LOGIN_ENDPOINT, 'DELETE', False),
+    ('/agents', 'POST', False),
+    ('/agents', 'GET', False),
+    ('/agents', 'DELETE', False),
+])
+async def test_check_block_ip_middleware(endpoint, method, call_check, mock_req):
     """Test access logging."""
     response = MagicMock()
     dispatch_mock = AsyncMock(return_value=response)
 
     middleware = CheckBlockedIP(AsyncApp(__name__))
     operation = MagicMock(name="operation")
-    operation.method = "post"
+    operation.method = method
+    mock_req.url.path = endpoint
+    mock_req.method = method
 
     with TestContext(operation=operation), \
         patch('api.middlewares.check_blocked_ip') as mock_block_ip:
         secure_headers.framework.starlette = MagicMock()
         ret_response = await middleware.dispatch(request=mock_req, call_next=dispatch_mock)
-        mock_block_ip.assert_called_once_with(mock_req)
+        if call_check:
+            mock_block_ip.assert_called_once_with(mock_req)
+        else:
+            mock_block_ip.assert_not_called()
         dispatch_mock.assert_awaited_once_with(mock_req)
         assert ret_response == response
