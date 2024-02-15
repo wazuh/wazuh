@@ -193,7 +193,7 @@ def start(params: dict):
     if api_conf['access']['max_request_per_minute'] > 0:
         app.add_middleware(CheckRateLimitsMiddleware, MiddlewarePosition.BEFORE_SECURITY)
     app.add_middleware(CheckBlockedIP, MiddlewarePosition.BEFORE_SECURITY)
-    app.add_middleware(WazuhAccessLoggerMiddleware)
+    app.add_middleware(WazuhAccessLoggerMiddleware, MiddlewarePosition.BEFORE_EXCEPTION)
     app.add_middleware(SecureHeadersMiddleware)
     if api_conf['max_upload_size']:
         app.add_middleware(ContentSizeLimitMiddleware, max_content_size=api_conf['max_upload_size'])
@@ -217,6 +217,7 @@ def start(params: dict):
     app.add_error_handler(error_handler.MaxRequestsException, error_handler.exceeded_requests_handler)
     app.add_error_handler(error_handler.BlockedIPException, error_handler.blocked_ip_handler)
     app.add_error_handler(ProblemException, error_handler.problem_error_handler)
+    app.add_error_handler(403, error_handler.problem_error_handler)
 
     # Add application signals TO BE MODIFIED AFTER IMPLEMENTING CTI IN CONNEXION 3.0
     # app.app.on_response_prepare.append(modify_response_headers)
