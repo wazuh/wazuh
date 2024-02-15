@@ -33,24 +33,16 @@ class WazuhAgent:
         return [agent['id'] for agent in agents_list if cls.can_reconnect(agent['version'])]
 
 
-class WazuhAPI:
+class WazuhDAPI:
     AGENTS_MAX_LIMIT = 100000
     API_RETRIES = 5
     TIMEOUT_ERROR_CODE = 3021
 
     def __init__(
         self,
-        address: str,
-        port: int = 55000,
-        username: str = 'wazuh',
-        password: str = 'wazuh',
         excluded_nodes: list | None = None,
     ):
         self.logger = self._get_logger()
-        self.address = address
-        self.port = port
-        self.username = username
-        self.password = password
         self.excluded_nodes = excluded_nodes or []
 
         self.token = ''
