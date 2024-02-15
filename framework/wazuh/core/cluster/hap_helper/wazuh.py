@@ -2,6 +2,7 @@ import logging
 import re
 from collections import defaultdict
 from enum import Enum
+from typing import Callable, Optional
 
 from wazuh.agent import get_agents, reconnect_agents
 from wazuh.cluster import get_nodes_info
@@ -54,25 +55,30 @@ class WazuhAPI:
 
         self.token = ''
 
+    async def _make_dapi_call(self, f: Callable, f_kwargs: Optional[dict] = None, **kwargs) -> dict:
+        ret_val = await DistributedAPI(f=f, f_kwargs=f_kwargs, logger=self.logger, **kwargs).distribute_function()
+        if isinstance(ret_val, Exception):
+            self.logger.error(f'Unexpected error calling {f.__name__}')
+            raise ret_val
+        return ret_val
+
     async def get_cluster_nodes(self) -> dict:
-        data = await DistributedAPI(
+        data = await self._make_dapi_call(
             f=get_nodes_info,
             request_type='local_master',
             is_async=True,
-            logger=self.logger,
             local_client_arg='lc',
             nodes=await get_system_nodes(),
-        ).distribute_function()
+        )
 
         return {item['name']: item['ip'] for item in data.affected_items if item['name'] not in self.excluded_nodes}
 
     async def reconnect_agents(self, agent_list: list = None) -> dict:
-        data = await DistributedAPI(
+        data = await self._make_dapi_call(
             f=reconnect_agents,
             f_kwargs={'agent_list': agent_list},
             request_type='distributed_master',
-            logger=self.logger,
-        ).distribute_function()
+        )
 
         return data.affected_items
 
@@ -87,12 +93,11 @@ class WazuhAPI:
             'limit': self.AGENTS_MAX_LIMIT,
         }
 
-        data = await DistributedAPI(
+        data = await self._make_dapi_call(
             f=get_agents,
             f_kwargs=f_kwargs,
             request_type='local_master',
-            logger=self.logger,
-        ).distribute_function()
+        )
 
         for agent in data.affected_items:
             agent_distribution[agent['node_name']].append({'id': agent['id'], 'version': agent['version']})
@@ -108,11 +113,10 @@ class WazuhAPI:
             'limit': limit or self.AGENTS_MAX_LIMIT,
         }
 
-        data = await DistributedAPI(
+        data = await self._make_dapi_call(
             f=get_agents,
             f_kwargs=f_kwargs,
             request_type='local_master',
-            logger=self.logger,
-        ).distribute_function()
+        )
 
         return data.affected_items
