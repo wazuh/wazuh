@@ -91,11 +91,11 @@ def get_command(message: Message) -> Tuple[Optional[str], str]:
     elif isinstance(message, policy.AssetGet_Request):
         return None, 'policy.asset/get'
     elif isinstance(message, policy.DefaultParentGet_Request):
-        return None, 'policy.defaultparent/get'
+        return None, 'policy.defaultParent/get'
     elif isinstance(message, policy.DefaultParentPost_Request):
-        return None, 'policy.defaultparent/post'
+        return None, 'policy.defaultParent/post'
     elif isinstance(message, policy.DefaultParentDelete_Request):
-        return None, 'policy.defaultparent/delete'
+        return None, 'policy.defaultParent/delete'
     elif isinstance(message, policy.PoliciesGet_Request):
         return None, 'policy.policies/get'
     elif isinstance(message, policy.NamespacesGet_Request):
