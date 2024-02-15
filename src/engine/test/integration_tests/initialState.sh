@@ -60,6 +60,21 @@ decoders:
 EOM
 }
 
+create_dummy_integration_with_parents() {
+    local parent_wazuh_core_tes="$ENVIRONMENT_DIR/engine/parent-wazuh-core-test"
+    mkdir -p "$parent_wazuh_core_tes/decoders" "$parent_wazuh_core_tes/filters"
+    cat <<- EOM > "$parent_wazuh_core_tes/decoders/parent-message.yml"
+name: decoder/parent-message/0
+check: \$wazuh.queue == 49 # "1"
+EOM
+
+    cat <<- EOM > "$parent_wazuh_core_tes/decoders/test-message.yml"
+name: decoder/test-message/0
+parents:
+  - decoder/parent-message/0
+EOM
+}
+
 main() {
     if [ -z "$environment_directory" ]; then
         echo "environment_directory is optional. For default is wazuh directory. Usage: $0 -e <environment_directory>"
@@ -73,5 +88,6 @@ main() {
 
     create_dummy_integration
     create_other_dummy_integration
+    create_dummy_integration_with_parents
 }
 main "$@"

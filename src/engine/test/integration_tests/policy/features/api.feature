@@ -72,12 +72,35 @@ Feature: Policy API Management
     And I send a request to get the policy called "policy/wazuh/0" in the namespaces "wazuh"
     Then I should receive a policy with 0 assets in those namespaces
 
-  Scenario: Delete an asset from a non-existent policy
+  Scenario: Delete a non-existent asset from policy
+    Given I have a policy called "policy/wazuh/0"
+    When I send a request to delete the asset "wazuh-core-test" from the policy called "policy/wazuh/0" in the namespace "wazuh"
+    Then I should receive a failed response indicating "Asset not found"
 
-  Scenario: List assets from an existing policy
+  Scenario: Delete an asset from non-existent policy
+    Given I have a policy called "policy/wazuh/0"
+    When I send a request to delete the asset "wazuh-core-test" from the policy called "policy/wazuh/1" in the namespace "wazuh"
+    Then I should receive a failed response
 
-  Scenario: List assets of a non-existent policy
+  Scenario: Set the non-exist default parent of a namespace
+    Given I have a policy called "policy/wazuh/0"
+    When I send a request to set the default parent called "default" in the namespace "wazuh"
+    Then I should receive a failed response indicating "Default parent decoder 'default' in namespace 'wazuh' is not a decoder"
 
-  Scenario: List assets of a policy with invalid namespace identifier
+  Scenario: Set the default parent of a namespace
+    Given I have a policy called "policy/wazuh/0"
+    Given I load an integration called "parent-wazuh-core-test" in the namespace "wazuh"
+    When I send a request to set the default parent called "decoder/parent-message/0" in the namespace "wazuh"
+    Then I should receive a failed response indicating "Engine base graph: Node "decoder/Input" has no children."
 
-  Scenario: Delete an asset with an invalid name from an existing policy
+  Scenario: Get the non-exist default parent of a namespace
+    Given I have a policy called "policy/wazuh/0"
+    When I send a request to get the default parent of policy "policy/wazuh/0" in the namespace "wazuh"
+    Then I should receive a failed response indicating "Namespace not found or no default parent"
+
+  Scenario: Get namespaces in policy
+    Given I have a policy called "policy/wazuh/0"
+    Given I load an integration called "parent-wazuh-core-test" in the namespace "wazuh"
+    Given I load an integration called "other-wazuh-core-test" in the namespace "system"
+    When I send a request to get namespaces of policy "policy/wazuh/0"
+    Then I should receive a list of namespace with size 2

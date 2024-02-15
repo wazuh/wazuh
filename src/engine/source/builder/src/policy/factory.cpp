@@ -215,15 +215,15 @@ PolicyData readData(const store::Doc& doc, const std::shared_ptr<store::IStoreRe
             if (!syntax::name::isDecoder(decoderName))
             {
                 throw std::runtime_error(
-                    fmt::format("Default parent decoder '{}' in namespace '{}' is not a decoder", ns, decoderName));
+                    fmt::format("Default parent decoder '{}' in namespace '{}' is not a decoder", decoderName, ns));
             }
 
             auto added = data.addDefaultParent(PolicyData::AssetType::DECODER, ns, decoderName);
             if (!added)
             {
                 throw std::runtime_error(fmt::format("Default parent decoder '{}' in namespace '{}' is duplicated",
-                                                     ns,
-                                                     decoderName));
+                                                     decoderName,
+                                                     ns));
             }
         }
     }
