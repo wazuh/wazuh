@@ -6,7 +6,7 @@ from math import ceil, floor
 from wazuh.core.cluster.hap_helper.configuration import parse_configuration
 from wazuh.core.cluster.hap_helper.exception import HAPHelperError, ProxyError, WazuhError
 from wazuh.core.cluster.hap_helper.proxy import Proxy, ProxyAPI, ProxyServerState
-from wazuh.core.cluster.hap_helper.wazuh import WazuhAgent, WazuhAPI
+from wazuh.core.cluster.hap_helper.wazuh import WazuhAgent, WazuhDAPI
 from wazuh.core.cluster.utils import ClusterFilter
 
 
@@ -15,10 +15,10 @@ class HAPHelper:
     AGENT_STATUS_SYNC_TIME: int = 25  # Default agent notify time + cluster sync + 5s
     SERVER_ADMIN_STATE_DELAY: int = 5
 
-    def __init__(self, proxy: Proxy, wazuh_api: WazuhAPI, options: dict):
+    def __init__(self, proxy: Proxy, wazuh_dapi: WazuhDAPI, options: dict):
         self.logger = self._get_logger()
         self.proxy = proxy
-        self.wazuh_api = wazuh_api
+        self.wazuh_dapi = wazuh_dapi
 
         self.sleep_time: int = options['sleep_time']
         self.agent_reconnection_stability_time: int = options['agent_reconnection_stability_time']
@@ -36,7 +36,6 @@ class HAPHelper:
 
     async def initialize_components(self):
         try:
-            # self.wazuh_api.initialize()
             await self.proxy.initialize()
             self.logger.info('Main components were initialized')
         except (WazuhError, ProxyError) as init_exc:
@@ -98,7 +97,7 @@ class HAPHelper:
                 remove_nodes.append(node_name)
                 add_nodes.append(node_name)
         for node_name in proxy_backend_servers.keys() - wazuh_cluster_nodes.keys():
-            if node_name in self.wazuh_api.excluded_nodes:
+            if node_name in self.wazuh_dapi.excluded_nodes:
                 self.logger.info(f"Server '{node_name}' has been excluded but is currently active. Removing it")
             elif await self.check_node_to_delete(node_name):
                 pass
@@ -115,7 +114,7 @@ class HAPHelper:
             f'Total iterations: {ceil(len(agent_list) / self.agent_reconnection_chunk_size)}'
         )
         for index in range(0, len(agent_list), self.agent_reconnection_chunk_size):
-            await self.wazuh_api.reconnect_agents(agent_list[index : index + self.agent_reconnection_chunk_size])
+            await self.wazuh_dapi.reconnect_agents(agent_list[index : index + self.agent_reconnection_chunk_size])
             self.logger.debug(f'Delay between agent reconnections. Sleeping {self.agent_reconnection_time}s...')
             await sleep(self.agent_reconnection_time)
 
@@ -160,7 +159,7 @@ class HAPHelper:
             wazuh_backend_stats = (await self.proxy.get_wazuh_backend_stats()).keys()
 
         self.logger.debug('All new servers are UP')
-        previous_agent_distribution = await self.wazuh_api.get_agents_node_distribution()
+        previous_agent_distribution = await self.wazuh_dapi.get_agents_node_distribution()
         previous_connection_distribution = await self.proxy.get_wazuh_backend_server_connections() | {
             server: len(previous_agent_distribution[server])
             for server in previous_agent_distribution
@@ -230,7 +229,7 @@ class HAPHelper:
     async def calculate_agents_to_balance(self, affected_servers: dict) -> dict:
         agents_to_balance = {}
         for server_name, n_agents in affected_servers.items():
-            agent_candidates = await self.wazuh_api.get_agents_belonging_to_node(node_name=server_name, limit=n_agents)
+            agent_candidates = await self.wazuh_dapi.get_agents_belonging_to_node(node_name=server_name, limit=n_agents)
             eligible_agents = WazuhAgent.get_agents_able_to_reconnect(agents_list=agent_candidates)
             if len(eligible_agents) != len(agent_candidates):
                 self.logger.warning(
@@ -253,7 +252,7 @@ class HAPHelper:
             try:
                 await self.backend_servers_state_healthcheck()
                 await self.check_proxy_processes(auto_mode=True) and await sleep(self.AGENT_STATUS_SYNC_TIME)
-                current_wazuh_cluster = await self.wazuh_api.get_cluster_nodes()
+                current_wazuh_cluster = await self.wazuh_dapi.get_cluster_nodes()
                 current_proxy_backend = await self.proxy.get_current_backend_servers()
 
                 nodes_to_add, nodes_to_remove = await self.obtain_nodes_to_configure(
@@ -318,15 +317,11 @@ class HAPHelper:
                 resolver=configuration['proxy'].get('resolver', None),
             )
 
-            wazuh_api = WazuhAPI(
-                address=configuration['wazuh']['api']['address'],
-                port=configuration['wazuh']['api']['port'],
-                username=configuration['wazuh']['api']['user'],
-                password=configuration['wazuh']['api']['password'],
+            wazuh_dapi = WazuhDAPI(
                 excluded_nodes=configuration['wazuh']['excluded_nodes'],
             )
 
-            helper = cls(proxy=proxy, wazuh_api=wazuh_api, options=configuration['hap_helper'])
+            helper = cls(proxy=proxy, wazuh_dapi=wazuh_dapi, options=configuration['hap_helper'])
 
             await helper.initialize_components()
             await helper.initialize_wazuh_cluster_configuration()
