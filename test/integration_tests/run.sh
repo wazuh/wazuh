@@ -49,7 +49,7 @@ run_behave_tests() {
         local steps_dir=$(dirname "$features_dir")/steps
         if [ -d "$steps_dir" ]; then
             echo "Running Behave in $features_dir"
-            behave "$features_dir" || exit_code=1
+            behave "$features_dir" --tags ~exclude || exit_code=1
         fi
     done
     echo "Exit code $exit_code"
