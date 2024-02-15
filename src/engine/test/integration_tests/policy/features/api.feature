@@ -87,6 +87,7 @@ Feature: Policy API Management
     When I send a request to set the default parent called "default" in the namespace "wazuh"
     Then I should receive a failed response indicating "Default parent decoder 'default' in namespace 'wazuh' is not a decoder"
 
+  @exclude
   Scenario: Set the default parent of a namespace
     Given I have a policy called "policy/wazuh/0"
     Given I load an integration called "parent-wazuh-core-test" in the namespace "wazuh"

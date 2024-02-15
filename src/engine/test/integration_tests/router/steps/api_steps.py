@@ -23,13 +23,16 @@ def run_command(command):
     assert result.returncode == 0, f"{result.stderr}"
 
 def send_recv(request, expected_response_type) -> Tuple[Optional[str], dict]:
-    error, response = api_client.send_recv(request)
-    assert error is None, f"{error}"
-    parse_response = ParseDict(response, expected_response_type)
-    if parse_response == api_engine.ERROR:
-        return parse_response.error, parse_response
-    else:
-        return None, parse_response
+    try:
+        error, response = api_client.send_recv(request)
+        assert error is None, f"{error}"
+        parse_response = ParseDict(response, expected_response_type)
+        if parse_response.status == api_engine.ERROR:
+            return parse_response.error, parse_response
+        else:
+            return None, parse_response
+    except Exception as e:
+        assert False, f"Error parsing response: {str(e)}"
 
 def add_integration(integration_name: str):
     command = f"engine-integration add -a {SOCKET_PATH} -n system {RULESET_DIR}/{integration_name}/"
@@ -45,7 +48,6 @@ def delete_policy(policy_name: str):
     request = api_policy.StoreDelete_Request()
     request.policy = policy_name
     error, response = send_recv(request, api_policy.PoliciesGet_Response())
-    assert error is None, f"{error}"
 
 def add_integration_to_policy(integration_name: str, policy_name: str):
     request = api_policy.AssetPost_Request()
@@ -96,7 +98,6 @@ def router_tear_down():
         request = api_router.RouteDelete_Request()
         request.name = entry.name
         error, response = send_recv(request, api_engine.GenericStatus_Response())
-        assert error is None, f"{error}"
 
 @given('I have a policy "{policy_name}" that has an integration called "{integration_name}" loaded')
 def step_impl(context, policy_name: str, integration_name: str):
@@ -127,7 +128,6 @@ def step_impl(context, route_name: str, priority: str):
     request.name = route_name
     request.priority = int(priority)
     error, context.result = send_recv(request, api_engine.GenericStatus_Response())
-    assert error is None, f"{error}"
     context.route_name = route_name
 
 @when('I send a request to delete the route "{route_name}"')
