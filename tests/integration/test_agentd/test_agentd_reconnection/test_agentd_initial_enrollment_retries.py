@@ -92,7 +92,7 @@ def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuratio
                  getting the new key to communicate with the 'wazuh-remoted' daemon.
 
                  This test covers and check the scenario of Agent starting without keys
-                 and multiple retries are required until the new key is obtained to start 
+                 and multiple retries are required until the new key is obtained to start
                  communicating with Remoted
 
     wazuh_min_version: 4.2.0
@@ -117,7 +117,7 @@ def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuratio
             brief: Deletes keys file if test configuration request it
         - daemons_handler:
             type: fixture
-            brief: Handler of Wazuh daemons.    
+            brief: Handler of Wazuh daemons.
 
     assertions:
         - Verify that the agent enrollment is successful.
@@ -143,17 +143,17 @@ def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuratio
     # Start Authd simulador
     authd_server = AuthdSimulator()
     authd_server.start()
-    
+
     # Wait succesfull enrollment
     wait_enrollment()
 
     # Start Remoted simulador
     remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
     remoted_server.start()
-    
+
     # Wait until Agent is notifying Manager
     wait_keepalive()
-    
+
     # Check if no Wazuh module stopped due to Agentd Initialization
     check_module_stop()
 
@@ -162,4 +162,3 @@ def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuratio
 
     # Reset simulator
     remoted_server.destroy()
-    

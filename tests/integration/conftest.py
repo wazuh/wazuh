@@ -26,7 +26,7 @@ from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils import configuration, database, file, mocking, services
 from wazuh_testing.utils.file import remove_file
 from wazuh_testing.utils.manage_agents import remove_agents
-
+from wazuh_testing.utils.services import control_service
 
 #- - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -311,7 +311,7 @@ def configure_local_internal_options_handler(request: pytest.FixtureRequest, tes
 
     Args:
         request (pytest.FixtureRequest): Provide information about the current test function which made the request.
-        test_metadata (map): Data with configuration parameters 
+        test_metadata (map): Data with configuration parameters
     """
     try:
         local_internal_options = request.param
@@ -346,9 +346,9 @@ def configure_local_internal_options(request: pytest.FixtureRequest, test_metada
 
     Args:
         request (pytest.FixtureRequest): Provide information about the current test function which made the request.
-        test_metadata (map): Data with configuration parameters 
+        test_metadata (map): Data with configuration parameters
     """
-    yield from configure_local_internal_options_handler(request, test_metadata)    
+    yield from configure_local_internal_options_handler(request, test_metadata)
 
 
 @pytest.fixture(scope='module')
@@ -357,9 +357,9 @@ def configure_local_internal_options_module(request: pytest.FixtureRequest, test
 
     Args:
         request (pytest.FixtureRequest): Provide information about the current test function which made the request.
-        test_metadata (map): Data with configuration parameters 
+        test_metadata (map): Data with configuration parameters
     """
-    yield from configure_local_internal_options_handler(request, test_metadata)    
+    yield from configure_local_internal_options_handler(request, test_metadata)
 
 
 def configure_sockets_environment_implementation(request: pytest.FixtureRequest) -> None:
@@ -372,7 +372,7 @@ def configure_sockets_environment_implementation(request: pytest.FixtureRequest)
 
     # Stop wazuh-service and ensure all daemons are stopped
     services.control_service('stop')
-    services.check_daemon_status(running_condition=False)
+    services.wait_expected_daemon_status(running_condition=False)
 
     monitored_sockets = list()
     mitm_list = list()
@@ -381,7 +381,7 @@ def configure_sockets_environment_implementation(request: pytest.FixtureRequest)
     for daemon, mitm, daemon_first in monitored_sockets_params:
         not daemon_first and mitm is not None and mitm.start()
         services.control_service('start', daemon=daemon, debug_mode=True)
-        services.check_daemon_status(
+        services.wait_expected_daemon_status(
             running_condition=True,
             target_daemon=daemon,
             extra_sockets=[mitm.listener_socket_address] if mitm is not None and mitm.family == 'AF_UNIX' else []
@@ -399,7 +399,7 @@ def configure_sockets_environment_implementation(request: pytest.FixtureRequest)
     for daemon, mitm, _ in monitored_sockets_params:
         mitm is not None and mitm.shutdown()
         services.control_service('stop', daemon=daemon)
-        services.check_daemon_status(
+        services.wait_expected_daemon_status(
             running_condition=False,
             target_daemon=daemon,
             extra_sockets=[mitm.listener_socket_address] if mitm is not None and mitm.family == 'AF_UNIX' else []
@@ -650,3 +650,17 @@ def autostart_simulators(request: pytest.FixtureRequest) -> None:
     if services.get_service() is not WAZUH_MANAGER:
         authd.shutdown() if create_authd else None
         remoted.shutdown() if create_remoted else None
+
+
+@pytest.fixture()
+def simulate_agents(test_metadata):
+
+    agents_amount = test_metadata.get("agents_number", 1)
+    agents = create_agents(agents_amount , 'localhost')
+
+    yield agents
+
+    # Delete simulated agents
+    control_service('start')
+    remove_agents([a.id for a in agents],'manage_agents')
+    control_service('stop')
