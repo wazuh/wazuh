@@ -969,17 +969,17 @@ MapOp opBuilderHelperNumberToString(const std::vector<OpArg>& opArgs, const std:
             runState = buildCtx->runState()](base::ConstEvent event) -> MapResult
     {
         std::string valueConverted;
-        if (event->isInt64(reference))
+        if (event->isInt64(reference) || event->isInt(reference))
         {
             valueConverted = std::to_string(event->getIntAsInt64(reference).value());
-        }
-        else if (event->isFloat(reference))
-        {
-            valueConverted = std::to_string(event->getFloat(reference).value());
         }
         else if (event->isDouble(reference))
         {
             valueConverted = std::to_string(event->getDouble(reference).value());
+        }
+        else if (event->isFloat(reference))
+        {
+            valueConverted = std::to_string(event->getFloat(reference).value());
         }
         else
         {

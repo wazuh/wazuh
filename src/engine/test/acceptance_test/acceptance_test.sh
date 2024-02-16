@@ -147,9 +147,7 @@ then
                   --store_path "../ruleset/store"                          \
                   --log_level debug                                        \
                   --kvdb_path "/var/ossec/etc/kvdb/"                       \
-                  start                                                    \
-                  --force_router_arg                                       \
-                  --policy "default:255:filter/allow-all/0:policy/wazuh/0" &
+                  start                                                   &
 
     ENGINE_PID=$!
 
