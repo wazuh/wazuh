@@ -337,7 +337,7 @@ wdb_config wconfig;
 rwlock_t pool_mutex;
 wdb_t * db_pool_begin;
 wdb_t * db_pool_last;
-int db_pool_size;
+int wdb_open_count;
 OSHash * open_dbs;
 
 STATIC wdb_t * wdb_get_db_from_pool(const char* db_name) {
@@ -1031,7 +1031,7 @@ void wdb_pool_append(wdb_t * wdb) {
         db_pool_begin = db_pool_last = wdb;
     }
 
-    db_pool_size++;
+    wdb_open_count++;
 
     if (r = OSHash_Add(open_dbs, wdb->id, wdb), r != 2) {
         merror_exit("OSHash_Add(%s) returned %d.", wdb->id, r);
@@ -1052,7 +1052,7 @@ void wdb_pool_remove(wdb_t * wdb) {
             db_pool_last = NULL;
         }
 
-        db_pool_size--;
+        wdb_open_count--;
     } else if (prev = wdb_pool_find_prev(wdb), prev) {
         prev->next = wdb->next;
 
@@ -1060,7 +1060,7 @@ void wdb_pool_remove(wdb_t * wdb) {
             db_pool_last = prev;
         }
 
-        db_pool_size--;
+        wdb_open_count--;
     } else {
         merror("Database for agent '%s' not found in the pool.", wdb->id);
     }
@@ -1324,7 +1324,7 @@ void wdb_close_old() {
         rwlock_lock_write(&pool_mutex);
         node = (wdb_t *)OSHash_Get(open_dbs, i->id);
 
-        if (node == NULL || db_pool_size <= wconfig.open_db_limit) {
+        if (node == NULL || wdb_open_count <= wconfig.open_db_limit) {
             rwlock_unlock(&pool_mutex);
             continue;
         }

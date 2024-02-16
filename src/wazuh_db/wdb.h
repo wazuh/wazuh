@@ -440,7 +440,7 @@ extern char *schema_global_upgrade_v5_sql;
 extern wdb_config wconfig;
 extern rwlock_t pool_mutex;
 extern wdb_t * db_pool;
-extern int db_pool_size;
+extern int wdb_open_count;
 extern OSHash * open_dbs;
 
 typedef struct os_data {
