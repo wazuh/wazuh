@@ -122,10 +122,10 @@ MapBuilder getMMDBGeoBuilder(const std::shared_ptr<::mmdb::IManager>& mmdbManage
         utils::assertRef(opArgs, 0);
 
         const auto& ipRef = *std::static_pointer_cast<Reference>(opArgs[0]);
-        const auto& schema = buildCtx->schema();
+        const auto& validator = buildCtx->validator();
 
         // Geo only accepts IP
-        if (schema.hasField(ipRef.dotPath()) && schema.getType(ipRef.dotPath()) != schemf::Type::IP)
+        if (validator.hasField(ipRef.dotPath()) && validator.getType(ipRef.dotPath()) != schemf::Type::IP)
         {
             throw std::runtime_error(fmt::format("The reference '{}' is not an IP.", ipRef.dotPath()));
         }
@@ -197,7 +197,7 @@ MapBuilder getMMDBASNBuilder(const std::shared_ptr<::mmdb::IManager>& mmdbManage
         utils::assertRef(opArgs, 0);
 
         const auto& ipRef = *std::static_pointer_cast<Reference>(opArgs[0]);
-        const auto& schema = buildCtx->schema();
+        const auto& validator = buildCtx->validator();
 
         const std::string successTrace {fmt::format("{} -> Success", name)};
         const std::string notFoundTrace {
@@ -207,7 +207,7 @@ MapBuilder getMMDBASNBuilder(const std::shared_ptr<::mmdb::IManager>& mmdbManage
         const std::string emptyDataTrace {fmt::format("{} -> Failure: Empty wcs data", name)};
 
         // Geo only accepts IP
-        if (schema.hasField(ipRef.dotPath()) && schema.getType(ipRef.dotPath()) != schemf::Type::IP)
+        if (validator.hasField(ipRef.dotPath()) && validator.getType(ipRef.dotPath()) != schemf::Type::IP)
         {
             throw std::runtime_error(fmt::format("The reference '{}' is not an IP.", ipRef.dotPath()));
         }
