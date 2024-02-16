@@ -12,6 +12,16 @@ export WZE_STORE_PATH=$ENGINE_DIR/store/
 export WZE_EVENT_SOCK=$WAZUH_DIR/queue/sockets/queue
 export WZE_API_SOCK=$WAZUH_DIR/queue/sockets/engine-api
 export WZE_FLOOD_FILE=/tmp/engine-flood.log
+# TODO Temporary fix for the GeoIP database, this should be removed in the future 
+# when the database is downloaded by the manager
+WZE_MMDB_CITY_PATH=$WAZUH_DIR/etc/GeoLite2-City.mmdb
+WZE_MMDB_ASN_PATH=$WAZUH_DIR/etc/GeoLite2-ASN.mmdb
+if [ -f $WZE_MMDB_CITY_PATH ]; then
+    export WZE_MMDB_CITY_PATH
+fi
+if [ -f $WZE_MMDB_ASN_PATH ]; then
+    export WZE_MMDB_ASN_PATH
+fi
 
 # Create flood file if it does not exist
 if [ ! -e "$WZE_FLOOD_FILE" ] ; then
