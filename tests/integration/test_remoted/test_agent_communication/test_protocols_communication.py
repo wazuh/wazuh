@@ -22,7 +22,7 @@ from . import CONFIGS_PATH, TEST_CASES_PATH
 
 
 # Set pytest marks.
-pytestmark = [pytest.mark.server, pytest.mark.tier(level=1)]
+pytestmark = [pytest.mark.server, pytest.mark.tier(level=2)]
 
 # Cases metadata and its ids.
 cases_path = Path(TEST_CASES_PATH, 'cases_protocols_communication.yaml')
