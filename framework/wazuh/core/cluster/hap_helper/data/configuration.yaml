@@ -49,5 +49,5 @@ hap_helper:
   # Agent imbalance tolerance
   agent_tolerance: 0.1
   # Time in minutes before removing a disconnected Wazuh node from the backend
-  remove_disconnected_node_after: 60
+  remove_disconnected_node_after: 3
   log_level: debug
