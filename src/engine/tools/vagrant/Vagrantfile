@@ -32,7 +32,12 @@ Vagrant.configure("2") do |config|
 
     config.ssh.forward_agent = true
 
-    config.vm.provision "engineFirstRun", type: "shell", inline: <<-SHELL
+    # Import MM_LICENCE_KEY from environment variable
+    config.vm.provision "engineFirstRun", type: "shell", env: { "MM_LICENCE_KEY" => ENV['MM_LICENCE_KEY'] },
+    inline: <<-SHELL
+
+        # Uncomment the following line to forces the Maxmind license key to be set
+        # MM_LICENCE_KEY="your_maxmind_licence_key"
 
         echo "Installing dependencies to build the engine"
 
@@ -133,6 +138,12 @@ Vagrant.configure("2") do |config|
 
         WAZUH_DIR=/var/ossec
         ENGINE_DIR=$WAZUH_DIR/engine
+
+        # Download the GeoIP database if key is provided
+        if [ -n "$MM_LICENCE_KEY" ]; then
+            echo "--- Downloading the GeoIP database ---"
+            $ENGINE_SRC_DIR/tools/download_mmdbs.sh $MM_LICENCE_KEY
+        fi
 
         echo "--- Setting up the engine ---"
         systemctl stop wazuh-manager

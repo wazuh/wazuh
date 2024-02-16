@@ -80,6 +80,7 @@ target_link_libraries(builder
     schemf::ischema
     base
     kvdb::ikvdb
+    mmdb::immdb
     sockiface::isock
     wdb::iwdb
     logpar
@@ -180,7 +181,6 @@ target_link_libraries(builder_utest
     kvdb::mocks
     sockiface::mocks
     wdb::mocks
-    schemval::mocks
     mmdb::mocks
 )
 gtest_discover_tests(builder_utest)

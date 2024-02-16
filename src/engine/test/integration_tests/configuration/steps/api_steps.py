@@ -14,8 +14,20 @@ from typing import Optional, Tuple, List
 ENV_DIR = os.environ.get("ENV_DIR", "")
 SOCKET_PATH = ENV_DIR + "/queue/sockets/engine-api"
 RULESET_DIR = ENV_DIR + "/engine"
+CONF_FILE = ENV_DIR + "/engine/general.conf"
+BACK_UP = ENV_DIR + "/engine/general-bk.conf"
 
 api_client = APIClient(SOCKET_PATH)
+
+def back_up(original, destination):
+    try:
+        with open(original, 'r') as o:
+            content = o.read()
+
+        with open(destination, 'w') as d:
+            d.write(content)
+    except IOError as e:
+        assert False, f"Could not replace file content: {e}"
 
 def send_recv(request, expected_response_type) -> Tuple[Optional[str], dict]:
     error, response = api_client.send_recv(request)
@@ -70,15 +82,16 @@ def save_runtime_configuration(path: Optional[str]):
     error, response = send_recv(request, api_engine.GenericStatus_Response())
     return response
 
-def tear_down_conf(context):
-    name = "server.log_level"
-    content = "error"
-    context.result = update_runtime_configuration(name, content)
-    save_runtime_configuration(None)
+def tear_down_conf():
+    back_up(BACK_UP, CONF_FILE)
+
+@given('I make a backup for security')
+def step_impl(context):
+    back_up(CONF_FILE, BACK_UP)
 
 @given('I have a valid configuration file called {file_name}')
 def step_impl(context, file_name: str):
-    tear_down_conf(context)
+    tear_down_conf()
 
     file = RULESET_DIR + f"/{file_name}"
     assert os.path.exists(file), f"The file {file} does not exist."
@@ -110,6 +123,12 @@ def step_impl(context, item: str, value: str):
 
 @when('I send a restart to server')
 def step_impl(context):
+    context.shared_data['engine_instance'].send_stop_command()
+    context.shared_data['engine_instance'].send_start_command()
+
+@when('I send a restart to server definitely')
+def step_impl(context):
+    tear_down_conf()
     context.shared_data['engine_instance'].send_stop_command()
     context.shared_data['engine_instance'].send_start_command()
 
