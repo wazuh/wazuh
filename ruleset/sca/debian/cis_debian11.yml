@@ -4869,9 +4869,10 @@ checks:
       - mitre_techniques: ["T1003", "T1003.008", "T1222", "T1222.002"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
-    condition: all
+    condition: any
     rules:
       - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shadow -> r:\s0 root 0 root && r:640|600|400|500'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shadow -> r:\s0 root \d+ shadow && r:640|600|400|500'
 
   # 6.1.6 Ensure permissions on /etc/shadow- are configured (Automated)
   - id: 29692
@@ -4893,9 +4894,10 @@ checks:
       - mitre_techniques: ["T1003", "T1003.008", "T1222", "T1222.002"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
-    condition: all
+    condition: any
     rules:
       - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shadow- -> r:\s0 root 0 root && r:640|600|400|500'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shadow- -> r:\s0 root \d+ shadow && r:640|600|400|500'
 
   # 6.1.7 Ensure permissions on /etc/gshadow are configured (Automated)
   - id: 29693
@@ -4917,9 +4919,10 @@ checks:
       - mitre_techniques: ["T1003", "T1003.008", "T1222", "T1222.002"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
-    condition: all
+    condition: any
     rules:
-      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/gshadow  -> r:\s0 root 0 root && r:640|600|400|500'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/gshadow -> r:\s0 root 0 root && r:640|600|400|500'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/gshadow -> r:\s0 root \d+ shadow && r:640|600|400|500'
 
   # 6.1.8 Ensure permissions on /etc/gshadow- are configured (Automated)
   - id: 29694
@@ -4941,9 +4944,10 @@ checks:
       - mitre_techniques: ["T1003", "T1003.008", "T1222", "T1222.002"]
       - mitre_tactics: ["TA0005"]
       - mitre_mitigations: ["M1022"]
-    condition: all
+    condition: any
     rules:
-      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/gshadow-  -> r:\s0 root 0 root && r:640|600|400|500'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/gshadow- -> r:\s0 root 0 root && r:640|600|400|500'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/gshadow- -> r:\s0 root \d+ shadow && r:640|600|400|500'
 
   # 6.1.9 Ensure no world writable files exist (Automated) - Not implemented
   # 6.1.10 Ensure no unowned files or directories exist (Automated) - Not implemented
@@ -4977,7 +4981,7 @@ checks:
       - mitre_mitigations: ["M1027"]
     condition: all
     rules:
-      - 'not f:/etc/passwd -> r:^\w+:x:'
+      - 'not f:/etc/passwd -> r:^[\w-]+:x:'
 
   # 6.2.2 Ensure /etc/shadow password fields are not empty (Automated)
   - id: 29696
@@ -4998,7 +5002,7 @@ checks:
       - mitre_mitigations: ["M1027"]
     condition: all
     rules:
-      - 'not f:/etc/shadow -> r:^\w+::'
+      - 'not f:/etc/shadow -> r:^[\w-]+::'
 
   # 6.2.3 Ensure all groups in /etc/passwd exist in /etc/group (Automated) - Not Implemented
 
