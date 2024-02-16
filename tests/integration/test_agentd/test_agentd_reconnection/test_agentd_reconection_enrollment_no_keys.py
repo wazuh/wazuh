@@ -110,7 +110,7 @@ def test_agentd_reconection_enrollment_no_keys(test_metadata, set_wazuh_configur
             brief: Cleans keys file content
         - daemons_handler:
             type: fixture
-            brief: Handler of Wazuh daemons. 
+            brief: Handler of Wazuh daemons.
 
     assertions:
         - Verify that the agent enrollment is successful.
@@ -140,7 +140,7 @@ def test_agentd_reconection_enrollment_no_keys(test_metadata, set_wazuh_configur
     remoted_server.start()
 
     # Wait until Agent is notifying Manager
-    wait_keepalive()    
+    wait_keepalive()
 
     # Reset simulator
     remoted_server.destroy()
@@ -154,13 +154,13 @@ def test_agentd_reconection_enrollment_no_keys(test_metadata, set_wazuh_configur
 
     # Reset simulator
     remoted_server.destroy()
-    
+
     # Start RemotedSimulator
     remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
     remoted_server.start()
 
     # Wait until Agent is notifying Manager
-    wait_keepalive()    
+    wait_keepalive()
 
     # Reset simulator
     authd_server.destroy()

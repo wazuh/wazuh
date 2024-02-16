@@ -63,7 +63,7 @@ import sys
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG, AGENTD_TIMEOUT
-from wazuh_testing.modules.agentd.patterns import AGENTD_TRYING_CONNECT, AGENTD_CONNECTED_TO_SERVER 
+from wazuh_testing.modules.agentd.patterns import AGENTD_TRYING_CONNECT, AGENTD_CONNECTED_TO_SERVER
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils import callbacks
@@ -101,7 +101,7 @@ This test covers different options of delays between server connection attempts:
 """
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_agentd_parametrized_reconnections(test_metadata, set_wazuh_configuration, configure_local_internal_options, 
+def test_agentd_parametrized_reconnections(test_metadata, set_wazuh_configuration, configure_local_internal_options,
                                            truncate_monitored_files, clean_keys, add_keys, daemons_handler):
     '''
     description: Check how the agent behaves when there are delays between connection
@@ -169,20 +169,20 @@ def test_agentd_parametrized_reconnections(test_metadata, set_wazuh_configuratio
         # Get second connection try log timestamp
         matched_line = check_connection_try()
         actual_retry = parse_time_from_log_line(matched_line)
-        
+
         # Compute elapsed time
         delta_retry = actual_retry - log_timestamp
 
         # Check elapsed time is the spected
         assert delta_retry >= timedelta(seconds=interval - DELTA), "Retries to quick"
         assert delta_retry <= timedelta(seconds=interval + DELTA), "Retries to slow"
-        
+
         # Second log becomes the first for next cycle
         log_timestamp = actual_retry
-        
+
     # If auto enrollment is enabled, retry check enrollment
     if test_metadata['ENROLL'] == 'yes':
-        # Start RemotedSimulator for successfully enrollment 
+        # Start RemotedSimulator for successfully enrollment
         remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
         remoted_server.start()
         wait_connect()

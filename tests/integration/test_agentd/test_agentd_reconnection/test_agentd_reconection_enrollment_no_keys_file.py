@@ -113,8 +113,8 @@ def test_agentd_reconection_enrollment_no_keys_file(test_metadata, set_wazuh_con
             brief: Deletes keys file if test configuration request it
         - daemons_handler:
             type: fixture
-            brief: Handler of Wazuh daemons.  
-            
+            brief: Handler of Wazuh daemons.
+
     assertions:
         - Verify that the agent enrollment is successful.
 
@@ -144,7 +144,7 @@ def test_agentd_reconection_enrollment_no_keys_file(test_metadata, set_wazuh_con
 
     # Wait until Agent is notifing Manager
     wait_keepalive()
-    
+
     # Reset simulator
     remoted_server.destroy()
 

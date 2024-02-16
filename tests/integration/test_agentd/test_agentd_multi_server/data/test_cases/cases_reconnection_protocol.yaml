@@ -87,7 +87,7 @@
       0: [AGENTD_REQUESTING_KEY, AGENTD_TRYING_CONNECT]
       1: [AGENTD_TRYING_CONNECT, AGENTD_CONNECTED_TO_SERVER, AGENTD_RECEIVED_ACK]
       2: []
-  
+
 - name: only_one_server_available
   description: Agent should not connect until third server
   configuration_parameters:

@@ -3,7 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.modules.agentd.patterns import * 
+from wazuh_testing.modules.agentd.patterns import *
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils import callbacks
 
