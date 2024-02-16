@@ -1,0 +1,25 @@
+<!--
+    {"it_logtest" : "rules", "test": "test_alert"}
+    {"it_logtest" : "rules", "test": "test_no_alert"}
+-->
+<group name="ITs,">
+
+  <rule id="880000" level="0">
+    <decoded_as>json</decoded_as>
+    <field name="it_logtest">rules</field>
+    <description>Parent rules IT</description>
+  </rule>
+
+  <rule id="880001" level="3">
+    <if_sid>880000</if_sid>
+    <field name="test">^test_alert$</field>
+    <description>test test_alert</description>
+  </rule>
+
+  <rule id="880002" level="2">
+    <if_sid>880000</if_sid>
+    <field name="test">^test_no_alert$</field>
+    <description>test test_no_alert</description>
+  </rule>
+
+</group>
