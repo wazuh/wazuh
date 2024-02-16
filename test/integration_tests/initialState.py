@@ -20,6 +20,16 @@ def update_conf(script_dir, environment_dir):
             updated_line = line.replace('github_workspace', environment_dir)
             f.write(updated_line)
 
+def create_empty_bk_conf(environment_dir):
+    bk_path = environment_dir + "/engine/general-bk.conf"
+
+    try:
+        with open(bk_path, "w"):
+            pass
+
+    except Exception as e:
+        print(f"Error to create the file: {e}")
+
 def create_dummy_integration(environment_dir):
     wazuh_core_test = os.path.join(environment_dir, 'engine/wazuh-core-test')
     os.makedirs(os.path.join(wazuh_core_test, 'decoders'), exist_ok=True)
@@ -88,6 +98,7 @@ def main():
     ENVIRONMENT_DIR = ENVIRONMENT_DIR.replace('//', '/')
 
     update_conf(SCRIPT_DIR, ENVIRONMENT_DIR)
+    create_empty_bk_conf(ENVIRONMENT_DIR)
     create_dummy_integration(ENVIRONMENT_DIR)
     create_other_dummy_integration(ENVIRONMENT_DIR)
     create_dummy_integration_with_parents(ENVIRONMENT_DIR)

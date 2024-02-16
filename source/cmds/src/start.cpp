@@ -561,14 +561,16 @@ void configure(CLI::App_p app)
         ->add_option(
             "--mmdb_asn_path", options->mmdbASNPath, "Sets the path to the Maxmind ASN database in mmdb format.")
         ->default_val(ENGINE_MMDB_ASN_PATH)
-        ->check(CLI::ExistingFile)
+        // TODO: This check is only applicable to arguments sent via the command line
+        //->check(CLI::ExistingFile)
         ->envname(ENGINE_MMDB_ASN_PATH_ENV);
 
     serverApp
         ->add_option(
             "--mmdb_city_path", options->mmdbCityPath, "Sets the path to the Maxmind City database in mmdb format.")
         ->default_val(ENGINE_MMDB_CITY_PATH)
-        ->check(CLI::ExistingFile)
+        // TODO: This check is only applicable to arguments sent via the command line
+        //->check(CLI::ExistingFile) 
         ->envname(ENGINE_MMDB_CITY_PATH_ENV);
 
     // Router module
