@@ -511,8 +511,8 @@ def healthcheck_agent_restart(response, agents_list):
 
 
 def validate_update_check_response(response, current_version, update_check):
-    """Check that the update check response contains the fields expected and 
-    if the last_available_* dicts have the correct keys and values.
+    """Check that the update check response contains the expected fields, and verify if the 'last_available_*'
+    dictionaries have the correct keys and values.
 
     Parameters
     ----------
