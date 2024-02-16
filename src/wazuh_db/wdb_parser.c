@@ -750,6 +750,20 @@ int wdb_parse(char * input, char * output, int peer) {
             gettimeofday(&end, 0);
             timersub(&end, &begin, &diff);
             w_inc_agent_get_fragmentation_time(diff);
+        } else if (strcmp(query, "sleep") == 0) {
+            int s_time = 1;
+
+            /* Get time*/
+            if (next == NULL) {
+                mdebug1("Invalid arguments 's_time' not found using default=1");
+            }
+            else {
+                s_time = atoi(next);
+            }
+            mdebug1("DB(%s) Sleep command called for %d.",wdb->id,s_time);
+
+            int result = wdb_sleep(s_time*1000);
+            mdebug1("DB(%s) Sleep result %d.",wdb->id, result);
         } else {
             mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
             mdebug2("DB(%s) query error near: %s", sagent_id, query);

@@ -1955,3 +1955,13 @@ bool wdb_check_backup_enabled() {
 
     return result;
 }
+
+/* Sleep thread ms_time millisecconds. Returns secconds actually requested to OS. */
+int wdb_sleep(int ms_time) {
+    sqlite3_stmt *stmt;
+    int result;
+
+    result = sqlite3_sleep(ms_time);
+
+    return result;
+}

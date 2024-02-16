@@ -2562,4 +2562,13 @@ cJSON* wdb_get_config();
  */
 void wdbcom_dispatch(char* request, char* output);
 
+/**
+ * @brief Sleep agent DB
+ *
+ * @param [in] ms_time millisecconds for sleep,
+ * @retval  ms actually sleeep requested to OS.
+ */
+int wdb_sleep(int ms_time);
+
+
 #endif
