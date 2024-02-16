@@ -3,6 +3,7 @@ Feature: Configuration API Management
   @wip
 
   Scenario: Successful configuration get with specifying a name
+    Given I make a backup for security
     Given I have a valid configuration file called general.conf
     When I send a request to get configuration of the following fields ["server.queue_flood_attempts", "server.api_queue_tasks", "server.router_threads"]
     Then I should receive the same value that ["server.queue_flood_attempts", "server.api_queue_tasks", "server.router_threads"] in general.conf
@@ -49,7 +50,7 @@ Feature: Configuration API Management
     When I send a request to update the iteam "server.log_level" to "info" value
     And I send a request to get configuration of the following fields ["server.log_level"]
     Then I should receive "info" like log_level
-    When I send a restart to server
+    When I send a restart to server definitely
     When I send a request to get configuration of the following fields ["server.log_level"]
     Then I should receive "error" like log_level
 
@@ -67,4 +68,4 @@ Feature: Configuration API Management
     Then I should receive "info" like log_level
     When I send a request to update the iteam "server.log_level" to "error" value
     And I send a request to save configuration file
-    And I send a restart to server
+    And I send a restart to server definitely
