@@ -91,7 +91,7 @@ def start_remoted_server(test_metadata) -> None:
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_agentd_state(test_configuration, test_metadata, set_wazuh_configuration, remove_state_file, configure_local_internal_options, 
+def test_agentd_state(test_configuration, test_metadata, set_wazuh_configuration, remove_state_file, configure_local_internal_options,
                       truncate_monitored_files, clean_keys, add_keys, daemons_handler):
     '''
     description: Check that the statistics file 'wazuh-agentd.state' is created automatically
@@ -145,7 +145,7 @@ def test_agentd_state(test_configuration, test_metadata, set_wazuh_configuration
     '''
 
     # Start RemotedSimulator if test case need it
-    remoted_server = start_remoted_server(test_metadata) 
+    remoted_server = start_remoted_server(test_metadata)
 
     # Check fields for every expected output type
     for expected_output in test_metadata['output']:
@@ -154,7 +154,7 @@ def test_agentd_state(test_configuration, test_metadata, set_wazuh_configuration
     #Shutdown simulator
     if remoted_server:
         remoted_server.destroy()
-    
+
 
 def wait_for_custom_message_response(expected_status: str, remoted_server: RemotedSimulator, timeout: int = 350):
     """Request remoted_server the status of the agent
@@ -180,12 +180,12 @@ def wait_for_custom_message_response(expected_status: str, remoted_server: Remot
 
     while time.time() - start_time < timeout:
         if remoted_server.custom_message_sent:
-            if expected_status in (response := remoted_server.last_message_ctx.get('message')): 
+            if expected_status in (response := remoted_server.last_message_ctx.get('message')):
                 response = response[response.find('{'):]
                 response = json.loads(response)
                 response = response['data']
                 return response
-    
+
     return None
 
 
@@ -193,7 +193,7 @@ def check_fields(expected_output, remoted_server):
     """Check every field agains expected data
 
     Args:
-        - expected_output: 
+        - expected_output:
             type: dict
             brief: expected output block
         - remoted_server:
@@ -217,14 +217,14 @@ def check_fields(expected_output, remoted_server):
         if expected_value != '':
             for precondition in checks[field].get('precondition'):
                 precondition()
-            assert checks[field].get('handler')(expected_value, get_state_callback, expected_output['fields']['status'], remoted_server) 
+            assert checks[field].get('handler')(expected_value, get_state_callback, expected_output['fields']['status'], remoted_server)
 
 
 def check_last_ack(expected_value: str=None, get_state_callback=None, expected_status: str=None, remoted_server: RemotedSimulator=None):
     """Check `last_ack` field
 
     Args:
-        - expected_value: 
+        - expected_value:
             type: string
             brief: expected output in test case
         - get_state_callback:
@@ -245,13 +245,13 @@ def check_last_ack(expected_value: str=None, get_state_callback=None, expected_s
         current_value = get_state_callback()['last_ack']
     else:
         current_value = get_state_callback(expected_status, remoted_server)
-        if current_value: 
+        if current_value:
             current_value = current_value['last_ack']
         else:
             wait_ack()
     if expected_value == '':
         return expected_value == current_value
-    
+
     return True
 
 
@@ -259,7 +259,7 @@ def check_last_keepalive(expected_value: str=None, get_state_callback=None, expe
     """Check `last_keepalive` field
 
     Args:
-        - expected_value: 
+        - expected_value:
             type: string
             brief: expected output in test case
         - get_state_callback:
@@ -280,7 +280,7 @@ def check_last_keepalive(expected_value: str=None, get_state_callback=None, expe
         current_value = get_state_callback()['last_keepalive']
     else:
         current_value = get_state_callback(expected_status, remoted_server)
-        if current_value: 
+        if current_value:
             current_value = current_value['last_keepalive']
         else:
             wait_ack()
@@ -294,7 +294,7 @@ def check_msg_count(expected_value: str=None, get_state_callback=None, expected_
     """Check `msg_count` field
 
     Args:
-        - expected_value: 
+        - expected_value:
             type: string
             brief: expected output in test case
         - get_state_callback:
@@ -328,7 +328,7 @@ def check_status(expected_value: str=None, get_state_callback=None, expected_sta
     """Check `status` field
 
     Args:
-        - expected_value: 
+        - expected_value:
             type: string
             brief: expected output in test case
         - get_state_callback:
@@ -359,7 +359,7 @@ def check_status(expected_value: str=None, get_state_callback=None, expected_sta
                 current_value = current_value['status']
             else:
                 wait_keepalive()
-                return True  
+                return True
     else:
         # Sleep while file is updated
         time.sleep(5)

@@ -68,4 +68,5 @@ def validate_agent_manager_protocol_communication():
         time.sleep(5)
         for injector in injectors:
             injector.stop_receive()
+
     return validate_agent_manager_protocol_communication

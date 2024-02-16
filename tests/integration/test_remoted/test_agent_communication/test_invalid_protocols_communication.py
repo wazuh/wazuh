@@ -36,7 +36,6 @@ monitored_sockets_params = [(ANALYSISD_DAEMON, mitm_analysisd, True)]
 receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 
 
-
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
 def test_invalid_protocols_communication(test_configuration, test_metadata, configure_local_internal_options, truncate_monitored_files,

@@ -311,7 +311,7 @@ def configure_local_internal_options_handler(request: pytest.FixtureRequest, tes
 
     Args:
         request (pytest.FixtureRequest): Provide information about the current test function which made the request.
-        test_metadata (map): Data with configuration parameters 
+        test_metadata (map): Data with configuration parameters
     """
     try:
         local_internal_options = request.param
@@ -346,9 +346,9 @@ def configure_local_internal_options(request: pytest.FixtureRequest, test_metada
 
     Args:
         request (pytest.FixtureRequest): Provide information about the current test function which made the request.
-        test_metadata (map): Data with configuration parameters 
+        test_metadata (map): Data with configuration parameters
     """
-    yield from configure_local_internal_options_handler(request, test_metadata)    
+    yield from configure_local_internal_options_handler(request, test_metadata)
 
 
 @pytest.fixture(scope='module')
@@ -357,9 +357,9 @@ def configure_local_internal_options_module(request: pytest.FixtureRequest, test
 
     Args:
         request (pytest.FixtureRequest): Provide information about the current test function which made the request.
-        test_metadata (map): Data with configuration parameters 
+        test_metadata (map): Data with configuration parameters
     """
-    yield from configure_local_internal_options_handler(request, test_metadata)    
+    yield from configure_local_internal_options_handler(request, test_metadata)
 
 
 def configure_sockets_environment_implementation(request: pytest.FixtureRequest) -> None:

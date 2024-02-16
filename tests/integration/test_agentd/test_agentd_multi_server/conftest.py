@@ -17,10 +17,10 @@ def start_remoted_simulators(test_metadata) -> None:
     # Start Remoted Simulators
     for i in range(len(remoted_server_ports)):
         if(test_metadata['SIMULATOR_MODES'][i] != 'CLOSE'):
-            remoted_servers[i] = RemotedSimulator(protocol = test_metadata['PROTOCOL'], server_ip = remoted_server_address, 
+            remoted_servers[i] = RemotedSimulator(protocol = test_metadata['PROTOCOL'], server_ip = remoted_server_address,
                                         port = remoted_server_ports[i], mode = test_metadata['SIMULATOR_MODES'][i])
             remoted_servers[i].start()
-    
+
     yield remoted_servers
 
     # Shutdown simulators
