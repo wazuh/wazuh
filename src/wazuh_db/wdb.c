@@ -326,7 +326,7 @@ STATIC int wdb_execute_single_int_select_query(wdb_t * wdb, const char *query, i
 STATIC int wdb_get_last_vacuum_data(wdb_t* wdb, int *last_vacuum_time, int *last_vacuum_value);
 
 wdb_config wconfig;
-int wdb_open_count;
+_Atomic(int) wdb_open_count;
 
 // Opens global database and stores it in DB pool. It returns a locked database or NULL
 wdb_t * wdb_open_global() {
