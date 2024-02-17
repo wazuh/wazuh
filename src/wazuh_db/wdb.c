@@ -879,10 +879,9 @@ int wdb_insert_info(const char *key, const char *value) {
     return result;
 }
 
-wdb_t * wdb_init(sqlite3 * db, const char * id) {
+wdb_t * wdb_init(const char * id) {
     wdb_t * wdb;
     os_calloc(1, sizeof(wdb_t), wdb);
-    wdb->db = db;
     w_mutex_init(&wdb->mutex, NULL);
     os_strdup(id, wdb->id);
     wdb->enabled = true;

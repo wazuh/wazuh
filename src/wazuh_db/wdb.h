@@ -857,7 +857,7 @@ int wdb_ciscat_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
 // Delete old information from the 'ciscat_results' table
 int wdb_ciscat_del(wdb_t * wdb, const char * scan_id);
 
-wdb_t * wdb_init(sqlite3 * db, const char * id);
+wdb_t * wdb_init(const char * id);
 
 void wdb_destroy(wdb_t * wdb);
 
