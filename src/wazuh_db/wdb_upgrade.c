@@ -31,7 +31,7 @@ static const char *SQL_GLOBAL_STMT[] = {
 };
 
 // Upgrade agent database to last version
-wdb_t * wdb_upgrade(wdb_t *wdb) {
+void wdb_upgrade(wdb_t *wdb) {
     const char * UPDATES[] = {
         schema_upgrade_v1_sql,
         schema_upgrade_v2_sql,
@@ -74,7 +74,7 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
     return wdb;
 }
 
-wdb_t * wdb_upgrade_global(wdb_t *wdb) {
+void wdb_upgrade_global(wdb_t *wdb) {
     const char * UPDATES[] = {
         schema_global_upgrade_v1_sql,
         schema_global_upgrade_v2_sql,
@@ -103,7 +103,6 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
                  */
                 mwarn("DB(%s): Error trying to get DB version", wdb->id);
                 wdb->enabled = false;
-                return wdb;
             }
         }
         else {
@@ -118,9 +117,8 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
                     wdb->enabled = false;
                 }
                 else {
-                    wdb = wdb_recreate_global(wdb);
+                    wdb_recreate_global(wdb);
                 }
-                return wdb;
             }
         }
     }
@@ -136,7 +134,6 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
          */
         merror("DB(%s) Error trying to find metadata table", wdb->id);
         wdb->enabled = false;
-        return wdb;
     }
 
     if (version < updates_length) {
@@ -163,15 +160,12 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
             }
         }
     }
-
-    return wdb;
 }
 
 // Create backup and generate an empty DB
 wdb_t * wdb_backup(wdb_t *wdb, int version) {
     char path[PATH_MAX];
     char * sagent_id;
-    wdb_t * new_wdb = NULL;
     sqlite3 * db;
 
     os_strdup(wdb->id, sagent_id),
@@ -195,26 +189,21 @@ wdb_t * wdb_backup(wdb_t *wdb, int version) {
                 free(sagent_id);
                 return NULL;
             }
-
-            new_wdb = wdb_init(db, sagent_id);
-            wdb_pool_append(new_wdb);
         }
     } else {
         merror("Couldn't create SQLite database backup for agent '%s'", sagent_id);
     }
 
     free(sagent_id);
-    return new_wdb;
 }
 
-wdb_t * wdb_recreate_global(wdb_t *wdb) {
+void wdb_recreate_global(wdb_t *wdb) {
     char path[PATH_MAX];
     wdb_t * new_wdb = NULL;
     sqlite3 * db;
 
     snprintf(path, PATH_MAX, "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
 
-    wdb_leave(wdb);
     if (wdb_close(wdb, TRUE) != OS_INVALID) {
         unlink(path);
 
@@ -228,14 +217,7 @@ wdb_t * wdb_recreate_global(wdb_t *wdb) {
             sqlite3_close_v2(db);
             return NULL;
         }
-
-        new_wdb = wdb_init(db, WDB_GLOB_NAME);
-        wdb_pool_append(new_wdb);
-        w_mutex_lock(&new_wdb->mutex);
-        new_wdb->refcount++;
     }
-
-    return new_wdb;
 }
 
 /* Create backup for agent. Returns 0 on success or -1 on error. */

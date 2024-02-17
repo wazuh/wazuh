@@ -2106,8 +2106,9 @@ int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore
 
         if (!w_uncompress_gzfile(backup_to_restore_path, global_tmp_path)) {
             // Preparing DB for restoration.
-            wdb_leave(*wdb);
+
             wdb_close(*wdb, true);
+            wdb_pool_leave(*wdb);
             *wdb = NULL;
 
             unlink(global_path);

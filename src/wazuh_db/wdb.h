@@ -415,6 +415,8 @@ typedef enum {
     WDB_GENERIC_COMPONENT,           ///< Miscellaneous component
 } wdb_component_t;
 
+#include "wdb_pool.h"
+
 extern char *schema_global_sql;
 extern char *schema_agents_sql;
 extern char *schema_task_manager_sql;
@@ -438,10 +440,7 @@ extern char *schema_global_upgrade_v4_sql;
 extern char *schema_global_upgrade_v5_sql;
 
 extern wdb_config wconfig;
-extern rwlock_t pool_mutex;
-extern wdb_t * db_pool;
 extern int wdb_open_count;
-extern OSHash * open_dbs;
 
 typedef struct os_data {
     char *os_name;
@@ -988,8 +987,6 @@ int wdb_close(wdb_t * wdb, bool commit);
  * @param wdb The database struct pointer.
  */
 void wdb_finalize_all_statements(wdb_t * wdb);
-
-void wdb_leave(wdb_t * wdb);
 
 wdb_t * wdb_pool_find_prev(wdb_t * wdb);
 
@@ -1601,15 +1598,14 @@ int wdb_scan_info_get(wdb_t * wdb, const char *module, char *field, long *output
 int wdb_scan_info_fim_checks_control (wdb_t * wdb, const char *last_check);
 
 // Upgrade agent database to last version
-wdb_t * wdb_upgrade(wdb_t *wdb);
+void wdb_upgrade(wdb_t *wdb);
 
 /**
  * @brief Function to upgrade Global DB to the latest version.
  *
  * @param [in] wdb The global.db database to upgrade.
- * @return wdb The global.db database updated on success.
  */
-wdb_t * wdb_upgrade_global(wdb_t *wdb);
+void wdb_upgrade_global(wdb_t *wdb);
 
 // Create backup and generate an empty DB
 wdb_t * wdb_backup(wdb_t *wdb, int version);
@@ -1621,9 +1617,8 @@ int wdb_create_backup(const char * agent_id, int version);
  * @brief Function to recreate Global DB in case of an upgrading an old version.
  *
  * @param [in] wdb The global.db database to backup.
- * @return wdb The new empty global.db database on success or NULL on error
  */
-wdb_t * wdb_recreate_global(wdb_t *wdb);
+void wdb_recreate_global(wdb_t *wdb);
 
 /**
  * @brief Check if the db version is older than 3.10
