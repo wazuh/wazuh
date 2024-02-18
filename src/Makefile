@@ -358,14 +358,8 @@ ifneq (,$(filter ${DEBUGAD},YES yes y Y 1))
 	DEFINES+=-DDEBUGAD
 endif
 
-ifneq (,$(filter ${DEBUG},YES yes y Y 1))
-	OSSEC_CFLAGS+=-g
-	AR_LDFLAGS+=-g
-else
-	OSSEC_CFLAGS+=-DNDEBUG
-	OFLAGS+=-O2
-	AR_LDFLAGS+=-s
-endif #DEBUG
+OSSEC_CFLAGS+=-g
+AR_LDFLAGS+=-g
 
 OSSEC_CFLAGS+=${OFLAGS}
 OSSEC_LDFLAGS+=${OFLAGS}
