@@ -147,7 +147,7 @@
 <decoder name="cisco-asa-inbound-connection-denied">
     <parent>cisco-asa</parent>
     <prematch offset="after_parent">2-106001</prematch>
-    <regex offset="after_parent">(\w+): (\.+) from (\S+)/(\S+) to (\S+)/(\S+) flags (\.+) on interface (\S+)</regex>
+    <regex offset="after_parent">(\w+): (\.+) from (\S+)/(\S+) to (\S+)/(\S+) flags (\.+)\s+on interface (\S+)</regex>
     <order>id, description, src_ip, src_port, dst_ip, dst_port, flags, interface</order>
 </decoder>
 
@@ -239,7 +239,7 @@
 <decoder name="cisco-asa-fw6">
   <parent>cisco-asa</parent>
   <prematch offset="after_parent">6-106015</prematch>
-  <regex offset="after_parent">(\w+): (\w+) (\w+) \.+ from (\S+)/(\S+) to (\S+)/(\S+) flags (\S+) on interface (\S+)</regex>
+  <regex offset="after_parent">(\w+): (\w+) (\w+) \.+ from (\S+)/(\S+) to (\S+)/(\S+) flags (\S+)\s+on interface (\S+)</regex>
   <order>id, action, protocol, srcip, srcport, dstip, dstport, flags, interface</order>
 </decoder>
 
@@ -293,7 +293,7 @@
 <decoder name="cisco-asa-drop-rate-exceeded">
     <parent>cisco-asa</parent>
     <prematch offset="after_parent">4-733100</prematch>
-    <regex offset="after_parent">(\w+): Object drop rate (\d+) exceeded. Current burst rate is (\S+) per second, max configured rate is (\S+); Current average rate is (\S+) per second, max configured rate is (\S+); Cumulative total count is (\S+)</regex>
+    <regex offset="after_parent">(\w+): (\.+) drop rate\.+(\d+) exceeded. Current burst rate is (\S+) per second, max configured rate is (\S+); Current average rate is (\S+) per second, max configured rate is (\S+); Cumulative total count is (\S+)</regex>
     <order>id, rate_ID, burst_rate, max_burst_rate, average_rate, max_average_rate, cumulative_count</order>
 </decoder>
 
