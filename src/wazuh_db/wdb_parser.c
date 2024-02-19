@@ -746,6 +746,22 @@ int wdb_parse(char * input, char * output, int peer) {
             gettimeofday(&end, 0);
             timersub(&end, &begin, &diff);
             w_inc_agent_get_fragmentation_time(diff);
+        } else if (strcmp(query, "sleep") == 0) {
+            unsigned long delay_ms;
+            w_inc_agent_sleep();
+            gettimeofday(&begin, 0);
+            if (!next || (delay_ms = strtoul(next, NULL, 10)) == ULONG_MAX) {
+                mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
+                mdebug2("DB(%s) query error near: %s", sagent_id, query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                w_time_delay(delay_ms);
+                snprintf(output, OS_MAXSTR + 1, "ok ");
+            }
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_agent_sleep_time(diff);
         } else {
             mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
             mdebug2("DB(%s) query error near: %s", sagent_id, query);
@@ -1364,6 +1380,22 @@ int wdb_parse(char * input, char * output, int peer) {
             gettimeofday(&end, 0);
             timersub(&end, &begin, &diff);
             w_inc_global_get_fragmentation_time(diff);
+        } else if (strcmp(query, "sleep") == 0) {
+            unsigned long delay_ms;
+            w_inc_global_sleep();
+            gettimeofday(&begin, 0);
+            if (!next || (delay_ms = strtoul(next, NULL, 10)) == ULONG_MAX) {
+                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                w_time_delay(delay_ms);
+                snprintf(output, OS_MAXSTR + 1, "ok ");
+            }
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_global_sleep_time(diff);
         } else {
             mdebug1("Invalid DB query syntax.");
             mdebug2("Global DB query error near: %s", query);
