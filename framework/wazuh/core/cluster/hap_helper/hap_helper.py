@@ -4,11 +4,10 @@ from asyncio import sleep
 from math import ceil, floor
 
 from wazuh.core.cluster.hap_helper.configuration import parse_configuration
-from wazuh.core.cluster.hap_helper.exception import HAPHelperError, ProxyError
 from wazuh.core.cluster.hap_helper.proxy import Proxy, ProxyAPI, ProxyServerState
 from wazuh.core.cluster.hap_helper.wazuh import WazuhAgent, WazuhDAPI
 from wazuh.core.cluster.utils import ClusterFilter
-from wazuh.core.exception import WazuhException
+from wazuh.core.exception import WazuhException, WazuhHAPHelperError
 
 
 class HAPHelper:
@@ -50,7 +49,7 @@ class HAPHelper:
         try:
             await self.proxy.initialize()
             self.logger.info('Proxy was initialized')
-        except ProxyError as init_exc:
+        except WazuhHAPHelperError as init_exc:
             self.logger.critical('Cannot initialize the proxy')
             self.logger.critical(init_exc)
             raise
@@ -221,7 +220,7 @@ class HAPHelper:
         while any([server not in wazuh_backend_stats for server in new_servers]):
             if backend_stats_iteration > self.UPDATED_BACKEND_STATUS_TIMEOUT:
                 self.logger.error(f'Some of the new servers did not go UP: {set(new_servers) - wazuh_backend_stats}')
-                raise HAPHelperError(100)
+                raise WazuhHAPHelperError(3041)
 
             self.logger.debug('Waiting for new servers to go UP')
             time.sleep(1)
@@ -395,7 +394,7 @@ class HAPHelper:
 
                 self.logger.debug(f'Sleeping {self.sleep_time}s...')
                 await sleep(self.sleep_time)
-            except (HAPHelperError, ProxyError, WazuhException) as handled_exc:
+            except WazuhException as handled_exc:
                 self.logger.error(str(handled_exc))
                 self.logger.warning(
                     f'Tasks may not perform as expected. Sleeping {self.sleep_time}s ' 'before continuing...'
@@ -433,8 +432,6 @@ class HAPHelper:
 
             helper.logger.info('Starting HAProxy Helper')
             await helper.manage_wazuh_cluster_nodes()
-        except (HAPHelperError, ProxyError) as main_exc:
-            helper.logger.error(str(main_exc))
         except KeyboardInterrupt:
             pass
         except Exception as unexpected_exc:

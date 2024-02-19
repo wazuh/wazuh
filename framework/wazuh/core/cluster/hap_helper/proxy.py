@@ -4,8 +4,8 @@ from enum import Enum
 from typing import Optional, TypeAlias
 
 import httpx
-from wazuh.core.cluster.hap_helper.exception import ProxyError
 from wazuh.core.cluster.utils import ClusterFilter
+from wazuh.core.exception import WazuhHAPHelperError
 
 JSON_TYPE: TypeAlias = dict | list[dict]
 PROXY_API_RESPONSE: TypeAlias = JSON_TYPE
@@ -52,7 +52,7 @@ class ProxyAPI:
 
         Raises
         ------
-        ProxyError
+        WazuhHAPHelperError
             In case of errors communicating with the HAProxy REST API.
         """
         try:
@@ -61,13 +61,13 @@ class ProxyAPI:
                     f'https://{self.address}:{self.port}/', auth=(self.username, self.password)
                 )
                 if response.status_code == 401:
-                    raise ProxyError(102)
+                    raise WazuhHAPHelperError(3046)
                 elif response.status_code == 404:
-                    raise ProxyError(103)
+                    raise WazuhHAPHelperError(3047)
         except httpx.ConnectError:
-            raise ProxyError(99, extra_msg='Check connectivity and the configuration file')
+            raise WazuhHAPHelperError(3043, extra_message='Check connectivity and the configuration file')
         except httpx.RequestError as req_exc:
-            raise ProxyError(99, extra_msg=str(req_exc))
+            raise WazuhHAPHelperError(3043, extra_message=str(req_exc))
 
     async def _make_hapee_request(
         self,
@@ -96,7 +96,7 @@ class ProxyAPI:
 
         Raises
         ------
-        ProxyError
+        WazuhHAPHelperError
             In case of errors communicating with the HAProxy REST API.
         """
         uri = f'https://{self.address}:{self.port}{self.HAPEE_ENDPOINT}'
@@ -114,13 +114,15 @@ class ProxyAPI:
             async with httpx.AsyncClient(verify=False, follow_redirects=True) as client:
                 response = await client.post(uri, auth=(self.username, self.password), json=hapee_json_body)
         except httpx.RequestError as request_exc:
-            raise ProxyError(100, extra_msg=str(request_exc))
+            raise WazuhHAPHelperError(3044, extra_message=str(request_exc))
 
         if response.status_code == 200:
             full_decoded_response = response.json()
             decoded_response = full_decoded_response['data']['response']
             if full_decoded_response['error'] != 0:
-                raise ProxyError(105, extra_msg=f'Full response: {response.status_code} | {response.json()}')
+                raise WazuhHAPHelperError(
+                    3049, extra_message=f'Full response: {response.status_code} | {response.json()}'
+                )
             if isinstance(decoded_response, dict) and '_version' in decoded_response:
                 self.version = decoded_response['_version']
             elif method != ProxyAPIMethod.GET and 'configuration' in endpoint:
@@ -128,9 +130,9 @@ class ProxyAPI:
 
             return decoded_response
         elif response.status_code == 401:
-            raise ProxyError(102)
+            raise WazuhHAPHelperError(3046)
         else:
-            raise ProxyError(101, extra_msg=f'Full response: {response.status_code} | {response.json()}')
+            raise WazuhHAPHelperError(3045, extra_message=f'Full response: {response.status_code} | {response.json()}')
 
     # TODO: This must be deprecated
     async def _make_proxy_request(
@@ -152,14 +154,14 @@ class ProxyAPI:
                     json=json_body,
                 )
         except httpx.RequestError as request_exc:
-            raise ProxyError(100, extra_msg=str(request_exc))
+            raise WazuhHAPHelperError(3044, extra_message=str(request_exc))
 
         if response.status_code == 200:
             return response.json()
         elif response.status_code == 401:
-            raise ProxyError(102)
+            raise WazuhHAPHelperError(3046)
         else:
-            raise ProxyError(101, extra_msg=f'Full response: {response.status_code} | {response.json()}')
+            raise WazuhHAPHelperError(3045, extra_message=f'Full response: {response.status_code} | {response.json()}')
 
     async def update_configuration_version(self):
         """Get the last version of the configuration schema and set it."""
@@ -490,14 +492,14 @@ class Proxy:
 
         Raises
         ------
-        ProxyError
+        WazuhHAPHelperError
             In case of errors initializing ProxyAPI.
         """
         await self.api.initialize()
         try:
             (await self.api.get_runtime_info())['version']
         except (KeyError, IndexError):
-            raise ProxyError(104)
+            raise WazuhHAPHelperError(3048)
 
     async def get_current_pid(self) -> int:
         """Returns the current HAProxy PID
