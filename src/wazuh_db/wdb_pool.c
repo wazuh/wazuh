@@ -27,6 +27,7 @@ wdb_t * wdb_pool_get(const char * name) {
     wdb_t * node = rbtree_get(wdb_pool.nodes, name);
 
     if (node == NULL) {
+        w_mutex_unlock(&wdb_pool.mutex);
         return NULL;
     }
 
