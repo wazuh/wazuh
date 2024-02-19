@@ -8,7 +8,7 @@ import time
 import contextlib
 import logging
 import base64
-from jose import jwt, JOSEError
+import jwt
 
 from starlette.requests import Request
 from starlette.responses import Response
@@ -91,7 +91,7 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
                             audience='Wazuh API REST',
                             options={'verify_exp': False})
                 user = s['sub']
-            except JOSEError:
+            except jwt.exceptions.PyJWTError:
                 pass
 
     # Get or create authorization context hash
