@@ -2,8 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import json
-
 from connexion.lifecycle import ConnexionRequest, ConnexionResponse
 from connexion import exceptions
 
@@ -13,9 +11,8 @@ from content_size_limit_asgi.errors import ContentSizeExceeded
 from api import configuration
 from api.middlewares import ip_block, ip_stats, LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT
 from api.api_exception import BlockedIPException, MaxRequestsException
+from api.controllers.util import json_response, ERROR_CONTENT_TYPE
 from wazuh.core.utils import get_utc_now
-
-ERROR_CONTENT_TYPE="application/problem+json; charset=utf-8"
 
 
 def prevent_bruteforce_attack(request: ConnexionRequest, attempts: int = 5):
@@ -89,9 +86,8 @@ async def unauthorized_error_handler(request: ConnexionRequest,
         problem.update({'detail': 'No authorization token provided'} \
                             if 'token_info' not in request.context \
                             else {})
-    return ConnexionResponse(status_code=exc.status_code,
-                             body=json.dumps(problem),
-                             content_type=ERROR_CONTENT_TYPE)
+    return json_response(data=problem, pretty=request.query_params.get('pretty', 'false') == 'true',
+                         status_code=exc.status_code, content_type=ERROR_CONTENT_TYPE)
 
 
 async def bad_request_error_handler(request: ConnexionRequest,
@@ -116,9 +112,9 @@ async def bad_request_error_handler(request: ConnexionRequest,
     }
     if exc.detail:
         problem['detail'] = exc.detail
-    return ConnexionResponse(status_code=exc.status_code,
-                             body=json.dumps(problem),
-                             content_type=ERROR_CONTENT_TYPE)
+
+    return json_response(data=problem, pretty=request.query_params.get('pretty', 'false') == 'true',
+                         status_code=exc.status_code, content_type=ERROR_CONTENT_TYPE)
 
 
 async def http_error_handler(request: ConnexionRequest,
@@ -142,9 +138,8 @@ async def http_error_handler(request: ConnexionRequest,
         'title': exc.detail,
         "detail": f"{exc.status_code}: {exc.detail}",
     }
-    return ConnexionResponse(status_code=exc.status_code,
-                             body=json.dumps(problem),
-                             content_type=ERROR_CONTENT_TYPE)
+    return json_response(data=problem, pretty=request.query_params.get('pretty', 'false') == 'true',
+                         status_code=exc.status_code, content_type=ERROR_CONTENT_TYPE)
 
 
 async def jwt_error_handler(request: ConnexionRequest, _: jwt.exceptions.PyJWTError) -> ConnexionResponse:
@@ -167,9 +162,8 @@ async def jwt_error_handler(request: ConnexionRequest, _: jwt.exceptions.PyJWTEr
         "title": "Unauthorized",
         "detail": "No authorization token provided"
     }
-    return ConnexionResponse(status_code=401,
-                             body=json.dumps(problem),
-                             content_type=ERROR_CONTENT_TYPE)
+    return json_response(data=problem, pretty=request.query_params.get('pretty', 'false') == 'true',
+                         status_code=401, content_type=ERROR_CONTENT_TYPE)
 
 
 async def problem_error_handler(request: ConnexionRequest, exc: exceptions.ProblemException) -> ConnexionResponse:
@@ -203,9 +197,8 @@ async def problem_error_handler(request: ConnexionRequest, exc: exceptions.Probl
     if not problem['detail']:
         del problem['detail']
 
-    return ConnexionResponse(body=json.dumps(problem),
-                             status_code=exc.__dict__['status'],
-                             content_type=ERROR_CONTENT_TYPE)
+    return json_response(data=problem, pretty=request.query_params.get('pretty', 'false') == 'true',
+                         status_code=exc.__dict__['status'], content_type=ERROR_CONTENT_TYPE)
 
 
 async def content_size_handler(request: ConnexionRequest, exc: ContentSizeExceeded) -> ConnexionResponse:
@@ -227,9 +220,9 @@ async def content_size_handler(request: ConnexionRequest, exc: ContentSizeExceed
         "title": "Content size exceeded.",
         "detail": str(exc)
     }
-    return ConnexionResponse(status_code=413,
-                             body=json.dumps(problem),
-                             content_type=ERROR_CONTENT_TYPE)
+    return json_response(data=problem, pretty=request.query_params.get('pretty', 'false') == 'true',
+                         status_code=413, content_type=ERROR_CONTENT_TYPE)
+
 
 
 async def exceeded_requests_handler(request: ConnexionRequest, exc: MaxRequestsException) -> ConnexionResponse:
@@ -253,9 +246,8 @@ async def exceeded_requests_handler(request: ConnexionRequest, exc: MaxRequestsE
         "error": exc.ext['code'],
         "remediation": exc.ext['remediation']
     }
-    return ConnexionResponse(status_code=exc.status,
-                             body=json.dumps(problem),
-                             content_type=ERROR_CONTENT_TYPE)
+    return json_response(data=problem, pretty=request.query_params.get('pretty', 'false') == 'true',
+                         status_code=exc.status, content_type=ERROR_CONTENT_TYPE)
 
 
 async def blocked_ip_handler(request: ConnexionRequest, exc: BlockedIPException) -> ConnexionResponse:
@@ -278,6 +270,5 @@ async def blocked_ip_handler(request: ConnexionRequest, exc: BlockedIPException)
         "detail": exc.detail,
         "error": 6000
     }
-    return ConnexionResponse(status_code=403,
-                             body=json.dumps(problem),
-                             content_type=ERROR_CONTENT_TYPE)
+    return json_response(data=problem, pretty=request.query_params.get('pretty', 'false') == 'true',
+                         status_code=403, content_type=ERROR_CONTENT_TYPE)
