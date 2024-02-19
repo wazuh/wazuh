@@ -252,6 +252,52 @@ void test_wm_upgrade_agent_search_upgrade_result_successful(void **state)
     assert_int_equal(queue, 0);
 }
 
+void test_wm_upgrade_agent_search_upgrade_result_failed_missing_dependency(void **state)
+{
+    (void) state;
+    int queue = 0;
+    int result = 0;
+    wm_upgrade_agent_state upgrade_state = WM_UPGRADE_FAILED_DEPENDENCY;
+
+    expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, (FILE*)1);
+
+#ifdef TEST_WINAGENT
+    expect_value(wrap_fgets, __stream, (FILE*)1);
+    will_return(wrap_fgets, "1\n");
+#else
+    expect_value(__wrap_fgets, __stream, (FILE*)1);
+    will_return(__wrap_fgets, "1\n");
+#endif
+
+    expect_value(__wrap_fclose, _File, (FILE*)1);
+    will_return(__wrap_fclose, 1);
+
+    expect_value(__wrap_wm_sendmsg, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg, queue, queue);
+    expect_string(__wrap_wm_sendmsg, message, "{\"command\":\"upgrade_update_status\","
+                                               "\"parameters\":{\"error\":1,"
+                                                           "\"message\":\"Upgrade failed due missing dependency\","
+                                                           "\"status\":\"Failed\"}}");
+    expect_string(__wrap_wm_sendmsg, locmsg, task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
+    expect_value(__wrap_wm_sendmsg, loc, UPGRADE_MQ);
+
+    will_return(__wrap_wm_sendmsg, result);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
+                                                   "'{\"command\":\"upgrade_update_status\","
+                                                     "\"parameters\":{\"error\":1,"
+                                                                 "\"message\":\"Upgrade failed due missing dependency\","
+                                                                 "\"status\":\"Failed\"}}'");
+
+    int ret = wm_upgrade_agent_search_upgrade_result(&queue);
+
+    assert_int_equal(ret, 1);
+    assert_int_equal(queue, 0);
+}
+
 void test_wm_upgrade_agent_search_upgrade_result_failed(void **state)
 {
     (void) state;
@@ -996,6 +1042,7 @@ int main(void) {
         // wm_upgrade_agent_search_upgrade_result
         cmocka_unit_test_setup(test_wm_upgrade_agent_search_upgrade_result_successful, setup_test_executions),
         cmocka_unit_test_setup(test_wm_upgrade_agent_search_upgrade_result_failed, setup_test_executions),
+        cmocka_unit_test_setup(test_wm_upgrade_agent_search_upgrade_result_failed_missing_dependency, setup_test_executions),
         cmocka_unit_test_setup(test_wm_upgrade_agent_search_upgrade_result_error_open, setup_test_executions),
         cmocka_unit_test_setup(test_wm_upgrade_agent_search_upgrade_result_error_code, setup_test_executions),
         // wm_agent_upgrade_check_status
