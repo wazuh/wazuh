@@ -833,13 +833,15 @@ def send_message(message: str):
     s = socket(AF_UNIX, SOCK_DGRAM)
   
     try:
-        msg_tmp = loads(message)
-        # Copy the status fields into a azureSignInStatus field and put a dummy keyword in status field
-        # only if we have an signIn log from Microsoft Entra ID. Otherwise, the log remains unmodified.
-        if msg_tmp['azure_aad_tag'] == 'azure-active_directory_signIns':
+        msg = message
+        sign_in_logs_matches = ['azure_aad_tag','azure-active_directory_signIns']
+        if all([m in message for m in sign_in_logs_matches]):
+            msg_tmp = loads(message)
+            # Copy the status fields into a azureSignInStatus field and put a dummy keyword in status field
+            # only if we have an signIn log from Microsoft Entra ID. Otherwise, the log remains unmodified.
             msg_tmp['azureSignInStatus'] = msg_tmp["status"]
             msg_tmp['status'] = 'None'
-        msg = dumps(msg_tmp)
+            msg = dumps(msg_tmp)
         encoded_msg = f'{SOCKET_HEADER}{msg}'.encode(errors='replace')
 
         # Logs warning if event is bigger than max size
