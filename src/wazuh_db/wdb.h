@@ -1598,14 +1598,15 @@ int wdb_scan_info_get(wdb_t * wdb, const char *module, char *field, long *output
 int wdb_scan_info_fim_checks_control (wdb_t * wdb, const char *last_check);
 
 // Upgrade agent database to last version
-void wdb_upgrade(wdb_t *wdb);
+wdb_t * wdb_upgrade(wdb_t *wdb);
 
 /**
  * @brief Function to upgrade Global DB to the latest version.
  *
  * @param [in] wdb The global.db database to upgrade.
+ * @return wdb The global.db database updated on success.
  */
-void wdb_upgrade_global(wdb_t *wdb);
+wdb_t * wdb_upgrade_global(wdb_t *wdb);
 
 // Create backup and generate an empty DB
 wdb_t * wdb_backup(wdb_t *wdb, int version);
@@ -1617,8 +1618,9 @@ int wdb_create_backup(const char * agent_id, int version);
  * @brief Function to recreate Global DB in case of an upgrading an old version.
  *
  * @param [in] wdb The global.db database to backup.
+ * @return wdb The new empty global.db database on success or NULL on error
  */
-void wdb_recreate_global(wdb_t *wdb);
+wdb_t * wdb_recreate_global(wdb_t *wdb);
 
 /**
  * @brief Check if the db version is older than 3.10

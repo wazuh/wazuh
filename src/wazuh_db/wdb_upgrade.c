@@ -31,7 +31,7 @@ static const char *SQL_GLOBAL_STMT[] = {
 };
 
 // Upgrade agent database to last version
-void wdb_upgrade(wdb_t *wdb) {
+wdb_t * wdb_upgrade(wdb_t *wdb) {
     const char * UPDATES[] = {
         schema_upgrade_v1_sql,
         schema_upgrade_v2_sql,
@@ -57,7 +57,7 @@ void wdb_upgrade(wdb_t *wdb) {
 
         if (version < 0) {
             merror("DB(%s): Incorrect database version: %d", wdb->id, version);
-            return wdb;
+            return NULL;
         }
 
         for (unsigned i = version; i < sizeof(UPDATES) / sizeof(char *); i++) {
@@ -74,7 +74,7 @@ void wdb_upgrade(wdb_t *wdb) {
     return wdb;
 }
 
-void wdb_upgrade_global(wdb_t *wdb) {
+wdb_t * wdb_upgrade_global(wdb_t *wdb) {
     const char * UPDATES[] = {
         schema_global_upgrade_v1_sql,
         schema_global_upgrade_v2_sql,
@@ -117,8 +117,10 @@ void wdb_upgrade_global(wdb_t *wdb) {
                     wdb->enabled = false;
                 }
                 else {
-                    wdb_recreate_global(wdb);
+                    wdb = wdb_recreate_global(wdb);
                 }
+
+                return wdb;
             }
         }
     }
@@ -134,6 +136,7 @@ void wdb_upgrade_global(wdb_t *wdb) {
          */
         merror("DB(%s) Error trying to find metadata table", wdb->id);
         wdb->enabled = false;
+        return wdb;
     }
 
     if (version < updates_length) {
@@ -160,13 +163,14 @@ void wdb_upgrade_global(wdb_t *wdb) {
             }
         }
     }
+
+    return wdb;
 }
 
 // Create backup and generate an empty DB
 wdb_t * wdb_backup(wdb_t *wdb, int version) {
     char path[PATH_MAX];
     char * sagent_id;
-    sqlite3 * db;
 
     os_strdup(wdb->id, sagent_id),
     snprintf(path, PATH_MAX, "%s/%s.db", WDB2_DIR, sagent_id);
@@ -183,9 +187,10 @@ wdb_t * wdb_backup(wdb_t *wdb, int version) {
                 return NULL;
             }
 
-            if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
-                merror("Can't open SQLite backup database '%s': %s", path, sqlite3_errmsg(db));
-                sqlite3_close_v2(db);
+            if (sqlite3_open_v2(path, &wdb->db, SQLITE_OPEN_READWRITE, NULL)) {
+                merror("Can't open SQLite backup database '%s': %s", path, sqlite3_errmsg(wdb->db));
+                sqlite3_close_v2(wdb->db);
+                wdb->db = NULL;
                 free(sagent_id);
                 return NULL;
             }
@@ -195,12 +200,11 @@ wdb_t * wdb_backup(wdb_t *wdb, int version) {
     }
 
     free(sagent_id);
+    return wdb;
 }
 
-void wdb_recreate_global(wdb_t *wdb) {
+wdb_t * wdb_recreate_global(wdb_t *wdb) {
     char path[PATH_MAX];
-    wdb_t * new_wdb = NULL;
-    sqlite3 * db;
 
     snprintf(path, PATH_MAX, "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
 
@@ -212,12 +216,15 @@ void wdb_recreate_global(wdb_t *wdb) {
             return NULL;
         }
 
-        if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
-            merror("Can't open SQLite backup database '%s': %s", path, sqlite3_errmsg(db));
-            sqlite3_close_v2(db);
+        if (sqlite3_open_v2(path, &wdb->db, SQLITE_OPEN_READWRITE, NULL)) {
+            merror("Can't open SQLite backup database '%s': %s", path, sqlite3_errmsg(wdb->db));
+            sqlite3_close_v2(wdb->db);
+            wdb->db = NULL;
             return NULL;
         }
     }
+
+    return wdb;
 }
 
 /* Create backup for agent. Returns 0 on success or -1 on error. */
