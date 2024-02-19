@@ -71,10 +71,36 @@ void xmlToJson(pugi::xml_node& docXml, json::Json& docJson, xmlModule mod, std::
             processed = mod(node, docJson, localPath);
         }
 
+        bool isElementOfArray = false; // If the element is an array, the path should be adjusted
+
         if (!processed)
         {
             localPath += "/" + std::string {node.name()};
-            docJson.setObject(localPath);
+
+            // Check if the element already exists
+            if (docJson.exists(localPath))
+            {
+                isElementOfArray = true; // If exists, should be an array
+                if (docJson.isObject(localPath))
+                {
+                    json::Json tmp = docJson.getJson(localPath).value();
+                    docJson.setArray(localPath);
+                    docJson.appendJson(tmp, localPath);
+                    localPath += "/1";
+                }
+                else if (docJson.isArray(localPath))
+                {
+                    size_t index = docJson.size(localPath);
+                    localPath += "/" + std::to_string(index);
+                } else {
+                    // Never should reach here
+                    throw std::runtime_error("Invalid JSON structure"); ///? Log error?
+                }
+            }
+            // else
+            // {
+            //     docJson.setObject(localPath);
+            // }
 
             auto text = node.text();
             if (!text.empty())
@@ -86,6 +112,12 @@ void xmlToJson(pugi::xml_node& docXml, json::Json& docJson, xmlModule mod, std::
             {
                 docJson.setString(attr.value(), localPath + "/@" + attr.name());
             }
+        }
+
+        // Ajdust path if the element is an array
+        if (isElementOfArray)
+        {
+            localPath = localPath.substr(0, localPath.find_last_of('/'));
         }
 
         // Process children
