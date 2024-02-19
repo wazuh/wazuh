@@ -44,7 +44,8 @@ wdb_t * wdb_pool_get_or_create(const char * name) {
     wdb_t * node = rbtree_get(wdb_pool.nodes, name);
 
     if (node == NULL) {
-        node =  wdb_init(name);
+        node = wdb_init(name);
+        rbtree_insert(wdb_pool.nodes, name, node);
     }
 
     node->refcount++;
