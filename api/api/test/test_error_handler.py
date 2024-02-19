@@ -29,6 +29,7 @@ def mock_request(request, request_info):
     """fixture to wrap functions with request"""
     req = MagicMock()
     req.client.host = 'ip'
+    mock_request.query_param = {}
     if 'prevent_bruteforce_attack' in request.node.name:
         for clave, valor in request_info.items():
             setattr(req, clave, valor)
@@ -51,14 +52,15 @@ def test_cleanup_detail_field():
     {'ip': {'attempts': 4}},
 ])
 @pytest.mark.parametrize('request_info', [
-    {'path': LOGIN_ENDPOINT, 'method': 'GET'},
-    {'path': LOGIN_ENDPOINT, 'method': 'POST'},
+    {'path': LOGIN_ENDPOINT, 'method': 'GET', 'pretty': 'true'},
+    {'path': LOGIN_ENDPOINT, 'method': 'POST', 'pretty': 'false'},
     {'path': RUN_AS_LOGIN_ENDPOINT, 'method': 'POST'},
 ], indirect=True)
 def test_middlewares_prevent_bruteforce_attack(stats, request_info, mock_request):
     """Test `prevent_bruteforce_attack` blocks IPs when reaching max number of attempts."""
     mock_request.configure_mock(scope={'path': request_info['path']})
     mock_request.method = request_info['method']
+    mock_request.query_param['pretty'] = request_info.get('pretty', 'false')
     with patch("api.error_handler.ip_stats", new=copy(stats)) as ip_stats, \
         patch("api.error_handler.ip_block", new=set()) as ip_block:
         previous_attempts = ip_stats['ip']['attempts'] if 'ip' in ip_stats else 0
@@ -113,13 +115,13 @@ async def test_unauthorized_error_handler(path, method, token_info, mock_request
 
 
 @pytest.mark.asyncio
-async def test_jwt_error_handler():
+async def test_jwt_error_handler(mock_request):
     """Test jwt error handler."""
     problem = {
         "title": "Unauthorized",
         "detail": "No authorization token provided"
     }
-    response = await jwt_error_handler(None, None)
+    response = await jwt_error_handler(mock_request, None)
 
     body = json.loads(response.body)
     assert body == problem
@@ -129,14 +131,14 @@ async def test_jwt_error_handler():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('detail', [None, 'Custom detail'])
-async def test_http_error_handler(detail):
+async def test_http_error_handler(detail, mock_request):
     """Test http error handler."""
     exc = HTTPException(status_code=401, detail=detail)
     problem = {
         "title": exc.detail,
         'detail': f"{exc.status_code}: {exc.detail}"
     }
-    response = await http_error_handler(None, exc)
+    response = await http_error_handler(mock_request, exc)
 
     body = json.loads(response.body)
     assert body == problem
@@ -160,10 +162,10 @@ async def test_http_error_handler(detail):
                           ('', {}, {'type': 'type'}, 'type'),
                           ('', {}, {'type': 'type', 'more': 'more'}, 'type'),
 ])
-async def test_problem_error_handler(title, detail, ext, error_type):
+async def test_problem_error_handler(title, detail, ext, error_type, mock_request):
     """Test problem error handler."""
     exc = ProblemException(status=400, title=title, detail=detail, ext=ext, type=error_type)
-    response = await problem_error_handler(None, exc)
+    response = await problem_error_handler(mock_request, exc)
     body = json.loads(response.body)
 
     if isinstance(detail, dict):
@@ -187,7 +189,7 @@ async def test_problem_error_handler(title, detail, ext, error_type):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('detail', [None, 'detail'])
-async def test_bad_request_error_handler(detail):
+async def test_bad_request_error_handler(detail, mock_request):
     """Test bad request error handler."""
     problem = {
         "title": 'Bad Request',
@@ -195,7 +197,7 @@ async def test_bad_request_error_handler(detail):
     problem.update({'detail': detail} if detail else {})
 
     exc = BadRequestProblem(detail=detail)
-    response = await bad_request_error_handler(None, exc)
+    response = await bad_request_error_handler(mock_request, exc)
     body = json.loads(response.body)
     assert body == problem
     assert response.status_code == exc.status_code
