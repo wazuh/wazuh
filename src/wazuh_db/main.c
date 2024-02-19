@@ -124,6 +124,8 @@ int main(int argc, char ** argv)
 
     // Initialize variables
 
+    wdb_pool_init();
+
     if (!run_foreground) {
         goDaemon();
         nowDaemon();
