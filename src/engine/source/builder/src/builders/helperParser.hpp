@@ -1,13 +1,15 @@
 #ifndef _BUILDER_HELPER_PARSER_HPP
 #define _BUILDER_HELPER_PARSER_HPP
 
+#include <iostream>
 #include <string>
 #include <tuple>
 #include <variant>
 #include <vector>
 
 #include <fmt/format.h>
-#include <re2/re2.h>
+#include <rapidjson/document.h>
+#include <rapidjson/stringbuffer.h>
 
 #include <error.hpp>
 #include <json/json.hpp>
@@ -15,10 +17,12 @@
 
 #include "syntax.hpp"
 #include "types.hpp"
-#include "utils/stringUtils.hpp"
 
-namespace builder::builders::detail
+namespace builder::builders::parsers
 {
+/******************************************************************************/
+/* Helper function parsers */
+/******************************************************************************/
 
 /**
  * @brief Token representing a helper function
@@ -28,9 +32,9 @@ namespace builder::builders::detail
  */
 struct HelperToken
 {
-    std::string name = "";
-    builders::Reference targetField;
-    std::vector<std::shared_ptr<builders::Argument>> args = {};
+    std::string name = "";                  ///< Name of the helper function
+    builders::Reference targetField;        ///< Target field for the helper function
+    std::vector<builders::OpArg> args = {}; ///< Arguments for the helper function
 
     friend std::ostream& operator<<(std::ostream& os, const HelperToken& helperToken)
     {
@@ -44,8 +48,399 @@ struct HelperToken
     }
 };
 
+/**
+ * @brief Parser for a single argument of a helper function between single quotes, always returns a string value
+ *
+ * @return parsec::Parser<builders::OpArg>
+ */
+inline parsec::Parser<builders::OpArg> getHelperQuotedArgParser()
+{
+    std::string reservedChars;
+    reservedChars += syntax::helper::DEFAULT_ESCAPE;
+    reservedChars += syntax::helper::SINGLE_QUOTE;
+    return [reservedChars](auto sv, auto pos)
+    {
+        if (pos >= sv.size() || sv[pos] != syntax::helper::SINGLE_QUOTE)
+        {
+            return parsec::makeError<builders::OpArg>("Single quote expected", pos);
+        }
+
+        std::string rawStr;
+        auto next = pos + 1;
+        while (next < sv.size())
+        {
+            if (sv[next] == syntax::helper::SINGLE_QUOTE)
+            {
+                break;
+            }
+
+            if (sv[next] == syntax::helper::DEFAULT_ESCAPE)
+            {
+                if (next + 1 < sv.size() && reservedChars.find(sv[next + 1]) != std::string::npos)
+                {
+                    // Normal escape sequence
+                    ++next;
+                }
+                else
+                {
+                    return parsec::makeError<builders::OpArg>("Invalid escape sequence", next + 1);
+                }
+            }
+
+            rawStr += sv[next];
+            ++next;
+        }
+
+        if (next == sv.size())
+        {
+            return parsec::makeError<builders::OpArg>("Missing end quote", next);
+        }
+
+        json::Json value;
+        value.setString(std::move(rawStr));
+
+        return parsec::makeSuccess<builders::OpArg>(std::make_shared<builders::Value>(std::move(value)), next + 1);
+    };
+}
+
+/**
+ * @brief Parser for a single argument of a helper function that is a reference
+ *
+ * @return parsec::Parser<builders::OpArg>
+ */
+inline parsec::Parser<builders::OpArg> getHelperRefArgParser()
+{
+    std::string extendedChars(syntax::field::NAME_EXTENDED);
+    extendedChars += syntax::field::SEPARATOR;
+    return [extendedChars](auto sv, auto pos) -> parsec::Result<builders::OpArg>
+    {
+        if (pos >= sv.size() || sv[pos] != syntax::field::REF_ANCHOR)
+        {
+            return parsec::makeError<builders::OpArg>("Reference expected", pos);
+        }
+
+        auto begin = pos + 1;
+        auto next = begin;
+        while (next < sv.size() && (std::isalnum(sv[next]) || extendedChars.find(sv[next]) != std::string::npos))
+        {
+            ++next;
+        }
+
+        if (next == begin)
+        {
+            return parsec::makeError<builders::OpArg>("Empty reference", pos);
+        }
+
+        return parsec::makeSuccess<builders::OpArg>(
+            std::make_shared<builders::Reference>(std::string(sv.substr(begin, next - begin))), next);
+    };
+}
+
+/**
+ * @brief Parser for a single argument of a helper function that is a json value
+ *
+ * @return parsec::Parser<builders::OpArg>
+ */
+inline parsec::Parser<builders::OpArg> getHelperJsonArgParser()
+{
+    return [](auto sv, auto pos) -> parsec::Result<builders::OpArg>
+    {
+        if (pos >= sv.size())
+        {
+            return parsec::makeError<builders::OpArg>("Expected Json", pos);
+        }
+
+        // Try to parse as json value
+        rapidjson::Reader reader;
+        const auto ssInput = std::string(sv.substr(pos));
+        rapidjson::StringStream ss(ssInput.c_str());
+        rapidjson::Document doc;
+        doc.ParseStream<rapidjson::kParseStopWhenDoneFlag>(ss);
+
+        if (doc.HasParseError())
+        {
+            return parsec::makeError<builders::OpArg>("Error parsing json", pos);
+        }
+
+        auto next = pos + ss.Tell();
+        const auto parsed = sv.substr(0, next);
+        return parsec::makeSuccess<builders::OpArg>(std::make_shared<builders::Value>(json::Json(std::move(doc))),
+                                                    next);
+    };
+}
+
+/**
+ * @brief Parser that returns a string value, used when the other argument parsers fail
+ *
+ * @param isDefaultHelper if true will accept end of string only as end of argument
+ * @return parsec::Parser<builders::OpArg>
+ */
+inline parsec::Parser<builders::OpArg> getHelperRawArgParser(bool isDefaultHelper = false)
+{
+    std::string endChars =
+        isDefaultHelper ? "" : std::string {syntax::helper::ARG_ANCHOR, syntax::helper::ARG_END, ' '};
+    std::string reservedChars = {syntax::helper::DEFAULT_ESCAPE, syntax::field::REF_ANCHOR};
+    if (!isDefaultHelper)
+    {
+        reservedChars += endChars;
+    }
+
+    return [isDefaultHelper, endChars, reservedChars](auto sv, auto pos) -> parsec::Result<builders::OpArg>
+    {
+        if (pos >= sv.size())
+        {
+            return parsec::makeError<builders::OpArg>("Expected argument", pos);
+        }
+
+        // Parse as string
+        std::string rawStr;
+        auto next = pos;
+        while (next < sv.size())
+        {
+            if (endChars.find(sv[next]) != std::string::npos)
+            {
+                break;
+            }
+
+            if (sv[next] == syntax::helper::DEFAULT_ESCAPE)
+            {
+                if (next + 1 < sv.size() && reservedChars.find(sv[next + 1]) != std::string::npos)
+                {
+                    // Normal escape sequence
+                    ++next;
+                }
+                else
+                {
+                    return parsec::makeError<builders::OpArg>("Invalid escape sequence", next + 1);
+                }
+            }
+
+            rawStr += sv[next];
+            ++next;
+        }
+
+        // Empty value
+        if (rawStr.empty())
+        {
+            if (!isDefaultHelper)
+            {
+                return parsec::makeSuccess<builders::OpArg>(std::make_shared<builders::Value>(), next);
+            }
+
+            return parsec::makeError<builders::OpArg>("Empty value", pos);
+        }
+
+        json::Json value;
+        value.setString(std::move(rawStr));
+
+        return parsec::makeSuccess<builders::OpArg>(std::make_shared<builders::Value>(std::move(value)), next);
+    };
+}
+
+/**
+ * @brief Parser for a single argument of a helper function
+ *
+ * @param isDefaultHelper if true will accept end of string only as end of argument
+ * @return parsec::Parser<builders::OpArg>
+ */
+inline parsec::Parser<builders::OpArg> getHelperArgParser(bool isDefaultHelper = false)
+{
+    auto argParser = getHelperQuotedArgParser() | getHelperRefArgParser() | getHelperJsonArgParser()
+                     | getHelperRawArgParser(isDefaultHelper);
+    if (isDefaultHelper)
+    {
+        parsec::Parser<std::string> eofParser = [](auto sv, auto pos) -> parsec::Result<std::string>
+        {
+            if (pos < sv.size())
+            {
+                return parsec::makeError<std::string>("End of string expected", pos);
+            }
+
+            return parsec::makeSuccess<std::string>({}, pos);
+        };
+        argParser = argParser << eofParser;
+    }
+    return argParser;
+}
+
+/**
+ * @brief Parser for a helper function name
+ *
+ * @return parsec::Parser<std::string>
+ */
+inline parsec::Parser<std::string> getHelperNameParser()
+{
+    std::string helperExtended = syntax::helper::NAME_EXTENDED;
+
+    return [helperExtended](auto sv, auto pos) -> parsec::Result<std::string>
+    {
+        auto next = pos;
+        while (next < sv.size() && (std::isalnum(sv[next]) || helperExtended.find(sv[next]) != std::string::npos))
+        {
+            ++next;
+        }
+
+        if (next == pos)
+        {
+            return parsec::makeError<std::string>("Empty helper name", pos);
+        }
+
+        return parsec::makeSuccess(std::string(sv.substr(pos, next - pos)), next);
+    };
+}
+
+/**
+ * @brief Parser for a helper function
+ *
+ * @param eof if true will force end of string after the helper function
+ * @return parsec::Parser<HelperToken>
+ */
+inline parsec::Parser<HelperToken> getHelperParser(bool eof = false)
+{
+    // helper_name([arg1, argN])
+    auto helperNameParser = getHelperNameParser();
+    parsec::Parser<std::string> parenthOpenParser = [](auto sv, auto pos) -> parsec::Result<std::string>
+    {
+        if (pos >= sv.size() || sv[pos] != syntax::helper::ARG_START)
+        {
+            return parsec::makeError<std::string>("Parenthesis open expected", pos);
+        }
+
+        // Skip whitespace
+        auto next = pos + 1;
+        while (next < sv.size() && std::isspace(sv[next]))
+        {
+            ++next;
+        }
+
+        return parsec::makeSuccess<std::string>({}, next);
+    };
+    parsec::Parser<std::string> parenthCloseParser = [](auto sv, auto pos) -> parsec::Result<std::string>
+    {
+        if (pos >= sv.size())
+        {
+            return parsec::makeError<std::string>("Parenthesis close expected", pos);
+        }
+
+        // Skip whitespace
+        auto next = pos;
+        while (next < (sv.size() - 1) && std::isspace(sv[next]))
+        {
+            ++next;
+        }
+
+        if (sv[next] != syntax::helper::ARG_END)
+        {
+            return parsec::makeError<std::string>("Parenthesis close expected", next);
+        }
+
+        return parsec::makeSuccess<std::string>({}, ++next);
+    };
+    parsec::Parser<std::string> argSeparatorParser = [](auto sv, auto pos) -> parsec::Result<std::string>
+    {
+        if (pos >= sv.size())
+        {
+            return parsec::makeError<std::string>("Argument separator expected", pos);
+        }
+
+        // Skip whitespace before separator
+        auto next = pos;
+        while (next < (sv.size() - 1) && std::isspace(sv[next]))
+        {
+            ++next;
+        }
+
+        if (sv[next] != syntax::helper::ARG_ANCHOR)
+        {
+            return parsec::makeError<std::string>("Argument separator expected", next);
+        }
+
+        // Skip whitespace after separator
+        ++next;
+        while (next < sv.size() && std::isspace(sv[next]))
+        {
+            ++next;
+        }
+
+        return parsec::makeSuccess<std::string>({}, next);
+    };
+    auto argParser = getHelperArgParser();
+
+    auto nameParser = helperNameParser << parenthOpenParser;
+    auto singleArgParser = argParser << argSeparatorParser;
+    auto endArgParser = argParser << parenthCloseParser;
+    auto argsParser = parsec::fmap<parsec::Values<OpArg>, std::tuple<parsec::Values<OpArg>, OpArg>>(
+        [](auto&& tuple) -> parsec::Values<OpArg>
+        {
+            auto&& [args, arg] = tuple;
+            args.emplace_back(std::move(arg));
+            return args;
+        },
+        parsec::many(singleArgParser) & endArgParser);
+
+    parsec::Parser<std::string> eofParser = [](auto sv, auto pos) -> parsec::Result<std::string>
+    {
+        if (pos < sv.size())
+        {
+            return parsec::makeError<std::string>("End of string expected", pos);
+        }
+
+        return parsec::makeSuccess<std::string>({}, pos);
+    };
+
+    auto helperParser = nameParser & argsParser;
+    if (eof)
+    {
+        helperParser = helperParser << eofParser;
+    }
+
+    auto finalParser = parsec::fmap<HelperToken, std::tuple<std::string, parsec::Values<builders::OpArg>>>(
+        [](auto&& tuple) -> HelperToken
+        {
+            HelperToken helperToken;
+            helperToken.name = std::get<0>(tuple);
+
+            // Transform values to arguments
+            for (auto&& arg : std::get<1>(tuple))
+            {
+                helperToken.args.emplace_back(std::move(arg));
+            }
+            if (helperToken.args.size() == 1 && helperToken.args[0]->isValue()
+                && std::static_pointer_cast<builders::Value>(helperToken.args[0])->value().isNull())
+            {
+                helperToken.args.clear();
+            }
+
+            return helperToken;
+        },
+        helperParser);
+
+    return finalParser;
+}
+
+/**
+ * @brief Check if the given string is a default helper, i.e. it does not start with helper name and parenthesis
+ *
+ * @param sv string to check
+ * @return true if the string is a default helper
+ */
+inline bool isDefaultHelper(std::string_view sv)
+{
+    auto result = getHelperNameParser()(sv, 0);
+    if (result.failure() || result.index() >= sv.size() || sv[result.index()] != syntax::helper::ARG_START)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+/******************************************************************************/
+/* Expression parsers */
+/******************************************************************************/
+
 // operators (==, !=, <, >, <=, >=)
-enum class ExpressionOperator
+enum class Operator
 {
     EQUAL,
     NOT_EQUAL,
@@ -55,741 +450,265 @@ enum class ExpressionOperator
     LESS_THAN_OR_EQUAL
 };
 
+constexpr auto operatorToString(Operator op)
+{
+    switch (op)
+    {
+        case Operator::EQUAL: return "==";
+        case Operator::NOT_EQUAL: return "!=";
+        case Operator::GREATER_THAN: return ">";
+        case Operator::GREATER_THAN_OR_EQUAL: return ">=";
+        case Operator::LESS_THAN: return "<";
+        case Operator::LESS_THAN_OR_EQUAL: return "<=";
+        default: return "Unknown operator";
+    }
+}
+
 /**
- * @brief Token representing an expression
- *
- * @details Expression is represented by a field, an operator and a value.
+ * @brief Represents a comparison operation token
  *
  */
-struct ExpressionToken
+struct OperationToken
 {
-    std::string field;
-    ExpressionOperator op;
-    json::Json value;
+    OpArg field; ///< Left side of the comparison (reference)
+    Operator op; ///< Comparison operator
+    OpArg value; ///< Right side of the comparison (reference or value)
 };
 
 /**
- * @brief Obtain builder input parameters from expression token
+ * @brief Parser for comparison operators
  *
- * @param expressionToken Token representing an expression
- * @return std::tuple<std::string, json::Json>
+ * @return parsec::Parser<Operator>
  */
-inline HelperToken toBuilderInput(ExpressionToken& expressionToken)
+inline parsec::Parser<Operator> getOperatorParser()
 {
-    if (expressionToken.field.empty())
+    return [](auto sv, auto pos) -> parsec::Result<Operator>
     {
-        throw std::runtime_error("Expression field is empty");
-    }
-
-    bool isValueInteger = expressionToken.value.isInt() || expressionToken.value.isInt64();
-
-    if (expressionToken.op == ExpressionOperator::EQUAL)
-    {
-        auto helperToken = HelperToken {};
-        helperToken.name = "filter";
-        helperToken.targetField = builders::Reference(expressionToken.field.substr(1));
-
-        // If value is string, check if it is a reference
-        if (expressionToken.value.isString()
-            && expressionToken.value.getString().value()[0] == syntax::field::REF_ANCHOR)
+        // Ignore whitespace
+        while (pos < sv.size() && std::isspace(sv[pos]))
         {
-
-            helperToken.args.emplace_back(
-                std::make_shared<builders::Reference>(expressionToken.value.getString().value().substr(1)));
-        }
-        else
-        {
-            helperToken.args.emplace_back(std::make_shared<builders::Value>(std::move(expressionToken.value)));
+            ++pos;
         }
 
-        return helperToken;
-    }
-
-    if (expressionToken.op == ExpressionOperator::NOT_EQUAL && !expressionToken.value.isString() && !isValueInteger)
-    {
-        throw std::runtime_error("Not equal operator is not supported for non string or number values");
-    }
-
-    // Rest of operators only support string or number values
-    if (!expressionToken.value.isString() && !isValueInteger)
-    {
-        throw std::runtime_error("Expression value is not string or number");
-    }
-
-    HelperToken helperToken {};
-
-    if (isValueInteger)
-    {
-        helperToken.name = "int";
-    }
-    else
-    {
-        helperToken.name = "string";
-    }
-    helperToken.args.emplace_back(std::make_shared<builders::Value>(std::move(expressionToken.value)));
-
-    switch (expressionToken.op)
-    {
-        case ExpressionOperator::GREATER_THAN: helperToken.name += "_greater"; break;
-        case ExpressionOperator::GREATER_THAN_OR_EQUAL: helperToken.name += "_greater_or_equal"; break;
-        case ExpressionOperator::LESS_THAN: helperToken.name += "_less"; break;
-        case ExpressionOperator::LESS_THAN_OR_EQUAL: helperToken.name += "_less_or_equal"; break;
-        case ExpressionOperator::NOT_EQUAL: helperToken.name += "_not_equal"; break;
-        default: throw std::logic_error("Unknown expression operator");
-    }
-
-    helperToken.targetField = builders::Reference(expressionToken.field.substr(1));
-
-    return helperToken;
-}
-
-using BuildToken = std::variant<HelperToken, ExpressionToken>;
-
-inline parsec::Parser<std::string> getHelperStartParser() {
-    std::string helperExtended = syntax::helper::NAME_EXTENDED;
-    parsec::Parser<std::string> helperNameParser = [helperExtended](auto sv, auto pos) -> parsec::Result<std::string>
-    {
-        auto next = pos;
-        while (next < sv.size() && (std::isalnum(sv[next]) || helperExtended.find(sv[next]) != std::string::npos))
+        if (pos >= sv.size())
         {
-            ++next;
+            return parsec::makeError<Operator>("Operator expected", pos);
         }
 
-        if (next == pos)
-        {
-            return parsec::makeError<std::string>("Empty helper name", pos);
-        }
-
-        return parsec::makeSuccess(std::string(sv.substr(pos, next - pos)), next);
-    };
-
-    parsec::Parser<std::string> parenthOpenParser = [](auto sv, auto pos) -> parsec::Result<std::string>
-    {
-        if (sv[pos] != syntax::helper::ARG_START)
-        {
-            return parsec::makeError<std::string>("Parenthesis open expected", pos);
-        }
-        // Skip whitespace
-        auto next = pos + 1;
-        while (next < sv.size() && std::isspace(sv[next]))
-        {
-            ++next;
-        }
-
-        return parsec::makeSuccess(std::string(1, syntax::helper::ARG_START), next);
-    };
-
-    auto helperStartParser = helperNameParser >> parenthOpenParser;
-
-    return helperStartParser;
-}
-
-/**
- * @brief Get a parser that parses a helper function
- * 
- * @return parsec::Parser<HelperToken>
- */
-inline parsec::Parser<HelperToken> getHelperParser(bool eraseScapeChars = false) // TODO: Delete eraseScapeChars, true
-{
-    std::string helperExtended = syntax::helper::NAME_EXTENDED;
-    parsec::Parser<std::string> helperNameParser = [helperExtended](auto sv, auto pos) -> parsec::Result<std::string>
-    {
-        auto next = pos;
-        while (next < sv.size() && (std::isalnum(sv[next]) || helperExtended.find(sv[next]) != std::string::npos))
-        {
-            ++next;
-        }
-
-        if (next == pos)
-        {
-            return parsec::makeError<std::string>("Empty helper name", pos);
-        }
-
-        return parsec::makeSuccess(std::string(sv.substr(pos, next - pos)), next);
-    };
-
-    parsec::Parser<std::string> parenthOpenParser = [](auto sv, auto pos) -> parsec::Result<std::string>
-    {
-        if (sv[pos] != syntax::helper::ARG_START)
-        {
-            return parsec::makeError<std::string>("Parenthesis open expected", pos);
-        }
-        // Skip whitespace
-        auto next = pos + 1;
-        while (next < sv.size() && std::isspace(sv[next]))
-        {
-            ++next;
-        }
-
-        return parsec::makeSuccess(std::string(1, syntax::helper::ARG_START), next);
-    };
-
-    auto helperStartParser = helperNameParser & parenthOpenParser;
-
-    parsec::Parser<std::string> parenthCloseParser = [](auto sv, auto pos) -> parsec::Result<std::string>
-    {
-        if (sv[pos] != syntax::helper::ARG_END)
-        {
-            return parsec::makeError<std::string>("Parenthesis close expected", pos);
-        }
-        // Skip whitespace
-        auto next = pos + 1;
-        while (next < sv.size() && std::isspace(sv[next]))
-        {
-            ++next;
-        }
-
-        return parsec::makeSuccess(std::string(1, syntax::helper::ARG_END), next);
-    };
-
-    parsec::Parser<std::string> behindParenthCloseParser = [](auto sv, auto pos) -> parsec::Result<std::string>
-    {
-        if (pos == 0 || sv[pos - 1] != syntax::helper::ARG_END)
-        {
-            return parsec::makeError<std::string>("Parenthesis close expected", pos);
-        }
-
-        return parsec::makeSuccess(std::string(1, syntax::helper::ARG_END), pos);
-    };
-
-    parsec::Parser<std::string> behindParenthOpenParser = [](auto sv, auto pos) -> parsec::Result<std::string>
-    {
-        if (pos == 0 || sv[pos - 1] != syntax::helper::ARG_START)
-        {
-            return parsec::makeError<std::string>("Parenthesis open expected", pos);
-        }
-
-        return parsec::makeSuccess(std::string(1, syntax::helper::ARG_START), pos);
-    };
-
-    parsec::Parser<std::string> simpleArgParser = [eraseScapeChars](auto sv, auto pos) -> parsec::Result<std::string>
-    {
-        auto next = pos;
-        auto arg = std::string();
-
-        if (next >= sv.size())
-        {
-            return parsec::makeError<std::string>("EOA", pos);
-        }
-
-        // Unescape \$ at the beginning of the parameter
-        if (next + 1 < sv.size() && sv[next] == syntax::helper::DEFAULT_ESCAPE
-            && sv[next + 1] == syntax::field::REF_ANCHOR)
-        {
-            arg += syntax::helper::DEFAULT_ESCAPE;
-            ++next;
-        }
-
-        for (; next < sv.size(); ++next)
-        {
-            // Check for end of argument
-            if (sv[next] == syntax::helper::ARG_ANCHOR || sv[next] == syntax::helper::ARG_END)
-            {
-                break;
-            }
-            // Check for escape sequence
-            else if (sv[next] == syntax::helper::DEFAULT_ESCAPE)
-            {
-                if (next + 1 < sv.size())
-                {
-                    // Expecting escapeable character
-                    if (sv[next + 1] == syntax::helper::ARG_ANCHOR || sv[next + 1] == syntax::helper::ARG_END
-                        || sv[next + 1] == syntax::helper::DEFAULT_ESCAPE || std::isspace(sv[next + 1]))
-                    {
-                        if (!eraseScapeChars)
-                        {
-                            arg += sv[next];
-                        }
-                        ++next;
-                    }
-                    else
-                    {
-                        return parsec::makeError<std::string>("Invalid escape sequence", next);
-                    }
-                }
-                else
-                {
-                    return parsec::makeError<std::string>("Invalid escape sequence", next);
-                }
-            }
-
-            arg += sv[next];
-        }
-
-        return parsec::makeSuccess(std::move(arg), next);
-    };
-
-    parsec::Parser<std::string> quotedArgParser = [eraseScapeChars](auto sv, auto pos) -> parsec::Result<std::string>
-    {
-        using namespace base::utils::string;
+        Operator op;
         auto next = pos;
 
-        // Check if start with single quote
-        if (next + 1 >= sv.size() || sv[next] != syntax::helper::SINGLE_QUOTE)
+        if (sv[pos] == '=')
         {
-            return parsec::makeError<std::string>("Single quote expected", pos);
-        }
-        next++;
-
-        // Escape \$ at the beginning of the parameter
-        bool escapedFirstReference = sv[next] == syntax::field::REF_ANCHOR;
-
-        // Find end of string (unescaped single quote)
-        bool valid = false;
-        for (; next < sv.size(); ++next)
-        {
-            if (sv[next] == syntax::helper::SINGLE_QUOTE && sv[next - 1] != syntax::helper::DEFAULT_ESCAPE)
+            if (pos + 1 < sv.size() && sv[pos + 1] == '=')
             {
-                valid = true;
-                break;
-            }
-        }
-
-        if (!valid)
-        {
-            return parsec::makeError<std::string>("Invalid single quote string", pos);
-        }
-
-        // TODO: Add test for both cases
-        std::string arg {};
-        if (eraseScapeChars)
-        {
-            if (escapedFirstReference)
-            {
-                arg += syntax::helper::DEFAULT_ESCAPE;
-            }
-            // Discart start and end single quote
-            auto quoted = sv.substr(pos + 1, next - pos - 1);
-            // Unescape string
-            arg += unescapeString(quoted, syntax::helper::DEFAULT_ESCAPE, syntax::helper::SINGLE_QUOTE, false);
-        }
-        else
-        {
-            arg = sv.substr(pos, next - pos + 1);
-            if (escapedFirstReference)
-            {
-                arg.insert(1, 1, syntax::helper::DEFAULT_ESCAPE);
-            }
-        }
-        // "string_equal($processname,   '')"
-        next++;
-        while (next < sv.size() && std::isspace(sv[next]))
-        {
-            ++next;
-        }
-        return parsec::makeSuccess(std::move(arg), next);
-    };
-
-    parsec::Parser<std::string> endArgParser = [](auto sv, auto pos) -> parsec::Result<std::string>
-    {
-        parsec::Result<std::string> res;
-        auto next = pos;
-        if (sv[next] == syntax::helper::ARG_ANCHOR)
-        {
-            // Optional whitespaces (TODO check case ( a    , c    ))
-            ++next;
-            while (next < sv.size() && std::isspace(sv[next]))
-            {
-                ++next;
-            }
-
-            res = parsec::makeSuccess(std::string(sv.substr(pos, next - pos)), next);
-        }
-        else if (sv[next] == syntax::helper::ARG_END)
-        {
-            res = parsec::makeSuccess(std::string(sv.substr(pos, 1)), pos + 1);
-        }
-        else
-        {
-            res = parsec::makeError<std::string>("Argument separator or parenthesis close expected", pos);
-        }
-
-        return res;
-    };
-
-    // Empty arguments parser, parenthesis that closes, and behind a parenthesis that opens
-    auto helperNoArgsParserRaw = parsec::positiveLook(behindParenthOpenParser) >> parenthCloseParser;
-    // returns a empty list of arguments
-    auto helperNoArgsParser = parsec::fmap<parsec::Values<std::string>, std::string>(
-        [](auto&& tuple) -> parsec::Values<std::string> { return {}; }, helperNoArgsParserRaw);
-
-    // Some arguments parser, can be a quoted string or scaped string
-    auto argParser = quotedArgParser | simpleArgParser;
-    auto helperSomeArgsParser =
-        parsec::many1(parsec::negativeLook(behindParenthCloseParser) >> argParser << endArgParser);
-
-    // A helper function can have no arguments or some arguments
-    auto helperArgsParser = helperNoArgsParser | helperSomeArgsParser;
-
-    auto helperParserRaw =
-        (helperNameParser << parenthOpenParser) & (helperArgsParser << parsec::positiveLook(behindParenthCloseParser));
-    auto helperParser = parsec::fmap<HelperToken, std::tuple<std::string, parsec::Values<std::string>>>(
-        [](auto&& tuple) -> HelperToken
-        {
-            HelperToken helperToken;
-            helperToken.name = std::get<0>(tuple);
-
-            // Transform values to arguments
-            for (auto&& arg : std::get<1>(tuple))
-            {
-                // If not json value, the it could be a reference or defaults to string
-                std::shared_ptr<builders::Argument> argument;
-
-                try
-                {
-                    argument = std::make_shared<builders::Value>(json::Json(arg.c_str()));
-                }
-                catch (const std::exception&)
-                {
-                    // Check if it is a reference
-                    if (arg[0] == syntax::field::REF_ANCHOR)
-                    {
-                        argument = std::make_shared<builders::Reference>(arg.substr(1));
-                    }
-                    else
-                    {
-                        auto strValue = json::Json();
-                        strValue.setString(arg);
-                        argument = std::make_shared<builders::Value>(std::move(strValue));
-                    }
-                }
-
-                helperToken.args.emplace_back(std::move(argument));
-            }
-
-            return helperToken;
-        },
-        helperParserRaw);
-
-    // Can be a value or reference if it does not start with a helper name
-    parsec::Parser<std::string> refParserRaw = [](auto sv, auto pos) -> parsec::Result<std::string>
-    {
-        if (sv[pos] != syntax::field::REF_ANCHOR)
-        {
-            return parsec::makeError<std::string>("Reference expected", pos);
-        }
-
-        // Return everything after the reference anchor
-        return parsec::makeSuccess(std::string(sv.substr(pos)), sv.size());
-    };
-    auto refParser = parsec::fmap<HelperToken, std::string>(
-        [](auto&& str) -> HelperToken
-        {
-            HelperToken helperToken;
-            helperToken.name = "";
-            helperToken.args.emplace_back(std::make_shared<builders::Reference>(str.substr(1)));
-            return helperToken;
-        },
-        refParserRaw);
-
-    parsec::Parser<HelperToken> valueParser = [](auto sv, auto pos) -> parsec::Result<HelperToken>
-    {
-        // Try to parse as json, otherwise it is a string
-        HelperToken helperToken;
-        helperToken.name = "";
-        try
-        {
-            helperToken.args.emplace_back(std::make_shared<builders::Value>(json::Json(sv.substr(pos).data())));
-        }
-        catch (const std::exception&)
-        {
-            // If empty error
-            if (sv.size() <= pos)
-            {
-                return parsec::makeError<HelperToken>("Empty value", pos);
-            }
-
-            auto strValue = json::Json();
-            // Check for escape helper syntax 'helperName()'
-            if (sv[pos] == '\'')
-            {
-                if (sv[sv.size() - 1] != '\'')
-                {
-                    return parsec::makeError<HelperToken>("Missing end quote", pos);
-                }
-
-                strValue.setString(sv.substr(pos + 1, sv.size() - pos - 2));
-            }
-            // Check for escaped quote
-            else if (sv[pos] == syntax::helper::DEFAULT_ESCAPE && sv[pos + 1] == '\'')
-            {
-                strValue.setString(sv.substr(pos + 1, sv.size() - pos - 1));
+                op = Operator::EQUAL;
+                next += 2;
             }
             else
             {
-                strValue.setString(sv.substr(pos));
+                return parsec::makeError<Operator>("Expected '='", pos + 1);
             }
-
-            helperToken.args.emplace_back(std::make_shared<builders::Value>(std::move(strValue)));
         }
-
-        return parsec::makeSuccess(std::move(helperToken), sv.size());
-    };
-
-    // auto finalParser = helperParser | (parsec::negativeLook(helperStartParser) >> (refParser | valueParser));
-    // return finalParser;
-    return helperParser;
-}
-
-/**
- * @brief Get a parser that parses a expression
- *
- * @return parsec::Parser<ExpressionToken>
- */
-inline parsec::Parser<ExpressionToken> getExpressionParser()
-{
-    parsec::Parser<json::Json> jsonParser = [](auto sv, auto pos) -> parsec::Result<json::Json>
-    {
-        if (sv.size() <= pos)
+        else if (sv[pos] == '!')
         {
-            return parsec::makeError<json::Json>("Empty json", pos);
+            if (pos + 1 < sv.size() && sv[pos + 1] == '=')
+            {
+                op = Operator::NOT_EQUAL;
+                next += 2;
+            }
+            else
+            {
+                return parsec::makeError<Operator>("Expected '='", pos + 1);
+            }
         }
-
-        rapidjson::Reader reader;
-        rapidjson::StringStream ss(sv.substr(pos).data());
-        rapidjson::Document doc;
-
-        doc.ParseStream<rapidjson::kParseStopWhenDoneFlag>(ss);
-        if (doc.HasParseError())
+        else if (sv[pos] == '>')
         {
-            return parsec::makeError<json::Json>("Error parsing json", pos);
+            if (pos + 1 < sv.size() && sv[pos + 1] == '=')
+            {
+                op = Operator::GREATER_THAN_OR_EQUAL;
+                next += 2;
+            }
+            else
+            {
+                op = Operator::GREATER_THAN;
+                ++next;
+            }
         }
-
-        return parsec::makeSuccess(json::Json(std::move(doc)), pos + ss.Tell());
-    };
-
-    parsec::Parser<std::string> fieldParser =
-        [fieldExtended = std::string(syntax::field::NAME_EXTENDED) + syntax::field::SEPARATOR
-                         + syntax::helper::DEFAULT_ESCAPE](auto sv, auto pos) -> parsec::Result<std::string>
-    {
-        if (sv[pos] != syntax::field::REF_ANCHOR)
+        else if (sv[pos] == '<')
         {
-            return parsec::makeError<std::string>("Reference expected", pos);
+            if (pos + 1 < sv.size() && sv[pos + 1] == '=')
+            {
+                op = Operator::LESS_THAN_OR_EQUAL;
+                next += 2;
+            }
+            else
+            {
+                op = Operator::LESS_THAN;
+                ++next;
+            }
+        }
+        else
+        {
+            return parsec::makeError<Operator>("Invalid operator", pos);
         }
 
-        auto next = pos + 1;
-
-        while (next < sv.size() && (std::isalnum(sv[next]) || fieldExtended.find(sv[next]) != std::string::npos))
+        // Ignore whitespace
+        while (next < sv.size() && std::isspace(sv[next]))
         {
             ++next;
         }
 
-        if (next == pos + 1)
-        {
-            return parsec::makeError<std::string>("Empty reference", pos);
-        }
-
-        return parsec::makeSuccess(std::string(sv.substr(pos, next - pos)), next);
+        return parsec::makeSuccess<Operator>(std::move(op), next);
     };
+}
 
-    parsec::Parser<json::Json> valueRefParser = parsec::fmap<json::Json, std::string>(
-        [](auto&& str) -> json::Json
+/**
+ * @brief Parser for a comparison operation
+ *
+ * @return parsec::Parser<OperationToken>
+ */
+inline parsec::Parser<OperationToken> getOperationParser()
+{
+    auto refParser = getHelperRefArgParser();
+    auto operatorParser = getOperatorParser();
+    auto valueParser = getHelperArgParser();
+
+    auto tokenParser = refParser & operatorParser & valueParser;
+    auto finalParser = parsec::fmap<OperationToken, std::tuple<std::tuple<OpArg, Operator>, OpArg>>(
+        [](auto&& tuple) -> OperationToken
         {
-            json::Json value;
-            value.setString(str);
-            return std::move(value);
+            OperationToken operationToken;
+            operationToken.field = std::get<0>(std::get<0>(tuple));
+            operationToken.op = std::get<1>(std::get<0>(tuple));
+            operationToken.value = std::get<1>(tuple);
+
+            return operationToken;
         },
-        fieldParser);
+        tokenParser);
 
-    parsec::Parser<json::Json> wordParser = [](auto sv, auto pos) -> parsec::Result<json::Json>
-    {
-        auto next = pos;
-        // The word ends with a space, parenthesis or end of string
-        while (next < sv.size() && !std::isspace(sv[next]) && sv[next] != syntax::helper::ARG_END
-               && sv[next] != syntax::helper::ARG_START)
-        {
-            ++next;
-        }
-
-        if (next == pos)
-        {
-            return parsec::makeError<json::Json>("Empty word", pos);
-        }
-
-        json::Json word;
-        word.setString(sv.substr(pos, next - pos));
-        return parsec::makeSuccess(std::move(word), next);
-    };
-
-    parsec::Parser<json::Json> singleQuotesParser = [](auto sv, auto pos) -> parsec::Result<json::Json>
-    {
-        using namespace base::utils::string;
-        auto next = pos;
-        // Check if start with single quote
-        if (next + 1 >= sv.size() || sv[next] != syntax::helper::SINGLE_QUOTE)
-        {
-            return parsec::makeError<json::Json>("Single quote expected", pos);
-        }
-        next++;
-
-        // Find end of string (unescaped single quote)
-        bool valid = false;
-        for (; next < sv.size(); ++next)
-        {
-            if (sv[next] == syntax::helper::SINGLE_QUOTE && sv[next - 1] != syntax::helper::DEFAULT_ESCAPE)
-            {
-                valid = true;
-                break;
-            }
-        }
-
-        if (!valid)
-        {
-            return parsec::makeError<json::Json>("Invalid single quote string", pos);
-        }
-
-        const auto quoted = sv.substr(pos + 1, next - pos - 1);
-        const auto str = unescapeString(quoted, syntax::helper::DEFAULT_ESCAPE, syntax::helper::SINGLE_QUOTE, false);
-
-        json::Json value;
-        value.setString(str);
-
-        return parsec::makeSuccess(std::move(value), next + 1);
-    };
-
-    auto valueParser = valueRefParser | jsonParser | singleQuotesParser | wordParser;
-
-    parsec::Parser<ExpressionOperator> operatorParser = [](auto sv, auto pos) -> parsec::Result<ExpressionOperator>
-    {
-        auto next = pos;
-
-        while (next < sv.size() && std::isspace(sv[next]))
-        {
-            ++next;
-        }
-
-        if (next + 1 > sv.size())
-        {
-            return parsec::makeError<ExpressionOperator>("Operator expected", pos);
-        }
-
-        std::vector<std::pair<std::string_view, ExpressionOperator>> compareList = {
-            {"==", ExpressionOperator::EQUAL},
-            {"!=", ExpressionOperator::NOT_EQUAL},
-            {"<=", ExpressionOperator::LESS_THAN_OR_EQUAL},
-            {">=", ExpressionOperator::GREATER_THAN_OR_EQUAL},
-            {"<", ExpressionOperator::LESS_THAN},
-            {">", ExpressionOperator::GREATER_THAN},
-        };
-
-        ExpressionOperator op;
-        bool found = false;
-        for (auto&& compare : compareList)
-        {
-            if (sv.substr(next, compare.first.size()) == compare.first)
-            {
-                op = compare.second;
-                next += compare.first.size();
-                found = true;
-                break;
-            }
-        }
-
-        if (!found)
-        {
-            return parsec::makeError<ExpressionOperator>("Unknown operator", pos);
-        }
-
-        // Ignore spaces after operator
-        while (next < sv.size() && std::isspace(sv[next]))
-        {
-            ++next;
-        }
-
-        return parsec::makeSuccess(std::move(op), next);
-    };
-
-    // <$field><op><value>
-    // $field==word
-    // $field==$ref
-    // $field=="json"
-
-    parsec::Parser<ExpressionToken> expressionParser =
-        parsec::fmap<ExpressionToken, std::tuple<std::tuple<std::string, ExpressionOperator>, json::Json>>(
-            [](auto&& tuple) -> ExpressionToken
-            {
-                ExpressionToken expressionToken;
-                expressionToken.field = std::get<0>(std::get<0>(tuple));
-                expressionToken.op = std::get<1>(std::get<0>(tuple));
-                expressionToken.value = std::move(std::get<1>(tuple));
-                return std::move(expressionToken);
-            },
-            fieldParser& operatorParser& valueParser);
-
-    return expressionParser;
+    return finalParser;
 }
 
 /**
- * @brief Get a parsec::Parser that parses a logicexpr term, where a term is a helper function or an expression
+ * @brief Transform a comparison operation token to a helper token
  *
- * @return parsec::Parser<BuildToken>
+ * @return parsec::Parser<HelperToken>
  */
-// TODO remove ExpressionToken, as it can directly be converted to HelperToken
-inline parsec::Parser<BuildToken> getTermParser()
+inline parsec::Parser<HelperToken> OpToHelperTokenMonadic(const OperationToken& opToken)
 {
-    auto helperParser = getHelperParser(true);
-    auto expressionParser = getExpressionParser();
-
-    parsec::M<HelperToken, HelperToken> f = [](const HelperToken& token) -> parsec::Parser<HelperToken>
+    return [opToken](auto sv, auto pos) -> parsec::Result<HelperToken>
     {
-        parsec::Parser<HelperToken> parser = [token](auto sv, auto pos) -> parsec::Result<HelperToken>
+        if (opToken.field->isValue())
         {
-            if (token.name.empty())
-            {
-                return parsec::makeError<HelperToken>("Helper function syntax error", pos);
-            }
+            return parsec::makeError<HelperToken>("Left side of comparison operator must be a reference", pos);
+        }
 
-            if (token.args.size() < 1 || token.args[0]->isValue())
-            {
-                return parsec::makeError<HelperToken>(
-                    "Helper function requires at least one argument referencing target field", pos);
-            }
+        HelperToken helperToken;
+        helperToken.targetField = builders::Reference(*std::static_pointer_cast<builders::Reference>(opToken.field));
 
-            HelperToken newToken;
-            newToken.name = token.name;
-            newToken.targetField = *std::static_pointer_cast<builders::Reference>(token.args[0]);
-            newToken.args = std::vector<std::shared_ptr<builders::Argument>>(token.args.begin() + 1, token.args.end());
+        if (opToken.op == Operator::EQUAL)
+        {
+            helperToken.name = "filter";
+            helperToken.args.emplace_back(opToken.value);
+            return parsec::makeSuccess<HelperToken>(std::move(helperToken), pos);
+        }
 
-            return parsec::makeSuccess<HelperToken>(std::move(newToken), pos);
-        };
+        if (opToken.value->isReference())
+        {
+            return parsec::makeError<HelperToken>(
+                fmt::format("Comparison operators only supports string or number values when using logic expressions, "
+                            "but got reference '{}'",
+                            std::static_pointer_cast<builders::Reference>(opToken.value)->dotPath()),
+                pos);
+        }
 
-        return parser;
+        const auto& value = std::static_pointer_cast<builders::Value>(opToken.value);
+        if (value->value().isString())
+        {
+            helperToken.name = "string";
+        }
+        else if (value->value().isInt() || value->value().isInt64())
+        {
+            helperToken.name = "int";
+        }
+        else
+        {
+            return parsec::makeError<HelperToken>(
+                fmt::format("Comparison operators only supports string or number values when using logic expressions, "
+                            "but got '{}'",
+                            value->value().str()),
+                pos);
+        }
+
+        switch (opToken.op)
+        {
+            case Operator::GREATER_THAN: helperToken.name += "_greater"; break;
+            case Operator::GREATER_THAN_OR_EQUAL: helperToken.name += "_greater_or_equal"; break;
+            case Operator::LESS_THAN: helperToken.name += "_less"; break;
+            case Operator::LESS_THAN_OR_EQUAL: helperToken.name += "_less_or_equal"; break;
+            case Operator::NOT_EQUAL: helperToken.name += "_not_equal"; break;
+        }
+
+        helperToken.args.emplace_back(opToken.value);
+
+        return parsec::makeSuccess<HelperToken>(std::move(helperToken), pos);
     };
-    parsec::Parser<HelperToken> finalHelperParser = helperParser >>= f;
-
-    parsec::Parser<BuildToken> helperParserToken = parsec::fmap<BuildToken, HelperToken>(
-        [](auto&& helperToken) -> BuildToken { return std::move(helperToken); }, finalHelperParser);
-    parsec::Parser<BuildToken> expressionParserToken = parsec::fmap<BuildToken, ExpressionToken>(
-        [](auto&& expressionToken) -> BuildToken { return std::move(expressionToken); }, expressionParser);
-
-    parsec::Parser<BuildToken> parser = expressionParserToken | helperParserToken;
-
-    return parser;
 }
 
 /**
- * @brief Parses a helper function string
+ * @brief Asserts that the given helper token has a target field as the first argument and returns a new helper token
+ * with the target field
  *
- * @param sv string to parse
- * @return std::variant<HelperToken, base::Error> HelperToken if success, Error otherwise
+ * @param helperToken
+ * @return parsec::Parser<HelperToken>
  */
-inline std::variant<HelperToken, base::Error> parseHelper(std::string_view sv)
+inline parsec::Parser<HelperToken> assertTargetMonadic(const HelperToken& helperToken)
 {
-    auto helperParser = getHelperParser(true);
-    auto result = helperParser(sv, 0);
-
-    if (result.failure())
+    return [helperToken](auto sv, auto pos) -> parsec::Result<HelperToken>
     {
-        return base::Error {result.error()};
-    }
+        if (helperToken.args.size() < 1)
+        {
+            return parsec::makeError<HelperToken>("At least one argument with target field expected", pos);
+        }
 
-    if (result.index() != sv.size())
-    {
-        return base::Error {"Expected end of string"};
-    }
+        if (!helperToken.args[0]->isReference())
+        {
+            return parsec::makeError<HelperToken>("First argument must be a reference to target field", pos);
+        }
 
-    return result.value();
+        HelperToken next;
+        next.name = helperToken.name;
+        next.targetField = builders::Reference(*std::static_pointer_cast<builders::Reference>(helperToken.args[0]));
+        next.args = std::vector<builders::OpArg>(helperToken.args.begin() + 1, helperToken.args.end());
+
+        return parsec::makeSuccess<HelperToken>(std::move(next), pos);
+    };
 }
-} // namespace builder::builders::detail
+
+/**
+ * @brief Parser for a helper function or a comparison operation
+ *
+ * @return parsec::Parser<HelperToken>
+ */
+inline parsec::Parser<HelperToken> getTermParser()
+{
+    parsec::M<HelperToken, HelperToken> targetM = [](const HelperToken& helperToken) -> parsec::Parser<HelperToken>
+    {
+        return assertTargetMonadic(helperToken);
+    };
+    auto helperParser = getHelperParser() >>= targetM;
+
+    parsec::M<HelperToken, OperationToken> toOpM = [](const OperationToken& token) -> parsec::Parser<HelperToken>
+    {
+        return OpToHelperTokenMonadic(token);
+    };
+    auto opParser = getOperationParser() >>= toOpM;
+
+    auto finalParser = helperParser | opParser;
+    return finalParser;
+}
+
+} // namespace builder::builders::parsers
 
 #endif // _BUILDER_HELPER_PARSER_HPP
