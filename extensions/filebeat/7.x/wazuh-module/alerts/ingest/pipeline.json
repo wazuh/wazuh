@@ -102,8 +102,13 @@
     },
     {
       "set": {
-        "field": "_index",
-        "value": "wazuh-alerts"
+        "date_index_name": {
+          "field": "timestamp",
+          "date_rounding": "d",
+          "index_name_prefix": "{{fields.index_prefix}}",
+          "index_name_format": "yyyy.MM.dd",
+          "ignore_failure": false
+        }
       }
     },
     { "remove": { "field": "message", "ignore_missing": true, "ignore_failure": true } },
