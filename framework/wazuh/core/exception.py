@@ -6,7 +6,7 @@ from copy import deepcopy
 from typing import Union
 
 from wazuh.core.cluster import __version__
-from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE, AGENT_NAME_LEN_LIMIT, MAX_GROUPS_PER_MULTIGROUP
+from wazuh.core.common import AGENT_NAME_LEN_LIMIT, MAX_GROUPS_PER_MULTIGROUP, MAX_SOCKET_BUFFER_SIZE
 
 GENERIC_ERROR_MSG = "Wazuh Internal Error. See log for more detail"
 DOCU_VERSION = 'current' if __version__ == '' else '.'.join(__version__.split('.')[:2]).lstrip('v')
@@ -496,6 +496,15 @@ class WazuhException(Exception):
         3038: "Error while processing extra-valid files",
         3039: "Timeout while waiting to receive a file",
         3040: "Error while waiting to receive a file",
+        3041: "Server status check timed out after adding new servers",
+        3042: "User configuration is not valid",
+        3043: "Cannot initialize Proxy API",
+        3044: "Unexpected error trying to connect to Proxy API",
+        3045: "Unexpected response from the Proxy API",
+        3046: "Invalid credentials for the Proxy API",
+        3047: "Invalid HAProxy Dataplane API specification configured",
+        3048: "Cannot detect a valid HAProxy process linked to the Dataplane API",
+        3049: "Unexpected response from HAProxy Dataplane API",
 
         # RBAC exceptions
         # The messages of these exceptions are provisional until the RBAC documentation is published.
@@ -776,6 +785,14 @@ class WazuhClusterError(WazuhInternalError):
     """
     _default_type = "about:blank"
     _default_title = "Wazuh Cluster Error"
+
+
+class WazuhHAPHelperError(WazuhClusterError):
+    """
+    This type of exception is raised inside the HAProxy Helper.
+    """
+    _default_type = "about:blank"
+    _default_title = "HAProxy Helper Error"
 
 
 class WazuhError(WazuhException):
