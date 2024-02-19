@@ -87,7 +87,7 @@ void wdb_pool_clean() {
     for (int i = 0; keys[i]; i++) {
         wdb_t * node = rbtree_get(wdb_pool.nodes, keys[i]);
 
-        if (node->refcount == 0) {
+        if (node->refcount == 0 && node->db == NULL) {
             wdb_destroy(node);
             rbtree_delete(wdb_pool.nodes, keys[i]);
         }
