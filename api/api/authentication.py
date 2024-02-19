@@ -13,7 +13,6 @@ from typing import Union
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
-from jose import JWTError, jwt
 from connexion.exceptions import Unauthorized
 
 import api.configuration as conf
@@ -297,5 +296,5 @@ def decode_token(token: str) -> dict:
             raise Unauthorized(EXPIRED_TOKEN)
 
         return payload
-    except JWTError as exc:
+    except jwt.exceptions.PyJWTError as exc:
         raise Unauthorized(INVALID_TOKEN) from exc
