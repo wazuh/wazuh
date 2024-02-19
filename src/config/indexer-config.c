@@ -59,7 +59,7 @@ int indexer_config_subnode_read(const OS_XML *xml, XML_NODE node, cJSON *output_
     size_t subnode_keypath_len;
 
     if (!node)
-        return OS_SUCCESS
+        return OS_SUCCESS;
 
     // Iterate over elements
     for (i = 0; node[i]; i++) {
