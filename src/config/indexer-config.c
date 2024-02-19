@@ -49,18 +49,17 @@ void indexer_config_special_array_subnode_read(XML_NODE node, cJSON *output_json
     }
 }
 
-void indexer_config_subnode_read(const OS_XML *xml, XML_NODE node, cJSON *output_json, char * current_keypath)
+int indexer_config_subnode_read(const OS_XML *xml, XML_NODE node, cJSON *output_json, char * current_keypath)
 {
     int i;
     xml_node **children;
     cJSON * subnode;
     cJSON * existing_item;
-    cJSON * array_item;
     char * subnode_keypath;
     size_t subnode_keypath_len;
 
     if (!node)
-        return;
+        return OS_SUCCESS
 
     // Iterate over elements
     for (i = 0; node[i]; i++) {
@@ -82,6 +81,13 @@ void indexer_config_subnode_read(const OS_XML *xml, XML_NODE node, cJSON *output
                 indexer_config_special_array_subnode_read(children, subnode);
                 OS_ClearNode(children);
             }
+
+            if(cJSON_GetArraySize(subnode) <= 0){
+                merror("%s is empty in module 'indexer'. Check configuration", subnode_keypath);
+                os_free(subnode_keypath);
+                return OS_MISVALUE;
+            }
+
             cJSON_AddItemToObject(output_json, node[i]->element, subnode);
         }
         else
@@ -124,6 +130,8 @@ void indexer_config_subnode_read(const OS_XML *xml, XML_NODE node, cJSON *output
         }
         os_free(subnode_keypath);
     }
+
+    return OS_SUCCESS;
 }
 
 int Read_Indexer(const OS_XML *xml, XML_NODE nodes)
@@ -138,9 +146,7 @@ int Read_Indexer(const OS_XML *xml, XML_NODE nodes)
         return OS_SUCCESS;
     }
 
-    indexer_config_subnode_read(xml, nodes, indexer_config, "indexer");
-
-    return OS_SUCCESS;
+    return indexer_config_subnode_read(xml, nodes, indexer_config, "indexer");
 }
 
 #endif
