@@ -54,7 +54,8 @@ from pathlib import Path
 from datetime import datetime
 import os
 
-from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH, MONTHS_MAPPING_DICT
+from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
+from utils import MONTHS_MAPPING_DICT
 from wazuh_testing.constants.api import CONFIGURATION_TYPES
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 from wazuh_testing.constants.paths.logs import WAZUH_API_LOG_FILE_PATH
