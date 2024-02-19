@@ -362,12 +362,12 @@ struct is_parser<Parser<T>> : std::true_type
 };
 
 template<typename T, typename R>
-struct is_parser_ret: std::false_type
+struct is_parser_ret : std::false_type
 {
 };
 
 template<typename T, typename R>
-struct is_parser_ret<Parser<T>, R>: std::is_base_of<R, T>
+struct is_parser_ret<Parser<T>, R> : std::is_base_of<R, T>
 {
 };
 } // namespace traits
@@ -401,7 +401,6 @@ Parser<T> opt(const Parser<T>& p)
     };
 }
 
-
 /**
  * @brief Creates a parser that succeeds if the given parser fails, and fails if the
  * given parser succeeds. The resulting parser consumes no input.
@@ -426,7 +425,6 @@ Parser<T> negativeLook(const Parser<T>& p)
         }
     };
 }
-
 
 /**
  * @brief Creates a parser that succeeds if the given parser succeeds, and fails if the
@@ -676,8 +674,8 @@ Parser<Values<T>> many(const Parser<T>& p)
             else
             {
                 values.push_back(innerRes.value());
+                innerI = innerRes.index();
             }
-            innerI = innerRes.index();
             traces.value().push_back(std::move(innerRes.trace()));
         }
 

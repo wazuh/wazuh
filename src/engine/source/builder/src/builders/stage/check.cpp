@@ -15,7 +15,7 @@ namespace builder::builders
 {
 namespace
 {
-using namespace builder::builders::detail;
+using namespace builder::builders;
 
 base::Expression checkListBuilder(const std::vector<json::Json>& list, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
@@ -39,26 +39,14 @@ base::Expression checkListBuilder(const std::vector<json::Json>& list, const std
     return expression;
 }
 
-std::function<std::function<bool(base::Event)>(const BuildToken&)>
+std::function<std::function<bool(base::Event)>(parsers::HelperToken&)>
 getTermBuilder(const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    return [buildCtx](const BuildToken& token)
+    return [buildCtx](parsers::HelperToken& token)
     {
         std::function<bool(base::Event)> buildedFn;
 
-        HelperToken opBuilderInput;
-
-        if (std::holds_alternative<HelperToken>(token))
-        {
-            opBuilderInput = std::get<HelperToken>(token);
-        }
-        else
-        {
-            auto expressionToken = std::get<ExpressionToken>(token);
-            opBuilderInput = toBuilderInput(expressionToken);
-        }
-
-        auto op = baseHelperBuilder(opBuilderInput.name, opBuilderInput.targetField, opBuilderInput.args, buildCtx);
+        auto op = baseHelperBuilder(token.name, token.targetField, token.args, buildCtx);
 
         if (op->isAnd())
         {
@@ -101,8 +89,8 @@ base::Expression checkExpressionBuilder(const std::string& logicExpr, const std:
     // Apply definitions
     auto replacedExpr = buildCtx->definitions().replace(logicExpr);
     // TODO: make a factory and inject this dependency
-    auto evaluator = logicexpr::buildDijstraEvaluator<base::Event, BuildToken>(
-        replacedExpr, getTermBuilder(buildCtx), getTermParser());
+    auto evaluator = logicexpr::buildDijstraEvaluator<base::Event, parsers::HelperToken>(
+        replacedExpr, getTermBuilder(buildCtx), parsers::getTermParser());
 
     // Trace
     auto name = fmt::format("check: {}", logicExpr);

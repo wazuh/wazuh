@@ -291,11 +291,18 @@ baseHelperBuilder(const json::Json& definition, const std::shared_ptr<const IBui
     }
     else if (jValue.isString())
     {
-        auto startHelperParser = detail::getHelperStartParser();
         auto strValue = jValue.getString().value();
-
-        if (startHelperParser(strValue, 0).failure())
+        if (parsers::isDefaultHelper(strValue))
         {
+            auto resParse = parsers::getHelperArgParser(true)(strValue, 0);
+
+            if (!resParse.success())
+            {
+                throw std::runtime_error(fmt::format("Failed to parse default helper argument '{}'", strValue));
+            }
+
+            opArgs.emplace_back(resParse.value());
+
             // Default helper names
             switch (helperType)
             {
@@ -303,31 +310,17 @@ baseHelperBuilder(const json::Json& definition, const std::shared_ptr<const IBui
                 case HelperType::FILTER: helperName = "filter"; break;
                 default: throw std::runtime_error("Invalid helper type");
             }
-            if (strValue[0] == syntax::field::REF_ANCHOR)
-            {
-                opArgs.emplace_back(std::make_shared<Reference>(strValue.substr(1)));
-            }
-            else
-            {
-                json::Json argValue {};
-                argValue.setString(strValue);
-                opArgs.emplace_back(std::make_shared<Value>(argValue));
-            }
         }
         else
         {
-            auto parser = detail::getHelperParser(true);
-            auto parseRes = parser(strValue, 0);
-
-            if (parseRes.failure())
+            auto resParse = parsers::getHelperParser(true)(strValue, 0);
+            if (!resParse.success())
             {
                 throw std::runtime_error(fmt::format("Failed to parse helper definition '{}'", strValue));
             }
 
-            auto helperToken = parseRes.value();
-            helperName = helperToken.name;
-
-            opArgs = helperToken.args;
+            helperName = resParse.value().name;
+            opArgs = resParse.value().args;
         }
     }
     else if (jValue.isArray())
