@@ -204,8 +204,17 @@ MapOp opBuilderHelperIntTransformation(IntOperator op,
                                        const std::vector<OpArg>& opArgs,
                                        const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    std::vector<int64_t> rValueVector {};
-    std::vector<std::string> rReferenceVector {};
+    std::vector<std::function<int64_t(base::ConstEvent)>> getOperandFn {}; // Throws on error
+
+    // Tracing messages
+    const auto name = buildCtx->context().opName;
+    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
+    const std::string failureTrace2 {fmt::format(R"([{}] -> Failure: Reference not found or not an integer: )", name)};
+    const std::string failureTrace3 = fmt::format(R"([{}] -> Failure: Parameter value makes division by zero: )", name);
+    const std::string overflowFailureTrace =
+        fmt::format(R"([{}] -> Failure: operation result in integer Overflown)", name);
+    const std::string underflowFailureTrace =
+        fmt::format(R"([{}] -> Failure: operation result in integer Underflown)", name);
 
     // Depending on rValue type we store the reference or the integer value, avoiding
     // iterating again through values inside lambda
@@ -223,12 +232,12 @@ MapOp opBuilderHelperIntTransformation(IntOperator op,
 
             rValue = asValue->value().getIntAsInt64().value();
 
-            if (IntOperator::DIV == op && 0 == rValue)
+            if (IntOperator::DIV == op && 0 == rValue) // Only the first value can be 0 and the result always will be 0
             {
-                throw std::runtime_error("Division by zero");
+                throw std::runtime_error("Division by zero is not allowed");
             }
 
-            rValueVector.emplace_back(rValue);
+            getOperandFn.emplace_back([rValue](base::ConstEvent) -> int64_t { return rValue; });
         }
         else
         {
@@ -245,27 +254,25 @@ MapOp opBuilderHelperIntTransformation(IntOperator op,
                 }
             }
 
-            rReferenceVector.emplace_back(ref->jsonPath());
+            getOperandFn.emplace_back(
+                [ref, failureTrace2](base::ConstEvent event) -> int64_t
+                {
+                    auto resolvedRValue {event->getIntAsInt64(ref->jsonPath())};
+                    if (!resolvedRValue.has_value())
+                    {
+                        throw std::runtime_error(failureTrace2 + ref->dotPath());
+                    }
+
+                    return resolvedRValue.value();
+                });
         }
     }
-    // Tracing messages
-    const auto name = buildCtx->context().opName;
-    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
-    const std::string failureTrace2 {fmt::format(R"([{}] -> Failure: Reference not found: )", name)};
-    const std::string failureTrace3 {fmt::format(R"([{}] -> Failure: Parameter is not integer: )", name)};
-    const std::string failureTrace4 = fmt::format(R"([{}] -> Failure: Parameter value makes division by zero: )", name);
-    const std::string overflowFailureTrace =
-        fmt::format(R"([{}] -> Failure: operation result in integer Overflown)", name);
-    const std::string underflowFailureTrace =
-        fmt::format(R"([{}] -> Failure: operation result in integer Underflown)", name);
 
     // Depending on the operator we return the correct function
     std::function<int64_t(int64_t l, int64_t r)> transformFunction;
-    int64_t startValue;
     switch (op)
     {
         case IntOperator::SUM:
-            startValue = 0;
             transformFunction = [overflowFailureTrace, underflowFailureTrace](int64_t l, int64_t r)
             {
                 if ((r > 0) && (l > std::numeric_limits<int64_t>::max() - r))
@@ -283,7 +290,6 @@ MapOp opBuilderHelperIntTransformation(IntOperator op,
             };
             break;
         case IntOperator::SUB:
-            startValue = 0;
             transformFunction = [overflowFailureTrace, underflowFailureTrace](int64_t l, int64_t r)
             {
                 if ((r < 0) && (l > std::numeric_limits<int64_t>::max() + r))
@@ -301,7 +307,6 @@ MapOp opBuilderHelperIntTransformation(IntOperator op,
             };
             break;
         case IntOperator::MUL:
-            startValue = 1;
             transformFunction = [overflowFailureTrace, underflowFailureTrace](int64_t l, int64_t r)
             {
                 if ((r != 0) && (l > std::numeric_limits<int64_t>::max() / r))
@@ -319,7 +324,6 @@ MapOp opBuilderHelperIntTransformation(IntOperator op,
             };
             break;
         case IntOperator::DIV:
-            startValue = 1;
             transformFunction = [name, overflowFailureTrace, underflowFailureTrace](int64_t l, int64_t r)
             {
                 if (0 == r)
@@ -335,43 +339,26 @@ MapOp opBuilderHelperIntTransformation(IntOperator op,
         default: break;
     }
 
-    // Function that implements the helper
-    return [=,
-            runState = buildCtx->runState(),
-            rValueVector = std::move(rValueVector),
-            rReferenceVector = std::move(rReferenceVector)](base::ConstEvent event) -> MapResult
+    if (getOperandFn.size() < 2)
     {
-        std::vector<int64_t> auxVector {};
-        auxVector.insert(auxVector.begin(), rValueVector.begin(), rValueVector.end());
+        throw std::runtime_error("Expected at least two operands");
+    }
 
-        // Iterate throug all references and append them values to the value vector
-        for (const auto& rValueItem : rReferenceVector)
-        {
-            if (!event->exists(rValueItem))
-            {
-                RETURN_FAILURE(runState, json::Json {}, failureTrace2 + rValueItem);
-            }
-
-            const auto resolvedRValue {event->getIntAsInt64(rValueItem)};
-            if (!resolvedRValue.has_value())
-            {
-                RETURN_FAILURE(runState, json::Json {}, failureTrace3 + rValueItem);
-            }
-            else
-            {
-                if (IntOperator::DIV == op && 0 == resolvedRValue.value())
-                {
-                    RETURN_FAILURE(runState, json::Json {}, failureTrace4 + rValueItem);
-                }
-
-                auxVector.emplace_back(resolvedRValue.value());
-            }
-        }
-
-        int64_t res;
+    // Function that implements the helper
+    return [=, runState = buildCtx->runState(), getOperandFn = std::move(getOperandFn)](
+               base::ConstEvent event) -> MapResult
+    {
+        int64_t res {};
         try
         {
-            res = std::accumulate(auxVector.begin(), auxVector.end(), startValue, transformFunction);
+            std::vector<int64_t> auxVector {};
+            auto leftOp = getOperandFn[0](event);
+            // Skip the first element
+            for (size_t i = 1; i < getOperandFn.size(); i++)
+            {
+                auxVector.emplace_back(getOperandFn[i](event));
+            }
+            res = std::accumulate(auxVector.begin(), auxVector.end(), leftOp, transformFunction);
         }
         catch (const std::runtime_error& e)
         {
