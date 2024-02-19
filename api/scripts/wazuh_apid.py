@@ -211,7 +211,7 @@ def start(params: dict):
         )
 
     # Add error handlers to format exceptions
-    app.add_error_handler(JWTError, error_handler.jwt_error_handler)
+    app.add_error_handler(jwt.exceptions.PyJWTError, error_handler.jwt_error_handler)
     app.add_error_handler(Unauthorized, error_handler.unauthorized_error_handler)
     app.add_error_handler(HTTPException, error_handler.http_error_handler)
     app.add_error_handler(error_handler.MaxRequestsException, error_handler.exceeded_requests_handler)
@@ -341,7 +341,7 @@ if __name__ == '__main__':
     from content_size_limit_asgi import ContentSizeLimitMiddleware
     from content_size_limit_asgi.errors import ContentSizeExceeded
 
-    from jose import JWTError
+    import jwt
 
     from api import error_handler, __path__ as api_path
     from api.api_exception import APIError
