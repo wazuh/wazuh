@@ -31,7 +31,7 @@ proxy:
   # Defined Proxy backend (frontend will append '_front' to it)
   backend: wazuh_cluster
 
-  # Defines the list of DNS servers to translate DNS names to IP adresses.
+  # Defines the list of DNS servers to translate DNS names to IP addresses.
   # This configuration is recommended but not mandatory.
   # If it is configured, a resolvers section must be properly defined in
   # the haproxy.cfg file.
