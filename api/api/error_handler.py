@@ -7,7 +7,7 @@ import json
 from connexion.lifecycle import ConnexionRequest, ConnexionResponse
 from connexion import exceptions
 
-from jose import JWTError
+import jwt
 from content_size_limit_asgi.errors import ContentSizeExceeded
 
 from api import configuration
@@ -147,7 +147,7 @@ async def http_error_handler(request: ConnexionRequest,
                              content_type=ERROR_CONTENT_TYPE)
 
 
-async def jwt_error_handler(request: ConnexionRequest, _: JWTError) -> ConnexionResponse:
+async def jwt_error_handler(request: ConnexionRequest, _: jwt.exceptions.PyJWTError) -> ConnexionResponse:
     """JWTException Error handler.
     
     Parameters
