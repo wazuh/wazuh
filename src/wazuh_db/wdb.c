@@ -356,7 +356,10 @@ wdb_t * wdb_open_global() {
                 return NULL;
             }
         } else {
-            wdb_upgrade_global(wdb);
+            if (wdb_upgrade_global(wdb) == NULL) {
+                wdb_pool_leave(wdb);
+                return NULL;
+            }
         }
 
         wdb_open_count++;
@@ -424,7 +427,10 @@ wdb_t * wdb_open_agent2(int agent_id) {
             return NULL;
         }
     } else {
-        wdb_upgrade(wdb);
+        if (wdb_upgrade(wdb) == NULL) {
+            wdb_pool_leave(wdb);
+            return NULL;
+        }
     }
 
     wdb_open_count++;
