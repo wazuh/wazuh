@@ -1,7 +1,6 @@
 import logging
 import re
 from collections import defaultdict
-from enum import Enum
 from typing import Callable, Optional
 
 from wazuh.agent import get_agents, reconnect_agents
@@ -9,13 +8,6 @@ from wazuh.cluster import get_nodes_info
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.cluster.utils import ClusterFilter
-
-
-class WazuhAPIMethod(Enum):
-    GET = 'get'
-    POST = 'post'
-    PUT = 'put'
-    DELETE = 'delete'
 
 
 class WazuhAgent:
