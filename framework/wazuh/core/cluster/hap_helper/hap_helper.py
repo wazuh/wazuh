@@ -12,6 +12,8 @@ from wazuh.core.exception import WazuhException
 
 
 class HAPHelper:
+    """Helper to balance Wazuh agents through cluster calling HAProxy."""
+
     UPDATED_BACKEND_STATUS_TIMEOUT: int = 60
     AGENT_STATUS_SYNC_TIME: int = 25  # Default agent notify time + cluster sync + 5s
     SERVER_ADMIN_STATE_DELAY: int = 5
@@ -30,21 +32,31 @@ class HAPHelper:
 
     @staticmethod
     def _get_logger() -> logging.Logger:
+        """Returns the configured logger.
+
+        Returns
+        -------
+        logging.Logger
+            The configured logger.
+        """
+
         logger = logging.getLogger('wazuh').getChild('HAPHelper')
         logger.addFilter(ClusterFilter(tag='Cluster', subtag='HAPHelper Main'))
 
         return logger
 
-    async def initialize_components(self):
+    async def initialize_proxy(self):
+        """Initialize HAProxy."""
         try:
             await self.proxy.initialize()
             self.logger.info('Proxy was initialized')
         except ProxyError as init_exc:
             self.logger.critical('Cannot initialize the proxy')
             self.logger.critical(init_exc)
-            exit(1)
+            raise
 
     async def initialize_wazuh_cluster_configuration(self):
+        """Initialize main components of the Wazuh cluster."""
         if not await self.proxy.exists_backend(self.proxy.wazuh_backend):
             self.logger.info(f"Could not find Wazuh backend '{self.proxy.wazuh_backend}'")
             await self.proxy.add_new_backend(name=self.proxy.wazuh_backend)
@@ -60,6 +72,18 @@ class HAPHelper:
             self.logger.info('Added Wazuh frontend')
 
     async def check_node_to_delete(self, node_name: str) -> bool:
+        """Checks if the given node can be deleted.
+
+        Parameters
+        ----------
+        node_name : str
+            The node to check.
+
+        Returns
+        -------
+        bool
+            True if the node can be deleted, else False.
+        """
         node_downtime = (await self.proxy.get_wazuh_server_stats(server_name=node_name))['lastchg']
         self.logger.debug2(f"Server '{node_name}' has been disconnected for {node_downtime}s")
 
@@ -81,6 +105,7 @@ class HAPHelper:
             return True
 
     async def backend_servers_state_healthcheck(self):
+        """Checks if any backend server is in DRAIN state and changes to READY."""
         for server in (await self.proxy.get_current_backend_servers()).keys():
             if await self.proxy.is_server_drain(server_name=server):
                 self.logger.warning(f"Server '{server}' was found {ProxyServerState.DRAIN.value.upper()}. Fixing it")
@@ -89,6 +114,20 @@ class HAPHelper:
     async def obtain_nodes_to_configure(
         self, wazuh_cluster_nodes: dict, proxy_backend_servers: dict
     ) -> tuple[list, list]:
+        """Returns the nodes able to add and delete.
+
+        Parameters
+        ----------
+        wazuh_cluster_nodes : dict
+            Wazuh cluster nodes to check.
+        proxy_backend_servers : dict
+            Proxy backend servers to check.
+
+        Returns
+        -------
+        tuple[list, list]
+            List with nodes to add and delete respectively.
+        """
         add_nodes, remove_nodes = [], []
 
         for node_name, node_address in wazuh_cluster_nodes.items():
@@ -109,6 +148,13 @@ class HAPHelper:
         return add_nodes, remove_nodes
 
     async def update_agent_connections(self, agent_list: list[str]):
+        """Reconnects a list of given agents.
+
+        Parameters
+        ----------
+        agent_list : list[str]
+            Agents to reconnect.
+        """
         self.logger.debug('Reconnecting agents')
         self.logger.debug(
             f'Agent reconnection chunk size is set to {self.agent_reconnection_chunk_size}. '
@@ -120,6 +166,15 @@ class HAPHelper:
             await sleep(self.agent_reconnection_time)
 
     async def force_agent_reconnection_to_server(self, chosen_server: str, agents_list: list[dict]):
+        """Force agents reconnection to a given server.
+
+        Parameters
+        ----------
+        chosen_server : str
+            The server for reconnecting the agents.
+        agents_list : list[dict]
+            Agents to be reconnected.
+        """
         current_servers = (await self.proxy.get_current_backend_servers()).keys()
         affected_servers = current_servers - {chosen_server}
         for server_name in affected_servers:
@@ -147,6 +202,20 @@ class HAPHelper:
             self.logger.info('Managed proxy processes')
 
     async def migrate_old_connections(self, new_servers: list[str], deleted_servers: list[str]):
+        """Reconnects agents to new servers.
+
+        Parameters
+        ----------
+        new_servers : list[str]
+            List of servers to connect the agents.
+        deleted_servers : list[str]
+            List of servers to disconnect the agents.
+
+        Raises
+        ------
+        HAPHelperError
+            In case of any new server in not running.
+        """
         wazuh_backend_stats = {}
         backend_stats_iteration = 1
         while any([server not in wazuh_backend_stats for server in new_servers]):
@@ -196,6 +265,18 @@ class HAPHelper:
         await sleep(self.agent_reconnection_stability_time)
 
     def check_for_balance(self, current_connections_distribution: dict) -> dict:
+        """Checks if the Wazuh cluster is balanced.
+
+        Parameters
+        ----------
+        current_connections_distribution : dict
+            Information about the current connections.
+
+        Returns
+        -------
+        dict
+            Information about the unbalanced connections.
+        """
         if not current_connections_distribution:
             self.logger.debug('There are not connections at the moment')
             return {}
@@ -228,6 +309,18 @@ class HAPHelper:
         return unbalanced_connections
 
     async def calculate_agents_to_balance(self, affected_servers: dict) -> dict:
+        """Returns the needed connections to be balanced.
+
+        Parameters
+        ----------
+        affected_servers : dict
+            Servers to check.
+
+        Returns
+        -------
+        dict
+            Agents to balance.
+        """
         agents_to_balance = {}
         for server_name, n_agents in affected_servers.items():
             agent_candidates = await self.wazuh_dapi.get_agents_belonging_to_node(node_name=server_name, limit=n_agents)
@@ -242,6 +335,13 @@ class HAPHelper:
         return agents_to_balance
 
     async def balance_agents(self, affected_servers: dict):
+        """Performs agents balance.
+
+        Parameters
+        ----------
+        affected_servers : dict
+            Servers to obtain the agents to balance.
+        """
         self.logger.info('Attempting to balance agent connections')
         agents_to_balance = await self.calculate_agents_to_balance(affected_servers)
         for node_name, agent_ids in agents_to_balance.items():
@@ -249,6 +349,8 @@ class HAPHelper:
             await self.update_agent_connections(agent_list=agent_ids)
 
     async def manage_wazuh_cluster_nodes(self):
+        """Main loop for check balance of Wazuh cluster."""
+
         while True:
             try:
                 await self.backend_servers_state_healthcheck()
@@ -302,6 +404,8 @@ class HAPHelper:
 
     @classmethod
     async def run(cls):
+        """Initialize and run HAPHelper."""
+
         try:
             configuration = parse_configuration()
 
@@ -324,7 +428,7 @@ class HAPHelper:
 
             helper = cls(proxy=proxy, wazuh_dapi=wazuh_dapi, options=configuration['hap_helper'])
 
-            await helper.initialize_components()
+            await helper.initialize_proxy()
             await helper.initialize_wazuh_cluster_configuration()
 
             helper.logger.info('Starting HAProxy Helper')
