@@ -64,7 +64,7 @@ main() {
     local integration_tests_dir="$engine_src_dir/test/integration_tests"
 
     # Execute the binary with the argument "server start"
-    "$engine_src_dir/build/main" --config "$serv_conf_file" server -l error --api_timeout 100000 start &
+    "$engine_src_dir/build/main" --config "$serv_conf_file" server -l error --api_timeout 1000 start &
     # Capture the process ID of the binary
     local binary_pid=$!
     # Wait for the server to start
