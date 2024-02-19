@@ -26,10 +26,11 @@ wdb_t * wdb_pool_get(const char * name) {
    w_mutex_lock(&wdb_pool.mutex);
     wdb_t * node = rbtree_get(wdb_pool.nodes, name);
 
-    if (node != NULL) {
-        node->refcount++;
+    if (node == NULL) {
+        return NULL;
     }
 
+    node->refcount++;
     w_mutex_unlock(&wdb_pool.mutex);
     w_mutex_lock(&node->mutex);
 
