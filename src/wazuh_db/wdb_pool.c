@@ -58,13 +58,12 @@ wdb_t * wdb_pool_get_or_create(const char * name) {
 // Leave a node.
 
 void wdb_pool_leave(wdb_t * node) {
-    w_mutex_unlock(&node->mutex);
-
     if (node) {
+        w_mutex_unlock(&node->mutex);
         w_mutex_lock(&wdb_pool.mutex);
         node->refcount--;
-        node->last = time(NULL);
         w_mutex_unlock(&wdb_pool.mutex);
+        node->last = time(NULL);
     }
 }
 
