@@ -63,14 +63,7 @@ main() {
     local engine_src_dir="$WAZUH_DIR/src/engine"
     local integration_tests_dir="$engine_src_dir/test/integration_tests"
 
-    # Execute the binary with the argument "server start"
-    "$engine_src_dir/build/main" --config "$serv_conf_file" server -l error --api_timeout 1000 start &
-    # Capture the process ID of the binary
-    local binary_pid=$!
-    # Wait for the server to start
-    sleep 2
-
-    ENGINE_DIR=$engine_src_dir ENV_DIR=$environment_directory run_behave_tests "$integration_tests_dir"
+    ENGINE_DIR=$engine_src_dir ENV_DIR=$environment_directory WAZUH_DIR=$(realpath -s "$SCRIPT_DIR/../../../..") CONF_FILE=$serv_conf_file run_behave_tests "$integration_tests_dir"
     exit_code=$?
     echo "Exit code $exit_code"
 
