@@ -8,18 +8,42 @@ import os
 import shutil
 import ast
 import subprocess
+import shlex
+import signal
+import time
 from typing import Optional, Tuple, List
 
 ENV_DIR = os.environ.get("ENV_DIR", "")
 SOCKET_PATH = ENV_DIR + "/queue/sockets/engine-api"
 RULESET_DIR = ENV_DIR + "/engine"
+BINARY_PATH = os.environ.get("WAZUH_DIR", "") + "/src/engine/build/main"
+CONF_FILE = os.environ.get("CONF_FILE", "")
 
 api_client = APIClient(SOCKET_PATH)
 
-def run_command(command):
-    result = subprocess.run(
-        command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    assert result.returncode == 0, f"{result.stderr}"
+def server_start():
+
+    # Command to execute the binary in the background
+    command = f"{BINARY_PATH} --config {CONF_FILE} server --api_timeout 1000 start"
+
+    # Split the command into a list of arguments using shlex
+    args = shlex.split(command)
+
+    # Execute the process in the background with subprocess.Popen
+    process = subprocess.Popen(args)
+
+    # Wait for a moment to ensure the process has started
+    time.sleep(2)
+
+    # Get the PID of the process and store it in the context
+    return process.pid
+
+def server_stop(pid):
+    try:
+        os.kill(pid, signal.SIGINT)
+        print(f"Interrupt signal sent to the process with PID {pid}")
+    except ProcessLookupError:
+        print(f"Could not find the process with PID {pid}")
 
 def send_recv(request, expected_response_type) -> Tuple[Optional[str], dict]:
     error, response = api_client.send_recv(request)
@@ -31,7 +55,7 @@ def send_recv(request, expected_response_type) -> Tuple[Optional[str], dict]:
         return None, parse_response
 
 def read_configuration_file(file_name: str, variables: Optional[list]) -> Tuple[Optional[str], list]:
-    file_path = RULESET_DIR + f"/{file_name}"
+    file_path = ENV_DIR + f"/engine/{file_name}"
     config_data = []
 
     try:
@@ -76,6 +100,9 @@ def save_runtime_configuration(path: Optional[str]):
 
 @given('I have a valid configuration file called {file_name}')
 def step_impl(context, file_name: str):
+    name = "server.log_level"
+    content = "error"
+    context.result = update_runtime_configuration(name, content)
     file = RULESET_DIR + f"/{file_name}"
     assert os.path.exists(file), f"The file {file} does not exist."
 
@@ -86,10 +113,7 @@ def step_impl(context):
 @when('I send a request to save configuration file located in "{path}"')
 def step_impl(context, path):
     context.result = save_runtime_configuration(path)
-    if context.result.status == api_engine.OK:
-        shutil.rmtree(os.path.dirname(os.path.dirname((os.path.abspath(path)))))
-    else:
-        shutil.rmtree(os.path.dirname((os.path.abspath(path))))
+    shutil.rmtree(os.path.dirname((os.path.abspath(path))))
 
 @when('I send a request to get configuration file')
 def step_impl(context):
@@ -110,6 +134,12 @@ def step_impl(context, item: str, value: str):
 @when('I send a signal to restart the engine')
 def step_impl(context, item: str, value: str):
     context.result = update_runtime_configuration(item, value)
+
+@when('I send a restart to server')
+def step_impl(context):
+    server_stop(context.pid)
+    time.sleep(1)
+    context.pid = server_start()
 
 @then('I should receive a {status} response indicating "{response}"')
 def step_impl(context, status: str, response: str):
@@ -136,7 +166,9 @@ def step_impl(context, file_name: str, field_list: str):
 
 @then('I should receive "{log_level}" like log_level')
 def step_impl(context, log_level: str):
-    assert context.result[0] == log_level, f"{context.result[0]}"
+    if context.result[0] != log_level:
+        server_stop(context.pid)
+        assert False, f"{context.result[0]}"
 
 @then('I should receive a {status} response')
 def step_impl(context, status: str):
@@ -144,3 +176,7 @@ def step_impl(context, status: str):
         assert context.result.status == api_engine.ERROR, f"{context.result}"
     else:
         assert context.result.status == api_engine.OK, f"{context.result}"
+
+@then('I should stop server')
+def step_impl(context):
+    server_stop(context.pid)
