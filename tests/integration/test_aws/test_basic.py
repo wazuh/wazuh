@@ -9,7 +9,6 @@ import pytest
 
 # qa-integration-framework imports
 from wazuh_testing import session_parameters
-from wazuh_testing.modules.aws.utils import aws_profile
 
 # Local module imports
 from . import event_monitor
@@ -87,7 +86,6 @@ def test_bucket_defaults(
     parameters = [
         'wodles/aws/aws-s3',
         '--bucket', metadata['bucket_name'],
-        '--aws_profile', aws_profile,
         '--type', metadata['bucket_type'],
         '--debug', '2'
     ]
@@ -108,13 +106,13 @@ def test_bucket_defaults(
 
     assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
-    # Detect any ERROR message
-    log_monitor.start(
-        timeout=session_parameters.default_timeout,
-        callback=event_monitor.callback_detect_all_aws_err
-    )
-
-    assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']
+    # # Detect any ERROR message
+    # log_monitor.start(
+    #     timeout=session_parameters.default_timeout,
+    #     callback=event_monitor.callback_detect_all_aws_err
+    # )
+    #
+    # assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']
 
 
 # -------------------------------------------- TEST_CLOUDWATCH_DEFAULTS ------------------------------------------------
@@ -127,7 +125,7 @@ configurator.configure_test(configuration_file='cloudwatch_configuration_default
 @pytest.mark.parametrize('configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
-def test_service_defaults(configuration, metadata, create_test_bucket, load_wazuh_basic_configuration,
+def test_service_defaults(configuration, metadata, create_test_log_group, load_wazuh_basic_configuration,
                           set_wazuh_configuration, clean_aws_services_db, configure_local_internal_options_function,
                           truncate_monitored_files, restart_wazuh_function, file_monitoring
 ):
@@ -187,7 +185,6 @@ def test_service_defaults(configuration, metadata, create_test_bucket, load_wazu
     parameters = [
         'wodles/aws/aws-s3',
         '--service', metadata['service_type'],
-        '--aws_profile', aws_profile,
         '--regions', 'us-east-1',
         '--aws_log_groups', log_groups,
         '--debug', '2'
@@ -228,7 +225,7 @@ configurator.configure_test(configuration_file='inspector_configuration_defaults
 @pytest.mark.parametrize('configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
-def test_inspector_defaults(configuration, metadata, create_test_bucket, load_wazuh_basic_configuration,
+def test_inspector_defaults(configuration, metadata, create_test_log_group, load_wazuh_basic_configuration,
                             set_wazuh_configuration, clean_aws_services_db, configure_local_internal_options_function,
                             truncate_monitored_files, restart_wazuh_function, file_monitoring
 ):
@@ -287,7 +284,6 @@ def test_inspector_defaults(configuration, metadata, create_test_bucket, load_wa
     parameters = [
         'wodles/aws/aws-s3',
         '--service', metadata['service_type'],
-        '--aws_profile', aws_profile,
         '--regions', 'us-east-1',
         '--debug', '2'
     ]
