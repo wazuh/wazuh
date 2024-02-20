@@ -98,6 +98,11 @@ public:
         std::swap(m_errorsQueue, emptyQueue);
     }
 
+    /**
+     * @brief Sets the CTI metadata to be returned in the next query.
+     *
+     * @param ctiMetadata New metadata to be used.
+     */
     void setCtiMetadata(std::string ctiMetadata)
     {
         m_ctiMetadataMock = std::move(ctiMetadata);
