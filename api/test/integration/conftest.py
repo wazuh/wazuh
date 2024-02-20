@@ -127,7 +127,7 @@ def build_and_up(env_mode: str, interval: int = 10, interval_build_env: int = 10
                     stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
                 current_process.wait()
             if build and build_managers_only:
-                current_process = subprocess.Popen(["docker", "compose","build",
+                current_process = subprocess.Popen(["docker", "compose", "build",
                     "--profile", "managers", "--build-arg", f"WAZUH_BRANCH={current_branch}",
                     "--build-arg", f"ENV_MODE={env_mode}"],
                     stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
