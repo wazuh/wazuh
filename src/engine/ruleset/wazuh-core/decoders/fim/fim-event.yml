@@ -49,12 +49,12 @@ normalize:
       - json_event.data.old_attributes: delete()
       - json_event.data.type: delete()
       - json_event.data.tags: delete()
-      - _query: concat(agent , $agent.id,  syscheck save2 , $json_event.data)
+      - _query: concat('agent ', $agent.id, ' syscheck save2 ', $json_event.data)
       - _query_result: wdb_query($_query)
 
   - check:
       - _do_save: false
       - json_event.data.type: string_equal(deleted)
     map:
-      - _query: concat(agent , $agent.id,  syscheck delete , $json_event.data.path)
+      - _query: concat('agent ', $agent.id, ' syscheck delete ', $json_event.data.path)
       - _query_result: wdb_query($_query)

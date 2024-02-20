@@ -40,8 +40,6 @@ normalize:
       - event.outcome: success
       - wazuh.decoders: array_append(system-auth)
 
-      - _empty: ''
-
   - check:
       - process.name: sshd
     parse|message:
@@ -131,7 +129,7 @@ normalize:
       - "error: PAM: <~> authentication <~> user <user.name> from <source.address>"
 
   - check:
-      - _system.auth.pam.byuser.name: string_not_equal($_empty)
+      - _system.auth.pam.byuser.name: string_not_equal('')
     map:
       - user.name: $_system.auth.pam.byuser.name
       - user.effective.name: $_system.auth.pam.foruser.name
@@ -186,10 +184,10 @@ normalize:
       - event.type: array_append(change)
 
   - map:
-      - user.name: replace(",)
-      - user.name: replace(',)
-      - user.effective.name: replace(",)
-      - user.effective.name: replace(',)
+      - user.name: replace(", '')
+      - user.name: replace("'", '')
+      - user.effective.name: replace(", '')
+      - user.effective.name: replace("'", '')
       - source.address: $source.ip
       - source.domain: parse_fqdn($source.address)
       - related.user: array_append($user.name, $user.effective.name)
