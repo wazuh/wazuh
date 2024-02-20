@@ -392,12 +392,12 @@ normalize:
  - check: ($event.code == '12' OR $event.code == '13' OR $event.code == '14') AND starts_with($windows.EventData.Details,DWORD)
    map:
     - registry.data.type: SZ_DWORD
-    - _value: regex_extract($windows.EventData.Details, DWORD \\((0x[0-9A-F]{8}\)\\\))
+    - _value: regex_extract($windows.EventData.Details, 'DWORD \\((0x[0-9A-F]{8})\\)')
     # This mappping is wrong, strings is an array, not a string
     # - registry.data.strings: hex_to_number($_value)
 
  - check:
-    - windows.EventData.Details: starts_with(Binary Data)
+    - windows.EventData.Details: starts_with('Binary Data')
    map:
     - _is_binary_data: true
 

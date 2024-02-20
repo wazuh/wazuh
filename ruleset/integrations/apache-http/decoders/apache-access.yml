@@ -48,7 +48,7 @@ normalize:
 
       - source.ip: $source.address
       - _tls: split($network.protocol, 'v')
-      - _tls-1: $_tls.1
+      - _tls_1: $_tls.1
       - _client_ip: split($_forwarded_for, ',')
       - client.ip: $_client_ip.0
       - network.forwarded_ip: $_client_ip.0
@@ -59,14 +59,14 @@ normalize:
       - <http.request.method> <url.original> HTTP/<http.version>
 
   - check:
-      - _tls-1: regex_match(\\d+\\.\\d+)
+      - _tls_1: regex_match(\\d+\\.\\d+)
     map:
-      - tls.version: $_tls-1
+      - tls.version: $_tls_1
 
   - check:
-      - _tls-1: regex_not_match(\\d+\\.\\d+)
+      - _tls_1: regex_not_match(\\d+\\.\\d+)
     map:
-      - tls.version: concat($_tls-1, .0)
+      - tls.version: concat($_tls_1, '.0')
 
   - check: int_less($http.response.status_code, 400)
     map:
@@ -82,7 +82,7 @@ normalize:
       - source.domain: parse_fqdn($source.address)
 
   - map:
-      - url.extension: regex_extract($url.original, .*\\.([a-zA-Z0-9]+\)(?:\\?|$\))
+      - url.extension: regex_extract($url.original, '.*\\.([a-zA-Z0-9]+)(?:\\?|$)')
       - url.path: $url.original
-      - url.query: regex_extract($url.original, \\?(.*\))
+      - url.query: regex_extract($url.original, '\\?(.*)')
       - url.domain: $destination.domain

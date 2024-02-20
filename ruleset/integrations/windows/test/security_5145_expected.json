@@ -27,8 +27,8 @@
       "directory": "\\\\??\\\\C:\\\\Documents",
       "extension": "exe",
       "name": "Bginfo.exe",
-      "path": "\\\\??\\\\C:\\\\Documents'\\'Bginfo.exe",
-      "target_path": "\\\\\\\\\\*\\\\Documents'\\'Bginfo.exe"
+      "path": "\\\\??\\\\C:\\\\Documents\\Bginfo.exe",
+      "target_path": "\\\\\\\\\\*\\\\Documents\\Bginfo.exe"
     },
     "host": {
       "id": "001",
