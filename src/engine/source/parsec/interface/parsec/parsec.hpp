@@ -319,7 +319,11 @@ inline std::string formatTrace(std::string_view text, const Trace& trace, size_t
         tr += "\nList of errors:\n";
         for (auto e : errors)
         {
-            tr += fmt::format("{} at {}\n", e->message().value(), e->index());
+            tr += fmt::format("{} at {}\n{}\n{}^\n",
+                                e->message().value(),
+                                e->index(),
+                                text,
+                                std::string(e->index(), '-'));
         }
     }
 

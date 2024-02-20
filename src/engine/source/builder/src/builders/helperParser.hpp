@@ -172,24 +172,25 @@ inline parsec::Parser<builders::OpArg> getHelperJsonArgParser()
 /**
  * @brief Parser that returns a string value, used when the other argument parsers fail
  *
- * @param isDefaultHelper if true will accept end of string only as end of argument
  * @return parsec::Parser<builders::OpArg>
  */
-inline parsec::Parser<builders::OpArg> getHelperRawArgParser(bool isDefaultHelper = false)
+inline parsec::Parser<builders::OpArg> getHelperRawArgParser()
 {
-    std::string endChars =
-        isDefaultHelper ? "" : std::string {syntax::helper::ARG_ANCHOR, syntax::helper::ARG_END, ' '};
+    std::string endChars = std::string {syntax::helper::ARG_ANCHOR, syntax::helper::ARG_END, ' '};
     std::string reservedChars = {syntax::helper::DEFAULT_ESCAPE, syntax::field::REF_ANCHOR};
-    if (!isDefaultHelper)
-    {
-        reservedChars += endChars;
-    }
+    reservedChars += endChars;
 
-    return [isDefaultHelper, endChars, reservedChars](auto sv, auto pos) -> parsec::Result<builders::OpArg>
+    return [endChars, reservedChars](auto sv, auto pos) -> parsec::Result<builders::OpArg>
     {
         if (pos >= sv.size())
         {
             return parsec::makeError<builders::OpArg>("Expected argument", pos);
+        }
+
+        // Ensure that str does not start with a reserved character for the other parsers
+        if (sv[pos] == syntax::helper::SINGLE_QUOTE || sv[pos] == syntax::field::REF_ANCHOR)
+        {
+            return parsec::makeError<builders::OpArg>("Invalid character", pos);
         }
 
         // Parse as string
@@ -222,12 +223,7 @@ inline parsec::Parser<builders::OpArg> getHelperRawArgParser(bool isDefaultHelpe
         // Empty value
         if (rawStr.empty())
         {
-            if (!isDefaultHelper)
-            {
-                return parsec::makeSuccess<builders::OpArg>(std::make_shared<builders::Value>(), next);
-            }
-
-            return parsec::makeError<builders::OpArg>("Empty value", pos);
+            return parsec::makeSuccess<builders::OpArg>(std::make_shared<builders::Value>(), next);
         }
 
         json::Json value;
@@ -240,26 +236,22 @@ inline parsec::Parser<builders::OpArg> getHelperRawArgParser(bool isDefaultHelpe
 /**
  * @brief Parser for a single argument of a helper function
  *
- * @param isDefaultHelper if true will accept end of string only as end of argument
  * @return parsec::Parser<builders::OpArg>
  */
-inline parsec::Parser<builders::OpArg> getHelperArgParser(bool isDefaultHelper = false)
+inline parsec::Parser<builders::OpArg> getHelperArgParser(parsec::Parser<std::string> sepParser = nullptr)
 {
-    auto argParser = getHelperQuotedArgParser() | getHelperRefArgParser() | getHelperJsonArgParser()
-                     | getHelperRawArgParser(isDefaultHelper);
-    if (isDefaultHelper)
+    parsec::Parser<builders::OpArg> argParser;
+    if (sepParser)
     {
-        parsec::Parser<std::string> eofParser = [](auto sv, auto pos) -> parsec::Result<std::string>
-        {
-            if (pos < sv.size())
-            {
-                return parsec::makeError<std::string>("End of string expected", pos);
-            }
-
-            return parsec::makeSuccess<std::string>({}, pos);
-        };
-        argParser = argParser << eofParser;
+        argParser = (getHelperQuotedArgParser() << sepParser) | (getHelperRefArgParser() << sepParser)
+                    | (getHelperJsonArgParser() << sepParser) | (getHelperRawArgParser() << sepParser);
     }
+    else
+    {
+        argParser =
+            getHelperQuotedArgParser() | getHelperRefArgParser() | getHelperJsonArgParser() | getHelperRawArgParser();
+    }
+
     return argParser;
 }
 
@@ -364,11 +356,10 @@ inline parsec::Parser<HelperToken> getHelperParser(bool eof = false)
 
         return parsec::makeSuccess<std::string>({}, next);
     };
-    auto argParser = getHelperArgParser();
 
     auto nameParser = helperNameParser << parenthOpenParser;
-    auto singleArgParser = argParser << argSeparatorParser;
-    auto endArgParser = argParser << parenthCloseParser;
+    auto argParserMiddle = getHelperArgParser(argSeparatorParser);
+    auto argParseEnd = getHelperArgParser(parenthCloseParser);
     auto argsParser = parsec::fmap<parsec::Values<OpArg>, std::tuple<parsec::Values<OpArg>, OpArg>>(
         [](auto&& tuple) -> parsec::Values<OpArg>
         {
@@ -376,7 +367,7 @@ inline parsec::Parser<HelperToken> getHelperParser(bool eof = false)
             args.emplace_back(std::move(arg));
             return args;
         },
-        parsec::many(singleArgParser) & endArgParser);
+        parsec::many(argParserMiddle) & argParseEnd);
 
     parsec::Parser<std::string> eofParser = [](auto sv, auto pos) -> parsec::Result<std::string>
     {

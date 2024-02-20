@@ -29,10 +29,10 @@ normalize:
       - threat.tactic.name: array_append(Execution)
       - threat.tactic.reference: array_append(https://attack.mitre.org/tactics/TA0002)
       - threat.technique.id: array_append(T1059)
-      - threat.technique.name: array_append(Command and Scripting Interpreter)
+      - threat.technique.name: array_append('Command and Scripting Interpreter')
       - threat.technique.reference: array_append(https://attack.mitre.org/techniques/T1059/)
       - threat.technique.subtechnique.id: array_append(T1059.006, T1059.003)
-      - threat.technique.subtechnique.name: array_append(Python, Windows Command Shell)
+      - threat.technique.subtechnique.name: array_append(Python, 'Windows Command Shell')
       - threat.technique.subtechnique.reference: array_append(https://attack.mitre.org/techniques/T1059/003/, https://attack.mitre.org/techniques/T1059/003/)
 
       - vulnerability.severity: medium

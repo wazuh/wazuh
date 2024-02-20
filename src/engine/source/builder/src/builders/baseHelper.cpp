@@ -294,14 +294,23 @@ baseHelperBuilder(const json::Json& definition, const std::shared_ptr<const IBui
         auto strValue = jValue.getString().value();
         if (parsers::isDefaultHelper(strValue))
         {
-            auto resParse = parsers::getHelperArgParser(true)(strValue, 0);
-
-            if (!resParse.success())
+            // Check for reference
+            if (strValue.find(syntax::field::REF_ANCHOR) == 0)
             {
-                throw std::runtime_error(fmt::format("Failed to parse default helper argument '{}'", strValue));
+                auto parseRes = parsers::getHelperRefArgParser()(strValue, 0);
+                if (!parseRes.success())
+                {
+                    throw std::runtime_error(fmt::format("Failed to parse helper reference '{}: {}'{}",
+                                                         targetField.dotPath(),
+                                                         strValue,
+                                                         parsec::formatTrace(strValue, parseRes.trace(), 0)));
+                }
+                opArgs.emplace_back(parseRes.value());
             }
-
-            opArgs.emplace_back(resParse.value());
+            else
+            {
+                opArgs.emplace_back(std::make_shared<Value>(json::Json(jValue)));
+            }
 
             // Default helper names
             switch (helperType)
@@ -316,7 +325,10 @@ baseHelperBuilder(const json::Json& definition, const std::shared_ptr<const IBui
             auto resParse = parsers::getHelperParser(true)(strValue, 0);
             if (!resParse.success())
             {
-                throw std::runtime_error(fmt::format("Failed to parse helper definition '{}'", strValue));
+                throw std::runtime_error(fmt::format("Failed to parse helper definition '{}: {}'{}",
+                                                     targetField.dotPath(),
+                                                     strValue,
+                                                     parsec::formatTrace(strValue, resParse.trace(), 0)));
             }
 
             helperName = resParse.value().name;

@@ -21,7 +21,7 @@ check:
 normalize:
  - map:
    # TODO: check this replaces
-   - windows.EventData.2: replace(\\t, )
+   - windows.EventData.2: replace(\\t, '')
    - windows.EventData.2: replace(\   , \  )
    - windows.EventData.2: replace(\  ,\,)
  - parse|windows.EventData.2:

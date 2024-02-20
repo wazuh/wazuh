@@ -12,19 +12,19 @@ metadata:
 
 check: >-
     array_contains($event.category, file) AND array_contains($event.type, change) AND $event.code == '2'
-    AND NOT regex_match($process.executable, '(^[A-Za-z]:)?\\\\Program Files\\\\([0-9A-Za-z_]+)')
-    AND NOT regex_match($process.executable, '(^[A-Za-z]:)?\\\\Program Files (x86)\\\\([0-9A-Za-z_]+)')
-    AND NOT regex_match($process.executable, '(^[A-Za-z]:)?\\\\Windows\\\\system32\\\\msiexec\.exe')
-    AND NOT regex_match($process.executable, '(^[A-Za-z]:)?\\\\Windows\\\\syswow64\\\\msiexec\.exe')
-    AND NOT regex_match($process.executable, '(^[A-Za-z]:)?\\\\Windows\\\\syswow64\\\\svchost\.exe')
-    AND NOT regex_match($process.executable, '(^[A-Za-z]:)?\\\\WINDOWS\\\\syswow64\\\\backgroundTaskHost\.exe')
-    AND NOT regex_match($process.executable, '(^[A-Za-z]:)?\\\\Users\\\\[0-9A-Za-z_]+\\\\AppData\\\\Local\\\\Google\\\\Chrome\\\\Application\\\\chrome\.exe')
-    AND NOT regex_match($process.executable, '(^[A-Za-z]:)?\\\\Users\\\\[0-9A-Za-z_]+\\\\AppData\\\\Local\\\\slack\\\\app-[0-9A-Za-z_]+\\\\slack\.exe')
-    AND NOT regex_match($process.executable, '(^[A-Za-z]:)?\\\\Users\\\\[0-9A-Za-z_]+\\\\AppData\\\\Local\\\\GitHubDesktop\\\\app-[0-9A-Za-z_]+\\\\GitHubDesktop\.exe')
-    AND NOT regex_match($process.executable, '(^[A-Za-z]:)?\\\\Users\\\\[0-9A-Za-z_]+\\\\AppData\\\\Local\\\\Microsoft\\\\Teams\\\\current\\\\Teams\.exe')
-    AND NOT regex_match($process.executable, '(^[A-Za-z]:)?\\\\Users\\\\[0-9A-Za-z_]+\\\\AppData\\\\Local\\\\Microsoft\\\\OneDrive\\\\OneDrive\.exe')
+    AND NOT regex_match($process.executable, '(^[A-Za-z]:)?\\\\\\\\Program Files\\\\\\\\([0-9A-Za-z_]+)')
+    AND NOT regex_match($process.executable, '(^[A-Za-z]:)?\\\\\\\\Program Files (x86)\\\\\\\\([0-9A-Za-z_]+)')
+    AND NOT regex_match($process.executable, '(^[A-Za-z]:)?\\\\\\\\Windows\\\\\\\\system32\\\\\\\\msiexec\\.exe')
+    AND NOT regex_match($process.executable, '(^[A-Za-z]:)?\\\\\\\\Windows\\\\\\\\syswow64\\\\\\\\msiexec\\.exe')
+    AND NOT regex_match($process.executable, '(^[A-Za-z]:)?\\\\\\\\Windows\\\\\\\\syswow64\\\\\\\\svchost\\.exe')
+    AND NOT regex_match($process.executable, '(^[A-Za-z]:)?\\\\\\\\WINDOWS\\\\\\\\syswow64\\\\\\\\backgroundTaskHost\\.exe')
+    AND NOT regex_match($process.executable, '(^[A-Za-z]:)?\\\\\\\\Users\\\\\\\\[0-9A-Za-z_]+\\\\\\\\AppData\\\\\\\\Local\\\\\\\\Google\\\\\\\\Chrome\\\\\\\\Application\\\\\\\\chrome\\.exe')
+    AND NOT regex_match($process.executable, '(^[A-Za-z]:)?\\\\\\\\Users\\\\\\\\[0-9A-Za-z_]+\\\\\\\\AppData\\\\\\\\Local\\\\\\\\slack\\\\\\\\app-[0-9A-Za-z_]+\\\\\\\\slack\\.exe')
+    AND NOT regex_match($process.executable, '(^[A-Za-z]:)?\\\\\\\\Users\\\\\\\\[0-9A-Za-z_]+\\\\\\\\AppData\\\\\\\\Local\\\\\\\\GitHubDesktop\\\\\\\\app-[0-9A-Za-z_]+\\\\\\\\GitHubDesktop\\.exe')
+    AND NOT regex_match($process.executable, '(^[A-Za-z]:)?\\\\\\\\Users\\\\\\\\[0-9A-Za-z_]+\\\\\\\\AppData\\\\\\\\Local\\\\\\\\Microsoft\\\\\\\\Teams\\\\\\\\current\\\\\\\\Teams\\.exe')
+    AND NOT regex_match($process.executable, '(^[A-Za-z]:)?\\\\\\\\Users\\\\\\\\[0-9A-Za-z_]+\\\\\\\\AppData\\\\\\\\Local\\\\\\\\Microsoft\\\\\\\\OneDrive\\\\\\\\OneDrive\\.exe')
     AND NOT contains($file.extension, tmp) AND NOT contains($file.extension, ~tmp) AND NOT contains($file.extension, ~tmp)
-    AND NOT contains($user.name, SYSTEM) AND NOT contains($user.name, Local Service) AND NOT contains($user.name, Network Service)
+    AND NOT contains($user.name, SYSTEM) AND NOT contains($user.name, 'Local Service') AND NOT contains($user.name, 'Network Service')
 
 normalize:
   - map:
@@ -38,10 +38,10 @@ normalize:
 
       - threat.framework: MITRE ATT&CK
       - threat.tactic.id: array_append(TA0005)
-      - threat.tactic.name: array_append(Defense Evasion)
+      - threat.tactic.name: array_append('Defense Evasion')
       - threat.tactic.reference: array_append(https://attack.mitre.org/tactics/TA0005/)
       - threat.technique.id: array_append(T1070)
-      - threat.technique.name: array_append(Indicator Removal)
+      - threat.technique.name: array_append('Indicator Removal')
       - threat.technique.reference: array_append(https://attack.mitre.org/techniques/T1070/)
       - threat.technique.subtechnique.id: array_append(T1070.006)
       - threat.technique.subtechnique.name: array_append(Timestomp)

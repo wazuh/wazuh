@@ -46,13 +46,13 @@ normalize:
 
       - threat.framework: MITRE ATT&CK
       - threat.tactic.id: array_append(TA0005)
-      - threat.tactic.name: array_append(Defense Evasion)
+      - threat.tactic.name: array_append('Defense Evasion')
       - threat.tactic.reference: array_append(https://attack.mitre.org/tactics/TA0005/)
       - threat.technique.id: array_append(T1070, T1562)
-      - threat.technique.name: array_append(Indicator Removal, Impair Defenses)
+      - threat.technique.name: array_append('Indicator Removal', 'Impair Defenses')
       - threat.technique.reference: array_append(https://attack.mitre.org/techniques/T1070/, https://attack.mitre.org/techniques/T1562/)
       - threat.technique.subtechnique.id: array_append(T1070.001, T1562.006)
-      - threat.technique.subtechnique.name: array_append(Clear Windows Event Logs, Indicator Blocking)
+      - threat.technique.subtechnique.name: array_append('Clear Windows Event Logs', 'Indicator Blocking')
       - threat.technique.subtechnique.reference: array_append(https://attack.mitre.org/techniques/T1070/001/, https://attack.mitre.org/techniques/T1562/006/)
 
       - vulnerability.severity: low

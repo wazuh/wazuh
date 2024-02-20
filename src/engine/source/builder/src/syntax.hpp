@@ -38,10 +38,10 @@ constexpr auto ASSET_NAME = "asset"; ///< Name of the asset expression to be dis
 // Field syntax
 namespace field
 {
-constexpr auto REF_ANCHOR = '$';      ///< Char used to indicate a reference.
-constexpr auto SEPARATOR = '.';       ///< Char used to separate levels in a fields path.
-constexpr auto VAR_ANCHOR = '_';      ///< Char used to indicate a variable.
-constexpr auto NAME_EXTENDED = "_@#"; ///< Extended allowed chars in a field name.
+constexpr auto REF_ANCHOR = '$';       ///< Char used to indicate a reference.
+constexpr auto SEPARATOR = '.';        ///< Char used to separate levels in a fields path.
+constexpr auto VAR_ANCHOR = '_';       ///< Char used to indicate a variable.
+constexpr auto NAME_EXTENDED = "_@#-"; ///< Extended allowed chars in a field name.
 } // namespace field
 
 // Function helpers syntax
