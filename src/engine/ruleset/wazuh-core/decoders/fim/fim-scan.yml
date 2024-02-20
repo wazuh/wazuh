@@ -36,11 +36,11 @@ normalize:
       - json_event.type: string_equal(scan_start)
     map:
       # TODO: adapt concat to first try to convert value from double if possible, otherwise convert it to int
-      - _query: concat(agent , $agent.id,  syscheck scan_info_update start_scan , $json_event.data.timestamp)
+      - _query: concat('agent ', $agent.id, ' syscheck scan_info_update start_scan ', $json_event.data.timestamp)
       - _query_result: wdb_query($_query)
 
   - check:
       - json_event.type: string_equal(scan_end)
     map:
-      - _query: concat(agent , $agent.id,  syscheck scan_info_update end_scan , $json_event.data.timestamp)
+      - _query: concat('agent ', $agent.id, ' syscheck scan_info_update end_scan ', $json_event.data.timestamp)
       - _query_result: wdb_query($_query)

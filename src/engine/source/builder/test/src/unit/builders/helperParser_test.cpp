@@ -135,22 +135,6 @@ TEST_P(ParseHelperRawArgTest, parse)
     parserTest<OpArg>(input, getHelperRawArgParser(), expected, cmpFn);
 }
 
-using ParseDefaultHelperRawArgTest = Test<OpArg>;
-TEST_P(ParseDefaultHelperRawArgTest, parse)
-{
-    auto [input, expected] = GetParam();
-    auto cmpFn = [](const OpArg& got, const OpArg& expected)
-    {
-        ASSERT_TRUE(got->isValue());
-        ASSERT_TRUE(expected->isValue());
-        auto gotValue = std::static_pointer_cast<Value>(got);
-        auto expectedValue = std::static_pointer_cast<Value>(expected);
-        ASSERT_TRUE(gotValue->value().isString() || gotValue->value().isNull());
-        ASSERT_EQ(gotValue->value(), expectedValue->value());
-    };
-    parserTest<OpArg>(input, getHelperRawArgParser(true), expected, cmpFn);
-}
-
 using ParseHelperArgTest = Test<OpArg>;
 using ArgT = ArgsT<OpArg>;
 TEST_P(ParseHelperArgTest, parse)
@@ -174,30 +158,6 @@ TEST_P(ParseHelperArgTest, parse)
         }
     };
     parserTest<OpArg>(input, getHelperArgParser(), expected, cmpFn);
-}
-
-using ParseDefaultHelperArgTest = Test<OpArg>;
-TEST_P(ParseDefaultHelperArgTest, parse)
-{
-    auto [input, expected] = GetParam();
-    auto cmpFn = [](const OpArg& got, const OpArg& expected)
-    {
-        if (expected->isReference())
-        {
-            ASSERT_TRUE(got->isReference());
-            auto gotRef = std::static_pointer_cast<Reference>(got);
-            auto expectedRef = std::static_pointer_cast<Reference>(expected);
-            ASSERT_EQ(gotRef->dotPath(), expectedRef->dotPath());
-        }
-        else
-        {
-            ASSERT_TRUE(got->isValue());
-            auto gotValue = std::static_pointer_cast<Value>(got);
-            auto expectedValue = std::static_pointer_cast<Value>(expected);
-            ASSERT_EQ(gotValue->value(), expectedValue->value());
-        }
-    };
-    parserTest<OpArg>(input, getHelperArgParser(true), expected, cmpFn);
 }
 
 using ParseHelperTest = Test<HelperToken>;
@@ -402,7 +362,7 @@ INSTANTIATE_TEST_SUITE_P(
                     RawArgT("a ", makeSuccess<OpArg>(val(R"("a")"), 1)),
                     RawArgT("a)", makeSuccess<OpArg>(val(R"("a")"), 1)),
                     RawArgT("a$", makeSuccess<OpArg>(val(R"("a$")"), 2)),
-                    RawArgT("$a", makeSuccess<OpArg>(val(R"("$a")"), 2)),
+                    RawArgT("$a", makeError<OpArg>("", 0)),
                     RawArgT(R"(a\$)", makeSuccess<OpArg>(val(R"("a$")"), 3)),
                     RawArgT(R"(\$a)", makeSuccess<OpArg>(val(R"("$a")"), 3)),
                     RawArgT(R"({"key":"value")", makeSuccess<OpArg>(val(R"("{\"key\":\"value\"")"), 14)),
@@ -413,33 +373,6 @@ INSTANTIATE_TEST_SUITE_P(
                     RawArgT(R"({"key":\ "value")", makeSuccess<OpArg>(val(R"("{\"key\": \"value\"")"), 16)),
                     RawArgT(R"({"key":\,"value")", makeSuccess<OpArg>(val(R"("{\"key\":,\"value\"")"), 16)),
                     RawArgT(R"z({"key":\)"value")z", makeSuccess<OpArg>(val(R"z("{\"key\":)\"value\"")z"), 16)),
-                    RawArgT(R"(invalid\scape)", makeError<OpArg>("", 8)),
-                    RawArgT(R"(escaped\\)", makeSuccess<OpArg>(val(R"("escaped\\")"), 9)),
-                    RawArgT(R"(1234)", makeSuccess<OpArg>(val(R"("1234")"), 4))));
-
-INSTANTIATE_TEST_SUITE_P(
-    Builder,
-    ParseDefaultHelperRawArgTest,
-    testing::Values(RawArgT("", makeError<OpArg>("", 0)),
-                    RawArgT(",", makeSuccess<OpArg>(val(R"(",")"), 1)),
-                    RawArgT(" ", makeSuccess<OpArg>(val(R"(" ")"), 1)),
-                    RawArgT(")", makeSuccess<OpArg>(val(R"z(")")z"), 1)),
-                    RawArgT("a", makeSuccess<OpArg>(val(R"("a")"), 1)),
-                    RawArgT("a,", makeSuccess<OpArg>(val(R"("a,")"), 2)),
-                    RawArgT("a ", makeSuccess<OpArg>(val(R"("a ")"), 2)),
-                    RawArgT("a)", makeSuccess<OpArg>(val(R"z("a)")z"), 2)),
-                    RawArgT("a$", makeSuccess<OpArg>(val(R"("a$")"), 2)),
-                    RawArgT("$a", makeSuccess<OpArg>(val(R"("$a")"), 2)),
-                    RawArgT(R"(a\$)", makeSuccess<OpArg>(val(R"("a$")"), 3)),
-                    RawArgT(R"(\$a)", makeSuccess<OpArg>(val(R"("$a")"), 3)),
-                    RawArgT(R"({"key":"value")", makeSuccess<OpArg>(val(R"("{\"key\":\"value\"")"), 14)),
-                    RawArgT(R"({"key": "value")", makeSuccess<OpArg>(val(R"("{\"key\": \"value\"")"), 15)),
-                    RawArgT(R"({"key":,"value")", makeSuccess<OpArg>(val(R"("{\"key\":,\"value\"")"), 15)),
-                    RawArgT(R"z({"key":)"value")z", makeSuccess<OpArg>(val(R"("{\"key\":)\"value\"")"), 15)),
-                    RawArgT(R"({"key":)", makeSuccess<OpArg>(val(R"("{\"key\":")"), 7)),
-                    RawArgT(R"({"key":\ "value")", makeError<OpArg>("", 8)),
-                    RawArgT(R"({"key":\,"value")", makeError<OpArg>("", 8)),
-                    RawArgT(R"z({"key":\)"value")z", makeError<OpArg>("", 8)),
                     RawArgT(R"(invalid\scape)", makeError<OpArg>("", 8)),
                     RawArgT(R"(escaped\\)", makeSuccess<OpArg>(val(R"("escaped\\")"), 9)),
                     RawArgT(R"(1234)", makeSuccess<OpArg>(val(R"("1234")"), 4))));
@@ -455,18 +388,6 @@ INSTANTIATE_TEST_SUITE_P(Builder,
                                          ArgT("", makeError<OpArg>("", 0)),
                                          ArgT(" ", makeSuccess<OpArg>(val(), 0)),
                                          ArgT("'' )", makeSuccess<OpArg>(val(R"("")"), 2))));
-
-INSTANTIATE_TEST_SUITE_P(Builder,
-                         ParseDefaultHelperArgTest,
-                         testing::Values(ArgT(R"('quoted')", makeSuccess<OpArg>(val(R"("quoted")"), 8)),
-                                         ArgT(R"($ref)", makeSuccess<OpArg>(ref("ref"), 4)),
-                                         ArgT(R"(123)", makeSuccess<OpArg>(val(R"(123)"), 3)),
-                                         ArgT(R"(\$ref)", makeSuccess<OpArg>(val(R"("$ref")"), 5)),
-                                         ArgT(R"(invalid\scape)", makeError<OpArg>("", 0)),
-                                         ArgT(R"("")", makeSuccess<OpArg>(val(R"("")"), 2)),
-                                         ArgT("", makeError<OpArg>("", 0)),
-                                         ArgT(" ", makeSuccess<OpArg>(val(R"(" ")"), 1)),
-                                         ArgT("'' )", makeError<OpArg>("", 2))));
 
 INSTANTIATE_TEST_SUITE_P(
     Builder,
@@ -506,8 +427,8 @@ INSTANTIATE_TEST_SUITE_P(
                                          24)), // Testing escaped comma
         HelperT(R"(helper(arg1,\ arg2))",
                 makeSuccess<HelperToken>({.name = "helper", .args = {val(R"("arg1")"), val(R"(" arg2")")}},
-                                         19)),                  // Testing escaped space
-        HelperT("helper(arg1", makeError<HelperToken>("", 11)), // Missing closing parenthesis
+                                         19)),                 // Testing escaped space
+        HelperT("helper(arg1", makeError<HelperToken>("", 7)), // Missing closing parenthesis
         HelperT("'helper(arg1'", makeError<HelperToken>("", 0)),
         HelperT("test arg1)", makeError<HelperToken>("", 4)), // Missing opening parenthesis
         HelperT("", makeError<HelperToken>("", 0)),           // Empty string
@@ -525,8 +446,8 @@ INSTANTIATE_TEST_SUITE_P(
         HelperT("test(arg1, ())", makeError<HelperToken>("", 13)),
         HelperT(R"(test(arg1, (\)))",
                 makeSuccess<HelperToken>({.name = "test", .args {val(R"("arg1")"), val(R"z("()")z")}}, 15)),
-        HelperT("test(arg1, ( arg2)", makeError<HelperToken>("", 13)),
-        HelperT(R"(test(arg1, \) arg2))", makeError<HelperToken>("", 14)),
+        HelperT("test(arg1, ( arg2)", makeError<HelperToken>("", 11)),
+        HelperT(R"(test(arg1, \) arg2))", makeError<HelperToken>("", 11)),
         HelperT(R"(test(arg1, \)\ arg2))",
                 makeSuccess<HelperToken>({.name = "test", .args = {val(R"("arg1")"), val(R"(") arg2")")}}, 20)),
         HelperT(R"(test(arg1, \)\ arg2\)\)\)))",
@@ -536,7 +457,22 @@ INSTANTIATE_TEST_SUITE_P(
                 makeSuccess<HelperToken>({.name = "test", .args {val(R"("arg1")"), val(R"(" , ( ) ")")}}, 22)),
         HelperT("test(arg1, $ref, ' , ( ) ' , 123)",
                 makeSuccess<HelperToken>(
-                    {.name = "test", .args {val(R"("arg1")"), ref("ref"), val(R"(" , ( ) ")"), val("123")}}, 33))));
+                    {.name = "test", .args {val(R"("arg1")"), ref("ref"), val(R"(" , ( ) ")"), val("123")}}, 33)),
+        HelperT("binary_and(0x10000000000000)",
+                makeSuccess<HelperToken>({.name = "binary_and", .args = {val(R"("0x10000000000000")")}}, 28)),
+        HelperT("binary_and('0x10000000000000')",
+                makeSuccess<HelperToken>({.name = "binary_and", .args = {val(R"("0x10000000000000")")}}, 30)),
+        HelperT(R"(regex_extract($windows.EventData.Details, 'DWORD \\((0x[0-9A-F]{8})\\)'))",
+                makeSuccess<HelperToken>({.name = "regex_extract",
+                                          .args = {ref("windows.EventData.Details"),
+                                                   val(R"z("DWORD \\((0x[0-9A-F]{8})\\)")z")}},
+                                         72)),
+        HelperT(R"(regex_extract($event.original, '(?:f|F)ile \'(.*?)\''))",
+                makeSuccess<HelperToken>({.name = "regex_extract",
+                                          .args = {ref("event.original"), val(R"z("(?:f|F)ile '(.*?)'")z")}},
+                                          54))
+
+                                         ));
 
 INSTANTIATE_TEST_SUITE_P(Builder,
                          IsDefaultHelperTest,

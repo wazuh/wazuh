@@ -719,6 +719,12 @@
         "subject": "CN=*.icloud.com, OU=management:idms.group.506364, O=Apple Inc., ST=California, C=US",
         "x509": {
           "issuer": {
+            "common_name": [
+              "Apple IST CA 2 - G1"
+            ],
+            "country": [
+              "US"
+            ],
             "organization": [
               "Apple Inc."
             ],
@@ -730,6 +736,12 @@
           "not_before": "2017-02-27T17:54:31.000Z",
           "serial_number": "5C9CE1097887F807",
           "subject": {
+            "common_name": [
+              "*.icloud.com"
+            ],
+            "country": [
+              "US"
+            ],
             "organization": [
               "Apple Inc."
             ],

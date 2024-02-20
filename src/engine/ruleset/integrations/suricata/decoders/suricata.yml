@@ -192,22 +192,26 @@ normalize:
   - check: $network.protocol == tls
     map:
       # Subject
-      - _subject: parse_key_value($suricata.tls.subject, '=', ',' , "'", \\)
-      - tls.server.x509.subject.common_name: array_append($_subject. CN)
+      - _subject: $suricata.tls.subject
+      - _subject: replace(', ', ',')
+      - _subject: parse_key_value($_subject, '=', ',' , "'", \\)
+      - tls.server.x509.subject.common_name: array_append($_subject.CN)
       - tls.server.x509.subject.country: array_append($_subject.C)
-      - tls.server.x509.subject.locality: array_append($_subject. L)
-      - tls.server.x509.subject.organization: array_append($_subject. O)
-      - tls.server.x509.subject.organizational_unit: array_append($_subject. OU)
-      - tls.server.x509.subject.state_or_province: array_append($_subject. ST)
+      - tls.server.x509.subject.locality: array_append($_subject.L)
+      - tls.server.x509.subject.organization: array_append($_subject.O)
+      - tls.server.x509.subject.organizational_unit: array_append($_subject.OU)
+      - tls.server.x509.subject.state_or_province: array_append($_subject.ST)
 
       # Issuer
-      - _issuer: parse_key_value($suricata.tls.issuerdn, '=', ',' , "'", \\)
+      - _issuer: $suricata.tls.issuerdn
+      - _issuer: replace(', ', ',')
+      - _issuer: parse_key_value($_issuer, '=', ',' , "'", \\)
       - tls.server.x509.issuer.country: array_append($_issuer.C)
-      - tls.server.x509.issuer.common_name: array_append($_issuer. CN)
-      - tls.server.x509.issuer.locality: array_append($_issuer. L)
-      - tls.server.x509.issuer.organization: array_append($_issuer. O)
-      - tls.server.x509.issuer.organizational_unit: array_append($_issuer. OU)
-      - tls.server.x509.issuer.state_or_province: array_append($_issuer. ST)
+      - tls.server.x509.issuer.common_name: array_append($_issuer.CN)
+      - tls.server.x509.issuer.locality: array_append($_issuer.L)
+      - tls.server.x509.issuer.organization: array_append($_issuer.O)
+      - tls.server.x509.issuer.organizational_unit: array_append($_issuer.OU)
+      - tls.server.x509.issuer.state_or_province: array_append($_issuer.ST)
 
       - tls.resumed: $suricata.tls.session_resumed
       - tls.server.hash.sha1: upcase($suricata.tls.fingerprint)
