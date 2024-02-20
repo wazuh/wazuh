@@ -496,6 +496,8 @@ class WazuhException(Exception):
         3038: "Error while processing extra-valid files",
         3039: "Timeout while waiting to receive a file",
         3040: "Error while waiting to receive a file",
+
+        # HAProxy Helper exceptions
         3041: "Server status check timed out after adding new servers",
         3042: "User configuration is not valid",
         3043: "Cannot initialize Proxy API",
