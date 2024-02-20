@@ -657,7 +657,8 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 os_strdup(aws_config->bucket, cur_bucket->bucket);
             }
         }
-        else if (aws_config->remove_from_bucket) {
+
+        if (aws_config->remove_from_bucket) {
             cur_bucket->remove_from_bucket = aws_config->remove_from_bucket;
         }
 

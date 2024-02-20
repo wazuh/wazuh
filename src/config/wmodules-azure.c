@@ -471,6 +471,7 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
     /* Validation process */
     if (!storage->auth_path) {
         merror("At module '%s': No authentication method provided. Skipping block...", WM_AZURE_CONTEXT.name);
+        return OS_INVALID;
     }
 
     if (!storage->tag) {
