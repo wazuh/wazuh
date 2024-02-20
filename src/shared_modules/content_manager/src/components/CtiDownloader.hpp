@@ -85,21 +85,49 @@ protected:
      */
     CtiBaseParameters getCtiBaseParameters(const std::string& ctiURL)
     {
-        CtiBaseParameters parameters;
+        nlohmann::json rawMetadata;
 
         // Routine that stores the necessary parameters.
-        const auto onSuccess {[&parameters](const std::string& response)
+        const auto onSuccess {[&rawMetadata](const std::string& response)
                               {
-                                  const auto responseData = nlohmann::json::parse(response).at("data");
+                                  logDebug2(WM_CONTENTUPDATER, "CTI raw metadata: '%s'", response.c_str());
 
-                                  parameters.lastOffset = responseData.at("last_offset").get<int>();
-                                  parameters.lastSnapshotLink =
-                                      responseData.at("last_snapshot_link").get<std::string>();
-                                  parameters.lastSnapshotOffset = responseData.at("last_snapshot_offset").get<int>();
+                                  if (!nlohmann::json::accept(response))
+                                  {
+                                      throw std::runtime_error {"Invalid CTI metadata format"};
+                                  }
+
+                                  rawMetadata = nlohmann::json::parse(response).at("data");
                               }};
 
         // Make a get request to the API to get the consumer offset.
         performQueryWithRetry(ctiURL, onSuccess);
+
+        // Return if interrupted.
+        if (m_spUpdaterContext->spUpdaterBaseContext->spStopCondition->check())
+        {
+            return CtiBaseParameters();
+        }
+
+        // Validate metadata.
+        for (const std::string& key : {"last_offset", "last_snapshot_link", "last_snapshot_offset"})
+        {
+            if (!rawMetadata.contains(key))
+            {
+                throw std::runtime_error {"Missing CTI metadata key: " + key};
+            }
+
+            const auto& data {rawMetadata.at(key)};
+            if (data.is_null() || (data.is_string() && data.empty()))
+            {
+                throw std::runtime_error {"Null or empty CTI metadata value for key: " + key};
+            }
+        }
+
+        CtiBaseParameters parameters;
+        parameters.lastOffset = rawMetadata.at("last_offset").get<int>();
+        parameters.lastSnapshotLink = rawMetadata.at("last_snapshot_link").get<std::string>();
+        parameters.lastSnapshotOffset = rawMetadata.at("last_snapshot_offset").get<int>();
 
         logDebug2(WM_CONTENTUPDATER, "CTI last offset: '%d'", parameters.lastOffset);
         logDebug2(WM_CONTENTUPDATER, "CTI last snapshot link: '%s'", parameters.lastSnapshotLink.c_str());

@@ -241,3 +241,23 @@ TEST_F(CtiOffsetDownloaderTest, DownloadInterrupted)
     expectedData["offset"] = 0;
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 }
+
+/**
+ * @brief Tests the download of metadata with invalid JSON format.
+ *
+ */
+TEST_F(CtiOffsetDownloaderTest, DownloadMetadataInvalidFormat)
+{
+    auto mockMetadata = R"({data":{})";
+    m_spFakeServer->setCtiMetadata(std::move(mockMetadata));
+
+    ASSERT_THROW(m_spCtiOffsetDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
+
+    // Check expected data.
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
+    expectedData["stageStatus"] = FAIL_STATUS;
+    expectedData["type"] = DEFAULT_TYPE;
+    expectedData["offset"] = 0;
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+}

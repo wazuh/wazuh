@@ -119,3 +119,23 @@ TEST_F(CtiSnapshotDownloaderTest, SnapshotDownloadWithRetry)
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
     EXPECT_TRUE(std::filesystem::exists(expectedContentPath));
 }
+
+/**
+ * @brief Tests the download of metadata with invalid JSON format.
+ *
+ */
+TEST_F(CtiSnapshotDownloaderTest, DownloadMetadataInvalidFormat)
+{
+    auto mockMetadata = R"({data":{})";
+    m_spFakeServer->setCtiMetadata(std::move(mockMetadata));
+
+    ASSERT_THROW(CtiSnapshotDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext), std::runtime_error);
+
+    // Check expected data.
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
+    expectedData["stageStatus"] = FAIL_STATUS;
+    expectedData["type"] = CONTENT_TYPE;
+    expectedData["offset"] = 0;
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+}
