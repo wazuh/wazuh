@@ -16,6 +16,7 @@
 #include "archive_entry.h"
 #include "customDeleter.hpp"
 #include <algorithm>
+#include <atomic>
 #include <filesystem>
 #include <vector>
 
@@ -47,13 +48,14 @@ namespace Utils
     class ArchiveHelper
     {
     private:
-        static void copyData(struct archive* archiveRead, struct archive* archiveWrite)
+        static void
+        copyData(struct archive* archiveRead, struct archive* archiveWrite, const std::atomic<bool>& forceStop)
         {
             const void* buff {};
             size_t size {};
             int64_t offset {};
 
-            for (;;)
+            while (!forceStop.load())
             {
                 auto retVal = archive_read_data_block(archiveRead, &buff, &size, &offset);
                 if (retVal == ARCHIVE_EOF)
@@ -88,6 +90,7 @@ namespace Utils
          * @param flags Extraction flags.
          */
         static void decompress(const std::string& filename,
+                               const std::atomic<bool>& forceStop = false,
                                const std::string& outputDir = "",
                                const std::vector<std::string>& extractOnly = {},
                                int flags = 0)
@@ -95,6 +98,7 @@ namespace Utils
             struct archive_entry* entry;
             ArchiveReadPtr archiveRead(archive_read_new());
             ArchiveWritePtr archiveWrite(archive_write_disk_new());
+            std::vector<std::string> content {};
 
             archive_write_disk_set_options(archiveRead.get(), flags);
             archive_read_support_format_tar(archiveRead.get());
@@ -111,7 +115,7 @@ namespace Utils
                 throw std::runtime_error("Couldn't open file");
             }
 
-            for (;;)
+            while (!forceStop.load())
             {
                 retVal = archive_read_next_header(archiveRead.get(), &entry);
                 if (retVal == ARCHIVE_EOF)
@@ -137,17 +141,27 @@ namespace Utils
                     extractOnly.empty())
                 {
                     archive_entry_set_pathname(entry, outputDirPath.c_str());
+                    content.emplace_back(outputDirPath);
+
                     if (archive_write_header(archiveWrite.get(), entry) != ARCHIVE_OK)
                     {
                         throw std::runtime_error(archive_error_string(archiveWrite.get()));
                     }
 
-                    copyData(archiveRead.get(), archiveWrite.get());
+                    copyData(archiveRead.get(), archiveWrite.get(), forceStop);
                     retVal = archive_write_finish_entry(archiveWrite.get());
                     if (retVal != ARCHIVE_OK)
                     {
                         throw std::runtime_error(archive_error_string(archiveWrite.get()));
                     }
+                }
+            }
+
+            if (forceStop.load())
+            {
+                for (const auto& item : content)
+                {
+                    std::filesystem::remove_all(item);
                 }
             }
         }
