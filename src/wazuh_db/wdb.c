@@ -356,7 +356,7 @@ wdb_t * wdb_open_global() {
                 return NULL;
             }
         } else {
-            if (wdb_upgrade_global(wdb) == NULL) {
+            if (wdb_upgrade_global(wdb) == NULL || wdb->db == NULL) {
                 wdb_pool_leave(wdb);
                 return NULL;
             }
