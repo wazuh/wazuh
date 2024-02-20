@@ -11,7 +11,7 @@ from wazuh.core.cluster.utils import ClusterFilter
 
 
 class WazuhAgent:
-    """Tools for handle Wazuh agents connections."""
+    """Tools to handle Wazuh agents connections."""
 
     RECONNECTION_VERSION_MAJOR = 4
     RECONNECTION_VERSION_MINOR = 3
@@ -52,7 +52,7 @@ class WazuhAgent:
 
 
 class WazuhDAPI:
-    """Class for call Wazuh DAPI functions."""
+    """Class to call Wazuh DAPI functions."""
 
     AGENTS_MAX_LIMIT = 100000
     API_RETRIES = 5
@@ -69,7 +69,7 @@ class WazuhDAPI:
 
     @staticmethod
     def _get_logger() -> logging.Logger:
-        """Returns the configured logger.
+        """Get the configured logger.
 
         Returns
         -------
@@ -89,7 +89,7 @@ class WazuhDAPI:
         f : Callable
             Function to be executed.
         f_kwargs : Optional[dict], optional
-             Arguments to be passed to function `f`, by default None
+             Arguments to be passed to function `f`, by default None.
 
         Returns
         -------
@@ -126,12 +126,12 @@ class WazuhDAPI:
         return {item['name']: item['ip'] for item in data.affected_items if item['name'] not in self.excluded_nodes}
 
     async def reconnect_agents(self, agent_list: list = None) -> dict:
-        """Makes an API call to reconnect agents.
+        """Make an API call to reconnect agents.
 
         Parameters
         ----------
         agent_list : list, optional
-            The agents to be re-connected, by default None
+            The agents to be re-connected, by default None.
 
         Returns
         -------
@@ -183,7 +183,7 @@ class WazuhDAPI:
         node_name : str
             The name of the node to check.
         limit : int, optional
-            Max number of agents to retrieve, by default None
+            Max number of agents to retrieve, by default None.
 
         Returns
         -------
