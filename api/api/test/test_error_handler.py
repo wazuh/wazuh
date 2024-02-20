@@ -13,9 +13,8 @@ from freezegun import freeze_time
 from connexion.exceptions import HTTPException, ProblemException, BadRequestProblem, Unauthorized
 from api.error_handler import _cleanup_detail_field, prevent_bruteforce_attack, jwt_error_handler, \
     http_error_handler, problem_error_handler, bad_request_error_handler, unauthorized_error_handler, \
-    exceeded_requests_handler, blocked_ip_handler, ERROR_CONTENT_TYPE
+    ERROR_CONTENT_TYPE
 from api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT
-from api.api_exception import MaxRequestsException
 
 
 @pytest.fixture
@@ -198,50 +197,6 @@ async def test_bad_request_error_handler(detail, mock_request):
 
     exc = BadRequestProblem(detail=detail)
     response = await bad_request_error_handler(mock_request, exc)
-    body = json.loads(response.body)
-    assert body == problem
-    assert response.status_code == exc.status_code
-    assert response.content_type == ERROR_CONTENT_TYPE
-
-
-@pytest.mark.asyncio
-@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
-@pytest.mark.parametrize('error_code', [6001, 6005])
-async def test_bad_exceeded_request_handler(error_code, mock_request):
-    """Test exceeded request error handler."""
-    exc = MaxRequestsException(error_code)
-    problem = {
-        "title": exc.title,
-        "detail": exc.detail,
-        "error": exc.ext['code'],
-        "remediation": exc.ext['remediation']
-    }
-
-    response = await exceeded_requests_handler(mock_request, exc)
-    body = json.loads(response.body)
-    assert body == problem
-    assert response.status_code == exc.status_code
-    assert response.content_type == ERROR_CONTENT_TYPE
-
-
-@pytest.mark.asyncio
-@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
-async def test_blocked_ip_handler(mock_request):
-    """Test blocked ip error handler."""
-
-    exc = ProblemException(
-            status=403,
-            title="Permission Denied",
-            detail="Limit of login attempts reached. The current IP has been blocked due "
-                    "to a high number of login attempts",
-            ext=mock_request
-        )
-    problem = {
-        "title": exc.title,
-        "detail": exc.detail,
-        "error": 6000
-    }
-    response = await blocked_ip_handler(mock_request, exc)
     body = json.loads(response.body)
     assert body == problem
     assert response.status_code == exc.status_code

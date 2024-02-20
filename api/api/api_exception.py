@@ -67,6 +67,9 @@ class APIError(APIException):
 
 class BlockedIPException(ProblemException):
     """Bocked IP Exception Class."""
+    def __init__(self, *, status=500, title=None, detail=None):
+        ext = {"code": 6000}
+        super().__init__(status=status, title=title, detail=detail, ext=ext)
 
 class MaxRequestsException(ProblemException):
     """Bocked IP Exception Class."""
