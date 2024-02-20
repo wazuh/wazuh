@@ -213,8 +213,6 @@ MapOp opBuilderHelperIntTransformation(IntOperator op,
     const std::string failureTrace3 = fmt::format(R"([{}] -> Failure: Parameter value makes division by zero: )", name);
     const std::string overflowFailureTrace =
         fmt::format(R"([{}] -> Failure: operation result in integer Overflown)", name);
-    const std::string underflowFailureTrace =
-        fmt::format(R"([{}] -> Failure: operation result in integer Underflown)", name);
 
     // Depending on rValue type we store the reference or the integer value, avoiding
     // iterating again through values inside lambda
@@ -273,58 +271,50 @@ MapOp opBuilderHelperIntTransformation(IntOperator op,
     switch (op)
     {
         case IntOperator::SUM:
-            transformFunction = [overflowFailureTrace, underflowFailureTrace](int64_t l, int64_t r)
+            transformFunction = [overflowFailureTrace](int64_t l, int64_t r)
             {
-                if ((r > 0) && (l > std::numeric_limits<int64_t>::max() - r))
+                bool overflow = (r > 0) && (l > std::numeric_limits<int64_t>::max() - r);
+                overflow = overflow || (r < 0) && (l < std::numeric_limits<int64_t>::min() - r);
+
+                if (overflow)
                 {
                     throw std::runtime_error(overflowFailureTrace);
                 }
-                else if ((r < 0) && (l < std::numeric_limits<int64_t>::min() - r))
-                {
-                    throw std::runtime_error(underflowFailureTrace);
-                }
-                else
-                {
-                    return l + r;
-                }
+
+                return l + r;
             };
             break;
         case IntOperator::SUB:
-            transformFunction = [overflowFailureTrace, underflowFailureTrace](int64_t l, int64_t r)
+            transformFunction = [overflowFailureTrace](int64_t l, int64_t r)
             {
-                if ((r < 0) && (l > std::numeric_limits<int64_t>::max() + r))
+                bool overflow = (r < 0) && (l > std::numeric_limits<int64_t>::max() + r);
+                overflow = overflow || (r > 0) && (l < std::numeric_limits<int64_t>::min() + r);
+
+                if (overflow)
                 {
                     throw std::runtime_error(overflowFailureTrace);
                 }
-                else if ((r > 0) && (l < std::numeric_limits<int64_t>::min() + r))
-                {
-                    throw std::runtime_error(underflowFailureTrace);
-                }
-                else
-                {
-                    return l - r;
-                }
+
+                return l - r;
             };
             break;
         case IntOperator::MUL:
-            transformFunction = [overflowFailureTrace, underflowFailureTrace](int64_t l, int64_t r)
+            transformFunction = [overflowFailureTrace](int64_t l, int64_t r)
             {
-                if ((r != 0) && (l > std::numeric_limits<int64_t>::max() / r))
+                bool overflow = (l > 0) && (r > 0) && (l > std::numeric_limits<int64_t>::max() / r);
+                overflow = overflow || (l < 0) && (r < 0) && (l < std::numeric_limits<int64_t>::max() / r);
+                overflow = overflow || (l > 0) && (r < 0) && (l > std::numeric_limits<int64_t>::min() / r);
+                overflow = overflow || (l < 0) && (r > 0) && (l < std::numeric_limits<int64_t>::min() / r);
+
+                if (overflow)
                 {
                     throw std::runtime_error(overflowFailureTrace);
                 }
-                else if ((r != 0) && (l < std::numeric_limits<int64_t>::min() * r))
-                {
-                    throw std::runtime_error(underflowFailureTrace);
-                }
-                else
-                {
-                    return l * r;
-                }
+                return l * r;
             };
             break;
         case IntOperator::DIV:
-            transformFunction = [name, overflowFailureTrace, underflowFailureTrace](int64_t l, int64_t r)
+            transformFunction = [name, overflowFailureTrace](int64_t l, int64_t r)
             {
                 if (0 == r)
                 {
