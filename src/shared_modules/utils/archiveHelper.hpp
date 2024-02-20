@@ -15,7 +15,9 @@
 #include "archive.h"
 #include "archive_entry.h"
 #include "customDeleter.hpp"
+#include <algorithm>
 #include <filesystem>
+#include <vector>
 
 template<typename F, typename G, F func1, G func2>
 struct Deleter
@@ -47,19 +49,19 @@ namespace Utils
     private:
         static void copyData(struct archive* archiveRead, struct archive* archiveWrite)
         {
-            int retVal;
-            const void* buff;
-            size_t size;
-            int64_t offset;
+            const void* buff {};
+            size_t size {};
+            int64_t offset {};
 
             for (;;)
             {
-                retVal = archive_read_data_block(archiveRead, &buff, &size, &offset);
+                auto retVal = archive_read_data_block(archiveRead, &buff, &size, &offset);
                 if (retVal == ARCHIVE_EOF)
                 {
                     break;
                 }
-                else if (retVal != ARCHIVE_OK)
+
+                if (retVal != ARCHIVE_OK)
                 {
                     throw std::runtime_error("Couldn't read file");
                 }
@@ -91,20 +93,20 @@ namespace Utils
                                int flags = 0)
         {
             struct archive_entry* entry;
-            int retVal;
             ArchiveReadPtr archiveRead(archive_read_new());
             ArchiveWritePtr archiveWrite(archive_write_disk_new());
 
             archive_write_disk_set_options(archiveRead.get(), flags);
             archive_read_support_format_tar(archiveRead.get());
 
-            retVal = archive_read_open_filename(archiveRead.get(), filename.c_str(), 0);
+            auto retVal = archive_read_open_filename(archiveRead.get(), filename.c_str(), 0);
 
             if (retVal == ARCHIVE_EOF)
             {
                 return;
             }
-            else if (retVal != ARCHIVE_OK)
+
+            if (retVal != ARCHIVE_OK)
             {
                 throw std::runtime_error("Couldn't open file");
             }
@@ -116,7 +118,8 @@ namespace Utils
                 {
                     return;
                 }
-                else if (retVal != ARCHIVE_OK)
+
+                if (retVal != ARCHIVE_OK)
                 {
                     throw std::runtime_error("Couldn't read file");
                 }
