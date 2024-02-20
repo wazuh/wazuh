@@ -96,7 +96,7 @@ def build_and_up(env_mode: str, interval: int = 10, interval_build_env: int = 10
     build : bool
         Flag to indicate if images need to be built.
     build_managers_only : bool
-        Flag to indicate if only the managers image needs to be built.
+        Whether to build only the manager images.
 
     Returns
     -------
@@ -126,11 +126,10 @@ def build_and_up(env_mode: str, interval: int = 10, interval_build_env: int = 10
                     "--no-cache"],
                     stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
                 current_process.wait()
-            if build_managers_only:
-                current_process = subprocess.Popen(["docker", "compose", "--profile", env_mode,
-                    "build", "wazuh-master", "wazuh-worker1", "wazuh-worker2",
-                    "--build-arg", f"WAZUH_BRANCH={current_branch}", "--build-arg",
-                    f"ENV_MODE={env_mode}"],
+            if build and build_managers_only:
+                current_process = subprocess.Popen(["docker", "compose","build",
+                    "--profile", "managers", "--build-arg", f"WAZUH_BRANCH={current_branch}",
+                    "--build-arg", f"ENV_MODE={env_mode}"],
                     stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
                 current_process.wait()
             current_process = subprocess.Popen(
