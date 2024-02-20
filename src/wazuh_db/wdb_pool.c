@@ -11,7 +11,14 @@
 
 #include "wdb_pool.h"
 
-static wdb_pool_t wdb_pool;
+#ifdef WAZUH_UNIT_TESTING
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
+#endif
+
+STATIC wdb_pool_t wdb_pool;
 
 // Initialize global pool.
 

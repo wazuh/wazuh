@@ -188,6 +188,9 @@ list(APPEND wdb_tests_flags "")
 list(APPEND wdb_tests_names "test_wdb_com")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_create_state_json -Wl,--wrap,wdb_get_config -Wl,--wrap,wdb_get_internal_config")
 
+list(APPEND wdb_tests_names "test_wdb_pool")
+list(APPEND wdb_tests_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")
+
 # Add extra compiling flags
 add_compile_options(-Wall)
 
