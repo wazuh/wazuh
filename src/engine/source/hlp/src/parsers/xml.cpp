@@ -16,10 +16,11 @@ using namespace hlp::parser;
 using xmlModule = std::function<bool(pugi::xml_node&, json::Json&, std::string&)>;
 bool xmlWinModule(pugi::xml_node& node, json::Json& docJson, std::string path)
 {
-    if ("Data" == std::string {node.name()})
+    auto nodeName = std::string_view {node.name()};
+    if (nodeName == "Data")
     {
-        const std::string fieldName {node.attribute("Name").value()};
-        if (fieldName.empty())
+        const auto name = node.attribute("Name");
+        if (name.empty())
         {
             // Treat it as an array in order to avoid data loss
             docJson.appendString(node.first_child().value(), path);
@@ -27,13 +28,13 @@ bool xmlWinModule(pugi::xml_node& node, json::Json& docJson, std::string path)
         }
         else
         {
-            path += "/" + fieldName;
+            path.append("/").append(name.as_string());
             docJson.setString(node.text().as_string(), path);
         }
 
         return true;
     }
-    else if ("Event" == std::string {node.name()})
+    else if (nodeName == "Event")
     {
         // Skip Event in result json
         path += "/Event";
@@ -50,7 +51,7 @@ std::unordered_map<std::string_view, xmlModule> xmlModules = {
     {"windows", xmlWinModule},
 };
 
-void xmlToJson(pugi::xml_node& docXml, json::Json& docJson, xmlModule mod, std::string path = "")
+void xmlToJson(pugi::xml_node& docXml, json::Json& docJson, const xmlModule& mod, const std::string& path = "")
 {
     // TODO: add array support
     // Iterate over the xml generating the corresponding json
@@ -92,25 +93,22 @@ void xmlToJson(pugi::xml_node& docXml, json::Json& docJson, xmlModule mod, std::
                 {
                     size_t index = docJson.size(localPath);
                     localPath += "/" + std::to_string(index);
-                } else {
-                    // Never should reach here
-                    throw std::runtime_error("Invalid JSON structure"); ///? Log error?
                 }
             }
-            // else
-            // {
-            //     docJson.setObject(localPath);
-            // }
 
-            auto text = node.text();
-            if (!text.empty())
+            if (!node.text().empty())
             {
-                docJson.setString(text.as_string(), localPath + "/#text");
+                docJson.setString(node.text().as_string(), localPath + "/#text");
             }
 
             for (auto attr : node.attributes())
             {
                 docJson.setString(attr.value(), localPath + "/@" + attr.name());
+            }
+
+            if (node.text().empty() && node.attributes().empty())
+            {
+                docJson.setObject(localPath);
             }
         }
 

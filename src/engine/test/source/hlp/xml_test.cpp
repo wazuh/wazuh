@@ -99,4 +99,160 @@ Name='IpAddress'>::1</Data><Data Name='IpPort'>0</Data></EventData>)",
                                format(R"({{"{}":{}}})", TARGET.substr(1), R"({"System":{"Provider":{"@Name":"PowerShell"},"EventID":{"#text":"800","@Qualifiers":"0"},"Level":{"#text":"4"},"Security":{}},"EventData":["","DetailSequence=1 DetailTotal=1 SequenceNumber=143 UserId=VAGRANT\\\\vagrant HostName=ConsoleHost HostVersion=5.1.17763.1007 CommandLine=","CommandInvocation(Out-Default): 'Out-Default' ParameterBinding(Out-Default): name='InputObject'; value='Cannot find the Windows PowerShell data file 'ArchiveResources.psd1' in directory 'C:\\\\Wazuh\\\\', or in any parent culture directories.'"]})")),
                        700,
                        getXMLParser,
-                       {NAME, TARGET, {""}, {"windows"}})));
+                       {NAME, TARGET, {""}, {"windows"}}),
+                       ParseT(SUCCESS,
+               R"(<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+    <System>
+        <Provider Name="Microsoft-Windows-Security-Auditing" Guid="{54849625-5478-4994-a5ba-3e3b0328c30d}" />
+        <EventID>5379</EventID>
+        <Version>0</Version>
+        <Level>0</Level>
+        <Task>13824</Task>
+        <Opcode>0</Opcode>
+        <Keywords>0x8020000000000000</Keywords>
+        <TimeCreated SystemTime="2023-10-20T19:07:06.3037119Z" />
+        <EventRecordID>15126</EventRecordID>
+        <Correlation ActivityID="{b7339175-03a1-0002-9f91-33b7a103da01}" />
+        <Execution ProcessID="732" ThreadID="836" />
+        <Channel>Security</Channel>
+        <Computer>WIN-8I36CR3738L</Computer>
+        <Security />
+    </System>
+    <EventData>
+        <Data/>
+        <Data Name="SubjectUserSid">S-1-5-21-1790562928-1395264351-1667849124-1000</Data>
+        <Data Name="SubjectUserName">vagrant</Data>
+        <Data Name="SubjectDomainName">WIN-8I36CR3738L</Data>
+        <Data Name="SubjectLogonId">0x3c978</Data>
+        <Data Name="TargetName">MicrosoftAccount:user=02ieynqiohajpobc</Data>
+        <Data Name="Type">0</Data>
+        <Data Name="Type">0</Data>
+        <Data Name="">0</Data>
+        <Data/>
+        <Data Name="asdasd" />
+        <Data Name="CountOfCredentialsReturned">0</Data>
+        <Data Name="ReadOperation">%%8100</Data>
+        <Data Name="ReturnCode">3221226021</Data>
+        <Data Name="ProcessCreationTime">2023-10-20T19:07:00.4462204Z</Data>
+        <Data Name="ClientProcessId">5572</Data>
+        <Data/>
+    </EventData>
+</Event>)",
+               j(fmt::format(R"({{"{}":{}}})",
+                             TARGET.substr(1),
+                             R"({
+  "Event": {
+    "@xmlns": "http://schemas.microsoft.com/win/2004/08/events/event",
+    "EventData": {
+      "Data": [
+        {},
+        {
+          "#text": "S-1-5-21-1790562928-1395264351-1667849124-1000",
+          "@Name": "SubjectUserSid"
+        },
+        {
+          "#text": "vagrant",
+          "@Name": "SubjectUserName"
+        },
+        {
+          "#text": "WIN-8I36CR3738L",
+          "@Name": "SubjectDomainName"
+        },
+        {
+          "#text": "0x3c978",
+          "@Name": "SubjectLogonId"
+        },
+        {
+          "#text": "MicrosoftAccount:user=02ieynqiohajpobc",
+          "@Name": "TargetName"
+        },
+        {
+          "#text": "0",
+          "@Name": "Type"
+        },
+        {
+          "#text": "0",
+          "@Name": "Type"
+        },
+        {
+          "#text": "0",
+          "@Name": ""
+        },
+        {},
+        {
+          "@Name": "asdasd"
+        },
+        {
+          "#text": "0",
+          "@Name": "CountOfCredentialsReturned"
+        },
+        {
+          "#text": "%%8100",
+          "@Name": "ReadOperation"
+        },
+        {
+          "#text": "3221226021",
+          "@Name": "ReturnCode"
+        },
+        {
+          "#text": "2023-10-20T19:07:00.4462204Z",
+          "@Name": "ProcessCreationTime"
+        },
+        {
+          "#text": "5572",
+          "@Name": "ClientProcessId"
+        },
+        {}
+      ]
+    },
+    "System": {
+      "Channel": {
+        "#text": "Security"
+      },
+      "Computer": {
+        "#text": "WIN-8I36CR3738L"
+      },
+      "Correlation": {
+        "@ActivityID": "{b7339175-03a1-0002-9f91-33b7a103da01}"
+      },
+      "EventID": {
+        "#text": "5379"
+      },
+      "EventRecordID": {
+        "#text": "15126"
+      },
+      "Execution": {
+        "@ProcessID": "732",
+        "@ThreadID": "836"
+      },
+      "Keywords": {
+        "#text": "0x8020000000000000"
+      },
+      "Level": {
+        "#text": "0"
+      },
+      "Opcode": {
+        "#text": "0"
+      },
+      "Provider": {
+        "@Guid": "{54849625-5478-4994-a5ba-3e3b0328c30d}",
+        "@Name": "Microsoft-Windows-Security-Auditing"
+      },
+      "Security": {},
+      "Task": {
+        "#text": "13824"
+      },
+      "TimeCreated": {
+        "@SystemTime": "2023-10-20T19:07:06.3037119Z"
+      },
+      "Version": {
+        "#text": "0"
+      }
+    }
+  }
+}
+)")),
+               1573,
+               getXMLParser,
+               {NAME, TARGET, {""}})
+                       ));
