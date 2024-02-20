@@ -83,11 +83,11 @@ class ProxyAPI:
         endpoint : str
             Endpoint to call.
         method : ProxyAPIMethod, optional
-            Method to use, by default ProxyAPIMethod.GET
+            Method to use, by default ProxyAPIMethod.GET.
         query_parameters : dict | None, optional
-            Query parameters to send in the request, by default None
+            Query parameters to send in the request, by default None.
         json_body : dict | None, optional
-            Data to send within the request, by default None
+            Data to send within the request, by default None.
 
         Returns
         -------
@@ -170,7 +170,7 @@ class ProxyAPI:
         self.version = configuration_version
 
     async def get_runtime_info(self) -> PROXY_API_RESPONSE:
-        """Returns the runtime information of the HAProxy instance.
+        """Get the runtime information of the HAProxy instance.
 
         Returns
         -------
@@ -180,7 +180,7 @@ class ProxyAPI:
         return (await self._make_hapee_request('/services/haproxy/runtime/info'))[0]['info']
 
     async def get_backends(self) -> PROXY_API_RESPONSE:
-        """Returns the configured backends.
+        """Get the configured backends.
 
         Returns
         -------
@@ -195,16 +195,16 @@ class ProxyAPI:
         mode: CommunicationProtocol = CommunicationProtocol.TCP,
         algorithm: ProxyBalanceAlgorithm = ProxyBalanceAlgorithm.LEAST_CONNECTIONS,
     ) -> PROXY_API_RESPONSE:
-        """Adds a new backend to HAProxy instance.
+        """Add a new backend to HAProxy instance.
 
         Parameters
         ----------
         name : str
             Name to set.
         mode : CommunicationProtocol, optional
-            Protocol to use, by default CommunicationProtocol.TCP
+            Protocol to use, by default CommunicationProtocol.TCP.
         algorithm : ProxyBalanceAlgorithm, optional
-            Load balancing algorithm to use, by default ProxyBalanceAlgorithm.LEAST_CONNECTIONS
+            Load balancing algorithm to use, by default ProxyBalanceAlgorithm.LEAST_CONNECTIONS.
 
         Returns
         -------
@@ -222,7 +222,7 @@ class ProxyAPI:
         )
 
     async def get_backend_servers(self, backend: str) -> PROXY_API_RESPONSE:
-        """Returns the servers for the provided backend.
+        """Get the servers for the provided backend.
 
         Parameters
         ----------
@@ -242,7 +242,7 @@ class ProxyAPI:
     async def add_server_to_backend(
         self, backend: str, server_name: str, server_address: str, port: int, resolver: Optional[str]
     ) -> PROXY_API_RESPONSE:
-        """Adds new server to the provided backend.
+        """Add a new server to the provided backend.
 
         Parameters
         ----------
@@ -318,7 +318,7 @@ class ProxyAPI:
     async def add_frontend(
         self, name: str, port: int, backend: str, mode: CommunicationProtocol = CommunicationProtocol.TCP
     ) -> PROXY_API_RESPONSE:
-        """Adds a new frontend to the HAProxy instance.
+        """Add a new frontend to the HAProxy instance.
 
         Parameters
         ----------
@@ -329,7 +329,7 @@ class ProxyAPI:
         backend : str
             Default backend to connect.
         mode : CommunicationProtocol, optional
-            Communication protocol to use, by default CommunicationProtocol.TCP
+            Communication protocol to use, by default CommunicationProtocol.TCP.
 
         Returns
         -------
@@ -360,7 +360,7 @@ class ProxyAPI:
         return frontend_response
 
     async def get_backend_server_runtime_settings(self, backend_name: str, server_name: str) -> PROXY_API_RESPONSE:
-        """Returns the setting for a backend server.
+        """Get the settings of a backend server.
 
         Parameters
         ----------
@@ -383,7 +383,7 @@ class ProxyAPI:
     async def change_backend_server_state(
         self, backend_name: str, server_name: str, state: ProxyServerState
     ) -> PROXY_API_RESPONSE:
-        """Set the status of a backend server,
+        """Set the status of a backend server.
 
         Parameters
         ----------
@@ -410,7 +410,7 @@ class ProxyAPI:
         )
 
     async def get_backend_stats(self, backend_name: str) -> PROXY_API_RESPONSE:
-        """Returns the statistics of the provided backend.
+        """Get the statistics of the provided backend.
 
         Parameters
         ----------
@@ -427,7 +427,7 @@ class ProxyAPI:
         return await self._make_hapee_request('/services/haproxy/stats/native', query_parameters=query_params)
 
     async def get_backend_server_stats(self, backend_name: str, server_name: str) -> PROXY_API_RESPONSE:
-        """Returns the statistics of the provided backend server.
+        """Get the statistics of the provided backend server.
 
         Parameters
         ----------
@@ -474,7 +474,7 @@ class Proxy:
 
     @staticmethod
     def _get_logger() -> logging.Logger:
-        """Returns the configured logger.
+        """Get the configured logger.
 
         Returns
         -------
@@ -502,7 +502,7 @@ class Proxy:
             raise WazuhHAPHelperError(3048)
 
     async def get_current_pid(self) -> int:
-        """Returns the current HAProxy PID
+        """Get the current HAProxy PID.
 
         Returns
         -------
@@ -512,7 +512,7 @@ class Proxy:
         return (await self.api.get_runtime_info())['pid']
 
     async def get_current_backends(self) -> dict:
-        """Returns current backends from the Proxy.
+        """Get the current backends from the Proxy.
 
         Returns
         -------
@@ -524,7 +524,7 @@ class Proxy:
         return {backend['name']: backend for backend in api_response['data']}
 
     async def exists_backend(self, backend_name: str) -> bool:
-        """Checks if the provided backend exists.
+        """Check if the provided backend exists.
 
         Parameters
         ----------
@@ -539,7 +539,7 @@ class Proxy:
         return backend_name in await self.get_current_backends()
 
     async def get_current_frontends(self) -> dict:
-        """Returns current frontends from the Proxy.
+        """Get the current frontends from the Proxy.
 
         Returns
         -------
@@ -551,7 +551,7 @@ class Proxy:
         return {frontend['name']: frontend for frontend in api_response['data'] if 'default_backend' in frontend}
 
     async def exists_frontend(self, frontend_name: str) -> bool:
-        """Checks if the provided frontend exists.
+        """Check if the provided frontend exists.
 
         Parameters
         ----------
@@ -571,16 +571,16 @@ class Proxy:
         mode: CommunicationProtocol = CommunicationProtocol.TCP,
         algorithm: ProxyBalanceAlgorithm = ProxyBalanceAlgorithm.LEAST_CONNECTIONS,
     ):
-        """Adds new backend to the Proxy.
+        """Add a new backend to the Proxy.
 
         Parameters
         ----------
         name : str
             Name for the new backend.
         mode : CommunicationProtocol, optional
-            Communication protocol to use, by default CommunicationProtocol.TCP
+            Communication protocol to use, by default CommunicationProtocol.TCP.
         algorithm : ProxyBalanceAlgorithm, optional
-            Load balancing algorithm to use, by default ProxyBalanceAlgorithm.LEAST_CONNECTIONS
+            Load balancing algorithm to use, by default ProxyBalanceAlgorithm.LEAST_CONNECTIONS.
         """
         await self.api.add_backend(name=name, mode=mode, algorithm=algorithm)
         self.logger.debug2(f"Added new proxy backend: '{name}'")
@@ -588,7 +588,7 @@ class Proxy:
     async def add_new_frontend(
         self, name: str, port: int, backend: str, mode: CommunicationProtocol = CommunicationProtocol.TCP
     ):
-        """Adds new frontend to the Proxy.
+        """Add a new frontend to the Proxy.
 
         Parameters
         ----------
@@ -599,13 +599,13 @@ class Proxy:
         backend : str
             Default backend to connect.
         mode : CommunicationProtocol, optional
-            Communication protocol to use, by default CommunicationProtocol.TCP
+            Communication protocol to use, by default CommunicationProtocol.TCP.
         """
         await self.api.add_frontend(name=name, port=port, backend=backend, mode=mode)
         self.logger.debug2(f"Added new proxy frontend: '{name}'")
 
     async def get_current_backend_servers(self) -> dict:
-        """Returns current backend servers from the Proxy.
+        """Get the current backend servers from the Proxy.
 
         Returns
         -------
@@ -617,7 +617,7 @@ class Proxy:
         return {server['name']: server['address'] for server in api_response['data']}
 
     async def add_wazuh_manager(self, manager_name: str, manager_address: str, resolver: Optional[str] = None) -> dict:
-        """Adds new Wazuh manager to the Proxy.
+        """Add a new Wazuh manager to the Proxy.
 
         Parameters
         ----------
@@ -647,7 +647,7 @@ class Proxy:
         return api_response
 
     async def remove_wazuh_manager(self, manager_name: str) -> dict:
-        """Deletes the given Wazuh manager from the Proxy.
+        """Delete the given Wazuh manager from the Proxy.
 
         Parameters
         ----------
@@ -703,12 +703,12 @@ class Proxy:
         return api_response
 
     async def get_wazuh_server_stats(self, server_name: str) -> dict:
-        """Returns statistics of the given server.
+        """Get the statistics of the given server.
 
         Parameters
         ----------
         server_name : str
-            The server name to query
+            The server name to query.
 
         Returns
         -------
@@ -723,7 +723,7 @@ class Proxy:
         return server_stats
 
     async def is_server_drain(self, server_name: str) -> bool:
-        """Checks if the server is in DRAIN state.
+        """Check if the server is in DRAIN state.
 
         Parameters
         ----------
@@ -741,12 +741,12 @@ class Proxy:
         return server_stats['admin_state'] == ProxyServerState.DRAIN.value
 
     async def get_wazuh_backend_stats(self, only_actives: bool = True) -> dict:
-        """Returns statistics of the Wazuh backend.
+        """Get the statistics of the Wazuh backend.
 
         Parameters
         ----------
         only_actives : bool, optional
-            Only include running servers, by default True
+            Only include running servers, by default True.
 
         Returns
         -------
@@ -767,7 +767,7 @@ class Proxy:
         return stats
 
     async def get_wazuh_backend_server_connections(self) -> dict:
-        """Returns the active connections of the Wazuh backend server.
+        """Get the active connections of the Wazuh backend server.
 
         Returns
         -------
