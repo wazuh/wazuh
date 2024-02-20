@@ -11,5 +11,3 @@
             elements:
               - sqs_name:
                   value: SQS_NAME
-              - aws_profile:
-                  value: qa

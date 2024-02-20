@@ -23,7 +23,12 @@ from wazuh_testing.modules.aws.utils import (
     delete_s3_db,
     delete_services_db,
     upload_bucket_file,
-    generate_file
+    generate_file,
+    create_sqs_queue,
+    get_sqs_queue_arn,
+    set_sqs_policy,
+    set_bucket_event_notification_configuration,
+    delete_sqs_queue
 )
 from wazuh_testing.utils.services import control_service
 
@@ -117,6 +122,39 @@ def log_groups_manager():
             })
 
 
+@pytest.fixture(scope="session", autouse=True)
+def sqs_manager():
+    """Initializes a set to manage the creation and deletion of the sqs queues used throughout the test session.
+
+    Yields
+    ------
+    buckets : set
+        Set of SQS queues
+    """
+    # Create buckets set
+    sqs_queues: set = set()
+
+    yield sqs_queues
+
+    # Delete all resources created during execution
+    for sqs in sqs_queues:
+        try:
+            delete_sqs_queue(bucket_name=sqs)
+        except ClientError as error:
+            logger.warning({
+                "message": "Client error deleting sqs queue, delete manually",
+                "resource_name": sqs,
+                "error": str(error)
+            })
+
+        except Exception as error:
+            logger.warning({
+                "message": "Broad error deleting sqs queue, delete manually",
+                "resource_name": sqs,
+                "error": str(error)
+            })
+
+
 """S3 fixtures"""
 
 
@@ -200,7 +238,7 @@ def upload_file_to_bucket(metadata: dict):
             "filename": filename,
             "error": str(error)
         })
-        pass
+        raise error
 
     except Exception as error:
         logger.error({
@@ -209,7 +247,7 @@ def upload_file_to_bucket(metadata: dict):
             "filename": filename,
             "error": str(error)
         })
-        pass
+        raise error
 
 
 """CloudWatch fixtures"""
@@ -347,6 +385,58 @@ def create_test_events(metadata: dict):
             "error": str(error)
         })
         pass
+
+
+"""SQS fixtures"""
+
+
+@pytest.fixture
+def set_test_sqs_queue(metadata: dict, sqs_manager):
+    """Create a test sqs group
+
+    Parameters
+    ----------
+    metadata : dict
+        The metadata for the sqs queue.
+    sqs_manager: fixture
+        The SQS set for the test.
+
+    Returns
+    -------
+    """
+    # Get bucket name
+    bucket_name = metadata["bucket_name"]
+    # Get SQS name
+    sqs_name = metadata["sqs_name"]
+
+    try:
+        # Create SQS and get URL
+        sqs_queue_url = create_sqs_queue(sqs_name=sqs_name)
+        # Add it to sqs set
+        sqs_manager.add(sqs_queue_url)
+
+        # Get SQS Queue ARN
+        sqs_queue_arn = get_sqs_queue_arn(sqs_url=sqs_queue_url)
+
+        # Set policy
+        set_sqs_policy(bucket_name=bucket_name,
+                       sqs_queue_url=sqs_queue_url,
+                       sqs_queue_arn=sqs_queue_arn)
+
+        # Set bucket notification configuration
+        set_bucket_event_notification_configuration(bucket_name=bucket_name,
+                                                    sqs_queue_arn=sqs_queue_arn)
+
+    except ClientError as error:
+        # Check if the sqs exist
+        if error.response['Error']['Code'] == 'ResourceNotFound':
+            logger.error(f"SQS Queue {sqs_name} already exists")
+            pass
+        else:
+            raise error
+
+    except Exception as error:
+        raise error
 
 
 """DB fixtures"""

@@ -82,7 +82,7 @@ class TestConfigurator:
         parameters, self._metadata, self._cases_ids = get_test_cases_data(cases_yaml_path)
 
         # Modify original data to include session information
-        self._modify_raw_data(parameters=parameters)
+        self._modify_metadata(parameters=parameters)
 
         # Set test configuration template for tests with config files
         self._load_configuration_template(configuration_file=configuration_file,
@@ -108,7 +108,7 @@ class TestConfigurator:
                 self._metadata
             )
 
-    def _modify_raw_data(self, parameters: list) -> None:
+    def _modify_metadata(self, parameters: list) -> None:
         """Modify raw data to add test session information
 
         Params
@@ -118,18 +118,25 @@ class TestConfigurator:
         """
         # Add Suffix (_todelete) to alert a safe deletion of resource in case of errors.
         suffix = f"-{self._session_id}-todelete"
+
+        # Add suffix to metadata
         for param, data in zip(parameters, self._metadata):
             try:
-                if param["RESOURCE_TYPE"] == "bucket":
-                    param["BUCKET_NAME"] += suffix
-                    data["bucket_name"] += suffix
+                if "sqs_name" in data:
+                    data["sqs_name"] += suffix
+                    param["SQS_NAME"] += suffix
 
-                elif param["RESOURCE_TYPE"] == "log_stream":
-                    param["LOG_STREAM_NAME"] += suffix
-                    data["LOG_STREAM_NAME"] += suffix
+                if data["resource_type"] == "bucket":
+                    data["bucket_name"] += suffix
+                    if "BUCKET_NAME" in param:
+                        param["BUCKET_NAME"] += suffix
+
+                elif data["resource_type"] == "log_group":
+                    param["LOG_GROUP_NAME"] += suffix
+                    data["log_group_name"] += suffix
+
             except KeyError:
                 raise
-
 
 
 # Instantiate configurator
