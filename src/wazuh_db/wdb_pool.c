@@ -31,7 +31,7 @@ void wdb_pool_init() {
 // Find a node in the pool by name.
 
 wdb_t * wdb_pool_get(const char * name) {
-   w_mutex_lock(&wdb_pool.mutex);
+    w_mutex_lock(&wdb_pool.mutex);
     wdb_t * node = rbtree_get(wdb_pool.nodes, name);
 
     if (node == NULL) {
@@ -94,6 +94,11 @@ void wdb_pool_clean() {
 
     for (int i = 0; keys[i]; i++) {
         wdb_t * node = rbtree_get(wdb_pool.nodes, keys[i]);
+
+        if (node == NULL) {
+            merror("Null node found when cleaning database files. This is a bug.");
+            continue;
+        }
 
         if (node->refcount == 0 && node->db == NULL) {
             wdb_destroy(node);
