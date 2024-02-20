@@ -135,8 +135,7 @@ def check_blocked_ip(request: Request):
             status=403,
             title="Permission Denied",
             detail="Limit of login attempts reached. The current IP has been blocked due "
-                    "to a high number of login attempts",
-            ext=ConnexionRequest.from_starlette_request(request))
+                    "to a high number of login attempts")
 
 
 def check_rate_limit(
