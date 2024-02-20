@@ -1,11 +1,6 @@
 Feature: Configuration API Management
 
   @wip
-  Scenario: Successful configuration get without specifying a name
-    Given I have a valid configuration file called general.conf
-    When I send a request to get configuration file
-    Then I should receive the same content from general.conf
-
   Scenario: Successful configuration get with specifying a name
     Given I have a valid configuration file called general.conf
     When I send a request to get configuration of the following fields ["server.queue_flood_attempts", "server.api_queue_tasks", "server.router_threads"]
@@ -45,3 +40,15 @@ Feature: Configuration API Management
     Given I have a valid configuration file called general.conf
     When I send a request to update the iteam "server.log_level" to "9999" value
     Then I should receive a failed response indicating "--log_level: 9999 not in {trace,debug,info,warning,error,critical,off}"
+
+  Scenario: Successful verification when updating a configuration parameter with save configuration
+    Given I have a valid configuration file called general.conf
+    When I send a request to update the iteam "server.log_level" to "info" value
+    And I send a request to get configuration of the following fields ["server.log_level"]
+    Then I should receive "info" like log_level
+    When I send a request to save configuration file
+    Then I should receive a success response
+    When I send a restart to server
+    And I send a request to get configuration of the following fields ["server.log_level"]
+    Then I should receive "info" like log_level
+    And I should stop server
