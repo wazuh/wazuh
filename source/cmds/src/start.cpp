@@ -491,7 +491,7 @@ void configure(CLI::App_p app)
     serverApp
         ->add_option("--router_threads", options->routerThreads, "Sets the number of threads to be used by the router.")
         ->default_val(ENGINE_ROUTER_THREADS)
-        ->check(CLI::PositiveNumber)
+        ->check(CLI::Range(1, 128))
         ->envname(ENGINE_ROUTER_THREADS_ENV);
 
     // Queue module
