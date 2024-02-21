@@ -117,6 +117,8 @@ void test_wdb_parse_global_substr_fail(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_open_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'error'");
@@ -140,6 +142,8 @@ void test_wdb_parse_global_sql_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_sql);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -175,6 +179,8 @@ void test_wdb_parse_global_sql_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_sql_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok [{\"test_field\":\"test_value\"}]");
@@ -205,6 +211,8 @@ void test_wdb_parse_global_sql_fail(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_sql_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -248,6 +256,8 @@ void test_wdb_parse_global_insert_agent_syntax_error(void **state)
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_agent_insert_agent);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'insert-agent'");
@@ -275,6 +285,8 @@ void test_wdb_parse_global_insert_agent_invalid_json(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_insert_agent_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid JSON syntax, near '{INVALID_JSON}'");
@@ -300,6 +312,8 @@ void test_wdb_parse_global_insert_agent_compliant_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_insert_agent_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -337,6 +351,8 @@ void test_wdb_parse_global_insert_agent_query_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_insert_agent_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
@@ -373,6 +389,8 @@ void test_wdb_parse_global_insert_agent_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_insert_agent_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok");
@@ -398,6 +416,8 @@ void test_wdb_parse_global_update_agent_name_syntax_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_agent_update_agent_name);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -426,6 +446,8 @@ void test_wdb_parse_global_update_agent_name_invalid_json(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_update_agent_name_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid JSON syntax, near '{INVALID_JSON}'");
@@ -451,6 +473,8 @@ void test_wdb_parse_global_update_agent_name_invalid_data(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_update_agent_name_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -482,6 +506,8 @@ void test_wdb_parse_global_update_agent_name_query_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_update_agent_name_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
@@ -510,6 +536,8 @@ void test_wdb_parse_global_update_agent_name_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_update_agent_name_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok");
@@ -535,6 +563,8 @@ void test_wdb_parse_global_update_agent_data_syntax_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_agent_update_agent_data);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -562,6 +592,8 @@ void test_wdb_parse_global_update_agent_data_invalid_json(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_update_agent_data_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -622,6 +654,8 @@ void test_wdb_parse_global_update_agent_data_query_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_update_agent_data_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
@@ -657,6 +691,8 @@ void test_wdb_parse_global_update_agent_data_invalid_data(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_update_agent_data_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -717,6 +753,8 @@ void test_wdb_parse_global_update_agent_data_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_update_agent_data_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok");
@@ -742,6 +780,8 @@ void test_wdb_parse_global_get_agent_labels_syntax_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_labels_get_labels);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -770,6 +810,8 @@ void test_wdb_parse_global_get_agent_labels_query_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_labels_get_labels_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -807,6 +849,8 @@ void test_wdb_parse_global_get_agent_labels_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_labels_get_labels_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok [{\"id\":1,\"key\":\"test_key\",\"value\":\"test_value\"}]");
@@ -833,6 +877,8 @@ void test_wdb_parse_global_update_agent_keepalive_syntax_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_agent_update_keepalive);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -861,6 +907,8 @@ void test_wdb_parse_global_update_agent_keepalive_invalid_json(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_update_keepalive_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid JSON syntax, near '{INVALID_JSON}'");
@@ -886,6 +934,8 @@ void test_wdb_parse_global_update_agent_keepalive_invalid_data(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_update_keepalive_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -919,6 +969,8 @@ void test_wdb_parse_global_update_agent_keepalive_query_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_update_keepalive_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
@@ -949,6 +1001,8 @@ void test_wdb_parse_global_update_agent_keepalive_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_update_keepalive_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok");
@@ -974,6 +1028,8 @@ void test_wdb_parse_global_update_connection_status_syntax_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_agent_update_connection_status);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -1002,6 +1058,8 @@ void test_wdb_parse_global_update_connection_status_invalid_json(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_update_connection_status_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid JSON syntax, near '{INVALID_JSON}'");
@@ -1027,6 +1085,8 @@ void test_wdb_parse_global_update_connection_status_invalid_data(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_update_connection_status_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -1061,6 +1121,8 @@ void test_wdb_parse_global_update_connection_status_query_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_update_connection_status_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
@@ -1092,6 +1154,8 @@ void test_wdb_parse_global_update_connection_status_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_update_connection_status_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok");
@@ -1117,6 +1181,8 @@ void test_wdb_parse_global_update_status_code_syntax_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_agent_update_status_code);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -1145,6 +1211,8 @@ void test_wdb_parse_global_update_status_code_invalid_json(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_update_status_code_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid JSON syntax, near '{INVALID_JSON}'");
@@ -1170,6 +1238,8 @@ void test_wdb_parse_global_update_status_code_invalid_data(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_update_status_code_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -1204,6 +1274,8 @@ void test_wdb_parse_global_update_status_code_query_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_update_status_code_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
@@ -1235,6 +1307,8 @@ void test_wdb_parse_global_update_status_code_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_update_status_code_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok");
@@ -1260,6 +1334,8 @@ void test_wdb_parse_global_delete_agent_syntax_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_agent_delete_agent);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -1289,6 +1365,8 @@ void test_wdb_parse_global_delete_agent_query_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_delete_agent_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Error deleting agent from agent table in global.db.");
@@ -1316,6 +1394,8 @@ void test_wdb_parse_global_delete_agent_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_delete_agent_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok");
@@ -1341,6 +1421,8 @@ void test_wdb_parse_global_select_agent_name_syntax_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_agent_select_agent_name);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -1369,6 +1451,8 @@ void test_wdb_parse_global_select_agent_name_query_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_select_agent_name_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -1401,6 +1485,8 @@ void test_wdb_parse_global_select_agent_name_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_select_agent_name_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok {\"name\":\"test_name\"}");
@@ -1426,6 +1512,8 @@ void test_wdb_parse_global_select_agent_group_syntax_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_agent_select_agent_group);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -1454,6 +1542,8 @@ void test_wdb_parse_global_select_agent_group_query_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_select_agent_group_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -1486,6 +1576,8 @@ void test_wdb_parse_global_select_agent_group_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_select_agent_group_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok {\"name\":\"test_name\"}");
@@ -1511,6 +1603,8 @@ void test_wdb_parse_global_find_agent_syntax_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_agent_find_agent);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -1539,6 +1633,8 @@ void test_wdb_parse_global_find_agent_invalid_json(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_find_agent_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid JSON syntax, near '{INVALID_JSON}'");
@@ -1564,6 +1660,8 @@ void test_wdb_parse_global_find_agent_invalid_data(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_find_agent_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -1594,6 +1692,8 @@ void test_wdb_parse_global_find_agent_query_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_find_agent_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -1627,6 +1727,8 @@ void test_wdb_parse_global_find_agent_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_find_agent_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok {\"id\":1}");
@@ -1652,6 +1754,8 @@ void test_wdb_parse_global_find_group_syntax_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_group_find_group);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -1680,6 +1784,8 @@ void test_wdb_parse_global_find_group_query_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_group_find_group_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -1712,6 +1818,8 @@ void test_wdb_parse_global_find_group_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_group_find_group_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok {\"id\":1}");
@@ -1737,6 +1845,8 @@ void test_wdb_parse_global_insert_agent_group_syntax_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_group_insert_agent_group);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -1766,6 +1876,8 @@ void test_wdb_parse_global_insert_agent_group_query_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_group_insert_agent_group_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Error inserting group in global.db.");
@@ -1793,6 +1905,8 @@ void test_wdb_parse_global_insert_agent_group_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_group_insert_agent_group_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok");
@@ -1818,6 +1932,8 @@ void test_wdb_parse_global_select_group_belong_syntax_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_belongs_select_group_belong);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -1846,6 +1962,8 @@ void test_wdb_parse_global_select_group_belong_query_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_belongs_select_group_belong_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -1877,6 +1995,8 @@ void test_wdb_parse_global_select_group_belong_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_belongs_select_group_belong_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok [\"default\",\"new_group\"]");
@@ -1902,6 +2022,8 @@ void test_wdb_parse_global_get_group_agents_syntax_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_belongs_get_group_agent);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -1929,6 +2051,8 @@ void test_wdb_parse_global_get_group_agents_group_missing(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_belongs_get_group_agent_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid arguments, group name not found.");
@@ -1955,6 +2079,8 @@ void test_wdb_parse_global_get_group_agents_last_id_missing(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_belongs_get_group_agent_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid arguments, 'last_id' not found.");
@@ -1980,6 +2106,8 @@ void test_wdb_parse_global_get_group_agents_last_id_value_missing(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_belongs_get_group_agent_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -2012,6 +2140,8 @@ void test_wdb_parse_global_get_group_agents_failed(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_belongs_get_group_agent_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Error getting group agents from global.db.");
@@ -2043,6 +2173,8 @@ void test_wdb_parse_global_get_group_agents_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_belongs_get_group_agent_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok [1,2,3]");
@@ -2068,6 +2200,8 @@ void test_wdb_parse_global_delete_group_syntax_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_group_delete_group);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -2097,6 +2231,8 @@ void test_wdb_parse_global_delete_group_query_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_group_delete_group_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Error deleting group in global.db.");
@@ -2123,6 +2259,8 @@ void test_wdb_parse_global_delete_group_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_group_delete_group_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -2152,6 +2290,8 @@ void test_wdb_parse_global_select_groups_query_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_group_select_groups_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -2184,6 +2324,8 @@ void test_wdb_parse_global_select_groups_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_group_select_groups_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok {\"id\":1,\"id\":2}");
@@ -2215,6 +2357,8 @@ void test_wdb_parse_global_sync_agent_info_get_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_sync_agent_info_get_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok {SYNC INFO}");
@@ -2243,6 +2387,8 @@ void test_wdb_parse_global_sync_agent_info_get_last_id_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_sync_agent_info_get_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -2278,6 +2424,8 @@ void test_wdb_parse_global_sync_agent_info_get_size_limit(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_sync_agent_info_get_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     char delims[] = " ";
@@ -2310,6 +2458,8 @@ void test_wdb_parse_global_sync_agent_info_set_syntax_error(void **state)
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_agent_sync_agent_info_set);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'sync-agent-info-set'");
@@ -2336,6 +2486,8 @@ void test_wdb_parse_global_sync_agent_info_set_invalid_json(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_sync_agent_info_set_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -2369,6 +2521,8 @@ void test_wdb_parse_global_sync_agent_info_set_query_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_sync_agent_info_set_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
@@ -2399,6 +2553,8 @@ void test_wdb_parse_global_sync_agent_info_set_id_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_sync_agent_info_set_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -2434,6 +2590,8 @@ void test_wdb_parse_global_sync_agent_info_set_del_label_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_sync_agent_info_set_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -2474,6 +2632,8 @@ void test_wdb_parse_global_sync_agent_info_set_set_label_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_sync_agent_info_set_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
@@ -2511,6 +2671,8 @@ void test_wdb_parse_global_sync_agent_info_set_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_sync_agent_info_set_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok");
@@ -2536,6 +2698,8 @@ void test_wdb_parse_global_set_agent_groups_syntax_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_agent_set_agent_groups);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -2564,6 +2728,8 @@ void test_wdb_parse_global_set_agent_groups_invalid_json(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_set_agent_groups_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid JSON syntax, near '{INVALID_JSON}'");
@@ -2590,6 +2756,8 @@ void test_wdb_parse_global_set_agent_groups_missing_field(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_set_agent_groups_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid JSON data, missing required fields");
@@ -2615,6 +2783,8 @@ void test_wdb_parse_global_set_agent_groups_invalid_mode(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_set_agent_groups_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -2645,6 +2815,8 @@ void test_wdb_parse_global_set_agent_groups_fail(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_set_agent_groups_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err An error occurred during the set of the groups");
@@ -2674,6 +2846,8 @@ void test_wdb_parse_global_set_agent_groups_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_set_agent_groups_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok");
@@ -2699,6 +2873,8 @@ void test_wdb_parse_global_sync_agent_groups_get_syntax_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_agent_sync_agent_groups_get);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -2726,6 +2902,8 @@ void test_wdb_parse_global_sync_agent_groups_get_invalid_json(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_sync_agent_groups_get_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -2767,6 +2945,8 @@ void test_wdb_parse_global_sync_agent_groups_without_condition_field_succes(void
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_sync_agent_groups_get_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok [{\"data\":[],\"hash\":\"random_hash\"}]");
@@ -2792,6 +2972,8 @@ void test_wdb_parse_global_sync_agent_groups_get_invalid_last_id_data_type(void 
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_sync_agent_groups_get_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -2819,6 +3001,8 @@ void test_wdb_parse_global_sync_agent_groups_get_invalid_last_id_negative(void *
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_sync_agent_groups_get_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid JSON data, invalid alternative fields data");
@@ -2844,6 +3028,8 @@ void test_wdb_parse_global_sync_agent_groups_get_invalid_condition_data_type(voi
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_sync_agent_groups_get_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -2871,6 +3057,8 @@ void test_wdb_parse_global_sync_agent_groups_get_invalid_set_synced_data_type(vo
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_sync_agent_groups_get_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid JSON data, invalid alternative fields data");
@@ -2896,6 +3084,8 @@ void test_wdb_parse_global_sync_agent_groups_get_invalid_get_hash_data_type(void
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_sync_agent_groups_get_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -2923,6 +3113,8 @@ void test_wdb_parse_global_sync_agent_groups_get_invalid_agent_registration_delt
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_sync_agent_groups_get_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid JSON data, invalid alternative fields data");
@@ -2948,6 +3140,8 @@ void test_wdb_parse_global_sync_agent_groups_get_invalid_agent_registration_delt
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_sync_agent_groups_get_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -2980,6 +3174,8 @@ void test_wdb_parse_global_sync_agent_groups_get_null_response(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_sync_agent_groups_get_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -3020,6 +3216,8 @@ void test_wdb_parse_global_sync_agent_groups_get_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_sync_agent_groups_get_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -3080,6 +3278,8 @@ void test_wdb_parse_global_sync_agent_groups_get_invalid_response(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_sync_agent_groups_get_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid response from wdb_global_sync_agent_groups_get");
@@ -3105,6 +3305,8 @@ void test_wdb_parse_global_get_groups_integrity_syntax_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_agent_get_groups_integrity);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -3132,6 +3334,8 @@ void test_wdb_parse_global_get_groups_integrity_hash_length_expected_fail(void *
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_get_groups_integrity_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -3161,6 +3365,8 @@ void test_wdb_parse_global_get_groups_integrity_query_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_get_groups_integrity_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Error getting groups integrity information from global.db.");
@@ -3188,6 +3394,8 @@ void test_wdb_parse_global_get_groups_integrity_success_syncreq(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_get_groups_integrity_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -3217,6 +3425,8 @@ void test_wdb_parse_global_get_groups_integrity_success_synced(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_get_groups_integrity_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok [\"synced\"]");
@@ -3245,6 +3455,8 @@ void test_wdb_parse_global_get_groups_integrity_success_hash_mismatch(void **sta
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_get_groups_integrity_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok [\"hash_mismatch\"]");
@@ -3270,6 +3482,8 @@ void test_wdb_parse_global_disconnect_agents_syntax_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_agent_disconnect_agents);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -3297,6 +3511,8 @@ void test_wdb_parse_global_disconnect_agents_last_id_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_disconnect_agents_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid arguments last id not found");
@@ -3323,6 +3539,8 @@ void test_wdb_parse_global_disconnect_agents_keepalive_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_disconnect_agents_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid arguments keepalive not found");
@@ -3348,6 +3566,8 @@ void test_wdb_parse_global_disconnect_agents_sync_status_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_disconnect_agents_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -3383,6 +3603,8 @@ void test_wdb_parse_global_disconnect_agents_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_disconnect_agents_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok [{\"id\":10}]");
@@ -3409,6 +3631,8 @@ void test_wdb_parse_global_get_all_agents_syntax_error(void **state)
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_agent_get_all_agents);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'get-all-agents'");
@@ -3434,6 +3658,9 @@ void test_wdb_parse_global_get_all_agents_argument_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_get_all_agents_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid arguments 'last_id' not found");
@@ -3459,6 +3686,8 @@ void test_wdb_parse_global_get_all_agents_argument2_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_get_all_agents_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -3492,6 +3721,8 @@ void test_wdb_parse_global_get_all_agents_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_get_all_agents_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok [{\"id\":10}]");
@@ -3517,6 +3748,8 @@ void test_wdb_parse_global_get_agent_info_syntax_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_agent_get_agent_info);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -3545,6 +3778,8 @@ void test_wdb_parse_global_get_agent_info_query_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_get_agent_info_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -3577,6 +3812,8 @@ void test_wdb_parse_global_get_agent_info_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_get_agent_info_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok {\"name\":\"test_name\"}");
@@ -3602,6 +3839,8 @@ void test_wdb_parse_reset_agents_connection_syntax_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_agent_reset_agents_connection);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -3632,6 +3871,8 @@ void test_wdb_parse_reset_agents_connection_query_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_reset_agents_connection_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot execute Global database query; ERROR MESSAGE");
@@ -3659,6 +3900,8 @@ void test_wdb_parse_reset_agents_connection_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_reset_agents_connection_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok");
@@ -3684,6 +3927,8 @@ void test_wdb_parse_global_get_agents_by_connection_status_syntax_error(void **s
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_agent_get_agents_by_connection_status);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -3711,6 +3956,8 @@ void test_wdb_parse_global_get_agents_by_connection_status_status_error(void **s
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_get_agents_by_connection_status_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid arguments 'connection_status' not found");
@@ -3737,6 +3984,8 @@ void test_wdb_parse_global_get_agents_by_connection_status_last_id_error(void **
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_get_agents_by_connection_status_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid arguments 'last_id' not found");
@@ -3762,6 +4011,8 @@ void test_wdb_parse_global_get_agents_by_connection_status_limit_error(void **st
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_get_agents_by_connection_status_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -3799,6 +4050,8 @@ void test_wdb_parse_global_get_agents_by_connection_status_limit_succes(void **s
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_get_agents_by_connection_status_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok [{\"id\":10}]");
@@ -3833,6 +4086,8 @@ void test_wdb_parse_global_get_agents_by_connection_status_query_success(void **
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_get_agents_by_connection_status_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok [{\"id\":10}]");
@@ -3862,6 +4117,8 @@ void test_wdb_parse_global_get_agents_by_connection_status_query_fail(void **sta
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_get_agents_by_connection_status_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -3893,6 +4150,8 @@ void test_wdb_parse_global_get_backup_failed(void **state) {
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_backup_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     result = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot execute backup get command, unable to open 'backup/db' folder");
@@ -3923,6 +4182,8 @@ void test_wdb_parse_global_get_backup_success(void **state) {
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_backup_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     result = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok [\"global.db-backup-TIMESTAMP\"]");
@@ -3952,10 +4213,10 @@ void test_wdb_parse_global_restore_backup_invalid_syntax(void **state) {
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_backup);
     expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_backup_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     result = wdb_parse(query, data->output, 0);
 
@@ -3984,10 +4245,10 @@ void test_wdb_parse_global_restore_backup_success_missing_snapshot(void **state)
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_backup);
     expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_backup_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     result = wdb_parse(query, data->output, 0);
 
@@ -4016,10 +4277,10 @@ void test_wdb_parse_global_restore_backup_success_pre_restore_true(void **state)
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_backup);
     expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_backup_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     result = wdb_parse(query, data->output, 0);
 
@@ -4048,10 +4309,10 @@ void test_wdb_parse_global_restore_backup_success_pre_restore_false(void **state
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_backup);
     expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_backup_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     result = wdb_parse(query, data->output, 0);
 
@@ -4080,10 +4341,10 @@ void test_wdb_parse_global_restore_backup_success_pre_restore_missing(void **sta
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_backup);
     expect_function_call(__wrap_gettimeofday);
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_backup_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     result = wdb_parse(query, data->output, 0);
 
@@ -4121,6 +4382,8 @@ void test_wdb_parse_global_vacuum_commit_error(void **state) {
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_vacuum_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     result = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot end transaction");
@@ -4157,6 +4420,8 @@ void test_wdb_parse_global_vacuum_vacuum_error(void **state) {
 
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_vacuum_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     result = wdb_parse(query, data->output, 0);
 
@@ -4196,6 +4461,8 @@ void test_wdb_parse_global_vacuum_success_get_db_state_error(void **state) {
 
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_vacuum_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     result = wdb_parse(query, data->output, 0);
 
@@ -4239,6 +4506,8 @@ void test_wdb_parse_global_vacuum_success_update_vacuum_data_error(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_vacuum_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     result = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Vacuum performed, but last vacuum information couldn't be updated in the metadata table");
@@ -4279,6 +4548,8 @@ void test_wdb_parse_global_vacuum_success(void **state) {
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_vacuum_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     result = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok {\"fragmentation_after_vacuum\":10}");
@@ -4316,6 +4587,8 @@ void test_wdb_parse_global_get_fragmentation_db_state_error(void **state) {
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_get_fragmentation_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     result = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot get database fragmentation");
@@ -4351,6 +4624,8 @@ void test_wdb_parse_global_get_fragmentation_free_pages_error(void **state) {
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_get_fragmentation_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     result = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot get database fragmentation");
@@ -4383,6 +4658,8 @@ void test_wdb_parse_global_get_fragmentation_success(void **state) {
 
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_get_fragmentation_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     result = wdb_parse(query, data->output, 0);
 
@@ -4417,6 +4694,8 @@ void test_wdb_parse_global_get_distinct_agent_groups_success(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_get_distinct_groups_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok [\"GROUP INFO\"]");
@@ -4445,6 +4724,8 @@ void test_wdb_parse_global_get_distinct_agent_groups_success_with_last_hash(void
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_get_distinct_groups_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
@@ -4476,6 +4757,8 @@ void test_wdb_parse_global_get_distinct_agent_groups_result_null(void **state)
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_get_distinct_groups_time);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Error getting agent groups from global.db.");
@@ -4505,6 +4788,8 @@ void test_wdb_parse_global_get_distinct_agent_groups_result_null_with_last_hash(
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_get_distinct_groups_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 

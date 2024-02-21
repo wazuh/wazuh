@@ -271,17 +271,17 @@ int wdb_parse(char * input, char * output, int peer) {
             } else if (!wdb_global->enabled) {
                 mdebug2("Database disabled: %s/%s.db.", WDB2_DIR, WDB_GLOB_NAME);
                 snprintf(output, OS_MAXSTR + 1, "err DB global disabled.");
-                wdb_leave(wdb_global);
+                wdb_pool_leave(wdb_global);
                 return OS_INVALID;
             }
 
             if (wdb_global_agent_exists(wdb_global, agent_id) <= 0) {
                 mdebug2("No agent with id %s found.", sagent_id);
                 snprintf(output, OS_MAXSTR + 1, "err Agent not found");
-                wdb_leave(wdb_global);
+                wdb_pool_leave(wdb_global);
                 return OS_INVALID;
             }
-            wdb_leave(wdb_global);
+            wdb_pool_leave(wdb_global);
         }
 
         gettimeofday(&begin, 0);
@@ -598,10 +598,7 @@ int wdb_parse(char * input, char * output, int peer) {
             }
         } else if (strcmp(query, "remove") == 0) {
             w_inc_agent_remove();
-            wdb_leave(wdb);
             snprintf(output, OS_MAXSTR + 1, "ok");
-
-            rwlock_lock_write(&pool_mutex);
 
             gettimeofday(&begin, 0);
             if (wdb_close(wdb, FALSE) < 0) {
@@ -609,6 +606,9 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Cannot close database");
                 result = OS_INVALID;
             }
+
+            wdb_pool_leave(wdb);
+
             if (wdb_remove_database(sagent_id) < 0) {
                 snprintf(output, OS_MAXSTR + 1, "err Cannot remove database");
                 result = OS_INVALID;
@@ -617,7 +617,6 @@ int wdb_parse(char * input, char * output, int peer) {
             timersub(&end, &begin, &diff);
             w_inc_agent_remove_time(diff);
 
-            rwlock_unlock(&pool_mutex);
             return result;
         } else if (strcmp(query, "begin") == 0) {
             w_inc_agent_begin();
@@ -647,10 +646,7 @@ int wdb_parse(char * input, char * output, int peer) {
             w_inc_agent_commit_time(diff);
         } else if (strcmp(query, "close") == 0) {
             w_inc_agent_close();
-            wdb_leave(wdb);
             snprintf(output, OS_MAXSTR + 1, "ok");
-
-            rwlock_lock_write(&pool_mutex);
 
             gettimeofday(&begin, 0);
             if (wdb_close(wdb, TRUE) < 0) {
@@ -658,11 +654,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Cannot close database");
                 result = OS_INVALID;
             }
+            wdb_pool_leave(wdb);
             gettimeofday(&end, 0);
             timersub(&end, &begin, &diff);
             w_inc_agent_close_time(diff);
 
-            rwlock_unlock(&pool_mutex);
             return result;
         } else if (strncmp(query, "syscollector_", 7) == 0) {
             if (!next) {
@@ -750,13 +746,29 @@ int wdb_parse(char * input, char * output, int peer) {
             gettimeofday(&end, 0);
             timersub(&end, &begin, &diff);
             w_inc_agent_get_fragmentation_time(diff);
+        } else if (strcmp(query, "sleep") == 0) {
+            unsigned long delay_ms;
+            w_inc_agent_sleep();
+            gettimeofday(&begin, 0);
+            if (!next || (delay_ms = strtoul(next, NULL, 10)) == ULONG_MAX) {
+                mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
+                mdebug2("DB(%s) query error near: %s", sagent_id, query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                w_time_delay(delay_ms);
+                snprintf(output, OS_MAXSTR + 1, "ok ");
+            }
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_agent_sleep_time(diff);
         } else {
             mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
             mdebug2("DB(%s) query error near: %s", sagent_id, query);
             snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
             result = OS_INVALID;
         }
-        wdb_leave(wdb);
+        wdb_pool_leave(wdb);
         return result;
     } else if (strcmp(actor, "wazuhdb") == 0) {
         query = next;
@@ -808,7 +820,7 @@ int wdb_parse(char * input, char * output, int peer) {
             mdebug1("Invalid DB query syntax.");
             mdebug2("DB query error near: %s", query);
             snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-            wdb_leave(wdb);
+            wdb_pool_leave(wdb);
             return OS_INVALID;
         }
         *next++ = '\0';
@@ -846,7 +858,7 @@ int wdb_parse(char * input, char * output, int peer) {
             snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
             result = OS_INVALID;
         }
-        wdb_leave(wdb);
+        wdb_pool_leave(wdb);
         return result;
     } else if (strcmp(actor, "global") == 0) {
         query = next;
@@ -866,7 +878,7 @@ int wdb_parse(char * input, char * output, int peer) {
         } else if (!wdb->enabled) {
             mdebug2("Database disabled: %s/%s.db.", WDB2_DIR, WDB_GLOB_NAME);
             snprintf(output, OS_MAXSTR + 1, "err DB global disabled.");
-            wdb_leave(wdb);
+            wdb_pool_leave(wdb);
             gettimeofday(&end, 0);
             timersub(&end, &begin, &diff);
             w_inc_global_open_time(diff);
@@ -1368,13 +1380,29 @@ int wdb_parse(char * input, char * output, int peer) {
             gettimeofday(&end, 0);
             timersub(&end, &begin, &diff);
             w_inc_global_get_fragmentation_time(diff);
+        } else if (strcmp(query, "sleep") == 0) {
+            unsigned long delay_ms;
+            w_inc_global_sleep();
+            gettimeofday(&begin, 0);
+            if (!next || (delay_ms = strtoul(next, NULL, 10)) == ULONG_MAX) {
+                mdebug1("Global DB Invalid DB query syntax.");
+                mdebug2("Global DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = OS_INVALID;
+            } else {
+                w_time_delay(delay_ms);
+                snprintf(output, OS_MAXSTR + 1, "ok ");
+            }
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_global_sleep_time(diff);
         } else {
             mdebug1("Invalid DB query syntax.");
             mdebug2("Global DB query error near: %s", query);
             snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
             result = OS_INVALID;
         }
-        wdb_leave(wdb);
+        wdb_pool_leave(wdb);
         return result;
     } else if (strcmp(actor, "task") == 0) {
         cJSON *parameters_json = NULL;
@@ -1397,7 +1425,7 @@ int wdb_parse(char * input, char * output, int peer) {
             mdebug1("Invalid DB query syntax.");
             mdebug2("DB query error near: %s", query);
             snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-            wdb_leave(wdb);
+            wdb_pool_leave(wdb);
             return OS_INVALID;
         }
 
@@ -1409,14 +1437,14 @@ int wdb_parse(char * input, char * output, int peer) {
                 mdebug1("Task DB Invalid DB query syntax.");
                 mdebug2("Task DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                wdb_leave(wdb);
+                wdb_pool_leave(wdb);
                 return OS_INVALID;
             }
 
             // Detect parameters
             if (parameters_json = cJSON_ParseWithOpts(next, &json_err, 0), !parameters_json) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid command parameters, near '%.32s'", next);
-                wdb_leave(wdb);
+                wdb_pool_leave(wdb);
                 return OS_INVALID;
             }
 
@@ -1433,14 +1461,14 @@ int wdb_parse(char * input, char * output, int peer) {
                 mdebug1("Task DB Invalid DB query syntax.");
                 mdebug2("Task DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                wdb_leave(wdb);
+                wdb_pool_leave(wdb);
                 return OS_INVALID;
             }
 
             // Detect parameters
             if (parameters_json = cJSON_ParseWithOpts(next, &json_err, 0), !parameters_json) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid command parameters, near '%.32s'", next);
-                wdb_leave(wdb);
+                wdb_pool_leave(wdb);
                 return OS_INVALID;
             }
 
@@ -1457,14 +1485,14 @@ int wdb_parse(char * input, char * output, int peer) {
                 mdebug1("Task DB Invalid DB query syntax.");
                 mdebug2("Task DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                wdb_leave(wdb);
+                wdb_pool_leave(wdb);
                 return OS_INVALID;
             }
 
             // Detect parameters
             if (parameters_json = cJSON_ParseWithOpts(next, &json_err, 0), !parameters_json) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid command parameters, near '%.32s'", next);
-                wdb_leave(wdb);
+                wdb_pool_leave(wdb);
                 return OS_INVALID;
             }
 
@@ -1481,14 +1509,14 @@ int wdb_parse(char * input, char * output, int peer) {
                 mdebug1("Task DB Invalid DB query syntax.");
                 mdebug2("Task DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                wdb_leave(wdb);
+                wdb_pool_leave(wdb);
                 return OS_INVALID;
             }
 
             // Detect parameters
             if (parameters_json = cJSON_ParseWithOpts(next, &json_err, 0), !parameters_json) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid command parameters, near '%.32s'", next);
-                wdb_leave(wdb);
+                wdb_pool_leave(wdb);
                 return OS_INVALID;
             }
 
@@ -1505,14 +1533,14 @@ int wdb_parse(char * input, char * output, int peer) {
                 mdebug1("Task DB Invalid DB query syntax.");
                 mdebug2("Task DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                wdb_leave(wdb);
+                wdb_pool_leave(wdb);
                 return OS_INVALID;
             }
 
             // Detect parameters
             if (parameters_json = cJSON_ParseWithOpts(next, &json_err, 0), !parameters_json) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid command parameters, near '%.32s'", next);
-                wdb_leave(wdb);
+                wdb_pool_leave(wdb);
                 return OS_INVALID;
             }
 
@@ -1529,14 +1557,14 @@ int wdb_parse(char * input, char * output, int peer) {
                 mdebug1("Task DB Invalid DB query syntax.");
                 mdebug2("Task DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                wdb_leave(wdb);
+                wdb_pool_leave(wdb);
                 return OS_INVALID;
             }
 
             // Detect parameters
             if (parameters_json = cJSON_ParseWithOpts(next, &json_err, 0), !parameters_json) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid command parameters, near '%.32s'", next);
-                wdb_leave(wdb);
+                wdb_pool_leave(wdb);
                 return OS_INVALID;
             }
 
@@ -1553,14 +1581,14 @@ int wdb_parse(char * input, char * output, int peer) {
                 mdebug1("Task DB Invalid DB query syntax.");
                 mdebug2("Task DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                wdb_leave(wdb);
+                wdb_pool_leave(wdb);
                 return OS_INVALID;
             }
 
             // Detect parameters
             if (parameters_json = cJSON_ParseWithOpts(next, &json_err, 0), !parameters_json) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid command parameters, near '%.32s'", next);
-                wdb_leave(wdb);
+                wdb_pool_leave(wdb);
                 return OS_INVALID;
             }
 
@@ -1577,14 +1605,14 @@ int wdb_parse(char * input, char * output, int peer) {
                 mdebug1("Task DB Invalid DB query syntax.");
                 mdebug2("Task DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                wdb_leave(wdb);
+                wdb_pool_leave(wdb);
                 return OS_INVALID;
             }
 
             // Detect parameters
             if (parameters_json = cJSON_ParseWithOpts(next, &json_err, 0), !parameters_json) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid command parameters, near '%.32s'", next);
-                wdb_leave(wdb);
+                wdb_pool_leave(wdb);
                 return OS_INVALID;
             }
 
@@ -1628,7 +1656,7 @@ int wdb_parse(char * input, char * output, int peer) {
             snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
             result = OS_INVALID;
         }
-        wdb_leave(wdb);
+        wdb_pool_leave(wdb);
         return result;
     } else {
         mdebug1("DB(%s) Invalid DB query actor: %s", sagent_id, actor);
@@ -6221,9 +6249,7 @@ int wdb_parse_global_backup(wdb_t** wdb, char* input, char* output) {
     }
     else if (strcmp(next, "restore") == 0) {
         // During a restore, the global wdb_t pointer may change. The mutex prevents anyone else from accesing it
-        rwlock_lock_write(&pool_mutex);
         result = wdb_parse_global_restore_backup(wdb, tail, output);
-        rwlock_unlock(&pool_mutex);
     }
     else {
         snprintf(output, OS_MAXSTR + 1, "err Invalid backup action: %s", next);
