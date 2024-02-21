@@ -65,15 +65,24 @@ SemParser getSemParser(const std::string& targetField)
     };
 }
 
+template<class T>
 syntax::Parser getSynParser()
 {
     using namespace syntax::combinators;
     using namespace syntax::parsers;
 
-    const auto synP = opt(char_('-')) & many1(digit()) & opt(char_('.')) & many(digit())
-                      & opt(char_('e') & (char_('+') | char_('-')) & many1(digit()));
-
-    return synP;
+    if constexpr (std::is_integral_v<T>)
+    {
+        // For int types exclude the possibility of scientific notation
+        const auto synP = opt(char_('-')) & many1(digit()) & opt(char_('.')) & many(digit());
+        return synP;
+    }
+    else
+    {
+        const auto synP = opt(char_('-')) & many1(digit()) & opt(char_('.')) & many(digit())
+                          & opt((char_('e') | char_('E')) & (char_('+') | char_('-')) & many1(digit()));
+        return synP;
+    }
 }
 } // namespace
 
@@ -88,7 +97,7 @@ Parser getNumericParser(const Params& params)
         throw std::runtime_error("numeric parser doesn't accept parameters");
     }
 
-    const auto synP = getSynParser();
+    const auto synP = getSynParser<T>();
     const auto targetPath = params.targetField.empty() ? "" : params.targetField;
     const auto semP = getSemParser<T>(targetPath);
 
