@@ -34,6 +34,11 @@ CREATE TABLE IF NOT EXISTS fim_entry (
 CREATE INDEX IF NOT EXISTS fim_full_path_index ON fim_entry (full_path);
 CREATE INDEX IF NOT EXISTS fim_file_index ON fim_entry (file);
 CREATE INDEX IF NOT EXISTS fim_date_index ON fim_entry (date);
+CREATE INDEX IF NOT EXISTS fim_type_full_path_index ON fim_entry (type, full_path);
+CREATE INDEX IF NOT EXISTS fim_type_file_index ON fim_entry (type, file);
+CREATE INDEX IF NOT EXISTS fim_type_full_path_checksum_index ON fim_entry(type,full_path,checksum);
+CREATE INDEX IF NOT EXISTS fim_type_file_checksum_index ON fim_entry(type,file,checksum);
+
 
 CREATE TABLE IF NOT EXISTS pm_event (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -397,7 +402,7 @@ CREATE INDEX IF NOT EXISTS cve_status ON vuln_cves (status);
 
 BEGIN;
 
-INSERT INTO metadata (key, value) VALUES ('db_version', '12');
+INSERT INTO metadata (key, value) VALUES ('db_version', '13');
 INSERT INTO scan_info (module) VALUES ('fim');
 INSERT INTO scan_info (module) VALUES ('syscollector');
 INSERT INTO sync_info (component) VALUES ('fim');
