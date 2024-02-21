@@ -118,7 +118,7 @@ protected:
             }
 
             const auto& data {rawMetadata.at(key)};
-            if (data.is_null() || (data.is_string() && data.empty()))
+            if (data.is_null() || (data.is_string() && data.get_ref<const std::string&>().empty()))
             {
                 throw std::runtime_error {"Null or empty CTI metadata value for key: " + key};
             }

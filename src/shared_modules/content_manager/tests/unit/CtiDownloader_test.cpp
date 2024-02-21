@@ -365,3 +365,34 @@ TEST_F(CtiDownloaderTest, BaseParametersDownloadMetadataMissingLastOffsetKey)
     expectedData["offset"] = 0;
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 }
+
+/**
+ * @brief Tests the download of metadata with an empty last_snapshot_link key.
+ *
+ */
+TEST_F(CtiDownloaderTest, BaseParametersDownloadMetadataEmptyLastSnapshotLinkKey)
+{
+    auto mockMetadata = R"(
+        {
+            "data":
+            {
+                "ignored_key": true,
+                "last_snapshot_link": "",
+                "last_snapshot_offset": 50,
+                "last_offset": 100
+            }
+        }
+    )"_json.dump();
+    m_spFakeServer->setCtiMetadata(std::move(mockMetadata));
+
+    auto downloader {CtiDummyDownloader(HTTPRequest::instance())};
+    ASSERT_THROW(downloader.handleRequest(m_spUpdaterContext), std::runtime_error);
+
+    // Check expected data.
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
+    expectedData["stageStatus"] = FAIL_STATUS;
+    expectedData["type"] = CONTENT_TYPE;
+    expectedData["offset"] = 0;
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+}
