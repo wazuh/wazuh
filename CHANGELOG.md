@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.7.3]
 
+### Manager
+
+#### Fixed
+
+- Resolved a transitive mutex locking issue in wazuh-db that was impacting performance. ([#21997](https://github.com/wazuh/wazuh/pull/21997))
+- Wazuh DB internal SQL queries have been optimized by tuning database indexes to improve performance. ([#21977](https://github.com/wazuh/wazuh/pull/21977))
+
 
 ## [v4.7.2]
 
