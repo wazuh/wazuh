@@ -32,18 +32,19 @@ ALL_REGIONS = (
 RETRY_ATTEMPTS_KEY: str = "max_attempts"
 RETRY_MODE_CONFIG_KEY: str = "retry_mode"
 RETRY_MODE_BOTO_KEY: str = "mode"
+WAZUH_DEFAULT_RETRY_CONFIGURATION = {RETRY_ATTEMPTS_KEY: 10, RETRY_MODE_BOTO_KEY: 'standard'}
 
 # Enable/disable debug mode
 debug_level = 0
 
 
 def set_profile_dict_config(boto_config: dict, profile: str, profile_config: dict):
-    """Create a botocore.config.Config object with the specified profile and profile_config.
+    """Create a botocore.config.Config object with the specified profile_config.
 
     This function reads the profile configuration from the provided profile_config object and extracts the necessary
     parameters to create a botocore.config.Config object.
-    It handles the signature version, s3, proxies, and proxies_config settings found in the .aws/config file for the
-    specified profile. If a setting is not found, a default value is used based on the boto3 documentation and config is
+    It handles the signature version, s3, proxies, and proxies_config settings found in the .aws/config file.
+    If a setting is not found, a default value is used based on the boto3 documentation and config is
     set into the boto_config.
 
     Parameters
@@ -60,38 +61,56 @@ def set_profile_dict_config(boto_config: dict, profile: str, profile_config: dic
     profile = remove_prefix(profile, 'profile ')
 
     # Set s3 config
-    if f'{profile}.s3' in str(profile_config):
+    if 's3' in str(profile_config):
         s3_config = {
-            "max_concurrent_requests": int(profile_config.get(f'{profile}.s3.max_concurrent_requests', 10)),
-            "max_queue_size": int(profile_config.get(f'{profile}.s3.max_queue_size', 10)),
-            "multipart_threshold": profile_config.get(f'{profile}.s3.multipart_threshold', '8MB'),
-            "multipart_chunksize": profile_config.get(f'{profile}.s3.multipart_chunksize', '8MB'),
-            "max_bandwidth": profile_config.get(f'{profile}.s3.max_bandwidth'),
+            "max_concurrent_requests": int(profile_config.get('s3.max_concurrent_requests', 10)),
+            "max_queue_size": int(profile_config.get('s3.max_queue_size', 10)),
+            "multipart_threshold": profile_config.get('s3.multipart_threshold', '8MB'),
+            "multipart_chunksize": profile_config.get('s3.multipart_chunksize', '8MB'),
+            "max_bandwidth": profile_config.get('s3.max_bandwidth'),
             "use_accelerate_endpoint": (
-                True if profile_config.get(f'{profile}.s3.use_accelerate_endpoint') == 'true' else False
+                True if profile_config.get('s3.use_accelerate_endpoint') == 'true' else False
             ),
-            "addressing_style": profile_config.get(f'{profile}.s3.addressing_style', 'auto'),
+            "addressing_style": profile_config.get('s3.addressing_style', 'auto'),
         }
         boto_config['config'].s3 = s3_config
 
     # Set Proxies configuration
-    if f'{profile}.proxy' in str(profile_config):
+    if 'proxy' in str(profile_config):
         proxy_config = {
-            "host": profile_config.get(f'{profile}.proxy.host'),
-            "port": int(profile_config.get(f'{profile}.proxy.port')),
-            "username": profile_config.get(f'{profile}.proxy.username'),
-            "password": profile_config.get(f'{profile}.proxy.password'),
+            "host": profile_config.get('proxy.host'),
+            "port": int(profile_config.get('proxy.port')),
+            "username": profile_config.get('proxy.username'),
+            "password": profile_config.get('proxy.password'),
         }
         boto_config['config'].proxies = proxy_config
 
         proxies_config = {
-            "ca_bundle": profile_config.get(f'{profile}.proxy.ca_bundle'),
-            "client_cert": profile_config.get(f'{profile}.proxy.client_cert'),
+            "ca_bundle": profile_config.get('proxy.ca_bundle'),
+            "client_cert": profile_config.get('proxy.client_cert'),
             "use_forwarding_for_https": (
-                True if profile_config.get(f'{profile}.proxy.use_forwarding_for_https') == 'true' else False
+                True if profile_config.get('proxy.use_forwarding_for_https') == 'true' else False
             )
         }
         boto_config['config'].proxies_config = proxies_config
+    
+    # Checks for retries config in profile config and sets it if not found to avoid throttling exception
+    if RETRY_ATTEMPTS_KEY in profile_config or RETRY_MODE_CONFIG_KEY in profile_config:
+        retries = {
+            RETRY_ATTEMPTS_KEY: int(profile_config.get(RETRY_ATTEMPTS_KEY, 10)),
+            RETRY_MODE_BOTO_KEY: profile_config.get(RETRY_MODE_CONFIG_KEY, 'standard')
+        }
+        debug(f"Retries parameters found in user profile. Using profile '{profile}' retries configuration", 2)
+        boto_config['config'].retries = retries
+
+    else:
+        debug(
+            "No retries configuration found in profile config. Generating default configuration for retries: mode: "
+            f"{boto_config['config'].retries['mode']} - max_attempts: {boto_config['config'].retries['max_attempts']}",
+            2)
+
+    # Set signature version
+    boto_config['config'].signature_version = profile_config.get('signature_version', 's3v4')
 
 
 def remove_prefix(text: str, prefix: str) -> str:

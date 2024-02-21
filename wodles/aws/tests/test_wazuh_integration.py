@@ -51,13 +51,12 @@ def test_wazuh_integration_initializes_properly(mock_version, mock_path, mock_cl
                                                                  tzinfo=timezone.utc)
 
 
-@patch('wazuh_integration.botocore')
 @pytest.mark.parametrize('file_exists, options, retry_attempts, retry_mode',
                          [(True, [aws_tools.RETRY_ATTEMPTS_KEY, aws_tools.RETRY_MODE_BOTO_KEY], 5, 'standard'),
                           (True, ['other_option'], None, None),
                           (False, None, None, None)]
                          )
-def test_default_config(mock_botocore, file_exists, options, retry_attempts, retry_mode):
+def test_default_config(file_exists, options, retry_attempts, retry_mode):
     """Test if `default_config` function returns the Wazuh default Retry configuration if there is no user-defined
     configuration.
 
@@ -77,8 +76,7 @@ def test_default_config(mock_botocore, file_exists, options, retry_attempts, ret
     profile = utils.TEST_AWS_PROFILE
     with patch('wazuh_integration.path.exists', return_value=file_exists):
         if file_exists:
-            with patch('aws_tools.get_aws_config_params') as mock_config, \
-                    patch('aws_tools.set_profile_dict_config'):
+            with patch('aws_tools.get_aws_config_params') as mock_config:
                 mock_config.options(profile).return_value = options
                 profile_config = {option: mock_config.get(profile, option) for option in mock_config.options(profile)}
 
@@ -86,20 +84,17 @@ def test_default_config(mock_botocore, file_exists, options, retry_attempts, ret
 
             if aws_tools.RETRY_ATTEMPTS_KEY in profile_config or aws_tools.RETRY_MODE_CONFIG_KEY in profile_config:
                 retries = {
-                        aws_tools.RETRY_ATTEMPTS_KEY: retry_attempts,
-                        aws_tools.RETRY_MODE_BOTO_KEY: retry_mode
-                    }
+                    aws_tools.RETRY_ATTEMPTS_KEY: retry_attempts,
+                    aws_tools.RETRY_MODE_BOTO_KEY: retry_mode
+                }
             else:
-                retries = wazuh_integration.WAZUH_DEFAULT_RETRY_CONFIGURATION
+                retries = aws_tools.WAZUH_DEFAULT_RETRY_CONFIGURATION
 
             assert config['config'].retries == retries
         else:
             config = wazuh_integration.WazuhIntegration.default_config(profile=utils.TEST_AWS_PROFILE)
-
-            mock_botocore.config.Config.assert_called_with(retries=wazuh_integration.WAZUH_DEFAULT_RETRY_CONFIGURATION)
             assert 'config' in config
-            assert config['config'] == mock_botocore.config.Config(
-                retries=wazuh_integration.WAZUH_DEFAULT_RETRY_CONFIGURATION)
+            assert config['config'].retries == aws_tools.WAZUH_DEFAULT_RETRY_CONFIGURATION
 
 
 @pytest.mark.parametrize('access_key, secret_key, profile', [

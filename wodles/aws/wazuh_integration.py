@@ -34,7 +34,6 @@ import utils
 DEPRECATED_TABLES = {'log_progress', 'trail_progress'}
 DEFAULT_GOV_REGIONS = {'us-gov-east-1', 'us-gov-west-1'}
 SERVICES_REQUIRING_REGION = {'inspector', 'cloudwatchlogs'}
-WAZUH_DEFAULT_RETRY_CONFIGURATION = {aws_tools.RETRY_ATTEMPTS_KEY: 10, aws_tools.RETRY_MODE_BOTO_KEY: 'standard'}
 MESSAGE_HEADER = "1:Wazuh-AWS:"
 
 
@@ -114,16 +113,14 @@ class WazuhIntegration:
             configparser error when given profile does not exist in user config file.
         """
         args = {}
+        args['config'] = botocore.config.Config(retries=aws_tools.WAZUH_DEFAULT_RETRY_CONFIGURATION)
 
         if path.exists(aws_tools.DEFAULT_AWS_CONFIG_PATH):
-            # Create boto Config object
-            args['config'] = botocore.config.Config()
-
             # Get User Aws Config
             aws_config = aws_tools.get_aws_config_params()
 
             # Set profile
-            if profile is not None:
+            if profile is not None and profile != 'default':
                 if profile not in aws_config.sections():
                     profile = f"profile {profile}"
             else:
@@ -139,32 +136,6 @@ class WazuhIntegration:
 
             # Map Primary Botocore Config parameters with profile config file
             try:
-                # Checks for retries config in profile config and sets it if not found to avoid throttling exception
-                if aws_tools.RETRY_ATTEMPTS_KEY in profile_config \
-                        or aws_tools.RETRY_MODE_CONFIG_KEY in profile_config:
-                    retries = {
-                        aws_tools.RETRY_ATTEMPTS_KEY: int(profile_config.get(aws_tools.RETRY_ATTEMPTS_KEY, 10)),
-                        aws_tools.RETRY_MODE_BOTO_KEY: profile_config.get(aws_tools.RETRY_MODE_CONFIG_KEY, 'standard')
-                    }
-                    aws_tools.debug(
-                        f"Retries parameters found in user profile. Using profile '{profile}' retries configuration",
-                        2)
-
-                else:
-                    # Set retry config
-                    retries = copy.deepcopy(WAZUH_DEFAULT_RETRY_CONFIGURATION)
-                    aws_tools.debug(
-                        "No retries configuration found in profile config. Generating default configuration for "
-                        f"retries: mode: {retries['mode']} - max_attempts: {retries['max_attempts']}",
-                        2)
-
-                args['config'].retries = retries
-
-                # Set signature version
-                signature_version = profile_config.get('signature_version', 's3v4')
-                args['config'].signature_version = signature_version
-
-                # Set profile dictionaries configuration
                 aws_tools.set_profile_dict_config(boto_config=args,
                                                   profile=profile,
                                                   profile_config=profile_config)
@@ -176,8 +147,6 @@ class WazuhIntegration:
             aws_tools.debug(f"Created Config object using profile: '{profile}' configuration", 2)
 
         else:
-            # Set retries parameters to avoid a throttling exception
-            args['config'] = botocore.config.Config(retries=copy.deepcopy(WAZUH_DEFAULT_RETRY_CONFIGURATION))
             aws_tools.debug(
                 f"Generating default configuration for retries: {aws_tools.RETRY_MODE_BOTO_KEY} "
                 f"{args['config'].retries[aws_tools.RETRY_MODE_BOTO_KEY]} - "
