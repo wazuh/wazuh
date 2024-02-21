@@ -243,17 +243,26 @@ TEST_F(CtiOffsetDownloaderTest, DownloadInterrupted)
 }
 
 /**
- * @brief Tests the download of metadata with invalid JSON format.
+ * @brief Tests the download of the offsets when last_offset metadata is missing.
  *
  */
-TEST_F(CtiOffsetDownloaderTest, DownloadMetadataInvalidFormat)
+TEST_F(CtiOffsetDownloaderTest, MissingLastOffsetMetadata)
 {
-    auto mockMetadata = R"({data":{})";
+    auto mockMetadata = R"(
+        {
+            "data":
+            {
+                "ignored_key": true,
+                "last_snapshot_link": "some_link",
+                "last_snapshot_offset": 50
+            }
+        }
+    )"_json.dump();
     m_spFakeServer->setCtiMetadata(std::move(mockMetadata));
 
     ASSERT_THROW(m_spCtiOffsetDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
 
-    // Check expected data.
+    // Set expected data.
     nlohmann::json expectedData;
     expectedData["paths"] = m_spUpdaterContext->data.at("paths");
     expectedData["stageStatus"] = FAIL_STATUS;

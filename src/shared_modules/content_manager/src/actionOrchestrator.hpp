@@ -178,7 +178,14 @@ private:
         if (0 == spUpdaterContext->currentOffset && "cti-offset" == contentSource)
 
         {
-            runFullContentDownload(spUpdaterContext);
+            try
+            {
+                runFullContentDownload(spUpdaterContext);
+            }
+            catch (const std::exception e)
+            {
+                logWarn(WM_CONTENTUPDATER, "Couldn't run full content download: %s", e.what());
+            }
         }
 
         // Store last file hash.

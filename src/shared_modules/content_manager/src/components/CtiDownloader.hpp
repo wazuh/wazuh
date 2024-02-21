@@ -22,6 +22,7 @@
 #include <cmath>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -72,9 +73,9 @@ protected:
      */
     struct CtiBaseParameters
     {
-        int lastOffset {};               ///< Last available offset from CTI.
-        std::string lastSnapshotLink {}; ///< Last snapshot URL from CTI.
-        int lastSnapshotOffset {};       ///< Last offset within the last snapshot.
+        std::optional<int> lastOffset {};               ///< Last available offset from CTI.
+        std::optional<std::string> lastSnapshotLink {}; ///< Last snapshot URL from CTI.
+        std::optional<int> lastSnapshotOffset {};       ///< Last offset within the last snapshot.
     };
 
     /**
@@ -115,30 +116,35 @@ protected:
             return CtiBaseParameters();
         }
 
-        // Validate metadata.
-        for (const std::string& key : {"last_offset", "last_snapshot_link", "last_snapshot_offset"})
-        {
-            if (!rawMetadata.contains(key))
+        // Lambda that validates a metadata field.
+        const auto isKeyValueValid {
+            [&rawMetadata](const std::string& key)
             {
-                throw std::runtime_error {"Missing CTI metadata key: " + key};
-            }
+                if (!rawMetadata.contains(key))
+                {
+                    logWarn(WM_CONTENTUPDATER, "Missing CTI metadata key: %s", key.c_str());
+                    return false;
+                }
 
-            const auto& data {rawMetadata.at(key)};
-            if (data.is_null() || (data.is_string() && data.get_ref<const std::string&>().empty()))
-            {
-                throw std::runtime_error {"Null or empty CTI metadata value for key: " + key};
-            }
-        }
+                const auto& data {rawMetadata.at(key)};
+                if (data.is_null() || (data.is_string() && data.get_ref<const std::string&>().empty()))
+                {
+                    logWarn(WM_CONTENTUPDATER, "Null or empty CTI metadata value for key: %s", key.c_str());
+                    return false;
+                }
+
+                return true;
+            }};
 
         CtiBaseParameters parameters;
-        parameters.lastOffset = rawMetadata.at("last_offset").get<int>();
-        parameters.lastSnapshotLink = rawMetadata.at("last_snapshot_link").get<std::string>();
-        parameters.lastSnapshotOffset = rawMetadata.at("last_snapshot_offset").get<int>();
-
-        logDebug2(WM_CONTENTUPDATER, "CTI last offset: '%d'", parameters.lastOffset);
-        logDebug2(WM_CONTENTUPDATER, "CTI last snapshot link: '%s'", parameters.lastSnapshotLink.c_str());
-        logDebug2(WM_CONTENTUPDATER, "CTI snapshot last offset: '%d'", parameters.lastSnapshotOffset);
-
+        parameters.lastOffset =
+            isKeyValueValid("last_offset") ? std::optional(rawMetadata.at("last_offset").get<int>()) : std::nullopt;
+        parameters.lastSnapshotLink = isKeyValueValid("last_snapshot_link")
+                                          ? std::optional(rawMetadata.at("last_snapshot_link").get<std::string>())
+                                          : std::nullopt;
+        parameters.lastSnapshotOffset = isKeyValueValid("last_snapshot_offset")
+                                            ? std::optional(rawMetadata.at("last_snapshot_offset").get<int>())
+                                            : std::nullopt;
         return parameters;
     }
 
