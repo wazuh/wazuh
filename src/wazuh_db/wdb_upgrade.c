@@ -87,7 +87,7 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
         cJSON_AddStringToObject(j_agent_info, "node_name", gconfig.node_name ? gconfig.node_name : "");
         cJSON_AddItemToObject(j_msg_to_send, "agent_info", j_agent_info);
 
-        cJSON_AddStringToObject(j_msg_to_send, "action", "agentDBUpgrade");
+        cJSON_AddStringToObject(j_msg_to_send, "action", "upgradeAgentDB");
 
         cJSON_AddNumberToObject(j_data, "db_version", version);
         cJSON_AddNumberToObject(j_data, "new_db_version", sizeof(UPDATES) / sizeof(char *));
