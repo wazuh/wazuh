@@ -28,7 +28,8 @@ from wazuh_testing.modules.aws.utils import (
     get_sqs_queue_arn,
     set_sqs_policy,
     set_bucket_event_notification_configuration,
-    delete_sqs_queue
+    delete_sqs_queue,
+    delete_bucket_files
 )
 from wazuh_testing.utils.services import control_service
 
@@ -69,19 +70,20 @@ def buckets_manager():
 
     yield buckets
 
-    # Delete all resources created during execution
+    # Delete all buckets created during execution
     for bucket in buckets:
         try:
+            # Delete the bucket
             delete_bucket(bucket_name=bucket)
         except ClientError as error:
-            logger.warning({
+            logger.error({
                 "message": "Client error deleting bucket, delete manually",
                 "resource_name": bucket,
                 "error": str(error)
             })
 
         except Exception as error:
-            logger.warning({
+            logger.error({
                 "message": "Broad error deleting bucket, delete manually",
                 "resource_name": bucket,
                 "error": str(error)
@@ -107,7 +109,7 @@ def log_groups_manager():
         try:
             delete_log_group(log_group_name=log_group)
         except ClientError as error:
-            logger.warning({
+            logger.error({
                 "message": "Client error deleting log_group, delete manually",
                 "resource_name": log_group,
                 "error": str(error)
@@ -115,7 +117,7 @@ def log_groups_manager():
             raise
 
         except Exception as error:
-            logger.warning({
+            logger.error({
                 "message": "Broad error deleting log_group, delete manually",
                 "resource_name": log_group,
                 "error": str(error)
@@ -139,16 +141,16 @@ def sqs_manager():
     # Delete all resources created during execution
     for sqs in sqs_queues:
         try:
-            delete_sqs_queue(bucket_name=sqs)
+            delete_sqs_queue(sqs_queue_url=sqs)
         except ClientError as error:
-            logger.warning({
+            logger.error({
                 "message": "Client error deleting sqs queue, delete manually",
                 "resource_name": sqs,
                 "error": str(error)
             })
 
         except Exception as error:
-            logger.warning({
+            logger.error({
                 "message": "Broad error deleting sqs queue, delete manually",
                 "resource_name": sqs,
                 "error": str(error)
@@ -202,7 +204,7 @@ def create_test_bucket(buckets_manager,
 
 
 @pytest.fixture
-def upload_file_to_bucket(metadata: dict):
+def manage_bucket_files(metadata: dict):
     """Upload a file to S3 bucket and delete after the test ends.
 
     Parameters
@@ -217,25 +219,25 @@ def upload_file_to_bucket(metadata: dict):
     bucket_type = metadata['bucket_type']
 
     # Generate file
-    data, filename = generate_file(bucket_type=bucket_type,
+    data, key = generate_file(bucket_type=bucket_type,
                                    bucket_name=bucket_name)
 
     try:
         # Upload file to bucket
         upload_bucket_file(bucket_name=bucket_name,
                            data=data,
-                           filename=filename)
+                           key=key)
 
-        logger.debug('Uploaded file: %s to bucket "%s"', filename, bucket_name)
+        logger.debug('Uploaded file: %s to bucket "%s"', key, bucket_name)
 
         # Set filename for test execution
-        metadata['uploaded_file'] = filename
+        metadata['uploaded_file'] = key
 
     except ClientError as error:
         logger.error({
             "message": "Client error uploading file to bucket",
             "bucket_name": bucket_name,
-            "filename": filename,
+            "filename": key,
             "error": str(error)
         })
         raise error
@@ -244,7 +246,30 @@ def upload_file_to_bucket(metadata: dict):
         logger.error({
             "message": "Broad error uploading file to bucket",
             "bucket_name": bucket_name,
-            "filename": filename,
+            "filename": key,
+            "error": str(error)
+        })
+        raise error
+
+    yield
+
+    try:
+        # Delete all bucket files
+        delete_bucket_files(bucket_name=bucket_name)
+    except ClientError as error:
+        logger.error({
+            "message": "Client error deleting files in bucket",
+            "bucket_name": bucket_name,
+            "filename": key,
+            "error": str(error)
+        })
+        raise error
+
+    except Exception as error:
+        logger.error({
+            "message": "Broad error deleting files in bucket",
+            "bucket_name": bucket_name,
+            "filename": key,
             "error": str(error)
         })
         raise error

@@ -423,9 +423,6 @@ def test_invalid_values_in_bucket(
     input_description:
         - The `configuration_values_in_bucket` file provides the configuration for this test.
     """
-
-
-
     log_monitor.start(
         timeout=session_parameters.default_timeout,
         callback=event_monitor.callback_detect_aws_invalid_value,
