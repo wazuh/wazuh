@@ -114,5 +114,5 @@ def test_sync_agent_groups(daemons_handler, test_metadata, create_groups, pre_in
     if "new_status" in test_metadata:
         agent_id = json.loads(test_metadata["agent_id"])
         for id in agent_id:
-            response = get_agent_info(agent_id)
+            response = get_agent_info(id)
             assert test_metadata["new_status"] == response[0]['group_sync_status']

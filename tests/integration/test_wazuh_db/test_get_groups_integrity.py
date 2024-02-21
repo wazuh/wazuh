@@ -111,7 +111,7 @@ def test_get_groups_integrity(test_metadata, create_groups):
     # Insert test Agents
     for index, id in enumerate(agent_ids):
         response = global_db.create_or_update_agent(agent_id=id+1, connection_status="disconnected")
-        response = global_db.set_agent_group(agent_status=agent_status[index], id=id, group=f"Test_group{id}")
+        response = global_db.set_agent_group(sync_status=agent_status[index], id=id, group=f"Test_group{id}")
 
     # Get database hash
     if "invalid_hash" in test_metadata:
