@@ -60,8 +60,8 @@ from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils import callbacks
 from wazuh_testing.utils.database import query_wdb
-from wazuh_testing.utils.db_queries.global_db import create_or_update_agent
 from wazuh_testing.utils import configuration
+from wazuh_testing.utils.db_queries.global_db import get_agent_info
 
 from . import TEST_CASES_FOLDER_PATH
 
@@ -158,7 +158,7 @@ def test_set_agent_groups(clean_databases, daemons_handler, test_metadata, creat
 
 
     # get agent data and validate agent's groups
-    response = query_wdb(f'global get-agent-info {agent_id}')
+    response = get_agent_info(agent_id)
 
     assert test_metadata['expected_group_sync_status'] == response[0]['group_sync_status']
 

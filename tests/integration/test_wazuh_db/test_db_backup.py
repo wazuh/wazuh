@@ -61,6 +61,7 @@ from wazuh_testing.constants.daemons import WAZUH_DB_DAEMON
 from wazuh_testing.constants.paths.sockets import WAZUH_DB_SOCKET_PATH
 from wazuh_testing.utils.database import query_wdb
 from wazuh_testing.utils import configuration
+from wazuh_testing.utils.db_queries.global_db import remove_metadata_value
 
 from . import TEST_CASES_FOLDER_PATH
 
@@ -155,7 +156,7 @@ def test_wdb_backup_command(configure_sockets_environment_module, connect_to_soc
         assert test_values[0] in db_response[-1]['key'], f'Expected value key:"{test_values[0]}" was not found.'
 
         # Remove the test_values from the DB
-        query_wdb(f'global sql delete from metadata where key="{test_values[0]}"')
+        remove_metadata_value(test_values[0])
         db_response = query_wdb(sql_select_command)
         assert test_values[0] not in db_response[-1]['key'], f'Found unexpected "key":"{test_values[0]}" value.'
 

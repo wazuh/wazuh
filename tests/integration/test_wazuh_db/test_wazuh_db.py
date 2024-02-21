@@ -55,6 +55,7 @@ from wazuh_testing.utils.callbacks import make_callback
 from wazuh_testing.modules.wazuh_db import WAZUH_DB_PREFIX
 from wazuh_testing.utils import configuration
 from wazuh_testing.utils.database import query_wdb
+from wazuh_testing.utils.db_queries.agent_db import agent_integrity_check
 
 from . import TEST_CASES_FOLDER_PATH
 
@@ -360,17 +361,15 @@ def test_wazuh_db_range_checksum(daemons_handler_module, clean_databases, config
         - wazuh_db
         - wdb_socket
     '''
-    command = """agent 1 syscheck integrity_check_global {\"begin\":\"/home/test/file1\",\"end\":\"/home/test/file2\",
-                 \"checksum\":\"2a41be94762b4dc57d98e8262e85f0b90917d6be\",\"id\":1}"""
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
     # Checksum Range calculus expected the first time
-    query_wdb(command, False)
+    agent_integrity_check()
     log_monitor.start(callback=make_callback('range checksum: Time: ', prefix=WAZUH_DB_PREFIX,
                                              escape=True), timeout=WAZUH_DB_CHECKSUM_CALCULUS_TIMEOUT)
     assert log_monitor.callback_result, 'Checksum Range wasn´t calculated the first time'
 
     # Checksum Range avoid expected the next times
-    query_wdb(command, False)
+    agent_integrity_check()
     log_monitor.start(callback=make_callback('range checksum avoided', prefix=WAZUH_DB_PREFIX,
                                              escape=True), timeout=WAZUH_DB_CHECKSUM_CALCULUS_TIMEOUT)
     assert log_monitor.callback_result, 'Checksum Range wasn´t avoided the second time'

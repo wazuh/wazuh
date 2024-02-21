@@ -55,8 +55,7 @@ tags:
 from pathlib import Path
 import pytest
 
-from wazuh_testing.utils.database import query_wdb
-from wazuh_testing.utils.db_queries.global_db import create_or_update_agent, delete_agent
+from wazuh_testing.utils.db_queries import global_db
 from wazuh_testing.utils import configuration
 
 from . import TEST_CASES_FOLDER_PATH
@@ -111,17 +110,14 @@ def test_get_groups_integrity(test_metadata, create_groups):
 
     # Insert test Agents
     for index, id in enumerate(agent_ids):
-        response = create_or_update_agent(agent_id=id+1, connection_status="disconnected")
-        command = f'global set-agent-groups {{"mode":"append","sync_status":"{agent_status[index]}","source":"remote",\
-                    "data":[{{"id":{id},"groups":["Test_group{id}"]}}]}}'
-        response = query_wdb(command)
+        response = global_db.create_or_update_agent(agent_id=id+1, connection_status="disconnected")
+        response = global_db.set_agent_group(agent_status=agent_status[index], id=id, group=f"Test_group{id}")
 
     # Get database hash
     if "invalid_hash" in test_metadata:
         hash = test_metadata["invalid_hash"]
     else:
-        response = query_wdb('global sync-agent-groups-get {"last_id": 0, "condition": "all", "get_global_hash": true,'
-                             '"set_synced": false, "agent_delta_registration": 0}')
+        response = global_db.sync_agent_groups()
         response = response[0]
         hash = response["hash"]
         if "no_hash" in test_metadata:
@@ -130,7 +126,7 @@ def test_get_groups_integrity(test_metadata, create_groups):
             return
 
     # Get groups integrity
-    response = query_wdb(f"global get-groups-integrity {hash}")
+    response = global_db.get_groups_integrity(hash)
     if isinstance(response, list):
         response = response[0]
 
@@ -139,4 +135,4 @@ def test_get_groups_integrity(test_metadata, create_groups):
 
     # Remove test agents
     for id in agent_ids:
-        delete_agent(id)
+        global_db.delete_agent(id)
