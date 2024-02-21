@@ -15,14 +15,9 @@
 #include <string.h>
 
 #include "../wazuh_db/wdb_pool.h"
-//#include "../wazuh_db/wdb_pool.c"
 #include "../wazuh_db/wdb.h"
 #include "../headers/shared.h"
-
 #include "../wrappers/common.h"
-
-//#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
-//#include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 
 extern wdb_pool_t wdb_pool;
 
