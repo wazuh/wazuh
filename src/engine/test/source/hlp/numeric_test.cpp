@@ -148,6 +148,17 @@ INSTANTIATE_TEST_SUITE_P(
                getDoubleParser,
                {NAME, TARGET, {}, {}}),
         ParseT(SUCCESS,
+               "10E-1",
+               []()
+               {
+                   json::Json expected {};
+                   expected.setDouble(double_t(1), json::Json::formatJsonPath(TARGET.substr(1)));
+                   return expected;
+               }(),
+               5,
+               getDoubleParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
                "-3.40282e+38",
                []()
                {
@@ -217,6 +228,17 @@ INSTANTIATE_TEST_SUITE_P(
                "-9223372036854775809",
                j(fmt::format(R"({{"{}": -9223372036854775809}})", TARGET.substr(1))),
                20,
+               getScaledFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "10E-1",
+               []()
+               {
+                   json::Json expected {};
+                   expected.setDouble(double_t(1), json::Json::formatJsonPath(TARGET.substr(1)));
+                   return expected;
+               }(),
+               5,
                getScaledFloatParser,
                {NAME, TARGET, {}, {}}),
         ParseT(SUCCESS,
