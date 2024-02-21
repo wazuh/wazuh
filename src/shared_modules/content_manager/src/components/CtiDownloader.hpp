@@ -97,7 +97,13 @@ protected:
                                       throw std::runtime_error {"Invalid CTI metadata format"};
                                   }
 
-                                  rawMetadata = nlohmann::json::parse(response).at("data");
+                                  auto responseJSON = nlohmann::json::parse(response);
+                                  if (!responseJSON.contains("data"))
+                                  {
+                                      throw std::runtime_error {"No 'data' field in CTI metadata"};
+                                  }
+
+                                  rawMetadata = std::move(responseJSON.at("data"));
                               }};
 
         // Make a get request to the API to get the consumer offset.
