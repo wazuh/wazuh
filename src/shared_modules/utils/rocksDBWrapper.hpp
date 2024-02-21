@@ -13,6 +13,7 @@
 #define _ROCKS_DB_WRAPPER_HPP
 
 #include "rocksDBIterator.hpp"
+#include "stringHelper.h"
 #include <algorithm>
 #include <filesystem>
 #include <memory>
@@ -475,6 +476,54 @@ namespace Utils
                 writeOptions.disableWAL = true;
 
                 const auto status {m_db->Write(writeOptions, &batch)};
+                if (!status.ok())
+                {
+                    throw std::runtime_error("Error deleting data: " + status.ToString());
+                }
+            }
+        }
+
+        /**
+         * @brief Delete all key-value pairs from the database.
+         *
+         * This method deletes all key-value pairs stored in the database. It iterates through all family columns
+         * and uses a provided callback function to handle each deleted key. After deletion, it commits the changes
+         * to the database.
+         *
+         * @param callback A callback function that takes a string reference representing the deleted key.
+         *
+         * @throws std::runtime_error if an error occurs during data deletion.
+         */
+        void deleteAll(const std::function<void(std::string&,std::string&)>& callback)
+        {
+            // Delete data from all family columns
+            for (const auto& columnHandle : m_columnsHandles)
+            {
+                rocksdb::WriteBatch batch;
+
+                // Create an iterator for the current column family
+                std::unique_ptr<rocksdb::Iterator> it(m_db->NewIterator(rocksdb::ReadOptions(), columnHandle));
+
+                // Iterate through all key-value pairs in the column
+                for (it->SeekToFirst(); it->Valid(); it->Next())
+                {
+                    auto keyStr = std::string(it->key().data(), it->key().size());
+                    auto valueStr = it->value().ToString();
+
+                    callback(keyStr, valueStr);
+
+                    // Mark the key for deletion in the batch
+                    batch.Delete(keyStr);
+                }
+
+                // Configure write options to disable write-ahead-logging (WAL)
+                rocksdb::WriteOptions writeOptions;
+                writeOptions.disableWAL = true;
+
+                // Write the batch changes to the database
+                const auto status = m_db->Write(writeOptions, &batch);
+
+                // Check for errors and throw an exception if necessary
                 if (!status.ok())
                 {
                     throw std::runtime_error("Error deleting data: " + status.ToString());
