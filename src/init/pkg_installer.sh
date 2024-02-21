@@ -152,7 +152,7 @@ echo "$(date +"%Y/%m/%d %H:%M:%S") - Generating Backup." >> ./logs/upgrade.log
 # Check tar dependency
 if ! which tar &> /dev/null; then
     echo "$(date +"%Y/%m/%d %H:%M:%S") - The tar package is required for this operation, exiting." >> ./logs/upgrade.log
-    echo -ne "1" > ./var/upgrade/upgrade_result
+    echo -ne "2" > ./var/upgrade/upgrade_result
     exit 1
 fi
 
