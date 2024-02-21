@@ -494,7 +494,7 @@ namespace Utils
          *
          * @throws std::runtime_error if an error occurs during data deletion.
          */
-        void deleteAll(std::function<void(std::string&,std::string&)> callback)
+        void deleteAll(const std::function<void(std::string&,std::string&)>& callback)
         {
             // Delete data from all family columns
             for (const auto& columnHandle : m_columnsHandles)
@@ -530,7 +530,7 @@ namespace Utils
                 }
             }
         }
-        
+
         /**
          * @brief Flushes the transaction.
          */
