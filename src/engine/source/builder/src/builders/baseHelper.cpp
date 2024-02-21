@@ -309,7 +309,18 @@ baseHelperBuilder(const json::Json& definition, const std::shared_ptr<const IBui
             }
             else
             {
-                opArgs.emplace_back(std::make_shared<Value>(json::Json(jValue)));
+                // Look if the reference is scaped
+                if (strValue.size() >= 2 && strValue[0] == syntax::helper::DEFAULT_ESCAPE
+                    && strValue[1] == syntax::field::REF_ANCHOR)
+                {
+                    json::Json newValue;
+                    newValue.setString(strValue.substr(1));
+                    opArgs.emplace_back(std::make_shared<Value>(std::move(newValue)));
+                }
+                else
+                {
+                    opArgs.emplace_back(std::make_shared<Value>(json::Json(jValue)));
+                }
             }
 
             // Default helper names

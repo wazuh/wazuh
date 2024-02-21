@@ -39,7 +39,7 @@ template<typename T, typename CmpFn>
 void parserTest(const std::string& input, Parser<T> parser, Result<T> expected, CmpFn&& cmpFn)
 {
     auto result = parser(input, 0);
-    std::cout << parsec::detailedTrace(result.trace(), true) << std::endl;
+    // std::cout << parsec::detailedTrace(result.trace(), true) << std::endl;
 
     ASSERT_EQ(result.success(), expected.success());
     ASSERT_EQ(result.index(), expected.index());
@@ -468,11 +468,10 @@ INSTANTIATE_TEST_SUITE_P(
                                                    val(R"z("DWORD \\((0x[0-9A-F]{8})\\)")z")}},
                                          72)),
         HelperT(R"(regex_extract($event.original, '(?:f|F)ile \'(.*?)\''))",
-                makeSuccess<HelperToken>({.name = "regex_extract",
-                                          .args = {ref("event.original"), val(R"z("(?:f|F)ile '(.*?)'")z")}},
-                                          54))
+                makeSuccess<HelperToken>(
+                    {.name = "regex_extract", .args = {ref("event.original"), val(R"z("(?:f|F)ile '(.*?)'")z")}}, 54))
 
-                                         ));
+            ));
 
 INSTANTIATE_TEST_SUITE_P(Builder,
                          IsDefaultHelperTest,
@@ -743,10 +742,10 @@ INSTANTIATE_TEST_SUITE_P(
                                         Reference("field"),
                                         {val(R"({"key_str":"asd","key_num":123,"key_obj":{"custom_key":true}})")}},
                                        73)),
+        TermT(R"($field->123)", makeSuccess<HelperToken>({"int_greater", Reference("field-"), {val(R"(123)")}}, 11)),
         // Expression fail - bad operator
         TermT(R"($field=!123)", makeError<HelperToken>("", 0)),
         TermT(R"($field=123)", makeError<HelperToken>("", 0)),
-        TermT(R"($field->123)", makeError<HelperToken>("", 0)),
         TermT(R"($field.123)", makeError<HelperToken>("", 0)),
         TermT(R"($field!123)", makeError<HelperToken>("", 0)),
         TermT(R"($field|123)", makeError<HelperToken>("", 0)),
