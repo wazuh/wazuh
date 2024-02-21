@@ -63,13 +63,14 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
 
         for (unsigned i = version; i < sizeof(UPDATES) / sizeof(char *); i++) {
             mdebug2("Updating database '%s' to version %d", wdb->id, i + 1);
-            database_updated = true;
+            database_updated = false;
 
             if (wdb_sql_exec(wdb, UPDATES[i]) == -1 ||
                 wdb_adjust_upgrade(wdb, i)) {
                 wdb = wdb_backup(wdb, version);
                 break;
             }
+            database_updated = true;
         }
     }
 
