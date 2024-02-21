@@ -5488,6 +5488,33 @@ int wdb_parse_global_delete_agent(wdb_t * wdb, char * input, char * output) {
         return OS_INVALID;
     }
 
+    if (router_agent_events_handle) {
+        cJSON* j_msg_to_send = NULL;
+        cJSON* j_agent_info = NULL;
+        char* msg_to_send = NULL;
+
+        j_msg_to_send = cJSON_CreateObject();
+        j_agent_info = cJSON_CreateObject();
+
+        cJSON_AddStringToObject(j_agent_info, "agent_id", input);
+        cJSON_AddStringToObject(j_agent_info, "node_name", gconfig.node_name ? gconfig.node_name : "");
+        cJSON_AddItemToObject(j_msg_to_send, "agent_info", j_agent_info);
+
+        cJSON_AddStringToObject(j_msg_to_send, "action", "deleteAgent");
+
+        msg_to_send = cJSON_PrintUnformatted(j_msg_to_send);
+
+        if (msg_to_send) {
+            router_provider_send(router_agent_events_handle, msg_to_send, strlen(msg_to_send));
+        } else {
+            mdebug2("Unable to dump agent db upgrade message to publish agent %s", wdb->id);
+        }
+
+        cJSON_Delete(j_msg_to_send);
+        cJSON_free(msg_to_send);
+    }
+
+
     wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_CLEAR, NULL);
 
     snprintf(output, OS_MAXSTR + 1, "ok");

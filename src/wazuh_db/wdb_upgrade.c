@@ -48,6 +48,7 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
         schema_upgrade_v13_sql,
     };
 
+    bool database_updated = false;
     char db_version[OS_SIZE_256];
     int version = 0;
 
@@ -62,6 +63,7 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
 
         for (unsigned i = version; i < sizeof(UPDATES) / sizeof(char *); i++) {
             mdebug2("Updating database '%s' to version %d", wdb->id, i + 1);
+            database_updated = true;
 
             if (wdb_sql_exec(wdb, UPDATES[i]) == -1 ||
                 wdb_adjust_upgrade(wdb, i)) {
@@ -69,6 +71,38 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
                 break;
             }
         }
+    }
+
+    if (router_agent_events_handle && database_updated) {
+        cJSON* j_msg_to_send = NULL;
+        cJSON* j_agent_info = NULL;
+        cJSON* j_data = NULL;
+        char* msg_to_send = NULL;
+
+        j_msg_to_send = cJSON_CreateObject();
+        j_agent_info = cJSON_CreateObject();
+        j_data = cJSON_CreateObject();
+
+        cJSON_AddStringToObject(j_agent_info, "agent_id", wdb->id);
+        cJSON_AddStringToObject(j_agent_info, "node_name", gconfig.node_name ? gconfig.node_name : "");
+        cJSON_AddItemToObject(j_msg_to_send, "agent_info", j_agent_info);
+
+        cJSON_AddStringToObject(j_msg_to_send, "action", "agentDBUpgrade");
+
+        cJSON_AddNumberToObject(j_data, "db_version", version);
+        cJSON_AddNumberToObject(j_data, "new_db_version", sizeof(UPDATES) / sizeof(char *));
+        cJSON_AddItemToObject(j_msg_to_send, "data", j_data);
+
+        msg_to_send = cJSON_PrintUnformatted(j_msg_to_send);
+
+        if (msg_to_send) {
+            router_provider_send(router_agent_events_handle, msg_to_send, strlen(msg_to_send));
+        } else {
+            mdebug2("Unable to dump agent db upgrade message to publish agent %s", wdb->id);
+        }
+
+        cJSON_Delete(j_msg_to_send);
+        cJSON_free(msg_to_send);
     }
 
     return wdb;
