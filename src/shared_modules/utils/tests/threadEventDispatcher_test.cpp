@@ -43,3 +43,37 @@ TEST_F(ThreadEventDispatcherTest, Ctor)
     EXPECT_EQ(MESSAGES_TO_SEND, counter);
 }
 
+TEST_F(ThreadEventDispatcherTest, CtorPopFeature)
+{
+    constexpr auto MESSAGES_TO_SEND {1000};
+
+    std::atomic<uint32_t> counter {0};
+    std::promise<void> promise;
+    std::promise<void> pushPromise;
+    bool firstIteration {true};
+    ThreadEventDispatcher<std::string, std::function<void(std::queue<std::string>&)>> dispatcher(
+        [&](std::queue<std::string>& data)
+        {
+            if (firstIteration)
+            {
+                pushPromise.get_future().wait_for(std::chrono::seconds(10));
+                firstIteration = false;
+                throw std::runtime_error("Test exception");
+            }
+            counter += data.size();
+            if (counter == MESSAGES_TO_SEND)
+            {
+                promise.set_value();
+            }
+        },
+        "test.db",
+        BULK_SIZE);
+
+    for (int i = 0; i < MESSAGES_TO_SEND; ++i)
+    {
+        dispatcher.push("test");
+    }
+    pushPromise.set_value();
+    promise.get_future().wait_for(std::chrono::seconds(10));
+    EXPECT_EQ(MESSAGES_TO_SEND, counter);
+}
