@@ -5507,7 +5507,7 @@ int wdb_parse_global_delete_agent(wdb_t * wdb, char * input, char * output) {
         if (msg_to_send) {
             router_provider_send(router_agent_events_handle, msg_to_send, strlen(msg_to_send));
         } else {
-            mdebug2("Unable to dump agent db upgrade message to publish agent %s", wdb->id);
+            mdebug2("Unable to dump agent db upgrade message to publish. Agent %s", wdb->id);
         }
 
         cJSON_Delete(j_msg_to_send);
