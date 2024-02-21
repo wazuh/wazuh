@@ -1,0 +1,21 @@
+<!-- Test: same_* attribute without frequency and timeframe -->
+<group name="testing">
+
+    <rule id="100001" level="3">
+    <program_name>example</program_name>
+    <description>example_description</description>
+    </rule>
+
+    <rule id="100002" level="5">
+    <if_sid>100001</if_sid>
+    <same_srcip />
+    <description>example same_ip without frequency</description>
+    </rule>
+
+    <rule id="100003" level="5">
+    <if_sid>100001</if_sid>
+    <different_srcip />
+    <description>example different_ip without frequency</description>
+    </rule>
+
+</group>

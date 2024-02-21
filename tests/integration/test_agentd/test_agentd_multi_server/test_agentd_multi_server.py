@@ -51,7 +51,7 @@ import sys
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG, AGENTD_TIMEOUT
-from wazuh_testing.modules.agentd.patterns import * 
+from wazuh_testing.modules.agentd.patterns import *
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
 from wazuh_testing.utils import callbacks
@@ -91,7 +91,7 @@ How does this test work:
     - LOG_MONITOR_STR: (list of lists) Expected string to be monitored for each simulator
 """
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_agentd_multi_server(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options, truncate_monitored_files, 
+def test_agentd_multi_server(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options, truncate_monitored_files,
                              remove_keys_file, start_remoted_simulators, daemons_handler):
     '''
     description: Check the agent's enrollment and connection to a manager in a multi-server environment.
@@ -123,10 +123,10 @@ def test_agentd_multi_server(test_configuration, test_metadata, set_wazuh_config
             brief: Deletes keys file if test configuration request it
         - start_remoted_simulators:
             type: fixture
-            brief: Starts remoted simulators as requested  
+            brief: Starts remoted simulators as requested
         - daemons_handler:
             type: fixture
-            brief: Handler of Wazuh daemons.    
+            brief: Handler of Wazuh daemons.
 
     assertions:
         - Agent without keys. Verify that all servers will refuse the connection to the 'wazuh-remoted' daemon
@@ -190,7 +190,7 @@ def test_agentd_multi_server(test_configuration, test_metadata, set_wazuh_config
 
     if(authd_server):
         authd_server.destroy()
-    
+
 
 def get_regex(pattern, server_address, server_port):
     """Return a regex and the values to complete it
@@ -202,7 +202,7 @@ def get_regex(pattern, server_address, server_port):
 
     Returns:
         regex (regex): refered by framework patter.
-        values (dict): values to complete regex 
+        values (dict): values to complete regex
     """
     if(pattern == 'AGENTD_TRYING_CONNECT' or pattern == 'AGENTD_UNABLE_TO_CONNECT'):
         regex = globals()[pattern]

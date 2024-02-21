@@ -53,7 +53,7 @@ import sys
 
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG, AGENTD_TIMEOUT
-from wazuh_testing.modules.agentd.patterns import * 
+from wazuh_testing.modules.agentd.patterns import *
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
@@ -81,7 +81,7 @@ daemons_handler_configuration = {'all_daemons': True}
 
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_agentd_connection_retries_pre_enrollment(test_metadata, set_wazuh_configuration, configure_local_internal_options, 
+def test_agentd_connection_retries_pre_enrollment(test_metadata, set_wazuh_configuration, configure_local_internal_options,
                                                   truncate_monitored_files, clean_keys, add_keys, daemons_handler):
     '''
     description: Check how the agent behaves when the 'wazuh-remoted' daemon is not available
@@ -89,8 +89,8 @@ def test_agentd_connection_retries_pre_enrollment(test_metadata, set_wazuh_confi
                  with keys but the 'wazuh-remoted' daemon is not available for several seconds,
                  then the agent performs multiple connection retries before requesting a new enrollment.
 
-                 This test covers and check the scenario of Agent starting with keys but Remoted is not 
-                 reachable during some seconds and multiple connection retries are required prior to 
+                 This test covers and check the scenario of Agent starting with keys but Remoted is not
+                 reachable during some seconds and multiple connection retries are required prior to
                  requesting a new enrollment
 
     wazuh_min_version: 4.2.0
@@ -118,7 +118,7 @@ def test_agentd_connection_retries_pre_enrollment(test_metadata, set_wazuh_confi
             brief: Adds keys to keys file
         - daemons_handler:
             type: fixture
-            brief: Handler of Wazuh daemons.  
+            brief: Handler of Wazuh daemons.
 
     assertions:
         - Verify that the agent enrollment is successful.
@@ -138,10 +138,9 @@ def test_agentd_connection_retries_pre_enrollment(test_metadata, set_wazuh_confi
     # Start RemotedSimulator
     remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
     remoted_server.start()
-    
+
     # Start hearing logs
     wait_keepalive()
 
     # Reset simulator
     remoted_server.destroy()
-    

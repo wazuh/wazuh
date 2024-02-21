@@ -87,7 +87,7 @@ daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_agentd_state_config(test_configuration, test_metadata, remove_state_file, set_wazuh_configuration, configure_local_internal_options,
                              truncate_monitored_files, daemons_handler):
-    
+
     '''
     description: Check that the 'wazuh-agentd.state' statistics file is created
                  automatically and verify that it is updated at the set intervals.
@@ -133,7 +133,7 @@ def test_agentd_state_config(test_configuration, test_metadata, remove_state_fil
     if sys.platform != WINDOWS:
         time.sleep(1)
         assert (test_metadata['agentd_ends']is not check_if_process_is_running(AGENT_DAEMON))
-    
+
     # Check if the test requires checking state file existence
     if test_metadata['state_file_exist']:
         time.sleep(int(test_metadata['local_internal_options']['agent.state_interval']))
