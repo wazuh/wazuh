@@ -186,7 +186,7 @@ class AWSSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler):
                 else:
                     aws_tools.debug("+++ Data in the file does not seem to be CSV. Trying with plain text.", 2)
                     try:
-                        return [dict(full_log=event, source="custom") for event in f.read().splitlines() ]
+                        return [dict(full_log=event, source="custom") for event in f.read().splitlines()]
                     except OSError:
                         print(f"ERROR: Data in the file does not seem to be plain text either.")
                         sys.exit(9)
@@ -308,8 +308,35 @@ class AWSSLSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler)
 
 class AWSSecurityHubSubscriberBucket(AWSSubscriberBucket):
     """Class for processing events from AWS S3 buckets containing Security Hub related logs."""
-    def process_findings(self):
-        pass
+
+    @staticmethod
+    def _add_event_type_fields(details: dict, event: dict):
+        """
+        Add the corresponding fields into the event if the details contain them.
+
+        Parameters
+        ----------
+        details : dict
+            Source dictionary containing the events from the log file.
+        event : dict
+            Destination dictionary to be added to the event sent to Wazuh.
+        """
+        key_actions = {
+            'findings': lambda source, destination: destination.setdefault('finding', source['findings'][0]),
+            'actionName': lambda source, destination: destination.setdefault('actionName', source['actionName']),
+            'actionDescription': lambda source, destination: destination.setdefault('actionDescription',
+                                                                                    source['actionDescription']),
+            'insightName': lambda source, destination: destination.setdefault('insightName', source['insightName']),
+            'insightArn': lambda source, destination: destination.setdefault('insightArn', source['insightArn']),
+            'resultType': lambda source, destination: destination.setdefault('resultType', source['resultType']),
+            'insightResults': lambda source, destination: destination.setdefault('insightResults',
+                                                                                 source['insightResults'])
+        }
+
+        for key, action in key_actions.items():
+            if key in details:
+                action(details, event)
+
     def obtain_logs(self, bucket: str, log_path: str) -> List[dict]:
         """Fetch a file from a bucket and obtain a list of events from it.
 
@@ -326,17 +353,13 @@ class AWSSecurityHubSubscriberBucket(AWSSubscriberBucket):
             List of extracted events to send to Wazuh.
         """
         with self.decompress_file(bucket, log_key=log_path) as f:
-            try: # Only processes Imported type of Events
+            try:
                 extracted_events = []
                 for event in self._json_event_generator(f.read()):
-                    event_detail = event.get('detail', event)
-                    detail_type = event.get("detail-type")
-
-                    # The 'findings' key is only present in `Security Hub Findings - Imported` and
-                    # `Security Hub Findings - Custom Action` event types
-                    finding = event_detail.get('findings')[0]
-
-                    extracted_events.append(dict(finding=finding, source="securityhub", detail_type=detail_type))
+                    event_detail = event['detail']
+                    base_event = dict(source="securityhub", detail_type=event["detail-type"])
+                    self._add_event_type_fields(event_detail, base_event)
+                    extracted_events.append(base_event)
 
                 return extracted_events
 
@@ -356,17 +379,17 @@ class AWSSecurityHubSubscriberBucket(AWSSubscriberBucket):
         log_path = message_body['log_path']
         bucket_path = message_body['bucket_path']
 
-        msg = {
-            'integration': 'aws',
-            'aws': {
-                'log_info': {
-                    'log_file': log_path,
-                    's3bucket': bucket_path
-                }
-            }
-        }
         formatted_logs = self.obtain_logs(bucket=bucket_path, log_path=log_path)
         for log in formatted_logs:
+            msg = {
+                'integration': 'aws',
+                'aws': {
+                    'log_info': {
+                        'log_file': log_path,
+                        's3bucket': bucket_path
+                    }
+                }
+            }
             self._remove_none_fields(log)
             if self.event_should_be_skipped(log):
                 aws_tools.debug(f'+++ The "{self.discard_regex.pattern}" regex found a match '
@@ -374,8 +397,8 @@ class AWSSecurityHubSubscriberBucket(AWSSubscriberBucket):
                 continue
             else:
                 aws_tools.debug(
-                                f'+++ The "{self.discard_regex.pattern}" regex did not find a match in the '
-                                f'"{self.discard_field}" field. The event will be processed.', 3)
+                    f'+++ The "{self.discard_regex.pattern}" regex did not find a match in the '
+                    f'"{self.discard_field}" field. The event will be processed.', 3)
 
             msg['aws'].update(log)
             self.send_msg(msg)
