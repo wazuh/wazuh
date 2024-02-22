@@ -126,7 +126,7 @@ TEST_F(CtiSnapshotDownloaderTest, SnapshotDownloadWithRetry)
  */
 TEST_F(CtiSnapshotDownloaderTest, MissingLastSnapshotLinkMetadata)
 {
-    auto mockMetadata = R"(
+    std::string mockMetadata = R"(
         {
             "data":
             {
@@ -135,7 +135,7 @@ TEST_F(CtiSnapshotDownloaderTest, MissingLastSnapshotLinkMetadata)
                 "last_snapshot_offset": 0
             }
         }
-    )"_json.dump();
+    )";
     m_spFakeServer->setCtiMetadata(std::move(mockMetadata));
 
     ASSERT_THROW(CtiSnapshotDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext), std::runtime_error);
@@ -155,7 +155,7 @@ TEST_F(CtiSnapshotDownloaderTest, MissingLastSnapshotLinkMetadata)
  */
 TEST_F(CtiSnapshotDownloaderTest, MissingLastSnapshotOffsetMetadata)
 {
-    auto mockMetadata = R"(
+    std::string mockMetadata = R"(
         {
             "data":
             {
@@ -164,7 +164,7 @@ TEST_F(CtiSnapshotDownloaderTest, MissingLastSnapshotOffsetMetadata)
                 "last_snapshot_link": "some_link"
             }
         }
-    )"_json.dump();
+    )";
     m_spFakeServer->setCtiMetadata(std::move(mockMetadata));
 
     ASSERT_THROW(CtiSnapshotDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext), std::runtime_error);

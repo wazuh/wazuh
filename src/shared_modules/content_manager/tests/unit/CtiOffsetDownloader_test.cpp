@@ -248,7 +248,7 @@ TEST_F(CtiOffsetDownloaderTest, DownloadInterrupted)
  */
 TEST_F(CtiOffsetDownloaderTest, MissingLastOffsetMetadata)
 {
-    auto mockMetadata = R"(
+    std::string mockMetadata = R"(
         {
             "data":
             {
@@ -257,7 +257,7 @@ TEST_F(CtiOffsetDownloaderTest, MissingLastOffsetMetadata)
                 "last_snapshot_offset": 50
             }
         }
-    )"_json.dump();
+    )";
     m_spFakeServer->setCtiMetadata(std::move(mockMetadata));
 
     ASSERT_THROW(m_spCtiOffsetDownloader->handleRequest(m_spUpdaterContext), std::runtime_error);
