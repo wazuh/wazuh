@@ -190,7 +190,13 @@ char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, const 
     }
 
     if (task->error_code) {
-        json_task_module_request = wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_AGENT_UPDATE_STATUS, agents_array, task->status, upgrade_error_codes[WM_UPGRADE_UPGRADE_ERROR]);
+        char *error = NULL;
+        if (task->error_code == 1) {
+            error = upgrade_error_codes[WM_UPGRADE_UPGRADE_ERROR_MISSING_PACKAGE];
+        } else {
+            error = upgrade_error_codes[WM_UPGRADE_UPGRADE_ERROR];
+        }
+        json_task_module_request = wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_AGENT_UPDATE_STATUS, agents_array, task->status, error);
     } else {
         json_task_module_request = wm_agent_upgrade_parse_task_module_request(WM_UPGRADE_AGENT_UPDATE_STATUS, agents_array, task->status, NULL);
     }

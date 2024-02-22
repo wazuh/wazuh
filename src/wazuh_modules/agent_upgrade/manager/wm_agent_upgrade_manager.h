@@ -51,6 +51,7 @@ typedef enum _wm_upgrade_error_code {
     WM_UPGRADE_SEND_SHA1_ERROR,
     WM_UPGRADE_SEND_UPGRADE_ERROR,
     WM_UPGRADE_UPGRADE_ERROR,
+    WM_UPGRADE_UPGRADE_ERROR_MISSING_PACKAGE,
     WM_UPGRADE_UNKNOWN_ERROR
 } wm_upgrade_error_code;
 
