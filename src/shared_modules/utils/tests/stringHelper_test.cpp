@@ -100,6 +100,9 @@ TEST_F(StringUtilsTest, RightTrim)
     EXPECT_EQ(" \t\nHello", Utils::rightTrim(" \t\nHello \t\n ", "\t\n "));
     EXPECT_EQ(" \t\nHello \t\n", Utils::rightTrim(" \t\nHello \t\n "));
     EXPECT_EQ("", Utils::rightTrim(""));
+    EXPECT_EQ("", Utils::rightTrim(" "));
+    EXPECT_EQ("", Utils::rightTrim("           "));
+
 }
 
 TEST_F(StringUtilsTest, LeftTrim)
@@ -112,6 +115,8 @@ TEST_F(StringUtilsTest, LeftTrim)
     EXPECT_EQ("Hello\t\n ", Utils::leftTrim(" \t\nHello\t\n ", " \t\n"));
     EXPECT_EQ("\t\nHello\t\n ", Utils::leftTrim(" \t\nHello\t\n "));
     EXPECT_EQ("", Utils::leftTrim(""));
+    EXPECT_EQ("", Utils::leftTrim(" "));
+    EXPECT_EQ("", Utils::leftTrim("           "));
 }
 
 TEST_F(StringUtilsTest, Trim)
@@ -122,6 +127,8 @@ TEST_F(StringUtilsTest, Trim)
     EXPECT_EQ("Hello", Utils::trim("          Hello      "));
     EXPECT_EQ("Hello", Utils::trim(" \tHello\t ", " \t"));
     EXPECT_EQ("Hello", Utils::trim(" \t\nHello\t\n ", " \t\n"));
+    EXPECT_EQ("", Utils::trim(" "));
+    EXPECT_EQ("", Utils::trim("   "));
 }
 
 TEST_F(StringUtilsTest, ToUpperCase)
