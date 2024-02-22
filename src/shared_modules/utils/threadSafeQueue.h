@@ -101,7 +101,7 @@ namespace Utils
                 return nullptr;
             }
 
-            std::queue<U> popBulk(const uint64_t elementsQuantity,
+            std::queue<U> getBulk(const uint64_t elementsQuantity,
                                   const std::chrono::seconds& timeout = std::chrono::seconds(5))
             {
                 std::unique_lock<std::mutex> lock{ m_mutex };
@@ -139,11 +139,20 @@ namespace Utils
                     for (auto i = 0; i < elementsQuantity && !m_queue.empty(); ++i)
                     {
                         bulkQueue.push(std::move(m_queue.front()));
-                        m_queue.pop();
                     }
                 }
 
                 return bulkQueue;
+            }
+
+            void popBulk(const uint64_t elementsQuantity)
+            {
+                std::lock_guard<std::mutex> lock{ m_mutex };
+
+                for (auto i = 0; i < elementsQuantity && !m_queue.empty(); ++i)
+                {
+                    m_queue.pop();
+                }
             }
 
             bool empty() const
