@@ -57,7 +57,7 @@ extern void mock_assert(const int result, const char* const expression,
 #endif
 
 void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite3_stmt* stmt) {
-    if (!router_syscollector_handle) {
+    if (!router_agent_events_handle) {
         mdebug2("Router handle not available.");
         return;
     }
@@ -81,11 +81,11 @@ void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite
         switch (component)
         {
             case WDB_SYSCOLLECTOR_HOTFIXES:
-                type = "dbsync_hotfixes";
+                cJSON_AddStringToObject(j_msg_to_send, "action", "deleteHotfix");
                 cJSON_AddItemToObject(j_data, "hotfix", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
                 break;
             case WDB_SYSCOLLECTOR_PACKAGES:
-                type = "dbsync_packages";
+                cJSON_AddStringToObject(j_msg_to_send, "action", "deletePackage");
                 cJSON_AddItemToObject(j_data, "name", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
                 cJSON_AddItemToObject(j_data, "version", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 1)));
                 cJSON_AddItemToObject(j_data, "architecture", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 2)));
@@ -97,16 +97,14 @@ void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite
                 break;
         }
 
-        cJSON_AddItemToObject(j_msg_to_send, "data_type", cJSON_CreateString(type));
         cJSON_AddItemToObject(j_msg_to_send, "data", j_data);
-        cJSON_AddItemToObject(j_msg_to_send, "operation", cJSON_CreateString("DELETED"));
 
         msg_to_send = cJSON_PrintUnformatted(j_msg_to_send);
 
         if (msg_to_send) {
-            router_provider_send_fb(router_syscollector_handle, msg_to_send, syscollector_deltas_SCHEMA);
+            router_provider_send(router_agent_events_handle, msg_to_send, strlen(msg_to_send));
         } else {
-            mdebug2("Unable to dump delete message to publish agent %s", agent_id);
+            mdebug2("Unable to dump delete message to publish. Agent %s", agent_id);
         }
 
         cJSON_Delete(j_msg_to_send);

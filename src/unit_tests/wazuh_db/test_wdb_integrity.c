@@ -1767,7 +1767,7 @@ void test_wdbi_report_removed_no_handle(void **state) {
     const char* agent_id = "001";
     wdb_component_t component = WDB_SYSCOLLECTOR_PACKAGES;
     sqlite3_stmt* stmt = NULL;
-    router_syscollector_handle = NULL;
+    router_agent_events_handle = NULL;
 
     expect_string(__wrap__mdebug2, formatted_msg, "Router handle not available.");
 
@@ -1778,9 +1778,9 @@ void test_wdbi_report_removed_packages_success(void **state) {
     const char* agent_id = "001";
     wdb_component_t component = WDB_SYSCOLLECTOR_PACKAGES;
     sqlite3_stmt* stmt = NULL;
-    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)1;
-    const char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"node_name\":\"\"},\"data_type\":\"dbsync_packages\","
-                                   "\"data\":{\"name\":\"name\",\"version\":\"version\",\"architecture\":\"architecture\",\"format\":\"format\",\"location\":\"location\",\"item_id\":\"item_id\"},\"operation\":\"DELETED\"}";
+    router_agent_events_handle = (ROUTER_PROVIDER_HANDLE)1;
+    const char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"node_name\":\"\"},\"action\":\"deletePackage\","
+                                   "\"data\":{\"name\":\"name\",\"version\":\"version\",\"architecture\":\"architecture\",\"format\":\"format\",\"location\":\"location\",\"item_id\":\"item_id\"}}";
 
     expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, "name");
@@ -1795,9 +1795,9 @@ void test_wdbi_report_removed_packages_success(void **state) {
     expect_value(__wrap_sqlite3_column_text, iCol, 5);
     will_return(__wrap_sqlite3_column_text, "item_id");
 
-    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
-    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
-    will_return(__wrap_router_provider_send_fb, 0);
+    expect_string(__wrap_router_provider_send, message, expected_message);
+    expect_value(__wrap_router_provider_send, message_size, strlen(expected_message));
+    will_return(__wrap_router_provider_send, 0);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
@@ -1809,16 +1809,16 @@ void test_wdbi_report_removed_hotfixes_success(void **state) {
     const char* agent_id = "001";
     wdb_component_t component = WDB_SYSCOLLECTOR_HOTFIXES;
     sqlite3_stmt* stmt = NULL;
-    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)1;
-    const char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"node_name\":\"\"},\"data_type\":\"dbsync_hotfixes\","
-                                   "\"data\":{\"hotfix\":\"hotfix\"},\"operation\":\"DELETED\"}";
+    router_agent_events_handle = (ROUTER_PROVIDER_HANDLE)1;
+    const char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"node_name\":\"\"},\"action\":\"deleteHotfix\","
+                                   "\"data\":{\"hotfix\":\"hotfix\"}}";
 
     expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, "hotfix");
 
-    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
-    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
-    will_return(__wrap_router_provider_send_fb, 0);
+    expect_string(__wrap_router_provider_send, message, expected_message);
+    expect_value(__wrap_router_provider_send, message_size, strlen(expected_message));
+    will_return(__wrap_router_provider_send, 0);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);
@@ -1830,20 +1830,20 @@ void test_wdbi_report_removed_hotfixes_success_multiple_steps(void **state) {
     const char* agent_id = "001";
     wdb_component_t component = WDB_SYSCOLLECTOR_HOTFIXES;
     sqlite3_stmt* stmt = NULL;
-    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)1;
-    const char* expected_message_1 = "{\"agent_info\":{\"agent_id\":\"001\",\"node_name\":\"\"},\"data_type\":\"dbsync_hotfixes\","
-                                     "\"data\":{\"hotfix\":\"hotfix1\"},\"operation\":\"DELETED\"}";
+    router_agent_events_handle = (ROUTER_PROVIDER_HANDLE)1;
+    const char* expected_message_1 = "{\"agent_info\":{\"agent_id\":\"001\",\"node_name\":\"\"},\"action\":\"deleteHotfix\","
+                                     "\"data\":{\"hotfix\":\"hotfix1\"}}";
 
-    const char* expected_message_2 = "{\"agent_info\":{\"agent_id\":\"001\",\"node_name\":\"\"},\"data_type\":\"dbsync_hotfixes\","
-                                     "\"data\":{\"hotfix\":\"hotfix2\"},\"operation\":\"DELETED\"}";
+    const char* expected_message_2 = "{\"agent_info\":{\"agent_id\":\"001\",\"node_name\":\"\"},\"action\":\"deleteHotfix\","
+                                     "\"data\":{\"hotfix\":\"hotfix2\"}}";
 
     // First hotfix
     expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, "hotfix1");
 
-    expect_string(__wrap_router_provider_send_fb, msg, expected_message_1);
-    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
-    will_return(__wrap_router_provider_send_fb, 0);
+    expect_string(__wrap_router_provider_send, message, expected_message_1);
+    expect_value(__wrap_router_provider_send, message_size, strlen(expected_message_1));
+    will_return(__wrap_router_provider_send, 0);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ROW);
@@ -1853,9 +1853,9 @@ void test_wdbi_report_removed_hotfixes_success_multiple_steps(void **state) {
     expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, "hotfix2");
 
-    expect_string(__wrap_router_provider_send_fb, msg, expected_message_2);
-    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
-    will_return(__wrap_router_provider_send_fb, 0);
+    expect_string(__wrap_router_provider_send, message, expected_message_2);
+    expect_value(__wrap_router_provider_send, message_size, strlen(expected_message_2));
+    will_return(__wrap_router_provider_send, 0);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_DONE);

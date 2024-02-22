@@ -102,7 +102,7 @@ typedef enum wdb_global_group_hash_operations_t {
 #define SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE "legacy"
 
 // Router provider variables
-extern ROUTER_PROVIDER_HANDLE router_syscollector_handle;
+extern ROUTER_PROVIDER_HANDLE router_agent_events_handle;
 
 typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,

@@ -13,7 +13,7 @@
 #include "wdb_state.h"
 #include <os_net/os_net.h>
 
-#define WDB_SYSCOLLECTOR_DELTAS_TOPIC "deltas-syscollector"
+#define WDB_AGENT_EVENTS_TOPIC "wdb-agent-events"
 
 static void wdb_help() __attribute__ ((noreturn));
 static void handler(int signum);
@@ -205,8 +205,8 @@ int main(int argc, char ** argv)
     router_initialize(taggedLogFunction);
 
     // Router provider initialization
-    if (router_syscollector_handle = router_provider_create(WDB_SYSCOLLECTOR_DELTAS_TOPIC, false), !router_syscollector_handle) {
-        mdebug2("Failed to create router handle for 'syscollector'.");
+    if (router_agent_events_handle = router_provider_create(WDB_AGENT_EVENTS_TOPIC, false), !router_agent_events_handle) {
+        mdebug2("Failed to create router handle for 'wdb-agent-events'.");
     }
 
     if (notify_queue = wnotify_init(1), !notify_queue) {
