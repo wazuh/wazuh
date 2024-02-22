@@ -429,6 +429,27 @@ namespace Utils
             return -1;
         }
     }
+    /**
+     * @brief Add size padding to a string.
+     *
+     * @param str Original string.
+     * @param padCharacter Character to use for padding.
+     * @param minSize Minimum size of the string.
+     * @return std::string Padded string.
+     */
+    static std::string padString(const std::string& str, const char padCharacter, const int64_t minSize)
+    {
+        std::string out;
+        const auto strLength = minSize - static_cast<int64_t>(str.length());
+
+        for (auto i = 0ll; i < strLength; ++i)
+        {
+            out += padCharacter;
+        }
+        out += str;
+        return out;
+    }
+
 } // namespace Utils
 
 #pragma GCC diagnostic pop
