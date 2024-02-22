@@ -103,6 +103,10 @@ namespace Utils
         {
             return str.substr(pos);
         }
+        else
+        {
+            return "";
+        }
 
         return str;
     }
@@ -114,6 +118,10 @@ namespace Utils
         if (pos != std::string::npos)
         {
             return str.substr(0, pos + 1);
+        }
+        else
+        {
+            return "";
         }
 
         return str;
