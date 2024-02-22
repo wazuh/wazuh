@@ -182,7 +182,7 @@ private:
             {
                 runFullContentDownload(spUpdaterContext);
             }
-            catch (const std::exception e)
+            catch (const std::exception& e)
             {
                 logWarn(WM_CONTENTUPDATER, "Couldn't run full content download: %s", e.what());
             }
