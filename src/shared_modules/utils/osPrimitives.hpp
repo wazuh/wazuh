@@ -12,6 +12,7 @@
 #ifndef _OS_PRIMITIVES_HPP
 #define _OS_PRIMITIVES_HPP
 
+#include <cstdio>
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <sys/epoll.h>
@@ -100,6 +101,11 @@ protected:
     inline int fclose(FILE* stream)
     {
         return ::fclose(stream);
+    }
+
+    inline int gethostname(char* name, size_t len)
+    {
+        return ::gethostname(name, len);
     }
 };
 
