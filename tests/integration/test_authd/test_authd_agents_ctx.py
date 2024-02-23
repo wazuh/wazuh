@@ -51,7 +51,7 @@ import time
 from wazuh_testing.constants.paths.sockets import AUTHD_SOCKET_PATH
 from wazuh_testing.constants.ports import DEFAULT_SSL_REMOTE_ENROLLMENT_PORT
 from wazuh_testing.utils.agent_groups import check_agent_groups
-from wazuh_testing.utils.db_queries.global_db import clean_agents_from_db
+from wazuh_testing.utils.db_queries.global_db import delete_agent
 from wazuh_testing.utils.client_keys import check_client_keys
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH, utils
@@ -249,4 +249,4 @@ def test_ossec_authd_agents_ctx(test_configuration, test_metadata, set_wazuh_con
     assert utils.check_rids('003', False), 'Rids file was was not removed'
     assert utils.check_diff('userB', False), 'Agent diff folder was not removed'
 
-    clean_agents_from_db()
+    delete_agent()

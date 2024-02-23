@@ -135,7 +135,7 @@ def test_invalid_session_token(test_metadata, daemons_handler_module, wait_for_l
 
     connection.close()
 
-    # Check invalid token warning 
+    # Check invalid token warning
     callback = generate_callback(patterns.LOGTEST_INVALID_TOKEN)
     match = callback(result["data"]['messages'][0])
     if match is None:
