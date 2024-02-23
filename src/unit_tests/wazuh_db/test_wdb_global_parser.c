@@ -41,7 +41,7 @@ static int test_setup(void **state) {
     test_struct_t *init_data = NULL;
     os_calloc(1,sizeof(test_struct_t),init_data);
     os_calloc(1,sizeof(wdb_t),init_data->wdb);
-    os_strdup("000",init_data->wdb->id);
+    os_strdup("global",init_data->wdb->id);
     os_calloc(OS_MAXSTR,sizeof(char),init_data->output);
     os_calloc(1,sizeof(sqlite3 *),init_data->wdb->db);
     init_data->wdb->enabled=true;
@@ -5035,9 +5035,9 @@ void test_wdb_parse_delete_db_file (void **state) {
     will_return(__wrap_w_is_file, 0);
 
     expect_string(__wrap__mwarn, formatted_msg, "DB(queue/db/global.db) not found. This behavior is unexpected, the database will be recreated.");
-    expect_function_call(__wrap_pthread_mutex_lock);
+    will_return(__wrap_wdb_close, NULL);
     will_return(__wrap_wdb_close, OS_SUCCESS);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_wdb_pool_leave);
 
     result = wdb_parse(query, data->output, 0);
 

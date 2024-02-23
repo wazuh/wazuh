@@ -246,18 +246,10 @@ void test_wdb_upgrade_global_success_regenerating_legacy_db(void **state)
     will_return(__wrap_sqlite3_open_v2, new_db);
     will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
 
-    // Initializing and adding to the pool
-    //wdb_t *new_wdb = NULL;
-    //os_calloc(1, sizeof(wdb_t), new_wdb);
-    //expect_string(__wrap_wdb_init, id, "global");
-    //will_return(__wrap_wdb_init, new_wdb);
-    //expect_value(__wrap_wdb_pool_append, wdb, new_wdb);
-
     ret = wdb_upgrade_global(data->wdb);
 
     assert_ptr_equal(data->wdb, ret);
     assert_ptr_equal(new_db, ret->db);
-    //os_free(new_wdb);
 }
 
 void test_wdb_upgrade_global_error_getting_database_version(void **state)
