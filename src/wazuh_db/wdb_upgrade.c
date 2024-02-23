@@ -58,7 +58,7 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
 
         if (version < 0) {
             merror("DB(%s): Incorrect database version: %d", wdb->id, version);
-            return wdb;
+            return NULL;
         }
 
         for (unsigned i = version; i < sizeof(UPDATES) / sizeof(char *); i++) {
@@ -138,7 +138,6 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
                  */
                 mwarn("DB(%s): Error trying to get DB version", wdb->id);
                 wdb->enabled = false;
-                return wdb;
             }
         }
         else {
@@ -155,6 +154,7 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
                 else {
                     wdb = wdb_recreate_global(wdb);
                 }
+
                 return wdb;
             }
         }
@@ -206,8 +206,6 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
 wdb_t * wdb_backup(wdb_t *wdb, int version) {
     char path[PATH_MAX];
     char * sagent_id;
-    wdb_t * new_wdb = NULL;
-    sqlite3 * db;
 
     os_strdup(wdb->id, sagent_id),
     snprintf(path, PATH_MAX, "%s/%s.db", WDB2_DIR, sagent_id);
@@ -224,32 +222,27 @@ wdb_t * wdb_backup(wdb_t *wdb, int version) {
                 return NULL;
             }
 
-            if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
-                merror("Can't open SQLite backup database '%s': %s", path, sqlite3_errmsg(db));
-                sqlite3_close_v2(db);
+            if (sqlite3_open_v2(path, &wdb->db, SQLITE_OPEN_READWRITE, NULL)) {
+                merror("Can't open SQLite backup database '%s': %s", path, sqlite3_errmsg(wdb->db));
+                sqlite3_close_v2(wdb->db);
+                wdb->db = NULL;
                 free(sagent_id);
                 return NULL;
             }
-
-            new_wdb = wdb_init(db, sagent_id);
-            wdb_pool_append(new_wdb);
         }
     } else {
         merror("Couldn't create SQLite database backup for agent '%s'", sagent_id);
     }
 
     free(sagent_id);
-    return new_wdb;
+    return wdb;
 }
 
 wdb_t * wdb_recreate_global(wdb_t *wdb) {
     char path[PATH_MAX];
-    wdb_t * new_wdb = NULL;
-    sqlite3 * db;
 
     snprintf(path, PATH_MAX, "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
 
-    wdb_leave(wdb);
     if (wdb_close(wdb, TRUE) != OS_INVALID) {
         unlink(path);
 
@@ -258,19 +251,15 @@ wdb_t * wdb_recreate_global(wdb_t *wdb) {
             return NULL;
         }
 
-        if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
-            merror("Can't open SQLite backup database '%s': %s", path, sqlite3_errmsg(db));
-            sqlite3_close_v2(db);
+        if (sqlite3_open_v2(path, &wdb->db, SQLITE_OPEN_READWRITE, NULL)) {
+            merror("Can't open SQLite backup database '%s': %s", path, sqlite3_errmsg(wdb->db));
+            sqlite3_close_v2(wdb->db);
+            wdb->db = NULL;
             return NULL;
         }
-
-        new_wdb = wdb_init(db, WDB_GLOB_NAME);
-        wdb_pool_append(new_wdb);
-        w_mutex_lock(&new_wdb->mutex);
-        new_wdb->refcount++;
     }
 
-    return new_wdb;
+    return wdb;
 }
 
 /* Create backup for agent. Returns 0 on success or -1 on error. */

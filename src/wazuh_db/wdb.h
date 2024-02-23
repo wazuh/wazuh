@@ -399,6 +399,8 @@ typedef enum {
     WDB_GENERIC_COMPONENT,           ///< Miscellaneous component
 } wdb_component_t;
 
+#include "wdb_pool.h"
+
 extern char *schema_global_sql;
 extern char *schema_agents_sql;
 extern char *schema_task_manager_sql;
@@ -423,10 +425,7 @@ extern char *schema_global_upgrade_v5_sql;
 
 extern wdb_config wconfig;
 extern _Config gconfig;
-extern rwlock_t pool_mutex;
-extern wdb_t * db_pool;
-extern int db_pool_size;
-extern OSHash * open_dbs;
+extern _Atomic(int) wdb_open_count;
 
 typedef struct os_data {
     char *os_name;
@@ -859,7 +858,7 @@ int wdb_ciscat_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
 // Delete old information from the 'ciscat_results' table
 int wdb_ciscat_del(wdb_t * wdb, const char * scan_id);
 
-wdb_t * wdb_init(sqlite3 * db, const char * id);
+wdb_t * wdb_init(const char * id);
 
 void wdb_destroy(wdb_t * wdb);
 
@@ -990,8 +989,6 @@ int wdb_close(wdb_t * wdb, bool commit);
  * @param wdb The database struct pointer.
  */
 void wdb_finalize_all_statements(wdb_t * wdb);
-
-void wdb_leave(wdb_t * wdb);
 
 wdb_t * wdb_pool_find_prev(wdb_t * wdb);
 

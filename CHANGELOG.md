@@ -118,6 +118,17 @@ All notable changes to this project will be documented in this file.
 - Upgraded external sqlite library dependency version to 3.45.0. ([#21710](https://github.com/wazuh/wazuh/pull/21710))
 - Upgraded external zlib library dependency version to 1.3.1. ([#21710](https://github.com/wazuh/wazuh/pull/21710))
 
+
+## [v4.7.3]
+
+### Manager
+
+#### Fixed
+
+- Resolved a transitive mutex locking issue in wazuh-db that was impacting performance. ([#21997](https://github.com/wazuh/wazuh/pull/21997))
+- Wazuh DB internal SQL queries have been optimized by tuning database indexes to improve performance. ([#21977](https://github.com/wazuh/wazuh/pull/21977))
+
+
 ## [v4.7.2]
 
 ### Manager

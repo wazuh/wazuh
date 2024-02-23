@@ -51,6 +51,22 @@ static int test_teardown(void **state){
     return 0;
 }
 
+static int test_setup_global(void **state) {
+    test_struct_t *init_data;
+
+    init_data = malloc(sizeof(test_struct_t));
+    init_data->wdb = malloc(sizeof(wdb_t));
+    init_data->wdb_global = malloc(sizeof(wdb_t));
+    init_data->wdb->id = strdup("global");
+    init_data->output = calloc(256, sizeof(char));
+    init_data->wdb->peer = 1234;
+    init_data->wdb->enabled = true;
+
+    *state = init_data;
+
+    return 0;
+}
+
 void test_wdb_parse_syscheck_no_space(void **state) {
     int ret;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -767,6 +783,9 @@ void test_osinfo_syntax_error(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "DB(000) query error near: osinfo");
     expect_string(__wrap_w_is_file, file, "queue/db/000.db");
     will_return(__wrap_w_is_file, 1);
+
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'osinfo'");
@@ -786,6 +805,9 @@ void test_osinfo_invalid_action(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "Agent 000 query: osinfo invalid");
     expect_string(__wrap_w_is_file, file, "queue/db/000.db");
     will_return(__wrap_w_is_file, 1);
+
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid osinfo action: invalid");
@@ -2120,6 +2142,7 @@ void test_wdb_parse_global_backup_invalid_syntax(void **state) {
 
     expect_string(__wrap_w_is_file, file, "queue/db/global.db");
     will_return(__wrap_w_is_file, 1);
+    expect_function_call(__wrap_wdb_pool_leave);
 
     result = wdb_parse(query, data->output, 0);
 
@@ -2172,6 +2195,7 @@ void test_wdb_parse_global_backup_create_failed(void **state) {
 
     expect_string(__wrap_w_is_file, file, "queue/db/global.db");
     will_return(__wrap_w_is_file, 1);
+    expect_function_call(__wrap_wdb_pool_leave);
 
     result = wdb_parse(query, data->output, 0);
 
@@ -2192,6 +2216,8 @@ void test_wdb_parse_global_backup_create_success(void **state) {
 
     will_return(__wrap_wdb_global_create_backup, "ok SNAPSHOT");
     will_return(__wrap_wdb_global_create_backup, OS_SUCCESS);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     result = wdb_parse(query, data->output, 0);
 
@@ -2221,6 +2247,9 @@ void test_wdb_parse_agent_vacuum_commit_error(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Cannot end transaction.");
     expect_string(__wrap_w_is_file, file, "queue/db/000.db");
     will_return(__wrap_w_is_file, 1);
+
+    expect_function_call(__wrap_wdb_pool_leave);
+
     result = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot end transaction");
@@ -2248,6 +2277,9 @@ void test_wdb_parse_agent_vacuum_vacuum_error(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Cannot vacuum database.");
     expect_string(__wrap_w_is_file, file, "queue/db/000.db");
     will_return(__wrap_w_is_file, 1);
+
+    expect_function_call(__wrap_wdb_pool_leave);
+
     result = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot vacuum database");
@@ -2277,6 +2309,9 @@ void test_wdb_parse_agent_vacuum_success_get_db_state_error(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Couldn't get fragmentation after vacuum for the database.");
     expect_string(__wrap_w_is_file, file, "queue/db/000.db");
     will_return(__wrap_w_is_file, 1);
+
+    expect_function_call(__wrap_wdb_pool_leave);
+
     result = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Vacuum performed, but couldn't get fragmentation information after vacuum");
@@ -2311,6 +2346,9 @@ void test_wdb_parse_agent_vacuum_success_update_vacuum_error(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Couldn't update last vacuum info for the database.");
     expect_string(__wrap_w_is_file, file, "queue/db/000.db");
     will_return(__wrap_w_is_file, 1);
+
+    expect_function_call(__wrap_wdb_pool_leave);
+
     result = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Vacuum performed, but last vacuum information couldn't be updated in the metadata table");
@@ -2346,6 +2384,8 @@ void test_wdb_parse_agent_vacuum_success(void **state) {
 
     will_return(__wrap_cJSON_PrintUnformatted, response);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     result = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok {\"fragmentation_after_vacuum\":10}");
@@ -2373,6 +2413,9 @@ void test_wdb_parse_agent_get_fragmentation_db_state_error(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Cannot get database fragmentation.");
     expect_string(__wrap_w_is_file, file, "queue/db/000.db");
     will_return(__wrap_w_is_file, 1);
+
+    expect_function_call(__wrap_wdb_pool_leave);
+
     result = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot get database fragmentation");
@@ -2398,6 +2441,9 @@ void test_wdb_parse_agent_get_fragmentation_free_pages_error(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Cannot get database fragmentation.");
     expect_string(__wrap_w_is_file, file, "queue/db/000.db");
     will_return(__wrap_w_is_file, 1);
+
+    expect_function_call(__wrap_wdb_pool_leave);
+
     result = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot get database fragmentation");
@@ -2424,6 +2470,8 @@ void test_wdb_parse_global_get_fragmentation_success(void **state) {
     will_return(__wrap_wdb_get_db_free_pages_percentage, 10);
 
     will_return(__wrap_cJSON_PrintUnformatted, response);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     result = wdb_parse(query, data->output, 0);
 
@@ -2453,7 +2501,9 @@ void test_wdb_parse_delete_db_file (void **state) {
     will_return(__wrap_w_is_file, 0);
 
     expect_string(__wrap__mwarn, formatted_msg, "DB(queue/db/000.db) not found. This behavior is unexpected, the database will be recreated.");
+    will_return(__wrap_wdb_close, NULL);
     will_return(__wrap_wdb_close, OS_SUCCESS);
+    expect_function_call(__wrap_wdb_pool_leave);
     result = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'non-query'");
@@ -2579,11 +2629,11 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_deleted_ok, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_deleted_err, test_setup, test_teardown),
         /* wdb_parse_global_backup */
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_invalid_syntax, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_missing_action, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_invalid_action, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_create_failed, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_create_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_invalid_syntax, test_setup_global, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_missing_action, test_setup_global, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_invalid_action, test_setup_global, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_create_failed, test_setup_global, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_create_success, test_setup_global, test_teardown),
         /* wdb_parse_agent_vacuum */
         cmocka_unit_test_setup_teardown(test_wdb_parse_agent_vacuum_commit_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_agent_vacuum_vacuum_error, test_setup, test_teardown),
