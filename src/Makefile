@@ -359,7 +359,6 @@ ifneq (,$(filter ${DEBUGAD},YES yes y Y 1))
 endif
 
 OSSEC_CFLAGS+=-g
-AR_LDFLAGS+=-g
 
 ifeq (,$(filter ${DEBUG},YES yes y Y 1))
 	OSSEC_CFLAGS+=-DNDEBUG
