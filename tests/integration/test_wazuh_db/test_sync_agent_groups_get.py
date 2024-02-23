@@ -75,6 +75,9 @@ def test_sync_agent_groups(daemons_handler, test_metadata, create_groups, pre_in
         - test_metadata:
             type: dict
             brief: Test case metadata.
+        - create_groups:
+            type: fixture
+            brief: Create required groups
         - pre_insert_agents_into_group:
             type: fixture
             brief: fixture in charge of insert agents and groups into DB.

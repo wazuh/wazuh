@@ -68,7 +68,7 @@ expected_database_version = '13'
 daemons_handler_configuration = {'all_daemons': True}
 
 # Tests
-def test_agent_database_version(daemons_handler, remove_agents):
+def test_agent_database_version(daemons_handler, simulate_agent):
     '''
     description: Check that the agent database version is the expected one. To do this, it performs a query to the agent
                  database that gets the database version.
@@ -88,9 +88,9 @@ def test_agent_database_version(daemons_handler, remove_agents):
         - daemons_handler:
             type: fixture
             brief: Restart the wazuh service.
-        - remove_agents:
+        - simulate_agent:
             type: fixture
-            brief: Removes all agents.
+            brief: Simulate an agent
 
     assertions:
         - Verify that database version is the expected one.
@@ -102,11 +102,10 @@ def test_agent_database_version(daemons_handler, remove_agents):
         - wazuh_db
         - wdb_socket
     '''
-    agents = ag.create_agents(1, 'localhost')
-    ag.connect(agents[0])
+    agent = simulate_agent
 
     manager_version = query_wdb("agent 0 sql SELECT value FROM metadata WHERE key='db_version'")[0]['value']
-    agent_version = query_wdb(f"agent {agents[0].id} sql SELECT value FROM metadata WHERE key='db_version'")[0]['value']
+    agent_version = query_wdb(f"agent {agent.id} sql SELECT value FROM metadata WHERE key='db_version'")[0]['value']
 
     assert manager_version == expected_database_version, 'The manager database version is not the expected one. \n' \
                                                          f'Expected version: {expected_database_version}\n'\
@@ -114,6 +113,3 @@ def test_agent_database_version(daemons_handler, remove_agents):
     assert agent_version == expected_database_version, 'The agent database version is not the expected one. \n' \
                                                        f'Expected version: {expected_database_version}\n'\
                                                        f'Obtained version: {agent_version}'
-
-    for agent in agents:
-        agent.stop_receiver()

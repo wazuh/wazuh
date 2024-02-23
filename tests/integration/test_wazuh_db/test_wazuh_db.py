@@ -254,8 +254,8 @@ def test_wazuh_db_messages_global(connect_to_sockets_module, daemons_handler_mod
 
 
 @pytest.mark.skip(reason="It will be blocked by #2217, when it is solved we can enable again this test")
-def test_wazuh_db_chunks(daemons_handler_module, clean_databases, configure_sockets_environment,
-                         clean_registered_agents, connect_to_sockets_module, pre_insert_agents):
+def test_wazuh_db_chunks(daemons_handler_module, clean_databases, clean_registered_agents,
+                         configure_sockets_environment, connect_to_sockets_module, pre_insert_agents):
     '''
     description: Check that commands by chunks work properly when the agents' amount exceeds the response maximum size.
                  To do this, it sends a command to the wazuh-db socket and checks the response from the socket.

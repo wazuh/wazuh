@@ -59,6 +59,7 @@ receiver_sockets, monitored_sockets, log_monitors = None, None, None  # Set in t
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
 
+# Tests
 def test_wazuh_db_timeout(daemons_handler_module, connect_to_sockets_module,
                           pre_insert_packages, pre_set_sync_info):
     """Check that effectively the socket is closed after timeout is reached"""

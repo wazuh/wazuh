@@ -9,10 +9,9 @@ import time
 import random
 
 from wazuh_testing.utils.agent_groups import create_group, delete_group
-from wazuh_testing.utils.db_queries import global_db
 from wazuh_testing.utils.file import remove_file, recursive_directory_creation
 from wazuh_testing.utils import database
-from wazuh_testing.utils.db_queries import global_db
+from wazuh_testing.utils.db_queries.global_db import create_or_update_agent, set_agent_group, delete_agent, insert_metadata_value, remove_metadata_value
 from wazuh_testing.utils.db_queries import agent_db
 
 
@@ -39,15 +38,12 @@ def pre_insert_agents_into_group():
         id = i + 1
         name = 'Agent-test' + str(id)
         date = time.time()
-        global_db.create_or_update_agent(agent_id=id, name=name, date_add=date)
-        groups = [f"Test_group{id}"]
-        global_db.insert_agent_into_group(agent_id=id, groups_list=groups)
+        create_or_update_agent(agent_id=id, name=name, date_add=date)
+        set_agent_group(sync_status="syncreq", id=id, group=[f"Test_group{id}"])
 
     yield
 
-    global_db.delete_agent()
-    global_db.clean_groups_from_db()
-    global_db.clean_belongs()
+    delete_agent()
 
 
 @pytest.fixture()
@@ -69,15 +65,9 @@ def clean_databases():
     database.delete_dbs()
 
 
-@pytest.fixture()
-def remove_agents():
-    yield
-    global_db.delete_agent()
-
-
 @pytest.fixture(scope='module')
 def clean_registered_agents():
-    global_db.delete_agent()
+    delete_agent()
     time.sleep(5)
 
 
@@ -85,22 +75,22 @@ def clean_registered_agents():
 def add_database_values(request):
     test_values = getattr(request.module, 'test_values')
     "Add test values to database"
-    global_db.insert_metadata_value(test_values[0],test_values[1])
+    insert_metadata_value(test_values[0],test_values[1])
     yield
-    global_db.remove_metadata_value(test_values[0])
+    remove_metadata_value(test_values[0])
 
 
 @pytest.fixture()
 def prepare_range_checksum_data():
     AGENT_ID = "1"
     name = f"TestName{AGENT_ID}"
-    global_db.create_or_update_agent(agent_id=AGENT_ID, name=name, date_add='1599223378', sync_status='syncreq')
+    create_or_update_agent(agent_id=AGENT_ID, name=name, date_add='1599223378', sync_status='syncreq')
     agent_db.agent_checksum_data(AGENT_ID, '/home/test/file1')
     agent_db.agent_checksum_data(AGENT_ID, '/home/test/file2')
 
     yield
 
-    global_db.delete_agent(AGENT_ID)
+    delete_agent(AGENT_ID)
 
 
 @pytest.fixture()
@@ -110,12 +100,12 @@ def pre_insert_agents():
     AGENTS_OFFSET = 20
     for id in range(AGENTS_OFFSET, AGENTS_OFFSET + AGENTS_CANT):
         name = f"TestName{id}"
-        global_db.create_or_update_agent(agent_id=id, name=name, date_add='1599223378', sync_status='syncreq')
+        create_or_update_agent(agent_id=id, name=name, date_add='1599223378', sync_status='syncreq')
 
     yield
 
     for id in range(AGENTS_OFFSET, AGENTS_OFFSET + AGENTS_CANT):
-        global_db.delete_agent(id)
+        delete_agent(id)
 
 
 @pytest.fixture()
@@ -124,12 +114,12 @@ def insert_agents_test():
     agent_list = [1, 2, 3]
     for agent in agent_list:
         name = f"TestName{agent}"
-        global_db.create_or_update_agent(agent_id=agent, name=name, date_add='1599223378', sync_status='syncreq')
+        create_or_update_agent(agent_id=agent, name=name, date_add='1599223378', sync_status='syncreq')
 
     yield
 
     for agent in agent_list:
-        global_db.delete_agent(agent)
+        delete_agent(agent)
 
 
 @pytest.fixture()

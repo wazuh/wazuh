@@ -55,7 +55,7 @@ tags:
 from pathlib import Path
 import pytest
 
-from wazuh_testing.utils.db_queries import global_db
+from wazuh_testing.utils.db_queries.global_db import create_or_update_agent, set_agent_group, sync_agent_groups, get_groups_integrity, delete_agent
 from wazuh_testing.utils import configuration
 
 from . import TEST_CASES_FOLDER_PATH
@@ -67,10 +67,12 @@ pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
 t_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_get_groups_integrity_messages.yaml')
 t_config_parameters, t_config_metadata, t_case_ids = configuration.get_test_cases_data(t_cases_path)
 
+# Test daemons to restart.
+daemons_handler_configuration = {'all_daemons': True}
 
 # Tests
 @pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
-def test_get_groups_integrity(test_metadata, create_groups):
+def test_get_groups_integrity(daemons_handler, test_metadata, create_groups):
     '''
     description: Check that every input message using the 'get-groups-integrity' command in wazuh-db socket generates
                  the proper output to wazuh-db socket. To do this, it performs a query to the socket with a command
@@ -110,14 +112,14 @@ def test_get_groups_integrity(test_metadata, create_groups):
 
     # Insert test Agents
     for index, id in enumerate(agent_ids):
-        response = global_db.create_or_update_agent(agent_id=id+1, connection_status="disconnected")
-        response = global_db.set_agent_group(sync_status=agent_status[index], id=id, group=f"Test_group{id}")
+        response = create_or_update_agent(agent_id=id+1, connection_status="disconnected")
+        response = set_agent_group(sync_status=agent_status[index], id=id, group=f"Test_group{id}")
 
     # Get database hash
     if "invalid_hash" in test_metadata:
         hash = test_metadata["invalid_hash"]
     else:
-        response = global_db.sync_agent_groups()
+        response = sync_agent_groups()
         response = response[0]
         hash = response["hash"]
         if "no_hash" in test_metadata:
@@ -126,7 +128,7 @@ def test_get_groups_integrity(test_metadata, create_groups):
             return
 
     # Get groups integrity
-    response = global_db.get_groups_integrity(hash)
+    response = get_groups_integrity(hash)
     if isinstance(response, list):
         response = response[0]
 
@@ -135,4 +137,4 @@ def test_get_groups_integrity(test_metadata, create_groups):
 
     # Remove test agents
     for id in agent_ids:
-        global_db.delete_agent(id)
+        delete_agent(id)
