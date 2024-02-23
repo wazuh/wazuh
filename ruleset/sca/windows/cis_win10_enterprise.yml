@@ -1922,6 +1922,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RasAuto'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RasAuto -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RasAuto -> Start -> 4'
 
   # 5.21 (L2) Ensure 'Remote Desktop Configuration (SessionEnv)' is set to 'Disabled'. (Automated)
@@ -2565,8 +2567,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition: any
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging -> LogFilePath'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging -> LogFilePath -> r:System32\\logfiles\\firewall\\domainfw.log'
@@ -2656,7 +2659,7 @@ checks:
       - pci_dss_v3.2.1: ["1.1.4", "1.4"]
       - pci_dss_v4.0: ["1.2.1"]
       - soc_2: ["CC6.6"]
-    condition: all
+    condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile'
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile -> EnableFirewall'
@@ -2755,8 +2758,9 @@ checks:
       - nist_sp_800-53: ["AU-7"]
       - pci_dss_v3.2.1: ["10.2", "10.3"]
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
-    condition: any
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogFilePath'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogFilePath -> r:System32\\logfiles\\firewall\\privatefw.log'
