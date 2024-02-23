@@ -28,20 +28,36 @@ static pthread_mutex_t wm_children_mutex;   // Mutex for child process pool
 
 typedef struct ThreadInfo {
 #ifdef WIN32
-    CHAR *output;
+    CHAR * output;
     HANDLE pipe;
 #else
     pthread_mutex_t mutex;
     pthread_cond_t finished;
     int pipe;
-    char *output;
+    char * output;
 #endif
 } ThreadInfo;
+
+static OSList * wm_children_list = NULL;    // Child process list
+
+// Clean node data
+static void wm_children_node_clean(pid_t *p_sid) {
+    os_free(p_sid);
+}
 
 // Initialize children pool
 
 void wm_children_pool_init() {
     w_mutex_init(&wm_children_mutex, NULL);
+    wm_children_list = OSList_Create();
+    OSList_SetFreeDataPointer(wm_children_list, (void (*)(void *))wm_children_node_clean);
+}
+
+// Destroy children pool
+
+void wm_children_pool_destroy() {
+    OSList_Destroy(wm_children_list);
+    wm_children_list = NULL;
 }
 
 #ifdef WIN32
@@ -49,7 +65,6 @@ void wm_children_pool_init() {
 // Windows version -------------------------------------------------------------
 
 static DWORD WINAPI Reader(LPVOID args);    // Reading thread's start point
-static volatile HANDLE wm_children[WM_POOL_SIZE] = { NULL };   // Child process pool
 
 // Execute command with timeout of secs
 
@@ -68,7 +83,7 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
 
         char * new_path;
         os_calloc(OS_SIZE_6144, sizeof(char), new_path);
-        char *env_path = getenv("PATH");
+        char * env_path = getenv("PATH");
 
         if (!env_path) {
             snprintf(new_path, OS_SIZE_6144 - 1, "PATH=%s", add_path);
@@ -85,7 +100,7 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
             retval = -1;
         }
 
-        char *new_env = getenv("PATH");
+        char * new_env = getenv("PATH");
         if (new_env != NULL) {
             mdebug1("New 'PATH' environment variable set: '%s'", new_env);
         }
@@ -197,7 +212,7 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
 // Reading thread's start point
 
 DWORD WINAPI Reader(LPVOID args) {
-    ThreadInfo *tinfo = (ThreadInfo *)args;
+    ThreadInfo * tinfo = (ThreadInfo *)args;
     CHAR buffer[WM_BUFFER_MAX + 1];
     DWORD length = 0;
     DWORD nbytes;
@@ -222,41 +237,40 @@ DWORD WINAPI Reader(LPVOID args) {
 // Add process to pool
 
 void wm_append_handle(HANDLE hProcess) {
-    int i;
+    HANDLE * p_hProcess = NULL;
 
-    w_mutex_lock(&wm_children_mutex);
+    os_calloc(1, sizeof(HANDLE), p_hProcess);
+    *p_hProcess = hProcess;
 
-    for (i = 0; i < WM_POOL_SIZE; i++) {
-        if (!wm_children[i]) {
-            wm_children[i] = hProcess;
-            break;
+    if (wm_children_list) {
+        if (OSList_AddData(wm_children_list, (void *)p_hProcess)) {
+            return;
         }
     }
-
-    w_mutex_unlock(&wm_children_mutex);
-
-    if (i == WM_POOL_SIZE)
-        merror("Child process pool is full. Couldn't register handle %p.", hProcess);
+    merror("Child process handle %p could not be registered.", hProcess);
+    os_free(p_hProcess);
 }
 
 // Remove process from pool
 
 void wm_remove_handle(HANDLE hProcess) {
-    int i;
+    OSListNode * node_it = NULL;
+    HANDLE * p_hProcess = NULL;
 
-    w_mutex_lock(&wm_children_mutex);
-
-    for (i = 0; i < WM_POOL_SIZE; i++) {
-        if (wm_children[i] == hProcess) {
-            wm_children[i] = 0;
-            break;
+    if (wm_children_list) {
+        w_mutex_lock(&wm_children_mutex);
+        OSList_foreach(node_it, wm_children_list) {
+            p_hProcess = (HANDLE *)node_it->data;
+            if (p_hProcess && *p_hProcess == hProcess) {
+                OSList_DeleteThisNode(wm_children_list, node_it);
+                os_free(p_hProcess);
+                w_mutex_unlock(&wm_children_mutex);
+                return;
+            }
         }
+        w_mutex_unlock(&wm_children_mutex);
     }
-
-    if (i == WM_POOL_SIZE)
-        merror("Child process %p not found.", hProcess);
-
-    w_mutex_unlock(&wm_children_mutex);
+    merror("Child process %p not found.", hProcess);
 }
 
 // Terminate every child process group. Doesn't wait for them!
@@ -264,15 +278,18 @@ void wm_remove_handle(HANDLE hProcess) {
 void wm_kill_children() {
     // This function may be called from a signal handler
 
-    int i;
+    HANDLE * p_hProcess = NULL;
+    OSListNode * node_it = NULL;
 
     w_mutex_lock(&wm_children_mutex);
-
-    for (i = 0; i < WM_POOL_SIZE && wm_children[i]; i++)  {
-        TerminateProcess(wm_children[i], 127);
+    OSList_foreach(node_it, wm_children_list) {
+        if (node_it->data) {
+            p_hProcess = (HANDLE *)node_it->data;
+            TerminateProcess(*p_hProcess, ERROR_PROC_NOT_FOUND);
+        }
     }
-
     w_mutex_unlock(&wm_children_mutex);
+    wm_children_pool_destroy();
 }
 
 #else
@@ -287,13 +304,11 @@ extern char ** environ;
 
 static void* reader(void *args);   // Reading thread's start point
 
-static volatile pid_t wm_children[WM_POOL_SIZE] = { 0 };                // Child process pool
-
 // Execute command with timeout of secs
 
 int wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path)
 {
-    char **argv;
+    char ** argv;
     pid_t pid;
     int pipe_fd[2];
     ThreadInfo tinfo = { PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, NULL };
@@ -309,7 +324,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
     // Create pipe for child's stdout
 
     if (output) {
-        if (pipe(pipe_fd) < 0){
+        if (pipe(pipe_fd) < 0) {
             merror("At wm_exec(): pipe(): %s", strerror(errno));
             return -1;
         }
@@ -363,7 +378,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
                 merror("at wm_exec(): Unable to set new 'PATH' environment variable (%s).", strerror(errno));
             }
 
-            char *new_env = getenv("PATH");
+            char * new_env = getenv("PATH");
             if (new_env != NULL) {
                 mdebug1("New 'PATH' environment variable set: '%s'", new_env);
             }
@@ -471,35 +486,35 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
                     *exitcode = WEXITSTATUS(status);
             }
 
-        } else if (secs){
+        } else if (secs) {
             // Kill and timeout
             sleep(1);
             secs--;
             do {
-                if (waitpid(pid,&status,WNOHANG) == 0){ // Command yet not finished
+                if (waitpid(pid,&status,WNOHANG) == 0) { // Command yet not finished
                     retval = -1;
-                    switch (kill(pid, 0)){
-                        case -1:
-                            switch(errno){
-                                case ESRCH:
-                                    merror("At wm_exec(): No such process. Couldn't wait PID %d: (%d) %s.", (int)pid, errno, strerror(errno));
-                                    retval = -2;
-                                    break;
-
-                                default:
-                                    merror("At wm_exec(): Couldn't wait PID %d: (%d) %s.", (int)pid, errno, strerror(errno));
-                                    retval = -3;
-                            }
+                    switch (kill(pid, 0)) {
+                    case -1:
+                        switch(errno) {
+                        case ESRCH:
+                            merror("At wm_exec(): No such process. Couldn't wait PID %d: (%d) %s.", pid, errno, strerror(errno));
+                            retval = -2;
                             break;
 
                         default:
-                            if (secs > 0) {
-                                sleep(1);
-                                secs--;
-                            } else if (!secs) {
-                                secs--;
-                                continue;
-                            }
+                            merror("At wm_exec(): Couldn't wait PID %d: (%d) %s.", pid, errno, strerror(errno));
+                            retval = -3;
+                        }
+                        break;
+
+                    default:
+                        if (secs > 0) {
+                            sleep(1);
+                            secs--;
+                        } else if (!secs) {
+                            secs--;
+                            continue;
+                        }
                     }
 
                     if (retval == -2 || retval == -3) {
@@ -522,26 +537,26 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
                 }
             } while(secs >= 0);
 
-            if(retval != 0){
+            if(retval != 0) {
                 kill(pid,SIGTERM);
                 retval = WM_ERROR_TIMEOUT;
 
                 // Wait for child process
 
                 switch (waitpid(pid, &status, 0)) {
-                    case -1:
-                        merror("waitpid(): %s (%d)", strerror(errno), errno);
+                case -1:
+                    merror("waitpid(): %s (%d)", strerror(errno), errno);
+                    retval = -1;
+                    break;
+
+                default:
+                    if (WEXITSTATUS(status) == EXECVE_ERROR) {
+                        mdebug1("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
                         retval = -1;
-                        break;
+                    }
 
-                    default:
-                        if (WEXITSTATUS(status) == EXECVE_ERROR) {
-                            mdebug1("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
-                            retval = -1;
-                        }
-
-                        if (exitcode)
-                            *exitcode = WEXITSTATUS(status);
+                    if (exitcode)
+                        *exitcode = WEXITSTATUS(status);
                 }
             }
         } else {
@@ -584,7 +599,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 // Reading thread's start point
 
 void* reader(void *args) {
-    ThreadInfo *tinfo = (ThreadInfo *)args;
+    ThreadInfo * tinfo = (ThreadInfo *)args;
     char buffer[WM_BUFFER_MAX + 1];
     int length = 0;
     int nbytes;
@@ -602,8 +617,9 @@ void* reader(void *args) {
         }
     }
 
-    if (tinfo->output)
+    if (tinfo->output) {
         tinfo->output[length] = '\0';
+    }
 
     w_mutex_lock(&tinfo->mutex);
     w_cond_signal(&tinfo->finished);
@@ -616,41 +632,42 @@ void* reader(void *args) {
 // Add process group to pool
 
 void wm_append_sid(pid_t sid) {
-    int i;
 
-    w_mutex_lock(&wm_children_mutex);
+    pid_t * p_sid = NULL;
 
-    for (i = 0; i < WM_POOL_SIZE; i++) {
-        if (!wm_children[i]) {
-            wm_children[i] = sid;
-            break;
+    os_calloc(1, sizeof(pid_t), p_sid);
+    *p_sid = sid;
+
+    if (wm_children_list) {
+        if (OSList_AddData(wm_children_list, (void *)p_sid)) {
+            return;
         }
     }
-
-    w_mutex_unlock(&wm_children_mutex);
-
-    if (i == WM_POOL_SIZE)
-        merror("Child process pool is full. Couldn't register sid %d.", (int)sid);
+    merror("Child process sid %d could not be registered.", sid);
+    os_free(p_sid);
 }
 
 // Remove process group from pool
 
 void wm_remove_sid(pid_t sid) {
-    int i;
 
-    w_mutex_lock(&wm_children_mutex);
+    OSListNode * node_it = NULL;
+    pid_t * p_sid = NULL;
 
-    for (i = 0; i < WM_POOL_SIZE; i++) {
-        if (wm_children[i] == sid) {
-            wm_children[i] = 0;
-            break;
+    if (wm_children_list) {
+        w_mutex_lock(&wm_children_mutex);
+        OSList_foreach(node_it, wm_children_list) {
+            p_sid = (pid_t *)node_it->data;
+            if (p_sid && *p_sid == sid) {
+                OSList_DeleteThisNode(wm_children_list, node_it);
+                os_free(p_sid);
+                w_mutex_unlock(&wm_children_mutex);
+                return;
+            }
         }
+        w_mutex_unlock(&wm_children_mutex);
     }
-
-    if (i == WM_POOL_SIZE)
-        merror("Child process %d not found.", (int)sid);
-
-    w_mutex_unlock(&wm_children_mutex);
+    merror("Child process %d not found.", sid);
 }
 
 // Terminate every child process group. Doesn't wait for them!
@@ -658,16 +675,16 @@ void wm_remove_sid(pid_t sid) {
 void wm_kill_children() {
     // This function may be called from a signal handler
 
-    int i;
     int timeout;
     pid_t sid;
+    pid_t * p_sid = NULL;
+    OSListNode * node_it = NULL;
 
     w_mutex_lock(&wm_children_mutex);
-
-    for (i = 0; i < WM_POOL_SIZE; i++) {
-        sid = wm_children[i];
-
-        if (sid) {
+    OSList_foreach(node_it, wm_children_list) {
+        p_sid = (pid_t *)node_it->data;
+        if (p_sid) {
+            sid = *p_sid;
             if (wm_kill_timeout) {
                 timeout = wm_kill_timeout;
 
@@ -680,7 +697,6 @@ void wm_kill_children() {
 
                 case 0: // Child
 
-                    w_mutex_unlock(&wm_children_mutex);
                     kill(-sid, SIGTERM);
 
                     do {
@@ -695,7 +711,7 @@ void wm_kill_children() {
                                 exit(EXIT_SUCCESS);
 
                             default:
-                                merror("wm_kill_children(): Couldn't wait PID %d: (%d) %s.", (int)sid, errno, strerror(errno));
+                                merror("wm_kill_children(): Couldn't wait PID %d: (%d) %s.", sid, errno, strerror(errno));
                                 exit(EXIT_FAILURE);
                             }
 
@@ -706,13 +722,14 @@ void wm_kill_children() {
 
                     // If time is gone, kill process
 
-                    mdebug1("Killing process group %d", (int)sid);
+                    mdebug1("Killing process group %d", sid);
 
                     kill(-sid, SIGKILL);
                     exit(EXIT_SUCCESS);
 
                 default: // Parent
-                    wm_children[i] = 0;
+                    break;
+
                 }
             } else {
                 // Kill immediately
@@ -720,8 +737,8 @@ void wm_kill_children() {
             }
         }
     }
-
     w_mutex_unlock(&wm_children_mutex);
+    wm_children_pool_destroy();
 }
 
 #endif // WIN32

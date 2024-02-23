@@ -58,6 +58,7 @@ static int setup_module() {
     int ret = wm_docker_read(nodes, docker_module);
     OS_ClearNode(nodes);
     test_mode = 1;
+    wm_children_pool_init();
     return ret;
 }
 
