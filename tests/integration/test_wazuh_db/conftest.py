@@ -39,7 +39,7 @@ def pre_insert_agents_into_group():
         name = 'Agent-test' + str(id)
         date = time.time()
         create_or_update_agent(agent_id=id, name=name, date_add=date)
-        set_agent_group(sync_status="syncreq", id=id, group=[f"Test_group{id}"])
+        set_agent_group(sync_status="syncreq", id=id, group=f"Test_group{id}")
 
     yield
 
