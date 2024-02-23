@@ -14,7 +14,7 @@ PLIST=${DIR}/bin/.process_list;
 
 # Installation info
 VERSION="v4.8.0"
-REVISION="40803"
+REVISION="40804"
 TYPE="server"
 
 ###  Do not modify below here ###

@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 #### Added
 
 - Added new query "rollback" to wazuh-db. ([#16058](https://github.com/wazuh/wazuh/pull/16058))
+- Transition to Wazuh Keystore for Indexer Configuration. ([#21670](https://github.com/wazuh/wazuh/pull/21670))
 
 #### Changed
 
@@ -41,12 +42,15 @@ All notable changes to this project will be documented in this file.
 - FIM now buffers the Linux audit events for who-data to prevent side effects in other components. ([#16200](https://github.com/wazuh/wazuh/pull/16200))
 - The sub-process execution implementation has been improved. ([#19720](https://github.com/wazuh/wazuh/pull/19720))
 - Refactored and modularized the AWS integration code. ([#17623](https://github.com/wazuh/wazuh/pull/17623))
+- Replace the usage of fopen with wfopen to avoid processing invalid characters on Windows. ([#21791](https://github.com/wazuh/wazuh/pull/21791))
+- Prevent macOS agent to start automatically after installation. ([#21637](https://github.com/wazuh/wazuh/pull/21637))
 
 #### Fixed
 
 - Fixed process path retrieval in Syscollector on Windows XP. ([#16839](https://github.com/wazuh/wazuh/pull/16839))
 - Fixed detection of the OS version on Alpine Linux. ([#16056](https://github.com/wazuh/wazuh/pull/16056))
 - Fixed Solaris 10 name not showing in the Dashboard. ([#18642](https://github.com/wazuh/wazuh/pull/18642))
+- Fixed macOS Ventura compilation from sources. ([#21932](https://github.com/wazuh/wazuh/pull/21932))
 
 ### RESTful API
 
@@ -92,6 +96,10 @@ All notable changes to this project will be documented in this file.
 
 ### Other
 
+#### Added
+
+- Added external lua library dependency version 5.3.6. ([#21710](https://github.com/wazuh/wazuh/pull/21710))
+
 #### Changed
 
 - Upgraded external aiohttp library dependency version to 3.8.5. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
@@ -103,6 +111,12 @@ All notable changes to this project will be documented in this file.
 - Upgraded external SQLAlchemy library dependency version to 2.0.23. ([#20741](https://github.com/wazuh/wazuh/pull/20741))
 - Upgraded external Jinja2 library dependency version to 3.1.3. ([#21684](https://github.com/wazuh/wazuh/pull/21684))
 - Upgraded embedded Python version to 3.10.13. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
+- Upgraded external curl library dependency version to 8.5.0. ([#21710](https://github.com/wazuh/wazuh/pull/21710))
+- Upgraded external pcre2 library dependency version to 10.42. ([#21710](https://github.com/wazuh/wazuh/pull/21710))
+- Upgraded external libarchive library dependency version to 3.7.2. ([#21710](https://github.com/wazuh/wazuh/pull/21710))
+- Upgraded external rpm library dependency version to 4.18.2. ([#21710](https://github.com/wazuh/wazuh/pull/21710))
+- Upgraded external sqlite library dependency version to 3.45.0. ([#21710](https://github.com/wazuh/wazuh/pull/21710))
+- Upgraded external zlib library dependency version to 1.3.1. ([#21710](https://github.com/wazuh/wazuh/pull/21710))
 
 ## [v4.7.2]
 
