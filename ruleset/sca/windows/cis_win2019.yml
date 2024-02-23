@@ -5437,7 +5437,7 @@ checks:
     impact: "Users will not have the ability to use the ms-appinstaller protocol to install applications by clicking a link on a website."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Desktop App Installer\\Enable App Installer ms-appinstaller protocol Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DesktopAppInstaller.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates (or newer)."
     references:
-      - "https://learn.microsoft.com/en-us/windows/package-manager/"
+      - "https://learn.microsoft.com/en-us/windows/package-manager"
     compliance:
       - cis: ["18.10.17.4"]
       - cis_csc_v8: ["4.8"]
