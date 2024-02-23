@@ -326,7 +326,6 @@ STATIC int wdb_any_transaction(wdb_t * wdb, const char* sql_transaction);
 */
 STATIC int wdb_write_state_transaction(wdb_t * wdb, uint8_t state, wdb_ptr_any_txn_t wdb_ptr_any_txn);
 
-wdb_config wconfig;
 _Atomic(int) wdb_open_count;
 
 // Opens global database and stores it in DB pool. It returns a locked database or NULL
