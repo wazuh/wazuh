@@ -23,6 +23,7 @@
 #include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/arena.h>
 #include <google/protobuf/arenastring.h>
+#include <google/protobuf/generated_message_bases.h>
 #include <google/protobuf/generated_message_util.h>
 #include <google/protobuf/metadata_lite.h>
 #include <google/protobuf/generated_message_reflection.h>
@@ -51,6 +52,12 @@ namespace wazuh {
 namespace api {
 namespace engine {
 namespace catalog {
+class NamespacesGet_Request;
+struct NamespacesGet_RequestDefaultTypeInternal;
+extern NamespacesGet_RequestDefaultTypeInternal _NamespacesGet_Request_default_instance_;
+class NamespacesGet_Response;
+struct NamespacesGet_ResponseDefaultTypeInternal;
+extern NamespacesGet_ResponseDefaultTypeInternal _NamespacesGet_Response_default_instance_;
 class ResourceDelete_Request;
 struct ResourceDelete_RequestDefaultTypeInternal;
 extern ResourceDelete_RequestDefaultTypeInternal _ResourceDelete_Request_default_instance_;
@@ -75,6 +82,8 @@ extern ResourceValidate_RequestDefaultTypeInternal _ResourceValidate_Request_def
 }  // namespace wazuh
 }  // namespace com
 PROTOBUF_NAMESPACE_OPEN
+template<> ::com::wazuh::api::engine::catalog::NamespacesGet_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::catalog::NamespacesGet_Request>(Arena*);
+template<> ::com::wazuh::api::engine::catalog::NamespacesGet_Response* Arena::CreateMaybeMessage<::com::wazuh::api::engine::catalog::NamespacesGet_Response>(Arena*);
 template<> ::com::wazuh::api::engine::catalog::ResourceDelete_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::catalog::ResourceDelete_Request>(Arena*);
 template<> ::com::wazuh::api::engine::catalog::ResourceGet_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::catalog::ResourceGet_Request>(Arena*);
 template<> ::com::wazuh::api::engine::catalog::ResourceGet_Response* Arena::CreateMaybeMessage<::com::wazuh::api::engine::catalog::ResourceGet_Response>(Arena*);
@@ -1251,7 +1260,6 @@ class ResourceValidate_Request final :
   enum : int {
     kNameFieldNumber = 1,
     kContentFieldNumber = 3,
-    kNamespaceidFieldNumber = 4,
     kFormatFieldNumber = 2,
   };
   // optional string name = 1;
@@ -1290,24 +1298,6 @@ class ResourceValidate_Request final :
   std::string* _internal_mutable_content();
   public:
 
-  // optional string namespaceid = 4;
-  bool has_namespaceid() const;
-  private:
-  bool _internal_has_namespaceid() const;
-  public:
-  void clear_namespaceid();
-  const std::string& namespaceid() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_namespaceid(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_namespaceid();
-  PROTOBUF_NODISCARD std::string* release_namespaceid();
-  void set_allocated_namespaceid(std::string* namespaceid);
-  private:
-  const std::string& _internal_namespaceid() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_namespaceid(const std::string& value);
-  std::string* _internal_mutable_namespaceid();
-  public:
-
   // optional .com.wazuh.api.engine.catalog.ResourceFormat format = 2;
   bool has_format() const;
   private:
@@ -1333,8 +1323,320 @@ class ResourceValidate_Request final :
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr name_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr content_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr namespaceid_;
     int format_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_catalog_2eproto;
+};
+// -------------------------------------------------------------------
+
+class NamespacesGet_Request final :
+    public ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.catalog.NamespacesGet_Request) */ {
+ public:
+  inline NamespacesGet_Request() : NamespacesGet_Request(nullptr) {}
+  explicit PROTOBUF_CONSTEXPR NamespacesGet_Request(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  NamespacesGet_Request(const NamespacesGet_Request& from);
+  NamespacesGet_Request(NamespacesGet_Request&& from) noexcept
+    : NamespacesGet_Request() {
+    *this = ::std::move(from);
+  }
+
+  inline NamespacesGet_Request& operator=(const NamespacesGet_Request& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline NamespacesGet_Request& operator=(NamespacesGet_Request&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const NamespacesGet_Request& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const NamespacesGet_Request* internal_default_instance() {
+    return reinterpret_cast<const NamespacesGet_Request*>(
+               &_NamespacesGet_Request_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    6;
+
+  friend void swap(NamespacesGet_Request& a, NamespacesGet_Request& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(NamespacesGet_Request* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(NamespacesGet_Request* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  NamespacesGet_Request* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<NamespacesGet_Request>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyFrom;
+  inline void CopyFrom(const NamespacesGet_Request& from) {
+    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl(*this, from);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeFrom;
+  void MergeFrom(const NamespacesGet_Request& from) {
+    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl(*this, from);
+  }
+  public:
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "com.wazuh.api.engine.catalog.NamespacesGet_Request";
+  }
+  protected:
+  explicit NamespacesGet_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.catalog.NamespacesGet_Request)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+  };
+  friend struct ::TableStruct_catalog_2eproto;
+};
+// -------------------------------------------------------------------
+
+class NamespacesGet_Response final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.catalog.NamespacesGet_Response) */ {
+ public:
+  inline NamespacesGet_Response() : NamespacesGet_Response(nullptr) {}
+  ~NamespacesGet_Response() override;
+  explicit PROTOBUF_CONSTEXPR NamespacesGet_Response(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  NamespacesGet_Response(const NamespacesGet_Response& from);
+  NamespacesGet_Response(NamespacesGet_Response&& from) noexcept
+    : NamespacesGet_Response() {
+    *this = ::std::move(from);
+  }
+
+  inline NamespacesGet_Response& operator=(const NamespacesGet_Response& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline NamespacesGet_Response& operator=(NamespacesGet_Response&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const NamespacesGet_Response& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const NamespacesGet_Response* internal_default_instance() {
+    return reinterpret_cast<const NamespacesGet_Response*>(
+               &_NamespacesGet_Response_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    7;
+
+  friend void swap(NamespacesGet_Response& a, NamespacesGet_Response& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(NamespacesGet_Response* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(NamespacesGet_Response* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  NamespacesGet_Response* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<NamespacesGet_Response>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const NamespacesGet_Response& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const NamespacesGet_Response& from) {
+    NamespacesGet_Response::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(NamespacesGet_Response* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "com.wazuh.api.engine.catalog.NamespacesGet_Response";
+  }
+  protected:
+  explicit NamespacesGet_Response(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kNamespacesFieldNumber = 3,
+    kErrorFieldNumber = 2,
+    kStatusFieldNumber = 1,
+  };
+  // repeated string namespaces = 3;
+  int namespaces_size() const;
+  private:
+  int _internal_namespaces_size() const;
+  public:
+  void clear_namespaces();
+  const std::string& namespaces(int index) const;
+  std::string* mutable_namespaces(int index);
+  void set_namespaces(int index, const std::string& value);
+  void set_namespaces(int index, std::string&& value);
+  void set_namespaces(int index, const char* value);
+  void set_namespaces(int index, const char* value, size_t size);
+  std::string* add_namespaces();
+  void add_namespaces(const std::string& value);
+  void add_namespaces(std::string&& value);
+  void add_namespaces(const char* value);
+  void add_namespaces(const char* value, size_t size);
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& namespaces() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* mutable_namespaces();
+  private:
+  const std::string& _internal_namespaces(int index) const;
+  std::string* _internal_add_namespaces();
+  public:
+
+  // optional string error = 2;
+  bool has_error() const;
+  private:
+  bool _internal_has_error() const;
+  public:
+  void clear_error();
+  const std::string& error() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_error(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_error();
+  PROTOBUF_NODISCARD std::string* release_error();
+  void set_allocated_error(std::string* error);
+  private:
+  const std::string& _internal_error() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_error(const std::string& value);
+  std::string* _internal_mutable_error();
+  public:
+
+  // .com.wazuh.api.engine.ReturnStatus status = 1;
+  void clear_status();
+  ::com::wazuh::api::engine::ReturnStatus status() const;
+  void set_status(::com::wazuh::api::engine::ReturnStatus value);
+  private:
+  ::com::wazuh::api::engine::ReturnStatus _internal_status() const;
+  void _internal_set_status(::com::wazuh::api::engine::ReturnStatus value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.catalog.NamespacesGet_Response)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> namespaces_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr error_;
+    int status_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_catalog_2eproto;
@@ -2320,7 +2622,7 @@ inline void ResourceValidate_Request::set_allocated_name(std::string* name) {
 
 // optional .com.wazuh.api.engine.catalog.ResourceFormat format = 2;
 inline bool ResourceValidate_Request::_internal_has_format() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000008u) != 0;
+  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
   return value;
 }
 inline bool ResourceValidate_Request::has_format() const {
@@ -2328,7 +2630,7 @@ inline bool ResourceValidate_Request::has_format() const {
 }
 inline void ResourceValidate_Request::clear_format() {
   _impl_.format_ = 0;
-  _impl_._has_bits_[0] &= ~0x00000008u;
+  _impl_._has_bits_[0] &= ~0x00000004u;
 }
 inline ::com::wazuh::api::engine::catalog::ResourceFormat ResourceValidate_Request::_internal_format() const {
   return static_cast< ::com::wazuh::api::engine::catalog::ResourceFormat >(_impl_.format_);
@@ -2338,7 +2640,7 @@ inline ::com::wazuh::api::engine::catalog::ResourceFormat ResourceValidate_Reque
   return _internal_format();
 }
 inline void ResourceValidate_Request::_internal_set_format(::com::wazuh::api::engine::catalog::ResourceFormat value) {
-  _impl_._has_bits_[0] |= 0x00000008u;
+  _impl_._has_bits_[0] |= 0x00000004u;
   _impl_.format_ = value;
 }
 inline void ResourceValidate_Request::set_format(::com::wazuh::api::engine::catalog::ResourceFormat value) {
@@ -2414,77 +2716,184 @@ inline void ResourceValidate_Request::set_allocated_content(std::string* content
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.catalog.ResourceValidate_Request.content)
 }
 
-// optional string namespaceid = 4;
-inline bool ResourceValidate_Request::_internal_has_namespaceid() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
+// -------------------------------------------------------------------
+
+// NamespacesGet_Request
+
+// -------------------------------------------------------------------
+
+// NamespacesGet_Response
+
+// .com.wazuh.api.engine.ReturnStatus status = 1;
+inline void NamespacesGet_Response::clear_status() {
+  _impl_.status_ = 0;
+}
+inline ::com::wazuh::api::engine::ReturnStatus NamespacesGet_Response::_internal_status() const {
+  return static_cast< ::com::wazuh::api::engine::ReturnStatus >(_impl_.status_);
+}
+inline ::com::wazuh::api::engine::ReturnStatus NamespacesGet_Response::status() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.catalog.NamespacesGet_Response.status)
+  return _internal_status();
+}
+inline void NamespacesGet_Response::_internal_set_status(::com::wazuh::api::engine::ReturnStatus value) {
+  
+  _impl_.status_ = value;
+}
+inline void NamespacesGet_Response::set_status(::com::wazuh::api::engine::ReturnStatus value) {
+  _internal_set_status(value);
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.catalog.NamespacesGet_Response.status)
+}
+
+// optional string error = 2;
+inline bool NamespacesGet_Response::_internal_has_error() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
   return value;
 }
-inline bool ResourceValidate_Request::has_namespaceid() const {
-  return _internal_has_namespaceid();
+inline bool NamespacesGet_Response::has_error() const {
+  return _internal_has_error();
 }
-inline void ResourceValidate_Request::clear_namespaceid() {
-  _impl_.namespaceid_.ClearToEmpty();
-  _impl_._has_bits_[0] &= ~0x00000004u;
+inline void NamespacesGet_Response::clear_error() {
+  _impl_.error_.ClearToEmpty();
+  _impl_._has_bits_[0] &= ~0x00000001u;
 }
-inline const std::string& ResourceValidate_Request::namespaceid() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.catalog.ResourceValidate_Request.namespaceid)
-  return _internal_namespaceid();
+inline const std::string& NamespacesGet_Response::error() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.catalog.NamespacesGet_Response.error)
+  return _internal_error();
 }
 template <typename ArgT0, typename... ArgT>
 inline PROTOBUF_ALWAYS_INLINE
-void ResourceValidate_Request::set_namespaceid(ArgT0&& arg0, ArgT... args) {
- _impl_._has_bits_[0] |= 0x00000004u;
- _impl_.namespaceid_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.catalog.ResourceValidate_Request.namespaceid)
+void NamespacesGet_Response::set_error(ArgT0&& arg0, ArgT... args) {
+ _impl_._has_bits_[0] |= 0x00000001u;
+ _impl_.error_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.catalog.NamespacesGet_Response.error)
 }
-inline std::string* ResourceValidate_Request::mutable_namespaceid() {
-  std::string* _s = _internal_mutable_namespaceid();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.catalog.ResourceValidate_Request.namespaceid)
+inline std::string* NamespacesGet_Response::mutable_error() {
+  std::string* _s = _internal_mutable_error();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.catalog.NamespacesGet_Response.error)
   return _s;
 }
-inline const std::string& ResourceValidate_Request::_internal_namespaceid() const {
-  return _impl_.namespaceid_.Get();
+inline const std::string& NamespacesGet_Response::_internal_error() const {
+  return _impl_.error_.Get();
 }
-inline void ResourceValidate_Request::_internal_set_namespaceid(const std::string& value) {
-  _impl_._has_bits_[0] |= 0x00000004u;
-  _impl_.namespaceid_.Set(value, GetArenaForAllocation());
+inline void NamespacesGet_Response::_internal_set_error(const std::string& value) {
+  _impl_._has_bits_[0] |= 0x00000001u;
+  _impl_.error_.Set(value, GetArenaForAllocation());
 }
-inline std::string* ResourceValidate_Request::_internal_mutable_namespaceid() {
-  _impl_._has_bits_[0] |= 0x00000004u;
-  return _impl_.namespaceid_.Mutable(GetArenaForAllocation());
+inline std::string* NamespacesGet_Response::_internal_mutable_error() {
+  _impl_._has_bits_[0] |= 0x00000001u;
+  return _impl_.error_.Mutable(GetArenaForAllocation());
 }
-inline std::string* ResourceValidate_Request::release_namespaceid() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.catalog.ResourceValidate_Request.namespaceid)
-  if (!_internal_has_namespaceid()) {
+inline std::string* NamespacesGet_Response::release_error() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.catalog.NamespacesGet_Response.error)
+  if (!_internal_has_error()) {
     return nullptr;
   }
-  _impl_._has_bits_[0] &= ~0x00000004u;
-  auto* p = _impl_.namespaceid_.Release();
+  _impl_._has_bits_[0] &= ~0x00000001u;
+  auto* p = _impl_.error_.Release();
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.namespaceid_.IsDefault()) {
-    _impl_.namespaceid_.Set("", GetArenaForAllocation());
+  if (_impl_.error_.IsDefault()) {
+    _impl_.error_.Set("", GetArenaForAllocation());
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   return p;
 }
-inline void ResourceValidate_Request::set_allocated_namespaceid(std::string* namespaceid) {
-  if (namespaceid != nullptr) {
-    _impl_._has_bits_[0] |= 0x00000004u;
+inline void NamespacesGet_Response::set_allocated_error(std::string* error) {
+  if (error != nullptr) {
+    _impl_._has_bits_[0] |= 0x00000001u;
   } else {
-    _impl_._has_bits_[0] &= ~0x00000004u;
+    _impl_._has_bits_[0] &= ~0x00000001u;
   }
-  _impl_.namespaceid_.SetAllocated(namespaceid, GetArenaForAllocation());
+  _impl_.error_.SetAllocated(error, GetArenaForAllocation());
 #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.namespaceid_.IsDefault()) {
-    _impl_.namespaceid_.Set("", GetArenaForAllocation());
+  if (_impl_.error_.IsDefault()) {
+    _impl_.error_.Set("", GetArenaForAllocation());
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.catalog.ResourceValidate_Request.namespaceid)
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.catalog.NamespacesGet_Response.error)
+}
+
+// repeated string namespaces = 3;
+inline int NamespacesGet_Response::_internal_namespaces_size() const {
+  return _impl_.namespaces_.size();
+}
+inline int NamespacesGet_Response::namespaces_size() const {
+  return _internal_namespaces_size();
+}
+inline void NamespacesGet_Response::clear_namespaces() {
+  _impl_.namespaces_.Clear();
+}
+inline std::string* NamespacesGet_Response::add_namespaces() {
+  std::string* _s = _internal_add_namespaces();
+  // @@protoc_insertion_point(field_add_mutable:com.wazuh.api.engine.catalog.NamespacesGet_Response.namespaces)
+  return _s;
+}
+inline const std::string& NamespacesGet_Response::_internal_namespaces(int index) const {
+  return _impl_.namespaces_.Get(index);
+}
+inline const std::string& NamespacesGet_Response::namespaces(int index) const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.catalog.NamespacesGet_Response.namespaces)
+  return _internal_namespaces(index);
+}
+inline std::string* NamespacesGet_Response::mutable_namespaces(int index) {
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.catalog.NamespacesGet_Response.namespaces)
+  return _impl_.namespaces_.Mutable(index);
+}
+inline void NamespacesGet_Response::set_namespaces(int index, const std::string& value) {
+  _impl_.namespaces_.Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.catalog.NamespacesGet_Response.namespaces)
+}
+inline void NamespacesGet_Response::set_namespaces(int index, std::string&& value) {
+  _impl_.namespaces_.Mutable(index)->assign(std::move(value));
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.catalog.NamespacesGet_Response.namespaces)
+}
+inline void NamespacesGet_Response::set_namespaces(int index, const char* value) {
+  GOOGLE_DCHECK(value != nullptr);
+  _impl_.namespaces_.Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set_char:com.wazuh.api.engine.catalog.NamespacesGet_Response.namespaces)
+}
+inline void NamespacesGet_Response::set_namespaces(int index, const char* value, size_t size) {
+  _impl_.namespaces_.Mutable(index)->assign(
+    reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:com.wazuh.api.engine.catalog.NamespacesGet_Response.namespaces)
+}
+inline std::string* NamespacesGet_Response::_internal_add_namespaces() {
+  return _impl_.namespaces_.Add();
+}
+inline void NamespacesGet_Response::add_namespaces(const std::string& value) {
+  _impl_.namespaces_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add:com.wazuh.api.engine.catalog.NamespacesGet_Response.namespaces)
+}
+inline void NamespacesGet_Response::add_namespaces(std::string&& value) {
+  _impl_.namespaces_.Add(std::move(value));
+  // @@protoc_insertion_point(field_add:com.wazuh.api.engine.catalog.NamespacesGet_Response.namespaces)
+}
+inline void NamespacesGet_Response::add_namespaces(const char* value) {
+  GOOGLE_DCHECK(value != nullptr);
+  _impl_.namespaces_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add_char:com.wazuh.api.engine.catalog.NamespacesGet_Response.namespaces)
+}
+inline void NamespacesGet_Response::add_namespaces(const char* value, size_t size) {
+  _impl_.namespaces_.Add()->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_add_pointer:com.wazuh.api.engine.catalog.NamespacesGet_Response.namespaces)
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
+NamespacesGet_Response::namespaces() const {
+  // @@protoc_insertion_point(field_list:com.wazuh.api.engine.catalog.NamespacesGet_Response.namespaces)
+  return _impl_.namespaces_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>*
+NamespacesGet_Response::mutable_namespaces() {
+  // @@protoc_insertion_point(field_mutable_list:com.wazuh.api.engine.catalog.NamespacesGet_Response.namespaces)
+  return &_impl_.namespaces_;
 }
 
 #ifdef __GNUC__
   #pragma GCC diagnostic pop
 #endif  // __GNUC__
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+
 // -------------------------------------------------------------------
 
 // -------------------------------------------------------------------

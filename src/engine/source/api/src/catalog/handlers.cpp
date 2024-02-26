@@ -179,7 +179,7 @@ api::HandlerSync resourceGet(std::shared_ptr<Catalog> catalog, std::weak_ptr<rba
         }
 
         // Call catalog
-        auto queryRes = catalog->getResource(targetResource, {eRequest.namespaceid()});
+        auto queryRes = catalog->getResource(targetResource, eRequest.namespaceid());
 
         if (base::isError(queryRes))
         {
@@ -259,7 +259,7 @@ api::HandlerSync resourceDelete(std::shared_ptr<Catalog> catalog, std::weak_ptr<
             return ::api::adapter::genericError<ResponseType>(e.what());
         }
 
-        auto errorDelete = catalog->deleteResource(targetResource, {eRequest.namespaceid()});
+        auto errorDelete = catalog->deleteResource(targetResource, eRequest.namespaceid());
         if (errorDelete)
         {
             return ::api::adapter::genericError<ResponseType>(errorDelete.value().message);
@@ -336,7 +336,7 @@ api::HandlerSync resourcePut(std::shared_ptr<Catalog> catalog, std::weak_ptr<rba
             return ::api::adapter::genericError<ResponseType>(e.what());
         }
 
-        const auto invalid = catalog->putResource(targetResource, eRequest.content());
+        const auto invalid = catalog->putResource(targetResource, eRequest.content(), eRequest.namespaceid());
         if (invalid)
         {
             return ::api::adapter::genericError<ResponseType>(invalid.value().message);
@@ -376,7 +376,6 @@ api::HandlerSync resourceValidate(std::shared_ptr<Catalog> catalog, std::weak_pt
         const auto error = !eRequest.has_name()          ? std::make_optional("Missing /name parameter")
                            : !eRequest.has_format()      ? std::make_optional("Missing or invalid /format parameter")
                            : !eRequest.has_content()     ? std::make_optional("Missing /content parameter")
-                           : !eRequest.has_namespaceid() ? std::make_optional("Missing /namespaceid parameter")
                                                          : std::nullopt;
         if (error)
         {
@@ -424,13 +423,62 @@ api::HandlerSync resourceValidate(std::shared_ptr<Catalog> catalog, std::weak_pt
     };
 }
 
+api::HandlerSync getNamespaces(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::IRBAC> rbac)
+{
+
+    auto rbacPtr = rbac.lock();
+    if (!rbacPtr)
+    {
+        throw std::runtime_error {"RBAC instance is not available"};
+    }
+
+    // TODO: Check if this is the correct permission
+    auto authFn = rbacPtr->getAuthFn(rbac::Resource::ASSET, rbac::Operation::READ);
+    auto authSystemFn = rbacPtr->getAuthFn(rbac::Resource::SYSTEM_ASSET, rbac::Operation::READ);
+
+    return [catalog, authFn, authSystemFn](api::wpRequest wRequest) -> api::wpResponse
+    {
+        using RequestType = eCatalog::NamespacesGet_Request;
+        using ResponseType = eCatalog::NamespacesGet_Response;
+        auto res = ::api::adapter::fromWazuhRequest<RequestType, ResponseType>(wRequest);
+
+        // If the request is not valid, return the error
+        if (std::holds_alternative<api::wpResponse>(res))
+        {
+            return std::move(std::get<api::wpResponse>(res));
+        }
+
+        // Validate the role
+        // {
+        //     auto permissionDenied = checkResourcePermission<ResponseType>(name, eRequest.namespaceid(), authFn,
+        //     authSystemFn); if (permissionDenied)
+        //     {
+        //         return std::move(permissionDenied.value());
+        //     }
+        // }
+        ResponseType eResponse;
+        const auto namespaces = catalog->getAllNamespaces();
+        auto eNamespaces = eResponse.mutable_namespaces();
+        for (const auto namespaceid : namespaces)
+        {
+            eNamespaces->Add()->assign(namespaceid.str());
+        }
+
+        eResponse.set_status(eEngine::ReturnStatus::OK);
+
+        // Adapt the response to wazuh api
+        return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
+    };
+}
+
 void registerHandlers(std::shared_ptr<Catalog> catalog, std::shared_ptr<api::Api> api)
 {
     const bool ok = api->registerHandler("catalog.resource/post", Api::convertToHandlerAsync(resourcePost(catalog, api->getRBAC())))
                     && api->registerHandler("catalog.resource/get", Api::convertToHandlerAsync(resourceGet(catalog, api->getRBAC())))
                     && api->registerHandler("catalog.resource/put", Api::convertToHandlerAsync(resourcePut(catalog, api->getRBAC())))
                     && api->registerHandler("catalog.resource/delete", Api::convertToHandlerAsync(resourceDelete(catalog, api->getRBAC())))
-                    && api->registerHandler("catalog.resource/validate", Api::convertToHandlerAsync(resourceValidate(catalog, api->getRBAC())));
+                    && api->registerHandler("catalog.resource/validate", Api::convertToHandlerAsync(resourceValidate(catalog, api->getRBAC())))
+                    && api->registerHandler("catalog.namespaces/get", Api::convertToHandlerAsync(getNamespaces(catalog, api->getRBAC())));
 
     if (!ok)
     {

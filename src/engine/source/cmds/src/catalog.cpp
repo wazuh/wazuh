@@ -211,8 +211,7 @@ void runDelete(std::shared_ptr<apiclnt::Client> client,
 void runValidate(std::shared_ptr<apiclnt::Client> client,
                  const std::string& format,
                  const std::string& resourceType,
-                 const std::string& content,
-                 const std::string& role)
+                 const std::string& content)
 {
     using RequestType = eCatalog::ResourceValidate_Request;
     using ResponseType = eEngine::GenericStatus_Response;
@@ -223,7 +222,6 @@ void runValidate(std::shared_ptr<apiclnt::Client> client,
     eRequest.set_name(resourceType);
     eRequest.set_format(toResourceFormat(format));
     eRequest.set_content(content);
-    eRequest.set_namespaceid(role);
 
     // Call the API, any error will throw an cmd::exception
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
@@ -494,7 +492,7 @@ void configure(CLI::App_p app)
         {
             const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
             readCinIfEmpty(options->content);
-            runValidate(client, options->format, options->name, options->content, options->namespaceId);
+            runValidate(client, options->format, options->name, options->content);
         });
 
     // load

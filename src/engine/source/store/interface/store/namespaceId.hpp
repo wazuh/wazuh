@@ -13,7 +13,7 @@ namespace store
  *
  * A NamespaceId is a unique identifier for a namespace with only one part. It is represented as a base::Name object.
  *
- * @note NamespaceId must have only one part, cannot be empty and cannot contain '/'.
+ * @note NamespaceId must have only one part and cannot be empty.
  */
 class NamespaceId
 {
@@ -32,7 +32,7 @@ private:
     {
         if (m_id.parts().size() != PARTS_NAMESPACE_SIZE || m_id.parts()[0].empty())
         {
-            throw std::runtime_error("NamespaceId must have only one part, cannot be empty and cannot contain '/'");
+            throw std::runtime_error("NamespaceId must have only one part and cannot be empty");
         }
     }
 

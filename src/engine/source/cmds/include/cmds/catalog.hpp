@@ -44,8 +44,7 @@ void runDelete(std::shared_ptr<apiclnt::Client> client,
 void runValidate(std::shared_ptr<apiclnt::Client> client,
                  const std::string& format,
                  const std::string& nameStr,
-                 const std::string& content,
-                 const std::string& role);
+                 const std::string& content);
 
 void runLoad(std::shared_ptr<apiclnt::Client> client,
              const std::string& format,

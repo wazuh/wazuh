@@ -3,7 +3,7 @@ import requests
 from importlib.metadata import files
 from enum import Enum, auto
 from pathlib import Path, PurePath
-from typing import Tuple
+from typing import Tuple, List
 import socket
 import shared.executor as exec
 
@@ -18,7 +18,6 @@ class Format(Enum):
     JSON = auto()
     YML = auto()
     TEXT = auto()
-
 
 class ResourceHandler:
     def __init__(self):
@@ -332,6 +331,37 @@ class ResourceHandler:
     def cwd(self) -> str:
         return str(Path.cwd())
 
+    def _get_all_namespaces(self, api_socket: str):
+        request = {'version': 1, 'command': 'catalog.namespaces/get', 'origin': {
+            'name': 'engine-suite', 'module': 'engine-suite'}, 'parameters': {}}
+        request_raw = json.dumps(request)
+        request_bytes = len(request_raw).to_bytes(4, 'little')
+        request_bytes += request_raw.encode('utf-8')
+
+        data = b''
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            s.connect(api_socket)
+            s.sendall(request_bytes)
+            data = s.recv(65507)
+
+        resp_size = int.from_bytes(data[:4], 'little')
+        resp_message = data[4:resp_size+4].decode('UTF-8')
+
+        if not len(resp_message):
+            raise Exception(
+                f'Catalog command [namespaces] received an empty response.')
+
+        try:
+            resp_message = json.loads(resp_message)
+        except:
+            raise Exception(
+                f'Could not parse response message "{resp_message}".')
+
+        if resp_message['data']['status'] != 'OK':
+            raise Exception(
+                f'{resp_message["data"]["error"]}')
+        return resp_message
+
     def _base_command_kvdb(self, api_socket: str, name: str, path: str, subcommand):
         request = {'version': 1, 'command': 'kvdb.manager/' + subcommand, 'origin': {
             'name': 'engine-suite', 'module': 'engine-suite'}, 'parameters': {'name': name, 'path': path}}
@@ -466,3 +496,194 @@ class ResourceHandler:
 
     def get_store_integration(self, path: str, name: str, namespace: str):
         return self.get_catalog_file(path, 'integration', f'integration/{name}/0', namespace, Format.JSON)
+
+    def _base_store_command(self, path: str, policy: str, namespaces: List[str], command: str):
+        request = {'version': 1, 'command': 'policy.store/' + command, 'origin': {
+            'name': 'engine-suite', 'module': 'engine-suite'}, 'parameters': {'policy': policy, 'namespaces': namespaces}}
+        request_raw = json.dumps(request)
+        request_bytes = len(request_raw).to_bytes(4, 'little')
+        request_bytes += request_raw.encode('utf-8')
+        data = b''
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            try:
+                s.connect(path)
+                s.sendall(request_bytes)
+                data = s.recv(65507)
+            except:
+                raise Exception(
+                    f'Could not connect and send information throug [{path}]')
+
+        resp_size = int.from_bytes(data[:4], 'little')
+        resp_message = data[4:resp_size+4].decode('UTF-8')
+
+        # Change post for update and put for add
+        if command == 'post':
+            command = 'add'
+        elif command == 'put':
+            command = 'update'
+
+        if not len(resp_message):
+            raise Exception(
+                f'Store command [{command}] received an empty response.')
+
+        response = ''
+        try:
+            response = json.loads(resp_message)
+        except:
+            raise Exception(
+                f'Could not parse response message "{resp_message}".')
+        if response['data']['status'] != 'OK':
+            raise Exception(
+                f'{response["data"]["error"]}')
+        return response
+
+    def _delete_asset(self, path: str, policy: str):
+        self._base_store_command(path, policy, [], 'delete')
+
+    def _base_asset_command(self, path: str, policy: str, namespace: str, asset: str, command: str):
+        request = {'version': 1, 'command': 'policy.asset/' + command, 'origin': {
+            'name': 'engine-suite', 'module': 'engine-suite'}, 'parameters': {'policy': policy, 'namespace': namespace, 'asset': asset}}
+        request_raw = json.dumps(request)
+        request_bytes = len(request_raw).to_bytes(4, 'little')
+        request_bytes += request_raw.encode('utf-8')
+        data = b''
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            try:
+                s.connect(path)
+                s.sendall(request_bytes)
+                data = s.recv(65507)
+            except:
+                raise Exception(
+                    f'Could not connect and send information throug [{path}]')
+
+        resp_size = int.from_bytes(data[:4], 'little')
+        resp_message = data[4:resp_size+4].decode('UTF-8')
+
+        # Change post for update and put for add
+        if command == 'post':
+            command = 'add'
+        elif command == 'put':
+            command = 'update'
+
+        if not len(resp_message):
+            raise Exception(
+                f'Asset command [{command}] received an empty response.')
+
+        response = ''
+        try:
+            response = json.loads(resp_message)
+        except:
+            raise Exception(
+                f'Could not parse response message "{resp_message}".')
+        if response['data']['status'] != 'OK':
+            raise Exception(
+                f'{response["data"]["error"]}')
+        return response
+
+    def _base_default_parent_command(self, path: str, policy: str, namespace: str, parent: str,  command: str):
+        request = {'version': 1, 'command': 'policy.defaultParent/' + command, 'origin': {
+            'name': 'engine-suite', 'module': 'engine-suite'}, 'parameters': {'policy': policy, 'namespace': namespace, 'parent': parent}}
+        request_raw = json.dumps(request)
+        request_bytes = len(request_raw).to_bytes(4, 'little')
+        request_bytes += request_raw.encode('utf-8')
+        data = b''
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            try:
+                s.connect(path)
+                s.sendall(request_bytes)
+                data = s.recv(65507)
+            except:
+                raise Exception(
+                    f'Could not connect and send information throug [{path}]')
+
+        resp_size = int.from_bytes(data[:4], 'little')
+        resp_message = data[4:resp_size+4].decode('UTF-8')
+
+        # Change post for update and put for add
+        if command == 'post':
+            command = 'add'
+        elif command == 'put':
+            command = 'update'
+
+        if not len(resp_message):
+            raise Exception(
+                f'defaultParent command [{command}] received an empty response.')
+
+        response = ''
+        try:
+            response = json.loads(resp_message)
+        except:
+            raise Exception(
+                f'Could not parse response message "{resp_message}".')
+        if response['data']['status'] != 'OK':
+            raise Exception(
+                f'{response["data"]["error"]}')
+        return response
+
+    def _get_policies_command(self, path: str):
+        request = {'version': 1, 'command': 'policy.policies/get', 'origin': {
+            'name': 'engine-suite', 'module': 'engine-suite'}, 'parameters': {}}
+        request_raw = json.dumps(request)
+        request_bytes = len(request_raw).to_bytes(4, 'little')
+        request_bytes += request_raw.encode('utf-8')
+        data = b''
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            try:
+                s.connect(path)
+                s.sendall(request_bytes)
+                data = s.recv(65507)
+            except:
+                raise Exception(
+                    f'Could not connect and send information throug [{path}]')
+
+        resp_size = int.from_bytes(data[:4], 'little')
+        resp_message = data[4:resp_size+4].decode('UTF-8')
+
+        if not len(resp_message):
+            raise Exception(
+                f'Policies command [{command}] received an empty response.')
+
+        response = ''
+        try:
+            response = json.loads(resp_message)
+        except:
+            raise Exception(
+                f'Could not parse response message "{resp_message}".')
+        if response['data']['status'] != 'OK':
+            raise Exception(
+                f'{response["data"]["error"]}')
+        return response
+
+    def _list_namespaces_command(self, path: str, policy: str):
+        request = {'version': 1, 'command': 'policy.namespaces/get', 'origin': {
+            'name': 'engine-suite', 'module': 'engine-suite'}, 'parameters': {'policy': policy}}
+        request_raw = json.dumps(request)
+        request_bytes = len(request_raw).to_bytes(4, 'little')
+        request_bytes += request_raw.encode('utf-8')
+        data = b''
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            try:
+                s.connect(path)
+                s.sendall(request_bytes)
+                data = s.recv(65507)
+            except:
+                raise Exception(
+                    f'Could not connect and send information throug [{path}]')
+
+        resp_size = int.from_bytes(data[:4], 'little')
+        resp_message = data[4:resp_size+4].decode('UTF-8')
+
+        if not len(resp_message):
+            raise Exception(
+                f'Namespaces command [{command}] received an empty response.')
+
+        response = ''
+        try:
+            response = json.loads(resp_message)
+        except:
+            raise Exception(
+                f'Could not parse response message "{resp_message}".')
+        if response['data']['status'] != 'OK':
+            raise Exception(
+                f'{response["data"]["error"]}')
+        return response

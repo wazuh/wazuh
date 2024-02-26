@@ -107,7 +107,7 @@ INSTANTIATE_TEST_SUITE_P(CatalogCommand,
                                            std::make_tuple(2, successCollectionAssetJson),
                                            std::make_tuple(3, failResourceAsset)));
 
-class CatalogValidateTest : public ::testing::TestWithParam<std::tuple<int, api::catalog::Resource, std::string>>
+class CatalogValidateTest : public ::testing::TestWithParam<std::tuple<int, api::catalog::Resource, std::string, std::string>>
 {
 protected:
     void SetUp() override
@@ -120,10 +120,10 @@ protected:
 
 TEST_P(CatalogValidateTest, CatalogCommand)
 {
-    auto [execution, input, content] = GetParam();
+    auto [execution, input, content, ns] = GetParam();
 
     std::optional<base::Error> error;
-    ASSERT_NO_THROW(error = m_spCatalog->putResource(input, content));
+    ASSERT_NO_THROW(error = m_spCatalog->putResource(input, content, ns));
     if (execution >= COMMAND_FAILED_CASE)
     {
         ASSERT_TRUE(error);
@@ -136,7 +136,7 @@ TEST_P(CatalogValidateTest, CatalogCommand)
 
 INSTANTIATE_TEST_SUITE_P(CatalogCommand,
                          CatalogValidateTest,
-                         ::testing::Values(std::make_tuple(1, successResourceAssetJson, successJson.str()),
-                                           std::make_tuple(2, successResourceAssetYml, successYml),
-                                           std::make_tuple(3, failResourceAsset, successYml),
-                                           std::make_tuple(4, successCollectionAssetJson, successJson.str())));
+                         ::testing::Values(std::make_tuple(1, successResourceAssetJson, successJson.str(), "user"),
+                                           std::make_tuple(2, successResourceAssetYml, successYml, "user"),
+                                           std::make_tuple(3, failResourceAsset, successYml, "user"),
+                                           std::make_tuple(4, successCollectionAssetJson, successJson.str(), "user")));
