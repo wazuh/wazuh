@@ -83,12 +83,11 @@ def put_resource(resource_name: str, format_type: str, content: str, namespaceid
     error, response = send_recv(request, api_engine.GenericStatus_Response())
     return response
 
-def validate_resource(resource_name: str, format_type: str, content: str, namespaceid: str):
+def validate_resource(resource_name: str, format_type: str, content: str):
     request = api_catalog.ResourceValidate_Request()
     request.name = resource_name
     request.format = string_to_resource_format(format_type)
     request.content = content
-    request.namespaceid = namespaceid
 
     error, response = send_recv(request, api_engine.GenericStatus_Response())
     return response
@@ -114,9 +113,9 @@ def step_impl(context, resource_name: str, namespaceid: str):
 def step_impl(context, resource_format: str, namespaceid: str, resource_name: str):
     context.result = put_resource(resource_name, resource_format, context.text, namespaceid)
 
-@when('I send a request to validate in the "{resource_format}" format in the namespace "{namespaceid}" the resource "{resource_name}" that contains')
-def step_impl(context, resource_format: str, namespaceid: str, resource_name: str):
-    context.result = validate_resource(resource_name, resource_format, context.text, namespaceid)
+@when('I send a request to validate in the "{resource_format}" format in the resource "{resource_name}" that contains')
+def step_impl(context, resource_format: str, resource_name: str):
+    context.result = validate_resource(resource_name, resource_format, context.text)
 
 @then('I should receive a {status} response indicating "{response}"')
 def step_impl(context, status: str, response: str):
