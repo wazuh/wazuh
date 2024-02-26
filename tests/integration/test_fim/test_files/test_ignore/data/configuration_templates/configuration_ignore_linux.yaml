@@ -1,19 +1,6 @@
 - sections:
     - section: syscheck
-      elements:
-        - disabled:
-            value: 'no'
-        - frequency:
-            value: 3
-        - database:
-            value: memory
-        - IGNORE
-        - directories:
-            value: TEST_DIR
-            attributes:
-            - check_all: 'yes'
-            - whodata: WHODATA
-            - realtime: REALTIME
+      elements: SYSCHECK
 
     - section: sca
       elements:
