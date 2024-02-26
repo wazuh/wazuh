@@ -19,6 +19,7 @@
 #endif
 
 STATIC wdb_pool_t wdb_pool;
+_Atomic(int) wdb_pool_size;
 
 // Initialize global pool.
 
@@ -55,6 +56,7 @@ wdb_t * wdb_pool_get_or_create(const char * name) {
     if (node == NULL) {
         node = wdb_init(name);
         rbtree_insert(wdb_pool.nodes, name, node);
+        wdb_pool_size++;
     }
 
     node->refcount++;
@@ -103,6 +105,7 @@ void wdb_pool_clean() {
         if (node->refcount == 0 && node->db == NULL) {
             wdb_destroy(node);
             rbtree_delete(wdb_pool.nodes, keys[i]);
+            wdb_pool_size--;
         }
     }
 
