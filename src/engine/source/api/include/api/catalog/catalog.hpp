@@ -100,6 +100,20 @@ private:
      */
     base::OptError delCol(const Resource& resource, const std::string& namespaceId);
 
+    /**
+     * @brief Checks if a resource exists in a specified namespace before performing a given operation.
+     *
+     * This function is designed to be a common utility for checking the existence of a resource in a namespace
+     * before carrying out operations like get, put, or delete.
+     *
+     * @param item The resource to be checked.
+     * @param namespaceId The identifier of the namespace in which to check for the resource.
+     * @param operation A description of the operation to be performed (e.g., "get", "put", "delete").
+     * @return An optional containing an Error if the resource check fails, or std::nullopt if the check is successful.
+     */
+    std::optional<base::Error> checkResourceInNamespace(const api::catalog::Resource& item,
+                                                        const std::string& namespaceId,
+                                                        const std::string& operation) const;
 
 public:
     /**
@@ -134,9 +148,11 @@ public:
      * as the content name and the content must be a string in the same format as the
      * resource.m_format
      * @param content String with the resource to update the item.
+     * @param namespaceId Namespace name where the items are located, only needed if resource is a collection
      * @return std::optional<base::Error>
      */
-    std::optional<base::Error> putResource(const Resource& item, const std::string& content);
+    std::optional<base::Error>
+    putResource(const Resource& item, const std::string& content, const std::string& namespaceId);
 
     /**
      * @brief Get a resource
@@ -148,20 +164,20 @@ public:
      * resource.m_format
      *
      * @param resource Resource identifying the item or collection to get
-     * @param namespaceIds Namespace names where the items are located, only needed if resource is a collection
+     * @param namespaceId Namespace name where the items are located, only needed if resource is a collection
      * @return base::RespOrError<std::string> Error if the operation failed or the
      * content of the resource
      */
-    base::RespOrError<std::string> getResource(const Resource& resource, const std::vector<std::string>& namespaceIds = {}) const;
+    base::RespOrError<std::string> getResource(const Resource& resource, const std::string& namespaceId) const;
 
     /**
      * @brief Delete a resource
      *
      * @param resource Resource identifying the item or collection to delete
-     * @param namespaceIds Namespace names where the items are located, only needed if resource is a collection
+     * @param namespaceId Namespace name where the items are located, only needed if resource is a collection
      * @return std::optional<base::Error> Error if the operation failed
      */
-    base::OptError deleteResource(const Resource& resource, const std::vector<std::string>& namespaceIds = {});
+    base::OptError deleteResource(const Resource& resource, const std::string& namespaceId);
 
     /**
      * @brief Validate an Asset
@@ -172,7 +188,15 @@ public:
      * @param content Content of the Asset or Environment
      * @return std::optional<base::Error> Error if the operation failed
      */
-    std::optional<base::Error> validateResource(const Resource& item, const std::string& content) const;
+    std::optional<base::Error>
+    validateResource(const Resource& item, const std::string& content) const;
+
+    /**
+     * @brief Get the All Namespaces object
+     *
+     * @return std::vector<store::NamespaceId>
+     */
+    inline std::vector<store::NamespaceId> getAllNamespaces() const { return m_store->listNamespaces(); }
 };
 
 } // namespace api::catalog

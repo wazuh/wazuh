@@ -20,6 +20,7 @@ api::HandlerSync resourcePut(std::shared_ptr<Catalog> catalog, std::weak_ptr<rba
 api::HandlerSync resourceValidate(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::IRBAC> rbac);
 api::HandlerSync policyAddIntegration(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::IRBAC> rbac);
 api::HandlerSync policyDelIntegration(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::IRBAC> rbac);
+api::HandlerSync getNamespaces(std::shared_ptr<Catalog> catalog, std::weak_ptr<rbac::IRBAC> rbac);
 
 /**
  * @brief Register all available Catalog handlers in the API registry.
