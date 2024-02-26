@@ -74,8 +74,7 @@ def main(argv):
                 bucket_type = buckets_s3.server_access.AWSServerAccess
             else:
                 raise Exception("Invalid type of bucket")
-            bucket = bucket_type(reparse=options.reparse, access_key=options.access_key,
-                                 secret_key=options.secret_key,
+            bucket = bucket_type(reparse=options.reparse,
                                  profile=options.aws_profile,
                                  iam_role_arn=options.iam_role_arn,
                                  bucket=options.logBucket,
@@ -133,8 +132,6 @@ def main(argv):
                 aws_tools.debug('+++ Getting alerts from "{}" region.'.format(region), 1)
 
                 service = service_type(reparse=options.reparse,
-                                       access_key=options.access_key,
-                                       secret_key=options.secret_key,
                                        profile=options.aws_profile,
                                        iam_role_arn=options.iam_role_arn,
                                        only_logs_after=options.only_logs_after,

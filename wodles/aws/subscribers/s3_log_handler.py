@@ -66,8 +66,7 @@ class AWSSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler):
         IAM Role.
     """
     def __init__(self, service_endpoint: str = None, sts_endpoint: str = None, profile: str = None, **kwargs):
-        wazuh_integration.WazuhIntegration.__init__(self, access_key=None,
-                                                    secret_key=None,
+        wazuh_integration.WazuhIntegration.__init__(self,
                                                     profile=profile,
                                                     service_name='s3',
                                                     service_endpoint=service_endpoint,
@@ -244,10 +243,6 @@ class AWSSLSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler)
 
     Attributes
     ----------
-    access_key : str
-        AWS access key id.
-    secret_key : str
-        AWS secret access key.
     profile : str
         AWS profile.
     iam_role_arn : str
@@ -255,8 +250,7 @@ class AWSSLSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler)
     """
 
     def __init__(self, service_endpoint: str = None, sts_endpoint: str = None, profile: str = None, **kwargs):
-        wazuh_integration.WazuhIntegration.__init__(self, access_key=None,
-                                                    secret_key=None,
+        wazuh_integration.WazuhIntegration.__init__(self,
                                                     profile=profile,
                                                     service_name='s3',
                                                     service_endpoint=service_endpoint,

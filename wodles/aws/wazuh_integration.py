@@ -40,8 +40,6 @@ MESSAGE_HEADER = "1:Wazuh-AWS:"
 class WazuhIntegration:
     """
     Class with common methods.
-    :param access_key: AWS access key id.
-    :param secret_key: AWS secret access key.
     :param profile: AWS profile.
     :param iam_role_arn: IAM Role.
     :param service_name: Name of the service (s3 for services which stores logs in buckets).
@@ -51,7 +49,7 @@ class WazuhIntegration:
     :param skip_on_error: Whether to continue processing logs or stop when an error takes place.
     """
 
-    def __init__(self, access_key, secret_key, profile, iam_role_arn, service_name=None, region=None,
+    def __init__(self, profile, iam_role_arn, service_name=None, region=None,
                  discard_field=None, discard_regex=None, sts_endpoint=None,
                  service_endpoint=None, iam_role_duration=None, external_id=None, skip_on_error=False):
 
@@ -62,9 +60,7 @@ class WazuhIntegration:
         self.wazuh_wodle = path.join(self.wazuh_path, "wodles", "aws")
 
         self.connection_config = self.default_config(profile=profile)
-        self.client = self.get_client(access_key=access_key,
-                                      secret_key=secret_key,
-                                      profile=profile,
+        self.client = self.get_client(profile=profile,
                                       iam_role_arn=iam_role_arn,
                                       service_name=service_name,
                                       region=region,
@@ -155,15 +151,9 @@ class WazuhIntegration:
 
         return args
 
-    def get_client(self, access_key, secret_key, profile, iam_role_arn, service_name, region=None,
+    def get_client(self, profile, iam_role_arn, service_name, region=None,
                    sts_endpoint=None, service_endpoint=None, iam_role_duration=None, external_id=None):
         conn_args = {}
-
-        if access_key is not None and secret_key is not None:
-            print(aws_tools.DEPRECATED_MESSAGE.format(name="access_key and secret_key", release="4.4",
-                                                      url=aws_tools.CREDENTIALS_URL))
-            conn_args['aws_access_key_id'] = access_key
-            conn_args['aws_secret_access_key'] = secret_key
 
         if profile is not None:
             conn_args['profile_name'] = profile
@@ -208,13 +198,10 @@ class WazuhIntegration:
             sys.exit(3)
         return client
 
-    def get_sts_client(self, access_key, secret_key, profile=None):
+    def get_sts_client(self, profile):
         conn_args = {}
 
-        if access_key is not None and secret_key is not None:
-            conn_args['aws_access_key_id'] = access_key
-            conn_args['aws_secret_access_key'] = secret_key
-        elif profile is not None:
+        if profile is not None:
             conn_args['profile_name'] = profile
 
         boto_session = boto3.Session(**conn_args)
@@ -355,8 +342,6 @@ class WazuhAWSDatabase(WazuhIntegration):
     """
     Class with methods for buckets or services instances using db files
     :param db_name: Database name when instantiating buckets or services
-    :param access_key: AWS access key id
-    :param secret_key: AWS secret access key
     :param profile: AWS profile
     :param iam_role_arn: IAM Role
     :param db_name: Name of the database file
@@ -365,7 +350,7 @@ class WazuhAWSDatabase(WazuhIntegration):
     :param iam_role_duration: The desired duration of the session that is going to be assumed.
     :param external_id: AWS external ID for IAM Role assumption
     """
-    def __init__(self, access_key, secret_key, profile, iam_role_arn, db_name,
+    def __init__(self, profile, iam_role_arn, db_name,
                  service_name=None, region=None, discard_field=None,
                  discard_regex=None, sts_endpoint=None, service_endpoint=None, iam_role_duration=None,
                  external_id=None, skip_on_error=False):
@@ -426,8 +411,7 @@ class WazuhAWSDatabase(WazuhIntegration):
         self.sql_drop_table = "DROP TABLE {table_name};"
 
         WazuhIntegration.__init__(self, service_name=service_name,
-                                  access_key=access_key,
-                                  secret_key=secret_key, profile=profile,
+                                  profile=profile,
                                   iam_role_arn=iam_role_arn, region=region,
                                   discard_field=discard_field, discard_regex=discard_regex,
                                   sts_endpoint=sts_endpoint, service_endpoint=service_endpoint,

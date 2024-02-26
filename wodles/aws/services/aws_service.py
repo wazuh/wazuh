@@ -29,10 +29,6 @@ class AWSService(wazuh_integration.WazuhAWSDatabase):
     ----------
     reparse : bool
         Whether to parse already parsed logs or not.
-    access_key : str
-        AWS access key id.
-    secret_key : str
-        AWS secret access key.
     profile : str
         AWS profile.
     iam_role_arn : str
@@ -57,7 +53,7 @@ class AWSService(wazuh_integration.WazuhAWSDatabase):
         The desired duration of the session that is going to be assumed.
     """
 
-    def __init__(self, reparse: bool, access_key: str, secret_key: str, profile: str, iam_role_arn: str,
+    def __init__(self, reparse: bool, profile: str, iam_role_arn: str,
                  service_name: str, only_logs_after: str, region: str, db_table_name: str = DEFAULT_TABLENAME,
                  discard_field: str = None, discard_regex: str = None, sts_endpoint: str = None,
                  service_endpoint: str = None,
@@ -68,7 +64,7 @@ class AWSService(wazuh_integration.WazuhAWSDatabase):
         self.db_table_name = db_table_name
 
         wazuh_integration.WazuhAWSDatabase.__init__(self, db_name=self.db_name, service_name=service_name,
-                                                    access_key=access_key, secret_key=secret_key, profile=profile,
+                                                    profile=profile,
                                                     iam_role_arn=iam_role_arn, region=region,
                                                     discard_field=discard_field, discard_regex=discard_regex,
                                                     sts_endpoint=sts_endpoint, service_endpoint=service_endpoint,
@@ -77,7 +73,7 @@ class AWSService(wazuh_integration.WazuhAWSDatabase):
         self.region = region
         self.service_name = service_name
         # get sts client (necessary for getting account ID)
-        self.sts_client = self.get_sts_client(access_key, secret_key, profile)
+        self.sts_client = self.get_sts_client(profile)
         # get account ID
         self.account_id = self.sts_client.get_caller_identity().get('Account')
         self.only_logs_after = only_logs_after

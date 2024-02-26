@@ -229,21 +229,20 @@ def test_create_new_row_ko(mock_add_row, mock_logging):
     mock_logging.assert_called_once()
 
 
-@pytest.mark.parametrize('auth_path, la_id, key, offset, query, workspace', [
-    (None, "client", "secret", "1d", "query", "workspace"),
-    ("/var/ossec/", None, None, "", "", ""),
+@pytest.mark.parametrize('auth_path, offset, query, workspace', [
+    ("/var/ossec/", "1d", "query", "workspace"),
 ])
 @patch('azure-logs.get_log_analytics_events')
 @patch('azure-logs.build_log_analytics_query')
 @patch('azure-logs.get_token')
 @patch('azure-logs.read_auth_file')
-def test_start_log_analytics(mock_auth, mock_token, mock_build, mock_get_logs, auth_path, la_id, key, offset, query,
-                             workspace):
+def test_start_log_analytics(mock_auth, mock_token, mock_build, mock_get_logs, auth_path, offset, query, workspace):
     """Test start_log_analytics reads the credentials, obtains a token, builds the query using that token and attempts
     to get the log analytics logs."""
     tenant = "tenant"
-    azure.args = MagicMock(la_tenant_domain=tenant, la_auth_path=auth_path, la_id=la_id, la_key=key, la_query=query,
-                           la_time_offset=offset, workspace=workspace)
+    azure.args = MagicMock(
+        la_tenant_domain=tenant, la_auth_path=auth_path, la_query=query, la_time_offset=offset, workspace=workspace
+    )
 
     mock_auth.return_value = credentials = ("client", "secret")
     mock_token.return_value = token = "token"
@@ -414,19 +413,19 @@ def test_iter_log_analytics_events(mock_send):
     mock_send.assert_has_calls(expected_calls)
 
 
-@pytest.mark.parametrize('auth_path, graph_id, key, offset, query', [
-    (None, "client", "secret", "1d", "query"),
-    ("/var/ossec/", None, None, "", ""),
+@pytest.mark.parametrize('auth_path, offset, query', [
+    ("/var/ossec/", "1d", "query"),
 ])
 @patch('azure-logs.get_graph_events')
 @patch('azure-logs.build_graph_url')
 @patch('azure-logs.get_token')
 @patch('azure-logs.read_auth_file')
-def test_start_graph(mock_auth, mock_token, mock_build, mock_graph, auth_path, graph_id, key, offset, query):
+def test_start_graph(mock_auth, mock_token, mock_build, mock_graph, auth_path, offset, query):
     """Test start_graph attempts to process the logs available for the given authentication, query and offset values."""
     tenant = "tenant"
-    azure.args = MagicMock(graph_tenant_domain=tenant, graph_auth_path=auth_path, graph_id=graph_id, graph_key=key,
-                           graph_time_offset=offset, graph_query=query)
+    azure.args = MagicMock(
+        graph_tenant_domain=tenant, graph_auth_path=auth_path, graph_time_offset=offset, graph_query=query
+    )
     mock_auth.return_value = credentials = ("client", "secret")
     mock_token.return_value = token = "token"
     mock_build.return_value = url = "url"
@@ -566,23 +565,20 @@ def test_get_graph_events_error_responses(mock_get, mock_logging, status_code):
         response_mock.raise_for_status.assert_called_once()
 
 
-@pytest.mark.parametrize('auth_path, name, key, container_name', [
-    (None, "name", "key", "container"),
-    ("/var/ossec/", "", "", "*"),
+@pytest.mark.parametrize('auth_path, container_name', [
+    ("/var/ossec/", "*"),
 ])
 @patch('azure-logs.get_blobs')
 @patch('azure-logs.create_new_row')
 @patch('azure-logs.orm.get_row', return_value=None)
 @patch('azure-logs.BlockBlobService')
 @patch('azure-logs.read_auth_file')
-def test_start_storage(mock_auth, mock_blob, mock_get_row, mock_create, mock_get_blobs, auth_path, name, key,
-                       container_name):
+def test_start_storage(mock_auth, mock_blob, mock_get_row, mock_create, mock_get_blobs, auth_path, container_name):
     """Test start_storage process blobs in bucket as expected."""
     offset = "1d"
-    azure.args = MagicMock(storage_auth_path=auth_path, account_name=name, account_key=key, container=container_name,
-                           storage_time_offset=offset)
+    azure.args = MagicMock(storage_auth_path=auth_path, container=container_name, storage_time_offset=offset)
     mock_create.return_value = MagicMock(min_processed_date=PRESENT_DATE, max_processed_date=PRESENT_DATE)
-    mock_auth.return_value = (name, key)
+    mock_auth.return_value = ("name", "key")
     m = MagicMock()
     m.list_containers.return_value = [MagicMock(name=container_name)]
     mock_blob.return_value = m
@@ -593,10 +589,10 @@ def test_start_storage(mock_auth, mock_blob, mock_get_row, mock_create, mock_get
     else:
         mock_auth.assert_not_called()
 
-    md5_hash = md5(name.encode()).hexdigest()
-    mock_blob.assert_called_with(account_name=name, account_key=key)
+    md5_hash = md5("name".encode()).hexdigest()
+    mock_blob.assert_called_with(account_name="name", account_key="key")
     mock_get_row.assert_called_with(azure.orm.Storage, md5=md5_hash)
-    mock_create.assert_called_with(table=azure.orm.Storage, query=name, md5_hash=md5_hash, offset=offset)
+    mock_create.assert_called_with(table=azure.orm.Storage, query="name", md5_hash=md5_hash, offset=offset)
     mock_get_blobs.assert_called_once()
 
 

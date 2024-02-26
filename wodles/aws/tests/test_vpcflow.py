@@ -67,18 +67,12 @@ def test_aws_vpc_flow_bucket_load_information_from_file():
         assert instance.load_information_from_file(utils.TEST_LOG_KEY) == list(expected_result)
 
 
-@pytest.mark.parametrize('access_key', [None, utils.TEST_ACCESS_KEY])
-@pytest.mark.parametrize('secret_key', [None, utils.TEST_SECRET_KEY])
 @pytest.mark.parametrize('profile', [None, utils.TEST_AWS_PROFILE])
-def test_aws_vpc_flow_bucket_get_ec2_client(access_key: str or None, secret_key: str or None, profile: str or None):
+def test_aws_vpc_flow_bucket_get_ec2_client(profile: str or None):
     """Test 'get_ec2_client' method instantiates a boto3.Session object with the proper arguments.
 
     Parameters
     ----------
-    access_key: str or None
-        AWS access key id.
-    secret_key: str or None
-        AWS secret access key.
     profile: str or None
         AWS profile.
     """
@@ -87,15 +81,12 @@ def test_aws_vpc_flow_bucket_get_ec2_client(access_key: str or None, secret_key:
 
     conn_args = {'region_name': region}
 
-    if access_key is not None and secret_key is not None:
-        conn_args['aws_access_key_id'] = access_key
-        conn_args['aws_secret_access_key'] = secret_key
-    elif profile is not None:
+    if profile is not None:
         conn_args['profile_name'] = profile
 
     with patch('boto3.Session') as mock_session:
         instance.connection_config = MagicMock()
-        instance.get_ec2_client(access_key, secret_key, region, profile)
+        instance.get_ec2_client(region, profile)
         mock_session.assert_called_once_with(**conn_args)
 
 
@@ -106,7 +97,7 @@ def test_aws_vpc_flow_bucket_get_ec2_client_handles_exceptions_on_ec2_client_err
 
     with patch('boto3.Session'), \
             pytest.raises(SystemExit) as e:
-        instance.get_ec2_client(utils.TEST_ACCESS_KEY, utils.TEST_SECRET_KEY, utils.TEST_REGION, utils.TEST_AWS_PROFILE)
+        instance.get_ec2_client(utils.TEST_REGION, utils.TEST_AWS_PROFILE)
     assert e.value.code == utils.INVALID_CREDENTIALS_ERROR_CODE
 
 
@@ -134,8 +125,7 @@ def test_aws_vpc_flow_bucket_get_flow_logs_ids(mock_get_ec2_client):
         'NextToken': 'string'
     }
 
-    assert ['Id1', 'Id2', 'Id3'] == instance.get_flow_logs_ids(utils.TEST_ACCESS_KEY, utils.TEST_SECRET_KEY,
-                                                               utils.TEST_REGION, utils.TEST_AWS_PROFILE)
+    assert ['Id1', 'Id2', 'Id3'] == instance.get_flow_logs_ids(utils.TEST_REGION, utils.TEST_AWS_PROFILE)
 
 
 @pytest.mark.parametrize('log_file, account_id, region, expected_result', [
@@ -193,8 +183,6 @@ def test_aws_vpc_flow_bucket_iter_regions_and_accounts(mock_find_regions, mock_a
     """
     instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
 
-    instance.access_key = utils.TEST_ACCESS_KEY
-    instance.secret_key = utils.TEST_SECRET_KEY
     instance.profile_name = utils.TEST_AWS_PROFILE
 
     instance.iter_regions_and_accounts(account_id, regions)
@@ -209,10 +197,10 @@ def test_aws_vpc_flow_bucket_iter_regions_and_accounts(mock_find_regions, mock_a
             if not regions:
                 continue
         for aws_region in regions:
-            mock_get_flow_logs_ids.assert_called_with(instance.access_key, instance.secret_key, aws_region,
-                                                      aws_account_id, profile_name=instance.profile_name)
-            flow_logs_ids = instance.get_flow_logs_ids(instance.access_key, instance.secret_key, aws_region,
-                                                       profile_name=instance.profile_name)
+            mock_get_flow_logs_ids.assert_called_with(
+                aws_region, aws_account_id, profile_name=instance.profile_name
+            )
+            flow_logs_ids = instance.get_flow_logs_ids(aws_region, profile_name=instance.profile_name)
             for flow_log_id in flow_logs_ids:
                 mock_iter_files_in_bucket.assert_called_with(aws_account_id, aws_region, flow_log_id=flow_log_id)
                 mock_maintenance.assert_called_with(aws_account_id, aws_region, flow_log_id)

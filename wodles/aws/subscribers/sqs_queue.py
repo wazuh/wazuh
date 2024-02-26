@@ -26,10 +26,6 @@ class AWSSQSQueue(wazuh_integration.WazuhIntegration):
         Name of the SQS Queue.
     iam_role_arn : str
         IAM Role.
-    access_key : str
-        AWS access key id.
-    secret_key : str
-        AWS secret access key.
     external_id : str
         The name of the External ID to use.
     sts_endpoint : str
@@ -46,7 +42,7 @@ class AWSSQSQueue(wazuh_integration.WazuhIntegration):
                  sts_endpoint=None, service_endpoint=None, skip_on_error=False,
                  **kwargs):
         self.sqs_name = name
-        wazuh_integration.WazuhIntegration.__init__(self, access_key=None, secret_key=None,
+        wazuh_integration.WazuhIntegration.__init__(self,
                                                     iam_role_arn=iam_role_arn,
                                                     profile=profile, external_id=external_id, service_name='sqs',
                                                     sts_endpoint=sts_endpoint, skip_on_error=skip_on_error,

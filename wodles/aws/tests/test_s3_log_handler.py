@@ -49,7 +49,7 @@ def test_aws_sl_subscriber_bucket_initializes_properly(mock_wazuh_integration, m
 
     integration = s3_log_handler.AWSSLSubscriberBucket(**kwargs)
 
-    mock_wazuh_integration.assert_called_with(integration, access_key=None, secret_key=None,
+    mock_wazuh_integration.assert_called_with(integration,
                                               profile=None,
                                               service_name='s3',
                                               sts_endpoint=kwargs["sts_endpoint"],
