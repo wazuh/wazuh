@@ -43,7 +43,6 @@
     expected_error_code: 0
     expected_message: "Listening on"
 
-
 - name: VALID_LOWERCASE_VALUE_FOR_SIZE_OPTION_IN_KB
   description: Upload a valid API configuration with the log size value in lowercase in KB
   configuration_parameters:
