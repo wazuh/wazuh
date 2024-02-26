@@ -5,6 +5,7 @@ services:
     profiles:
       - standalone
       - cluster
+      - managers
     build:
       context: .
       dockerfile: base/manager/manager.Dockerfile
@@ -25,6 +26,7 @@ services:
   wazuh-worker1:
     profiles:
       - cluster
+      - managers
     build:
       context: .
       dockerfile: base/manager/manager.Dockerfile
@@ -42,6 +44,7 @@ services:
   wazuh-worker2:
     profiles:
       - cluster
+      - managers
     build:
       context: .
       dockerfile: base/manager/manager.Dockerfile
