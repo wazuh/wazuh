@@ -49,16 +49,25 @@ INSTANTIATE_TEST_SUITE_P(
     CatalogGetApiTest,
     ::testing::Values(
         std::make_tuple(R"({"name": "decoder/name/ok", "format": "json", "namespaceid": "ignored"})",
-                        R"({"status":"OK","content":"{\"name\":\"decoder/name/ok\"}"})"),
+            R"({
+                "status": "ERROR",
+                "error": "Could not get resource 'decoder/name/ok': Resource 'decoder/name/ok' does not have an associated namespace"
+            })"),
         std::make_tuple(R"({"name": "decoder/name/ok", "format": "json", "namespaceid": "ignored"})",
-                        R"({"status":"OK","content":"{\"name\":\"decoder/name/ok\"}"})"),
+            R"({
+                "status": "ERROR",
+                "error": "Could not get resource 'decoder/name/ok': Resource 'decoder/name/ok' does not have an associated namespace"
+            })"),
         std::make_tuple(R"({"name": "decoder/name/ok"})",
                         R"({"status":"ERROR","error":"Missing or invalid /format parameter"})"),
         std::make_tuple(R"({"name": "decoder/name/ok", "format": "json"})",
                         R"({"status":"ERROR","error":"Missing /namespaceid parameter"})"),
         std::make_tuple(
             R"({"name": "decoder/name/fail", "format": "json", "namespaceid": "ignored"})",
-            R"({"status":"ERROR","error":"Engine utils: 'decoder/name/fail' could not be obtained from the store: error."})"),
+            R"({
+                "status": "ERROR",
+                "error": "Could not get resource 'decoder/name/fail': Resource 'decoder/name/fail' does not have an associated namespace"
+            })"),
         std::make_tuple(R"({"name": "decoder/name/fail", "format": "invalid"})",
                         R"({"status":"ERROR","error":"Missing or invalid /format parameter"})"),
         std::make_tuple(R"({"format": "json"})", R"({"status":"ERROR","error":"Missing /name parameter"})"),
@@ -201,8 +210,14 @@ INSTANTIATE_TEST_SUITE_P(
     ResoursePut,
     CatalogPutApiTest,
     ::testing::Values(
-        std::make_tuple(1, completeName.fullName(), "json", successJson.str(), R"({"status":"OK"})"),
-        std::make_tuple(2, completeName.fullName(), "json", successJson.str(), R"({"status":"OK"})"),
+        std::make_tuple(1, completeName.fullName(), "json", successJson.str(), R"({
+            "status": "ERROR",
+            "error": "Could not update resource 'decoder/name/ok': Resource 'decoder/name/ok' does not have an associated namespace"
+        })"),
+        std::make_tuple(2, completeName.fullName(), "json", successJson.str(), R"({
+            "status": "ERROR",
+            "error": "Could not update resource 'decoder/name/ok': Resource 'decoder/name/ok' does not have an associated namespace"
+        })"),
         std::make_tuple(3,
                         name.fullName(),
                         "json",

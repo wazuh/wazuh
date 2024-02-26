@@ -222,7 +222,7 @@ Catalog::postResource(const Resource& collection, const std::string& namespaceSt
             "Content '{}' could not be added to store: {}", contentNameStr.value(), storeError.value().message)};
     }
 
-    return std::nullopt;
+    return base::noError();;
 }
 
 std::optional<base::Error> Catalog::checkResourceInNamespace(const api::catalog::Resource& item,
@@ -262,7 +262,7 @@ std::optional<base::Error> Catalog::checkResourceInNamespace(const api::catalog:
                                          namespaceId)};
     }
 
-    return std::nullopt;
+    return base::noError();
 }
 
 std::optional<base::Error>
@@ -347,7 +347,7 @@ Catalog::putResource(const Resource& item, const std::string& content, const std
             "Content '{}' could not be updated in store: {}", contentNameStr.value(), storeError.value().message)};
     }
 
-    return std::nullopt;
+    return base::noError();;
 }
 
 base::RespOrError<store::Doc> Catalog::getDoc(const Resource& resource) const
@@ -527,7 +527,7 @@ std::optional<base::Error> Catalog::validate(const Resource& item, const json::J
         return base::Error {validationError.value().message};
     }
 
-    return std::nullopt;
+    return base::noError();;
 }
 
 std::optional<base::Error>
@@ -565,7 +565,7 @@ Catalog::validateResource(const Resource& item, const std::string& content) cons
         return base::Error {validationError.value().message};
     }
 
-    return std::nullopt;
+    return base::noError();;
 }
 
 } // namespace api::catalog
