@@ -225,7 +225,48 @@ Catalog::postResource(const Resource& collection, const std::string& namespaceSt
     return std::nullopt;
 }
 
-std::optional<base::Error> Catalog::putResource(const Resource& item, const std::string& content)
+std::optional<base::Error> Catalog::checkResourceInNamespace(const api::catalog::Resource& item,
+                                                             const std::string& namespaceId,
+                                                             const std::string& operation) const
+{
+    // Assert namespaceIds is not empty
+    if (namespaceId.empty())
+    {
+        return base::Error {"Namespace id cannot be empty"};
+    }
+
+    // Get namespace associated with the resource
+    auto getNamespace = [store = m_store](const api::catalog::Resource& item) -> base::RespOrError<store::NamespaceId>
+    {
+        auto ns = store->getNamespace(item.m_name);
+        if (!ns)
+        {
+            return base::Error {fmt::format("Resource '{}' does not have an associated namespace", item.m_name)};
+        }
+        return ns.value();
+    };
+
+    // Check if the resource exist in the namespace
+    auto ns = getNamespace(item);
+    if (base::isError(ns))
+    {
+        return base::Error {fmt::format(
+            "Could not {} resource '{}': {}", operation, item.m_name.fullName(), base::getError(ns).message)};
+    }
+
+    if (namespaceId != base::getResponse(ns).str())
+    {
+        return base::Error {fmt::format("Could not {} resource '{}': Does not exist in the '{}' namespace",
+                                         operation,
+                                         item.m_name.fullName(),
+                                         namespaceId)};
+    }
+
+    return std::nullopt;
+}
+
+std::optional<base::Error>
+Catalog::putResource(const Resource& item, const std::string& content, const std::string& namespaceId)
 {
     LOG_DEBUG("Engine catalog: '{}' method: Item name: '{}'.", __func__, item.m_name.fullName());
 
@@ -236,6 +277,13 @@ std::optional<base::Error> Catalog::putResource(const Resource& item, const std:
     {
         return base::Error {
             fmt::format("Invalid resource type '{}' for PUT operation", Resource::typeToStr(item.m_type))};
+    }
+
+    // Check if resource exist in the namespace requested
+    auto error = checkResourceInNamespace(item, namespaceId, "update");
+    if (base::isError(error))
+    {
+        return base::getError(error);
     }
 
     // content must correspond to the specified resource
@@ -327,8 +375,7 @@ base::RespOrError<store::Col> Catalog::getCol(const Resource& resource, const st
     return col;
 }
 
-base::RespOrError<std::string> Catalog::getResource(const Resource& resource,
-                                                    const std::vector<std::string>& namespaceIds) const
+base::RespOrError<std::string> Catalog::getResource(const Resource& resource, const std::string& namespaceId) const
 {
     using Type = ::com::wazuh::api::engine::catalog::ResourceType;
     using Format = ::com::wazuh::api::engine::catalog::ResourceFormat;
@@ -358,24 +405,15 @@ base::RespOrError<std::string> Catalog::getResource(const Resource& resource,
     // Collection
     if (Resource::Type::collection == resource.m_type)
     {
-        // Assert namespaceIds is not empty
-        if (namespaceIds.empty())
-        {
-            return base::Error {"Namespace ids cannot be empty"};
-        }
-
         // Concatenate all the collections
         store::Col mergedCol;
-        for (const auto& nsId : namespaceIds)
+        auto colResult = getCol(resource, namespaceId);
+        if (base::isError(colResult))
         {
-            auto colResult = getCol(resource, nsId);
-            if (base::isError(colResult))
-            {
-                return base::getError(colResult);
-            }
-            auto col = base::getResponse<store::Col>(std::move(colResult));
-            mergedCol.insert(mergedCol.end(), std::make_move_iterator(col.begin()), std::make_move_iterator(col.end()));
+            return base::getError(colResult);
         }
+        auto col = base::getResponse<store::Col>(std::move(colResult));
+        mergedCol.insert(mergedCol.end(), std::make_move_iterator(col.begin()), std::make_move_iterator(col.end()));
 
         json::Json content;
         content.setArray();
@@ -387,7 +425,14 @@ base::RespOrError<std::string> Catalog::getResource(const Resource& resource,
         return formatContent(content);
     }
 
-    // Document
+    // Check if resource exist in the namespace requested
+    auto error = checkResourceInNamespace(resource, namespaceId, "get");
+    if (base::isError(error))
+    {
+        return base::getError(error);
+    }
+
+    // Get document
     auto docResult = getDoc(resource);
     if (base::isError(docResult))
     {
@@ -420,26 +465,17 @@ base::OptError Catalog::delCol(const Resource& resource, const std::string& name
     return m_store->deleteCol(resource.m_name, store::NamespaceId {namespaceId});
 }
 
-base::OptError Catalog::deleteResource(const Resource& resource, const std::vector<std::string>& namespaceIds)
+base::OptError Catalog::deleteResource(const Resource& resource, const std::string& namespaceId)
 {
+    // Agregate all errors
     if (Resource::Type::collection == resource.m_type)
     {
-        // Assert namespaceIds is not empty
-        if (namespaceIds.empty())
-        {
-            return base::Error {"Namespace ids cannot be empty"};
-        }
-
-        // Agregate all errors
         base::Error error;
-        for (const auto& nsId : namespaceIds)
+        const auto delColError = delCol(resource, namespaceId);
+        if (delColError)
         {
-            const auto delColError = delCol(resource, nsId);
-            if (delColError)
-            {
-                error.message += fmt::format(
-                    "Could not delete collection '{}': {}\n", resource.m_name.fullName(), delColError.value().message);
-            }
+            error.message += fmt::format(
+                "Could not delete collection '{}': {}\n", resource.m_name.fullName(), delColError.value().message);
         }
 
         if (!error.message.empty())
@@ -449,7 +485,14 @@ base::OptError Catalog::deleteResource(const Resource& resource, const std::vect
         return base::noError();
     }
 
-    // Delete doc
+    // Check if resource exist in the namespace requested
+    auto error = checkResourceInNamespace(resource, namespaceId, "delete");
+    if (base::isError(error))
+    {
+        return base::getError(error);
+    }
+
+    // Delete document
     return delDoc(resource);
 }
 
@@ -487,7 +530,8 @@ std::optional<base::Error> Catalog::validate(const Resource& item, const json::J
     return std::nullopt;
 }
 
-std::optional<base::Error> Catalog::validateResource(const Resource& item, const std::string& content) const
+std::optional<base::Error>
+Catalog::validateResource(const Resource& item, const std::string& content) const
 {
     // Assert resource is asset, policy or integration
     if (Resource::Type::decoder != item.m_type && Resource::Type::rule != item.m_type

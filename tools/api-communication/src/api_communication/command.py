@@ -34,6 +34,8 @@ def get_command(message: Message) -> Tuple[Optional[str], str]:
         return None, 'catalog.resource/delete'
     elif isinstance(message, catalog.ResourceValidate_Request):
         return None, 'catalog.resource/validate'
+    elif isinstance(message, catalog.NamespacesGet_Request):
+        return None, 'catalog.namespaces/get'
 
     # Config
     elif isinstance(message, config.RuntimeGet_Request):

@@ -40,7 +40,7 @@ def main():
     force = args.force
     namespaces = args.namespaces
     if not namespaces or len(namespaces) == 0:
-        namespaces = DEF_NAMESPACES
+        namespaces = resource_handler._get_all_namespaces(args.api_sock)['data']['namespaces']
     resources = args.resources if len(args.resources) > 0 else DEF_RESOURCES
 
     if 'kvdbs' in resources:
@@ -67,41 +67,54 @@ def main():
         resources.remove('kvdbs')
 
     for asset in resources:
-        for namespace in namespaces:
-            asset_partial = []
+        if asset == "policy":
+            policies = []
             try:
-                asset_partial += resource_handler.list_catalog(
-                    args.api_sock, asset, namespace)
-            except:
+                policies = resource_handler._get_policies_command(args.api_sock)['data']['data']
+            except Exception as e:
                 pass
-            else:
-                assets = []
-                for partial in asset_partial:
-                    versions = resource_handler.list_catalog(
-                        args.api_sock, partial, namespace)
-                    assets.extend(versions)
-
-                if not force and len(assets) > 0:
-                    print(f'[{namespace}] The following assets will be deleted:')
-                    print('\n'.join(assets))
-                    if not prompt_confirmation():
-                        continue
-
-                for asset_del in assets:
-                    try:
-                        resource_handler.delete_catalog_file(
-                            args.api_sock, asset, asset_del, namespace)
-                    except Exception as e:
-                        print(f'Error deleting {asset_del}: {e}')
+            for policy in policies:
                 try:
-                    remaining = resource_handler.list_catalog(
+                    print(f'Deleting policy {policy}')
+                    resource_handler._delete_asset(args.api_sock, policy)
+                except Exception as e:
+                    print(f'Error deleting {policy}: {e}')
+        else:
+            for namespace in namespaces:
+                asset_partial = []
+                try:
+                    asset_partial += resource_handler.list_catalog(
                         args.api_sock, asset, namespace)
                 except:
                     pass
                 else:
-                    if len(remaining) > 0:
-                        print('\nThe following assets could not be deleted:')
-                        print('\n'.join(remaining))
+                    assets = []
+                    for partial in asset_partial:
+                        versions = resource_handler.list_catalog(
+                            args.api_sock, partial, namespace)
+                        assets.extend(versions)
+
+                    if not force and len(assets) > 0:
+                        print(f'[{namespace}] The following assets will be deleted:')
+                        print('\n'.join(assets))
+                        if not prompt_confirmation():
+                            continue
+
+                    for asset_del in assets:
+                        try:
+                            resource_handler.delete_catalog_file(
+                                args.api_sock, asset, asset_del, namespace)
+                        except Exception as e:
+                            print(f'Error deleting {asset_del}: {e}')
+                    try:
+                        remaining = resource_handler.list_catalog(
+                            args.api_sock, asset, namespace)
+                    except:
+                        pass
+                    else:
+                        if len(remaining) > 0:
+                            print('\nThe following assets could not be deleted:')
+                            print('\n'.join(remaining))
 
     return 0
 
