@@ -106,7 +106,20 @@ message ResourceValidate_Request
     optional string name = 1;           // Name of the resource
     optional ResourceFormat format = 2; // Format of the resource (xml, json, etc)
     optional string content = 3;        // Content of the resource
-    optional string namespaceid = 4;    // Namespace where the resource is located
 }
 
 // message ResourceValidate_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * List all namespaces from the catalog
+ *
+ * command: catalog.namespaces/get (<resource>/<action>)
+ **************************************************/
+message NamespacesGet_Request {}
+
+message NamespacesGet_Response
+{
+    ReturnStatus status = 1;        // Status of the query
+    optional string error = 2;      // Error message if status is ERROR
+    repeated string namespaces = 3; // List of all namespaces
+}
