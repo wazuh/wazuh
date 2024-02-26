@@ -165,8 +165,6 @@ def test_ignore_subdirectory(test_configuration, test_metadata, configure_local_
 
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
-    file.write_file(file_to_monitor, "update")
-
     if test_metadata.setdefault('triggers_event', False) == True:
         wazuh_log_monitor.start(timeout=60, callback=generate_callback(EVENT_TYPE_ADDED))
         callback_result = wazuh_log_monitor.callback_result
