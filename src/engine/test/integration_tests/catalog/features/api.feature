@@ -317,7 +317,7 @@ Feature: Catalog API Management
 
   Scenario: Try to validate the resource that has duplicate keys
     Given I have a clear catalog
-    When I send a request to validate in the "yml" format in the namespace "wazuh" the resource "decoder/testing/0" that contains
+    When I send a request to validate in the "yml" format in the resource "decoder/testing/0" that contains
       """
         name: decoder/testing/0
         check: 1 == 2
@@ -328,7 +328,7 @@ Feature: Catalog API Management
 
   Scenario: Try to validate the resource that has non-exist helper
     Given I have a clear catalog
-    When I send a request to validate in the "yml" format in the namespace "wazuh" the resource "decoder/testing/0" that contains
+    When I send a request to validate in the "yml" format in the resource "decoder/testing/0" that contains
       """
         name: decoder/testing/0
         check: helper_not_exist(field)
@@ -338,7 +338,7 @@ Feature: Catalog API Management
 
   Scenario: Try to validate the resource that has a non-exist field en schema
     Given I have a clear catalog
-    When I send a request to validate in the "yml" format in the namespace "wazuh" the resource "decoder/testing/0" that contains
+    When I send a request to validate in the "yml" format in the resource "decoder/testing/0" that contains
       """
         name: decoder/testing/0
         parse|message:
@@ -349,7 +349,7 @@ Feature: Catalog API Management
 
   Scenario: Try to validate the resource that has a duplicate stage parse
     Given I have a clear catalog
-    When I send a request to validate in the "yml" format in the namespace "wazuh" the resource "decoder/testing/0" that contains
+    When I send a request to validate in the "yml" format in the resource "decoder/testing/0" that contains
       """
         name: decoder/testing/0
         parse|message:
@@ -362,7 +362,7 @@ Feature: Catalog API Management
 
   Scenario: Try to validate the resource that map invalid value
     Given I have a clear catalog
-    When I send a request to validate in the "yml" format in the namespace "wazuh" the resource "decoder/testing/0" that contains
+    When I send a request to validate in the "yml" format in the resource "decoder/testing/0" that contains
       """
         name: decoder/testing/0
         map:
@@ -373,7 +373,7 @@ Feature: Catalog API Management
 
   Scenario: Try to validate the resource that has invalid check-map
     Given I have a clear catalog
-    When I send a request to validate in the "yml" format in the namespace "wazuh" the resource "decoder/testing/0" that contains
+    When I send a request to validate in the "yml" format in the resource "decoder/testing/0" that contains
       """
         name: decoder/testing/0
         check: 1 == 2 OR 3 == 3
@@ -384,7 +384,7 @@ Feature: Catalog API Management
 
   Scenario: Try to validate the resource valid
     Given I have a clear catalog
-    When I send a request to validate in the "yml" format in the namespace "wazuh" the resource "decoder/testing/0" that contains
+    When I send a request to validate in the "yml" format in the resource "decoder/testing/0" that contains
       """
         name: decoder/testing/0
         check: $wazuh.origin == /var/log/apache2/access.log
