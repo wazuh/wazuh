@@ -858,7 +858,7 @@ async def get_daemon_stats(request, agent_id: str, pretty: bool = False, wait_fo
     dapi = DistributedAPI(f=stats.get_daemons_stats_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'])
@@ -866,8 +866,8 @@ async def get_daemon_stats(request, agent_id: str, pretty: bool = False, wait_fo
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
-
-async def get_component_stats(request, pretty: bool = False, wait_for_complete: bool = False, agent_id: str = None,
+async def get_component_stats(request, pretty: bool = False, 
+                              wait_for_complete: bool = False, agent_id: str = None,
                               component: str = None) -> web.Response:
     """Get a specified agent's component stats.
 
@@ -879,7 +879,8 @@ async def get_component_stats(request, pretty: bool = False, wait_for_complete: 
     wait_for_complete : bool
         Disable timeout response.
     agent_id : str
-        Agent ID for which the specified component's stats are got. All possible values from 000 onwards.
+        Agent ID for which the specified component's stats are got. All possible values 
+        from 000 onwards.
     component : str
         Selected agent's component which stats are got.
 
