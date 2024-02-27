@@ -161,6 +161,9 @@ def test_ignore_subdirectory(test_configuration, test_metadata, configure_local_
         - time_travel
     '''
 
+    if test_metadata.setdefault('xfail', False):
+        pytest.xfail(reason="Expected fail - Issue https://github.com/wazuh/wazuh/issues/22186.")
+
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
     if test_metadata.setdefault('triggers_event', False) == True:
