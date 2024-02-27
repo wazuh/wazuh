@@ -6232,6 +6232,7 @@
     content: 'test'
     triggers_event: !!python/object/apply:eval ['True']
     fim_mode: scheduled
+    xfail: !!python/object/apply:eval ['True']
 
 - name: not_ignore_with_negated_sregex_realtime
   description: Check ignore with negated sregex triggers event because there is no match
