@@ -4,7 +4,7 @@ from enum import Enum
 from typing import Optional, TypeAlias
 
 import httpx
-from wazuh.core.cluster.utils import ClusterFilter
+from wazuh.core.cluster.utils import ClusterFilter, context_tag
 from wazuh.core.exception import WazuhHAPHelperError
 
 JSON_TYPE: TypeAlias = dict | list[dict]
@@ -39,11 +39,12 @@ class ProxyAPI:
 
     HAPEE_ENDPOINT = '/hapee'
 
-    def __init__(self, username: str, password: str, address: str = 'localhost', port: int = 7777):
+    def __init__(self, username: str, password: str, tag: str, address: str = 'localhost', port: int = 7777):
         self.username = username
         self.password = password
         self.address = address
         self.port = port
+        self.tag = tag
 
         self.version = 0
 
@@ -99,6 +100,7 @@ class ProxyAPI:
         WazuhHAPHelperError
             In case of errors communicating with the HAProxy REST API.
         """
+        context_tag.set(self.tag)
         uri = f'https://{self.address}:{self.port}{self.HAPEE_ENDPOINT}'
         query_parameters = query_parameters or {}
         query_parameters.update({'version': self.version})
@@ -142,6 +144,7 @@ class ProxyAPI:
         query_parameters: dict | None = None,
         json_body: dict | None = None,
     ) -> PROXY_API_RESPONSE:
+        context_tag.set(self.tag)
         uri = f'https://{self.address}:{self.port}{endpoint}'
 
         try:
@@ -463,27 +466,33 @@ class Proxy:
         self,
         wazuh_backend: str,
         proxy_api: ProxyAPI,
+        tag: str,
         wazuh_connection_port: int = 1514,
         resolver: str = None,
     ):
-        self.logger = self._get_logger()
+        self.tag = tag
+        self.logger = self._get_logger(self.tag)
         self.wazuh_backend = wazuh_backend
         self.wazuh_connection_port = wazuh_connection_port
         self.api = proxy_api
         self.resolver = resolver
 
     @staticmethod
-    def _get_logger() -> logging.Logger:
+    def _get_logger(tag: str) -> logging.Logger:
         """Get the configured logger.
+
+        Parameters
+        ----------
+        tag : str
+            Tag to use in log filter.
 
         Returns
         -------
         logging.Logger
             The configured logger.
         """
-
-        logger = logging.getLogger('wazuh').getChild('HAPHelper Proxy')
-        logger.addFilter(ClusterFilter(tag='Cluster', subtag='HAPHelper Proxy'))
+        logger = logging.getLogger('wazuh').getChild('Proxy')
+        logger.addFilter(ClusterFilter(tag=tag, subtag='Proxy'))
 
         return logger
 

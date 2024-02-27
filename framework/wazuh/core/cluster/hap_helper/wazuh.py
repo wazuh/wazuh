@@ -7,7 +7,7 @@ from wazuh.agent import get_agents, reconnect_agents
 from wazuh.cluster import get_nodes_info
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.core.cluster.utils import ClusterFilter
+from wazuh.core.cluster.utils import ClusterFilter, context_tag
 
 
 class WazuhAgent:
@@ -60,24 +60,31 @@ class WazuhDAPI:
 
     def __init__(
         self,
+        tag: str,
         excluded_nodes: list | None = None,
     ):
-        self.logger = self._get_logger()
+        self.tag = tag
+        self.logger = self._get_logger(self.tag)
         self.excluded_nodes = excluded_nodes or []
 
         self.token = ''
 
     @staticmethod
-    def _get_logger() -> logging.Logger:
+    def _get_logger(tag: str) -> logging.Logger:
         """Get the configured logger.
+
+        Parameters
+        ----------
+        tag : str
+            Tag to use in log filter.
 
         Returns
         -------
         logging.Logger
             The configured logger.
         """
-        logger = logging.getLogger('wazuh').getChild('HAPHelper DAPI')
-        logger.addFilter(ClusterFilter(tag='Cluster', subtag='HAPHelper DAPI'))
+        logger = logging.getLogger('wazuh').getChild('WazuhDAPI')
+        logger.addFilter(ClusterFilter(tag=tag, subtag='DAPI'))
 
         return logger
 
@@ -101,6 +108,7 @@ class WazuhDAPI:
         WazuhException
             Raise the exception returned by function `f`.
         """
+        context_tag.set(self.tag)
         ret_val = await DistributedAPI(f=f, f_kwargs=f_kwargs, logger=self.logger, **kwargs).distribute_function()
         if isinstance(ret_val, Exception):
             self.logger.error(f'Unexpected error calling {f.__name__}')

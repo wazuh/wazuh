@@ -14,7 +14,6 @@ from wazuh.core import common
 from wazuh.core.cluster import client, cluster, server
 from wazuh.core.cluster import common as c_common
 from wazuh.core.cluster.dapi import dapi
-from wazuh.core.cluster.hap_helper import hap_helper
 from wazuh.core.cluster.utils import context_tag
 from wazuh.core.exception import WazuhClusterError
 
@@ -352,7 +351,7 @@ class LocalServerMaster(LocalServer):
         self.dapi = dapi.APIRequestQueue(server=self)
         self.sendsync = dapi.SendSyncRequestQueue(server=self)
 
-        self.tasks.extend([self.dapi.run, self.sendsync.run, hap_helper.HAPHelper.run])
+        self.tasks.extend([self.dapi.run, self.sendsync.run])
 
 
 class LocalServerHandlerWorker(LocalServerHandler):
