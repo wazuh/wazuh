@@ -6,7 +6,7 @@ from math import ceil, floor
 from wazuh.core.cluster.hap_helper.configuration import parse_configuration
 from wazuh.core.cluster.hap_helper.proxy import Proxy, ProxyAPI, ProxyServerState
 from wazuh.core.cluster.hap_helper.wazuh import WazuhAgent, WazuhDAPI
-from wazuh.core.cluster.utils import ClusterFilter
+from wazuh.core.cluster.utils import ClusterFilter, context_tag
 from wazuh.core.exception import WazuhException, WazuhHAPHelperError
 
 
@@ -17,8 +17,9 @@ class HAPHelper:
     AGENT_STATUS_SYNC_TIME: int = 25  # Default agent notify time + cluster sync + 5s
     SERVER_ADMIN_STATE_DELAY: int = 5
 
-    def __init__(self, proxy: Proxy, wazuh_dapi: WazuhDAPI, options: dict):
-        self.logger = self._get_logger()
+    def __init__(self, proxy: Proxy, wazuh_dapi: WazuhDAPI, tag: str, options: dict):
+        self.tag = tag
+        self.logger = self._get_logger(self.tag)
         self.proxy = proxy
         self.wazuh_dapi = wazuh_dapi
 
@@ -30,8 +31,13 @@ class HAPHelper:
         self.remove_disconnected_node_after: int = options['remove_disconnected_node_after']
 
     @staticmethod
-    def _get_logger() -> logging.Logger:
+    def _get_logger(tag: str) -> logging.Logger:
         """Returns the configured logger.
+
+        Parameters
+        ----------
+        tag : str
+            Tag to use in log filter.
 
         Returns
         -------
@@ -40,7 +46,7 @@ class HAPHelper:
         """
 
         logger = logging.getLogger('wazuh').getChild('HAPHelper')
-        logger.addFilter(ClusterFilter(tag='Cluster', subtag='HAPHelper Main'))
+        logger.addFilter(ClusterFilter(tag=tag, subtag='Main'))
 
         return logger
 
@@ -351,6 +357,7 @@ class HAPHelper:
         """Main loop for check balance of Wazuh cluster."""
 
         while True:
+            context_tag.set(self.tag)
             try:
                 await self.backend_servers_state_healthcheck()
                 await self.check_proxy_processes(auto_mode=True) and await sleep(self.AGENT_STATUS_SYNC_TIME)
@@ -402,15 +409,17 @@ class HAPHelper:
                 await sleep(self.sleep_time)
 
     @classmethod
-    async def run(cls):
+    async def start(cls):
         """Initialize and run HAPHelper."""
 
         try:
             configuration = parse_configuration()
+            tag = 'HAPHelper'
 
             proxy_api = ProxyAPI(
                 username=configuration['proxy']['api']['user'],
                 password=configuration['proxy']['api']['password'],
+                tag=tag,
                 address=configuration['proxy']['api']['address'],
                 port=configuration['proxy']['api']['port'],
             )
@@ -418,14 +427,15 @@ class HAPHelper:
                 wazuh_backend=configuration['proxy']['backend'],
                 wazuh_connection_port=configuration['wazuh']['connection']['port'],
                 proxy_api=proxy_api,
+                tag=tag,
                 resolver=configuration['proxy'].get('resolver', None),
             )
 
             wazuh_dapi = WazuhDAPI(
-                excluded_nodes=configuration['wazuh']['excluded_nodes'],
+                tag=tag, excluded_nodes=configuration['wazuh']['excluded_nodes'],
             )
 
-            helper = cls(proxy=proxy, wazuh_dapi=wazuh_dapi, options=configuration['hap_helper'])
+            helper = cls(proxy=proxy, wazuh_dapi=wazuh_dapi, tag=tag, options=configuration['hap_helper'])
 
             await helper.initialize_proxy()
             await helper.initialize_wazuh_cluster_configuration()
