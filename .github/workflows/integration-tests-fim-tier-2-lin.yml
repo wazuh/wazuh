@@ -2,13 +2,11 @@ name: Integration tests for FIM on Linux - Tier 2
 
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-        - ".github/workflows/integration-tests-fim-tier-0-1-lin.yml"
-        - "src/fim/**"
-        - "src/Makefile"
-        - "tests/integration/conftest.py"
-        - "tests/integration/test_fim/**"
+    inputs:
+      base_branch:
+        description: 'Base branch'
+        required: true
+        default: 'main'
 
 jobs:
   test-manager:
