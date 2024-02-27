@@ -326,7 +326,6 @@ STATIC int wdb_execute_single_int_select_query(wdb_t * wdb, const char *query, i
 STATIC int wdb_get_last_vacuum_data(wdb_t* wdb, int *last_vacuum_time, int *last_vacuum_value);
 
 wdb_config wconfig;
-_Atomic(int) wdb_open_count;
 
 // Opens global database and stores it in DB pool. It returns a locked database or NULL
 wdb_t * wdb_open_global() {
@@ -362,7 +361,6 @@ wdb_t * wdb_open_global() {
             }
         }
 
-        wdb_open_count++;
         wdb_enable_foreign_keys(wdb->db);
     }
 
@@ -388,7 +386,6 @@ wdb_t * wdb_open_mitre() {
         return NULL;
     }
 
-    wdb_open_count++;
     return wdb;
 }
 
@@ -433,7 +430,6 @@ wdb_t * wdb_open_agent2(int agent_id) {
         }
     }
 
-    wdb_open_count++;
     return wdb;
 }
 
@@ -467,7 +463,6 @@ wdb_t * wdb_open_tasks() {
         }
     }
 
-    wdb_open_count++;
     return wdb;
 }
 
@@ -1111,8 +1106,9 @@ int wdb_update_last_vacuum_data(wdb_t* wdb, const char *last_vacuum_time, const 
 
 void wdb_close_old() {
     char ** keys = wdb_pool_keys();
+    int closed = 0;
 
-    for (int i = 0; keys[i] && wdb_open_count > wconfig.open_db_limit; i++) {
+    for (int i = 0; keys[i] && (int)wdb_pool_size() - closed > wconfig.open_db_limit; i++) {
         wdb_t * node = wdb_pool_get(keys[i]);
 
         if (node == NULL) {
@@ -1122,11 +1118,14 @@ void wdb_close_old() {
         if (node->db != NULL && node->refcount == 1 && strcmp(node->id, WDB_GLOB_NAME) != 0) {
             mdebug2("Closing database for agent %s", node->id);
             wdb_close(node, true);
+            closed++;
         }
 
         wdb_pool_leave(node);
 
     }
+
+    wdb_pool_clean();
 
     free_strarray(keys);
 }
@@ -1374,7 +1373,6 @@ int wdb_close(wdb_t * wdb, bool commit) {
 
     if (result == SQLITE_OK) {
         wdb->db = NULL;
-        wdb_open_count--;
         return OS_SUCCESS;
     } else {
         merror("DB(%s) wdb_close(): %s", wdb->id, sqlite3_errmsg(wdb->db));

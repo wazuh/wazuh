@@ -434,7 +434,6 @@ void * run_gc(__attribute__((unused)) void * args) {
         }
 
         wdb_close_old();
-        wdb_pool_clean();
 
         sleep(1);
     }

@@ -55,6 +55,7 @@ wdb_t * wdb_pool_get_or_create(const char * name) {
     if (node == NULL) {
         node = wdb_init(name);
         rbtree_insert(wdb_pool.nodes, name, node);
+        wdb_pool.size++;
     }
 
     node->refcount++;
@@ -103,9 +104,16 @@ void wdb_pool_clean() {
         if (node->refcount == 0 && node->db == NULL) {
             wdb_destroy(node);
             rbtree_delete(wdb_pool.nodes, keys[i]);
+            wdb_pool.size--;
         }
     }
 
     free_strarray(keys);
     w_mutex_unlock(&wdb_pool.mutex);
+}
+
+// Get the current pool size.
+
+unsigned wdb_pool_size() {
+    return wdb_pool.size;
 }
