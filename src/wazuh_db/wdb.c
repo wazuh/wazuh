@@ -1108,7 +1108,7 @@ void wdb_close_old() {
     char ** keys = wdb_pool_keys();
     int closed = 0;
 
-    for (int i = 0; keys[i] && wdb_pool_size - closed > wconfig.open_db_limit; i++) {
+    for (int i = 0; keys[i] && (int)wdb_pool_size() - closed > wconfig.open_db_limit; i++) {
         wdb_t * node = wdb_pool_get(keys[i]);
 
         if (node == NULL) {
