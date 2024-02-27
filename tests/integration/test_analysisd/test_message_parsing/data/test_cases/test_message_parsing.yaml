@@ -1,0 +1,396 @@
+---
+# Full location: <Queue_ID>:[<Agent_ID>] (<Agent_Name>) <Registered_IP>-><Route>:<Log>
+# Manager location: <Queue_ID>:<Route>:<Log>
+# Agentless location: <Queue_ID>:<ip>:<Log>
+
+- name: case_0_0
+  description: Test file with colons from a manager and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:path|:with|:colons:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "path:with:colons"
+
+- name: case_0_1
+  description: Test file with full path and colons from a manager and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:/some/full/path|:with|:colons:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "/some/full/path:with:colons"
+
+- name: case_0_2
+  description: Test file with colons from a manager and a plain message
+  configuration_parameters: null
+  metadata:
+    input: "1:path|:with|:colons:Some non-json message"
+    expected_location: "path:with:colons"
+
+- name: case_0_3
+  description: Test file with full path and colons from a manager and a plain message
+  configuration_parameters: null
+  metadata:
+    input: "1:/some/full/path|:with|:colons:Some non-json message"
+    expected_location: "/some/full/path:with:colons"
+
+- name: case_0_4
+  description: Test file with colons from a manager and a plain message with colons
+  configuration_parameters: null
+  metadata:
+    input: "1:path|:with|:colons:Some non-json message with colons: more message"
+    expected_location: "path:with:colons"
+
+- name: case_0_5
+  description: Test file with full path and colons from a manager and a plain message with colons
+  configuration_parameters: null
+  metadata:
+    input: "1:/some/full/path|:with|:colons:Some non-json message with colons: more message"
+    expected_location: "/some/full/path:with:colons"
+
+- name: case_0_6
+  description: Test file with colons from a manager and an empty json message
+  configuration_parameters: null
+  metadata:
+    input: "1:path|:with|:colons:{}"
+    expected_location: "path:with:colons"
+
+- name: case_0_7
+  description: Test file with colons from a manager and a json message with spaces
+  configuration_parameters: null
+  metadata:
+    input: "1:path|:with|:colons:{\"field1\":\"value 1\",\"field2\":\"value 2\"}"
+    expected_location: "path:with:colons"
+
+- name: case_1_0
+  description: Test file with colons from an ipv4 agent
+  configuration_parameters: null
+  metadata:
+    input: "1:[001] (agent-name) 192.168.12.3->path|:with|:colons:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "path:with:colons"
+
+- name: case_1_1
+  description: Test file with colons from an ipv4 agent
+  configuration_parameters: null
+  metadata:
+    input: "1:[001] (agent-name) 192.168.12.3->/some/full/path|:with|:colons:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "/some/full/path:with:colons"
+
+- name: case_1_2
+  description: Test file with colons from an ipv4 agent and an empty json message
+  configuration_parameters: null
+  metadata:
+    input: "1:[001] (agent-name) 192.168.12.3->path|:with|:colons:{}"
+    expected_location: "path:with:colons"
+
+- name: case_1_3
+  description: Test file with colons from an ipv4 agent and a json message with colons
+  configuration_parameters: null
+  metadata:
+    input: "1:[001] (agent-name) 192.168.12.3->path|:with|:colons:{\"field1\":\"value:1\",\"field2\":\"value:2\"}"
+    expected_location: "path:with:colons"
+
+- name: case_2_0
+  description: Test file with colons from an ipv6 agent
+  configuration_parameters: null
+  metadata:
+    input: "1:[001] (agent-name) |:|:1->path|:with|:colons:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "path:with:colons"
+
+- name: case_2_1
+  description: Test file with colons from an ipv6 agent
+  configuration_parameters: null
+  metadata:
+    input: "1:[001] (agent-name) |:|:1->/some/full/path|:with|:colons:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "/some/full/path:with:colons"
+
+- name: case_2_2
+  description: Test file with colons from an ipv6 agent and an empty json message
+  configuration_parameters: null
+  metadata:
+    input: "1:[001] (agent-name) |:|:1->path|:with|:colons:{}"
+    expected_location: "path:with:colons"
+
+- name: case_2_3
+  description: Test file with colons from an ipv6 agent and a json message with colons
+  configuration_parameters: null
+  metadata:
+    input: "1:[001] (agent-name) |:|:1->path|:with|:colons:{\"field1\":\"value:1\",\"field2\":\"value:2\"}"
+    expected_location: "path:with:colons"
+
+- name: case_3_0
+  description: Test ipv6 agentless
+  configuration_parameters: null
+  metadata:
+    input: "1:|:|:1:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "::1"
+
+- name: case_3_1
+  description: Test ipv6 agentless
+  configuration_parameters: null
+  metadata:
+    input: "1:2001|:db8|:|:0001:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "2001:db8::0001"
+
+- name: case_3_2
+  description: Test ipv6 agentless with an empty json message
+  configuration_parameters: null
+  metadata:
+    input: "1:|:|:1:{}"
+    expected_location: "::1"
+
+- name: case_3_3
+  description: Test ipv6 agentless with a json message containing colons
+  configuration_parameters: null
+  metadata:
+    input: "1:|:|:1:{\"field1\":\"value:1\",\"field2\":\"value:2\"}"
+    expected_location: "::1"
+
+- name: case_4_0
+  description: Test file with pipes from a manager and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:path||with||pipes:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "path|with|pipes"
+
+- name: case_4_1
+  description: Test file with full path and pipes from a manager and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:/some/full/path||with||pipes:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "/some/full/path|with|pipes"
+
+- name: case_4_2
+  description: Test file with pipes from a manager and a plain message
+  configuration_parameters: null
+  metadata:
+    input: "1:path||with||pipes:Some non-json message"
+    expected_location: "path|with|pipes"
+
+- name: case_4_3
+  description: Test file with full path and pipes from a manager and a plain message
+  configuration_parameters: null
+  metadata:
+    input: "1:/some/full/path||with||pipes:Some non-json message"
+    expected_location: "/some/full/path|with|pipes"
+
+- name: case_4_4
+  description: Test file with pipes from a manager and a plain message with pipes
+  configuration_parameters: null
+  metadata:
+    input: "1:path||with||pipes:Some non-json message with pipes: more message"
+    expected_location: "path|with|pipes"
+
+- name: case_4_5
+  description: Test file with full path and pipes from a manager and a plain message with pipes
+  configuration_parameters: null
+  metadata:
+    input: "1:/some/full/path||with||pipes:Some non-json message with pipes: more message"
+    expected_location: "/some/full/path|with|pipes"
+
+- name: case_4_6
+  description: Test file with pipes from a manager and an empty json message
+  configuration_parameters: null
+  metadata:
+    input: "1:path||with||pipes:{}"
+    expected_location: "path|with|pipes"
+
+- name: case_4_7
+  description: Test file with pipes from a manager and a json message with spaces
+  configuration_parameters: null
+  metadata:
+    input: "1:path||with||pipes:{\"field1\":\"value 1\",\"field2\":\"value 2\"}"
+    expected_location: "path|with|pipes"
+
+- name: case_5_0
+  description: Test file with pipes from an ipv4 agent
+  configuration_parameters: null
+  metadata:
+    input: "1:[001] (agent-name) 192.168.12.3->path||with||pipes:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "path|with|pipes"
+
+- name: case_5_1
+  description: Test file with pipes from an ipv4 agent
+  configuration_parameters: null
+  metadata:
+    input: "1:[001] (agent-name) 192.168.12.3->/some/full/path||with||pipes:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "/some/full/path|with|pipes"
+
+- name: case_5_2
+  description: Test file with pipes from an ipv4 agent and an empty json message
+  configuration_parameters: null
+  metadata:
+    input: "1:[001] (agent-name) 192.168.12.3->path||with||pipes:{}"
+    expected_location: "path|with|pipes"
+
+- name: case_5_3
+  description: Test file with pipes from an ipv4 agent and a json message with pipes
+  configuration_parameters: null
+  metadata:
+    input: "1:[001] (agent-name) 192.168.12.3->path||with||pipes:{\"field1\":\"value|1\",\"field2\":\"value|2\"}"
+    expected_location: "path|with|pipes"
+
+- name: case_6_0
+  description: Test file with pipes from an ipv6 agent
+  configuration_parameters: null
+  metadata:
+    input: "1:[001] (agent-name) |:|:1->path||with||pipes:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "path|with|pipes"
+
+- name: case_6_1
+  description: Test file with pipes from an ipv6 agent
+  configuration_parameters: null
+  metadata:
+    input: "1:[001] (agent-name) |:|:1->/some/full/path||with||pipes:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "/some/full/path|with|pipes"
+
+- name: case_6_2
+  description: Test file with pipes from an ipv6 agent and an empty json message
+  configuration_parameters: null
+  metadata:
+    input: "1:[001] (agent-name) |:|:1->path||with||pipes:{}"
+    expected_location: "path|with|pipes"
+
+- name: case_6_3
+  description: Test file with pipes from an ipv6 agent and a json message with pipes
+  configuration_parameters: null
+  metadata:
+    input: "1:[001] (agent-name) |:|:1->path||with||pipes:{\"field1\":\"value|1\",\"field2\":\"value|2\"}"
+    expected_location: "path|with|pipes"
+
+- name: case_7_0
+  description: Test ipv6 agentless
+  configuration_parameters: null
+  metadata:
+    input: "1:|:|:1:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "::1"
+
+- name: case_7_1
+  description: Test ipv6 agentless
+  configuration_parameters: null
+  metadata:
+    input: "1:2001|:db8|:|:0001:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "2001:db8::0001"
+
+- name: case_7_2
+  description: Test ipv6 agentless with an empty json message
+  configuration_parameters: null
+  metadata:
+    input: "1:|:|:1:{}"
+    expected_location: "::1"
+
+- name: case_7_3
+  description: Test ipv6 agentless with a json message containing pipes
+  configuration_parameters: null
+  metadata:
+    input: "1:|:|:1:{\"field1\":\"value|1\",\"field2\":\"value|2\"}"
+    expected_location: "::1"
+
+- name: case_8_0
+  description: Test file with backslashes from a manager and a json message
+  configuration_parameters: null
+  metadata:
+    input: '1:path\with\backslashes:{"field1":"value1","field2":"value2"}'
+    expected_location: 'path\\\\with\\\\backslashes'
+
+- name: case_8_1
+  description: Test file with full path and backslashes from a manager and a json message
+  configuration_parameters: null
+  metadata:
+    input: '1:/some/full/path\with\backslashes:{\"field1\":\"value1\",\"field2\":\"value2\"}'
+    expected_location: '/some/full/path\\\\with\\\\backslashes'
+
+- name: case_8_2
+  description: Test file with backslashes from a manager and a plain message
+  configuration_parameters: null
+  metadata:
+    input: '1:path\with\backslashes:Some non-json message'
+    expected_location: 'path\\\\with\\\\backslashes'
+
+- name: case_8_3
+  description: Test file with full path and backslashes from a manager and a plain message
+  configuration_parameters: null
+  metadata:
+    input: '1:/some/full/path\with\backslashes:Some non-json message'
+    expected_location: '/some/full/path\\\\with\\\\backslashes'
+
+- name: case_8_4
+  description: Test file with backslashes from a manager and a plain message with backslashes
+  configuration_parameters: null
+  metadata:
+    input: '1:path\with\backslashes:Some non-json message with backslashes: more message'
+    expected_location: 'path\\\\with\\\\backslashes'
+
+- name: case_8_5
+  description: Test file with full path and backslashes from a manager and a plain message with backslashes
+  configuration_parameters: null
+  metadata:
+    input: '1:/some/full/path\with\backslashes:Some non-json message with backslashes: more message'
+    expected_location: '/some/full/path\\\\with\\\\backslashes'
+
+- name: case_8_6
+  description: Test file with backslashes from a manager and an empty json message
+  configuration_parameters: null
+  metadata:
+    input: '1:path\with\backslashes:{}'
+    expected_location: 'path\\\\with\\\\backslashes'
+
+- name: case_8_7
+  description: Test file with backslashes from a manager and a json message with backslashes
+  configuration_parameters: null
+  metadata:
+    input: '1:path\with\backslashes:{\"field1\":\"value\\1\",\"field2\":\"value\\2\"}'
+    expected_location: 'path\\\\with\\\\backslashes'
+
+- name: case_9_0
+  description: Test file with backslashes from an ipv4 agent
+  configuration_parameters: null
+  metadata:
+    input: '1:[001] (agent-name) 192.168.12.3->path\with\backslashes:{\"field1\":\"value1\",\"field2\":\"value2\"}'
+    expected_location: 'path\\\\with\\\\backslashes'
+
+- name: case_9_1
+  description: Test file with backslashes from an ipv4 agent
+  configuration_parameters: null
+  metadata:
+    input: '1:[001] (agent-name) 192.168.12.3->/some/full/path\with\backslashes:{\"field1\":\"value1\",\"field2\":\"value2\"}'
+    expected_location: '/some/full/path\\\\with\\\\backslashes'
+
+- name: case_9_2
+  description: Test file with backslashes from an ipv4 agent and an empty json message
+  configuration_parameters: null
+  metadata:
+    input: '1:[001] (agent-name) 192.168.12.3->path\with\backslashes:{}'
+    expected_location: 'path\\\\with\\\\backslashes'
+
+- name: case_9_3
+  description: Test file with backslashes from an ipv4 agent and a json message with backslashes
+  configuration_parameters: null
+  metadata:
+    input: '1:[001] (agent-name) 192.168.12.3->path\with\backslashes:{\"field1\":\"value\\1\",\"field2\":\"value\\2\"}'
+    expected_location: 'path\\\\with\\\\backslashes'
+
+- name: case_9_0
+  description: Test file with backslashes from an ipv6 agent
+  configuration_parameters: null
+  metadata:
+    input: '1:[001] (agent-name) |:|:1->path\with\backslashes:{\"field1\":\"value1\",\"field2\":\"value2\"}'
+    expected_location: 'path\\\\with\\\\backslashes'
+
+- name: case_9_1
+  description: Test file with backslashes from an ipv6 agent
+  configuration_parameters: null
+  metadata:
+    input: '1:[001] (agent-name) |:|:1->/some/full/path\with\backslashes:{\"field1\":\"value1\",\"field2\":\"value2\"}'
+    expected_location: '/some/full/path\\\\with\\\\backslashes'
+
+- name: case_9_2
+  description: Test file with backslashes from an ipv6 agent and an empty json message
+  configuration_parameters: null
+  metadata:
+    input: '1:[001] (agent-name) |:|:1->path\with\backslashes:{}'
+    expected_location: 'path\\\\with\\\\backslashes'
+
+- name: case_9_3
+  description: Test file with backslashes from an ipv6 agent and a json message with backslashes
+  configuration_parameters: null
+  metadata:
+    input: '1:[001] (agent-name) |:|:1->path\with\backslashes:{\"field1\":\"value\\1\",\"field2\":\"value\\2\"}'
+    expected_location: 'path\\\\with\\\\backslashes'
