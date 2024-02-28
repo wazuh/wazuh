@@ -25,17 +25,17 @@ check:
 # - event.dataset: apache-access
 
 parse|event.original:
-  - <destination.domain> <source.address> - <user.name> [<event.created/%a %b %d %T %Y/en_US.UTF-8>] "<_http_request/text>?<_dash>" <http.response.status_code> <http.response.body.bytes>?<_dash> "<http.request.referrer>" "<user_agent.original>"
-  - <destination.domain> <source.address> - <user.name> [<event.created/%d\/%b\/%Y:%T %z>] "<_http_request/text>?<_dash>" <http.response.status_code> <http.response.body.bytes>?<_dash> "<http.request.referrer>" "<user_agent.original>"
-  - <source.address> - <user.name> [<event.created/%d\/%b\/%Y:%T %z>] "<_http_request/text>" <http.response.status_code> <_ignore/literal/->?<http.response.body.bytes>(? "<http.request.referrer>" "<user_agent.original>")
-  - <source.address> - <user.name> [<event.created/%d\/%b\/%Y:%T %z>] "-" <http.response.status_code> -
-  - <source.address> - - [<event.created/%a %b %d %T %Y/en_US.UTF-8>] "-" <http.response.status_code> -
-  - <source.address> - - [<event.created/%a %b %d %T %Y/en_US.UTF-8>] "<_http_request/text>?<_dash>" <http.response.status_code> <http.response.body.bytes>?<_dash> "<http.request.referrer>" "<user_agent.original>"
-  - <source.address> - <user.name> [<event.created/%a %b %d %T %Y/en_US.UTF-8>] "<_http_request/text>?<_dash>" <http.response.status_code> <http.response.body.bytes>?<_dash> "<http.request.referrer>" "<user_agent.original>"
-  - '[<event.created/%a %b %d %T %Y/en_US.UTF-8>] <source.address> <network.protocol> <tls.cipher> "<_http_request/text>" <http.response.body.bytes>?<_dash>'
-  - '[<event.created/%d\/%b\/%Y:%T %z>] <source.address> <network.protocol> <tls.cipher> "<_http_request/text>" <http.response.body.bytes>?<_dash>'
-  - <source.address> - - [<event.created/%d\/%b\/%Y:%T %z>] "<_http_request/text>?<_dash>" <http.response.status_code> <http.response.body.bytes>?<_dash> "<http.request.referrer>" "<user_agent.original>" "-"
-  - <source.address> - <user.name> [<event.created/%d\/%b\/%Y:%T %z>] "<_http_request/text>?<_dash>" <http.response.status_code> <http.response.body.bytes>?<_dash> "<http.request.referrer>" "<user_agent.original>" X-Forwarded-For="<_forwarded_for>"
+  - <destination.domain> <source.address> - <user.name> [<event.created/ANSIC>] "<_http_request/text>?<_dash>" <http.response.status_code> <http.response.body.bytes>?<_dash> "<http.request.referrer>" "<user_agent.original>"
+  - <destination.domain> <source.address> - <user.name> [<event.created/HTTPDATE>] "<_http_request/text>?<_dash>" <http.response.status_code> <http.response.body.bytes>?<_dash> "<http.request.referrer>" "<user_agent.original>"
+  - <source.address> - <user.name> [<event.created/HTTPDATE>] "<_http_request/text>" <http.response.status_code> <_ignore/literal/->?<http.response.body.bytes>(? "<http.request.referrer>" "<user_agent.original>")
+  - <source.address> - <user.name> [<event.created/HTTPDATE>] "-" <http.response.status_code> -
+  - <source.address> - - [<event.created/ANSIC>] "-" <http.response.status_code> -
+  - <source.address> - - [<event.created/ANSIC>] "<_http_request/text>?<_dash>" <http.response.status_code> <http.response.body.bytes>?<_dash> "<http.request.referrer>" "<user_agent.original>"
+  - <source.address> - <user.name> [<event.created/ANSIC>] "<_http_request/text>?<_dash>" <http.response.status_code> <http.response.body.bytes>?<_dash> "<http.request.referrer>" "<user_agent.original>"
+  - '[<event.created/ANSIC>] <source.address> <network.protocol> <tls.cipher> "<_http_request/text>" <http.response.body.bytes>?<_dash>'
+  - '[<event.created/HTTPDATE>] <source.address> <network.protocol> <tls.cipher> "<_http_request/text>" <http.response.body.bytes>?<_dash>'
+  - <source.address> - - [<event.created/HTTPDATE>] "<_http_request/text>?<_dash>" <http.response.status_code> <http.response.body.bytes>?<_dash> "<http.request.referrer>" "<user_agent.original>" "-"
+  - <source.address> - <user.name> [<event.created/HTTPDATE>] "<_http_request/text>?<_dash>" <http.response.status_code> <http.response.body.bytes>?<_dash> "<http.request.referrer>" "<user_agent.original>" X-Forwarded-For="<_forwarded_for>"
 
 normalize:
   - map:
