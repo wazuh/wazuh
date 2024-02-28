@@ -22,10 +22,10 @@ check:
   OR $wazuh.origin == "C:\\Program Files (x86)\\Apache Software Foundation\\Apache2.2\\error.log"
 
 parse|event.original:
-  - "[<event.created/%a %b %d %T %Y/en_US.UTF-8>] [<log.logger>:<log.level>] [pid <process.pid>(?:tid <process.thread.id>)] [client <source.address>(?:<source.port>)] <message>"
-  - "[<event.created/%a %b %d %T %Y/en_US.UTF-8>] [<log.logger>:<log.level>] [pid <process.pid>(?:tid <process.thread.id>)] <message>"
-  - "[<event.created/%a %b %d %T %Y/en_US.UTF-8>] [<log.level>] [client <source.address>(?:<source.port>)] <message>"
-  - "[<event.created/%a %b %d %T %Y/en_US.UTF-8>] [<log.level>] <message>"
+  - "[<event.created/ANSIC>] [<log.logger>:<log.level>] [pid <process.pid>(?:tid <process.thread.id>)] [client <source.address>(?:<source.port>)] <message>"
+  - "[<event.created/ANSIC>] [<log.logger>:<log.level>] [pid <process.pid>(?:tid <process.thread.id>)] <message>"
+  - "[<event.created/ANSIC>] [<log.level>] [client <source.address>(?:<source.port>)] <message>"
+  - "[<event.created/ANSIC>] [<log.level>] <message>"
 
 normalize:
   - map:
