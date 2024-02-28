@@ -15,6 +15,7 @@ link_directories(${SRC_FOLDER}/shared_modules/rsync/build/lib)
 link_directories(${SRC_FOLDER}/data_provider/build/lib)
 link_directories(${SRC_FOLDER}/external/openssl/)
 link_directories(${SRC_FOLDER}/external/procps/)
+link_directories(${SRC_FOLDER}/external/libdb/build_unix/)
 
 if(COVERITY)
   add_definitions(-D__GNUC__=8)
@@ -71,6 +72,7 @@ else()
         syscollector
         dl
         proc
+        db
     )
 
     if(SOLARIS)

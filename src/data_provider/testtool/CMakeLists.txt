@@ -8,6 +8,7 @@ include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/external/nlohmann/)
 
 link_directories(${SRC_FOLDER}/external/procps/)
+link_directories(${SRC_FOLDER}/external/libdb/build_unix/)
 
 if(COVERITY)
   add_definitions(-D__GNUC__=8)
@@ -51,6 +52,7 @@ else()
         dl
         pthread
         proc
+        db
     )
 
     if(SOLARIS)
