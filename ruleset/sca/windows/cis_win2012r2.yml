@@ -228,192 +228,25 @@ checks:
   # 2.2.29 (L1) Ensure 'Force shutdown from a remote system' is set to 'Administrators'. (Automated) - Not Implemented
   # 2.2.30 (L1) Ensure 'Generate security audits' is set to 'LOCAL SERVICE, NETWORK SERVICE'. (Automated) - Not Implemented
   # 2.2.31 (L1) Ensure 'Impersonate a client after authentication' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE, SERVICE' (DC only). (Automated) - Not Implemented
-
-  # 2.2.33 (L1) Ensure 'Increase scheduling priority' is set to 'Administrators'. (Automated)
-   - id: 18541
-     title: "(L1) Ensure 'Increase scheduling priority' is set to 'Administrators'."
-     description: "This policy setting determines whether users can increase the base priority class of a process. (It is not a privileged operation to increase relative priority within a priority class.) This user right is not required by administrative tools that are supplied with the operating system but might be required by software development tools. The recommended state for this setting is: Administrators."
-     rationale: "A user who is assigned this user right could increase the scheduling priority of a process to Real-Time, which would leave little processing time for all other processes and could lead to a DoS condition."
-     impact: "None - this is the default behavior."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Increase scheduling priority."
-     compliance:
-       - cis: ["2.2.33"]
-     condition:
-     rules:
-
-  # 2.2.34 (L1) Ensure 'Load and unload device drivers' is set to 'Administrators'. (Automated)
-   - id: 18542
-     title: "(L1) Ensure 'Load and unload device drivers' is set to 'Administrators'."
-     description: "This policy setting allows users to dynamically load a new device driver on a system. An attacker could potentially use this capability to install malicious code that appears to be a device driver. This user right is required for users to add local printers or printer drivers in Windows Vista. The recommended state for this setting is: Administrators. Note: This user right is considered a \"sensitive privilege\" for the purposes of auditing."
-     rationale: "Device drivers run as highly privileged code. A user who has the Load and unload device drivers user right could unintentionally install malicious code that masquerades as a device driver. Administrators should exercise greater care and install only drivers with verified digital signatures."
-     impact: "If you remove the Load and unload device drivers user right from the Print Operators group or other accounts you could limit the abilities of users who are assigned to specific administrative roles in your environment. You should ensure that delegated tasks will not be negatively affected."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Load and unload device drivers."
-     compliance:
-       - cis: ["2.2.34"]
-     condition:
-     rules:
-
-  # 2.2.35 (L1) Ensure 'Lock pages in memory' is set to 'No One'. (Automated)
-   - id: 18543
-     title: "(L1) Ensure 'Lock pages in memory' is set to 'No One'."
-     description: "This policy setting allows a process to keep data in physical memory, which prevents the system from paging the data to virtual memory on disk. If this user right is assigned, significant degradation of system performance can occur. The recommended state for this setting is: No One. Note: A Member Server with Microsoft SQL Server installed will require a special exception to this recommendation for additional SQL-generated entries to be granted this user right."
-     rationale: "Users with the Lock pages in memory user right could assign physical memory to several processes, which could leave little or no RAM for other processes and result in a DoS condition."
-     impact: "None - this is the default behavior."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to No One: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Lock pages in memory."
-     compliance:
-       - cis: ["2.2.35"]
-     condition:
-     rules:
-
-  # 2.2.36 (L2) Ensure 'Log on as a batch job' is set to 'Administrators' (DC Only). (Automated)
-   - id: 18544
-     title: "(L2) Ensure 'Log on as a batch job' is set to 'Administrators' (DC Only)."
-     description: "This policy setting allows accounts to log on using the task scheduler service. Because the task scheduler is often used for administrative purposes, it may be needed in enterprise environments. However, its use should be restricted in high security environments to prevent misuse of system resources or to prevent attackers from using the right to launch malicious code after gaining user level access to a computer. The recommended state for this setting is: Administrators."
-     rationale: "The Log on as a batch job user right presents a low-risk vulnerability. For most organizations, the default settings are sufficient."
-     impact: "If you configure the Log on as a batch job setting through domain-based Group Policies, the computer will not be able to assign the user right to accounts that are used for scheduled jobs in the Task Scheduler. If you install optional components such as ASP.NET or IIS, you might need to assign this user right to additional accounts that are required by those components. For example, IIS requires assignment of this user right to the IIS_WPG group and the IUSR_(ComputerName), ASPNET, and IWAM_(ComputerName) accounts. If this user right is not assigned to this group and these accounts, IIS will be unable to run some COM objects that are necessary for proper functionality."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Computer Configuration\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Log on as a batch job."
-     compliance:
-       - cis: ["2.2.36"]
-     condition:
-     rules:
-
-  # 2.2.38 (L1) Ensure 'Manage auditing and security log' is set to 'Administrators' (MS only). (Automated)
-   - id: 18545
-     title: "(L1) Ensure 'Manage auditing and security log' is set to 'Administrators' (MS only)."
-     description: "This policy setting determines which users can change the auditing options for files and directories and clear the Security log. For environments running Microsoft Exchange Server, the Exchange Servers group must possess this privilege on Domain Controllers to properly function. Given this, DCs that grant the Exchange Servers group this privilege also conform to this benchmark. If the environment does not use Microsoft Exchange Server, then this privilege should be limited to only Administrators on DCs. The recommended state for this setting is: Administrators. Note: This user right is considered a \"sensitive privilege\" for the purposes of auditing."
-     rationale: "The ability to manage the Security event log is a powerful user right and it should be closely guarded. Anyone with this user right can clear the Security log to erase important evidence of unauthorized activity."
-     impact: "None - this is the default behavior."
-     remediation: "To establish the recommended configuration via GP, configure the following UI path: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Manage auditing and security log."
-     compliance:
-       - cis: ["2.2.38"]
-     condition:
-     rules:
-
-  # 2.2.39 (L1) Ensure 'Modify an object label' is set to 'No One'. (Automated)
-   - id: 18546
-     title: "(L1) Ensure 'Modify an object label' is set to 'No One'."
-     description: "This privilege determines which user accounts can modify the integrity label of objects, such as files, registry keys, or processes owned by other users. Processes running under a user account can modify the label of an object owned by that user to a lower level without this privilege. The recommended state for this setting is: No One."
-     rationale: "By modifying the integrity label of an object owned by another user a malicious user may cause them to execute code at a higher level of privilege than intended."
-     impact: "None - this is the default behavior."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to No One: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Modify an object label."
-     compliance:
-       - cis: ["2.2.39"]
-     condition:
-     rules:
-
-  # 2.2.40 (L1) Ensure 'Modify firmware environment values' is set to 'Administrators'. (Automated)
-   - id: 18547
-     title: "(L1) Ensure 'Modify firmware environment values' is set to 'Administrators'."
-     description: "This policy setting allows users to configure the system-wide environment variables that affect hardware configuration. This information is typically stored in the Last Known Good Configuration. Modification of these values and could lead to a hardware failure that would result in a denial of service condition. The recommended state for this setting is: Administrators. Note: This user right is considered a \"sensitive privilege\" for the purposes of auditing."
-     rationale: "Anyone who is assigned the Modify firmware environment values user right could configure the settings of a hardware component to cause it to fail, which could lead to data corruption or a DoS condition."
-     impact: "None - this is the default behavior."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Modify firmware environment values."
-     compliance:
-       - cis: ["2.2.40"]
-     condition:
-     rules:
-
-  # 2.2.41 (L1) Ensure 'Perform volume maintenance tasks' is set to 'Administrators'. (Automated)
-   - id: 18548
-     title: "(L1) Ensure 'Perform volume maintenance tasks' is set to 'Administrators'."
-     description: "This policy setting allows users to manage the system's volume or disk configuration, which could allow a user to delete a volume and cause data loss as well as a denial-of-service condition. The recommended state for this setting is: Administrators. Note: A Member Server with Microsoft SQL Server installed will require a special exception to this recommendation for the account that runs the SQL Server service to be granted this user right."
-     rationale: "A user who is assigned the Perform volume maintenance tasks user right could delete a volume, which could result in the loss of data or a DoS condition."
-     impact: "None - this is the default behavior."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Perform volume maintenance tasks."
-     compliance:
-       - cis: ["2.2.41"]
-     condition:
-     rules:
-
-  # 2.2.42 (L1) Ensure 'Profile single process' is set to 'Administrators'. (Automated)
-   - id: 18549
-     title: "(L1) Ensure 'Profile single process' is set to 'Administrators'."
-     description: "This policy setting determines which users can use tools to monitor the performance of non-system processes. Typically, you do not need to configure this user right to use the Microsoft Management Console (MMC) Performance snap-in. However, you do need this user right if System Monitor is configured to collect data using Windows Management Instrumentation (WMI). Restricting the Profile single process user right prevents intruders from gaining additional information that could be used to mount an attack on the system. The recommended state for this setting is: Administrators."
-     rationale: "The Profile single process user right presents a moderate vulnerability. An attacker with this user right could monitor a computer's performance to help identify critical processes that they might wish to attack directly. The attacker may also be able to determine what processes run on the computer so that they could identify countermeasures that they may need to avoid, such as antivirus software, an intrusion-detection system, or which other users are logged on to a computer."
-     impact: "None - this is the default behavior."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Profile single process."
-     compliance:
-       - cis: ["2.2.42"]
-     condition:
-     rules:
-
-  # 2.2.43 (L1) Ensure 'Profile system performance' is set to 'Administrators, NT SERVICE\WdiServiceHost'. (Automated)
-   - id: 18550
-     title: "(L1) Ensure 'Profile system performance' is set to 'Administrators, NT SERVICE\WdiServiceHost'."
-     description: "This policy setting allows users to use tools to view the performance of different system processes, which could be abused to allow attackers to determine a system's active processes and provide insight into the potential attack surface of the computer. The recommended state for this setting is: Administrators, NT SERVICE\\WdiServiceHost."
-     rationale: "The Profile system performance user right poses a moderate vulnerability. Attackers with this user right could monitor a computer's performance to help identify critical processes that they might wish to attack directly. Attackers may also be able to determine what processes are active on the computer so that they could identify countermeasures that they may need to avoid, such as antivirus software or an intrusion detection system."
-     impact: "None - this is the default behavior."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators, NT SERVICE\\WdiServiceHost: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Profile system performance."
-     compliance:
-       - cis: ["2.2.43"]
-     condition:
-     rules:
-
-  # 2.2.44 (L1) Ensure 'Replace a process level token' is set to 'LOCAL SERVICE, NETWORK SERVICE'. (Automated)
-   - id: 18551
-     title: "(L1) Ensure 'Replace a process level token' is set to 'LOCAL SERVICE, NETWORK SERVICE'."
-     description: "This policy setting allows one process or service to start another service or process with a different security access token, which can be used to modify the security access token of that sub-process and result in the escalation of privileges. The recommended state for this setting is: LOCAL SERVICE, NETWORK SERVICE. Note: This user right is considered a \"sensitive privilege\" for the purposes of auditing. Note #2: A Member Server that holds the Web Server (IIS) Role with Web Server Role Service will require a special exception to this recommendation, to allow IIS application pool(s) to be granted this user right. Note #3: A Member Server with Microsoft SQL Server installed will require a special exception to this recommendation for additional SQL-generated entries to be granted this user right."
-     rationale: "Users with the Replace a process level token privilege are able to start processes as other users whose credentials they know. They could use this method to hide their unauthorized actions on the computer. (On Windows 2000-based computers, use of the Replace a process level token user right also requires the user to have the Adjust memory quotas for a process user right that is discussed earlier in this section.)."
-     impact: "On most computers, this is the default configuration and there will be no negative impact. However, if you have installed the Web Server (IIS) Role with Web Services Role Service, you will need to allow the IIS application pool(s) to be granted this User Right Assignment."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to LOCAL SERVICE, NETWORK SERVICE: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Replace a process level token."
-     compliance:
-       - cis: ["2.2.44"]
-     condition:
-     rules:
-
-  # 2.2.45 (L1) Ensure 'Restore files and directories' is set to 'Administrators'. (Automated)
-   - id: 18552
-     title: "(L1) Ensure 'Restore files and directories' is set to 'Administrators'."
-     description: "This policy setting determines which users can bypass file, directory, registry, and other persistent object permissions when restoring backed up files and directories on computers that run Windows Vista (or newer) in your environment. This user right also determines which users can set valid security principals as object owners; it is similar to the Back up files and directories user right. The recommended state for this setting is: Administrators. Note: This user right is considered a \"sensitive privilege\" for the purposes of auditing."
-     rationale: "An attacker with the Restore files and directories user right could restore sensitive data to a computer and overwrite data that is more recent, which could lead to loss of important data, data corruption, or a denial of service. Attackers could overwrite executable files that are used by legitimate administrators or system services with versions that include malicious software to grant themselves elevated privileges, compromise data, or install backdoors for continued access to the computer. Note: Even if the following countermeasure is configured, an attacker could still restore data to a computer in a domain that is controlled by the attacker. Therefore, it is critical that organizations carefully protect the media that is used to back up data."
-     impact: "If you remove the Restore files and directories user right from the Backup Operators group and other accounts you could make it impossible for users who have been delegated specific tasks to perform those tasks. You should verify that this change won't negatively affect the ability of your organization's personnel to do their jobs."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Restore files and directories."
-     compliance:
-       - cis: ["2.2.45"]
-     condition:
-     rules:
-
-  # 2.2.46 (L1) Ensure 'Shut down the system' is set to 'Administrators'. (Automated)
-   - id: 18553
-     title: "(L1) Ensure 'Shut down the system' is set to 'Administrators'."
-     description: "This policy setting determines which users who are logged on locally to the computers in your environment can shut down the operating system with the Shut Down command. Misuse of this user right can result in a denial of service condition. The recommended state for this setting is: Administrators."
-     rationale: "The ability to shut down Domain Controllers and Member Servers should be limited to a very small number of trusted Administrators. Although the Shut down the system user right requires the ability to log on to the server, you should be very careful about which accounts and groups you allow to shut down a Domain Controller or Member Server. When a Domain Controller is shut down, it is no longer available to process logons, serve Group Policy, and answer Lightweight Directory Access Protocol (LDAP) queries. If you shut down Domain Controllers that possess Flexible Single Master Operations (FSMO) roles, you can disable key domain functionality, such as processing logons for new passwords — one of the functions of the Primary Domain Controller (PDC) Emulator role."
-     impact: "The impact of removing these default groups from the Shut down the system user right could limit the delegated abilities of assigned roles in your environment. You should confirm that delegated activities will not be adversely affected."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Shut down the system."
-     compliance:
-       - cis: ["2.2.46"]
-     condition:
-     rules:
-
-  # 2.2.47 (L1) Ensure 'Synchronize directory service data' is set to 'No One' (DC only). (Automated)
-   - id: 18554
-     title: "(L1) Ensure 'Synchronize directory service data' is set to 'No One' (DC only)."
-     description: "This security setting determines which users and groups have the authority to synchronize all directory service data. This is also known as Active Directory synchronization. The recommended state for this setting is: No One."
-     rationale: "The Synchronize directory service data user right affects Domain Controllers; only Domain Controllers should be able to synchronize directory service data. Domain Controllers have this user right inherently, because the synchronization process runs in the context of the System account on Domain Controllers. Attackers who have this user right can view all information stored within the directory. They could then use some of that information to facilitate additional attacks or expose sensitive data, such as direct telephone numbers or physical addresses."
-     impact: "None - this is the default behavior."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to No One: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Synchronize directory service data."
-     compliance:
-       - cis: ["2.2.47"]
-     condition:
-     rules:
-
-  # 2.2.48 (L1) Ensure 'Take ownership of files or other objects' is set to 'Administrators'. (Automated)
-   - id: 18555
-     title: "(L1) Ensure 'Take ownership of files or other objects' is set to 'Administrators'."
-     description: "This policy setting allows users to take ownership of files, folders, registry keys, processes, or threads. This user right bypasses any permissions that are in place to protect objects to give ownership to the specified user. The recommended state for this setting is: Administrators. Note: This user right is considered a \"sensitive privilege\" for the purposes of auditing."
-     rationale: "Any users with the Take ownership of files or other objects user right can take control of any object, regardless of the permissions on that object, and then make any changes they wish to that object. Such changes could result in exposure of data, corruption of data, or a DoS condition."
-     impact: "None - this is the default behavior."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\User Rights Assignment\\Take ownership of files or other objects."
-     compliance:
-       - cis: ["2.2.48"]
-       - cis_csc_v7: ["14.6"]
-       - iso_27001-2013: ["A.9.1.1"]
-     condition:
-     rules:
+  # 2.2.33 (L1) Ensure 'Increase scheduling priority' is set to 'Administrators'. (Automated) - Not Implemented
+  # 2.2.34 (L1) Ensure 'Load and unload device drivers' is set to 'Administrators'. (Automated) - Not Implemented
+  # 2.2.35 (L1) Ensure 'Lock pages in memory' is set to 'No One'. (Automated) - Not Implemented
+  # 2.2.36 (L2) Ensure 'Log on as a batch job' is set to 'Administrators' (DC Only). (Automated) - Not Implemented
+  # 2.2.38 (L1) Ensure 'Manage auditing and security log' is set to 'Administrators' (MS only). (Automated) - Not Implemented
+  # 2.2.39 (L1) Ensure 'Modify an object label' is set to 'No One'. (Automated) - Not Implemented
+  # 2.2.40 (L1) Ensure 'Modify firmware environment values' is set to 'Administrators'. (Automated) - Not Implemented
+  # 2.2.41 (L1) Ensure 'Perform volume maintenance tasks' is set to 'Administrators'. (Automated) - Not Implemented
+  # 2.2.42 (L1) Ensure 'Profile single process' is set to 'Administrators'. (Automated) - Not Implemented
+  # 2.2.43 (L1) Ensure 'Profile system performance' is set to 'Administrators, NT SERVICE\WdiServiceHost'. (Automated) - Not Implemented
+  # 2.2.44 (L1) Ensure 'Replace a process level token' is set to 'LOCAL SERVICE, NETWORK SERVICE'. (Automated) - Not Implemented
+  # 2.2.45 (L1) Ensure 'Restore files and directories' is set to 'Administrators'. (Automated) - Not Implemented
+  # 2.2.46 (L1) Ensure 'Shut down the system' is set to 'Administrators'. (Automated) - Not Implemented
+  # 2.2.47 (L1) Ensure 'Synchronize directory service data' is set to 'No One' (DC only). (Automated) - Not Implemented
+  # 2.2.48 (L1) Ensure 'Take ownership of files or other objects' is set to 'Administrators'. (Automated) - Not Implemented
 
   # 2.3.1.1 (L1) Ensure 'Accounts: Block Microsoft accounts' is set to 'Users can't add or log on with Microsoft accounts'. (Automated)
    - id: 18556
-     title: "(L1) Ensure 'Accounts: Block Microsoft accounts' is set to 'Users can't add or log on with Microsoft accounts'."
+     title: "Ensure 'Accounts: Block Microsoft accounts' is set to 'Users can't add or log on with Microsoft accounts'."
      description: "This policy setting prevents users from adding new Microsoft accounts on this computer. The recommended state for this setting is: Users can't add or log on with Microsoft accounts."
      rationale: "Organizations that want to effectively implement identity management policies and maintain firm control of what accounts are used to log onto their computers will probably want to block Microsoft accounts. Organizations may also need to block Microsoft accounts in order to meet the requirements of compliance standards that apply to their information systems."
      impact: "Users will not be able to log onto the computer with their Microsoft account."
@@ -421,8 +254,11 @@ checks:
      compliance:
        - cis: ["2.3.1.1"]
        - cis_csc_v7: ["16.2"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> NoConnectedUser'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> NoConnectedUser -> 3'
 
   # 2.3.1.2 (L1) Ensure 'Accounts: Guest account status' is set to 'Disabled' (MS only). (Automated)
    - id: 18557
