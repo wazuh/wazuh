@@ -3,33 +3,89 @@
 # Manager location: <Queue_ID>:<Route>:<Log>
 # Agentless location: <Queue_ID>:<ip>:<Log>
 
-- name: case_0_0
+- name: case_0_0_0
   description: Test file with colons from a manager and a json message
   configuration_parameters: null
   metadata:
-    input: "1:path|:with|:colons:{\"field1\":\"value1\",\"field2\":\"value2\"}"
-    expected_location: "path:with:colons"
+    input: "1:path|:with_colons:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "path:with_colons"
 
-- name: case_0_1
+- name: case_0_0_1
+  description: Test file with two colons from a manager and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:path|:with_two|:colons:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "path:with_two:colons"
+
+- name: case_0_0_2
+  description: Test file with three colons from a manager and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:path|:with|:three|:colons:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "path:with:three:colons"
+
+- name: case_0_1_0
   description: Test file with full path and colons from a manager and a json message
   configuration_parameters: null
   metadata:
-    input: "1:/some/full/path|:with|:colons:{\"field1\":\"value1\",\"field2\":\"value2\"}"
-    expected_location: "/some/full/path:with:colons"
+    input: "1:/some/full/path|:with_colons:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "/some/full/path:with_colons"
 
-- name: case_0_2
+- name: case_0_1_1
+  description: Test file with full path and two colons from a manager and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:/some/full/path|:with_two|:colons:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "/some/full/path:with_two:colons"
+
+- name: case_0_1_2
+  description: Test file with full path and three colons from a manager and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:/some/full/path|:with|:three|:colons:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "/some/full/path:with:three:colons"
+
+- name: case_0_2_0
   description: Test file with colons from a manager and a plain message
   configuration_parameters: null
   metadata:
-    input: "1:path|:with|:colons:Some non-json message"
-    expected_location: "path:with:colons"
+    input: "1:path|:with_colons:Some non-json message"
+    expected_location: "path:with_colons"
 
-- name: case_0_3
+- name: case_0_2_1
+  description: Test file with two colons from a manager and a plain message
+  configuration_parameters: null
+  metadata:
+    input: "1:path|:with_two|:colons:Some non-json message"
+    expected_location: "path:with_two:colons"
+
+- name: case_0_2_2
+  description: Test file with colons from a manager and a plain message
+  configuration_parameters: null
+  metadata:
+    input: "1:path|:with|:three|:colons:Some non-json message"
+    expected_location: "path:with:three:colons"
+
+- name: case_0_3_0
   description: Test file with full path and colons from a manager and a plain message
   configuration_parameters: null
   metadata:
-    input: "1:/some/full/path|:with|:colons:Some non-json message"
-    expected_location: "/some/full/path:with:colons"
+    input: "1:/some/full/path|:with_colons:Some non-json message"
+    expected_location: "/some/full/path:with_colons"
+
+- name: case_0_3
+  description: Test file with full path and two colons from a manager and a plain message
+  configuration_parameters: null
+  metadata:
+    input: "1:/some/full/path|:with_two|:colons:Some non-json message"
+    expected_location: "/some/full/path:with_two:colons"
+
+- name: case_0_3
+  description: Test file with full path and three colons from a manager and a plain message
+  configuration_parameters: null
+  metadata:
+    input: "1:/some/full/path|:with|:three|:colons:Some non-json message"
+    expected_location: "/some/full/path:with:three:colons"
 
 - name: case_0_4
   description: Test file with colons from a manager and a plain message with colons
@@ -53,11 +109,25 @@
     expected_location: "path:with:colons"
 
 - name: case_0_7
-  description: Test file with colons from a manager and a json message with spaces
+  description: Test file with colons from a manager and a json message with colons
   configuration_parameters: null
   metadata:
-    input: "1:path|:with|:colons:{\"field1\":\"value 1\",\"field2\":\"value 2\"}"
+    input: "1:path|:with|:colons:{\"field1\":\"value:1\",\"field2\":\"value:2\"}"
     expected_location: "path:with:colons"
+
+- name: case_0_8_0
+  description: Test file with colons at the beginning from a manager and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:|:path_with_colons:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: ":path_with_colons"
+
+- name: case_0_8_1
+  description: Test file with colons at the beginning and in the middle from a manager and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:|:path|:with|:colons:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: ":path:with:colons"
 
 - name: case_1_0
   description: Test file with colons from an ipv4 agent
@@ -193,10 +263,10 @@
     expected_location: "path|with|pipes"
 
 - name: case_4_7
-  description: Test file with pipes from a manager and a json message with spaces
+  description: Test file with pipes from a manager and a json message with pipes
   configuration_parameters: null
   metadata:
-    input: "1:path||with||pipes:{\"field1\":\"value 1\",\"field2\":\"value 2\"}"
+    input: "1:path||with||pipes:{\"field1\":\"value|1\",\"field2\":\"value|2\"}"
     expected_location: "path|with|pipes"
 
 - name: case_5_0
@@ -394,3 +464,208 @@
   metadata:
     input: '1:[001] (agent-name) |:|:1->path\with\backslashes:{\"field1\":\"value\\1\",\"field2\":\"value\\2\"}'
     expected_location: 'path\\\\with\\\\backslashes'
+
+- name: case_10_0_0_0
+  description: Test file with two from a manager and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:path.with.dots:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "path.with.dots"
+
+- name: case_10_0_0_1
+  description: Test file with two from an ipv4 agent and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:[001] (agent-name) 192.168.1.23->path.with.dots:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "path.with.dots"
+
+- name: case_10_0_0_2
+  description: Test file with two from an ipv6 agent and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:[001] (agent-name) |:|:1->path.with.dots:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "path.with.dots"
+
+- name: case_10_0_1
+  description: Test file with three dots from a manager and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:path.with.three.dots:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "path.with.three.dots"
+
+- name: case_10_1_0
+  description: Test file with full path and two dots from a manager and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:/some/full/path.with.dots:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "/some/full/path.with.dots"
+
+- name: case_10_1_1
+  description: Test file with full path and two dots from an ipv4 agent and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:[001] (agent-name) 192.168.1.23->/some/full/path.with.dots:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "/some/full/path.with.dots"
+
+- name: case_10_1_2
+  description: Test file with full path and two dots from an ipv6 agent and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:[001] (agent-name) |:|:1->/some/full/path.with.dots:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "/some/full/path.with.dots"
+
+- name: case_10_1_1
+  description: Test file with full path and three dots from a manager and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:/some/full/path.with.three.dots:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "/some/full/path.with.three.dots"
+
+- name: case_10_2
+  description: Test file with two dots from a manager and a plain message
+  configuration_parameters: null
+  metadata:
+    input: "1:path.with.dots:Some non-json message"
+    expected_location: "path.with.dots"
+
+- name: case_10_3
+  description: Test file with full path and dots from a manager and a plain message
+  configuration_parameters: null
+  metadata:
+    input: "1:/some/full/path.with.dots:Some non-json message"
+    expected_location: "/some/full/path.with.dots"
+
+- name: case_10_8
+  description: Test file with dots at the beginning from a manager and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:.path.with.dots:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: ".path.with.dots"
+
+- name: case_11_0_0
+  description: Test file with an ampersand from a manager and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:path&with_ampersand:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "path&with_ampersand"
+
+- name: case_11_0_1
+  description: Test file with an ampersand from an ipv4 agent and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:[001] (agent-name) 192.168.1.23->path&with_ampersand:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "path&with_ampersand"
+
+- name: case_11_0_2
+  description: Test file with an ampersand from an ipv6 agent and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:[001] (agent-name) |:|:1->path&with_ampersand:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "path&with_ampersand"
+
+- name: case_11_1_0
+  description: Test file with full path and an ampersand from a manager and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:/some/full/path&with_ampersand:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "/some/full/path&with_ampersand"
+
+- name: case_11_1_1
+  description: Test file with full path and an ampersand from an ipv4 agent and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:[001] (agent-name) 192.168.1.23->/some/full/path&with_ampersand:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "/some/full/path&with_ampersand"
+
+- name: case_11_1_2
+  description: Test file with full path and an ampersand from an ipv6 agent and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:[001] (agent-name) |:|:1->/some/full/path&with_ampersand:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "/some/full/path&with_ampersand"
+
+- name: case_11_2
+  description: Test file with an ampersand from a manager and a plain message
+  configuration_parameters: null
+  metadata:
+    input: "1:path&with_ampersand:Some non-json message"
+    expected_location: "path&with_ampersand"
+
+- name: case_11_3
+  description: Test file with full path and an ampersand from a manager and a plain message
+  configuration_parameters: null
+  metadata:
+    input: "1:/some/full/path&with_ampersand:Some non-json message"
+    expected_location: "/some/full/path&with_ampersand"
+
+- name: case_11_4
+  description: Test file with an ampersand at the beginning from a manager and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:&path_with_ampersand:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "&path_with_ampersand"
+
+
+
+- name: case_12_0_0
+  description: Test file with a "less than" symbol from a manager and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:path<with_less_than:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "path<with_less_than"
+
+- name: case_12_0_1
+  description: Test file with a "less than" symbol from an ipv4 agent and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:[001] (agent-name) 192.168.1.23->path<with_less_than:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "path<with_less_than"
+
+- name: case_12_0_2
+  description: Test file with a "less than" symbol from an ipv6 agent and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:[001] (agent-name) |:|:1->path<with_less_than:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "path<with_less_than"
+
+- name: case_12_1_0
+  description: Test file with full path and a "less than" symbol from a manager and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:/some/full/path<with_less_than:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "/some/full/path<with_less_than"
+
+- name: case_12_1_1
+  description: Test file with full path and a "less than" symbol from an ipv4 agent and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:[001] (agent-name) 192.168.1.23->/some/full/path<with_less_than:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "/some/full/path<with_less_than"
+
+- name: case_12_1_2
+  description: Test file with full path and a "less than" symbol from an ipv6 agent and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:[001] (agent-name) |:|:1->/some/full/path<with_less_than:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "/some/full/path<with_less_than"
+
+- name: case_12_2
+  description: Test file with a "less than" symbol from a manager and a plain message
+  configuration_parameters: null
+  metadata:
+    input: "1:path<with_less_than:Some non-json message"
+    expected_location: "path<with_less_than"
+
+- name: case_12_3
+  description: Test file with full path and a "less than" symbol from a manager and a plain message
+  configuration_parameters: null
+  metadata:
+    input: "1:/some/full/path<with_less_than:Some non-json message"
+    expected_location: "/some/full/path<with_less_than"
+
+- name: case_12_4
+  description: Test file with a "less than" symbol at the beginning from a manager and a json message
+  configuration_parameters: null
+  metadata:
+    input: "1:<path_with_less_than:{\"field1\":\"value1\",\"field2\":\"value2\"}"
+    expected_location: "<path_with_less_than"
