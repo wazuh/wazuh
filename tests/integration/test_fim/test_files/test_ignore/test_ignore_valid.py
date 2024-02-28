@@ -108,36 +108,30 @@ def test_ignore_subdirectory(test_configuration, test_metadata, configure_local_
     tier: 2
 
     parameters:
-        - folder:
-            type: set
-            brief: Path to the directory where the file is being created.
-        - filename:
-            type: set
-            brief: Name of the file to be created.
-        - content:
-            type: set
-            brief: Content to fill the new file.
-        - triggers_event:
-            type: set
-            brief: Run test if matches with a configuration identifier, skip otherwise.
-        - tags_to_apply:
-            type: set
-            brief: Run test if matches with a configuration identifier, skip otherwise.
-        - checkers:
+        - test_configuration:
             type: dict
-            brief: Check options to be used.
-        - get_configuration:
+            brief: Configuration values for ossec.conf.
+        - test_metadata:
+            type: dict
+            brief: Test case data.
+        - configure_local_internal_options:
             type: fixture
-            brief: Get configurations from the module.
-        - configure_environment:
+            brief: Set local_internal_options.conf file.
+        - truncate_monitored_files:
             type: fixture
-            brief: Configure a custom environment for testing.
-        - restart_syscheckd:
+            brief: Truncate all the log files and json alerts files before and after the test execution.
+        - set_wazuh_configuration:
             type: fixture
-            brief: Clear the 'ossec.log' file and start a new monitor.
-        - wait_for_fim_start:
+            brief: Set ossec.conf configuration.
+        - folder_to_monitor:
+            type: str
+            brief: Folder created for monitoring.
+        - daemons_handler:
             type: fixture
-            brief: Wait for realtime start, whodata start, or end of initial FIM scan.
+            brief: Handler of Wazuh daemons.
+        - file_to_monitor:
+            type: str
+            brief: File created for monitoring.
 
     assertions:
         - Verify that FIM 'ignore' events are generated for each ignored element.
@@ -145,20 +139,18 @@ def test_ignore_subdirectory(test_configuration, test_metadata, configure_local_
           that do not match the value of the 'ignore' option.
 
     input_description: Different test cases are contained in external YAML files
-                       (wazuh_conf.yaml or wazuh_conf_win32.yaml) which includes configuration settings for
-                       the 'wazuh-syscheckd' daemon and, these are combined with the testing directories
-                       to be monitored defined in the module.
+                       (cases_ignore_linux.yaml) which includes configuration settings
+                       for the 'wazuh-syscheckd' daemon and testing directories to monitor.
 
     inputs:
-        - 936 test cases including multiple regular expressions and names for testing files and directories.
+        - 288 test cases including multiple regular expressions and names for testing files and directories.
 
     expected_output:
         - r'.*Sending FIM event: (.+)$' ('added' events)
         - r'.*Ignoring .* due to'
 
     tags:
-        - scheduled
-        - time_travel
+        - ignore
     '''
 
     if test_metadata.setdefault('xfail', False):
