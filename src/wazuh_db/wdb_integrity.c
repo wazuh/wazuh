@@ -136,6 +136,10 @@ void wdbi_remove_by_pk(wdb_t *wdb, wdb_component_t component, const char *pk_val
 
     assert(component < sizeof(INDEXES) / sizeof(int));
 
+    if (wdb_begin2(wdb) == -1) {
+        mdebug1("Cannot begin transaction");
+    }
+
     if (wdb_stmt_cache(wdb, INDEXES[component]) == OS_INVALID) {
         mdebug1("Cannot cache statement");
         return;
@@ -247,6 +251,10 @@ int wdbi_checksum(wdb_t * wdb, wdb_component_t component, os_sha1 hexdigest) {
 
     assert(component < sizeof(INDEXES) / sizeof(int));
 
+    if (wdb_begin2(wdb) == -1) {
+        mdebug1("Cannot begin transaction");
+    }
+
     if (wdb_stmt_cache(wdb, INDEXES[component]) == -1) {
         mdebug1("Cannot cache statement");
         return -1;
@@ -289,6 +297,10 @@ int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * beg
                             [WDB_SYSCOLLECTOR_OSINFO] = WDB_STMT_SYSCOLLECTOR_OSINFO_SELECT_CHECKSUM_RANGE };
 
     assert(component < sizeof(INDEXES) / sizeof(int));
+
+    if (wdb_begin2(wdb) == -1) {
+        mdebug1("Cannot begin transaction");
+    }
 
     if (wdb_stmt_cache(wdb, INDEXES[component]) == -1) {
         mdebug1("Cannot cache statement");
@@ -362,6 +374,10 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
 
     int index = tail ? INDEXES_RANGE[component] : INDEXES_AROUND[component];
 
+    if (wdb_begin2(wdb) == -1) {
+        mdebug1("Cannot begin transaction");
+    }
+
     if (wdb_stmt_cache(wdb, index) == -1) {
         return -1;
     }
@@ -391,6 +407,10 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
 void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 last_agent_checksum, os_sha1 manager_checksum, bool legacy) {
     assert(wdb != NULL);
 
+    if (wdb_begin2(wdb) == -1) {
+        mdebug1("Cannot begin transaction");
+    }
+
     if (wdb_stmt_cache(wdb, legacy ? WDB_STMT_SYNC_UPDATE_ATTEMPT_LEGACY : WDB_STMT_SYNC_UPDATE_ATTEMPT) == -1) {
         return;
     }
@@ -409,6 +429,10 @@ void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp,
 
 void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 last_agent_checksum, os_sha1 manager_checksum) {
     assert(wdb != NULL);
+
+    if (wdb_begin2(wdb) == -1) {
+        mdebug1("Cannot begin transaction");
+    }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_UPDATE_COMPLETION) == -1) {
         return;
@@ -438,6 +462,10 @@ void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timesta
  */
 void wdbi_set_last_completion(wdb_t * wdb, wdb_component_t component, long timestamp) {
     assert(wdb != NULL);
+
+    if (wdb_begin2(wdb) == -1) {
+        mdebug1("Cannot begin transaction");
+    }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_SET_COMPLETION) == -1) {
         return;
@@ -532,7 +560,6 @@ integrity_sync_status_t wdbi_query_checksum(wdb_t * wdb, wdb_component_t compone
         default:
             break;
         }
-
     }
     else if (INTEGRITY_CHECK_LEFT == action) {
         item = cJSON_GetObjectItem(data, "tail");
@@ -580,6 +607,10 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
 
     long timestamp = item->valuedouble;
 
+    if (wdb_begin2(wdb) == -1) {
+        mdebug1("Cannot begin transaction");
+    }
+
     if (wdb_stmt_cache(wdb, INDEXES[component]) == -1) {
         goto end;
     }
@@ -601,6 +632,10 @@ end:
 
 int wdbi_get_last_manager_checksum(wdb_t *wdb, wdb_component_t component, os_sha1 manager_checksum) {
     int result = OS_INVALID;
+
+    if (wdb_begin2(wdb) == -1) {
+        mdebug1("Cannot begin transaction");
+    }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_GET_INFO) == -1) {
         mdebug1("Cannot cache statement");
@@ -636,6 +671,10 @@ int wdbi_get_last_manager_checksum(wdb_t *wdb, wdb_component_t component, os_sha
 int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component) {
     cJSON* j_sync_info = NULL;
     int result = 0;
+
+    if (wdb_begin2(wdb) == -1) {
+        mdebug1("Cannot begin transaction");
+    }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_GET_INFO) == -1) {
         mdebug1("Cannot cache statement");

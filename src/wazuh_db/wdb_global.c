@@ -1977,10 +1977,8 @@ int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore
 
         if (!w_uncompress_gzfile(backup_to_restore_path, global_tmp_path)) {
             // Preparing DB for restoration.
-            wdb_leave(*wdb);
-            wdb_close(*wdb, true);
-            *wdb = NULL;
 
+            wdb_close(*wdb, true);
             unlink(global_path);
 
             if (rename(global_tmp_path, global_path) != OS_SUCCESS) {
