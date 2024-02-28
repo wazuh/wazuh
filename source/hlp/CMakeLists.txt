@@ -17,7 +17,8 @@ CPMAddPackage(
         GITHUB_REPOSITORY HowardHinnant/date
         GIT_TAG 22ceabf205d8d678710a43154da5a06b701c5830
         OPTIONS
-        "AUTO_DOWNLOAD 1"
+          "BUILD_TZ_LIB ON"
+          "INSTALL=/var/ossec/engine/"
 )
 
 CPMAddPackage(

@@ -89,8 +89,8 @@ SemParser getSemParser(std::string_view targetField,
  * Supported formats, this will be injected by the config module in due time
  */
 const std::vector<std::tuple<std::string, std::string>> TIME_FORMAT {
-    {"ANSIC", "%a %b %d %T %Y"},        // Mon Jan _2 15:04:05 2006
-    {"UnixDate", "%a %b %d %T %Z %Y"},  // Mon Jan _2 15:04:05 MST 2006
+    {"ANSIC", "%a %b %d %T %Y"},        // Mon Jan 2 15:04:05 2006
+    {"UnixDate", "%a %b %d %T %Z %Y"},  // Mon Jan 2 15:04:05 MST 2006
     {"RubyDate", "%a %b %d %T %z %Y"},  // Mon Jan 02 15:04:05 -0700 2006
     {"RFC822", "%d %b %y %R %Z"},       // 02 Jan 06 15:04 MST
     {"RFC822Z", "%d %b %y %R %z"},      // 02 Jan 06 15:04 -0000
@@ -183,7 +183,18 @@ Parser getDateParser(const Params& params)
     // If not disabled automat then check if the format is a sample date
     if (format.find('%') == std::string::npos)
     {
-        format = formatDateFromSample(format, localeStr);
+        auto it = std::find_if(TIME_FORMAT.begin(),
+                               TIME_FORMAT.end(),
+                               [format](const std::tuple<std::string, std::string>& tuple)
+                               { return std::get<0>(tuple) == format; });
+        if (it != TIME_FORMAT.end())
+        {
+            format = std::get<1>(*it);
+        }
+        else
+        {
+            format = formatDateFromSample(format, localeStr);
+        }
     }
 
     const auto target = params.targetField.empty() ? std::string {} : params.targetField;

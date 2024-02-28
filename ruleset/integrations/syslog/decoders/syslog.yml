@@ -27,7 +27,7 @@ parse|event.original:
     - "<event.start/2018-08-14T14:30:02.203151+02:00> <host.hostname> <TAG/alphanumeric/->: <message>"
 
     # RFC3164 example 2 section 5.4
-    - <event.start/%b %d %T> <host.hostname> <message>
+    - <event.start/SYSLOG> <host.hostname> <message>
 
     # RFC3164 example 4 section 5.4
     - "<event.start/%Y %b %d %T> <timezone> <host.hostname> <tmp.host_ip> <TAG/alphanumeric/->[<process.pid>]:<~/ignore/ ><message>"
