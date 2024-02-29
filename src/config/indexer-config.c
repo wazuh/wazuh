@@ -22,11 +22,23 @@ static const char * special_array_keys[] = {
     NULL
 };
 
+static const char * valid_paths[] = {
+    "indexer.enabled",
+    "indexer.hosts",
+    "indexer.ssl",
+    "indexer.ssl.certificate_authorities",
+    "indexer.ssl.certificate",
+    "indexer.ssl.key",
+    NULL
+};
+
 cJSON * indexer_config = NULL;
 
-bool indexer_config_is_special_array_key(const char * keypath)
+bool key_is_in_array(const char * keypath, const char ** psearch)
 {
-    const char ** psearch = special_array_keys;
+    if(!psearch)
+        return false;
+
     while(*psearch)
     {
         if(strcmp(keypath, *psearch) == 0)
@@ -67,7 +79,13 @@ int indexer_config_subnode_read(const OS_XML *xml, XML_NODE node, cJSON *output_
         os_calloc(1, subnode_keypath_len, subnode_keypath);
         snprintf(subnode_keypath, subnode_keypath_len, "%s.%s", current_keypath, node[i]->element);
 
-        if(indexer_config_is_special_array_key(subnode_keypath))
+       /* Unknown paths are ignored */
+        if(!key_is_in_array(subnode_keypath, valid_paths)){
+            mwarn(XML_INVELEM, subnode_keypath);
+            continue;
+        }
+
+        if(key_is_in_array(subnode_keypath, special_array_keys))
         {
             if(cJSON_GetObjectItem(output_json, node[i]->element))
             {
