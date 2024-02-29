@@ -19,38 +19,41 @@ void ThreadEventDispatcherTest::TearDown() {};
 constexpr auto BULK_SIZE {50};
 TEST_F(ThreadEventDispatcherTest, Ctor)
 {
-    constexpr auto MESSAGES_TO_SEND {100000};
+    static const std::vector<int> MESSAGES_TO_SEND_LIST {120, 100};
 
-    std::atomic<uint32_t> counter {0};
-    std::promise<void> promise;
-    auto index {0};
-
-    ThreadEventDispatcher<std::string, std::function<void(std::queue<std::string>&)>> dispatcher(
-        [&counter, &promise, &index](std::queue<std::string>& data)
-        {
-            counter += data.size();
-            while (!data.empty())
-            {
-                auto value = data.front();
-                data.pop();
-                EXPECT_EQ(std::to_string(index), value);
-                ++index;
-            }
-
-            if (counter == MESSAGES_TO_SEND)
-            {
-                promise.set_value();
-            }
-        },
-        "test.db",
-        BULK_SIZE);
-
-    for (int i = 0; i < MESSAGES_TO_SEND; ++i)
+    for (auto MESSAGES_TO_SEND : MESSAGES_TO_SEND_LIST)
     {
-        dispatcher.push(std::to_string(i));
+        std::atomic<uint32_t> counter {0};
+        std::promise<void> promise;
+        auto index {0};
+
+        ThreadEventDispatcher<std::string, std::function<void(std::queue<std::string>&)>> dispatcher(
+            [&](std::queue<std::string>& data)
+            {
+                counter += data.size();
+                while (!data.empty())
+                {
+                    auto value = data.front();
+                    data.pop();
+                    EXPECT_EQ(std::to_string(index), value);
+                    ++index;
+                }
+
+                if (counter == MESSAGES_TO_SEND)
+                {
+                    promise.set_value();
+                }
+            },
+            "test.db",
+            BULK_SIZE);
+
+        for (int i = 0; i < MESSAGES_TO_SEND; ++i)
+        {
+            dispatcher.push(std::to_string(i));
+        }
+        promise.get_future().wait_for(std::chrono::seconds(10));
+        EXPECT_EQ(MESSAGES_TO_SEND, counter);
     }
-    promise.get_future().wait_for(std::chrono::seconds(10));
-    EXPECT_EQ(MESSAGES_TO_SEND, counter);
 }
 
 TEST_F(ThreadEventDispatcherTest, CtorPopFeature)

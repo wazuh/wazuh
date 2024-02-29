@@ -132,7 +132,7 @@ namespace Utils
             // extract the elements from the queue.
             if (!timeoutReached || (!m_queue.empty() && !m_canceled))
             {
-                for (auto i = 0; i < elementsQuantity && !m_queue.empty(); ++i)
+                for (auto i = 0; i < elementsQuantity && i < m_queue.size(); ++i)
                 {
                     bulkQueue.push(std::move(m_queue.at(i)));
                 }
@@ -144,7 +144,6 @@ namespace Utils
         void popBulk(const uint64_t elementsQuantity)
         {
             std::lock_guard<std::mutex> lock {m_mutex};
-
             for (auto i = 0; i < elementsQuantity && !m_queue.empty(); ++i)
             {
                 m_queue.pop();
