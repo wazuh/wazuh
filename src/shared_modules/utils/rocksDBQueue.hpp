@@ -28,12 +28,15 @@ public:
     {
         // RocksDB initialization.
         rocksdb::Options options;
+        options.create_if_missing = true;
+        options.keep_log_file_num = 1;
+        options.info_log_level = rocksdb::InfoLogLevel::FATAL_LEVEL;
+
         rocksdb::DB* db;
 
         // Create directories recursively if they do not exist
         std::filesystem::create_directories(std::filesystem::path(connectorName));
 
-        options.create_if_missing = true;
         rocksdb::Status status = rocksdb::DB::Open(options, connectorName, &db);
 
         if (!status.ok())
