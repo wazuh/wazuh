@@ -54,13 +54,16 @@ namespace Utils
      */
     class RocksDBWrapper : public IRocksDBWrapper
     {
-    public:
-        explicit RocksDBWrapper(std::string dbPath, const bool enableWal = true)
-            : m_enableWal {enableWal}
-            , m_path {std::move(dbPath)}
+        /**
+         * @brief Initializes the RocksDB instance.
+         */
+        void initialize()
         {
             rocksdb::Options options;
             options.create_if_missing = true;
+            options.keep_log_file_num = 1;
+            options.info_log_level = rocksdb::InfoLogLevel::FATAL_LEVEL;
+
             rocksdb::TransactionDB* dbRawPtr;
             std::vector<rocksdb::ColumnFamilyDescriptor> columnsDescriptors;
             const std::filesystem::path databasePath {m_path};
@@ -105,13 +108,9 @@ namespace Utils
         }
 
         /**
-         * @brief Class destructor. Frees column family handles.
-         *
-         * @note The documentation of the lib clearly states that we should not free the default column family handler
-         * but not freeing it ends up on memory leaks and ASAN errors. OTOH, no problems seem to appear freeing it.
-         *
+         * @brief Frees column family handles.
          */
-        ~RocksDBWrapper() override
+        void destroyColumnFamilyHandles()
         {
             std::for_each(m_columnsHandles.begin(),
                           m_columnsHandles.end(),
@@ -125,6 +124,36 @@ namespace Utils
                                       << std::endl;
                               }
                           });
+        }
+
+    public:
+        explicit RocksDBWrapper(std::string dbPath, const bool enableWal = true)
+            : m_enableWal {enableWal}
+            , m_path {std::move(dbPath)}
+        {
+            initialize();
+        }
+
+        /**
+         * @brief Reopen the database.
+         */
+        void reopen()
+        {
+            destroyColumnFamilyHandles();
+            m_db.reset();
+            initialize();
+        }
+
+        /**
+         * @brief Class destructor. Frees column family handles.
+         *
+         * @note The documentation of the lib clearly states that we should not free the default column family handler
+         * but not freeing it ends up on memory leaks and ASAN errors. OTOH, no problems seem to appear freeing it.
+         *
+         */
+        ~RocksDBWrapper() override
+        {
+            destroyColumnFamilyHandles();
         };
 
         /**
@@ -494,7 +523,7 @@ namespace Utils
          *
          * @throws std::runtime_error if an error occurs during data deletion.
          */
-        void deleteAll(const std::function<void(std::string&,std::string&)>& callback)
+        void deleteAll(const std::function<void(std::string&, std::string&)>& callback)
         {
             // Delete data from all family columns
             for (const auto& columnHandle : m_columnsHandles)
