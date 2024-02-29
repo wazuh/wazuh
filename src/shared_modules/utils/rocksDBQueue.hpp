@@ -130,6 +130,23 @@ public:
         return value;
     }
 
+    U at(const uint64_t index) const
+    {
+        if (index >= m_size)
+        {
+            throw std::out_of_range("Index out of range");
+        }
+
+        U value;
+        if (!m_db->Get(rocksdb::ReadOptions(), m_db->DefaultColumnFamily(), std::to_string(m_first + index), &value)
+                 .ok())
+        {
+            throw std::runtime_error("Failed to get element at index");
+        }
+
+        return value;
+    }
+
 private:
     std::unique_ptr<rocksdb::DB> m_db;
     uint64_t m_size;
