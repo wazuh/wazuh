@@ -149,7 +149,7 @@ def start(params: dict):
 
     If another Wazuh API is running, this function will fail because uvicorn server will
     not be able to create server processes in the same port.
-    The function creates the pool processes, the AsyncApp instance, setups the API spec.yaml, 
+    The function creates the pool processes, the AsyncApp instance, setups the API spec.yaml,
     the middleware classes, the error_handlers, the lifespan, and runs the uvicorn ASGI server.
 
     Parameters
@@ -217,9 +217,8 @@ def start(params: dict):
     app.add_error_handler(ProblemException, error_handler.problem_error_handler)
     app.add_error_handler(403, error_handler.problem_error_handler)
 
-    # Add application signals TO BE MODIFIED AFTER IMPLEMENTING CTI IN CONNEXION 3.0
+    #  TO BE MODIFIED AFTER IMPLEMENTING CTI IN CONNEXION 3.0
     # app.app.on_response_prepare.append(modify_response_headers)
-    # app.app.cleanup_ctx.append(register_background_tasks)
 
     # API configuration logging
     logger.debug(f'Loaded API configuration: {api_conf}')
@@ -309,7 +308,7 @@ if __name__ == '__main__':
                         action='store_true', dest='root')
     parser.add_argument('-c', help="Configuration file to use",
                         type=str, metavar='config', dest='config_file')
-    parser.add_argument('-d', help="Enable debug messages. Use twice to increase verbosity.", 
+    parser.add_argument('-d', help="Enable debug messages. Use twice to increase verbosity.",
                         action='count',
                         dest='debug_level')
     args = parser.parse_args()
@@ -346,11 +345,12 @@ if __name__ == '__main__':
     from api.configuration import api_conf, security_conf, generate_private_key, \
         generate_self_signed_certificate
     from api.middlewares import SecureHeadersMiddleware, CheckRateLimitsMiddleware, \
-        CheckBlockedIP, WazuhAccessLoggerMiddleware, lifespan_handler
+        CheckBlockedIP, WazuhAccessLoggerMiddleware
     from api.util import to_relative_path
     from api.uri_parser import APIUriParser
     from api.constants import API_LOG_PATH
     from api.alogging import set_logging
+    from api.signals import lifespan_handler
 
     from wazuh.rbac.orm import check_database_integrity
     from wazuh.core import pyDaemonModule, common, utils
