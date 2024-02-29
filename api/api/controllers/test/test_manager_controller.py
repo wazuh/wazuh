@@ -6,7 +6,6 @@ import sys
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
-from aiohttp import web_response
 from connexion.lifecycle import ConnexionResponse
 from api.constants import INSTALLATION_UID_KEY, UPDATE_INFORMATION_KEY
 from api.controllers.test.utils import CustomAffectedItems
@@ -434,7 +433,6 @@ async def test_update_configuration(mock_exc, mock_dapi, mock_remove, mock_dfunc
         "force_query,dapi_call_count,update_check", ([True, 2, True], [True, 1, False], [False, 1, True])
 )
 @pytest.mark.asyncio
-@pytest.mark.parametrize("mock_request", ["manager_controller"], indirect=True)
 @patch('api.controllers.manager_controller.configuration.update_check_is_enabled')
 @patch('api.controllers.manager_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.manager_controller.DistributedAPI.__init__', return_value=None)
@@ -447,32 +445,32 @@ async def test_check_available_version(
     force_query,
     dapi_call_count,
     update_check,
-    mock_request
 ):
     """Verify 'check_available_version' endpoint is working as expected."""
-    app_context = {UPDATE_INFORMATION_KEY: {"foo": 1}, INSTALLATION_UID_KEY: "1234"}
-    mock_request.app = app_context
+    cti_context = {UPDATE_INFORMATION_KEY: {"foo": 1}, INSTALLATION_UID_KEY: "1234"}
     update_check_mock.return_value = update_check
 
-    result = await check_available_version(force_query=force_query)
-    assert mock_dapi.call_count == dapi_call_count
+    with patch('api.controllers.manager_controller.cti_context', new=cti_context):
 
-    if force_query and update_check:
-        mock_dapi.assert_any_call(
-            f=query_update_check_service,
-            f_kwargs={INSTALLATION_UID_KEY: app_context[INSTALLATION_UID_KEY]},
+        result = await check_available_version(force_query=force_query)
+        assert mock_dapi.call_count == dapi_call_count
+
+        if force_query and update_check:
+            mock_dapi.assert_any_call(
+                f=query_update_check_service,
+                f_kwargs={INSTALLATION_UID_KEY: cti_context[INSTALLATION_UID_KEY]},
+                request_type='local_master',
+                is_async=True,
+                logger=ANY,
+            )
+            mock_exc.assert_any_call(mock_dfunc.return_value)
+
+        mock_dapi.assert_called_with(
+            f=manager.get_update_information,
+            f_kwargs={UPDATE_INFORMATION_KEY: cti_context[UPDATE_INFORMATION_KEY]},
             request_type='local_master',
-            is_async=True,
+            is_async=False,
             logger=ANY,
         )
-        mock_exc.assert_any_call(mock_dfunc.return_value)
-
-    mock_dapi.assert_called_with(
-        f=manager.get_update_information,
-        f_kwargs={UPDATE_INFORMATION_KEY: app_context[UPDATE_INFORMATION_KEY]},
-        request_type='local_master',
-        is_async=False,
-        logger=ANY,
-    )
-    mock_exc.assert_called_with(mock_dfunc.return_value)
+        mock_exc.assert_called_with(mock_dfunc.return_value)
     assert isinstance(result, ConnexionResponse)
