@@ -54,6 +54,9 @@ namespace Utils
      */
     class RocksDBWrapper : public IRocksDBWrapper
     {
+        /**
+         * @brief Initializes the RocksDB instance.
+         */
         void initialize()
         {
             rocksdb::Options options;
@@ -104,6 +107,9 @@ namespace Utils
             m_db.reset(dbRawPtr);
         }
 
+        /**
+         * @brief Frees column family handles.
+         */
         void destroyColumnFamilyHandles()
         {
             std::for_each(m_columnsHandles.begin(),
@@ -641,7 +647,6 @@ namespace Utils
             {
                 m_txn->Rollback();
             }
-            m_dbWrapper->flush();
         }
 
         /**
