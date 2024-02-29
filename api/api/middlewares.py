@@ -5,7 +5,6 @@
 import json
 import hashlib
 import time
-import contextlib
 import logging
 import base64
 import jwt
@@ -14,7 +13,6 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
-from connexion import ConnexionMiddleware
 from connexion.lifecycle import ConnexionRequest
 from connexion.security import AbstractSecurityHandler
 
@@ -157,11 +155,11 @@ def check_rate_limit(
         Maximum number of requests per minute permitted.
     error_code : int
         error code to return if the counter is greater than max_requests.
-    
+
     Return
     ------
         0 if the counter is greater than max_requests
-        else error_code. 
+        else error_code.
     """
     if not globals()[current_time_key]:
         globals()[current_time_key] = get_utc_now().timestamp()
@@ -243,7 +241,7 @@ class SecureHeadersMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """Check and modifies the response headers with secure package.
-        
+
         Parameters
         ----------
         request : Request
@@ -259,13 +257,3 @@ class SecureHeadersMiddleware(BaseHTTPMiddleware):
         resp = await call_next(request)
         secure_headers.framework.starlette(resp)
         return resp
-
-
-@contextlib.asynccontextmanager
-async def lifespan_handler(_: ConnexionMiddleware):
-    """Logs the API startup and shutdown messages."""
-
-    # Log the initial server startup message.
-    start_stop_logger.info(f'Listening on {configuration.api_conf["host"]}:{configuration.api_conf["port"]}.')
-    yield
-    start_stop_logger.info('Shutdown wazuh-apid server.')
