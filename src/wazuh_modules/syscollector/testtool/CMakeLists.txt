@@ -72,7 +72,6 @@ else()
         syscollector
         dl
         proc
-        db
     )
 
     if(SOLARIS)
@@ -82,3 +81,7 @@ else()
         )
     endif(SOLARIS)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_libraries(syscollector_test_tool db)
+endif()

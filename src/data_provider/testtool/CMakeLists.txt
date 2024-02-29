@@ -52,7 +52,6 @@ else()
         dl
         pthread
         proc
-        db
     )
 
     if(SOLARIS)
@@ -63,6 +62,10 @@ else()
         )
     endif(SOLARIS)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_libraries(sysinfo_test_tool db)
+endif()
 
 if(APPLE)
   add_custom_command(TARGET sysinfo_test_tool
