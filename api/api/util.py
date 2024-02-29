@@ -453,10 +453,10 @@ def only_master_endpoint(func):
     """Decorator used to restrict endpoints only on master node."""
 
     @wraps(func)
-    def wrapper(*args, **kwargs):
+    async def wrapper(*args, **kwargs):
         if not running_in_master_node():
             raise_if_exc(exception.WazuhResourceNotFound(902))
         else:
-            return func(*args, **kwargs)
+            return (await func(*args, **kwargs))
 
     return wrapper
