@@ -48,7 +48,7 @@ namespace JsonArray
          *
          * @param targetArrayPointer JSON Pointer to the target array.
          * @param itemCallback Callback invoked for every item found on the target array. If the callback returns false
-         * the parsing stops.
+         * the parsing stops, the second parameter is the quantity of items parsed.
          * @param bodyCallback Callback invoked at the end of the parsing with the body of the JSON object. The body of
          * the JSON object is the original JSON with the array items removed.
          */
