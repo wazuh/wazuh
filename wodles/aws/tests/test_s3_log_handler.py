@@ -231,3 +231,96 @@ def test_protected_process_jsonl(content, expected_calls):
     mocked_obtain_logs.assert_called_once_with(bucket='example-bucket', log_path='example-log.parquet')
     mock_send_msg.assert_has_calls(expected_calls)
 
+
+@pytest.mark.parametrize("details, event", [
+    ({'actionName': 'Test action name', 'actionDescription': 'Test action description'},
+     {'actionName': 'Test action name', 'actionDescription': 'Test action description',
+      'extra_key': 'value'}),
+    ({'actionName': 'Test action name', 'actionDescription': 'Test action description',
+      'insightResults': [{'key': 'value'}], 'insightName': 'insightName', 'insightArn': 'insightArn'},
+     {'actionName': 'Test action name', 'actionDescription': 'Test action description',
+      'insightResults': [{'key': 'value'}], 'insightName': 'insightName', 'insightArn': 'insightArn',
+      'extra_key': 'value'}),
+    ({'findings': [{'key': 'value'}]},
+     {'finding': {'key': 'value'}, 'extra_key': 'value'})
+])
+def test_sec_hub_protected_add_event_type_fields(details, event):
+    """Test the 'add_event_type_fields' function of AWSSecurityHubSubscriberBucket class."""
+    base_event = dict(extra_key="value")
+    s3_log_handler.AWSSecurityHubSubscriberBucket._add_event_type_fields(details, base_event)
+    assert base_event == event
+
+
+@pytest.mark.parametrize(
+    "content, expected_logs",
+    [
+        (
+            '{"detail": {"data1": "value"}, "detail-type": "Security Hub Type"}'
+            '{"detail": {"data2": "value"}, "detail-type": "Security Hub Type"}',
+            [{"data1": "value", "source": "securityhub", "detail_type": "Security Hub Type"},
+             {"data2": "value", "source": "securityhub", "detail_type": "Security Hub Type"}],
+        ),
+    ]
+)
+def test_obtain_logs_processes_security_hub_events(content, expected_logs):
+    """Test the 'obtain_logs' method of AWSSecurityHubSubscriberBucket class."""
+    with patch('s3_log_handler.wazuh_integration.WazuhIntegration.__init__'):
+        with patch('s3_log_handler.AWSSubscriberBucket.decompress_file', return_value=io.StringIO(content)):
+            with patch("s3_log_handler.AWSSecurityHubSubscriberBucket._add_event_type_fields",
+                       side_effect=lambda event, base: base.update(event)):
+                formatted_logs = s3_log_handler.AWSSecurityHubSubscriberBucket().obtain_logs(bucket=utils.TEST_BUCKET,
+                                                                                             log_path=utils.TEST_LOG_KEY
+                                                                                             )
+                assert formatted_logs == expected_logs
+                assert formatted_logs is not None
+
+
+def test_sec_hub_obtain_logs_handles_exception():
+    """Test 'obtain_logs' handles exceptions raised when failing to process JSON files."""
+    with patch('s3_log_handler.wazuh_integration.WazuhIntegration.__init__'):
+        with patch('s3_log_handler.AWSSubscriberBucket.decompress_file'):
+            with patch('s3_log_handler.AWSSubscriberBucket._json_event_generator', side_effect=[json.JSONDecodeError
+                                                                                                ('test', 'test', 1),
+                                                                                                AttributeError]):
+                with pytest.raises(SystemExit) as e:
+                    s3_log_handler.AWSSecurityHubSubscriberBucket().obtain_logs(bucket=utils.TEST_BUCKET,
+                                                                                log_path=utils.TEST_LOG_KEY)
+                assert e.value.code == utils.PARSE_FILE_ERROR_CODE
+
+
+@pytest.mark.parametrize("discard_log", [True, False])
+@patch('s3_log_handler.aws_tools.debug')
+def test_sec_hub_process_file_sends_expected_messages(mock_debug, discard_log):
+    """Test 'process_file' method of AWSSecurityHubSubscriberBucket the class sends the events inside the given
+    message to AnalysisD."""
+    log_file = utils.TEST_LOG_KEY
+    bucket_path = utils.TEST_BUCKET
+    message_body = {"log_path": log_file, "bucket_path": bucket_path}
+
+    formatted_logs = [{"field": "value"}]
+
+    with patch('s3_log_handler.wazuh_integration.WazuhIntegration.__init__'):
+        with patch('s3_log_handler.AWSSecurityHubSubscriberBucket.obtain_logs', return_value=formatted_logs):
+            with patch('s3_log_handler.AWSSecurityHubSubscriberBucket.event_should_be_skipped',
+                       return_value=discard_log):
+                log_handler = s3_log_handler.AWSSecurityHubSubscriberBucket()
+
+                log_handler.discard_regex = re.compile('discard_regex')
+                log_handler.discard_field = 'discard_field'
+
+                log_handler.send_msg = MagicMock()
+                log_handler.process_file(message_body)
+                mock_debug.assert_called()
+                for log in formatted_logs:
+                    if not discard_log:
+                        expected_msg = {
+                            'integration': 'aws',
+                            'aws': {
+                                'log_info': {
+                                    'log_file': log_file,
+                                    's3bucket': bucket_path
+                                }
+                            }
+                        }
+                        expected_msg['aws'].update(log)
+                        log_handler.send_msg.assert_called_with(expected_msg)
