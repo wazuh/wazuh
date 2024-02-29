@@ -269,13 +269,7 @@ def get_api_conf() -> dict:
 
 
 def _get_ssl_context() -> ssl.SSLContext:
-    """Return a TCPConnector with default ssl context.
-
-    Returns
-    -------
-    aiohttp.TCPConnector
-        Instance with default ssl connector.
-    """
+    """Return a default ssl context."""
     return ssl.create_default_context(cafile=certifi.where())
 
 
