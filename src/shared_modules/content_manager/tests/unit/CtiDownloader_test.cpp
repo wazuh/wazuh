@@ -194,6 +194,36 @@ TEST_F(CtiDownloaderTest, BaseParametersDownloadWithRetryTooManyRequestsError)
 }
 
 /**
+ * @brief Tests the correct download of the parameters with the retry feature when different server errors are received.
+ *
+ */
+TEST_F(CtiDownloaderTest, BaseParametersDownloadWithRetryDifferentErrors)
+{
+    // Push error.
+    m_spFakeServer->pushError(429);
+    m_spFakeServer->pushError(550);
+    m_spFakeServer->pushError(429);
+
+    auto downloader {CtiDummyDownloader(HTTPRequest::instance(), 1)};
+
+    ASSERT_NO_THROW(downloader.handleRequest(m_spUpdaterContext));
+
+    // Check expected data.
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
+    expectedData["stageStatus"] = OK_STATUS;
+    expectedData["type"] = CONTENT_TYPE;
+    expectedData["offset"] = 0;
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+
+    // Check expected base parameters.
+    const auto parameters {downloader.getParameters()};
+    EXPECT_EQ(parameters->lastOffset.value(), 3);
+    EXPECT_EQ(parameters->lastSnapshotLink.value(), "localhost:4444/" + SNAPSHOT_FILE_NAME);
+    EXPECT_EQ(parameters->lastSnapshotOffset.value(), 3);
+}
+
+/**
  * @brief Tests the download of the base parameters with a bad response from the server, where no parameters are
  * present.
  *

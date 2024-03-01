@@ -205,9 +205,8 @@ protected:
                 throw std::runtime_error {exceptionMessage};
             }};
 
-        constexpr auto INITIAL_SLEEP_TIME {0};
-        auto sleepTime {INITIAL_SLEEP_TIME};
-        auto retryAttempt {0};
+        unsigned int sleepTime {0};
+        unsigned int retryAttempt;
         auto retry {true};
         auto lastErrorType {CtiErrorType::NO_ERROR};
         auto& stopCondition {m_spUpdaterContext->spUpdaterBaseContext->spStopCondition};
@@ -240,6 +239,7 @@ protected:
                         else
                         {
                             // First time with this particular error.
+                            constexpr unsigned int INITIAL_SLEEP_TIME {1};
                             sleepTime = INITIAL_SLEEP_TIME;
                             retryAttempt = 0;
                         }
