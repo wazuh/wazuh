@@ -157,50 +157,30 @@ def main(argv):
                         f"method. Check the available ones for it in "
                         f"{aws_tools.SECURITY_LAKE_IAM_ROLE_AUTHENTICATION_URL}")
                     sys.exit(3)
-                aws_tools.arg_validate_security_lake_auth_params(options.external_id,options.queue,options.iam_role_arn)
+                aws_tools.arg_validate_security_lake_auth_params(options.external_id,
+                                                                 options.queue,
+                                                                 options.iam_role_arn)
                 bucket_handler = subscribers.s3_log_handler.AWSSLSubscriberBucket
-                asl_queue = subscribers.sqs_queue.AWSSQSQueue(
-                    external_id=options.external_id,
-                    iam_role_arn=options.iam_role_arn,
-                    iam_role_duration=options.iam_role_duration,
-                    profile=None,
-                    sts_endpoint=options.sts_endpoint,
-                    service_endpoint=options.service_endpoint,
-                    name=options.queue,
-                    bucket_handler=bucket_handler,
-                    message_processor=subscribers.sqs_message_processor.AWSSSecLakeMessageProcessor
-                )
             elif options.subscriber.lower() == "buckets":
                 bucket_handler = subscribers.s3_log_handler.AWSSubscriberBucket
-                asl_queue = subscribers.sqs_queue.AWSSQSQueue(
-                    iam_role_arn=options.iam_role_arn,
-                    iam_role_duration=options.iam_role_duration,
-                    profile=options.aws_profile,
-                    sts_endpoint=options.sts_endpoint,
-                    service_endpoint=options.service_endpoint,
-                    name=options.queue,
-                    skip_on_error=options.skip_on_error,
-                    discard_field=options.discard_field,
-                    discard_regex=options.discard_regex,
-                    bucket_handler=bucket_handler,
-                    message_processor=subscribers.sqs_message_processor.AWSS3MessageProcessor)
             elif options.subscriber.lower() == "security_hub":
                 bucket_handler = subscribers.s3_log_handler.AWSSecurityHubSubscriberBucket
-                asl_queue = subscribers.sqs_queue.AWSSQSQueue(
-                    iam_role_arn=options.iam_role_arn,
-                    iam_role_duration=options.iam_role_duration,
-                    profile=options.aws_profile,
-                    sts_endpoint=options.sts_endpoint,
-                    service_endpoint=options.service_endpoint,
-                    name=options.queue,
-                    skip_on_error=options.skip_on_error,
-                    discard_field=options.discard_field,
-                    discard_regex=options.discard_regex,
-                    bucket_handler=bucket_handler,
-                    message_processor=subscribers.sqs_message_processor.AWSS3MessageProcessor)
             else:
                 raise Exception("Invalid type of subscriber")
-            asl_queue.sync_events()
+            subscriber_queue = subscribers.sqs_queue.AWSSQSQueue(
+                external_id=options.external_id,
+                iam_role_arn=options.iam_role_arn,
+                iam_role_duration=options.iam_role_duration,
+                profile=options.aws_profile,
+                sts_endpoint=options.sts_endpoint,
+                service_endpoint=options.service_endpoint,
+                name=options.queue,
+                skip_on_error=options.skip_on_error,
+                discard_field=options.discard_field,
+                discard_regex=options.discard_regex,
+                bucket_handler=bucket_handler,
+                message_processor=subscribers.sqs_message_processor.AWSS3MessageProcessor)
+            subscriber_queue.sync_events()
     except Exception as err:
         aws_tools.debug("+++ Error: {}".format(err), 2)
         if aws_tools.debug_level > 0:

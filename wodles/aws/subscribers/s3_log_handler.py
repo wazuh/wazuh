@@ -321,21 +321,18 @@ class AWSSecurityHubSubscriberBucket(AWSSubscriberBucket):
         event : dict
             Destination dictionary to be added to the event sent to Wazuh.
         """
-        key_actions = {
-            'findings': lambda source, destination: destination.setdefault('finding', source['findings'][0]),
-            'actionName': lambda source, destination: destination.setdefault('actionName', source['actionName']),
-            'actionDescription': lambda source, destination: destination.setdefault('actionDescription',
-                                                                                    source['actionDescription']),
-            'insightName': lambda source, destination: destination.setdefault('insightName', source['insightName']),
-            'insightArn': lambda source, destination: destination.setdefault('insightArn', source['insightArn']),
-            'resultType': lambda source, destination: destination.setdefault('resultType', source['resultType']),
-            'insightResults': lambda source, destination: destination.setdefault('insightResults',
-                                                                                 source['insightResults'])
-        }
+        fields = ['findings', 'actionName', 'actionDescription', 'actionDescription', 'insightName', 'insightArn',
+                  'resultType', 'insightResults']
 
-        for key, action in key_actions.items():
+        def _action(source: dict, dest: dict, field_name: str) -> None:
+            if field_name == 'findings':
+                dest.setdefault('finding', source[field_name][0])
+            else:
+                dest.setdefault(field_name, source[field_name])
+
+        for key in fields:
             if key in details:
-                action(details, event)
+                _action(details, event, key)
 
     def obtain_logs(self, bucket: str, log_path: str) -> List[dict]:
         """Fetch a file from a bucket and obtain a list of events from it.
