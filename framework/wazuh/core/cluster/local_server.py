@@ -7,7 +7,6 @@ import functools
 import json
 import os
 import random
-from datetime import datetime
 from typing import Tuple, Union
 
 import uvloop
@@ -17,7 +16,6 @@ from wazuh.core.cluster import common as c_common, server, client, cluster
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag
 from wazuh.core.exception import WazuhClusterError
-from wazuh.core.utils import get_date_from_timestamp
 
 
 class LocalServerHandler(server.AbstractServerHandler):

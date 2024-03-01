@@ -4,7 +4,6 @@
 
 import json
 import socket
-from typing import Any
 
 from wazuh.core.common import origin_module
 from wazuh.core.exception import WazuhError, WazuhInternalError
