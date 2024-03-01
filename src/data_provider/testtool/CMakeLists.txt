@@ -8,7 +8,6 @@ include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/external/nlohmann/)
 
 link_directories(${SRC_FOLDER}/external/procps/)
-link_directories(${SRC_FOLDER}/external/libdb/build_unix/)
 
 if(COVERITY)
   add_definitions(-D__GNUC__=8)
@@ -62,10 +61,6 @@ else()
         )
     endif(SOLARIS)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_link_libraries(sysinfo_test_tool db)
-endif()
 
 if(APPLE)
   add_custom_command(TARGET sysinfo_test_tool

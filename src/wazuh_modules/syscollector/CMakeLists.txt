@@ -68,7 +68,6 @@ link_directories(${SRC_FOLDER}/external/cJSON/)
 link_directories(${SRC_FOLDER}/external/procps/)
 link_directories(${SRC_FOLDER}/external/bzip2/)
 link_directories(${SRC_FOLDER}/external/flatbuffers/build/)
-link_directories(${SRC_FOLDER}/external/libdb/build_unix/)
 
 # add_custom_command does not create a new target. You have to define targets explicitly
 # by add_executable, add_library or add_custom_target in order to make them visible to make
@@ -187,9 +186,6 @@ endif()
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
   target_link_libraries(syscollector dbsync rsync sysinfo wazuhext)
-  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_link_libraries(syscollector db)
-  endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 else()
   string(REPLACE ";" ":" CXX_IMPLICIT_LINK_DIRECTORIES_STR "${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
   string(REPLACE ";" ":" PLATFORM_REQUIRED_RUNTIME_PATH_STR "${CMAKE_PLATFORM_REQUIRED_RUNTIME_PATH}")
