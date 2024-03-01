@@ -3,13 +3,36 @@ import signal
 import subprocess
 import shlex
 import time
+from api_communication.client import APIClient
+from api_communication.proto import router_pb2 as api_router
 
 BINARY_PATH = os.environ.get("WAZUH_DIR", "") + "/src/engine/build/main"
 CONF_FILE = os.environ.get("CONF_FILE", "")
+ENV_DIR = os.environ.get("ENV_DIR", "")
+SOCKET_PATH = ENV_DIR + "/queue/sockets/engine-api"
+
+api_client = APIClient(SOCKET_PATH)
 
 class UpDownEngine:
     def __init__(self):
         self.process = None
+
+    def wait_to_live(self):
+        max_attempts = 10
+        current_attempt = 0
+        request = api_router.TableGet_Request()
+
+        while current_attempt < max_attempts:
+            error, request = api_client.send_recv(request)
+            if error == None:
+                break
+
+            print(f"Attempt {current_attempt + 1}/{max_attempts} failed. Waiting for 1 second before retrying...")
+            time.sleep(1)
+            current_attempt += 1
+
+        if current_attempt == max_attempts:
+            raise Exception(f"All attempts exhausted after {max_attempts} tries. The operation could not be completed.")
 
     def send_stop_command(self):
         """
@@ -44,6 +67,6 @@ class UpDownEngine:
                 print(f"Error: Process exited with code {self.process.returncode}")
 
             # Wait for a moment to ensure the process has started
-            time.sleep(2)
+            self.wait_to_live()
         except Exception as e:
             print(f"Error during process execution: {e}")
