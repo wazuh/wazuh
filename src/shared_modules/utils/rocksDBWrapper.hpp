@@ -63,6 +63,7 @@ namespace Utils
             options.create_if_missing = true;
             options.keep_log_file_num = 1;
             options.info_log_level = rocksdb::InfoLogLevel::FATAL_LEVEL;
+            options.max_open_files = 200;
 
             rocksdb::TransactionDB* dbRawPtr;
             std::vector<rocksdb::ColumnFamilyDescriptor> columnsDescriptors;
