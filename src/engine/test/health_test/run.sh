@@ -57,7 +57,7 @@ main() {
     # Capture the process ID of the binary
     local binary_pid=$!
     # Wait for the server to start
-    sleep 2
+    sleep 6
 
     run_test_health
     exit_code=$?

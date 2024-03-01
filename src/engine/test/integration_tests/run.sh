@@ -67,7 +67,6 @@ main() {
     exit_code=$?
     echo "Exit code $exit_code"
 
-    kill $binary_pid
     exit $exit_code
 }
 main "$@"

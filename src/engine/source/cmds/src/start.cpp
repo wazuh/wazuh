@@ -3,6 +3,7 @@
 #include <atomic>
 #include <csignal>
 #include <exception>
+#include <date/tz.h>
 #include <memory>
 #include <optional>
 #include <string>
@@ -47,6 +48,7 @@
 #include "base/utils/getExceptionStack.hpp"
 #include "defaultSettings.hpp"
 
+
 namespace
 {
 std::shared_ptr<engineserver::EngineServer> g_engineServer {};
@@ -82,6 +84,8 @@ struct Options
     // Loggin
     std::string logLevel;
     std::string logOutput;
+    //TZ_DB
+    std::string tzdbPath;
 };
 
 } // namespace
@@ -136,6 +140,22 @@ void runStart(ConfHandler confManager)
               logConfig.headerFormat,
               logConfig.flushInterval);
     LOG_INFO("Logging initialized.");
+
+    //TZDB Install
+    {
+        auto install = confManager->get<std::string>("server.tzdb_path");
+        date::set_install(install);
+        try
+        {
+            auto& tzdb  = date::reload_tzdb();
+        }
+        catch (const std::exception& e)
+        {
+            LOG_ERROR("An error occurred while reload the tzdb: {}.", utils::getExceptionStack(e));
+            exitHandler.execute();
+            return;
+        }
+    }
 
     // KVDB config
     const auto kvdbPath = confManager->get<std::string>("server.kvdb_path");
@@ -484,6 +504,11 @@ void configure(CLI::App_p app)
         ->default_val(ENGINE_KVDB_PATH)
         ->check(CLI::ExistingDirectory)
         ->envname(ENGINE_KVDB_PATH_ENV);
+
+    // TZ_DB Installation Path
+    serverApp->add_option("--tzdb_path", options->tzdbPath, "Sets the install path to the time zone database.")
+        ->default_val(ENGINE_TZDB_PATH)
+        ->envname(ENGINE_TZDB_PATH_ENV);
 
     // Router module
     serverApp

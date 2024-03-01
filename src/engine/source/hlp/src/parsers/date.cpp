@@ -177,7 +177,7 @@ Parser getDateParser(const Params& params)
     }
     catch (std::exception& e)
     {
-        throw std::runtime_error(fmt::format("Can't build date parser, invalid locale: {}", e.what()));
+        throw std::runtime_error(fmt::format("Can't build date parser, locale '{}' not found", localeStr));
     }
 
     // If not disabled automat then check if the format is a sample date

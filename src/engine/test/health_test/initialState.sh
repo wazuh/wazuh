@@ -87,7 +87,7 @@ main() {
 
     # Run the command to start the server
     "$ENGINE_SRC_DIR/build/main" --config "$ENVIRONMENT_DIR/engine/general.conf" server -l error start &
-    sleep 2
+    sleep 6
 
     # Capture the process ID of the binary
     local binary_pid=$!
