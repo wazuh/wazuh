@@ -311,8 +311,7 @@ class AWSSecurityHubSubscriberBucket(AWSSubscriberBucket):
 
     @staticmethod
     def _add_event_type_fields(details: dict, event: dict):
-        """
-        Add the corresponding fields into the event if the details contain them.
+        """Add the corresponding fields into the event if the details contain them.
 
         Parameters
         ----------
@@ -323,7 +322,6 @@ class AWSSecurityHubSubscriberBucket(AWSSubscriberBucket):
         """
         fields = ['findings', 'actionName', 'actionDescription', 'actionDescription', 'insightName', 'insightArn',
                   'resultType', 'insightResults']
-
         def _action(source: dict, dest: dict, field_name: str) -> None:
             if field_name == 'findings':
                 dest.setdefault('finding', source[field_name][0])
@@ -372,7 +370,6 @@ class AWSSecurityHubSubscriberBucket(AWSSubscriberBucket):
         message_body : dict
             An SQS message received from the queue.
         """
-
         log_path = message_body['log_path']
         bucket_path = message_body['bucket_path']
 
