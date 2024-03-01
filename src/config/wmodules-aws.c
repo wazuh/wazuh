@@ -199,7 +199,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                     return OS_INVALID;
                 }
 
-                mtdebug2(WM_AWS_LOGTAG, "Loop thru child nodes");
+                mtdebug2(WM_AWS_LOGTAG, "Loop through child nodes");
                 for (j = 0; children[j]; j++) {
 
                     mtdebug2(WM_AWS_LOGTAG, "Parse child node: %s", children[j]->element);
@@ -387,7 +387,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 continue;
             }
 
-            mtdebug2(WM_AWS_LOGTAG, "Loop thru child nodes");
+            mtdebug2(WM_AWS_LOGTAG, "Loop through child nodes");
             for (j = 0; children[j]; j++) {
 
                 mtdebug2(WM_AWS_LOGTAG, "Parse child node: %s", children[j]->element);
@@ -560,7 +560,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 continue;
             }
 
-            mtdebug2(WM_AWS_LOGTAG, "Loop thru child nodes");
+            mtdebug2(WM_AWS_LOGTAG, "Loop through child nodes");
             for (j = 0; children[j]; j++) {
 
                 mtdebug2(WM_AWS_LOGTAG, "Parse child node: %s", children[j]->element);
