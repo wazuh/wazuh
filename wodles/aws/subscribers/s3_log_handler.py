@@ -322,6 +322,7 @@ class AWSSecurityHubSubscriberBucket(AWSSubscriberBucket):
         """
         fields = ['findings', 'actionName', 'actionDescription', 'actionDescription', 'insightName', 'insightArn',
                   'resultType', 'insightResults']
+
         def _action(source: dict, dest: dict, field_name: str) -> None:
             if field_name == 'findings':
                 dest.setdefault('finding', source[field_name][0])

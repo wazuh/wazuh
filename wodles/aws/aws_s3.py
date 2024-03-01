@@ -161,10 +161,13 @@ def main(argv):
                                                                  options.queue,
                                                                  options.iam_role_arn)
                 bucket_handler = subscribers.s3_log_handler.AWSSLSubscriberBucket
+                message_processor = subscribers.sqs_message_processor.AWSSSecLakeMessageProcessor
             elif options.subscriber.lower() == "buckets":
                 bucket_handler = subscribers.s3_log_handler.AWSSubscriberBucket
+                message_processor = subscribers.sqs_message_processor.AWSS3MessageProcessor
             elif options.subscriber.lower() == "security_hub":
                 bucket_handler = subscribers.s3_log_handler.AWSSecurityHubSubscriberBucket
+                message_processor = subscribers.sqs_message_processor.AWSS3MessageProcessor
             else:
                 raise Exception("Invalid type of subscriber")
             subscriber_queue = subscribers.sqs_queue.AWSSQSQueue(
@@ -179,7 +182,7 @@ def main(argv):
                 discard_field=options.discard_field,
                 discard_regex=options.discard_regex,
                 bucket_handler=bucket_handler,
-                message_processor=subscribers.sqs_message_processor.AWSS3MessageProcessor)
+                message_processor=message_processor)
             subscriber_queue.sync_events()
     except Exception as err:
         aws_tools.debug("+++ Error: {}".format(err), 2)
