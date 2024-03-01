@@ -1,0 +1,241 @@
+# Security Configuration Assessment
+# Audit for HP-UX 11.31 systems
+# Copyright (C) 2015-2019, Wazuh Inc.
+#
+# This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation
+
+policy:
+  id: "hp_audit"
+  file: "sca_hp_unix_11.31.yml"
+  name: "System audit for HP-Unix based systems"
+  description: "Guidance for establishing a secure configuration for HP-Unix based systems."
+  references:
+    - https://www.stigviewer.com/stig/hp-ux_11.31/2018-09-14/
+    
+requirements:
+  title: "Check that the SSH service and password-related files are present on the system"
+  description: "Requirements for running the SCA scan against the HP-Unix based systems policy."
+  condition: any
+  rules:
+    - 'f:$sshd_file'
+    - 'f:/etc/passwd'
+    - 'f:/etc/shadow'
+    - 'f:/etc/inetd.conf'
+    - 'f:/etc/shells'
+    - 'f:/usr/lbin/tftpd'
+    - 'f:/opt/ssh/etc/sshd_config'
+    - 'f:/etc/SnmpAgent.d/snmpd.conf'
+    - 'f:/etc/mail/aliases'
+   
+
+variables:
+  $sshd_file: /etc/ssh/sshd_config
+  $pam_d_files: /etc/pam.d/common-password,/etc/pam.d/password-auth,/etc/pam.d/system-auth,/etc/pam.d/system-auth-ac,/etc/pam.d/passwd
+  
+checks:
+  - id: 15000
+    title: "Root passwords must never be passed over a network in clear text form."
+    description: "If a user accesses the root account (or any account) using an unencrypted connection, the password is passed over the network in clear text form and is subject to interception and misuse. This is true even if recommended procedures are followed by logging on to a named account and using the su command to access root."
+    rationale: "Determine if root has logged in over an unencrypted network connection, if root has logged in over the network and sshd is not running, this is a finding."
+    remediation: "Enable SSH on the system and use it for all remote connections used to attain root access."
+    compliance:
+      - dod_8500: ["IAIA-1", "IAIA-2"]
+    condition: all
+    rules:
+      - 'c:last -R -> r:^root && !r:reboot && !r:console'
+      - 'c:ps -ef -> !r:sshd'
+      
+  - id: 15001
+    title: "Anonymous FTP accounts must not have a functional shell."
+    description: "If an anonymous FTP account has been configured to use a functional shell, attackers could gain access to the shell if the account is compromised."
+    rationale: "Check the shell for the anonymous FTP account."
+    remediation: "Configure anonymous FTP accounts to use a non-functional shell. If necessary, edit the /etc/passwd file to remove any functioning shells associated with the FTP account and replace them with non-functioning shells, such as /dev/null."
+    compliance:
+      - dod_8500: ["ECCD-1", "ECCD-2"]
+    condition: any
+    rules:
+      - 'f:/etc/passwd -> r:^ftp && r:/sbin/nologin'  
+      - 'f:/etc/passwd -> r:^ftp && r:/dev/null'
+      - 'f:/etc/passwd -> r:^ftp && r:/bin/false'
+      - 'f:/etc/passwd -> r:^ftp && r:/usr/bin/false'
+      - 'f:/etc/passwd -> r:^ftp && r:/bin/true'
+
+  - id: 15002
+    title: "Administrative accounts must not run a Web browser, except as needed for local service administration."
+    description: "If a Web browser flaw is exploited while running as a privileged user, the entire system could be compromised. Specific exceptions for local service administration should be documented in site-defined policy. These exceptions may include HTTP(S)-based tools used for the administration of the local system, services, or attached devices. Examples of possible exceptions are HP’s System Management Homepage (SMH), the Common Unix Printing System (CUPS) administrative interface, and Sun's StorageTek Common Array Manager (CAM) when these services are running on the local system."
+    remediation: "Enforce policy requiring administrative accounts use Web browsers only for local service administration."
+    compliance:
+      - dod_8500: ["ECLP-1"]
+    condition: none
+    rules:      
+      - 'f:/etc/passwd -> r:^root && r:mozilla'  
+      - 'f:/etc/passwd -> r:^root && r:netscape'  
+
+
+  - id: 15003
+    title: "The TFTP daemon must have mode 0755 or less permissive"
+    description: "If TFTP runs with the setuid or setgid bit set, it may be able to write to any file or directory and may seriously impair system integrity, confidentiality, and availability."
+    remediation: "Change the mode of the TFTP daemon to 0755."
+    compliance:
+      - dod_8500: ["ECPA-1"]
+    condition: all
+    rules:      
+      - 'f:/usr/lbin/tftpd -> r:rwxr-xr-x'   
+      
+  - id: 15005
+    title: "All shell files must have mode 0755 or less permissive."
+    description: "IShells with world/group-write permissions give the ability to maliciously modify the shell to obtain unauthorized access."
+    remediation: "Change the mode of the shell."
+    compliance:
+      - dod_8500: ["ECLP-1"]
+    condition: all
+    rules:      
+      - 'f:/etc/shells -> r:rwxr-xr-x'  
+
+  - id: 15006
+    title: "The system must not use UDP for Network Information System (NIS/NIS+). If the system does not use NIS or NIS+, this is not applicable."
+    description: "Implementing NIS or NIS+ under UDP may make the system more susceptible to a Denial of Service attack and does not provide the same quality of service as TCP."
+    remediation: "Configure the system to not use UDP for NIS and NIS+. HP-UX specific documentation (note the major version of NIS+ currently running) should be consulted for the required procedure."
+    compliance:
+      - dod_8500: ["ECSC-1"]
+    condition: none
+    rules:
+      - 'c:rpcinfo -p  -> r:yp && r:udp'
+      
+
+  - id: 15007
+    title: "The SSH daemon must be configured to only use the SSHv2 protocol."
+    description: "SSHv1 is not a DoD-approved protocol and has many well-known vulnerability exploits. Exploits of the SSH daemon could provide immediate root access to the system."
+    remediation: "Edit the configuration file and modify the Protocol line entry to appear as follows: Protocol 2"
+    compliance:
+      - dod_8500: ["DCPP-1"]
+    condition: all
+    rules:
+      - 'f:/opt/ssh/etc/sshd_config -> n:Protocol (\d+) compare == 2'  
+      
+
+  - id: 15008
+    title: "The telnet daemon must not be running."
+    description: "The telnet daemon provides a typically unencrypted remote access service which does not provide for the confidentiality and integrity of user passwords or the remote session. If a privileged user were to log on using this service, the privileged user password could be compromised."
+    remediation: "Disable the telnet daemon."
+    compliance:
+      - dod_8500: ["DCPP-1"]
+    condition: none
+    rules:
+      - 'c:ps aux -> r:telnet'  
+
+  - id: 15009
+    title: "SNMP communities, users, and passphrases must be changed from the default."
+    description: "Whether active or not, default SNMP passwords, users, and passphrases must be changed to maintain security. If the service is running with the default authenticators, then anyone can gather data about the system and the network using the information to potentially compromise the integrity of the system or network(s)"
+    remediation: "Change the default passwords. To change them, edit the /etc/SnmpAgent.d/snmpd.conf file. Locate the line system-group-read-community which has a default password of public and make the password something more random (less guessable). Do the same for the lines reading system-group-write-community, read-community, write-community, trap, and trap-community. Read the information in the file carefully. The trap is defining who to send traps to, for instance, by default. It will not be a password, but the name of a host."
+    compliance:
+      - dod_8500: ["IAAC-1"]
+    condition: none
+    rules:
+      - 'f:/etc/SnmpAgent.d/snmpd.conf -> r:community'    
+
+
+  - id: 15010
+    title: "Any active TFTP daemon must be authorized and approved in the system accreditation package."
+    description: "TFTP is a file transfer protocol often used by embedded systems to obtain configuration data or software. The service is unencrypted and does not require authentication of requests. Data available using this service may be subject to unauthorized access or interception."
+    remediation: "Disable the TFTP daemon."
+    compliance:
+      - dod_8500: ["DCSW-1"]
+    condition: none
+    rules:
+      - 'c:ps aux -> r:tftp'
+
+
+  - id: 15013
+    title: "The SMTP service must not have a uudecode alias active."
+    description: "A common configuration for older mail transfer agents (MTAs) is to include an alias for the decode user. All mail sent to this user is sent to the uudecode program, which automatically converts and stores files. By sending mail to the decode or the uudecode aliases present on some systems, a remote attacker may be able to create or overwrite files on the remote host. This could possibly be used to gain remote access."
+    remediation: "Disable mail aliases for decode and uudecode. If the /etc/mail/aliases (mail alias) file contains entries for these programs, remove them or disable them by placing # at the beginning of the line, and then executing the newaliases command. For more information on mail aliases, refer to the man page for aliases"
+    compliance:
+      - dod_8500: ["ECSC-1"]
+    condition: any
+    rules:
+      - 'f:/etc/mail/aliases -> r:^# decode: && r:/usr/bin/uudecode'  
+      - 'f:/etc/mail/aliases -> r:^# uudecode: && r:/usr/bin/uuencode'    
+
+
+  - id: 15014
+    title: "Files executed through a mail aliases file must be owned by root and must reside within a directory owned and writable only by root."
+    description: "If a file executed through a mail aliases file is not owned and writable only by root, it may be subject to unauthorized modification. Unauthorized modification of files executed through aliases may allow unauthorized users to attain root privileges."
+    remediation: "Ensure root owns the programs and the directory(ies) they reside in by using the chown command to change owner to root."
+    compliance:
+      - dod_8500: ["ECLP-1"]
+    condition: all
+    rules:
+      - 'f:/usr/bin/msgs -> r:root'
+      
+
+  - id: 15015
+    title: "Files executed through a mail aliases file must be owned by root and must reside within a directory owned and writable only by root."
+    description: "If a file executed through a mail aliases file is not owned and writable only by root, it may be subject to unauthorized modification. Unauthorized modification of files executed through aliases may allow unauthorized users to attain root privileges."
+    remediation: "Ensure root owns the programs and the directory(ies) they reside in by using the chown command to change owner to root."
+    compliance:
+      - dod_8500: ["ECLP-1"]
+    condition: all
+    rules:
+      - 'f:/usr/bin/msgs -> r:root'      
+
+  - id: 15016
+    title: "The system must not have accounts configured with blank or null passwords."
+    description: "If an account is configured for password authentication but does not have an assigned password, it may be possible to log into the account without authentication. If the root user is configured without a password, the entire system may be compromised. For user accounts not using password authentication, the account must be configured with a password lock value instead of a blank or null value."
+    rationale: "Accounts with null passwords are a bad practice."
+    remediation: "Disable null password in security file."
+    compliance:
+      - dod_8500: ["IAIA-1", "IAIA-2"]
+    condition: none
+    rules:      
+      - 'f:/etc/shadow -> r:*'
+      
+  - id: 15018
+    title: "There must be no .rhosts, .shosts, hosts.equiv, or shosts.equiv files on the system."
+    description: "The .rhosts, .shosts, hosts.equiv, and shosts.equiv files are used to configure host-based authentication for individual users or the system. Host-based authentication is not sufficient for preventing unauthorized access to the system."
+    remediation: "Remove the .rhosts, .shosts, hosts.equiv, and/or shosts.equiv files."
+    compliance:
+      - dod_8500: ["ECCD-1", "ECCD-2"]
+    condition: none
+    rules:      
+      - 'd:/ -> r:^.rhosts'
+      - 'd:/ -> r:^.shosts'
+      - 'd:/ -> r:^hosts.equiv'
+      - 'd:/ -> r:^shosts.equiv'
+      
+  - id: 15019
+    title: "The SMTP service must be an up-to-date version."
+    description: "The SMTP service version on the system must be current to avoid exposing vulnerabilities present in unpatched versions."
+    remediation: "Obtain and install a newer version of Sendmail from the operating system vendor or from http://www.sendmail.org or ftp://ftp.cs.berkeley.edu/ucb/sendmail."
+    condition: any
+    rules:     
+      - 'c:/usr/sbin/sendmail -v -d0.1 < /dev/null -> r:8.14'
+      - 'c:/usr/sbin/sendmail -v -d0.1 < /dev/null -> r:8.15'
+      - 'c:/usr/sbin/sendmail -v -d0.1 < /dev/null -> r:8.16'
+      - 'c:/usr/sbin/sendmail -v -d0.1 < /dev/null -> r:8.17'
+      - 'c:/usr/sbin/sendmail -v -d0.1 < /dev/null -> r:8.18'
+      - 'c:/usr/sbin/sendmail -v -d0.1 < /dev/null -> r:8.19'
+      - 'c:/usr/sbin/sendmail -v -d0.1 < /dev/null -> r:8.2\d'
+      - 'c:/usr/sbin/sendmail -v -d0.1 < /dev/null -> r:9.\d'
+      - 'c:/usr/sbin/sendmail -v -d0.1 < /dev/null -> r:\d\d+.\d+'
+      
+  - id: 15020
+    title: "The rexec daemon must not be running."
+    description: "The rexecd process provides a typically unencrypted, host-authenticated remote access service. SSH should be used in place of this service."
+    remediation: "Edit /etc/inetd.conf and comment out the line for the rexec daemon service"
+    condition: none
+    rules:
+      - 'c:ps aux -> r:rexecd' 
+      
+  - id: 15021
+    title: "The remsh daemon must not be running."
+    description: "The remshd process provides a typically unencrypted, host-authenticated remote access service. SSH should be used in place of this service."
+    remediation: "Edit /etc/inetd.conf and comment out the remshd service."
+    compliance:
+      - dod_8500: ["EBRU-1"]
+    condition: none
+    rules:
+      - 'c:ps aux -> r:remshd'  
