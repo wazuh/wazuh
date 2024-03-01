@@ -42,6 +42,10 @@ constexpr auto ENGINE_STORE_PATH_ENV = "WZE_STORE_PATH";
 constexpr auto ENGINE_KVDB_PATH = "/var/ossec/etc/kvdb/";
 constexpr auto ENGINE_KVDB_PATH_ENV = "WZE_KVDB_PATH";
 
+// TZDB
+constexpr auto ENGINE_TZDB_PATH = "/var/ossec/engine/tzdb";
+constexpr auto ENGINE_TZDB_PATH_ENV = "WZE_TZDB_PATH";
+
 constexpr auto ENGINE_KVDB_CLI_PAGE = 1;
 constexpr auto ENGINE_KVDB_CLI_RECORDS = 50;
 
