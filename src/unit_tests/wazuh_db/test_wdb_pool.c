@@ -30,6 +30,7 @@ static int setup_test(void **state) {
         snprintf(node_name, 10, "node%d", i);
         wdb_t * node = wdb_init(node_name);
         rbtree_insert(wdb_pool.nodes, node_name, node);
+        wdb_pool.size++;
     }
 
     test_mode = 1;
@@ -47,8 +48,9 @@ static int setup_test_clean_1(void **state) {
         if(i != 1) {
             node->refcount++;
             node->db = (sqlite3 *)1;
-        } 
+        }
         rbtree_insert(wdb_pool.nodes, node_name, node);
+        wdb_pool.size++;
     }
 
     test_mode = 1;
@@ -66,8 +68,9 @@ static int setup_test_clean_2(void **state) {
         if(i != 2) {
             node->refcount++;
             node->db = (sqlite3 *)1;
-        } 
+        }
         rbtree_insert(wdb_pool.nodes, node_name, node);
+        wdb_pool.size++;
     }
 
     test_mode = 1;
@@ -85,8 +88,9 @@ static int setup_test_clean_3(void **state) {
         if(i != 3) {
             node->refcount++;
             node->db = (sqlite3 *)1;
-        } 
+        }
         rbtree_insert(wdb_pool.nodes, node_name, node);
+        wdb_pool.size++;
     }
 
     test_mode = 1;
@@ -101,6 +105,7 @@ static int teardown_test(void **state) {
         wdb_t * node = rbtree_get(wdb_pool.nodes, keys[i]);
         wdb_destroy(node);
         rbtree_delete(wdb_pool.nodes, keys[i]);
+        wdb_pool.size--;
     }
 
     free_strarray(keys);
@@ -272,6 +277,20 @@ static void test_wdb_pool_clean_3(void **state) {
     free_strarray(keys);
 }
 
+static void test_wdb_pool_size(void **state) {
+    assert_int_equal(wdb_pool_size(), 3);
+
+    // lock pool mutex
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    // unlock pool mutex
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    wdb_pool_clean();
+
+    assert_int_equal(wdb_pool_size(), 0);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Test wdb_pool_get_or_create
@@ -290,6 +309,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wdb_pool_clean_1, setup_test_clean_1, teardown_test),
         cmocka_unit_test_setup_teardown(test_wdb_pool_clean_2, setup_test_clean_2, teardown_test),
         cmocka_unit_test_setup_teardown(test_wdb_pool_clean_3, setup_test_clean_3, teardown_test),
+        // Test wdb_pool_size
+        cmocka_unit_test_setup_teardown(test_wdb_pool_size, setup_test, teardown_test),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
