@@ -26,9 +26,9 @@ class TThreadEventDispatcher
 {
 public:
     explicit TThreadEventDispatcher(Functor functor,
-                                   const std::string& dbPath,
-                                   const uint64_t bulkSize,
-                                   const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
+                                    const std::string& dbPath,
+                                    const uint64_t bulkSize,
+                                    const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
         : m_functor {std::move(functor)}
         , m_running {true}
         , m_maxQueueSize {maxQueueSize}
@@ -36,7 +36,6 @@ public:
     {
         m_queue = std::make_unique<Utils::TSafeQueue<T, U, RocksDBQueue<T, U>>>(RocksDBQueue<T, U>(dbPath));
         m_thread = std::thread {&TThreadEventDispatcher<T, U, Functor>::dispatch, this};
-
     }
     TThreadEventDispatcher& operator=(const TThreadEventDispatcher&) = delete;
     TThreadEventDispatcher(TThreadEventDispatcher& other) = delete;
@@ -81,10 +80,12 @@ private:
             try
             {
                 std::queue<U> data = m_queue->getBulk(m_bulkSize);
+                const auto size = data.size();
+
                 if (!data.empty())
                 {
                     m_functor(data);
-                    m_queue->popBulk(m_bulkSize);
+                    m_queue->popBulk(size);
                 }
             }
             catch (const std::exception& ex)
