@@ -16,6 +16,7 @@
 typedef struct {
     rb_tree * nodes;
     pthread_mutex_t mutex;
+    _Atomic(unsigned) size;
 } wdb_pool_t;
 
 /**
@@ -67,3 +68,13 @@ char ** wdb_pool_keys();
  * Scans the pool and destroys all nodes associated to closed databases.
  */
 void wdb_pool_clean();
+
+/**
+ * @brief Get the current pool size.
+ *
+ * This function returns how many nodes are currently in the pool, no matter if
+ * the databases are open or closed.
+ *
+ * @return Number of nodes in the pool.
+ */
+unsigned wdb_pool_size();
