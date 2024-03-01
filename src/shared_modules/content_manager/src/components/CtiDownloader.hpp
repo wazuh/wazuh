@@ -28,22 +28,38 @@
 #include <thread>
 #include <utility>
 
+static const unsigned int TOO_MANY_REQUESTS_DEFAULT_RETRY_TIME {90};
+
+/**
+ * @brief CTI download error types.
+ *
+ */
+enum class CtiErrorType
+{
+    NO_ERROR,
+    GENERIC_SERVER_ERROR,
+    TOO_MANY_REQUESTS
+};
+
 /**
  * @brief Custom exception used to identify server HTTP errors when downloading from the CTI server.
  *
  */
 class cti_server_error : public std::exception // NOLINT
 {
-    std::string m_errorMessage; ///< Exception message.
+    const std::string m_errorMessage; ///< Exception message.
+    const CtiErrorType m_errorType;   ///< Exception error type.
 
 public:
     /**
      * @brief Class constructor.
      *
      * @param errorMessage Exception message.
+     * @param errorType Error code.
      */
-    explicit cti_server_error(std::string errorMessage)
+    explicit cti_server_error(std::string errorMessage, CtiErrorType errorType)
         : m_errorMessage(std::move(errorMessage))
+        , m_errorType(errorType)
     {
     }
 
@@ -55,6 +71,16 @@ public:
     const char* what() const noexcept override
     {
         return m_errorMessage.c_str();
+    }
+
+    /**
+     * @brief Returns the type of error.
+     *
+     * @return const CtiErrorType Error type.
+     */
+    const CtiErrorType type() const noexcept
+    {
+        return m_errorType;
     }
 };
 
@@ -167,10 +193,14 @@ protected:
             {
                 const std::string exceptionMessage {"Error " + std::to_string(statusCode) + " from server: " + message};
 
-                // If there is an error from the server, throw a different exception.
+                if (statusCode == 429)
+                {
+                    throw cti_server_error {exceptionMessage, CtiErrorType::TOO_MANY_REQUESTS};
+                }
+
                 if (statusCode >= 500 && statusCode <= 599)
                 {
-                    throw cti_server_error {exceptionMessage};
+                    throw cti_server_error {exceptionMessage, CtiErrorType::GENERIC_SERVER_ERROR};
                 }
                 throw std::runtime_error {exceptionMessage};
             }};
@@ -179,6 +209,7 @@ protected:
         auto sleepTime {INITIAL_SLEEP_TIME};
         auto retryAttempt {0};
         auto retry {true};
+        auto lastErrorType {CtiErrorType::NO_ERROR};
         auto& stopCondition {m_spUpdaterContext->spUpdaterBaseContext->spStopCondition};
 
         while (retry && !(stopCondition->waitFor(std::chrono::seconds(sleepTime))))
@@ -190,16 +221,46 @@ protected:
             }
             catch (const cti_server_error& e)
             {
-                constexpr auto SLEEP_TIME_THRESHOLD {30};
+                logDebug1(WM_CONTENTUPDATER, e.what());
 
-                logError(WM_CONTENTUPDATER, e.what());
-
-                // Increase sleep time exponentially, up to the threshold
-                if (sleepTime < SLEEP_TIME_THRESHOLD)
+                switch (e.type())
                 {
-                    sleepTime = std::min(SLEEP_TIME_THRESHOLD, static_cast<int>(std::pow(2, retryAttempt)));
-                    ++retryAttempt;
+                    case CtiErrorType::GENERIC_SERVER_ERROR:
+                    {
+                        if (CtiErrorType::GENERIC_SERVER_ERROR == lastErrorType)
+                        {
+                            // Increase sleep time exponentially, up to the threshold
+                            constexpr auto SLEEP_TIME_THRESHOLD {30};
+                            if (sleepTime < SLEEP_TIME_THRESHOLD)
+                            {
+                                sleepTime = std::min(SLEEP_TIME_THRESHOLD, static_cast<int>(std::pow(2, retryAttempt)));
+                                ++retryAttempt;
+                            }
+                        }
+                        else
+                        {
+                            // First time with this particular error.
+                            sleepTime = INITIAL_SLEEP_TIME;
+                            retryAttempt = 0;
+                        }
+                        break;
+                    }
+
+                    case CtiErrorType::TOO_MANY_REQUESTS:
+                    {
+                        sleepTime = m_tooManyRequestsRetryTime;
+                        break;
+                    }
+
+                    // LCOV_EXCL_START
+                    default:
+                        throw std::runtime_error {"Invalid CTI error type"};
+                        // LCOV_EXCL_STOP
                 }
+
+                lastErrorType = e.type();
+
+                logDebug1(WM_CONTENTUPDATER, "Retrying download in %d seconds", sleepTime);
             }
         }
     }
@@ -214,6 +275,7 @@ protected:
     IURLRequest& m_urlRequest;                          ///< Interface to perform HTTP requests.
     const std::string m_componentName;                  ///< Stage name.
     std::shared_ptr<UpdaterContext> m_spUpdaterContext; ///< Updater context.
+    const unsigned int m_tooManyRequestsRetryTime; ///< Time between retries when receiving a "too many requests" error.
 
 public:
     // LCOV_EXCL_START
@@ -225,10 +287,14 @@ public:
      *
      * @param urlRequest Object to perform the HTTP requests to the CTI API.
      * @param componentName Component name used to update the stage status.
+     * @param tooManyRequestsRetryTime Time between retries when a "too many requests" error is received.
      */
-    explicit CtiDownloader(IURLRequest& urlRequest, std::string componentName)
+    explicit CtiDownloader(IURLRequest& urlRequest,
+                           std::string componentName,
+                           unsigned int tooManyRequestsRetryTime = TOO_MANY_REQUESTS_DEFAULT_RETRY_TIME)
         : m_urlRequest(urlRequest)
         , m_componentName(std::move(componentName))
+        , m_tooManyRequestsRetryTime(tooManyRequestsRetryTime)
     {
     }
 

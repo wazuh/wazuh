@@ -51,9 +51,11 @@ public:
      * @brief Class constructor.
      *
      * @param urlRequest Object to perform the HTTP requests to the CTI API.
+     * @param tooManyRequestsRetryTime Time between retries when a "too many requests" error is received.
      */
-    explicit CtiDummyDownloader(IURLRequest& urlRequest)
-        : CtiDownloader(urlRequest, "CtiDummyDownloader")
+    explicit CtiDummyDownloader(IURLRequest& urlRequest,
+                                unsigned int tooManyRequestsRetryTime = TOO_MANY_REQUESTS_DEFAULT_RETRY_TIME)
+        : CtiDownloader(urlRequest, "CtiDummyDownloader", tooManyRequestsRetryTime)
     {
     }
 
@@ -134,16 +136,45 @@ TEST_F(CtiDownloaderTest, BaseParametersDownload)
 }
 
 /**
- * @brief Tests the correct download of the parameters with the retry feature.
+ * @brief Tests the correct download of the parameters with the retry feature when a 5XX error is received.
  *
  */
-TEST_F(CtiDownloaderTest, BaseParametersDownloadWithRetry)
+TEST_F(CtiDownloaderTest, BaseParametersDownloadWithRetryGenericServerError)
 {
     // Push server error.
     m_spFakeServer->pushError(500);
     m_spFakeServer->pushError(550);
 
     auto downloader {CtiDummyDownloader(HTTPRequest::instance())};
+
+    ASSERT_NO_THROW(downloader.handleRequest(m_spUpdaterContext));
+
+    // Check expected data.
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
+    expectedData["stageStatus"] = OK_STATUS;
+    expectedData["type"] = CONTENT_TYPE;
+    expectedData["offset"] = 0;
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+
+    // Check expected base parameters.
+    const auto parameters {downloader.getParameters()};
+    EXPECT_EQ(parameters->lastOffset.value(), 3);
+    EXPECT_EQ(parameters->lastSnapshotLink.value(), "localhost:4444/" + SNAPSHOT_FILE_NAME);
+    EXPECT_EQ(parameters->lastSnapshotOffset.value(), 3);
+}
+
+/**
+ * @brief Tests the correct download of the parameters with the retry feature when a "too many requests" error is
+ * received.
+ *
+ */
+TEST_F(CtiDownloaderTest, BaseParametersDownloadWithRetryTooManyRequestsError)
+{
+    // Push error.
+    m_spFakeServer->pushError(429);
+
+    auto downloader {CtiDummyDownloader(HTTPRequest::instance(), 1)};
 
     ASSERT_NO_THROW(downloader.handleRequest(m_spUpdaterContext));
 
