@@ -1,0 +1,42 @@
+<!--
+  -  falco syslog-json decoders
+  -  Author: powercloud GmbH - Johannes Drummer
+  -  Copyright (C) 2023, powercloud GmbH
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<!--
+The following rules are tailored to the decoder, who expects the falco to be configured with syslog_output, json_output, and json_include_output_property enabled.
+If you don't use syslog, you have to create a custom decoder that still uses the json output, or else you will probably not have all fields in the same format.
+-->
+
+<!--
+Feb 28 13:14:04 ip-10-0-3-249 falco: {"hostname":"i-d34fd4tdr545","output":"13:14:04.599163316: Error File below /etc opened for writing (user=root user_loginuid=-1 command=vim falco.yaml pid=434709 parent=bash pcmdline=bash file=/etc/falco/falco.yaml program=vim gparent=tmux: client ggparent=<NA> gggparent=<NA> container_id=host image=<NA>)","priority":"Error","rule":"Write below etc","source":"syscall","tags":["T1098","container","filesystem","host","mitre_persistence"],"time":"2023-02-28T13:14:04.599163316Z", "output_fields": {"container.id":"host","container.image.repository":null,"evt.time":1677590044599163316,"fd.name":"/etc/falco/falco.yaml","proc.aname[2]":"tmux: client","proc.aname[3]":null,"proc.aname[4]":null,"proc.cmdline":"vim falco.yaml","proc.name":"vim","proc.pcmdline":"bash","proc.pid":434709,"proc.pname":"bash","user.loginuid":-1,"user.name":"root"}}
+-->
+
+<group name="syslog,falco,">
+  <rule id="93000" level="0" noalert="1">
+      <decoded_as>falco-syslog</decoded_as>
+      <description>Grouping for the Falco rules.</description>
+  </rule>
+  <rule id="903001" level="2">
+      <if_sid>93000</if_sid>
+      <description>"$(rule) - $(priority) - $(output)" has an error</description>
+      <field name="priority">Notice|Info|Debug</field>
+  </rule>
+  <rule id="903002" level="3">
+      <if_sid>93000</if_sid>
+      <description>"$(rule) - $(priority) - $(output)" has an error</description>
+      <field name="priority">Warning</field>
+  </rule>
+  <rule id="903003" level="6">
+      <if_sid>93000</if_sid>
+      <description>"$(rule) - $(priority) - $(output)" has an error</description>
+      <field name="priority">Error</field>
+  </rule>
+  <rule id="903004" level="12">
+      <if_sid>93000</if_sid>
+      <description>"$(rule) - $(priority) - $(output)" has an error</description>
+      <field name="priority">Critical|Emergency|Alert</field>
+  </rule>
+</group>

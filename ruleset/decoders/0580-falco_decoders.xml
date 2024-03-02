@@ -1,0 +1,24 @@
+<!--
+  -  falco syslog-json decoders
+  -  Author: powercloud GmbH - Johannes Drummer
+  -  Copyright (C) 2023, powercloud GmbH
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<!-- 
+The decoder expects the falco to be configured with syslog_output, json_output, and json_include_output_property enabled.
+If you don't use syslog, you have to create a custom decoder that still uses the json output, or else you will probably not have all fields in the same format.
+-->
+
+<!--
+Feb 28 13:14:04 ip-10-0-3-249 falco: {"hostname":"i-d34fd4tdr545","output":"13:14:04.599163316: Error File below /etc opened for writing (user=root user_loginuid=-1 command=vim falco.yaml pid=434709 parent=bash pcmdline=bash file=/etc/falco/falco.yaml program=vim gparent=tmux: client ggparent=<NA> gggparent=<NA> container_id=host image=<NA>)","priority":"Error","rule":"Write below etc","source":"syscall","tags":["T1098","container","filesystem","host","mitre_persistence"],"time":"2023-02-28T13:14:04.599163316Z", "output_fields": {"container.id":"host","container.image.repository":null,"evt.time":1677590044599163316,"fd.name":"/etc/falco/falco.yaml","proc.aname[2]":"tmux: client","proc.aname[3]":null,"proc.aname[4]":null,"proc.cmdline":"vim falco.yaml","proc.name":"vim","proc.pcmdline":"bash","proc.pid":434709,"proc.pname":"bash","user.loginuid":-1,"user.name":"root"}}
+-->
+
+<decoder name="falco-syslog">
+  <program_name>falco</program_name>
+</decoder>
+
+<decoder name="falco-syslog-json">
+  <parent>falco-syslog</parent>
+  <plugin_decoder offset="after_parent">JSON_Decoder</plugin_decoder>
+</decoder>
