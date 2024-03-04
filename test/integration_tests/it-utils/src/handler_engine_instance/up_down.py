@@ -23,11 +23,10 @@ class UpDownEngine:
         request = api_router.TableGet_Request()
 
         while current_attempt < max_attempts:
-            error, request = api_client.send_recv(request)
+            error, response = api_client.send_recv(request)
             if error == None:
                 break
 
-            print(f"Attempt {current_attempt + 1}/{max_attempts} failed. Waiting for 1 second before retrying...")
             time.sleep(1)
             current_attempt += 1
 
@@ -46,16 +45,13 @@ class UpDownEngine:
         except Exception as e:
             print(f"Could not find the process with PID {self.process.pid}: {e}")
 
-    def send_start_command(self, ignore_level_log_of_config=True):
+    def send_start_command(self):
         try:
             """
             Executes actions before the start of all scenarios.
             """
             # Command to execute the binary in the background
-            if not ignore_level_log_of_config:
-                command = f"{BINARY_PATH} --config {CONF_FILE} server start"
-            else:
-                command = f"{BINARY_PATH} --config {CONF_FILE} server -l debug start"
+            command = f"{BINARY_PATH} --config {CONF_FILE} server start"
 
             # Split the command into a list of arguments using shlex
             args = shlex.split(command)

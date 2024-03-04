@@ -111,7 +111,7 @@ def step_impl(context, item: str, value: str):
 @when('I send a restart to server')
 def step_impl(context):
     context.shared_data['engine_instance'].send_stop_command()
-    context.shared_data['engine_instance'].send_start_command(False)
+    context.shared_data['engine_instance'].send_start_command()
 
 @then('I should receive a {status} response indicating "{response}"')
 def step_impl(context, status: str, response: str):
