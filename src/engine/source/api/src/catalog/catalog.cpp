@@ -27,9 +27,7 @@ Catalog::Catalog(const Config& config)
     m_store = config.store;
     m_validator = config.validator;
 
-    LOG_DEBUG("Engine catalog: '{}' method: Asset schema name: '{}'. Environment schema name: '{}'.",
-              __func__,
-              config.assetSchema);
+    LOG_DEBUG("Engine catalog: constructor: Asset schema name: '{}'.", config.assetSchema);
 
     // Json handling
     m_outFormat[Resource::Format::json] = [](const json::Json& json)
@@ -222,7 +220,8 @@ Catalog::postResource(const Resource& collection, const std::string& namespaceSt
             "Content '{}' could not be added to store: {}", contentNameStr.value(), storeError.value().message)};
     }
 
-    return base::noError();;
+    return base::noError();
+    ;
 }
 
 std::optional<base::Error> Catalog::checkResourceInNamespace(const api::catalog::Resource& item,
@@ -257,9 +256,9 @@ std::optional<base::Error> Catalog::checkResourceInNamespace(const api::catalog:
     if (namespaceId != base::getResponse(ns).str())
     {
         return base::Error {fmt::format("Could not {} resource '{}': Does not exist in the '{}' namespace",
-                                         operation,
-                                         item.m_name.fullName(),
-                                         namespaceId)};
+                                        operation,
+                                        item.m_name.fullName(),
+                                        namespaceId)};
     }
 
     return base::noError();
@@ -347,7 +346,8 @@ Catalog::putResource(const Resource& item, const std::string& content, const std
             "Content '{}' could not be updated in store: {}", contentNameStr.value(), storeError.value().message)};
     }
 
-    return base::noError();;
+    return base::noError();
+    ;
 }
 
 base::RespOrError<store::Doc> Catalog::getDoc(const Resource& resource) const
@@ -527,11 +527,11 @@ std::optional<base::Error> Catalog::validate(const Resource& item, const json::J
         return base::Error {validationError.value().message};
     }
 
-    return base::noError();;
+    return base::noError();
+    ;
 }
 
-std::optional<base::Error>
-Catalog::validateResource(const Resource& item, const std::string& content) const
+std::optional<base::Error> Catalog::validateResource(const Resource& item, const std::string& content) const
 {
     // Assert resource is asset, policy or integration
     if (Resource::Type::decoder != item.m_type && Resource::Type::rule != item.m_type
@@ -565,7 +565,8 @@ Catalog::validateResource(const Resource& item, const std::string& content) cons
         return base::Error {validationError.value().message};
     }
 
-    return base::noError();;
+    return base::noError();
+    ;
 }
 
 } // namespace api::catalog
