@@ -65,3 +65,6 @@ Feature: Configuration API Management
     When I send a restart to server
     When I send a request to get configuration of the following fields ["server.log_level"]
     Then I should receive "info" like log_level
+    When I send a request to update the iteam "server.log_level" to "error" value
+    And I send a request to save configuration file
+    And I send a restart to server

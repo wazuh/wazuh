@@ -64,11 +64,11 @@ jobs:
 
     - name: Setup environment
       # Set Engine Configuration
-      run: bash ${{env.ENGINE_DIR}}/test/setupEnvironment.sh
+      run: python3 ${{env.ENGINE_DIR}}/test/setupEnvironment.py -e /tmp/actions
 
     - name: Initial state
-      run: bash ${{env.ENGINE_DIR}}/test/integration_tests/initialState.sh
+      run: python3 ${{env.ENGINE_DIR}}/test/integration_tests/initialState.py -e /tmp/actions
 
     - name: Integration Test
       # Run integration tests using behave
-      run: bash ${{env.ENGINE_DIR}}/test/integration_tests/run.sh
+      run: python3 ${{env.ENGINE_DIR}}/test/integration_tests/run.py -e /tmp/actions
