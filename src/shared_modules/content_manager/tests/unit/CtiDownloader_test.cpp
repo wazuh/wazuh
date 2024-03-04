@@ -24,9 +24,6 @@ constexpr auto CONTENT_TYPE {"raw"};
 constexpr auto FAKE_CTI_URL {"http://localhost:4444/snapshot/consumers"};
 constexpr auto RAW_URL {"http://localhost:4444/raw"};
 
-constexpr auto DEFAULT_LAST_OFFSET {0};
-constexpr auto DEFAULT_LAST_SNAPSHOT_LINK {""};
-
 /**
  * @class CtiDummyDownloader
  *
@@ -43,16 +40,11 @@ private:
      */
     void download(UpdaterContext& context) override
     {
-        const auto parameters {
-            getCtiBaseParameters(context.spUpdaterBaseContext->configData.at("url").get_ref<const std::string&>())};
-        m_lastOffset = parameters.lastOffset;
-        m_lastSnapshotLink = parameters.lastSnapshotLink;
-        m_lastSnapshotOffset = parameters.lastSnapshotOffset;
+        m_parameters = std::make_shared<CtiBaseParameters>(
+            getCtiBaseParameters(context.spUpdaterBaseContext->configData.at("url").get_ref<const std::string&>()));
     }
 
-    int m_lastOffset {DEFAULT_LAST_OFFSET};                      ///< Last offset downloaded from CTI.
-    std::string m_lastSnapshotLink {DEFAULT_LAST_SNAPSHOT_LINK}; ///< Last snapshot link downloaded from CTI.
-    int m_lastSnapshotOffset {DEFAULT_LAST_OFFSET};              ///< Last offset within the snapshot.
+    std::shared_ptr<CtiBaseParameters> m_parameters; ///< Parameters used on tests.
 
 public:
     /**
@@ -66,33 +58,13 @@ public:
     }
 
     /**
-     * @brief Returns the CTI last offset.
+     * @brief Returns the CTI base parameters.
      *
-     * @return int Last offset.
+     * @return CtiBaseParameters Downloaded parameters.
      */
-    int getLastOffset() const
+    std::shared_ptr<CtiBaseParameters> getParameters() const
     {
-        return m_lastOffset;
-    }
-
-    /**
-     * @brief Returns the snapshot last offset.
-     *
-     * @return int Last snapshot offset.
-     */
-    int getLastSnapshotOffset() const
-    {
-        return m_lastSnapshotOffset;
-    }
-
-    /**
-     * @brief Returns the CTI last snapshot link.
-     *
-     * @return std::string Last snapshot link.
-     */
-    std::string getLastSnapshotLink() const
-    {
-        return m_lastSnapshotLink;
+        return m_parameters;
     }
 };
 
@@ -155,9 +127,10 @@ TEST_F(CtiDownloaderTest, BaseParametersDownload)
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 
     // Check expected base parameters.
-    EXPECT_EQ(downloader.getLastOffset(), 3);
-    EXPECT_EQ(downloader.getLastSnapshotLink(), "localhost:4444/" + SNAPSHOT_FILE_NAME);
-    EXPECT_EQ(downloader.getLastSnapshotOffset(), 3);
+    const auto parameters {downloader.getParameters()};
+    EXPECT_EQ(parameters->lastOffset.value(), 3);
+    EXPECT_EQ(parameters->lastSnapshotLink.value(), "localhost:4444/" + SNAPSHOT_FILE_NAME);
+    EXPECT_EQ(parameters->lastSnapshotOffset.value(), 3);
 }
 
 /**
@@ -183,9 +156,10 @@ TEST_F(CtiDownloaderTest, BaseParametersDownloadWithRetry)
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 
     // Check expected base parameters.
-    EXPECT_EQ(downloader.getLastOffset(), 3);
-    EXPECT_EQ(downloader.getLastSnapshotLink(), "localhost:4444/" + SNAPSHOT_FILE_NAME);
-    EXPECT_EQ(downloader.getLastSnapshotOffset(), 3);
+    const auto parameters {downloader.getParameters()};
+    EXPECT_EQ(parameters->lastOffset.value(), 3);
+    EXPECT_EQ(parameters->lastSnapshotLink.value(), "localhost:4444/" + SNAPSHOT_FILE_NAME);
+    EXPECT_EQ(parameters->lastSnapshotOffset.value(), 3);
 }
 
 /**
@@ -250,7 +224,205 @@ TEST_F(CtiDownloaderTest, BaseParametersDownloadInterrupted)
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 
     // Check expected base parameters.
-    EXPECT_EQ(downloader.getLastOffset(), DEFAULT_LAST_OFFSET);
-    EXPECT_EQ(downloader.getLastSnapshotLink(), DEFAULT_LAST_SNAPSHOT_LINK);
-    EXPECT_EQ(downloader.getLastSnapshotOffset(), DEFAULT_LAST_OFFSET);
+    const auto parameters {downloader.getParameters()};
+    EXPECT_FALSE(parameters->lastOffset.has_value());
+    EXPECT_FALSE(parameters->lastSnapshotLink.has_value());
+    EXPECT_FALSE(parameters->lastSnapshotOffset.has_value());
+}
+
+/**
+ * @brief Tests the download of metadata with invalid JSON format.
+ *
+ */
+TEST_F(CtiDownloaderTest, BaseParametersDownloadMetadataInvalidFormat)
+{
+    std::string mockMetadata = R"({data":{})";
+    m_spFakeServer->setCtiMetadata(std::move(mockMetadata));
+
+    auto downloader {CtiDummyDownloader(HTTPRequest::instance())};
+    ASSERT_THROW(downloader.handleRequest(m_spUpdaterContext), std::runtime_error);
+
+    // Check expected data.
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
+    expectedData["stageStatus"] = FAIL_STATUS;
+    expectedData["type"] = CONTENT_TYPE;
+    expectedData["offset"] = 0;
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+}
+
+/**
+ * @brief Tests the download of metadata with missing last_snapshot_offset key.
+ *
+ */
+TEST_F(CtiDownloaderTest, BaseParametersDownloadMetadataMissingLastSnapshotOffsetKey)
+{
+    std::string mockMetadata = R"(
+        {
+            "data":
+            {
+                "ignored_key": true,
+                "last_offset": 100,
+                "last_snapshot_link": "some_link"
+            }
+        }
+    )";
+    m_spFakeServer->setCtiMetadata(std::move(mockMetadata));
+
+    auto downloader {CtiDummyDownloader(HTTPRequest::instance())};
+    ASSERT_NO_THROW(downloader.handleRequest(m_spUpdaterContext));
+
+    // Check expected data.
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
+    expectedData["stageStatus"] = OK_STATUS;
+    expectedData["type"] = CONTENT_TYPE;
+    expectedData["offset"] = 0;
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+
+    // Check expected base parameters.
+    const auto parameters {downloader.getParameters()};
+    EXPECT_EQ(parameters->lastOffset.value(), 100);
+    EXPECT_EQ(parameters->lastSnapshotLink.value(), "some_link");
+    EXPECT_FALSE(parameters->lastSnapshotOffset.has_value());
+}
+
+/**
+ * @brief Tests the download of metadata with missing last_snapshot_link key.
+ *
+ */
+TEST_F(CtiDownloaderTest, BaseParametersDownloadMetadataMissingLastSnapshotLinkKey)
+{
+    std::string mockMetadata = R"(
+        {
+            "data":
+            {
+                "ignored_key": true,
+                "last_offset": 100,
+                "last_snapshot_offset": 50
+            }
+        }
+    )";
+    m_spFakeServer->setCtiMetadata(std::move(mockMetadata));
+
+    auto downloader {CtiDummyDownloader(HTTPRequest::instance())};
+    ASSERT_NO_THROW(downloader.handleRequest(m_spUpdaterContext));
+
+    // Check expected data.
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
+    expectedData["stageStatus"] = OK_STATUS;
+    expectedData["type"] = CONTENT_TYPE;
+    expectedData["offset"] = 0;
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+
+    // Check expected base parameters.
+    const auto parameters {downloader.getParameters()};
+    EXPECT_EQ(parameters->lastOffset.value(), 100);
+    EXPECT_FALSE(parameters->lastSnapshotLink.has_value());
+    EXPECT_EQ(parameters->lastSnapshotOffset.value(), 50);
+}
+
+/**
+ * @brief Tests the download of metadata with missing last_offset key.
+ *
+ */
+TEST_F(CtiDownloaderTest, BaseParametersDownloadMetadataMissingLastOffsetKey)
+{
+    std::string mockMetadata = R"(
+        {
+            "data":
+            {
+                "ignored_key": true,
+                "last_snapshot_link": "some_link",
+                "last_snapshot_offset": 50
+            }
+        }
+    )";
+    m_spFakeServer->setCtiMetadata(std::move(mockMetadata));
+
+    auto downloader {CtiDummyDownloader(HTTPRequest::instance())};
+    ASSERT_NO_THROW(downloader.handleRequest(m_spUpdaterContext));
+
+    // Check expected data.
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
+    expectedData["stageStatus"] = OK_STATUS;
+    expectedData["type"] = CONTENT_TYPE;
+    expectedData["offset"] = 0;
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+
+    // Check expected base parameters.
+    const auto parameters {downloader.getParameters()};
+    EXPECT_FALSE(parameters->lastOffset.has_value());
+    EXPECT_EQ(parameters->lastSnapshotLink.value(), "some_link");
+    EXPECT_EQ(parameters->lastSnapshotOffset.value(), 50);
+}
+
+/**
+ * @brief Tests the download of metadata with an empty last_snapshot_link key.
+ *
+ */
+TEST_F(CtiDownloaderTest, BaseParametersDownloadMetadataEmptyLastSnapshotLinkKey)
+{
+    std::string mockMetadata = R"(
+        {
+            "data":
+            {
+                "ignored_key": true,
+                "last_snapshot_link": "",
+                "last_snapshot_offset": 50,
+                "last_offset": 100
+            }
+        }
+    )";
+    m_spFakeServer->setCtiMetadata(std::move(mockMetadata));
+
+    auto downloader {CtiDummyDownloader(HTTPRequest::instance())};
+    ASSERT_NO_THROW(downloader.handleRequest(m_spUpdaterContext));
+
+    // Check expected data.
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
+    expectedData["stageStatus"] = OK_STATUS;
+    expectedData["type"] = CONTENT_TYPE;
+    expectedData["offset"] = 0;
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+
+    // Check expected base parameters.
+    const auto parameters {downloader.getParameters()};
+    EXPECT_EQ(parameters->lastOffset.value(), 100);
+    EXPECT_FALSE(parameters->lastSnapshotLink.has_value());
+    EXPECT_EQ(parameters->lastSnapshotOffset.value(), 50);
+}
+
+/**
+ * @brief Tests the download of metadata without 'data' key.
+ *
+ */
+TEST_F(CtiDownloaderTest, BaseParametersDownloadMetadataMissingDataKey)
+{
+    std::string mockMetadata = R"(
+        {
+            "metadata":
+            {
+                "ignored_key": true,
+                "last_snapshot_link": "some_link",
+                "last_snapshot_offset": 50,
+                "last_offset": 100
+            }
+        }
+    )";
+    m_spFakeServer->setCtiMetadata(std::move(mockMetadata));
+
+    auto downloader {CtiDummyDownloader(HTTPRequest::instance())};
+    ASSERT_THROW(downloader.handleRequest(m_spUpdaterContext), std::runtime_error);
+
+    // Check expected data.
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
+    expectedData["stageStatus"] = FAIL_STATUS;
+    expectedData["type"] = CONTENT_TYPE;
+    expectedData["offset"] = 0;
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 }

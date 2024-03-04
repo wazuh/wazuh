@@ -13,7 +13,7 @@
 #include "wdb_state.h"
 #include <os_net/os_net.h>
 
-#define WDB_SYSCOLLECTOR_DELTAS_TOPIC "deltas-syscollector"
+#define WDB_AGENT_EVENTS_TOPIC "wdb-agent-events"
 
 static void wdb_help() __attribute__ ((noreturn));
 static void handler(int signum);
@@ -130,8 +130,7 @@ int main(int argc, char ** argv)
 
     // Initialize variables
 
-    open_dbs = OSHash_Create();
-    if (!open_dbs) merror_exit("wazuh_db: OSHash_Create() failed");
+    wdb_pool_init();
 
     if (!run_foreground) {
         goDaemon();
@@ -205,8 +204,8 @@ int main(int argc, char ** argv)
     router_initialize(taggedLogFunction);
 
     // Router provider initialization
-    if (router_syscollector_handle = router_provider_create(WDB_SYSCOLLECTOR_DELTAS_TOPIC, false), !router_syscollector_handle) {
-        mdebug2("Failed to create router handle for 'syscollector'.");
+    if (router_agent_events_handle = router_provider_create(WDB_AGENT_EVENTS_TOPIC, false), !router_agent_events_handle) {
+        mdebug2("Failed to create router handle for 'wdb-agent-events'.");
     }
 
     if (notify_queue = wnotify_init(1), !notify_queue) {
@@ -219,8 +218,6 @@ int main(int argc, char ** argv)
     wdb_state.uptime = time(NULL);
 
     // Start threads
-
-    rwlock_init(&pool_mutex);
 
     if (status = pthread_create(&thread_dealer, NULL, run_dealer, NULL), status != 0) {
         merror("Couldn't create 'run_dealer' thread: %s", strerror(status));
@@ -269,8 +266,6 @@ int main(int argc, char ** argv)
         pthread_join(thread_backup, NULL);
     }
     wdb_close_all();
-
-    OSHash_Free(open_dbs);
     wdb_free_conf();
 
     // Reset template here too, remove queue/db/.template.db again
@@ -279,7 +274,6 @@ int main(int argc, char ** argv)
     unlink(path_template);
     mdebug1("Template file removed again: %s", path_template);
 
-    rwlock_destroy(&pool_mutex);
     return EXIT_SUCCESS;
 
 failure:
@@ -481,7 +475,7 @@ void * run_backup(__attribute__((unused)) void * args) {
                                 merror("Creating Global DB snapshot by interval failed: %s", output);
                             }
                             last_global_backup_time = current_time;
-                            wdb_leave(wdb);
+                            wdb_pool_leave(wdb);
                         }
                     }
                     break;
@@ -540,7 +534,7 @@ void * run_up(__attribute__((unused)) void * args) {
         wdb = wdb_open_agent2(atoi(entry));
 
         if (wdb != NULL) {
-            wdb_leave(wdb);
+            wdb_pool_leave(wdb);
         }
 
         free(entry);

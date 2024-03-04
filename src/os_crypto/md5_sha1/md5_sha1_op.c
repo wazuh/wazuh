@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "file_op.h"
 #include "md5_sha1_op.h"
 #include <openssl/evp.h>
 #include <openssl/sha.h>
@@ -31,7 +32,7 @@ int OS_MD5_SHA1_File(const char *fname, const char *prefilter_cmd, os_md5 md5out
 
     /* Use prefilter_cmd if set */
     if (prefilter_cmd == NULL) {
-        fp = fopen(fname, mode == OS_BINARY ? "rb" : "r");
+        fp = wfopen(fname, mode == OS_BINARY ? "rb" : "r");
         if (!fp) {
             return (-1);
         }

@@ -24,6 +24,7 @@ include_directories(${SRC_FOLDER})
 include_directories(${SRC_FOLDER}/external/cJSON)
 include_directories(${SRC_FOLDER}/external/nlohmann)
 include_directories(${SRC_FOLDER}/external/rocksdb/include)
+include_directories(${SRC_FOLDER}/external/openssl/include)
 
 include_directories(${SHARED_MODULES}/utils)
 include_directories(${SHARED_MODULES}/common)

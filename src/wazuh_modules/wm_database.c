@@ -468,7 +468,7 @@ int wm_sync_group_file(const char* group_file, const char* group_file_path) {
         return OS_INVALID;
     }
 
-    FILE *fp = fopen(group_file_path, "r");
+    FILE *fp = wfopen(group_file_path, "r");
 
     if (!fp) {
         mtdebug1(WM_DATABASE_LOGTAG, "Groups file '%s' could not be opened for syncronization.", group_file_path);
@@ -615,7 +615,7 @@ int get_max_queued_events() {
     int n;
     FILE *fp;
 
-    if (!(fp = fopen(MAX_QUEUED_EVENTS_PATH, "r"))) {
+    if (!(fp = wfopen(MAX_QUEUED_EVENTS_PATH, "r"))) {
         mterror(WM_DATABASE_LOGTAG, FOPEN_ERROR, MAX_QUEUED_EVENTS_PATH, errno, strerror(errno));
         return -1;
     }
@@ -634,7 +634,7 @@ int get_max_queued_events() {
 int set_max_queued_events(int size) {
     FILE *fp;
 
-    if (!(fp = fopen(MAX_QUEUED_EVENTS_PATH, "w"))) {
+    if (!(fp = wfopen(MAX_QUEUED_EVENTS_PATH, "w"))) {
         mterror(WM_DATABASE_LOGTAG, FOPEN_ERROR, MAX_QUEUED_EVENTS_PATH, errno, strerror(errno));
         return -1;
     }

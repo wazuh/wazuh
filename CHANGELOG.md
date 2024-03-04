@@ -24,6 +24,7 @@ All notable changes to this project will be documented in this file.
 #### Added
 
 - Added new query "rollback" to wazuh-db. ([#16058](https://github.com/wazuh/wazuh/pull/16058))
+- Transition to Wazuh Keystore for Indexer Configuration. ([#21670](https://github.com/wazuh/wazuh/pull/21670))
 
 #### Changed
 
@@ -31,7 +32,6 @@ All notable changes to this project will be documented in this file.
 - Improved wazuh-db detection of deleted database files. ([#18476](https://github.com/wazuh/wazuh/pull/18476))
 - Added timeout and retry parameters to the VirusTotal integration. ([#16893](https://github.com/wazuh/wazuh/pull/16893))
 - Extended wazuh-analysisd EPS metrics with events dropped by overload and remaining credits in the previous cycle. ([#18988](https://github.com/wazuh/wazuh/pull/18988))
-- Replaced Filebeat's date index name processor. ([#19819](https://github.com/wazuh/wazuh/pull/19819))
 - Updated API and framework packages installation commands to use pip instead of direct invocation of setuptools. ([#18466](https://github.com/wazuh/wazuh/pull/18466))
 - Upgraded docker-compose V1 to V2 in API Integration test scripts. ([#17750](https://github.com/wazuh/wazuh/pull/17750))
 - Refactored how cluster status dates are treated in the cluster. ([#17015](https://github.com/wazuh/wazuh/pull/17015))
@@ -58,12 +58,15 @@ All notable changes to this project will be documented in this file.
 - FIM now buffers the Linux audit events for who-data to prevent side effects in other components. ([#16200](https://github.com/wazuh/wazuh/pull/16200))
 - The sub-process execution implementation has been improved. ([#19720](https://github.com/wazuh/wazuh/pull/19720))
 - Refactored and modularized the AWS integration code. ([#17623](https://github.com/wazuh/wazuh/pull/17623))
+- Replace the usage of fopen with wfopen to avoid processing invalid characters on Windows. ([#21791](https://github.com/wazuh/wazuh/pull/21791))
+- Prevent macOS agent to start automatically after installation. ([#21637](https://github.com/wazuh/wazuh/pull/21637))
 
 #### Fixed
 
 - Fixed process path retrieval in Syscollector on Windows XP. ([#16839](https://github.com/wazuh/wazuh/pull/16839))
 - Fixed detection of the OS version on Alpine Linux. ([#16056](https://github.com/wazuh/wazuh/pull/16056))
 - Fixed Solaris 10 name not showing in the Dashboard. ([#18642](https://github.com/wazuh/wazuh/pull/18642))
+- Fixed macOS Ventura compilation from sources. ([#21932](https://github.com/wazuh/wazuh/pull/21932))
 
 ### RESTful API
 
@@ -109,6 +112,10 @@ All notable changes to this project will be documented in this file.
 
 ### Other
 
+#### Added
+
+- Added external lua library dependency version 5.3.6. ([#21710](https://github.com/wazuh/wazuh/pull/21710))
+
 #### Changed
 
 - Upgraded external aiohttp library dependency version to 3.8.5. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
@@ -120,6 +127,23 @@ All notable changes to this project will be documented in this file.
 - Upgraded external SQLAlchemy library dependency version to 2.0.23. ([#20741](https://github.com/wazuh/wazuh/pull/20741))
 - Upgraded external Jinja2 library dependency version to 3.1.3. ([#21684](https://github.com/wazuh/wazuh/pull/21684))
 - Upgraded embedded Python version to 3.10.13. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
+- Upgraded external curl library dependency version to 8.5.0. ([#21710](https://github.com/wazuh/wazuh/pull/21710))
+- Upgraded external pcre2 library dependency version to 10.42. ([#21710](https://github.com/wazuh/wazuh/pull/21710))
+- Upgraded external libarchive library dependency version to 3.7.2. ([#21710](https://github.com/wazuh/wazuh/pull/21710))
+- Upgraded external rpm library dependency version to 4.18.2. ([#21710](https://github.com/wazuh/wazuh/pull/21710))
+- Upgraded external sqlite library dependency version to 3.45.0. ([#21710](https://github.com/wazuh/wazuh/pull/21710))
+- Upgraded external zlib library dependency version to 1.3.1. ([#21710](https://github.com/wazuh/wazuh/pull/21710))
+
+
+## [v4.7.3]
+
+### Manager
+
+#### Fixed
+
+- Resolved a transitive mutex locking issue in wazuh-db that was impacting performance. ([#21997](https://github.com/wazuh/wazuh/pull/21997))
+- Wazuh DB internal SQL queries have been optimized by tuning database indexes to improve performance. ([#21977](https://github.com/wazuh/wazuh/pull/21977))
+
 
 ## [v4.7.2]
 
