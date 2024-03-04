@@ -15,6 +15,7 @@
 #include "fakes/fakeServer.hpp"
 #include "updaterContext.hpp"
 #include "gtest/gtest.h"
+#include <chrono>
 #include <memory>
 
 const auto OK_STATUS = R"([{"stage":"CtiDummyDownloader","status":"ok"}])"_json;
@@ -25,6 +26,8 @@ constexpr auto FAKE_CTI_URL {"http://localhost:4444/snapshot/consumers"};
 constexpr auto RAW_URL {"http://localhost:4444/raw"};
 
 constexpr auto TOO_MANY_REQUESTS_RETRY_TIME {1};
+constexpr auto TOO_MANY_REQUESTS_RETRY_TIME_MS {TOO_MANY_REQUESTS_RETRY_TIME * 1000};
+constexpr auto GENERIC_ERROR_INITIAL_RETRY_TIME_MS {GENERIC_ERROR_INITIAL_RETRY_TIME * 1000};
 
 /**
  * @class CtiDummyDownloader
@@ -85,8 +88,9 @@ void CtiDownloaderTest::SetUp()
 
 void CtiDownloaderTest::TearDown()
 {
-    // Clear fake server errors queue.
+    // Clear fake server errors queue and records.
     m_spFakeServer->clearErrorsQueue();
+    m_spFakeServer->clearRecords();
 }
 
 void CtiDownloaderTest::SetUpTestSuite()
@@ -193,6 +197,15 @@ TEST_F(CtiDownloaderTest, BaseParametersDownloadWithRetryTooManyRequestsError)
     EXPECT_EQ(parameters->lastOffset.value(), 3);
     EXPECT_EQ(parameters->lastSnapshotLink.value(), "localhost:4444/" + SNAPSHOT_FILE_NAME);
     EXPECT_EQ(parameters->lastSnapshotOffset.value(), 3);
+
+    // Check amount of queries and timestamps.
+    const auto& records {m_spFakeServer->getRecords()};
+    ASSERT_EQ(records.size(), 2);
+    const auto& firstQueryTimestamp {records.front().timestamp};
+    const auto& lastQueryTimestamp {records.back().timestamp};
+    const auto milliseconds {
+        std::chrono::duration_cast<std::chrono::milliseconds>(lastQueryTimestamp - firstQueryTimestamp).count()};
+    EXPECT_GE(milliseconds, TOO_MANY_REQUESTS_RETRY_TIME_MS);
 }
 
 /**
@@ -223,6 +236,15 @@ TEST_F(CtiDownloaderTest, BaseParametersDownloadWithRetryDifferentErrors)
     EXPECT_EQ(parameters->lastOffset.value(), 3);
     EXPECT_EQ(parameters->lastSnapshotLink.value(), "localhost:4444/" + SNAPSHOT_FILE_NAME);
     EXPECT_EQ(parameters->lastSnapshotOffset.value(), 3);
+
+    // Check amount of queries and timestamps.
+    const auto& records {m_spFakeServer->getRecords()};
+    ASSERT_EQ(records.size(), 4);
+    const auto& firstQueryTimestamp {records.front().timestamp};
+    const auto& lastQueryTimestamp {records.back().timestamp};
+    const auto milliseconds {
+        std::chrono::duration_cast<std::chrono::milliseconds>(lastQueryTimestamp - firstQueryTimestamp).count()};
+    EXPECT_GE(milliseconds, TOO_MANY_REQUESTS_RETRY_TIME_MS * 2 + GENERIC_ERROR_INITIAL_RETRY_TIME_MS);
 }
 
 /**
@@ -265,6 +287,9 @@ TEST_F(CtiDownloaderTest, BaseParametersDownloadClientError)
     expectedData["offset"] = 0;
 
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+
+    // Check amount of queries.
+    ASSERT_EQ(m_spFakeServer->getRecords().size(), 1);
 }
 
 /**

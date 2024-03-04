@@ -29,6 +29,7 @@
 #include <utility>
 
 static const unsigned int TOO_MANY_REQUESTS_DEFAULT_RETRY_TIME {90};
+static const unsigned int GENERIC_ERROR_INITIAL_RETRY_TIME {1};
 
 /**
  * @brief CTI download error types.
@@ -238,8 +239,7 @@ protected:
                         else
                         {
                             // First time with this particular error.
-                            constexpr unsigned int INITIAL_SLEEP_TIME {1};
-                            sleepTime = INITIAL_SLEEP_TIME;
+                            sleepTime = GENERIC_ERROR_INITIAL_RETRY_TIME;
                             retryAttempt = 0;
                         }
                         break;
