@@ -107,6 +107,9 @@ else()
                                     -Wl,--wrap,fgetpos -Wl,--wrap=w_update_file_status -Wl,--wrap,_merror \
                                     -Wl,--wrap=w_get_hash_context -Wl,--wrap=_fseeki64 -Wl,--wrap=OS_SHA1_Stream \
                                     -Wl,--wrap=w_fseek -Wl,--wrap,wfopen")
+
+    list(APPEND logcollector_names "test_journal_log")
+    list(APPEND logcollector_flags "")
 endif()
 
 list(LENGTH logcollector_names count)
