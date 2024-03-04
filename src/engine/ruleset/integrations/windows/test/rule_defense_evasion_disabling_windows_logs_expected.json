@@ -44,12 +44,11 @@
       "command_line": "\"C:\\WINDOWS\\system32\\logman.exe\" stop EventLog",
       "entity_id": "{23b237de-8997-650b-b207-000000002000}",
       "executable": "C:\\Windows\\System32\\logman.exe",
-      "hash": [
-        "SHA1=5A0803FF099106C568D5CAE471E73593D5577238",
-        "MD5=1CB437D2AF203F5E3D87D32B2351926C",
-        "SHA256=FBE76828087D8FAF206C584E367804428A47910BBB856B4D1BA2FBF49F9AC854",
-        "IMPHASH=468AE0E85185C7B62E8740F0B95D8D25"
-      ],
+      "hash": {
+        "md5": "1CB437D2AF203F5E3D87D32B2351926C",
+        "sha1": "5A0803FF099106C568D5CAE471E73593D5577238",
+        "sha256": "FBE76828087D8FAF206C584E367804428A47910BBB856B4D1BA2FBF49F9AC854"
+      },
       "name": "logman.exe",
       "parent": {
         "args": [
@@ -65,6 +64,7 @@
         "company": "Microsoft Corporation",
         "description": "Performance Log Utility",
         "file_version": "10.0.19041.2193 (WinBuild.160101.0800)",
+        "imphash": "468AE0E85185C7B62E8740F0B95D8D25",
         "original_file_name": "Logman.exe",
         "product": "Microsoft\u00ae Windows\u00ae Operating System"
       },
