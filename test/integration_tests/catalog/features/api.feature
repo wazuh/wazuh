@@ -368,7 +368,7 @@ Feature: Catalog API Management
         map:
           - event.category: test
       """
-    Then I should receive a failed response indicating "Failed to build operation 'event.category: map("test")': Field 'event.category' is an array"
+    Then I should receive a failed response indicating "Failed to build operation 'event.category: map("test")': Operation expects a non-array, but field 'event.category' is"
 
 
   Scenario: Try to validate the resource that has invalid check-map

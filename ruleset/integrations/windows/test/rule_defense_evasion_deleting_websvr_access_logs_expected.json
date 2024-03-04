@@ -39,11 +39,10 @@
     "process": {
       "entity_id": "{7100ab27-350d-6506-912a-000000001200}",
       "executable": "C:\\Users\\nahuel\\Desktop\\nahuel\\Apache24\\bin\\httpd.exe",
-      "hash": [
-        "MD5=55BFEBE68443611320A8A70C7DFD5D56",
-        "SHA256=5809ABFE5219B046AF113536279F8B16F9D6A5A3E63417BAE6E1202A3E958C33",
-        "IMPHASH=00000000000000000000000000000000"
-      ],
+      "hash": {
+        "md5": "55BFEBE68443611320A8A70C7DFD5D56",
+        "sha256": "5809ABFE5219B046AF113536279F8B16F9D6A5A3E63417BAE6E1202A3E958C33"
+      },
       "name": "httpd.exe",
       "parent": {
         "name": "httpd.exe"
