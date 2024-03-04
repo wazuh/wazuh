@@ -11,14 +11,12 @@
 
 #include <defs/mockDefinitions.hpp>
 #include <schemf/mockSchema.hpp>
-#include <schemval/mockValidator.hpp>
 
 using namespace base::test;
 using namespace builder::builders;
 using namespace builder::mocks;
 using namespace builder::builders::mocks;
 using namespace schemf::mocks;
-using namespace schemval::mocks;
 using namespace defs::mocks;
 
 const static auto IGNORE_MAP_RESULT = json::Json("null");
@@ -36,8 +34,7 @@ struct BuildersMocks
 {
     std::shared_ptr<const MockBuildCtx> ctx;
     std::shared_ptr<const RunState> runState;
-    std::shared_ptr<MockSchema> schema;
-    std::shared_ptr<MockValidator> validator;
+    std::shared_ptr<MockSchema> validator;
     std::shared_ptr<MockMetaRegistry<OpBuilderEntry, StageBuilder>> registry;
     std::shared_ptr<MockDefinitions> definitions;
     Context context;
@@ -53,28 +50,13 @@ protected:
         mocks = std::make_shared<BuildersMocks>();
         mocks->ctx = std::make_shared<const MockBuildCtx>();
         mocks->runState = std::make_shared<const RunState>();
-        mocks->schema = std::make_shared<MockSchema>();
-        mocks->validator = std::make_shared<MockValidator>();
+        mocks->validator = std::make_shared<MockSchema>();
         mocks->registry = MockMetaRegistry<OpBuilderEntry, StageBuilder>::createMock();
         mocks->definitions = std::make_shared<MockDefinitions>();
 
         ON_CALL(*mocks->ctx, context()).WillByDefault(testing::ReturnRef(mocks->context));
         ON_CALL(*mocks->ctx, runState()).WillByDefault(testing::Return(mocks->runState));
-        ON_CALL(*mocks->ctx, schema()).WillByDefault(testing::ReturnRef(*(mocks->schema)));
         ON_CALL(*mocks->ctx, validator()).WillByDefault(testing::ReturnRef(*(mocks->validator)));
-    }
-
-    void TearDown() override
-    {
-        mocks->validator.reset();
-        mocks->schema.reset();
-        mocks->runState.reset();
-        mocks->ctx.reset();
-        mocks->runState.reset();
-        mocks->validator.reset();
-        mocks->registry.reset();
-        mocks->definitions.reset();
-        mocks.reset();
     }
 
     void expectBuildSuccess()
@@ -282,7 +264,7 @@ auto expectFilterHelper(const std::string& name, Builder builder)
         EXPECT_CALL(*ctx, validator()).Times(testing::AtLeast(1)).WillRepeatedly(testing::ReturnRef(*mocks.validator));
         EXPECT_CALL(*mocks.validator, validate(testing::_, testing::_))
             .Times(testing::AtLeast(1))
-            .WillRepeatedly(testing::Return(base::noError()));
+            .WillRepeatedly(testing::Return(schemf::ValidationResult()));
 
         EXPECT_CALL(*mocks.ctx, registry()).WillOnce(testing::ReturnRef(*mocks.registry));
         EXPECT_CALL(innerRegistry, get(name)).WillOnce(testing::Return(builder));
@@ -306,8 +288,7 @@ auto expectMapHelper(const std::string& name, Builder builder)
         EXPECT_CALL(*ctx, validator()).Times(testing::AtLeast(1)).WillRepeatedly(testing::ReturnRef(*mocks.validator));
         EXPECT_CALL(*mocks.validator, validate(testing::_, testing::_))
             .Times(testing::AtLeast(1))
-            .WillRepeatedly(testing::Return(base::noError()));
-        EXPECT_CALL(*mocks.validator, getRuntimeValidator(testing::_, testing::_)).WillOnce(testing::Return(nullptr));
+            .WillRepeatedly(testing::Return(schemf::ValidationResult()));
 
         EXPECT_CALL(*mocks.ctx, registry()).WillOnce(testing::ReturnRef(*mocks.registry));
         EXPECT_CALL(innerRegistry, get(name)).WillOnce(testing::Return(builder));
@@ -342,7 +323,7 @@ auto expectAnyFilterHelper(Builders... builders)
         EXPECT_CALL(*ctx, validator()).Times(testing::AtLeast(1)).WillRepeatedly(testing::ReturnRef(*mocks.validator));
         EXPECT_CALL(*mocks.validator, validate(testing::_, testing::_))
             .Times(testing::AtLeast(1))
-            .WillRepeatedly(testing::Return(base::noError()));
+            .WillRepeatedly(testing::Return(schemf::ValidationResult()));
 
         EXPECT_CALL(*mocks.ctx, registry()).WillRepeatedly(testing::ReturnRef(*mocks.registry));
 
@@ -374,8 +355,7 @@ auto expectAnyMapHelper(Builders... builders)
         EXPECT_CALL(*ctx, validator()).Times(testing::AtLeast(1)).WillRepeatedly(testing::ReturnRef(*mocks.validator));
         EXPECT_CALL(*mocks.validator, validate(testing::_, testing::_))
             .Times(testing::AtLeast(1))
-            .WillRepeatedly(testing::Return(base::noError()));
-        EXPECT_CALL(*mocks.validator, getRuntimeValidator(testing::_, testing::_)).WillRepeatedly(testing::Return(nullptr));
+            .WillRepeatedly(testing::Return(schemf::ValidationResult()));
 
         EXPECT_CALL(*mocks.ctx, registry()).WillRepeatedly(testing::ReturnRef(*mocks.registry));
 

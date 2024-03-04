@@ -1,4 +1,5 @@
 #include "schema.hpp"
+#include "validator.hpp"
 
 #include <stdexcept>
 
@@ -6,6 +7,14 @@
 
 namespace schemf
 {
+
+Schema::Schema()
+    : m_validator(std::make_unique<Validator>(*this))
+{
+}
+
+Schema::~Schema() = default;
+
 void Schema::addField(const DotPath& name, const Field& field)
 {
     if (name.parts().empty())
@@ -140,7 +149,7 @@ Field Schema::entryToField(const std::string& name, const json::Json& entry) con
     {
         throw std::runtime_error(fmt::format("Field '{}' must have a type", name));
     }
-    params.type = strToType(type.value().c_str());
+    params.type = strToType(type.value());
     params.isArray = entry.getBool("/array").value_or(false);
 
     Field field;
@@ -177,4 +186,8 @@ void Schema::load(const json::Json& json)
     }
 }
 
+base::RespOrError<ValidationResult> Schema::validate(const DotPath& name, const ValidationToken& token) const
+{
+    return m_validator->validate(name, token);
+}
 } // namespace schemf

@@ -57,44 +57,44 @@ namespace builder::builders
 
 OpBuilder buildType(const OpBuilder& builder,
                     const Reference& targetField,
-                    const schemval::ValidationToken& validationToken,
-                    const schemval::IValidator& validator)
+                    const schemf::ValidationToken& validationToken,
+                    const schemf::IValidator& validator)
 {
-    auto res = validator.validate(targetField.dotPath(), validationToken);
-    if (base::isError(res))
+    auto resp = validator.validate(targetField.dotPath(), validationToken);
+    if (base::isError(resp))
     {
-        throw std::runtime_error(base::getError(res).message);
+        throw std::runtime_error(base::getError(resp).message);
     }
 
-    return builder;
+    auto validation = base::getResponse<schemf::ValidationResult>(resp);
+
+    if (!validation.needsRuntimeValidation())
+    {
+        return builder;
+    }
+
+    return runType(builder, targetField, validation);
 }
 
-OpBuilder runType(const OpBuilder& builder,
-                  const Reference& targetField,
-                  const schemval::ValidationToken& validationToken,
-                  const schemval::IValidator& validator)
+OpBuilder
+runType(const OpBuilder& builder, const Reference& targetField, const schemf::ValidationResult& validationResult)
 {
-    if (!std::holds_alternative<MapBuilder>(builder) || !validationToken.needsRuntimeValidation())
+    if (!std::holds_alternative<MapBuilder>(builder))
     {
         return builder;
     }
 
     // Get runtime validator for target field if has any
-    auto runValidator = validator.getRuntimeValidator(targetField.dotPath());
-    if (base::isError(runValidator))
-    {
-        return builder;
-    }
+    auto runValidator = validationResult.getValidator();
 
     // Wrapper Builder
     return [builder = std::get<MapBuilder>(builder),
-            runValidator = base::getResponse<schemval::RuntimeValidator>(runValidator)](
-               const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx) -> MapOp
+            runValidator](const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx) -> MapOp
     {
         auto mapOp = builder(opArgs, buildCtx);
 
         // Wrapper MapOp
-        const auto& invalidTrace = fmt::format("{} -> failed type validation", buildCtx->context().opName);
+        const auto& invalidTrace = fmt::format("{} -> schema validation failed: ", buildCtx->context().opName);
         return [invalidTrace, mapOp, runValidator, runState = buildCtx->runState()](base::ConstEvent event) -> MapResult
         {
             auto mapRes = mapOp(event);
@@ -105,10 +105,10 @@ OpBuilder runType(const OpBuilder& builder,
 
             const auto& value = mapRes.payload();
 
-            auto valid = runValidator(value);
-            if (!valid)
+            auto error = runValidator(value);
+            if (error)
             {
-                RETURN_FAILURE(runState, json::Json(), invalidTrace);
+                RETURN_FAILURE(runState, json::Json(), invalidTrace + error.value().message);
             }
 
             return std::move(mapRes);
@@ -207,7 +207,7 @@ base::Expression baseHelperBuilder(const std::string& helperName,
     }
 
     const auto& [validationInfo, builder] = base::getResponse<OpBuilderEntry>(resp);
-    schemval::ValidationToken validationToken;
+    schemf::ValidationToken validationToken;
     // Resolve validator if needed
     if (std::holds_alternative<DynamicValToken>(validationInfo))
     {
@@ -216,7 +216,7 @@ base::Expression baseHelperBuilder(const std::string& helperName,
     }
     else
     {
-        validationToken = std::get<schemval::ValidationToken>(validationInfo);
+        validationToken = std::get<schemf::ValidationToken>(validationInfo);
     }
 
     // Set operation name
@@ -239,11 +239,7 @@ base::Expression baseHelperBuilder(const std::string& helperName,
     try
     {
         auto finalBuilder =
-            toTransform(buildType(runType(builder, targetField, validationToken, newBuildCtx->validator()),
-                                  targetField,
-                                  validationToken,
-                                  newBuildCtx->validator()),
-                        targetField);
+            toTransform(buildType(builder, targetField, validationToken, newBuildCtx->validator()), targetField);
 
         op = toExpression(finalBuilder(targetField, opArgs, newBuildCtx), name);
     }

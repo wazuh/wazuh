@@ -16,16 +16,16 @@ auto customRefExpected(T... refs)
     {
         if (sizeof...(refs) > 0)
         {
-            EXPECT_CALL(*mocks.ctx, schema()).Times(testing::AtLeast(1));
+            EXPECT_CALL(*mocks.ctx, validator()).Times(testing::AtLeast(1));
         }
         else
         {
-            EXPECT_CALL(*mocks.ctx, schema());
+            EXPECT_CALL(*mocks.ctx, validator());
         }
 
         for (const auto& ref : {refs...})
         {
-            EXPECT_CALL(*mocks.schema, hasField(DotPath(ref))).WillOnce(testing::Return(false));
+            EXPECT_CALL(*mocks.validator, hasField(DotPath(ref))).WillOnce(testing::Return(false));
         }
 
         return None {};
@@ -36,12 +36,9 @@ auto jTypeRefExpected(const std::string& ref, json::Json::Type jType)
 {
     return [=](const BuildersMocks& mocks)
     {
-        EXPECT_CALL(*mocks.ctx, schema()).Times(testing::AtLeast(1));
-        EXPECT_CALL(*mocks.schema, hasField(DotPath(ref))).WillOnce(testing::Return(true));
-        auto sType = schemf::Type::BINARY;
-        EXPECT_CALL(*mocks.schema, getType(DotPath(ref))).WillOnce(testing::Return(sType));
-        EXPECT_CALL(*mocks.ctx, validator());
-        EXPECT_CALL(*mocks.validator, getJsonType(sType)).WillOnce(testing::Return(jType));
+        EXPECT_CALL(*mocks.ctx, validator()).Times(testing::AtLeast(1));
+        EXPECT_CALL(*mocks.validator, hasField(DotPath(ref))).WillOnce(testing::Return(true));
+        EXPECT_CALL(*mocks.validator, getJsonType(DotPath(ref))).WillOnce(testing::Return(jType));
 
         return None {};
     };
@@ -468,7 +465,7 @@ INSTANTIATE_TEST_SUITE_P(
                            [](const BuildersMocks& mocks)
                            {
                                jTypeRefExpected("ref", json::Json::Type::String)(mocks);
-                               EXPECT_CALL(*mocks.schema, isArray(DotPath("ref"))).WillOnce(testing::Return(true));
+                               EXPECT_CALL(*mocks.validator, isArray(DotPath("ref"))).WillOnce(testing::Return(true));
                                return None {};
                            })),
         TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
@@ -476,7 +473,7 @@ INSTANTIATE_TEST_SUITE_P(
                        FAILURE(
                            [](const BuildersMocks& mocks)
                            {
-                               EXPECT_CALL(*mocks.schema, isArray(DotPath("ref"))).WillOnce(testing::Return(true));
+                               EXPECT_CALL(*mocks.validator, isArray(DotPath("ref"))).WillOnce(testing::Return(true));
                                jTypeRefExpected("ref", json::Json::Type::Number)(mocks);
                                return None {};
                            })),
@@ -485,9 +482,9 @@ INSTANTIATE_TEST_SUITE_P(
                        FAILURE(
                            [](const BuildersMocks& mocks)
                            {
-                               EXPECT_CALL(*mocks.ctx, schema()).Times(testing::AtLeast(1));
-                               EXPECT_CALL(*mocks.schema, hasField(DotPath("ref"))).WillOnce(testing::Return(true));
-                               EXPECT_CALL(*mocks.schema, isArray(DotPath("ref"))).WillOnce(testing::Return(false));
+                               EXPECT_CALL(*mocks.ctx, validator()).Times(testing::AtLeast(1));
+                               EXPECT_CALL(*mocks.validator, hasField(DotPath("ref"))).WillOnce(testing::Return(true));
+                               EXPECT_CALL(*mocks.validator, isArray(DotPath("ref"))).WillOnce(testing::Return(false));
                                return None {};
                            })),
         TransformDepsT({makeValue(R"("dbname")"), makeValue(R"(["k0", "k1"])")},
@@ -512,9 +509,9 @@ INSTANTIATE_TEST_SUITE_P(
                            [](const BuildersMocks& mocks)
                            {
                                jTypeRefExpected("targetField", json::Json::Type::String)(mocks);
-                               EXPECT_CALL(*mocks.schema, isArray(DotPath("targetField")))
+                               EXPECT_CALL(*mocks.validator, isArray(DotPath("targetField")))
                                    .WillOnce(testing::Return(true));
-                               EXPECT_CALL(*mocks.schema, hasField(DotPath("ref"))).WillOnce(testing::Return(false));
+                               EXPECT_CALL(*mocks.validator, hasField(DotPath("ref"))).WillOnce(testing::Return(false));
                                return None {};
                            })),
         TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
@@ -524,7 +521,7 @@ INSTANTIATE_TEST_SUITE_P(
                        SUCCESS(
                            [](const BuildersMocks& mocks)
                            {
-                               EXPECT_CALL(*mocks.schema, hasField(DotPath("targetField")))
+                               EXPECT_CALL(*mocks.validator, hasField(DotPath("targetField")))
                                    .WillOnce(testing::Return(false));
                                jTypeRefExpected("ref", json::Json::Type::String)(mocks);
                                return None {};
@@ -556,9 +553,9 @@ INSTANTIATE_TEST_SUITE_P(
             FAILURE(
                 [](const BuildersMocks& mocks)
                 {
-                    EXPECT_CALL(*mocks.ctx, schema()).Times(testing::AtLeast(1));
-                    EXPECT_CALL(*mocks.schema, hasField(DotPath("targetField"))).WillOnce(testing::Return(true));
-                    EXPECT_CALL(*mocks.schema, isArray(DotPath("targetField"))).WillOnce(testing::Return(false));
+                    EXPECT_CALL(*mocks.ctx, validator()).Times(testing::AtLeast(1));
+                    EXPECT_CALL(*mocks.validator, hasField(DotPath("targetField"))).WillOnce(testing::Return(true));
+                    EXPECT_CALL(*mocks.validator, isArray(DotPath("targetField"))).WillOnce(testing::Return(false));
                     return None {};
                 })),
         TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeRef("ref")},
@@ -567,7 +564,7 @@ INSTANTIATE_TEST_SUITE_P(
                            [](const BuildersMocks& mocks)
                            {
                                jTypeRefExpected("targetField", json::Json::Type::Number)(mocks);
-                               EXPECT_CALL(*mocks.schema, isArray(DotPath("targetField")))
+                               EXPECT_CALL(*mocks.validator, isArray(DotPath("targetField")))
                                    .WillOnce(testing::Return(true));
                                return None {};
                            })),
@@ -577,7 +574,7 @@ INSTANTIATE_TEST_SUITE_P(
                            [](const BuildersMocks& mocks)
                            {
                                jTypeRefExpected("ref", json::Json::Type::Boolean)(mocks);
-                               EXPECT_CALL(*mocks.schema, hasField(DotPath("targetField")))
+                               EXPECT_CALL(*mocks.validator, hasField(DotPath("targetField")))
                                    .WillOnce(testing::Return(false));
                                return None {};
                            })),

@@ -5,7 +5,7 @@
 #include <string>
 
 #include <defs/idefinitions.hpp>
-#include <schemval/ivalidator.hpp>
+#include <schemf/ivalidator.hpp>
 
 #include "builders.hpp"
 #include "iregistry.hpp"
@@ -48,12 +48,9 @@ public:
     virtual const RegistryType& registry() const = 0;
     virtual void setRegistry(const std::shared_ptr<const RegistryType>& registry) = 0;
 
-    virtual const schemval::IValidator& validator() const = 0;
-    virtual void setValidator(const std::shared_ptr<const schemval::IValidator>& validator) = 0;
-
-    virtual const schemf::ISchema& schema() const = 0;
-    virtual std::shared_ptr<const schemf::ISchema> schemaPtr() const = 0;
-    virtual void setSchema(const std::shared_ptr<const schemf::ISchema>& schema) = 0;
+    virtual const schemf::IValidator& validator() const = 0;
+    virtual void setValidator(const std::shared_ptr<const schemf::IValidator>& validator) = 0;
+    virtual std::shared_ptr<const schemf::IValidator> validatorPtr() const = 0;
 
     virtual const Context& context() const = 0;
     virtual Context& context() = 0;

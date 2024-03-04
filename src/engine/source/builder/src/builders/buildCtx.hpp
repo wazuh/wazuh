@@ -18,7 +18,7 @@ private:
 
     std::shared_ptr<const defs::IDefinitions> m_definitions; // Definitions
 
-    std::shared_ptr<const schemval::IValidator> m_schemaValidator; // Schema validator
+    std::shared_ptr<const schemf::IValidator> m_schemaValidator; // Schema validator
 
     std::shared_ptr<const schemf::ISchema> m_schema; // Schema
 
@@ -38,7 +38,7 @@ public:
              const Context& context,
              const std::shared_ptr<const RegistryType>& registry,
              const std::shared_ptr<defs::IDefinitions>& definitions,
-             const std::shared_ptr<const schemval::IValidator>& schemaValidator)
+             const std::shared_ptr<const schemf::IValidator>& schemaValidator)
         : m_runState(runState)
         , m_context(context)
         , m_registry(registry)
@@ -60,15 +60,12 @@ public:
         m_definitions = definitions;
     }
 
-    inline const schemval::IValidator& validator() const override { return *m_schemaValidator; }
-    inline void setValidator(const std::shared_ptr<const schemval::IValidator>& validator) override
+    inline const schemf::IValidator& validator() const override { return *m_schemaValidator; }
+    inline void setValidator(const std::shared_ptr<const schemf::IValidator>& validator) override
     {
         m_schemaValidator = validator;
     }
-
-    inline const schemf::ISchema& schema() const override { return *m_schema; }
-    inline std::shared_ptr<const schemf::ISchema> schemaPtr() const override { return m_schema; }
-    inline void setSchema(const std::shared_ptr<const schemf::ISchema>& schema) override { m_schema = schema; }
+    inline std::shared_ptr<const schemf::IValidator> validatorPtr() const override { return m_schemaValidator; }
 
     inline const Context& context() const override { return m_context; }
     inline Context& context() override { return m_context; }

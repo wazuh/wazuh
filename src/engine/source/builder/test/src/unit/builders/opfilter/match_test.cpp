@@ -8,8 +8,8 @@ auto customRef()
 {
     return [](const BuildersMocks& mocks)
     {
-        EXPECT_CALL(*mocks.ctx, schema()).Times(testing::AtLeast(1));
-        EXPECT_CALL(*mocks.schema, hasField(testing::_)).WillRepeatedly(testing::Return(false));
+        EXPECT_CALL(*mocks.ctx, validator()).Times(testing::AtLeast(1));
+        EXPECT_CALL(*mocks.validator, hasField(testing::_)).WillRepeatedly(testing::Return(false));
         return None {};
     };
 }
@@ -18,9 +18,9 @@ auto typeArrayRef(bool isArray)
 {
     return [=](const BuildersMocks& mocks)
     {
-        EXPECT_CALL(*mocks.ctx, schema()).Times(testing::AtLeast(1));
-        EXPECT_CALL(*mocks.schema, hasField(DotPath("ref"))).WillOnce(testing::Return(true));
-        EXPECT_CALL(*mocks.schema, isArray(DotPath("ref"))).WillOnce(testing::Return(isArray));
+        EXPECT_CALL(*mocks.ctx, validator()).Times(testing::AtLeast(1));
+        EXPECT_CALL(*mocks.validator, hasField(DotPath("ref"))).WillOnce(testing::Return(true));
+        EXPECT_CALL(*mocks.validator, isArray(DotPath("ref"))).WillOnce(testing::Return(isArray));
         return None {};
     };
 }
@@ -29,9 +29,9 @@ auto typeRef(schemf::Type sType)
 {
     return [=](const BuildersMocks& mocks)
     {
-        EXPECT_CALL(*mocks.ctx, schema()).Times(testing::AtLeast(1));
-        EXPECT_CALL(*mocks.schema, hasField(DotPath("ref"))).WillOnce(testing::Return(true));
-        EXPECT_CALL(*mocks.schema, getType(DotPath("ref"))).WillRepeatedly(testing::Return(sType));
+        EXPECT_CALL(*mocks.ctx, validator()).Times(testing::AtLeast(1));
+        EXPECT_CALL(*mocks.validator, hasField(DotPath("ref"))).WillOnce(testing::Return(true));
+        EXPECT_CALL(*mocks.validator, getType(DotPath("ref"))).WillRepeatedly(testing::Return(sType));
         return None {};
     };
 }
