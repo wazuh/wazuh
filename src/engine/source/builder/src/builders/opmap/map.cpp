@@ -49,17 +49,16 @@ MapOp mapBuilder(const std::vector<OpArg>& opArgs, const std::shared_ptr<const I
 
 DynamicValToken mapValidator()
 {
-    auto resolver = [](const std::vector<OpArg>& opArgs,
-                       const schemval::IValidator& validator) -> schemval::ValidationToken
+    auto resolver = [](const std::vector<OpArg>& opArgs, const schemf::IValidator& validator) -> schemf::ValidationToken
     {
         utils::assertSize(opArgs, 1);
 
         if (opArgs[0]->isValue())
         {
-            return schemval::ValidationToken(std::static_pointer_cast<Value>(opArgs[0])->value());
+            return schemf::ValueToken::create(std::static_pointer_cast<Value>(opArgs[0])->value());
         }
 
-        return validator.createToken(std::static_pointer_cast<Reference>(opArgs[0])->dotPath());
+        return schemf::tokenFromReference(std::static_pointer_cast<Reference>(opArgs[0])->dotPath(), validator);
     };
 
     return resolver;

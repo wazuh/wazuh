@@ -12,44 +12,13 @@ TransformBuilder getArrayAppendBuilder(bool unique)
         utils::assertSize(opArgs, 1, utils::MAX_OP_ARGS);
 
         // Validation
-        std::unordered_map<size_t, schemval::RuntimeValidator> runValidators;
-        const auto& validator = buildCtx->validator();
-        for (auto i = 0; i < opArgs.size(); ++i)
+        auto result = buildCtx->validator().validate(targetField.dotPath(), schemf::isArrayToken());
+        if (base::isError(result))
         {
-            const auto& opArg = opArgs[i];
-            schemval::ValidationToken validationToken;
-            if (opArg->isValue())
-            {
-                const auto& value = std::static_pointer_cast<const Value>(opArg);
-                validationToken = validator.createToken(value->value());
-            }
-            else
-            {
-                const auto& reference = std::static_pointer_cast<const Reference>(opArg);
-                validationToken = validator.createToken(reference->dotPath());
-            }
-
-            auto res = validator.validateArray(targetField.dotPath(), validationToken);
-            if (base::isError(res))
-            {
-                throw std::runtime_error(base::getError(res).message);
-            }
-
-            if (validationToken.needsRuntimeValidation())
-            {
-                // Validate items with the ignoreArray flag set to true
-                auto runValidator = validator.getRuntimeValidator(targetField.dotPath(), true);
-                if (!base::isError(runValidator))
-                {
-                    runValidators.emplace(i, base::getResponse<schemval::RuntimeValidator>(runValidator));
-                }
-                runValidators.emplace(i, nullptr);
-            }
-            else
-            {
-                runValidators.emplace(i, nullptr);
-            }
+            throw std::runtime_error(base::getError(result).message);
         }
+
+        auto arrayValidator = base::getResponse<schemf::ValidationResult>(result).getValidator();
 
         // Transform the vector of arguments into a vector of map ops
         using AppendOp = std::function<base::OptError(std::vector<json::Json>&, const base::Event&)>;
@@ -75,11 +44,10 @@ TransformBuilder getArrayAppendBuilder(bool unique)
                             {
                                 return base::Error {duplicatedValue};
                             }
-
-                            targetArray.emplace_back(value);
                         }
 
-                        event->appendJson(value, targetField);
+                        targetArray.emplace_back(value);
+
                         return base::noError();
                     });
             }
@@ -99,7 +67,6 @@ TransformBuilder getArrayAppendBuilder(bool unique)
                      refValueNotValid,
                      duplicatedValue,
                      unique,
-                     runValidator = runValidators[i],
                      referencePath = std::static_pointer_cast<const Reference>(opArgs[i])->jsonPath()](
                         std::vector<json::Json>& targetArray, const base::Event& event) -> base::OptError
                     {
@@ -115,16 +82,9 @@ TransformBuilder getArrayAppendBuilder(bool unique)
                             {
                                 return base::Error {duplicatedValue};
                             }
-
-                            targetArray.emplace_back(value.value());
                         }
 
-                        if (runValidator && !runValidator(value.value()))
-                        {
-                            return base::Error {refValueNotValid};
-                        }
-
-                        event->appendJson(value.value(), targetField);
+                        targetArray.emplace_back(value.value());
                         return base::noError();
                     });
             }
@@ -132,25 +92,65 @@ TransformBuilder getArrayAppendBuilder(bool unique)
 
         // Traces
         const auto successTrace = fmt::format("{} -> Success", buildCtx->context().opName);
+        const auto failureTrace = fmt::format("{} -> Failure: ", buildCtx->context().opName);
+        const auto failureNotArray =
+            fmt::format("{} -> Target field '{}' is not an array", buildCtx->context().opName, targetField.dotPath());
 
         // TransformOp
         return [successTrace,
                 runState = buildCtx->runState(),
                 targetField = targetField.jsonPath(),
+                arrayValidator,
+                failureTrace,
+                failureNotArray,
                 appendOps = std::move(appendOps)](base::Event event) -> TransformResult
         {
-            std::vector<json::Json> targetArray;
+            if (event->exists(targetField) && !event->isArray(targetField))
+            {
+                RETURN_FAILURE(runState, event, failureNotArray);
+            }
 
             auto resp = event->getArray(targetField);
+            std::vector<json::Json> targetArray = resp.value_or(std::vector<json::Json>());
             if (resp)
             {
                 targetArray = std::vector<json::Json>(resp.value());
             }
 
+            bool atleastOne = false;
             for (const auto& appendOp : appendOps)
             {
                 auto res = appendOp(targetArray, event);
+                if (!atleastOne && !base::isError(res))
+                {
+                    atleastOne = true;
+                }
             }
+
+            if (!atleastOne)
+            {
+                RETURN_FAILURE(runState, event, failureTrace + "No valid value to append");
+            }
+
+            auto jArray = json::Json();
+            jArray.setArray();
+
+            for (const auto& item : targetArray)
+            {
+                jArray.appendJson(item);
+            }
+
+            // Validate the array
+            if (arrayValidator != nullptr)
+            {
+                auto res = arrayValidator(jArray);
+                if (base::isError(res))
+                {
+                    RETURN_FAILURE(runState, event, failureTrace + base::getError(res).message);
+                }
+            }
+
+            event->set(targetField, jArray);
 
             RETURN_SUCCESS(runState, event, successTrace);
         };

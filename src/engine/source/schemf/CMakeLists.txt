@@ -11,6 +11,7 @@ add_library(schemf::ischema ALIAS schemf_ischema)
 add_library(schemf STATIC
   ${SRC_DIR}/schema.cpp
   ${SRC_DIR}/field.cpp
+  ${SRC_DIR}/validator.cpp
 )
 
 target_include_directories(schemf
@@ -20,7 +21,7 @@ PRIVATE
   ${SRC_DIR}
   ${INC_DIR}/schemf
 )
-target_link_libraries(schemf schemf::ischema)
+target_link_libraries(schemf PUBLIC schemf::ischema PRIVATE hlp base)
 
 # Tests
 if(ENGINE_BUILD_TEST)
@@ -38,13 +39,14 @@ add_library(schemf::mocks ALIAS schemf_mocks)
 add_executable(schemf_utest
     ${UNIT_SRC_DIR}/field_test.cpp
 )
-target_link_libraries(schemf_utest PRIVATE schemf schemval gtest_main)
+target_link_libraries(schemf_utest PRIVATE schemf gtest_main)
 gtest_discover_tests(schemf_utest)
 
 add_executable(schemf_ctest
     ${COMPONENT_SRC_DIR}/schema_test.cpp
+    ${COMPONENT_SRC_DIR}/validator_test.cpp
 )
-target_link_libraries(schemf_ctest PRIVATE schemf schemval gtest_main)
+target_link_libraries(schemf_ctest PRIVATE schemf gtest_main)
 gtest_discover_tests(schemf_ctest)
 
 endif(ENGINE_BUILD_TEST)

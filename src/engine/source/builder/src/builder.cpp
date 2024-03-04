@@ -6,7 +6,7 @@
 
 #include "builders/ibuildCtx.hpp"
 #include "policy/assetBuilder.hpp"
-#include "policy/factory.hpp" // TODO: remove, this is needed by validateIntegration
+#include "policy/factory.hpp"
 #include "policy/policy.hpp"
 #include "register.hpp"
 #include "registry.hpp"
@@ -19,13 +19,11 @@ class Builder::Registry final : public builders::RegistryType
 };
 
 Builder::Builder(const std::shared_ptr<store::IStore>& storeRead,
-                 const std::shared_ptr<schemf::ISchema>& schema,
+                 const std::shared_ptr<schemf::IValidator>& schema,
                  const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
-                 const std::shared_ptr<schemval::IValidator>& validator,
                  const BuilderDeps& builderDeps)
     : m_storeRead {storeRead}
     , m_schema {schema}
-    , m_validator {validator}
     , m_definitionsBuilder {definitionsBuilder}
 {
     if (!m_storeRead)
@@ -41,11 +39,6 @@ Builder::Builder(const std::shared_ptr<store::IStore>& storeRead,
     if (!m_definitionsBuilder)
     {
         throw std::runtime_error {"Definitions builder is null"};
-    }
-
-    if (!m_validator)
-    {
-        throw std::runtime_error {"Validator is null"};
     }
 
     // Registry
@@ -64,7 +57,7 @@ std::shared_ptr<IPolicy> Builder::buildPolicy(const base::Name& name) const
     }
 
     auto policy = std::make_shared<policy::Policy>(
-        base::getResponse<store::Doc>(policyDoc), m_storeRead, m_definitionsBuilder, m_registry, m_validator, m_schema);
+        base::getResponse<store::Doc>(policyDoc), m_storeRead, m_definitionsBuilder, m_registry, m_schema);
 
     return policy;
 }
@@ -79,9 +72,8 @@ base::Expression Builder::buildAsset(const base::Name& name) const
 
     auto buildCtx = std::make_shared<builders::BuildCtx>();
     buildCtx->setRegistry(m_registry);
-    buildCtx->setValidator(m_validator);
+    buildCtx->setValidator(m_schema);
     buildCtx->runState().trace = true;
-    buildCtx->setSchema(m_schema);
 
     auto assetBuilder = std::make_shared<policy::AssetBuilder>(buildCtx, m_definitionsBuilder);
     auto asset = (*assetBuilder)(base::getResponse<store::Doc>(assetDoc));
@@ -132,9 +124,8 @@ base::OptError Builder::validateIntegration(const json::Json& json) const
 
     auto buildCtx = std::make_shared<builders::BuildCtx>();
     buildCtx->setRegistry(m_registry);
-    buildCtx->setValidator(m_validator);
+    buildCtx->setValidator(m_schema);
     buildCtx->runState().trace = true;
-    buildCtx->setSchema(m_schema);
 
     auto assetBuilder = std::make_shared<policy::AssetBuilder>(buildCtx, m_definitionsBuilder);
 
@@ -156,8 +147,7 @@ base::OptError Builder::validateAsset(const json::Json& json) const
     {
         auto buildCtx = std::make_shared<builders::BuildCtx>();
         buildCtx->setRegistry(m_registry);
-        buildCtx->setValidator(m_validator);
-        buildCtx->setSchema(m_schema);
+        buildCtx->setValidator(m_schema);
         auto assetBuilder = std::make_shared<policy::AssetBuilder>(buildCtx, m_definitionsBuilder);
         auto asset = (*assetBuilder)(json);
     }
@@ -173,8 +163,8 @@ base::OptError Builder::validatePolicy(const json::Json& json) const
 {
     try
     {
-        auto policy =
-            std::make_shared<policy::Policy>(json, m_storeRead, m_definitionsBuilder, m_registry, m_validator, m_schema);
+        auto policy = std::make_shared<policy::Policy>(
+            json, m_storeRead, m_definitionsBuilder, m_registry, m_schema);
     }
     catch (const std::exception& e)
     {

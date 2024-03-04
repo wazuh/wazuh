@@ -33,15 +33,13 @@ public:
      * @param store Store reader instance
      * @param definitionsBuilder Definitions builder
      * @param registry Registry instance
-     * @param validator Schema validator instance
-     * @param schema Schema instance
+     * @param schema Schema validator instance
      */
     Policy(const store::Doc& doc,
            const std::shared_ptr<store::IStoreReader>& store,
            const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
            const std::shared_ptr<builders::RegistryType>& registry,
-           const std::shared_ptr<schemval::IValidator>& validator,
-           const std::shared_ptr<schemf::ISchema>& schema);
+           const std::shared_ptr<schemf::IValidator>& schema);
 
     /**
      * @copydoc IPolicy::name

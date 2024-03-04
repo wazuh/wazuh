@@ -46,9 +46,9 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
     else
     {
         const auto& ref = *std::static_pointer_cast<const Reference>(key);
-        if (buildCtx->schema().hasField(ref.dotPath()))
+        if (buildCtx->validator().hasField(ref.dotPath()))
         {
-            auto jType = buildCtx->validator().getJsonType(buildCtx->schema().getType(ref.dotPath()));
+            auto jType = buildCtx->validator().getJsonType(ref.dotPath());
             if (jType != json::Json::Type::String)
             {
                 throw std::runtime_error(fmt::format("Expected reference field of 'string' type but got '{}'",
@@ -324,9 +324,9 @@ TransformOp KVDBSet(std::shared_ptr<IKVDBManager> kvdbManager,
     else
     {
         const auto& ref = *std::static_pointer_cast<const Reference>(key);
-        if (buildCtx->schema().hasField(ref.dotPath()))
+        if (buildCtx->validator().hasField(ref.dotPath()))
         {
-            auto jType = buildCtx->validator().getJsonType(buildCtx->schema().getType(ref.dotPath()));
+            auto jType = buildCtx->validator().getJsonType(ref.dotPath());
             if (jType != json::Json::Type::String)
             {
                 throw std::runtime_error(fmt::format("Expected reference field of 'string' type but got '{}'",
@@ -484,9 +484,9 @@ TransformOp KVDBDelete(std::shared_ptr<IKVDBManager> kvdbManager,
     else
     {
         const auto& ref = *std::static_pointer_cast<const Reference>(key);
-        if (buildCtx->schema().hasField(ref.dotPath()))
+        if (buildCtx->validator().hasField(ref.dotPath()))
         {
-            auto jType = buildCtx->validator().getJsonType(buildCtx->schema().getType(ref.dotPath()));
+            auto jType = buildCtx->validator().getJsonType(ref.dotPath());
             if (jType != json::Json::Type::String)
             {
                 throw std::runtime_error(fmt::format("Expected reference field of 'string' type but got '{}'",
@@ -627,14 +627,14 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
         else
         {
             const auto& ref = *std::static_pointer_cast<const Reference>(keyArray);
-            if (buildCtx->schema().hasField(ref.dotPath()))
+            if (buildCtx->validator().hasField(ref.dotPath()))
             {
-                if (!buildCtx->schema().isArray(ref.dotPath()))
+                if (!buildCtx->validator().isArray(ref.dotPath()))
                 {
                     throw std::runtime_error(fmt::format("Reference field '{}' is not an array", ref.dotPath()));
                 }
 
-                auto jType = buildCtx->validator().getJsonType(buildCtx->schema().getType(ref.dotPath()));
+                auto jType = buildCtx->validator().getJsonType(ref.dotPath());
                 if (jType != json::Json::Type::String)
                 {
                     throw std::runtime_error(
@@ -872,14 +872,14 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
     const auto& maskRef = *std::static_pointer_cast<const Reference>(opArgs[2]);
 
     // Verify the schema fields
-    const auto& schema = buildCtx->schema();
-    if (schema.hasField(targetField.dotPath()))
+
+    if (buildCtx->validator().hasField(targetField.dotPath()))
     {
-        if (!schema.isArray(targetField.dotPath()))
+        if (!buildCtx->validator().isArray(targetField.dotPath()))
         {
             throw std::runtime_error(fmt::format("Expected target field '{}' to be an array", targetField.dotPath()));
         }
-        auto jType = buildCtx->validator().getJsonType(schema.getType(targetField.dotPath()));
+        auto jType = buildCtx->validator().getJsonType(targetField.dotPath());
         if (jType != json::Json::Type::String)
         {
             throw std::runtime_error(
@@ -887,9 +887,9 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
         }
     }
 
-    if (schema.hasField(maskRef.dotPath()))
+    if (buildCtx->validator().hasField(maskRef.dotPath()))
     {
-        auto jType = buildCtx->validator().getJsonType(schema.getType(maskRef.dotPath()));
+        auto jType = buildCtx->validator().getJsonType(maskRef.dotPath());
         if (jType != json::Json::Type::String)
         {
             throw std::runtime_error(fmt::format("Expected mask field '{}' to be a string", maskRef.dotPath()));

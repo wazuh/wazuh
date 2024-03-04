@@ -56,13 +56,13 @@ FilterOp startsWithReference(const Reference& targetField,
                              const Reference& reference,
                              const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    const auto& schema = buildCtx->schema();
-    if (schema.hasField(reference.dotPath()) && schema.getType(reference.dotPath()) != schemf::Type::KEYWORD
-        && schema.getType(reference.dotPath()) != schemf::Type::TEXT)
+    const auto& validator = buildCtx->validator();
+    if (validator.hasField(reference.dotPath()) && validator.getType(reference.dotPath()) != schemf::Type::KEYWORD
+        && validator.getType(reference.dotPath()) != schemf::Type::TEXT)
     {
         throw std::runtime_error(fmt::format("Reference '{}' is of type '{}' but expected 'keyword' or 'text'",
                                              reference.dotPath(),
-                                             schemf::typeToStr(schema.getType(reference.dotPath()))));
+                                             schemf::typeToStr(validator.getType(reference.dotPath()))));
     }
 
     const auto referenceNotFound =

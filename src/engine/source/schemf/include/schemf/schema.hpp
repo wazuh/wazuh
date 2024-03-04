@@ -1,14 +1,13 @@
 #ifndef _SCHEMF_SCHEMA_HPP
 #define _SCHEMF_SCHEMA_HPP
 
+#include <experimental/propagate_const>
 #include <map>
-#include <optional>
 #include <string>
 
+#include <schemf/field.hpp>
 #include <schemf/ischema.hpp>
-
-#include "error.hpp"
-#include "field.hpp"
+#include <schemf/ivalidator.hpp>
 
 namespace schemf
 {
@@ -16,10 +15,12 @@ namespace schemf
  * @brief A schema, which holds a graph of fields.
  *
  */
-class Schema final : public ISchema
+class Schema final : public IValidator
 {
 private:
     std::map<std::string, Field> m_fields; ///< First level fields of the schema.
+    class Validator;
+    std::experimental::propagate_const<std::unique_ptr<Validator>> m_validator;
 
     const Field& get(const DotPath& name) const;
 
@@ -35,8 +36,8 @@ private:
     Field entryToField(const std::string& name, const json::Json& entry) const;
 
 public:
-    Schema() = default;
-    ~Schema() = default;
+    Schema();
+    ~Schema();
 
     /**
      * @brief Add a field to the schema. Parent fields will be created if they do not exist.
@@ -73,6 +74,11 @@ public:
     inline Type getType(const DotPath& name) const override { return get(name).type(); }
 
     /**
+     * @copydoc ISchema::getJsonType
+     */
+    inline json::Json::Type getJsonType(const DotPath& name) const override { return typeToJType(get(name).type()); }
+
+    /**
      * @copydoc ISchema::hasField
      */
     bool hasField(const DotPath& name) const override;
@@ -88,6 +94,11 @@ public:
      * @param json The JSON object schema.
      */
     void load(const json::Json& json);
+
+    /**
+     * @copydoc IValidator::validate
+     */
+    base::RespOrError<ValidationResult> validate(const DotPath& name, const ValidationToken& token) const override;
 };
 } // namespace schemf
 

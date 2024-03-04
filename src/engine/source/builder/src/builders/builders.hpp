@@ -6,7 +6,7 @@
 
 #include <baseTypes.hpp>
 #include <expression.hpp>
-#include <schemval/ivalidator.hpp>
+#include <schemf/ivalidator.hpp>
 
 #include "argument.hpp"
 #include "iregistry.hpp"
@@ -35,9 +35,8 @@ using FilterBuilder =
 using Op = std::variant<MapOp, TransformOp, FilterOp>;
 using OpBuilder = std::variant<MapBuilder, TransformBuilder, FilterBuilder>;
 
-using DynamicValToken =
-    std::function<schemval::ValidationToken(const std::vector<OpArg>&, const schemval::IValidator&)>;
-using ValidationInfo = std::variant<schemval::ValidationToken, DynamicValToken>;
+using DynamicValToken = std::function<schemf::ValidationToken(const std::vector<OpArg>&, const schemf::IValidator&)>;
+using ValidationInfo = std::variant<schemf::ValidationToken, DynamicValToken>;
 using OpBuilderEntry = std::tuple<ValidationInfo, OpBuilder>;
 
 using StageBuilder = std::function<base::Expression(const json::Json&, const std::shared_ptr<const IBuildCtx>&)>;
