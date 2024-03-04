@@ -33,8 +33,8 @@ const std::string SNAPSHOT_FILE_NAME {"content_snapshot.xyz"};
  */
 struct ServerRecord
 {
-    const std::string endpoint;                                         // Endpoint where the query points to.
-    const std::chrono::time_point<std::chrono::system_clock> timestamp; // Query timestamp.
+    const std::string endpoint;                                         ///< Endpoint where the query points to.
+    const std::chrono::time_point<std::chrono::system_clock> timestamp; ///< Query timestamp.
 
     /**
      * @brief Creates a record with the given query endpoint and the current timestamp.
