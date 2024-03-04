@@ -21,7 +21,7 @@ class AbstractClientManager:
 
     def __init__(self, configuration: Dict, cluster_items: Dict, enable_ssl: bool, performance_test: int,
                  concurrency_test: int, file: str, string: int, logger: logging.Logger = None,
-                 tag: str = "Client Manager"):
+                 tag: str = "Client Manager", already_disconnected = False):
         """Class constructor.
 
         Parameters
@@ -60,7 +60,7 @@ class AbstractClientManager:
         self.tasks = []
         self.handler_class = AbstractClient
         self.client = None
-        self.extra_args = {}
+        self.extra_args = {'already_disconnected': already_disconnected}
         self.loop = asyncio.get_running_loop()
 
     def add_tasks(self) -> List[Tuple[asyncio.coroutine, Tuple]]:
@@ -120,6 +120,7 @@ class AbstractClientManager:
             try:
                 await asyncio.gather(*itertools.starmap(lambda x, y: x(*y) if y is not None else x, self.tasks))
             finally:
+                self.extra_args['already_disconnected'] = True
                 transport.close()
 
             self.logger.info("The connection has been closed. Reconnecting in 10 seconds.")
@@ -132,7 +133,8 @@ class AbstractClient(common.Handler):
     """
 
     def __init__(self, loop: uvloop.EventLoopPolicy, on_con_lost: asyncio.Future, name: str, fernet_key: str,
-                 logger: logging.Logger, manager: AbstractClientManager, cluster_items: Dict, tag: str = "Client"):
+                 logger: logging.Logger, manager: AbstractClientManager, cluster_items: Dict, tag: str = "Client",
+                 already_disconnected: bool = False):
         """Class constructor.
 
         Parameters
@@ -159,6 +161,7 @@ class AbstractClient(common.Handler):
         self.on_con_lost = on_con_lost
         self.connected = False
         self.client_data = self.name.encode()
+        self.already_disconnected = already_disconnected
 
     def connection_result(self, future_result):
         """Callback function called when the master sends a response to the hello command sent by the worker.
@@ -208,6 +211,7 @@ class AbstractClient(common.Handler):
         if not self.on_con_lost.done():
             self.on_con_lost.set_result(True)
         self._cancel_all_tasks()
+        self.logger.info('All tasks closed !!')
 
     def _cancel_all_tasks(self):
         """Cancel all asyncio tasks and clients."""
@@ -294,14 +298,26 @@ class AbstractClient(common.Handler):
         keep_alive_logger = self.setup_task_logger("Keep Alive")
         # each subtask must have its own local logger defined
         n_attempts = 0  # number of failed attempts to send a keep alive to server
+        test_attemps = 0
         while not self.on_con_lost.done():
             if self.connected:
                 try:
                     result = await self.send_request(b'echo-c', b'keepalive')
                     keep_alive_logger.info(result.decode())
+                    # keep_alive_logger.info('NOT sending keepalive')
+                    keep_alive_logger.info(f"Test attempts: {test_attemps}, "
+                                           f"previous disconnected: {not self.already_disconnected}")
+                    if not self.already_disconnected and test_attemps >= 1:
+                        keep_alive_logger.info(f"Closing connection with master: {test_attemps}")
+                        self.transport.close()
+
                     n_attempts = 0  # set failed attempts to 0 when the last one was successful
+                    test_attemps += 1
                 except Exception as e:
-                    keep_alive_logger.error(f"Error sending keep alive: {e}")
+                    keep_alive_logger.error(f"Error sending keep alive: {e}, "
+                                            f"sleep_time: {self.cluster_items['intervals']['worker']['keep_alive']},"
+                                            f"attempts: {n_attempts + 1},"
+                                            f"max_failed_attempts: {self.cluster_items['intervals']['worker']['max_failed_keepalive_attempts']}")
                     n_attempts += 1
                     if n_attempts >= self.cluster_items['intervals']['worker']['max_failed_keepalive_attempts']:
                         keep_alive_logger.error("Maximum number of failed keep alives reached. Disconnecting.")

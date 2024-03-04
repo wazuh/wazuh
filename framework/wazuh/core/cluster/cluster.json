@@ -85,8 +85,8 @@
             "sync_agent_info": 10,
             "sync_agent_groups": 30,
             "timeout_agent_groups": 40,
-            "keep_alive": 60,
-            "connection_retry": 10,
+            "keep_alive": 5,
+            "connection_retry": 2,
             "max_failed_keepalive_attempts": 2,
             "agent_groups_mismatch_limit": 5
         },

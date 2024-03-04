@@ -135,7 +135,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         **kwargs
             Arguments for the parent class constructor.
         """
-        super().__init__(**kwargs, tag="Worker")
+        already_disconnected = kwargs.pop('already_disconnected')
+        super().__init__(**kwargs, tag="Worker", already_disconnected=already_disconnected)
         # The self.client_data will be sent to the master when doing a hello request.
         self.client_data = f"{self.name} {cluster_name} {node_type} {version}".encode()
 
@@ -828,14 +829,17 @@ class Worker(client.AbstractClientManager):
             Arbitrary keyword arguments to be sent as parameter to data_retriever callable.
         """
         self.task_pool = kwargs.pop('task_pool')
-        super().__init__(**kwargs, tag="Worker")
+        already_disconnected = kwargs.pop('already_disconnected')
+        super().__init__(**kwargs, tag="Worker", already_disconnected=already_disconnected)
         self.cluster_name = self.configuration['name']
         self.version = metadata.__version__
         self.node_type = self.configuration['node_type']
         self.handler_class = WorkerHandler
-        self.extra_args = {'cluster_name': self.cluster_name, 'version': self.version, 'node_type': self.node_type}
+        self.extra_args = {'cluster_name': self.cluster_name, 'version': self.version, 'node_type': self.node_type,
+                           'already_disconnected': already_disconnected}
         self.dapi = dapi.APIRequestQueue(server=self)
         self.integrity_control = {}
+        self.previously_disconnected = False
 
     def add_tasks(self) -> List[Tuple[asyncio.coroutine, Tuple]]:
         """Define the tasks that the worker will always run in an infinite loop.

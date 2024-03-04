@@ -132,11 +132,15 @@ async def worker_main(args: argparse.Namespace, cluster_config: dict, cluster_it
             "The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 and higher versions.")
         task_pool = None
 
+    already_disconnected = False
+
     while True:
+        logger.info(f"STARTING LOOP ----------------------------: {already_disconnected}")
         my_client = worker.Worker(configuration=cluster_config, enable_ssl=args.ssl,
                                   performance_test=args.performance_test, concurrency_test=args.concurrency_test,
                                   file=args.send_file, string=args.send_string, logger=logger,
-                                  cluster_items=cluster_items, task_pool=task_pool)
+                                  cluster_items=cluster_items, task_pool=task_pool,
+                                  already_disconnected=already_disconnected)
         my_local_server = local_server.LocalServerWorker(performance_test=args.performance_test, logger=logger,
                                                          concurrency_test=args.concurrency_test, node=my_client,
                                                          configuration=cluster_config, enable_ssl=args.ssl,
@@ -147,6 +151,7 @@ async def worker_main(args: argparse.Namespace, cluster_config: dict, cluster_it
         except asyncio.CancelledError:
             logging.info("Connection with server has been lost. Reconnecting in 10 seconds.")
             await asyncio.sleep(cluster_items['intervals']['worker']['connection_retry'])
+        already_disconnected = True
 
 
 def get_script_arguments() -> argparse.Namespace:
