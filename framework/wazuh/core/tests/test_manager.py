@@ -387,4 +387,5 @@ async def test_query_update_check_service_request(
                 WAZUH_UID_KEY: installation_uid,
                 WAZUH_TAG_KEY: f'v{version}',
             },
+            follow_redirects=True
         )
