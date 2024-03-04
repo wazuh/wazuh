@@ -32,6 +32,7 @@ target_link_libraries(cmds
     wdb
     sockiface
     rbac
+    date::date
 )
 
 target_include_directories(cmds

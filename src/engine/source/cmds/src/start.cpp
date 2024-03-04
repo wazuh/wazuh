@@ -141,22 +141,6 @@ void runStart(ConfHandler confManager)
               logConfig.flushInterval);
     LOG_INFO("Logging initialized.");
 
-    //TZDB Install
-    {
-        auto install = confManager->get<std::string>("server.tzdb_path");
-        date::set_install(install);
-        try
-        {
-            auto& tzdb  = date::reload_tzdb();
-        }
-        catch (const std::exception& e)
-        {
-            LOG_ERROR("An error occurred while reload the tzdb: {}.", utils::getExceptionStack(e));
-            exitHandler.execute();
-            return;
-        }
-    }
-
     // KVDB config
     const auto kvdbPath = confManager->get<std::string>("server.kvdb_path");
 
@@ -168,6 +152,9 @@ void runStart(ConfHandler confManager)
     const auto queueFloodFile = confManager->get<std::string>("server.queue_flood_file");
     const auto queueFloodAttempts = confManager->get<int>("server.queue_flood_attempts");
     const auto queueFloodSleep = confManager->get<int>("server.queue_flood_sleep");
+
+    //TZDB config
+    const auto tzdbPath = confManager->get<std::string>("server.tzdb_path");
 
     // Set signal [SIGINT]: Crt+C handler
     {
@@ -255,6 +242,9 @@ void runStart(ConfHandler confManager)
 
         // HLP
         {
+            date::set_install(tzdbPath);
+            date::reload_tzdb();
+
             base::Name hlpConfigFileName({"schema", "wazuh-logpar-types", "0"});
             auto hlpParsers = store->readInternalDoc(hlpConfigFileName);
             if (std::holds_alternative<base::Error>(hlpParsers))
