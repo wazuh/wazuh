@@ -64,8 +64,8 @@ auto expectCustomRef(const std::string& ref)
 {
     return [ref](const BuildersMocks& mocks)
     {
-        EXPECT_CALL(*mocks.ctx, schema());
-        EXPECT_CALL(*mocks.schema, hasField(DotPath(ref))).WillOnce(testing::Return(false));
+        EXPECT_CALL(*mocks.ctx, validator());
+        EXPECT_CALL(*mocks.validator, hasField(DotPath(ref))).WillOnce(testing::Return(false));
         return None {};
     };
 }
@@ -74,8 +74,8 @@ auto expectCustomRef(const std::string& ref, base::Event result)
 {
     return [=](const BuildersMocks& mocks)
     {
-        EXPECT_CALL(*mocks.ctx, schema());
-        EXPECT_CALL(*mocks.schema, hasField(DotPath(ref))).WillOnce(testing::Return(false));
+        EXPECT_CALL(*mocks.ctx, validator());
+        EXPECT_CALL(*mocks.validator, hasField(DotPath(ref))).WillOnce(testing::Return(false));
         return result;
     };
 }
@@ -84,12 +84,9 @@ auto expectJTypeRef(const std::string& ref, json::Json::Type jType)
 {
     return [ref, jType](const BuildersMocks& mocks)
     {
-        EXPECT_CALL(*mocks.ctx, schema()).Times(testing::AtLeast(1));
-        EXPECT_CALL(*mocks.schema, hasField(DotPath(ref))).WillOnce(testing::Return(true));
-        EXPECT_CALL(*mocks.ctx, validator());
-        auto sType = schemf::Type::BINARY;
-        EXPECT_CALL(*mocks.schema, getType(DotPath(ref))).WillOnce(testing::Return(sType));
-        EXPECT_CALL(*mocks.validator, getJsonType(sType)).WillOnce(testing::Return(jType));
+        EXPECT_CALL(*mocks.ctx, validator()).Times(testing::AtLeast(1));
+        EXPECT_CALL(*mocks.validator, hasField(DotPath(ref))).WillOnce(testing::Return(true));
+        EXPECT_CALL(*mocks.validator, getJsonType(DotPath(ref))).WillOnce(testing::Return(jType));
 
         return None {};
     };

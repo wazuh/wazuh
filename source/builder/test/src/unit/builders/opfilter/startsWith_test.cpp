@@ -8,8 +8,8 @@ auto customRef()
 {
     return [](const BuildersMocks& mocks)
     {
-        EXPECT_CALL(*mocks.ctx, schema());
-        EXPECT_CALL(*mocks.schema, hasField(DotPath("ref"))).WillRepeatedly(testing::Return(false));
+        EXPECT_CALL(*mocks.ctx, validator());
+        EXPECT_CALL(*mocks.validator, hasField(DotPath("ref"))).WillRepeatedly(testing::Return(false));
         return None {};
     };
 }
@@ -39,8 +39,8 @@ INSTANTIATE_TEST_SUITE_P(
                 SUCCESS(
                     [](const BuildersMocks& mocks)
                     {
-                        EXPECT_CALL(*mocks.ctx, schema());
-                        EXPECT_CALL(*mocks.schema, hasField(DotPath("ref"))).WillRepeatedly(testing::Return(false));
+                        EXPECT_CALL(*mocks.ctx, validator());
+                        EXPECT_CALL(*mocks.validator, hasField(DotPath("ref"))).WillRepeatedly(testing::Return(false));
                         return None {};
                     })),
         FilterT({makeRef("ref")},
@@ -48,9 +48,9 @@ INSTANTIATE_TEST_SUITE_P(
                 SUCCESS(
                     [](const BuildersMocks& mocks)
                     {
-                        EXPECT_CALL(*mocks.ctx, schema());
-                        EXPECT_CALL(*mocks.schema, hasField(DotPath("ref"))).WillRepeatedly(testing::Return(true));
-                        EXPECT_CALL(*mocks.schema, getType(DotPath("ref")))
+                        EXPECT_CALL(*mocks.ctx, validator());
+                        EXPECT_CALL(*mocks.validator, hasField(DotPath("ref"))).WillRepeatedly(testing::Return(true));
+                        EXPECT_CALL(*mocks.validator, getType(DotPath("ref")))
                             .WillRepeatedly(testing::Return(schemf::Type::KEYWORD));
                         return None {};
                     })),
@@ -59,9 +59,9 @@ INSTANTIATE_TEST_SUITE_P(
                 SUCCESS(
                     [](const BuildersMocks& mocks)
                     {
-                        EXPECT_CALL(*mocks.ctx, schema());
-                        EXPECT_CALL(*mocks.schema, hasField(DotPath("ref"))).WillRepeatedly(testing::Return(true));
-                        EXPECT_CALL(*mocks.schema, getType(DotPath("ref")))
+                        EXPECT_CALL(*mocks.ctx, validator());
+                        EXPECT_CALL(*mocks.validator, hasField(DotPath("ref"))).WillRepeatedly(testing::Return(true));
+                        EXPECT_CALL(*mocks.validator, getType(DotPath("ref")))
                             .WillRepeatedly(testing::Return(schemf::Type::TEXT));
                         return None {};
                     })),
@@ -70,9 +70,9 @@ INSTANTIATE_TEST_SUITE_P(
                 FAILURE(
                     [](const BuildersMocks& mocks)
                     {
-                        EXPECT_CALL(*mocks.ctx, schema());
-                        EXPECT_CALL(*mocks.schema, hasField(DotPath("ref"))).WillRepeatedly(testing::Return(true));
-                        EXPECT_CALL(*mocks.schema, getType(DotPath("ref")))
+                        EXPECT_CALL(*mocks.ctx, validator());
+                        EXPECT_CALL(*mocks.validator, hasField(DotPath("ref"))).WillRepeatedly(testing::Return(true));
+                        EXPECT_CALL(*mocks.validator, getType(DotPath("ref")))
                             .WillRepeatedly(testing::Return(schemf::Type::DOUBLE));
                         return None {};
                     }))),

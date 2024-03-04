@@ -7,7 +7,7 @@ namespace
 {
 OpBuilderEntry getDummyFilterThrow()
 {
-    ValidationInfo info {schemval::ValidationToken {}};
+    ValidationInfo info {schemf::ValidationToken {}};
     OpBuilder builder = [](const Reference& ref,
                            const std::vector<OpArg>& args,
                            const std::shared_ptr<const IBuildCtx>& buildCtx) -> FilterOp
@@ -20,7 +20,7 @@ OpBuilderEntry getDummyFilterThrow()
 
 OpBuilderEntry getDummyFilter(bool result)
 {
-    ValidationInfo info {schemval::ValidationToken {}};
+    ValidationInfo info {schemf::ValidationToken {}};
     OpBuilder builder = [result](const Reference& ref,
                                  const std::vector<OpArg>& args,
                                  const std::shared_ptr<const IBuildCtx>& buildCtx) -> FilterOp

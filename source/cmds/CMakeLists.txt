@@ -29,7 +29,6 @@ target_link_libraries(cmds
     eMessages
     metrics
     schemf
-    schemval
     wdb
     sockiface
     rbac

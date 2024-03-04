@@ -23,6 +23,8 @@ public:
 
     bool hasField(const DotPath& name) const override { return false; }
 
+    json::Json::Type getJsonType(const DotPath& name) const override { throw std::runtime_error("Not implemented"); }
+
     // TODO DELETE THIS
     static std::shared_ptr<EmptySchema> create() { return std::make_shared<EmptySchema>(); }
 

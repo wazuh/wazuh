@@ -35,7 +35,6 @@
 #include <router/orchestrator.hpp>
 
 #include <schemf/schema.hpp>
-#include <schemval/validator.hpp>
 #include <server/endpoints/unixDatagram.hpp> // Event
 #include <server/endpoints/unixStream.hpp>   //API
 #include <server/engineServer.hpp>
@@ -264,8 +263,7 @@ void runStart(ConfHandler confManager)
             builderDeps.wdbManager =
                 std::make_shared<wazuhdb::WDBManager>(std::string(wazuhdb::WDB_SOCK_PATH), builderDeps.sockFactory);
             auto defs = std::make_shared<defs::DefinitionsBuilder>();
-            auto schemaValidator = std::make_shared<schemval::Validator>(schema);
-            builder = std::make_shared<builder::Builder>(store, schema, defs, schemaValidator, builderDeps);
+            builder = std::make_shared<builder::Builder>(store, schema, defs, builderDeps);
             LOG_INFO("Builder initialized.");
         }
 

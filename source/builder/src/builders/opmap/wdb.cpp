@@ -33,11 +33,10 @@ static inline MapOp opBuilderWdbGenericQuery(const std::vector<OpArg>& opArgs,
     else
     {
         const auto& ref = *std::static_pointer_cast<Reference>(opArgs[0]);
-        const auto& schema = buildCtx->schema();
 
-        if (schema.hasField(ref.dotPath()))
+        if (buildCtx->validator().hasField(ref.dotPath()))
         {
-            auto jType = buildCtx->validator().getJsonType(schema.getType(ref.dotPath()));
+            auto jType = buildCtx->validator().getJsonType(ref.dotPath());
             if (jType != json::Json::Type::String)
             {
                 throw std::runtime_error(fmt::format(

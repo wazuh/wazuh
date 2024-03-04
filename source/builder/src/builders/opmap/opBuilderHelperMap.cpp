@@ -103,9 +103,9 @@ MapOp opBuilderHelperStringTransformation(const std::vector<OpArg>& opArgs,
     else
     {
         auto ref = std::static_pointer_cast<Reference>(opArgs[0]);
-        if (buildCtx->schema().hasField(ref->dotPath()))
+        if (buildCtx->validator().hasField(ref->dotPath()))
         {
-            auto jtype = buildCtx->validator().getJsonType(buildCtx->schema().getType(ref->dotPath()));
+            auto jtype = buildCtx->validator().getJsonType(ref->dotPath());
             if (jtype != json::Json::Type::String)
             {
                 throw std::runtime_error(fmt::format("Expected 'string' reference but got reference '{}' of type '{}'",
@@ -240,9 +240,9 @@ MapOp opBuilderHelperIntTransformation(IntOperator op,
         else
         {
             auto ref = std::static_pointer_cast<Reference>(arg);
-            if (buildCtx->schema().hasField(ref->dotPath()))
+            if (buildCtx->validator().hasField(ref->dotPath()))
             {
-                auto sType = buildCtx->schema().getType(ref->dotPath());
+                auto sType = buildCtx->validator().getType(ref->dotPath());
                 if (sType != schemf::Type::INTEGER && sType != schemf::Type::SHORT && sType != schemf::Type::LONG)
                 {
                     throw std::runtime_error(fmt::format("Expected 'INTEGER', 'SHORT' or 'LONG' reference but got "
@@ -544,9 +544,9 @@ MapOp opBuilderHelperStringConcat(const std::vector<OpArg>& opArgs, const std::s
         else
         {
             auto ref = std::static_pointer_cast<Reference>(arg);
-            if (buildCtx->schema().hasField(ref->dotPath()))
+            if (buildCtx->validator().hasField(ref->dotPath()))
             {
-                auto jtype = buildCtx->validator().getJsonType(buildCtx->schema().getType(ref->dotPath()));
+                auto jtype = buildCtx->validator().getJsonType(ref->dotPath());
                 if (jtype != json::Json::Type::String)
                 {
                     throw std::runtime_error(
@@ -630,15 +630,15 @@ MapOp opBuilderHelperStringFromArray(const std::vector<OpArg>& opArgs, const std
     }
     const auto separator = std::static_pointer_cast<Value>(opArgs[1])->value().getString().value();
 
-    if (buildCtx->schema().hasField(arrayRef.dotPath()))
+    if (buildCtx->validator().hasField(arrayRef.dotPath()))
     {
-        if (!buildCtx->schema().isArray(arrayRef.dotPath()))
+        if (!buildCtx->validator().isArray(arrayRef.dotPath()))
         {
             throw std::runtime_error(fmt::format(
                 "Expected 'array' reference but got reference '{}' wich is not an array", arrayRef.dotPath()));
         }
 
-        auto jType = buildCtx->validator().getJsonType(buildCtx->schema().getType(arrayRef.dotPath()));
+        auto jType = buildCtx->validator().getJsonType(arrayRef.dotPath());
         if (jType != json::Json::Type::String)
         {
             throw std::runtime_error(
@@ -705,9 +705,9 @@ MapOp opBuilderHelperStringFromHexa(const std::vector<OpArg>& opArgs, const std:
     builder::builders::utils::assertRef(opArgs);
 
     const auto hexRef = *std::static_pointer_cast<Reference>(opArgs[0]);
-    if (buildCtx->schema().hasField(hexRef.dotPath()))
+    if (buildCtx->validator().hasField(hexRef.dotPath()))
     {
-        auto jType = buildCtx->validator().getJsonType(buildCtx->schema().getType(hexRef.dotPath()));
+        auto jType = buildCtx->validator().getJsonType(hexRef.dotPath());
         if (jType != json::Json::Type::String)
         {
             throw std::runtime_error(fmt::format("Expected 'string' reference but got reference '{}' of type '{}'",
@@ -795,9 +795,9 @@ MapOp opBuilderHelperHexToNumber(const std::vector<OpArg>& opArgs, const std::sh
     builder::builders::utils::assertRef(opArgs);
 
     const auto hexRef = *std::static_pointer_cast<Reference>(opArgs[0]);
-    if (buildCtx->schema().hasField(hexRef.dotPath()))
+    if (buildCtx->validator().hasField(hexRef.dotPath()))
     {
-        auto jType = buildCtx->validator().getJsonType(buildCtx->schema().getType(hexRef.dotPath()));
+        auto jType = buildCtx->validator().getJsonType(hexRef.dotPath());
         if (jType != json::Json::Type::String)
         {
             throw std::runtime_error(fmt::format("Expected 'string' reference but got reference '{}' of type '{}'",
@@ -1018,9 +1018,9 @@ MapOp opBuilderHelperRegexExtract(const std::vector<OpArg>& opArgs, const std::s
 
     // Get field reference
     const auto refField = *std::static_pointer_cast<Reference>(opArgs[0]);
-    if (buildCtx->schema().hasField(refField.dotPath()))
+    if (buildCtx->validator().hasField(refField.dotPath()))
     {
-        auto jType = buildCtx->validator().getJsonType(buildCtx->schema().getType(refField.dotPath()));
+        auto jType = buildCtx->validator().getJsonType(refField.dotPath());
         if (jType != json::Json::Type::String)
         {
             throw std::runtime_error(fmt::format("Expected 'string' reference but got reference '{}' of type '{}'",
@@ -1133,10 +1133,10 @@ TransformOp opBuilderHelperEraseCustomFields(const Reference& targetField,
     const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
 
     // Function that check if a field is a custom field
-    auto isCustomField = [schema = buildCtx->schemaPtr()](const std::string& path) -> bool
+    auto isCustomField = [validator = buildCtx->validatorPtr()](const std::string& path) -> bool
     {
         // Check if field is a custom field
-        return !schema->hasField(path);
+        return !validator->hasField(path);
     };
 
     // Return Op
@@ -1171,9 +1171,9 @@ TransformOp opBuilderHelperAppendSplitString(const Reference& targetField,
     }
 
     const auto ref = *std::static_pointer_cast<Reference>(opArgs[0]);
-    if (buildCtx->schema().hasField(ref.dotPath()))
+    if (buildCtx->validator().hasField(ref.dotPath()))
     {
-        auto jType = buildCtx->validator().getJsonType(buildCtx->schema().getType(ref.dotPath()));
+        auto jType = buildCtx->validator().getJsonType(ref.dotPath());
         if (jType != json::Json::Type::String)
         {
             throw std::runtime_error(fmt::format("Expected 'string' reference but got reference '{}' of type '{}'",
@@ -1378,10 +1378,9 @@ MapOp opBuilderHelperIPVersionFromIPStr(const std::vector<OpArg>& opArgs,
     builder::builders::utils::assertRef(opArgs);
 
     const auto& ipRef = *std::static_pointer_cast<Reference>(opArgs[0]);
-    if (buildCtx->schema().hasField(ipRef.dotPath()))
+    if (buildCtx->validator().hasField(ipRef.dotPath()))
     {
-        auto sType = buildCtx->schema().getType(ipRef.dotPath());
-        auto jType = buildCtx->validator().getJsonType(sType);
+        auto jType = buildCtx->validator().getJsonType(ipRef.dotPath());
 
         if (jType != json::Json::Type::String)
         {
@@ -1477,10 +1476,9 @@ MapOp opBuilderHelperDateFromEpochTime(const std::vector<OpArg>& opArgs,
     builder::builders::utils::assertRef(opArgs);
 
     const auto& epochRef = *std::static_pointer_cast<Reference>(opArgs[0]);
-    if (buildCtx->schema().hasField(epochRef.dotPath()))
+    if (buildCtx->validator().hasField(epochRef.dotPath()))
     {
-        auto sType = buildCtx->schema().getType(epochRef.dotPath());
-        auto jType = buildCtx->validator().getJsonType(sType);
+        auto jType = buildCtx->validator().getJsonType(epochRef.dotPath());
 
         if (jType != json::Json::Type::Number)
         {
@@ -1538,10 +1536,9 @@ MapOp opBuilderHelperHashSHA1(const std::vector<OpArg>& opArgs, const std::share
     builder::builders::utils::assertRef(opArgs);
 
     const auto& ref = *std::static_pointer_cast<Reference>(opArgs[0]);
-    if (buildCtx->schema().hasField(ref.dotPath()))
+    if (buildCtx->validator().hasField(ref.dotPath()))
     {
-        auto sType = buildCtx->schema().getType(ref.dotPath());
-        auto jType = buildCtx->validator().getJsonType(sType);
+        auto jType = buildCtx->validator().getJsonType(ref.dotPath());
 
         if (jType != json::Json::Type::String)
         {
@@ -1611,9 +1608,9 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
     else
     {
         const auto& ref = *std::static_pointer_cast<Reference>(opArgs[0]);
-        if (buildCtx->schema().hasField(ref.dotPath()))
+        if (buildCtx->validator().hasField(ref.dotPath()))
         {
-            auto sType = buildCtx->schema().getType(ref.dotPath());
+            auto sType = buildCtx->validator().getType(ref.dotPath());
             if (sType != schemf::Type::OBJECT)
             {
                 throw std::runtime_error(fmt::format("Expected 'object' reference but got reference '{}' of type '{}'",
@@ -1624,10 +1621,9 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
     }
 
     const auto& keyRef = *std::static_pointer_cast<Reference>(opArgs[1]);
-    if (buildCtx->schema().hasField(keyRef.dotPath()))
+    if (buildCtx->validator().hasField(keyRef.dotPath()))
     {
-        auto sType = buildCtx->schema().getType(keyRef.dotPath());
-        auto jType = buildCtx->validator().getJsonType(sType);
+        auto jType = buildCtx->validator().getJsonType(keyRef.dotPath());
 
         if (jType != json::Json::Type::String)
         {

@@ -67,10 +67,9 @@ TransformBuilder getWindowsSidListDescHelperBuilder(const std::shared_ptr<kvdbMa
         const auto& sidListRef = *std::static_pointer_cast<Reference>(opArgs[1]);
 
         auto kvdbName = kvdbNameArg.value().getString().value();
-        const auto& schema = buildCtx->schema();
-        if (schema.hasField(sidListRef.dotPath()))
+        if (buildCtx->validator().hasField(sidListRef.dotPath()))
         {
-            auto jType = buildCtx->validator().getJsonType(schema.getType(sidListRef.dotPath()));
+            auto jType = buildCtx->validator().getJsonType(sidListRef.dotPath());
             if (jType != json::Json::Type::String)
             {
                 throw std::runtime_error(fmt::format("The reference '{}' is not an string.", sidListRef.dotPath()));
