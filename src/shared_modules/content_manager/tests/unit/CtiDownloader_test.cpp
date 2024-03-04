@@ -168,6 +168,15 @@ TEST_F(CtiDownloaderTest, BaseParametersDownloadWithRetryGenericServerError)
     EXPECT_EQ(parameters->lastOffset.value(), 3);
     EXPECT_EQ(parameters->lastSnapshotLink.value(), "localhost:4444/" + SNAPSHOT_FILE_NAME);
     EXPECT_EQ(parameters->lastSnapshotOffset.value(), 3);
+
+    // Check amount of queries and timestamps.
+    const auto& records {m_spFakeServer->getRecords()};
+    ASSERT_EQ(records.size(), 3);
+    const auto& firstQueryTimestamp {records.front().timestamp};
+    const auto& lastQueryTimestamp {records.back().timestamp};
+    const auto milliseconds {
+        std::chrono::duration_cast<std::chrono::milliseconds>(lastQueryTimestamp - firstQueryTimestamp).count()};
+    EXPECT_GE(milliseconds, TOO_MANY_REQUESTS_RETRY_TIME_MS * 2);
 }
 
 /**
