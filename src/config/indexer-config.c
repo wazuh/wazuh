@@ -103,6 +103,7 @@ int indexer_config_subnode_read(const OS_XML *xml, XML_NODE node, cJSON *output_
             if(cJSON_GetArraySize(subnode) <= 0){
                 merror("%s is empty in module 'indexer'. Check configuration", subnode_keypath);
                 os_free(subnode_keypath);
+                os_free(subnode);
                 return OS_MISVALUE;
             }
 
