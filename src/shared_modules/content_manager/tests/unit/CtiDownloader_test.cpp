@@ -24,6 +24,8 @@ constexpr auto CONTENT_TYPE {"raw"};
 constexpr auto FAKE_CTI_URL {"http://localhost:4444/snapshot/consumers"};
 constexpr auto RAW_URL {"http://localhost:4444/raw"};
 
+constexpr auto TOO_MANY_REQUESTS_RETRY_TIME {1};
+
 /**
  * @class CtiDummyDownloader
  *
@@ -174,7 +176,7 @@ TEST_F(CtiDownloaderTest, BaseParametersDownloadWithRetryTooManyRequestsError)
     // Push error.
     m_spFakeServer->pushError(429);
 
-    auto downloader {CtiDummyDownloader(HTTPRequest::instance(), 1)};
+    auto downloader {CtiDummyDownloader(HTTPRequest::instance(), TOO_MANY_REQUESTS_RETRY_TIME)};
 
     ASSERT_NO_THROW(downloader.handleRequest(m_spUpdaterContext));
 
@@ -204,7 +206,7 @@ TEST_F(CtiDownloaderTest, BaseParametersDownloadWithRetryDifferentErrors)
     m_spFakeServer->pushError(550);
     m_spFakeServer->pushError(429);
 
-    auto downloader {CtiDummyDownloader(HTTPRequest::instance(), 1)};
+    auto downloader {CtiDummyDownloader(HTTPRequest::instance(), TOO_MANY_REQUESTS_RETRY_TIME)};
 
     ASSERT_NO_THROW(downloader.handleRequest(m_spUpdaterContext));
 
