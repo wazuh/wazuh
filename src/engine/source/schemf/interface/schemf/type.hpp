@@ -68,7 +68,7 @@ inline constexpr auto typeToStr(Type type)
     }
 }
 
-inline auto strToType(const std::string& strType)
+inline constexpr auto strToType(std::string_view strType)
 {
     if (typeToStr(Type::BOOLEAN) == strType)
         return Type::BOOLEAN;
@@ -107,6 +107,32 @@ inline auto strToType(const std::string& strType)
     if (typeToStr(Type::GEO_POINT) == strType)
         return Type::GEO_POINT;
     return Type::ERROR;
+}
+
+inline constexpr auto typeToJType(Type type)
+{
+    switch (type)
+    {
+        case Type::BOOLEAN: return json::Json::Type::Boolean;
+        case Type::BYTE: return json::Json::Type::Number;
+        case Type::SHORT: return json::Json::Type::Number;
+        case Type::INTEGER: return json::Json::Type::Number;
+        case Type::LONG: return json::Json::Type::Number;
+        case Type::FLOAT: return json::Json::Type::Number;
+        case Type::HALF_FLOAT: return json::Json::Type::Number;
+        case Type::SCALED_FLOAT: return json::Json::Type::Number;
+        case Type::DOUBLE: return json::Json::Type::Number;
+        case Type::KEYWORD: return json::Json::Type::String;
+        case Type::TEXT: return json::Json::Type::String;
+        case Type::DATE: return json::Json::Type::String;
+        case Type::DATE_NANOS: return json::Json::Type::String;
+        case Type::IP: return json::Json::Type::String;
+        case Type::BINARY: return json::Json::Type::String;
+        case Type::OBJECT: return json::Json::Type::Object;
+        case Type::NESTED: return json::Json::Type::Object;
+        case Type::GEO_POINT: return json::Json::Type::Array;
+        default: return json::Json::Type::Null;
+    }
 }
 
 } // namespace schemf

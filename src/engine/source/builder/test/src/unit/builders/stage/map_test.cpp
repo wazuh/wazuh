@@ -7,7 +7,7 @@ namespace
 {
 OpBuilderEntry getDummyMapThrow()
 {
-    ValidationInfo info {schemval::ValidationToken {}};
+    ValidationInfo info {schemf::ValidationToken {}};
     OpBuilder builder = [](const std::vector<OpArg>& args, const std::shared_ptr<const IBuildCtx>& buildCtx) -> MapOp
     {
         throw std::runtime_error("Dummy helper throw");
@@ -18,7 +18,7 @@ OpBuilderEntry getDummyMapThrow()
 
 OpBuilderEntry getDummyMap(bool result)
 {
-    ValidationInfo info {schemval::ValidationToken {}};
+    ValidationInfo info {schemf::ValidationToken {}};
     OpBuilder builder = [result](const std::vector<OpArg>& args,
                                  const std::shared_ptr<const IBuildCtx>& buildCtx) -> MapOp
     {

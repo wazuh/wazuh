@@ -10,8 +10,8 @@ auto customRefExpected()
 {
     return [](const BuildersMocks& mocks)
     {
-        EXPECT_CALL(*mocks.ctx, schema());
-        EXPECT_CALL(*mocks.schema, hasField(DotPath("ref"))).WillOnce(testing::Return(false));
+        EXPECT_CALL(*mocks.ctx, validator());
+        EXPECT_CALL(*mocks.validator, hasField(DotPath("ref"))).WillOnce(testing::Return(false));
         return None {};
     };
 }
@@ -48,7 +48,7 @@ INSTANTIATE_TEST_SUITE_P(Builders,
                                         SUCCESS(
                                             [](const BuildersMocks& mocks)
                                             {
-                                                EXPECT_CALL(*mocks.ctx, schemaPtr()).WillOnce(testing::Return(nullptr));
+                                                EXPECT_CALL(*mocks.ctx, validatorPtr()).WillOnce(testing::Return(nullptr));
                                                 return None {};
                                             })),
                              TransformT({makeValue(R"("value")")}, opBuilderHelperEraseCustomFields, FAILURE()),
@@ -216,8 +216,8 @@ INSTANTIATE_TEST_SUITE_P(
                    SUCCESS(
                        [](const BuildersMocks& mocks)
                        {
-                           EXPECT_CALL(*mocks.ctx, schemaPtr()).WillOnce(testing::Return(mocks.schema));
-                           EXPECT_CALL(*mocks.schema, hasField(DotPath("target"))).WillOnce(testing::Return(false));
+                           EXPECT_CALL(*mocks.ctx, validatorPtr()).WillOnce(testing::Return(mocks.validator));
+                           EXPECT_CALL(*mocks.validator, hasField(DotPath("target"))).WillOnce(testing::Return(false));
                            return makeEvent(R"({})");
                        })),
         TransformT(R"({"target": "value"})",
@@ -227,8 +227,8 @@ INSTANTIATE_TEST_SUITE_P(
                    SUCCESS(
                        [](const BuildersMocks& mocks)
                        {
-                           EXPECT_CALL(*mocks.ctx, schemaPtr()).WillOnce(testing::Return(mocks.schema));
-                           EXPECT_CALL(*mocks.schema, hasField(DotPath("target"))).WillOnce(testing::Return(true));
+                           EXPECT_CALL(*mocks.ctx, validatorPtr()).WillOnce(testing::Return(mocks.validator));
+                           EXPECT_CALL(*mocks.validator, hasField(DotPath("target"))).WillOnce(testing::Return(true));
                            return makeEvent(R"({"target": "value"})");
                        })),
         TransformT(R"({"t1": "value", "t2": "value"})",
@@ -238,9 +238,9 @@ INSTANTIATE_TEST_SUITE_P(
                    SUCCESS(
                        [](const BuildersMocks& mocks)
                        {
-                           EXPECT_CALL(*mocks.ctx, schemaPtr()).WillOnce(testing::Return(mocks.schema));
-                           EXPECT_CALL(*mocks.schema, hasField(DotPath("t1"))).WillOnce(testing::Return(true));
-                           EXPECT_CALL(*mocks.schema, hasField(DotPath("t2"))).WillOnce(testing::Return(false));
+                           EXPECT_CALL(*mocks.ctx, validatorPtr()).WillOnce(testing::Return(mocks.validator));
+                           EXPECT_CALL(*mocks.validator, hasField(DotPath("t1"))).WillOnce(testing::Return(true));
+                           EXPECT_CALL(*mocks.validator, hasField(DotPath("t2"))).WillOnce(testing::Return(false));
                            return makeEvent(R"({"t1": "value"})");
                        })),
         TransformT(R"({"target": "value"})",
@@ -250,7 +250,7 @@ INSTANTIATE_TEST_SUITE_P(
                    SUCCESS(
                        [](const BuildersMocks& mocks)
                        {
-                           EXPECT_CALL(*mocks.ctx, schemaPtr()).WillOnce(testing::Return(mocks.schema));
+                           EXPECT_CALL(*mocks.ctx, validatorPtr()).WillOnce(testing::Return(mocks.validator));
                            return makeEvent(R"({"target": "value"})");
                        }))),
     testNameFormatter<TransformOperationTest>("JsonTransform"));

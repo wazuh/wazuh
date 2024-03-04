@@ -45,15 +45,15 @@ auto expectCustomRef(T... refs)
     {
         if (sizeof...(refs) > 0)
         {
-            EXPECT_CALL(*mocks.ctx, schema()).Times(testing::AtLeast(1));
+            EXPECT_CALL(*mocks.ctx, validator()).Times(testing::AtLeast(1));
         }
         else
         {
-            EXPECT_CALL(*mocks.ctx, schema());
+            EXPECT_CALL(*mocks.ctx, validator());
         }
         for (const auto& ref : {refs...})
         {
-            EXPECT_CALL(*mocks.schema, hasField(DotPath(ref))).WillOnce(testing::Return(false));
+            EXPECT_CALL(*mocks.validator, hasField(DotPath(ref))).WillOnce(testing::Return(false));
         }
 
         return None {};

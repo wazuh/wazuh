@@ -50,8 +50,8 @@ auto customRefExpected(const std::string& ref)
 {
     return [=](const BuildersMocks& mocks)
     {
-        EXPECT_CALL(*mocks.ctx, schema());
-        EXPECT_CALL(*mocks.schema, hasField(DotPath(ref))).WillOnce(testing::Return(false));
+        EXPECT_CALL(*mocks.ctx, validator());
+        EXPECT_CALL(*mocks.validator, hasField(DotPath(ref))).WillOnce(testing::Return(false));
         return None {};
     };
 }

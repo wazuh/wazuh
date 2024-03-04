@@ -1,4 +1,3 @@
-# TODO: QoL keep an eye on exposing linked libraries to the user
 # Defs
 set(IFACE_DIR ${CMAKE_CURRENT_LIST_DIR}/interface)
 set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
@@ -72,27 +71,22 @@ add_library(builder STATIC
     ${SRC_DIR}/builders/optransform/windows.cpp
 )
 target_include_directories(builder PUBLIC ${BUILDER_PUB_INCS} PRIVATE ${BUILDER_PRI_INCS})
-# TODO make variables so we can use them in the tests and make private the dependencies
 target_link_libraries(builder
     PUBLIC
     builder::ibuilder
     store::istore
-    base
     defs::idefinitions
-    schemval::ivalidator
-    re2
-    logicexpr
+    schemf::ischema
+    base
+    kvdb::ikvdb
+    sockiface::isock
+    wdb::iwdb
     logpar
-    date::date
-    kvdb::mocks
-    sockiface::mocks
-    wdb::mocks
-    schemf::mocks
 
     PRIVATE
-
-    schemf::ischema
-
+    re2
+    logicexpr
+    date::date
 )
 
 # Tests
@@ -169,16 +163,20 @@ add_executable(builder_utest
     ${UNIT_SRC_DIR}/builders/stage/fileOutput_test.cpp
 
 )
-target_include_directories(builder_utest PUBLIC ${BUILDER_PUB_INCS} PRIVATE ${BUILDER_PRI_INCS} ${TEST_SRC_DIR} ${UNIT_SRC_DIR})
+target_include_directories(builder_utest PRIVATE ${BUILDER_PRI_INCS} ${TEST_SRC_DIR} ${UNIT_SRC_DIR})
 target_link_libraries(builder_utest
+    PUBLIC
+    gtest_main
+
     PRIVATE
     builder
     builder::mocks
-    gtest_main
     schemf::mocks
     store::mocks
     defs::mocks
-    schemval::mocks
+    kvdb::mocks
+    sockiface::mocks
+    wdb::mocks
 )
 gtest_discover_tests(builder_utest)
 

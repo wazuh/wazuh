@@ -78,14 +78,14 @@ FilterOp getIntCmpFunction(const std::string& targetField,
     else
     {
         auto ref = std::static_pointer_cast<Reference>(rightParameter);
-        if (buildCtx->schema().hasField(ref->dotPath())
-            && buildCtx->schema().getType(ref->dotPath()) != schemf::Type::INTEGER)
+        if (buildCtx->validator().hasField(ref->dotPath())
+            && buildCtx->validator().getType(ref->dotPath()) != schemf::Type::INTEGER)
         {
             throw std::runtime_error(
                 fmt::format("Expected a reference of type '{}' but got reference '{}' of type '{}'",
                             schemf::typeToStr(schemf::Type::INTEGER),
                             ref->dotPath(),
-                            schemf::typeToStr(buildCtx->schema().getType(ref->dotPath()))));
+                            schemf::typeToStr(buildCtx->validator().getType(ref->dotPath()))));
         }
         rValue = std::static_pointer_cast<Reference>(rightParameter)->jsonPath();
     }
@@ -267,9 +267,9 @@ FilterOp getStringCmpFunction(const std::string& targetField,
     else
     {
         auto ref = std::static_pointer_cast<Reference>(rightParameter);
-        if (buildCtx->schema().hasField(ref->dotPath()))
+        if (buildCtx->validator().hasField(ref->dotPath()))
         {
-            auto jType = buildCtx->validator().getJsonType(buildCtx->schema().getType(ref->dotPath()));
+            auto jType = buildCtx->validator().getJsonType(ref->dotPath());
             if (jType != json::Json::Type::String)
             {
                 throw std::runtime_error(
@@ -505,7 +505,7 @@ FilterOp opBuilderHelperBinaryAnd(const Reference& targetField,
                                   const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     const auto& name = buildCtx->context().opName;
-    const auto& schema = buildCtx->schema();
+    const auto& schema = buildCtx->validator();
 
     // Assert expected number of parameters
     utils::assertSize(opArgs, 1);
@@ -823,9 +823,9 @@ FilterOp opBuilderHelperArrayPresence(const Reference& targetField,
         else
         {
             auto ref = std::static_pointer_cast<Reference>(arg);
-            if (buildCtx->schema().hasField(ref->dotPath()))
+            if (buildCtx->validator().hasField(ref->dotPath()))
             {
-                auto jType = buildCtx->validator().getJsonType(buildCtx->schema().getType(ref->dotPath()));
+                auto jType = buildCtx->validator().getJsonType(ref->dotPath());
                 if (jType != json::Json::Type::String)
                 {
                     throw std::runtime_error(
@@ -1095,9 +1095,9 @@ FilterOp opBuilderHelperMatchValue(const Reference& targetField,
     else
     {
         auto ref = std::static_pointer_cast<Reference>(opArgs[0]);
-        if (buildCtx->schema().hasField(ref->dotPath()))
+        if (buildCtx->validator().hasField(ref->dotPath()))
         {
-            if (!buildCtx->schema().isArray(ref->dotPath()))
+            if (!buildCtx->validator().isArray(ref->dotPath()))
             {
                 throw std::runtime_error(fmt::format(
                     "Expected a reference of an array but got reference '{}' which is not an array", ref->dotPath()));
@@ -1205,14 +1205,14 @@ FilterOp opBuilderHelperMatchKey(const Reference& targetField,
     else
     {
         auto ref = std::static_pointer_cast<Reference>(opArgs[0]);
-        if (buildCtx->schema().hasField(ref->dotPath()))
+        if (buildCtx->validator().hasField(ref->dotPath()))
         {
-            if (buildCtx->schema().getType(ref->dotPath()) != schemf::Type::OBJECT)
+            if (buildCtx->validator().getType(ref->dotPath()) != schemf::Type::OBJECT)
             {
                 throw std::runtime_error(
                     fmt::format("Expected a reference of an object but got reference '{}' which is of type '{}",
                                 ref->dotPath(),
-                                schemf::typeToStr(buildCtx->schema().getType(ref->dotPath()))));
+                                schemf::typeToStr(buildCtx->validator().getType(ref->dotPath()))));
             }
         }
     }

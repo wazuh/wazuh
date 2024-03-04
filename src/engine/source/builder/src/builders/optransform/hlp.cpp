@@ -115,9 +115,9 @@ TransformOp specificHLPBuilder(const Reference& targetField,
     // Get the source
     const auto& source = *std::static_pointer_cast<Reference>(opArgs[0]);
 
-    if (buildCtx->schema().hasField(source.dotPath()))
+    if (buildCtx->validator().hasField(source.dotPath()))
     {
-        auto jType = buildCtx->validator().getJsonType(buildCtx->schema().getType(source.dotPath()));
+        auto jType = buildCtx->validator().getJsonType(source.dotPath());
         if (jType != json::Json::Type::String)
         {
             throw std::runtime_error(

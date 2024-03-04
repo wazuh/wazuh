@@ -1,13 +1,10 @@
 #ifndef _SCHEMF_I_SCHEMA_HPP
 #define _SCHEMF_I_SCHEMA_HPP
 
-#include <optional>
-
+#include <base/dotPath.hpp>
+#include <base/error.hpp>
 #include <json/json.hpp>
-
-#include "dotPath.hpp"
-#include "error.hpp"
-#include "type.hpp"
+#include <schemf/type.hpp>
 
 namespace schemf
 {
@@ -19,7 +16,6 @@ namespace schemf
 class ISchema
 {
 public:
-
     virtual ~ISchema() = default;
 
     /**
@@ -31,6 +27,14 @@ public:
      * @throw std::runtime_error If the field does not exist.
      */
     virtual Type getType(const DotPath& name) const = 0;
+
+    /**
+     * @brief Get the Json Type of a field.
+     *
+     * @param name
+     * @return json::Json::Type
+     */
+    virtual json::Json::Type getJsonType(const DotPath& name) const = 0;
 
     /**
      * @brief Query if a field is an array.

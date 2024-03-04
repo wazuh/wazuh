@@ -13,8 +13,7 @@ Policy::Policy(const store::Doc& doc,
                const std::shared_ptr<store::IStoreReader>& store,
                const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
                const std::shared_ptr<builders::RegistryType>& registry,
-               const std::shared_ptr<schemval::IValidator>& validator,
-               const std::shared_ptr<schemf::ISchema>& schema)
+               const std::shared_ptr<schemf::IValidator>& schema)
 {
     // Read the policy data
     auto policyData = factory::readData(doc, store);
@@ -29,11 +28,9 @@ Policy::Policy(const store::Doc& doc,
     // TODO: abstract this buildCtx code as it is needed by builder::Builder
     auto buildCtx = std::make_shared<builders::BuildCtx>();
     buildCtx->setRegistry(registry);
-    buildCtx->setValidator(validator);
+    buildCtx->setValidator(schema);
     buildCtx->context().policyName = m_name;
     buildCtx->runState().trace = true;
-    buildCtx->setSchema(schema);
-
 
     auto assetBuilder = std::make_shared<AssetBuilder>(buildCtx, definitionsBuilder);
     auto builtAssets = factory::buildAssets(policyData, store, assetBuilder);

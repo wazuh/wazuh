@@ -3,6 +3,8 @@
 
 #include "builders/types.hpp"
 
+#include <hlp/hlp.hpp>
+
 //*************************************************
 //*         HLP Specific parser Helpers           *
 //*************************************************
