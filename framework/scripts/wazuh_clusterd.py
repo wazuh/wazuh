@@ -11,7 +11,6 @@ import os
 import signal
 import sys
 
-from wazuh.core.cluster.hap_helper.hap_helper import HAPHelper
 from wazuh.core.utils import clean_pid_files
 from wazuh.core.wlogging import WazuhLogger
 
@@ -83,6 +82,8 @@ async def master_main(args: argparse.Namespace, cluster_config: dict, cluster_it
         Cluster logger.
     """
     from wazuh.core.cluster import master, local_server
+    from wazuh.core.cluster.hap_helper.hap_helper import HAPHelper
+
     cluster_utils.context_tag.set('Master')
     my_server = master.Master(performance_test=args.performance_test, concurrency_test=args.concurrency_test,
                               configuration=cluster_config, enable_ssl=args.ssl, logger=logger,
@@ -115,6 +116,7 @@ async def worker_main(args: argparse.Namespace, cluster_config: dict, cluster_it
     logger : WazuhLogger
         Cluster logger.
     """
+    from wazuh.core.cluster import worker, local_server
     from concurrent.futures import ProcessPoolExecutor
     cluster_utils.context_tag.set('Worker')
 

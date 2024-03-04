@@ -84,7 +84,7 @@ class WazuhDAPI:
             The configured logger.
         """
         logger = logging.getLogger('wazuh').getChild('WazuhDAPI')
-        logger.addFilter(ClusterFilter(tag=tag, subtag='DAPI'))
+        logger.addFilter(ClusterFilter(tag=tag, subtag='D API'))
 
         return logger
 
@@ -150,6 +150,7 @@ class WazuhDAPI:
             f=reconnect_agents,
             f_kwargs={'agent_list': agent_list},
             request_type='distributed_master',
+            wait_for_complete=True
         )
 
         return data.affected_items
