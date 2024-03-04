@@ -61,6 +61,9 @@ build_pkg() {
             download_file ${TAR_URL} "${CURRENT_PATH}/${PACKAGE_FORMAT}s/${ARCHITECTURE}/legacy"
         fi
         DOCKERFILE_PATH="${CURRENT_PATH}/${PACKAGE_FORMAT}s/${ARCHITECTURE}/legacy"
+    # Same Dockerfile for manager and agent in this archs 
+    elif [[ "$ARCH" == "arm64" ]] || [[ "$ARCH" == "ppc64le" ]]; then
+        DOCKERFILE_PATH="${CURRENT_PATH}/${PACKAGE_FORMAT}s/${ARCHITECTURE}"
     else
         DOCKERFILE_PATH="${CURRENT_PATH}/${PACKAGE_FORMAT}s/${ARCHITECTURE}/${TARGET}"
     fi
