@@ -31,7 +31,7 @@
 #define MAX_ATTEMPTS 1000
 
 // Router provider variables
-ROUTER_PROVIDER_HANDLE router_syscollector_handle = NULL;
+ROUTER_PROVIDER_HANDLE router_agent_events_handle = NULL;
 
 static const char *SQL_CREATE_TEMP_TABLE = "CREATE TEMP TABLE IF NOT EXISTS s(rowid INTEGER PRIMARY KEY, pageno INT);";
 static const char *SQL_TRUNCATE_TEMP_TABLE = "DELETE FROM s;";
@@ -136,11 +136,11 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SYNC_SET_COMPLETION] = "UPDATE sync_info SET last_completion = ? WHERE component = ?;",
     [WDB_STMT_SYNC_GET_INFO] = "SELECT * FROM sync_info WHERE component = ?;",
     [WDB_STMT_FIM_FILE_SELECT_CHECKSUM] = "SELECT checksum FROM fim_entry WHERE type='file' ORDER BY file;",
-    [WDB_STMT_FIM_FILE_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM fim_entry WHERE file BETWEEN ? and ? and type='file' ORDER BY file;",
+    [WDB_STMT_FIM_FILE_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM fim_entry WHERE type='file' AND file BETWEEN ? and ? ORDER BY file;",
     [WDB_STMT_FIM_FILE_CLEAR] = "DELETE FROM fim_entry WHERE type='file';",
-    [WDB_STMT_FIM_FILE_DELETE_AROUND] = "DELETE FROM fim_entry WHERE (file < ? OR file > ?) AND type = 'file';",
-    [WDB_STMT_FIM_FILE_DELETE_RANGE] = "DELETE FROM fim_entry WHERE (file > ? AND file < ?) AND type = 'file';",
-    [WDB_STMT_FIM_FILE_DELETE_BY_PK] = "DELETE FROM fim_entry WHERE file = ? AND type='file';",
+    [WDB_STMT_FIM_FILE_DELETE_AROUND] = "DELETE FROM fim_entry WHERE type='file' AND (file < ? OR file > ?);",
+    [WDB_STMT_FIM_FILE_DELETE_RANGE] = "DELETE FROM fim_entry WHERE type='file' AND (file > ? AND file < ?);",
+    [WDB_STMT_FIM_FILE_DELETE_BY_PK] = "DELETE FROM fim_entry WHERE type='file' AND file = ?;",
     [WDB_STMT_FIM_REGISTRY_SELECT_CHECKSUM] = "SELECT checksum FROM fim_entry WHERE (type='registry_key' OR type='registry_value') ORDER BY full_path",
     [WDB_STMT_FIM_REGISTRY_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM fim_entry WHERE (type='registry_key' OR type='registry_value') AND full_path BETWEEN ? AND ? ORDER BY full_path",
     [WDB_STMT_FIM_REGISTRY_CLEAR] = "DELETE FROM fim_entry WHERE type='registry_key' OR type='registry_value';",
@@ -156,7 +156,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_FIM_REGISTRY_VALUE_CLEAR] = "DELETE FROM fim_entry WHERE type='registry_value';",
     [WDB_STMT_FIM_REGISTRY_VALUE_DELETE_AROUND] = "DELETE FROM fim_entry WHERE type='registry_value' AND (full_path < ? OR full_path > ?);",
     [WDB_STMT_FIM_REGISTRY_VALUE_DELETE_RANGE] = "DELETE FROM fim_entry WHERE type='registry_value' AND (full_path > ? AND full_path < ?);",
-    [WDB_STMT_FIM_REGISTRY_DELETE_BY_PK] = "DELETE FROM fim_entry WHERE full_path = ? AND type='registry_key' OR type='registry_value';",
+    [WDB_STMT_FIM_REGISTRY_DELETE_BY_PK] = "DELETE FROM fim_entry WHERE (type='registry_key' OR type='registry_value') AND full_path = ?;",
     [WDB_STMT_ROOTCHECK_INSERT_PM] = "INSERT INTO pm_event (date_first, date_last, log, pci_dss, cis) VALUES (?, ?, ?, ?, ?);",
     [WDB_STMT_ROOTCHECK_UPDATE_PM] = "UPDATE pm_event SET date_last = ? WHERE log = ?;",
     [WDB_STMT_ROOTCHECK_DELETE_PM] = "DELETE FROM pm_event;",
@@ -326,144 +326,65 @@ STATIC int wdb_any_transaction(wdb_t * wdb, const char* sql_transaction);
 */
 STATIC int wdb_write_state_transaction(wdb_t * wdb, uint8_t state, wdb_ptr_any_txn_t wdb_ptr_any_txn);
 
-/**
- * @brief Get a database from the database group
- *
- * @param[in] db_name Name of the database to search in the database pool.
- * @return Returns the wdb object if it exists or NULL if it does not exist.
- */
-STATIC wdb_t * wdb_get_db_from_pool(const char* db_name);
-
-rwlock_t pool_mutex;
-wdb_t * db_pool_begin;
-wdb_t * db_pool_last;
-int db_pool_size;
-OSHash * open_dbs;
-
-STATIC wdb_t * wdb_get_db_from_pool(const char* db_name) {
-    wdb_t * wdb = NULL;
-
-    if (db_name == NULL) {
-        merror("The database name cannot be null.");
-        return NULL;
-    }
-
-    // Finds DB in pool, locking pool_mutex for read
-    rwlock_lock_read(&pool_mutex);
-    if (wdb = (wdb_t *)OSHash_Get(open_dbs, db_name), wdb) {
-        // The corresponding w_mutex_unlock(&wdb->mutex) is called in wdb_leave(wdb_t * wdb)
-        w_mutex_lock(&wdb->mutex);
-        wdb->refcount++;
-    }
-    rwlock_unlock(&pool_mutex);
-    return wdb;
-}
-
 // Opens global database and stores it in DB pool. It returns a locked database or NULL
 wdb_t * wdb_open_global() {
     char path[PATH_MAX + 1] = "";
-    sqlite3 *db = NULL;
-    wdb_t * wdb = NULL;
+    wdb_t * wdb = wdb_pool_get_or_create(WDB_GLOB_NAME);
 
-    // Finds DB in pool, locking pool_mutex for read
-    if (wdb = wdb_get_db_from_pool(WDB_GLOB_NAME), wdb) {
-        return wdb;
-    }
-
-    // Now try locking pool_mutex for writing
-    rwlock_lock_write(&pool_mutex);
-
-    // Finds DB in pool
-    if (wdb = (wdb_t *)OSHash_Get(open_dbs, WDB_GLOB_NAME), wdb) {
-        // The corresponding w_mutex_unlock(&wdb->mutex) is called in wdb_leave(wdb_t * wdb)
-        w_mutex_lock(&wdb->mutex);
-        wdb->refcount++;
-        rwlock_unlock(&pool_mutex);
-        return wdb;
-    } else {
+    if (wdb->db == NULL) {
         // Try to open DB
         snprintf(path, sizeof(path), "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
 
-        if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
+        if (sqlite3_open_v2(path, &wdb->db, SQLITE_OPEN_READWRITE, NULL)) {
             mdebug1("Global database not found, creating.");
-            sqlite3_close_v2(db);
+            wdb_close(wdb, false);
 
             // Creating database
             if (OS_SUCCESS != wdb_create_global(path)) {
                 merror("Couldn't create SQLite database '%s'", path);
-                rwlock_unlock(&pool_mutex);
-                return wdb;
+                wdb_pool_leave(wdb);
+                return NULL;
             }
 
             // Retry to open
-            if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
-                merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(db));
-                sqlite3_close_v2(db);
-                rwlock_unlock(&pool_mutex);
-                return wdb;
+            if (sqlite3_open_v2(path, &wdb->db, SQLITE_OPEN_READWRITE, NULL)) {
+                merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(wdb->db));
+                wdb_close(wdb, false);
+                wdb_pool_leave(wdb);
+                return NULL;
             }
-
-            wdb = wdb_init(db, WDB_GLOB_NAME);
-            wdb_pool_append(wdb);
-            w_mutex_lock(&wdb->mutex);
-            wdb->refcount++;
-        }
-        else {
-            wdb = wdb_init(db, WDB_GLOB_NAME);
-            wdb_pool_append(wdb);
-            w_mutex_lock(&wdb->mutex);
-            wdb->refcount++;
-            if (wdb = wdb_upgrade_global(wdb), !wdb) {
-                rwlock_unlock(&pool_mutex);
-                return wdb;
+        } else {
+            if (wdb_upgrade_global(wdb) == NULL || wdb->db == NULL) {
+                wdb_pool_leave(wdb);
+                return NULL;
             }
         }
 
         wdb_enable_foreign_keys(wdb->db);
     }
 
-    rwlock_unlock(&pool_mutex);
     return wdb;
 }
 
 wdb_t * wdb_open_mitre() {
     char path[PATH_MAX + 1];
-    sqlite3 *db;
-    wdb_t * wdb = NULL;
+    wdb_t * wdb = wdb_pool_get_or_create(WDB_MITRE_NAME);
 
-    // Finds DB in pool, locking pool_mutex for read
-    if (wdb = wdb_get_db_from_pool(WDB_MITRE_NAME), wdb) {
+    if (wdb->db != NULL) {
         return wdb;
-    }
-
-    // Find BD in pool
-
-    rwlock_lock_write(&pool_mutex);
-
-    if (wdb = (wdb_t *)OSHash_Get(open_dbs, WDB_MITRE_NAME), wdb) {
-        goto success;
     }
 
     // Try to open DB
 
     snprintf(path, sizeof(path), "%s/%s.db", WDB_DIR, WDB_MITRE_NAME);
 
-    if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
-        merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(db));
-        sqlite3_close_v2(db);
-        goto end;
-
-    } else {
-        wdb = wdb_init(db, WDB_MITRE_NAME);
-        wdb_pool_append(wdb);
+    if (sqlite3_open_v2(path, &wdb->db, SQLITE_OPEN_READWRITE, NULL)) {
+        merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(wdb->db));
+        wdb_close(wdb, false);
+        wdb_pool_leave(wdb);
+        return NULL;
     }
 
-success:
-    w_mutex_lock(&wdb->mutex);
-    wdb->refcount++;
-
-end:
-    rwlock_unlock(&pool_mutex);
     return wdb;
 }
 
@@ -471,123 +392,76 @@ end:
 wdb_t * wdb_open_agent2(int agent_id) {
     char sagent_id[64];
     char path[PATH_MAX + 1];
-    sqlite3 * db;
-    wdb_t * wdb = NULL;
 
     snprintf(sagent_id, sizeof(sagent_id), "%03d", agent_id);
+    wdb_t * wdb = wdb_pool_get_or_create(sagent_id);
 
-    // Finds DB in pool, locking pool_mutex for read
-    if (wdb = wdb_get_db_from_pool(sagent_id), wdb) {
+    if (wdb->db != NULL) {
         return wdb;
-    }
-
-    // Find BD in pool
-
-    rwlock_lock_write(&pool_mutex);
-
-    if (wdb = (wdb_t *)OSHash_Get(open_dbs, sagent_id), wdb) {
-        goto success;
     }
 
     // Try to open DB
 
     snprintf(path, sizeof(path), "%s/%s.db", WDB2_DIR, sagent_id);
 
-    if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
+    if (sqlite3_open_v2(path, &wdb->db, SQLITE_OPEN_READWRITE, NULL)) {
         mdebug1("No SQLite database found for agent '%s', creating.", sagent_id);
-        sqlite3_close_v2(db);
+        wdb_close(wdb, false);
 
         if (wdb_create_agent_db2(sagent_id) < 0) {
             merror("Couldn't create SQLite database '%s'", path);
-            goto end;
+            wdb_pool_leave(wdb);
+            return NULL;
         }
 
         // Retry to open
 
-        if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
-            merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(db));
-            sqlite3_close_v2(db);
-            goto end;
+        if (sqlite3_open_v2(path, &wdb->db, SQLITE_OPEN_READWRITE, NULL)) {
+            merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(wdb->db));
+            wdb_close(wdb, false);
+            wdb_pool_leave(wdb);
+            return NULL;
         }
-
-        wdb = wdb_init(db, sagent_id);
-        wdb_pool_append(wdb);
-    }
-    else {
-        wdb = wdb_init(db, sagent_id);
-        wdb_pool_append(wdb);
-        wdb = wdb_upgrade(wdb);
-
-        if (wdb == NULL) {
-            goto end;
+    } else {
+        if (wdb_upgrade(wdb) == NULL) {
+            wdb_pool_leave(wdb);
+            return NULL;
         }
     }
 
-success:
-    w_mutex_lock(&wdb->mutex);
-    wdb->refcount++;
-
-end:
-    rwlock_unlock(&pool_mutex);
     return wdb;
 }
 
 // Opens tasks database and stores it in DB pool. It returns a locked database or NULL
 wdb_t * wdb_open_tasks() {
     char path[PATH_MAX + 1] = "";
-    sqlite3 *db = NULL;
-    wdb_t * wdb = NULL;
+    wdb_t * wdb = wdb_pool_get_or_create(WDB_TASK_NAME);
 
-    // Finds DB in pool, locking pool_mutex for read
-    if (wdb = wdb_get_db_from_pool(WDB_TASK_NAME), wdb) {
-        return wdb;
-    }
-
-    rwlock_lock_write(&pool_mutex);
-
-    // Finds DB in pool
-    if (wdb = (wdb_t *)OSHash_Get(open_dbs, WDB_TASK_NAME), wdb) {
-        // The corresponding w_mutex_unlock(&wdb->mutex) is called in wdb_leave(wdb_t * wdb)
-        w_mutex_lock(&wdb->mutex);
-        wdb->refcount++;
-        rwlock_unlock(&pool_mutex);
-        return wdb;
-    } else {
+    if (wdb->db == NULL) {
         // Try to open DB
         snprintf(path, sizeof(path), "%s/%s.db", WDB_TASK_DIR, WDB_TASK_NAME);
 
-        if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
+        if (sqlite3_open_v2(path, &wdb->db, SQLITE_OPEN_READWRITE, NULL)) {
             mdebug1("Tasks database not found, creating.");
-            sqlite3_close_v2(db);
+            wdb_close(wdb, false);
 
             // Creating database
             if (OS_SUCCESS != wdb_create_file(path, schema_task_manager_sql)) {
                 merror("Couldn't create SQLite database '%s'", path);
-                rwlock_unlock(&pool_mutex);
-                return wdb;
+                wdb_pool_leave(wdb);
+                return NULL;
             }
 
             // Retry to open
-            if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
-                merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(db));
-                sqlite3_close_v2(db);
-                rwlock_unlock(&pool_mutex);
-                return wdb;
+            if (sqlite3_open_v2(path, &wdb->db, SQLITE_OPEN_READWRITE, NULL)) {
+                merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(wdb->db));
+                wdb_close(wdb, false);
+                wdb_pool_leave(wdb);
+                return NULL;
             }
-
-            wdb = wdb_init(db, WDB_TASK_NAME);
-            wdb_pool_append(wdb);
-        }
-        else {
-            wdb = wdb_init(db, WDB_TASK_NAME);
-            wdb_pool_append(wdb);
         }
     }
 
-    // The corresponding w_mutex_unlock(&wdb->mutex) is called in wdb_leave(wdb_t * wdb)
-    w_mutex_lock(&wdb->mutex);
-    wdb->refcount++;
-    rwlock_unlock(&pool_mutex);
     return wdb;
 }
 
@@ -602,7 +476,7 @@ int wdb_create_agent_db2(const char * agent_id) {
 
     snprintf(path, OS_FLSIZE, "%s/%s", WDB2_DIR, WDB_PROF_NAME);
 
-    if (!(source = fopen(path, "r"))) {
+    if (!(source = wfopen(path, "r"))) {
         mdebug1("Profile database not found, creating.");
 
         if (wdb_create_profile(path) < 0)
@@ -610,7 +484,7 @@ int wdb_create_agent_db2(const char * agent_id) {
 
         // Retry to open
 
-        if (!(source = fopen(path, "r"))) {
+        if (!(source = wfopen(path, "r"))) {
             merror("Couldn't open profile '%s'.", path);
             return -1;
         }
@@ -618,7 +492,7 @@ int wdb_create_agent_db2(const char * agent_id) {
 
     snprintf(path, OS_FLSIZE, "%s/%s.db", WDB2_DIR, agent_id);
 
-    if (!(dest = fopen(path, "w"))) {
+    if (!(dest = wfopen(path, "w"))) {
         merror("Couldn't create database '%s': %s (%d)", path, strerror(errno), errno);
         fclose(source);
         return -1;
@@ -966,10 +840,9 @@ int wdb_insert_info(const char *key, const char *value) {
     return result;
 }
 
-wdb_t * wdb_init(sqlite3 * db, const char * id) {
+wdb_t * wdb_init(const char * id) {
     wdb_t * wdb;
     os_calloc(1, sizeof(wdb_t), wdb);
-    wdb->db = db;
     w_mutex_init(&wdb->mutex, NULL);
     os_strdup(id, wdb->id);
     wdb->enabled = true;
@@ -982,108 +855,32 @@ void wdb_destroy(wdb_t * wdb) {
     free(wdb);
 }
 
-void wdb_pool_append(wdb_t * wdb) {
-    int r;
-
-    if (db_pool_begin) {
-        db_pool_last->next = wdb;
-        db_pool_last = wdb;
-    } else {
-        db_pool_begin = db_pool_last = wdb;
-    }
-
-    db_pool_size++;
-
-    if (r = OSHash_Add(open_dbs, wdb->id, wdb), r != 2) {
-        merror_exit("OSHash_Add(%s) returned %d.", wdb->id, r);
-    }
-}
-
-void wdb_pool_remove(wdb_t * wdb) {
-    wdb_t * prev;
-
-    if (!OSHash_Delete(open_dbs, wdb->id)) {
-        merror("Database for agent '%s' was not in hash table.", wdb->id);
-    }
-
-    if (wdb == db_pool_begin) {
-        db_pool_begin = wdb->next;
-
-        if (wdb == db_pool_last) {
-            db_pool_last = NULL;
-        }
-
-        db_pool_size--;
-    } else if (prev = wdb_pool_find_prev(wdb), prev) {
-        prev->next = wdb->next;
-
-        if (wdb == db_pool_last) {
-            db_pool_last = prev;
-        }
-
-        db_pool_size--;
-    } else {
-        merror("Database for agent '%s' not found in the pool.", wdb->id);
-    }
-}
-
-// Duplicate the database pool
-wdb_t * wdb_pool_copy() {
-    wdb_t *copy = NULL;
-    wdb_t *last;
-
-    for (wdb_t *i = db_pool_begin; i != NULL; i = i->next) {
-        wdb_t * t = wdb_init(NULL, i->id);
-
-        if (copy == NULL) {
-            copy = last = t;
-        } else {
-            last->next = t;
-            last = t;
-        }
-    }
-
-    return copy;
-}
-
 void wdb_close_all() {
-    wdb_t * node;
+    char ** keys = wdb_pool_keys();
 
-    mdebug1("Closing all databases...");
-    rwlock_lock_write(&pool_mutex);
+    for (int i = 0; keys[i]; i++) {
+        wdb_t * node = wdb_pool_get(keys[i]);
 
-    while (node = db_pool_begin, node) {
-        mdebug2("Closing database for agent %s", node->id);
-
-        if (wdb_close(node, TRUE) < 0) {
-            merror("Couldn't close DB for agent %s", node->id);
-
+        if (node != NULL && node->db != NULL) {
+            wdb_close(node, true);
         }
+
+        wdb_pool_leave(node);
     }
 
-    rwlock_unlock(&pool_mutex);
+    free_strarray(keys);
 }
 
 void wdb_commit_old() {
-    wdb_t * node;
-    wdb_t * next;
+    char ** keys = wdb_pool_keys();
 
-    rwlock_lock_read(&pool_mutex);
-    wdb_t *copy = wdb_pool_copy();
-    rwlock_unlock(&pool_mutex);
-
-    for (wdb_t *i = copy; i != NULL; wdb_destroy(i), i = next) {
-        next = i->next;
-
-        rwlock_lock_read(&pool_mutex);
-        node = (wdb_t *)OSHash_Get(open_dbs, i->id);
+    for (int i = 0; keys[i]; i++) {
+        wdb_t * node = wdb_pool_get(keys[i]);
 
         if (node == NULL) {
-            rwlock_unlock(&pool_mutex);
             continue;
         }
 
-        w_mutex_lock(&node->mutex);
         time_t cur_time = time(NULL);
 
         // Commit condition: more than commit_time_min seconds elapsed from the last query, or more than commit_time_max elapsed from the transaction began.
@@ -1098,36 +895,33 @@ void wdb_commit_old() {
             mdebug2("Agent '%s' database commited. Time: %.3f ms.", node->id, time_diff(&ts_start, &ts_end) * 1e3);
         }
 
-        w_mutex_unlock(&node->mutex);
-        rwlock_unlock(&pool_mutex);
+        wdb_pool_leave(node);
     }
+
+    free_strarray(keys);
 }
 
 void wdb_check_fragmentation() {
-    wdb_t * node;
-    wdb_t * next;
+    char ** keys = wdb_pool_keys();
 
-    rwlock_lock_read(&pool_mutex);
-    wdb_t *copy = wdb_pool_copy();
-    rwlock_unlock(&pool_mutex);
-
-    for (wdb_t *i = copy; i != NULL; wdb_destroy(i), i = next) {
+    for (int i = 0; keys[i]; i++) {
         int last_vacuum_time;
         int last_vacuum_value;
         int current_fragmentation;
         int current_free_pages_percentage;
         int fragmentation_after_vacuum;
-        next = i->next;
 
-        rwlock_lock_read(&pool_mutex);
-        node = (wdb_t *)OSHash_Get(open_dbs, i->id);
+        wdb_t * node = wdb_pool_get(keys[i]);
 
         if (node == NULL) {
-            rwlock_unlock(&pool_mutex);
             continue;
         }
 
-        w_mutex_lock(&node->mutex);
+        if (node->db == NULL) {
+            wdb_pool_leave(node);
+            continue;
+        }
+
         current_fragmentation = wdb_get_db_state(node);
         current_free_pages_percentage = wdb_get_db_free_pages_percentage(node);
         if (current_fragmentation == OS_INVALID || current_free_pages_percentage == OS_INVALID) {
@@ -1152,8 +946,7 @@ void wdb_check_fragmentation() {
 
                     if (wdb_commit2(node) < 0) {
                         merror("Couldn't execute commit statement, before vacuum, for the database '%s'", node->id);
-                        w_mutex_unlock(&node->mutex);
-                        rwlock_unlock(&pool_mutex);
+                        wdb_pool_leave(node);
                         continue;
                     }
 
@@ -1162,8 +955,7 @@ void wdb_check_fragmentation() {
                     gettime(&ts_start);
                     if (wdb_vacuum(node) < 0) {
                         merror("Couldn't execute vacuum for the database '%s'", node->id);
-                        w_mutex_unlock(&node->mutex);
-                        rwlock_unlock(&pool_mutex);
+                        wdb_pool_leave(node);
                         continue;
                     }
                     gettime(&ts_end);
@@ -1190,9 +982,10 @@ void wdb_check_fragmentation() {
             }
         }
 
-        w_mutex_unlock(&node->mutex);
-        rwlock_unlock(&pool_mutex);
+        wdb_pool_leave(node);
     }
+
+    free_strarray(keys);
 }
 
 STATIC int wdb_get_last_vacuum_data(wdb_t * wdb, int *last_vacuum_time, int *last_vacuum_value) {
@@ -1273,36 +1066,29 @@ int wdb_update_last_vacuum_data(wdb_t * wdb, const char *last_vacuum_time, const
 }
 
 void wdb_close_old() {
-    wdb_t * node;
-    wdb_t * next;
+    char ** keys = wdb_pool_keys();
+    int closed = 0;
 
-    rwlock_lock_read(&pool_mutex);
-    wdb_t *copy = wdb_pool_copy();
-    rwlock_unlock(&pool_mutex);
+    for (int i = 0; keys[i] && (int)wdb_pool_size() - closed > wconfig.open_db_limit; i++) {
+        wdb_t * node = wdb_pool_get(keys[i]);
 
-    for (wdb_t *i = copy; i != NULL; wdb_destroy(i), i = next) {
-        next = i->next;
-
-        rwlock_lock_write(&pool_mutex);
-        node = (wdb_t *)OSHash_Get(open_dbs, i->id);
-
-        if (node == NULL || db_pool_size <= wconfig.open_db_limit) {
-            rwlock_unlock(&pool_mutex);
+        if (node == NULL) {
             continue;
         }
 
-        w_mutex_lock(&node->mutex);
-
-        if (node->refcount == 0 && !node->transaction) {
-            w_mutex_unlock(&node->mutex);
+        if (node->db != NULL && node->refcount == 1 && strcmp(node->id, WDB_GLOB_NAME) != 0) {
             mdebug2("Closing database for agent %s", node->id);
-            wdb_close(node, FALSE);
-        } else {
-            w_mutex_unlock(&node->mutex);
+            wdb_close(node, true);
+            closed++;
         }
 
-        rwlock_unlock(&pool_mutex);
+        wdb_pool_leave(node);
+
     }
+
+    wdb_pool_clean();
+
+    free_strarray(keys);
 }
 
 int wdb_exec_stmt_silent(sqlite3_stmt* stmt) {
@@ -1539,29 +1325,18 @@ cJSON* wdb_exec(sqlite3* db, const char * sql) {
 int wdb_close(wdb_t * wdb, bool commit) {
     int result;
 
-    w_mutex_lock(&wdb->mutex);
+    if (wdb->transaction && commit) {
+        wdb_commit2(wdb);
+    }
 
-    if (wdb->refcount == 0) {
-        if (wdb->transaction && commit) {
-            wdb_commit2(wdb);
-        }
+    wdb_finalize_all_statements(wdb);
+    result = sqlite3_close_v2(wdb->db);
 
-        wdb_finalize_all_statements(wdb);
-
-        result = sqlite3_close_v2(wdb->db);
-        w_mutex_unlock(&wdb->mutex);
-
-        if (result == SQLITE_OK) {
-            wdb_pool_remove(wdb);
-            wdb_destroy(wdb);
-            return OS_SUCCESS;
-        } else {
-            merror("DB(%s) wdb_close(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-            return OS_INVALID;
-        }
+    if (result == SQLITE_OK) {
+        wdb->db = NULL;
+        return OS_SUCCESS;
     } else {
-        w_mutex_unlock(&wdb->mutex);
-        mdebug1("Couldn't close database for agent %s: refcount = %u", wdb->id, wdb->refcount);
+        merror("DB(%s) wdb_close(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
 }
@@ -1590,26 +1365,6 @@ void wdb_finalize_all_statements(wdb_t * wdb) {
     }
 
     wdb->cache_list = NULL;
-}
-
-void wdb_leave(wdb_t * wdb) {
-    if (wdb) {
-        wdb->refcount--;
-        wdb->last = time(NULL);
-        w_mutex_unlock(&wdb->mutex);
-    }
-}
-
-wdb_t * wdb_pool_find_prev(wdb_t * wdb) {
-    wdb_t * node;
-
-    for (node = db_pool_begin; node && node->next; node = node->next) {
-        if (node->next == wdb) {
-            return node;
-        }
-    }
-
-    return NULL;
 }
 
 int wdb_stmt_cache(wdb_t * wdb, int index) {
@@ -1698,16 +1453,13 @@ cJSON *wdb_remove_multiple_agents(char *agent_list) {
 
                 // Close the database only if it was open
 
-                rwlock_lock_write(&pool_mutex);
-
-                wdb = (wdb_t *)OSHash_Get(open_dbs, agent);
+                wdb = wdb_pool_get(agent);
                 if (wdb) {
                     if (wdb_close(wdb, FALSE) < 0) {
                         result = "Can't close";
                     }
+                    wdb_pool_leave(wdb);
                 }
-
-                rwlock_unlock(&pool_mutex);
 
                 mdebug1("Removing db for agent '%s'", agent);
 

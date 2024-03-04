@@ -119,3 +119,61 @@ TEST_F(CtiSnapshotDownloaderTest, SnapshotDownloadWithRetry)
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
     EXPECT_TRUE(std::filesystem::exists(expectedContentPath));
 }
+
+/**
+ * @brief Tests the download of the snapshot when last_snapshot_link metadata is missing.
+ *
+ */
+TEST_F(CtiSnapshotDownloaderTest, MissingLastSnapshotLinkMetadata)
+{
+    std::string mockMetadata = R"(
+        {
+            "data":
+            {
+                "ignored_key": true,
+                "last_offset": 100,
+                "last_snapshot_offset": 0
+            }
+        }
+    )";
+    m_spFakeServer->setCtiMetadata(std::move(mockMetadata));
+
+    ASSERT_THROW(CtiSnapshotDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext), std::runtime_error);
+
+    // Check expected data.
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
+    expectedData["stageStatus"] = FAIL_STATUS;
+    expectedData["type"] = CONTENT_TYPE;
+    expectedData["offset"] = 0;
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+}
+
+/**
+ * @brief Tests the download of the snapshot when last_snapshot_offset metadata is missing.
+ *
+ */
+TEST_F(CtiSnapshotDownloaderTest, MissingLastSnapshotOffsetMetadata)
+{
+    std::string mockMetadata = R"(
+        {
+            "data":
+            {
+                "ignored_key": true,
+                "last_offset": 100,
+                "last_snapshot_link": "some_link"
+            }
+        }
+    )";
+    m_spFakeServer->setCtiMetadata(std::move(mockMetadata));
+
+    ASSERT_THROW(CtiSnapshotDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext), std::runtime_error);
+
+    // Check expected data.
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
+    expectedData["stageStatus"] = FAIL_STATUS;
+    expectedData["type"] = CONTENT_TYPE;
+    expectedData["offset"] = 0;
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+}

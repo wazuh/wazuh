@@ -22,6 +22,7 @@
 #include <cmath>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -72,9 +73,9 @@ protected:
      */
     struct CtiBaseParameters
     {
-        int lastOffset {};               ///< Last available offset from CTI.
-        std::string lastSnapshotLink {}; ///< Last snapshot URL from CTI.
-        int lastSnapshotOffset {};       ///< Last offset within the last snapshot.
+        std::optional<int> lastOffset {};               ///< Last available offset from CTI.
+        std::optional<std::string> lastSnapshotLink {}; ///< Last snapshot URL from CTI.
+        std::optional<int> lastSnapshotOffset {};       ///< Last offset within the last snapshot.
     };
 
     /**
@@ -85,26 +86,64 @@ protected:
      */
     CtiBaseParameters getCtiBaseParameters(const std::string& ctiURL)
     {
-        CtiBaseParameters parameters;
+        nlohmann::json rawMetadata;
 
         // Routine that stores the necessary parameters.
-        const auto onSuccess {[&parameters](const std::string& response)
+        const auto onSuccess {[&rawMetadata](const std::string& response)
                               {
-                                  const auto responseData = nlohmann::json::parse(response).at("data");
+                                  logDebug2(WM_CONTENTUPDATER, "CTI raw metadata: '%s'", response.c_str());
 
-                                  parameters.lastOffset = responseData.at("last_offset").get<int>();
-                                  parameters.lastSnapshotLink =
-                                      responseData.at("last_snapshot_link").get<std::string>();
-                                  parameters.lastSnapshotOffset = responseData.at("last_snapshot_offset").get<int>();
+                                  if (!nlohmann::json::accept(response))
+                                  {
+                                      throw std::runtime_error {"Invalid CTI metadata format"};
+                                  }
+
+                                  auto responseJSON = nlohmann::json::parse(response);
+                                  if (!responseJSON.contains("data"))
+                                  {
+                                      throw std::runtime_error {"No 'data' field in CTI metadata"};
+                                  }
+
+                                  rawMetadata = std::move(responseJSON.at("data"));
                               }};
 
         // Make a get request to the API to get the consumer offset.
         performQueryWithRetry(ctiURL, onSuccess);
 
-        logDebug2(WM_CONTENTUPDATER, "CTI last offset: '%d'", parameters.lastOffset);
-        logDebug2(WM_CONTENTUPDATER, "CTI last snapshot link: '%s'", parameters.lastSnapshotLink.c_str());
-        logDebug2(WM_CONTENTUPDATER, "CTI snapshot last offset: '%d'", parameters.lastSnapshotOffset);
+        // Return if interrupted.
+        if (m_spUpdaterContext->spUpdaterBaseContext->spStopCondition->check())
+        {
+            return CtiBaseParameters();
+        }
 
+        // Lambda that validates a metadata field.
+        const auto isKeyValueValid {
+            [&rawMetadata](const std::string& key)
+            {
+                if (!rawMetadata.contains(key))
+                {
+                    logWarn(WM_CONTENTUPDATER, "Missing CTI metadata key: %s", key.c_str());
+                    return false;
+                }
+
+                const auto& data {rawMetadata.at(key)};
+                if (data.is_null() || (data.is_string() && data.get_ref<const std::string&>().empty()))
+                {
+                    logWarn(WM_CONTENTUPDATER, "Null or empty CTI metadata value for key: %s", key.c_str());
+                    return false;
+                }
+
+                return true;
+            }};
+
+        CtiBaseParameters parameters;
+        parameters.lastOffset =
+            isKeyValueValid("last_offset") ? std::optional(rawMetadata.at("last_offset")) : std::nullopt;
+        parameters.lastSnapshotLink =
+            isKeyValueValid("last_snapshot_link") ? std::optional(rawMetadata.at("last_snapshot_link")) : std::nullopt;
+        parameters.lastSnapshotOffset = isKeyValueValid("last_snapshot_offset")
+                                            ? std::optional(rawMetadata.at("last_snapshot_offset"))
+                                            : std::nullopt;
         return parameters;
     }
 

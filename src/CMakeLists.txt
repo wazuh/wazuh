@@ -114,6 +114,7 @@ include_directories(${SRC_FOLDER}/external/openssl/include)
 include_directories(${SRC_FOLDER}/external/lzma/src/liblzma/api)
 include_directories(${SRC_FOLDER}/external/zlib/)
 include_directories(${SRC_FOLDER}/external/zlib/contrib/)
+include_directories(${SRC_FOLDER}/external/libarchive/libarchive/)
 
 add_subdirectory(shared_modules/utils)
 add_subdirectory(shared_modules/router)

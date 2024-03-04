@@ -155,7 +155,7 @@ int OS_CheckKeys()
         return (0);
     }
 
-    fp = fopen(KEYS_FILE, "r");
+    fp = wfopen(KEYS_FILE, "r");
     if (!fp) {
         /* We can leave from here */
         merror(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
@@ -195,7 +195,7 @@ void OS_ReadKeys(keystore *keys, key_mode_t key_mode, int save_removed)
     }
 
     keys->inode = File_Inode(keys_file);
-    fp = fopen(keys_file, "r");
+    fp = wfopen(keys_file, "r");
     if (!fp) {
         if (!pass_empty_keyfile) {
             /* We can leave from here */
@@ -750,7 +750,7 @@ int w_get_agent_net_protocol_from_keystore(keystore * keys, const char * agent_i
 int OS_ReadTimestamps(keystore * keys) {
     char line[OS_BUFFER_SIZE];
 
-    FILE * fp = fopen(TIMESTAMP_FILE, "r");
+    FILE * fp = wfopen(TIMESTAMP_FILE, "r");
 
     if (fp == NULL) {
         return errno == ENOENT ? 0 : -1;

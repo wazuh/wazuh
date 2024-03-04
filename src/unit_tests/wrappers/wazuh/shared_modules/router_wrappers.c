@@ -18,9 +18,10 @@
 #include "router.h"
 
 int __wrap_router_provider_send(__attribute__((unused)) ROUTER_PROVIDER_HANDLE handle,
-                                __attribute__((unused)) const char* message,
-                                __attribute__((unused)) unsigned int message_size) {
-    function_called();
+                                const char* message,
+                                unsigned int message_size) {
+    check_expected(message);
+    check_expected(message_size);
     return mock();
 }
 
