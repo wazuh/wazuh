@@ -20,7 +20,7 @@
 #include <string>
 
 // RocksDB integration as queue
-template<typename T>
+template<typename T, typename U = T>
 class RocksDBQueue final
 {
 public:
@@ -28,12 +28,15 @@ public:
     {
         // RocksDB initialization.
         rocksdb::Options options;
+        options.create_if_missing = true;
+        options.keep_log_file_num = 1;
+        options.info_log_level = rocksdb::InfoLogLevel::FATAL_LEVEL;
+
         rocksdb::DB* db;
 
         // Create directories recursively if they do not exist
         std::filesystem::create_directories(std::filesystem::path(connectorName));
 
-        options.create_if_missing = true;
         rocksdb::Status status = rocksdb::DB::Open(options, connectorName, &db);
 
         if (!status.ok())
@@ -116,12 +119,29 @@ public:
         return m_size == 0;
     }
 
-    T front() const
+    U front() const
     {
-        T value;
-        if (!m_db->Get(rocksdb::ReadOptions(), std::to_string(m_first), &value).ok())
+        U value;
+        if (!m_db->Get(rocksdb::ReadOptions(), m_db->DefaultColumnFamily(), std::to_string(m_first), &value).ok())
         {
             throw std::runtime_error("Failed to get front element");
+        }
+
+        return value;
+    }
+
+    U at(const uint64_t index) const
+    {
+        if (index >= m_size)
+        {
+            throw std::out_of_range("Index out of range");
+        }
+
+        U value;
+        if (!m_db->Get(rocksdb::ReadOptions(), m_db->DefaultColumnFamily(), std::to_string(m_first + index), &value)
+                 .ok())
+        {
+            throw std::runtime_error("Failed to get element at index");
         }
 
         return value;

@@ -87,7 +87,7 @@ int configure_audisp(const char *audisp_path, const char *audisp_config) {
 
     abspath(AUDIT_CONF_FILE, buffer, PATH_MAX);
 
-    fp = fopen(AUDIT_CONF_FILE, "w");
+    fp = wfopen(AUDIT_CONF_FILE, "w");
     if (!fp) {
         merror(FOPEN_ERROR, AUDIT_CONF_FILE, errno, strerror(errno));
         return -1;
@@ -210,7 +210,7 @@ void audit_create_rules_file() {
     OSListNode *node_it;
     FILE *fp;
 
-    fp = fopen(AUDIT_RULES_FILE, "w");
+    fp = wfopen(AUDIT_RULES_FILE, "w");
     if (!fp) {
         merror(FOPEN_ERROR, AUDIT_RULES_FILE, errno, strerror(errno));
         return;

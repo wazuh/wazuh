@@ -213,9 +213,9 @@ void test_wm_upgrade_agent_search_upgrade_result_successful(void **state)
     int result = 0;
     wm_upgrade_agent_state upgrade_state = WM_UPGRADE_SUCCESSFUL;
 
-    expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, (FILE*)1);
+    expect_string(__wrap_wfopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, (FILE*)1);
 
 #ifdef TEST_WINAGENT
     expect_value(wrap_fgets, __stream, (FILE*)1);
@@ -305,9 +305,9 @@ void test_wm_upgrade_agent_search_upgrade_result_failed(void **state)
     int result = 0;
     wm_upgrade_agent_state upgrade_state = WM_UPGRADE_FAILED;
 
-    expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, (FILE*)1);
+    expect_string(__wrap_wfopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, (FILE*)1);
 
 #ifdef TEST_WINAGENT
     expect_value(wrap_fgets, __stream, (FILE*)1);
@@ -351,9 +351,9 @@ void test_wm_upgrade_agent_search_upgrade_result_error_open(void **state)
     int result = 0;
     wm_upgrade_agent_state upgrade_state = WM_UPGRADE_FAILED;
 
-    expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, NULL);
 
     int ret = wm_upgrade_agent_search_upgrade_result(&queue);
 
@@ -368,9 +368,9 @@ void test_wm_upgrade_agent_search_upgrade_result_error_code(void **state)
     int result = 0;
     wm_upgrade_agent_state upgrade_state = WM_UPGRADE_FAILED;
 
-    expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, (FILE*)1);
+    expect_string(__wrap_wfopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, (FILE*)1);
 
 #ifdef TEST_WINAGENT
     expect_value(wrap_fgets, __stream, (FILE*)1);
@@ -412,9 +412,9 @@ void test_wm_agent_upgrade_check_status_successful(void **state)
     expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_RESULT_WAIT_TIME);
 #endif
 
-    expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, (FILE*)1);
+    expect_string(__wrap_wfopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, (FILE*)1);
 
 #ifdef TEST_WINAGENT
     expect_value(wrap_fgets, __stream, (FILE*)1);
@@ -451,9 +451,9 @@ void test_wm_agent_upgrade_check_status_successful(void **state)
     expect_value(__wrap_sleep, seconds, config->upgrade_wait_start);
 #endif
 
-    expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, NULL);
 
     wm_agent_upgrade_check_status(config);
 
@@ -483,9 +483,9 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_RESULT_WAIT_TIME);
 #endif
 
-    expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, (FILE*)1);
+    expect_string(__wrap_wfopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, (FILE*)1);
 
 #ifdef TEST_WINAGENT
     expect_value(wrap_fgets, __stream, (FILE*)1);
@@ -522,9 +522,9 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     expect_value(__wrap_sleep, seconds, config->upgrade_wait_start);
 #endif
 
-    expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, (FILE*)1);
+    expect_string(__wrap_wfopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, (FILE*)1);
 
 #ifdef TEST_WINAGENT
     expect_value(wrap_fgets, __stream, (FILE*)1);
@@ -561,9 +561,9 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     expect_value(__wrap_sleep, seconds, config->upgrade_wait_start * config->upgrade_wait_factor_increase);
 #endif
 
-    expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, (FILE*)1);
+    expect_string(__wrap_wfopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, (FILE*)1);
 
 #ifdef TEST_WINAGENT
     expect_value(wrap_fgets, __stream, (FILE*)1);
@@ -600,9 +600,9 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     expect_value(__wrap_sleep, seconds, config->upgrade_wait_start * config->upgrade_wait_factor_increase * config->upgrade_wait_factor_increase);
 #endif
 
-    expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, (FILE*)1);
+    expect_string(__wrap_wfopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, (FILE*)1);
 
 #ifdef TEST_WINAGENT
     expect_value(wrap_fgets, __stream, (FILE*)1);
@@ -639,9 +639,9 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     expect_value(__wrap_sleep, seconds, config->upgrade_wait_max);
 #endif
 
-    expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, NULL);
 
     wm_agent_upgrade_check_status(config);
 

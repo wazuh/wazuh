@@ -13,15 +13,21 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include <stdio.h>
+#include "../common.h"
+
 HANDLE wrap_CreateFile(LPCSTR lpFileName,
-                       __UNUSED_PARAM(DWORD dwDesiredAccess),
-                       __UNUSED_PARAM(DWORD dwShareMode),
-                       __UNUSED_PARAM(LPSECURITY_ATTRIBUTES lpSecurityAttributes),
-                       __UNUSED_PARAM(DWORD dwCreationDisposition),
-                       __UNUSED_PARAM(DWORD dwFlagsAndAttributes),
-                       __UNUSED_PARAM(HANDLE hTemplateFile)) {
-    check_expected(lpFileName);
-    return mock_type(HANDLE);
+                       DWORD dwDesiredAccess,
+                       DWORD dwShareMode,
+                       LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+                       DWORD dwCreationDisposition,
+                       DWORD dwFlagsAndAttributes,
+                       HANDLE hTemplateFile) {
+    if (test_mode) {
+        check_expected(lpFileName);
+        return mock_type(HANDLE);
+    } else {
+        return CreateFileA(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+    }
 }
 
 void expect_CreateFile_call(const char *filename, HANDLE ret) {

@@ -23,6 +23,7 @@
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/shared/privsep_op_wrappers.h"
+#include "../wrappers/common.h"
 
 #ifdef TEST_WINAGENT
 #include "../wrappers/wazuh/syscheckd/syscom_wrappers.h"
@@ -123,6 +124,7 @@ static int setup_string_array(void **state) {
         return -1;
 
     *state = array;
+    test_mode = 1;
 
     return 0;
 }
@@ -131,6 +133,7 @@ static int teardown_string_array(void **state) {
     char **array = *state;
 
     free_strarray(array);
+    test_mode = 0;
 
     return 0;
 }

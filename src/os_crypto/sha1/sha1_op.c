@@ -35,7 +35,7 @@ int OS_SHA1_File(const char *fname, os_sha1 output, int mode) {
     memset(output, 0, sizeof(os_sha1));
     buf[2049] = '\0';
 
-    fp = fopen(fname, mode == OS_BINARY ? "rb" : "r");
+    fp = wfopen(fname, mode == OS_BINARY ? "rb" : "r");
     if (!fp) {
         return (-1);
     }
@@ -155,7 +155,7 @@ int OS_SHA1_File_Nbytes_with_fp_check(const char * fname, SHA_CTX * c, os_sha1 o
         open_fd = lpFileInformation.nFileIndexLow + lpFileInformation.nFileIndexHigh;
     }
 #else
-    if (fp = fopen(fname, mode == OS_BINARY ? "rb" : "r"), fp == NULL) {
+    if (fp = wfopen(fname, mode == OS_BINARY ? "rb" : "r"), fp == NULL) {
         return -1;
     }
 #endif

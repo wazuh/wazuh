@@ -189,6 +189,12 @@ variables:
       <syscheck>
         <disabled>yes</disabled>
       </syscheck>
+    
+      <vulnerability-detection>
+        <enabled>no</enabled>
+        <index-status>yes</index-status>
+        <feed-update-interval>60m</feed-update-interval>
+      </vulnerability-detection>
     </ossec_config>
 
   valid_ossec_conf_with_update_check_disabled:
@@ -222,6 +228,12 @@ variables:
       <syscheck>
         <disabled>yes</disabled>
       </syscheck>
+    
+      <vulnerability-detection>
+        <enabled>no</enabled>
+        <index-status>yes</index-status>
+        <feed-update-interval>60m</feed-update-interval>
+      </vulnerability-detection>
     </ossec_config>
 
   invalid_ossec_conf:
@@ -237,6 +249,12 @@ variables:
         <log_alert_level>3</log_alert_level>
         <email_alert_level>12</email_alert_level>
       </alerts>
+    
+      <vulnerability-detection>
+        <enabled>no</enabled>
+        <index-status>yes</index-status>
+        <feed-update-interval>60m</feed-update-interval>
+      </vulnerability-detection>
 
       <remote>
     </ossec_config>
@@ -306,4 +324,10 @@ variables:
       <syscheck>
         <disabled>yes</disabled>
       </syscheck>
+    
+      <vulnerability-detection>
+        <enabled>no</enabled>
+        <index-status>yes</index-status>
+        <feed-update-interval>60m</feed-update-interval>
+      </vulnerability-detection>
     </ossec_config>
