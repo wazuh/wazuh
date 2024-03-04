@@ -47,12 +47,11 @@
       "command_line": "\"C:\\Users\\Positivo BGH\\AppData\\Local\\Microsoft\\WindowsApps\\python.exe\" -c \"import sys; print('hello')\"",
       "entity_id": "{23b237de-6d5e-650b-0506-000000002000}",
       "executable": "C:\\Program Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.7_3.7.2544.0_x64__qbz5n2kfra8p0\\python.exe",
-      "hash": [
-        "SHA1=104605DE5514465D8334F0A27AB4F773ABF5BF3E",
-        "MD5=3EC94A0EB1016971F8B073FDB6ECA966",
-        "SHA256=90AC242852C321F469B908F83A345B387A41A71722122A63646BF8EE74097D88",
-        "IMPHASH=2897A2A24664AE65557EDC80442FBEDE"
-      ],
+      "hash": {
+        "md5": "3EC94A0EB1016971F8B073FDB6ECA966",
+        "sha1": "104605DE5514465D8334F0A27AB4F773ABF5BF3E",
+        "sha256": "90AC242852C321F469B908F83A345B387A41A71722122A63646BF8EE74097D88"
+      },
       "name": "python.exe",
       "parent": {
         "args": [
@@ -68,6 +67,7 @@
         "company": "Python Software Foundation",
         "description": "Python",
         "file_version": "3.7.9",
+        "imphash": "2897A2A24664AE65557EDC80442FBEDE",
         "original_file_name": "python.exe",
         "product": "Python"
       },
