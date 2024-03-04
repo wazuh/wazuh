@@ -1,4 +1,3 @@
-# END TO BE DELETED
 asn1crypto==1.3.0
 attrs==23.1.0
 azure-common==1.1.25

@@ -328,7 +328,7 @@ async def query_update_check_service(installation_uid: str) -> dict:
 
     async with httpx.AsyncClient(verify=_get_ssl_context()) as client:
         try:
-            response = await client.get(RELEASE_UPDATES_URL, headers=headers)
+            response = await client.get(RELEASE_UPDATES_URL, headers=headers, follow_redirects=True)
             response_data = response.json()
 
             update_information['status_code'] = response.status_code
