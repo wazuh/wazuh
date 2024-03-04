@@ -50,6 +50,7 @@ jobs:
       # Install behave
       run: |
         pip install ${{env.ENGINE_DIR}}/tools/api-communication/
+        pip install ${{env.ENGINE_DIR}}/test/integration_tests/it-utils/
         pip install ${{env.ENGINE_DIR}}/tools/engine-suite/
 
     - name: Configure CMake
@@ -62,11 +63,11 @@ jobs:
 
     - name: Setup environment
       # Set Engine Configuration
-      run: bash ${{env.ENGINE_DIR}}/test/setupEnvironment.sh
+      run: python3 ${{env.ENGINE_DIR}}/test/setupEnvironment.py -e /tmp/actions
 
     - name: Initial state
-      run: bash ${{env.ENGINE_DIR}}/test/health_test/initialState.sh
+      run: python3 ${{env.ENGINE_DIR}}/test/health_test/initialState.py -e /tmp/actions
 
     - name: Health Test
       # Run integration tests using behave
-      run: bash ${{env.ENGINE_DIR}}/test/health_test/run.sh
+      run: python3 ${{env.ENGINE_DIR}}/test/health_test/run.py -e /tmp/actions
