@@ -1,0 +1,161 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+# Sample debian/rules that uses debhelper.
+#
+# This file was originally written by Joey Hess and Craig Small.
+# As a special exception, when this file is copied by dh-make into a
+# dh-make output file, you may use that output file without restriction.
+# This special exception was added by Craig Small in version 0.37 of dh-make.
+#
+# Modified to make a template file for a multi-binary package with separated
+# build-arch and build-indep targets  by Bill Allombert 2001
+
+# Uncomment this to turn on verbose mode.
+export DH_VERBOSE=1
+
+# This has to be exported to make some magic below work.
+export DH_OPTIONS
+
+export TARGET_DIR=${CURDIR}/debian/wazuh-agent
+
+# Package build options
+export INSTALLATION_DIR="/var/ossec"
+export INSTALLATION_SCRIPTS_DIR="${INSTALLATION_DIR}/packages_files/agent_installation_scripts"
+export JOBS="5"
+export DEBUG_ENABLED="no"
+export PATH="${PATH}"
+export LD_LIBRARY_PATH=""
+
+%:
+	dh $@
+
+override_dh_shlibdeps:
+
+override_dh_auto_configure:
+
+override_dh_auto_install:
+
+override_dh_install:
+
+	rm -rf $(INSTALLATION_DIR)/
+
+	# Build the binaries
+	make -C src deps TARGET=agent
+	make -j$(JOBS) -C src/ TARGET=agent USE_SELINUX=yes DEBUG=$(DEBUG_ENABLED)
+
+	USER_LANGUAGE="en" \
+	USER_NO_STOP="y" \
+	USER_INSTALL_TYPE="agent" \
+	USER_DIR="$(INSTALLATION_DIR)" \
+	USER_DELETE_DIR="y" \
+	USER_ENABLE_ACTIVE_RESPONSE="y" \
+	USER_ENABLE_SYSCHECK="y" \
+	USER_ENABLE_ROOTCHECK="y" \
+	USER_ENABLE_OPENSCAP="y" \
+	USER_ENABLE_CISCAT="y" \
+	USER_ENABLE_SYSCOLLECTOR="y" \
+	USER_UPDATE="n" \
+	USER_AGENT_SERVER_IP="MANAGER_IP" \
+	USER_CA_STORE="/path/to/my_cert.pem" \
+	USER_AUTO_START="n" \
+	./install.sh
+
+	# Copying init.d script
+	mkdir -p ${TARGET_DIR}/etc/init.d/
+	sed -i "s:WAZUH_HOME_TMP:${INSTALLATION_DIR}:g" src/init/templates/ossec-hids-debian.init
+
+	cp src/init/templates/ossec-hids-debian.init ${TARGET_DIR}/etc/init.d/wazuh-agent
+
+	# Copying systemd file
+	mkdir -p ${TARGET_DIR}/usr/lib/systemd/system/
+	sed -i "s:WAZUH_HOME_TMP:${INSTALLATION_DIR}:g" src/init/templates/wazuh-agent.service
+	install -m 0644 src/init/templates/wazuh-agent.service ${TARGET_DIR}/usr/lib/systemd/system/
+
+	# Generating permission restoration file for postinstall
+	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)
+
+	# Remove preinstalled log files
+	rm -rf $(INSTALLATION_DIR)/logs/*.log
+	rm -rf $(INSTALLATION_DIR)/logs/*.json
+
+	# Clean the preinstalled configuration assesment files
+	rm -rf ${TARGET_DIR}$(INSTALLATION_DIR)/ruleset/sca
+	mkdir -p ${TARGET_DIR}$(INSTALLATION_DIR)/ruleset/sca
+
+	./gen_permissions.sh $(INSTALLATION_DIR)/ ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/restore-permissions.sh
+
+	# Copying to target
+	mkdir -p ${TARGET_DIR}$(INSTALLATION_DIR)/
+	cp -r $(INSTALLATION_DIR)/. $(TARGET_DIR)$(INSTALLATION_DIR)/
+
+	# Copying install scripts to /usr/share
+	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/
+	cp gen_ossec.sh ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/
+	cp add_localfiles.sh ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/
+
+	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/src
+	cp src/VERSION ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/src/
+	cp src/REVISION ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/src/
+
+	# Install configuration assesment files and files templates
+	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/applications
+	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/generic
+	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/debian/7
+	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/debian/8
+	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/debian/9
+	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/debian/10
+	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/debian/11
+	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/debian/12
+	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu/12/04
+	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu/14/04
+	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu/16/04
+	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu/18/04
+	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu/20/04
+	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu/22/04
+
+	cp -r ruleset/sca/* ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca
+
+	cp etc/templates/config/generic/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/generic
+	cp etc/templates/config/generic/sca.manager.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/generic
+
+	cp etc/templates/config/debian/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/debian
+	cp etc/templates/config/debian/7/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/debian/7
+	cp etc/templates/config/debian/8/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/debian/8
+	cp etc/templates/config/debian/9/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/debian/9
+	cp etc/templates/config/debian/10/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/debian/10
+	cp etc/templates/config/debian/11/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/debian/11
+	cp etc/templates/config/debian/12/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/debian/12
+
+	cp etc/templates/config/ubuntu/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu
+	cp etc/templates/config/ubuntu/12/04/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu/12/04
+	cp etc/templates/config/ubuntu/14/04/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu/14/04
+	cp etc/templates/config/ubuntu/16/04/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu/16/04
+	cp etc/templates/config/ubuntu/18/04/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu/18/04
+	cp etc/templates/config/ubuntu/20/04/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu/20/04
+	cp etc/templates/config/ubuntu/22/04/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu/22/04
+
+	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/src/init
+	cp -r src/init/*  ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/src/init
+
+	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/etc/templates/config/generic
+	cp -r etc/templates/config/generic ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/etc/templates/config/
+
+	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/etc/templates/config/debian
+	cp -r etc/templates/config/debian ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/etc/templates/config/
+
+	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/etc/templates/config/ubuntu
+	cp -r etc/templates/config/ubuntu ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/etc/templates/config/
+
+	# Copying systemd file
+	mkdir -p ${TARGET_DIR}/etc/systemd/system/
+	sed -i "s:WAZUH_HOME_TMP:${INSTALLATION_DIR}:g" src/init/templates/wazuh-agent.service
+	cp src/init/templates/wazuh-agent.service ${TARGET_DIR}/etc/systemd/system/
+
+override_dh_auto_clean:
+	$(MAKE) -C src clean
+
+
+override_dh_strip:
+	dh_strip --no-automatic-dbgsym
+
+.PHONY: override_dh_install override_dh_strip override_dh_auto_clean override_dh_auto_build override_dh_auto_configure
