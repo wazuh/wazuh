@@ -9,6 +9,8 @@
 /*******************************************************************************
  * NOTE: This module is not thread-safe.
  *
+ * This library is used to interact with the journal log through the sd_journal
+ * library.
  * All functions listed here are thread-agnostic and only a single specific
  * thread may operate on a given object during its entire lifetime.
  * It's safe to allocate multiple independent objects and use each from a
@@ -16,37 +18,52 @@
  * However, it's not safe to allocate such an object in one thread, and operate
  * or free it from any other, even if locking is used to ensure these threads
  * don't operate on it at the very same time.
+ * The library tries to dinamically load the sd_journal library, so it's not
+ * necessary to link it at compile time.
+ * All functions are added in version 187 unless otherwise noted.
  *******************************************************************************/
+
 /**********************************************************
- *                    Library related
+ *               Journald library related
  ***********************************************************/
-typedef struct sd_journal sd_journal;
-typedef int (*sd_journal_open_t)(sd_journal **ret, int flags);
-typedef void (*sd_journal_close_t)(sd_journal *j);
-typedef int (*sd_journal_get_realtime_usec_t)(sd_journal *j, uint64_t *ret);
-typedef int (*sd_journal_seek_tail_t)(sd_journal *j);
-typedef int (*sd_journal_previous_t)(sd_journal *j);
-typedef int (*sd_journal_seek_realtime_usec_t)(sd_journal *j, uint64_t usec);
-typedef int (*sd_journal_next_t)(sd_journal *j);
-typedef int (*sd_journal_get_cutoff_realtime_usec_t)(sd_journal *j, uint64_t *from, uint64_t *to);
-typedef int (*sd_journal_enumerate_available_data_t)(sd_journal *j, const void **data, size_t *l);
-typedef int (*sd_journal_get_data_t)(sd_journal *j, const char *field, const void **data, size_t *l);
+typedef struct sd_journal sd_journal; ///< sd_journal
 
-typedef struct {
-    sd_journal_open_t open;
-    sd_journal_close_t close;
-    sd_journal_get_realtime_usec_t get_realtime_usec;
-    sd_journal_seek_tail_t seek_tail;
-    sd_journal_previous_t previous;
-    sd_journal_seek_realtime_usec_t seek_realtime_usec;
-    sd_journal_next_t next;
-    sd_journal_get_cutoff_realtime_usec_t get_cutoff_realtime_usec;
-    sd_journal_enumerate_available_data_t enumerate_available_data;
-    sd_journal_get_data_t get_data;
-    void* handle;
-} w_sd_journal_lib_t;
+typedef int (*w_journal_open)(sd_journal** ret, int flags);            ///< sd_journal_open
+typedef void (*w_journal_close)(sd_journal* j);                        ///< sd_journal_close
+typedef int (*w_journal_get_timestamp)(sd_journal* j, uint64_t* ret);  ///< sd_journal_get_realtime_usec
+typedef int (*w_journal_seek_tail)(sd_journal* j);                     ///< sd_journal_seek_tail
+typedef int (*w_journal_previous)(sd_journal* j);                      ///< sd_journal_previous
+typedef int (*w_journal_seek_timestamp)(sd_journal* j, uint64_t usec); ///< sd_journal_seek_realtime_usec
+typedef int (*w_journal_next)(sd_journal* j);                          ///< sd_journal_next
+typedef int (*w_journal_get_cutoff_timestamp)(sd_journal* j,
+                                              uint64_t* from,
+                                              uint64_t* to); ///< sd_journal_get_cutoff_realtime_usec
 
+typedef int (*w_journal_enumerate_available_data)(
+    sd_journal* j, const void** data, size_t* l); ///< sd_journal_enumerate_available_data Added in version 246
 
+typedef int (*w_journal_get_data)(sd_journal* j, const char* field, const void** data, size_t* l);
+
+/**
+ * @brief Journal log library
+ *
+ * This structure is used to store the functions of the journal log library.
+ * The functions are used to interact with the journal log.
+ */
+typedef struct
+{
+    w_journal_open open;                                 ///< Open the journal log
+    w_journal_close close;                               ///< Close the journal log
+    w_journal_get_timestamp get_timestamp;               ///< Get the current time of the journal log
+    w_journal_seek_tail seek_tail;                       ///< Move the cursor to the end of the journal log
+    w_journal_previous previous;                         ///< Move the cursor to the previous entry
+    w_journal_seek_timestamp seek_timestamp;             ///< Move the cursor to the entry with the specified timestamp
+    w_journal_next next;                                 ///< Move the cursor to the next entry
+    w_journal_get_cutoff_timestamp get_cutoff_timestamp; ///< Get the oldest timestamps in the journal
+    w_journal_enumerate_available_data enumerate_available_data; ///< Get the available data in the current entry
+    w_journal_get_data get_data; ///< Get the data of the specified field in the current entry
+    void* handle;                ///< Handle of the library
+} w_journal_lib_t;
 
 /**********************************************************
  *                    Context related
@@ -57,9 +74,9 @@ typedef struct {
  */
 typedef struct
 {
-    w_sd_journal_lib_t* lib;            ///< Journal functions
-    sd_journal* journal;              ///< Journal context
-    uint64_t timestamp;               ///< Last timestamp processed (__REALTIME_TIMESTAMP)
+    w_journal_lib_t* lib; ///< Journal functions
+    sd_journal* journal;  ///< Journal context
+    uint64_t timestamp;   ///< Last timestamp processed (__REALTIME_TIMESTAMP)
 } w_journal_context_t;
 
 /**
@@ -120,7 +137,7 @@ int w_journal_context_next_newest(w_journal_context_t* ctx);
 
 /**
  * @brief Get the oldest accessible timestamp in the journal (__REALTIME_TIMESTAMP)
- * 
+ *
  * @param ctx Journal log context
  * @param timestamp The oldest timestamp
  * @return int 0 on success or a negative errno-style error code.
@@ -194,7 +211,7 @@ char* w_journal_entry_to_string(w_journal_entry_t* entry);
 typedef struct _w_journal_filter_unit_t
 {
     char* field;           // Field to try match
-    w_expression_t* exp; // Expression to match against the field (PCRE2)
+    w_expression_t* exp;   // Expression to match against the field (PCRE2)
     int ignore_if_missing; // Ignore if the field is missing (TODO: Use BOOL)
 } _w_journal_filter_unit_t;
 
