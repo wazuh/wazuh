@@ -52,11 +52,6 @@ def cancel_signal_handler(func: Callable) -> Callable:
     return wrapper
 
 
-async def modify_response_headers(request, response):
-    # Delete 'Server' entry
-    response.headers.pop('Server', None)
-
-
 @cancel_signal_handler
 async def check_installation_uid() -> None:
     """Check if the installation UID exists, populate it if not and inject it into the global cti context."""
