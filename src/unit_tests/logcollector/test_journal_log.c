@@ -93,7 +93,7 @@ void test_w_journald_poc(void ** state) {
         {
             // Dump, print and free entry
             //w_journal_entry_t* entry = w_journal_entry_dump(ctx, W_JOURNAL_ENTRY_DUMP_TYPE_JSON);
-            w_journal_entry_t* entry = w_journal_entry_dump(ctx, W_JOURNAL_ENTRY_DUMP_TYPE_SYSLOG);
+            w_journal_entry_t* entry = w_journal_entry_dump(ctx, W_JOURNAL_ENTRY_DUMP_TYPE_JSON);
 
             char* entry_str = w_journal_entry_to_string(entry);
             assert_non_null(entry_str);
