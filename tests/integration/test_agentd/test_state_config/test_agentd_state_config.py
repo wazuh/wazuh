@@ -141,5 +141,6 @@ def test_agentd_state_config(test_configuration, test_metadata, remove_state_fil
 
     # Follow ossec.log to find desired messages by a callback
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    time.sleep(1)
     wazuh_log_monitor.start(callback=callbacks.generate_callback(str(test_metadata['event_monitor'])))
     assert (wazuh_log_monitor.callback_result != None), f'Error invalid configuration event not detected'
