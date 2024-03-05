@@ -1674,6 +1674,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SharedAccess'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SharedAccess -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SharedAccess -> Start -> 4'
 
   # 5.9 (L2) Ensure 'Link-Layer Topology Discovery Mapper (lltdsvc)' is set to 'Disabled'. (Automated)
@@ -1694,6 +1696,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\lltdsvc'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\lltdsvc -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\lltdsvc -> Start -> 4'
 
   # 5.10 (L1) Ensure 'LxssManager (LxssManager)' is set to 'Disabled' or 'Not Installed'. (Automated)
@@ -1758,6 +1762,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\MSiSCSI'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\MSiSCSI -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\MSiSCSI -> Start -> 4'
 
   # 5.13 (L1) Ensure 'OpenSSH SSH Server (sshd)' is set to 'Disabled' or 'Not Installed'. (Automated)
@@ -1800,6 +1806,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PNRPsvc'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PNRPsvc -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PNRPsvc -> Start -> 4'
 
   # 5.15 (L2) Ensure 'Peer Networking Grouping (p2psvc)' is set to 'Disabled'. (Automated)
@@ -1821,7 +1829,7 @@ checks:
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2psvc'
-      - r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2psvc -> Start'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2psvc -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2psvc -> Start -> 4'
 
   # 5.16 (L2) Ensure 'Peer Networking Identity Manager (p2pimsvc)' is set to 'Disabled'. (Automated)
@@ -1842,6 +1850,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2pimsvc'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2pimsvc -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2pimsvc -> Start -> 4'
 
   # 5.17 (L2) Ensure 'PNRP Machine Name Publication Service (PNRPAutoReg)' is set to 'Disabled'. (Automated)
@@ -1862,6 +1872,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PNRPAutoReg'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PNRPAutoReg -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PNRPAutoReg -> Start -> 4'
 
   # 5.18 (L2) Ensure 'Print Spooler (Spooler)' is set to 'Disabled'. (Automated)
@@ -1884,6 +1896,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Spooler'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Spooler -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Spooler -> Start -> 4'
 
   # 5.19 (L2) Ensure 'Problem Reports and Solutions Control Panel Support (wercplsupport)' is set to 'Disabled'. (Automated)
@@ -1904,6 +1918,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\wercplsupport'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\wercplsupport -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\wercplsupport -> Start -> 4'
 
   # 5.20 (L2) Ensure 'Remote Access Auto Connection Manager (RasAuto)' is set to 'Disabled'. (Automated)
@@ -1946,6 +1962,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SessionEnv'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SessionEnv -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SessionEnv -> Start -> 4'
 
   # 5.22 (L2) Ensure 'Remote Desktop Services (TermService)' is set to 'Disabled'. (Automated)
@@ -1966,6 +1984,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TermService'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TermService -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TermService -> Start -> 4'
 
   # 5.23 (L2) Ensure 'Remote Desktop Services UserMode Port Redirector (UmRdpService)' is set to 'Disabled'. (Automated)
@@ -1986,6 +2006,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\UmRdpService'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\UmRdpService -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\UmRdpService -> Start -> 4'
 
   # 5.24 (L1) Ensure 'Remote Procedure Call (RPC) Locator (RpcLocator)' is set to 'Disabled'. (Automated)
@@ -2006,6 +2028,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RpcLocator'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RpcLocator -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RpcLocator -> Start -> 4'
 
   # 5.25 (L2) Ensure 'Remote Registry (RemoteRegistry)' is set to 'Disabled'. (Automated)
@@ -2026,6 +2050,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RemoteRegistry'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RemoteRegistry -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RemoteRegistry -> Start -> 4'
 
   # 5.26 (L1) Ensure 'Routing and Remote Access (RemoteAccess)' is set to 'Disabled'. (Automated)
@@ -2046,6 +2072,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RemoteAccess'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RemoteAccess -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RemoteAccess -> Start -> 4'
 
   # 5.27 (L2) Ensure 'Server (LanmanServer)' is set to 'Disabled'. (Automated)
@@ -2066,6 +2094,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanServer'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanServer -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanServer -> Start -> 4'
 
   # 5.28 (L1) Ensure 'Simple TCP/IP Services (simptcp)' is set to 'Disabled' or 'Not Installed'. (Automated)
@@ -2154,6 +2184,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SSDPSRV'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SSDPSRV -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SSDPSRV -> Start -> 4'
 
   # 5.32 (L1) Ensure 'UPnP Device Host (upnphost)' is set to 'Disabled'. (Automated)
@@ -2174,6 +2206,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\upnphost'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\upnphost -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\upnphost -> Start -> 4'
 
   # 5.33 (L1) Ensure 'Web Management Service (WMSvc)' is set to 'Disabled' or 'Not Installed'. (Automated)
@@ -2216,6 +2250,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WerSvc'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WerSvc -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WerSvc -> Start -> 4'
 
   # 5.35 (L2) Ensure 'Windows Event Collector (Wecsvc)' is set to 'Disabled'. (Automated)
@@ -2236,6 +2272,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Wecsvc'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Wecsvc -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Wecsvc -> Start -> 4'
 
   # 5.36 (L1) Ensure 'Windows Media Player Network Sharing Service (WMPNetworkSvc)' is set to 'Disabled' or 'Not Installed'. (Automated)
@@ -2278,6 +2316,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\icssvc'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\icssvc -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\icssvc -> Start -> 4'
 
   # 5.38 (L2) Ensure 'Windows Push Notifications System Service (WpnService)' is set to 'Disabled'. (Automated)
@@ -2298,6 +2338,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WpnService'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WpnService -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WpnService -> Start -> 4'
 
   # 5.39 (L2) Ensure 'Windows PushToInstall Service (PushToInstall)' is set to 'Disabled'. (Automated)
@@ -2318,6 +2360,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PushToInstall'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PushToInstall -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PushToInstall -> Start -> 4'
 
   # 5.40 (L2) Ensure 'Windows Remote Management (WS-Management) (WinRM)' is set to 'Disabled'. (Automated)
@@ -2338,6 +2382,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WinRM'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WinRM -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WinRM -> Start -> 4'
 
   # 5.41 (L1) Ensure 'World Wide Web Publishing Service (W3SVC)' is set to 'Disabled' or 'Not Installed'. (Automated)
@@ -2382,6 +2428,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\XboxGipSvc'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\XboxGipSvc -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\XboxGipSvc -> Start -> 4'
 
   # 5.43 (L1) Ensure 'Xbox Live Auth Manager (XblAuthManager)' is set to 'Disabled'. (Automated)
@@ -2404,6 +2452,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\XblAuthManager'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\XblAuthManager -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\XblAuthManager -> Start -> 4'
 
   # 5.44 (L1) Ensure 'Xbox Live Game Save (XblGameSave)' is set to 'Disabled'. (Automated)
@@ -2426,6 +2476,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\XblGameSave'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\XblGameSave -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\XblGameSave -> Start -> 4'
 
   # 5.45 (L1) Ensure 'Xbox Live Networking Service (XboxNetApiSvc)' is set to 'Disabled'. (Automated)
@@ -2448,6 +2500,8 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\XboxNetApiSvc'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\XboxNetApiSvc -> Start'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\XboxNetApiSvc -> Start -> 4'
 
   # 9.1.1 (L1) Ensure 'Windows Firewall: Domain: Firewall state' is set to 'On (recommended)'. (Automated)
@@ -2546,6 +2600,7 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile -> DisableNotifications'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile -> DisableNotifications -> 1'
@@ -2592,6 +2647,7 @@ checks:
       - soc_2: ["A1.1"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging -> LogFileSize'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging -> LogFileSize -> n:^(\d+) compare >= 16384'
@@ -2615,6 +2671,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.6", "CC7.2"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging -> LogDroppedPackets'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging -> LogDroppedPackets -> 1'
@@ -2638,6 +2695,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.6", "CC7.2"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging -> LogSuccessfulConnections'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging -> LogSuccessfulConnections -> 1'
@@ -2736,6 +2794,7 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile -> DisableNotifications'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile -> DisableNotifications -> 1'
@@ -2785,6 +2844,7 @@ checks:
       - soc_2: ["A1.1"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogFileSize'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogFileSize -> n:^(\d+) compare >= 16384'
@@ -2810,6 +2870,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.6", "CC7.2"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogDroppedPackets'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogDroppedPackets -> 1'
@@ -2835,6 +2896,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.6", "CC7.2"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogSuccessfulConnections'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogSuccessfulConnections -> 1'
@@ -2933,6 +2995,7 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> DisableNotifications'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> DisableNotifications -> 1'
@@ -2956,6 +3019,7 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> AllowLocalPolicyMerge'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> AllowLocalPolicyMerge -> 0'
@@ -2979,6 +3043,7 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> AllowLocalIPsecPolicyMerge'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> AllowLocalIPsecPolicyMerge -> 0'
@@ -3025,6 +3090,7 @@ checks:
       - soc_2: ["A1.1"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogFileSize'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogFileSize -> n:^(\d+) compare >= 16384'
@@ -3048,6 +3114,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.6", "CC7.2"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogDroppedPackets'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogDroppedPackets -> 1'
@@ -3071,6 +3138,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.6", "CC7.2"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogSuccessfulConnections'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogSuccessfulConnections -> 1'
