@@ -15,6 +15,7 @@
 #include "external/cpp-httplib/httplib.h"
 #include "external/nlohmann/json.hpp"
 #include <algorithm>
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <queue>
@@ -22,8 +23,28 @@
 #include <string>
 #include <thread>
 #include <utility>
+#include <vector>
 
 const std::string SNAPSHOT_FILE_NAME {"content_snapshot.xyz"};
+
+/**
+ * @brief Struct that represents a query record received by the server.
+ *
+ */
+struct ServerRecord
+{
+    const std::string endpoint;                                         ///< Endpoint where the query points to.
+    const std::chrono::time_point<std::chrono::system_clock> timestamp; ///< Query timestamp.
+
+    /**
+     * @brief Creates a record with the given query endpoint and the current timestamp.
+     *
+     * @param queryEndpoint
+     */
+    ServerRecord(const std::string& queryEndpoint)
+        : endpoint(queryEndpoint)
+        , timestamp(std::chrono::system_clock::now()) {};
+};
 
 /**
  * @brief This class is a simple HTTP server that provides a fake server.
@@ -37,6 +58,7 @@ private:
     int m_port;
     std::queue<unsigned long> m_errorsQueue; ///< Errors queue used to return error codes for some queries.
     std::string m_ctiMetadataMock;
+    std::vector<ServerRecord> m_records; ///< Set of queries recorded by the server.
 
     /**
      * @brief Pops and returns the last error code from the error queue.
@@ -48,6 +70,24 @@ private:
         const auto errorCode {m_errorsQueue.front()};
         m_errorsQueue.pop();
         return errorCode;
+    }
+
+    /**
+     * @brief Adds a handler routine for a given endpoint. The final handler is a wrapper of the one passed by
+     * parameter, with the addition of a pre-handler routine.
+     *
+     * @param endpoint Endpoint that will trigger the handler.
+     * @param handler Callback handler.
+     */
+    void addEndpointHandler(const std::string& endpoint, httplib::Server::Handler handler)
+    {
+        auto handlerWrapper {[this, endpoint, handler](const httplib::Request& req, httplib::Response& res)
+                             {
+                                 m_records.emplace_back(endpoint);
+
+                                 handler(req, res);
+                             }};
+        m_server.Get(endpoint, std::move(handlerWrapper));
     }
 
 public:
@@ -62,11 +102,7 @@ public:
         , m_host(std::move(host))
         , m_port(port)
     {
-        // Wait until server is ready
-        while (!m_server.is_running())
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
+        m_server.wait_until_ready();
     }
 
     ~FakeServer()
@@ -99,6 +135,25 @@ public:
     }
 
     /**
+     * @brief Returns the list of records.
+     *
+     * @return const std::vector<ServerRecord>& Constant reference to the records vector.
+     */
+    const std::vector<ServerRecord>& getRecords() const
+    {
+        return m_records;
+    }
+
+    /**
+     * @brief Removes all the registered records.
+     *
+     */
+    void clearRecords()
+    {
+        m_records.clear();
+    }
+
+    /**
      * @brief Sets the CTI metadata to be returned in the next query.
      *
      * @param ctiMetadata New metadata to be used.
@@ -117,38 +172,38 @@ public:
      */
     void run()
     {
-        m_server.Get("/raw",
-                     [](const httplib::Request& req, httplib::Response& res)
-                     {
-                         const auto response = R"(
-                         {
-                             "key": "value"
-                         })"_json;
-                         res.set_content(response.dump(), "text/plain");
-                     });
-        m_server.Get("/xz",
-                     [](const httplib::Request& req, httplib::Response& res)
-                     {
-                         const std::filesystem::path inputPath {std::filesystem::current_path() /
-                                                                "input_files/sample.xz"};
-                         std::ifstream in(inputPath, std::ios::in | std::ios::binary);
-                         if (in)
-                         {
-                             std::ostringstream response;
-                             response << in.rdbuf();
-                             in.close();
-                             res.set_content(response.str(), "application/octet-stream");
-                         }
-                         else
-                         {
-                             res.status = 404;
-                             res.set_content("File not found", "text/plain");
-                         }
-                     });
-        m_server.Get("/xz/consumers",
-                     [this](const httplib::Request& req, httplib::Response& res)
-                     {
-                         auto response = R"(
+        addEndpointHandler("/raw",
+                           [](const httplib::Request& req, httplib::Response& res)
+                           {
+                               const auto response = R"(
+                                {
+                                    "key": "value"
+                                })"_json;
+                               res.set_content(response.dump(), "text/plain");
+                           });
+        addEndpointHandler("/xz",
+                           [](const httplib::Request& req, httplib::Response& res)
+                           {
+                               const std::filesystem::path inputPath {std::filesystem::current_path() /
+                                                                      "input_files/sample.xz"};
+                               std::ifstream in(inputPath, std::ios::in | std::ios::binary);
+                               if (in)
+                               {
+                                   std::ostringstream response;
+                                   response << in.rdbuf();
+                                   in.close();
+                                   res.set_content(response.str(), "application/octet-stream");
+                               }
+                               else
+                               {
+                                   res.status = 404;
+                                   res.set_content("File not found", "text/plain");
+                               }
+                           });
+        addEndpointHandler("/xz/consumers",
+                           [this](const httplib::Request& req, httplib::Response& res)
+                           {
+                               auto response = R"(
                             {
                                 "data": 
                                 {
@@ -157,36 +212,36 @@ public:
                                 }
                             }
                          )"_json;
-                         response["data"]["last_snapshot_link"] = "localhost:" + std::to_string(m_port) + "/xz";
+                               response["data"]["last_snapshot_link"] = "localhost:" + std::to_string(m_port) + "/xz";
 
-                         res.set_content(response.dump(), "text/plain");
-                     });
-        m_server.Get("/xz/consumers/changes",
-                     [this](const httplib::Request& req, httplib::Response& res)
-                     {
-                         const std::filesystem::path inputPath {std::filesystem::current_path() /
-                                                                "input_files/sample.xz"};
-                         std::ifstream in(inputPath, std::ios::in | std::ios::binary);
-                         if (in)
-                         {
-                             std::ostringstream response;
-                             response << in.rdbuf();
-                             in.close();
-                             res.set_content(response.str(), "application/octet-stream");
-                         }
-                         else
-                         {
-                             res.status = 404;
-                             res.set_content("File not found", "text/plain");
-                         }
-                     });
-        m_server.Get("/raw/consumers",
-                     [this](const httplib::Request& req, httplib::Response& res)
-                     {
-                         std::string response;
-                         if (m_ctiMetadataMock.empty())
-                         {
-                             auto responseJSON = R"(
+                               res.set_content(response.dump(), "text/plain");
+                           });
+        addEndpointHandler("/xz/consumers/changes",
+                           [this](const httplib::Request& req, httplib::Response& res)
+                           {
+                               const std::filesystem::path inputPath {std::filesystem::current_path() /
+                                                                      "input_files/sample.xz"};
+                               std::ifstream in(inputPath, std::ios::in | std::ios::binary);
+                               if (in)
+                               {
+                                   std::ostringstream response;
+                                   response << in.rdbuf();
+                                   in.close();
+                                   res.set_content(response.str(), "application/octet-stream");
+                               }
+                               else
+                               {
+                                   res.status = 404;
+                                   res.set_content("File not found", "text/plain");
+                               }
+                           });
+        addEndpointHandler("/raw/consumers",
+                           [this](const httplib::Request& req, httplib::Response& res)
+                           {
+                               std::string response;
+                               if (m_ctiMetadataMock.empty())
+                               {
+                                   auto responseJSON = R"(
                                 {
                                     "data": 
                                     {
@@ -195,24 +250,24 @@ public:
                                     }
                                 }
                             )"_json;
-                             responseJSON["data"]["last_snapshot_link"] =
-                                 "localhost:" + std::to_string(m_port) + "/raw";
-                             response = responseJSON.dump();
-                         }
-                         else
-                         {
-                             response = std::move(m_ctiMetadataMock);
-                             m_ctiMetadataMock.clear();
-                         }
+                                   responseJSON["data"]["last_snapshot_link"] =
+                                       "localhost:" + std::to_string(m_port) + "/raw";
+                                   response = responseJSON.dump();
+                               }
+                               else
+                               {
+                                   response = std::move(m_ctiMetadataMock);
+                                   m_ctiMetadataMock.clear();
+                               }
 
-                         res.set_content(response, "text/plain");
-                     });
-        m_server.Get("/raw/consumers/changes",
-                     [this](const httplib::Request& req, httplib::Response& res)
-                     {
-                         if (m_errorsQueue.empty())
-                         {
-                             const auto response = R"(
+                               res.set_content(response, "text/plain");
+                           });
+        addEndpointHandler("/raw/consumers/changes",
+                           [this](const httplib::Request& req, httplib::Response& res)
+                           {
+                               if (m_errorsQueue.empty())
+                               {
+                                   const auto response = R"(
                             {
                                 "data":
                                 [
@@ -261,32 +316,32 @@ public:
                                     }
                                 ]
                             })"_json;
-                             res.set_content(response.dump(), "text/plain");
-                         }
-                         else
-                         {
-                             constexpr auto RESPONSE {"Something bad happened."};
-                             res.status = popError();
-                             res.set_content(RESPONSE, "text/plain");
-                         }
-                     });
+                                   res.set_content(response.dump(), "text/plain");
+                               }
+                               else
+                               {
+                                   constexpr auto RESPONSE {"Something bad happened."};
+                                   res.status = popError();
+                                   res.set_content(RESPONSE, "text/plain");
+                               }
+                           });
 
         // Endpoint that returns the link to a dummy snapshot file.
-        m_server.Get("/snapshot/consumers",
-                     [this](const httplib::Request& req, httplib::Response& res)
-                     {
-                         if (!m_errorsQueue.empty())
-                         {
-                             constexpr auto RESPONSE {"Something bad happened."};
-                             res.status = popError();
-                             res.set_content(RESPONSE, "text/plain");
-                             return;
-                         }
+        addEndpointHandler("/snapshot/consumers",
+                           [this](const httplib::Request& req, httplib::Response& res)
+                           {
+                               if (!m_errorsQueue.empty())
+                               {
+                                   constexpr auto RESPONSE {"Something bad happened."};
+                                   res.status = popError();
+                                   res.set_content(RESPONSE, "text/plain");
+                                   return;
+                               }
 
-                         std::string response;
-                         if (m_ctiMetadataMock.empty())
-                         {
-                             auto responseJSON = R"(
+                               std::string response;
+                               if (m_ctiMetadataMock.empty())
+                               {
+                                   auto responseJSON = R"(
                                 {
                                     "data": 
                                     {
@@ -295,54 +350,54 @@ public:
                                     }
                                 }
                             )"_json;
-                             responseJSON["data"]["last_snapshot_link"] =
-                                 "localhost:" + std::to_string(m_port) + "/" + SNAPSHOT_FILE_NAME;
-                             response = responseJSON.dump();
-                         }
-                         else
-                         {
-                             response = std::move(m_ctiMetadataMock);
-                             m_ctiMetadataMock.clear();
-                         }
+                                   responseJSON["data"]["last_snapshot_link"] =
+                                       "localhost:" + std::to_string(m_port) + "/" + SNAPSHOT_FILE_NAME;
+                                   response = responseJSON.dump();
+                               }
+                               else
+                               {
+                                   response = std::move(m_ctiMetadataMock);
+                                   m_ctiMetadataMock.clear();
+                               }
 
-                         res.set_content(response, "text/plain");
-                     });
+                               res.set_content(response, "text/plain");
+                           });
 
         // Endpoint that responses with a dummy snapshot file.
-        m_server.Get("/" + SNAPSHOT_FILE_NAME,
-                     [this](const httplib::Request& req, httplib::Response& res)
-                     {
-                         if (!m_errorsQueue.empty())
-                         {
-                             constexpr auto RESPONSE {"Something bad happened."};
-                             res.status = popError();
-                             res.set_content(RESPONSE, "text/plain");
-                             return;
-                         }
+        addEndpointHandler("/" + SNAPSHOT_FILE_NAME,
+                           [this](const httplib::Request& req, httplib::Response& res)
+                           {
+                               if (!m_errorsQueue.empty())
+                               {
+                                   constexpr auto RESPONSE {"Something bad happened."};
+                                   res.status = popError();
+                                   res.set_content(RESPONSE, "text/plain");
+                                   return;
+                               }
 
-                         // Create dummy snapshot file.
-                         std::ofstream snapshotFile {SNAPSHOT_FILE_NAME};
-                         snapshotFile << R"({"data":"content"})"_json;
-                         snapshotFile.close();
+                               // Create dummy snapshot file.
+                               std::ofstream snapshotFile {SNAPSHOT_FILE_NAME};
+                               snapshotFile << R"({"data":"content"})"_json;
+                               snapshotFile.close();
 
-                         // Read and send dummy file.
-                         std::ifstream inputFile {SNAPSHOT_FILE_NAME, std::ios::in | std::ios::binary};
-                         if (inputFile)
-                         {
-                             std::ostringstream response;
-                             response << inputFile.rdbuf();
-                             inputFile.close();
-                             res.set_content(response.str(), "application/octet-stream");
-                         }
-                         else
-                         {
-                             res.status = 404;
-                             res.set_content("File not found", "text/plain");
-                         }
+                               // Read and send dummy file.
+                               std::ifstream inputFile {SNAPSHOT_FILE_NAME, std::ios::in | std::ios::binary};
+                               if (inputFile)
+                               {
+                                   std::ostringstream response;
+                                   response << inputFile.rdbuf();
+                                   inputFile.close();
+                                   res.set_content(response.str(), "application/octet-stream");
+                               }
+                               else
+                               {
+                                   res.status = 404;
+                                   res.set_content("File not found", "text/plain");
+                               }
 
-                         // Remove dummy file.
-                         std::filesystem::remove(SNAPSHOT_FILE_NAME);
-                     });
+                               // Remove dummy file.
+                               std::filesystem::remove(SNAPSHOT_FILE_NAME);
+                           });
         m_server.set_keep_alive_max_count(1);
         m_server.listen(m_host.c_str(), m_port);
     }
