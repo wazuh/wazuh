@@ -172,7 +172,7 @@
     <if_sid>60103</if_sid>
     <field name="win.system.providerName">Microsoft-Windows-Security-Auditing</field>
     <field name="win.system.eventID">5142</field>
-    <description>A network share object was created<./description>
+    <description>A network share object was created.</description>
     <options>no_full_log</options>
   </rule>
 

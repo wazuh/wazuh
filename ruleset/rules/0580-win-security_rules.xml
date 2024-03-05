@@ -1312,16 +1312,6 @@
     </mitre>
   </rule>
 
-  <rule id="60226" level="8">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^4672$</field>
-    <description>Special privileges assigned to new logon</description>
-    <options>no_full_log</options>
-    <mitre>
-      <id>T1484</id>
-    </mitre>
-  </rule>
-
   <rule id="60227" level="8">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^6416$</field>
