@@ -60,17 +60,20 @@ build_package(){
 
 get_checksum(){
     wazuh_version="$1"
+    short_commit_hash="$2"
     # TODO: this could be improve and make it in common code inside of build.sh
     deb_file="wazuh-${BUILD_TARGET}_${wazuh_version}-${PACKAGE_RELEASE}"
     if [[ "${ARCHITECTURE_TARGET}" == "ppc64le" ]]; then
-    deb_file="${deb_file}_ppc64el.deb"
+        rename="${deb_file}_ppc64el_${short_commit_hash}.deb"
+        deb_file="${deb_file}_ppc64el.deb"
     else
-    deb_file="${deb_file}_${ARCHITECTURE_TARGET}.deb"
+        rename="${deb_file}_${ARCHITECTURE_TARGET}_${short_commit_hash}.deb"
+        deb_file="${deb_file}_${ARCHITECTURE_TARGET}.deb"
     fi
     pkg_path="${build_dir}/${BUILD_TARGET}"
 
     if [[ "${checksum}" == "yes" ]]; then
         cd ${pkg_path} && sha512sum ${deb_file} > /var/local/checksum/${deb_file}.sha512
     fi
-    mv ${pkg_path}/${deb_file} /var/local/wazuh
+    mv ${pkg_path}/${deb_file} /var/local/wazuh/${rename}
 }
