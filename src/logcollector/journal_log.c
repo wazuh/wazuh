@@ -17,26 +17,23 @@
 static const int W_SD_JOURNAL_LOCAL_ONLY = 1 << 0;
 static const char* W_LIB_SYSTEMD = "libsystemd.so.0";
 
-// Added on version 198
+// Function added on version 187 of systemd
 typedef int (*w_journal_open)(sd_journal** ret, int flags);            ///< sd_journal_open
 typedef void (*w_journal_close)(sd_journal* j);                        ///< sd_journal_close
-typedef int (*w_journal_get_timestamp)(sd_journal* j, uint64_t* ret);  ///< sd_journal_get_realtime_usec
-typedef int (*w_journal_seek_tail)(sd_journal* j);                     ///< sd_journal_seek_tail
 typedef int (*w_journal_previous)(sd_journal* j);                      ///< sd_journal_previous
-typedef int (*w_journal_seek_timestamp)(sd_journal* j, uint64_t usec); ///< sd_journal_seek_realtime_usec
 typedef int (*w_journal_next)(sd_journal* j);                          ///< sd_journal_next
+typedef int (*w_journal_seek_tail)(sd_journal* j);                     ///< sd_journal_seek_tail
+typedef int (*w_journal_seek_timestamp)(sd_journal* j, uint64_t usec); ///< sd_journal_seek_realtime_usec
 typedef int (*w_journal_get_cutoff_timestamp)(sd_journal* j,
                                               uint64_t* from,
-                                              uint64_t* to); ///< sd_journal_get_cutoff_realtime_usec
+                                              uint64_t* to);          ///< sd_journal_get_cutoff_realtime_usec
+typedef int (*w_journal_get_timestamp)(sd_journal* j, uint64_t* ret); ///< sd_journal_get_realtime_usec
 typedef int (*w_journal_get_data)(sd_journal* j,
                                   const char* field,
                                   const void** data,
-                                  size_t* l); ///< sd_journal_get_data
-// Added in version 246
-typedef int (*w_journal_enumerate_available_data)(
-    sd_journal* j, const void** data, size_t* l); ///< sd_journal_enumerate_available_data
-
-
+                                  size_t* l);                                         ///< sd_journal_get_data
+typedef void (*w_journal_restart_data)(sd_journal* j);                                ///< sd_journal_restart_data
+typedef int (*w_journal_enumerate_date)(sd_journal* j, const void** data, size_t* l); ///< sd_journal_enumerate_data
 
 /**
  * @brief Journal log library
@@ -46,19 +43,23 @@ typedef int (*w_journal_enumerate_available_data)(
  */
 struct w_journal_lib_t
 {
-    w_journal_open open;                                 ///< Open the journal log
-    w_journal_close close;                               ///< Close the journal log
-    w_journal_get_timestamp get_timestamp;               ///< Get the current time of the journal log
-    w_journal_seek_tail seek_tail;                       ///< Move the cursor to the end of the journal log
-    w_journal_previous previous;                         ///< Move the cursor to the previous entry
-    w_journal_seek_timestamp seek_timestamp;             ///< Move the cursor to the entry with the specified timestamp
-    w_journal_next next;                                 ///< Move the cursor to the next entry
+    // Open and close functions
+    w_journal_open open;   ///< Open the journal log
+    w_journal_close close; ///< Close the journal log
+    // Cursor functions
+    w_journal_previous previous;             ///< Move the cursor to the previous entry
+    w_journal_next next;                     ///< Move the cursor to the next entry
+    w_journal_seek_tail seek_tail;           ///< Move the cursor to the end of the journal log
+    w_journal_seek_timestamp seek_timestamp; ///< Move the cursor to the entry with the specified timestamp
+    // Timestamp functions
     w_journal_get_cutoff_timestamp get_cutoff_timestamp; ///< Get the oldest timestamps in the journal
-    w_journal_enumerate_available_data enumerate_available_data; ///< Get the available data in the current entry
-    w_journal_get_data get_data; ///< Get the data of the specified field in the current entry
-    void* handle;                ///< Handle of the library
+    w_journal_get_timestamp get_timestamp;               ///< Get the current time of the journal log
+    // Data functions
+    w_journal_get_data get_data;             ///< Get the data of the specified field in the current entry
+    w_journal_restart_data restart_data;     ///< Restart the enumeration of the available data
+    w_journal_enumerate_date enumerate_date; ///< Enumerate the available data in the current entry
+    void* handle;                            ///< Handle of the library
 };
-
 
 /**********************************************************
  *                    Auxiliar functions
@@ -162,7 +163,7 @@ bool is_owned_by_root(const char* library_path)
 
 /**
  * @brief Initialize the journal library functions
- * 
+ *
  * The caller is responsible for freeing the returned library.
  * @param char** Returns the error message if the library could not be loaded, NULL otherwise. // TODO
  * @return w_journal_lib_t* The library or NULL on error
@@ -195,20 +196,23 @@ static inline w_journal_lib_t* w_journal_lib_init()
     // Load and verify the functions
     lib->open = (w_journal_open)dlsym(lib->handle, "sd_journal_open");
     lib->close = (w_journal_close)dlsym(lib->handle, "sd_journal_close");
-    lib->get_timestamp = (w_journal_get_timestamp)dlsym(lib->handle, "sd_journal_get_realtime_usec");
-    lib->seek_tail = (w_journal_seek_tail)dlsym(lib->handle, "sd_journal_seek_tail");
+
     lib->previous = (w_journal_previous)dlsym(lib->handle, "sd_journal_previous");
-    lib->seek_timestamp = (w_journal_seek_timestamp)dlsym(lib->handle, "sd_journal_seek_realtime_usec");
     lib->next = (w_journal_next)dlsym(lib->handle, "sd_journal_next");
+    lib->seek_tail = (w_journal_seek_tail)dlsym(lib->handle, "sd_journal_seek_tail");
+    lib->seek_timestamp = (w_journal_seek_timestamp)dlsym(lib->handle, "sd_journal_seek_realtime_usec");
+
     lib->get_cutoff_timestamp =
         (w_journal_get_cutoff_timestamp)dlsym(lib->handle, "sd_journal_get_cutoff_realtime_usec");
-    lib->enumerate_available_data =
-        (w_journal_enumerate_available_data)dlsym(lib->handle, "sd_journal_enumerate_available_data");
-    lib->get_data = (w_journal_get_data)dlsym(lib->handle, "sd_journal_get_data");
+    lib->get_timestamp = (w_journal_get_timestamp)dlsym(lib->handle, "sd_journal_get_realtime_usec");
 
-    if (lib->open == NULL || lib->close == NULL || lib->get_timestamp == NULL || lib->seek_tail == NULL
-        || lib->previous == NULL || lib->seek_timestamp == NULL || lib->next == NULL
-        || lib->get_cutoff_timestamp == NULL || lib->enumerate_available_data == NULL || lib->get_data == NULL)
+    lib->get_data = (w_journal_get_data)dlsym(lib->handle, "sd_journal_get_data");
+    lib->restart_data = (w_journal_restart_data)dlsym(lib->handle, "sd_journal_restart_data");
+    lib->enumerate_date = (w_journal_enumerate_date)dlsym(lib->handle, "sd_journal_enumerate_data");
+
+    if (lib->open == NULL || lib->close == NULL || lib->previous == NULL || lib->next == NULL || lib->seek_tail == NULL
+        || lib->seek_timestamp == NULL || lib->get_cutoff_timestamp == NULL || lib->get_timestamp == NULL
+        || lib->get_data == NULL || lib->restart_data == NULL || lib->enumerate_date == NULL)
     {
         dlclose(lib->handle);
         os_free(lib);
@@ -248,10 +252,9 @@ void w_journal_context_free(w_journal_context_t* ctx)
     }
 
     ctx->lib->close(ctx->journal);
-    so_free_library(ctx->lib->handle);
+    dlclose(ctx->lib->handle);
     os_free(ctx->lib);
     os_free(ctx);
-
 }
 
 void w_journal_context_update_timestamp(w_journal_context_t* ctx)
@@ -366,57 +369,34 @@ static inline cJSON* entry_as_json(w_journal_context_t* ctx)
     int isEmpty = 1; // Flag to check if the entry is empty
 
     // Iterate through the available data
-    int result = 0;
-    do
+    const void* data;
+    size_t length;
+    ctx->lib->restart_data(ctx->journal);
+    while (ctx->lib->enumerate_date(ctx->journal, &data, &length) > 0)
     {
-        const char* data;
-        size_t data_len;
-
-        result = ctx->lib->enumerate_available_data(ctx->journal, (void const**)&data, &data_len);
-        if (result < 0)
+        // Value is a string "key=value" without null-terminator
+        const char* equal_sign = memchr(data, '=', length);
+        if (!equal_sign)
         {
-            mwarn("[journal_log] Failed to enumerate data, discarted log: %s", strerror(-result));
-            break;
-        }
-        else if (result == 0)
-        {
-            break;
-        }
-
-        // Parse the data, split it into key and value -> raw: key=value
-        const char* separator = memchr(data, '=', data_len);
-        if (separator == NULL || separator == data)
-        {
-            mwarn("[journal_log] Failed to find separator, key/value pair discarted");
             continue;
         }
 
-        // Determine de key and value length
-        size_t key_len = separator - data;
-        size_t value_len = data_len - key_len - 1;
+        size_t key_len = equal_sign - (const char*)data;
+        size_t value_len = length - key_len - 1;
 
-        // Allocate memory for the key and value (null terminated string)
-        char* key;
-        char* value;
-        os_calloc(key_len + 1, sizeof(char), key);
-        os_calloc(value_len + 1, sizeof(char), value);
+        char* key = strndup(data, key_len);
+        char* value = strndup(equal_sign + 1, value_len);
 
-        // Copy the key and value
-        memcpy(key, data, key_len);
-        memcpy(value, separator + 1, value_len);
-
-        // Add the key and value to the entry
+        // Add the key and value to the JSON object
         cJSON_AddStringToObject(dump, key, value);
         isEmpty = 0;
 
-        // Free the memory
-       os_free(key);
-       os_free(value);
-
-    } while (result > 0);
+        os_free(key);
+        os_free(value);
+    }
 
     // Error or no data
-    if (result < 0 || isEmpty)
+    if (isEmpty)
     {
         cJSON_Delete(dump);
         return NULL;
@@ -631,9 +611,9 @@ static void free_unit_filter(_w_journal_filter_unit_t* unit)
         return;
     }
 
-   os_free(unit->field);
-   w_free_expression_t(&(unit->exp));
-   os_free(unit);
+    os_free(unit->field);
+    w_free_expression_t(&(unit->exp));
+    os_free(unit);
 }
 
 /**
@@ -678,13 +658,13 @@ void w_journal_filter_free(w_journal_filter_t* ptr_filter)
     {
         for (size_t i = 0; ptr_filter->units[i] != NULL; i++)
         {
-            free_unit_filter(ptr_filter->units[i]);   
+            free_unit_filter(ptr_filter->units[i]);
         }
 
-       os_free(ptr_filter->units);
+        os_free(ptr_filter->units);
     }
 
-   os_free(ptr_filter);
+    os_free(ptr_filter);
 }
 
 int w_journal_filter_add_condition(w_journal_filter_t** ptr_filter,
@@ -774,7 +754,7 @@ int w_journal_filter_apply(w_journal_context_t* ctx, w_journal_filter_t* filter)
         // printf("Match: %d , pattern: '%s', field: '%s', value: '%s'\n", match, unit->exp->pcre2->raw_pattern,
         // unit->field, value_str);
 
-       os_free(value_str);
+        os_free(value_str);
         if (!match)
         {
             return 0; // No match
