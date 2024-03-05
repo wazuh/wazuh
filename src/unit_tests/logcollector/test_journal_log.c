@@ -82,8 +82,8 @@ void test_w_journald_poc(void ** state) {
         else if (result == 0)
         {
             //fprintf(stderr, "No new entries\n");
+            break;
             sleep(1);
-            // break;
             continue;
         }
 
@@ -104,6 +104,11 @@ void test_w_journald_poc(void ** state) {
         }
 
     } while (1);
+
+    // Free filters
+    w_journal_filter_free(filterA);
+    w_journal_filter_free(filterB);
+    w_journal_filter_free(filterC);
 
     w_journal_context_free(ctx);
 
