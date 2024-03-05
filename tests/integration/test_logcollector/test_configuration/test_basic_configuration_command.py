@@ -133,7 +133,7 @@ def test_configuration_command(test_configuration, test_metadata, configure_loca
     tags:
         - logs
     '''
-    
+
     # Wait for command
     wazuh_log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
     callback = None
