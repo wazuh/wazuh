@@ -26,44 +26,8 @@
 /**********************************************************
  *               Journald library related
  ***********************************************************/
-typedef struct sd_journal sd_journal; ///< sd_journal
-
-typedef int (*w_journal_open)(sd_journal** ret, int flags);            ///< sd_journal_open
-typedef void (*w_journal_close)(sd_journal* j);                        ///< sd_journal_close
-typedef int (*w_journal_get_timestamp)(sd_journal* j, uint64_t* ret);  ///< sd_journal_get_realtime_usec
-typedef int (*w_journal_seek_tail)(sd_journal* j);                     ///< sd_journal_seek_tail
-typedef int (*w_journal_previous)(sd_journal* j);                      ///< sd_journal_previous
-typedef int (*w_journal_seek_timestamp)(sd_journal* j, uint64_t usec); ///< sd_journal_seek_realtime_usec
-typedef int (*w_journal_next)(sd_journal* j);                          ///< sd_journal_next
-typedef int (*w_journal_get_cutoff_timestamp)(sd_journal* j,
-                                              uint64_t* from,
-                                              uint64_t* to); ///< sd_journal_get_cutoff_realtime_usec
-
-typedef int (*w_journal_enumerate_available_data)(
-    sd_journal* j, const void** data, size_t* l); ///< sd_journal_enumerate_available_data Added in version 246
-
-typedef int (*w_journal_get_data)(sd_journal* j, const char* field, const void** data, size_t* l);
-
-/**
- * @brief Journal log library
- *
- * This structure is used to store the functions of the journal log library.
- * The functions are used to interact with the journal log.
- */
-typedef struct
-{
-    w_journal_open open;                                 ///< Open the journal log
-    w_journal_close close;                               ///< Close the journal log
-    w_journal_get_timestamp get_timestamp;               ///< Get the current time of the journal log
-    w_journal_seek_tail seek_tail;                       ///< Move the cursor to the end of the journal log
-    w_journal_previous previous;                         ///< Move the cursor to the previous entry
-    w_journal_seek_timestamp seek_timestamp;             ///< Move the cursor to the entry with the specified timestamp
-    w_journal_next next;                                 ///< Move the cursor to the next entry
-    w_journal_get_cutoff_timestamp get_cutoff_timestamp; ///< Get the oldest timestamps in the journal
-    w_journal_enumerate_available_data enumerate_available_data; ///< Get the available data in the current entry
-    w_journal_get_data get_data; ///< Get the data of the specified field in the current entry
-    void* handle;                ///< Handle of the library
-} w_journal_lib_t;
+typedef struct sd_journal sd_journal;           ///< sd_journal type
+typedef struct w_journal_lib_t w_journal_lib_t; ///< Journal library functions
 
 /**********************************************************
  *                    Context related
