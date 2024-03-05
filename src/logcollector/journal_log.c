@@ -2,19 +2,63 @@
 
 #include "journal_log.h"
 
+#include <dlfcn.h>
 #include <inttypes.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
 
 #include "debug_op.h"
-#include "string_op.h"
-#include "sym_load.h"
 
 // TODO: Review de error handling
 static const int W_SD_JOURNAL_LOCAL_ONLY = 1 << 0;
-static const char* W_LIB_SYSTEMD = "systemd";
+static const char* W_LIB_SYSTEMD = "libsystemd.so.0";
+
+// Added on version 198
+typedef int (*w_journal_open)(sd_journal** ret, int flags);            ///< sd_journal_open
+typedef void (*w_journal_close)(sd_journal* j);                        ///< sd_journal_close
+typedef int (*w_journal_get_timestamp)(sd_journal* j, uint64_t* ret);  ///< sd_journal_get_realtime_usec
+typedef int (*w_journal_seek_tail)(sd_journal* j);                     ///< sd_journal_seek_tail
+typedef int (*w_journal_previous)(sd_journal* j);                      ///< sd_journal_previous
+typedef int (*w_journal_seek_timestamp)(sd_journal* j, uint64_t usec); ///< sd_journal_seek_realtime_usec
+typedef int (*w_journal_next)(sd_journal* j);                          ///< sd_journal_next
+typedef int (*w_journal_get_cutoff_timestamp)(sd_journal* j,
+                                              uint64_t* from,
+                                              uint64_t* to); ///< sd_journal_get_cutoff_realtime_usec
+typedef int (*w_journal_get_data)(sd_journal* j,
+                                  const char* field,
+                                  const void** data,
+                                  size_t* l); ///< sd_journal_get_data
+// Added in version 246
+typedef int (*w_journal_enumerate_available_data)(
+    sd_journal* j, const void** data, size_t* l); ///< sd_journal_enumerate_available_data
+
+
+
+/**
+ * @brief Journal log library
+ *
+ * This structure is used to store the functions of the journal log library.
+ * The functions are used to interact with the journal log.
+ */
+struct w_journal_lib_t
+{
+    w_journal_open open;                                 ///< Open the journal log
+    w_journal_close close;                               ///< Close the journal log
+    w_journal_get_timestamp get_timestamp;               ///< Get the current time of the journal log
+    w_journal_seek_tail seek_tail;                       ///< Move the cursor to the end of the journal log
+    w_journal_previous previous;                         ///< Move the cursor to the previous entry
+    w_journal_seek_timestamp seek_timestamp;             ///< Move the cursor to the entry with the specified timestamp
+    w_journal_next next;                                 ///< Move the cursor to the next entry
+    w_journal_get_cutoff_timestamp get_cutoff_timestamp; ///< Get the oldest timestamps in the journal
+    w_journal_enumerate_available_data enumerate_available_data; ///< Get the available data in the current entry
+    w_journal_get_data get_data; ///< Get the data of the specified field in the current entry
+    void* handle;                ///< Handle of the library
+};
+
 
 /**********************************************************
  *                    Auxiliar functions
@@ -129,7 +173,7 @@ static inline w_journal_lib_t* w_journal_lib_init()
     os_calloc(1, sizeof(w_journal_lib_t), lib);
 
     // Load the library
-    lib->handle = so_get_module_handle(W_LIB_SYSTEMD);
+    lib->handle = dlopen(W_LIB_SYSTEMD, RTLD_LAZY);
     if (lib->handle == NULL)
     {
         os_free(lib);
@@ -142,31 +186,31 @@ static inline w_journal_lib_t* w_journal_lib_init()
     {
         // mwarn("[journal_log] The library '%s' is not owned by the root user", W_LIB_SYSTEMD);
         os_free(library_path);
-        so_free_library(lib->handle);
+        dlclose(lib->handle);
         os_free(lib);
         return NULL;
     }
     os_free(library_path);
 
     // Load and verify the functions
-    lib->open = (w_journal_open)so_get_function_sym(lib->handle, "sd_journal_open");
-    lib->close = (w_journal_close)so_get_function_sym(lib->handle, "sd_journal_close");
-    lib->get_timestamp = (w_journal_get_timestamp)so_get_function_sym(lib->handle, "sd_journal_get_realtime_usec");
-    lib->seek_tail = (w_journal_seek_tail)so_get_function_sym(lib->handle, "sd_journal_seek_tail");
-    lib->previous = (w_journal_previous)so_get_function_sym(lib->handle, "sd_journal_previous");
-    lib->seek_timestamp = (w_journal_seek_timestamp)so_get_function_sym(lib->handle, "sd_journal_seek_realtime_usec");
-    lib->next = (w_journal_next)so_get_function_sym(lib->handle, "sd_journal_next");
+    lib->open = (w_journal_open)dlsym(lib->handle, "sd_journal_open");
+    lib->close = (w_journal_close)dlsym(lib->handle, "sd_journal_close");
+    lib->get_timestamp = (w_journal_get_timestamp)dlsym(lib->handle, "sd_journal_get_realtime_usec");
+    lib->seek_tail = (w_journal_seek_tail)dlsym(lib->handle, "sd_journal_seek_tail");
+    lib->previous = (w_journal_previous)dlsym(lib->handle, "sd_journal_previous");
+    lib->seek_timestamp = (w_journal_seek_timestamp)dlsym(lib->handle, "sd_journal_seek_realtime_usec");
+    lib->next = (w_journal_next)dlsym(lib->handle, "sd_journal_next");
     lib->get_cutoff_timestamp =
-        (w_journal_get_cutoff_timestamp)so_get_function_sym(lib->handle, "sd_journal_get_cutoff_realtime_usec");
+        (w_journal_get_cutoff_timestamp)dlsym(lib->handle, "sd_journal_get_cutoff_realtime_usec");
     lib->enumerate_available_data =
-        (w_journal_enumerate_available_data)so_get_function_sym(lib->handle, "sd_journal_enumerate_available_data");
-    lib->get_data = (w_journal_get_data)so_get_function_sym(lib->handle, "sd_journal_get_data");
+        (w_journal_enumerate_available_data)dlsym(lib->handle, "sd_journal_enumerate_available_data");
+    lib->get_data = (w_journal_get_data)dlsym(lib->handle, "sd_journal_get_data");
 
     if (lib->open == NULL || lib->close == NULL || lib->get_timestamp == NULL || lib->seek_tail == NULL
         || lib->previous == NULL || lib->seek_timestamp == NULL || lib->next == NULL
         || lib->get_cutoff_timestamp == NULL || lib->enumerate_available_data == NULL || lib->get_data == NULL)
     {
-        so_free_library(lib->handle);
+        dlclose(lib->handle);
         os_free(lib);
         return NULL;
     }
