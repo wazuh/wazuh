@@ -632,7 +632,10 @@ def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None
                             complementary_search=complementary_search, q=q, allowed_select_fields=GROUP_FIELDS,
                             select=select, distinct=distinct, required_fields=GROUP_REQUIRED_FIELDS)
         result.affected_items = data['items']
-        result.total_affected_items = query_data['totalItems'] if limit == data['totalItems'] else data['totalItems']
+        total_items = query_data['totalItems']
+        if q is not None or search_text is not None:
+            total_items = data['totalItems']
+        result.total_affected_items = total_items
 
     return result
 

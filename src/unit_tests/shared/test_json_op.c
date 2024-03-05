@@ -137,7 +137,7 @@ static void test_json_fwrite_fail_open(void **state) {
     os_strdup(PATH_EXAMPLE, path);
 
     will_return(__wrap_cJSON_PrintUnformatted, buffer);
-    expect_fopen(path, "w", fp);
+    expect_wfopen(path, "w", fp);
     expect_memory(__wrap__mdebug1, formatted_msg, DEBUG_MESSAGE_FWRITE_COULD_NOT_OPEN_FILE, strlen(DEBUG_MESSAGE_FWRITE_COULD_NOT_OPEN_FILE));
 
     assert_int_equal(json_fwrite(path, item), -1);
@@ -159,7 +159,7 @@ static void test_json_fwrite_fail_write(void **state) {
 
     will_return(__wrap_cJSON_PrintUnformatted, buffer);
     test_mode = 0;
-    expect_fopen(path, "w", fp);
+    expect_wfopen(path, "w", fp);
     test_mode = 1;
     will_return(__wrap_fwrite, strlen(buffer)-1);
     expect_memory(__wrap__mdebug1, formatted_msg, DEBUG_MESSAGE_FWRITE_COULD_NOT_WRITE, strlen(DEBUG_MESSAGE_FWRITE_COULD_NOT_WRITE));
@@ -183,7 +183,7 @@ static void test_json_fwrite_successfully(void **state) {
 
     will_return(__wrap_cJSON_PrintUnformatted, buffer);
     test_mode = 0;
-    expect_fopen(path, "w", fp);
+    expect_wfopen(path, "w", fp);
     will_return(__wrap_fwrite, strlen(buffer));
     test_mode = 1;
     expect_fclose(fp, 1);
