@@ -22,10 +22,12 @@ setup_build(){
     specs_path="$2"
     build_dir="$3"
     package_name="$4"
+    # Debug argument not used $5
+    short_commit_hash="$6"
 
     rpm_build_dir=${build_dir}/rpmbuild
     file_name="$package_name-${PACKAGE_RELEASE}"
-    rpm_file="${file_name}.${ARCHITECTURE_TARGET}.rpm"
+    rpm_file="${file_name}_${ARCHITECTURE_TARGET}_${short_commit_hash}.rpm"
     src_file="${file_name}.src.rpm"
     pkg_path="${rpm_build_dir}/RPMS/${ARCHITECTURE_TARGET}"
     src_path="${rpm_build_dir}/SRPMS"
@@ -90,6 +92,6 @@ get_checksum(){
     if [[ "${src}" == "yes" ]]; then
         extract_path="${rpm_build_dir}"
     fi
-
+    echo $file_name
     find ${extract_path} -maxdepth 3 -type f -name "${file_name}*" -exec mv {} /var/local/wazuh \;
 }

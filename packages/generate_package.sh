@@ -95,16 +95,7 @@ build_pkg() {
 }
 
 build() {
-    if [[ "${ARCHITECTURE}" == "x86_64" ]] || [[ "${ARCHITECTURE}" == "amd64" ]]; then
-            ARCH="amd64"
-    elif [[ "${ARCHITECTURE}" == "aarch64" ]] || [[ "${ARCHITECTURE}" == "arm64" ]]; then
-            ARCH="arm64"
-    elif [[ "${ARCHITECTURE}" == "arm32" ]] || [[ "${ARCHITECTURE}" == "armhf" ]] || [[ "${ARCHITECTURE}" == "armv7hl" ]] ; then
-        ARCH="armhf"
-    fi
-
     build_pkg  || return 1
-
     return 0
 }
 
