@@ -25,7 +25,6 @@ from api.constants import (
 ONE_DAY_SLEEP = 60*60*24
 
 logger = logging.getLogger('wazuh-api')
-start_stop_logger = logging.getLogger('start-stop-api')
 
 cti_context = {}
 
@@ -99,7 +98,7 @@ async def lifespan_handler(_: ConnexionMiddleware):
         tasks.append(asyncio.create_task(get_update_information()))
 
     # Log the initial server startup message.
-    start_stop_logger.info(f'Listening on {configuration.api_conf["host"]}:{configuration.api_conf["port"]}.')
+    logger.info(f'Listening on {configuration.api_conf["host"]}:{configuration.api_conf["port"]}.')
 
     yield
 
@@ -107,4 +106,4 @@ async def lifespan_handler(_: ConnexionMiddleware):
         task.cancel()
         await task
 
-    start_stop_logger.info('Shutdown wazuh-apid server.')
+    logger.info('Shutdown wazuh-apid server.')
