@@ -347,6 +347,30 @@ int w_journal_context_next_newest(w_journal_context_t* ctx)
 
     return ret;
 }
+
+int w_journal_context_next_newest_filtered(w_journal_context_t* ctx, w_journal_filters_list_t filters)
+{
+
+    if (filters == NULL)
+    {
+        return w_journal_context_next_newest(ctx);
+    }
+
+    int ret = 0;
+    while ((ret = w_journal_context_next_newest(ctx)) > 0)
+    {
+        for (size_t i = 0; filters[i] != NULL; i++)
+        {
+            if (w_journal_filter_apply(ctx, filters[i]) > 0)
+            {
+                return 1;
+            }
+        }
+    };
+
+    return ret;
+}
+
 // Check return value on value un error
 int w_journal_context_get_oldest_timestamp(w_journal_context_t* ctx, uint64_t* timestamp)
 {

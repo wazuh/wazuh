@@ -77,7 +77,7 @@ void test_w_journald_poc(void ** state) {
     do
     {
 
-        result = w_journal_context_next_newest(ctx);
+        result = w_journal_context_next_newest_filtered(ctx, filters);
 
         if (result < 0)
         {
@@ -87,26 +87,18 @@ void test_w_journald_poc(void ** state) {
         else if (result == 0)
         {
             //fprintf(stderr, "No new entries\n");
-            break;
             sleep(1);
-            continue;
+            continue; 
         }
 
-        // Filter
-        if (w_journal_filter_apply(ctx, filterA) > 0 || w_journal_filter_apply(ctx, filterB) > 0 ||
-            w_journal_filter_apply(ctx, filterC) > 0 || true)
-        {
-            // Dump, print and free entry
-            //w_journal_entry_t* entry = w_journal_entry_dump(ctx, W_JOURNAL_ENTRY_DUMP_TYPE_JSON);
-            w_journal_entry_t* entry = w_journal_entry_dump(ctx, W_JOURNAL_ENTRY_DUMP_TYPE_JSON);
+        // Dump, print and free entry
+        w_journal_entry_t* entry = w_journal_entry_dump(ctx, W_JOURNAL_ENTRY_DUMP_TYPE_JSON);
 
-            char* entry_str = w_journal_entry_to_string(entry);
-            assert_non_null(entry_str);
-            printf("%s\n--------%d-------------\n", entry_str, ++count);
-            free(entry_str);
+        char* entry_str = w_journal_entry_to_string(entry);
+        assert_non_null(entry_str);
+        free(entry_str);
 
-            w_journal_entry_free(entry);
-        }
+        w_journal_entry_free(entry);
 
     } while (1);
 
