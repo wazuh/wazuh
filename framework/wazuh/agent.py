@@ -1042,7 +1042,7 @@ def remove_agents_from_group(agent_list: list = None, group_list: list = None) -
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
 def get_outdated_agents(agent_list: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort: dict = None,
-                        search: dict = None, select: dict = None, q: str = None) -> AffectedItemsWazuhResult:
+                        search: str = None, select: dict = None, q: str = None) -> AffectedItemsWazuhResult:
     """Gets the outdated agents.
 
     Parameters
@@ -1057,8 +1057,8 @@ def get_outdated_agents(agent_list: list = None, offset: int = 0, limit: int = c
         Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
     search : dict
         Looks for items with the specified string. Format: {"fields": ["field1","field2"]}.
-    select : dict
-        Select fields to return. Format: {"fields":["field1","field2"]}.
+    select : str
+        Select which fields to return (separated by comma).
     q : str
         Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
 
