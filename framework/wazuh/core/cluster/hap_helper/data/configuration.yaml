@@ -23,11 +23,13 @@ proxy:
     # Wazuh Proxy API address
     address: wazuh-proxy
     # Wazuh Proxy API port
-    port: 7777
+    port: 5555
     # Wazuh Proxy API username
-    user: wazuh
+    user: haproxy
     # Wazuh Proxy API password
-    password: wazuh
+    password: haproxy
+    # Protocol to use 'http' or 'https'. By default http
+    protocol: http
   # Defined Proxy backend (frontend will append '_front' to it)
   backend: wazuh_cluster
 
