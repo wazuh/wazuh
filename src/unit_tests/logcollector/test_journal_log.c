@@ -66,8 +66,8 @@ void test_w_journald_poc(void ** state) {
     assert_int_equal(true, w_journal_add_filter_to_list(&filters, filterC));
 
 
-    // Seek
-    int result = w_journal_context_seek_timestamp(ctx, 1708954788027700);
+    // Seek (2024-02-26 13:39:57 UTC 0), journalctl --since "2024-02-26 13:39:57" 
+    int result = w_journal_context_seek_timestamp(ctx, 1708954797000000);
     // Fail if result < 0
     if(0 > result) {
         assert_true(0);
@@ -77,7 +77,8 @@ void test_w_journald_poc(void ** state) {
     do
     {
 
-        result = w_journal_context_next_newest_filtered(ctx, filters);
+        //result = w_journal_context_next_newest_filtered(ctx, filters);
+        result = w_journal_context_next_newest_filtered(ctx, NULL);
 
         if (result < 0)
         {
@@ -86,15 +87,17 @@ void test_w_journald_poc(void ** state) {
         }
         else if (result == 0)
         {
-            //fprintf(stderr, "No new entries\n");
+            // fprintf(stderr, "No new entries\n");
+            break;
             sleep(1);
             continue; 
         }
 
         // Dump, print and free entry
-        w_journal_entry_t* entry = w_journal_entry_dump(ctx, W_JOURNAL_ENTRY_DUMP_TYPE_JSON);
+        w_journal_entry_t* entry = w_journal_entry_dump(ctx, W_JOURNAL_ENTRY_DUMP_TYPE_SYSLOG);
 
         char* entry_str = w_journal_entry_to_string(entry);
+        printf("%s\n", entry_str);
         assert_non_null(entry_str);
         free(entry_str);
 
