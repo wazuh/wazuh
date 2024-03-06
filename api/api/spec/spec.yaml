@@ -900,19 +900,6 @@ components:
                 $ref: '#/components/schemas/GroupID'
         - $ref: '#/components/schemas/AllItemsResponse'
 
-    AllItemsResponseAgentsSimple:
-      allOf:
-        - $ref: '#/components/schemas/AllItemsResponse'
-        - type: object
-          required:
-            - affected_items
-          properties:
-            affected_items:
-              type: array
-              description: "Items that successfully applied the API call action"
-              items:
-                $ref: '#/components/schemas/AgentSimple'
-
     AllItemsResponseAgentsSynced:
       allOf:
         - $ref: '#/components/schemas/AllItemsResponse'
@@ -1370,9 +1357,17 @@ components:
         - command
 
     ## Agents models
-    ExtraAgentFields:
+    Agent:
       type: object
       properties:
+        version:
+          type: string
+          description: "Wazuh version the agent has installed"
+        id:
+          $ref: '#/components/schemas/AgentID'
+        name:
+          type: string
+          description: "Agent name used at registration process"
         status:
           $ref: '#/components/schemas/AgentStatus'
         configSum:
@@ -1433,11 +1428,6 @@ components:
           minimum: 0
           maximum: 5
 
-    Agent:
-      allOf:
-      - $ref: '#/components/schemas/AgentSimple'
-      - $ref: '#/components/schemas/ExtraAgentFields'
-
     AgentGroup:
       type: object
       properties:
@@ -1476,18 +1466,6 @@ components:
         key:
           type: string
           format: base64
-
-    AgentSimple:
-      type: object
-      properties:
-        version:
-          type: string
-          description: "Wazuh version the agent has installed"
-        id:
-          $ref: '#/components/schemas/AgentID'
-        name:
-          type: string
-          description: "Agent name used at registration process"
 
     AgentStatus:
       type: string
@@ -1534,8 +1512,7 @@ components:
 
     AgentDistinct:
       allOf:
-        - $ref: '#/components/schemas/AgentSimple'
-        - $ref: '#/components/schemas/ExtraAgentFields'
+        - $ref: '#/components/schemas/Agent'
         - type: object
           properties:
             count:
@@ -9085,6 +9062,7 @@ paths:
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/query'
       responses:
         '200':
@@ -9097,16 +9075,60 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/AllItemsResponseAgentsSimple'
+                        $ref: '#/components/schemas/AllItemsResponseAgents'
               example:
                 data:
                   affected_items:
-                    - version: Wazuh v3.0.0
-                      id: "003"
-                      name: main_database
-                    - version: Wazuh v3.0.0
-                      id: "004"
-                      name: dmz002
+                    - os:
+                        arch: x86_64
+                        codename: Focal Fossa
+                        major: '20'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        uname: Linux |ac7cb188d538 |5.8.0-45-generic |#51~20.04.1-Ubuntu SMP Tue Feb
+                          23 13:46:31 UTC 2021 |x86_64
+                        version: 20.04.2 LTS
+                      lastKeepAlive: '2024-02-26T12:40:40Z'
+                      id: '001'
+                      dateAdd: 2024-02-26T12:40:08Z
+                      configSum: ab73af41699f13fdd81903b5f23d8d00
+                      manager: wazuh-worker2
+                      group: [default]
+                      registerIP: Any
+                      ip: 172.25.0.6
+                      name: ac7cb188d538
+                      status: active
+                      mergedSum: 9a016508cea1e997ab8569f5cfab30f5
+                      version: Wazuh v3.0.0
+                      node_name: worker2
+                      group_config_status: "synced"
+                      status_code: 0
+                    - os:
+                        arch: x86_64
+                        codename: Focal Fossa
+                        major: '20'
+                        minor: '04'
+                        name: Ubuntu
+                        platform: ubuntu
+                        uname: Linux |ac7cb188d538 |5.8.0-45-generic |#51~20.04.1-Ubuntu SMP Tue Feb
+                          23 13:46:31 UTC 2021 |x86_64
+                        version: 20.04.2 LTS
+                      lastKeepAlive: '2024-02-26T12:40:40Z'
+                      id: '002'
+                      dateAdd: 2024-02-26T12:40:10Z
+                      configSum: ab73af41699f13fdd81903b5f23d8d00
+                      manager: wazuh-worker2
+                      group: [default]
+                      registerIP: Any
+                      ip: 172.25.0.11
+                      name: 91642a418627
+                      status: active
+                      mergedSum: 9a016508cea1e997ab8569f5cfab30f5
+                      version: Wazuh v3.0.0
+                      node_name: worker2
+                      group_config_status: "synced"
+                      status_code: 0
                   total_affected_items: 2
                   total_failed_items: 0
                   failed_items: []
