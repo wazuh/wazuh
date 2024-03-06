@@ -1,7 +1,7 @@
 import ipaddress
 import logging
 from enum import Enum
-from typing import Optional, TypeAlias
+from typing import Literal, Optional, TypeAlias
 
 import httpx
 from wazuh.core.cluster.utils import ClusterFilter, context_tag
@@ -9,6 +9,7 @@ from wazuh.core.exception import WazuhHAPHelperError
 
 JSON_TYPE: TypeAlias = dict | list[dict]
 PROXY_API_RESPONSE: TypeAlias = JSON_TYPE
+HTTP_PROTOCOL = Literal['http', 'https']
 
 
 class ProxyAPIMethod(Enum):
@@ -37,14 +38,23 @@ class ProxyBalanceAlgorithm(Enum):
 class ProxyAPI:
     """Wrapper for calling HAProxy REST API"""
 
-    HAPEE_ENDPOINT = '/hapee'
+    HAP_ENDPOINT = '/v2'
 
-    def __init__(self, username: str, password: str, tag: str, address: str = 'localhost', port: int = 7777):
+    def __init__(
+        self,
+        username: str,
+        password: str,
+        tag: str,
+        address: str = 'localhost',
+        port: int = 5555,
+        protocol: HTTP_PROTOCOL = 'http',
+    ):
         self.username = username
         self.password = password
         self.address = address
         self.port = port
         self.tag = tag
+        self.protocol = protocol
 
         self.version = 0
 
@@ -58,8 +68,9 @@ class ProxyAPI:
         """
         try:
             async with httpx.AsyncClient(verify=False) as client:
-                response = await client.post(
-                    f'https://{self.address}:{self.port}/', auth=(self.username, self.password)
+                response = await client.get(
+                    f'{self.protocol}://{self.address}:{self.port}/{self.HAP_ENDPOINT}/health',
+                    auth=(self.username, self.password),
                 )
                 if response.status_code == 401:
                     raise WazuhHAPHelperError(3046)
@@ -70,7 +81,7 @@ class ProxyAPI:
         except httpx.RequestError as req_exc:
             raise WazuhHAPHelperError(3043, extra_message=str(req_exc))
 
-    async def _make_hapee_request(
+    async def _make_hap_request(
         self,
         endpoint: str,
         method: ProxyAPIMethod = ProxyAPIMethod.GET,
@@ -101,66 +112,32 @@ class ProxyAPI:
             In case of errors communicating with the HAProxy REST API.
         """
         context_tag.set(self.tag)
-        uri = f'https://{self.address}:{self.port}{self.HAPEE_ENDPOINT}'
+        version_key = '_version'
+        uri = f'{self.protocol}://{self.address}:{self.port}{self.HAP_ENDPOINT}/{endpoint}'
         query_parameters = query_parameters or {}
         query_parameters.update({'version': self.version})
-
-        hapee_json_body = {
-            'method': method.value,
-            'uri': endpoint,
-            'query_parameters': query_parameters,
-            'json_body': json_body or {},
-        }
-
-        try:
-            async with httpx.AsyncClient(verify=False, follow_redirects=True) as client:
-                response = await client.post(uri, auth=(self.username, self.password), json=hapee_json_body)
-        except httpx.RequestError as request_exc:
-            raise WazuhHAPHelperError(3044, extra_message=str(request_exc))
-
-        if response.status_code == 200:
-            full_decoded_response = response.json()
-            decoded_response = full_decoded_response['data']['response']
-            if full_decoded_response['error'] != 0:
-                raise WazuhHAPHelperError(
-                    3049, extra_message=f'Full response: {response.status_code} | {response.json()}'
-                )
-            if isinstance(decoded_response, dict) and '_version' in decoded_response:
-                self.version = decoded_response['_version']
-            elif method != ProxyAPIMethod.GET and 'configuration' in endpoint:
-                await self.update_configuration_version()
-
-            return decoded_response
-        elif response.status_code == 401:
-            raise WazuhHAPHelperError(3046)
-        else:
-            raise WazuhHAPHelperError(3045, extra_message=f'Full response: {response.status_code} | {response.json()}')
-
-    # TODO: This must be deprecated
-    async def _make_proxy_request(
-        self,
-        endpoint: str,
-        method: ProxyAPIMethod = ProxyAPIMethod.GET,
-        query_parameters: dict | None = None,
-        json_body: dict | None = None,
-    ) -> PROXY_API_RESPONSE:
-        context_tag.set(self.tag)
-        uri = f'https://{self.address}:{self.port}{endpoint}'
 
         try:
             async with httpx.AsyncClient(verify=False, follow_redirects=True) as client:
                 response = await client.request(
-                    method.value,
-                    uri,
+                    method=method.value,
+                    url=uri,
                     auth=(self.username, self.password),
-                    params=query_parameters,
                     json=json_body,
+                    params=query_parameters,
                 )
         except httpx.RequestError as request_exc:
             raise WazuhHAPHelperError(3044, extra_message=str(request_exc))
 
-        if response.status_code == 200:
-            return response.json()
+        if response.is_success:
+            response = response.json()
+
+            if version_key in response:
+                self.version = response[version_key]
+            elif method != ProxyAPIMethod.GET and 'configuration' in endpoint:
+                await self.update_configuration_version()
+
+            return response
         elif response.status_code == 401:
             raise WazuhHAPHelperError(3046)
         else:
@@ -169,7 +146,7 @@ class ProxyAPI:
     async def update_configuration_version(self):
         """Get the last version of the configuration schema and set it."""
 
-        configuration_version = await self._make_hapee_request('/services/haproxy/configuration/version')
+        configuration_version = await self._make_hap_request('/services/haproxy/configuration/version')
         self.version = configuration_version
 
     async def get_runtime_info(self) -> PROXY_API_RESPONSE:
@@ -180,7 +157,7 @@ class ProxyAPI:
         PROXY_API_RESPONSE
             The runtime information.
         """
-        return (await self._make_hapee_request('/services/haproxy/runtime/info'))[0]['info']
+        return (await self._make_hap_request('/services/haproxy/runtime/info'))[0]['info']
 
     async def get_backends(self) -> PROXY_API_RESPONSE:
         """Get the configured backends.
@@ -190,7 +167,7 @@ class ProxyAPI:
         PROXY_API_RESPONSE
             Information of configured backends.
         """
-        return await self._make_hapee_request(endpoint='/services/haproxy/configuration/backends')
+        return await self._make_hap_request(endpoint='/services/haproxy/configuration/backends')
 
     async def add_backend(
         self,
@@ -217,7 +194,7 @@ class ProxyAPI:
         query_params = {'force_reload': True}
         json_body = {'name': name, 'mode': mode.value, 'balance': {'algorithm': algorithm.value}}
 
-        return await self._make_hapee_request(
+        return await self._make_hap_request(
             '/services/haproxy/configuration/backends',
             method=ProxyAPIMethod.POST,
             query_parameters=query_params,
@@ -238,7 +215,7 @@ class ProxyAPI:
             The servers for the provided backend.
         """
 
-        return await self._make_hapee_request(
+        return await self._make_hap_request(
             '/services/haproxy/configuration/servers', query_parameters={'backend': backend}
         )
 
@@ -278,7 +255,7 @@ class ProxyAPI:
             {'resolvers': resolver, 'init-addr': 'last,libc,none'} if resolver and not is_ip_address else {}
         )
 
-        return await self._make_hapee_request(
+        return await self._make_hap_request(
             '/services/haproxy/configuration/servers',
             method=ProxyAPIMethod.POST,
             query_parameters=query_params,
@@ -302,7 +279,7 @@ class ProxyAPI:
         """
         query_params = {'backend': backend, 'force_reload': True}
 
-        return await self._make_hapee_request(
+        return await self._make_hap_request(
             f'/services/haproxy/configuration/servers/{server_name}',
             method=ProxyAPIMethod.DELETE,
             query_parameters=query_params,
@@ -316,7 +293,7 @@ class ProxyAPI:
         PROXY_API_RESPONSE
             Information of configured frontends.
         """
-        return await self._make_hapee_request(endpoint='/services/haproxy/configuration/frontends')
+        return await self._make_hap_request(endpoint='/services/haproxy/configuration/frontends')
 
     async def add_frontend(
         self, name: str, port: int, backend: str, mode: CommunicationProtocol = CommunicationProtocol.TCP
@@ -342,7 +319,7 @@ class ProxyAPI:
         frontend_query_params = {'force_reload': True}
         frontend_json_body = {'name': name, 'mode': mode.value, 'default_backend': backend}
 
-        frontend_response = await self._make_hapee_request(
+        frontend_response = await self._make_hap_request(
             '/services/haproxy/configuration/frontends',
             method=ProxyAPIMethod.POST,
             query_parameters=frontend_query_params,
@@ -353,7 +330,7 @@ class ProxyAPI:
         bind_query_params = {'force_reload': True, 'frontend': frontend_name}
         bind_json_body = {'port': port, 'name': f'{frontend_name}_bind'}
 
-        await self._make_hapee_request(
+        await self._make_hap_request(
             '/services/haproxy/configuration/binds',
             method=ProxyAPIMethod.POST,
             query_parameters=bind_query_params,
@@ -379,7 +356,7 @@ class ProxyAPI:
         """
         query_params = {'backend': backend_name, 'name': server_name}
 
-        return await self._make_hapee_request(
+        return await self._make_hap_request(
             f'/services/haproxy/runtime/servers/{server_name}', query_parameters=query_params
         )
 
@@ -405,7 +382,7 @@ class ProxyAPI:
         query_params = {'backend': backend_name}
         json_body = {'admin_state': state.value}
 
-        return await self._make_hapee_request(
+        return await self._make_hap_request(
             f'/services/haproxy/runtime/servers/{server_name}',
             method=ProxyAPIMethod.PUT,
             query_parameters=query_params,
@@ -427,7 +404,7 @@ class ProxyAPI:
         """
         query_params = {'type': 'backend', 'name': backend_name}
 
-        return await self._make_hapee_request('/services/haproxy/stats/native', query_parameters=query_params)
+        return await self._make_hap_request('/services/haproxy/stats/native', query_parameters=query_params)
 
     async def get_backend_server_stats(self, backend_name: str, server_name: str) -> PROXY_API_RESPONSE:
         """Get the statistics of the provided backend server.
@@ -446,19 +423,7 @@ class ProxyAPI:
         """
         query_params = {'type': 'server', 'parent': backend_name, 'name': server_name.lower()}
 
-        return await self._make_hapee_request('/services/haproxy/stats/native', query_parameters=query_params)
-
-    # TODO: This must be deprecated
-    async def get_proxy_processes(self) -> PROXY_API_RESPONSE:
-        return await self._make_proxy_request('/haproxy/processes')
-
-    # TODO: This must be deprecated
-    async def kill_proxy_processes(self, pid_to_exclude: int = 0) -> PROXY_API_RESPONSE:
-        query_params = {'exclude_pid': pid_to_exclude}
-
-        return await self._make_proxy_request(
-            '/haproxy/processes', method=ProxyAPIMethod.DELETE, query_parameters=query_params
-        )
+        return await self._make_hap_request('/services/haproxy/stats/native', query_parameters=query_params)
 
 
 class Proxy:
@@ -786,8 +751,3 @@ class Proxy:
         current_connections_key = 'scur'
         server_stats = await self.get_wazuh_backend_stats()
         return {server_name: server_stats[server_name][current_connections_key] for server_name in server_stats}
-
-    # TODO: This must be deprecated
-    async def is_proxy_process_single(self) -> bool:
-        haproxy_processes = await self.api.get_proxy_processes()
-        return len(haproxy_processes['data']['processes']) == 1

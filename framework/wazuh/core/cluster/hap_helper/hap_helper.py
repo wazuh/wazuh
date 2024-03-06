@@ -100,15 +100,6 @@ class HAPHelper:
         )
         return True
 
-    # TODO: This must be deprecated
-    async def check_proxy_processes(self, auto_mode: bool = False, warn: bool = True) -> bool:
-        if not await self.proxy.is_proxy_process_single():
-            warn and self.logger.warning('Detected more than one Proxy processes')
-            if not auto_mode and input('  Do you wish to fix them? (y/N): ').lower() != 'y':
-                return False
-            await self.manage_proxy_processes()
-            return True
-
     async def backend_servers_state_healthcheck(self):
         """Checks if any backend server is in DRAIN state and changes to READY."""
         for server in (await self.proxy.get_current_backend_servers()).keys():
@@ -195,16 +186,6 @@ class HAPHelper:
         for server_name in affected_servers:
             await self.proxy.allow_server_new_connections(server_name=server_name)
         await sleep(self.SERVER_ADMIN_STATE_DELAY)
-
-    # TODO: This must be deprecated
-    async def manage_proxy_processes(self):
-        current_proxy_pid = (await self.proxy.api.get_runtime_info())['pid']
-        response = await self.proxy.api.kill_proxy_processes(pid_to_exclude=current_proxy_pid)
-
-        if response['error'] > 0:
-            self.logger.error("Could not manage all proxy processes: " f"{response['data']}")
-        elif len(response['data']) > 0:
-            self.logger.info('Managed proxy processes')
 
     async def migrate_old_connections(self, new_servers: list[str], deleted_servers: list[str]):
         """Reconnects agents to new servers.
@@ -360,7 +341,6 @@ class HAPHelper:
             context_tag.set(self.tag)
             try:
                 await self.backend_servers_state_healthcheck()
-                await self.check_proxy_processes(auto_mode=True) and await sleep(self.AGENT_STATUS_SYNC_TIME)
                 current_wazuh_cluster = await self.wazuh_dapi.get_cluster_nodes()
                 current_proxy_backend = await self.proxy.get_current_backend_servers()
 
@@ -422,6 +402,7 @@ class HAPHelper:
                 tag=tag,
                 address=configuration['proxy']['api']['address'],
                 port=configuration['proxy']['api']['port'],
+                protocol=configuration['proxy']['api']['protocol'],
             )
             proxy = Proxy(
                 wazuh_backend=configuration['proxy']['backend'],
@@ -432,7 +413,8 @@ class HAPHelper:
             )
 
             wazuh_dapi = WazuhDAPI(
-                tag=tag, excluded_nodes=configuration['wazuh']['excluded_nodes'],
+                tag=tag,
+                excluded_nodes=configuration['wazuh']['excluded_nodes'],
             )
 
             helper = cls(proxy=proxy, wazuh_dapi=wazuh_dapi, tag=tag, options=configuration['hap_helper'])
