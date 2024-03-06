@@ -8,10 +8,8 @@
 cmake_minimum_required(VERSION 3.10)
 
 list(APPEND md5_sha1_tests_names "test_md5_sha1_sha256_op")
-list(APPEND md5_sha1_tests_flags "-Wl,--wrap,wpopenv -Wl,--wrap,wpclose -Wl,--wrap,fread -Wl,--wrap,fclose \
-                                  -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fopen \
-                                  -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc \
-                                  -Wl,--wrap,wfopen -Wl,--wrap,popen -Wl,--wrap,_mwarn")
+list(APPEND md5_sha1_tests_flags "-Wl,--wrap,wpopenv,--wrap,wpclose,--wrap,fread,--wrap,fclose,--wrap,fflush,--wrap,fgets,--wrap,fgetpos \
+                                  -Wl,--wrap,fseek,--wrap,fwrite,--wrap,remove,--wrap,fgetc,--wrap,fopen,--wrap,wfopen -Wl,--wrap,popen")
 
 # Compiling tests
 list(LENGTH md5_sha1_tests_names count)

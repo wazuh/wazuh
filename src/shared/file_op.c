@@ -543,7 +543,7 @@ int CreatePID(const char *name, int pid)
 
     snprintf(file, 255, "%s/%s-%d.pid", OS_PIDFILE, name, pid);
 
-    fp = fopen(file, "a");
+    fp = wfopen(file, "a");
     if (!fp) {
         return (-1);
     }
@@ -571,7 +571,7 @@ char *GetRandomNoise()
     size_t n;
 
     /* Reading urandom */
-    fp = fopen("/dev/urandom", "r");
+    fp = wfopen("/dev/urandom", "r");
     if(!fp)
     {
         return(NULL);
@@ -637,7 +637,7 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode, const char
     FILE *fp;
     FILE *finalfp;
 
-    finalfp = fopen(finalpath, mode == OS_BINARY ? "rb" : "r");
+    finalfp = wfopen(finalpath, mode == OS_BINARY ? "rb" : "r");
     if (!finalfp) {
         merror("Unable to read merged file: '%s' due to [(%d)-(%s)].", finalpath, errno, strerror(errno));
         return (0);
@@ -712,7 +712,7 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode, const char
         /* Open filename */
 
         if (state_ok) {
-            if (fp = fopen(tmp_file, mode == OS_BINARY ? "wb" : "w"), !fp) {
+            if (fp = wfopen(tmp_file, mode == OS_BINARY ? "wb" : "w"), !fp) {
                 ret = 0;
                 merror("Unable to unmerge file '%s' due to [(%d)-(%s)].", tmp_file, errno, strerror(errno));
             }
@@ -794,7 +794,7 @@ int TestUnmergeFiles(const char *finalpath, int mode)
     char buf[2048 + 1];
     FILE *finalfp;
 
-    finalfp = fopen(finalpath, mode == OS_BINARY ? "rb" : "r");
+    finalfp = wfopen(finalpath, mode == OS_BINARY ? "rb" : "r");
     if (!finalfp) {
         merror("Unable to read merged file: '%s'.", finalpath);
         return (0);
@@ -902,7 +902,7 @@ int MergeAppendFile(FILE *finalfp, const char *files, int path_offset)
         }
     }
 
-    if (fp = fopen(files, "r"), fp == NULL) {
+    if (fp = wfopen(files, "r"), fp == NULL) {
         merror("Unable to open file: '%s' due to [(%d)-(%s)].", files, errno, strerror(errno));
         return (0);
     }
@@ -953,7 +953,7 @@ int checkBinaryFile(const char *f_name) {
 
     str[OS_MAXSTR] = '\0';
 
-    fp = fopen(f_name, "r");
+    fp = wfopen(f_name, "r");
 
      if (!fp) {
         merror("Unable to open file '%s' due to [(%d)-(%s)].", f_name, errno, strerror(errno));
@@ -2237,7 +2237,7 @@ int TempFile(File *file, const char *source, int copy) {
         return -1;
     }
 
-    fp_src = fopen(source,"r");
+    fp_src = wfopen(source,"r");
 
 #ifndef WIN32
     struct stat buf;
@@ -2317,14 +2317,14 @@ int OS_MoveFile(const char *src, const char *dst) {
 
     mdebug1("Couldn't rename %s: %s", dst, strerror(errno));
 
-    fp_src = fopen(src, "r");
+    fp_src = wfopen(src, "r");
 
     if (!fp_src) {
         merror("Couldn't open file '%s'", src);
         return -1;
     }
 
-    fp_dst = fopen(dst, "w");
+    fp_dst = wfopen(dst, "w");
 
     if (!fp_dst) {
         merror("Couldn't open file '%s'", dst);
@@ -2365,7 +2365,7 @@ int w_copy_file(const char *src, const char *dst, char mode, char * message, int
     char buffer[4096];
     int status = 0;
 
-    fp_src = fopen(src, "r");
+    fp_src = wfopen(src, "r");
 
     if (!fp_src) {
         if(!silent) {
@@ -2376,10 +2376,10 @@ int w_copy_file(const char *src, const char *dst, char mode, char * message, int
 
     /* Append to file */
     if (mode == 'a') {
-        fp_dst = fopen(dst, "a");
+        fp_dst = wfopen(dst, "a");
     }
     else {
-        fp_dst = fopen(dst, "w");
+        fp_dst = wfopen(dst, "w");
     }
 
 
@@ -2630,6 +2630,24 @@ wino_t get_fp_inode(FILE * fp) {
 }
 
 
+#ifdef WIN32
+int get_fp_file_information(FILE * fp, LPBY_HANDLE_FILE_INFORMATION fileInfo) {
+    int fd;
+    HANDLE h;
+
+    if (fd = _fileno(fp), fd < 0) {
+        return 0;
+    }
+
+    if (h = (HANDLE)_get_osfhandle(fd), h == INVALID_HANDLE_VALUE) {
+        return 0;
+    }
+
+    return GetFileInformationByHandle(h, fileInfo);
+}
+#endif
+
+
 long get_fp_size(FILE * fp) {
     long offset;
     long size;
@@ -2710,6 +2728,11 @@ FILE * wfopen(const char * pathname, const char * mode) {
     FILE * fp;
     int i;
 
+    if (pathname && strchr("\\/", pathname[0]) && strchr("\\/?\"<>|", pathname[1])) {
+        errno = EINVAL;
+        return NULL;
+    }
+
     for (i = 0; mode[i]; ++i) {
         switch (mode[i]) {
         case '+':
@@ -2719,7 +2742,7 @@ FILE * wfopen(const char * pathname, const char * mode) {
         case 'a':
             dwDesiredAccess = GENERIC_WRITE;
             dwCreationDisposition = OPEN_ALWAYS;
-            flags = _O_CREAT;
+            flags = _O_APPEND;
             break;
         case 'b':
             flags &= ~_O_TEXT;
@@ -2746,15 +2769,18 @@ FILE * wfopen(const char * pathname, const char * mode) {
     hFile = CreateFile(pathname, dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition, dwFlagsAndAttributes, NULL);
 
     if (hFile == INVALID_HANDLE_VALUE) {
+        errno = GetLastError();
         return NULL;
     }
 
     if (fd = _open_osfhandle((intptr_t)hFile, flags), fd < 0) {
+        errno = GetLastError();
         CloseHandle(hFile);
         return NULL;
     }
 
     if (fp = _fdopen(fd, mode), fp == NULL) {
+        errno = GetLastError();
         CloseHandle(hFile);
         return NULL;
     }
@@ -2843,7 +2869,7 @@ int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst) {
     umask(0027);
 
     /* Read file */
-    fd = fopen(gzfiledst, "wb");
+    fd = wfopen(gzfiledst, "wb");
     if (!fd) {
         merror("in w_uncompress_gzfile(): fopen error %s (%d):'%s'",
                 gzfiledst,
@@ -2901,7 +2927,7 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii, unsigned int 
     fpos_t begin;
     FILE *fp;
 
-    fp = fopen(file, "r");
+    fp = wfopen(file, "r");
 
     if (!fp) {
         mdebug1(OPEN_UNABLE, file);
@@ -3070,7 +3096,7 @@ int is_usc2(const char * file) {
     int retval = 0;
     FILE *fp;
 
-    fp = fopen(file, "r");
+    fp = wfopen(file, "r");
 
     if (!fp) {
         mdebug1(OPEN_UNABLE, file);
@@ -3293,7 +3319,7 @@ char * abspath(const char * path, char * buffer, size_t size) {
 }
 
 /* Return the content of a file from a given path */
-char * w_get_file_content(const char * path, long max_size) {
+char * w_get_file_content(const char * path, unsigned long max_size) {
     FILE * fp = NULL;
     char * buffer = NULL;
     long size;
@@ -3306,7 +3332,7 @@ char * w_get_file_content(const char * path, long max_size) {
     }
 
     // Load file
-    if (fp = fopen(path, "r"), !fp) {
+    if (fp = wfopen(path, "r"), !fp) {
         mdebug1(FOPEN_ERROR, path, errno, strerror(errno));
         goto end;
     }
@@ -3318,7 +3344,7 @@ char * w_get_file_content(const char * path, long max_size) {
     }
 
     // Check file size limit
-    if (size > max_size) {
+    if ((unsigned long)size > max_size) {
         mdebug1("Cannot load file '%s': it exceeds %ld MiB", path, (max_size / (1024 * 1024)));
         goto end;
     }
@@ -3354,7 +3380,7 @@ FILE * w_get_file_pointer(const char * path) {
     }
 
     // Load file
-    if (fp = fopen(path, "r"), !fp) {
+    if (fp = wfopen(path, "r"), !fp) {
         mdebug1(FOPEN_ERROR, path, errno, strerror(errno));
         return NULL;
     }
@@ -3368,7 +3394,7 @@ int w_is_compressed_gz_file(const char * path) {
     int retval = 0;
     FILE *fp;
 
-    fp = fopen(path, "rb");
+    fp = wfopen(path, "rb");
 
     /* Magic number: 1f 8b */
     if (fp && fread(buf, 1, 2, fp) == 2) {
@@ -3390,7 +3416,7 @@ int w_is_compressed_bz2_file(const char * path) {
     int retval = 0;
     FILE *fp;
 
-    fp = fopen(path, "rb");
+    fp = wfopen(path, "rb");
 
     /* Magic number: 42 5a 68 */
     if (fp && fread(buf, 1, 3, fp) == 3) {

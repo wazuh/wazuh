@@ -46,9 +46,9 @@ void test_md5_file(void **state) {
 
     char path[] = "path/to/file";
 
-    expect_value(__wrap_fopen, path, path);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 1);
+    expect_value(__wrap_wfopen, path, path);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fread, string);
     will_return(__wrap_fread, strlen(string));
@@ -68,9 +68,9 @@ void test_md5_file(void **state) {
 void test_md5_file_fail(void **state) {
     char path[] = "path/to/non-existing/file";
 
-    expect_value(__wrap_fopen, path, path);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 0);
+    expect_value(__wrap_wfopen, path, path);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 0);
 
     os_md5 buffer;
     assert_int_equal(OS_MD5_File(path, buffer, OS_TEXT), -1);

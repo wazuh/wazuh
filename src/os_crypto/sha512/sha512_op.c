@@ -12,6 +12,7 @@
 #include <string.h>
 #include <openssl/evp.h>
 
+#include "file_op.h"
 #include "sha512_op.h"
 #include "headers/defs.h"
 
@@ -24,7 +25,7 @@ int OS_SHA512_File(const char *fname, os_sha512 output, int mode)
 
     buf[2049] = '\0';
 
-    fp = fopen(fname, mode == OS_BINARY ? "rb" : "r");
+    fp = wfopen(fname, mode == OS_BINARY ? "rb" : "r");
     if (!fp) {
         return (-1);
     }

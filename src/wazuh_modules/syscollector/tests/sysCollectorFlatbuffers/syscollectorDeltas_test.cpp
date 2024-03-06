@@ -83,8 +83,9 @@ TEST_F(SyscollectorDeltasTest, NetProtoParsingInvalid)
 
 TEST_F(SyscollectorDeltasTest, NetAddrParsingSuccess)
 {
+    // For delta events, syscollector network address provider sends metric and dhcp information.
     const std::string deltaNetAddr {"{\"agent_info\":{\"agent_id\":\"001\",\"node_name\":\"node01\"},\"data_type\":\"dbsync_network_address\",\"data\":{\"address\":\"192.168.0.80\",\"broadcast\":\"192.168.0.255\""
-                                    ",\"checksum\":\"c1f9511fa37815d19cee496f21524725ba84ab10\",\"iface\":\"enp0s9\",\"item_id\":\"b333013c47d28eb3878068dd59c42e00178bd475\""
+                                    ",\"checksum\":\"c1f9511fa37815d19cee496f21524725ba84ab10\",\"metric\":\"100\",\"dhcp\":\"unknown\",\"iface\":\"enp0s9\",\"item_id\":\"b333013c47d28eb3878068dd59c42e00178bd475\""
                                     ",\"netmask\":\"255.255.255.0\",\"proto\":0,\"scan_time\":\"2023/08/07 15:02:36\"},\"operation\":\"DELETED\"}"};
 
     EXPECT_FALSE(flatbufferSchemaStr.empty());

@@ -13,6 +13,7 @@
 #define _ROCKS_DB_WRAPPER_HPP
 
 #include "rocksDBIterator.hpp"
+#include "stringHelper.h"
 #include <algorithm>
 #include <filesystem>
 #include <memory>
@@ -21,6 +22,7 @@
 #include <rocksdb/utilities/transaction_db.h>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace Utils
@@ -41,7 +43,7 @@ namespace Utils
         virtual void deleteAll() = 0;
         virtual void flush() = 0;
         virtual std::vector<std::string> getAllColumns() = 0;
-        virtual RocksDBIterator seek(std::string_view key, const std::string& columnName = "") = 0;
+        virtual RocksDBIterator seek(std::string_view key, const std::string& columnName = "") = 0; // NOLINT
 
         virtual ~IRocksDBWrapper() = default;
     };
@@ -52,13 +54,17 @@ namespace Utils
      */
     class RocksDBWrapper : public IRocksDBWrapper
     {
-    public:
-        explicit RocksDBWrapper(const std::string& dbPath, const bool enableWal = true)
-            : m_enableWal {enableWal}
-            , m_path {dbPath}
+        /**
+         * @brief Initializes the RocksDB instance.
+         */
+        void initialize()
         {
             rocksdb::Options options;
             options.create_if_missing = true;
+            options.keep_log_file_num = 1;
+            options.info_log_level = rocksdb::InfoLogLevel::FATAL_LEVEL;
+            options.max_open_files = 200;
+
             rocksdb::TransactionDB* dbRawPtr;
             std::vector<rocksdb::ColumnFamilyDescriptor> columnsDescriptors;
             const std::filesystem::path databasePath {m_path};
@@ -103,13 +109,9 @@ namespace Utils
         }
 
         /**
-         * @brief Class destructor. Frees column family handles.
-         *
-         * @note The documentation of the lib clearly states that we should not free the default column family handler
-         * but not freeing it ends up on memory leaks and ASAN errors. OTOH, no problems seem to appear freeing it.
-         *
+         * @brief Frees column family handles.
          */
-        ~RocksDBWrapper() override
+        void destroyColumnFamilyHandles()
         {
             std::for_each(m_columnsHandles.begin(),
                           m_columnsHandles.end(),
@@ -123,6 +125,36 @@ namespace Utils
                                       << std::endl;
                               }
                           });
+        }
+
+    public:
+        explicit RocksDBWrapper(std::string dbPath, const bool enableWal = true)
+            : m_enableWal {enableWal}
+            , m_path {std::move(dbPath)}
+        {
+            initialize();
+        }
+
+        /**
+         * @brief Reopen the database.
+         */
+        void reopen()
+        {
+            destroyColumnFamilyHandles();
+            m_db.reset();
+            initialize();
+        }
+
+        /**
+         * @brief Class destructor. Frees column family handles.
+         *
+         * @note The documentation of the lib clearly states that we should not free the default column family handler
+         * but not freeing it ends up on memory leaks and ASAN errors. OTOH, no problems seem to appear freeing it.
+         *
+         */
+        ~RocksDBWrapper() override
+        {
+            destroyColumnFamilyHandles();
         };
 
         /**
@@ -298,7 +330,7 @@ namespace Utils
          * @param key Key to seek.
          * @return RocksDBIterator Iterator to the database.
          */
-        RocksDBIterator seek(std::string_view key, const std::string& columnName = "") override
+        RocksDBIterator seek(std::string_view key, const std::string& columnName = "") override // NOLINT
         {
             return {std::shared_ptr<rocksdb::Iterator>(
                         m_db->NewIterator(rocksdb::ReadOptions(), getColumnFamilyHandle(columnName))),
@@ -311,9 +343,11 @@ namespace Utils
          */
         RocksDBIterator begin(const std::string& columnName = "")
         {
-            return RocksDBIterator {std::shared_ptr<rocksdb::Iterator>(
-                                        m_db->NewIterator(rocksdb::ReadOptions(), getColumnFamilyHandle(columnName))),
-                                    ""};
+            RocksDBIterator rocksDBIterator(std::shared_ptr<rocksdb::Iterator>(m_db->NewIterator(
+                                                rocksdb::ReadOptions(), getColumnFamilyHandle(columnName))),
+                                            "");
+            rocksDBIterator.begin();
+            return rocksDBIterator;
         }
 
         /**
@@ -441,7 +475,7 @@ namespace Utils
          *
          * @return std::vector<std::string>
          */
-        std::vector<std::string> getAllColumns()
+        std::vector<std::string> getAllColumns() override
         {
             std::vector<std::string> columnsNames;
             rocksdb::Options options;
@@ -472,6 +506,54 @@ namespace Utils
                 writeOptions.disableWAL = true;
 
                 const auto status {m_db->Write(writeOptions, &batch)};
+                if (!status.ok())
+                {
+                    throw std::runtime_error("Error deleting data: " + status.ToString());
+                }
+            }
+        }
+
+        /**
+         * @brief Delete all key-value pairs from the database.
+         *
+         * This method deletes all key-value pairs stored in the database. It iterates through all family columns
+         * and uses a provided callback function to handle each deleted key. After deletion, it commits the changes
+         * to the database.
+         *
+         * @param callback A callback function that takes a string reference representing the deleted key.
+         *
+         * @throws std::runtime_error if an error occurs during data deletion.
+         */
+        void deleteAll(const std::function<void(std::string&, std::string&)>& callback)
+        {
+            // Delete data from all family columns
+            for (const auto& columnHandle : m_columnsHandles)
+            {
+                rocksdb::WriteBatch batch;
+
+                // Create an iterator for the current column family
+                std::unique_ptr<rocksdb::Iterator> it(m_db->NewIterator(rocksdb::ReadOptions(), columnHandle));
+
+                // Iterate through all key-value pairs in the column
+                for (it->SeekToFirst(); it->Valid(); it->Next())
+                {
+                    auto keyStr = std::string(it->key().data(), it->key().size());
+                    auto valueStr = it->value().ToString();
+
+                    callback(keyStr, valueStr);
+
+                    // Mark the key for deletion in the batch
+                    batch.Delete(keyStr);
+                }
+
+                // Configure write options to disable write-ahead-logging (WAL)
+                rocksdb::WriteOptions writeOptions;
+                writeOptions.disableWAL = true;
+
+                // Write the batch changes to the database
+                const auto status = m_db->Write(writeOptions, &batch);
+
+                // Check for errors and throw an exception if necessary
                 if (!status.ok())
                 {
                     throw std::runtime_error("Error deleting data: " + status.ToString());
@@ -738,7 +820,7 @@ namespace Utils
          * @param columnName Column family name.
          * @return RocksDBIterator  RocksDBIterator Iterator to the database.
          */
-        RocksDBIterator seek(std::string_view key, const std::string& columnName = "") override
+        RocksDBIterator seek(std::string_view key, const std::string& columnName = "") override // NOLINT
         {
             return m_dbWrapper->seek(key, columnName);
         }

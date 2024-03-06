@@ -21,39 +21,30 @@
 #include <iostream>
 #include <thread>
 
-#define ELEMENTS_PER_BULK 50
-
-template<typename Type, typename Functor>
-class ThreadEventDispatcher
+template<typename T, typename U, typename Functor>
+class TThreadEventDispatcher
 {
 public:
-    explicit ThreadEventDispatcher(Functor functor,
-                                   const std::string& dbPath,
-                                   const uint64_t bulkSize = ELEMENTS_PER_BULK,
-                                   const unsigned int numberOfThreads = std::thread::hardware_concurrency(),
-                                   const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
+    explicit TThreadEventDispatcher(Functor functor,
+                                    const std::string& dbPath,
+                                    const uint64_t bulkSize,
+                                    const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
         : m_functor {std::move(functor)}
         , m_running {true}
-        , m_numberOfThreads {numberOfThreads ? numberOfThreads : 1}
         , m_maxQueueSize {maxQueueSize}
         , m_bulkSize {bulkSize}
     {
-        m_queue = std::make_unique<Utils::SafeQueue<Type, RocksDBQueue<Type>>>(RocksDBQueue<Type>(dbPath));
-        m_threads.reserve(m_numberOfThreads);
-
-        for (unsigned int i = 0; i < m_numberOfThreads; ++i)
-        {
-            m_threads.push_back(std::thread {&ThreadEventDispatcher<Type, Functor>::dispatch, this});
-        }
+        m_queue = std::make_unique<Utils::TSafeQueue<T, U, RocksDBQueue<T, U>>>(RocksDBQueue<T, U>(dbPath));
+        m_thread = std::thread {&TThreadEventDispatcher<T, U, Functor>::dispatch, this};
     }
-    ThreadEventDispatcher& operator=(const ThreadEventDispatcher&) = delete;
-    ThreadEventDispatcher(ThreadEventDispatcher& other) = delete;
-    ~ThreadEventDispatcher()
+    TThreadEventDispatcher& operator=(const TThreadEventDispatcher&) = delete;
+    TThreadEventDispatcher(TThreadEventDispatcher& other) = delete;
+    ~TThreadEventDispatcher()
     {
         cancel();
     }
 
-    void push(const Type& value)
+    void push(const T& value)
     {
         if (m_running)
         {
@@ -68,17 +59,12 @@ public:
     {
         m_running = false;
         m_queue->cancel();
-        joinThreads();
+        joinThread();
     }
 
     bool cancelled() const
     {
         return !m_running;
-    }
-
-    unsigned int numberOfThreads() const
-    {
-        return m_numberOfThreads;
     }
 
     size_t size() const
@@ -89,41 +75,44 @@ public:
 private:
     void dispatch()
     {
-        try
+        while (m_running)
         {
-            while (m_running)
+            try
             {
-                std::queue<Type> data = m_queue->popBulk(m_bulkSize);
+                std::queue<U> data = m_queue->getBulk(m_bulkSize);
+                const auto size = data.size();
+
                 if (!data.empty())
                 {
                     m_functor(data);
+                    m_queue->popBulk(size);
                 }
             }
-        }
-        catch (const std::exception& ex)
-        {
-            std::cerr << "Dispatch handler error, " << ex.what() << std::endl;
+            catch (const std::exception& ex)
+            {
+                std::cerr << "Dispatch handler error, " << ex.what() << std::endl;
+            }
         }
     }
 
-    void joinThreads()
+    void joinThread()
     {
-        for (auto& thread : m_threads)
+        if (m_thread.joinable())
         {
-            if (thread.joinable())
-            {
-                thread.join();
-            }
+            m_thread.join();
         }
     }
 
     Functor m_functor;
-    std::unique_ptr<Utils::SafeQueue<Type, RocksDBQueue<Type>>> m_queue;
-    std::vector<std::thread> m_threads;
+    std::unique_ptr<Utils::TSafeQueue<T, U, RocksDBQueue<T, U>>> m_queue;
+    std::thread m_thread;
     std::atomic_bool m_running;
-    const unsigned int m_numberOfThreads;
+
     const size_t m_maxQueueSize;
     const uint64_t m_bulkSize;
 };
+
+template<typename Type, typename Functor>
+using ThreadEventDispatcher = TThreadEventDispatcher<Type, Type, Functor>;
 
 #endif // _THREAD_EVENT_DISPATCHER_HPP

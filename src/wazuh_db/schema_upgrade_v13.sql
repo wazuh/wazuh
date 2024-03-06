@@ -2,7 +2,7 @@
  * SQL Schema for upgrading databases
  * Copyright (C) 2015, Wazuh Inc.
  *
- * January 15, 2024.
+ * February 19, 2024.
  *
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.
@@ -91,6 +91,12 @@ ALTER TABLE _sys_osinfo RENAME TO sys_osinfo;
 
 DROP TABLE IF EXISTS vuln_metadata;
 DROP TABLE IF EXISTS vuln_cves;
+
+
+CREATE INDEX IF NOT EXISTS fim_type_full_path_index ON fim_entry (type, full_path);
+CREATE INDEX IF NOT EXISTS fim_type_file_index ON fim_entry (type, file);
+CREATE INDEX IF NOT EXISTS fim_type_full_path_checksum_index ON fim_entry(type,full_path,checksum);
+CREATE INDEX IF NOT EXISTS fim_type_file_checksum_index ON fim_entry(type,file,checksum);
 
 INSERT OR REPLACE INTO metadata (key, value) VALUES ('db_version', 13);
 

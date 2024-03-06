@@ -21,6 +21,7 @@ constexpr auto NOT_USED {-1};
 constexpr auto INDEXER_COLUMN {"indexer"};
 constexpr auto USER_KEY {"username"};
 constexpr auto PASSWORD_KEY {"password"};
+constexpr auto ELEMENTS_PER_BULK {50};
 
 namespace Log
 {
@@ -51,7 +52,7 @@ IndexerConnector::IndexerConnector(
     }
 
     // Get index name.
-    auto indexName {config.at("name").get_ref<const std::string&>()};
+    const auto& indexName {config.at("name").get_ref<const std::string&>()};
 
     std::string caRootCertificate;
     std::string sslCertificate;
@@ -115,76 +116,70 @@ IndexerConnector::IndexerConnector(
     QUEUE_MAP[this] = std::make_unique<ThreadDispatchQueue>(
         [=](std::queue<std::string>& dataQueue)
         {
-            try
+            if (!m_initialized && m_initializeThread.joinable())
             {
-                if (!m_initialized && m_initializeThread.joinable())
-                {
-                    logDebug2(IC_NAME, "Waiting for initialization thread to process events.");
-                    m_initializeThread.join();
-                }
-
-                if (m_stopping.load())
-                {
-                    logDebug2(IC_NAME, "IndexerConnector is stopping, event processing will be skipped.");
-                    return;
-                }
-
-                auto url = selector->getNext();
-                std::string bulkData;
-                url.append("/_bulk");
-
-                while (!dataQueue.empty())
-                {
-                    auto data = dataQueue.front();
-                    dataQueue.pop();
-                    auto parsedData = nlohmann::json::parse(data);
-                    const auto& id = parsedData.at("id").get_ref<const std::string&>();
-
-                    if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
-                    {
-                        bulkData.append(R"({"delete":{"_index":")");
-                        bulkData.append(indexName);
-                        bulkData.append(R"(","_id":")");
-                        bulkData.append(id);
-                        bulkData.append(R"("}})");
-                        bulkData.append("\n");
-                    }
-                    else
-                    {
-                        bulkData.append(R"({"index":{"_index":")");
-                        bulkData.append(indexName);
-                        bulkData.append(R"(","_id":")");
-                        bulkData.append(id);
-                        bulkData.append(R"("}})");
-                        bulkData.append("\n");
-                        bulkData.append(parsedData.at("data").dump());
-                        bulkData.append("\n");
-                    }
-                }
-                // Process data.
-                HTTPRequest::instance().post(
-                    HttpURL(url),
-                    bulkData,
-                    [&](const std::string& response) { logDebug2(IC_NAME, "Response: %s", response.c_str()); },
-                    [&](const std::string& error, const long statusCode)
-                    {
-                        // TODO: Need to handle the case when the index is not created yet, to avoid losing data.
-                        logError(IC_NAME, "%s, status code: %ld", error.c_str(), statusCode);
-                    },
-                    "",
-                    DEFAULT_HEADERS,
-                    secureCommunication);
+                logDebug2(IC_NAME, "Waiting for initialization thread to process events.");
+                m_initializeThread.join();
             }
-            catch (const std::exception& e)
+
+            if (m_stopping.load())
             {
-                logError(IC_NAME, "%s", e.what());
+                logDebug2(IC_NAME, "IndexerConnector is stopping, event processing will be skipped.");
+                throw std::runtime_error("IndexerConnector is stopping, event processing will be skipped.");
             }
+
+            auto url = selector->getNext();
+            std::string bulkData;
+            url.append("/_bulk");
+
+            while (!dataQueue.empty())
+            {
+                auto data = dataQueue.front();
+                dataQueue.pop();
+                auto parsedData = nlohmann::json::parse(data);
+                const auto& id = parsedData.at("id").get_ref<const std::string&>();
+
+                if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
+                {
+                    bulkData.append(R"({"delete":{"_index":")");
+                    bulkData.append(indexName);
+                    bulkData.append(R"(","_id":")");
+                    bulkData.append(id);
+                    bulkData.append(R"("}})");
+                    bulkData.append("\n");
+                }
+                else
+                {
+                    bulkData.append(R"({"index":{"_index":")");
+                    bulkData.append(indexName);
+                    bulkData.append(R"(","_id":")");
+                    bulkData.append(id);
+                    bulkData.append(R"("}})");
+                    bulkData.append("\n");
+                    bulkData.append(parsedData.at("data").dump());
+                    bulkData.append("\n");
+                }
+            }
+            // Process data.
+            HTTPRequest::instance().post(
+                HttpURL(url),
+                bulkData,
+                [&](const std::string& response) { logDebug2(IC_NAME, "Response: %s", response.c_str()); },
+                [&](const std::string& error, const long statusCode)
+                {
+                    // TODO: Need to handle the case when the index is not created yet, to avoid losing data.
+                    logError(IC_NAME, "%s, status code: %ld", error.c_str(), statusCode);
+                    throw std::runtime_error(error);
+                },
+                "",
+                DEFAULT_HEADERS,
+                secureCommunication);
         },
         DATABASE_BASE_PATH + indexName,
-        ELEMENTS_PER_BULK,
-        DATABASE_WORKERS);
+        ELEMENTS_PER_BULK);
 
     m_initializeThread = std::thread(
+        // coverity[copy_constructor_call]
         [=]()
         {
             auto sleepTime = std::chrono::seconds(1);

@@ -64,6 +64,7 @@ router_provider_send_fb_func router_provider_send_fb_func_ptr = NULL;
 ROUTER_PROVIDER_HANDLE rsync_handle = NULL;
 ROUTER_PROVIDER_HANDLE syscollector_handle = NULL;
 char *manager_node_name = NULL;
+int disable_manager_scan = 0;
 #endif // CLIENT
 
 long syscollector_sync_max_eps = 10;    // Database synchronization number of events per second (default value)
@@ -102,22 +103,28 @@ static void wm_sys_send_message(const void* data, const char queue_id) {
 static void wm_sys_send_diff_message(const void* data) {
     wm_sys_send_message(data, SYSCOLLECTOR_MQ);
 #ifndef CLIENT
-    char* msg_to_send = adapt_delta_message(data, "localhost", "000", "127.0.0.1", manager_node_name, NULL);
-    if (msg_to_send && router_provider_send_fb_func_ptr) {
-        router_provider_send_fb_func_ptr(syscollector_handle, msg_to_send, syscollector_deltas_SCHEMA);
+    if(!disable_manager_scan)
+    {
+        char* msg_to_send = adapt_delta_message(data, "localhost", "000", "127.0.0.1", manager_node_name, NULL);
+        if (msg_to_send && router_provider_send_fb_func_ptr) {
+            router_provider_send_fb_func_ptr(syscollector_handle, msg_to_send, syscollector_deltas_SCHEMA);
+        }
+        cJSON_free(msg_to_send);
     }
-    cJSON_free(msg_to_send);
 #endif // CLIENT
 }
 
 static void wm_sys_send_dbsync_message(const void* data) {
     wm_sys_send_message(data, DBSYNC_MQ);
 #ifndef CLIENT
-    char* msg_to_send = adapt_sync_message(data, "localhost", "000", "127.0.0.1", manager_node_name, NULL);
-    if (msg_to_send && router_provider_send_fb_func_ptr) {
-        router_provider_send_fb_func_ptr(rsync_handle, msg_to_send, syscollector_synchronization_SCHEMA);
+    if(!disable_manager_scan)
+    {
+        char* msg_to_send = adapt_sync_message(data, "localhost", "000", "127.0.0.1", manager_node_name, NULL);
+        if (msg_to_send && router_provider_send_fb_func_ptr) {
+            router_provider_send_fb_func_ptr(rsync_handle, msg_to_send, syscollector_synchronization_SCHEMA);
+        }
+        cJSON_free(msg_to_send);
     }
-    cJSON_free(msg_to_send);
 #endif // CLIENT
 }
 
@@ -177,19 +184,20 @@ void* wm_sys_main(wm_sys_t *sys) {
 #endif
         }
 #ifndef CLIENT
-        // Load router module only for manager
+        // Load router module only for manager if is enabled
+        disable_manager_scan = getDefine_Int("vulnerability-detection", "disable_scan_manager",0 ,1);
         if (router_module_ptr = so_get_module_handle("router"), router_module_ptr) {
-            router_provider_create_func_ptr = so_get_function_sym(router_module_ptr, "router_provider_create");
-            router_provider_send_fb_func_ptr = so_get_function_sym(router_module_ptr, "router_provider_send_fb");
-            if (router_provider_create_func_ptr && router_provider_send_fb_func_ptr) {
-                mtdebug1(WM_SYS_LOGTAG, "Router module loaded.");
+                router_provider_create_func_ptr = so_get_function_sym(router_module_ptr, "router_provider_create");
+                router_provider_send_fb_func_ptr = so_get_function_sym(router_module_ptr, "router_provider_send_fb");
+                if (router_provider_create_func_ptr && router_provider_send_fb_func_ptr) {
+                    mtdebug1(WM_SYS_LOGTAG, "Router module loaded.");
+                } else {
+                    mwarn("Failed to load methods from router module.");
+                }
             } else {
-                mwarn("Failed to load methods from router module.");
+                mwarn("Failed to load router module.");
             }
-        } else {
-            mwarn("Failed to load router module.");
-        }
-        manager_node_name = get_node_name();
+            manager_node_name = get_node_name();
 #endif // CLIENT
     } else {
 #ifdef __hpux

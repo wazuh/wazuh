@@ -214,7 +214,7 @@ namespace PackageLinuxHelper
             }
             else if (data.is_string())
             {
-                auto stringData = data.get_ref<const std::string&>();
+                const auto& stringData = data.get_ref<const std::string&>();
 
                 if (stringData.length())
                 {

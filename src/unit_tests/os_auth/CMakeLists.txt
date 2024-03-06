@@ -43,17 +43,17 @@ list(APPEND os_auth_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_minf
                            -Wl,--wrap,recv -Wl,--wrap,setsockopt -Wl,--wrap,fcntl -Wl,--wrap,connect -Wl,--wrap,socket \
                            -Wl,--wrap,w_request_agent_add_clustered -Wl,--wrap,sleep -Wl,--wrap,cJSON_Delete -Wl,--wrap,local_add \
                            -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgetpos -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fseek \
-                           -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap=fgetc -Wl,--wrap,getpid \
+                           -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap=fgetc -Wl,--wrap,getpid -Wl,--wrap,wfopen \
                            -Wl,--wrap,external_socket_connect ${HASH_OP_WRAPPERS}")
 list(APPEND os_auth_names "test_auth")
 list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} \
-                           -Wl,--wrap,os_random -Wl,--wrap,GetRandomNoise -Wl,--wrap,getuname -Wl,--wrap,time")
+                           -Wl,--wrap,os_random -Wl,--wrap,GetRandomNoise -Wl,--wrap,getuname -Wl,--wrap,time -Wl,--wrap,wfopen")
 list(APPEND os_auth_names "test_generate_cert")
 list (APPEND os_auth_flags "-Wl,--wrap,PEM_write_PrivateKey -Wl,--wrap,PEM_write_X509 -Wl,--wrap,RSA_generate_key_ex \
-                            -Wl,--wrap,X509_sign -Wl,--wrap,_merror -Wl,--wrap,popen \
+                            -Wl,--wrap,X509_sign -Wl,--wrap,_merror -Wl,--wrap,wfopen \
                             -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgetpos -Wl,--wrap,fread \
                             -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,fgets \
-                            -Wl,--wrap,RSA_new -Wl,--wrap,EVP_PKEY_new -Wl,--wrap,X509_new")
+                            -Wl,--wrap,RSA_new -Wl,--wrap,EVP_PKEY_new -Wl,--wrap,X509_new -Wl,--wrap,popen")
 list(APPEND os_auth_names "test_authd-config")
 list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS}")
 

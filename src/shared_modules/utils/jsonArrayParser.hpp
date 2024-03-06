@@ -2,7 +2,7 @@
  * Wazuh shared modules utils
  * Copyright (C) 2015, Wazuh Inc.
  * October 6, 2023.
- * 
+ *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
@@ -48,13 +48,13 @@ namespace JsonArray
          *
          * @param targetArrayPointer JSON Pointer to the target array.
          * @param itemCallback Callback invoked for every item found on the target array. If the callback returns false
-         * the parsing stops.
+         * the parsing stops, the second parameter is the quantity of items parsed.
          * @param bodyCallback Callback invoked at the end of the parsing with the body of the JSON object. The body of
          * the JSON object is the original JSON with the array items removed.
          */
         JsonSaxArrayParser(
             nlohmann::json::json_pointer targetArrayPointer,
-            std::function<bool(nlohmann::json&&)> itemCallback,
+            std::function<bool(nlohmann::json&&, const size_t)> itemCallback,
             std::function<void(nlohmann::json&&)> bodyCallback = [](nlohmann::json&&) {})
             : m_targetArrayPointer(std::move(targetArrayPointer))
             , m_itemCallback(std::move(itemCallback))
@@ -225,7 +225,7 @@ namespace JsonArray
                 if (m_inTargetArray)
                 {
                     // This item is complete. Invoke the item callback.
-                    m_continueParsing = m_itemCallback(std::move(m_item));
+                    m_continueParsing = m_itemCallback(std::move(m_item), ++m_itemId);
                 }
                 else
                 {
@@ -300,7 +300,7 @@ namespace JsonArray
                 {
                     // This is the end of an array item of the target array
                     // This item is complete. Invoke the item callback.
-                    m_continueParsing = m_itemCallback(std::move(m_item));
+                    m_continueParsing = m_itemCallback(std::move(m_item), ++m_itemId);
                 }
                 m_refStackPtr->pop_back();
             }
@@ -355,7 +355,7 @@ namespace JsonArray
                     if (!m_item.is_object() && !m_item.is_array())
                     {
                         // The item is a single value (Not an object or an array)
-                        m_continueParsing = m_itemCallback(std::move(m_item));
+                        m_continueParsing = m_itemCallback(std::move(m_item), ++m_itemId);
                     }
                     return &m_item;
                 }
@@ -399,7 +399,7 @@ namespace JsonArray
         nlohmann::json::json_pointer m_targetArrayPointer;
 
         /// Callback for each parsed item on the target array
-        std::function<bool(nlohmann::json&&)> m_itemCallback;
+        std::function<bool(nlohmann::json&&, const size_t)> m_itemCallback;
 
         /// Callback for the object body at the end of the parsing
         std::function<void(nlohmann::json&&)> m_bodyCallback;
@@ -415,6 +415,9 @@ namespace JsonArray
 
         /// Helper to hold the reference for the next object element
         nlohmann::json* m_objectElement = nullptr;
+
+        /// Item id counter
+        size_t m_itemId {0};
     };
 
     /**
@@ -430,7 +433,7 @@ namespace JsonArray
      */
     static void parse(
         const std::filesystem::path& filepath,
-        std::function<bool(nlohmann::json&&)> processItemCallback,
+        std::function<bool(nlohmann::json&&, const size_t)> processItemCallback,
         const nlohmann::json::json_pointer& arrayPointer = nlohmann::json::json_pointer(),
         std::function<void(nlohmann::json&&)> processBodyCallback = [](nlohmann::json&&) {})
     {

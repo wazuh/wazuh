@@ -6,8 +6,8 @@ list(APPEND wdb_tests_names "test_wdb_integrity")
 list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug1 -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_errmsg \
                          -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,EVP_DigestInit_ex -Wl,--wrap,EVP_DigestUpdate -Wl,--wrap,_DigestFinal_ex \
                          -Wl,--wrap,sqlite3_bind_int64 -Wl,--wrap,sqlite3_column_text -Wl,--wrap,_mdebug2 -Wl,--wrap,wdb_exec_stmt \
-                         -Wl,--wrap,time -Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,wdb_init_stmt_in_cache ${DEBUG_OP_WRAPPERS} \
-                         -Wl,--wrap,router_provider_send_fb")
+                         -Wl,--wrap,time -Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,wdb_init_stmt_in_cache -Wl,--wrap,wdb_begin2 ${DEBUG_OP_WRAPPERS} \
+                         -Wl,--wrap,router_provider_send")
 
 # Add server specific tests to the list
 list(APPEND wdb_tests_names "test_wdb_fim")
@@ -38,7 +38,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_scan_info_get -Wl,--wrap,wdb_fim_upd
                         -Wl,--wrap,wdb_global_create_backup -Wl,--wrap,wdb_commit2 -Wl,--wrap,wdb_vacuum -Wl,--wrap,wdb_get_db_state \
                         -Wl,--wrap,wdb_update_last_vacuum_data -Wl,--wrap,wdb_get_db_free_pages_percentage \
                         -Wl,--wrap,w_is_file -Wl,--wrap,wdb_close\
-                        ${DEBUG_OP_WRAPPERS}")
+                        -Wl,--wrap,wdb_pool_leave ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_global_parser")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl,--wrap,wdb_exec -Wl,--wrap,sqlite3_errmsg \
@@ -83,11 +83,11 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl
                              -Wl,--wrap,wdb_commit2 -Wl,--wrap,wdb_vacuum -Wl,--wrap,wdb_get_db_state -Wl,--wrap,wdb_finalize_all_statements \
                              -Wl,--wrap,wdb_update_last_vacuum_data -Wl,--wrap,wdb_get_db_free_pages_percentage -Wl,--wrap,wdb_global_get_distinct_agent_groups \
                              -Wl,--wrap,w_inc_global_agent_get_distinct_groups -Wl,--wrap,w_inc_global_agent_get_distinct_groups_time \
-                             -Wl,--wrap,w_is_file -Wl,--wrap,wdb_close -Wl,--wrap,w_inc_global_open_time ${DEBUG_OP_WRAPPERS}")
+                             -Wl,--wrap,w_is_file -Wl,--wrap,wdb_close -Wl,--wrap,w_inc_global_open_time -Wl,--wrap,wdb_pool_leave ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_global")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_exec -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,wdb_begin2 -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_bind_int \
-                            -Wl,--wrap,wdb_exec_stmt -Wl,--wrap,wdb_exec_stmt_sized -Wl,--wrap,wdb_step -Wl,--wrap,sqlite3_bind_text \
+                            -Wl,--wrap,wdb_exec_stmt -Wl,--wrap,wdb_exec_stmt_sized -Wl,--wrap,wdb_step -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,wfopen \
                             -Wl,--wrap,sqlite3_bind_parameter_index -Wl,--wrap,cJSON_Delete -Wl,--wrap,cJSON_CreateArray -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_column_int \
                             -Wl,--wrap,wdb_init_stmt_in_cache -Wl,--wrap,wdb_get_global_group_hash -Wl,--wrap,wdb_commit2 -Wl,--wrap,wdb_finalize_all_statements \
                             -Wl,--wrap,sqlite3_prepare_v2 -Wl,--wrap,w_get_timestamp -Wl,--wrap,wdb_exec_stmt_silent -Wl,--wrap,w_compress_gzfile \
@@ -113,7 +113,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,strerror \
                              -Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result -Wl,--wrap,wdbc_query_parse_json -Wl,--wrap,wdbc_query_parse \
                              -Wl,--wrap,wdb_create_profile -Wl,--wrap,Privsep_GetUser -Wl,--wrap,Privsep_GetGroup -Wl,--wrap,chown \
                              -Wl,--wrap,chmod -Wl,--wrap,IsDir -Wl,--wrap,fgets -Wl,--wrap,fflush -Wl,--wrap,fseek -Wl,--wrap,get_node_name \
-                             -Wl,--wrap,rbtree_insert \
+                             -Wl,--wrap,rbtree_insert -Wl,--wrap,wfopen \
                              -Wl,--wrap,stat -Wl,--wrap,fgetpos ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_agents_helpers")
@@ -134,7 +134,9 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,
                              -Wl,--wrap,sqlite3_clear_bindings -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,sqlite3_sql -Wl,--wrap,OS_SendSecureTCP  \
                              -Wl,--wrap,gettimeofday -Wl,--wrap,w_inc_global_rollback -Wl,--wrap,w_inc_global_rollback_time \
                              -Wl,--wrap,OS_SetSendTimeout -Wl,--wrap,time -Wl,--wrap,sqlite3_column_int -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,rwlock_lock_write \
-                             -Wl,--wrap,rwlock_lock_read -Wl,--wrap,rwlock_unlock ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
+                             -Wl,--wrap,rwlock_lock_read -Wl,--wrap,rwlock_unlock -Wl,--wrap,wdb_pool_get -Wl,--wrap,wdb_pool_get_or_create \
+                             -Wl,--wrap,wdb_pool_leave -Wl,--wrap,wdb_pool_keys -Wl,--wrap,wdb_pool_clean -Wl,--wrap,getuid -Wl,--wrap,chmod \
+                             -Wl,--wrap,stat ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_upgrade")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_count_tables_with_name \
@@ -144,7 +146,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_count_tables_with_name \
                              -Wl,--wrap,unlink -Wl,--wrap,getpid -Wl,--wrap,time -Wl,--wrap,sqlite3_open_v2 -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,sqlite3_close_v2 \
                              -Wl,--wrap,sqlite3_prepare_v2 -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_column_int -Wl,--wrap,sqlite3_finalize -Wl,--wrap,fgetpos \
                              -Wl,--wrap,fgetc -Wl,--wrap,wdb_global_create_backup -Wl,--wrap,wdb_global_get_most_recent_backup -Wl,--wrap,wdb_global_restore_backup \
-                             -Wl,--wrap,wdb_global_adjust_v4 ${DEBUG_OP_WRAPPERS}")
+                             -Wl,--wrap,wdb_global_adjust_v4 -Wl,--wrap,wfopen ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_metadata")
 list(APPEND wdb_tests_flags "-Wl,--wrap,sqlite3_prepare_v2 -Wl,--wrap,sqlite3_errmsg \
@@ -188,6 +190,9 @@ list(APPEND wdb_tests_flags "")
 
 list(APPEND wdb_tests_names "test_wdb_com")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_create_state_json -Wl,--wrap,wdb_get_config -Wl,--wrap,wdb_get_internal_config")
+
+list(APPEND wdb_tests_names "test_wdb_pool")
+list(APPEND wdb_tests_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")
 
 # Add extra compiling flags
 add_compile_options(-Wall)

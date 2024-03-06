@@ -29,8 +29,15 @@ typedef struct entry_struct_s {
     char *filerestrict;
 } entry_struct_t;
 
+static int setup_read_config(void **state) {
+    test_mode = 0;
+
+    return 0;
+}
+
 static int restart_syscheck(void **state)
 {
+    test_mode = 1;
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
@@ -104,7 +111,9 @@ void test_Read_Syscheck_Config_success(void **state)
     expect_any_always(__wrap__mwarn, formatted_msg);
 
 
+    test_mode = 0;
     ret = Read_Syscheck_Config("test_syscheck_max_dir.conf");
+    test_mode = 1;
 
     assert_int_equal(ret, 0);
     assert_int_equal(syscheck.rootcheck, 0);
@@ -891,15 +900,15 @@ void test_fim_adjust_path_convert_system32 (void **state) {
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_teardown(test_Read_Syscheck_Config_success, restart_syscheck),
-        cmocka_unit_test_teardown(test_Read_Syscheck_Config_invalid, restart_syscheck),
-        cmocka_unit_test_teardown(test_Read_Syscheck_Config_undefined, restart_syscheck),
-        cmocka_unit_test_teardown(test_Read_Syscheck_Config_unparsed, restart_syscheck),
-        cmocka_unit_test_teardown(test_getSyscheckConfig, restart_syscheck),
-        cmocka_unit_test_teardown(test_getSyscheckConfig_no_audit, restart_syscheck),
-        cmocka_unit_test_teardown(test_getSyscheckConfig_no_directories, restart_syscheck),
-        cmocka_unit_test_teardown(test_getSyscheckInternalOptions, restart_syscheck),
-        cmocka_unit_test_teardown(test_SyscheckConf_DirectoriesWithCommas, restart_syscheck),
+        cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_success, setup_read_config, restart_syscheck),
+        cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_invalid, setup_read_config, restart_syscheck),
+        cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_undefined, setup_read_config, restart_syscheck),
+        cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_unparsed, setup_read_config, restart_syscheck),
+        cmocka_unit_test_setup_teardown(test_getSyscheckConfig, setup_read_config, restart_syscheck),
+        cmocka_unit_test_setup_teardown(test_getSyscheckConfig_no_audit, setup_read_config, restart_syscheck),
+        cmocka_unit_test_setup_teardown(test_getSyscheckConfig_no_directories, setup_read_config, restart_syscheck),
+        cmocka_unit_test_setup_teardown(test_getSyscheckInternalOptions, setup_read_config, restart_syscheck),
+        cmocka_unit_test_setup_teardown(test_SyscheckConf_DirectoriesWithCommas, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_fim_create_directory_add_new_entry, setup_entry, teardown_entry),
         cmocka_unit_test_setup_teardown(test_fim_create_directory_OSMatch_Compile_fail_maxsize, setup_entry, teardown_entry),
         cmocka_unit_test_setup_teardown(test_fim_insert_directory_duplicate_entry, setup_entry, teardown_entry),
