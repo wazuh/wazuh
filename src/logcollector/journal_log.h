@@ -2,6 +2,7 @@
 #define w_journal_H
 
 #include <shared.h>
+#include "../config/localfile-config.h"
 
 #include "cJSON.h"
 #include "expression.h"
@@ -167,45 +168,6 @@ char* w_journal_entry_to_string(w_journal_entry_t* entry);
 /**********************************************************
  *                   Filter related
  **********************************************************/
-
-/**
- * @brief Represents a filter unit, the minimal condition of a filter
- *
- */
-typedef struct _w_journal_filter_unit_t
-{
-    char* field;           // Field to try match
-    w_expression_t* exp;   // Expression to match against the field (PCRE2)
-    int ignore_if_missing; // Ignore if the field is missing (TODO: Use BOOL)
-} _w_journal_filter_unit_t;
-
-/**
- * @brief Represents a filter, a set of filter units, all of which must match
- */
-typedef struct w_journal_filter_t
-{
-    _w_journal_filter_unit_t** units; // Array of unit filter TODO Change to list
-    size_t units_size;                // Number of units
-} w_journal_filter_t;
-
-/**
- * @brief Free the filter and all its resources
- *
- * The filter pointer is invalid after the call.
- */
-void w_journal_filter_free(w_journal_filter_t* filter);
-
-/**
- * @brief Add a condition to the filter, creating the filter if it does not exist
- *
- * The filter will be updated to add the new condition.
- * @param filter Journal log filter
- * @param field Field to try match
- * @param expression expression to match against the field (PCRE2)
- * @param ignore_if_missing Ignore if the field is missing
- * @return int 0 on success or non-zero on error
- */
-int w_journal_filter_add_condition(w_journal_filter_t** filter, char* field, char* expression, int ignore_if_missing);
 
 /**
  * @brief Apply the filter to the journal log context
