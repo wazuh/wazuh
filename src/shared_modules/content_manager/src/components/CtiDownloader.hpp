@@ -165,11 +165,11 @@ protected:
 
         CtiBaseParameters parameters;
         parameters.lastOffset =
-            isKeyValueValid("last_offset") ? std::optional(rawMetadata.at("last_offset")) : std::nullopt;
+            isKeyValueValid("last_offset") ? std::optional<int>(rawMetadata.at("last_offset").get<int>()) : std::nullopt;
         parameters.lastSnapshotLink =
             isKeyValueValid("last_snapshot_link") ? std::optional(rawMetadata.at("last_snapshot_link")) : std::nullopt;
         parameters.lastSnapshotOffset = isKeyValueValid("last_snapshot_offset")
-                                            ? std::optional(rawMetadata.at("last_snapshot_offset"))
+                                            ? std::optional<int>(rawMetadata.at("last_snapshot_offset").get<int>())
                                             : std::nullopt;
         return parameters;
     }

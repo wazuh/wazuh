@@ -24,8 +24,8 @@ STATIC wdb_pool_t wdb_pool;
 
 __attribute__((no_thread_safety_analysis))
 void wdb_pool_init() {
-    wdb_pool.nodes = rbtree_init();
     w_mutex_init(&wdb_pool.mutex, NULL)
+    wdb_pool.nodes = rbtree_init();
 }
 
 // Find a node in the pool by name.
