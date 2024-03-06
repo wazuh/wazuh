@@ -49,7 +49,7 @@ typedef struct
  *
  * The caller is responsible for freeing the returned context.
  * @param ctx Journal log context
- * @return int 0 on success or a negative errno-style error code.
+ * @return int 0 on success or -1 on error
  * @note The context should be created and used by a single thread only.
  */
 int w_journal_context_create(w_journal_context_t** ctx);
