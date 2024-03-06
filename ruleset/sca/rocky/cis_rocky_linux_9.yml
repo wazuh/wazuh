@@ -760,8 +760,9 @@ checks:
       - nist_sp_800-53: ["SC-18(4)"]
     condition: all
     rules:
-      - "c:modprobe -n -v usb-storage -> r:install /bin/true"
+      - "c:modprobe -n -v usb-storage -> r:install /bin/false|Module usb-storage not found"
       - "not c:lsmod -> r:usb-storage"
+      - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+usb-storage'
 
   ###############################################
   # 1.2 Configure Software Updates
@@ -863,13 +864,13 @@ checks:
       - mitre_techniques: ["T1070", "T1070.002", "T1083"]
     condition: all
     rules:
-      - "f:/etc/aide/aide.conf"
-      - 'f:/etc/aide/aide.conf -> r:/sbin/auditctl\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
-      - 'f:/etc/aide/aide.conf -> r:/sbin/auditd\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
-      - 'f:/etc/aide/aide.conf -> r:/sbin/ausearch\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
-      - 'f:/etc/aide/aide.conf -> r:/sbin/aureport\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
-      - 'f:/etc/aide/aide.conf -> r:/sbin/autrace\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
-      - 'f:/etc/aide/aide.conf -> r:/sbin/augenrules\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
+      - "f:/etc/aide.conf"
+      - 'f:/etc/aide.conf -> r:/sbin/auditctl\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
+      - 'f:/etc/aide.conf -> r:/sbin/auditd\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
+      - 'f:/etc/aide.conf -> r:/sbin/ausearch\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
+      - 'f:/etc/aide.conf -> r:/sbin/aureport\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
+      - 'f:/etc/aide.conf -> r:/sbin/autrace\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
+      - 'f:/etc/aide.conf -> r:/sbin/augenrules\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
 
   ###############################################
   # 1.4 Secure Boot Settings
@@ -1753,9 +1754,9 @@ checks:
       - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: all
+    condition: none
     rules:
-      - 'not c:ss -lntu -> r:\s*127.0.0.1:25\s*|\s*::1:25\s*'
+      - 'c:ss -lntu -> r:\.*:25 && r:\.*LISTEN && !r:127.0.0.1:25|[::1]:25'
 
   # 2.2.16 Ensure nfs-utils is not installed or the nfs-server service is masked. (Automated)
   - id: 31571
@@ -1950,8 +1951,9 @@ checks:
       - mitre_techniques: ["T1068", "T1210"]
     condition: all
     rules:
-      - "c:modprobe -n -v tipc -> r:install /bin/true"
+      - "c:modprobe -n -v tipc -> r:install /bin/false|Module tipc not found"
       - "not c:lsmod -> r:tipc"
+      - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+tipc'
 
   ###############################################
   # 3.2 Network Parameters (Host Only)
@@ -2483,9 +2485,10 @@ checks:
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition: none
+    condition: all
     rules:
-      - 'c:stat -c "%n %U" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> !r:root|\\s*'
+      - 'not c:stat -c "%n %a %U %G" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> r:^/sbin && !r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
+      - 'not c:stat -c "%n %u %U %g %G" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> r:^/sbin && !r:0 root 0 root'
 
   # 4.1.4.10 Ensure audit tools belong to group root. (Automated)
   - id: 31599
@@ -2506,9 +2509,11 @@ checks:
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition: none
+    condition: all
     rules:
-      - 'c:stat -c "%n %a %U %G" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> !r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755 && r:\s*\t*root\s*\t*root'
+      - 'not c:stat -c "%n %a %U %G" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> r:^/sbin && !r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
+      - 'not c:stat -c "%n %u %U %g %G" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> r:^/sbin && !r:0 root 0 root'
+
 
   ###############################################
   # 4.2 Configure Logging
@@ -3943,7 +3948,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /etc/group- -> r:Access:\s*\(0644/-rw-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/group- -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.5 Ensure permissions on /etc/shadow are configured. (Automated)
   - id: 31660
