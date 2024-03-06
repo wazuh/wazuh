@@ -1409,7 +1409,7 @@ checks:
 
   # 5.2 (L2) Ensure 'Print Spooler (Spooler)' is set to 'Disabled' (MS only). (Automated)
    - id: 18622
-     title: "(L2) Ensure 'Print Spooler (Spooler)' is set to 'Disabled' (MS only)."
+     title: "Ensure 'Print Spooler (Spooler)' is set to 'Disabled' (MS only)."
      description: "This service spools print jobs and handles interaction with printers. The recommended state for this setting is: Disabled."
      rationale: "Disabling the Print Spooler (Spooler) service mitigates the PrintNightmare vulnerability (CVE-2021-34527) and other attacks against the service."
      impact: "Member Servers will not be able to act as a print server, sharing printers for clients. Applications on and users logged in to Member Servers will not be able to print, including printing to files (such as Adobe Portable Document Format (PDF)) which uses the Print Spooler service."
@@ -1425,12 +1425,13 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Spooler -> Start -> 4'
 
   # 9.1.1 (L1) Ensure 'Windows Firewall: Domain: Firewall state' is set to 'On (recommended)'. (Automated)
    - id: 18623
-     title: "(L1) Ensure 'Windows Firewall: Domain: Firewall state' is set to 'On (recommended)'."
+     title: "Ensure 'Windows Firewall: Domain: Firewall state' is set to 'On (recommended)'."
      description: "Select On (recommended) to have Windows Firewall with Advanced Security use the settings for this profile to filter network traffic. If you select Off, Windows Firewall with Advanced Security will not use any of the firewall rules or connection security rules for this profile. The recommended state for this setting is: On (recommended)."
      rationale: "If the firewall is turned off all traffic will be able to access the system and an attacker may be more easily able to remotely exploit a weakness in a network service."
      impact: "None - this is the default behavior."
@@ -1445,8 +1446,11 @@ checks:
        - pci_dss_v3.2.1: ["1.1.4", "1.4"]
        - pci_dss_v4.0: ["1.2.1"]
        - soc_2: ["CC6.6"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile -> EnableFirewall'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile -> EnableFirewall -> 1'
 
   # 9.1.2 (L1) Ensure 'Windows Firewall: Domain: Inbound connections' is set to 'Block (default)'. (Automated)
    - id: 18624
