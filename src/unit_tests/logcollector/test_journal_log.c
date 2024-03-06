@@ -60,6 +60,11 @@ void test_w_journald_poc(void ** state) {
     assert_int_equal(0, w_journal_filter_add_condition(&filterC, "_EXE", "^/usr/sbin/sshd", false));
     assert_int_equal(0, w_journal_filter_add_condition(&filterC, "SYSLOG_IDENTIFIER", "^sshd", false));
 
+    w_journal_filters_list_t filters = NULL;
+    assert_int_equal(true, w_journal_add_filter_to_list(&filters, filterA));
+    assert_int_equal(true, w_journal_add_filter_to_list(&filters, filterB));
+    assert_int_equal(true, w_journal_add_filter_to_list(&filters, filterC));
+
 
     // Seek
     int result = w_journal_context_seek_timestamp(ctx, 1708954788027700);
@@ -106,10 +111,7 @@ void test_w_journald_poc(void ** state) {
     } while (1);
 
     // Free filters
-    w_journal_filter_free(filterA);
-    w_journal_filter_free(filterB);
-    w_journal_filter_free(filterC);
-
+    w_journal_free_filters_list(filters);
     w_journal_context_free(ctx);
 
 }

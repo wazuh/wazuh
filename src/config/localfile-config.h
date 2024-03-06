@@ -63,7 +63,7 @@ typedef struct _logtarget {
     socket_forwarder * log_socket;
 } logtarget;
 
-/* Logreader config */
+/* -- Multiline regex log format specific configuration -- */
 /**
  * @brief Specifies end-of-line replacement type in multiline log (multi-line-regex log format)
  */
@@ -109,6 +109,7 @@ typedef struct {
     int64_t offset_last_read;  ///< absolut file offset of last complete multiline log processed
 } w_multiline_config_t;
 
+/* -- macos log format specific configuration -- */
 typedef enum _w_macos_log_state_t {
     LOG_NOT_RUNNING,
     LOG_RUNNING_STREAM,
@@ -156,6 +157,28 @@ typedef struct {
     char * current_settings;            ///< Stores `log stream` full command.
     bool store_current_settings;        ///< True if current_settings is stored in vault
 } w_macos_log_config_t;
+
+/* -- journal log format specific configuration -- */
+/**
+ * @brief Represents a filter unit, the minimal condition of a filter
+ */
+typedef struct _w_journal_filter_unit_t
+{
+    char* field;           // Field to try match
+    w_expression_t* exp;   // Expression to match against the field (PCRE2)
+    int ignore_if_missing; // Ignore if the field is missing (TODO: Use BOOL)
+} _w_journal_filter_unit_t;
+
+/**
+ * @brief Represents a filter, a set of filter units, all of which must match
+ */
+typedef struct w_journal_filter_t
+{
+    _w_journal_filter_unit_t** units; // Array of unit filter TODO Change to list
+    size_t units_size;                // Number of units
+} w_journal_filter_t;
+
+typedef w_journal_filter_t** w_journal_filters_list_t;
 
 /* Logreader config */
 typedef struct _logreader {
@@ -276,5 +299,41 @@ const char * multiline_attr_replace_str(w_multiline_replace_type_t replace_type)
  */
 const char * multiline_attr_match_str(w_multiline_match_type_t match_type);
 
+/**
+ * @brief Free the filter and all its resources
+ *
+ * The filter pointer is invalid after the call.
+ */
+void w_journal_filter_free(w_journal_filter_t* filter);
+
+/**
+ * @brief Add a condition to the filter, creating the filter if it does not exist
+ *
+ * The filter will be updated to add the new condition.
+ * @param filter Journal log filter
+ * @param field Field to try match
+ * @param expression expression to match against the field (PCRE2)
+ * @param ignore_if_missing Ignore if the field is missing
+ * @return int 0 on success or non-zero on error
+ */
+int w_journal_filter_add_condition(w_journal_filter_t** filter, char* field, char* expression, int ignore_if_missing);
+
+/**
+ * @brief Add a filter to the filters list
+ * 
+ * If the list is NULL, it will be created.
+ * The filter will be added to the list and reallocated if necessary.
+ * @param list Filters list
+ * @param filter Filter to add
+ * @return return false if filter is NULL or list is NULL
+ */
+bool w_journal_add_filter_to_list(w_journal_filters_list_t* list, w_journal_filter_t* filter);
+
+/**
+ * @brief Free the filter list and all its resources
+ *
+ * The list pointer is invalid after the call.
+ */
+void w_journal_free_filters_list(w_journal_filters_list_t list);
 
 #endif /* CLOGREADER_H */
