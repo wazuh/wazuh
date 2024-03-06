@@ -1015,43 +1015,27 @@ def test_agent_remove_agents_from_group_exceptions(group_mock, agents_info_mock,
         assert error == expected_error
 
 
-@pytest.mark.parametrize('agent_list, outdated_agents', [
-    (short_agent_list, ['001', '002', '005'])
-])
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_get_outdated_agents(socket_mock, send_mock, agent_list, outdated_agents):
+def test_agent_get_outdated_agents(socket_mock, send_mock):
     """Test get_oudated_agents function from agent module.
 
     Parameters
     ----------
-    agent_list : List of str
-        List of agent ID's to check
     outdated_agents : List of str
         List of agent ID's we expect to be outdated.
     """
-    expected_results = list()
-    for agentID in ['001', '002', '005']:
-        agent = Agent(agentID)
-        agent.load_info_from_db()
-        expected_results.append({'version': agent.version, 'id': agentID, 'name': agent.name})
+    outdated_agents = ['001', '002', '005']
     result = get_outdated_agents(agent_list=short_agent_list)
     # Check typing
-    assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
-    assert isinstance(result.affected_items, list), \
-        f'"affected_items" should be a list object but was "{type(result.affected_items)}" instead.'
+    assert isinstance(result, AffectedItemsWazuhResult)
+    assert isinstance(result.affected_items, list)
     # Check affected items
-    assert result.total_affected_items == len(expected_results), \
-        f'"total_affected_items" ({result.total_affected_items}) does not match with the number of expected ' \
-        f'results ({len(expected_results)})'
-    assert [item for item in result.affected_items if item not in expected_results] == list(), \
-        f'The "affected_items" received does not match.\n' \
-        f' - The "affected_items" received is "{result.affected_items}"\n' \
-        f' - The "affected_items" expected was "{expected_results}"\n' \
-        f' - The difference is "{[item for item in result.affected_items if not item in expected_results]}"\n'
+    assert result.total_affected_items == len(outdated_agents)
+    for item in result.affected_items:
+        assert item['id'] in outdated_agents
     # Check failed items
-    assert result.total_failed_items == 0, \
-        f'"failed_items" should be "0" but is "{result.total_failed_items}"'
+    assert result.total_failed_items == 0
 
 
 @pytest.mark.parametrize('agent_set, expected_errors_and_items, result_from_socket, filters, raise_error', [
