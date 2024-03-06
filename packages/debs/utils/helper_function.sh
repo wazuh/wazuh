@@ -50,30 +50,29 @@ build_package(){
 
     if [[ "${ARCHITECTURE_TARGET}" == "amd64" ]] ||  [[ "${ARCHITECTURE_TARGET}" == "ppc64le" ]] || \
         [[ "${ARCHITECTURE_TARGET}" == "arm64" ]]; then
-        debuild --rootcmd=sudo -b -uc -us
+        debuild --rootcmd=sudo -b -uc -us -nc
     elif [[ "${ARCHITECTURE_TARGET}" == "armhf" ]]; then
-        linux32 debuild --rootcmd=sudo -b -uc -us
+        linux32 debuild --rootcmd=sudo -b -uc -us -nc
     else
-        linux32 debuild --rootcmd=sudo -ai386 -b -uc -us
+        linux32 debuild --rootcmd=sudo -ai386 -b -uc -us -nc
     fi
 }
 
 get_checksum(){
     wazuh_version="$1"
     short_commit_hash="$2"
-    # TODO: this could be improve and make it in common code inside of build.sh
-    deb_file="wazuh-${BUILD_TARGET}_${wazuh_version}-${PACKAGE_RELEASE}"
+    base_name="wazuh-${BUILD_TARGET}_${wazuh_version}-${PACKAGE_RELEASE}"
+
+
     if [[ "${ARCHITECTURE_TARGET}" == "ppc64le" ]]; then
-        rename="${deb_file}_ppc64el_${short_commit_hash}.deb"
-        deb_file="${deb_file}_ppc64el.deb"
+        deb_file="${base_name}_ppc64el_${short_commit_hash}.deb"
     else
-        rename="${deb_file}_${ARCHITECTURE_TARGET}_${short_commit_hash}.deb"
-        deb_file="${deb_file}_${ARCHITECTURE_TARGET}.deb"
+        deb_file="${base_name}_${ARCHITECTURE_TARGET}_${short_commit_hash}.deb"
     fi
     pkg_path="${build_dir}/${BUILD_TARGET}"
 
     if [[ "${checksum}" == "yes" ]]; then
         cd ${pkg_path} && sha512sum ${deb_file} > /var/local/checksum/${deb_file}.sha512
     fi
-    mv ${pkg_path}/${deb_file} /var/local/wazuh/${rename}
+    find ${pkg_path} -type f -name "wazuh-${BUILD_TARGET}*deb" -exec mv {} /var/local/wazuh/${deb_file} \;
 }
