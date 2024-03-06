@@ -22,16 +22,16 @@ setup_build(){
     specs_path="$2"
     build_dir="$3"
     package_name="$4"
-    # Debug argument not used $5
+    # "$5": Debug argument is not used
     short_commit_hash="$6"
 
     rpm_build_dir=${build_dir}/rpmbuild
     file_name="$package_name-${PACKAGE_RELEASE}"
     rpm_file="${file_name}_${ARCHITECTURE_TARGET}_${short_commit_hash}.rpm"
     src_file="${file_name}.src.rpm"
-    pkg_path="${rpm_build_dir}/RPMS/${ARCHITECTURE_TARGET}"
+    extract_path="${rpm_build_dir}/RPMS"
     src_path="${rpm_build_dir}/SRPMS"
-    extract_path="${pkg_path}"
+
     mkdir -p ${rpm_build_dir}/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
 
     cp ${specs_path}/wazuh-${BUILD_TARGET}.spec ${rpm_build_dir}/SPECS/${package_name}.spec
@@ -76,14 +76,14 @@ build_package(){
     $linux $rpmbuild --define "_sysconfdir /etc" --define "_topdir ${rpm_build_dir}" \
         --define "_threads ${JOBS}" --define "_release ${PACKAGE_RELEASE}" \
         --define "_localstatedir ${INSTALLATION_PATH}" --define "_debugenabled ${debug}" \
-        --target ${ARCHITECTURE_TARGET} -ba ${rpm_build_dir}/SPECS/${package_name}.spec
+        --define "_rpmfilename ${rpm_file}" --target ${ARCHITECTURE_TARGET} \
+        -ba ${rpm_build_dir}/SPECS/${package_name}.spec
 
 }
 
 get_checksum(){
-    wazuh_version="$1"
     if [[ "${checksum}" == "yes" ]]; then
-        cd ${pkg_path} && sha512sum ${rpm_file} > /var/local/checksum/${rpm_file}.sha512
+        cd ${extract_path} && sha512sum ${rpm_file} > /var/local/checksum/${rpm_file}.sha512
         if [[ "${src}" == "yes" ]]; then
             cd ${src_path} && sha512sum ${src_file} > /var/local/checksum/${src_file}.sha512
         fi
@@ -92,6 +92,5 @@ get_checksum(){
     if [[ "${src}" == "yes" ]]; then
         extract_path="${rpm_build_dir}"
     fi
-    echo $file_name
     find ${extract_path} -maxdepth 3 -type f -name "${file_name}*" -exec mv {} /var/local/wazuh \;
 }
