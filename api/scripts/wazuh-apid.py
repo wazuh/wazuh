@@ -15,7 +15,7 @@ from wazuh.core.wlogging import TimeBasedFileRotatingHandler, SizeBasedFileRotat
 from wazuh.core import pyDaemonModule
 
 SSL_DEPRECATED_MESSAGE = 'The `{ssl_protocol}` SSL protocol is deprecated.'
-CACHE_DEPRECATED_MESSAGE = 'The cache API configuration option was deprecated in {release} and will be removed in the' \
+CACHE_DEPRECATED_MESSAGE = 'The cache API configuration option was deprecated in {release} and will be removed in the ' \
                            'next major.'
 
 API_MAIN_PROCESS = 'wazuh-apid'
