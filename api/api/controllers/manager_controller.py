@@ -4,22 +4,20 @@
 
 import datetime
 import logging
-from typing import Union
 
-from aiohttp import web
 from connexion import request
 from connexion.lifecycle import ConnexionResponse
 
 import wazuh.manager as manager
 import wazuh.stats as stats
 from api.constants import INSTALLATION_UID_KEY, UPDATE_INFORMATION_KEY
-from api.encoder import dumps, prettify
 from api.controllers.util import json_response, XML_CONTENT_TYPE
 from api.models.base_model_ import Body
 from api.util import (
     deprecate_endpoint, deserialize_date, only_master_endpoint, parse_api_param, raise_if_exc, remove_nones_to_dict
 )
 from api.validator import check_component_configuration_pair
+from api.signals import cti_context
 from wazuh.core import common
 from wazuh.core import configuration
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -610,23 +608,22 @@ async def check_available_version(pretty: bool = False, force_query: bool = Fals
     web.Response
         API response.
     """
-
     if force_query and configuration.update_check_is_enabled():
         logger.debug('Forcing query to the update check service...')
         dapi = DistributedAPI(f=query_update_check_service,
                               f_kwargs={
-                                  INSTALLATION_UID_KEY: request.app[INSTALLATION_UID_KEY]
+                                  INSTALLATION_UID_KEY: cti_context[INSTALLATION_UID_KEY]
                               },
                               request_type='local_master',
                               is_async=True,
                               logger=logger
                               )
         update_information = raise_if_exc(await dapi.distribute_function())
-        request.app[UPDATE_INFORMATION_KEY] = update_information.dikt
+        cti_context[UPDATE_INFORMATION_KEY] = update_information.dikt
 
     dapi = DistributedAPI(f=manager.get_update_information,
                           f_kwargs={
-                              UPDATE_INFORMATION_KEY: request.app.get(UPDATE_INFORMATION_KEY, {})
+                              UPDATE_INFORMATION_KEY: cti_context.get(UPDATE_INFORMATION_KEY, {})
                           },
                           request_type='local_master',
                           is_async=False,

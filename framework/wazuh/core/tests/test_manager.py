@@ -8,8 +8,8 @@ from datetime import timezone, datetime
 from unittest.mock import patch
 from uuid import uuid4
 
+import httpx
 import pytest
-from aiohttp import ClientError
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -46,7 +46,7 @@ def test_manager():
 
 @pytest.fixture
 def client_session_get_mock():
-    with patch('aiohttp.ClientSession.get') as get_mock:
+    with patch('httpx.AsyncClient.get') as get_mock:
         yield get_mock
 
 
@@ -259,7 +259,7 @@ async def test_query_update_check_service_catch_exceptions_and_dont_raise(
 ):
     """Test that the query_update_check_service function handle errors correctly."""
     message_error = 'Some client error'
-    client_session_get_mock.side_effect = ClientError(message_error)
+    client_session_get_mock.side_effect = httpx.RequestError(message_error)
     update_information = await query_update_check_service(installation_uid)
 
     client_session_get_mock.assert_called()
@@ -317,10 +317,7 @@ async def test_query_update_check_service_returns_correct_data_when_status_200(
     }
     status = 200
 
-    client_session_get_mock.return_value.__aenter__.return_value.status = status
-    client_session_get_mock.return_value.__aenter__.return_value.json.return_value = (
-        response_data
-    )
+    client_session_get_mock.return_value = httpx.Response(status_code=status, json=response_data)
 
     update_information = await query_update_check_service(installation_uid)
 
@@ -362,10 +359,7 @@ async def test_query_update_check_service_returns_correct_data_on_error(
     response_data = {'errors': {'detail': 'Unauthorized'}}
     status = 403
 
-    client_session_get_mock.return_value.__aenter__.return_value.status = status
-    client_session_get_mock.return_value.__aenter__.return_value.json.return_value = (
-        response_data
-    )
+    client_session_get_mock.return_value = httpx.Response(status_code=status, json=response_data)
 
     update_information = await query_update_check_service(installation_uid)
 
@@ -393,4 +387,5 @@ async def test_query_update_check_service_request(
                 WAZUH_UID_KEY: installation_uid,
                 WAZUH_TAG_KEY: f'v{version}',
             },
+            follow_redirects=True
         )

@@ -14,8 +14,8 @@ from enum import Enum
 from os.path import exists
 from typing import Dict, Optional, Union
 
-import aiohttp
 import certifi
+import httpx
 import wazuh
 from api import configuration
 from wazuh import WazuhError, WazuhException, WazuhInternalError
@@ -268,16 +268,9 @@ def get_api_conf() -> dict:
     return copy.deepcopy(configuration.api_conf)
 
 
-def _get_connector() -> aiohttp.TCPConnector:
-    """Return a TCPConnector with default ssl context.
-
-    Returns
-    -------
-    aiohttp.TCPConnector
-        Instance with default ssl connector.
-    """
-    ssl_context = ssl.create_default_context(cafile=certifi.where())
-    return aiohttp.TCPConnector(ssl=ssl_context)
+def _get_ssl_context() -> ssl.SSLContext:
+    """Return a default ssl context."""
+    return ssl.create_default_context(cafile=certifi.where())
 
 
 def get_update_information_template(
@@ -328,36 +321,28 @@ async def query_update_check_service(installation_uid: str) -> dict:
     headers = {WAZUH_UID_KEY: installation_uid, WAZUH_TAG_KEY: current_version}
 
     update_information = get_update_information_template(
-        update_check=True,
-        current_version=current_version,
-        last_check_date=get_utc_now()
+        update_check=True, current_version=current_version, last_check_date=get_utc_now()
     )
 
     update_information['uuid'] = installation_uid
 
-    async with aiohttp.ClientSession(connector=_get_connector()) as session:
+    async with httpx.AsyncClient(verify=_get_ssl_context()) as client:
         try:
-            async with session.get(RELEASE_UPDATES_URL, headers=headers) as response:
-                response_data = await response.json()
+            response = await client.get(RELEASE_UPDATES_URL, headers=headers, follow_redirects=True)
+            response_data = response.json()
 
-                update_information['status_code'] = response.status
+            update_information['status_code'] = response.status_code
 
-                if response.status == 200:
-                    if len(response_data['data']['major']):
-                        update_information['last_available_major'].update(
-                            **response_data['data']['major'][-1]
-                        )
-                    if len(response_data['data']['minor']):
-                        update_information['last_available_minor'].update(
-                            **response_data['data']['minor'][-1]
-                        )
-                    if len(response_data['data']['patch']):
-                        update_information['last_available_patch'].update(
-                            **response_data['data']['patch'][-1]
-                        )
-                else:
-                    update_information['message'] = response_data['errors']['detail']
-        except aiohttp.ClientError as err:
+            if response.status_code == 200:
+                if len(response_data['data']['major']):
+                    update_information['last_available_major'].update(**response_data['data']['major'][-1])
+                if len(response_data['data']['minor']):
+                    update_information['last_available_minor'].update(**response_data['data']['minor'][-1])
+                if len(response_data['data']['patch']):
+                    update_information['last_available_patch'].update(**response_data['data']['patch'][-1])
+            else:
+                update_information['message'] = response_data['errors']['detail']
+        except httpx.RequestError as err:
             update_information.update({'message': str(err), 'status_code': 500})
         except Exception as err:
             update_information.update({'message': str(err), 'status_code': 500})

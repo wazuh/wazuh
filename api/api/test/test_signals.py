@@ -4,6 +4,8 @@ from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
+from starlette.applications import Starlette
+from starlette.testclient import TestClient
 
 from api.constants import INSTALLATION_UID_KEY, UPDATE_INFORMATION_KEY
 from api.signals import (
@@ -11,23 +13,11 @@ from api.signals import (
     cancel_signal_handler,
     check_installation_uid,
     get_update_information,
-    register_background_tasks,
+    lifespan_handler,
+    cti_context
 )
 
 # Fixtures
-
-
-@pytest.fixture
-def application_mock():
-    return {}
-
-
-@pytest.fixture
-def application_mock_with_installation_uid(application_mock):
-    application_mock[INSTALLATION_UID_KEY] = str(uuid4())
-    return application_mock
-
-
 @pytest.fixture
 def installation_uid_mock():
     with patch(
@@ -61,37 +51,35 @@ async def test_cancel_signal_handler_catch_cancelled_error_and_dont_rise():
 @patch('api.signals.common.wazuh_uid')
 @pytest.mark.asyncio
 async def test_check_installation_uid_populate_uid_if_not_exists(
-    uid_mock, gid_mock, chown_mock, chmod_mock, installation_uid_mock, application_mock
+    uid_mock, gid_mock, chown_mock, chmod_mock, installation_uid_mock
 ):
     uid = gid = 999
     uid_mock.return_value = uid
     gid_mock.return_value = gid
 
-    await check_installation_uid(application_mock)
+    await check_installation_uid()
 
     assert os.path.exists(installation_uid_mock)
     with open(installation_uid_mock) as file:
-        assert application_mock[INSTALLATION_UID_KEY] == file.readline()
+        assert cti_context[INSTALLATION_UID_KEY] == file.readline()
         chown_mock.assert_called_with(file.name, uid, gid)
         chmod_mock.assert_called_with(file.name, 0o660)
 
 
 @pytest.mark.asyncio
-async def test_check_installation_uid_get_uid_from_file(
-    installation_uid_mock, application_mock
-):
+async def test_check_installation_uid_get_uid_from_file(installation_uid_mock):
     installation_uid = str(uuid4())
     with open(installation_uid_mock, 'w') as file:
         file.write(installation_uid)
 
-    await check_installation_uid(application_mock)
+    await check_installation_uid()
 
-    assert application_mock[INSTALLATION_UID_KEY] == installation_uid
+    assert cti_context[INSTALLATION_UID_KEY] == installation_uid
 
 
 @pytest.mark.asyncio
 async def test_get_update_information_injects_correct_data_into_app_context(
-    application_mock_with_installation_uid, query_update_check_service_mock
+    query_update_check_service_mock
 ):
     response_data = {
         'last_check_date': '2023-10-11T16:47:13.066946+00:00',
@@ -122,24 +110,24 @@ async def test_get_update_information_injects_correct_data_into_app_context(
     }
 
     query_update_check_service_mock.return_value = response_data
+    cti_context[INSTALLATION_UID_KEY] = str(uuid4())
     task = asyncio.create_task(
-        get_update_information(application_mock_with_installation_uid)
+        get_update_information()
     )
     await asyncio.sleep(1)
     task.cancel()
 
     query_update_check_service_mock.assert_called()
 
-    assert application_mock_with_installation_uid[UPDATE_INFORMATION_KEY] == response_data
+    assert cti_context[UPDATE_INFORMATION_KEY] == response_data
 
 
 @pytest.mark.asyncio
-async def test_get_update_information_schedule(
-    application_mock_with_installation_uid, query_update_check_service_mock
-):
+async def test_get_update_information_schedule(query_update_check_service_mock):
+    cti_context[INSTALLATION_UID_KEY] = str(uuid4())
     with patch('api.signals.asyncio') as sleep_mock:
         task = asyncio.create_task(
-            get_update_information(application_mock_with_installation_uid)
+            get_update_information()
         )
         await asyncio.sleep(1)
         task.cancel()
@@ -182,9 +170,10 @@ async def test_register_background_tasks(
     with patch('api.signals.asyncio') as create_task_mock:
         create_task_mock.create_task.return_value = AwaitableMock(spec=asyncio.Task)
         create_task_mock.create_task.return_value.cancel = AsyncMock()
-        [_ async for _ in register_background_tasks({})]
 
-        assert create_task_mock.create_task.call_count == registered_tasks
+        with TestClient(Starlette(lifespan=lifespan_handler)):
+            assert create_task_mock.create_task.call_count == registered_tasks
+
         assert (
             create_task_mock.create_task.return_value.cancel.call_count
             == registered_tasks
