@@ -225,6 +225,8 @@
 /* Logcollector */
 
 #define LOGCOLLECTOR_FILE_NOT_EXIST           "(9000): File '%s' no longer exists."
+#define LOGCOLLECTOR_JOURNAL_LOG_NOT_SYSLOG   "(9001): Failed to get the required fields, discarted log with timestamp '%" PRIu64 "'"
+#define LOGCOLLECTOR_JOURNAL_LOG_FIELD_ERROR  "(9002): Failed to get data field '%s' from entry with timestamp '%" PRIu64 "'. Error: %s"
 
 /* Analysisd */
 

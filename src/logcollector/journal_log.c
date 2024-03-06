@@ -121,10 +121,9 @@ char* find_library_path(const char* library_name)
 
     char* line = NULL;
     size_t len = 0;
-    ssize_t read;
     char* path = NULL;
 
-    while ((read = getline(&line, &len, maps_file)) != -1)
+    while (getline(&line, &len, maps_file) != -1)
     {
         if (strstr(line, library_name) != NULL)
         {
@@ -165,7 +164,6 @@ bool is_owned_by_root(const char* library_path)
  * @brief Initialize the journal library functions
  *
  * The caller is responsible for freeing the returned library.
- * @param char** Returns the error message if the library could not be loaded, NULL otherwise. // TODO
  * @return w_journal_lib_t* The library or NULL on error
  */
 static inline w_journal_lib_t* w_journal_lib_init()
@@ -177,6 +175,8 @@ static inline w_journal_lib_t* w_journal_lib_init()
     lib->handle = dlopen(W_LIB_SYSTEMD, RTLD_LAZY);
     if (lib->handle == NULL)
     {
+        char * err = dlerror();
+        mwarn(LOGCOLLECTOR_JOURNAL_LOG_LIB_FAIL_LOAD, W_LIB_SYSTEMD, err == NULL ? "Unknown error" : err);
         os_free(lib);
         return NULL;
     }
@@ -185,7 +185,7 @@ static inline w_journal_lib_t* w_journal_lib_init()
     char* library_path = find_library_path(W_LIB_SYSTEMD);
     if (library_path == NULL || !is_owned_by_root(library_path))
     {
-        // mwarn("[journal_log] The library '%s' is not owned by the root user", W_LIB_SYSTEMD);
+        mwarn(LOGCOLLECTOR_JOURNAL_LOG_LIB_FAIL_OWN, W_LIB_SYSTEMD);
         os_free(library_path);
         dlclose(lib->handle);
         os_free(lib);
@@ -194,26 +194,37 @@ static inline w_journal_lib_t* w_journal_lib_init()
     os_free(library_path);
 
     // Load and verify the functions
+    bool fail = false;
+
     lib->open = (w_journal_open)dlsym(lib->handle, "sd_journal_open");
+    fail = fail || lib->open == NULL;
     lib->close = (w_journal_close)dlsym(lib->handle, "sd_journal_close");
+    fail = fail || lib->close == NULL;
 
     lib->previous = (w_journal_previous)dlsym(lib->handle, "sd_journal_previous");
+    fail = fail || lib->previous == NULL;
     lib->next = (w_journal_next)dlsym(lib->handle, "sd_journal_next");
+    fail = fail || lib->next == NULL;
     lib->seek_tail = (w_journal_seek_tail)dlsym(lib->handle, "sd_journal_seek_tail");
+    fail = fail || lib->seek_tail == NULL;
     lib->seek_timestamp = (w_journal_seek_timestamp)dlsym(lib->handle, "sd_journal_seek_realtime_usec");
-
+    fail = fail || lib->seek_timestamp == NULL;
     lib->get_cutoff_timestamp =
         (w_journal_get_cutoff_timestamp)dlsym(lib->handle, "sd_journal_get_cutoff_realtime_usec");
+    fail = fail || lib->get_cutoff_timestamp == NULL;
     lib->get_timestamp = (w_journal_get_timestamp)dlsym(lib->handle, "sd_journal_get_realtime_usec");
+    fail = fail || lib->get_timestamp == NULL;
 
     lib->get_data = (w_journal_get_data)dlsym(lib->handle, "sd_journal_get_data");
+    fail = fail || lib->get_data == NULL;
     lib->restart_data = (w_journal_restart_data)dlsym(lib->handle, "sd_journal_restart_data");
+    fail = fail || lib->restart_data == NULL;
     lib->enumerate_date = (w_journal_enumerate_date)dlsym(lib->handle, "sd_journal_enumerate_data");
+    fail = fail || lib->enumerate_date == NULL;
 
-    if (lib->open == NULL || lib->close == NULL || lib->previous == NULL || lib->next == NULL || lib->seek_tail == NULL
-        || lib->seek_timestamp == NULL || lib->get_cutoff_timestamp == NULL || lib->get_timestamp == NULL
-        || lib->get_data == NULL || lib->restart_data == NULL || lib->enumerate_date == NULL)
+    if (fail)
     {
+        mwarn(LOGCOLLECTOR_JOURNAL_LOG_LIB_FAIL_LOAD, W_LIB_SYSTEMD, "Missing functions");
         dlclose(lib->handle);
         os_free(lib);
         return NULL;
@@ -228,9 +239,11 @@ static inline w_journal_lib_t* w_journal_lib_init()
 
 int w_journal_context_create(w_journal_context_t** ctx)
 {
+    int ret = -1; // Return error by default
+
     if (ctx == NULL)
     {
-        return -1;
+        return ret;
     }
     os_calloc(1, sizeof(w_journal_context_t), (*ctx));
 
@@ -238,10 +251,16 @@ int w_journal_context_create(w_journal_context_t** ctx)
     if ((*ctx)->lib == NULL)
     {
         os_free(*ctx);
-        return -1;
+        return ret;
     }
 
-    return (*ctx)->lib->open(&((*ctx)->journal), W_SD_JOURNAL_LOCAL_ONLY);
+    ret = (*ctx)->lib->open(&((*ctx)->journal), W_SD_JOURNAL_LOCAL_ONLY);
+    if (ret < 0)
+    {
+        mwarn(LOGCOLLECTOR_JOURNAL_LOG_FAIL_OPEN, strerror(-ret));
+        os_free(*ctx);
+    }
+    return ret;
 }
 
 void w_journal_context_free(w_journal_context_t* ctx)
@@ -272,7 +291,7 @@ void w_journal_context_update_timestamp(w_journal_context_t* ctx)
         if (!failed_logged)
         {
             failed_logged = true;
-            mwarn("[journal_log] Failed to get timestamp: '%s', using current time", strerror(-err));
+            mwarn(LOGCOLLECTOR_JOURNAL_LOG_FAIL_READ_TS, strerror(-err));
         }
     }
 }
@@ -299,9 +318,7 @@ int w_journal_context_seek_timestamp(w_journal_context_t* ctx, uint64_t timestam
     // If the timestamp is in the future or invalid, seek the most recent entry
     if (timestamp == 0 || timestamp > w_get_epoch_time())
     {
-        mwarn("[journal_log] The timestamp '%" PRIu64 "' is in the future or invalid. Using the most recent entry",
-              timestamp);
-        // return w_journal_context_seek_most_recent(ctx);
+        mwarn(LOGCOLLECTOR_JOURNAL_LOG_FUTURE_TS, timestamp);
         return ctx->lib->seek_tail(ctx->journal);
     }
 
@@ -311,13 +328,11 @@ int w_journal_context_seek_timestamp(w_journal_context_t* ctx, uint64_t timestam
 
     if (err < 0)
     {
-        mwarn("[journal_log] Failed to get the oldest timestamp: '%s'", strerror(-err));
+        mwarn(LOGCOLLECTOR_JOURNAL_LOG_FAIL_READ_OLD_TS, strerror(-err));
     }
     else if (timestamp < oldest)
     {
-        mwarn("[journal_log] The timestamp '%" PRIu64
-              "' is older than the oldest available in journal. Using the oldest entry",
-              timestamp);
+        mwarn(LOGCOLLECTOR_JOURNAL_LOG_CHANGE_TS, timestamp);
         timestamp = oldest;
     }
 
@@ -519,13 +534,16 @@ static inline char* entry_as_syslog(w_journal_context_t* ctx)
     char* hostname = get_field_ptr(ctx, "_HOSTNAME");
     char* syslog_identifier = get_field_ptr(ctx, "SYSLOG_IDENTIFIER");
     char* message = get_field_ptr(ctx, "MESSAGE");
-    char* pid = get_field_ptr(ctx, "_PID");
+    char* pid = get_field_ptr(ctx, "SYSLOG_PID");
+    if (pid == NULL)
+    {
+        pid = get_field_ptr(ctx, "_PID");
+    }
     char* timestamp = w_timestamp_to_string(ctx->timestamp);
 
     if (!hostname || !syslog_identifier || !message || !timestamp)
     {
-        mdebug2("[journal_log] Failed to get the required fields, discarted log with timestamp '%" PRIu64 "'",
-                ctx->timestamp);
+        mdebug2(LOGCOLLECTOR_JOURNAL_LOG_NOT_SYSLOG, ctx->timestamp);
         os_free(hostname);
         os_free(syslog_identifier);
         os_free(message);
@@ -653,13 +671,13 @@ int w_journal_filter_apply(w_journal_context_t* ctx, w_journal_filter_t* filter)
             }
             else
             {
-                fprintf(stderr, "Failed to get data: %s\n", strerror(-err));
+                mdebug2(LOGCOLLECTOR_JOURNAL_LOG_FIELD_ERROR, unit->field, ctx->timestamp, strerror(-err));
                 return err;
             }
         }
 
         // Extract the value (data: key=value)
-        size_t keyPart_len = strnlen(unit->field, length) + 1; // TODO store the length of the key
+        size_t keyPart_len = strnlen(unit->field, length) + 1;
         if (keyPart_len > length)
         {
             return -1; // invalid value
@@ -669,10 +687,6 @@ int w_journal_filter_apply(w_journal_context_t* ctx, w_journal_filter_t* filter)
         const char* end_match;
 
         bool match = w_expression_match(unit->exp, value_str, &end_match, NULL);
-
-        // Print the match Debug 2
-        // printf("Match: %d , pattern: '%s', field: '%s', value: '%s'\n", match, unit->exp->pcre2->raw_pattern,
-        // unit->field, value_str);
 
         os_free(value_str);
         if (!match)
