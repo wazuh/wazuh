@@ -19,7 +19,7 @@
 #include <string>
 #include <utility>
 
-auto constexpr DB_WRAPPER_QUERY_WAIT_TIME {500};
+auto constexpr DB_WRAPPER_QUERY_WAIT_TIME {5000};
 
 char constexpr DB_WRAPPER_OK[] = {"ok"};
 char constexpr DB_WRAPPER_ERROR[] = {"err"};
