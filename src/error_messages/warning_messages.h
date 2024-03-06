@@ -140,6 +140,14 @@
                                                 "'log_format'. Default value will be used."
 #define LOGCOLLECTOR_DEFAULT_REGEX_TYPE         "(8007): Invalid type in '%s' regex '%s', setting by default PCRE2 regex."
 
+#define LOGCOLLECTOR_JOURNAL_LOG_LIB_FAIL_LOAD      "(8008): Failed to load the library '%s': '%s'."
+#define LOGCOLLECTOR_JOURNAL_LOG_LIB_FAIL_OWN       "(8009): The library '%s' is not owned by the root user."
+#define LOGCOLLECTOR_JOURNAL_LOG_FAIL_OPEN          "(8010): Failed open journal log: '%s'."
+#define LOGCOLLECTOR_JOURNAL_LOG_FAIL_READ_TS       "(8011): Failed to read timestamp from journal log: '%s'. Using current time."
+#define LOGCOLLECTOR_JOURNAL_LOG_FUTURE_TS          "(8012): The timestamp '%" PRIu64 "' is in the future or invalid. Using the most recent entry."
+#define LOGCOLLECTOR_JOURNAL_LOG_FAIL_READ_OLD_TS   "(8013): Failed to read oldest timestamp from journal log: '%s'."
+#define LOGCOLLECTOR_JOURNAL_LOG_CHANGE_TS          "(8014): The timestamp '%" PRIu64 "' is older than the oldest available in journal. Using the oldest entry."
+
 /* Remoted */
 #define REMOTED_NET_PROTOCOL_ERROR              "(9000): Error getting protocol. Default value (%s) will be used."
 #define REMOTED_INV_VALUE_IGNORE                "(9001): Ignored invalid value '%s' for '%s'."
