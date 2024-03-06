@@ -1024,3 +1024,152 @@ w_exp_type_t w_check_regex_type(xml_node * node, const char * element) {
 
     return EXP_TYPE_PCRE2;
 }
+
+/**
+ * @brief Free the unit filter and all its resources
+ *
+ * The unit pointer is invalid after the call.
+ * @param unit Journal filter unit
+ */
+static void free_unit_filter(_w_journal_filter_unit_t* unit)
+{
+    if (unit == NULL)
+    {
+        return;
+    }
+
+    os_free(unit->field);
+    w_free_expression_t(&(unit->exp));
+    os_free(unit);
+}
+
+/**
+ * @brief Create the filter unit
+ * The caller is responsible for freeing the returned unit.
+ *
+ * @param field The field to filter
+ * @param expression The expression to match
+ * @param ignore_if_missing Ignore if the field is missing
+ */
+static _w_journal_filter_unit_t* create_unit_filter(const char* field, char* expression, int ignore_if_missing)
+{
+    if (field == NULL || expression == NULL)
+    {
+        return NULL;
+    }
+
+    _w_journal_filter_unit_t* unit = calloc(1, sizeof(_w_journal_filter_unit_t));
+
+    w_calloc_expression_t(&(unit->exp), EXP_TYPE_PCRE2);
+
+    if (!w_expression_compile(unit->exp, expression, 0))
+    {
+        free_unit_filter(unit);
+        return NULL;
+    }
+
+    unit->field = strdup(field);
+    unit->ignore_if_missing = ignore_if_missing;
+
+    return unit;
+}
+
+void w_journal_filter_free(w_journal_filter_t* ptr_filter)
+{
+    if (ptr_filter == NULL)
+    {
+        return;
+    }
+
+    if (ptr_filter->units != NULL)
+    {
+        for (size_t i = 0; ptr_filter->units[i] != NULL; i++)
+        {
+            free_unit_filter(ptr_filter->units[i]);
+        }
+
+        os_free(ptr_filter->units);
+    }
+
+    os_free(ptr_filter);
+}
+
+int w_journal_filter_add_condition(w_journal_filter_t** ptr_filter,
+                                   char* field,
+                                   char* expression,
+                                   int ignore_if_missing)
+{
+    if (field == NULL || expression == NULL || ptr_filter == NULL)
+    {
+        return -1;
+    }
+
+    // Crete the unit filter
+    _w_journal_filter_unit_t* unit = create_unit_filter(field, expression, ignore_if_missing);
+    if (unit == NULL)
+    {
+        return -1;
+    }
+
+    // If the filter does not exist, create it
+    if (*ptr_filter == NULL)
+    {
+        *ptr_filter = calloc(1, sizeof(w_journal_filter_t));
+    }
+    w_journal_filter_t* filter = *ptr_filter;
+
+    // Allocate memory for the new unit
+    filter->units = realloc(filter->units, (filter->units_size + 2) * sizeof(_w_journal_filter_unit_t*));
+
+    // Add the new unit
+    filter->units[filter->units_size] = unit;
+    filter->units_size++;
+    filter->units[filter->units_size] = NULL;
+
+    return 0;
+}
+
+bool w_journal_add_filter_to_list(w_journal_filters_list_t* list, w_journal_filter_t* filter)
+{
+    if (list == NULL || filter == NULL)
+    {
+        return false;
+    }
+
+    // Allocate memory for the new filter
+    if (*list == NULL)
+    {
+        *list = calloc(1, sizeof(w_journal_filter_t*));
+    }
+
+    // Determine the size of the list
+    size_t size = 0;
+    while ((*list)[size] != NULL)
+    {
+        size++;
+    }
+
+    // Allocate memory for the new filter
+    *list = realloc(*list, (size + 2) * sizeof(w_journal_filter_t*));
+
+    // Add the new filter
+    (*list)[size] = filter;
+    (*list)[size + 1] = NULL;
+
+    return true;
+}
+
+void w_journal_free_filters_list(w_journal_filters_list_t list)
+{
+    if (list == NULL)
+    {
+        return;
+    }
+
+    for (size_t i = 0; list[i] != NULL; i++)
+    {
+        w_journal_filter_free(list[i]);
+    }
+
+    os_free(list);
+}
