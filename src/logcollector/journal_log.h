@@ -101,6 +101,18 @@ int w_journal_context_seek_timestamp(w_journal_context_t* ctx, uint64_t timestam
 int w_journal_context_next_newest(w_journal_context_t* ctx);
 
 /**
+ * @brief Move the cursor to the next newest entry that matches the filters
+ * 
+ * If filters is NULL, the function will return the next newest entry.
+ * If filters is not NULL, the function will return the next newest entry that matches the filters.
+ * If no entry matches the filters, the function will return 0, but the cursor will be moved to the next newest entry.
+ * @param ctx Journal log context
+ * @param filters The filters to match
+ * @return int 0 no more entries or a negative errno-style error code.
+ */
+int w_journal_context_next_newest_filtered(w_journal_context_t* ctx, w_journal_filters_list_t filters);
+
+/**
  * @brief Get the oldest accessible timestamp in the journal (__REALTIME_TIMESTAMP)
  *
  * @param ctx Journal log context
