@@ -63,7 +63,6 @@ get_checksum(){
     short_commit_hash="$2"
     base_name="wazuh-${BUILD_TARGET}_${wazuh_version}-${PACKAGE_RELEASE}"
 
-
     if [[ "${ARCHITECTURE_TARGET}" == "ppc64le" ]]; then
         deb_file="${base_name}_ppc64el_${short_commit_hash}.deb"
     else
