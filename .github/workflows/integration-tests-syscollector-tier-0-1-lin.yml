@@ -9,7 +9,7 @@ on:
         default: 'main'
   pull_request:
     paths:
-        - ".github/workflows/integration-tests-syscollector-tier-0-1.yml"
+        - ".github/workflows/integration-tests-syscollector-tier-0-1-lin.yml"
         - "src/wazuh_modules/syscollector/**"
         - "src/config/wmodules-syscollector.c"
         - "src/Makefile"

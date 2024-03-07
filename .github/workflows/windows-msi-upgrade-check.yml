@@ -45,6 +45,9 @@ jobs:
         with:
           python-version-file: ".github/workflows/.python-version"
           architecture: x64
+      - name: Add WiX toolkit to PATH
+        shell: bash
+        run: echo "${WIX}bin" >> $GITHUB_PATH
       - name: Install dependencies
         run: |
           pip install -r src/win32/qa/requirements.txt
