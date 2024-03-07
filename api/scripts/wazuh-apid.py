@@ -16,7 +16,7 @@ from wazuh.core import pyDaemonModule
 
 SSL_DEPRECATED_MESSAGE = 'The `{ssl_protocol}` SSL protocol is deprecated.'
 CACHE_DEPRECATED_MESSAGE = 'The `cache` API configuration option was deprecated in {release} and will be removed ' \
-                           'in the next major release.'
+                           'in the next minor release.'
 
 API_MAIN_PROCESS = 'wazuh-apid'
 API_LOCAL_REQUEST_PROCESS = 'wazuh-apid_exec'
