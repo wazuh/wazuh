@@ -166,7 +166,7 @@ typedef struct _w_journal_filter_unit_t
 {
     char* field;           // Field to try match
     w_expression_t* exp;   // Expression to match against the field (PCRE2)
-    int ignore_if_missing; // Ignore if the field is missing (TODO: Use BOOL)
+    bool ignore_if_missing; // Ignore if the field is missing (TODO: Use BOOL)
 } _w_journal_filter_unit_t;
 
 /**
@@ -316,7 +316,7 @@ void w_journal_filter_free(w_journal_filter_t* filter);
  * @param ignore_if_missing Ignore if the field is missing
  * @return int 0 on success or non-zero on error
  */
-int w_journal_filter_add_condition(w_journal_filter_t** filter, char* field, char* expression, int ignore_if_missing);
+int w_journal_filter_add_condition(w_journal_filter_t** filter, char* field, char* expression, bool ignore_if_missing);
 
 /**
  * @brief Add a filter to the filters list
