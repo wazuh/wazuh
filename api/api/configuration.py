@@ -63,10 +63,6 @@ default_api_configuration = {
         "allow_headers": "*",
         "allow_credentials": False,
     },
-    "cache": {
-        "enabled": True,
-        "time": 0.750
-    },
     "access": {
         "max_login_attempts": 50,
         "block_time": 300,
