@@ -65,15 +65,24 @@ build_package(){
     package_name="$1"
     debug="$2"
 
-    if [ "${ARCHITECTURE_TARGET}" = "i386" ] || [ "${ARCHITECTURE_TARGET}" = "armv7hl" ]; then
+    if [ "${ARCHITECTURE_TARGET}" = "i386" ] || [ "${ARCHITECTURE_TARGET}" = "armhf" ]; then
         linux="linux32"
+    fi
+
+    if [ "${ARCHITECTURE_TARGET}" = "armhf" ]; then
+        ARCH="armv7hl"
+    elif [ "${ARCHITECTURE_TARGET}" = "arm64" ]; then
+        ARCH="aarch64"
+    elif [[ "${ARCHITECTURE_TARGET}" == "i386" ]] || [[ "${ARCHITECTURE_TARGET}" == "amd64" ]] || \
+         [[ "${ARCHITECTURE_TARGET}" == "ppc64le" ]]; then
+        ARCH=${ARCHITECTURE_TARGET}
     fi
 
     $linux $rpmbuild --define "_sysconfdir /etc" --define "_topdir ${rpm_build_dir}" \
         --define "_threads ${JOBS}" --define "_release ${PACKAGE_RELEASE}" \
         --define "_localstatedir ${INSTALLATION_PATH}" --define "_debugenabled ${debug}" \
-        --define "_rpmfilename ${rpm_file}" --target ${ARCHITECTURE_TARGET} \
-        -ba ${rpm_build_dir}/SPECS/${package_name}.spec
+        --target $ARCH -ba ${rpm_build_dir}/SPECS/${package_name}.spec
+
 }
 
 get_checksum(){
