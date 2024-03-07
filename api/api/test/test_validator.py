@@ -253,7 +253,7 @@ def test_validation_json_ok(value, format):
     """Verify that each value is of the indicated format."""
     assert (js.validate({"key": value},
                         schema={'type': 'object', 'properties': {'key': {'type': 'string', 'format': format}}},
-                        format_checker=js.draft4_format_checker) is None)
+                        format_checker=js.Draft4Validator.FORMAT_CHECKER) is None)
 
 
 @pytest.mark.parametrize('value, format', [
@@ -292,7 +292,7 @@ def test_validation_json_ko(value, format):
         js.validate({"key": value},
                     schema={'type': 'object',
                             'properties': {'key': {'type': 'string', 'format': format}}},
-                    format_checker=js.draft4_format_checker)
+                    format_checker=js.Draft4Validator.FORMAT_CHECKER)
 
 
 @pytest.mark.parametrize("component, configuration, expected_response", [
