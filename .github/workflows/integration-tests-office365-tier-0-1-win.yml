@@ -12,6 +12,7 @@ on:
         - ".github/workflows/integration-tests-office365-tier-0-1-win.yml"
         - "src/wazuh_modules/wm_office365.h"
         - "src/wazuh_modules/wm_office365.c"
+        - "src/win32/**"
         - "src/Makefile"
         - "tests/integration/conftest.py"
         - "tests/integration/test_office365/**"

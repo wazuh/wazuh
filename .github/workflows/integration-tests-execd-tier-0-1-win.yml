@@ -11,6 +11,7 @@ on:
     paths:
         - ".github/workflows/integration-tests-execd-tier-0-1-win.yml"
         - "src/execd/**"
+        - "src/win32/**"
         - "src/Makefile"
         - "tests/integration/conftest.py"
         - "tests/integration/test_execd/**"
