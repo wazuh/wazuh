@@ -4183,20 +4183,6 @@ components:
               default: info
               type: string
               enum: [disabled, info, warning, error, debug, debug2]
-        cache:
-          type: object
-          additionalProperties: false
-          properties:
-            enabled:
-              description: "Enable cache"
-              type: boolean
-              default: true
-            time:
-              description: "Cache expiration time in seconds"
-              type: number
-              format: double
-              minimum: 0
-              example: 0.75
         cors:
           type: object
           additionalProperties: false
@@ -9975,9 +9961,6 @@ paths:
                           expose_headers: "*"
                           allow_headers: "*"
                           allow_credentials: false
-                        cache:
-                          enabled: true
-                          time: 0.75
                         access:
                           max_login_attempts: 50
                           block_time: 300
@@ -10012,9 +9995,6 @@ paths:
                           source_route: "*"
                           allow_headers: "*"
                           allow_credentials: false
-                        cache:
-                          enabled: true
-                          time: 0.75
                         access:
                           max_login_attempts: 50
                           block_time: 300
@@ -10049,9 +10029,6 @@ paths:
                           source_route: "*"
                           allow_headers: "*"
                           allow_credentials: false
-                        cache:
-                          enabled: true
-                          time: 0.75
                         access:
                           max_login_attempts: 50
                           block_time: 300
@@ -12907,9 +12884,6 @@ paths:
                           source_route: "*"
                           allow_headers: "*"
                           allow_credentials: false
-                        cache:
-                          enabled: true
-                          time: 0.75
                         drop_privileges: true
                         experimental_features: false
                         max_upload_size: 10485760
