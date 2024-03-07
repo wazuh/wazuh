@@ -134,7 +134,7 @@ if [ -f /etc/systemd/system/${SERVICE}.service ] && [ ! -h /etc/systemd/system ]
 fi
 
 # Init backup
-# REHL <= 6 / Amazon linux
+# RHEL <= 6 / Amazon linux
 if [ -f "/etc/rc.d/init.d/${SERVICE}" ] && [ ! -h /etc/rc.d/init.d ]; then
     INIT_PATH="/etc/rc.d/init.d/${SERVICE}"
 fi
@@ -148,6 +148,13 @@ BDATE=$(date +"%m-%d-%Y_%H-%M-%S")
 mkdir -p ./backup
 
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Generating Backup." >> ./logs/upgrade.log
+
+# Check tar dependency
+if ! which tar &> /dev/null; then
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - The tar package is required for this operation, exiting." >> ./logs/upgrade.log
+    echo -ne "2" > ./var/upgrade/upgrade_result
+    exit 1
+fi
 
 FOLDERS_TO_BACKUP=($WAZUH_HOME/{active-response,bin,etc,lib,queue,ruleset,wodles,agentless,logs/{ossec,wazuh},var/selinux} \
                    $OSSEC_INIT_FILE \

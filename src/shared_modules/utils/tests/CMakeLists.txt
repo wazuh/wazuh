@@ -9,6 +9,7 @@ file(GLOB UTIL_CXX_UNITTEST_WINDOWS_SRC
 )
 
 file(GLOB UTIL_CXX_UNITTEST_COMMON_SRC
+    "archiveHelper_test.cpp"
     "cmdHelper_test.cpp"
     "filesystemHelper_test.cpp"
     "byteArrayHelper_test.cpp"
@@ -41,11 +42,13 @@ file(GLOB UTIL_CXX_UNITTEST_LINUX_SRC
     "xzHelper_test.cpp"
     "jsonArrayParser_test.cpp"
     "zlibHelper_test.cpp"
+    "rsaHelper_test.cpp"
 )
 
 file(COPY input_files DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
 link_directories(${SRC_FOLDER}/external/googletest/lib)
+link_directories(${SRC_FOLDER}/external/libarchive/.libs/)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
   add_definitions(-DPROMISE_TYPE=PromiseType::SLEEP)
@@ -101,6 +104,7 @@ else()
         lzma
         z
         minizip
+        archive
     )
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 

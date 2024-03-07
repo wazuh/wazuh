@@ -52,9 +52,9 @@ void test_k_import_successful(void **state) {
     expect_string(__wrap_chmod, path, CLIENT_KEYS_FILENAME);
     will_return(__wrap_chmod, 0);
 
-    expect_string(__wrap_fopen, path, CLIENT_KEYS_FILENAME);
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, "test");
+    expect_string(__wrap_wfopen, path, CLIENT_KEYS_FILENAME);
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, "test");
 
     expect_value(__wrap_fprintf, __stream, "test");
     expect_string(__wrap_fprintf, formatted_msg, KEY_DECODED_SUCCESSFUL "\n");

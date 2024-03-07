@@ -206,7 +206,7 @@ int OS_ReadXML_Ex(const char *file, OS_XML *_lxml, bool flag_truncate) {
     /* Initialize xml structure */
     memset(_lxml, 0, sizeof(OS_XML));
 
-    fp = fopen(file, "r");
+    fp = wfopen(file, "r");
     if (!fp) {
         xml_error(_lxml, "XMLERR: File '%s' not found.", file);
         return (-2);

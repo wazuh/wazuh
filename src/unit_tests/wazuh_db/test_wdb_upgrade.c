@@ -73,11 +73,12 @@ void test_wdb_recreate_global_error_closing_wdb_struct(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
 
     // Error closing the wdb struct
+    will_return(__wrap_wdb_close, 0);
     will_return(__wrap_wdb_close, OS_INVALID);
 
     ret = wdb_recreate_global(data->wdb);
 
-    assert_null(ret);
+    assert_memory_equal(data->wdb, ret, sizeof(ret));
 }
 
 void test_wdb_recreate_global_error_creating_global_db(void **state)
@@ -86,6 +87,7 @@ void test_wdb_recreate_global_error_creating_global_db(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
 
     // Closing the wdb struct and removing the current database file
+    will_return(__wrap_wdb_close, 1);
     will_return(__wrap_wdb_close, OS_SUCCESS);
     expect_string(__wrap_unlink, file, "queue/db/global.db");
     will_return(__wrap_unlink, 0);
@@ -106,6 +108,7 @@ void test_wdb_recreate_global_error_opening_global_db(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
 
     // Closing the wdb struct and removing the current database file
+    will_return(__wrap_wdb_close, 1);
     will_return(__wrap_wdb_close, OS_SUCCESS);
     expect_string(__wrap_unlink, file, "queue/db/global.db");
     will_return(__wrap_unlink, 0);
@@ -133,8 +136,11 @@ void test_wdb_recreate_global_success(void **state)
 {
     wdb_t *ret = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
+    sqlite3 *new_db = NULL;
+    os_calloc(1,sizeof(sqlite3 *),new_db);
 
     // Closing the wdb struct and removing the current database file
+    will_return(__wrap_wdb_close, 1);
     will_return(__wrap_wdb_close, OS_SUCCESS);
     expect_string(__wrap_unlink, file, "queue/db/global.db");
     will_return(__wrap_unlink, 0);
@@ -146,20 +152,13 @@ void test_wdb_recreate_global_success(void **state)
     // Opening new global.db
     expect_string(__wrap_sqlite3_open_v2, filename, "queue/db/global.db");
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
-    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, new_db);
     will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
-
-    // Initializing and adding to the pool
-    wdb_t *new_wdb = NULL;
-    os_calloc(1, sizeof(wdb_t), new_wdb);
-    expect_string(__wrap_wdb_init, id, "global");
-    will_return(__wrap_wdb_init, new_wdb);
-    expect_value(__wrap_wdb_pool_append, wdb, new_wdb);
 
     ret = wdb_recreate_global(data->wdb);
 
-    assert_ptr_equal(new_wdb, ret);
-    os_free(new_wdb);
+    assert_ptr_equal(data->wdb, ret);
+    assert_ptr_equal(new_db, ret->db);
 }
 
 /* Tests wdb_upgrade_global */
@@ -212,6 +211,8 @@ void test_wdb_upgrade_global_success_regenerating_legacy_db(void **state)
 {
     wdb_t *ret = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
+    sqlite3 *new_db = NULL;
+    os_calloc(1,sizeof(sqlite3 *),new_db);
 
     expect_string(__wrap_wdb_count_tables_with_name, key, "metadata");
     will_return(__wrap_wdb_count_tables_with_name, 0);
@@ -230,6 +231,7 @@ void test_wdb_upgrade_global_success_regenerating_legacy_db(void **state)
 
     // Recreating the database
     // Closing the wdb struct and removing the current database file
+    will_return(__wrap_wdb_close, 1);
     will_return(__wrap_wdb_close, OS_SUCCESS);
     expect_string(__wrap_unlink, file, "queue/db/global.db");
     will_return(__wrap_unlink, 0);
@@ -241,20 +243,13 @@ void test_wdb_upgrade_global_success_regenerating_legacy_db(void **state)
     // Opening new global.db
     expect_string(__wrap_sqlite3_open_v2, filename, "queue/db/global.db");
     expect_value(__wrap_sqlite3_open_v2, flags, SQLITE_OPEN_READWRITE);
-    will_return(__wrap_sqlite3_open_v2, 1);
+    will_return(__wrap_sqlite3_open_v2, new_db);
     will_return(__wrap_sqlite3_open_v2, SQLITE_OK);
-
-    // Initializing and adding to the pool
-    wdb_t *new_wdb = NULL;
-    os_calloc(1, sizeof(wdb_t), new_wdb);
-    expect_string(__wrap_wdb_init, id, "global");
-    will_return(__wrap_wdb_init, new_wdb);
-    expect_value(__wrap_wdb_pool_append, wdb, new_wdb);
 
     ret = wdb_upgrade_global(data->wdb);
 
-    assert_ptr_equal(new_wdb, ret);
-    os_free(new_wdb);
+    assert_ptr_equal(data->wdb, ret);
+    assert_ptr_equal(new_db, ret->db);
 }
 
 void test_wdb_upgrade_global_error_getting_database_version(void **state)
@@ -272,6 +267,14 @@ void test_wdb_upgrade_global_error_getting_database_version(void **state)
     will_return(__wrap_wdb_metadata_get_entry, str_db_version);
     will_return(__wrap_wdb_metadata_get_entry, OS_INVALID);
     expect_string(__wrap__mwarn, formatted_msg, "DB(global): Error trying to get DB version");
+
+    // Error creating pre upgrade backup
+    will_return(__wrap_wdb_global_create_backup, "global.db");
+    will_return(__wrap_wdb_global_create_backup, OS_INVALID);
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "Creating pre-upgrade Global DB snapshot failed: "
+                  "global.db-pre_upgrade");
 
     ret = wdb_upgrade_global(data->wdb);
 
@@ -761,6 +764,14 @@ void test_wdb_upgrade_global_fail_backup_fail(void **state)
     will_return(__wrap_wdb_metadata_get_entry, OS_INVALID);
 
     expect_string(__wrap__mwarn, formatted_msg, "DB(global): Error trying to get DB version");
+
+    // Error creating pre upgrade backup
+    will_return(__wrap_wdb_global_create_backup, "global.db");
+    will_return(__wrap_wdb_global_create_backup, OS_INVALID);
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "Creating pre-upgrade Global DB snapshot failed: "
+                  "global.db-pre_upgrade");
 
     ret = wdb_upgrade_global(data->wdb);
 

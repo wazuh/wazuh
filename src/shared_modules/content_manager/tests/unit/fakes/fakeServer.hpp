@@ -36,6 +36,7 @@ private:
     std::string m_host;
     int m_port;
     std::queue<unsigned long> m_errorsQueue; ///< Errors queue used to return error codes for some queries.
+    std::string m_ctiMetadataMock;
 
     /**
      * @brief Pops and returns the last error code from the error queue.
@@ -95,6 +96,16 @@ public:
     {
         std::queue<unsigned long> emptyQueue;
         std::swap(m_errorsQueue, emptyQueue);
+    }
+
+    /**
+     * @brief Sets the CTI metadata to be returned in the next query.
+     *
+     * @param ctiMetadata New metadata to be used.
+     */
+    void setCtiMetadata(std::string ctiMetadata)
+    {
+        m_ctiMetadataMock = std::move(ctiMetadata);
     }
 
     /**
@@ -172,18 +183,29 @@ public:
         m_server.Get("/raw/consumers",
                      [this](const httplib::Request& req, httplib::Response& res)
                      {
-                         auto response = R"(
-                            {
-                                "data": 
+                         std::string response;
+                         if (m_ctiMetadataMock.empty())
+                         {
+                             auto responseJSON = R"(
                                 {
-                                    "last_offset": 3,
-                                    "last_snapshot_offset": 3
+                                    "data": 
+                                    {
+                                        "last_offset": 3,
+                                        "last_snapshot_offset": 3
+                                    }
                                 }
-                            }
-                         )"_json;
-                         response["data"]["last_snapshot_link"] = "localhost:" + std::to_string(m_port) + "/raw";
+                            )"_json;
+                             responseJSON["data"]["last_snapshot_link"] =
+                                 "localhost:" + std::to_string(m_port) + "/raw";
+                             response = responseJSON.dump();
+                         }
+                         else
+                         {
+                             response = std::move(m_ctiMetadataMock);
+                             m_ctiMetadataMock.clear();
+                         }
 
-                         res.set_content(response.dump(), "text/plain");
+                         res.set_content(response, "text/plain");
                      });
         m_server.Get("/raw/consumers/changes",
                      [this](const httplib::Request& req, httplib::Response& res)
@@ -261,19 +283,29 @@ public:
                              return;
                          }
 
-                         auto response = R"(
-                            {
-                                "data": 
+                         std::string response;
+                         if (m_ctiMetadataMock.empty())
+                         {
+                             auto responseJSON = R"(
                                 {
-                                    "last_offset": 3,
-                                    "last_snapshot_offset": 3
+                                    "data": 
+                                    {
+                                        "last_offset": 3,
+                                        "last_snapshot_offset": 3
+                                    }
                                 }
-                            }
-                         )"_json;
-                         response["data"]["last_snapshot_link"] =
-                             "localhost:" + std::to_string(m_port) + "/" + SNAPSHOT_FILE_NAME;
+                            )"_json;
+                             responseJSON["data"]["last_snapshot_link"] =
+                                 "localhost:" + std::to_string(m_port) + "/" + SNAPSHOT_FILE_NAME;
+                             response = responseJSON.dump();
+                         }
+                         else
+                         {
+                             response = std::move(m_ctiMetadataMock);
+                             m_ctiMetadataMock.clear();
+                         }
 
-                         res.set_content(response.dump(), "text/plain");
+                         res.set_content(response, "text/plain");
                      });
 
         // Endpoint that responses with a dummy snapshot file.

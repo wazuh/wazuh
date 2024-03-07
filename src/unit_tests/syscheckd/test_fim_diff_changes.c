@@ -140,7 +140,7 @@ void expect_initialize_file_diff_data(const char *path, int ret_abspath){
 
 void expect_fim_diff_registry_tmp(const char *folder, const char *file, FILE *fp, const char *value_data) {
     expect_mkdir_ex(folder, 0);
-    expect_fopen(file, "w", fp);
+    expect_wfopen(file, "w", fp);
     if (fp){
         expect_fprintf(fp, value_data, 0);
         expect_fclose(fp, 0);
@@ -1092,7 +1092,7 @@ void test_fim_diff_registry_tmp_fopen_fail(void **state) {
 
     expect_mkdir_ex(diff->tmp_folder, 0);
 
-    expect_fopen(diff->file_origin, "w", fp);
+    expect_wfopen(diff->file_origin, "w", fp);
 
     expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file '/path/to/file/origin' due to [(2)-(No such file or directory)].");
 
@@ -1110,7 +1110,7 @@ void test_fim_diff_registry_tmp_REG_SZ(void **state) {
 
     expect_mkdir_ex(diff->tmp_folder, 0);
 
-    expect_fopen(diff->file_origin, "w", fp);
+    expect_wfopen(diff->file_origin, "w", fp);
 
     expect_fprintf(fp, value_data, 0);
 
@@ -1132,7 +1132,7 @@ void test_fim_diff_registry_tmp_REG_MULTI_SZ(void **state) {
 
     expect_mkdir_ex(diff->tmp_folder, 0);
 
-    expect_fopen(diff->file_origin, "w", fp);
+    expect_wfopen(diff->file_origin, "w", fp);
 
     expect_fprintf(fp, value_data_formatted, 0);
     expect_fprintf(fp, value_data_formatted2, 0);
@@ -1153,7 +1153,7 @@ void test_fim_diff_registry_tmp_REG_DWORD(void **state) {
 
     expect_mkdir_ex(diff->tmp_folder, 0);
 
-    expect_fopen(diff->file_origin, "w", fp);
+    expect_wfopen(diff->file_origin, "w", fp);
 
     expect_fprintf(fp, "12345", 0);
 
@@ -1173,7 +1173,7 @@ void test_fim_diff_registry_tmp_REG_DWORD_BIG_ENDIAN(void **state) {
 
     expect_mkdir_ex(diff->tmp_folder, 0);
 
-    expect_fopen(diff->file_origin, "w", fp);
+    expect_wfopen(diff->file_origin, "w", fp);
 
     expect_fprintf(fp, "45230100", 0);
 
@@ -1193,7 +1193,7 @@ void test_fim_diff_registry_tmp_REG_QWORD(void **state) {
 
     expect_mkdir_ex(diff->tmp_folder, 0);
 
-    expect_fopen(diff->file_origin, "w", fp);
+    expect_wfopen(diff->file_origin, "w", fp);
 
     expect_fprintf(fp, "12345", 0);
 
@@ -1213,7 +1213,7 @@ void test_fim_diff_registry_tmp_default_type(void **state) {
 
     expect_mkdir_ex(diff->tmp_folder, 0);
 
-    expect_fopen(diff->file_origin, "w", fp);
+    expect_wfopen(diff->file_origin, "w", fp);
 
     expect_string(__wrap__mwarn, formatted_msg, FIM_REG_VAL_WRONG_TYPE);
 

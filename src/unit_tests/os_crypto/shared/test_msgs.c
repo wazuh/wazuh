@@ -169,9 +169,9 @@ void test_StoreCounter_pushing_rids_fp_null(void **state)
     key->rids_node = NULL;
     keys.keyentries[0] = key;
 
-    expect_string(__wrap_fopen, path, "queue/rids/001");
-    expect_string(__wrap_fopen, mode, "r+");
-    will_return(__wrap_fopen, 1234);
+    expect_string(__wrap_wfopen, path, "queue/rids/001");
+    expect_string(__wrap_wfopen, mode, "r+");
+    will_return(__wrap_wfopen, 1234);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Opening rids for agent 001.");
 
@@ -228,13 +228,13 @@ void test_StoreCounter_fail_first_open(void **state)
     key->rids_node = NULL;
     keys.keyentries[0] = key;
 
-    expect_string(__wrap_fopen, path, "queue/rids/001");
-    expect_string(__wrap_fopen, mode, "r+");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, path, "queue/rids/001");
+    expect_string(__wrap_wfopen, mode, "r+");
+    will_return(__wrap_wfopen, NULL);
     errno = EACCES;
-    expect_string(__wrap_fopen, path, "queue/rids/001");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1234);
+    expect_string(__wrap_wfopen, path, "queue/rids/001");
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, 1234);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Opening rids for agent 001.");
 

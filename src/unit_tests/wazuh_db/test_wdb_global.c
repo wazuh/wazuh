@@ -7320,10 +7320,14 @@ void test_wdb_global_restore_backup_success(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int result = OS_INVALID;
     wdb_t *wdb = NULL;
+    os_calloc(1,sizeof(wdb_t),wdb);
+    os_strdup("global",wdb->id);
+    os_calloc(1,sizeof(sqlite3 *),wdb->db);
 
     expect_string(__wrap_w_uncompress_gzfile, gzfilesrc, "backup/db/global.db-backup-TIMESTAMP.gz");
     expect_string(__wrap_w_uncompress_gzfile, gzfiledst, "queue/db/global.db.back");
     will_return(__wrap_w_uncompress_gzfile, OS_SUCCESS);
+    will_return(__wrap_wdb_close, 1);
     will_return(__wrap_wdb_close, OS_SUCCESS);
     expect_string(__wrap_unlink, file, "queue/db/global.db");
     will_return(__wrap_unlink, OS_SUCCESS);
@@ -7335,6 +7339,8 @@ void test_wdb_global_restore_backup_success(void **state) {
 
     assert_string_equal(data->output, "ok");
     assert_int_equal(result, OS_SUCCESS);
+    os_free(wdb->id);
+    os_free(wdb);
 }
 
 /* Tests wdb_global_get_most_recent_backup */
