@@ -1,0 +1,51 @@
+name: Build WPK packages
+on:
+  pull_request:
+    paths:
+      - 'packages/wpk/**'
+  workflow_dispatch:
+
+jobs:
+  WPK-generation:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [linux, windows, macos]
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Create certs
+        run: |
+          openssl req -x509 -new -nodes -newkey rsa:2048 -keyout wpk_root.key -out wpk_root.pem -batch
+          openssl req -new -nodes -newkey rsa:2048 -keyout wpkcert.key -out wpkcert.csr -subj '/C=US/ST=CA/O=Wazuh'
+          openssl x509 -req -days 365 -in wpkcert.csr -CA wpk_root.pem -CAkey wpk_root.key -out wpkcert.pem -CAcreateserial
+          echo "PACKAGE_NAME=${{ matrix.os }}Agent.${{ github.head_ref }}.wpk" >> $GITHUB_ENV
+
+      - name: Build Linux WPK
+        if: matrix.os == 'linux'
+        working-directory: packages/wpk
+        run: |
+          bash generate_wpk_package.sh -t linux -b ${{ github.head_ref }} -d /tmp -k . -o ${{ env.PACKAGE_NAME }}
+
+      - name: Build Windows WPK
+        if: matrix.os == 'windows'
+        working-directory: packages/wpk
+        run: |
+          curl -O https://packages.wazuh.com/4.x/windows/wazuh-agent-4.7.3-1.msi
+          bash generate_wpk_package.sh -t windows -b ${{ github.head_ref }} -d /tmp -k . -o ${{ env.PACKAGE_NAME }} -pn wazuh-agent-4.7.3-1.msi
+          
+      - name: Build MacOS WPK
+        if: matrix.os == 'macos'
+        working-directory: packages/wpk
+        run: |
+          curl -O https://packages.wazuh.com/4.x/macos/wazuh-agent-4.7.3-1.pkg
+          bash generate_wpk_package.sh -t macos -b ${{ github.head_ref }} -d /tmp -k . -o ${{ env.PACKAGE_NAME }} -pn wazuh-agent-4.7.3-1.pkg
+
+      - name: Upload WPK package as artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          path: ${{github.workspace}}/${{ env.PACKAGE_NAME }}
+          if-no-files-found: error
