@@ -49,7 +49,7 @@ make clean
     make deps TARGET=agent
     make -j%{_threads} TARGET=agent USE_SELINUX=yes DEBUG=%{_debugenabled}
 %else
-    %ifnarch x86_64
+    %ifnarch amd64
       MSGPACK="USE_MSGPACK_OPT=no"
     %endif
     deps_version=`cat Makefile | grep "DEPS_VERSION =" | cut -d " " -f 3`
