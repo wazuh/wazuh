@@ -37,6 +37,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include "file_op.h"
 #include <stdlib.h>
 #include <string.h>
 #include <locale.h>
@@ -168,7 +169,7 @@ int os_string(char *file, char *regex)
     }
 
     /* Open the file */
-    oss.fp = fopen(file, "r");
+    oss.fp = wfopen(file, "r");
     if (!oss.fp) {
         free(bfr);
         return (0);

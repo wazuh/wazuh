@@ -428,7 +428,7 @@ STATIC int wm_agent_upgrade_send_write(int agent_id, int wpk_message_format, con
 
     os_calloc(OS_MAXSTR, sizeof(char), command);
 
-    FILE *file = fopen(file_path, "rb");
+    FILE *file = wfopen(file_path, "rb");
     if (file) {
         while (bytes = fread(buffer, 1, sizeof(buffer), file), bytes) {
 

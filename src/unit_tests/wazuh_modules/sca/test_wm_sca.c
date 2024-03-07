@@ -93,13 +93,13 @@ static int setup_module() {
     XML_NODE nodes = string_to_xml_node(string, lxml);
     int ret = wm_sca_read(lxml, nodes, sca_module);
     OS_ClearNode(nodes);
-    test_mode = 1;
+    test_mode = 0;
 
     return ret;
 }
 
 static int teardown_module(){
-    test_mode = 0;
+    test_mode = 1;
     wm_sca_t* module_data = (wm_sca_t *)sca_module->data;
     wmodule_cleanup(sca_module);
     OS_ClearXML(lxml);

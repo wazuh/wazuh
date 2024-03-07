@@ -136,7 +136,7 @@ FILE * openlog(FILE * fp, char * path, const char * logdir, int year, const char
         }
     }
 
-    if (fp = fopen(path, "a"), !fp) {
+    if (fp = wfopen(path, "a"), !fp) {
         merror_exit("Error opening logfile: '%s': (%d) %s", path, errno, strerror(errno));
     }
 

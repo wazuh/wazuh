@@ -178,11 +178,24 @@ private:
         if (0 == spUpdaterContext->currentOffset && "cti-offset" == contentSource)
 
         {
-            runFullContentDownload(spUpdaterContext);
+            // Copy original data.
+            auto originalData = spUpdaterContext->data;
+
+            try
+            {
+                runFullContentDownload(spUpdaterContext);
+            }
+            catch (const std::exception& e)
+            {
+                logWarn(WM_CONTENTUPDATER, "Couldn't run full content download: %s", e.what());
+            }
+
+            // Restore original data.
+            spUpdaterContext->data = std::move(originalData);
         }
 
         // Store last file hash.
-        const auto lastDownloadedFileHash {spUpdaterContext->spUpdaterBaseContext->downloadedFileHash};
+        const std::string lastDownloadedFileHash {spUpdaterContext->spUpdaterBaseContext->downloadedFileHash};
 
         // Run the updater chain
         m_spUpdaterOrchestration->handleRequest(spUpdaterContext);
@@ -212,14 +225,8 @@ private:
         fullContentConfig.at("contentSource") = "cti-snapshot";
         fullContentConfig.at("compressionType") = "zip";
 
-        // Copy original data.
-        auto originalData = spUpdaterContext->data;
-
         // Trigger orchestration.
         FactoryContentUpdater::create(fullContentConfig)->handleRequest(spUpdaterContext);
-
-        // Restore original data.
-        spUpdaterContext->data = std::move(originalData);
     }
 };
 

@@ -36,18 +36,18 @@ static void test_generate_cert_success(void **state) {
     will_return(__wrap_X509_new, 1);
     will_return(__wrap_X509_sign, 1);
 
-    expect_string(__wrap_fopen, path, "key_path");
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, &key_file);
+    expect_string(__wrap_wfopen, path, "key_path");
+    expect_string(__wrap_wfopen, mode, "wb");
+    will_return(__wrap_wfopen, &key_file);
 
     will_return(__wrap_PEM_write_PrivateKey, 1);
 
     expect_value(__wrap_fclose, _File, &key_file);
     will_return(__wrap_fclose, 0);
 
-    expect_string(__wrap_fopen, path, "cert_path");
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, &cert_file);
+    expect_string(__wrap_wfopen, path, "cert_path");
+    expect_string(__wrap_wfopen, mode, "wb");
+    will_return(__wrap_wfopen, &cert_file);
 
     will_return(__wrap_PEM_write_X509, 1);
     expect_value(__wrap_fclose, _File, &cert_file);
@@ -67,18 +67,18 @@ static void test_generate_cert_success_typo(void **state) {
     will_return(__wrap_X509_new, 1);
     will_return(__wrap_X509_sign, 1);
 
-    expect_string(__wrap_fopen, mode, "wb");
-    expect_string(__wrap_fopen, path, "key_path");
-    will_return(__wrap_fopen, &key_file);
+    expect_string(__wrap_wfopen, mode, "wb");
+    expect_string(__wrap_wfopen, path, "key_path");
+    will_return(__wrap_wfopen, &key_file);
 
     will_return(__wrap_PEM_write_PrivateKey, 1);
 
     expect_value(__wrap_fclose, _File, &key_file);
     will_return(__wrap_fclose, 0);
 
-    expect_string(__wrap_fopen, path, "cert_path");
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, &cert_file);
+    expect_string(__wrap_wfopen, path, "cert_path");
+    expect_string(__wrap_wfopen, mode, "wb");
+    will_return(__wrap_wfopen, &cert_file);
 
     will_return(__wrap_PEM_write_X509, 1);
     expect_value(__wrap_fclose, _File, &cert_file);
@@ -98,9 +98,9 @@ static void test_save_key_fail(void **state) {
     will_return(__wrap_X509_new, 1);
     will_return(__wrap_X509_sign, 1);
 
-    expect_string(__wrap_fopen, path, "key_path");
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, &key_file);
+    expect_string(__wrap_wfopen, path, "key_path");
+    expect_string(__wrap_wfopen, mode, "wb");
+    will_return(__wrap_wfopen, &key_file);
 
     will_return(__wrap_PEM_write_PrivateKey, 0);
     expect_string(__wrap__merror, formatted_msg, "Cannot dump private key.");
@@ -121,9 +121,9 @@ static void test_save_key_fail_fopen(void **state) {
     will_return(__wrap_X509_new, 1);
     will_return(__wrap_X509_sign, 1);
 
-    expect_string(__wrap_fopen, path, "key_path");
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, path, "key_path");
+    expect_string(__wrap_wfopen, mode, "wb");
+    will_return(__wrap_wfopen, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "Cannot open key_path.");
 
@@ -141,18 +141,18 @@ static void test_save_cert_fail(void **state) {
     will_return(__wrap_X509_new, 1);
     will_return(__wrap_X509_sign, 1);
 
-    expect_string(__wrap_fopen, path, "key_path");
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, &key_file);
+    expect_string(__wrap_wfopen, path, "key_path");
+    expect_string(__wrap_wfopen, mode, "wb");
+    will_return(__wrap_wfopen, &key_file);
 
     will_return(__wrap_PEM_write_PrivateKey, 1);
 
     expect_value(__wrap_fclose, _File, &key_file);
     will_return(__wrap_fclose, 0);
 
-    expect_string(__wrap_fopen, path, "cert_path");
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, &cert_file);
+    expect_string(__wrap_wfopen, path, "cert_path");
+    expect_string(__wrap_wfopen, mode, "wb");
+    will_return(__wrap_wfopen, &cert_file);
 
     will_return(__wrap_PEM_write_X509, 0);
     expect_string(__wrap__merror, formatted_msg, "Cannot dump certificate.");
@@ -172,18 +172,18 @@ static void test_save_cert_fail_fopen(void **state) {
     will_return(__wrap_X509_new, 1);
     will_return(__wrap_X509_sign, 1);
 
-    expect_string(__wrap_fopen, path, "key_path");
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, &key_file);
+    expect_string(__wrap_wfopen, path, "key_path");
+    expect_string(__wrap_wfopen, mode, "wb");
+    will_return(__wrap_wfopen, &key_file);
 
     will_return(__wrap_PEM_write_PrivateKey, 1);
 
     expect_value(__wrap_fclose, _File, &key_file);
     will_return(__wrap_fclose, 0);
 
-    expect_string(__wrap_fopen, path, "cert_path");
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, path, "cert_path");
+    expect_string(__wrap_wfopen, mode, "wb");
+    will_return(__wrap_wfopen, NULL);
     expect_string(__wrap__merror, formatted_msg, "Cannot open cert_path.");
 
     int ret_value = generate_cert(1024, 2048, "key_path", "cert_path", "/C=US/ST=California/CN=Wazuh/");

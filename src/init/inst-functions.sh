@@ -908,7 +908,7 @@ InstallCommon()
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/fim/db
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/syscollector
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/syscollector/db
-  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/keystore 
+  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/keystore
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/logcollector
 
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/ruleset
@@ -1083,10 +1083,11 @@ InstallLocal()
 
     # Install Vulnerability Detector files
     ${INSTALL} -d -m 0660 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/vd
+    ${INSTALL} -d -m 0440 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/indexer
 
     # Install templates files
-    ${INSTALL} -d -m 0440 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/indexer
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/vulnerability_scanner/indexer/template/legacy-template.json ${INSTALLDIR}/queue/indexer/vd_states_template.json
+    ${INSTALL} -d -m 0440 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/templates
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/vulnerability_scanner/indexer/template/legacy-template.json ${INSTALLDIR}/templates/vd_states_template.json
 
     # Install Task Manager files
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tasks
@@ -1120,21 +1121,14 @@ TransferShared()
 checkDownloadContent()
 {
     VD_FILENAME='vd_1.0.0_vd_4.8.0.tar.xz'
+    VD_FULL_PATH=${INSTALLDIR}/tmp/${VD_FILENAME}
 
-    if [ "X${DOWNLOAD_CONTENT_AND_DECOMPRESS}" = "Xy" ]; then
+    if [ "X${DOWNLOAD_CONTENT}" = "Xy" ]; then
         echo "Download ${VD_FILENAME} file"
-        wget -O ${VD_FILENAME} http://packages.wazuh.com/deps/vulnerability_model_database/${VD_FILENAME}
+        wget -O ${VD_FULL_PATH} http://packages.wazuh.com/deps/vulnerability_model_database/${VD_FILENAME}
 
-        echo "Decompress ${VD_FILENAME} file"
-        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${VD_FILENAME} ${INSTALLDIR}/
-        tar -xf ${INSTALLDIR}/${VD_FILENAME} -C ${INSTALLDIR}/
-        rm -rf ${INSTALLDIR:?}/${VD_FILENAME}
-        rm -rf ${VD_FILENAME}
-    elif [ "X${DOWNLOAD_CONTENT}" = "Xyes" ]; then
-        echo "Download ${VD_FILENAME} file"
-        wget -O ${VD_FILENAME} http://packages.wazuh.com/deps/vulnerability_model_database/${VD_FILENAME}
-
-        ${INSTALL} -m 0640 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${VD_FILENAME} ${INSTALLDIR}/
+        chmod 640 ${VD_FULL_PATH}
+        chown ${WAZUH_USER}:${WAZUH_GROUP} ${VD_FULL_PATH}
     fi
 }
 

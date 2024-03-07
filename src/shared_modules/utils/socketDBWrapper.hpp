@@ -118,11 +118,13 @@ public:
 
     void query(const std::string& query, nlohmann::json& response)
     {
+        // Acquire lock before clearing the response
+        std::unique_lock<std::mutex> lock {m_mutex};
+
         m_response.clear();
         m_responsePartial.clear();
         m_exceptionStr.clear();
 
-        std::unique_lock<std::mutex> lock {m_mutex};
         m_dbSocket->send(query.c_str(), query.size());
         const auto res = m_conditionVariable.wait_for(lock, std::chrono::milliseconds(DB_WRAPPER_QUERY_WAIT_TIME));
 
