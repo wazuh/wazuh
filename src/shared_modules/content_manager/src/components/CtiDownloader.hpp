@@ -168,7 +168,9 @@ protected:
                                     ? std::optional<int>(rawMetadata.at("last_offset").get<int>())
                                     : std::nullopt;
         parameters.lastSnapshotLink =
-            isKeyValueValid("last_snapshot_link") ? std::optional(rawMetadata.at("last_snapshot_link")) : std::nullopt;
+            isKeyValueValid("last_snapshot_link")
+                ? std::optional<std::string>(rawMetadata.at("last_snapshot_link").get<std::string>())
+                : std::nullopt;
         parameters.lastSnapshotOffset = isKeyValueValid("last_snapshot_offset")
                                             ? std::optional<int>(rawMetadata.at("last_snapshot_offset").get<int>())
                                             : std::nullopt;
