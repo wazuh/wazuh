@@ -49,7 +49,7 @@ void* wm_content_manager_main()
         }
         else
         {
-            mtwarn(WM_CONTENT_MANAGER_LOGTAG, "Unable to tart content manager.");
+            mtwarn(WM_CONTENT_MANAGER_LOGTAG, "Unable to start content manager.");
         }
     }
     else
