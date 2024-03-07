@@ -13,10 +13,6 @@
 rpmbuild="rpmbuild"
 rpm_build_dir="" # To be define on setup_build
 
-# LEGACY_RPM_AGENT_X86_BUILDER_DOCKERFILE="${CURRENT_PATH}/CentOS/5/x86_64"
-# LEGACY_TAR_FILE="${LEGACY_RPM_BUILDER_DOCKERFILE}/i386/centos-5-i386.tar.gz"
-
-
 setup_build(){
     sources_dir="$1"
     specs_path="$2"
@@ -28,8 +24,8 @@ setup_build(){
     rpm_build_dir=${build_dir}/rpmbuild
     file_name="$package_name-${PACKAGE_RELEASE}"
     # Replace "-" with "_" between BUILD_TARGET and Version
-    base_name=$(sed 's/-/_/2' <<< "$package_name")
-    rpm_file="${base_name}_${ARCHITECTURE_TARGET}_${short_commit_hash}.rpm"
+    base_name="$(sed 's/-/_/2' <<< "$package_name")"
+    rpm_file="${base_name}-${PACKAGE_RELEASE}_${ARCHITECTURE_TARGET}_${short_commit_hash}.rpm"
     src_file="${file_name}.src.rpm"
     extract_path="${rpm_build_dir}/RPMS"
     src_path="${rpm_build_dir}/SRPMS"
@@ -40,7 +36,6 @@ setup_build(){
 
     # Generating source tar.gz
     cd ${build_dir}/${BUILD_TARGET} && tar czf "${rpm_build_dir}/SOURCES/${package_name}.tar.gz" "${package_name}"
-
 }
 
 set_debug(){
@@ -48,7 +43,6 @@ set_debug(){
     if [[ "${debug}" == "no" ]]; then
         echo '%debug_package %{nil}' > /etc/rpm/macros
     fi
-
 }
 
 build_deps(){
@@ -80,7 +74,6 @@ build_package(){
         --define "_localstatedir ${INSTALLATION_PATH}" --define "_debugenabled ${debug}" \
         --define "_rpmfilename ${rpm_file}" --target ${ARCHITECTURE_TARGET} \
         -ba ${rpm_build_dir}/SPECS/${package_name}.spec
-
 }
 
 get_checksum(){
@@ -94,5 +87,5 @@ get_checksum(){
     if [[ "${src}" == "yes" ]]; then
         extract_path="${rpm_build_dir}"
     fi
-    find ${extract_path} -maxdepth 3 -type f -name "${file_name}*" -exec mv {} /var/local/wazuh \;
+    mv $extract_path/$rpm_file /var/local/wazuh
 }
