@@ -89,6 +89,8 @@ if [ ! -d "/wazuh-local-src" ] ; then
     curl -sL https://github.com/wazuh/wazuh/tarball/${wazuh_branch} | tar zx
     short_commit_hash="$(curl -s https://api.github.com/repos/wazuh/wazuh/commits/${wazuh_branch} \
                           | grep '"sha"' | head -n 1| cut -d '"' -f 4 | cut -c 1-7)"
+else
+    short_commit_hash="local"
 fi
 
 # Build directories
