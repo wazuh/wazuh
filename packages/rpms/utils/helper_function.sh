@@ -81,8 +81,8 @@ build_package(){
     $linux $rpmbuild --define "_sysconfdir /etc" --define "_topdir ${rpm_build_dir}" \
         --define "_threads ${JOBS}" --define "_release ${PACKAGE_RELEASE}" \
         --define "_localstatedir ${INSTALLATION_PATH}" --define "_debugenabled ${debug}" \
+        --define "_rpmfilename ${rpm_file}" \
         --target $ARCH -ba ${rpm_build_dir}/SPECS/${package_name}.spec
-
 }
 
 get_checksum(){
