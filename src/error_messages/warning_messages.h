@@ -140,7 +140,7 @@
                                                 "'log_format'. Default value will be used."
 #define LOGCOLLECTOR_DEFAULT_REGEX_TYPE         "(8007): Invalid type in '%s' regex '%s', setting by default PCRE2 regex."
 
-#define LOGCOLLECTOR_JOURNAL_LOG_LIB_FAIL_LOAD      "(8008): Failed to load the library '%s': '%s'."
+#define LOGCOLLECTOR_JOURNAL_LOG_LIB_FAIL_LOAD      "(8008): Failed to load '%s': '%s'."
 #define LOGCOLLECTOR_JOURNAL_LOG_LIB_FAIL_OWN       "(8009): The library '%s' is not owned by the root user."
 #define LOGCOLLECTOR_JOURNAL_LOG_FAIL_OPEN          "(8010): Failed open journal log: '%s'."
 #define LOGCOLLECTOR_JOURNAL_LOG_FAIL_READ_TS       "(8011): Failed to read timestamp from journal log: '%s'. Using current time."

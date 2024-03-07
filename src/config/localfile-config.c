@@ -1051,7 +1051,7 @@ static void free_unit_filter(_w_journal_filter_unit_t* unit)
  * @param expression The expression to match
  * @param ignore_if_missing Ignore if the field is missing
  */
-static _w_journal_filter_unit_t* create_unit_filter(const char* field, char* expression, int ignore_if_missing)
+static _w_journal_filter_unit_t* create_unit_filter(const char* field, char* expression, bool ignore_if_missing)
 {
     if (field == NULL || expression == NULL)
     {
@@ -1097,7 +1097,7 @@ void w_journal_filter_free(w_journal_filter_t* ptr_filter)
 int w_journal_filter_add_condition(w_journal_filter_t** ptr_filter,
                                    char* field,
                                    char* expression,
-                                   int ignore_if_missing)
+                                   bool ignore_if_missing)
 {
     if (field == NULL || expression == NULL || ptr_filter == NULL)
     {
