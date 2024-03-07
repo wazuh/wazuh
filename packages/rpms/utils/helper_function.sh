@@ -27,7 +27,9 @@ setup_build(){
 
     rpm_build_dir=${build_dir}/rpmbuild
     file_name="$package_name-${PACKAGE_RELEASE}"
-    rpm_file="${file_name}_${ARCHITECTURE_TARGET}_${short_commit_hash}.rpm"
+    # Replace "-" with "_" between BUILD_TARGET and Version
+    base_name=$(sed 's/-/_/2' <<< "$package_name")
+    rpm_file="${base_name}_${ARCHITECTURE_TARGET}_${short_commit_hash}.rpm"
     src_file="${file_name}.src.rpm"
     extract_path="${rpm_build_dir}/RPMS"
     src_path="${rpm_build_dir}/SRPMS"

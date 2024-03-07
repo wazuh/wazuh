@@ -95,6 +95,9 @@ fi
 source_dir=$(build_directories "$build_dir/${BUILD_TARGET}" "wazuh*" $future)
 
 wazuh_version="$(cat $source_dir/src/VERSION| cut -d 'v' -f 2)"
+# TODO: Improve how we handle package_name
+# Changing the "-" to "_" between target and version breaks the convention for RPM or DEB packages.
+# For now, I added extra code that fixes it.
 package_name="wazuh-${BUILD_TARGET}-${wazuh_version}"
 specs_path="$(find $source_dir -name SPECS|grep $PACKAGE_FORMAT)"
 
