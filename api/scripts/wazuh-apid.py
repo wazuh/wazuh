@@ -122,10 +122,6 @@ def configure_ssl(params):
         if api_conf['https']['ssl_ciphers']:
             params['ssl_ciphers'] = api_conf['https']['ssl_ciphers'].upper()
 
-        if api_conf.get('cache', {})('enabled', {}):
-            logger.warning(CACHE_DELETED_MESSAGE.format(release="4.9.0"))
-
-
     except ssl.SSLError as exc:
         error = APIError(
             2003, details='Private key does not match with the certificate')
@@ -216,6 +212,10 @@ def start(params: dict):
             allow_headers=api_conf['cors']['allow_headers'],
             allow_credentials=api_conf['cors']['allow_credentials'],
         )
+
+    # Display warning if using deprecated cache API configuration
+    if api_conf.get('cache', {})('enabled', {}):
+        logger.warning(CACHE_DELETED_MESSAGE.format(release="4.9.0"))
 
     # Add error handlers to format exceptions
     app.add_error_handler(ExpectFailedException, error_handler.expect_failed_error_handler)
