@@ -104,7 +104,7 @@ def create_session():
 
 # Tests
 @pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
-def test_remove_session(test_metadata, daemons_handler_module, 
+def test_remove_session(test_metadata, daemons_handler_module,
                         wait_for_logtest_startup, connect_to_sockets):
     '''
     description: Check if 'wazuh-logtest' correctly detects and removes the sessions under pre-defined scenarios.

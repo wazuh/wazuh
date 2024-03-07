@@ -101,6 +101,7 @@ typedef struct _agent_breakdown_t {
     uint64_t sql_queries;
     uint64_t vacuum_queries;
     uint64_t get_fragmentation_queries;
+    uint64_t sleep_queries;
     struct timeval begin_time;
     struct timeval close_time;
     struct timeval commit_time;
@@ -109,6 +110,7 @@ typedef struct _agent_breakdown_t {
     struct timeval vacuum_time;
     struct timeval get_fragmentation_time;
     struct timeval open_calls_time;
+    struct timeval sleep_time;
     agent_ciscat_t ciscat;
     agent_rootcheck_t rootcheck;
     agent_sca_t sca;
@@ -190,11 +192,13 @@ typedef struct _global_breakdown_t {
     uint64_t sql_queries;
     uint64_t vacuum_queries;
     uint64_t get_fragmentation_queries;
+    uint64_t sleep_queries;
     struct timeval backup_time;
     struct timeval sql_time;
     struct timeval vacuum_time;
     struct timeval get_fragmentation_time;
     struct timeval open_calls_time;
+    struct timeval sleep_time;
     global_agent_t agent;
     global_belongs_t belongs;
     global_group_t group;
@@ -683,6 +687,19 @@ void w_inc_agent_syscollector_deprecated_osinfo();
 void w_inc_agent_syscollector_deprecated_osinfo_time(struct timeval time);
 
 /**
+ * @brief Increment deprecated syscollector OS information agent queries counter
+ *
+ */
+void w_inc_agent_sleep();
+
+/**
+ * @brief Increment deprecated OS information syscollector agent time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_agent_sleep_time(struct timeval time);
+
+/**
  * @brief Increment total global queries counter
  *
  */
@@ -1110,6 +1127,19 @@ void w_inc_global_get_fragmentation();
  * @param time Value to increment the counter.
  */
 void w_inc_global_get_fragmentation_time(struct timeval time);
+
+/**
+ * @brief Increment sleep global queries counter
+ *
+ */
+void w_inc_global_sleep();
+
+/**
+ * @brief Increment sleep global time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_global_sleep_time(struct timeval time);
 
 /**
  * @brief Increment task queries counter

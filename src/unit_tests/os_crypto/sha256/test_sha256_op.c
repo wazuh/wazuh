@@ -55,9 +55,9 @@ void test_sha256_file() {
     const char *string_sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
     char path[] = "path/to/file";
 
-    expect_value(__wrap_fopen, path, path);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 1);
+    expect_value(__wrap_wfopen, path, path);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fread, string);
     will_return(__wrap_fread, 0);
@@ -74,9 +74,9 @@ void test_sha256_file() {
 void test_sha256_file_fail() {
     char path[] = "path/to/non-existing/file";
 
-    expect_value(__wrap_fopen, path, path);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 0);
+    expect_value(__wrap_wfopen, path, path);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 0);
 
     os_sha256 buffer;
     assert_int_equal(OS_SHA256_File(path, buffer, OS_TEXT), -1);

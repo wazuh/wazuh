@@ -243,6 +243,12 @@ wdb_t* __wrap_wdb_init(__attribute__((unused)) sqlite3* db, const char* id) {
 }
 
 int __wrap_wdb_close(__attribute__((unused)) wdb_t * wdb, __attribute__((unused))bool commit) {
+    int free_db = mock_type(int);
+
+    if (free_db) {
+        os_free(wdb->db);
+    }
+
     return mock();
 }
 

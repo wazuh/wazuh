@@ -221,6 +221,9 @@ int local_start()
                      0,
                      (LPDWORD)&threadID);
 
+    /* Delete agent state file at exit */
+    atexit(DeleteState);
+
     /* Socket connection */
     agt->sock = -1;
 

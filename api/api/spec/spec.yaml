@@ -4075,6 +4075,8 @@ components:
     WazuhLogsSummary:
       type: object
       properties:
+          indexer-connector:
+            $ref: '#/components/schemas/LogSummary'
           wazuh-agentlessd:
             $ref: '#/components/schemas/LogSummary'
           wazuh-analysisd:
@@ -4099,7 +4101,7 @@ components:
             $ref: '#/components/schemas/LogSummary'
           wazuh-reportd:
             $ref: '#/components/schemas/LogSummary'
-          wazuh-rootcheck:
+          rootcheck:
             $ref: '#/components/schemas/LogSummary'
           wazuh-syscheckd:
             $ref: '#/components/schemas/LogSummary'
@@ -4121,6 +4123,8 @@ components:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:command:
             $ref: '#/components/schemas/LogSummary'
+          wazuh-modulesd:content_manager:
+            $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:database:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:docker-listener:
@@ -4132,6 +4136,8 @@ components:
           wazuh-modulesd:osquery:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:syscollector:
+            $ref: '#/components/schemas/LogSummary'
+          wazuh-modulesd:vulnerability-scanner:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:task-manager:
             $ref: '#/components/schemas/LogSummary'
@@ -6328,6 +6334,7 @@ components:
         - socket
         - syscheck
         - syslog_output
+        - vulnerability-detection
         - indexer
         # Wodle sections
         - aws-s3
@@ -10246,6 +10253,10 @@ paths:
                         scan_on_start: yes
                         interval: "12h"
                         skip_nfs: yes
+                      vulnerability-detection:
+                        enabled: yes
+                        index-status: yes
+                        feed-update-interval: "60m"
                       indexer:
                         enabled: yes
                         hosts:

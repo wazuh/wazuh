@@ -13,6 +13,7 @@
 #include <stdio.h>
 
 
+#include "file_op.h"
 #include "headers/defs.h"
 #include "../sha1/sha1_op.h"
 #include <openssl/sha.h>
@@ -99,7 +100,7 @@ int OS_HMAC_SHA1_File(const char *key, const char *file_path, os_sha1 output, in
     EVP_MAC_CTX *ctx = NULL;
     OSSL_PARAM params[3];
 
-    fp = fopen(file_path, mode == OS_BINARY ? "rb" : "r");
+    fp = wfopen(file_path, mode == OS_BINARY ? "rb" : "r");
     if (!fp) {
         return -1;
     }
