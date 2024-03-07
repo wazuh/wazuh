@@ -13,7 +13,6 @@
 
 #include "debug_op.h"
 
-// TODO: Review de error handling
 static const int W_SD_JOURNAL_LOCAL_ONLY = 1 << 0;
 static const char* W_LIB_SYSTEMD = "libsystemd.so.0";
 
@@ -161,6 +160,25 @@ bool is_owned_by_root(const char* library_path)
 }
 
 /**
+ * @brief Load and validate a function from a library.
+ * 
+ * @param handle Library handle
+ * @param name Function name
+ * @param func Function pointer
+ * @return true if the function was loaded and validated successfully, false otherwise.
+ */
+static inline bool load_and_validate_function(void* handle, const char* name, void** func)
+{
+    *func = dlsym(handle, name);
+    if (*func == NULL)
+    {
+        mwarn(LOGCOLLECTOR_JOURNAL_LOG_LIB_FAIL_LOAD, name, dlerror());
+        return false;
+    }
+    return true;
+}
+
+/**
  * @brief Initialize the journal library functions
  *
  * The caller is responsible for freeing the returned library.
@@ -175,7 +193,7 @@ static inline w_journal_lib_t* w_journal_lib_init()
     lib->handle = dlopen(W_LIB_SYSTEMD, RTLD_LAZY);
     if (lib->handle == NULL)
     {
-        char * err = dlerror();
+        char* err = dlerror();
         mwarn(LOGCOLLECTOR_JOURNAL_LOG_LIB_FAIL_LOAD, W_LIB_SYSTEMD, err == NULL ? "Unknown error" : err);
         os_free(lib);
         return NULL;
@@ -194,37 +212,21 @@ static inline w_journal_lib_t* w_journal_lib_init()
     os_free(library_path);
 
     // Load and verify the functions
-    bool fail = false;
+    bool ok = load_and_validate_function(lib->handle, "sd_journal_open", (void**)&lib->open)
+              && load_and_validate_function(lib->handle, "sd_journal_close", (void**)&lib->close)
+              && load_and_validate_function(lib->handle, "sd_journal_previous", (void**)&lib->previous)
+              && load_and_validate_function(lib->handle, "sd_journal_next", (void**)&lib->next)
+              && load_and_validate_function(lib->handle, "sd_journal_seek_tail", (void**)&lib->seek_tail)
+              && load_and_validate_function(lib->handle, "sd_journal_seek_realtime_usec", (void**)&lib->seek_timestamp)
+              && load_and_validate_function(lib->handle, "sd_journal_get_realtime_usec", (void**)&lib->get_timestamp)
+              && load_and_validate_function(lib->handle, "sd_journal_get_data", (void**)&lib->get_data)
+              && load_and_validate_function(lib->handle, "sd_journal_restart_data", (void**)&lib->restart_data)
+              && load_and_validate_function(lib->handle, "sd_journal_enumerate_data", (void**)&lib->enumerate_date)
+              && load_and_validate_function(
+                  lib->handle, "sd_journal_get_cutoff_realtime_usec", (void**)&lib->get_cutoff_timestamp);
 
-    lib->open = (w_journal_open)dlsym(lib->handle, "sd_journal_open");
-    fail = fail || lib->open == NULL;
-    lib->close = (w_journal_close)dlsym(lib->handle, "sd_journal_close");
-    fail = fail || lib->close == NULL;
-
-    lib->previous = (w_journal_previous)dlsym(lib->handle, "sd_journal_previous");
-    fail = fail || lib->previous == NULL;
-    lib->next = (w_journal_next)dlsym(lib->handle, "sd_journal_next");
-    fail = fail || lib->next == NULL;
-    lib->seek_tail = (w_journal_seek_tail)dlsym(lib->handle, "sd_journal_seek_tail");
-    fail = fail || lib->seek_tail == NULL;
-    lib->seek_timestamp = (w_journal_seek_timestamp)dlsym(lib->handle, "sd_journal_seek_realtime_usec");
-    fail = fail || lib->seek_timestamp == NULL;
-    lib->get_cutoff_timestamp =
-        (w_journal_get_cutoff_timestamp)dlsym(lib->handle, "sd_journal_get_cutoff_realtime_usec");
-    fail = fail || lib->get_cutoff_timestamp == NULL;
-    lib->get_timestamp = (w_journal_get_timestamp)dlsym(lib->handle, "sd_journal_get_realtime_usec");
-    fail = fail || lib->get_timestamp == NULL;
-
-    lib->get_data = (w_journal_get_data)dlsym(lib->handle, "sd_journal_get_data");
-    fail = fail || lib->get_data == NULL;
-    lib->restart_data = (w_journal_restart_data)dlsym(lib->handle, "sd_journal_restart_data");
-    fail = fail || lib->restart_data == NULL;
-    lib->enumerate_date = (w_journal_enumerate_date)dlsym(lib->handle, "sd_journal_enumerate_data");
-    fail = fail || lib->enumerate_date == NULL;
-
-    if (fail)
+    if (!ok)
     {
-        mwarn(LOGCOLLECTOR_JOURNAL_LOG_LIB_FAIL_LOAD, W_LIB_SYSTEMD, "Missing functions");
         dlclose(lib->handle);
         os_free(lib);
         return NULL;
