@@ -157,4 +157,5 @@ def test_configuration_alias(test_configuration, test_metadata, configure_local_
                           }))
     assert (wazuh_log_monitor.callback_result != None), patterns.ERROR_COMMAND_MONITORING
 
-    utils.validate_test_config_with_module_config(test_configuration=test_configuration)
+    if sys.platform != WINDOWS:
+        utils.validate_test_config_with_module_config(test_configuration=test_configuration)

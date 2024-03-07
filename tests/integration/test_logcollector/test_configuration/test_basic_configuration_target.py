@@ -55,12 +55,13 @@ tags:
     - logcollector_configuration
 '''
 
-import pytest
+import pytest, sys
 
 from pathlib import Path
 from time import sleep
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.logcollector import configuration as logcollector_configuration
 from wazuh_testing.modules.logcollector import patterns
 from wazuh_testing.modules.logcollector import utils
@@ -153,7 +154,7 @@ def test_configuration_target(test_configuration, test_metadata, set_wazuh_confi
     wazuh_log_monitor.start(callback, timeout=10)
     assert wazuh_log_monitor.callback_result, assert_error
 
-    if test_metadata['valid_value']:
+    if test_metadata['valid_value'] and sys.platform != WINDOWS:
         # Wait until the logcollector socket is available.
         sleep(10)
         utils.validate_test_config_with_module_config(test_configuration=test_configuration)

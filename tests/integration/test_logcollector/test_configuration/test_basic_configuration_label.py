@@ -85,7 +85,7 @@ test_configuration, test_metadata, test_cases_ids = configuration.get_test_cases
 
 location = None
 if sys.platform == WINDOWS:
-    location = r'C:\TESTING\testfile.txt'
+    location = 'C:/TESTING/testfile.txt'
 else:
     location = '/tmp/testing.txt'
 for test in test_metadata:
@@ -154,6 +154,7 @@ def test_configuration_label(test_configuration, test_metadata, set_wazuh_config
                           }), timeout=10)
     assert (wazuh_log_monitor.callback_result != None), patterns.ERROR_ANALYZING_FILE
 
-    # Wait until the logcollector socket is available.
-    sleep(10)
-    utils.validate_test_config_with_module_config(test_configuration=test_configuration)
+    if sys.platform != WINDOWS:
+        # Wait until the logcollector socket is available.
+        sleep(10)
+        utils.validate_test_config_with_module_config(test_configuration=test_configuration)

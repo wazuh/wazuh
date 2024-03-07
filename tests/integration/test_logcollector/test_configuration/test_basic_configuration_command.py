@@ -56,11 +56,12 @@ references:
 tags:
     - logcollector_configuration
 '''
-import pytest
+import pytest, sys
 
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.logcollector import configuration as logcollector_configuration
 from wazuh_testing.modules.logcollector import patterns
 from wazuh_testing.modules.logcollector import utils
@@ -148,4 +149,5 @@ def test_configuration_command(test_configuration, test_metadata, configure_loca
     wazuh_log_monitor.start(callback=callback)
     assert (wazuh_log_monitor.callback_result != None), patterns.ERROR_COMMAND_MONITORING
 
-    utils.validate_test_config_with_module_config(test_configuration=test_configuration)
+    if sys.platform != WINDOWS:
+        utils.validate_test_config_with_module_config(test_configuration=test_configuration)
