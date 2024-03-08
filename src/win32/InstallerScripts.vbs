@@ -339,21 +339,21 @@ public function config()
     objFile.WriteLine strNewText
     objFile.Close
 
+    userSID = GetUserSID()
+    grantUserPerm = "icacls """ & install_dir & """ /grant *" & userSID & ":(RX) /t"
+    WshShell.run grantUserPerm, 0, True
+
     If GetVersion() >= 6 Then
         Set WshShell = CreateObject("WScript.Shell")
 
         ' Remove last backslash from home_dir
         install_dir = Left(home_dir, Len(home_dir) - 1)
 
-        setPermsInherit = "icacls """ & install_dir & """ /inheritancelevel:e /t /q"
+        setPermsInherit = "icacls """ & install_dir & """ /inheritancelevel:e /q"
         WshShell.run setPermsInherit, 0, True
 
         remUserPerm = "icacls """ & install_dir & """ /remove *S-1-5-32-545 /q"
         WshShell.run remUserPerm, 0, True
-
-        userSID = GetUserSID()
-        grantUserPerm = "icacls """ & install_dir & """ /grant *" & userSID & ":(RX) /t"
-        WshShell.run grantUserPerm, 0, True
 
         ' Remove Everyone group for ossec.conf
         remEveryonePerms = "icacls """ & home_dir & "ossec.conf" & """ /remove *S-1-1-0 /q"
