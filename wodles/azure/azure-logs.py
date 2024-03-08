@@ -831,14 +831,22 @@ def send_message(message: str):
         The message body to send to analysisd.
     """
     s = socket(AF_UNIX, SOCK_DGRAM)
-
-    encoded_msg = f'{SOCKET_HEADER}{message}'.encode(errors='replace')
-
-    # Logs warning if event is bigger than max size
-    if len(encoded_msg) > MAX_EVENT_SIZE:
-        logging.warning(f"WARNING: Event size exceeds the maximum allowed limit of {MAX_EVENT_SIZE} bytes.")
-
+  
     try:
+        msg = message
+        sign_in_logs_matches = ['azure_aad_tag','azure-active_directory_signIns']
+        if all([m in message for m in sign_in_logs_matches]):
+            msg_tmp = loads(message)
+            # Copy the status fields into a azureSignInStatus field and put a dummy keyword in status field
+            # only if we have an signIn log from Microsoft Entra ID. Otherwise, the log remains unmodified.
+            msg_tmp['azureSignInStatus'] = msg_tmp["status"]
+            msg_tmp['status'] = 'None'
+            msg = dumps(msg_tmp)
+        encoded_msg = f'{SOCKET_HEADER}{msg}'.encode(errors='replace')
+
+        # Logs warning if event is bigger than max size
+        if len(encoded_msg) > MAX_EVENT_SIZE:
+            logging.warning(f"WARNING: Event size exceeds the maximum allowed limit of {MAX_EVENT_SIZE} bytes.")
         s.connect(ANALYSISD)
         s.send(encoded_msg)
     except socket_error as e:
