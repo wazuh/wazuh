@@ -114,6 +114,7 @@ function help() {
     echo "    -j,   --jobs <number>          [Optional] Number of parallel jobs when compiling."
     echo "    -p,   --path <path>            [Optional] Installation path for the package. By default: /var/ossec."
     echo "    -c,   --checksum <path>        [Optional] Generate checksum on the desired path."
+    echo "    --dont-build-docker            [Optional] Locally built docker image will be used instead of generating a new one."
     echo "    -h,   --help                   Show this help."
     echo
     exit ${1}
@@ -149,6 +150,7 @@ function main() {
     local WPK_KEY=""
     local WPK_CERT=""
     local AWS_REGION="us-east-1"
+    local BUILD_DOCKER="yes"
 
     local HAVE_BRANCH=false
     local HAVE_DESTINATION=false
@@ -306,6 +308,10 @@ function main() {
                 shift 1
             fi
             ;;
+        "--dont-build-docker")
+            BUILD_DOCKER="no"
+            shift 1
+            ;;
         "-h"|"--help")
             help 0
             ;;
@@ -326,7 +332,9 @@ function main() {
     if [[ "${HAVE_TARGET}" == true ]] && [[ "${HAVE_BRANCH}" == true ]] && [[ "${HAVE_DESTINATION}" == true ]] && [[ "${HAVE_OUT_NAME}" == true ]]; then
         if [[ "${TARGET}" == "windows" || "${TARGET}" == "macos" ]]; then
             if [[ "${HAVE_PKG_NAME}" == true ]]; then
-                build_container ${COMMON_BUILDER} ${COMMON_BUILDER_DOCKERFILE} || clean ${COMMON_BUILDER_DOCKERFILE} 1
+                if [[ ${BUILD_DOCKER} == "yes" ]]; then
+                    build_container ${COMMON_BUILDER} ${COMMON_BUILDER_DOCKERFILE} || clean ${COMMON_BUILDER_DOCKERFILE} 1
+                fi
                 local CONTAINER_NAME="${COMMON_BUILDER}"
                 pack_wpk ${BRANCH} ${DESTINATION} ${CONTAINER_NAME} ${JOBS} ${PKG_NAME} ${OUT_NAME} ${CHECKSUM} ${CHECKSUMDIR} ${INSTALLATION_PATH} ${AWS_REGION} ${WPK_KEY} ${WPK_CERT} || clean ${COMMON_BUILDER_DOCKERFILE} 1
                 clean ${COMMON_BUILDER_DOCKERFILE} 0
@@ -335,7 +343,9 @@ function main() {
                 help 1
             fi
         else
-            build_container ${LINUX_BUILDER} ${LINUX_BUILDER_DOCKERFILE} || clean ${LINUX_BUILDER_DOCKERFILE} 1
+            if [[ ${BUILD_DOCKER} == "yes" ]]; then
+                build_container ${LINUX_BUILDER} ${LINUX_BUILDER_DOCKERFILE} || clean ${LINUX_BUILDER_DOCKERFILE} 1
+            fi
             local CONTAINER_NAME="${LINUX_BUILDER}"
             build_wpk_linux ${BRANCH} ${DESTINATION} ${CONTAINER_NAME} ${JOBS} ${OUT_NAME} ${CHECKSUM} ${CHECKSUMDIR} ${INSTALLATION_PATH} ${AWS_REGION} ${WPK_KEY} ${WPK_CERT} || clean ${LINUX_BUILDER_DOCKERFILE} 1
             clean ${LINUX_BUILDER_DOCKERFILE} 0

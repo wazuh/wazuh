@@ -1,0 +1,64 @@
+name: Upload WPK generation Docker images - CentOS 6 - amd64
+on:
+  pull_request:
+    paths:
+      - 'packages/wpk/wpkpack.py'
+      - 'packages/wpk/run.sh'
+      - 'packages/wpk/common/**'
+      - 'packages/wpk/linux/x86_64/**'
+    types:
+      - opened
+      - synchronize
+      - closed
+  workflow_dispatch:
+
+jobs:
+  Upload-WPK-package-building-images:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image: [ {CONTAINER_NAME: linux_wpk_builder_x86_64, DOCKERFILE_PATH: packages/wpk/linux/x86_64}, {CONTAINER_NAME: common_wpk_builder, DOCKERFILE_PATH: packages/wpk/common}]
+      fail-fast: false
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - uses: actions/checkout@v3
+
+      - name: Get changed files
+        uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            linux_x86_64:
+              - 'packages/wpk/linux/x86_64/**'
+              - 'packages/wpk/wpkpack.py'
+              - 'packages/wpk/run.sh'
+            common:
+              - 'packages/wpk/common/**'
+              - 'packages/wpk/wpkpack.py'
+              - 'packages/wpk/run.sh'
+
+      - name: Copy scripts to Dockerfile path
+        run: |
+          cp $GITHUB_WORKSPACE/packages/wpk/run.sh $GITHUB_WORKSPACE/${{ matrix.image.DOCKERFILE_PATH }}
+          cp $GITHUB_WORKSPACE/packages/wpk/wpkpack.py $GITHUB_WORKSPACE/${{ matrix.image.DOCKERFILE_PATH }}
+
+      - name: Set tag as version
+        run:
+          if [ "${{ github.event.pull_request.merged }}" == "false" ]; then echo "TAG=${{ github.head_ref }}" >> $GITHUB_ENV; else echo "TAG=$(sed 's/\([0-9]*\.[0-9]*\)\.[0-9]*/\1/' $GITHUB_WORKSPACE/src/VERSION)" >> $GITHUB_ENV; fi
+
+      - name: Build and push image ${{ matrix.image.CONTAINER_NAME }} with tag ${{ env.TAG }} to Github Container Registry
+        if: ( steps.changes.outputs.linux_x86_64 == 'true' && matrix.image.CONTAINER_NAME == 'linux_wpk_builder_x86_64' ) || ( steps.changes.outputs.common == 'true' && matrix.image.CONTAINER_NAME == 'common_wpk_builder')
+        run:
+          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/build_and_push_image_to_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} ${{matrix.image.CONTAINER_NAME}} ${{ matrix.image.DOCKERFILE_PATH }} ${{ env.TAG }}
+
+  Build-WPK:
+    needs: Upload-WPK-package-building-images
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/build-wpk-packages.yml
+    secrets: inherit
