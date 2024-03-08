@@ -96,5 +96,5 @@ get_checksum(){
     if [[ "${src}" == "yes" ]]; then
         extract_path="${rpm_build_dir}"
     fi
-    mv $extract_path/$rpm_file /var/local/wazuh
+    mv $extract_path/$ARCH/*${BUILD_TARGET}* /var/local/wazuh/$rpm_file
 }
