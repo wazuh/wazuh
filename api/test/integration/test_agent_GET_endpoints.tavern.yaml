@@ -4250,7 +4250,6 @@ stages:
               status: active
               name: wazuh-agent5
               version: 'Wazuh v3.13.2'
-              node_name: master-node
               status_code: 0
               group:
                 - default
