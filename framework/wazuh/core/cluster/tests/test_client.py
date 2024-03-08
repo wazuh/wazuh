@@ -185,8 +185,8 @@ def test_ac_init():
     assert abstract_client.name == "name"
     assert abstract_client.loop is None
 
-@pytest.mark.asyncio
-async def test_ac_connection_result():
+
+def test_ac_connection_result():
     """Check that once an asyncio.Future object is received, a
        first - connection is established if no problems were found, or
        second - closed if and Exception was received."""
@@ -200,6 +200,17 @@ async def test_ac_connection_result():
         abstract_client.transport = CloseMock()
 
         with patch.object(abstract_client.transport, "close") as close_mock:
+            # Test when the future is set as a result
+            future = asyncio.Future()
+            future.set_result([WazuhClusterError(3020)])
+            abstract_client.connection_result(future)
+            logger_mock.assert_called_once_with(f"Could not connect to master: {str(WazuhClusterError(3020))}.")
+            close_mock.assert_called_once()
+
+            logger_mock.reset_mock()
+            close_mock.reset_mock()
+
+            # Test when the future is set as an exception
             future = asyncio.Future()
             future.set_exception(WazuhClusterError(3020))
             abstract_client.connection_result(future)
@@ -214,6 +225,7 @@ async def test_ac_connection_result():
         abstract_client.connection_result(future)
         logger_mock.assert_called_once_with("Successfully connected to master.")
         assert abstract_client.connected is True
+
 
 @pytest.mark.asyncio
 async def test_ac_connection_made():
