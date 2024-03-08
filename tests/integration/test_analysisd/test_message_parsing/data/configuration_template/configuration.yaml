@@ -1,0 +1,5 @@
+- sections:
+    - section: global
+      elements:
+        - logall_json:
+            value: 'yes'
