@@ -1042,7 +1042,7 @@ def remove_agents_from_group(agent_list: list = None, group_list: list = None) -
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
 def get_outdated_agents(agent_list: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort: dict = None,
-                        search: str = None, select: dict = None, q: str = None) -> AffectedItemsWazuhResult:
+                        search: dict = None, select: str = None, q: str = None) -> AffectedItemsWazuhResult:
     """Gets the outdated agents.
 
     Parameters
