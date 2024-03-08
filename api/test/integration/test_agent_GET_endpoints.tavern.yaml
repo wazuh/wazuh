@@ -4246,8 +4246,7 @@ stages:
         error: 0
         data:
           affected_items:
-            -
-              id: '005'
+            - id: '005'
               status: active
               name: wazuh-agent5
               version: 'Wazuh v3.13.2'
