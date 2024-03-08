@@ -339,10 +339,6 @@ public function config()
     objFile.WriteLine strNewText
     objFile.Close
 
-    userSID = GetUserSID()
-    grantUserPerm = "icacls """ & install_dir & """ /grant *" & userSID & ":(RX) /t"
-    WshShell.run grantUserPerm, 0, True
-
     If GetVersion() >= 6 Then
         Set WshShell = CreateObject("WScript.Shell")
 
@@ -359,6 +355,10 @@ public function config()
         remEveryonePerms = "icacls """ & home_dir & "ossec.conf" & """ /remove *S-1-1-0 /q"
         WshShell.run remEveryonePerms, 0, True
     End If
+
+    userSID = GetUserSID()
+    grantUserPerm = "icacls """ & install_dir & """ /grant *" & userSID & ":(RX) /t"
+    WshShell.run grantUserPerm, 0, True
 
     config = 0
 
