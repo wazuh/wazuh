@@ -13,9 +13,6 @@
         "type": "agent_type_1",
         "version": "1.0.0"
       },
-      "ecs": {
-        "version": "1.8.0"
-      },
       "event": {
         "action": "sample_action",
         "agent_id_status": "sample_status",
