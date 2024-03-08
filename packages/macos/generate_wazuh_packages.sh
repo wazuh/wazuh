@@ -125,8 +125,13 @@ function build_package() {
 
     # Download source code
     git clone --depth=1 -b ${BRANCH_TAG} ${WAZUH_SOURCE_REPOSITORY} "${WAZUH_PATH}"
+    short_commit_hash="$(curl -s https://api.github.com/repos/wazuh/wazuh/commits/${BRANCH_TAG} \
+                          | grep '"sha"' | head -n 1| cut -d '"' -f 4 | cut -c 1-7)"
 
     VERSION=$(cat ${WAZUH_PATH}/src/VERSION | cut -d "-" -f1 | cut -c 2-)
+
+    # Define output package name
+    pkg_name="wazuh-agent_${VERSION}-${REVISION}_${ARCH}_${short_commit_hash}.pkg"
 
     get_pkgproj_specs $VERSION
 
@@ -147,7 +152,6 @@ function build_package() {
     # create package
     if packagesbuild ${AGENT_PKG_FILE} --build-folder ${DESTINATION} ; then
         echo "The wazuh agent package for macOS has been successfully built."
-        pkg_name="wazuh-agent-${VERSION}-${REVISION}.${ARCH}.pkg"
         sign_pkg
         if [[ "${CHECKSUM}" == "yes" ]]; then
             mkdir -p ${CHECKSUMDIR}
@@ -212,15 +216,17 @@ function install_deps() {
 
     cd /Volumes/Packages*/packages/
 
-    if installer -package Packages.pkg -target / ; then
+    if installer -package *Packages.pkg -target / ; then
         echo "Packagesbuild was correctly installed."
     else
         echo "Something went wrong installing packagesbuild."
     fi
 
+    echo "Installing build dependencies for $(uname -m) architecture."
     if [ "$(uname -m)" = "arm64" ]; then
-        echo "Installing build dependencies for arm64 architecture"
         brew install gcc binutils autoconf automake libtool cmake
+    else
+        brew install cmake
     fi
     exit 0
 }
@@ -410,7 +416,6 @@ function main() {
     fi
     if [ "${NOTARIZE}" = "yes" ]; then
         if [ "${BUILD}" = "yes" ]; then
-            pkg_name="wazuh-agent-${VERSION}-${REVISION}.${ARCH}.pkg"
             notarization_path="${DESTINATION}/${pkg_name}"
         fi
         if [ -z "${notarization_path}" ]; then
