@@ -2345,7 +2345,7 @@ static void check_text_only() {
                 #endif
                 int result = 0;
                 if (j < 0) {
-                    result = Remove_Localfile(&logff, i, 0, 1, NULL);
+                    result = Remove_Localfile(&logff, i, 0, 1, NULL); // Remove localfile w/o globs?
                 } else {
                     result = Remove_Localfile(&(globs[j].gfiles), i, 1, 0, &globs[j]);
                 }
