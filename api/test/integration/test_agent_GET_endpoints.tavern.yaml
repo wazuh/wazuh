@@ -4418,7 +4418,7 @@ stages:
                 platform: !anystr
             - count: !anyint
               os:
-                platform: unknown
+                platform: N/A
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -4448,7 +4448,7 @@ stages:
             - count: !anyint
               status: never_connected
               os:
-                name: unknown
+                name: N/A
 
           failed_items: []
           total_affected_items: !anyint
