@@ -14,6 +14,7 @@
 #define EVENTLOG     "eventlog"
 #define EVENTCHANNEL "eventchannel"
 #define MACOS        "macos"
+#define JOURNALD_LOG                  "journald"
 #define MULTI_LINE_REGEX              "multi-line-regex"
 #define MULTI_LINE_REGEX_TIMEOUT      5
 #define MULTI_LINE_REGEX_MAX_TIMEOUT  120
@@ -180,6 +181,11 @@ typedef struct w_journal_filter_t
 
 typedef w_journal_filter_t** w_journal_filters_list_t;
 
+typedef struct w_journal_log_config_t
+{
+    w_journal_filters_list_t filters; // List of filters
+} w_journal_log_config_t;
+
 /* Logreader config */
 typedef struct _logreader {
     off_t size;
@@ -200,8 +206,9 @@ typedef struct _logreader {
     char *ffile;
     char *file;
     char *logformat;
-    w_multiline_config_t * multiline; ///< Multiline regex config & state
-    w_macos_log_config_t * macos_log;   ///< macOS log config & state
+    w_multiline_config_t* multiline;     ///< Multiline regex config & state
+    w_macos_log_config_t* macos_log;     ///< macOS log config & state
+    w_journal_log_config_t* journal_log; ///< Journal log config & state
     long linecount;
     char *djb_program_name;
     char * channel_str;
@@ -299,6 +306,25 @@ const char * multiline_attr_replace_str(w_multiline_replace_type_t replace_type)
  */
 const char * multiline_attr_match_str(w_multiline_match_type_t match_type);
 
+
+/**
+ * @brief Init the journal configuration
+ * 
+ * @param config Journal log configuration
+ * @return bool true if the configuration was initialized, false otherwise
+ */
+bool init_w_journal_log_config_t(w_journal_log_config_t** config);
+
+/**
+ * @brief Add the filter conditions to the filter
+ * 
+ * <filter field="name" ignore_if_missing="yes">expression</filter>
+ * @param node XML node to parse
+ * @param filter Journal log filter
+ * @return bool true if the filter was added, false otherwise
+ */
+bool journald_add_condition_to_filter(xml_node *node, w_journal_filter_t** filter);
+
 /**
  * @brief Free the filter and all its resources
  *
@@ -316,7 +342,7 @@ void w_journal_filter_free(w_journal_filter_t* filter);
  * @param ignore_if_missing Ignore if the field is missing
  * @return int 0 on success or non-zero on error
  */
-int w_journal_filter_add_condition(w_journal_filter_t** filter, char* field, char* expression, bool ignore_if_missing);
+int w_journal_filter_add_condition(w_journal_filter_t** filter, const char* field, char* expression, bool ignore_if_missing);
 
 /**
  * @brief Add a filter to the filters list
