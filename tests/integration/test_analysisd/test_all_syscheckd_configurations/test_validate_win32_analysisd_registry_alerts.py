@@ -49,8 +49,6 @@ import pytest
 from pathlib import Path
 
 from wazuh_testing.constants.daemons import WAZUH_DB_DAEMON, ANALYSISD_DAEMON
-from wazuh_testing.constants.keys.alerts import *
-from wazuh_testing.constants.keys.events import *
 from wazuh_testing.constants.paths.sockets import ANALYSISD_QUEUE_SOCKET_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.analysisd import patterns, utils, configuration as analysisd_config
@@ -144,11 +142,11 @@ def test_validate_all_win32_registry_alerts(test_metadata, configure_local_inter
         - wdb_socket
     '''
     alert = next(read_alerts_syscheck)
-    path = alert[ALERTS_SYSCHECK][SYSCHECK_PATH]
-    mode = alert[ALERTS_SYSCHECK][ALERTS_SYSCHECK_EVENT].title()
+    path = alert[patterns.ALERTS_SYSCHECK][patterns.SYSCHECK_PATH]
+    mode = alert[patterns.ALERTS_SYSCHECK][patterns.ALERTS_SYSCHECK_EVENT].title()
 
     try:
-        value_name = alert[ALERTS_SYSCHECK][SYSCHECK_VALUE_NAME]
+        value_name = alert[patterns.ALERTS_SYSCHECK][patterns.SYSCHECK_VALUE_NAME]
         path += '\\' + value_name
     except KeyError:
         pass

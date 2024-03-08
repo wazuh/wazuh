@@ -49,10 +49,10 @@ tags:
 from pathlib import Path
 
 import pytest
-from wazuh_testing.modules.clusterd.utils import CLUSTER_DATA_HEADER_SIZE
 from wazuh_testing.constants.paths.sockets import MODULESD_C_INTERNAL_SOCKET_PATH, MODULESD_KREQUEST_SOCKET_PATH
 from wazuh_testing.tools.mitm import WorkerMID
 from wazuh_testing.utils.configuration import load_configuration_template, get_test_cases_data
+from wazuh_testing.utils.cluster import CLUSTER_DATA_HEADER_SIZE
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH, SCRIPTS_FOLDER_PATH
 

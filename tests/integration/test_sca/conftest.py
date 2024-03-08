@@ -7,7 +7,7 @@ from pathlib import Path
 from wazuh_testing.constants.paths.ruleset import CIS_RULESET_PATH
 from wazuh_testing.utils.file import copy, remove_file, copy_files_in_folder, delete_path_recursively
 from wazuh_testing.tools.monitors import file_monitor
-from wazuh_testing.modules.sca import patterns
+from wazuh_testing.modules.modulesd.sca import patterns
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.paths import TEMP_FILE_PATH
 from wazuh_testing.utils import callbacks

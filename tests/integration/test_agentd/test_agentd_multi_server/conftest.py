@@ -4,6 +4,7 @@
 
 import pytest
 
+from wazuh_testing.constants.ports import DEFAULT_SSL_REMOTE_CONNECTION_PORT
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 
 
@@ -11,7 +12,7 @@ from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 def start_remoted_simulators(test_metadata) -> None:
     # Servers paremeters
     remoted_server_address = "127.0.0.1"
-    remoted_server_ports = [1514,1516,1517]
+    remoted_server_ports = [DEFAULT_SSL_REMOTE_CONNECTION_PORT,1516,1517]
     remoted_servers = [None,None,None]
 
     # Start Remoted Simulators

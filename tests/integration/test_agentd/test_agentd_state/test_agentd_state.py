@@ -62,7 +62,7 @@ from . import CONFIGS_PATH, TEST_CASES_PATH
 from utils import wait_keepalive, wait_ack, wait_state_update, wait_agent_notification
 
 # Marks
-pytestmark = pytest.mark.tier(level=0)
+pytestmark = [pytest.mark.agent, pytest.mark.tier(level=0)]
 
 # Configuration and cases data.
 configs_path = Path(CONFIGS_PATH, 'wazuh_conf.yaml')

@@ -48,6 +48,7 @@ import socket, time
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.constants.ports import DEFAULT_SSL_CLUSTER_PORT
 from wazuh_testing.utils import callbacks
 from wazuh_testing.modules.authd import PREFIX
 from wazuh_testing.tools.socket_controller import SocketController
@@ -78,7 +79,7 @@ monitored_sockets_params = [(MODULES_DAEMON, None, True), (WAZUH_DB_DAEMON, None
 
 receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 
-cluster_socket_address = ('localhost', 1516)
+cluster_socket_address = ('localhost', DEFAULT_SSL_CLUSTER_PORT)
 remote_enrollment_address = ('localhost', DEFAULT_SSL_REMOTE_ENROLLMENT_PORT)
 
 # Test daemons to restart.

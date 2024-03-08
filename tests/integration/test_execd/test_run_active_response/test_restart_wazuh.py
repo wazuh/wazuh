@@ -52,7 +52,7 @@ from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import ACTIVE_RESPONSE_LOG_PATH, WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
-from wazuh_testing.modules.active_response.patterns import ACTIVE_RESPONSE_RESTART_WAZUH
+from wazuh_testing.modules.execd.active_response.patterns import ACTIVE_RESPONSE_RESTART_WAZUH
 from wazuh_testing.modules.agentd.configuration import AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.execd.configuration import EXECD_DEBUG_CONFIG
 from wazuh_testing.modules.execd.patterns import EXECD_SHUTDOWN_RECEIVED
@@ -64,7 +64,7 @@ from . import CONFIGS_PATH, TEST_CASES_PATH
 
 
 # Set pytest marks.
-pytestmark = [pytest.mark.agent, pytest.mark.win32, pytest.mark.tier(level=1)]
+pytestmark = [pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=1)]
 
 # Cases metadata and its ids.
 cases_path = Path(TEST_CASES_PATH, 'cases_execd_restart.yaml')
