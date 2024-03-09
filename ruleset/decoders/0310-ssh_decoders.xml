@@ -217,6 +217,17 @@
   <order>srcip</order>
 </decoder>
 
+<!-- connection closed sshd -->
+<!-- Feb  8 15:15:44 hostname sshd[3364]: Connection closed by authenticating user root 192.168.1.1 port 51992 [preauth] -->
+<!-- When a user is allowed to authenticate only with publickey but the client forces only password authentication -->
+<!-- this is the only log line that shows that someone attempted to login -->
+<decoder name="sshd-closed">
+  <parent>sshd</parent>
+  <prematch>^Connection closed by authenticating user \S+ \S+ port (\d+)</prematch>
+  <regex>authenticating user (\S+) (\S+) port (\d+)</regex>
+  <order>user, srcip, srcport</order>
+</decoder>
+
 <!-- connection reset -->
 <!-- 2020-03-25 08:23:20.933154-0700  localhost sshd[9265]: Connection reset by authenticating user user 192.168.33.1 port 51772 [preauth] -->
 <decoder name="sshd-reset">
