@@ -295,7 +295,7 @@ checks:
     rules:
       - "c:net user guest -> r:The user name could not be found."
 
-  # 2.3.2.1 Audit: Force audit policy subcategory settings (Windows Vista or later) to override audit policy category settings is set to 'Enabled' (Scored)
+  # 2.3.2.1 Audit: Force audit policy subcategory settings (Windows Vista or later) to override audit policy category settings is set to 'Enabled' (Automated)
   - id: 16511
     title: "Ensure 'Audit: Force audit policy subcategory settings (Windows Vista or later) to override audit policy category settings' is set to 'Enabled'."
     description: "This policy setting allows administrators to enable the more precise auditing capabilities present in Windows Vista. The Audit Policy settings available in Windows Server 2003 Active Directory do not yet contain settings for managing the new auditing subcategories. To properly apply the auditing policies prescribed in this baseline, the Audit: Force audit policy subcategory settings (Windows Vista or later) to override audit policy category settings setting needs to be configured to Enabled. The recommended state for this setting is: Enabled. *Important*: Be very cautious about audit settings that can generate a large volume of traffic. For example, if you enable either success or failure auditing for all of the Privilege Use subcategories, the high volume of audit events generated can make it difficult to find other types of entries in the Security log. Such a configuration could also have a significant impact on system performance."
