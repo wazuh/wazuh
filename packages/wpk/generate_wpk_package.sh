@@ -51,9 +51,9 @@ function pack_wpk() {
         WPK_CERT_FLAG="--aws-wpk-cert ${WPK_CERT}"
     fi
 
-    docker run -t --rm ${MOUNT_KEYDIR_FLAG} -v ${DESTINATION}:/var/local/wazuh:Z -v ${PKG_PATH}:/var/pkg:Z \
-        -v ${CHECKSUMDIR}:/var/local/checksum:Z \
-        ${CONTAINER_NAME} -b ${BRANCH} -j ${JOBS} -o ${OUT_NAME} -p ${INSTALLATION_PATH} --aws-wpk-key-region ${AWS_REGION} ${WPK_KEY_FLAG} ${WPK_CERT_FLAG} -pn ${PACKAGE_NAME} ${CHECKSUM_FLAG}
+    docker run -t --rm ${MOUNT_KEYDIR_FLAG} -v ${DESTINATION}:/var/local/wazuh:Z -v ${PKG_PATH}:/var/pkg:Z -v ${CHECKSUMDIR}:/var/local/checksum:Z \
+        -e AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" -e AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
+        ${CONTAINER_NAME}:${DOCKER_TAG} -b ${BRANCH} -j ${JOBS} -o ${OUT_NAME} -p ${INSTALLATION_PATH} --aws-wpk-key-region ${AWS_REGION} ${WPK_KEY_FLAG} ${WPK_CERT_FLAG} -pn ${PACKAGE_NAME} ${CHECKSUM_FLAG}
 
     return $?
 }
@@ -85,9 +85,9 @@ function build_wpk_linux() {
         WPK_CERT_FLAG="--aws-wpk-cert ${WPK_CERT}"
     fi
 
-    docker run -t --rm ${MOUNT_KEYDIR_FLAG} -v ${DESTINATION}:/var/local/wazuh:Z \
-        -v ${CHECKSUMDIR}:/var/local/checksum:Z \
-        ${CONTAINER_NAME} -b ${BRANCH} -j ${JOBS} -o ${OUT_NAME} -p ${INSTALLATION_PATH} --aws-wpk-key-region ${AWS_REGION} ${WPK_KEY_FLAG} ${WPK_CERT_FLAG} ${CHECKSUM_FLAG}
+    docker run -t --rm ${MOUNT_KEYDIR_FLAG} -v ${DESTINATION}:/var/local/wazuh:Z -v ${CHECKSUMDIR}:/var/local/checksum:Z \
+        -e AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" -e AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
+        ${CONTAINER_NAME}:${DOCKER_TAG} -b ${BRANCH} -j ${JOBS} -o ${OUT_NAME} -p ${INSTALLATION_PATH} --aws-wpk-key-region ${AWS_REGION} ${WPK_KEY_FLAG} ${WPK_CERT_FLAG} ${CHECKSUM_FLAG}
 
     return $?
 }
@@ -98,7 +98,7 @@ function build_container() {
     local DOCKERFILE_PATH="${2}"
 
     cp run.sh wpkpack.py ${DOCKERFILE_PATH}
-    docker build -t ${CONTAINER_NAME} ${DOCKERFILE_PATH}
+    docker build -t ${CONTAINER_NAME}:${DOCKER_TAG} ${DOCKERFILE_PATH}
 }
 
 
@@ -121,6 +121,7 @@ function help() {
     echo "    -p,   --path <path>            [Optional] Installation path for the package. By default: /var/ossec."
     echo "    -c,   --checksum <path>        [Optional] Generate checksum on the desired path."
     echo "    --dont-build-docker            [Optional] Locally built docker image will be used instead of generating a new one."
+    echo "    --tag                          [Optional] Tag to use with the docker image."
     echo "    -h,   --help                   Show this help."
     echo
     exit ${1}
@@ -157,6 +158,7 @@ function main() {
     local WPK_CERT=""
     local AWS_REGION="us-east-1"
     local BUILD_DOCKER="yes"
+    local DOCKER_TAG="latest"
 
     local HAVE_BRANCH=false
     local HAVE_DESTINATION=false
@@ -317,6 +319,14 @@ function main() {
         "--dont-build-docker")
             BUILD_DOCKER="no"
             shift 1
+            ;;
+        "--tag")
+            if [ -n "$2" ]; then
+                DOCKER_TAG="$2"
+                shift 2
+            else
+                help 1
+            fi
             ;;
         "-h"|"--help")
             help 0

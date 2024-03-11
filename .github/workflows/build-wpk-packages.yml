@@ -4,6 +4,14 @@ on:
     paths:
       - 'packages/wpk/**'
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Package version to download (MacOS/Windows) or compile (Linux)'
+        required: true
+      link:
+        description: 'Link to download package for MacOS or Windows (Will overwrite version parameter)'
+        required: false
+
   workflow_call:
 
 jobs:
@@ -46,9 +54,9 @@ jobs:
         if : steps.changes.outputs.wpk_generation == 'true'
         run: |
           MAJOR=$(sed 's/\([0-9]*\.[0-9]*\)\.[0-9]*/\1/' $GITHUB_WORKSPACE/src/VERSION)
-          if [ "${{ steps.changes.outputs.linux_x86_64_image }}" == "true" ] || [ "${{ steps.changes.outputs.common_image }}" == "true" ]; then echo "TAG=${{ github.head_ref }}" >> $GITHUB_ENV; else echo "TAG=$MAJOR" >> $GITHUB_ENV ; fi
-          echo "PACKAGE_NAME=${{ matrix.os }}Agent.${{ github.head_ref }}.wpk" >> $GITHUB_ENV
-          if [ "${{ matrix.os }}" == "linux" ]; then echo "CONTAINER_NAME=linux_wpk_builder_x86_64" >> $GITHUB_ENV ; else echo "CONTAINER_NAME=common_wpk_builder" >> $GITHUB_ENV ; fi
+          if [ "${{ steps.changes.outputs.linux_x86_64_image }}" == "true" ] || [ "${{ steps.changes.outputs.common_image }}" == "true" ]; then echo "TAG=${{ github.ref }}" >> $GITHUB_ENV; else echo "TAG=$MAJOR" >> $GITHUB_ENV; fi
+          echo "PACKAGE_NAME=${{ matrix.os }}Agent.${{ github.ref }}.wpk" >> $GITHUB_ENV
+          if [ "${{ matrix.os }}" == "linux" ]; then echo "CONTAINER_NAME=linux_wpk_builder_x86_64" >> $GITHUB_ENV; else echo "CONTAINER_NAME=common_wpk_builder" >> $GITHUB_ENV; fi
 
       - name: Download docker image for WPK building
         if : steps.changes.outputs.wpk_generation == 'true'
@@ -66,32 +74,35 @@ jobs:
         uses: aws-actions/aws-secretsmanager-get-secrets@v1
         with:
           secret-ids: |
-            AWS_WPK_PRIVATE_KEY,${{ secrets.CI_AWS_WPK_PRIVATE_KEY_SECRET_NAME }}
-            AWS_WPK_CERT,${{ secrets.CI_AWS_WPK_CERT_SECRET_NAME }}
+            WPK_PRIVATE_KEY,${{ secrets.CI_AWS_WPK_PRIVATE_KEY_SECRET_NAME }}
+            WPK_CERT,${{ secrets.CI_AWS_WPK_CERT_SECRET_NAME }}
 
       - name: Build Linux WPK
         if: matrix.os == 'linux' && (steps.changes.outputs.wpk_generation == 'true' || steps.changes.outputs.linux_x86_64_image == 'true')
         working-directory: packages/wpk
         run: |
-          bash generate_wpk_package.sh -t linux --dont-build-docker -b ${{ github.head_ref }} -d /tmp --aws-wpk-key AWS_WPK_PRIVATE_KEY --aws-wpk-cert AWS_WPK_CERT -o ${{ env.PACKAGE_NAME }}
+          if [ -n "${{ github.event.inputs.version }}" ]; then BRANCH_NAME=${{ github.event.inputs.version }}; 
+          else BRANCH_NAME=${{ github.ref }}; fi
+          bash generate_wpk_package.sh -t linux --dont-build-docker --tag ${{ env.TAG }} -b $BRANCH_NAME -d /tmp --aws-wpk-key WPK_PRIVATE_KEY --aws-wpk-cert WPK_CERT -o ${{ env.PACKAGE_NAME }}
 
       - name: Build Windows WPK
         if: matrix.os == 'windows' && (steps.changes.outputs.wpk_generation == 'true' || steps.changes.outputs.common_image == 'true')
         working-directory: packages/wpk
         run: |
-          curl -O https://packages.wazuh.com/4.x/windows/wazuh-agent-4.7.3-1.msi
-          bash generate_wpk_package.sh -t windows --dont-build-docker -b ${{ github.head_ref }} -d /tmp --aws-wpk-key AWS_WPK_PRIVATE_KEY --aws-wpk-cert AWS_WPK_CERT -o ${{ env.PACKAGE_NAME }} -pn ./wazuh-agent-4.7.3-1.msi
+          if [ -n "${{ github.event.inputs.link }}" ]; then curl -o package.msi ${{ github.event.inputs.link }};
+          elif [ -n "${{ github.event.inputs.version }}" ]; then curl -o package.msi https://packages.wazuh.com/4.x/windows/wazuh-agent-${{ github.event.inputs.version }}-1.msi;
+          else curl -o package.msi https://packages.wazuh.com/4.x/windows/wazuh-agent-$MAJOR-1.msi; fi
+          bash generate_wpk_package.sh -t windows --dont-build-docker --tag ${{ env.TAG }} -b ${{ github.ref }} -d /tmp --aws-wpk-key WPK_PRIVATE_KEY --aws-wpk-cert WPK_CERT -o ${{ env.PACKAGE_NAME }} -pn ./package.msi
           
       - name: Build MacOS WPK
         if: matrix.os == 'macos' && (steps.changes.outputs.wpk_generation == 'true' || steps.changes.outputs.common_image == 'true')
         working-directory: packages/wpk
         run: |
-          curl -O https://packages.wazuh.com/4.x/macos/wazuh-agent-4.7.3-1.pkg
-          bash generate_wpk_package.sh -t macos --dont-build-docker -b ${{ github.head_ref }} -d /tmp --aws-wpk-key AWS_WPK_PRIVATE_KEY --aws-wpk-cert AWS_WPK_CERT -o ${{ env.PACKAGE_NAME }} -pn ./wazuh-agent-4.7.3-1.pkg
+          if [ -n "${{ github.event.inputs.link }}" ]; then curl -o package.pkg ${{ github.event.inputs.link }};
+          elif [ -n "${{ github.event.inputs.version }}" ]; then curl -o package.pkg https://packages.wazuh.com/4.x/macos/wazuh-agent-${{ github.event.inputs.version }}-1.intel64.pkg;
+          else curl -o package.pkg https://packages.wazuh.com/4.x/macos/wazuh-agent-$MAJOR-1.intel64.pkg; fi
+          bash generate_wpk_package.sh -t macos --dont-build-docker --tag ${{ env.TAG }} -b ${{ github.ref }} -d /tmp --aws-wpk-key WPK_PRIVATE_KEY --aws-wpk-cert WPK_CERT -o ${{ env.PACKAGE_NAME }} -pn ./package.pkg
 
-      - name: Upload WPK package as artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: ${{ env.PACKAGE_NAME }}
-          path: /tmp/${{ env.PACKAGE_NAME }}
-          if-no-files-found: error
+      - name: Upload WPK package to S3
+        run: |
+          aws s3 cp /tmp/${{ env.PACKAGE_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/

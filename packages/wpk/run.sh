@@ -111,7 +111,7 @@ main() {
                 shift 2
             fi
             ;;
-      "--aws-wpk-key-region")
+        "--aws-wpk-key-region")
             if [ -n "${2}" ]; then
                 AWS_REGION="${2}"
                 shift 2
