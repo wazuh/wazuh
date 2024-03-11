@@ -3,7 +3,7 @@ on:
   pull_request:
     paths:
       - 'packages/debs/Debian/**'
-      - 'packages/debs/build.sh'
+      - 'packages/build.sh'
     types:
       - opened
       - synchronize
@@ -14,8 +14,8 @@ jobs:
   Upload-deb-package-building-images:
     runs-on: ubuntu-latest
     strategy:
-      matrix: [ {CONTAINER_NAME: deb_agent_builder_amd64, DOCKERFILE_PATH: packages/debs/amd64/agent}, \
-                {CONTAINER_NAME: deb_agent_builder_i386, DOCKERFILE_PATH: packages/debs/i386/agent}]
+      matrix:
+        image: [{CONTAINER_NAME: deb_agent_builder_amd64, DOCKERFILE_PATH: packages/debs/amd64/agent}, {CONTAINER_NAME: deb_agent_builder_i386, DOCKERFILE_PATH: packages/debs/i386/agent}]
       fail-fast: false
     steps:
       - name: Cancel previous runs
