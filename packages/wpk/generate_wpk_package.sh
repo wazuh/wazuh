@@ -41,6 +41,9 @@ function pack_wpk() {
     if [ -n "${CHECKSUM}" ]; then
         CHECKSUM_FLAG="-c"
     fi
+    if [ -n "${KEYDIR}" ]; then
+        MOUNT_KEYDIR_FLAG="-v ${KEYDIR}:/etc/wazuh:Z"
+    fi
     if [ -n "${WPK_KEY}" ]; then
         WPK_KEY_FLAG="--aws-wpk-key ${WPK_KEY}"
     fi
@@ -48,7 +51,7 @@ function pack_wpk() {
         WPK_CERT_FLAG="--aws-wpk-cert ${WPK_CERT}"
     fi
 
-    docker run -t --rm -v ${KEYDIR}:/etc/wazuh:Z -v ${DESTINATION}:/var/local/wazuh:Z -v ${PKG_PATH}:/var/pkg:Z \
+    docker run -t --rm ${MOUNT_KEYDIR_FLAG} -v ${DESTINATION}:/var/local/wazuh:Z -v ${PKG_PATH}:/var/pkg:Z \
         -v ${CHECKSUMDIR}:/var/local/checksum:Z \
         ${CONTAINER_NAME} -b ${BRANCH} -j ${JOBS} -o ${OUT_NAME} -p ${INSTALLATION_PATH} --aws-wpk-key-region ${AWS_REGION} ${WPK_KEY_FLAG} ${WPK_CERT_FLAG} -pn ${PACKAGE_NAME} ${CHECKSUM_FLAG}
 
@@ -72,6 +75,9 @@ function build_wpk_linux() {
     if [ -n "${CHECKSUM}" ]; then
         CHECKSUM_FLAG="-c"
     fi
+    if [ -n "${KEYDIR}" ]; then
+        MOUNT_KEYDIR_FLAG="-v ${KEYDIR}:/etc/wazuh:Z"
+    fi
     if [ -n "${WPK_KEY}" ]; then
         WPK_KEY_FLAG="--aws-wpk-key ${WPK_KEY}"
     fi
@@ -79,7 +85,7 @@ function build_wpk_linux() {
         WPK_CERT_FLAG="--aws-wpk-cert ${WPK_CERT}"
     fi
 
-    docker run -t --rm -v ${KEYDIR}:/etc/wazuh:Z -v ${DESTINATION}:/var/local/wazuh:Z \
+    docker run -t --rm ${MOUNT_KEYDIR_FLAG} -v ${DESTINATION}:/var/local/wazuh:Z \
         -v ${CHECKSUMDIR}:/var/local/checksum:Z \
         ${CONTAINER_NAME} -b ${BRANCH} -j ${JOBS} -o ${OUT_NAME} -p ${INSTALLATION_PATH} --aws-wpk-key-region ${AWS_REGION} ${WPK_KEY_FLAG} ${WPK_CERT_FLAG} ${CHECKSUM_FLAG}
 

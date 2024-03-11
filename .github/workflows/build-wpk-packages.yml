@@ -93,5 +93,5 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: ${{ env.PACKAGE_NAME }}
-          path: packages/wpk/${{ env.PACKAGE_NAME }}
+          path: /tmp/${{ env.PACKAGE_NAME }}
           if-no-files-found: error
