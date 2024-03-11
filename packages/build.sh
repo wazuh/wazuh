@@ -114,3 +114,4 @@ build_package $package_name $debug
 
 # Post-processing
 get_checksum $wazuh_version $short_commit_hash
+
