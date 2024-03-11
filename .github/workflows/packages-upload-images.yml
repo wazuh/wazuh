@@ -1,0 +1,62 @@
+name: Package - Upload Docker images - DEB - amd64 and i386
+on:
+  pull_request:
+    paths:
+      - 'packages/debs/Debian/**'
+      - 'packages/debs/build.sh'
+    types:
+      - opened
+      - synchronize
+      - closed
+  workflow_dispatch:
+
+jobs:
+  Upload-deb-package-building-images:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: [ {CONTAINER_NAME: deb_agent_builder_amd64, DOCKERFILE_PATH: packages/debs/amd64/agent}, \
+                {CONTAINER_NAME: deb_agent_builder_i386, DOCKERFILE_PATH: packages/debs/i386/agent}]
+      fail-fast: false
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - uses: actions/checkout@v3
+
+      - name: Get changed files
+        uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            i386:
+              - 'packages/debs/i386/**'
+              - 'packages/build.sh'
+            agent_amd64:
+              - 'packages/debs/amd64/agent/**'
+              - 'packages/build.sh'
+            generation_script:
+              - 'packages/generate_package.sh'
+
+      - name: Copy build.sh and utils to Dockerfile path
+        run: |
+          cp $GITHUB_WORKSPACE/packages/build.sh $GITHUB_WORKSPACE/${{ matrix.image.DOCKERFILE_PATH }}
+          cp $GITHUB_WORKSPACE/packages/debs/utils/* $GITHUB_WORKSPACE/${{ matrix.image.DOCKERFILE_PATH }}
+
+      - name: Set tag as version
+        run:
+          if [ "${{ github.event.pull_request.merged }}" == "false" ]; then echo "TAG=${{ github.head_ref }}" >> $GITHUB_ENV; else echo "TAG=$(sed 's/\([0-9]*\.[0-9]*\)\.[0-9]*/\1/' $GITHUB_WORKSPACE/VERSION)" >> $GITHUB_ENV; fi
+
+      - name: Build and push image ${{ matrix.image.CONTAINER_NAME }} with tag ${{ env.TAG }} to Github Container Registry
+        if: (steps.changes.outputs.generation_script == 'true' ) || ( steps.changes.outputs.i386 == 'true' && matrix.image.CONTAINER_NAME == 'deb_agent_builder_i386' ) || ( steps.changes.outputs.manager_amd64 == 'true' && matrix.image.CONTAINER_NAME == 'deb_manager_builder_amd64') || ( steps.changes.outputs.agent_amd64 == 'true' && matrix.image.CONTAINER_NAME == 'deb_agent_builder_amd64' )
+        run:
+          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/build_and_push_image_to_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} ${{matrix.image.CONTAINER_NAME}} ${{ matrix.image.DOCKERFILE_PATH }} ${{ env.TAG }}
+
+  Build-packages-deb:
+    needs: Upload-deb-package-building-images
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/packages-build.yml
+    secrets: inherit
