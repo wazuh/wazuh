@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 
+#include "../expressionCmp.hpp"
 #include "definitions.hpp"
+#include <baseTypes.hpp>
 #include <builder/builder.hpp>
 #include <defs/mockDefinitions.hpp>
 #include <logpar/logpar.hpp>
@@ -127,6 +129,25 @@ TEST_P(BuildPolicy, Doc)
                                policyExpected->assets().begin(),
                                [](const json::Json& jsonName, const base::Name& baseName)
                                { return jsonName.getString().value() == baseName.toStr(); }));
+
+        auto expectedExpression = base::Chain::create(
+            "policy/test/0",
+            {base::Or::create(
+                "decoder/Input",
+                {base::Implication::create(
+                    "decoder/parent-test/0/Node",
+                    base::And::create("decoder/parent-test/0",
+                                      {base::And::create("condition",
+                                                         {base::And::create("stage.check",
+                                                                            {base::Term<base::EngineOp>::create(
+                                                                                "event.code: filter(2)", {})}),
+                                                          base::Term<base::EngineOp>::create("AcceptAll", {})})}),
+                    base::Or::create("decoder/parent-test/0/Children",
+                                     {base::And::create("decoder/test/0",
+                                                        {base::And::create("condition",
+                                                                           {base::Term<base::EngineOp>::create(
+                                                                               "AcceptAll", {})})})}))})});
+        assertEqualExpr(expectedExpression, policyExpected->expression());
     }
     else
     {
@@ -331,13 +352,14 @@ INSTANTIATE_TEST_SUITE_P(
                       return None {};
                   }))));
 
-class BuildAsset : public testing::TestWithParam<Expc>
+using BuildA = std::tuple<base::Expression, Expc>;
+class BuildAsset : public testing::TestWithParam<BuildA>
 {
 };
 
 TEST_P(BuildAsset, Doc)
 {
-    auto expected = GetParam();
+    auto [expectedExpression, expected] = GetParam();
     auto m_spStore = std::make_shared<MockStore>();
     auto m_spSchemf = std::make_shared<MockSchema>();
     auto m_spDefBuilder = std::make_shared<MockDefinitionsBuilder>();
@@ -356,7 +378,8 @@ TEST_P(BuildAsset, Doc)
     if (expected)
     {
         expected.succCase()(m_spStore, m_spDefBuilder, m_spDef, m_spSchemf);
-        m_spBuilder->buildAsset("decoder/test/0");
+        auto expression = m_spBuilder->buildAsset("decoder/test/0");
+        assertEqualExpr(expectedExpression, expression);
     }
     else
     {
@@ -376,62 +399,118 @@ INSTANTIATE_TEST_SUITE_P(
     Asset,
     BuildAsset,
     ::testing::Values(
-        FAILURE(
-            [](const std::shared_ptr<MockStore>& store,
-               const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
-               const std::shared_ptr<defs::mocks::MockDefinitions>& def,
-               const std::shared_ptr<schemf::mocks::MockSchema>& schemf)
-            {
-                EXPECT_CALL(*store, readDoc(testing::_)).WillOnce(testing::Return(base::Error {"Document not exist"}));
-                return "Engine utils: 'decoder/test/0' could not be obtained from the store: Document not exist.";
-            }),
-        FAILURE(
-            [](const std::shared_ptr<MockStore>& store,
-               const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
-               const std::shared_ptr<defs::mocks::MockDefinitions>& def,
-               const std::shared_ptr<schemf::mocks::MockSchema>& schemf)
-            {
-                EXPECT_CALL(*store, readDoc(testing::_)).WillOnce(testing::Return(json::Json {"{}"}));
-                return "Document is empty";
-            }),
-        FAILURE(
-            [](const std::shared_ptr<MockStore>& store,
-               const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
-               const std::shared_ptr<defs::mocks::MockDefinitions>& def,
-               const std::shared_ptr<schemf::mocks::MockSchema>& schemf)
-            {
-                EXPECT_CALL(*store, readDoc(testing::_)).WillOnce(testing::Return(json::Json {"[]"}));
-                return "Document is not an object";
-            }),
-        FAILURE(
-            [](const std::shared_ptr<MockStore>& store,
-               const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
-               const std::shared_ptr<defs::mocks::MockDefinitions>& def,
-               const std::shared_ptr<schemf::mocks::MockSchema>& schemf)
-            {
-                EXPECT_CALL(*store, readDoc(testing::_))
-                    .WillOnce(testing::Return(json::Json {DECODER_KEY_DEFECTIVE_JSON}));
-                return "Expected 'name' key in asset document but got 'id'";
-            }),
-        FAILURE(
-            [](const std::shared_ptr<MockStore>& store,
-               const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
-               const std::shared_ptr<defs::mocks::MockDefinitions>& def,
-               const std::shared_ptr<schemf::mocks::MockSchema>& schemf)
-            {
-                EXPECT_CALL(*store, readDoc(testing::_))
-                    .WillOnce(testing::Return(json::Json {DECODER_STAGE_NOT_FOUND_JSON}));
-                return "Could not find builder for stage 'check_not_found'";
-            }),
-        SUCCESS(
-            [](const std::shared_ptr<MockStore>& store,
-               const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
-               const std::shared_ptr<defs::mocks::MockDefinitions>& def,
-               const std::shared_ptr<schemf::mocks::MockSchema>& schemf)
-            {
-                EXPECT_CALL(*store, readDoc(testing::_)).WillOnce(testing::Return(json::Json {DECODER_JSON}));
-                EXPECT_CALL(*defBuild, build(testing::_)).WillOnce(testing::Return(def));
-                return None {};
-            })));
+        BuildA(
+            nullptr,
+            FAILURE(
+                [](const std::shared_ptr<MockStore>& store,
+                   const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
+                   const std::shared_ptr<defs::mocks::MockDefinitions>& def,
+                   const std::shared_ptr<schemf::mocks::MockSchema>& schemf)
+                {
+                    EXPECT_CALL(*store, readDoc(testing::_))
+                        .WillOnce(testing::Return(base::Error {"Document not exist"}));
+                    return "Engine utils: 'decoder/test/0' could not be obtained from the store: Document not exist.";
+                })),
+        BuildA(nullptr,
+               FAILURE(
+                   [](const std::shared_ptr<MockStore>& store,
+                      const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
+                      const std::shared_ptr<defs::mocks::MockDefinitions>& def,
+                      const std::shared_ptr<schemf::mocks::MockSchema>& schemf)
+                   {
+                       EXPECT_CALL(*store, readDoc(testing::_)).WillOnce(testing::Return(json::Json {"{}"}));
+                       return "Document is empty";
+                   })),
+        BuildA(nullptr,
+               FAILURE(
+                   [](const std::shared_ptr<MockStore>& store,
+                      const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
+                      const std::shared_ptr<defs::mocks::MockDefinitions>& def,
+                      const std::shared_ptr<schemf::mocks::MockSchema>& schemf)
+                   {
+                       EXPECT_CALL(*store, readDoc(testing::_)).WillOnce(testing::Return(json::Json {"[]"}));
+                       return "Document is not an object";
+                   })),
+        BuildA(nullptr,
+               FAILURE(
+                   [](const std::shared_ptr<MockStore>& store,
+                      const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
+                      const std::shared_ptr<defs::mocks::MockDefinitions>& def,
+                      const std::shared_ptr<schemf::mocks::MockSchema>& schemf)
+                   {
+                       EXPECT_CALL(*store, readDoc(testing::_))
+                           .WillOnce(testing::Return(json::Json {DECODER_KEY_DEFECTIVE_JSON}));
+                       return "Expected 'name' key in asset document but got 'id'";
+                   })),
+        BuildA(nullptr,
+               FAILURE(
+                   [](const std::shared_ptr<MockStore>& store,
+                      const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
+                      const std::shared_ptr<defs::mocks::MockDefinitions>& def,
+                      const std::shared_ptr<schemf::mocks::MockSchema>& schemf)
+                   {
+                       EXPECT_CALL(*store, readDoc(testing::_))
+                           .WillOnce(testing::Return(json::Json {DECODER_STAGE_NOT_FOUND_JSON}));
+                       return "Could not find builder for stage 'check_not_found'";
+                   })),
+        BuildA(base::And::create("decoder/test/0",
+                                 {base::And::create("condition",
+                                                    {base::Term<base::EngineOp>::create("AcceptAll", {})})}),
+               SUCCESS(
+                   [](const std::shared_ptr<MockStore>& store,
+                      const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
+                      const std::shared_ptr<defs::mocks::MockDefinitions>& def,
+                      const std::shared_ptr<schemf::mocks::MockSchema>& schemf)
+                   {
+                       EXPECT_CALL(*store, readDoc(testing::_)).WillOnce(testing::Return(json::Json {DECODER_JSON}));
+                       EXPECT_CALL(*defBuild, build(testing::_)).WillOnce(testing::Return(def));
+                       return None {};
+                   })),
+        BuildA(base::And::create("filter/test/0",
+                                 {base::And::create("condition",
+                                                    {base::And::create("stage.check",
+                                                                       {base::Term<base::EngineOp>::create(
+                                                                           "wazuh.queue: filter(49)", {})}),
+                                                     base::Term<base::EngineOp>::create("AcceptAll", {})})}),
+               SUCCESS(
+                   [](const std::shared_ptr<MockStore>& store,
+                      const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
+                      const std::shared_ptr<defs::mocks::MockDefinitions>& def,
+                      const std::shared_ptr<schemf::mocks::MockSchema>& schemf)
+                   {
+                       EXPECT_CALL(*store, readDoc(testing::_)).WillOnce(testing::Return(json::Json {FILTER_JSON}));
+                       EXPECT_CALL(*defBuild, build(testing::_)).WillOnce(testing::Return(def));
+                       EXPECT_CALL(*schemf, validate(testing::_, testing::_))
+                           .WillRepeatedly(testing::Return(schemf::ValidationResult()));
+                       return None {};
+                   })),
+        BuildA(base::Implication::create(
+                   "rule/test/0",
+                   base::And::create(
+                       "condition",
+                       {base::And::create("stage.check",
+                                          {base::Term<base::EngineOp>::create("process.name: filter(\"test\")", {})}),
+                        base::Term<base::EngineOp>::create("AcceptAll", {})}),
+                   base::And::create(
+                       "stages",
+                       {base::Chain::create(
+                            "normalize",
+                            {base::And::create("subblock",
+                                               {base::Chain::create("stage.map",
+                                                                    {base::Term<base::EngineOp>::create(
+                                                                        "event.risk_score: map(21)", {})})})}),
+                        base::Term<base::EngineOp>::create("DeleteVariables", {})})),
+               SUCCESS(
+                   [](const std::shared_ptr<MockStore>& store,
+                      const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
+                      const std::shared_ptr<defs::mocks::MockDefinitions>& def,
+                      const std::shared_ptr<schemf::mocks::MockSchema>& schemf)
+                   {
+                       EXPECT_CALL(*store, readDoc(testing::_)).WillOnce(testing::Return(json::Json {RULE_JSON}));
+                       EXPECT_CALL(*defBuild, build(testing::_)).WillOnce(testing::Return(def));
+                       EXPECT_CALL(*schemf, validate(testing::_, testing::_))
+                           .WillRepeatedly(testing::Return(schemf::ValidationResult()));
+                       return None {};
+                   }))));
 
 } // namespace builder
