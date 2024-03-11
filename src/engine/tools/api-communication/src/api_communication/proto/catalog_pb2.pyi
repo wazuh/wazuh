@@ -85,14 +85,16 @@ class ResourcePut_Request(_message.Message):
     def __init__(self, name: _Optional[str] = ..., format: _Optional[_Union[ResourceFormat, str]] = ..., content: _Optional[str] = ..., namespaceid: _Optional[str] = ...) -> None: ...
 
 class ResourceValidate_Request(_message.Message):
-    __slots__ = ["content", "format", "name"]
+    __slots__ = ["content", "format", "name", "namespaceid"]
     CONTENT_FIELD_NUMBER: _ClassVar[int]
     FORMAT_FIELD_NUMBER: _ClassVar[int]
+    NAMESPACEID_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
     content: str
     format: ResourceFormat
     name: str
-    def __init__(self, name: _Optional[str] = ..., format: _Optional[_Union[ResourceFormat, str]] = ..., content: _Optional[str] = ...) -> None: ...
+    namespaceid: str
+    def __init__(self, name: _Optional[str] = ..., format: _Optional[_Union[ResourceFormat, str]] = ..., content: _Optional[str] = ..., namespaceid: _Optional[str] = ...) -> None: ...
 
 class ResourceFormat(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = []
