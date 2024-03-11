@@ -111,8 +111,14 @@ def build_and_up(env_mode: str, interval: int = 10, interval_build_env: int = 10
         'max_retries': 3,
         'retries': 0
     }
-    # Get current branch
-    current_branch = '/'.join(open('../../../../.git/HEAD', 'r').readline().split('/')[2:])
+   # Get current branch or tag
+    with open('../../../../.git/HEAD', 'r') as f:
+        ref = f.readline().strip()
+    if ref.startswith("ref:"):
+        current_branch = ref.split("refs/heads/")[1]
+    else:
+        current_branch = ref.split("/")[-1]
+        
     os.makedirs(test_logs_path, exist_ok=True)
     with open(docker_log_path, mode='w') as f_docker:
         while values_build_env['retries'] < values_build_env['max_retries']:
