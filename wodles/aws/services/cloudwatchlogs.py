@@ -66,7 +66,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
     """
 
     def __init__(self, reparse, access_key, secret_key, profile,
-                 iam_role_arn, only_logs_after, account_alias ,region, aws_log_groups,
+                 iam_role_arn, only_logs_after, account_alias, region, aws_log_groups,
                  remove_log_streams, discard_field=None, discard_regex=None, sts_endpoint=None, service_endpoint=None,
                  iam_role_duration=None, **kwargs):
 
@@ -138,9 +138,9 @@ class AWSCloudWatchLogs(aws_service.AWSService):
 
         aws_service.AWSService.__init__(self, db_table_name='cloudwatch_logs', service_name='cloudwatchlogs',
                                         reparse=reparse, access_key=access_key, secret_key=secret_key,
-                                        profile=profile, iam_role_arn=iam_role_arn,
-                                        only_logs_after=only_logs_after, account_alias=account_alias ,region=region, 
-                                        discard_field=discard_field, discard_regex=discard_regex, iam_role_duration=iam_role_duration,
+                                        profile=profile, iam_role_arn=iam_role_arn, only_logs_after=only_logs_after,
+                                        account_alias=account_alias, region=region, discard_field=discard_field,
+                                        discard_regex=discard_regex, iam_role_duration=iam_role_duration,
                                         sts_endpoint=sts_endpoint, service_endpoint=service_endpoint)
         self.log_group_list = [group for group in aws_log_groups.split(",") if group != ""] if aws_log_groups else []
         self.remove_log_streams = remove_log_streams

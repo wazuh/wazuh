@@ -270,7 +270,7 @@ def get_aws_bucket_parameters(db_table_name: str = TEST_TABLE_NAME, bucket: str 
 def get_aws_service_parameters(db_table_name: str = TEST_TABLE_NAME, service_name: str = 'cloudwatchlogs',
                                reparse: bool = False, access_key: str = None, secret_key: str = None,
                                profile: str = TEST_AWS_PROFILE, iam_role_arn: str = None,
-                               only_logs_after: str = None, account_alias: str = None ,region: str = None, aws_log_groups: str = None,
+                               only_logs_after: str = None, account_alias: str = None, region: str = None, aws_log_groups: str = None,
                                remove_log_streams: bool = None, discard_field: str = None,
                                discard_regex: str = None, sts_endpoint: str = None, service_endpoint: str = None,
                                iam_role_duration: str = None):
