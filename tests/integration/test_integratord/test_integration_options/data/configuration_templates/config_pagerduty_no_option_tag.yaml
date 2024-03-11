@@ -1,0 +1,35 @@
+- tags:
+    - all
+  apply_to_modules:
+    - test_pagerduty_no_option_tag
+  sections:
+    - section: integration
+      elements:
+        - name:
+            value: pagerduty
+        - api_key:
+            value: testing
+        - alert_format:
+            value: json
+    - section: sca
+      elements:
+        - enabled:
+            value: 'no'
+    - section: rootcheck
+      elements:
+        - disabled:
+            value: 'yes'
+    - section: syscheck
+      elements:
+        - disabled:
+            value: 'yes'
+    - section: wodle
+      attributes:
+        - name: syscollector
+      elements:
+        - disabled:
+            value: 'yes'
+    - section: auth
+      elements:
+        - disabled:
+            value: 'yes'
