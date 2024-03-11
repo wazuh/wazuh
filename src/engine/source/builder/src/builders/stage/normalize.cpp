@@ -10,8 +10,6 @@
 namespace builder::builders
 {
 
-const std::string PARSE_PREFIX {"parse|"};
-
 base::Expression normalizeBuilder(const json::Json& definition, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     if (!definition.isArray())
@@ -54,11 +52,25 @@ base::Expression normalizeBuilder(const json::Json& definition, const std::share
                     auto& [key, value] = tuple;
                     json::Json stageParseValue;
                     stageParseValue.setArray();
-                    auto pos = key.find(PARSE_PREFIX);
+                    auto pos = key.find(syntax::asset::PARSE_KEY);
                     if (pos != std::string::npos)
                     {
                         // TODO fix this hack, we need to format the json as the old parse stage
-                        auto parseKey = key.substr(pos + PARSE_PREFIX.size());
+                        std::string targetField;
+                        try
+                        {
+                            targetField = key.substr(std::string(syntax::asset::PARSE_KEY).size() + 1);
+                        }
+                        catch(const std::exception& e)
+                        {
+                            throw std::runtime_error("Stage parse needs the character '|' to indicate the field");
+                        }
+
+                        if (targetField.empty())
+                        {
+                            throw std::runtime_error("Stage parse field was not found");
+                        }
+
                         key = "parse";
                         if (value.isArray())
                         {
@@ -68,7 +80,7 @@ base::Expression normalizeBuilder(const json::Json& definition, const std::share
                             for (size_t i = 0; i < arr.size(); i++)
                             {
                                 auto parseValue = arr[i].getString().value();
-                                tmp.setString(parseValue, json::Json::formatJsonPath(parseKey, true));
+                                tmp.setString(parseValue, json::Json::formatJsonPath(targetField, true));
                                 stageParseValue.appendJson(tmp);
                             }
                         }

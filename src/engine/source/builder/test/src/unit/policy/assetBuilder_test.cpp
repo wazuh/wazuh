@@ -316,6 +316,22 @@ INSTANTIATE_TEST_SUITE_P(
                     return None {};
                 })),
         BuildExprT(
+            AV {"parse"}, // Throws
+            FAILURE(
+                [](Mocks mocks)
+                {
+                    EXPECT_CALL(*mocks.m_mockDefBuilder, build(testing::_)).WillOnce(testing::Return(mocks.m_mockDefs));
+                    return None {};
+                })),
+                BuildExprT(
+            AV {"parse|"}, // Throws
+            FAILURE(
+                [](Mocks mocks)
+                {
+                    EXPECT_CALL(*mocks.m_mockDefBuilder, build(testing::_)).WillOnce(testing::Return(mocks.m_mockDefs));
+                    return None {};
+                })),
+        BuildExprT(
             AV {"check", "parse|field"},
             SUCCESS(
                 [](Mocks mocks)
