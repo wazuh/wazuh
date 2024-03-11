@@ -1,0 +1,78 @@
+name: Build Wazuh Packages - DEB|RPM - amd64 and i386
+on:
+  pull_request:
+    paths:
+      - 'packages/debs/SPECS/**'
+      - 'packages/generate_package.sh'
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  Wazuh-agent-deb-package-build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        TYPE: [agent]
+        ARCHITECTURE : [amd64, i386]
+        exclude:
+          - TYPE: manager
+            ARCHITECTURE: i386
+      fail-fast: false
+
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - uses: actions/checkout@v3
+
+      - name: Get changed files
+        uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            deb_images:
+              - 'packages/debs/**'
+              - 'packages/build.sh'
+            deb_images_agent_i386:
+              - 'packages/debs/i386/agent/**'
+              - 'packages/build.sh'
+            deb_images_agent_amd64:
+              - 'packages/debs/amd64/agent/**'
+              - 'packages/build.sh'
+            deb_packages:
+              - 'packages/debs/SPECS/**'
+              - 'packages/generate_package.sh'
+
+      - name: Set tag and container name
+        if: steps.changes.outputs.deb_packages == 'true' || (steps.changes.outputs.deb_images_agent_i386 == 'true' && matrix.ARCHITECTURE == 'i386') || ((steps.changes.outputs.deb_images_manager_amd64 == 'true' || steps.changes.outputs.deb_images_agent_amd64 == 'true') && matrix.ARCHITECTURE == 'amd64')
+        run: |
+          MAJOR=$(sed 's/\([0-9]*\.[0-9]*\)\.[0-9]*/\1/' $GITHUB_WORKSPACE/src/VERSION)
+          if [ "${{ steps.changes.outputs.deb_images }}" == "true" ]; then echo "TAG=${{ github.head_ref }}" >> $GITHUB_ENV; else echo "TAG=$MAJOR" >> $GITHUB_ENV ; fi
+          if [ $MAJOR == "5.0" ]; then echo "VERSION=master" >> $GITHUB_ENV ; else echo "VERSION=$(cat $GITHUB_WORKSPACE/src/VERSION)" >> $GITHUB_ENV; fi
+          echo "CONTAINER_NAME=deb_${{ matrix.TYPE }}_builder_${{ matrix.ARCHITECTURE }}" >> $GITHUB_ENV
+          if [ "${{ matrix.ARCHITECTURE }}" == "amd64" ]; then echo "CONTAINER_NAME=deb_${{ matrix.TYPE }}_builder_${{ matrix.ARCHITECTURE }}" >> $GITHUB_ENV ; else echo "CONTAINER_NAME=deb_${{ matrix.TYPE }}_builder_${{ matrix.ARCHITECTURE }}" >> $GITHUB_ENV ; fi
+
+      - name: Download docker image for package building
+        if: steps.changes.outputs.deb_packages == 'true' || (steps.changes.outputs.deb_images_agent_i386 == 'true' && matrix.ARCHITECTURE == 'i386') || ((steps.changes.outputs.deb_images_manager_amd64 == 'true' || steps.changes.outputs.deb_images_agent_amd64 == 'true') && matrix.ARCHITECTURE == 'amd64')
+        run: |
+          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} $CONTAINER_NAME ${{ env.TAG }}
+
+      - name: Build the ${{ matrix.ARCHITECTURE }} deb Wazuh ${{ matrix.TYPE }} package
+        if: steps.changes.outputs.deb_packages == 'true' || (steps.changes.outputs.deb_images_agent_i386 == 'true' && matrix.ARCHITECTURE == 'i386') || ((steps.changes.outputs.deb_images_manager_amd64 == 'true' || steps.changes.outputs.deb_images_agent_amd64 == 'true') && matrix.ARCHITECTURE == 'amd64')
+        working-directory: ./debs
+        run: |
+          REVISION=$( echo ${{ github.head_ref }} | sed 's/-/./g; s/\//./g' )
+          bash packages/generate_package.sh -b ${{ env.VERSION }} -t ${{ matrix.TYPE }} -a ${{ matrix.ARCHITECTURE }} --dev -j 2 --dont-build-docker --tag ${{ env.TAG }} -r $REVISION --package-format deb
+          echo "PACKAGE_NAME=$(ls ./output | grep .deb | head -n 1)" >> $GITHUB_ENV
+
+      - name: Upload Wazuh ${{ matrix.TYPE }} ${{ matrix.ARCHITECTURE }} package as artifact
+        if: steps.changes.outputs.deb_packages == 'true' || (steps.changes.outputs.deb_images_agent_i386 == 'true' && matrix.ARCHITECTURE == 'i386') || ((steps.changes.outputs.deb_images_manager_amd64 == 'true' || steps.changes.outputs.deb_images_agent_amd64 == 'true') && matrix.ARCHITECTURE == 'amd64')
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          path: ${{github.workspace}}/debs/output/${{ env.PACKAGE_NAME }}
+          if-no-files-found: error
