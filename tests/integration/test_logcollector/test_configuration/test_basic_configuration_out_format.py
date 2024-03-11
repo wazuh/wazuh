@@ -60,6 +60,7 @@ from time import sleep
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
+from wazuh_testing.constants.daemons import LOGCOLLECTOR_DAEMON
 from wazuh_testing.modules.logcollector import configuration as logcollector_configuration
 from wazuh_testing.modules.logcollector import patterns
 from wazuh_testing.modules.logcollector import utils
@@ -69,8 +70,6 @@ from wazuh_testing.utils.services import control_service
 from wazuh_testing.utils.file import truncate_file
 
 from . import TEST_CASES_PATH, CONFIGURATIONS_PATH
-
-LOGCOLLECTOR_DAEMON = "wazuh-logcollector"
 
 # Marks
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0)]
