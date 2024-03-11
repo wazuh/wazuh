@@ -411,7 +411,7 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
         switch (element->type) {
         case cJSON_Number:
             if (strcmp(element->string, "size") == 0) {
-                sqlite3_bind_int(stmt, 4, element->valueint);
+                sqlite3_bind_int64(stmt, 4, element->valuedouble);
             } else if (strcmp(element->string, "mtime") == 0) {
                 sqlite3_bind_int(stmt, 12, element->valueint);
             } else if (strcmp(element->string, "inode") == 0) {

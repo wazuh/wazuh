@@ -105,7 +105,7 @@ class FileItem final : public DBItem
         int                                             m_options;
         std::string                                     m_gid;
         std::string                                     m_uid;
-        unsigned int                                    m_size;
+        unsigned long int                               m_size;
         unsigned long int                               m_dev;
         unsigned long long int                          m_inode;
         time_t                                          m_time;

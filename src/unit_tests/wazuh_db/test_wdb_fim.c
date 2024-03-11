@@ -25,7 +25,7 @@
 static const char *VALID_ENTRY = "{\"path\":\"/test\",\"timestamp\":10,\"version\":2,\"attributes\":{\"type\":\"file\"}}";
 static const char *VALUE_V3_ENTRY = "{\"arch\":\"[x32]\",\"attributes\":{\"checksum\":\"920b517a949aec0a6fa91b0556f0a60503058fbb\",\
                                   \"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\
-                                  \"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"size\":0,\
+                                  \"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"size\":3221225472,\
                                   \"type\":\"registry_value\",\"value_type\":\"REG_UNKNOWN\"},\"index\":\"00a7ee53218b25b5364c8773f37a38c93eae3880\",\
                                   \"path\":\"HKEY_LOCAL_MACHINE\\\\System\\\\TEST\\\\key\",\
                                   \"timestamp\":1645981428,\"value_name\":\"test_name\",\"version\":3}";
@@ -85,7 +85,7 @@ static cJSON *_prepare_valid_entry(sqlite3_int64 inode, void *perm, perm_format_
     cJSON* data = cJSON_Parse(VALID_ENTRY);
     cJSON *object = cJSON_CreateObject();
 
-    cJSON_AddItemToObject(object, "size", cJSON_CreateNumber(2048));
+    cJSON_AddItemToObject(object, "size", cJSON_CreateNumber(3221225472));
     cJSON_AddItemToObject(object, "mtime", cJSON_CreateNumber(10));
     cJSON_AddItemToObject(object, "inode", cJSON_CreateNumber(inode));
     cJSON_AddItemToObject(object, "type", cJSON_CreateString("file"));
@@ -127,7 +127,7 @@ void _expect_wdb_fim_insert_entry2_success(sqlite3_int64 inode, const char *cons
     expect_sqlite3_bind_text_call(19, NULL, 1);
     expect_sqlite3_bind_text_call(21, "/test", 1);
 
-    expect_sqlite3_bind_int_call(4, 2048, 1);
+    expect_sqlite3_bind_int64_call(4, 3221225472, 1);
     expect_sqlite3_bind_int_call(12, 10, 1);
     expect_sqlite3_bind_int64_call(13, inode, 1);
 
@@ -668,7 +668,7 @@ static void test_wdb_fim_insert_entry2_registry_value_succesful_v3(void **state)
     expect_sqlite3_bind_text_call(8, "d41d8cd98f00b204e9800998ecf8427e", 1);
     expect_sqlite3_bind_text_call(9, "da39a3ee5e6b4b0d3255bfef95601890afd80709", 1);
     expect_sqlite3_bind_text_call(14, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", 1);
-    expect_sqlite3_bind_int_call(4, 0, 1);
+    expect_sqlite3_bind_int64_call(4, 3221225472, 1);
     expect_sqlite3_bind_text_call(20, "REG_UNKNOWN", 1);
 
     will_return(__wrap_wdb_step, SQLITE_DONE);
