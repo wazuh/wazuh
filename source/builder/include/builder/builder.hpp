@@ -54,7 +54,7 @@ public:
     std::shared_ptr<IPolicy> buildPolicy(const base::Name& name) const override;
     base::Expression buildAsset(const base::Name& name) const override;
 
-    base::OptError validateIntegration(const json::Json& json) const override;
+    base::OptError validateIntegration(const json::Json& json, const std::string& namespaceId) const override;
     base::OptError validateAsset(const json::Json& json) const override;
     base::OptError validatePolicy(const json::Json& json) const override;
 };

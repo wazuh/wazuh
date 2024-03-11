@@ -201,7 +201,7 @@ Catalog::postResource(const Resource& collection, const std::string& namespaceSt
     // Validate the content if needed
     if (contentResource.m_validation)
     {
-        const auto validationError = validate(contentResource, contentJson);
+        const auto validationError = validate(contentResource, namespaceStr, contentJson);
 
         if (validationError)
         {
@@ -327,7 +327,7 @@ Catalog::putResource(const Resource& item, const std::string& content, const std
     // Validate the content if needed
     if (item.m_validation)
     {
-        const auto validationError = validate(item, contentJson);
+        const auto validationError = validate(item, namespaceId, contentJson);
 
         if (validationError)
         {
@@ -496,7 +496,7 @@ base::OptError Catalog::deleteResource(const Resource& resource, const std::stri
     return delDoc(resource);
 }
 
-std::optional<base::Error> Catalog::validate(const Resource& item, const json::Json& content) const
+std::optional<base::Error> Catalog::validate(const Resource& item, const std::string& namespaceId, const json::Json& content) const
 {
     // Assert resource type is Asset, Policy or Integration
     if (Resource::Type::decoder != item.m_type && Resource::Type::rule != item.m_type
@@ -515,7 +515,11 @@ std::optional<base::Error> Catalog::validate(const Resource& item, const json::J
     }
     else if (item.m_type == Resource::Type::integration)
     {
-        validationError = m_validator->validateIntegration(content);
+        if (namespaceId.empty())
+        {
+            return base::Error {fmt::format("Missing /namespaceid parameter for type '{}'", Resource::typeToStr(item.m_type))};
+        }
+        validationError = m_validator->validateIntegration(content, namespaceId);
     }
     else
     {
@@ -531,7 +535,7 @@ std::optional<base::Error> Catalog::validate(const Resource& item, const json::J
     ;
 }
 
-std::optional<base::Error> Catalog::validateResource(const Resource& item, const std::string& content) const
+std::optional<base::Error> Catalog::validateResource(const Resource& item, const std::string& namespaceId, const std::string& content) const
 {
     // Assert resource is asset, policy or integration
     if (Resource::Type::decoder != item.m_type && Resource::Type::rule != item.m_type
@@ -558,7 +562,7 @@ std::optional<base::Error> Catalog::validateResource(const Resource& item, const
     }
 
     // Validate the content
-    const auto validationError = validate(item, std::get<json::Json>(contentJson));
+    const auto validationError = validate(item, namespaceId, std::get<json::Json>(contentJson));
 
     if (validationError)
     {

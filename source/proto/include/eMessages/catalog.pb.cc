@@ -112,6 +112,7 @@ PROTOBUF_CONSTEXPR ResourceValidate_Request::ResourceValidate_Request(
   , /*decltype(_impl_._cached_size_)*/{}
   , /*decltype(_impl_.name_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.content_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.namespaceid_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.format_)*/0} {}
 struct ResourceValidate_RequestDefaultTypeInternal {
   PROTOBUF_CONSTEXPR ResourceValidate_RequestDefaultTypeInternal()
@@ -230,9 +231,11 @@ const uint32_t TableStruct_catalog_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourceValidate_Request, _impl_.name_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourceValidate_Request, _impl_.format_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourceValidate_Request, _impl_.content_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::ResourceValidate_Request, _impl_.namespaceid_),
   0,
-  2,
+  3,
   1,
+  2,
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::catalog::NamespacesGet_Request, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -258,9 +261,9 @@ static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protode
   { 26, 35, -1, sizeof(::com::wazuh::api::engine::catalog::ResourceGet_Response)},
   { 38, 48, -1, sizeof(::com::wazuh::api::engine::catalog::ResourcePut_Request)},
   { 52, 60, -1, sizeof(::com::wazuh::api::engine::catalog::ResourceDelete_Request)},
-  { 62, 71, -1, sizeof(::com::wazuh::api::engine::catalog::ResourceValidate_Request)},
-  { 74, -1, -1, sizeof(::com::wazuh::api::engine::catalog::NamespacesGet_Request)},
-  { 80, 89, -1, sizeof(::com::wazuh::api::engine::catalog::NamespacesGet_Response)},
+  { 62, 72, -1, sizeof(::com::wazuh::api::engine::catalog::ResourceValidate_Request)},
+  { 76, -1, -1, sizeof(::com::wazuh::api::engine::catalog::NamespacesGet_Request)},
+  { 82, 91, -1, sizeof(::com::wazuh::api::engine::catalog::NamespacesGet_Response)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -298,26 +301,27 @@ const char descriptor_table_protodef_catalog_2eproto[] PROTOBUF_SECTION_VARIABLE
   "tB\n\n\010_contentB\016\n\014_namespaceid\"^\n\026Resourc"
   "eDelete_Request\022\021\n\004name\030\001 \001(\tH\000\210\001\001\022\030\n\013na"
   "mespaceid\030\002 \001(\tH\001\210\001\001B\007\n\005_nameB\016\n\014_namesp"
-  "aceid\"\246\001\n\030ResourceValidate_Request\022\021\n\004na"
+  "aceid\"\320\001\n\030ResourceValidate_Request\022\021\n\004na"
   "me\030\001 \001(\tH\000\210\001\001\022A\n\006format\030\002 \001(\0162,.com.wazu"
   "h.api.engine.catalog.ResourceFormatH\001\210\001\001"
-  "\022\024\n\007content\030\003 \001(\tH\002\210\001\001B\007\n\005_nameB\t\n\007_form"
-  "atB\n\n\010_content\"\027\n\025NamespacesGet_Request\""
-  "~\n\026NamespacesGet_Response\0222\n\006status\030\001 \001("
-  "\0162\".com.wazuh.api.engine.ReturnStatus\022\022\n"
-  "\005error\030\002 \001(\tH\000\210\001\001\022\022\n\nnamespaces\030\003 \003(\tB\010\n"
-  "\006_error*1\n\016ResourceFormat\022\010\n\004json\020\000\022\010\n\004y"
-  "aml\020\001\022\007\n\003yml\020\001\032\002\020\001*w\n\014ResourceType\022\013\n\007UN"
-  "KNOWN\020\000\022\013\n\007decoder\020\001\022\010\n\004rule\020\002\022\n\n\006filter"
-  "\020\003\022\n\n\006output\020\004\022\n\n\006schema\020\005\022\016\n\ncollection"
-  "\020\006\022\017\n\013integration\020\007b\006proto3"
+  "\022\024\n\007content\030\003 \001(\tH\002\210\001\001\022\030\n\013namespaceid\030\004 "
+  "\001(\tH\003\210\001\001B\007\n\005_nameB\t\n\007_formatB\n\n\010_content"
+  "B\016\n\014_namespaceid\"\027\n\025NamespacesGet_Reques"
+  "t\"~\n\026NamespacesGet_Response\0222\n\006status\030\001 "
+  "\001(\0162\".com.wazuh.api.engine.ReturnStatus\022"
+  "\022\n\005error\030\002 \001(\tH\000\210\001\001\022\022\n\nnamespaces\030\003 \003(\tB"
+  "\010\n\006_error*1\n\016ResourceFormat\022\010\n\004json\020\000\022\010\n"
+  "\004yaml\020\001\022\007\n\003yml\020\001\032\002\020\001*w\n\014ResourceType\022\013\n\007"
+  "UNKNOWN\020\000\022\013\n\007decoder\020\001\022\010\n\004rule\020\002\022\n\n\006filt"
+  "er\020\003\022\n\n\006output\020\004\022\n\n\006schema\020\005\022\016\n\ncollecti"
+  "on\020\006\022\017\n\013integration\020\007b\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_catalog_2eproto_deps[1] = {
   &::descriptor_table_engine_2eproto,
 };
 static ::_pbi::once_flag descriptor_table_catalog_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_catalog_2eproto = {
-    false, false, 1427, descriptor_table_protodef_catalog_2eproto,
+    false, false, 1469, descriptor_table_protodef_catalog_2eproto,
     "catalog.proto",
     &descriptor_table_catalog_2eproto_once, descriptor_table_catalog_2eproto_deps, 1, 8,
     schemas, file_default_instances, TableStruct_catalog_2eproto::offsets,
@@ -2002,10 +2006,13 @@ class ResourceValidate_Request::_Internal {
     (*has_bits)[0] |= 1u;
   }
   static void set_has_format(HasBits* has_bits) {
-    (*has_bits)[0] |= 4u;
+    (*has_bits)[0] |= 8u;
   }
   static void set_has_content(HasBits* has_bits) {
     (*has_bits)[0] |= 2u;
+  }
+  static void set_has_namespaceid(HasBits* has_bits) {
+    (*has_bits)[0] |= 4u;
   }
 };
 
@@ -2023,6 +2030,7 @@ ResourceValidate_Request::ResourceValidate_Request(const ResourceValidate_Reques
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.name_){}
     , decltype(_impl_.content_){}
+    , decltype(_impl_.namespaceid_){}
     , decltype(_impl_.format_){}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
@@ -2042,6 +2050,14 @@ ResourceValidate_Request::ResourceValidate_Request(const ResourceValidate_Reques
     _this->_impl_.content_.Set(from._internal_content(), 
       _this->GetArenaForAllocation());
   }
+  _impl_.namespaceid_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.namespaceid_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_namespaceid()) {
+    _this->_impl_.namespaceid_.Set(from._internal_namespaceid(), 
+      _this->GetArenaForAllocation());
+  }
   _this->_impl_.format_ = from._impl_.format_;
   // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.catalog.ResourceValidate_Request)
 }
@@ -2055,6 +2071,7 @@ inline void ResourceValidate_Request::SharedCtor(
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.name_){}
     , decltype(_impl_.content_){}
+    , decltype(_impl_.namespaceid_){}
     , decltype(_impl_.format_){0}
   };
   _impl_.name_.InitDefault();
@@ -2064,6 +2081,10 @@ inline void ResourceValidate_Request::SharedCtor(
   _impl_.content_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
     _impl_.content_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.namespaceid_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.namespaceid_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
 }
 
@@ -2080,6 +2101,7 @@ inline void ResourceValidate_Request::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
   _impl_.name_.Destroy();
   _impl_.content_.Destroy();
+  _impl_.namespaceid_.Destroy();
 }
 
 void ResourceValidate_Request::SetCachedSize(int size) const {
@@ -2093,12 +2115,15 @@ void ResourceValidate_Request::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000003u) {
+  if (cached_has_bits & 0x00000007u) {
     if (cached_has_bits & 0x00000001u) {
       _impl_.name_.ClearNonDefaultToEmpty();
     }
     if (cached_has_bits & 0x00000002u) {
       _impl_.content_.ClearNonDefaultToEmpty();
+    }
+    if (cached_has_bits & 0x00000004u) {
+      _impl_.namespaceid_.ClearNonDefaultToEmpty();
     }
   }
   _impl_.format_ = 0;
@@ -2139,6 +2164,16 @@ const char* ResourceValidate_Request::_InternalParse(const char* ptr, ::_pbi::Pa
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
           CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.catalog.ResourceValidate_Request.content"));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional string namespaceid = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 34)) {
+          auto str = _internal_mutable_namespaceid();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.catalog.ResourceValidate_Request.namespaceid"));
         } else
           goto handle_unusual;
         continue;
@@ -2199,6 +2234,16 @@ uint8_t* ResourceValidate_Request::_InternalSerialize(
         3, this->_internal_content(), target);
   }
 
+  // optional string namespaceid = 4;
+  if (_internal_has_namespaceid()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_namespaceid().data(), static_cast<int>(this->_internal_namespaceid().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.catalog.ResourceValidate_Request.namespaceid");
+    target = stream->WriteStringMaybeAliased(
+        4, this->_internal_namespaceid(), target);
+  }
+
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
@@ -2216,7 +2261,7 @@ size_t ResourceValidate_Request::ByteSizeLong() const {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000007u) {
+  if (cached_has_bits & 0x0000000fu) {
     // optional string name = 1;
     if (cached_has_bits & 0x00000001u) {
       total_size += 1 +
@@ -2231,8 +2276,15 @@ size_t ResourceValidate_Request::ByteSizeLong() const {
           this->_internal_content());
     }
 
-    // optional .com.wazuh.api.engine.catalog.ResourceFormat format = 2;
+    // optional string namespaceid = 4;
     if (cached_has_bits & 0x00000004u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_namespaceid());
+    }
+
+    // optional .com.wazuh.api.engine.catalog.ResourceFormat format = 2;
+    if (cached_has_bits & 0x00000008u) {
       total_size += 1 +
         ::_pbi::WireFormatLite::EnumSize(this->_internal_format());
     }
@@ -2257,7 +2309,7 @@ void ResourceValidate_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_ms
   (void) cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000007u) {
+  if (cached_has_bits & 0x0000000fu) {
     if (cached_has_bits & 0x00000001u) {
       _this->_internal_set_name(from._internal_name());
     }
@@ -2265,6 +2317,9 @@ void ResourceValidate_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_ms
       _this->_internal_set_content(from._internal_content());
     }
     if (cached_has_bits & 0x00000004u) {
+      _this->_internal_set_namespaceid(from._internal_namespaceid());
+    }
+    if (cached_has_bits & 0x00000008u) {
       _this->_impl_.format_ = from._impl_.format_;
     }
     _this->_impl_._has_bits_[0] |= cached_has_bits;
@@ -2296,6 +2351,10 @@ void ResourceValidate_Request::InternalSwap(ResourceValidate_Request* other) {
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
       &_impl_.content_, lhs_arena,
       &other->_impl_.content_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.namespaceid_, lhs_arena,
+      &other->_impl_.namespaceid_, rhs_arena
   );
   swap(_impl_.format_, other->_impl_.format_);
 }

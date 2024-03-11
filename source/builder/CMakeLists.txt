@@ -106,8 +106,9 @@ add_library(builder::mocks ALIAS builder_mocks)
 ## Component test
 add_executable(builder_ctest
     ${COMPONENT_SRC_DIR}/builder_test.cpp
+    ${COMPONENT_SRC_DIR}/validator_test.cpp
 )
-target_link_libraries(builder_ctest PRIVATE builder gtest_main)
+target_link_libraries(builder_ctest PRIVATE builder gtest_main schemf::mocks store::mocks defs::mocks sockiface::mocks)
 gtest_discover_tests(builder_ctest)
 
 ## Unit tests
