@@ -294,6 +294,24 @@ INSTANTIATE_TEST_SUITE_P(
                           EXPECT_CALL(*defBuild, build(testing::_)).WillRepeatedly(testing::Return(def));
                           return "An error occurred while parsing a log: Parser type 'text' not found";
                       })),
+        ValidateA(json::Json {DECODER_STAGE_PARSE_WITHOUT_SEPARATOR_JSON},
+                  FAILURE_ASSET(
+                      [](const std::shared_ptr<MockSchema>& schema,
+                         const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
+                         const std::shared_ptr<defs::mocks::MockDefinitions>& def)
+                      {
+                          EXPECT_CALL(*defBuild, build(testing::_)).WillRepeatedly(testing::Return(def));
+                          return "Stage parse needs the character '|' to indicate the field";
+                      })),
+        ValidateA(json::Json {DECODER_STAGE_PARSE_WITHOUT_FIELD_JSON},
+                  FAILURE_ASSET(
+                      [](const std::shared_ptr<MockSchema>& schema,
+                         const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
+                         const std::shared_ptr<defs::mocks::MockDefinitions>& def)
+                      {
+                          EXPECT_CALL(*defBuild, build(testing::_)).WillRepeatedly(testing::Return(def));
+                          return "Stage parse field was not found";
+                      })),
         ValidateA(json::Json {DECODER_STAGE_NORMALIZE_WRONG_MAPPING},
                   FAILURE_ASSET(
                       [](const std::shared_ptr<MockSchema>& schema,
@@ -305,6 +323,28 @@ INSTANTIATE_TEST_SUITE_P(
                           EXPECT_CALL(*defBuild, build(testing::_)).WillRepeatedly(testing::Return(def));
                           return "In stage 'normalize' builder for block 'map' failed with error: Failed to build "
                                  "operation 'event.code: map(2)': event.code is of type text";
+                      })),
+        ValidateA(json::Json {DECODER_STAGE_NORMALIZE_WRONG_PARSE_WITHOUT_SEPARATOR},
+                  FAILURE_ASSET(
+                      [](const std::shared_ptr<MockSchema>& schema,
+                         const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
+                         const std::shared_ptr<defs::mocks::MockDefinitions>& def)
+                      {
+                          EXPECT_CALL(*schema, validate(testing::_, testing::_))
+                              .WillRepeatedly(testing::Return(schemf::ValidationResult()));
+                          EXPECT_CALL(*defBuild, build(testing::_)).WillRepeatedly(testing::Return(def));
+                          return "Stage parse needs the character '|' to indicate the field";
+                      })),
+        ValidateA(json::Json {DECODER_STAGE_NORMALIZE_WRONG_PARSE_WITHOUT_FIELD},
+                  FAILURE_ASSET(
+                      [](const std::shared_ptr<MockSchema>& schema,
+                         const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
+                         const std::shared_ptr<defs::mocks::MockDefinitions>& def)
+                      {
+                          EXPECT_CALL(*schema, validate(testing::_, testing::_))
+                              .WillRepeatedly(testing::Return(schemf::ValidationResult()));
+                          EXPECT_CALL(*defBuild, build(testing::_)).WillRepeatedly(testing::Return(def));
+                          return "Stage parse field was not found";
                       })),
         ValidateA(json::Json {DECODER_JSON},
                   SUCCESS_ASSET(

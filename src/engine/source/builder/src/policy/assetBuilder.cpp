@@ -126,7 +126,23 @@ base::Expression AssetBuilder::buildExpression(const base::Name& name,
                 // TODO fix this hack, we need to format the json as the old parse stage
                 json::Json stageParseValue;
                 stageParseValue.setArray();
-                auto targetField = key.substr(std::string(syntax::asset::PARSE_KEY).size() + 1);
+                std::string targetField;
+
+                try
+                {
+                    targetField = key.substr(std::string(syntax::asset::PARSE_KEY).size() + 1);
+                }
+                catch(const std::exception& e)
+                {
+                    throw std::runtime_error("Stage parse needs the character '|' to indicate the field");
+                }
+                
+
+                if (targetField.empty())
+                {
+                    throw std::runtime_error("Stage parse field was not found");
+                }
+            
                 if (value.isArray())
                 {
                     json::Json tmp;
