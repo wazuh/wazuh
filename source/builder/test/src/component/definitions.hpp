@@ -6,7 +6,8 @@ namespace builder::test
 
 auto constexpr WAZUH_LOGPAR_TYPES_JSON = R"({
     "fields": {
-        "wazuh.message": "text"
+        "wazuh.message": "text",
+        "event.code": "text"
     }
 }
 )";
@@ -23,6 +24,31 @@ auto constexpr DECODER_PARENT_JSON = R"({
 auto constexpr DECODER_JSON = R"({
     "name": "decoder/test/0",
     "parents": ["decoder/parent-test/0"]
+})";
+
+auto constexpr FILTER_JSON = R"({
+    "name": "filter/test/0",
+    "check": [{
+        "wazuh.queue": 49
+    }
+    ]
+})";
+
+auto constexpr RULE_JSON = R"({
+    "name": "rule/test/0",
+    "check": [{
+        "process.name": "test"
+    }
+    ],
+    "normalize": [
+      {
+        "map": [
+          {
+            "event.risk_score": 21
+          }
+        ]
+      }
+    ]
 })";
 
 auto constexpr DECODER_KEY_DEFECTIVE_JSON = R"({
@@ -53,6 +79,18 @@ auto constexpr DECODER_EMPTY_STAGE_PARSE_JSON = R"x({
     ]
     })x";
 
+auto constexpr DECODER_STAGE_PARSE_WITHOUT_SEPARATOR_JSON = R"x({
+    "name": "decoder/test/0",
+    "parse": [
+    ]
+    })x";
+
+auto constexpr DECODER_STAGE_PARSE_WITHOUT_FIELD_JSON = R"x({
+    "name": "decoder/test/0",
+    "parse|": [
+    ]
+    })x";
+
 auto constexpr DECODER_STAGE_PARSE_FIELD_NOT_FOUND_JSON = R"x({
     "name": "decoder/test/0",
     "parse|event.original": [
@@ -75,6 +113,39 @@ auto constexpr DECODER_STAGE_NORMALIZE_WRONG_MAPPING = R"x({
           {
             "event.code": 2
           }
+        ]
+      }
+    ]
+    })x";
+
+
+auto constexpr DECODER_STAGE_NORMALIZE_WRONG_PARSE_WITHOUT_SEPARATOR = R"x({
+    "name": "decoder/test/0",
+    "normalize": [
+      {
+        "map": [
+          {
+            "event.code": "2"
+          }
+        ],
+        "parse": [
+            "<event.code>"
+        ]
+      }
+    ]
+    })x";
+
+auto constexpr DECODER_STAGE_NORMALIZE_WRONG_PARSE_WITHOUT_FIELD = R"x({
+    "name": "decoder/test/0",
+    "normalize": [
+      {
+        "map": [
+          {
+            "event.code": "2"
+          }
+        ],
+        "parse|": [
+            "<event.code>"
         ]
       }
     ]
