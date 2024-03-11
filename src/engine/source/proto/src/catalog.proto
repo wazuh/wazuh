@@ -106,6 +106,7 @@ message ResourceValidate_Request
     optional string name = 1;           // Name of the resource
     optional ResourceFormat format = 2; // Format of the resource (xml, json, etc)
     optional string content = 3;        // Content of the resource
+    optional string namespaceid = 4;    // Namespace where the resource is located
 }
 
 // message ResourceValidate_Response -> Return a GenericStatus_Response

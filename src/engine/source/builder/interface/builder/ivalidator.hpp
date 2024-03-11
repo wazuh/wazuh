@@ -18,7 +18,7 @@ public:
      * @param json Integration Json definition.
      * @return base::OptError An error if the Integration is not valid.
      */
-    virtual base::OptError validateIntegration(const json::Json& json) const = 0;
+    virtual base::OptError validateIntegration(const json::Json& json, const std::string& namespaceId) const = 0;
 
     /**
      * @brief Validate an Asset.

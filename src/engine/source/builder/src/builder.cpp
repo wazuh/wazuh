@@ -81,9 +81,8 @@ base::Expression Builder::buildAsset(const base::Name& name) const
     return asset.expression();
 }
 
-base::OptError Builder::validateIntegration(const json::Json& json) const
+base::OptError Builder::validateIntegration(const json::Json& json, const std::string& namespaceId) const
 {
-    return base::noError();
     // TODO: Make factory so this can be implemented without duplicating code
     policy::factory::PolicyData policyData({.name = "policy/fake/0", .hash = "fakehash"});
     auto namePath = json::Json::formatJsonPath(syntax::asset::NAME_KEY);
@@ -100,21 +99,21 @@ base::OptError Builder::validateIntegration(const json::Json& json) const
                                                 json,
                                                 m_storeRead,
                                                 integrationName,
-                                                "fakeNs",
+                                                namespaceId,
                                                 policyData);
         policy::factory::addIntegrationSubgraph(policy::factory::PolicyData::AssetType::RULE,
                                                 syntax::integration::RULE_PATH,
                                                 json,
                                                 m_storeRead,
                                                 integrationName,
-                                                "fakeNs",
+                                                namespaceId,
                                                 policyData);
         policy::factory::addIntegrationSubgraph(policy::factory::PolicyData::AssetType::OUTPUT,
                                                 syntax::integration::OUTPUT_PATH,
                                                 json,
                                                 m_storeRead,
                                                 integrationName,
-                                                "fakeNs",
+                                                namespaceId,
                                                 policyData);
     }
     catch (const std::exception& e)

@@ -413,7 +413,7 @@ api::HandlerSync resourceValidate(std::shared_ptr<Catalog> catalog, std::weak_pt
             return ::api::adapter::genericError<ResponseType>(e.what());
         }
 
-        const auto invalid = catalog->validateResource(targetResource, eRequest.content());
+        const auto invalid = catalog->validateResource(targetResource, eRequest.namespaceid(), eRequest.content());
         if (invalid)
         {
             return ::api::adapter::genericError<ResponseType>(invalid.value().message);
