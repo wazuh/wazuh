@@ -20,7 +20,7 @@
 #define MULTI_LINE_REGEX_MAX_TIMEOUT  120
 #define DATE_MODIFIED   1
 #define DEFAULT_EVENTCHANNEL_REC_TIME 5
-#define DIFF_DEFAULT_SIZE 10 * 1024 * 1024
+#define DIFF_DEFAULT_SIZE (10 * 1024 * 1024)
 #define DEFAULT_FREQUENCY_SECS  360
 #define DIFF_MAX_SIZE (2 * 1024 * 1024 * 1024LL)
 
@@ -181,9 +181,19 @@ typedef struct w_journal_filter_t
 
 typedef w_journal_filter_t** w_journal_filters_list_t;
 
+/**
+ * @brief Represents the configuration of the journal log
+ * 
+ * Whens a configuration doesn't have a filter, all log entries are read.
+ * Whens merging the configuration of two journal log readers, the filters of the second 
+ * log reader are added to the first one.
+ * If any of the log readers don't have a filter, then the filter are disabled,
+ * all log entries are read. 
+ */
 typedef struct w_journal_log_config_t
 {
     w_journal_filters_list_t filters; // List of filters
+    bool disable_filters;              // Disable filters
 } w_journal_log_config_t;
 
 /* Logreader config */
@@ -260,7 +270,7 @@ typedef struct _logreader_config {
 void Free_Localfile(logreader_config * config);
 
 /* Frees a localfile  */
-void Free_Logreader(logreader * config);
+void Free_Logreader(logreader * logf);
 
 /* Removes a specific localfile of an array */
 int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *globf);
@@ -361,5 +371,19 @@ bool w_journal_add_filter_to_list(w_journal_filters_list_t* list, w_journal_filt
  * The list pointer is invalid after the call.
  */
 void w_journal_free_filters_list(w_journal_filters_list_t list);
+
+/**
+ * @brief Merge configuration of two journald log readers, if possible
+ * 
+ * Search in the log readers the first journald log reader and add the filters of the second log reader to the first one.
+ * @param logf Array of log readers
+ * @param src_index Index of the current log reader (Must be a journald log reader)
+ * @return true if the merge was successful, false otherwise
+ * @return false if the src_index log reader is not a journald log reader
+ * @return false if dont find a other journald log reader to merge
+ * @return false if src_index index is out of range
+ * @note the second log reader will be removed from the array
+ */
+bool w_logreader_journald_merge(logreader ** logf_ptr, size_t src_index);
 
 #endif /* CLOGREADER_H */

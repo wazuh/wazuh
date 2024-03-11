@@ -799,8 +799,14 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     }
 
     /* post processing stage */
+    // Merge multi configurations of journald log
+    if (logf[pl].journal_log != NULL) {
+        bool res = w_logreader_journald_merge(&logf, pl);
+        if (res) {
+            minfo("Merge journald log configurations");
+        }
+    }
 
-    // join the journald log config to the logf
 
     return (0);
 }
@@ -908,6 +914,12 @@ void Free_Logreader(logreader * logf) {
 
             free(logf->out_format);
         }
+
+        // Free journald log config
+        if (logf->journal_log != NULL) {
+            w_journal_free_filters_list(logf->journal_log->filters);
+            os_free(logf->journal_log);
+        }
     }
 }
 
@@ -915,7 +927,7 @@ int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *gl
     if (*logf) {
         int size = 0;
         int x;
-        while ((*logf)[size].file || (!gl && (*logf)[size].logformat)) {
+        while ((*logf)[size].file || (!gl && (*logf)[size].logformat)) { /// Where is the check (*logf)[size] is not NULL?
             size++;
         }
         if (i < size) {
@@ -1297,4 +1309,61 @@ void w_journal_free_filters_list(w_journal_filters_list_t list)
     }
 
     os_free(list);
+}
+
+bool w_logreader_journald_merge(logreader ** logf_ptr, size_t src_index)
+{
+    if (logf_ptr == NULL || *logf_ptr == NULL || src_index == 0) {
+        return false;
+    }
+    
+
+    logreader* logr = *logf_ptr;
+
+    /* Check if src_index is in range and if it is a journald log reader */
+    size_t i = 0;
+    for (; logr[i].file != NULL; i++) {
+        if (i == src_index) {
+            break;
+        }
+    }
+    if (logr[i].journal_log == NULL) {
+        return false;
+    }
+    
+    /* Search the first journald log reader, destination */
+    bool dst_found = false;
+    size_t dst_index = 0;
+    for (dst_index = 0; logr[dst_index].file != NULL && dst_index < src_index; dst_index++) {
+        if (logr[dst_index].journal_log != NULL) {
+            dst_found = true;
+            break;
+        }
+    }
+
+    if (!dst_found)
+    {
+        return false;
+    }
+     
+    /* Merge the filters */
+    bool src_has_filters = logr[src_index].journal_log->filters != NULL && logr[src_index].journal_log->filters[0] != NULL;
+    bool dst_has_filters = logr[dst_index].journal_log->filters != NULL && logr[dst_index].journal_log->filters[0] != NULL;
+    
+    // Disable filter is already disabled or if any don't have filters
+    if (!src_has_filters || !dst_has_filters) {
+        logr[dst_index].journal_log->disable_filters = true;
+        mdebug1("The filters of the journald log reader will be disabled in the merge"); // TODO, warning/info?
+    }
+
+    // Move the filters from the src_index to the dst_index
+    if (src_has_filters) {
+        w_journal_add_filter_to_list(&(logr[dst_index].journal_log->filters), logr[src_index].journal_log->filters[0]);
+        logr[src_index].journal_log->filters[0] = NULL; // Prevent the filter from being freed
+    }
+
+    /* Remove the src_index log reader */
+    Remove_Localfile(logf_ptr, src_index, 0, true, NULL);
+
+    return true;
 }
