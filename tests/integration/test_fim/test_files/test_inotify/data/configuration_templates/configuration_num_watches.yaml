@@ -1,0 +1,9 @@
+- sections:
+    - section: syscheck
+      elements:
+      - frequency:
+          value: 15
+      - directories:
+          value: TEST_DIR
+          attributes:
+          - FIM_MODE
