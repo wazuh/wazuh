@@ -5,9 +5,9 @@ DOCKER_IMAGE_NAME=$3
 if [ -n "$4" ]; then
     DOCKER_IMAGE_TAG="$4"
 else
-    exit 1
+    DOCKER_IMAGE_TAG="latest"
 fi
-GITHUB_REPOSITORY="wazuh/wazuh"
+GITHUB_REPOSITORY="wazuh/wazuh-packages"
 GITHUB_OWNER="wazuh"
 IMAGE_ID=ghcr.io/${GITHUB_OWNER}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
 IMAGE_ID=$(echo ${IMAGE_ID} | tr '[A-Z]' '[a-z]')
