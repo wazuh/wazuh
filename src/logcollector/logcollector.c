@@ -405,7 +405,7 @@ void LogCollectorStart()
             minfo(LOGCOLLECTOR_ONLY_MACOS);
 #endif
             os_free(current->file);
-            os_free(current->command);
+            current->command = NULL;
             os_free(current->fp);
         }
 
@@ -2358,7 +2358,7 @@ static void check_text_only() {
                 #endif
                 int result = 0;
                 if (j < 0) {
-                    result = Remove_Localfile(&logff, i, 0, 1, NULL); // Remove localfile w/o globs?
+                    result = Remove_Localfile(&logff, i, 0, 1, NULL);
                 } else {
                     result = Remove_Localfile(&(globs[j].gfiles), i, 1, 0, &globs[j]);
                 }
