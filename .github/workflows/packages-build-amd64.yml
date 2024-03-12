@@ -1,0 +1,75 @@
+name: Build Wazuh Packages - DEB|RPM - amd64 and i386
+on:
+  pull_request:
+    paths:
+      - 'packages/**'
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  Wazuh-manager-deb-package-build: 
+    # The host should always be linux
+    runs-on: ubuntu-22.04
+    name: Build on ${{ matrix.distro }} ${{ matrix.arch }}
+
+    # Run steps on a matrix
+    strategy:
+      matrix:
+        include:
+          - ARCHITECTURE: amd64
+            TYPE: manager
+            DISTRO: deb
+          - ARCHITECTURE: amd64
+            TYPE: manager
+            DISTRO: rpm
+
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - uses: actions/checkout@v4
+      
+      - name: Get changed files
+        uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            manager_deb_amd64:
+              - 'packages/debs/amd64/manager'
+              - 'packages/generate_package.sh'
+            manager_rpm_amd64:
+              - 'packages/rpm/amd64/manager'
+              - 'packages/generate_package.sh'
+        
+      - name: Set tag and container name
+        if: steps.changes.outputs.manager_deb_amd64 == 'true' || steps.changes.outputs.manager_rpm_amd64 == 'true'
+        run: |
+          MAJOR=$(sed 's/\([0-9]*\.[0-9]*\)\.[0-9]*/\1/' $GITHUB_WORKSPACE/src/VERSION)
+          if [ "${{ steps.changes.outputs.deb_images }}" == "true" ]; then echo "TAG=${{ github.head_ref }}" >> $GITHUB_ENV; else echo "TAG=$MAJOR" >> $GITHUB_ENV ; fi
+          if [ $MAJOR == "5.0" ]; then echo "VERSION=master" >> $GITHUB_ENV ; else echo "VERSION=$(cat $GITHUB_WORKSPACE/src/VERSION)" >> $GITHUB_ENV; fi
+          echo "CONTAINER_NAME=${{ matrix.DISTRO }}_${{ matrix.TYPE }}_builder_${{ matrix.ARCHITECTURE }}" >> $GITHUB_ENV
+
+      - name: Download docker image for package building
+        if: steps.changes.outputs.manager_deb_amd64 == 'true' || steps.changes.outputs.manager_rpm_amd64 == 'true'
+        run: |
+          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} $CONTAINER_NAME ${{ env.TAG }}
+
+      - name: Build the ${{ matrix.ARCHITECTURE }} ${{ matrix.DISTRO }} Wazuh ${{ matrix.TYPE }} package
+        if: steps.changes.outputs.manager_deb_amd64 == 'true' || steps.changes.outputs.manager_rpm_amd64 == 'true'
+        working-directory: ./packages
+        run: |
+          REVISION=$( echo ${{ github.head_ref }} | sed 's/-/./g; s/\//./g' )
+          bash generate_package.sh -b ${{ env.VERSION }} -t ${{ matrix.TYPE }} -a ${{ matrix.ARCHITECTURE }} --dont-build-docker --tag ${{ env.TAG }} -r $REVISION --package-format ${{ matrix.DISTRO }}
+          echo "PACKAGE_NAME=$(ls ./output | grep ${{ matrix.DISTRO }} | head -n 1)" >> $GITHUB_ENV
+
+      - name: Upload the ${{ matrix.ARCHITECTURE }} ${{ matrix.DISTRO }} Wazuh ${{ matrix.TYPE }} package as artifact
+        if: steps.changes.outputs.manager_deb_amd64 == 'true' || steps.changes.outputs.manager_rpm_amd64 == 'true'
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          path: ${{github.workspace}}/packages/output/${{ env.PACKAGE_NAME }}
+          if-no-files-found: error
