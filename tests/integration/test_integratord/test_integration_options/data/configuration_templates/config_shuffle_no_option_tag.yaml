@@ -1,7 +1,5 @@
 - tags:
     - all
-  apply_to_modules:
-    - test_shuffle_no_option_tag
   sections:
     - section: integration
       elements:
