@@ -1342,7 +1342,7 @@ checks:
      description: "This policy setting determines whether case insensitivity is enforced for all subsystems. The Microsoft Win32 subsystem is case insensitive. However, the kernel supports case sensitivity for other subsystems, such as the Portable Operating System Interface for UNIX (POSIX). Because Windows is case insensitive (but the POSIX subsystem will support case sensitivity), failure to enforce this policy setting makes it possible for a user of the POSIX subsystem to create a file with the same name as another file by using mixed case to label it. Such a situation can block access to these files by another user who uses typical Win32 tools, because only one of the files will be available. The recommended state for this setting is: Enabled."
      rationale: "Because Windows is case-insensitive but the POSIX subsystem will support case sensitivity, failure to enable this policy setting would make it possible for a user of that subsystem to create a file with the same name as another file but with a different mix of upper and lower case letters. Such a situation could potentially confuse users when they try to access such files from normal Win32 tools because only one of the files will be available."
      impact: "None - this is the default behavior."
-     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\System objects: Require case insensitivity for non- Windows subsystems."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\System objects: Require case insensitivity for non - Windows subsystems."
      compliance:
        - cis: ["2.3.15.1"]
        - cis_csc_v8: ["4.1", "5.1"]
@@ -4629,8 +4629,9 @@ checks:
        - nist_sp_800-53: ["SI-16"]
        - pci_dss_v3.2.1: ["1.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\EMET'
 
   # 18.10.24.2 (L1) Ensure 'Default Action and Mitigation Settings' is set to 'Enabled' (plus subsettings). (Automated)
    - id: 31264
@@ -4646,8 +4647,17 @@ checks:
        - nist_sp_800-53: ["SI-16"]
        - pci_dss_v3.2.1: ["1.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\SysSettings'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\SysSettings -> AntiDetours'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\SysSettings -> BannedFunctions'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\SysSettings-> DeepHooks'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\SysSettings -> ExploitAction'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\SysSettings -> AntiDetours -> 1'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\SysSettings -> BannedFunctions -> 1'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\SysSettings-> DeepHooks -> 1'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\SysSettings -> ExploitAction -> 2'
 
   # 18.10.24.3 (L1) Ensure 'Default Protections for Internet Explorer' is set to 'Enabled'. (Automated)
    - id: 31265
@@ -4663,8 +4673,11 @@ checks:
        - nist_sp_800-53: ["SI-16"]
        - pci_dss_v3.2.1: ["1.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\Internet Explorer\iexplore.exe'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\Internet Explorer\iexplore.exe -> +EAF+ eaf_modules:mshtml.dll;flash*.ocx;jscript*.dll;vbscript.dll;vgx.dll +ASR asr_modules:npjpi*.dll;jp2iexp.dll;vgx.dll;msxml4*.dll;wshom.ocx;scrrun.dll;vbscript.dll asr_zones:1;2'
 
   # 18.10.24.4 (L1) Ensure 'Default Protections for Popular Software' is set to 'Enabled'. (Automated)
    - id: 31266
@@ -4680,8 +4693,41 @@ checks:
        - nist_sp_800-53: ["SI-16"]
        - pci_dss_v3.2.1: ["1.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\7-Zip\7z.exe -> -EAF'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\7-Zip\7zG.exe -> -EAF'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\7-Zip\7zFM.exe -> -EAF'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\Adobe\Adobe Photoshop CS*\Photoshop.exe'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\Foxit Reader\Foxit Reader.exe'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\Google\Chrome\Application\chrome.exe -> +EAF+ eaf_modules:chrome_child.dll'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\Google\Google Talk\googletalk.exe -> -DEP'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\iTunes\iTunes.exe'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\Windows Live\Writer\WindowsLiveWriter.exe'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\Microsoft Lync\communicator.exe'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\Windows Live\Photo Gallery\WLXPhotoGallery.exe'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\SkyDrive\SkyDrive.exe'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\mIRC\mirc.exe'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\Mozilla Firefox\firefox.exe -> +EAF+ eaf_modules:mozjs.dll;xul.dll'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\Mozilla Firefox\plugin-container.exe'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\Mozilla Thunderbird\thunderbird.exe'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\Opera\opera.exe'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\Opera\*\opera.exe'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\Pidgin\pidgin.exe'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\QuickTime\QuickTimePlayer.exe'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\Real\RealPlayer\realconverter.exe'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\Safari\Safari.exe'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\Skype\Phone\Skype.exe -> -EAF'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\VideoLAN\VLC\vlc.exe'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\Winamp\winamp.exe'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\Windows Live\Mail\wlmail.exe'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\Windows Media Player\wmplayer.exe -> -EAF -MandatoryASLR'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\WinRAR\winrar.exe'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\WinRAR\rar.exe'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\WinRAR\unrar.exe'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\WinZip\winzip32.exe'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\WinZip\winzip64.exe'
 
   # 18.10.24.5 (L1) Ensure 'Default Protections for Recommended Software' is set to 'Enabled'. (Automated)
    - id: 31267
@@ -4697,8 +4743,27 @@ checks:
        - nist_sp_800-53: ["SI-16"]
        - pci_dss_v3.2.1: ["1.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\Adobe\Acrobat*\Acrobat\Acrobat.exe -> +EAF+ eaf_modules:AcroRd32.dll;Acrofx32.dll;AcroForm.api'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\Adobe\*\Reader\AcroRd32.exe -> +EAF+ eaf_modules:AcroRd32.dll;Acrofx32.dll;AcroForm.api'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\OFFICE1*\OUTLOOK.EXE'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\OFFICE1*\WINWORD.EXE -> +ASR asr_modules:flash*.ocx'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\OFFICE1*\EXCEL.EXE -> +ASR asr_modules:flash*.ocx'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\OFFICE1*\POWERPNT.EXE -> +ASR asr_modules:flash*.ocx'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\OFFICE1*\MSACCESS.EXE'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\OFFICE1*\MSPUB.EXE'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\OFFICE1*\INFOPATH.EXE'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\OFFICE1*\VISIO.EXE'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\OFFICE1*\VPREVIEW.EXE'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\OFFICE1*\LYNC.EXE'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\OFFICE1*\PPTVIEW.EXE'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\OFFICE1*\OIS.EXE'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\Java\jre*\bin\java.exe -> -HeapSpray'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\Java\jre*\bin\javaw.exe -> -HeapSpray'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\Java\jre*\bin\javaws.exe -> -HeapSpray'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\Defaults -> *\Windows NT\Accessories\wordpad.exe'
 
   # 18.10.24.6 (L1) Ensure 'System ASLR' is set to 'Enabled: Application Opt-In'. (Automated)
    - id: 31268
@@ -4714,8 +4779,11 @@ checks:
        - nist_sp_800-53: ["SI-16"]
        - pci_dss_v3.2.1: ["1.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\SysSettings'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\SysSettings -> ASLR'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\SysSettings -> ASLR -> 3'
 
   # 18.10.24.7 (L1) Ensure 'System DEP' is set to 'Enabled: Application Opt-Out'. (Automated)
    - id: 31269
@@ -4731,8 +4799,11 @@ checks:
        - nist_sp_800-53: ["SI-16"]
        - pci_dss_v3.2.1: ["1.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\SysSettings'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\SysSettings -> DEP'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\SysSettings -> DEP -> 2'
 
   # 18.10.24.8 (L1) Ensure 'System SEHOP' is set to 'Enabled: Application Opt-Out'. (Automated)
    - id: 31270
@@ -4748,8 +4819,11 @@ checks:
        - nist_sp_800-53: ["SI-16"]
        - pci_dss_v3.2.1: ["1.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\SysSettings'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\SysSettings -> SEHOP'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\EMET\SysSettings -> SEHOP -> 2'
 
   # 18.10.26.1.1 (L1) Ensure 'Application: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'. (Automated)
    - id: 31271
@@ -5592,8 +5666,11 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Error Reporting\Consent'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Error Reporting\Consent -> DefaultConsent'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Error Reporting\Consent -> DefaultConsent -> 1'
 
   # 18.10.81.1 (L1) Ensure 'Allow user control over installs' is set to 'Disabled'. (Automated)
    - id: 31315
