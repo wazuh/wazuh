@@ -30,6 +30,6 @@ rm -rf /wazuh-*/src/external
 short_commit_hash="$(curl -s https://api.github.com/repos/wazuh/wazuh/commits/${BRANCH} \
                           | grep '"sha"' | head -n 1| cut -d '"' -f 4 | cut -c 1-7)"
 version="$(cat /wazuh-*/src/VERSION| cut -d 'v' -f 2)"
-ZIP_NAME="wazuh_agent_${version}-${REVISION}_windows_${short_commit_hash}.zip"
+ZIP_NAME="wazuh-agent_${version}-${REVISION}_windows_${short_commit_hash}.zip"
 zip -r ${ZIP_NAME} wazuh-*
 cp ${ZIP_NAME} /shared

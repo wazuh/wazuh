@@ -42,8 +42,7 @@ trap ctrl_c INT
 function clean_and_exit() {
     exit_code=$1
     rm -rf "${SOURCES_DIRECTORY}"
-    rm "${WAZUH_PACKAGES_PATH}"/specs/wazuh-agent.pkgproj-e
-    ${WAZUH_PACKAGES_PATH}/uninstall.sh
+    ${CURRENT_PATH}/uninstall.sh
     exit ${exit_code}
 }
 
@@ -141,7 +140,7 @@ function build_package() {
         echo "\nThe wazuh agent is already installed on this machine."
         echo "Removing it from the system."
 
-        ${WAZUH_PACKAGES_PATH}/uninstall.sh
+        ${CURRENT_PATH}/uninstall.sh
     fi
 
     ${WAZUH_PACKAGES_PATH}/package_files/build.sh "${INSTALLATION_PATH}" "${WAZUH_PATH}" ${JOBS}
@@ -412,7 +411,7 @@ function main() {
         check_root
         AGENT_PKG_FILE="${WAZUH_PACKAGES_PATH}/package_files/wazuh-agent-${ARCH}.pkgproj"
         build_package
-        "${WAZUH_PACKAGES_PATH}/uninstall.sh"
+        "${CURRENT_PATH}/uninstall.sh"
     fi
     if [ "${NOTARIZE}" = "yes" ]; then
         if [ "${BUILD}" = "yes" ]; then
