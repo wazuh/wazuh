@@ -1,0 +1,19 @@
+- name: Basic configuration log format windows
+  description: Basic configuration log format windows
+  configuration_parameters:
+    LOCATION: 'Security'
+    LOG_FORMAT: 'eventlog'
+  metadata:
+    location: 'Security'
+    log_format: 'eventlog'
+    valid_value: True
+
+- name: Basic configuration log format windows
+  description: Basic configuration log format windows
+  configuration_parameters:
+    LOCATION: '/tmp/test.txt'
+    LOG_FORMAT: 'eventchannel'
+  metadata:
+    location: '/tmp/test.txt'
+    log_format: 'eventchannel'
+    valid_value: True
