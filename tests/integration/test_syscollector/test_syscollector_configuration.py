@@ -50,15 +50,14 @@ from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.utils import services
 from wazuh_testing.tools.monitors import file_monitor
-from wazuh_testing.utils import callbacks, configuration, file
-from wazuh_testing.modules.syscollector import patterns
+from wazuh_testing.utils import callbacks, configuration
+from wazuh_testing.modules.modulesd.syscollector import patterns
 from wazuh_testing.modules.modulesd.configuration import MODULESD_DEBUG
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 
 # Marks
-pytestmark = [pytest.mark.tier(level=0), pytest.mark.server, pytest.mark.agent,
-              pytest.mark.linux, pytest.mark.darwin, pytest.mark.win32]
+pytestmark = [pytest.mark.tier(level=0), pytest.mark.linux, pytest.mark.win32]
 
 # Variables
 local_internal_options = {MODULESD_DEBUG: '2'}

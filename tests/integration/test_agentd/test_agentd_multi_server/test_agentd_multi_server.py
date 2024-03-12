@@ -50,6 +50,7 @@ import sys
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
+from wazuh_testing.constants.ports import DEFAULT_SSL_REMOTE_CONNECTION_PORT
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG, AGENTD_TIMEOUT
 from wazuh_testing.modules.agentd.patterns import *
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
@@ -61,7 +62,7 @@ from wazuh_testing.utils.configuration import get_test_cases_data, load_configur
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
 # Marks
-pytestmark = pytest.mark.tier(level=0)
+pytestmark = [pytest.mark.agent, pytest.mark.tier(level=0)]
 
 # Configuration and cases data.
 configs_path = Path(CONFIGS_PATH, 'wazuh_conf.yaml')
@@ -162,7 +163,7 @@ def test_agentd_multi_server(test_configuration, test_metadata, set_wazuh_config
         - keys
     '''
     remoted_server_address = "127.0.0.1"
-    remoted_server_ports = [1514,1516,1517]
+    remoted_server_ports = [DEFAULT_SSL_REMOTE_CONNECTION_PORT,1516,1517]
 
     # Configure keys
     if(test_metadata['SIMULATOR_MODES']['AUTHD'] == 'ACCEPT'):
