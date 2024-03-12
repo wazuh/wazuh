@@ -8,7 +8,10 @@
     - directories:
         value: TEST_DIR
         attributes:
+        - check_all: 'yes'
         - FIM_MODE
+    - windows_audit_interval:
+        value: 1
   - section: sca
     elements:
     - enabled:
