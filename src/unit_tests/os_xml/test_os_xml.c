@@ -1001,6 +1001,64 @@ void test_node_attribute_value_overflow(void **state) {
     assert_int_equal(data->xml.err_line, 1);
 }
 
+void test_os_readxml_non_empty_tag(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    create_xml_file("<element-name>test</element-name>", data->xml_file_name, 256);
+
+    assert_int_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
+    assert_int_equal(OS_RootElementExist(&data->xml, "element-name"), 1);
+}
+
+void test_os_readxml_non_empty_tag_space_at_start(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    create_xml_file("  <element-name>test</element-name>", data->xml_file_name, 256);
+
+    assert_int_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
+    assert_int_equal(OS_RootElementExist(&data->xml, "element-name"), 1);
+}
+
+void test_os_readxml_non_empty_tag_inside_quotes(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    create_xml_file("\"<element-name>\"test\"</element-name>\"", data->xml_file_name, 256);
+
+    assert_int_not_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
+    assert_string_equal(data->xml.err, "XMLERR: Malformed XML does not start with '<'");
+    assert_int_equal(data->xml.err_line, 1);
+}
+
+void test_os_readxml_xml_inside_non_json(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    create_xml_file("{{\"field\":\"value\"},{<element-name>test</element-name>}}", data->xml_file_name, 256);
+
+    assert_int_not_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
+    assert_string_equal(data->xml.err, "XMLERR: Malformed XML does not start with '<'");
+    assert_int_equal(data->xml.err_line, 1);
+}
+
+void test_os_readxml_random_string_with_valid_xml(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    create_xml_file("\"field\"asidpoaisdpoa $$ :\"value\"},{<element-name>test</element-name>}}", data->xml_file_name, 256);
+
+    assert_int_not_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
+    assert_string_equal(data->xml.err, "XMLERR: Malformed XML does not start with '<'");
+    assert_int_equal(data->xml.err_line, 1);
+}
+
+void test_os_readxml_empty_tag(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    create_xml_file("<   >test</   >", data->xml_file_name, 256);
+
+    assert_int_not_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
+    assert_string_equal(data->xml.err, "XMLERR: Element '' not closed.");
+    assert_int_equal(data->xml.err_line, 1);
+}
+
 void test_node_attribute_value_truncate_overflow(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
 
@@ -1237,6 +1295,15 @@ int main(void) {
 
         // Truncate node attribute value inside XML overflow test
         cmocka_unit_test_setup_teardown(test_node_attribute_value_truncate_overflow, test_setup, test_teardown),
+
+        // OS_ReadXML tests
+        cmocka_unit_test_setup_teardown(test_os_readxml_non_empty_tag, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_os_readxml_non_empty_tag_space_at_start, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_os_readxml_non_empty_tag_inside_quotes, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_os_readxml_xml_inside_non_json, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_os_readxml_random_string_with_valid_xml, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_os_readxml_non_empty_tag, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_os_readxml_empty_tag, test_setup, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

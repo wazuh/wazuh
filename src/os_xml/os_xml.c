@@ -286,6 +286,27 @@ static int _ReadElem(unsigned int parent, OS_XML *_lxml, unsigned int recursion_
         cmp = '\0';
     }
 
+    // consume all the spaces, tabs or new line characters
+    while ((c = xml_getc_fun(_lxml->fp, _lxml)) != cmp) {
+        if (isspace(c)) {
+            continue;
+        } else {
+            break;
+        }
+    }
+
+    // check that the next character is '<'
+    if (c == cmp) {
+        retval = LEOF;
+        xml_error(_lxml, "XMLERR: Empty content.");
+        goto end;
+    }
+    else if (c != _R_CONFS) {
+        xml_error(_lxml, "XMLERR: Malformed XML does not start with '<'");
+        goto end;
+    }
+    _xml_ungetc(_R_CONFS, _lxml);
+
     while ((c = xml_getc_fun(_lxml->fp, _lxml)) != cmp) {
         if (c == '\\') {
             prevv *= -1;
