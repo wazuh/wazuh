@@ -172,7 +172,6 @@ def test_max_eps(test_configuration, test_metadata, configure_local_internal_opt
             date_time_count[date_time] = 1
 
     for date_time, n_occurrences in date_time_count.items():
-        print(f"Date Time: {date_time}, Occurrences: {n_occurrences}")
         assert n_occurrences <= max_eps, f"Sent {n_occurrences} but a maximum of {max_eps} was set"
 
 def parse_integrity_message(lines):
