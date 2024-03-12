@@ -9,6 +9,8 @@
             - FIM_MODE
       - max_eps:
           value: MAX_EPS
+      - windows_audit_interval:
+          value: 1
 
     - section: sca
       elements:
