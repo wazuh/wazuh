@@ -270,7 +270,7 @@ def get_aws_bucket_parameters(db_table_name: str = TEST_TABLE_NAME, bucket: str 
 def get_aws_service_parameters(db_table_name: str = TEST_TABLE_NAME, service_name: str = 'cloudwatchlogs',
                                reparse: bool = False, access_key: str = None, secret_key: str = None,
                                profile: str = TEST_AWS_PROFILE, iam_role_arn: str = None,
-                               only_logs_after: str = None, region: str = None, aws_log_groups: str = None,
+                               only_logs_after: str = None, account_alias: str = None, region: str = None, aws_log_groups: str = None,
                                remove_log_streams: bool = None, discard_field: str = None,
                                discard_regex: str = None, sts_endpoint: str = None, service_endpoint: str = None,
                                iam_role_duration: str = None):
@@ -293,6 +293,8 @@ def get_aws_service_parameters(db_table_name: str = TEST_TABLE_NAME, service_nam
         Service name to extract logs from.
     only_logs_after : str
         Date after which obtain logs.
+    account_alias: str
+        AWS account alias.
     region : str
         Region name.
     aws_log_groups : str
@@ -319,7 +321,7 @@ def get_aws_service_parameters(db_table_name: str = TEST_TABLE_NAME, service_nam
     """
     return {'db_table_name': db_table_name, 'service_name': service_name, 'reparse': reparse, 'access_key': access_key,
             'secret_key': secret_key, 'profile': profile, 'iam_role_arn': iam_role_arn,
-            'only_logs_after': only_logs_after, 'region': region, 'aws_log_groups': aws_log_groups,
+            'only_logs_after': only_logs_after, 'account_alias': account_alias, 'region': region, 'aws_log_groups': aws_log_groups,
             'remove_log_streams': remove_log_streams, 'discard_field': discard_field,
             'discard_regex': discard_regex, 'sts_endpoint': sts_endpoint,
             'service_endpoint': service_endpoint, 'iam_role_duration': iam_role_duration}
