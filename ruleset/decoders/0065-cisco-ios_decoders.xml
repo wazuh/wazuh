@@ -270,3 +270,14 @@ Details: https://www.cisco.com/c/en/us/td/docs/routers/access/wireless/software/
   <regex>%(\w+)-(\d)-(\w+):</regex>
   <order>cisco.facility, cisco.severity, cisco.mnemonic</order>
 </decoder>
+
+<!-- Cisco IOS login success 
+  - .May 11 05:45:31.209 UTC: %SEC_LOGIN-5-LOGIN_SUCCESS: Login Success [user: johndoe] [Source: 172.16.22.101] [localport: 22] at 05:45:31 UTC Thu May 11 2023
+-->
+
+<decoder name="cisco-ios-login">
+  <parent>cisco-ios</parent>
+  <prematch>%SEC_LOGIN-5-LOGIN_SUCCESS: Login Success [user: \S+] [Source: \d+.\d+.\d+.\d+] [localport: \d+] at</prematch>
+  <regex>%(\w+)-(\d)-(\w+): Login Success [user: (\S+)] [Source: (\d+.\d+.\d+.\d+)] [localport: (\d+)] at</regex>
+  <order>cisco.facility, cisco.severity, cisco.mnemonic, srcuser, srcip, dstport</order>
+</decoder>
