@@ -522,13 +522,13 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         } else if (strcasecmp(node[i]->element, xml_localfile_filter) == 0) {
             if (init_w_journal_log_config_t(&(logf[pl].journal_log)))
             {
-                // Inicialize the filter list
-                os_calloc(2, sizeof(w_journal_filters_list_t), logf[pl].journal_log->filters);
+                os_calloc(2, sizeof(w_journal_filter_t *), logf[pl].journal_log->filters);
             }
             // Use always the same filter for all the conditions (First filter)
             if (!journald_add_condition_to_filter(node[i], &(logf[pl].journal_log->filters[0]))) {
-                merror("Error adding filter");
-                return (OS_INVALID);
+                mwarn("Cannot add filter, the block will be ignored");
+                w_clean_logreader(&logf[pl]);
+                return (0);
             }
         } else {
             merror(XML_INVELEM, node[i]->element);
@@ -568,6 +568,8 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
     /* Verify journald log config*/
     if (strcmp(logf[pl].logformat, JOURNALD_LOG) == 0) {
+
+        init_w_journal_log_config_t(&(logf[pl].journal_log));
 
         /* Verify journald log config*/
         if (strcmp(logf[pl].file, JOURNALD_LOG) != 0) {
@@ -610,9 +612,10 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             mwarn(LOGCOLLECTOR_OPTION_IGNORED, JOURNALD_LOG, xml_localfile_restrict);
         }
 
-        // Create journald log if it does not exist (Because there no filters)
-        init_w_journal_log_config_t(&(logf[pl].journal_log));
-
+    } else if (logf[pl].journal_log != NULL) {
+        /* Only log format journald support journald log config */
+        mwarn("log_format '%s' does not support filter option. Will be ignored.", logf[pl].logformat);
+        w_journal_log_config_free(&(logf[pl].journal_log));
     }
 
     /* Verify macos log config*/
@@ -801,7 +804,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     /* post processing stage */
     // Merge multi configurations of journald log
     if (logf[pl].journal_log != NULL) {
-        bool res = w_logreader_journald_merge(&logf, pl);
+        bool res = w_logreader_journald_merge(&(log_config->config), pl);
         if (res) {
             minfo("Merge journald log configurations");
         }
@@ -867,6 +870,15 @@ void Free_Localfile(logreader_config * config){
     }
 }
 
+void w_clean_logreader(logreader * logf) {
+
+    if (logf != NULL) {
+        Free_Logreader(logf);
+        memset(logf, 0, sizeof(logreader));
+    }
+
+}
+
 void Free_Logreader(logreader * logf) {
     int i;
 
@@ -874,11 +886,16 @@ void Free_Logreader(logreader * logf) {
         os_free(logf->ffile);
         os_free(logf->file);
         os_free(logf->logformat);
+        w_multiline_log_config_free(&(logf->multiline));
+        w_macos_log_config_free(&(logf->macos_log));
+        w_journal_log_config_free(&(logf->journal_log));
         os_free(logf->djb_program_name);
+        os_free(logf->channel_str);
         os_free(logf->alias);
         os_free(logf->query);
         os_free(logf->exclude);
         os_free(logf->query_level);
+        os_free(logf->age_str);
 
         if (logf->regex_ignore) {
             OSList_Destroy(logf->regex_ignore);
@@ -915,11 +932,6 @@ void Free_Logreader(logreader * logf) {
             free(logf->out_format);
         }
 
-        // Free journald log config
-        if (logf->journal_log != NULL) {
-            w_journal_free_filters_list(logf->journal_log->filters);
-            os_free(logf->journal_log);
-        }
     }
 }
 
@@ -927,7 +939,7 @@ int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *gl
     if (*logf) {
         int size = 0;
         int x;
-        while ((*logf)[size].file || (!gl && (*logf)[size].logformat)) { /// Where is the check (*logf)[size] is not NULL?
+        while ((*logf)[size].file || (!gl && (*logf)[size].logformat)) {
             size++;
         }
         if (i < size) {
@@ -1049,6 +1061,41 @@ const char * multiline_attr_match_str(w_multiline_match_type_t match_type) {
     return match_str[match_type];
 }
 
+void w_multiline_log_config_free(w_multiline_config_t** config)
+{
+    if (config == NULL || *config == NULL)
+    {
+        return;
+    }
+
+    if ((*config)->ctxt)
+    {
+        os_free((*config)->ctxt->buffer);
+        os_free((*config)->ctxt);
+    }
+    w_free_expression_t(&((*config)->regex));
+    os_free((*config));
+}
+
+void w_macos_log_config_free(w_macos_log_config_t** macos_log) {
+
+    if (macos_log == NULL || *macos_log == NULL) {
+        return;
+    }
+
+    w_free_expression_t(&((*macos_log)->log_start_regex));
+    if ((*macos_log)->processes.stream.wfd != NULL)
+    {
+        wpclose((*macos_log)->processes.stream.wfd);
+    }
+    if ((*macos_log)->processes.show.wfd != NULL)
+    {
+        wpclose((*macos_log)->processes.show.wfd);
+    }
+    os_free((*macos_log)->current_settings);
+    os_free(*macos_log);
+}
+
 STATIC int w_logcollector_get_macos_log_type(const char * content) {
 
     const size_t MAX_ARRAY_SIZE = 64;
@@ -1116,6 +1163,17 @@ bool init_w_journal_log_config_t(w_journal_log_config_t** config)
     return true;    
 }
 
+void w_journal_log_config_free(w_journal_log_config_t** config)
+{
+    if (config == NULL || *config == NULL)
+    {
+        return;
+    }
+
+    w_journal_free_filters_list((*config)->filters);
+    os_free(*config);
+}
+
 bool journald_add_condition_to_filter(xml_node* node, w_journal_filter_t** filter)
 {
     if (node == NULL || filter == NULL)
@@ -1129,12 +1187,12 @@ bool journald_add_condition_to_filter(xml_node* node, w_journal_filter_t** filte
 
     if (field == NULL || *field == '\0')
     {
-        merror("The field for the journal filter cannot be empty");
+        mwarn("The field for the journal filter cannot be empty");
         return false;
     }
     if (expression == NULL || *expression == '\0')
     {
-        merror("The expression for the journal filter cannot be empty");
+        mwarn("The expression for the journal filter cannot be empty");
         return false;
     }
 
@@ -1153,7 +1211,7 @@ bool journald_add_condition_to_filter(xml_node* node, w_journal_filter_t** filte
 
     if (w_journal_filter_add_condition(filter, field, expression, ignore_if_missing) != 0)
     {
-        merror("Error compiling the PCRE2 expression for the journal filter");
+        mwarn("Error compiling the PCRE2 expression for the journal filter");
         return false;
     }
 
@@ -1353,7 +1411,7 @@ bool w_logreader_journald_merge(logreader ** logf_ptr, size_t src_index)
     // Disable filter is already disabled or if any don't have filters
     if (!src_has_filters || !dst_has_filters) {
         logr[dst_index].journal_log->disable_filters = true;
-        mdebug1("The filters of the journald log reader will be disabled in the merge"); // TODO, warning/info?
+        mwarn("The filters of the journald log will be disabled in the merge, because one of the configuration does not have filters.");
     }
 
     // Move the filters from the src_index to the dst_index

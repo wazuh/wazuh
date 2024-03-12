@@ -272,8 +272,30 @@ void Free_Localfile(logreader_config * config);
 /* Frees a localfile  */
 void Free_Logreader(logreader * logf);
 
+/**
+ * @brief Clean a logreader
+ *
+ * Removes all the resources of a logreader, freeing the memory and setting all members to NULL.
+ * @param logf logreader to clean
+ */
+void w_clean_logreader(logreader * logf);
+
 /* Removes a specific localfile of an array */
 int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *globf);
+
+/**
+ * @brief Free the macos log config and all its resources
+ * 
+ * @param macos_log Macos log config
+ */
+void w_macos_log_config_free(w_macos_log_config_t** config);
+
+/**
+ * @brief Free the multiline log config and all its resources
+ * 
+ * @param multiline Multiline log config
+ */
+void w_multiline_log_config_free(w_multiline_config_t** config);
 
 /**
  * @brief Get match attribute for multiline regex
@@ -324,6 +346,14 @@ const char * multiline_attr_match_str(w_multiline_match_type_t match_type);
  * @return bool true if the configuration was initialized, false otherwise
  */
 bool init_w_journal_log_config_t(w_journal_log_config_t** config);
+
+/**
+ * @brief Free the journal configuration and all its resources
+ * 
+ * *config will be set to NULL after the call.
+ * @param config Journal log configuration
+ */
+void w_journal_log_config_free(w_journal_log_config_t** config);
 
 /**
  * @brief Add the filter conditions to the filter
