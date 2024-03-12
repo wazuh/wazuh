@@ -233,11 +233,15 @@ function main() {
                     local LINUX_BUILDER="${LINUX_BUILDER_AARCH64}"
                     local LINUX_BUILDER_DOCKERFILE="${LINUX_BUILDER_AARCH64_DOCKERFILE}"
                     shift 2
+                    echo "Architecture not supported currently. Issue: https://github.com/wazuh/wazuh/issues/22400"
+                    help 1
                 elif [[ "${2}" == "armv7hl" ]]; then
                     local ARCHITECTURE="${2}"
                     local LINUX_BUILDER="${LINUX_BUILDER_ARMV7HL}"
                     local LINUX_BUILDER_DOCKERFILE="${LINUX_BUILDER_ARMV7HL_DOCKERFILE}"
                     shift 2
+                    echo "Architecture not supported currently. Issue: https://github.com/wazuh/wazuh/issues/22400"
+                    help 1
                 else
                     echo "Architecture must be x86_64/amd64, aarch64 or armv7hl"
                     help 1
