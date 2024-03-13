@@ -49,26 +49,29 @@ base::Expression normalizeBuilder(const json::Json& definition, const std::share
                 std::back_inserter(subBlocksExpressions),
                 [buildCtx](auto& tuple)
                 {
-                    auto& [key, value] = tuple;
                     json::Json stageParseValue;
                     stageParseValue.setArray();
-                    auto pos = key.find(syntax::asset::PARSE_KEY);
-                    if (pos != std::string::npos)
+                    auto& [key, value] = tuple;
+                    size_t keySize = strlen(syntax::asset::PARSE_KEY);
+                    if (key.compare(0, keySize, syntax::asset::PARSE_KEY) == 0)
                     {
-                        // TODO fix this hack, we need to format the json as the old parse stage
-                        std::string targetField;
-                        try
+                        bool meetsFormat = key.length() > keySize && key[keySize] == '|';
+
+                        if (!meetsFormat)
                         {
-                            targetField = key.substr(std::string(syntax::asset::PARSE_KEY).size() + 1);
-                        }
-                        catch(const std::exception& e)
-                        {
-                            throw std::runtime_error("Stage parse needs the character '|' to indicate the field");
+                            throw std::runtime_error("Stage parse: needs the character '|' to indicate the field");
                         }
 
-                        if (targetField.empty())
+                        // Extract text after '|'
+                        auto targetField = key.substr(keySize + 1);
+
+                        try
                         {
-                            throw std::runtime_error("Stage parse field was not found");
+                            DotPath {targetField};
+                        }
+                        catch (const std::exception& e)
+                        {
+                            throw std::runtime_error(fmt::format("Stage parse: Could not get field: {}", e.what()));
                         }
 
                         key = "parse";
