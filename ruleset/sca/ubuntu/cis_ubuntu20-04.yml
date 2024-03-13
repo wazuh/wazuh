@@ -2642,7 +2642,7 @@ checks:
     rules:
       - "f:/etc/cron.allow"
       - "not f:/etc/cron.deny"
-      - 'c:stat -Lc "%a %A %u %U  %g %G" /etc/cron.allow -> r:640\s*\t*-rw-r-----\s*\t*0\s*\t*root\s*\t*0\s*\t*crontab'
+      - 'c:stat -Lc "%a %A %u %U %G" /etc/cron.allow -> r:640 -rw-r----- 0 root crontab'
 
   # 4.1.9 Ensure at is restricted to authorized users. (Automated)
   - id: 19108
