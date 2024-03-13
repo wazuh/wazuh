@@ -1,8 +1,7 @@
 #ifndef _COMPONENT_FAKE_STORE_HPP
 #define _COMPONENT_FAKE_STORE_HPP
 
-constexpr auto ROUTER_JSON {
-    R"([])"};
+constexpr auto ROUTER_JSON {R"([])"};
 
 constexpr auto TESTER_JSON {R"([])"};
 
@@ -11,6 +10,13 @@ constexpr auto POLICY_JSON {
 
 constexpr auto FILTER_JSON {R"({
     "name": "filter/allow-all/0"
+})"};
+
+constexpr auto EPS_JSON {
+    R"({
+    "eps": 1,
+    "refreshInterval": 1,
+    "active": false
 })"};
 
 constexpr auto INTEGRATION_JSON {R"({

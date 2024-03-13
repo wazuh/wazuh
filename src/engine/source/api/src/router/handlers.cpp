@@ -80,8 +80,8 @@ getRequest(const api::wpRequest& wRequest, const std::weak_ptr<::router::IRouter
     return std::make_pair(router, std::get<RequestType>(res));
 }
 
-
-eRouter::Sync getHashSatus(const ::router::prod::Entry& entry, const std::weak_ptr<api::policy::IPolicy>& wPolicyManager)
+eRouter::Sync getHashSatus(const ::router::prod::Entry& entry,
+                           const std::weak_ptr<api::policy::IPolicy>& wPolicyManager)
 {
     auto policyManager = wPolicyManager.lock();
     if (!policyManager)
@@ -100,12 +100,13 @@ eRouter::Sync getHashSatus(const ::router::prod::Entry& entry, const std::weak_p
 
 /**
  * @brief Convert a router entry to a api entry
- * 
+ *
  * @param entry to convert
  * @param wPolicyManager for hash comparison
- * @return eRouter::Entry 
+ * @return eRouter::Entry
  */
-eRouter::Entry eRouteEntryFromEntry(const ::router::prod::Entry& entry, const std::weak_ptr<api::policy::IPolicy>& wPolicyManager)
+eRouter::Entry eRouteEntryFromEntry(const ::router::prod::Entry& entry,
+                                    const std::weak_ptr<api::policy::IPolicy>& wPolicyManager)
 {
     eRouter::Entry eEntry;
     eEntry.set_name(entry.name());
@@ -210,7 +211,8 @@ api::HandlerSync routeDelete(const std::weak_ptr<::router::IRouterAPI>& router)
     };
 }
 
-api::HandlerSync routeGet(const std::weak_ptr<::router::IRouterAPI>& router, const std::weak_ptr<api::policy::IPolicy>& policy)
+api::HandlerSync routeGet(const std::weak_ptr<::router::IRouterAPI>& router,
+                          const std::weak_ptr<api::policy::IPolicy>& policy)
 {
     return [wRouter = router, wPolicyManager = policy](const api::wpRequest& wRequest) -> api::wpResponse
     {
@@ -308,7 +310,8 @@ api::HandlerSync routePatchPriority(const std::weak_ptr<::router::IRouterAPI>& r
     };
 }
 
-api::HandlerSync tableGet(const std::weak_ptr<::router::IRouterAPI>& router, const std::weak_ptr<api::policy::IPolicy>& policy)
+api::HandlerSync tableGet(const std::weak_ptr<::router::IRouterAPI>& router,
+                          const std::weak_ptr<api::policy::IPolicy>& policy)
 {
     return [wRouter = router, wPolicyManager = policy](const api::wpRequest& wRequest) -> api::wpResponse
     {
@@ -364,18 +367,135 @@ api::HandlerSync queuePost(const std::weak_ptr<::router::IRouterAPI>& router)
     };
 }
 
-void registerHandlers(const std::weak_ptr<::router::IRouterAPI>& router, const std::weak_ptr<api::policy::IPolicy>& policy, std::shared_ptr<api::Api> api)
+api::HandlerSync changeEpsSettings(const std::weak_ptr<::router::IRouterAPI>& router)
+{
+    return [wRouter = router](const api::wpRequest& wRequest) -> api::wpResponse
+    {
+        using RequestType = eRouter::EpsUpdate_Request;
+        using ResponseType = eEngine::GenericStatus_Response;
+        auto res = getRequest<RequestType, ResponseType>(wRequest, wRouter);
+
+        // If the request is not valid, return the error
+        if (std::holds_alternative<api::wpResponse>(res))
+        {
+            return std::move(std::get<api::wpResponse>(res));
+        }
+
+        auto& [router, eRequest] = std::get<RouterAndRequest<RequestType>>(res);
+        const auto changeRes = router->changeEpsSettings(eRequest.eps(), eRequest.refresh_interval());
+
+        if (changeRes.has_value())
+        {
+            return genericError<ResponseType>(changeRes.value().message);
+        }
+        return genericSuccess<ResponseType>();
+    };
+}
+
+api::HandlerSync getEpsSettings(const std::weak_ptr<::router::IRouterAPI>& router)
+{
+    return [wRouter = router](const api::wpRequest& wRequest) -> api::wpResponse
+    {
+        using RequestType = eRouter::EpsGet_Request;
+        using ResponseType = eRouter::EpsGet_Response;
+        auto res = getRequest<RequestType, ResponseType>(wRequest, wRouter);
+
+        // If the request is not valid, return the error
+        if (std::holds_alternative<api::wpResponse>(res))
+        {
+            return std::move(std::get<api::wpResponse>(res));
+        }
+
+        auto& [router, eRequest] = std::get<RouterAndRequest<RequestType>>(res);
+        const auto getRes = router->getEpsSettings();
+
+        if (base::isError(getRes))
+        {
+            return genericError<ResponseType>(base::getError(getRes).message);
+        }
+
+        // Build the response
+        ResponseType eResponse;
+        auto [eps, refreshInterval, active] = base::getResponse(getRes);
+        eResponse.set_eps(eps);
+        eResponse.set_refresh_interval(refreshInterval);
+        eResponse.set_active(active);
+        eResponse.set_status(eEngine::ReturnStatus::OK);
+
+        return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
+    };
+}
+
+api::HandlerSync activateEpsLimiter(const std::weak_ptr<::router::IRouterAPI>& router)
+{
+    return [wRouter = router](const api::wpRequest& wRequest) -> api::wpResponse
+    {
+        using RequestType = eRouter::EpsActivate_Request;
+        using ResponseType = eEngine::GenericStatus_Response;
+        auto res = getRequest<RequestType, ResponseType>(wRequest, wRouter);
+
+        // If the request is not valid, return the error
+        if (std::holds_alternative<api::wpResponse>(res))
+        {
+            return std::move(std::get<api::wpResponse>(res));
+        }
+
+        auto& [router, eRequest] = std::get<RouterAndRequest<RequestType>>(res);
+        const auto changeRes = router->activateEpsCounter(true);
+
+        if (changeRes.has_value())
+        {
+            return genericError<ResponseType>(changeRes.value().message);
+        }
+        return genericSuccess<ResponseType>();
+    };
+}
+
+api::HandlerSync deactivateEpsLimiter(const std::weak_ptr<::router::IRouterAPI>& router)
+{
+    return [wRouter = router](const api::wpRequest& wRequest) -> api::wpResponse
+    {
+        using RequestType = eRouter::EpsDeactivate_Request;
+        using ResponseType = eEngine::GenericStatus_Response;
+        auto res = getRequest<RequestType, ResponseType>(wRequest, wRouter);
+
+        // If the request is not valid, return the error
+        if (std::holds_alternative<api::wpResponse>(res))
+        {
+            return std::move(std::get<api::wpResponse>(res));
+        }
+
+        auto& [router, eRequest] = std::get<RouterAndRequest<RequestType>>(res);
+        const auto changeRes = router->activateEpsCounter(false);
+
+        if (changeRes.has_value())
+        {
+            return genericError<ResponseType>(changeRes.value().message);
+        }
+        return genericSuccess<ResponseType>();
+    };
+}
+
+void registerHandlers(const std::weak_ptr<::router::IRouterAPI>& router,
+                      const std::weak_ptr<api::policy::IPolicy>& policy,
+                      std::shared_ptr<api::Api> api)
 {
     // Commands to manage routes
-    const bool ok = api->registerHandler("router.route/post", Api::convertToHandlerAsync(routePost(router)))
-                    && api->registerHandler("router.route/delete", Api::convertToHandlerAsync(routeDelete(router)))
-                    && api->registerHandler("router.route/get", Api::convertToHandlerAsync(routeGet(router, policy)))
-                    && api->registerHandler("router.route/reload", Api::convertToHandlerAsync(routeReload(router)))
-                    && api->registerHandler("router.route/patchPriority", Api::convertToHandlerAsync(routePatchPriority(router)))
-                    // Commands to manage the routes table
-                    && api->registerHandler("router.table/get", Api::convertToHandlerAsync(tableGet(router, policy)))
-                    // Commands to manage the queue of events
-                    && api->registerHandler("router.queue/post", Api::convertToHandlerAsync(queuePost(router)));
+    const bool ok =
+        api->registerHandler("router.route/post", Api::convertToHandlerAsync(routePost(router)))
+        && api->registerHandler("router.route/delete", Api::convertToHandlerAsync(routeDelete(router)))
+        && api->registerHandler("router.route/get", Api::convertToHandlerAsync(routeGet(router, policy)))
+        && api->registerHandler("router.route/reload", Api::convertToHandlerAsync(routeReload(router)))
+        && api->registerHandler("router.route/patchPriority", Api::convertToHandlerAsync(routePatchPriority(router)))
+        // Commands to manage the routes table
+        && api->registerHandler("router.table/get", Api::convertToHandlerAsync(tableGet(router, policy)))
+        // Commands to manage the queue of events
+        && api->registerHandler("router.queue/post", Api::convertToHandlerAsync(queuePost(router)))
+        // Commands to manage the EPS limiter
+        && api->registerHandler("router.eps/update", Api::convertToHandlerAsync(changeEpsSettings(router)))
+        && api->registerHandler("router.eps/get", Api::convertToHandlerAsync(getEpsSettings(router)))
+        && api->registerHandler("router.eps/activate", Api::convertToHandlerAsync(activateEpsLimiter(router)))
+        && api->registerHandler("router.eps/deactivate", Api::convertToHandlerAsync(deactivateEpsLimiter(router)));
 
     if (!ok)
     {

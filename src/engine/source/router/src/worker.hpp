@@ -10,9 +10,9 @@
 #include <router/types.hpp>
 
 #include "environmentBuilder.hpp"
+#include "iworker.hpp"
 #include "router.hpp"
 #include "tester.hpp"
-#include "iworker.hpp"
 
 namespace router
 {
@@ -24,8 +24,8 @@ class Worker : public IWorker
 private:
     std::shared_ptr<IRouter> m_router; ///< The router instance
     std::shared_ptr<ITester> m_tester; ///< The tester instance
-    std::atomic_bool m_isRunning;     ///< Flag to know if the worker is running
-    std::thread m_thread;             ///< The thread for the worker
+    std::atomic_bool m_isRunning;      ///< Flag to know if the worker is running
+    std::thread m_thread;              ///< The thread for the worker
 
     std::shared_ptr<base::queue::iQueue<base::Event>> m_rQueue;     ///< The router queue
     std::shared_ptr<base::queue::iQueue<test::QueueType>> m_tQueue; ///< The tester queue
@@ -56,7 +56,7 @@ public:
     /**
      * @copydoc IWorker::start
      */
-    void start() override;
+    void start(const EpsLimit& epsLimit) override;
 
     /**
      * @copydoc IWorker::stop

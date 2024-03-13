@@ -2,19 +2,26 @@
 #define ROUTER_IWORKER_HPP
 
 #include <memory>
+
 #include "irouter.hpp"
 #include "itester.hpp"
 
-namespace router {
+namespace router
+{
 
-class IWorker {
+class IWorker
+{
 public:
+    using EpsLimit = std::function<bool()>;
+
     virtual ~IWorker() = default;
 
     /**
      * @brief Start the worker
+     *
+     * @param epsCounter The counter to measure the events per second
      */
-    virtual void start() = 0;
+    virtual void start(const EpsLimit& epsLimit) = 0;
 
     /**
      * @brief Stop the worker

@@ -26,7 +26,6 @@ protected:
 
     std::shared_ptr<router::Orchestrator> m_orchestrator;
 
-
 public:
     void SetUp() override
     {
@@ -64,6 +63,10 @@ public:
                     {
                         // Handle other cases or return a default value
                         return json::Json {POLICY_JSON};
+                    }
+                    if (name == "router/eps/0")
+                    {
+                        return json::Json {EPS_JSON};
                     }
                     return json::Json {};
                 }));
@@ -156,7 +159,7 @@ TEST_F(OrchestratorTesterTest, AddEqualTestEntry)
     expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_FALSE(m_orchestrator->postTestEntry(entry).has_value());
     EXPECT_CALL(*m_mockController, stop()).Times(1);
-    
+
     expectBuildPolicyOk(m_mockbuilder, m_mockPolicy);
     EXPECT_TRUE(m_orchestrator->postTestEntry(entry).has_value());
 
@@ -187,7 +190,6 @@ TEST_F(OrchestratorTesterTest, DeleteTestEntry)
 
     m_orchestrator->stop();
 }
-
 
 TEST_F(OrchestratorTesterTest, DeleteTheEqualTestEntryTwoTimes)
 {

@@ -5,7 +5,7 @@
 namespace router
 {
 
-void Worker::start()
+void Worker::start(const EpsLimit& epsLimit)
 {
     if (m_isRunning)
     {
@@ -14,7 +14,7 @@ void Worker::start()
 
     m_isRunning = true;
     m_thread = std::thread(
-        [this]()
+        [this, epsLimit]()
         {
             std::size_t tID = std::hash<std::thread::id> {}(std::this_thread::get_id());
             LOG_DEBUG("Router Worker {} started", tID);
@@ -38,7 +38,7 @@ void Worker::start()
 
                 // Process production queue
                 base::Event event {};
-                if (m_rQueue->waitPop(event, WAIT_DEQUEUE_TIMEOUT_USEC) && event != nullptr)
+                if (!epsLimit() && m_rQueue->waitPop(event, WAIT_DEQUEUE_TIMEOUT_USEC) && event != nullptr)
                 {
                     m_router->ingest(std::move(event));
                 }

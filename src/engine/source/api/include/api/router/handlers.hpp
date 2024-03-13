@@ -22,6 +22,11 @@ api::HandlerSync tableGet(const std::weak_ptr<::router::IRouterAPI>& router,
                       const std::weak_ptr<api::policy::IPolicy>& policy);
 api::HandlerSync queuePost(const std::weak_ptr<::router::IRouterAPI>& router);
 
+api::HandlerSync changeEpsSettings(const std::weak_ptr<::router::IRouterAPI>& router);
+api::HandlerSync getEpsSettings(const std::weak_ptr<::router::IRouterAPI>& router);
+api::HandlerSync activateEpsLimiter(const std::weak_ptr<::router::IRouterAPI>& router);
+api::HandlerSync deactivateEpsLimiter(const std::weak_ptr<::router::IRouterAPI>& router);
+
 /**
  * @brief Register all router commands
  *
