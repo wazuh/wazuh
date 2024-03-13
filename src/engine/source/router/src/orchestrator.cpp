@@ -1,6 +1,7 @@
 #include <router/orchestrator.hpp>
 
 #include "entryConverter.hpp"
+#include "epsCounter.hpp"
 #include "worker.hpp"
 
 namespace router
@@ -92,6 +93,57 @@ void Orchestrator::dumpRouters() const
 {
     auto jDump = EntryConverter::toJsonArray(m_workers.front()->getRouter()->getEntries());
     saveConfig(m_wStore, m_storeRouterName, jDump);
+}
+
+void Orchestrator::dumpEps() const
+{
+    json::Json jDump;
+    jDump.setObject();
+    jDump.setInt64(m_epsCounter->getEps(), "/eps");
+    jDump.setInt64(m_epsCounter->getRefreshInterval(), "/refreshInterval");
+    jDump.setBool(m_epsCounter->isActive(), "/active");
+    saveConfig(m_wStore, STORE_PATH_ROUTER_EPS, jDump);
+    LOG_INFO("Router: EPS settings dumped to the store");
+}
+
+void Orchestrator::loadEpsCounter(const std::weak_ptr<store::IStoreInternal>& wStore)
+{
+    auto store = wStore.lock();
+    if (!store)
+    {
+        LOG_ERROR("Store is unavailable for loading the EPS counter, using default settings");
+        m_epsCounter = std::make_shared<EpsCounter>();
+    }
+
+    auto epsResp = store->readInternalDoc(STORE_PATH_ROUTER_EPS);
+    if (base::isError(epsResp))
+    {
+        LOG_WARNING("Router: EPS settings could not be loaded from the store due to '{}'. Using default settings",
+                    base::getError(epsResp).message);
+        m_epsCounter = std::make_shared<EpsCounter>();
+        dumpEps();
+    }
+
+    auto epsJson = base::getResponse(epsResp);
+    if (!epsJson.isObject() || epsJson.isEmpty())
+    {
+        LOG_ERROR("Router: EPS settings found in the store are invalid. Using default settings");
+        m_epsCounter = std::make_shared<EpsCounter>();
+        dumpEps();
+    }
+
+    auto eps = epsJson.getInt64("/eps");
+    auto refreshInterval = epsJson.getInt64("/refreshInterval");
+    auto active = epsJson.getBool("/active");
+
+    if (!eps || !refreshInterval || !active)
+    {
+        LOG_ERROR("Router: EPS settings found in the store are invalid. Using default settings");
+        m_epsCounter = std::make_shared<EpsCounter>();
+        dumpEps();
+    }
+
+    m_epsCounter = std::make_shared<EpsCounter>(eps.value(), refreshInterval.value(), active.value());
 }
 /**************************************************************************
  * Manage configuration - Loader
@@ -220,14 +272,26 @@ Orchestrator::Orchestrator(const Options& opt)
         }
         m_workers.emplace_back(std::move(worker));
     }
+
+    // Initialize the EpsCounter
+    loadEpsCounter(m_wStore);
 }
 
 void Orchestrator::start()
 {
     std::shared_lock lock {m_syncMutex};
+    IWorker::EpsLimit epsLimit = [epsCounter = m_epsCounter]() -> bool
+    {
+        if (epsCounter->isActive())
+        {
+            return epsCounter->limitReached();
+        }
+        return false;
+    };
+
     for (const auto& worker : m_workers)
     {
-        worker->start();
+        worker->start(epsLimit);
     }
 }
 
@@ -362,6 +426,52 @@ base::OptError Orchestrator::postStrEvent(std::string_view event)
     return std::nullopt;
 }
 
+base::OptError Orchestrator::changeEpsSettings(uint eps, uint refreshInterval)
+{
+    try
+    {
+        m_epsCounter->changeSettings(eps, refreshInterval);
+    }
+    catch (const std::exception& e)
+    {
+        return base::Error {e.what()};
+    }
+
+    dumpEps();
+
+    return std::nullopt;
+}
+
+base::RespOrError<std::tuple<uint, uint, bool>> Orchestrator::getEpsSettings() const
+{
+    return std::make_tuple(m_epsCounter->getEps(), m_epsCounter->getRefreshInterval(), m_epsCounter->isActive());
+}
+
+base::OptError Orchestrator::activateEpsCounter(bool activate)
+{
+    if (activate)
+    {
+        if (m_epsCounter->isActive())
+        {
+            return base::Error {"EPS counter is already active"};
+        }
+
+        m_epsCounter->start();
+    }
+    else
+    {
+        if (!m_epsCounter->isActive())
+        {
+            return base::Error {"EPS counter is already inactive"};
+        }
+
+        m_epsCounter->stop();
+    }
+
+    dumpEps();
+    return std::nullopt;
+}
+
 /**************************************************************************
  * ITesterAPI
  *************************************************************************/
@@ -491,8 +601,8 @@ std::future<base::RespOrError<test::Output>> Orchestrator::ingestTest(std::strin
 }
 
 base::OptError Orchestrator::ingestTest(base::Event&& event,
-                              const test::Options& opt,
-                              std::function<void(base::RespOrError<test::Output>&&)> callbackFn)
+                                        const test::Options& opt,
+                                        std::function<void(base::RespOrError<test::Output>&&)> callbackFn)
 {
     if (auto error = opt.validate(); error)
     {
@@ -518,8 +628,8 @@ base::OptError Orchestrator::ingestTest(base::Event&& event,
 }
 
 base::OptError Orchestrator::ingestTest(std::string_view event,
-                              const test::Options& opt,
-                              std::function<void(base::RespOrError<test::Output>&&)> callbackFn)
+                                        const test::Options& opt,
+                                        std::function<void(base::RespOrError<test::Output>&&)> callbackFn)
 {
     try
     {
