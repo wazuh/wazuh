@@ -99,7 +99,7 @@ macos_duplicated_cases_path = Path(TEST_CASES_PATH, 'cases_basic_configuration_l
 macos_no_defined_config_path = Path(CONFIGURATIONS_PATH, 'wazuh_no_defined_location_macos_configuration.yaml')
 macos_no_defined_cases_path = Path(TEST_CASES_PATH, 'cases_basic_configuration_log_format_macos_no_defined.yaml')
 
-win_config_path = Path(CONFIGURATIONS_PATH, 'wazuh_basic_configuration_log_format_win.yaml')
+win_config_path = Path(CONFIGURATIONS_PATH, 'wazuh_basic_configuration_log_format_location.yaml')
 win_cases_path = Path(TEST_CASES_PATH, 'cases_basic_configuration_log_format_win.yaml')
 
 test_configuration, test_metadata, test_cases_ids = configuration.get_test_cases_data(default_cases_path)
