@@ -1,22 +1,31 @@
 name: Build Wazuh Packages - DEB|RPM - amd64 and i386
 on:
-  pull_request:
-    paths:
-      - 'packages/debs/SPECS/**'
-      - 'packages/generate_package.sh'
   workflow_dispatch:
-  workflow_call:
+    inputs:
+      tag:
+        description: 'Tag name of the Docker image to be downloaded (Use developer to set branch name. Use auto to set src/VERSION content)'
+        required: false
+        default: auto
+      linux_branch:
+        description: 'Branch name for compiling the Linux package'
+        required: false
+      revision:
+        description: 'Revision used to naming wazuh-agent package'
+        required: false
+        default: 1
+      deb_images:
+        description: 'Build deb packages for all architecture'
+        required: false
+        default: 1
 
 jobs:
   Wazuh-agent-deb-package-build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        TYPE: [agent]
+        PACKAGE_FORMAT: [rpm, deb]
         ARCHITECTURE : [amd64, i386]
-        exclude:
-          - TYPE: manager
-            ARCHITECTURE: i386
+
       fail-fast: false
 
     steps:
@@ -29,48 +38,27 @@ jobs:
 
       - uses: actions/checkout@v3
 
-      - name: Get changed files
-        uses: dorny/paths-filter@v2
-        id: changes
-        with:
-          filters: |
-            deb_images:
-              - 'packages/debs/**'
-              - 'packages/build.sh'
-            deb_images_agent_i386:
-              - 'packages/debs/i386/agent/**'
-              - 'packages/build.sh'
-            deb_images_agent_amd64:
-              - 'packages/debs/amd64/agent/**'
-              - 'packages/build.sh'
-            deb_packages:
-              - 'packages/debs/SPECS/**'
-              - 'packages/generate_package.sh'
-
-      - name: Set tag and container name
-        if: steps.changes.outputs.deb_packages == 'true' || (steps.changes.outputs.deb_images_agent_i386 == 'true' && matrix.ARCHITECTURE == 'i386') || ((steps.changes.outputs.deb_images_manager_amd64 == 'true' || steps.changes.outputs.deb_images_agent_amd64 == 'true') && matrix.ARCHITECTURE == 'amd64')
+      - name: Set tag, package_format, and container name
         run: |
-          MAJOR=$(sed 's/\([0-9]*\.[0-9]*\)\.[0-9]*/\1/' $GITHUB_WORKSPACE/src/VERSION)
-          if [ "${{ steps.changes.outputs.deb_images }}" == "true" ]; then echo "TAG=${{ github.head_ref }}" >> $GITHUB_ENV; else echo "TAG=$MAJOR" >> $GITHUB_ENV ; fi
-          if [ $MAJOR == "5.0" ]; then echo "VERSION=master" >> $GITHUB_ENV ; else echo "VERSION=$(cat $GITHUB_WORKSPACE/src/VERSION)" >> $GITHUB_ENV; fi
-          echo "CONTAINER_NAME=deb_${{ matrix.TYPE }}_builder_${{ matrix.ARCHITECTURE }}" >> $GITHUB_ENV
-          if [ "${{ matrix.ARCHITECTURE }}" == "amd64" ]; then echo "CONTAINER_NAME=deb_${{ matrix.TYPE }}_builder_${{ matrix.ARCHITECTURE }}" >> $GITHUB_ENV ; else echo "CONTAINER_NAME=deb_${{ matrix.TYPE }}_builder_${{ matrix.ARCHITECTURE }}" >> $GITHUB_ENV ; fi
+          VERSION=$(sed 's/\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
+          if [ "${{ github.event.inputs.tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
+          elif [ "${{ github.event.inputs.tag }}" == "developer" ]; then echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV;
+          else echo "TAG=${{ github.event.inputs.tag }}" >> $GITHUB_ENV; fi
+          echo "CONTAINER_NAME=pkg_${{ matrix.PACKAGE_FORMAT }}_agent_builder_${{ matrix.ARCHITECTURE }}" >> $GITHUB_ENV
+          echo "PACKAGE_FORMAT=${{ matrix.PACKAGE_FORMAT }}" >> $GITHUB_ENV
 
       - name: Download docker image for package building
-        if: steps.changes.outputs.deb_packages == 'true' || (steps.changes.outputs.deb_images_agent_i386 == 'true' && matrix.ARCHITECTURE == 'i386') || ((steps.changes.outputs.deb_images_manager_amd64 == 'true' || steps.changes.outputs.deb_images_agent_amd64 == 'true') && matrix.ARCHITECTURE == 'amd64')
         run: |
           bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} $CONTAINER_NAME ${{ env.TAG }}
 
-      - name: Build the ${{ matrix.ARCHITECTURE }} deb Wazuh ${{ matrix.TYPE }} package
-        if: steps.changes.outputs.deb_packages == 'true' || (steps.changes.outputs.deb_images_agent_i386 == 'true' && matrix.ARCHITECTURE == 'i386') || ((steps.changes.outputs.deb_images_manager_amd64 == 'true' || steps.changes.outputs.deb_images_agent_amd64 == 'true') && matrix.ARCHITECTURE == 'amd64')
-        working-directory: ./debs
+      - name: Build the ${{ matrix.ARCHITECTURE }} ${{ matrix.PACKAGE_FORMAT }} Wazuh agent package
+        working-directory: ./packages
         run: |
-          REVISION=$( echo ${{ github.head_ref }} | sed 's/-/./g; s/\//./g' )
-          bash packages/generate_package.sh -b ${{ env.VERSION }} -t ${{ matrix.TYPE }} -a ${{ matrix.ARCHITECTURE }} --dev -j 2 --dont-build-docker --tag ${{ env.TAG }} -r $REVISION --package-format deb
-          echo "PACKAGE_NAME=$(ls ./output | grep .deb | head -n 1)" >> $GITHUB_ENV
+          REVISION=$( echo ${{ github.event.inputs.revision }} )
+          bash generate_package.sh -b ${{ github.event.inputs.linux_branch }} -t agent -a ${{ matrix.ARCHITECTURE }} --dev -j 2 --dont-build-docker --tag ${{ env.TAG }} -r $REVISION --package-format ${{ env.PACKAGE_FORMAT }}
+          echo "PACKAGE_NAME=$(ls ./output | grep ".deb\|.rpm" | head -n 1)" >> $GITHUB_ENV
 
-      - name: Upload Wazuh ${{ matrix.TYPE }} ${{ matrix.ARCHITECTURE }} package as artifact
-        if: steps.changes.outputs.deb_packages == 'true' || (steps.changes.outputs.deb_images_agent_i386 == 'true' && matrix.ARCHITECTURE == 'i386') || ((steps.changes.outputs.deb_images_manager_amd64 == 'true' || steps.changes.outputs.deb_images_agent_amd64 == 'true') && matrix.ARCHITECTURE == 'amd64')
+      - name: Upload Wazuh agent ${{ matrix.ARCHITECTURE }} package as artifact
         uses: actions/upload-artifact@v2
         with:
           name: ${{ env.PACKAGE_NAME }}
