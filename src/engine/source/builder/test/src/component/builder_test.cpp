@@ -3,24 +3,11 @@
 #include "../expressionCmp.hpp"
 #include "definitions.hpp"
 #include <baseTypes.hpp>
-#include <builder/builder.hpp>
-#include <defs/mockDefinitions.hpp>
-#include <logpar/logpar.hpp>
-#include <schemf/ivalidator.hpp>
-#include <schemf/mockSchema.hpp>
-#include <sockiface/mockSockFactory.hpp>
-#include <store/mockStore.hpp>
-#include <test/behaviour.hpp>
 
-using namespace base::test;
-using namespace store::mocks;
-using namespace schemf::mocks;
-using namespace defs::mocks;
 using namespace builder::test;
 
-namespace builder
+namespace
 {
-
 /**
  * @brief User for build the params of the handler in a easy way
  *
@@ -77,6 +64,11 @@ struct JParam
     operator std::string() const { return json::Json(*this).str(); }
 };
 
+} // namespace
+
+namespace builder
+{
+
 using SuccessExpected = InnerExpected<None,
                                       const std::shared_ptr<MockStore>&,
                                       const std::shared_ptr<MockDefinitionsBuilder>&,
@@ -92,31 +84,17 @@ auto SUCCESS = Expc::success();
 auto FAILURE = Expc::failure();
 using Build = std::tuple<JParam, Expc>;
 
-class BuildPolicy : public testing::TestWithParam<Build>
+class BuildPolicy : public BuilderTestFixture<Build>
 {
 };
 
 TEST_P(BuildPolicy, Doc)
 {
     auto [policy, expected] = GetParam();
-    auto m_spStore = std::make_shared<MockStore>();
-    auto m_spSchemf = std::make_shared<MockSchema>();
-    auto m_spDefBuilder = std::make_shared<MockDefinitionsBuilder>();
-    auto m_spDef = std::make_shared<MockDefinitions>();
-
-    builder::BuilderDeps builderDeps;
-    builderDeps.logparDebugLvl = 0;
-    builderDeps.logpar = std::make_shared<hlp::logpar::Logpar>(json::Json {WAZUH_LOGPAR_TYPES_JSON}, m_spSchemf);
-    builderDeps.kvdbScopeName = "builder";
-    builderDeps.kvdbManager = nullptr;
-    builderDeps.sockFactory = std::make_shared<sockiface::mocks::MockSockFactory>();
-    builderDeps.wdbManager = nullptr;
-
-    auto m_spBuilder = std::make_shared<builder::Builder>(m_spStore, m_spSchemf, m_spDefBuilder, builderDeps);
 
     if (expected)
     {
-        expected.succCase()(m_spStore, m_spDefBuilder, m_spDef, m_spSchemf);
+        expected.succCase()(m_spMocks->m_spStore, m_spMocks->m_spDefBuilder, m_spMocks->m_spDef, m_spMocks->m_spSchemf);
 
         auto policyExpected = m_spBuilder->buildPolicy("policy/test/0");
         EXPECT_STREQ(policyExpected->name().toStr().c_str(),
@@ -151,7 +129,8 @@ TEST_P(BuildPolicy, Doc)
     }
     else
     {
-        auto response = expected.failCase()(m_spStore, m_spDefBuilder, m_spDef, m_spSchemf);
+        auto response = expected.failCase()(
+            m_spMocks->m_spStore, m_spMocks->m_spDefBuilder, m_spMocks->m_spDef, m_spMocks->m_spSchemf);
         try
         {
             m_spBuilder->buildPolicy("policy/test/0");
@@ -167,6 +146,7 @@ INSTANTIATE_TEST_SUITE_P(
     Policy,
     BuildPolicy,
     ::testing::Values(
+        // start
         Build(JParam(),
               FAILURE(
                   [](const std::shared_ptr<MockStore>& store,
@@ -350,40 +330,29 @@ INSTANTIATE_TEST_SUITE_P(
                       EXPECT_CALL(*schemf, validate(testing::_, testing::_))
                           .WillRepeatedly(testing::Return(schemf::ValidationResult()));
                       return None {};
-                  }))));
+                  }))
+        // end
+        ));
 
 using BuildA = std::tuple<base::Expression, Expc>;
-class BuildAsset : public testing::TestWithParam<BuildA>
+class BuildAsset : public BuilderTestFixture<BuildA>
 {
 };
 
 TEST_P(BuildAsset, Doc)
 {
     auto [expectedExpression, expected] = GetParam();
-    auto m_spStore = std::make_shared<MockStore>();
-    auto m_spSchemf = std::make_shared<MockSchema>();
-    auto m_spDefBuilder = std::make_shared<MockDefinitionsBuilder>();
-    auto m_spDef = std::make_shared<MockDefinitions>();
-
-    builder::BuilderDeps builderDeps;
-    builderDeps.logparDebugLvl = 0;
-    builderDeps.logpar = std::make_shared<hlp::logpar::Logpar>(json::Json {WAZUH_LOGPAR_TYPES_JSON}, m_spSchemf);
-    builderDeps.kvdbScopeName = "builder";
-    builderDeps.kvdbManager = nullptr;
-    builderDeps.sockFactory = std::make_shared<sockiface::mocks::MockSockFactory>();
-    builderDeps.wdbManager = nullptr;
-
-    auto m_spBuilder = std::make_shared<builder::Builder>(m_spStore, m_spSchemf, m_spDefBuilder, builderDeps);
 
     if (expected)
     {
-        expected.succCase()(m_spStore, m_spDefBuilder, m_spDef, m_spSchemf);
+        expected.succCase()(m_spMocks->m_spStore, m_spMocks->m_spDefBuilder, m_spMocks->m_spDef, m_spMocks->m_spSchemf);
         auto expression = m_spBuilder->buildAsset("decoder/test/0");
         assertEqualExpr(expectedExpression, expression);
     }
     else
     {
-        auto response = expected.failCase()(m_spStore, m_spDefBuilder, m_spDef, m_spSchemf);
+        auto response = expected.failCase()(
+            m_spMocks->m_spStore, m_spMocks->m_spDefBuilder, m_spMocks->m_spDef, m_spMocks->m_spSchemf);
         try
         {
             m_spBuilder->buildAsset("decoder/test/0");
@@ -399,6 +368,7 @@ INSTANTIATE_TEST_SUITE_P(
     Asset,
     BuildAsset,
     ::testing::Values(
+        // start
         BuildA(
             nullptr,
             FAILURE(
@@ -511,6 +481,8 @@ INSTANTIATE_TEST_SUITE_P(
                        EXPECT_CALL(*schemf, validate(testing::_, testing::_))
                            .WillRepeatedly(testing::Return(schemf::ValidationResult()));
                        return None {};
-                   }))));
+                   }))
+        // end
+        ));
 
 } // namespace builder

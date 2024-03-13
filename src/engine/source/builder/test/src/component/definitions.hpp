@@ -1,6 +1,21 @@
 #ifndef _BUILDER_TEST_DEFINITIONS_HPP
 #define _BUILDER_TEST_DEFINITIONS_HPP
 
+#include <builder/builder.hpp>
+#include <defs/mockDefinitions.hpp>
+#include <logpar/logpar.hpp>
+#include <schemf/ivalidator.hpp>
+#include <schemf/mockSchema.hpp>
+#include <sockiface/mockSockFactory.hpp>
+#include <store/mockStore.hpp>
+#include <test/behaviour.hpp>
+
+using namespace base::test;
+using namespace store::mocks;
+using namespace schemf::mocks;
+using namespace defs::mocks;
+using namespace sockiface::mocks;
+
 namespace builder::test
 {
 
@@ -117,7 +132,6 @@ auto constexpr DECODER_STAGE_NORMALIZE_WRONG_MAPPING = R"x({
       }
     ]
     })x";
-
 
 auto constexpr DECODER_STAGE_NORMALIZE_WRONG_PARSE_WITHOUT_SEPARATOR = R"x({
     "name": "decoder/test/0",
@@ -264,6 +278,49 @@ auto constexpr DEFECTIVE_ASSET_POLICY_NOT_STRING_NAME_JSON = R"({
         "system": "decoder/parent-test/0"
     }
     })";
+
+struct Mocks
+{
+    std::shared_ptr<MockStore> m_spStore;
+    std::shared_ptr<MockSchema> m_spSchemf;
+    std::shared_ptr<MockDefinitionsBuilder> m_spDefBuilder;
+    std::shared_ptr<MockDefinitions> m_spDef;
+    std::shared_ptr<MockSockFactory> m_spSockFactory;
+};
+
+template<typename T>
+class BuilderTestFixture : public ::testing::TestWithParam<T>
+{
+public:
+    std::shared_ptr<Mocks> m_spMocks;
+    std::shared_ptr<builder::Builder> m_spBuilder;
+
+    void SetUp() override
+    {
+        m_spMocks = std::make_shared<Mocks>();
+        m_spMocks->m_spStore = std::make_shared<MockStore>();
+        m_spMocks->m_spSchemf = std::make_shared<MockSchema>();
+        m_spMocks->m_spDefBuilder = std::make_shared<MockDefinitionsBuilder>();
+        m_spMocks->m_spDef = std::make_shared<MockDefinitions>();
+        m_spMocks->m_spSockFactory = std::make_shared<sockiface::mocks::MockSockFactory>();
+        initializeBuilder();
+    }
+
+    void initializeBuilder()
+    {
+        builder::BuilderDeps builderDeps;
+        builderDeps.logparDebugLvl = 0;
+        builderDeps.logpar =
+            std::make_shared<hlp::logpar::Logpar>(json::Json {WAZUH_LOGPAR_TYPES_JSON}, m_spMocks->m_spSchemf);
+        builderDeps.kvdbScopeName = "builder";
+        builderDeps.kvdbManager = nullptr;
+        builderDeps.sockFactory = m_spMocks->m_spSockFactory;
+        builderDeps.wdbManager = nullptr;
+
+        m_spBuilder = std::make_shared<builder::Builder>(
+            m_spMocks->m_spStore, m_spMocks->m_spSchemf, m_spMocks->m_spDefBuilder, builderDeps);
+    }
+};
 
 } // namespace builder::test
 
