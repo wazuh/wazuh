@@ -1,0 +1,9 @@
+- sections:
+    - section: localfile
+      elements:
+        - location:
+            value: 'LOCATION'
+        - log_format:
+            value: 'LOG_FORMAT'
+        - reconnect_time:
+            value: 'RECONNECT_TIME'
