@@ -13,6 +13,7 @@ on:
         - "src/remoted/**"
         - "src/client-agent/**"
         - "src/shared/enrollment_op.c"
+        - "src/win32/**"
         - "src/Makefile"
         - "tests/integration/conftest.py"
         - "tests/integration/test_agentd/**"

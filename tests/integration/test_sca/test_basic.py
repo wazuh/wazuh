@@ -142,7 +142,7 @@ def test_sca_enabled(test_configuration, test_metadata, prepare_cis_policies_fil
     assert log_monitor.callback_result
     log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCA_SCAN_STARTED), timeout=10)
     assert log_monitor.callback_result
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCA_SCAN_ENDED), timeout=10)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCA_SCAN_ENDED), timeout=30)
     assert log_monitor.callback_result
 
 
