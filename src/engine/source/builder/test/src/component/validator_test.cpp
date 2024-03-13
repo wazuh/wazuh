@@ -1,14 +1,6 @@
 #include <gtest/gtest.h>
 
 #include "definitions.hpp"
-#include <builder/builder.hpp>
-#include <defs/mockDefinitions.hpp>
-#include <logpar/logpar.hpp>
-#include <schemf/ivalidator.hpp>
-#include <schemf/mockSchema.hpp>
-#include <sockiface/mockSockFactory.hpp>
-#include <store/mockStore.hpp>
-#include <test/behaviour.hpp>
 
 using namespace base::test;
 using namespace store::mocks;
@@ -34,36 +26,23 @@ auto SUCCESS = Expc::success();
 auto FAILURE = Expc::failure();
 using Validate = std::tuple<json::Json, Expc>;
 
-class ValidatePolicy : public testing::TestWithParam<Validate>
+class ValidatePolicy : public BuilderTestFixture<Validate>
 {
 };
 
 TEST_P(ValidatePolicy, Doc)
 {
     auto [policy, expected] = GetParam();
-    auto m_spStore = std::make_shared<MockStore>();
-    auto m_spSchemf = std::make_shared<MockSchema>();
-    auto m_spDefBuilder = std::make_shared<MockDefinitionsBuilder>();
-    auto m_spDef = std::make_shared<MockDefinitions>();
-
-    builder::BuilderDeps builderDeps;
-    builderDeps.logparDebugLvl = 0;
-    builderDeps.logpar = std::make_shared<hlp::logpar::Logpar>(json::Json {WAZUH_LOGPAR_TYPES_JSON}, m_spSchemf);
-    builderDeps.kvdbScopeName = "builder";
-    builderDeps.kvdbManager = nullptr;
-    builderDeps.sockFactory = std::make_shared<sockiface::mocks::MockSockFactory>();
-    builderDeps.wdbManager = nullptr;
-
-    auto m_spBuilder = std::make_shared<builder::Builder>(m_spStore, m_spSchemf, m_spDefBuilder, builderDeps);
 
     if (expected)
     {
-        expected.succCase()(m_spStore, m_spDefBuilder, m_spDef, m_spSchemf);
+        expected.succCase()(m_spMocks->m_spStore, m_spMocks->m_spDefBuilder, m_spMocks->m_spDef, m_spMocks->m_spSchemf);
         m_spBuilder->validatePolicy(policy);
     }
     else
     {
-        auto response = expected.failCase()(m_spStore, m_spDefBuilder, m_spDef, m_spSchemf);
+        auto response = expected.failCase()(
+            m_spMocks->m_spStore, m_spMocks->m_spDefBuilder, m_spMocks->m_spDef, m_spMocks->m_spSchemf);
         EXPECT_STREQ(m_spBuilder->validatePolicy(policy).value().message.c_str(), response.c_str());
     }
 }
@@ -72,6 +51,7 @@ INSTANTIATE_TEST_SUITE_P(
     Policy,
     ValidatePolicy,
     ::testing::Values(
+        // start
         Validate(json::Json {DEFECTIVE_POLICY_NAME_JSON},
                  FAILURE([](const std::shared_ptr<MockStore>& store,
                             const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
@@ -172,7 +152,9 @@ INSTANTIATE_TEST_SUITE_P(
                          EXPECT_CALL(*schemf, validate(testing::_, testing::_))
                              .WillRepeatedly(testing::Return(schemf::ValidationResult()));
                          return None {};
-                     }))));
+                     }))
+        // end
+        ));
 
 using SuccessValidateAssetExpected = InnerExpected<None,
                                                    const std::shared_ptr<MockSchema>&,
@@ -187,36 +169,22 @@ auto SUCCESS_ASSET = ExpcAsset::success();
 auto FAILURE_ASSET = ExpcAsset::failure();
 using ValidateA = std::tuple<json::Json, ExpcAsset>;
 
-class ValidateAsset : public testing::TestWithParam<ValidateA>
+class ValidateAsset : public BuilderTestFixture<ValidateA>
 {
 };
 
 TEST_P(ValidateAsset, Doc)
 {
     auto [asset, expected] = GetParam();
-    auto m_spStore = std::make_shared<MockStore>();
-    auto m_spSchemf = std::make_shared<MockSchema>();
-    auto m_spDefBuilder = std::make_shared<MockDefinitionsBuilder>();
-    auto m_spDef = std::make_shared<MockDefinitions>();
-
-    builder::BuilderDeps builderDeps;
-    builderDeps.logparDebugLvl = 0;
-    builderDeps.logpar = std::make_shared<hlp::logpar::Logpar>(json::Json {WAZUH_LOGPAR_TYPES_JSON}, m_spSchemf);
-    builderDeps.kvdbScopeName = "builder";
-    builderDeps.kvdbManager = nullptr;
-    builderDeps.sockFactory = std::make_shared<sockiface::mocks::MockSockFactory>();
-    builderDeps.wdbManager = nullptr;
-
-    auto m_spBuilder = std::make_shared<builder::Builder>(m_spStore, m_spSchemf, m_spDefBuilder, builderDeps);
 
     if (expected)
     {
-        expected.succCase()(m_spSchemf, m_spDefBuilder, m_spDef);
+        expected.succCase()(m_spMocks->m_spSchemf, m_spMocks->m_spDefBuilder, m_spMocks->m_spDef);
         m_spBuilder->validateAsset(asset);
     }
     else
     {
-        auto response = expected.failCase()(m_spSchemf, m_spDefBuilder, m_spDef);
+        auto response = expected.failCase()(m_spMocks->m_spSchemf, m_spMocks->m_spDefBuilder, m_spMocks->m_spDef);
         EXPECT_STREQ(m_spBuilder->validateAsset(asset).value().message.c_str(), response.c_str());
     }
 }
@@ -225,6 +193,7 @@ INSTANTIATE_TEST_SUITE_P(
     Asset,
     ValidateAsset,
     ::testing::Values(
+        // start
         ValidateA(json::Json {R"([])"},
                   FAILURE_ASSET([](const std::shared_ptr<MockSchema>& schema,
                                    const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
@@ -301,7 +270,7 @@ INSTANTIATE_TEST_SUITE_P(
                          const std::shared_ptr<defs::mocks::MockDefinitions>& def)
                       {
                           EXPECT_CALL(*defBuild, build(testing::_)).WillRepeatedly(testing::Return(def));
-                          return "Stage parse needs the character '|' to indicate the field";
+                          return "Stage parse: needs the character '|' to indicate the field";
                       })),
         ValidateA(json::Json {DECODER_STAGE_PARSE_WITHOUT_FIELD_JSON},
                   FAILURE_ASSET(
@@ -310,7 +279,7 @@ INSTANTIATE_TEST_SUITE_P(
                          const std::shared_ptr<defs::mocks::MockDefinitions>& def)
                       {
                           EXPECT_CALL(*defBuild, build(testing::_)).WillRepeatedly(testing::Return(def));
-                          return "Stage parse field was not found";
+                          return "Stage parse: Could not get field: DotPath cannot have empty parts";
                       })),
         ValidateA(json::Json {DECODER_STAGE_NORMALIZE_WRONG_MAPPING},
                   FAILURE_ASSET(
@@ -333,7 +302,7 @@ INSTANTIATE_TEST_SUITE_P(
                           EXPECT_CALL(*schema, validate(testing::_, testing::_))
                               .WillRepeatedly(testing::Return(schemf::ValidationResult()));
                           EXPECT_CALL(*defBuild, build(testing::_)).WillRepeatedly(testing::Return(def));
-                          return "Stage parse needs the character '|' to indicate the field";
+                          return "Stage parse: needs the character '|' to indicate the field";
                       })),
         ValidateA(json::Json {DECODER_STAGE_NORMALIZE_WRONG_PARSE_WITHOUT_FIELD},
                   FAILURE_ASSET(
@@ -344,7 +313,7 @@ INSTANTIATE_TEST_SUITE_P(
                           EXPECT_CALL(*schema, validate(testing::_, testing::_))
                               .WillRepeatedly(testing::Return(schemf::ValidationResult()));
                           EXPECT_CALL(*defBuild, build(testing::_)).WillRepeatedly(testing::Return(def));
-                          return "Stage parse field was not found";
+                          return "Stage parse: Could not get field: DotPath cannot have empty parts";
                       })),
         ValidateA(json::Json {DECODER_JSON},
                   SUCCESS_ASSET(
@@ -354,7 +323,9 @@ INSTANTIATE_TEST_SUITE_P(
                       {
                           EXPECT_CALL(*defBuild, build(testing::_)).WillRepeatedly(testing::Return(def));
                           return None {};
-                      }))));
+                      }))
+        // end
+        ));
 
 using SuccessValidateIntegrationExpected = InnerExpected<None,
                                                          const std::shared_ptr<MockStore>&,
@@ -369,36 +340,22 @@ auto SUCCESS_INTEGRATION = ExpcIntegration::success();
 auto FAILURE_INTEGRATION = ExpcIntegration::failure();
 using ValidateI = std::tuple<json::Json, std::string, ExpcIntegration>;
 
-class ValidateIntegration : public testing::TestWithParam<ValidateI>
+class ValidateIntegration : public BuilderTestFixture<ValidateI>
 {
 };
 
 TEST_P(ValidateIntegration, Doc)
 {
     auto [integration, namespaceId, expected] = GetParam();
-    auto m_spStore = std::make_shared<MockStore>();
-    auto m_spSchemf = std::make_shared<MockSchema>();
-    auto m_spDefBuilder = std::make_shared<MockDefinitionsBuilder>();
-    auto m_spDef = std::make_shared<MockDefinitions>();
-
-    builder::BuilderDeps builderDeps;
-    builderDeps.logparDebugLvl = 0;
-    builderDeps.logpar = std::make_shared<hlp::logpar::Logpar>(json::Json {WAZUH_LOGPAR_TYPES_JSON}, m_spSchemf);
-    builderDeps.kvdbScopeName = "builder";
-    builderDeps.kvdbManager = nullptr;
-    builderDeps.sockFactory = std::make_shared<sockiface::mocks::MockSockFactory>();
-    builderDeps.wdbManager = nullptr;
-
-    auto m_spBuilder = std::make_shared<builder::Builder>(m_spStore, m_spSchemf, m_spDefBuilder, builderDeps);
 
     if (expected)
     {
-        expected.succCase()(m_spStore, m_spDefBuilder, m_spDef);
+        expected.succCase()(m_spMocks->m_spStore, m_spMocks->m_spDefBuilder, m_spMocks->m_spDef);
         m_spBuilder->validateIntegration(integration, namespaceId);
     }
     else
     {
-        auto response = expected.failCase()(m_spStore, m_spDefBuilder, m_spDef);
+        auto response = expected.failCase()(m_spMocks->m_spStore, m_spMocks->m_spDefBuilder, m_spMocks->m_spDef);
         EXPECT_STREQ(m_spBuilder->validateIntegration(integration, namespaceId).value().message.c_str(),
                      response.c_str());
     }
@@ -408,6 +365,7 @@ INSTANTIATE_TEST_SUITE_P(
     Integration,
     ValidateIntegration,
     ::testing::Values(
+        // start
         ValidateI(json::Json {INTEGRATION_KEY_DEFECTIVE_JSON},
                   "",
                   FAILURE_INTEGRATION([](const std::shared_ptr<MockStore>& store,
@@ -524,6 +482,8 @@ INSTANTIATE_TEST_SUITE_P(
                                   }));
                           EXPECT_CALL(*defBuild, build(testing::_)).WillRepeatedly(testing::Return(def));
                           return None {};
-                      }))));
+                      }))
+        // end
+        ));
 
 } // namespace Validate
