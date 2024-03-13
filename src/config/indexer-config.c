@@ -82,6 +82,7 @@ int indexer_config_subnode_read(const OS_XML *xml, XML_NODE node, cJSON *output_
        /* Unknown paths are ignored */
         if(!key_is_in_array(subnode_keypath, valid_paths)){
             mwarn(XML_INVELEM, subnode_keypath);
+            os_free(subnode_keypath);
             continue;
         }
 
