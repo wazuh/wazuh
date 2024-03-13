@@ -213,9 +213,9 @@ function install_deps() {
 
     hdiutil attach Packages.dmg
 
-    cd /Volumes/Packages*/packages/
+    cd /Volumes/Packages*
 
-    if installer -package *Packages.pkg -target / ; then
+    if sudo installer -package *Packages.pkg -target / ; then
         echo "Packagesbuild was correctly installed."
     else
         echo "Something went wrong installing packagesbuild."
@@ -298,7 +298,6 @@ function main() {
             help 0
             ;;
         "-i"|"--install-deps")
-            check_root
             install_deps
             ;;
         "-x"|"--install-xcode")
