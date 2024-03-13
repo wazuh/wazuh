@@ -3819,8 +3819,8 @@ checks:
       - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003"]
     condition: all
     rules:
-      - "c:sshd -T -> -> n:^clientaliveinterval\\s*\\t*(\\d+) compare > 0"
-      - "c:sshd -T -> -> n:^clientalivecountmax\\s*\\t*(\\d+) compare > 0"
+      - "c:sshd -T -> n:^clientaliveinterval\\s*\\t*(\\d+) compare > 0"
+      - "c:sshd -T -> n:^clientalivecountmax\\s*\\t*(\\d+) compare > 0"
 
   # 5.3.1 Ensure sudo is installed. (Automated)
   - id: 28654
