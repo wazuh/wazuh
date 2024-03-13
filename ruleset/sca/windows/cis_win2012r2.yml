@@ -34,7 +34,7 @@ checks:
 
 
   # 1.1.1 (L1) Ensure 'Enforce password history' is set to '24 or more password(s)'. (Automated)
-   - id: 18500
+   - id: 31000
      title: "Ensure 'Enforce password history' is set to '24 or more password(s)'."
      description: "This policy setting determines the number of renewed, unique passwords that have to be associated with a user account before you can reuse an old password. The value for this policy setting must be between 0 and 24 passwords. The default value for stand-alone systems is 0 passwords, but the default setting when joined to a domain is 24 passwords. To maintain the effectiveness of this policy setting, use the Minimum password age setting to prevent users from repeatedly changing their password. The recommended state for this setting is: 24 or more password(s). Note: Password Policy settings (section 1.1) and Account Lockout Policy settings (section 1.2) must be applied via the Default Domain Policy GPO in order to be globally in effect on domain user accounts as their default behavior. If these settings are configured in another GPO, they will only affect local user accounts on the computers that receive the GPO. However, custom exceptions to the default password policy and account lockout policy rules for specific domain users and/or groups can be defined using Password Settings Objects (PSOs), which are completely separate from Group Policy and most easily configured using Active Directory Administrative Center. Note #2: As of the publication of this benchmark, Microsoft currently has a maximum limit of 24 saved passwords. For more information, please visit Enforce password history (Windows 10) - Windows security | Microsoft Docs."
      rationale: "The longer a user uses the same password, the greater the chance that an attacker can determine the password through brute force attacks. Also, any accounts that may have been compromised will remain exploitable for as long as the password is left unchanged. If password changes are required but password reuse is not prevented, or if users continually reuse a small number of passwords, the effectiveness of a good password policy is greatly reduced. If you specify a low number for this policy setting, users will be able to use the same small number of passwords repeatedly. If you do not also configure the Minimum password age setting, users might repeatedly change their passwords until they can reuse their original password."
@@ -49,8 +49,9 @@ checks:
        - cmmc_v2.0: ["IA.L2-3.5.7"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+       - 'c:net.exe accounts -> n:Length of password history maintained:\s+(\d+) compare >= 24'
 
   # 1.1.2 (L1) Ensure 'Maximum password age' is set to '365 or fewer days, but not 0'. (Automated)
    - id: 18501
@@ -3420,7 +3421,7 @@ checks:
 
   # 18.7.2 (L1) Ensure 'Configure Redirection Guard' is set to 'Enabled: Redirection Guard Enabled'. (Automated)
    - id: 18716
-     title: "(L1) Ensure 'Configure Redirection Guard' is set to 'Enabled: Redirection Guard Enabled'."
+     title: "Ensure 'Configure Redirection Guard' is set to 'Enabled: Redirection Guard Enabled'."
      description: "This policy setting determines whether Redirection Guard is enabled for the print spooler. Redirection Guard can prevent file redirections from being used within the print spooler. The recommended state for this setting is: Enabled: Redirection Guard Enabled."
      rationale: "This setting prevents non-administrators from redirecting files within the print spooler process."
      impact: "None - this is default behavior."
@@ -3429,12 +3430,15 @@ checks:
        - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/windows-11-'
      compliance:
        - cis: ["18.7.2"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RedirectionguardPolicy'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> RedirectionguardPolicy -> 1'
 
   # 18.7.3 (L1) Ensure 'Limits print driver installation to Administrators' is set to 'Enabled'. (Automated)
    - id: 18717
-     title: "(L1) Ensure 'Limits print driver installation to Administrators' is set to 'Enabled'."
+     title: "Ensure 'Limits print driver installation to Administrators' is set to 'Enabled'."
      description: "This policy setting controls whether users who aren't Administrators can install print drivers on the system. The recommended state for this setting is: Enabled. Note: On August 10, 2021, Microsoft announced a Point and Print Default Behavior Change which modifies the default Point and Print driver installation and update behavior to require Administrator privileges. This is documented in KB5005652— Manage new Point and Print default driver installation behavior (CVE-2021-34481)."
      rationale: "Restricting the installation of print drives to Administrators can help mitigate the PrintNightmare vulnerability (CVE-2021-34527) and other Print Spooler attacks."
      impact: "None - this is the default behavior."
@@ -3444,12 +3448,15 @@ checks:
        - 'https://support.microsoft.com/en-gb/topic/kb5005652-manage-new-point-and-'
      compliance:
        - cis: ["18.7.3"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint -> RestrictDriverInstallationToAdministrators'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint -> RestrictDriverInstallationToAdministrators -> 1'
 
   # 18.7.4 (L1) Ensure 'Manage processing of Queue-specific files' is set to 'Enabled: Limit Queue-specific files to Color profiles'. (Automated)
    - id: 18718
-     title: "(L1) Ensure 'Manage processing of Queue-specific files' is set to 'Enabled: Limit Queue-specific files to Color profiles'."
+     title: "Ensure 'Manage processing of Queue-specific files' is set to 'Enabled: Limit Queue-specific files to Color profiles'."
      description: "This policy setting manages how queue-specific files are processed during printer installation. At printer installation time, a vendor-supplied installation application can specify a set of files, of any type, to be associated with a particular print queue. The files are downloaded to each client that connects to the print server. The recommended state for this setting is: Enabled: Limit Queue-specific files to Color profiles."
      rationale: "A Windows Print Spooler Remote Code Execution Vulnerability (CVE-2021-36958) exists when the Windows Print Spooler service improperly performs privileged file operations. An attacker who successfully exploits this vulnerability could run arbitrary code with SYSTEM privileges and then install programs; view, change, or delete data; or create new accounts with full user rights."
      impact: "None - this is default behavior."
@@ -3459,12 +3466,15 @@ checks:
        - 'https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-36958'
      compliance:
        - cis: ["18.7.4"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> CopyFilesPolicy'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers -> CopyFilesPolicy -> 1'
 
   # 18.7.5 (L1) Ensure 'Point and Print Restrictions: When installing drivers for a new connection' is set to 'Enabled: Show warning and elevation prompt'. (Automated)
    - id: 18719
-     title: "(L1) Ensure 'Point and Print Restrictions: When installing drivers for a new connection' is set to 'Enabled: Show warning and elevation prompt'."
+     title: "Ensure 'Point and Print Restrictions: When installing drivers for a new connection' is set to 'Enabled: Show warning and elevation prompt'."
      description: "This policy setting controls whether computers will show a warning and a security elevation prompt when users create a new printer connection using Point and Print. The recommended state for this setting is: Enabled: Show warning and elevation prompt. Note: On August 10, 2021, Microsoft announced a Point and Print Default Behavior Change which modifies the default Point and Print driver installation and update behavior to require Administrator privileges. This is documented in KB5005652— Manage new Point and Print default driver installation behavior (CVE-2021-34481). This change overrides all Point and Print Group Policy settings and ensures that only Administrators can install printer drivers from a print server using Point and Print."
      rationale: "Enabling Windows User Account Control (UAC) for the installation of new print drivers can help mitigate the PrintNightmare vulnerability (CVE-2021-34527) and other Print Spooler attacks. Although the Point and Print default driver installation behavior overrides this setting, it is important to configure this as a backstop in the event that behavior is reversed."
      impact: "None - this is the default behavior."
@@ -3478,12 +3488,15 @@ checks:
        - 'https://support.microsoft.com/en-us/topic/kb5005652-manage-new-point-and-'
      compliance:
        - cis: ["18.7.5"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint'
+      - 'not r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint -> NoWarningNoElevationOnInstall'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint -> NoWarningNoElevationOnInstall -> 0'
 
   # 18.7.6 (L1) Ensure 'Point and Print Restrictions: When updating drivers for an existing connection' is set to 'Enabled: Show warning and elevation prompt'. (Automated)
    - id: 18720
-     title: "(L1) Ensure 'Point and Print Restrictions: When updating drivers for an existing connection' is set to 'Enabled: Show warning and elevation prompt'."
+     title: "Ensure 'Point and Print Restrictions: When updating drivers for an existing connection' is set to 'Enabled: Show warning and elevation prompt'."
      description: "This policy setting controls whether computers will show a warning and a security elevation prompt when users are updating drivers for an existing connection using Point and Print. The recommended state for this setting is: Enabled: Show warning and elevation prompt. Note: On August 10, 2021, Microsoft announced a Point and Print Default Behavior Change which modifies the default Point and Print driver installation and update behavior to require Administrator privileges. This is documented in KB5005652— Manage new Point and Print default driver installation behavior (CVE-2021-34481). This change overrides all Point and Print Group Policy settings and ensures that only Administrators can install printer drivers from a print server using Point and Print."
      rationale: "Enabling Windows User Account Control (UAC) for updating existing print drivers can help mitigate the PrintNightmare vulnerability (CVE-2021-34527) and other Print Spooler attacks. Although the Point and Print default driver installation behavior overrides this setting, it is important to configure this as a backstop in the event that behavior is reversed."
      impact: "None - this is the default behavior."
@@ -3497,12 +3510,15 @@ checks:
        - 'https://support.microsoft.com/en-us/topic/kb5005652-manage-new-point-and-'
      compliance:
        - cis: ["18.7.6"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint'
+      - 'not r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint -> UpdatePromptSettings'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint -> UpdatePromptSettings -> 0'
 
   # 18.8.1.1 (L2) Ensure 'Turn off notifications network usage' is set to 'Enabled'. (Automated)
    - id: 18721
-     title: "(L2) Ensure 'Turn off notifications network usage' is set to 'Enabled'."
+     title: "Ensure 'Turn off notifications network usage' is set to 'Enabled'."
      description: "This policy setting blocks applications from using the network to send notifications to update tiles, tile badges, toast, or raw notifications. This policy setting turns off the connection between Windows and the Windows Push Notification Service (WNS). This policy setting also stops applications from being able to poll application services to update tiles. The recommended state for this setting is: Enabled."
      rationale: "Windows Push Notification Services (WNS) is a mechanism to receive third-party notifications and updates from the cloud/Internet. In a high security environment, external systems, especially those hosted outside the organization, should be prevented from having an impact on the secure workstations."
      impact: "Applications and system features will not be able receive notifications from the network from WNS or via notification polling APIs."
@@ -3516,12 +3532,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\PushNotifications'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\PushNotifications -> NoCloudApplicationNotification'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\PushNotifications -> NoCloudApplicationNotification -> 1'
 
   # 18.9.3.1 (L1) Ensure 'Include command line in process creation events' is set to 'Enabled'. (Automated)
    - id: 18722
-     title: "(L1) Ensure 'Include command line in process creation events' is set to 'Enabled'."
+     title: "Ensure 'Include command line in process creation events' is set to 'Enabled'."
      description: "This policy setting controls whether the process creation command line text is logged in security audit events when a new process has been created. The recommended state for this setting is: Enabled. Note: This feature that this setting controls was not originally supported in server OSes older than Windows Server 2012 R2. However, in February 2015 Microsoft added support for the feature to Windows Server 2008 R2 and Windows Server 2012 (non-R2) via an update - KB3004375. Therefore, this setting is also important to set on those older OSes."
      rationale: "Capturing process command line information in event logs can be very valuable when performing forensic investigations of attack incidents."
      impact: "Process command line information will be included in the event logs, which can contain sensitive or private information such as passwords or user data. Warning: There are potential risks of capturing credentials and sensitive information which could be exposed to users who have read-access to event logs. Microsoft provides a feature called \"Protected Event Logging\" to better secure event log data. For assistance with protecting event logging, visit: About Logging Windows - PowerShell | Microsoft Docs."
@@ -3534,12 +3553,15 @@ checks:
        - cis_csc_v7: ["8.8"]
        - iso_27001-2013: ["A.12.14.1"]
        - soc_2: ["CC5.2", "CC6.8"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Audit'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Audit -> ProcessCreationIncludeCmdLine_Enabled'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Audit -> ProcessCreationIncludeCmdLine_Enabled -> 1'
 
   # 18.9.4.1 (L1) Ensure 'Encryption Oracle Remediation' is set to 'Enabled: Force Updated Clients'. (Automated)
    - id: 18723
-     title: "(L1) Ensure 'Encryption Oracle Remediation' is set to 'Enabled: Force Updated Clients'."
+     title: "Ensure 'Encryption Oracle Remediation' is set to 'Enabled: Force Updated Clients'."
      description: "Some versions of the CredSSP protocol that is used by some applications (such as Remote Desktop Connection) are vulnerable to an encryption oracle attack against the client. This policy controls compatibility with vulnerable clients and servers and allows you to set the level of protection desired for the encryption oracle vulnerability. The recommended state for this setting is: Enabled: Force Updated Clients."
      rationale: "This setting is important to mitigate the CredSSP encryption oracle vulnerability, for which information was published by Microsoft on 03/13/2018 in CVE-2018-0886 | CredSSP Remote Code Execution Vulnerability. All versions of Windows Server from Server 2008 (non-R2) onwards are affected by this vulnerability, and will be compatible with this recommendation provided that they have been patched up through May 2018 (or later)."
      impact: "Client applications which use CredSSP will not be able to fall back to the insecure versions and services using CredSSP will not accept unpatched clients. This setting should not be deployed until all remote hosts support the newest version, which is achieved by ensuring that all Microsoft security updates at least through May 2018 are installed."
@@ -3552,12 +3574,15 @@ checks:
        - nist_sp_800-53: ["SI-2(2)"]
        - pci_dss_v3.2.1: ["6.2"]
        - soc_2: ["CC7.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\CredSSP\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\CredSSP\Parameters -> AllowEncryptionOracle'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\CredSSP\Parameters -> AllowEncryptionOracle -> 1'
 
   # 18.9.7.2 (L1) Ensure 'Prevent device metadata retrieval from the Internet' is set to 'Enabled'. (Automated)
    - id: 18724
-     title: "(L1) Ensure 'Prevent device metadata retrieval from the Internet' is set to 'Enabled'."
+     title: "Ensure 'Prevent device metadata retrieval from the Internet' is set to 'Enabled'."
      description: "This policy setting allows you to prevent Windows from retrieving device metadata from the Internet. The recommended state for this setting is: Enabled. Note: This will not prevent the installation of basic hardware drivers, but does prevent associated third-party utility software from automatically being installed under the context of the SYSTEM account."
      rationale: "Installation of software should be conducted by an authorized system administrator and not a standard user. Allowing automatic third-party software installations under the context of the SYSTEM account has potential for allowing unauthorized access via backdoors or installation software bugs."
      impact: "Standard users without administrator privileges will not be able to install associated third-party utility software for peripheral devices. This may limit the use of advanced features of those devices unless/until an administrator installs the associated utility software for the device."
@@ -3565,12 +3590,15 @@ checks:
      compliance:
        - cis: ["18.9.7.2"]
        - cis_csc_v7: ["18.3"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Device Metadata'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Device Metadata -> PreventDeviceMetadataFromNetwork'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Device Metadata -> PreventDeviceMetadataFromNetwork -> 1'
 
   # 18.9.13.1 (L1) Ensure 'Boot-Start Driver Initialization Policy' is set to 'Enabled: Good, unknown and bad but critical'. (Automated)
    - id: 18725
-     title: "(L1) Ensure 'Boot-Start Driver Initialization Policy' is set to 'Enabled: Good, unknown and bad but critical'."
+     title: "Ensure 'Boot-Start Driver Initialization Policy' is set to 'Enabled: Good, unknown and bad but critical'."
      description: "This policy setting allows you to specify which boot-start drivers are initialized based on a classification determined by an Early Launch Antimalware boot-start driver. The Early Launch Antimalware boot-start driver can return the following classifications for each boot-start driver: - Good: The driver has been signed and has not been tampered with. - Bad: The driver has been identified as malware. It is recommended that you do not allow known bad drivers to be initialized. - Bad, but required for boot: The driver has been identified as malware, but the computer cannot successfully boot without loading this driver. - Unknown: This driver has not been attested to by your malware detection application and has not been classified by the Early Launch Antimalware boot-start driver. If you enable this policy setting you will be able to choose which boot-start drivers to initialize the next time the computer is started. If your malware detection application does not include an Early Launch Antimalware boot-start driver or if your Early Launch Antimalware boot-start driver has been disabled, this setting has no effect and all boot-start drivers are initialized. The recommended state for this setting is: Enabled: Good, unknown and bad but critical."
      rationale: "This policy setting helps reduce the impact of malware that has already infected your system."
      impact: "None - this is the default behavior."
@@ -3582,12 +3610,15 @@ checks:
        - nist_sp_800-53: ["SI-16"]
        - pci_dss_v3.2.1: ["1.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Policies\EarlyLaunch'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Policies\EarlyLaunch -> DriverLoadPolicy'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Policies\EarlyLaunch -> DriverLoadPolicy -> 3'
 
   # 18.9.19.2 (L1) Ensure 'Configure registry policy processing: Do not apply during periodic background processing' is set to 'Enabled: FALSE'. (Automated)
    - id: 18726
-     title: "(L1) Ensure 'Configure registry policy processing: Do not apply during periodic background processing' is set to 'Enabled: FALSE'."
+     title: "Ensure 'Configure registry policy processing: Do not apply during periodic background processing' is set to 'Enabled: FALSE'."
      description: "The \"Do not apply during periodic background processing\" option prevents the system from updating affected policies in the background while the computer is in use. When background updates are disabled, policy changes will not take effect until the next user logon or system restart. The recommended state for this setting is: Enabled: FALSE (unchecked)."
      rationale: "Setting this option to false (unchecked) will ensure that domain policy changes take effect more quickly, as compared to waiting until the next user logon or system restart."
      impact: "Group Policies will be reapplied every time they are refreshed, which could have a slight impact on performance."
@@ -3602,12 +3633,15 @@ checks:
        - pci_dss_v3.2.1: ["11.5", "2.2"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
        - soc_2: ["CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Group Policy\{35378EAC-683F-11D2-A89A-00C04FBBCFA2}'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Group Policy\{35378EAC-683F-11D2-A89A-00C04FBBCFA2} -> NoBackgroundPolicy'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Group Policy\{35378EAC-683F-11D2-A89A-00C04FBBCFA2} -> NoBackgroundPolicy -> 0'
 
   # 18.9.19.3 (L1) Ensure 'Configure registry policy processing: Process even if the Group Policy objects have not changed' is set to 'Enabled: TRUE'. (Automated)
    - id: 18727
-     title: "(L1) Ensure 'Configure registry policy processing: Process even if the Group Policy objects have not changed' is set to 'Enabled: TRUE'."
+     title: "Ensure 'Configure registry policy processing: Process even if the Group Policy objects have not changed' is set to 'Enabled: TRUE'."
      description: "The \"Process even if the Group Policy objects have not changed\" option updates and reapplies policies even if the policies have not changed. The recommended state for this setting is: Enabled: TRUE (checked)."
      rationale: "Setting this option to true (checked) will ensure unauthorized changes that might have been configured locally are forced to match the domain-based Group Policy settings again."
      impact: "Group Policies will be reapplied even if they have not been changed, which could have a slight impact on performance."
@@ -3622,12 +3656,15 @@ checks:
        - pci_dss_v3.2.1: ["11.5", "2.2"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
        - soc_2: ["CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Group Policy\{35378EAC-683F-11D2-A89A-00C04FBBCFA2}'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Group Policy\{35378EAC-683F-11D2-A89A-00C04FBBCFA2} -> NoGPOListChanges'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Group Policy\{35378EAC-683F-11D2-A89A-00C04FBBCFA2} -> NoGPOListChanges -> 0'
 
   # 18.9.19.4 (L1) Ensure 'Turn off background refresh of Group Policy' is set to 'Disabled'. (Automated)
    - id: 18728
-     title: "(L1) Ensure 'Turn off background refresh of Group Policy' is set to 'Disabled'."
+     title: "Ensure 'Turn off background refresh of Group Policy' is set to 'Disabled'."
      description: "This policy setting prevents Group Policy from being updated while the computer is in use. This policy setting applies to Group Policy for computers, users and Domain Controllers. The recommended state for this setting is: Disabled."
      rationale: "This setting ensures that group policy changes take effect more quickly, as compared to waiting until the next user logon or system restart."
      impact: "None - this is the default behavior."
@@ -3642,12 +3679,14 @@ checks:
        - pci_dss_v3.2.1: ["11.5", "2.2"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
        - soc_2: ["CC7.1", "CC8.1"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> DisableBkGndGroupPolicy'
 
   # 18.9.20.1.1 (L1) Ensure 'Turn off downloading of print drivers over HTTP' is set to 'Enabled'. (Automated)
    - id: 18729
-     title: "(L1) Ensure 'Turn off downloading of print drivers over HTTP' is set to 'Enabled'."
+     title: "Ensure 'Turn off downloading of print drivers over HTTP' is set to 'Enabled'."
      description: "This policy setting controls whether the computer can download print driver packages over HTTP. To set up HTTP printing, printer drivers that are not available in the standard operating system installation might need to be downloaded over HTTP. The recommended state for this setting is: Enabled."
      rationale: "Users might download drivers that include malicious code."
      impact: "Print drivers cannot be downloaded over HTTP. Note: This policy setting does not prevent the client computer from printing to printers on the intranet or the Internet over HTTP. It only prohibits downloading drivers that are not already installed locally."
@@ -3661,12 +3700,15 @@ checks:
        - nist_sp_800-53: ["CM-7(5)"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4"]
        - soc_2: ["CC6.8"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Printers'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Printers -> DisableWebPnPDownload'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Printers -> DisableWebPnPDownload -> 1'
 
   # 18.9.20.1.2 (L2) Ensure 'Turn off handwriting personalization data sharing' is set to 'Enabled'. (Automated)
    - id: 18730
-     title: "(L2) Ensure 'Turn off handwriting personalization data sharing' is set to 'Enabled'."
+     title: "Ensure 'Turn off handwriting personalization data sharing' is set to 'Enabled'."
      description: "This setting turns off data sharing from the handwriting recognition personalization tool. The handwriting recognition personalization tool enables Tablet PC users to adapt handwriting recognition to their own writing style by providing writing samples. The tool can optionally share user writing samples with Microsoft to improve handwriting recognition in future versions of Windows. The tool generates reports and transmits them to Microsoft over a secure connection. The recommended state for this setting is: Enabled."
      rationale: "A person's handwriting is Personally Identifiable Information (PII), especially when it comes to your signature. As such, it is unacceptable in many environments to automatically upload PII to a website without explicit approval by the user."
      impact: "Tablet PC users cannot choose to share writing samples from the handwriting recognition personalization tool with Microsoft."
@@ -3680,12 +3722,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\TabletPC'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\TabletPC -> PreventHandwritingDataSharing'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\TabletPC -> PreventHandwritingDataSharing -> 1'
 
   # 18.9.20.1.3 (L2) Ensure 'Turn off handwriting recognition error reporting' is set to 'Enabled'. (Automated)
    - id: 18731
-     title: "(L2) Ensure 'Turn off handwriting recognition error reporting' is set to 'Enabled'."
+     title: "Ensure 'Turn off handwriting recognition error reporting' is set to 'Enabled'."
      description: "Turns off the handwriting recognition error reporting tool. The handwriting recognition error reporting tool enables users to report errors encountered in Tablet PC Input Panel. The tool generates error reports and transmits them to Microsoft over a secure connection. Microsoft uses these error reports to improve handwriting recognition in future versions of Windows. The recommended state for this setting is: Enabled."
      rationale: "A person's handwriting is Personally Identifiable Information (PII), especially when it comes to your signature. As such, it is unacceptable in many environments to automatically upload PII to a website without explicit approval by the user."
      impact: "Users cannot start the handwriting recognition error reporting tool or send error reports to Microsoft."
@@ -3699,12 +3744,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\HandwritingErrorReports'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\HandwritingErrorReports -> PreventHandwritingErrorReports'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\HandwritingErrorReports -> PreventHandwritingErrorReports -> 1'
 
   # 18.9.20.1.4 (L2) Ensure 'Turn off Internet Connection Wizard if URL connection is referring to Microsoft.com' is set to 'Enabled'. (Automated)
    - id: 18732
-     title: "(L2) Ensure 'Turn off Internet Connection Wizard if URL connection is referring to Microsoft.com' is set to 'Enabled'."
+     title: "Ensure 'Turn off Internet Connection Wizard if URL connection is referring to Microsoft.com' is set to 'Enabled'."
      description: "This policy setting specifies whether the Internet Connection Wizard can connect to Microsoft to download a list of Internet Service Providers (ISPs). The recommended state for this setting is: Enabled."
      rationale: "In an enterprise managed environment we want to lower the risk of a user unknowingly exposing sensitive data."
      impact: "The \"Choose a list of Internet Service Providers\" path in the Internet Connection Wizard causes the wizard to exit. This prevents users from retrieving the list of ISPs, which resides on Microsoft servers."
@@ -3718,12 +3766,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Internet Connection Wizard'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Internet Connection Wizard -> ExitOnMSICW'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Internet Connection Wizard -> ExitOnMSICW -> 1'
 
   # 18.9.20.1.5 (L1) Ensure 'Turn off Internet download for Web publishing and online ordering wizards' is set to 'Enabled'. (Automated)
    - id: 18733
-     title: "(L1) Ensure 'Turn off Internet download for Web publishing and online ordering wizards' is set to 'Enabled'."
+     title: "Ensure 'Turn off Internet download for Web publishing and online ordering wizards' is set to 'Enabled'."
      description: "This policy setting controls whether Windows will download a list of providers for the Web publishing and online ordering wizards. The recommended state for this setting is: Enabled."
      rationale: "Although the risk is minimal, enabling this setting will reduce the possibility of a user unknowingly downloading malicious content through this feature."
      impact: "Windows is prevented from downloading providers; only the service providers cached in the local registry are displayed."
@@ -3737,12 +3788,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoWebServices'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoWebServices -> 1'
 
   # 18.9.20.1.6 (L2) Ensure 'Turn off printing over HTTP' is set to 'Enabled'. (Automated)
    - id: 18734
-     title: "(L2) Ensure 'Turn off printing over HTTP' is set to 'Enabled'."
+     title: "Ensure 'Turn off printing over HTTP' is set to 'Enabled'."
      description: "This policy setting allows you to disable the client computer's ability to print over HTTP, which allows the computer to print to printers on the intranet as well as the Internet. The recommended state for this setting is: Enabled. Note: This control affects printing over both HTTP and HTTPS."
      rationale: "Information that is transmitted over HTTP through this capability is not protected and can be intercepted by malicious users. For this reason, it is not often used in enterprise managed environments."
      impact: "The client computer will not be able to print to Internet printers over HTTP or HTTPS. Note: This policy setting affects the client side of Internet printing only. Regardless of how it is configured, a computer could act as an Internet Printing server and make its shared printers available through HTTP."
@@ -3756,12 +3810,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Printers'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Printers -> DisableHTTPPrinting'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Printers -> DisableHTTPPrinting -> 1'
 
   # 18.9.20.1.7 (L2) Ensure 'Turn off Registration if URL connection is referring to Microsoft.com' is set to 'Enabled'. (Automated)
    - id: 18735
-     title: "(L2) Ensure 'Turn off Registration if URL connection is referring to Microsoft.com' is set to 'Enabled'."
+     title: "Ensure 'Turn off Registration if URL connection is referring to Microsoft.com' is set to 'Enabled'."
      description: "This policy setting specifies whether the Windows Registration Wizard connects to Microsoft.com for online registration. The recommended state for this setting is: Enabled."
      rationale: "Users in an enterprise managed environment should not be registering their own copies of Windows, providing their own PII in the process."
      impact: "Users are blocked from connecting to Microsoft.com for online registration and they cannot register their copy of Windows online."
@@ -3775,12 +3832,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Registration Wizard Control'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Registration Wizard Control -> NoRegistration'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Registration Wizard Control -> NoRegistration -> 1'
 
   # 18.9.20.1.8 (L2) Ensure 'Turn off Search Companion content file updates' is set to 'Enabled'. (Automated)
    - id: 18736
-     title: "(L2) Ensure 'Turn off Search Companion content file updates' is set to 'Enabled'."
+     title: "Ensure 'Turn off Search Companion content file updates' is set to 'Enabled'."
      description: "This policy setting specifies whether Search Companion should automatically download content updates during local and Internet searches. The recommended state for this setting is: Enabled."
      rationale: "There is a small risk that users will unknowingly reveal sensitive information because of the topics they are searching for. This risk is very low because even if this setting is enabled users still must submit search queries to the desired search engine in order to perform searches."
      impact: "Search Companion does not download content updates during searches. Note: Internet searches will still send the search text and information about the search to Microsoft and the chosen search provider. If you select Classic Search, the Search Companion feature will be unavailable. You can select Classic Search by clicking Start, Search, Change Preferences, and then Change Internet Search Behavior."
@@ -3794,12 +3854,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\SearchCompanion'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\SearchCompanion -> DisableContentFileUpdates'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\SearchCompanion -> DisableContentFileUpdates -> 1'
 
   # 18.9.20.1.9 (L2) Ensure 'Turn off the "Order Prints" picture task' is set to 'Enabled'. (Automated)
    - id: 18737
-     title: "(L2) Ensure 'Turn off the "Order Prints" picture task' is set to 'Enabled'."
+     title: "Ensure 'Turn off the Order Prints picture task' is set to 'Enabled'."
      description: "This policy setting specifies whether the \"Order Prints Online\" task is available from Picture Tasks in Windows folders. The Order Prints Online Wizard is used to download a list of providers and allow users to order prints online. The recommended state for this setting is: Enabled."
      rationale: "In an enterprise managed environment we want to lower the risk of a user unknowingly exposing sensitive data."
      impact: "The task \"Order Prints Online\" is removed from Picture Tasks in File Explorer folders."
@@ -3813,12 +3876,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoOnlinePrintsWizard'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoOnlinePrintsWizard -> 1'
 
   # 18.9.20.1.10 (L2) Ensure 'Turn off the "Publish to Web" task for files and folders' is set to 'Enabled'. (Automated)
    - id: 18738
-     title: "(L2) Ensure 'Turn off the "Publish to Web" task for files and folders' is set to 'Enabled'."
+     title: "Ensure 'Turn off the \"Publish to Web\" task for files and folders' is set to 'Enabled'."
      description: "This policy setting specifies whether the tasks Publish this file to the Web, Publish this folder to the Web, and Publish the selected items to the Web are available from File and Folder Tasks in Windows folders. The recommended state for this setting is: Enabled."
      rationale: "Users may publish confidential or sensitive information to a public service outside of the control of the organization."
      impact: "The \"Publish to Web\" task is removed from File and Folder tasks in Windows folders."
@@ -3832,12 +3898,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoPublishingWizard'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoPublishingWizard -> 1'
 
   # 18.9.20.1.11 (L2) Ensure 'Turn off the Windows Messenger Customer Experience Improvement Program' is set to 'Enabled'. (Automated)
    - id: 18739
-     title: "(L2) Ensure 'Turn off the Windows Messenger Customer Experience Improvement Program' is set to 'Enabled'."
+     title: "Ensure 'Turn off the Windows Messenger Customer Experience Improvement Program' is set to 'Enabled'."
      description: "This policy setting specifies whether Windows Messenger can collect anonymous information about how the Windows Messenger software and service is used. Microsoft uses information collected through the Customer Experience Improvement Program to detect software flaws so that they can be corrected more quickly, enabling this setting will reduce the amount of data Microsoft is able to gather for this purpose. The recommended state for this setting is: Enabled."
      rationale: "Large enterprise managed environments may not want to have information collected by Microsoft from managed client computers."
      impact: "Windows Messenger will not collect usage information, and the user settings to enable the collection of usage information will not be shown."
@@ -3851,12 +3920,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Messenger\Client'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Messenger\Client -> CEIP'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Messenger\Client -> CEIP -> 2'
 
   # 18.9.20.1.12 (L2) Ensure 'Turn off Windows Customer Experience Improvement Program' is set to 'Enabled'. (Automated)
    - id: 18740
-     title: "(L2) Ensure 'Turn off Windows Customer Experience Improvement Program' is set to 'Enabled'."
+     title: "Ensure 'Turn off Windows Customer Experience Improvement Program' is set to 'Enabled'."
      description: "This policy setting specifies whether the Windows Customer Experience Improvement Program can collect anonymous information about how Windows is used. Microsoft uses information collected through the Windows Customer Experience Improvement Program to improve features that are most used and to detect flaws so that they can be corrected more quickly. Enabling this setting will reduce the amount of data Microsoft is able to gather for this purpose. The recommended state for this setting is: Enabled."
      rationale: "Large enterprise managed environments may not want to have information collected by Microsoft from managed client computers."
      impact: "All users are opted out of the Windows Customer Experience Improvement Program."
@@ -3870,12 +3942,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\SQMClient\Windows'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\SQMClient\Windows -> CEIPEnable'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\SQMClient\Windows -> CEIPEnable -> 0'
 
   # 18.9.20.1.13 (L2) Ensure 'Turn off Windows Error Reporting' is set to 'Enabled'. (Automated)
    - id: 18741
-     title: "(L2) Ensure 'Turn off Windows Error Reporting' is set to 'Enabled'."
+     title: "Ensure 'Turn off Windows Error Reporting' is set to 'Enabled'."
      description: "This policy setting controls whether or not errors are reported to Microsoft. Error Reporting is used to report information about a system or application that has failed or has stopped responding and is used to improve the quality of the product. The recommended state for this setting is: Enabled."
      rationale: "If a Windows Error occurs in a secure, enterprise managed environment, the error should be reported directly to IT staff for troubleshooting and remediation. There is no benefit to the corporation to report these errors directly to Microsoft, and there is some risk of unknowingly exposing sensitive data as part of the error."
      impact: "Users are not given the option to report errors to Microsoft."
@@ -3889,96 +3964,120 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting -> Disabled'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting -> Disabled -> 1'
 
   # 18.9.26.1 (L2) Ensure 'Disallow copying of user input methods to the system account for sign-in' is set to 'Enabled'. (Automated)
    - id: 18742
-     title: "(L2) Ensure 'Disallow copying of user input methods to the system account for sign-in' is set to 'Enabled'."
+     title: "Ensure 'Disallow copying of user input methods to the system account for sign-in' is set to 'Enabled'."
      description: "This policy prevents automatic copying of user input methods to the system account for use on the sign-in screen. The user is restricted to the set of input methods that are enabled in the system account. The recommended state for this setting is: Enabled."
      rationale: "This is a way to increase the security of the system account."
      impact: "Users will have input methods enabled for the system account on the sign-in page."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Locale Services\\Disallow copying of user input methods to the system account for sign-in Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Globalization.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
      compliance:
        - cis: ["18.9.26.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Control Panel\International'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Control Panel\International -> BlockUserInputMethodsForSignIn'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Control Panel\International -> BlockUserInputMethodsForSignIn -> 1'
 
   # 18.9.27.1 (L1) Ensure 'Do not display network selection UI' is set to 'Enabled'. (Automated)
    - id: 18743
-     title: "(L1) Ensure 'Do not display network selection UI' is set to 'Enabled'."
+     title: "Ensure 'Do not display network selection UI' is set to 'Enabled'."
      description: "This policy setting allows you to control whether anyone can interact with available networks UI on the logon screen. The recommended state for this setting is: Enabled."
      rationale: "An unauthorized user could disconnect the PC from the network or can connect the PC to other available networks without signing into Windows."
      impact: "The PC's network connectivity state cannot be changed without signing into Windows."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Logon\\Do not display network selection UI Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Logon.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
      compliance:
        - cis: ["18.9.27.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> DontDisplayNetworkSelectionUI'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> DontDisplayNetworkSelectionUI -> 1'
 
   # 18.9.27.2 (L1) Ensure 'Do not enumerate connected users on domain-joined computers' is set to 'Enabled'. (Automated)
    - id: 18744
-     title: "(L1) Ensure 'Do not enumerate connected users on domain-joined computers' is set to 'Enabled'."
+     title: "Ensure 'Do not enumerate connected users on domain-joined computers' is set to 'Enabled'."
      description: "This policy setting prevents connected users from being enumerated on domain-joined computers. The recommended state for this setting is: Enabled."
      rationale: "A malicious user could use this feature to gather account names of other users, that information could then be used in conjunction with other types of attacks such as guessing passwords or social engineering. The value of this countermeasure is small because a user with domain credentials could gather the same account information using other methods."
      impact: "The Logon UI will not enumerate any connected users on domain-joined computers."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Logon\\Do not enumerate connected users on domain-joined computers Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Logon.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
      compliance:
        - cis: ["18.9.27.2"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> DontEnumerateConnectedUsers'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> DontEnumerateConnectedUsers -> 1'
 
   # 18.9.27.3 (L1) Ensure 'Enumerate local users on domain-joined computers' is set to 'Disabled' (MS only). (Automated)
    - id: 18745
-     title: "(L1) Ensure 'Enumerate local users on domain-joined computers' is set to 'Disabled' (MS only)."
+     title: "Ensure 'Enumerate local users on domain-joined computers' is set to 'Disabled' (MS only)."
      description: "This policy setting allows local users to be enumerated on domain-joined computers. The recommended state for this setting is: Disabled."
      rationale: "A malicious user could use this feature to gather account names of other users, that information could then be used in conjunction with other types of attacks such as guessing passwords or social engineering. The value of this countermeasure is small because a user with domain credentials could gather the same account information using other methods."
      impact: "None - this is the default behavior."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Logon\\Enumerate local users on domain-joined computers Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Logon.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
      compliance:
        - cis: ["18.9.27.3"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> EnumerateLocalUsers'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> EnumerateLocalUsers -> 0'
 
   # 18.9.27.4 (L1) Ensure 'Turn off app notifications on the lock screen' is set to 'Enabled'. (Automated)
    - id: 18746
-     title: "(L1) Ensure 'Turn off app notifications on the lock screen' is set to 'Enabled'."
+     title: "Ensure 'Turn off app notifications on the lock screen' is set to 'Enabled'."
      description: "This policy setting allows you to prevent app notifications from appearing on the lock screen. The recommended state for this setting is: Enabled."
      rationale: "App notifications might display sensitive business or personal data."
      impact: "No app notifications are displayed on the lock screen."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Logon\\Turn off app notifications on the lock screen Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Logon.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
      compliance:
        - cis: ["18.9.27.4"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> DisableLockScreenAppNotifications'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> DisableLockScreenAppNotifications -> 1'
 
   # 18.9.27.5 (L1) Ensure 'Turn off picture password sign-in' is set to 'Enabled'. (Automated)
    - id: 18747
-     title: "(L1) Ensure 'Turn off picture password sign-in' is set to 'Enabled'."
+     title: "Ensure 'Turn off picture password sign-in' is set to 'Enabled'."
      description: "This policy setting allows you to control whether a domain user can sign in using a picture password. The recommended state for this setting is: Enabled. Note: If the picture password feature is permitted, the user's domain password is cached in the system vault when using it."
      rationale: "Picture passwords bypass the requirement for a typed complex password. In a shared work environment, a simple shoulder surf where someone observed the on-screen gestures would allow that person to gain access to the system without the need to know the complex password. Vertical monitor screens with an image are much more visible at a distance than horizontal key strokes, increasing the likelihood of a successful observation of the mouse gestures."
      impact: "Users will not be able to set up or sign in with a picture password."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Logon\\Turn off picture password sign-in Note: This Group Policy path may not exist by default. It is provided by the Group Policy template CredentialProviders.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
      compliance:
        - cis: ["18.9.27.5"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> BlockDomainPicturePassword'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> BlockDomainPicturePassword -> 1'
 
   # 18.9.27.6 (L1) Ensure 'Turn on convenience PIN sign-in' is set to 'Disabled'. (Automated)
    - id: 18748
-     title: "(L1) Ensure 'Turn on convenience PIN sign-in' is set to 'Disabled'."
+     title: "Ensure 'Turn on convenience PIN sign-in' is set to 'Disabled'."
      description: "This policy setting allows you to control whether a domain user can sign in using a convenience PIN. In Windows 10, convenience PIN was replaced with Passport, which has stronger security properties. To configure Passport for domain users, use the policies under Computer Configuration\\Administrative Templates\\Windows Components\\Microsoft Passport for Work. Note: The user's domain password will be cached in the system vault when using this feature. The recommended state for this setting is: Disabled."
      rationale: "A PIN is created from a much smaller selection of characters than a password, so in most cases a PIN will be much less robust than a password."
      impact: "None - this is the default behavior."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Logon\\Turn on convenience PIN sign-in Note: This Group Policy path may not exist by default. It is provided by the Group Policy template CredentialProviders.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer). Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Turn on PIN sign-in, but it was renamed starting with the Windows 10 Release 1511 Administrative Templates."
      compliance:
        - cis: ["18.9.27.6"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> AllowDomainPINLogon'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> AllowDomainPINLogon -> 0'
 
   # 18.9.32.6.1 (L1) Ensure 'Require a password when a computer wakes (on battery)' is set to 'Enabled'. (Automated)
    - id: 18749
-     title: "(L1) Ensure 'Require a password when a computer wakes (on battery)' is set to 'Enabled'."
+     title: "Ensure 'Require a password when a computer wakes (on battery)' is set to 'Enabled'."
      description: "Specifies whether or not the user is prompted for a password when the system resumes from sleep. The recommended state for this setting is: Enabled."
      rationale: "Enabling this setting ensures that anyone who wakes an unattended computer from sleep state will have to provide logon credentials before they can access the system."
      impact: "None - this is the default behavior."
@@ -3993,12 +4092,15 @@ checks:
        - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
        - pci_dss_v3.2.1: ["8.1.8"]
        - pci_dss_v4.0: ["8.2.8"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\0e796bdb-100d-47d6-a2d5-f7d2daa51f51'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\0e796bdb-100d-47d6-a2d5-f7d2daa51f51 -> DCSettingIndex'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\0e796bdb-100d-47d6-a2d5-f7d2daa51f51 -> DCSettingIndex -> 1'
 
   # 18.9.32.6.2 (L1) Ensure 'Require a password when a computer wakes (plugged in)' is set to 'Enabled'. (Automated)
    - id: 18750
-     title: "(L1) Ensure 'Require a password when a computer wakes (plugged in)' is set to 'Enabled'."
+     title: "Ensure 'Require a password when a computer wakes (plugged in)' is set to 'Enabled'."
      description: "Specifies whether or not the user is prompted for a password when the system resumes from sleep. The recommended state for this setting is: Enabled."
      rationale: "Enabling this setting ensures that anyone who wakes an unattended computer from sleep state will have to provide logon credentials before they can access the system."
      impact: "None - this is the default behavior."
@@ -4013,12 +4115,15 @@ checks:
        - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
        - pci_dss_v3.2.1: ["8.1.8"]
        - pci_dss_v4.0: ["8.2.8"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\0e796bdb-100d-47d6-a2d5-f7d2daa51f51'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\0e796bdb-100d-47d6-a2d5-f7d2daa51f51 -> ACSettingIndex'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\0e796bdb-100d-47d6-a2d5-f7d2daa51f51 -> ACSettingIndex -> 1'
 
   # 18.9.34.1 (L1) Ensure 'Configure Offer Remote Assistance' is set to 'Disabled'. (Automated)
    - id: 18751
-     title: "(L1) Ensure 'Configure Offer Remote Assistance' is set to 'Disabled'."
+     title: "Ensure 'Configure Offer Remote Assistance' is set to 'Disabled'."
      description: "This policy setting allows you to turn on or turn off Offer (Unsolicited) Remote Assistance on this computer. Help desk and support personnel will not be able to proactively offer assistance, although they can still respond to user assistance requests. The recommended state for this setting is: Disabled."
      rationale: "A user might be tricked and accept an unsolicited Remote Assistance offer from a malicious user."
      impact: "None - this is the default behavior."
@@ -4032,12 +4137,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fAllowUnsolicited'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fAllowUnsolicited -> 0'
 
   # 18.9.34.2 (L1) Ensure 'Configure Solicited Remote Assistance' is set to 'Disabled'. (Automated)
    - id: 18752
-     title: "(L1) Ensure 'Configure Solicited Remote Assistance' is set to 'Disabled'."
+     title: "Ensure 'Configure Solicited Remote Assistance' is set to 'Disabled'."
      description: "This policy setting allows you to turn on or turn off Solicited (Ask for) Remote Assistance on this computer. The recommended state for this setting is: Disabled."
      rationale: "There is slight risk that a rogue administrator will gain access to another user's desktop session, however, they cannot connect to a user's computer unannounced or control it without permission from the user. When an expert tries to connect, the user can still choose to deny the connection or give the expert view-only privileges. The user must explicitly click the Yes button to allow the expert to remotely control the workstation."
      impact: "Users on this computer cannot use e-mail or file transfer to ask someone for help. Also, users cannot use instant messaging programs to allow connections to this computer."
@@ -4051,12 +4159,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fAllowToGetHelp'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fAllowToGetHelp -> 0'
 
   # 18.9.35.1 (L1) Ensure 'Enable RPC Endpoint Mapper Client Authentication' is set to 'Enabled' (MS only). (Automated)
    - id: 18753
-     title: "(L1) Ensure 'Enable RPC Endpoint Mapper Client Authentication' is set to 'Enabled' (MS only)."
+     title: "Ensure 'Enable RPC Endpoint Mapper Client Authentication' is set to 'Enabled' (MS only)."
      description: "This policy setting controls whether RPC clients authenticate with the Endpoint Mapper Service when the call they are making contains authentication information. The Endpoint Mapper Service on computers running Windows NT4 (all service packs) cannot process authentication information supplied in this manner. This policy setting can cause a specific issue with 1-way forest trusts if it is applied to the trusting domain DCs (see Microsoft KB3073942), so we do not recommend applying it to Domain Controllers. Note: This policy will not be in effect until the system is rebooted. The recommended state for this setting is: Enabled."
      rationale: "Anonymous access to RPC services could result in accidental disclosure of information to unauthenticated users."
      impact: "RPC clients will authenticate to the Endpoint Mapper Service for calls that contain authentication information. Clients making such calls will not be able to communicate with the Windows NT4 Server Endpoint Mapper Service."
@@ -4070,12 +4181,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Rpc'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Rpc -> EnableAuthEpResolution'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Rpc -> EnableAuthEpResolution -> 1'
 
   # 18.9.35.2 (L2) Ensure 'Restrict Unauthenticated RPC clients' is set to 'Enabled: Authenticated' (MS only). (Automated)
    - id: 18754
-     title: "(L2) Ensure 'Restrict Unauthenticated RPC clients' is set to 'Enabled: Authenticated' (MS only)."
+     title: "Ensure 'Restrict Unauthenticated RPC clients' is set to 'Enabled: Authenticated' (MS only)."
      description: "This policy setting controls how the RPC server runtime handles unauthenticated RPC clients connecting to RPC servers. This policy setting impacts all RPC applications. In a domain environment this policy setting should be used with caution as it can impact a wide range of functionality including group policy processing itself. Reverting a change to this policy setting can require manual intervention on each affected machine. This policy setting should never be applied to a Domain Controller. A client will be considered an authenticated client if it uses a named pipe to communicate with the server or if it uses RPC Security. RPC Interfaces that have specifically requested to be accessible by unauthenticated clients may be exempt from this restriction, depending on the selected value for this policy setting. -- \"None\" allows all RPC clients to connect to RPC Servers running on the machine on which the policy setting is applied. -- \"Authenticated\" allows only authenticated RPC Clients (per the definition above) to connect to RPC Servers running on the machine on which the policy setting is applied. Exemptions are granted to interfaces that have requested them. -- \"Authenticated without exceptions\" allows only authenticated RPC Clients (per the definition above) to connect to RPC Servers running on the machine on which the policy setting is applied. No exceptions are allowed. This value has the potential to cause serious problems and is not recommended. Note: This policy setting will not be applied until the system is rebooted. The recommended state for this setting is: Enabled: Authenticated."
      rationale: "Unauthenticated RPC communication can create a security vulnerability."
      impact: "Only authenticated RPC Clients will be allowed to connect to RPC servers running on the machine on which the policy setting is applied. Exemptions are granted to interfaces that have requested them."
@@ -4089,12 +4203,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Rpc'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Rpc -> RestrictRemoteClients'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Rpc -> RestrictRemoteClients -> 1'
 
   # 18.9.46.5.1 (L2) Ensure 'Microsoft Support Diagnostic Tool: Turn on MSDT interactive communication with support provider' is set to 'Disabled'. (Automated)
    - id: 18755
-     title: "(L2) Ensure 'Microsoft Support Diagnostic Tool: Turn on MSDT interactive communication with support provider' is set to 'Disabled'."
+     title: "Ensure 'Microsoft Support Diagnostic Tool: Turn on MSDT interactive communication with support provider' is set to 'Disabled'."
      description: "This policy setting configures Microsoft Support Diagnostic Tool (MSDT) interactive communication with the support provider. MSDT gathers diagnostic data for analysis by support professionals. The recommended state for this setting is: Disabled."
      rationale: "Due to privacy concerns, data should never be sent to any third-party since this data could contain sensitive information."
      impact: "MSDT cannot run in support mode, and no data can be collected or sent to the support provider."
@@ -4108,12 +4225,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\ScriptedDiagnosticsProvider\Policy'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\ScriptedDiagnosticsProvider\Policy -> DisableQueryRemoteServer'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\ScriptedDiagnosticsProvider\Policy -> DisableQueryRemoteServer -> 0'
 
   # 18.9.46.11.1 (L2) Ensure 'Enable/Disable PerfTrack' is set to 'Disabled'. (Automated)
    - id: 18756
-     title: "(L2) Ensure 'Enable/Disable PerfTrack' is set to 'Disabled'."
+     title: "Ensure 'Enable/Disable PerfTrack' is set to 'Disabled'."
      description: "This policy setting specifies whether to enable or disable tracking of responsiveness events. The recommended state for this setting is: Disabled."
      rationale: "When enabled the aggregated data of a given event will be transmitted to Microsoft. The option exists to restrict this feature for a specific user, set the consent level, and designate specific programs for which error reports could be sent. However, centrally restricting the ability to execute PerfTrack to limit the potential for unauthorized or undesired usage, data leakage, or unintentional communications is highly recommended."
      impact: "Responsiveness events are not processed."
@@ -4127,12 +4247,15 @@ checks:
        - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
        - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
        - soc_2: ["CC6.3", "CC6.6"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WDI\{9c5a40da-b965-4fc3-8781-88dd50a6299d}'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WDI\{9c5a40da-b965-4fc3-8781-88dd50a6299d} -> ScenarioExecutionEnabled'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WDI\{9c5a40da-b965-4fc3-8781-88dd50a6299d} -> ScenarioExecutionEnabled -> 0'
 
   # 18.9.48.1 (L2) Ensure 'Turn off the advertising ID' is set to 'Enabled'. (Automated)
    - id: 18757
-     title: "(L2) Ensure 'Turn off the advertising ID' is set to 'Enabled'."
+     title: "Ensure 'Turn off the advertising ID' is set to 'Enabled'."
      description: "This policy setting turns off the advertising ID, preventing apps from using the ID for experiences across apps. The recommended state for this setting is: Enabled."
      rationale: "Tracking user activity for advertising purposes, even anonymously, may be a privacy concern. In an enterprise managed environment, applications should not need or require tracking for targeted advertising."
      impact: "The advertising ID is turned off. Apps can't use the ID for experiences across apps."
@@ -4141,12 +4264,15 @@ checks:
        - cis: ["18.9.48.1"]
        - cis_csc_v7: ["9.2"]
        - iso_27001-2013: ["A.13.1.3"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo -> DisabledByGroupPolicy'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo -> DisabledByGroupPolicy -> 1'
 
   # 18.9.50.1.1 (L2) Ensure 'Enable Windows NTP Client' is set to 'Enabled'. (Automated)
    - id: 18758
-     title: "(L2) Ensure 'Enable Windows NTP Client' is set to 'Enabled'."
+     title: "Ensure 'Enable Windows NTP Client' is set to 'Enabled'."
      description: "This policy setting specifies whether the Windows NTP Client is enabled. Enabling the Windows NTP Client allows your computer to synchronize its computer clock with other NTP servers. You might want to disable this service if you decide to use a third-party time provider. The recommended state for this setting is: Enabled."
      rationale: "A reliable and accurate account of time is important for a number of services and security requirements, including but not limited to distributed applications, authentication services, multi-user databases and logging services. The use of an NTP client (with secure operation) establishes functional accuracy and is a focal point when reviewing security relevant events."
      impact: "You can set the local computer clock to synchronize time with NTP servers."
@@ -4161,12 +4287,15 @@ checks:
        - pci_dss_v3.2.1: ["10.4"]
        - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
        - soc_2: ["CC4.1", "CC5.2"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpClient'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpClient -> Enabled'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpClient -> Enabled -> 1'
 
   # 18.9.50.1.2 (L2) Ensure 'Enable Windows NTP Server' is set to 'Disabled' (MS only). (Automated)
    - id: 18759
-     title: "(L2) Ensure 'Enable Windows NTP Server' is set to 'Disabled' (MS only)."
+     title: "Ensure 'Enable Windows NTP Server' is set to 'Disabled' (MS only)."
      description: "This policy setting allows you to specify whether the Windows NTP Server is enabled. The recommended state for this setting is: Disabled. Note: In most enterprise managed environments, you should not disable the Windows NTP Server on Domain Controllers, as it is very important for the operation of NT5DS (domain hierarchy-based) time synchronization."
      rationale: "The configuration of proper time synchronization is critically important in an enterprise managed environment both due to the sensitivity of Kerberos authentication timestamps and also to ensure accurate security logging."
      impact: "None - this is the default behavior."
@@ -4181,12 +4310,15 @@ checks:
        - pci_dss_v3.2.1: ["10.4"]
        - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
        - soc_2: ["CC4.1", "CC5.2"]
-     condition:
+     condition: any
      rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpServer'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpServer -> Enabled'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpServer -> Enabled -> 0'
 
   # 18.10.5.1 (L1) Ensure 'Allow Microsoft accounts to be optional' is set to 'Enabled'. (Automated)
    - id: 18760
-     title: "(L1) Ensure 'Allow Microsoft accounts to be optional' is set to 'Enabled'."
+     title: "Ensure 'Allow Microsoft accounts to be optional' is set to 'Enabled'."
      description: "This policy setting lets you control whether Microsoft accounts are optional for Windows Store apps that require an account to sign in. This policy only affects Windows Store apps that support it. The recommended state for this setting is: Enabled."
      rationale: "Enabling this setting allows an organization to use their enterprise user accounts instead of using their Microsoft accounts when accessing Windows store apps. This provides the organization with greater control over relevant credentials. Microsoft accounts cannot be centrally managed and as such enterprise credential security policies cannot be applied to them, which could put any information accessed by using Microsoft accounts at risk."
      impact: "Windows Store apps that typically require a Microsoft account to sign in will allow users to sign in with an enterprise account instead."
@@ -4197,12 +4329,15 @@ checks:
        - cis_csc_v7: ["16.2"]
        - nist_sp_800-53: ["AC-2(1)"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> MSAOptional'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> MSAOptional -> 1'
 
   # 18.10.7.1 (L1) Ensure 'Disallow Autoplay for non-volume devices' is set to 'Enabled'. (Automated)
    - id: 18761
-     title: "(L1) Ensure 'Disallow Autoplay for non-volume devices' is set to 'Enabled'."
+     title: "Ensure 'Disallow Autoplay for non-volume devices' is set to 'Enabled'."
      description: "This policy setting disallows AutoPlay for MTP devices like cameras or phones. The recommended state for this setting is: Enabled."
      rationale: "An attacker could use this feature to launch a program to damage a client computer or data on the computer."
      impact: "AutoPlay will not be allowed for MTP devices like cameras or phones."
@@ -4214,8 +4349,11 @@ checks:
        - cmmc_v2.0: ["MP.L2-3.8.7"]
        - hipaa: ["164.310(d)(1)"]
        - iso_27001-2013: ["A.12.2.1"]
-     condition:
+     condition: all
      rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoAutoplayfornonVolume'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoAutoplayfornonVolume -> 1'
 
   # 18.10.7.2 (L1) Ensure 'Set the default behavior for AutoRun' is set to 'Enabled: Do not execute any autorun commands'. (Automated)
    - id: 18762
