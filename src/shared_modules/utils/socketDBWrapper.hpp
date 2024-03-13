@@ -98,7 +98,15 @@ private:
                                 }
                                 else
                                 {
-                                    m_response.push_back(responseParsed);
+                                    if (responseParsed.contains("status") &&
+                                        responseParsed.at("status") == "NOT_SYNCED")
+                                    {
+                                        m_exceptionStr = "DB query not synced";
+                                    }
+                                    else
+                                    {
+                                        m_response.push_back(responseParsed);
+                                    }
                                 }
                             }
                             catch (const nlohmann::detail::exception& ex)
