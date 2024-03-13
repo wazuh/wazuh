@@ -120,29 +120,33 @@ base::Expression AssetBuilder::buildExpression(const base::Name& name,
         // Parse stage
         {
             const auto& [key, value] = *objDoc.begin();
+            size_t keySize = strlen(syntax::asset::PARSE_KEY);
             // Parse stage syntax is different from other stages parse|<key>: <value>
-            if (base::utils::string::startsWith(key, syntax::asset::PARSE_KEY))
+            if (key.compare(0, keySize, syntax::asset::PARSE_KEY) == 0)
             {
                 // TODO fix this hack, we need to format the json as the old parse stage
-                json::Json stageParseValue;
-                stageParseValue.setArray();
-                std::string targetField;
+
+                bool meetsFormat = key.length() > keySize && key[keySize] == '|';
+
+                if (!meetsFormat)
+                {
+                    throw std::runtime_error("Stage parse: needs the character '|' to indicate the field");
+                }
+
+                // Extract text after '|'
+                auto targetField = key.substr(keySize + 1);
 
                 try
                 {
-                    targetField = key.substr(std::string(syntax::asset::PARSE_KEY).size() + 1);
+                    DotPath {targetField};
                 }
-                catch(const std::exception& e)
+                catch (const std::exception& e)
                 {
-                    throw std::runtime_error("Stage parse needs the character '|' to indicate the field");
+                    throw std::runtime_error(fmt::format("Stage parse: Could not get field: {}", e.what()));
                 }
-                
 
-                if (targetField.empty())
-                {
-                    throw std::runtime_error("Stage parse field was not found");
-                }
-            
+                json::Json stageParseValue;
+                stageParseValue.setArray();
                 if (value.isArray())
                 {
                     json::Json tmp;
