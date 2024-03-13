@@ -187,12 +187,77 @@ struct QueuePost_RequestDefaultTypeInternal {
   };
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 QueuePost_RequestDefaultTypeInternal _QueuePost_Request_default_instance_;
+PROTOBUF_CONSTEXPR EpsUpdate_Request::EpsUpdate_Request(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_.eps_)*/0u
+  , /*decltype(_impl_.refresh_interval_)*/0u
+  , /*decltype(_impl_._cached_size_)*/{}} {}
+struct EpsUpdate_RequestDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR EpsUpdate_RequestDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~EpsUpdate_RequestDefaultTypeInternal() {}
+  union {
+    EpsUpdate_Request _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 EpsUpdate_RequestDefaultTypeInternal _EpsUpdate_Request_default_instance_;
+PROTOBUF_CONSTEXPR EpsGet_Request::EpsGet_Request(
+    ::_pbi::ConstantInitialized) {}
+struct EpsGet_RequestDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR EpsGet_RequestDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~EpsGet_RequestDefaultTypeInternal() {}
+  union {
+    EpsGet_Request _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 EpsGet_RequestDefaultTypeInternal _EpsGet_Request_default_instance_;
+PROTOBUF_CONSTEXPR EpsGet_Response::EpsGet_Response(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_._has_bits_)*/{}
+  , /*decltype(_impl_._cached_size_)*/{}
+  , /*decltype(_impl_.error_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.status_)*/0
+  , /*decltype(_impl_.eps_)*/0u
+  , /*decltype(_impl_.refresh_interval_)*/0u
+  , /*decltype(_impl_.active_)*/false} {}
+struct EpsGet_ResponseDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR EpsGet_ResponseDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~EpsGet_ResponseDefaultTypeInternal() {}
+  union {
+    EpsGet_Response _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 EpsGet_ResponseDefaultTypeInternal _EpsGet_Response_default_instance_;
+PROTOBUF_CONSTEXPR EpsActivate_Request::EpsActivate_Request(
+    ::_pbi::ConstantInitialized) {}
+struct EpsActivate_RequestDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR EpsActivate_RequestDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~EpsActivate_RequestDefaultTypeInternal() {}
+  union {
+    EpsActivate_Request _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 EpsActivate_RequestDefaultTypeInternal _EpsActivate_Request_default_instance_;
+PROTOBUF_CONSTEXPR EpsDeactivate_Request::EpsDeactivate_Request(
+    ::_pbi::ConstantInitialized) {}
+struct EpsDeactivate_RequestDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR EpsDeactivate_RequestDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~EpsDeactivate_RequestDefaultTypeInternal() {}
+  union {
+    EpsDeactivate_Request _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 EpsDeactivate_RequestDefaultTypeInternal _EpsDeactivate_Request_default_instance_;
 }  // namespace router
 }  // namespace engine
 }  // namespace api
 }  // namespace wazuh
 }  // namespace com
-static ::_pb::Metadata file_level_metadata_router_2eproto[11];
+static ::_pb::Metadata file_level_metadata_router_2eproto[16];
 static const ::_pb::EnumDescriptor* file_level_enum_descriptors_router_2eproto[2];
 static constexpr ::_pb::ServiceDescriptor const** file_level_service_descriptors_router_2eproto = nullptr;
 
@@ -309,6 +374,48 @@ const uint32_t TableStruct_router_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::QueuePost_Request, _impl_.wazuh_event_),
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::EpsUpdate_Request, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::EpsUpdate_Request, _impl_.eps_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::EpsUpdate_Request, _impl_.refresh_interval_),
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::EpsGet_Request, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::EpsGet_Response, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::EpsGet_Response, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::EpsGet_Response, _impl_.status_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::EpsGet_Response, _impl_.error_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::EpsGet_Response, _impl_.eps_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::EpsGet_Response, _impl_.refresh_interval_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::EpsGet_Response, _impl_.active_),
+  ~0u,
+  0,
+  ~0u,
+  ~0u,
+  ~0u,
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::EpsActivate_Request, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::EpsDeactivate_Request, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
 };
 static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
   { 0, 11, -1, sizeof(::com::wazuh::api::engine::router::EntryPost)},
@@ -322,6 +429,11 @@ static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protode
   { 87, -1, -1, sizeof(::com::wazuh::api::engine::router::TableGet_Request)},
   { 93, 102, -1, sizeof(::com::wazuh::api::engine::router::TableGet_Response)},
   { 105, -1, -1, sizeof(::com::wazuh::api::engine::router::QueuePost_Request)},
+  { 112, -1, -1, sizeof(::com::wazuh::api::engine::router::EpsUpdate_Request)},
+  { 120, -1, -1, sizeof(::com::wazuh::api::engine::router::EpsGet_Request)},
+  { 126, 137, -1, sizeof(::com::wazuh::api::engine::router::EpsGet_Response)},
+  { 142, -1, -1, sizeof(::com::wazuh::api::engine::router::EpsActivate_Request)},
+  { 148, -1, -1, sizeof(::com::wazuh::api::engine::router::EpsDeactivate_Request)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -336,6 +448,11 @@ static const ::_pb::Message* const file_default_instances[] = {
   &::com::wazuh::api::engine::router::_TableGet_Request_default_instance_._instance,
   &::com::wazuh::api::engine::router::_TableGet_Response_default_instance_._instance,
   &::com::wazuh::api::engine::router::_QueuePost_Request_default_instance_._instance,
+  &::com::wazuh::api::engine::router::_EpsUpdate_Request_default_instance_._instance,
+  &::com::wazuh::api::engine::router::_EpsGet_Request_default_instance_._instance,
+  &::com::wazuh::api::engine::router::_EpsGet_Response_default_instance_._instance,
+  &::com::wazuh::api::engine::router::_EpsActivate_Request_default_instance_._instance,
+  &::com::wazuh::api::engine::router::_EpsDeactivate_Request_default_instance_._instance,
 };
 
 const char descriptor_table_protodef_router_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
@@ -366,19 +483,26 @@ const char descriptor_table_protodef_router_2eproto[] PROTOBUF_SECTION_VARIABLE(
   "(\tH\000\210\001\001\0221\n\005table\030\003 \003(\0132\".com.wazuh.api.e"
   "ngine.router.EntryB\010\n\006_error\"5\n\021QueuePos"
   "t_Request\022\023\n\013wazuh_event\030\001 \001(\tJ\004\010\002\020\003R\005ev"
-  "ent*5\n\005State\022\021\n\rSTATE_UNKNOWN\020\000\022\014\n\010DISAB"
-  "LED\020\001\022\013\n\007ENABLED\020\002*>\n\004Sync\022\020\n\014SYNC_UNKNO"
-  "WN\020\000\022\013\n\007UPDATED\020\001\022\014\n\010OUTDATED\020\002\022\t\n\005ERROR"
-  "\020\003b\006proto3"
+  "ent\":\n\021EpsUpdate_Request\022\013\n\003eps\030\001 \001(\r\022\030\n"
+  "\020refresh_interval\030\002 \001(\r\"\020\n\016EpsGet_Reques"
+  "t\"\232\001\n\017EpsGet_Response\0222\n\006status\030\001 \001(\0162\"."
+  "com.wazuh.api.engine.ReturnStatus\022\022\n\005err"
+  "or\030\002 \001(\tH\000\210\001\001\022\013\n\003eps\030\003 \001(\r\022\030\n\020refresh_in"
+  "terval\030\004 \001(\r\022\016\n\006active\030\005 \001(\010B\010\n\006_error\"\025"
+  "\n\023EpsActivate_Request\"\027\n\025EpsDeactivate_R"
+  "equest*5\n\005State\022\021\n\rSTATE_UNKNOWN\020\000\022\014\n\010DI"
+  "SABLED\020\001\022\013\n\007ENABLED\020\002*>\n\004Sync\022\020\n\014SYNC_UN"
+  "KNOWN\020\000\022\013\n\007UPDATED\020\001\022\014\n\010OUTDATED\020\002\022\t\n\005ER"
+  "ROR\020\003b\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_router_2eproto_deps[1] = {
   &::descriptor_table_engine_2eproto,
 };
 static ::_pbi::once_flag descriptor_table_router_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_router_2eproto = {
-    false, false, 1210, descriptor_table_protodef_router_2eproto,
+    false, false, 1493, descriptor_table_protodef_router_2eproto,
     "router.proto",
-    &descriptor_table_router_2eproto_once, descriptor_table_router_2eproto_deps, 1, 11,
+    &descriptor_table_router_2eproto_once, descriptor_table_router_2eproto_deps, 1, 16,
     schemas, file_default_instances, TableStruct_router_2eproto::offsets,
     file_level_metadata_router_2eproto, file_level_enum_descriptors_router_2eproto,
     file_level_service_descriptors_router_2eproto,
@@ -3172,6 +3296,665 @@ void QueuePost_Request::InternalSwap(QueuePost_Request* other) {
       file_level_metadata_router_2eproto[10]);
 }
 
+// ===================================================================
+
+class EpsUpdate_Request::_Internal {
+ public:
+};
+
+EpsUpdate_Request::EpsUpdate_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.router.EpsUpdate_Request)
+}
+EpsUpdate_Request::EpsUpdate_Request(const EpsUpdate_Request& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  EpsUpdate_Request* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_.eps_){}
+    , decltype(_impl_.refresh_interval_){}
+    , /*decltype(_impl_._cached_size_)*/{}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::memcpy(&_impl_.eps_, &from._impl_.eps_,
+    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.refresh_interval_) -
+    reinterpret_cast<char*>(&_impl_.eps_)) + sizeof(_impl_.refresh_interval_));
+  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.router.EpsUpdate_Request)
+}
+
+inline void EpsUpdate_Request::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_.eps_){0u}
+    , decltype(_impl_.refresh_interval_){0u}
+    , /*decltype(_impl_._cached_size_)*/{}
+  };
+}
+
+EpsUpdate_Request::~EpsUpdate_Request() {
+  // @@protoc_insertion_point(destructor:com.wazuh.api.engine.router.EpsUpdate_Request)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void EpsUpdate_Request::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+}
+
+void EpsUpdate_Request::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void EpsUpdate_Request::Clear() {
+// @@protoc_insertion_point(message_clear_start:com.wazuh.api.engine.router.EpsUpdate_Request)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  ::memset(&_impl_.eps_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&_impl_.refresh_interval_) -
+      reinterpret_cast<char*>(&_impl_.eps_)) + sizeof(_impl_.refresh_interval_));
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* EpsUpdate_Request::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // uint32 eps = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
+          _impl_.eps_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 refresh_interval = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 16)) {
+          _impl_.refresh_interval_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* EpsUpdate_Request::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:com.wazuh.api.engine.router.EpsUpdate_Request)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // uint32 eps = 1;
+  if (this->_internal_eps() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(1, this->_internal_eps(), target);
+  }
+
+  // uint32 refresh_interval = 2;
+  if (this->_internal_refresh_interval() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(2, this->_internal_refresh_interval(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:com.wazuh.api.engine.router.EpsUpdate_Request)
+  return target;
+}
+
+size_t EpsUpdate_Request::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:com.wazuh.api.engine.router.EpsUpdate_Request)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // uint32 eps = 1;
+  if (this->_internal_eps() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_eps());
+  }
+
+  // uint32 refresh_interval = 2;
+  if (this->_internal_refresh_interval() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_refresh_interval());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData EpsUpdate_Request::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    EpsUpdate_Request::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*EpsUpdate_Request::GetClassData() const { return &_class_data_; }
+
+
+void EpsUpdate_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<EpsUpdate_Request*>(&to_msg);
+  auto& from = static_cast<const EpsUpdate_Request&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:com.wazuh.api.engine.router.EpsUpdate_Request)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  if (from._internal_eps() != 0) {
+    _this->_internal_set_eps(from._internal_eps());
+  }
+  if (from._internal_refresh_interval() != 0) {
+    _this->_internal_set_refresh_interval(from._internal_refresh_interval());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void EpsUpdate_Request::CopyFrom(const EpsUpdate_Request& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:com.wazuh.api.engine.router.EpsUpdate_Request)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool EpsUpdate_Request::IsInitialized() const {
+  return true;
+}
+
+void EpsUpdate_Request::InternalSwap(EpsUpdate_Request* other) {
+  using std::swap;
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(EpsUpdate_Request, _impl_.refresh_interval_)
+      + sizeof(EpsUpdate_Request::_impl_.refresh_interval_)
+      - PROTOBUF_FIELD_OFFSET(EpsUpdate_Request, _impl_.eps_)>(
+          reinterpret_cast<char*>(&_impl_.eps_),
+          reinterpret_cast<char*>(&other->_impl_.eps_));
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata EpsUpdate_Request::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_router_2eproto_getter, &descriptor_table_router_2eproto_once,
+      file_level_metadata_router_2eproto[11]);
+}
+
+// ===================================================================
+
+class EpsGet_Request::_Internal {
+ public:
+};
+
+EpsGet_Request::EpsGet_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase(arena, is_message_owned) {
+  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.router.EpsGet_Request)
+}
+EpsGet_Request::EpsGet_Request(const EpsGet_Request& from)
+  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase() {
+  EpsGet_Request* const _this = this; (void)_this;
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.router.EpsGet_Request)
+}
+
+
+
+
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData EpsGet_Request::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl,
+    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl,
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*EpsGet_Request::GetClassData() const { return &_class_data_; }
+
+
+
+
+
+
+
+::PROTOBUF_NAMESPACE_ID::Metadata EpsGet_Request::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_router_2eproto_getter, &descriptor_table_router_2eproto_once,
+      file_level_metadata_router_2eproto[12]);
+}
+
+// ===================================================================
+
+class EpsGet_Response::_Internal {
+ public:
+  using HasBits = decltype(std::declval<EpsGet_Response>()._impl_._has_bits_);
+  static void set_has_error(HasBits* has_bits) {
+    (*has_bits)[0] |= 1u;
+  }
+};
+
+EpsGet_Response::EpsGet_Response(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.router.EpsGet_Response)
+}
+EpsGet_Response::EpsGet_Response(const EpsGet_Response& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  EpsGet_Response* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_._has_bits_){from._impl_._has_bits_}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.error_){}
+    , decltype(_impl_.status_){}
+    , decltype(_impl_.eps_){}
+    , decltype(_impl_.refresh_interval_){}
+    , decltype(_impl_.active_){}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.error_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.error_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_error()) {
+    _this->_impl_.error_.Set(from._internal_error(), 
+      _this->GetArenaForAllocation());
+  }
+  ::memcpy(&_impl_.status_, &from._impl_.status_,
+    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.active_) -
+    reinterpret_cast<char*>(&_impl_.status_)) + sizeof(_impl_.active_));
+  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.router.EpsGet_Response)
+}
+
+inline void EpsGet_Response::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_._has_bits_){}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.error_){}
+    , decltype(_impl_.status_){0}
+    , decltype(_impl_.eps_){0u}
+    , decltype(_impl_.refresh_interval_){0u}
+    , decltype(_impl_.active_){false}
+  };
+  _impl_.error_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.error_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+EpsGet_Response::~EpsGet_Response() {
+  // @@protoc_insertion_point(destructor:com.wazuh.api.engine.router.EpsGet_Response)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void EpsGet_Response::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.error_.Destroy();
+}
+
+void EpsGet_Response::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void EpsGet_Response::Clear() {
+// @@protoc_insertion_point(message_clear_start:com.wazuh.api.engine.router.EpsGet_Response)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000001u) {
+    _impl_.error_.ClearNonDefaultToEmpty();
+  }
+  ::memset(&_impl_.status_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&_impl_.active_) -
+      reinterpret_cast<char*>(&_impl_.status_)) + sizeof(_impl_.active_));
+  _impl_._has_bits_.Clear();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* EpsGet_Response::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  _Internal::HasBits has_bits{};
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // .com.wazuh.api.engine.ReturnStatus status = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
+          uint64_t val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+          _internal_set_status(static_cast<::com::wazuh::api::engine::ReturnStatus>(val));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional string error = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          auto str = _internal_mutable_error();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.router.EpsGet_Response.error"));
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 eps = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 24)) {
+          _impl_.eps_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 refresh_interval = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 32)) {
+          _impl_.refresh_interval_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // bool active = 5;
+      case 5:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 40)) {
+          _impl_.active_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  _impl_._has_bits_.Or(has_bits);
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* EpsGet_Response::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:com.wazuh.api.engine.router.EpsGet_Response)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // .com.wazuh.api.engine.ReturnStatus status = 1;
+  if (this->_internal_status() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteEnumToArray(
+      1, this->_internal_status(), target);
+  }
+
+  // optional string error = 2;
+  if (_internal_has_error()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_error().data(), static_cast<int>(this->_internal_error().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.router.EpsGet_Response.error");
+    target = stream->WriteStringMaybeAliased(
+        2, this->_internal_error(), target);
+  }
+
+  // uint32 eps = 3;
+  if (this->_internal_eps() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(3, this->_internal_eps(), target);
+  }
+
+  // uint32 refresh_interval = 4;
+  if (this->_internal_refresh_interval() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(4, this->_internal_refresh_interval(), target);
+  }
+
+  // bool active = 5;
+  if (this->_internal_active() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteBoolToArray(5, this->_internal_active(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:com.wazuh.api.engine.router.EpsGet_Response)
+  return target;
+}
+
+size_t EpsGet_Response::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:com.wazuh.api.engine.router.EpsGet_Response)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // optional string error = 2;
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000001u) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_error());
+  }
+
+  // .com.wazuh.api.engine.ReturnStatus status = 1;
+  if (this->_internal_status() != 0) {
+    total_size += 1 +
+      ::_pbi::WireFormatLite::EnumSize(this->_internal_status());
+  }
+
+  // uint32 eps = 3;
+  if (this->_internal_eps() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_eps());
+  }
+
+  // uint32 refresh_interval = 4;
+  if (this->_internal_refresh_interval() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_refresh_interval());
+  }
+
+  // bool active = 5;
+  if (this->_internal_active() != 0) {
+    total_size += 1 + 1;
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData EpsGet_Response::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    EpsGet_Response::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*EpsGet_Response::GetClassData() const { return &_class_data_; }
+
+
+void EpsGet_Response::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<EpsGet_Response*>(&to_msg);
+  auto& from = static_cast<const EpsGet_Response&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:com.wazuh.api.engine.router.EpsGet_Response)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  if (from._internal_has_error()) {
+    _this->_internal_set_error(from._internal_error());
+  }
+  if (from._internal_status() != 0) {
+    _this->_internal_set_status(from._internal_status());
+  }
+  if (from._internal_eps() != 0) {
+    _this->_internal_set_eps(from._internal_eps());
+  }
+  if (from._internal_refresh_interval() != 0) {
+    _this->_internal_set_refresh_interval(from._internal_refresh_interval());
+  }
+  if (from._internal_active() != 0) {
+    _this->_internal_set_active(from._internal_active());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void EpsGet_Response::CopyFrom(const EpsGet_Response& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:com.wazuh.api.engine.router.EpsGet_Response)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool EpsGet_Response::IsInitialized() const {
+  return true;
+}
+
+void EpsGet_Response::InternalSwap(EpsGet_Response* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.error_, lhs_arena,
+      &other->_impl_.error_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(EpsGet_Response, _impl_.active_)
+      + sizeof(EpsGet_Response::_impl_.active_)
+      - PROTOBUF_FIELD_OFFSET(EpsGet_Response, _impl_.status_)>(
+          reinterpret_cast<char*>(&_impl_.status_),
+          reinterpret_cast<char*>(&other->_impl_.status_));
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata EpsGet_Response::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_router_2eproto_getter, &descriptor_table_router_2eproto_once,
+      file_level_metadata_router_2eproto[13]);
+}
+
+// ===================================================================
+
+class EpsActivate_Request::_Internal {
+ public:
+};
+
+EpsActivate_Request::EpsActivate_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase(arena, is_message_owned) {
+  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.router.EpsActivate_Request)
+}
+EpsActivate_Request::EpsActivate_Request(const EpsActivate_Request& from)
+  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase() {
+  EpsActivate_Request* const _this = this; (void)_this;
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.router.EpsActivate_Request)
+}
+
+
+
+
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData EpsActivate_Request::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl,
+    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl,
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*EpsActivate_Request::GetClassData() const { return &_class_data_; }
+
+
+
+
+
+
+
+::PROTOBUF_NAMESPACE_ID::Metadata EpsActivate_Request::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_router_2eproto_getter, &descriptor_table_router_2eproto_once,
+      file_level_metadata_router_2eproto[14]);
+}
+
+// ===================================================================
+
+class EpsDeactivate_Request::_Internal {
+ public:
+};
+
+EpsDeactivate_Request::EpsDeactivate_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase(arena, is_message_owned) {
+  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.router.EpsDeactivate_Request)
+}
+EpsDeactivate_Request::EpsDeactivate_Request(const EpsDeactivate_Request& from)
+  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase() {
+  EpsDeactivate_Request* const _this = this; (void)_this;
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.router.EpsDeactivate_Request)
+}
+
+
+
+
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData EpsDeactivate_Request::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl,
+    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl,
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*EpsDeactivate_Request::GetClassData() const { return &_class_data_; }
+
+
+
+
+
+
+
+::PROTOBUF_NAMESPACE_ID::Metadata EpsDeactivate_Request::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_router_2eproto_getter, &descriptor_table_router_2eproto_once,
+      file_level_metadata_router_2eproto[15]);
+}
+
 // @@protoc_insertion_point(namespace_scope)
 }  // namespace router
 }  // namespace engine
@@ -3222,6 +4005,26 @@ Arena::CreateMaybeMessage< ::com::wazuh::api::engine::router::TableGet_Response 
 template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::router::QueuePost_Request*
 Arena::CreateMaybeMessage< ::com::wazuh::api::engine::router::QueuePost_Request >(Arena* arena) {
   return Arena::CreateMessageInternal< ::com::wazuh::api::engine::router::QueuePost_Request >(arena);
+}
+template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::router::EpsUpdate_Request*
+Arena::CreateMaybeMessage< ::com::wazuh::api::engine::router::EpsUpdate_Request >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::router::EpsUpdate_Request >(arena);
+}
+template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::router::EpsGet_Request*
+Arena::CreateMaybeMessage< ::com::wazuh::api::engine::router::EpsGet_Request >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::router::EpsGet_Request >(arena);
+}
+template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::router::EpsGet_Response*
+Arena::CreateMaybeMessage< ::com::wazuh::api::engine::router::EpsGet_Response >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::router::EpsGet_Response >(arena);
+}
+template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::router::EpsActivate_Request*
+Arena::CreateMaybeMessage< ::com::wazuh::api::engine::router::EpsActivate_Request >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::router::EpsActivate_Request >(arena);
+}
+template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::router::EpsDeactivate_Request*
+Arena::CreateMaybeMessage< ::com::wazuh::api::engine::router::EpsDeactivate_Request >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::router::EpsDeactivate_Request >(arena);
 }
 PROTOBUF_NAMESPACE_CLOSE
 

@@ -574,7 +574,7 @@ protected:
 TEST_F(OrchestratorTest, start) {
 
     m_orchestrator->forEachWorkerMock([](auto mockWorker) {
-        EXPECT_CALL(*mockWorker, start()).Times(1);
+        EXPECT_CALL(*mockWorker, start(testing::_)).Times(1);
     });
 
     ASSERT_NO_THROW(m_orchestrator->start());

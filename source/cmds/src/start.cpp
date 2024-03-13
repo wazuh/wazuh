@@ -316,12 +316,12 @@ void runStart(ConfHandler confManager)
             }
 
             router::Orchestrator::Options config {.m_numThreads = routerThreads,
-                                         .m_wStore = store,
-                                         .m_builder = builder,
-                                         .m_controllerMaker = std::make_shared<bk::rx::ControllerMaker>(),
-                                         .m_prodQueue = eventQueue,
-                                         .m_testQueue = testQueue,
-                                         .m_testTimeout = serverApiTimeout};
+                                                  .m_wStore = store,
+                                                  .m_builder = builder,
+                                                  .m_controllerMaker = std::make_shared<bk::rx::ControllerMaker>(),
+                                                  .m_prodQueue = eventQueue,
+                                                  .m_testQueue = testQueue,
+                                                  .m_testTimeout = serverApiTimeout};
 
             orchestrator = std::make_shared<router::Orchestrator>(config);
             orchestrator->start();

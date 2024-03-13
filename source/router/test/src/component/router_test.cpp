@@ -64,6 +64,10 @@ public:
                         // Handle other cases or return a default value
                         return json::Json {POLICY_JSON};
                     }
+                    if (name == "router/eps/0")
+                    {
+                        return json::Json {EPS_JSON};
+                    }
                     return json::Json {};
                 }));
 
@@ -327,4 +331,55 @@ TEST_F(OrchestratorRouterTest, PostStrEvent)
     }
 
     m_orchestrator->stop();
+}
+
+TEST_F(OrchestratorRouterTest, GetEPS)
+{
+    auto res = m_orchestrator->getEpsSettings();
+    ASSERT_FALSE(base::isError(res));
+    auto [eps, interval, active] = base::getResponse(res);
+    EXPECT_EQ(eps, 1);
+    EXPECT_EQ(interval, 1);
+    EXPECT_FALSE(active);
+}
+
+TEST_F(OrchestratorRouterTest, ChangeEPS)
+{
+    EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).WillOnce(testing::Return(std::nullopt));
+    auto res = m_orchestrator->changeEpsSettings(2, 2);
+    ASSERT_FALSE(base::isError(res));
+    auto [eps, interval, active] = base::getResponse(m_orchestrator->getEpsSettings());
+    EXPECT_EQ(eps, 2);
+    EXPECT_EQ(interval, 2);
+}
+
+TEST_F(OrchestratorRouterTest, ChangeEPSError)
+{
+    auto res = m_orchestrator->changeEpsSettings(0, 1);
+    ASSERT_TRUE(base::isError(res));
+    res = m_orchestrator->changeEpsSettings(1, 0);
+    ASSERT_TRUE(base::isError(res));
+    res = m_orchestrator->changeEpsSettings(0, 0);
+    ASSERT_TRUE(base::isError(res));
+}
+
+TEST_F(OrchestratorRouterTest, ActivateEPS)
+{
+    EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).Times(2).WillRepeatedly(testing::Return(std::nullopt));
+
+    auto res = m_orchestrator->activateEpsCounter(true);
+    ASSERT_FALSE(base::isError(res));
+    auto [eps, interval, active] = base::getResponse(m_orchestrator->getEpsSettings());
+    EXPECT_TRUE(active);
+
+    res = m_orchestrator->activateEpsCounter(true);
+    ASSERT_TRUE(base::isError(res));
+
+    res = m_orchestrator->activateEpsCounter(false);
+    ASSERT_FALSE(base::isError(res));
+    std::tie(eps, interval, active) = base::getResponse(m_orchestrator->getEpsSettings());
+    EXPECT_FALSE(active);
+
+    res = m_orchestrator->activateEpsCounter(false);
+    ASSERT_TRUE(base::isError(res));
 }
