@@ -58,6 +58,7 @@ public:
      * @param key Provided key.
      * @return base::OptError If base::Error not exists the key was removed successfully. Specific error
      * otherwise.
+     * @note Trying to delete a key that does not exist does not generate an error.
      *
      */
     virtual base::OptError remove(const std::string& key) = 0;
@@ -90,7 +91,8 @@ public:
      * @return base::RespOrError<std::list<std::pair<std::string, std::string>>> Map of key-value pairs.
      * Specific error otherwise.
      */
-    virtual base::RespOrError<std::list<std::pair<std::string, std::string>>> dump(const unsigned int page, const unsigned int records) = 0;
+    virtual base::RespOrError<std::list<std::pair<std::string, std::string>>> dump(const unsigned int page,
+                                                                                   const unsigned int records) = 0;
 
     /**
      * @brief Retrieves the entire content of the database.
