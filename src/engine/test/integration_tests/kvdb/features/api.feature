@@ -6,37 +6,79 @@ Feature: KVDB API functionality
   @wip
   Scenario: Create a new key-value database using API
     Given I have access to the KVDB API
-    When I send a POST request to KVDB API with "database-name" as unique database name
-    Then I should receive a success response with the new database information
+    When I send a POST request to database called "database-name"
+    Then I should receive a success response
 
   Scenario: Attempt to create a new key-value database with an existing name using API
-    Given I have already created a database named "TestDB" using the KVDB API
-    When I send a POST request with the database name "TestDB"
-    Then I should receive an error response indicating that the database name already exists
+    Given I have access to the KVDB API
+    When I send a POST request to database called "TestDB"
+    And I send a POST request to database called "TestDB"
+    Then I should receive a failed response indicating "The Database already exists."
 
   Scenario: Delete a key-value database using API
-    Given I have a database named "TestDB" created using the KVDB API
-    When I send a DELETE request to "TestDB"
-    Then I should receive a success response indicating the database "TestDB" has been deleted
+    Given I have access to the KVDB API
+    When I send a POST request to database called "TestDB"
+    And I send a DELETE request to database called "TestDB"
+    Then I should receive a success response
+
+  Scenario: Delete a non-exists key-value database using API
+    Given I have access to the KVDB API
+    When I send a POST request to database called "TestDB"
+    And I send a DELETE request to database called "TestDB"
+    And I send a DELETE request to database called "TestDB"
+    Then I should receive a failed response indicating "The KVDB 'TestDB' does not exist."
+
+  Scenario: Add a key-value pair to a non-exist database using API
+    Given I have access to the KVDB API
+    When I send a POST request to database called "TestDB"
+    And I send a request to add a key-value pair to the database "TestDB1" with key "dummy" and value "dummyValue"
+    Then I should receive a failed response indicating "The KVDB 'TestDB1' does not exist." 
 
   Scenario: Add a key-value pair to a database using API
-    Given I have a database named "TestDB" created using the KVDB API
-    When I send a PUT request to add a key-value pair to the database "TestDB" with key "dummy" and value "dummyValue"
-    Then I should receive a success response with the new key-value pair information
+    Given I have access to the KVDB API
+    When I send a POST request to database called "TestDB"
+    And I send a request to add a key-value pair to the database "TestDB" with key "dummy" and value "dummyValue"
+    Then I should receive a success response
+
+  Scenario: Add a key-value pair to a database using API
+    Given I have access to the KVDB API
+    When I send a POST request to database called "TestDB"
+    And I send a request to add a key-value pair to the database "TestDB" with key "dummy" and value "dummyValue"
+    Then I should receive a success response
 
   Scenario: Attempt to add a key-value pair with an existing key using API
-    Given I have a database named "TestDB" created using the KVDB API
-    And I have already added a key-value pair to the database "TestDB" with the key "dummy" and value "dummyValue"
-    When I send a PUT request to modify a key-value pair to the database "TestDB" with the key "dummy" and value "otherDummyValue"
-    Then I should receive a success indicating that the key value has been updated
+    Given I have access to the KVDB API
+    When I send a POST request to database called "TestDB"
+    And I send a request to add a key-value pair to the database "TestDB" with key "dummy" and value "dummyValue"
+    And I send a request to add a key-value pair to the database "TestDB" with key "dummy" and value "dummyValueCopy"
+    Then I should receive a success response  
 
   Scenario: Delete a key-value pair from a database using API
-    Given I have a database named "TestDB" created using the KVDB API
-    And I have already added a key-value pair to the database "TestDB" with the key "dummy" and value "dummyValue"
-    When I send a DELETE request to remove from the database "TestDB" the key named "dummy"
-    Then I should receive a success response indicating that the key-value pair with the key has been deleted
+    Given I have access to the KVDB API
+    When I send a POST request to database called "TestDB"
+    And I send a request to add a key-value pair to the database "TestDB" with key "dummy" and value "dummyValue"
+    And I send a request to remove from the database "TestDB" the key named "dummy"
+    Then I should receive a success response
+  
+  Scenario: Delete a non-exist key-value pair from a database using API
+    Given I have access to the KVDB API
+    When I send a POST request to database called "TestDB"
+    And I send a request to add a key-value pair to the database "TestDB" with key "dummy" and value "dummyValue"
+    And I send a request to remove from the database "TestDB" the key named "dummy"
+    And I send a request to remove from the database "TestDB" the key named "dummy"
+    Then I should receive a success response
+
+  Scenario: Delete a key-value pair from a non-exist database using API
+    Given I have access to the KVDB API
+    When I send a POST request to database called "TestDB"
+    And I send a request to add a key-value pair to the database "TestDB" with key "dummy" and value "dummyValue"
+    And I send a DELETE request to database called "TestDB"
+    And I send a request to remove from the database "TestDB" the key named "dummy"
+    Then I should receive a failed response indicating "The KVDB 'TestDB' does not exist."
 
   Scenario: Search prefix using API
-    When I add in the database "TestDB" 1 key-value pairs with the key called "genericKey"_id and another 2 key-value pairs with the key called "otherGenericKey"_id
-    AND I send a SEARCH request to search by the prefix "other" in database "TestDB"
+    Given I have access to the KVDB API
+    When I send a POST request to database called "TestDB"
+    And I add in the database "TestDB" 1 key-value pairs with the key called "genericKey"_id and another 2 key-value pairs with the key called "otherGenericKey"_id
+    And I send a request to search by the prefix "other" in database "TestDB"
     Then I should receive a list of entries with the 2 key-value pairs whose keyname contains the prefix.
