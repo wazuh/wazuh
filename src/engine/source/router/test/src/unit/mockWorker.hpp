@@ -14,7 +14,7 @@ class MockWorker : public router::IWorker
 {
 
 public:
-    MOCK_METHOD(void, start, (), (override));
+    MOCK_METHOD(void, start, (const EpsLimit&), (override));
     MOCK_METHOD(void, stop, (), (override));
     MOCK_METHOD(const std::shared_ptr<IRouter>&, getRouter, (), (const, override));
     MOCK_METHOD(const std::shared_ptr<ITester>&, getTester, (), (const, override));
