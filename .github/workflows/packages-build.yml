@@ -19,7 +19,7 @@ on:
         default: 1
 
 jobs:
-  Wazuh-agent-deb-package-build:
+  Wazuh-agent-package-build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -55,12 +55,12 @@ jobs:
         working-directory: ./packages
         run: |
           REVISION=$( echo ${{ github.event.inputs.revision }} )
-          bash generate_package.sh -b ${{ github.event.inputs.linux_branch }} -t agent -a ${{ matrix.ARCHITECTURE }} --dev -j 2 --dont-build-docker --tag ${{ env.TAG }} -r $REVISION --package-format ${{ env.PACKAGE_FORMAT }}
+          bash generate_package.sh -b ${{ github.event.inputs.linux_branch }} -t agent -a ${{ matrix.ARCHITECTURE }} -j 2 --dont-build-docker --tag ${{ env.TAG }} -r $REVISION --package-format ${{ env.PACKAGE_FORMAT }}
           echo "PACKAGE_NAME=$(ls ./output | grep ".deb\|.rpm" | head -n 1)" >> $GITHUB_ENV
 
       - name: Upload Wazuh agent ${{ matrix.ARCHITECTURE }} package as artifact
         uses: actions/upload-artifact@v2
         with:
           name: ${{ env.PACKAGE_NAME }}
-          path: ${{github.workspace}}/debs/output/${{ env.PACKAGE_NAME }}
+          path: ${{github.workspace}}/packages/output/${{ env.PACKAGE_NAME }}
           if-no-files-found: error

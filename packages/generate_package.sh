@@ -64,7 +64,11 @@ build_pkg() {
     else
         DOCKERFILE_PATH="${CURRENT_PATH}/${PACKAGE_FORMAT}s/${ARCHITECTURE}/${TARGET}"
     fi
-    CONTAINER_NAME="${PACKAGE_FORMAT}_${TARGET}_builder_${ARCHITECTURE}"
+    if [ "$BUILD_DOCKER" = "no" ]; then
+        CONTAINER_NAME="pkg_${PACKAGE_FORMAT}_${TARGET}_builder_${ARCHITECTURE}"
+    else
+        CONTAINER_NAME="${PACKAGE_FORMAT}_${TARGET}_builder_${ARCHITECTURE}"
+    fi
     LOCAL_SPECS="${CURRENT_PATH}/${PACKAGE_FORMAT}s"
 
     # Copy the necessary files
@@ -117,7 +121,6 @@ help() {
     echo "    --tag                      [Optional] Tag to use with the docker image."
     echo "    --sources <path>           [Optional] Absolute path containing wazuh source code. This option will use local source code instead of downloading it from GitHub."
     echo "    --packages-branch <branch> [Optional] Select Git branch or tag from wazuh-packages repository. e.g master."
-    echo "    --dev                      [Optional] Use the SPECS files stored in the host instead of downloading them from GitHub."
     echo "    --future                   [Optional] Build test future package x.30.0 Used for development purposes."
     echo "    -h, --help                 Show this help."
     echo
