@@ -94,6 +94,28 @@ static inline char * w_timestamp_to_string(uint64_t timestamp) {
     return str;
 }
 
+/**
+ * @brief Convert the epoch time to a journal --since time format %Y-%m-%d %H:%M:%S
+ * i.e. 2024-03-14 14:08:52
+ * The caller is responsible for freeing the returned string.
+ * @param timestamp The epoch time
+ * @return char* The human-readable string or NULL on error
+ */
+static inline char* w_timestamp_to_journalctl_since(uint64_t timestamp)
+{
+    struct tm tm;
+    time_t time = timestamp / 1000000;
+    if (gmtime_r(&time, &tm) == NULL)
+    {
+        return NULL;
+    }
+
+    char* str;
+    os_calloc(sizeof("2024-03-14 14:08:52") + 1, sizeof(char), str);
+    strftime(str, sizeof("2024-03-14 14:08:52"), "%Y-%m-%d %T", &tm);
+    return str;
+}
+
 /**********************************************************
  *                    Load library related
  ***********************************************************/
@@ -337,6 +359,12 @@ int w_journal_context_next_newest_filtered(w_journal_context_t * ctx, w_journal_
 
     int ret = 0;
     while ((ret = w_journal_context_next_newest(ctx)) > 0) {
+        if (isDebug()) {
+            char * ts = w_timestamp_to_journalctl_since(ctx->timestamp);
+            mdebug2("Checking filters for timestamp '%s'", ts == NULL ? "unknown" : ts);
+            os_free(ts);
+        }
+
         for (size_t i = 0; filters[i] != NULL; i++) {
             if (w_journal_filter_apply(ctx, filters[i]) > 0) {
                 return 1;
