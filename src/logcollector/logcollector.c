@@ -408,11 +408,11 @@ void LogCollectorStart()
             if (atexit(w_journald_release_ctx)) {
                 merror(ATEXIT_ERROR);
             }
-            // TODO REVIEW READ/INIT/TARGET/TIMESTAMP
-            // for (int tg_idx = 0; current->target[tg_idx]; tg_idx++) {
-            //    mdebug1("Socket target for '%s' -> %s", JOURNALD_LOG, current->target[tg_idx]);
-            //    w_logcollector_state_add_target(JOURNALD_LOG, current->target[tg_idx]);
-            //}
+            
+            for (int tg_idx = 0; current->target[tg_idx]; tg_idx++) {
+                mdebug1("Socket target for '%s' -> %s", JOURNALD_LOG, current->target[tg_idx]);
+                w_logcollector_state_add_target(JOURNALD_LOG, current->target[tg_idx]);
+            }
 #else
             minfo("Journald log format is only available on Linux.");
             w_journal_log_config_free(&(current->journal_log));
