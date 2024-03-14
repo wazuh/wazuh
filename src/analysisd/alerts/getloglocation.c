@@ -73,6 +73,10 @@ int OS_GetLogLocation(int day,int year,char *mon)
      */
 
     /* For the events */
+
+    /* Ensure path exists with proper permissions */
+    ensure_path(EVENTS,0750,USER,GROUPGLOBAL);
+
     _eflog = openlog(_eflog, __elogfile, EVENTS, year, mon, "archive", day, "log", EVENTS_DAILY, &__ecounter, FALSE);
 
     /* For the events in JSON */
@@ -81,6 +85,10 @@ int OS_GetLogLocation(int day,int year,char *mon)
     }
 
     /* For the alerts logs */
+
+    /* Ensure path exists with proper permissions */
+    ensure_path(ALERTS,0750,USER,GROUPGLOBAL);
+
     _aflog = openlog(_aflog, __alogfile, ALERTS, year, mon, "alerts", day, "log", ALERTS_DAILY, &__acounter, FALSE);
 
     if (Config.jsonout_output) {
@@ -88,6 +96,10 @@ int OS_GetLogLocation(int day,int year,char *mon)
     }
 
     /* For the firewall events */
+
+    /* Ensure path exists with proper permissions */
+    ensure_path(FWLOGS,0750,USER,GROUPGLOBAL);
+
     _fflog = openlog(_fflog, __flogfile, FWLOGS, year, mon, "firewall", day, "log", FWLOGS_DAILY, &__fcounter, FALSE);
 
     /* Setting the new day */

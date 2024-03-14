@@ -3505,3 +3505,40 @@ char *w_homedir(char *arg) {
     return buff;
 }
 #endif
+
+void ensure_path(const char *path, mode_t desired_mode, const char *username, const char *groupname) {
+    struct stat st;
+    uid_t owner_uid = Privsep_GetUser(username);
+    gid_t owner_gid = Privsep_GetGroup(groupname);
+
+    // Validate user and group ID conversion
+    if (owner_uid == (uid_t)OS_INVALID || owner_gid == (gid_t)OS_INVALID) {
+        merror_exit("Invalid user or group name provided.");
+    }
+
+    // Attempt to create the target directory
+    if (mkdir(path, desired_mode) != 0) {
+        if (errno != EEXIST) {
+            merror_exit("Error creating directory '%s': %s", path, strerror(errno));
+        }
+    }
+
+    // Check if directory exists and get current permissions and ownership
+    if (stat(path, &st) != 0) {
+        merror_exit("Error stating directory '%s': %s", path, strerror(errno));
+    }
+
+    // Adjust permissions if necessary
+    if ((st.st_mode & 0777) != desired_mode) {
+        if (chmod(path, desired_mode) != 0) {
+            merror_exit("Error setting permissions for directory '%s': %s", path, strerror(errno));
+        }
+    }
+
+    // Adjust ownership if necessary
+    if (st.st_uid != owner_uid || st.st_gid != owner_gid) {
+        if (chown(path, owner_uid, owner_gid) != 0) {
+            merror_exit("Error setting ownership for directory '%s': %s", path, strerror(errno));
+        }
+    }
+}
