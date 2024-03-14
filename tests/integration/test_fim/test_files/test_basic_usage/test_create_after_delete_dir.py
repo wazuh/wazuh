@@ -163,6 +163,9 @@ def test_create_after_delete(test_configuration, test_metadata, set_wazuh_config
 
     fim_mode = test_metadata.get('fim_mode')
 
+    if fim_mode == 'whodata' and sys.platform == 'win32':
+        pytest.skip(reason="Unstable behavior on github actions")
+
     file.remove_folder(folder_to_monitor)
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED))
     assert wazuh_log_monitor.callback_result

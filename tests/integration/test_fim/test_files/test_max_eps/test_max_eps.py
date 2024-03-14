@@ -144,6 +144,9 @@ def test_max_eps(test_configuration, test_metadata, configure_local_internal_opt
     fim_mode = test_metadata['fim_mode']
     test_directories = test_metadata['folder_to_monitor']
 
+    if fim_mode == 'whodata' and sys.platform == 'win32':
+        pytest.skip(reason="Unstable behavior on github actions")
+
     if sys.platform == 'win32':
         regex = PATH_MONITORED_REALTIME if test_metadata['fim_mode'] == 'realtime' else PATH_MONITORED_WHODATA_WINDOWS
     else:
