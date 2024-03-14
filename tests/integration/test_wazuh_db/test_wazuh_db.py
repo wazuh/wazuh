@@ -125,9 +125,8 @@ def validate_wazuh_db_response(expected_output, response):
 
 
 @pytest.mark.parametrize('test_metadata', t1_config_metadata, ids=t1_case_ids)
-def test_wazuh_db_messages_agent(daemons_handler_module, clean_databases, clean_registered_agents,
-                                 configure_sockets_environment, connect_to_sockets_module,
-                                 insert_agents_test, test_metadata):
+def test_wazuh_db_messages_agent(test_metadata, configure_sockets_environment_module, connect_to_sockets_module,
+                                 clean_databases, clean_registered_agents, insert_agents_test):
     '''
     description: Check that every input agent message in wazuh-db socket generates the proper output to wazuh-db
                  socket. To do this, it performs a query to the socket with a command taken from the input list of
@@ -139,27 +138,24 @@ def test_wazuh_db_messages_agent(daemons_handler_module, clean_databases, clean_
     tier: 0
 
     parameters:
-        - daemons_handler_module:
+        - test_metadata:
+            type: dict
+            brief: Test case metadata.
+        - configure_sockets_environment_module:
             type: fixture
-            brief: Handler of Wazuh daemons.
+            brief: Configure environment for sockets and MITM.
+        - connect_to_sockets_module:
+            type: fixture
+            brief: Module scope version of 'connect_to_sockets' fixture.
         - clean_databases:
             type: fixture
             brief: Delete databases.
         - clean_registered_agents:
             type: fixture
             brief: Remove all agents of wazuhdb.
-        - configure_sockets_environment:
-            type: fixture
-            brief: Configure environment for sockets and MITM.
-        - connect_to_sockets_module:
-            type: fixture
-            brief: Module scope version of 'connect_to_sockets' fixture.
         - insert_agents_test:
             type: fixture
             brief: Insert agents. Only used for the agent queries.
-        - test_metadata:
-            type: dict
-            brief: Test case metadata.
 
     assertions:
         - Verify that the socket response matches the expected output.
@@ -195,7 +191,7 @@ def test_wazuh_db_messages_agent(daemons_handler_module, clean_databases, clean_
 
 
 @pytest.mark.parametrize('test_metadata', t2_config_metadata, ids=t2_case_ids)
-def test_wazuh_db_messages_global(connect_to_sockets_module, daemons_handler_module, clean_databases, test_metadata):
+def test_wazuh_db_messages_global(test_metadata, daemons_handler_module, connect_to_sockets_module, clean_databases):
     '''
     description: Check that every global input message in wazuh-db socket generates the proper output to wazuh-db
                  socket. To do this, it performs a query to the socket with a command taken from the input list of
@@ -207,6 +203,9 @@ def test_wazuh_db_messages_global(connect_to_sockets_module, daemons_handler_mod
     tier: 0
 
     parameters:
+        - test_metadata:
+            type: dict
+            brief: Test case metadata.
         - daemons_handler_module:
             type: fixture
             brief: Handler of Wazuh daemons.
@@ -216,9 +215,6 @@ def test_wazuh_db_messages_global(connect_to_sockets_module, daemons_handler_mod
         - clean_databases:
             type: fixture
             brief: Delete databases.
-        - test_metadata:
-            type: dict
-            brief: Test case metadata.
 
     assertions:
         - Verify that the socket response matches the expected output of the yaml input file.
@@ -253,71 +249,8 @@ def test_wazuh_db_messages_global(connect_to_sockets_module, daemons_handler_mod
             .format(index + 1, stage['stage'], expected_output, response)
 
 
-@pytest.mark.skip(reason="It will be blocked by #2217, when it is solved we can enable again this test")
-def test_wazuh_db_chunks(daemons_handler_module, clean_databases, clean_registered_agents,
-                         configure_sockets_environment, connect_to_sockets_module, pre_insert_agents):
-    '''
-    description: Check that commands by chunks work properly when the agents' amount exceeds the response maximum size.
-                 To do this, it sends a command to the wazuh-db socket and checks the response from the socket.
-
-    wazuh_min_version: 4.2.0
-
-    tier: 0
-
-    parameters:
-        - daemons_handler_module:
-            type: fixture
-            brief: Handler of Wazuh daemons.
-        - clean_databases:
-            type: fixture
-            brief: Delete databases.
-        - configure_sockets_environment:
-            type: fixture
-            brief: Configure environment for sockets and MITM.
-        - clean_registered_agents:
-            type: fixture
-            brief: Remove all agents of wazuhdb.
-        - connect_to_sockets_module:
-            type: fixture
-            brief: Module scope version of 'connect_to_sockets' fixture.
-        - pre_insert_agents:
-            type: fixture
-            brief: Insert agents. Only used for the global queries.
-
-    assertions:
-        - Verify that the socket status response matches with 'due' to fail.
-
-    input_description:
-        - Test cases are defined in the global_messages.yaml file. Status response is expected from 'global
-          get-all-agents last_id 0', 'global sync-agent-info-get last_id 0', 'global get-agents-by-connection-status 0
-          active' and r'global disconnect-agents 0 .* syncreq' commands.
-
-    expected_output:
-        - r'Failed chunks check on .*'
-
-    tags:
-        - wazuh_db
-        - wdb_socket
-    '''
-    def send_chunk_command(command):
-        response = query_wdb(command, False)
-        status = response.split()[0]
-
-        assert status == 'due', 'Failed chunks check on < {} >. Expected: {}. Response: {}' \
-            .format(command, 'due', status)
-
-    # Check get-all-agents chunk limit
-    send_chunk_command('global get-all-agents last_id 0')
-    # Check sync-agent-info-get chunk limit
-    send_chunk_command('global sync-agent-info-get last_id 0')
-    # Check get-agents-by-connection-status chunk limit
-    send_chunk_command('global get-agents-by-connection-status 0 active')
-    # Check disconnect-agents chunk limit
-    send_chunk_command('global disconnect-agents 0 {} syncreq'.format(str(int(time.time()) + 1)))
-
-
-def test_wazuh_db_range_checksum(daemons_handler_module, clean_databases, configure_sockets_environment,
-                                 connect_to_sockets_module, prepare_range_checksum_data):
+def test_wazuh_db_range_checksum(configure_sockets_environment_module, connect_to_sockets_module,
+                                 clean_databases, prepare_range_checksum_data):
     '''
     description: Calculates the checksum range during the synchronization of the DBs the first time and avoids the
                  checksum range the next time. To do this, it performs a query to the database with the command that
@@ -328,18 +261,15 @@ def test_wazuh_db_range_checksum(daemons_handler_module, clean_databases, config
     tier: 0
 
     parameters:
-        - daemons_handler_module:
-            type: fixture
-            brief: Handler of Wazuh daemons.
-        - clean_databases:
-            type: fixture
-            brief: Delete databases.
-        - configure_sockets_environment:
+        - configure_sockets_environment_module:
             type: fixture
             brief: Configure environment for sockets and MITM.
         - connect_to_sockets_module:
             type: fixture
             brief: Module scope version of 'connect_to_sockets' fixture.
+        - clean_databases:
+            type: fixture
+            brief: Delete databases.
         - prepare_range_checksum_data:
             type: fixture
             brief: Execute syscheck command with a specific payload to query the database.
