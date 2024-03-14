@@ -6,7 +6,7 @@ from math import ceil, floor
 from wazuh.core.cluster.hap_helper.configuration import parse_configuration
 from wazuh.core.cluster.hap_helper.proxy import Proxy, ProxyAPI, ProxyServerState
 from wazuh.core.cluster.hap_helper.wazuh import WazuhAgent, WazuhDAPI
-from wazuh.core.cluster.utils import ClusterFilter, context_tag
+from wazuh.core.cluster.utils import ClusterFilter, context_tag, get_cluster_items
 from wazuh.core.exception import WazuhException, WazuhHAPHelperError
 
 
@@ -244,8 +244,6 @@ class HAPHelper:
             self.logger.info('Balancing exceeding connections after changes on the Wazuh backend')
             await self.update_agent_connections(agent_list=agents_to_balance)
 
-        await self.check_proxy_processes(auto_mode=True, warn=False)
-
         self.logger.info('Waiting for agent connections stability')
         self.logger.debug(f'Sleeping {self.agent_reconnection_stability_time}s...')
         await sleep(self.agent_reconnection_stability_time)
@@ -388,6 +386,29 @@ class HAPHelper:
                 )
                 await sleep(self.sleep_time)
 
+    async def set_hard_stop_after(self):
+        """Check if HAProxy has the hard-stop-after configuration. If is not it will be set."""
+
+        cluster_items = get_cluster_items()
+        connection_retry = cluster_items['intervals']['worker']['connection_retry'] + 2
+
+        self.logger.debug(f'Waiting for workers connections {connection_retry}s...')
+        await sleep(connection_retry)
+
+        self.logger.info('Setting a value for `hard-stop-after` configuration.')
+        agents_distribution = await self.wazuh_dapi.get_agents_node_distribution()
+        agents_id = [item['id'] for agents in agents_distribution.values() for item in agents]
+
+        await self.proxy.set_hard_stop_after_value(
+            active_agents=len(agents_id),
+            chunk_size=self.agent_reconnection_chunk_size,
+            agent_reconnection_time=self.agent_reconnection_time,
+        )
+
+        if len(agents_id) > 0:
+            self.logger.info(f'Reconnecting {len(agents_id)} agents.')
+            await self.update_agent_connections(agent_list=agents_id)
+
     @classmethod
     async def start(cls):
         """Initialize and run HAPHelper."""
@@ -420,7 +441,18 @@ class HAPHelper:
             helper = cls(proxy=proxy, wazuh_dapi=wazuh_dapi, tag=tag, options=configuration['hap_helper'])
 
             await helper.initialize_proxy()
+
+            if helper.proxy.hard_stop_after is not None:
+                helper.logger.info(
+                    'Ensuring only exists one HAProxy process. '
+                    f'Sleeping {helper.proxy.hard_stop_after}s before start...'
+                )
+                await sleep(helper.proxy.hard_stop_after)
+
             await helper.initialize_wazuh_cluster_configuration()
+
+            if helper.proxy.hard_stop_after is None:
+                await helper.set_hard_stop_after()
 
             helper.logger.info('Starting HAProxy Helper')
             await helper.manage_wazuh_cluster_nodes()
