@@ -1,5 +1,7 @@
 name: Packages - Build Wazuh Agent Packages - DEB|RPM - amd64|i386
 on:
+  pull_request:
+
   workflow_dispatch:
     inputs:
       tag:
