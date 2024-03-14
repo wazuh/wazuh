@@ -37,7 +37,7 @@ jobs:
       - name: Copy build.sh and utils to Dockerfile path
         run: |
           cp $GITHUB_WORKSPACE/packages/build.sh $GITHUB_WORKSPACE/${{ env.DOCKERFILE_PATH }}
-          cp $GITHUB_WORKSPACE/packages/debs/utils/* $GITHUB_WORKSPACE/${{ env.DOCKERFILE_PATH }}
+          cp $GITHUB_WORKSPACE/packages/${{ matrix.PACKAGE_FORMAT }}s/utils/* $GITHUB_WORKSPACE/${{ env.DOCKERFILE_PATH }}
 
       - name: Build and push image ${{ env.CONTAINER_NAME }} with tag ${{ env.TAG }} to Github Container Registry
         run: |
