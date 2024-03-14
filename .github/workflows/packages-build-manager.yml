@@ -1,4 +1,4 @@
-name: Build Wazuh Packages - DEB|RPM - amd64 and i386
+name: Build Wazuh Manager Packages - DEB|RPM - amd64 and arm64
 on:
   workflow_dispatch:
     inputs:
@@ -6,23 +6,13 @@ on:
         description: 'Wazuh branch used while building a package'
         required: false
         default: master
-      target:
-        type: choice
-        description: 'Manager or agent package'
-        required: true
-        options: 
-          - manager
-          - agent
       arch:
         type: choice
-        description: 'Architecture of the package [amd64, i386, arm64, armhf, ppc64]'
+        description: 'Architecture of the package [amd64, arm64]'
         required: true
         options: 
           - amd64
-          - i386
           - arm64
-          - armhf
-          - ppc64
       package-format:
         type: choice
         description: 'Package format [deb, rpm]'
@@ -34,10 +24,9 @@ on:
   workflow_call:
 
 jobs:
-  Build-packages-amd64: 
-    # The host should always be linux
+  Build-manager-packages: 
     runs-on: ubuntu-22.04
-    name: Build ${{ github.event.inputs.package }} wazuh-${{ github.event.inputs.target }} on ${{ github.event.inputs.arch }}
+    name: Build ${{ github.event.inputs.package }} wazuh-manager on ${{ github.event.inputs.arch }}
 
     steps:
       - name: Cancel previous runs
@@ -54,17 +43,17 @@ jobs:
           VERSION=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
           if [ "${{ github.event.inputs.branch }}" == "master" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
           else echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV; fi
-          echo "CONTAINER_NAME=${{ github.event.inputs.package-format }}_${{ github.event.inputs.target }}_builder_${{ github.event.inputs.arch }}" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=${{ github.event.inputs.package-format }}_manager_builder_${{ github.event.inputs.arch }}" >> $GITHUB_ENV
 
       - name: Download docker image for package building
         run: |
           bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} $CONTAINER_NAME ${{ env.TAG }}
 
-      - name: Build ${{ github.event.inputs.package }} wazuh-${{ github.event.inputs.target }} on ${{ github.event.inputs.arch }}
+      - name: Build ${{ github.event.inputs.package }} wazuh-manager on ${{ github.event.inputs.arch }}
         working-directory: /packages
         run: |
           REVISION=$( echo ${{ github.head_ref }} | sed 's/-/./g; s/\//./g' )
-          bash generate_package.sh -b ${{ github.event.inputs.branch }} -j $(nproc)-t ${{ github.event.inputs.target }} -s /tmp -a ${{ github.event.inputs.arch }} --dont-build-docker --tag ${{ env.TAG }} -r $REVISION --package-format ${{ github.event.inputs.package-format }}
+          bash generate_package.sh -b ${{ github.event.inputs.branch }} -j $(nproc)-t manager -s /tmp -a ${{ github.event.inputs.arch }} --dont-build-docker --tag ${{ env.TAG }} -r $REVISION --package-format ${{ github.event.inputs.package-format }}
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v1
@@ -82,4 +71,4 @@ jobs:
 
       - name: Upload package to S3
         run: |
-          aws s3 cp /tmp/*${{ github.event.inputs.target }}* s3://packages-dev.internal.wazuh.com/development/wazuh/
+          aws s3 cp /tmp/*manager* s3://packages-dev.internal.wazuh.com/development/wazuh/
