@@ -76,11 +76,11 @@ runs:
             if [[ "${{ inputs.asan }}" != "false" ]]; then
               # Run for ASAN
               echo "Running tests for ASAN"
-              ctest --output-on-failure
+              ctest --output-on-failure --verbose
             else
               # Run for valgrind and coverage
               echo "Running tests for valgrind and coverage"
-              valgrind ctest --output-on-failure
+              valgrind ctest --output-on-failure --verbose
             fi
           fi
 
