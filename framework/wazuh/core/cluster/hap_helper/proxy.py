@@ -12,6 +12,38 @@ PROXY_API_RESPONSE: TypeAlias = JSON_TYPE
 HTTP_PROTOCOL = Literal['http', 'https']
 
 
+def _convert_to_seconds(milliseconds: int) -> float:
+    """Convert the given milliseconds to seconds.
+
+    Parameters
+    ----------
+    millisenconds : int
+        Milliseconds to convert.
+
+    Returns
+    -------
+    float
+        The amount of seconds.
+    """
+    return milliseconds / 1000
+
+
+def _convert_to_milliseconds(seconds: int) -> int:
+    """Convert the given seconds to milliseconds.
+
+    Parameters
+    ----------
+    seconds : int
+        Seconds to convert.
+
+    Returns
+    -------
+    int
+        The amount of milliseconds.
+    """
+    return seconds * 1000
+
+
 class ProxyAPIMethod(Enum):
     GET = 'get'
     POST = 'post'
@@ -131,8 +163,7 @@ class ProxyAPI:
 
         if response.is_success:
             response = response.json()
-
-            if version_key in response:
+            if isinstance(response, dict) and version_key in response:
                 self.version = response[version_key]
             elif method != ProxyAPIMethod.GET and 'configuration' in endpoint:
                 await self.update_configuration_version()
@@ -158,6 +189,28 @@ class ProxyAPI:
             The runtime information.
         """
         return (await self._make_hap_request('/services/haproxy/runtime/info'))[0]['info']
+
+    async def get_global_configuration(self) -> dict:
+        """Get the global configuration from HAProxy.
+
+        Returns
+        -------
+        dict
+            The current global configuration.
+        """
+        return (await self._make_hap_request('/services/haproxy/configuration/global'))['data']
+
+    async def update_global_configuration(self, new_configuration: dict):
+        """Apply the new global configuration.
+
+        Parameters
+        ----------
+        new_configuration : str
+            New global configuration to apply.
+        """
+        await self._make_hap_request(
+            '/services/haproxy/configuration/global', json_body=new_configuration, method=ProxyAPIMethod.PUT
+        )
 
     async def get_backends(self) -> PROXY_API_RESPONSE:
         """Get the configured backends.
@@ -441,6 +494,7 @@ class Proxy:
         self.wazuh_connection_port = wazuh_connection_port
         self.api = proxy_api
         self.resolver = resolver
+        self.hard_stop_after = None
 
     @staticmethod
     def _get_logger(tag: str) -> logging.Logger:
@@ -472,8 +526,42 @@ class Proxy:
         await self.api.initialize()
         try:
             (await self.api.get_runtime_info())['version']
+            hard_stop_after = await self.get_hard_stop_after_value()
+            self.hard_stop_after = _convert_to_seconds(hard_stop_after) if hard_stop_after is not None else None
         except (KeyError, IndexError):
             raise WazuhHAPHelperError(3048)
+
+    async def get_hard_stop_after_value(self) -> Optional[str]:
+        """Get the `hard-stop-after` value from the global configurations.
+
+        Returns
+        -------
+        Optional[str]
+            The value of the configuration.
+        """
+        return (await self.api.get_global_configuration()).get('hard_stop_after', None)
+
+    async def set_hard_stop_after_value(self, active_agents: int, chunk_size: int, agent_reconnection_time: int):
+        """Calculate a dinamic value for `hard-stop-after` and set it.
+
+        Parameters
+        ----------
+        active_agents : int
+            Number of active agents.
+        chunk_size : int
+            Max number of agents to be reconnected at once.
+        agent_reconnection_time : int
+            Seconds to sleep after an agent chunk reconnection.
+        """
+        number_of_chunks = active_agents / chunk_size if active_agents > chunk_size else 1
+        hard_stop_after = number_of_chunks * agent_reconnection_time
+
+        configuration = await self.api.get_global_configuration()
+        configuration['hard_stop_after'] = _convert_to_milliseconds(hard_stop_after)
+
+        await self.api.update_global_configuration(new_configuration=configuration)
+        self.hard_stop_after = hard_stop_after
+        self.logger.info(f'Setted `hard-stop-after` with {hard_stop_after} seconds.')
 
     async def get_current_pid(self) -> int:
         """Get the current HAProxy PID.
