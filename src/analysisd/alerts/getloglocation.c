@@ -12,6 +12,7 @@
 
 #include "getloglocation.h"
 #include "config.h"
+#include "shared.h" // Make sure to include this for the definition of USER and GROUPGLOBAL, anong with Privsep_GetUser and Privsep_GetGroup functions
 
 /* Global definitions */
 FILE *_eflog;
@@ -73,21 +74,39 @@ int OS_GetLogLocation(int day,int year,char *mon)
      */
 
     /* For the events */
+
+    /* Ensure path exists with proper permissions */
+    ensure_path(EVENTS_DAILY,0750,USER,GROUPGLOBAL);
+
     _eflog = openlog(_eflog, __elogfile, EVENTS, year, mon, "archive", day, "log", EVENTS_DAILY, &__ecounter, FALSE);
 
     /* For the events in JSON */
     if (Config.logall_json) {
+        /* Ensure path exists with proper permissions */
+        ensure_path(EVENTSJSON_DAILY,0750,USER,GROUPGLOBAL);
+
         _ejflog = openlog(_ejflog, __ejlogfile, EVENTS, year, mon, "archive", day, "json", EVENTSJSON_DAILY, &__ejcounter, FALSE);
     }
 
     /* For the alerts logs */
+
+    /* Ensure path exists with proper permissions */
+    ensure_path(ALERTS_DAILY,0750,USER,GROUPGLOBAL);
+
     _aflog = openlog(_aflog, __alogfile, ALERTS, year, mon, "alerts", day, "log", ALERTS_DAILY, &__acounter, FALSE);
 
     if (Config.jsonout_output) {
+        /* Ensure path exists with proper permissions */
+        ensure_path(ALERTSJSON_DAILY,0750,USER,GROUPGLOBAL);
+
         _jflog = openlog(_jflog, __jlogfile, ALERTS, year, mon, "alerts", day, "json", ALERTSJSON_DAILY, &__jcounter, FALSE);
     }
 
     /* For the firewall events */
+
+    /* Ensure path exists with proper permissions */
+    ensure_path(FWLOGS_DAILY,0750,USER,GROUPGLOBAL);
+
     _fflog = openlog(_fflog, __flogfile, FWLOGS, year, mon, "firewall", day, "log", FWLOGS_DAILY, &__fcounter, FALSE);
 
     /* Setting the new day */
@@ -201,6 +220,43 @@ void OS_RotateLogs(int day,int year,char *mon) {
         if (_fflog && ftell(_fflog) > Config.max_output_size) {
             _fflog = openlog(_fflog, __flogfile, FWLOGS, year, mon, "firewall", day, "log", FWLOGS_DAILY, &__fcounter, TRUE);
             __crt_rsec = c_time;
+        }
+    }
+}
+
+void ensure_path(const char *path, mode_t desired_mode, const char *username, const char *groupname) {
+    struct stat st;
+    uid_t owner_uid = Privsep_GetUser(username);
+    gid_t owner_gid = Privsep_GetGroup(groupname);
+
+    // Validate user and group ID conversion
+    if (owner_uid == (uid_t)OS_INVALID || owner_gid == (gid_t)OS_INVALID) {
+        merror_exit("Invalid user or group name provided.");
+    }
+
+    // Attempt to create the target directory
+    if (mkdir(path, desired_mode) != 0) {
+        if (errno != EEXIST) {
+            merror_exit("Error creating directory '%s': %s", path, strerror(errno));
+        }
+    }
+
+    // Check if directory exists and get current permissions and ownership
+    if (stat(path, &st) != 0) {
+        merror_exit("Error stating directory '%s': %s", path, strerror(errno));
+    }
+
+    // Adjust permissions if necessary
+    if ((st.st_mode & 0777) != desired_mode) {
+        if (chmod(path, desired_mode) != 0) {
+            merror_exit("Error setting permissions for directory '%s': %s", path, strerror(errno));
+        }
+    }
+
+    // Adjust ownership if necessary
+    if (st.st_uid != owner_uid || st.st_gid != owner_gid) {
+        if (chown(path, owner_uid, owner_gid) != 0) {
+            merror_exit("Error setting ownership for directory '%s': %s", path, strerror(errno));
         }
     }
 }
