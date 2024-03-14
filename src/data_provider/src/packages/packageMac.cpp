@@ -13,6 +13,7 @@
 #include "sharedDefs.h"
 #include "brewWrapper.h"
 #include "pkgWrapper.h"
+#include "rcpWrapper.h"
 #include "macportsWrapper.h"
 
 std::shared_ptr<IPackage> FactoryBSDPackage::create(const std::pair<PackageContext, int>& ctx)
@@ -26,6 +27,10 @@ std::shared_ptr<IPackage> FactoryBSDPackage::create(const std::pair<PackageConte
     else if (ctx.second == PKG)
     {
         ret = std::make_shared<BSDPackageImpl>(std::make_shared<PKGWrapper>(ctx.first));
+    }
+    else if (ctx.second == RCP)
+    {
+        ret = std::make_shared<BSDPackageImpl>(std::make_shared<RCPWrapper>(ctx.first));
     }
     else
     {

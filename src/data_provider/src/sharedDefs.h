@@ -86,6 +86,7 @@ enum MacOsPackageTypes
 {
     PKG,
     BREW,
+    RCP,
     MACPORTS
 };
 

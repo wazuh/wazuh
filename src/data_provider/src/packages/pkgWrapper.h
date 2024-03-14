@@ -21,27 +21,29 @@
 #include "plist/plist.h"
 #include "filesystemHelper.h"
 
-static const std::string APP_INFO_PATH      { "Contents/Info.plist" };
-static const std::string PLIST_BINARY_START { "bplist00"            };
-static const std::string UTILITIES_FOLDER   { "/Utilities"          };
-
 class PKGWrapper final : public IPackageWrapper
 {
     public:
+        static constexpr auto INFO_PLIST_PATH { "Contents/Info.plist" };
+
         explicit PKGWrapper(const PackageContext& ctx)
-            : m_version{UNKNOWN_VALUE}
-            , m_groups{UNKNOWN_VALUE}
+            : m_groups {UNKNOWN_VALUE}
             , m_description {UNKNOWN_VALUE}
-            , m_architecture{UNKNOWN_VALUE}
-            , m_format{"pkg"}
+            , m_architecture {UNKNOWN_VALUE}
+            , m_format {"pkg"}
             , m_source {UNKNOWN_VALUE}
             , m_location {UNKNOWN_VALUE}
             , m_priority {UNKNOWN_VALUE}
             , m_size {0}
-            , m_vendor{UNKNOWN_VALUE}
+            , m_vendor {UNKNOWN_VALUE}
             , m_installTime {UNKNOWN_VALUE}
         {
-            getPkgData(ctx.filePath + "/" + ctx.package + "/" + APP_INFO_PATH);
+            std::string pathInfoPlist = ctx.filePath + "/" + ctx.package + "/" + INFO_PLIST_PATH;
+
+            if (Utils::existsRegular(pathInfoPlist))
+            {
+                getPkgData(pathInfoPlist);
+            }
         }
 
         ~PKGWrapper() = default;
@@ -108,16 +110,20 @@ class PKGWrapper final : public IPackageWrapper
         }
 
     private:
+        static constexpr auto PLIST_BINARY_HEADER { "bplist00" };
+        static constexpr auto UTILITIES_FOLDER { "/Utilities" };
+
         void getPkgData(const std::string& filePath)
         {
             const auto isBinaryFnc
             {
                 [&filePath]()
                 {
-                    // If first line is "bplist00" it's a binary plist file
-                    std::fstream file {filePath, std::ios_base::in};
-                    std::string line;
-                    return std::getline(file, line) && Utils::startsWith(line, PLIST_BINARY_START);
+                    // If first bytes are "bplist00" it's a binary plist file
+                    std::array < char, (sizeof(PLIST_BINARY_HEADER) - 1) > headerBuffer;
+                    std::ifstream ifs {filePath, std::ios::binary};
+                    ifs.read(headerBuffer.data(), sizeof(headerBuffer));
+                    return !std::memcmp(headerBuffer.data(), PLIST_BINARY_HEADER, sizeof(PLIST_BINARY_HEADER) - 1);
                 }
             };
             const auto isBinary { isBinaryFnc() };
@@ -141,6 +147,9 @@ class PKGWrapper final : public IPackageWrapper
                     std::string line;
                     std::string bundleShortVersionString;
                     std::string bundleVersion;
+
+                    m_location = filePath;
+                    m_source = (filePath.find(UTILITIES_FOLDER) != std::string::npos) ? "utilities" : "applications";
 
                     while (std::getline(data, line))
                     {
@@ -171,7 +180,8 @@ class PKGWrapper final : public IPackageWrapper
                                 m_groups = groups;
                             }
                         }
-                        else if (line == "<key>CFBundleIdentifier</key>" &&
+                        else if ((line == "<key>CFBundleIdentifier</key>" ||
+                                  line == "<key>PackageIdentifier</key>") &&
                                  std::getline(data, line))
                         {
                             auto description = getValueFnc(line);
@@ -200,14 +210,6 @@ class PKGWrapper final : public IPackageWrapper
                             m_version = bundleShortVersionString;
                         }
                     }
-
-                    m_architecture = UNKNOWN_VALUE;
-                    m_multiarch = UNKNOWN_VALUE;
-                    m_priority = UNKNOWN_VALUE;
-                    m_size = 0;
-                    m_installTime = UNKNOWN_VALUE;
-                    m_source = filePath.find(UTILITIES_FOLDER) ? "utilities" : "applications";
-                    m_location = filePath;
                 }
             };
 
@@ -232,10 +234,6 @@ class PKGWrapper final : public IPackageWrapper
             std::string xmlContent;
             plist_t rootNode { nullptr };
             const auto binaryContent { Utils::getBinaryContent(filePath) };
-
-            // plist C++ APIs calls - to be used when Makefile and external are updated.
-            // const auto dataFromBin { PList::Structure::FromBin(binaryContent) };
-            // const auto xmlContent { dataFromBin->ToXml() };
 
             // Content binary file to plist representation
             plist_from_bin(binaryContent.data(), binaryContent.size(), &rootNode);

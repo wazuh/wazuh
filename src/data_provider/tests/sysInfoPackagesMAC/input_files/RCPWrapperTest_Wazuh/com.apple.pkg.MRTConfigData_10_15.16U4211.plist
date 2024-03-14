@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>InstallDate</key>
+	<date>2023-07-13T02:16:17Z</date>
+	<key>InstallPrefixPath</key>
+	<string>/</string>
+	<key>InstallProcessName</key>
+	<string>softwareupdated</string>
+	<key>PackageFileName</key>
+	<string>MRTConfigData_10_15.pkg</string>
+	<key>PackageGroups</key>
+	<array>
+		<string>com.apple.FindSystemFiles.pkg-group</string>
+	</array>
+	<key>PackageIdentifier</key>
+	<string>com.apple.pkg.MRTConfigData_10_15.16U4211</string>
+	<key>PackageVersion</key>
+	<string>1.93.1.1657754914</string>
+</dict>
+</plist>
