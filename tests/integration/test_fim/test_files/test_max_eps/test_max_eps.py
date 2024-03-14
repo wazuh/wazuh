@@ -144,10 +144,10 @@ def test_max_eps(test_configuration, test_metadata, configure_local_internal_opt
     fim_mode = test_metadata['fim_mode']
     test_directories = test_metadata['folder_to_monitor']
 
-    if fim_mode == 'whodata' and sys.platform == 'win32':
+    if fim_mode == 'whodata' and sys.platform == WINDOWS:
         pytest.skip(reason="Unstable behavior on github actions")
 
-    if sys.platform == 'win32':
+    if sys.platform == WINDOWS:
         regex = PATH_MONITORED_REALTIME if test_metadata['fim_mode'] == 'realtime' else PATH_MONITORED_WHODATA_WINDOWS
     else:
         regex = PATH_MONITORED_REALTIME if test_metadata['fim_mode'] == 'realtime' else PATH_MONITORED_WHODATA
@@ -179,6 +179,7 @@ def test_max_eps(test_configuration, test_metadata, configure_local_internal_opt
 
     for date_time, n_occurrences in date_time_count.items():
         assert n_occurrences <= max_eps, f"Sent {n_occurrences} but a maximum of {max_eps} was set"
+
 
 def parse_integrity_message(lines):
     result = []
