@@ -113,6 +113,7 @@ void Orchestrator::loadEpsCounter(const std::weak_ptr<store::IStoreInternal>& wS
     {
         LOG_ERROR("Store is unavailable for loading the EPS counter, using default settings");
         m_epsCounter = std::make_shared<EpsCounter>();
+        return;
     }
 
     auto epsResp = store->readInternalDoc(STORE_PATH_ROUTER_EPS);
@@ -122,6 +123,7 @@ void Orchestrator::loadEpsCounter(const std::weak_ptr<store::IStoreInternal>& wS
                     base::getError(epsResp).message);
         m_epsCounter = std::make_shared<EpsCounter>();
         dumpEps();
+        return;
     }
 
     auto epsJson = base::getResponse(epsResp);
@@ -130,6 +132,7 @@ void Orchestrator::loadEpsCounter(const std::weak_ptr<store::IStoreInternal>& wS
         LOG_ERROR("Router: EPS settings found in the store are invalid. Using default settings");
         m_epsCounter = std::make_shared<EpsCounter>();
         dumpEps();
+        return;
     }
 
     auto eps = epsJson.getInt64("/eps");
@@ -141,6 +144,7 @@ void Orchestrator::loadEpsCounter(const std::weak_ptr<store::IStoreInternal>& wS
         LOG_ERROR("Router: EPS settings found in the store are invalid. Using default settings");
         m_epsCounter = std::make_shared<EpsCounter>();
         dumpEps();
+        return;
     }
 
     m_epsCounter = std::make_shared<EpsCounter>(eps.value(), refreshInterval.value(), active.value());
