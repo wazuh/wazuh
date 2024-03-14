@@ -24,8 +24,23 @@ on:
   workflow_call:
 
 jobs:
-  Build-manager-packages: 
-    runs-on: ubuntu-22.04
+  setup-runner:
+    runs-on: ubuntu-latest
+    outputs:
+      runner: ${{ steps.choose-runner.outputs.runner }}
+    steps:
+      - name: Choose runner
+        id: choose-runner
+        run: |
+          if [ ${{ github.event.inputs.arch }} == 'amd64' ]; then
+            echo "runner=ubuntu-latest" >> $GITHUB_OUTPUT
+          else
+            echo "runner=pending" >> $GITHUB_OUTPUT
+          fi
+
+  Build-manager-packages:
+    needs: [setup-runner] 
+    runs-on: ${{ needs.setup-runner.outputs.runner }}
     name: Build ${{ github.event.inputs.package }} wazuh-manager on ${{ github.event.inputs.arch }}
 
     steps:
