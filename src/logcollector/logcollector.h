@@ -128,7 +128,36 @@ void *read_multiline_regex(logreader *lf, int *rc, int drop_it);
  * @return NULL
  */
 void *read_macos(logreader *lf, int *rc, int drop_it);
+#endif
 
+#ifdef __linux__
+/**
+ * @brief Read journald logs
+ *
+ * @param lf status and configuration of the log file
+ * @param rc output parameter, returns zero
+ * @param drop_it if drop_it is different from 0, the logs will be read and discarded
+ * @return NULL
+ */
+void *read_journald(logreader *lf, int *rc, int drop_it);
+
+/**
+ * @brief Check if journald can be read for a specific id
+ * 
+ * If the journal is not opened, the the function try to open it, returning false if it fails and true if it succeeds.
+ * The function sets the id as the owner of the journal.
+ * If the journal is opened, the function checks if the id is the owner of the journal,
+ * returning true if it is, and false if it is not.
+ * @param id the id to be checked
+ * @return true if the id is the owner of the journal, false otherwise
+ * @note This function is not thread-safe.
+ */
+bool w_journald_can_read(unsigned long id); 
+
+/**
+ * @brief Mark the journal to be closed by the owner in the next iteration
+ */
+void w_journald_release_ctx();
 #endif
 
 /* Read DJB multilog format */

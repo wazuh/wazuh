@@ -409,6 +409,26 @@ void LogCollectorStart()
             os_free(current->fp);
         }
 
+        else if (strcmp(current->logformat, JOURNALD_LOG) == 0) {
+#ifdef __linux__
+            current->read = read_journald;
+            if (atexit(w_journald_release_ctx)) {
+                merror(ATEXIT_ERROR);
+            }
+            // TODO REVIEW READ/INIT/TARGET/TIMESTAMP
+            // for (int tg_idx = 0; current->target[tg_idx]; tg_idx++) {
+            //    mdebug1("Socket target for '%s' -> %s", JOURNALD_LOG, current->target[tg_idx]);
+            //    w_logcollector_state_add_target(JOURNALD_LOG, current->target[tg_idx]);
+            //}
+#else
+            minfo("Journald log format is only available on Linux.");
+            w_journal_log_config_free(&(current->journal_log));
+#endif
+            os_free(current->file);
+            current->command = NULL;
+            os_free(current->fp);
+        }
+
         else if (j < 0) {
             set_read(current, i, j);
             if (current->file) {
@@ -2024,6 +2044,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
     int int_error = 0;
     struct timeval fp_timeout;
     struct stat tmp_stat;
+    unsigned long thread_id = (unsigned long) pthread_self();
 #else
     BY_HANDLE_FILE_INFORMATION lpFileInformation;
     memset(&lpFileInformation, 0, sizeof(BY_HANDLE_FILE_INFORMATION));
@@ -2087,6 +2108,16 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                     /* Read the macOS `log` process output */
                     else if (current->macos_log != NULL && current->macos_log->state != LOG_NOT_RUNNING) {
                         current->read(current, &r, 0);
+                    }
+#endif
+#ifdef __linux__
+                    /* Read the journald logs */
+                    else if (current->journal_log != NULL) {
+                        if (w_journald_can_read(thread_id)) {
+                            current->read(current, &r, 0);
+                        } else {
+                            mdebug2("Skipping is not the owner of the journal log");
+                        }
                     }
 #endif
                     w_mutex_unlock(&current->mutex);
