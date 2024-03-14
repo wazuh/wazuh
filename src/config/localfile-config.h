@@ -163,23 +163,21 @@ typedef struct {
 /**
  * @brief Represents a filter unit, the minimal condition of a filter
  */
-typedef struct _w_journal_filter_unit_t
-{
-    char* field;           // Field to try match
-    w_expression_t* exp;   // Expression to match against the field (PCRE2)
+typedef struct _w_journal_filter_unit_t {
+    char * field;           // Field to try match
+    w_expression_t * exp;   // Expression to match against the field (PCRE2)
     bool ignore_if_missing; // Ignore if the field is missing (TODO: Use BOOL)
 } _w_journal_filter_unit_t;
 
 /**
  * @brief Represents a filter, a set of filter units, all of which must match
  */
-typedef struct w_journal_filter_t
-{
-    _w_journal_filter_unit_t** units; // Array of unit filter TODO Change to list
-    size_t units_size;                // Number of units
+typedef struct w_journal_filter_t {
+    _w_journal_filter_unit_t ** units; // Array of unit filter TODO Change to list
+    size_t units_size;                 // Number of units
 } w_journal_filter_t;
 
-typedef w_journal_filter_t** w_journal_filters_list_t;
+typedef w_journal_filter_t ** w_journal_filters_list_t;
 
 /**
  * @brief Represents the configuration of the journal log
@@ -285,17 +283,17 @@ int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *gl
 
 /**
  * @brief Free the macos log config and all its resources
- * 
+ *
  * @param macos_log Macos log config
  */
-void w_macos_log_config_free(w_macos_log_config_t** config);
+void w_macos_log_config_free(w_macos_log_config_t ** config);
 
 /**
  * @brief Free the multiline log config and all its resources
- * 
+ *
  * @param multiline Multiline log config
  */
-void w_multiline_log_config_free(w_multiline_config_t** config);
+void w_multiline_log_config_free(w_multiline_config_t ** config);
 
 /**
  * @brief Get match attribute for multiline regex
@@ -338,39 +336,38 @@ const char * multiline_attr_replace_str(w_multiline_replace_type_t replace_type)
  */
 const char * multiline_attr_match_str(w_multiline_match_type_t match_type);
 
-
 /**
  * @brief Init the journal configuration
- * 
+ *
  * @param config Journal log configuration
  * @return bool true if the configuration was initialized, false otherwise
  */
-bool init_w_journal_log_config_t(w_journal_log_config_t** config);
+bool init_w_journal_log_config_t(w_journal_log_config_t ** config);
 
 /**
  * @brief Free the journal configuration and all its resources
- * 
+ *
  * *config will be set to NULL after the call.
  * @param config Journal log configuration
  */
-void w_journal_log_config_free(w_journal_log_config_t** config);
+void w_journal_log_config_free(w_journal_log_config_t ** config);
 
 /**
  * @brief Add the filter conditions to the filter
- * 
+ *
  * <filter field="name" ignore_if_missing="yes">expression</filter>
  * @param node XML node to parse
  * @param filter Journal log filter
  * @return bool true if the filter was added, false otherwise
  */
-bool journald_add_condition_to_filter(xml_node *node, w_journal_filter_t** filter);
+bool journald_add_condition_to_filter(xml_node * node, w_journal_filter_t ** filter);
 
 /**
  * @brief Free the filter and all its resources
  *
  * The filter pointer is invalid after the call.
  */
-void w_journal_filter_free(w_journal_filter_t* filter);
+void w_journal_filter_free(w_journal_filter_t * filter);
 
 /**
  * @brief Add a condition to the filter, creating the filter if it does not exist
@@ -382,18 +379,21 @@ void w_journal_filter_free(w_journal_filter_t* filter);
  * @param ignore_if_missing Ignore if the field is missing
  * @return int 0 on success or non-zero on error
  */
-int w_journal_filter_add_condition(w_journal_filter_t** filter, const char* field, char* expression, bool ignore_if_missing);
+int w_journal_filter_add_condition(w_journal_filter_t ** filter,
+                                   const char * field,
+                                   char * expression,
+                                   bool ignore_if_missing);
 
 /**
  * @brief Add a filter to the filters list
- * 
+ *
  * If the list is NULL, it will be created.
  * The filter will be added to the list and reallocated if necessary.
  * @param list Filters list
  * @param filter Filter to add
  * @return return false if filter is NULL or list is NULL
  */
-bool w_journal_add_filter_to_list(w_journal_filters_list_t* list, w_journal_filter_t* filter);
+bool w_journal_add_filter_to_list(w_journal_filters_list_t * list, w_journal_filter_t * filter);
 
 /**
  * @brief Free the filter list and all its resources
@@ -404,8 +404,9 @@ void w_journal_free_filters_list(w_journal_filters_list_t list);
 
 /**
  * @brief Merge configuration of two journald log readers, if possible
- * 
- * Search in the log readers the first journald log reader and add the filters of the second log reader to the first one.
+ *
+ * Search in the log readers the first journald log reader and add the filters of the second log reader to the first
+ * one.
  * @param logf Array of log readers
  * @param src_index Index of the current log reader (Must be a journald log reader)
  * @return true if the merge was successful, false otherwise

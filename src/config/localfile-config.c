@@ -520,8 +520,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             }
             OSList_InsertData(logf[pl].regex_restrict, NULL, expression_restrict);
         } else if (strcasecmp(node[i]->element, xml_localfile_filter) == 0) {
-            if (init_w_journal_log_config_t(&(logf[pl].journal_log)))
-            {
+            if (init_w_journal_log_config_t(&(logf[pl].journal_log))) {
                 os_calloc(2, sizeof(w_journal_filter_t *), logf[pl].journal_log->filters);
             }
             // Use always the same filter for all the conditions (First filter)
@@ -810,7 +809,6 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         }
     }
 
-
     return (0);
 }
 
@@ -876,7 +874,6 @@ void w_clean_logreader(logreader * logf) {
         Free_Logreader(logf);
         memset(logf, 0, sizeof(logreader));
     }
-
 }
 
 void Free_Logreader(logreader * logf) {
@@ -895,7 +892,6 @@ void Free_Logreader(logreader * logf) {
         os_free(logf->query);
         os_free(logf->exclude);
         os_free(logf->query_level);
-        os_free(logf->age_str);
 
         if (logf->regex_ignore) {
             OSList_Destroy(logf->regex_ignore);
@@ -1061,15 +1057,12 @@ const char * multiline_attr_match_str(w_multiline_match_type_t match_type) {
     return match_str[match_type];
 }
 
-void w_multiline_log_config_free(w_multiline_config_t** config)
-{
-    if (config == NULL || *config == NULL)
-    {
+void w_multiline_log_config_free(w_multiline_config_t ** config) {
+    if (config == NULL || *config == NULL) {
         return;
     }
 
-    if ((*config)->ctxt)
-    {
+    if ((*config)->ctxt) {
         os_free((*config)->ctxt->buffer);
         os_free((*config)->ctxt);
     }
@@ -1077,19 +1070,17 @@ void w_multiline_log_config_free(w_multiline_config_t** config)
     os_free((*config));
 }
 
-void w_macos_log_config_free(w_macos_log_config_t** macos_log) {
+void w_macos_log_config_free(w_macos_log_config_t ** macos_log) {
 
     if (macos_log == NULL || *macos_log == NULL) {
         return;
     }
 
     w_free_expression_t(&((*macos_log)->log_start_regex));
-    if ((*macos_log)->processes.stream.wfd != NULL)
-    {
+    if ((*macos_log)->processes.stream.wfd != NULL) {
         wpclose((*macos_log)->processes.stream.wfd);
     }
-    if ((*macos_log)->processes.show.wfd != NULL)
-    {
+    if ((*macos_log)->processes.show.wfd != NULL) {
         wpclose((*macos_log)->processes.show.wfd);
     }
     os_free((*macos_log)->current_settings);
@@ -1130,7 +1121,6 @@ STATIC int w_logcollector_get_macos_log_type(const char * content) {
         }
 
         os_free(type_arr);
-
     }
 
     return retval;
@@ -1152,21 +1142,17 @@ w_exp_type_t w_check_regex_type(xml_node * node, const char * element) {
     return EXP_TYPE_PCRE2;
 }
 
-bool init_w_journal_log_config_t(w_journal_log_config_t** config)
-{
-    if (config == NULL || *config != NULL)
-    {
+bool init_w_journal_log_config_t(w_journal_log_config_t ** config) {
+    if (config == NULL || *config != NULL) {
         return false;
     }
-    
+
     os_calloc(1, sizeof(w_journal_log_config_t), *config);
-    return true;    
+    return true;
 }
 
-void w_journal_log_config_free(w_journal_log_config_t** config)
-{
-    if (config == NULL || *config == NULL)
-    {
+void w_journal_log_config_free(w_journal_log_config_t ** config) {
+    if (config == NULL || *config == NULL) {
         return;
     }
 
@@ -1174,43 +1160,34 @@ void w_journal_log_config_free(w_journal_log_config_t** config)
     os_free(*config);
 }
 
-bool journald_add_condition_to_filter(xml_node* node, w_journal_filter_t** filter)
-{
-    if (node == NULL || filter == NULL)
-    {
+bool journald_add_condition_to_filter(xml_node * node, w_journal_filter_t ** filter) {
+    if (node == NULL || filter == NULL) {
         return false;
     }
 
-    const char* field = w_get_attr_val_by_name(node, "field");
-    char* expression = node->content;
+    const char * field = w_get_attr_val_by_name(node, "field");
+    char * expression = node->content;
     bool ignore_if_missing = false;
 
-    if (field == NULL || *field == '\0')
-    {
+    if (field == NULL || *field == '\0') {
         mwarn("The field for the journal filter cannot be empty");
         return false;
     }
-    if (expression == NULL || *expression == '\0')
-    {
+    if (expression == NULL || *expression == '\0') {
         mwarn("The expression for the journal filter cannot be empty");
         return false;
     }
 
-    const char* ignore_if_missing_str = w_get_attr_val_by_name(node, "ignore_if_missing");
-    if (ignore_if_missing_str != NULL)
-    {
-        if (strcasecmp(ignore_if_missing_str, "yes") == 0)
-        {
+    const char * ignore_if_missing_str = w_get_attr_val_by_name(node, "ignore_if_missing");
+    if (ignore_if_missing_str != NULL) {
+        if (strcasecmp(ignore_if_missing_str, "yes") == 0) {
             ignore_if_missing = true;
-        }
-        else if (strcasecmp(ignore_if_missing_str, "no") != 0)
-        {
+        } else if (strcasecmp(ignore_if_missing_str, "no") != 0) {
             mwarn(LOGCOLLECTOR_INV_VALUE_DEFAULT, ignore_if_missing_str, "ignore_if_missing", "journal");
         }
     }
 
-    if (w_journal_filter_add_condition(filter, field, expression, ignore_if_missing) != 0)
-    {
+    if (w_journal_filter_add_condition(filter, field, expression, ignore_if_missing) != 0) {
         mwarn("Error compiling the PCRE2 expression for the journal filter");
         return false;
     }
@@ -1224,10 +1201,8 @@ bool journald_add_condition_to_filter(xml_node* node, w_journal_filter_t** filte
  * The unit pointer is invalid after the call.
  * @param unit Journal filter unit
  */
-static void free_unit_filter(_w_journal_filter_unit_t* unit)
-{
-    if (unit == NULL)
-    {
+static void free_unit_filter(_w_journal_filter_unit_t * unit) {
+    if (unit == NULL) {
         return;
     }
 
@@ -1245,20 +1220,17 @@ static void free_unit_filter(_w_journal_filter_unit_t* unit)
  * @param ignore_if_missing Ignore if the field is missing
  * @return The filter unit or NULL if an error occurred (compiling the expression)
  */
-static _w_journal_filter_unit_t* create_unit_filter(const char* field, char* expression, bool ignore_if_missing)
-{
-    if (field == NULL || expression == NULL)
-    {
+static _w_journal_filter_unit_t * create_unit_filter(const char * field, char * expression, bool ignore_if_missing) {
+    if (field == NULL || expression == NULL) {
         return NULL;
     }
 
-    _w_journal_filter_unit_t* unit;
+    _w_journal_filter_unit_t * unit;
     os_calloc(1, sizeof(_w_journal_filter_unit_t), unit);
 
     w_calloc_expression_t(&(unit->exp), EXP_TYPE_PCRE2);
 
-    if (!w_expression_compile(unit->exp, expression, 0))
-    {
+    if (!w_expression_compile(unit->exp, expression, 0)) {
         free_unit_filter(unit);
         return NULL;
     }
@@ -1269,17 +1241,13 @@ static _w_journal_filter_unit_t* create_unit_filter(const char* field, char* exp
     return unit;
 }
 
-void w_journal_filter_free(w_journal_filter_t* ptr_filter)
-{
-    if (ptr_filter == NULL)
-    {
+void w_journal_filter_free(w_journal_filter_t * ptr_filter) {
+    if (ptr_filter == NULL) {
         return;
     }
 
-    if (ptr_filter->units != NULL)
-    {
-        for (size_t i = 0; ptr_filter->units[i] != NULL; i++)
-        {
+    if (ptr_filter->units != NULL) {
+        for (size_t i = 0; ptr_filter->units[i] != NULL; i++) {
             free_unit_filter(ptr_filter->units[i]);
         }
 
@@ -1289,32 +1257,26 @@ void w_journal_filter_free(w_journal_filter_t* ptr_filter)
     os_free(ptr_filter);
 }
 
-int w_journal_filter_add_condition(w_journal_filter_t** ptr_filter,
-                                   const char* field,
-                                   char* expression,
-                                   bool ignore_if_missing)
-{
-    if (field == NULL || expression == NULL || ptr_filter == NULL)
-    {
+int w_journal_filter_add_condition(w_journal_filter_t ** ptr_filter, const char * field, char * expression,
+                                   bool ignore_if_missing) {
+    if (field == NULL || expression == NULL || ptr_filter == NULL) {
         return -1;
     }
 
     // Crete the unit filter
-    _w_journal_filter_unit_t* unit = create_unit_filter(field, expression, ignore_if_missing);
-    if (unit == NULL)
-    {
+    _w_journal_filter_unit_t * unit = create_unit_filter(field, expression, ignore_if_missing);
+    if (unit == NULL) {
         return -1;
     }
 
     // If the filter does not exist, create it
-    if (*ptr_filter == NULL)
-    {
+    if (*ptr_filter == NULL) {
         os_calloc(1, sizeof(w_journal_filter_t), *ptr_filter);
     }
-    w_journal_filter_t* filter = *ptr_filter;
+    w_journal_filter_t * filter = *ptr_filter;
 
     // Allocate memory for the new unit
-    os_realloc(filter->units, (filter->units_size + 2) * sizeof(_w_journal_filter_unit_t*), filter->units);
+    os_realloc(filter->units, (filter->units_size + 2) * sizeof(_w_journal_filter_unit_t *), filter->units);
 
     // Add the new unit
     filter->units[filter->units_size] = unit;
@@ -1324,28 +1286,24 @@ int w_journal_filter_add_condition(w_journal_filter_t** ptr_filter,
     return 0;
 }
 
-bool w_journal_add_filter_to_list(w_journal_filters_list_t* list, w_journal_filter_t* filter)
-{
-    if (list == NULL || filter == NULL)
-    {
+bool w_journal_add_filter_to_list(w_journal_filters_list_t * list, w_journal_filter_t * filter) {
+    if (list == NULL || filter == NULL) {
         return false;
     }
 
     // Allocate memory for the new filter
-    if (*list == NULL)
-    {
-        os_calloc(1, sizeof(w_journal_filter_t*), *list);
+    if (*list == NULL) {
+        os_calloc(1, sizeof(w_journal_filter_t *), *list);
     }
 
     // Determine the size of the list
     size_t size = 0;
-    while ((*list)[size] != NULL)
-    {
+    while ((*list)[size] != NULL) {
         size++;
     }
 
     // Allocate memory for the new filter
-    os_realloc(*list, (size + 2) * sizeof(w_journal_filter_t*), *list);
+    os_realloc(*list, (size + 2) * sizeof(w_journal_filter_t *), *list);
 
     // Add the new filter
     (*list)[size] = filter;
@@ -1354,29 +1312,24 @@ bool w_journal_add_filter_to_list(w_journal_filters_list_t* list, w_journal_filt
     return true;
 }
 
-void w_journal_free_filters_list(w_journal_filters_list_t list)
-{
-    if (list == NULL)
-    {
+void w_journal_free_filters_list(w_journal_filters_list_t list) {
+    if (list == NULL) {
         return;
     }
 
-    for (size_t i = 0; list[i] != NULL; i++)
-    {
+    for (size_t i = 0; list[i] != NULL; i++) {
         w_journal_filter_free(list[i]);
     }
 
     os_free(list);
 }
 
-bool w_logreader_journald_merge(logreader ** logf_ptr, size_t src_index)
-{
+bool w_logreader_journald_merge(logreader ** logf_ptr, size_t src_index) {
     if (logf_ptr == NULL || *logf_ptr == NULL || src_index == 0) {
         return false;
     }
-    
 
-    logreader* logr = *logf_ptr;
+    logreader * logr = *logf_ptr;
 
     /* Check if src_index is in range and if it is a journald log reader */
     size_t i = 0;
@@ -1388,7 +1341,7 @@ bool w_logreader_journald_merge(logreader ** logf_ptr, size_t src_index)
     if (logr[i].journal_log == NULL) {
         return false;
     }
-    
+
     /* Search the first journald log reader, destination */
     bool dst_found = false;
     size_t dst_index = 0;
@@ -1399,19 +1352,21 @@ bool w_logreader_journald_merge(logreader ** logf_ptr, size_t src_index)
         }
     }
 
-    if (!dst_found)
-    {
+    if (!dst_found) {
         return false;
     }
-     
+
     /* Merge the filters */
-    bool src_has_filters = logr[src_index].journal_log->filters != NULL && logr[src_index].journal_log->filters[0] != NULL;
-    bool dst_has_filters = logr[dst_index].journal_log->filters != NULL && logr[dst_index].journal_log->filters[0] != NULL;
-    
+    bool src_has_filters = logr[src_index].journal_log->filters != NULL
+                           && logr[src_index].journal_log->filters[0] != NULL;
+    bool dst_has_filters = logr[dst_index].journal_log->filters != NULL
+                           && logr[dst_index].journal_log->filters[0] != NULL;
+
     // Disable filter is already disabled or if any don't have filters
     if (!src_has_filters || !dst_has_filters) {
         logr[dst_index].journal_log->disable_filters = true;
-        mwarn("The filters of the journald log will be disabled in the merge, because one of the configuration does not have filters.");
+        mwarn("The filters of the journald log will be disabled in the merge,"
+              "because one of the configuration does not have filters.");
     }
 
     // Move the filters from the src_index to the dst_index
