@@ -1,4 +1,4 @@
-name: Build Wazuh Packages - DEB|RPM - amd64 and i386
+name: Packages - Build Wazuh Agent Packages - DEB|RPM - amd64|i386
 on:
   workflow_dispatch:
     inputs:
