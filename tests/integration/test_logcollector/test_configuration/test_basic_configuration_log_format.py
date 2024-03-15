@@ -59,7 +59,7 @@ tags:
     - logcollector_configuration
 '''
 
-import pytest, sys
+import pytest, sys, os, tempfile, re
 import subprocess as sb
 
 from pathlib import Path
@@ -85,11 +85,6 @@ pytestmark = pytest.mark.tier(level=0)
 
 # Configuration
 
-if sys.platform == WINDOWS:
-    location = r'C:\testing.txt'
-else:
-    location = '/tmp/test.txt'
-
 default_config_path = Path(CONFIGURATIONS_PATH, 'wazuh_basic_configuration_log_format.yaml')
 default_cases_path = Path(TEST_CASES_PATH, 'cases_basic_configuration_log_format.yaml')
 
@@ -104,9 +99,11 @@ win_cases_path = Path(TEST_CASES_PATH, 'cases_basic_configuration_log_format_win
 
 test_configuration, test_metadata, test_cases_ids = configuration.get_test_cases_data(default_cases_path)
 
+folder_path = tempfile.gettempdir()
+location = os.path.join(folder_path, 'test.txt')
 for test in test_metadata:
     if test['location'] and test['log_format'] != 'djb-multilog':
-        test['location'] = location
+        test['location'] = re.escape(location)
 for test in test_configuration:
     if test['LOCATION'] and test['LOG_FORMAT'] != 'djb-multilog':
         test['LOCATION'] = location

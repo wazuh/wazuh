@@ -55,7 +55,7 @@ tags:
     - logcollector_configuration
 '''
 
-import pytest, sys
+import pytest, sys, tempfile, re, os
 
 from pathlib import Path
 from time import sleep
@@ -81,14 +81,11 @@ config_path = Path(CONFIGURATIONS_PATH, 'wazuh_basic_configuration_label.yaml')
 
 test_configuration, test_metadata, test_cases_ids = configuration.get_test_cases_data(cases_path)
 
-location = None
-if sys.platform == WINDOWS:
-    location = 'C:/TESTING/testfile.txt'
-else:
-    location = '/tmp/testing.txt'
+folder_path = tempfile.gettempdir()
+location = os.path.join(folder_path, 'test.txt')
 for test in test_metadata:
     if test['location']:
-        test['location'] = location
+        test['location'] = re.escape(location)
 for test in test_configuration:
     if test['LOCATION']:
         test['LOCATION'] = location
