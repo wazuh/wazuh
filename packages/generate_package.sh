@@ -18,6 +18,7 @@ REVISION="1"
 TARGET="agent"
 JOBS="2"
 DEBUG="no"
+SRC="no"
 BUILD_DOCKER="yes"
 DOCKER_TAG="latest"
 INSTALLATION_PATH="/var/ossec"
@@ -88,6 +89,7 @@ build_pkg() {
         -e BUILD_TARGET="${TARGET}" \
         -e ARCHITECTURE_TARGET="${ARCHITECTURE}" \
         -e INSTALLATION_PATH="${INSTALLATION_PATH}" \
+        -e RELEASE_PACKAGE="${RELEASE_PACKAGE}" \
         ${CUSTOM_CODE_VOL} \
         ${CONTAINER_NAME}:${DOCKER_TAG} ${BRANCH} \
         ${REVISION} ${JOBS} ${DEBUG} \
@@ -115,12 +117,13 @@ help() {
     echo "    -s, --store <path>         [Optional] Set the destination path of package. By default, an output folder will be created."
     echo "    -p, --path <path>          [Optional] Installation path for the package. By default: /var/ossec."
     echo "    -d, --debug                [Optional] Build the binaries with debug symbols. By default: no."
-    echo "    -c, --checksum <path>      [Optional] Generate checksum on the desired path (by default, if no path is specified it will be generated on the same directory than the package)."
+    echo "    -c, --checksum             [Optional] Generate checksum on the same directory than the package."
     echo "    -l, --legacy               [Optional only for RPM] Build package for CentOS 5."
     echo "    --dont-build-docker        [Optional] Locally built docker image will be used instead of generating a new one."
     echo "    --tag                      [Optional] Tag to use with the docker image."
     echo "    --sources <path>           [Optional] Absolute path containing wazuh source code. This option will use local source code instead of downloading it from GitHub."
-    echo "    --packages-branch <branch> [Optional] Select Git branch or tag from wazuh-packages repository. e.g master."
+    echo "    --release-package          [Optional] Use release name in package"
+    echo "    --src                      [Optional] Generate the source package in the destination directory."
     echo "    --future                   [Optional] Build test future package x.30.0 Used for development purposes."
     echo "    -h, --help                 Show this help."
     echo
@@ -194,14 +197,8 @@ main() {
             shift 1
             ;;
         "-c"|"--checksum")
-            if [ -n "$2" ]; then
-                CHECKSUMDIR="$2"
-                CHECKSUM="yes"
-                shift 2
-            else
-                CHECKSUM="yes"
-                shift 1
-            fi
+            CHECKSUM="yes"
+            shift 1
             ;;
         "--dont-build-docker")
             BUILD_DOCKER="no"
@@ -233,6 +230,14 @@ main() {
             ;;
         "--future")
             FUTURE="yes"
+            shift 1
+            ;;
+        "--release-package")
+            RELEASE_PACKAGE="yes"
+            shift 1
+            ;;
+        "--src")
+            SRC="yes"
             shift 1
             ;;
         "--package-format")
