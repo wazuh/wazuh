@@ -1,0 +1,85 @@
+name: Build multiple Wazuh Manager Packages - DEB|RPM - amd64|arm64
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Wazuh branch used while building a package'
+        required: false
+        default: master
+      build-amd64-deb:
+        type: choice
+        description: 'Build .deb wazuh-manager on amd64 arch'
+        required: true
+        options: 
+          - 'yes'
+          - 'no'
+      build-amd64-rpm:
+        type: choice
+        description: 'Build .rpm wazuh-manager on amd64 arch'
+        required: true
+        options: 
+          - 'yes'
+          - 'no'
+      build-arm64-deb:
+        type: choice
+        description: 'Build .deb wazuh-manager on arm64 arch'
+        required: true
+        options: 
+          - 'yes'
+          - 'no'
+      build-arm64-rpm:
+        type: choice
+        description: 'Build .rpm wazuh-manager on arm64 arch'
+        required: true
+        options: 
+          - 'yes'
+          - 'no'
+      release-package-format:
+        type: choice
+        description: 'Build packages with release format'
+        required: false
+        options: 
+          - 'release-package'
+
+  workflow_call:
+
+jobs:
+   Build-manager-amd64-deb: 
+    if: ${{ github.event.inputs.build-amd64-deb == 'yes' }}
+    uses: ./.github/workflows/packages-build-manager.yml
+    with:
+        branch: ${{ github.event.inputs.branch }}
+        arch: amd64
+        package-format: deb
+        release-package-format: ${{ github.event.inputs.release-package-format }}
+        runner-machine: ubuntu-latest
+
+   Build-manager-amd64-rpm: 
+    if: ${{ github.event.inputs.build-amd64-rpm == 'yes' }}
+    uses: ./.github/workflows/packages-build-manager.yml
+    with:
+        branch: ${{ github.event.inputs.branch }}
+        arch: amd64
+        package-format: rpm
+        release-package-format: ${{ github.event.inputs.release-package-format }}
+        runner-machine: ubuntu-latest
+    
+   Build-manager-arm64-deb: 
+    if: ${{ github.event.inputs.build-arm64-deb == 'yes' }}
+    uses: ./.github/workflows/packages-build-manager.yml
+    with:
+        branch: ${{ github.event.inputs.branch }}
+        arch: arm64
+        package-format: deb
+        release-package-format: ${{ github.event.inputs.release-package-format }}
+        runner-machine: self-hosted-arm
+
+   Build-manager-arm64-rpm: 
+    if: ${{ github.event.inputs.build-arm64-rpm == 'yes' }}
+    uses: ./.github/workflows/packages-build-manager.yml
+    with:
+        branch: ${{ github.event.inputs.branch }}
+        arch: arm64
+        package-format: rpm
+        release-package-format: ${{ github.event.inputs.release-package-format }}
+        runner-machine: self-hosted-arm

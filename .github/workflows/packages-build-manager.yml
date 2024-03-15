@@ -1,4 +1,4 @@
-name: Build Wazuh Manager Packages - DEB|RPM - amd64 and arm64
+name: Build Wazuh Manager Packages - DEB|RPM - amd64|arm64
 on:
   workflow_dispatch:
     inputs:
@@ -20,27 +20,47 @@ on:
         options: 
           - deb
           - rpm
+      release-package-format:
+        type: choice
+        description: 'Build packages with release format'
+        required: false
+        options: 
+          - release-package
+      runner-machine:
+        type: choice
+        description: 'Required runner type to build the package'
+        required: true
+        options: 
+          - ubuntu-latest
+          - self-hosted-arm
 
   workflow_call:
+    inputs:
+      branch:
+        description: 'Wazuh branch used while building a package'
+        required: false
+        default: master
+        type: string
+      arch:
+        type: string
+        description: 'Architecture of the package [amd64, arm64]'
+        required: true
+      package-format:
+        type: string
+        description: 'Package format [deb, rpm]'
+        required: true
+      release-package-format:
+        type: string
+        description: 'Build packages with release format'
+        required: false
+      runner-machine:
+        type: string
+        description: 'Required runner type to build the package'
+        required: true
 
 jobs:
-  setup-runner:
-    runs-on: ubuntu-latest
-    outputs:
-      runner: ${{ steps.choose-runner.outputs.runner }}
-    steps:
-      - name: Choose runner
-        id: choose-runner
-        run: |
-          if [ ${{ github.event.inputs.arch }} == 'amd64' ]; then
-            echo "runner=ubuntu-latest" >> $GITHUB_OUTPUT
-          else
-            echo "runner=pending" >> $GITHUB_OUTPUT
-          fi
-
   Build-manager-packages:
-    needs: [setup-runner] 
-    runs-on: ${{ needs.setup-runner.outputs.runner }}
+    runs-on: ${{ inputs.runner-machine }} 
     name: Build ${{ github.event.inputs.package }} wazuh-manager on ${{ github.event.inputs.arch }}
 
     steps:
@@ -68,7 +88,7 @@ jobs:
         working-directory: /packages
         run: |
           REVISION=$( echo ${{ github.head_ref }} | sed 's/-/./g; s/\//./g' )
-          bash generate_package.sh -b ${{ github.event.inputs.branch }} -j $(nproc)-t manager -s /tmp -a ${{ github.event.inputs.arch }} --dont-build-docker --tag ${{ env.TAG }} -r $REVISION --package-format ${{ github.event.inputs.package-format }}
+          bash generate_package.sh -b ${{ github.event.inputs.branch }} -j $(nproc)-t manager -s /tmp -a ${{ github.event.inputs.arch }} --dont-build-docker --tag ${{ env.TAG }} -r $REVISION --${{ github.event.inputs.release-package-format }} --package-format ${{ github.event.inputs.package-format }} 
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v1
@@ -76,13 +96,6 @@ jobs:
           aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
           aws-region: us-east-1
-
-      - name: Get secrets by name
-        uses: aws-actions/aws-secretsmanager-get-secrets@v1
-        with:
-          secret-ids: |
-            WPK_PRIVATE_KEY,${{ secrets.CI_AWS_WPK_PRIVATE_KEY_SECRET_NAME }}
-            WPK_CERT,${{ secrets.CI_AWS_WPK_CERT_SECRET_NAME }}
 
       - name: Upload package to S3
         run: |
