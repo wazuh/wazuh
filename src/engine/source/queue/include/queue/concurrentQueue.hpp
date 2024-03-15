@@ -136,16 +136,32 @@ private:
     std::shared_ptr<FloodingFile> m_floodingFile; ///< The flooding file.
     std::size_t m_maxAttempts;                    ///< The maximum number of attempts to push an element to the queue.
     std::chrono::microseconds m_waitTime;         ///< The time to wait for the queue to be not full.
+    bool m_discard; ///< If true, the queue will discard the events when it is full instead of flooding the file or
+                    ///< blocking.
 
     Metrics m_metrics; ///< Metrics for the queue
 
     template<typename U = T>
     std::enable_if_t<has_str_method_v<U>, void> pushWithStr(U&& element)
     {
+        if (m_discard)
+        {
+            for (std::size_t attempts {0}; attempts < m_maxAttempts; ++attempts)
+            {
+                if (m_queue.try_enqueue(std::move(element)))
+                {
+                    m_metrics.m_queued->addValue(1UL);
+                    m_metrics.m_used->addValue(1UL);
+                    return;
+                }
+            }
+            m_metrics.m_flooded->addValue(1UL);
+            return;
+        }
 
         if (!m_floodingFile)
         {
-            while (!m_queue.try_enqueue(std::move(element)))  // TODO Wait whats? Move more than once?
+            while (!m_queue.try_enqueue(std::move(element))) // TODO Wait whats? Move more than once?
             {
                 // Right now we process 1 event for ~0.1ms, we sleep by a factor
                 // of 5 because we are saturating the queue and we don't want to.
@@ -204,15 +220,17 @@ public:
                              std::shared_ptr<metricsManager::IMetricsScope> metricsScopeDelta,
                              const std::string& pathFloodedFile = {},
                              const int maxAttempts = -1,
-                             const int waitTime = -1)
+                             const int waitTime = -1,
+                             const bool discard = false)
         : m_floodingFile {nullptr}
+        , m_discard {discard}
     {
         if (capacity <= 0)
         {
             throw std::runtime_error("The capacity of the queue must be greater than 0");
         }
 
-       m_queue = moodycamel::BlockingConcurrentQueue<T>(capacity);
+        m_queue = moodycamel::BlockingConcurrentQueue<T>(capacity);
 
         // Verify if the pathFloodedFile is provided
         if (!pathFloodedFile.empty())
@@ -275,7 +293,6 @@ public:
      * @note If the pathFloodedFile is not provided, the queue will not be flooded,and the
      * push method will block until there is space in the queue.
      */
-
 
     /**
      * @brief Tries to push an element to the queue.
@@ -348,7 +365,6 @@ public:
      */
     size_t size() const override { return m_queue.size_approx(); }
 };
-
 
 } // namespace base::queue
 
