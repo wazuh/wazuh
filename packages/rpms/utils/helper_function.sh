@@ -18,17 +18,10 @@ setup_build(){
     specs_path="$2"
     build_dir="$3"
     package_name="$4"
-    # "$5": Debug argument is not used
-    short_commit_hash="$6"
 
     rpm_build_dir=${build_dir}/rpmbuild
     file_name="$package_name-${PACKAGE_RELEASE}"
-    # Replace "-" with "_" between BUILD_TARGET and Version
-    base_name="$(sed 's/-/_/2' <<< "$package_name")"
-    rpm_file="${base_name}-${PACKAGE_RELEASE}_${ARCHITECTURE_TARGET}_${short_commit_hash}.rpm"
     src_file="${file_name}.src.rpm"
-    extract_path="${rpm_build_dir}/RPMS"
-    src_path="${rpm_build_dir}/SRPMS"
 
     mkdir -p ${rpm_build_dir}/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
 
@@ -64,6 +57,7 @@ build_deps(){
 build_package(){
     package_name="$1"
     debug="$2"
+    short_commit_hash="$3"
 
     if [ "${ARCHITECTURE_TARGET}" = "i386" ] || [ "${ARCHITECTURE_TARGET}" = "armhf" ]; then
         linux="linux32"
@@ -73,9 +67,21 @@ build_package(){
         ARCH="armv7hl"
     elif [ "${ARCHITECTURE_TARGET}" = "arm64" ]; then
         ARCH="aarch64"
-    elif [[ "${ARCHITECTURE_TARGET}" == "i386" ]] || [[ "${ARCHITECTURE_TARGET}" == "amd64" ]] || \
-         [[ "${ARCHITECTURE_TARGET}" == "ppc64le" ]]; then
+    elif [ "${ARCHITECTURE_TARGET}" = "amd64" ]; then
+        ARCH="x86_64"
+    elif [[ "${ARCHITECTURE_TARGET}" == "i386" ]] || [[ "${ARCHITECTURE_TARGET}" == "ppc64le" ]]; then
         ARCH=${ARCHITECTURE_TARGET}
+    else
+        echo "Invalid architecture selected. Choose: [armhf, arm64, amd64, i386, ppc64le]"
+        return 1
+    fi
+
+    if [[ "${RELEASE_PACKAGE}" == "yes" ]]; then
+        rpm_file="${file_name}.${ARCH}.rpm"
+    else
+        # Replace "-" with "_" between BUILD_TARGET and Version
+        base_name="$(sed 's/-/_/2' <<< "$file_name")"
+        rpm_file="${base_name}_${ARCH}_${short_commit_hash}.rpm"
     fi
 
     $linux $rpmbuild --define "_sysconfdir /etc" --define "_topdir ${rpm_build_dir}" \
@@ -83,18 +89,17 @@ build_package(){
         --define "_localstatedir ${INSTALLATION_PATH}" --define "_debugenabled ${debug}" \
         --define "_rpmfilename ${rpm_file}" \
         --target $ARCH -ba ${rpm_build_dir}/SPECS/${package_name}.spec
+    return 0
 }
 
 get_checksum(){
+    src="$3"
     if [[ "${checksum}" == "yes" ]]; then
-        cd ${extract_path} && sha512sum ${rpm_file} > /var/local/checksum/${rpm_file}.sha512
+        cd "${rpm_build_dir}/RPMS" && sha512sum ${rpm_file} > /var/local/wazuh/${rpm_file}.sha512
         if [[ "${src}" == "yes" ]]; then
-            cd ${src_path} && sha512sum ${src_file} > /var/local/checksum/${src_file}.sha512
+            cd "${rpm_build_dir}/SRPMS" && sha512sum ${src_file} > /var/local/wazuh/${src_file}.sha512
         fi
     fi
 
-    if [[ "${src}" == "yes" ]]; then
-        extract_path="${rpm_build_dir}"
-    fi
-    mv $extract_path/$rpm_file /var/local/wazuh
+    find ${rpm_build_dir} -maxdepth 2 -type f -name "wazuh-${BUILD_TARGET}*rpm" -exec mv {} /var/local/wazuh \;
 }
