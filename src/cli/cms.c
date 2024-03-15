@@ -1,0 +1,7 @@
+/* Command Manager Server
+   Implements CLI side Command Manager
+   A server instance should be implemented on
+   every process that it is desired that provides
+   commands to the cli for monitoring or configuration
+   
+*/
