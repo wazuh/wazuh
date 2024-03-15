@@ -160,7 +160,7 @@ API integration tests
 
 optional arguments:
   --build-managers-only            
-                  Recreates only the managers images once the AIT test environment is built.
+                  Recreates only the managers' image once the AIT test environment is built.
   --nobuild
                   Prevents rebuilding the environment when running tests once the images are already created.
   --disable-warnings 
