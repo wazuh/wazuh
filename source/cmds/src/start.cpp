@@ -2,8 +2,8 @@
 
 #include <atomic>
 #include <csignal>
-#include <exception>
 #include <date/tz.h>
+#include <exception>
 #include <memory>
 #include <optional>
 #include <string>
@@ -48,7 +48,6 @@
 #include "base/utils/getExceptionStack.hpp"
 #include "defaultSettings.hpp"
 
-
 namespace
 {
 std::shared_ptr<engineserver::EngineServer> g_engineServer {};
@@ -81,10 +80,11 @@ struct Options
     std::string queueFloodFile;
     int queueFloodAttempts;
     int queueFloodSleep;
+    bool queueDropFlood;
     // Loggin
     std::string logLevel;
     std::string logOutput;
-    //TZ_DB
+    // TZ_DB
     std::string tzdbPath;
 };
 
@@ -152,8 +152,9 @@ void runStart(ConfHandler confManager)
     const auto queueFloodFile = confManager->get<std::string>("server.queue_flood_file");
     const auto queueFloodAttempts = confManager->get<int>("server.queue_flood_attempts");
     const auto queueFloodSleep = confManager->get<int>("server.queue_flood_sleep");
+    const auto queueDropFlood = confManager->get<bool>("server.queue_drop_flood");
 
-    //TZDB config
+    // TZDB config
     const auto tzdbPath = confManager->get<std::string>("server.tzdb_path");
 
     // Set signal [SIGINT]: Crt+C handler
@@ -304,7 +305,7 @@ void runStart(ConfHandler confManager)
                 auto scopeDelta = metrics->getMetricsScope("EventQueueDelta");
                 // TODO queueFloodFile, queueFloodAttempts, queueFloodSleep -> Move to Queue.flood options
                 eventQueue = std::make_shared<QEventType>(
-                    queueSize, scope, scopeDelta, queueFloodFile, queueFloodAttempts, queueFloodSleep);
+                    queueSize, scope, scopeDelta, queueFloodFile, queueFloodAttempts, queueFloodSleep, queueDropFlood);
 
                 LOG_DEBUG("Event queue created.");
             }
@@ -537,6 +538,10 @@ void configure(CLI::App_p app)
         ->default_val(ENGINE_QUEUE_FLOOD_SLEEP)
         ->check(CLI::PositiveNumber)
         ->envname(ENGINE_QUEUE_FLOOD_SLEEP_ENV);
+
+    serverApp->add_flag("--queue_drop_flood",
+                        options->queueDropFlood,
+                        "If enabled, the queue will drop the flood events instead of storing them in the file.");
 
     // Start subcommand
     auto startApp = serverApp->add_subcommand("start", "Start a Wazuh engine instance");
