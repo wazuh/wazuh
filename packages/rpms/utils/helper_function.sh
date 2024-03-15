@@ -71,10 +71,11 @@ build_package(){
 
     if [ "${ARCHITECTURE_TARGET}" = "armhf" ]; then
         ARCH="armv7hl"
+    elif [ "${ARCHITECTURE_TARGET}" = "amd64" ]; then
+        ARCH="x86_64"
     elif [ "${ARCHITECTURE_TARGET}" = "arm64" ]; then
         ARCH="aarch64"
-    elif [[ "${ARCHITECTURE_TARGET}" == "i386" ]] || [[ "${ARCHITECTURE_TARGET}" == "amd64" ]] || \
-         [[ "${ARCHITECTURE_TARGET}" == "ppc64le" ]]; then
+    elif [[ "${ARCHITECTURE_TARGET}" = "i386" ]] || [[ "${ARCHITECTURE_TARGET}" = "ppc64le" ]]; then
         ARCH=${ARCHITECTURE_TARGET}
     fi
 
@@ -82,12 +83,17 @@ build_package(){
         --define "_threads ${JOBS}" --define "_release ${PACKAGE_RELEASE}" \
         --define "_localstatedir ${INSTALLATION_PATH}" --define "_debugenabled ${debug}" \
         --target $ARCH -ba ${rpm_build_dir}/SPECS/${package_name}.spec
-
 }
 
 get_checksum(){
+    if [[ "${RELEASE_PACKAGE}" == "yes" ]]; then
+        output_file="${base_name}-${PACKAGE_RELEASE}.${ARCH}.rpm"
+    else
+        output_file=$rpm_file
+    fi
+
     if [[ "${checksum}" == "yes" ]]; then
-        cd ${extract_path} && sha512sum ${rpm_file} > /var/local/checksum/${rpm_file}.sha512
+        cd ${extract_path}/$ARCH && sha512sum *${BUILD_TARGET}*  > /var/local/checksum/${output_file}.sha512
         if [[ "${src}" == "yes" ]]; then
             cd ${src_path} && sha512sum ${src_file} > /var/local/checksum/${src_file}.sha512
         fi
@@ -96,5 +102,6 @@ get_checksum(){
     if [[ "${src}" == "yes" ]]; then
         extract_path="${rpm_build_dir}"
     fi
-    mv $extract_path/$ARCH/*${BUILD_TARGET}* /var/local/wazuh/$rpm_file
+
+    mv $extract_path/$ARCH/*${BUILD_TARGET}* /var/local/wazuh/$output_file
 }

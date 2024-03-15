@@ -25,6 +25,7 @@ CHECKSUMDIR=""
 CHECKSUM="no"
 FUTURE="no"
 LEGACY="no"
+RELEASE_PACKAGE="no"
 
 
 trap ctrl_c INT
@@ -87,6 +88,7 @@ build_pkg() {
         -e BUILD_TARGET="${TARGET}" \
         -e ARCHITECTURE_TARGET="${ARCHITECTURE}" \
         -e INSTALLATION_PATH="${INSTALLATION_PATH}" \
+        -e RELEASE_PACKAGE="${RELEASE_PACKAGE}"\
         ${CUSTOM_CODE_VOL} \
         ${CONTAINER_NAME}:${DOCKER_TAG} ${BRANCH} \
         ${REVISION} ${JOBS} ${DEBUG} \
@@ -119,7 +121,7 @@ help() {
     echo "    --dont-build-docker        [Optional] Locally built docker image will be used instead of generating a new one."
     echo "    --tag                      [Optional] Tag to use with the docker image."
     echo "    --sources <path>           [Optional] Absolute path containing wazuh source code. This option will use local source code instead of downloading it from GitHub."
-    echo "    --packages-branch <branch> [Optional] Select Git branch or tag from wazuh-packages repository. e.g master."
+    echo "    --release-package          [Optional] Use release name in package"
     echo "    --dev                      [Optional] Use the SPECS files stored in the host instead of downloading them from GitHub."
     echo "    --future                   [Optional] Build test future package x.30.0 Used for development purposes."
     echo "    -h, --help                 Show this help."
@@ -233,6 +235,10 @@ main() {
             ;;
         "--future")
             FUTURE="yes"
+            shift 1
+            ;;
+        "--release-package")
+            RELEASE_PACKAGE="yes"
             shift 1
             ;;
         "--package-format")
