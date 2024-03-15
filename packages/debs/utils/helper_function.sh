@@ -64,14 +64,19 @@ get_checksum(){
     base_name="wazuh-${BUILD_TARGET}_${wazuh_version}-${PACKAGE_RELEASE}"
 
     if [[ "${ARCHITECTURE_TARGET}" == "ppc64le" ]]; then
-        deb_file="${base_name}_ppc64el_${short_commit_hash}.deb"
+        deb_file="${base_name}_ppc64el.deb"
     else
-        deb_file="${base_name}_${ARCHITECTURE_TARGET}_${short_commit_hash}.deb"
+        deb_file="${base_name}_${ARCHITECTURE_TARGET}.deb"
     fi
-    pkg_path="${build_dir}/${BUILD_TARGET}"
 
-    if [[ "${checksum}" == "yes" ]]; then
-        cd ${pkg_path} && sha512sum ${deb_file} > /var/local/checksum/${deb_file}.sha512
+    if [[ "${RELEASE_PACKAGE}" != "yes" ]]; then
+        deb_file="$(sed "s/\.deb/_${short_commit_hash}&/" <<< "$deb_file")"
     fi
+
+    pkg_path="${build_dir}/${BUILD_TARGET}"
+    if [[ "${checksum}" == "yes" ]]; then
+        cd ${pkg_path} && sha512sum wazuh-${BUILD_TARGET}*deb > /var/local/wazuh/${deb_file}.sha512
+    fi
+
     find ${pkg_path} -type f -name "wazuh-${BUILD_TARGET}*deb" -exec mv {} /var/local/wazuh/${deb_file} \;
 }
