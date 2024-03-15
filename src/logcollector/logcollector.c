@@ -412,10 +412,8 @@ void LogCollectorStart()
         else if (strcmp(current->logformat, JOURNALD_LOG) == 0) {
 #ifdef __linux__
             current->read = read_journald;
-            if (atexit(w_journald_release_ctx)) {
-                merror(ATEXIT_ERROR);
-            }
-            
+            w_journald_set_ofe(current->future);
+
             for (int tg_idx = 0; current->target[tg_idx]; tg_idx++) {
                 mdebug1("Socket target for '%s' -> %s", JOURNALD_LOG, current->target[tg_idx]);
                 w_logcollector_state_add_target(JOURNALD_LOG, current->target[tg_idx]);
@@ -2744,6 +2742,10 @@ STATIC void w_load_files_status(cJSON * global_json) {
 
 #endif
 
+#ifdef __linux__
+    w_journald_set_status_from_JSON(global_json);
+#endif
+
 }
 
 STATIC char * w_save_files_status_to_cJSON() {
@@ -2793,6 +2795,16 @@ STATIC char * w_save_files_status_to_cJSON() {
         cJSON_AddItemToObject(global_json, OS_LOGCOLLECTOR_JSON_MACOS, macos_status);
     }
 
+#endif
+
+#ifdef __linux__
+    cJSON * journald_status = w_journald_get_status_as_JSON();
+    if (journald_status != NULL) {
+        if (global_json == NULL) {
+            global_json = cJSON_CreateObject();
+        }
+        cJSON_AddItemToObject(global_json, JOURNALD_LOG, journald_status);
+    }
 #endif
 
     if (global_json != NULL) {

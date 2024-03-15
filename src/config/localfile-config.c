@@ -1188,7 +1188,7 @@ bool journald_add_condition_to_filter(xml_node * node, w_journal_filter_t ** fil
     }
 
     if (w_journal_filter_add_condition(filter, field, expression, ignore_if_missing) != 0) {
-        mwarn("Error compiling the PCRE2 expression for the journal filter");
+        mwarn("Error compiling the PCRE2 expression '%s' for field '%s' in journal filter", expression, field);
         return false;
     }
 
