@@ -155,9 +155,25 @@ void *read_journald(logreader *lf, int *rc, int drop_it);
 bool w_journald_can_read(unsigned long id); 
 
 /**
- * @brief Mark the journal to be closed by the owner in the next iteration
+ * @brief Set the only future events flag to the journal log context
+ * @param ofe True if only future events should be read, false otherwise
  */
-void w_journald_release_ctx();
+void w_journald_set_ofe(bool ofe);
+
+/**
+ * @brief Set the status of the journal log from a JSON object (timestamp to start reading)
+ * 
+ * @param global_json JSON object containing the journal log status
+ */
+void w_journald_set_status_from_JSON(cJSON * global_json);
+
+/**
+ * @brief Get the status of the journal log as a JSON object
+ * 
+ * @return JSON object containing the journal log status
+ */
+cJSON * w_journald_get_status_as_JSON();
+
 #endif
 
 /* Read DJB multilog format */

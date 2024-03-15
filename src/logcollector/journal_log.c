@@ -101,16 +101,14 @@ static inline char * w_timestamp_to_string(uint64_t timestamp) {
  * @param timestamp The epoch time
  * @return char* The human-readable string or NULL on error
  */
-static inline char* w_timestamp_to_journalctl_since(uint64_t timestamp)
-{
+static inline char * w_timestamp_to_journalctl_since(uint64_t timestamp) {
     struct tm tm;
     time_t time = timestamp / 1000000;
-    if (gmtime_r(&time, &tm) == NULL)
-    {
+    if (gmtime_r(&time, &tm) == NULL) {
         return NULL;
     }
 
-    char* str;
+    char * str;
     os_calloc(sizeof("2024-03-14 14:08:52") + 1, sizeof(char), str);
     strftime(str, sizeof("2024-03-14 14:08:52"), "%Y-%m-%d %T", &tm);
     return str;
@@ -313,7 +311,7 @@ int w_journal_context_seek_timestamp(w_journal_context_t * ctx, uint64_t timesta
     // If the timestamp is in the future or invalid, seek the most recent entry
     if (timestamp == 0 || timestamp > w_get_epoch_time()) {
         mwarn(LOGCOLLECTOR_JOURNAL_LOG_FUTURE_TS, timestamp);
-        return ctx->lib->seek_tail(ctx->journal);
+        return w_journal_context_seek_most_recent(ctx);
     }
 
     // Check if the timestamp is older than the oldest available
