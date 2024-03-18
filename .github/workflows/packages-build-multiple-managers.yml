@@ -34,7 +34,7 @@ on:
         options: 
           - 'yes'
           - 'no'
-      release-package-format:
+      release-package:
         type: choice
         description: 'Build packages with release format'
         required: false
@@ -49,7 +49,7 @@ jobs:
         branch: ${{ inputs.branch }}
         arch: amd64
         package-format: deb
-        release-package-format: ${{ inputs.release-package-format }}
+        release-package: ${{ inputs.release-package }}
         runner-machine: ubuntu-latest
     secrets: inherit
 
@@ -60,7 +60,7 @@ jobs:
         branch: ${{ inputs.branch }}
         arch: amd64
         package-format: rpm
-        release-package-format: ${{ inputs.release-package-format }}
+        release-package: ${{ inputs.release-package }}
         runner-machine: ubuntu-latest
     secrets: inherit
     
@@ -71,7 +71,7 @@ jobs:
         branch: ${{ inputs.branch }}
         arch: arm64
         package-format: deb
-        release-package-format: ${{ inputs.release-package-format }}
+        release-package: ${{ inputs.release-package }}
         runner-machine: self-hosted-arm
     secrets: inherit
 
@@ -82,6 +82,6 @@ jobs:
         branch: ${{ inputs.branch }}
         arch: arm64
         package-format: rpm
-        release-package-format: ${{ inputs.release-package-format }}
+        release-package: ${{ inputs.release-package }}
         runner-machine: self-hosted-arm
     secrets: inherit

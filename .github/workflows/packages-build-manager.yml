@@ -20,7 +20,7 @@ on:
         options: 
           - deb
           - rpm
-      release-package-format:
+      release-package:
         type: choice
         description: 'Build packages with release format'
         required: false
@@ -49,7 +49,7 @@ on:
         type: string
         description: 'Package format [deb, rpm]'
         required: true
-      release-package-format:
+      release-package:
         type: string
         description: 'Build packages with release format'
         required: false
@@ -60,6 +60,9 @@ on:
 
 jobs:
   Build-manager-packages:
+    if: |
+      (${{ inputs.runner-machine == 'ubuntu-latest' }} && ${{ inputs.arch == 'amd64' }}) || 
+      (${{ inputs.runner-machine == 'self-hosted-arm' }} && ${{ inputs.arch == 'arm64' }}) 
     runs-on: ${{ inputs.runner-machine }} 
     name: Build ${{ inputs.package-format }} wazuh-manager on ${{ inputs.arch }}
 
@@ -89,7 +92,7 @@ jobs:
         run: |
           REVISION=$( echo ${{ github.head_ref }} | sed 's/-/./g; s/\//./g' )
           if [ -z "$REVISION" ]; then REVISION=1; fi
-          bash generate_package.sh -b ${{ inputs.branch }} -j $(nproc) -t manager -s /tmp -a ${{ inputs.arch }} --dont-build-docker --tag ${{ env.TAG }} -r $REVISION --package-format ${{ inputs.package-format }} ${{ inputs.release-package-format }}
+          bash generate_package.sh -b ${{ inputs.branch }} -j $(nproc) -t manager -s /tmp -a ${{ inputs.arch }} --dont-build-docker --tag ${{ env.TAG }} -r $REVISION --package-format ${{ inputs.package-format }} ${{ inputs.release-package }}
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v1
