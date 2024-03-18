@@ -1,5 +1,5 @@
 # Security Configuration Assessment
-# CIS Checks for Windows 10 Enterprise
+# CIS Checks for Windows 2012
 # Copyright (C) 2015, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
@@ -8,23 +8,23 @@
 # Foundation
 #
 # Based on:
-# Center for Internet Security Benchmark v1.5.0 for Microsoft Windows 10 Release 1803 v1.5.0 - 03-06-2019
-# CIS Microsoft Windows 10 Enterprise (Release 1903) Benchmark v1.7.1 - 02-05-2020
+# Center for Internet Security Benchmark for Microsoft Windows Server 2012 (non-R2) Benchmark v3.0.0 - 10-17-2023
 
 policy:
-  id: "cis_win10_enterprise"
-  file: "cis_win10_enterprise.yml"
-  name: "CIS Benchmark for Windows 10 Enterprise (Release 1803)"
-  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft Windows."
+  id: "cis_win2012"
+  file: "cis_win2012_non_r2.yml"
+  name: "CIS Microsoft Windows Server 2012 (non-R2) Benchmark v3.0.0."
+  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft Windows Server 2012."
+  disclaimer: "Please note that the rules provide accurate results for Windows Server 2012 Operating Systems with the System language set to English. The SCA policy will work with other languages but the results will be less accurate due to some of the rules that depend on the System language."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
 
 requirements:
-  title: "Check that the Windows platform is Windows 10"
-  description: "Requirements for running the CIS benchmark Domain Controller under Windows 10"
+  title: "Check that the Windows platform is Windows Server 2012"
+  description: "Requirements for running the CIS benchmark under Windows Server 2012"
   condition: all
   rules:
-    - 'r:HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows 10'
+    - 'r:HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows Server 2012'
 
 checks:
   # 1.1.1 (L1) Ensure 'Enforce password history' is set to '24 or more password(s)'. (Automated)
@@ -295,9 +295,10 @@ checks:
       - iso_27001-2013: ["A.9.4.3"]
       - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
       - soc_2: ["CC6.1"]
-    condition: any
+    condition: all
     rules:
-      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> LimitBlankPasswordUse'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> LimitBlankPasswordUse'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> LimitBlankPasswordUse -> 1'
 
   # 2.3.1.4 (L1) Configure 'Accounts: Rename administrator account'. (Automated)
