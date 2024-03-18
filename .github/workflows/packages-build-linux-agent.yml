@@ -22,12 +22,12 @@ on:
         options:
           - deb
           - rpm
-      release-package:
-        type: choice
-        description: 'Build packages with release format'
+      revision:
+        description: |
+          'Set the value to "1" for packages in release format.
+          You can also add other values, such as issue numbers.
+          By default, it is set to "0" for development.'
         required: false
-        options:
-          - release-package
       runner-machine:
         type: choice
         description: 'Required runner type to build the package'
@@ -51,7 +51,7 @@ on:
         type: string
         description: 'Package format [deb, rpm]'
         required: true
-      release-package:
+      revision:
         type: string
         description: 'Build packages with release format'
         required: false
@@ -92,9 +92,9 @@ jobs:
       - name: Build ${{ inputs.package-format }} wazuh-agent on ${{ inputs.arch }}
         working-directory: packages
         run: |
-          REVISION=$( echo ${{ github.head_ref }} | sed 's/-/./g; s/\//./g' )
-          if [ -z "$REVISION" ]; then REVISION=1; fi
-          bash generate_package.sh -b ${{ inputs.branch }} -j $(nproc) -t agent -s /tmp -a ${{ inputs.arch }} --dont-build-docker --tag ${{ env.TAG }} -r $REVISION --package-format ${{ inputs.package-format }} ${{ inputs.release-package }}
+          REVISION=${{ inputs.revision }}
+          if [ -z "$REVISION" ]; then REVISION=0; fi
+          bash generate_package.sh -b ${{ inputs.branch }} -j $(nproc) -t agent -s /tmp -a ${{ inputs.arch }} --dont-build-docker --tag ${{ env.TAG }} -r $REVISION --package-format ${{ inputs.package-format }}
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v1
