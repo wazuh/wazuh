@@ -214,7 +214,7 @@ def start(params: dict):
         )
 
     # Display warning if using deprecated cache API configuration
-    if api_conf.get('cache', {})('enabled', {}):
+    if api_conf.get('cache', {}).get('enabled', {}):
         logger.warning(CACHE_DELETED_MESSAGE.format(release="4.9.0"))
 
     # Add error handlers to format exceptions
