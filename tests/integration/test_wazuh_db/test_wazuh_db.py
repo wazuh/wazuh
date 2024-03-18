@@ -44,7 +44,6 @@ tags:
 '''
 from pathlib import Path
 import re
-import time
 import pytest
 
 from wazuh_testing.constants.paths.sockets import WAZUH_DB_SOCKET_PATH
@@ -191,7 +190,8 @@ def test_wazuh_db_messages_agent(test_metadata, configure_sockets_environment_mo
 
 
 @pytest.mark.parametrize('test_metadata', t2_config_metadata, ids=t2_case_ids)
-def test_wazuh_db_messages_global(test_metadata, daemons_handler_module, connect_to_sockets_module, clean_databases):
+def test_wazuh_db_messages_global(test_metadata, daemons_handler_module, connect_to_sockets_module,
+                                  clean_databases, clean_registered_agents):
     '''
     description: Check that every global input message in wazuh-db socket generates the proper output to wazuh-db
                  socket. To do this, it performs a query to the socket with a command taken from the input list of
@@ -215,6 +215,9 @@ def test_wazuh_db_messages_global(test_metadata, daemons_handler_module, connect
         - clean_databases:
             type: fixture
             brief: Delete databases.
+        - clean_registered_agents:
+            type: fixture
+            brief: Remove all agents of wazuhdb.
 
     assertions:
         - Verify that the socket response matches the expected output of the yaml input file.
@@ -250,7 +253,7 @@ def test_wazuh_db_messages_global(test_metadata, daemons_handler_module, connect
 
 
 def test_wazuh_db_range_checksum(configure_sockets_environment_module, connect_to_sockets_module,
-                                 clean_databases, prepare_range_checksum_data):
+                                 clean_databases, clean_registered_agents, prepare_range_checksum_data):
     '''
     description: Calculates the checksum range during the synchronization of the DBs the first time and avoids the
                  checksum range the next time. To do this, it performs a query to the database with the command that
@@ -270,6 +273,9 @@ def test_wazuh_db_range_checksum(configure_sockets_environment_module, connect_t
         - clean_databases:
             type: fixture
             brief: Delete databases.
+        - clean_registered_agents:
+            type: fixture
+            brief: Remove all agents of wazuhdb.
         - prepare_range_checksum_data:
             type: fixture
             brief: Execute syscheck command with a specific payload to query the database.
@@ -292,6 +298,7 @@ def test_wazuh_db_range_checksum(configure_sockets_environment_module, connect_t
         - wdb_socket
     '''
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
+
     # Checksum Range calculus expected the first time
     agent_integrity_check()
     log_monitor.start(callback=make_callback('range checksum: Time: ', prefix=WAZUH_DB_PREFIX,
