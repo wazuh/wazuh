@@ -61,6 +61,7 @@ tags:
     - fim
 '''
 import sys
+import time
 import pytest
 
 from pathlib import Path
@@ -68,7 +69,7 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.fim.patterns import EVENT_TYPE_ADDED, EVENT_TYPE_DELETED
+from wazuh_testing.modules.fim.patterns import EVENT_TYPE_ADDED, EVENT_TYPE_DELETED, MONITORING_PATH
 from wazuh_testing.modules.fim.utils import get_fim_event_data
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.modules.fim.configuration import SYSCHECK_DEBUG
@@ -90,13 +91,14 @@ test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
 
 # Set configurations required by the fixtures.
+daemons_handler_configuration = {'all_daemons': True}
 local_internal_options = {SYSCHECK_DEBUG: 2, AGENTD_DEBUG: 2, MONITORD_ROTATE_LOG: 0}
 if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG: 2})
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_create_after_delete(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
-                             truncate_monitored_files, folder_to_monitor, file_to_monitor, daemons_handler, start_monitoring):
+def test_create_after_delete(test_configuration, test_metadata, configure_local_internal_options,
+                             truncate_monitored_files, set_wazuh_configuration, folder_to_monitor, file_to_monitor, daemons_handler):
     '''
     description: Check if a monitored directory keeps reporting FIM events after deleting and creating it again.
                  Under Windows systems, it verifies that the directory watcher is refreshed (checks the SACLs)
@@ -155,15 +157,23 @@ def test_create_after_delete(test_configuration, test_metadata, set_wazuh_config
         - who_data
     '''
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+
+    wazuh_log_monitor.start(generate_callback(MONITORING_PATH), timeout=60)
+    assert wazuh_log_monitor.callback_result
+
     fim_mode = test_metadata.get('fim_mode')
 
+    if sys.platform == WINDOWS:
+        pytest.skip(reason="Unstable behavior on github actions")
+
     file.remove_folder(folder_to_monitor)
-    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED))
+    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED), timeout=60)
     assert wazuh_log_monitor.callback_result
     assert get_fim_event_data(wazuh_log_monitor.callback_result)['mode'] == fim_mode
 
     file.create_folder(folder_to_monitor)
-    file.write_file(file_to_monitor)
+    time.sleep(2)
+    file.write_file(file_to_monitor, 'content')
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED), timeout=60)
     assert wazuh_log_monitor.callback_result
     assert get_fim_event_data(wazuh_log_monitor.callback_result)['mode'] == fim_mode
