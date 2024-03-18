@@ -13,8 +13,8 @@
 
 #include "debug_op.h"
 
-static const int W_SD_JOURNAL_LOCAL_ONLY = 1 << 0;
-static const char * W_LIB_SYSTEMD = "libsystemd.so.0";
+static const int W_SD_JOURNAL_LOCAL_ONLY = 1 << 0;     ///< Open the journal log for the local machine
+static const char * W_LIB_SYSTEMD = "libsystemd.so.0"; ///< Name of the systemd library
 
 // Function added on version 187 of systemd
 typedef int (*w_journal_open)(sd_journal ** ret, int flags);            ///< sd_journal_open
