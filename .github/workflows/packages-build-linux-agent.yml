@@ -1,32 +1,72 @@
-name: Packages - Build Wazuh Agent Packages - DEB|RPM - amd64|i386
+name: Build Wazuh Agent Packages - DEB|RPM - amd64|i386|arm64|armhf
 on:
   workflow_dispatch:
     inputs:
-      tag:
-        description: 'Tag name of the Docker image to be downloaded (Use developer to set branch name. Use auto to set src/VERSION content)'
+      branch:
+        description: 'Wazuh branch used while building a package'
         required: false
-        default: auto
-      linux_branch:
-        description: 'Branch name for compiling the Linux package'
+        default: master
+      arch:
+        type: choice
+        description: 'Architecture of the package [amd64, i386, arm64, armhf]'
+        required: true
+        options:
+          - amd64
+          - i386
+          - arm64
+          - armhf
+      package-format:
+        type: choice
+        description: 'Package format [deb, rpm]'
+        required: true
+        options:
+          - deb
+          - rpm
+      release-package:
+        type: choice
+        description: 'Build packages with release format'
         required: false
-      revision:
-        description: 'Revision used to naming wazuh-agent package'
+        options:
+          - release-package
+      runner-machine:
+        type: choice
+        description: 'Required runner type to build the package'
+        required: true
+        options:
+          - ubuntu-latest
+          - self-hosted-arm
+
+  workflow_call:
+    inputs:
+      branch:
+        description: 'Wazuh branch used while building a package'
         required: false
-        default: 1
-      deb_images:
-        description: 'Build deb packages for all architecture'
+        default: master
+        type: string
+      arch:
+        type: string
+        description: 'Architecture of the package [amd64, i386, arm6, armhf]'
+        required: true
+      package-format:
+        type: string
+        description: 'Package format [deb, rpm]'
+        required: true
+      release-package:
+        type: string
+        description: 'Build packages with release format'
         required: false
-        default: 1
+      runner-machine:
+        type: string
+        description: 'Required runner type to build the package'
+        required: true
 
 jobs:
-  Wazuh-agent-package-build:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        PACKAGE_FORMAT: [rpm, deb]
-        ARCHITECTURE : [amd64, i386]
-
-      fail-fast: false
+  Build-agent-linux-packages:
+    if: |
+      (${{ inputs.runner-machine == 'ubuntu-latest' }} && (${{ inputs.arch == 'amd64' }} || ${{ inputs.arch == 'i386' }})) ||
+      (${{ inputs.runner-machine == 'self-hosted-arm' }} && (${{ inputs.arch == 'arm64' }} || ${{ inputs.arch == 'armhf' }}))
+    runs-on: ${{ inputs.runner-machine }}
+    name: Build ${{ inputs.package-format }} wazuh-agent on ${{ inputs.arch }}
 
     steps:
       - name: Cancel previous runs
@@ -36,31 +76,34 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           skip_after_successful_duplicate: 'false'
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Set tag, package_format, and container name
+      - name: Set tag and container name
         run: |
-          VERSION=$(sed 's/\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
-          if [ "${{ github.event.inputs.tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
-          elif [ "${{ github.event.inputs.tag }}" == "developer" ]; then echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV;
-          else echo "TAG=${{ github.event.inputs.tag }}" >> $GITHUB_ENV; fi
-          echo "CONTAINER_NAME=pkg_${{ matrix.PACKAGE_FORMAT }}_agent_builder_${{ matrix.ARCHITECTURE }}" >> $GITHUB_ENV
-          echo "PACKAGE_FORMAT=${{ matrix.PACKAGE_FORMAT }}" >> $GITHUB_ENV
+          VERSION=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
+          if [ "${{ inputs.branch }}" == "master" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
+          else echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV; fi
+          echo "CONTAINER_NAME=pkg_${{ inputs.package-format }}_agent_builder_${{ inputs.arch }}" >> $GITHUB_ENV
 
       - name: Download docker image for package building
         run: |
           bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} $CONTAINER_NAME ${{ env.TAG }}
 
-      - name: Build the ${{ matrix.ARCHITECTURE }} ${{ matrix.PACKAGE_FORMAT }} Wazuh agent package
-        working-directory: ./packages
+      - name: Build ${{ inputs.package-format }} wazuh-agent on ${{ inputs.arch }}
+        working-directory: packages
         run: |
-          REVISION=$( echo ${{ github.event.inputs.revision }} )
-          bash generate_package.sh -b ${{ github.event.inputs.linux_branch }} -t agent -a ${{ matrix.ARCHITECTURE }} -j 2 --dont-build-docker --tag ${{ env.TAG }} -r $REVISION --package-format ${{ env.PACKAGE_FORMAT }}
-          echo "PACKAGE_NAME=$(ls ./output | grep ".deb\|.rpm" | head -n 1)" >> $GITHUB_ENV
+          REVISION=$( echo ${{ github.head_ref }} | sed 's/-/./g; s/\//./g' )
+          if [ -z "$REVISION" ]; then REVISION=1; fi
+          bash generate_package.sh -b ${{ inputs.branch }} -j $(nproc) -t agent -s /tmp -a ${{ inputs.arch }} --dont-build-docker --tag ${{ env.TAG }} -r $REVISION --package-format ${{ inputs.package-format }} ${{ inputs.release-package }}
 
-      - name: Upload Wazuh agent ${{ matrix.ARCHITECTURE }} package as artifact
-        uses: actions/upload-artifact@v2
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v1
         with:
-          name: ${{ env.PACKAGE_NAME }}
-          path: ${{github.workspace}}/packages/output/${{ env.PACKAGE_NAME }}
-          if-no-files-found: error
+          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
+          aws-region: us-east-1
+
+      - name: Upload package to S3
+        run: |
+          aws s3 cp /tmp/*agent* s3://packages-dev.internal.wazuh.com/development/wazuh/
+
