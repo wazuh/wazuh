@@ -97,8 +97,8 @@ if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG:
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_create_after_delete(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
-                             truncate_monitored_files, folder_to_monitor, file_to_monitor, daemons_handler):
+def test_create_after_delete(test_configuration, test_metadata, configure_local_internal_options,
+                             truncate_monitored_files, set_wazuh_configuration, folder_to_monitor, file_to_monitor, daemons_handler):
     '''
     description: Check if a monitored directory keeps reporting FIM events after deleting and creating it again.
                  Under Windows systems, it verifies that the directory watcher is refreshed (checks the SACLs)
