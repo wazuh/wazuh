@@ -54,7 +54,7 @@ typedef struct {
 
 STATIC w_journald_ofe_t gs_journald_ofe = {
     .exist_journal = false,
-    .only_future_events = false,
+    .only_future_events = true,
     .last_read_timestamp = 0,
     .mutex = PTHREAD_MUTEX_INITIALIZER,
 }; ///< Only future events configuration and status
@@ -70,7 +70,7 @@ bool w_journald_can_read(unsigned long owner_id) {
         gs_journald_global.owner_id = owner_id;
  
         if (gs_journald_global.journal_ctx == NULL && w_journal_context_create(&gs_journald_global.journal_ctx) != 0) {
-            pthread_mutex_unlock(&gs_journald_ofe.mutex);
+            mwarn("Failed to connect to the journal, disabling journal log");
             gs_journald_global.is_disabled = true;
             return false;
         }
