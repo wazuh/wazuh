@@ -73,6 +73,7 @@ from wazuh_testing.utils.file import truncate_file
 
 from . import TEST_CASES_PATH, CONFIGURATIONS_PATH
 
+
 # Marks
 pytestmark = [pytest.mark.linux, pytest.mark.darwin, pytest.mark.sunos5, pytest.mark.tier(level=0)]
 

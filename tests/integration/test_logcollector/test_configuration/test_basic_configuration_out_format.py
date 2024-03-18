@@ -71,6 +71,7 @@ from wazuh_testing.utils.file import truncate_file
 
 from . import TEST_CASES_PATH, CONFIGURATIONS_PATH
 
+
 # Marks
 pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0)]
 
@@ -85,6 +86,7 @@ test_configuration = configuration.load_configuration_template(config_path, test
 
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
+
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_configuration_out_format(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options, daemons_handler_module):

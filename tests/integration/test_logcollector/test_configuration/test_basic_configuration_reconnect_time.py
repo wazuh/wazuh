@@ -61,6 +61,7 @@ from wazuh_testing.utils.file import truncate_file
 
 from . import TEST_CASES_PATH, CONFIGURATIONS_PATH
 
+
 # Marks
 if sys.platform == WINDOWS:
     pytestmark = pytest.mark.tier(level=0)
@@ -77,6 +78,7 @@ problematic_values = ['44sTesting', '9hTesting', '400mTesting', '3992']
 
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
+
 
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)

@@ -102,6 +102,7 @@ test_configuration = configuration.load_configuration_template(config_path, test
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
 
+
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_configuration_alias(test_configuration, test_metadata, configure_local_internal_options, truncate_monitored_files,

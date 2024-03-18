@@ -140,6 +140,7 @@ log_format_not_print_analyzing_info = ['command', 'full_command', 'eventlog', 'e
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
 
+
 def check_log_format_valid(test_configuration, test_metadata):
     """Check if Wazuh run correctly with the specified log formats.
 
@@ -187,6 +188,7 @@ def check_log_format_valid(test_configuration, test_metadata):
                                                    {'command_path': patterns.MACOS_LOG_COMMAND_PATH}))
         assert (wazuh_log_monitor.callback_result != None), patterns.ERROR_MACOS_LOG_NOT_PRODUCED
 
+
 def check_log_format_invalid(test_metadata):
     """Check if Wazuh fails because a invalid frequency configuration value.
 
@@ -224,6 +226,7 @@ def check_log_format_invalid(test_metadata):
         wazuh_log_monitor.start(timeout=5, callback=log_callback)
         assert (wazuh_log_monitor.callback_result != None), patterns.ERROR_GENERIC_MESSAGE
 
+
 def check_log_file_duplicated():
     """Check if Wazuh shows a warning message when the configuration is duplicated."""
     wazuh_log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
@@ -234,6 +237,7 @@ def check_log_file_duplicated():
                             callback=callbacks.generate_callback(patterns.LOGCOLLECTOR_MACOS_MONITORING_OLD_LOGS,
                                                                  {'command_path': patterns.MACOS_LOG_COMMAND_PATH}))
     assert (wazuh_log_monitor.callback_result != None), patterns.ERROR_ANALYZING_MACOS
+
 
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)

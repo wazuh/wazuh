@@ -70,6 +70,7 @@ from wazuh_testing.utils import callbacks, configuration
 
 from . import TEST_CASES_PATH, CONFIGURATIONS_PATH
 
+
 # Marks
 pytestmark = pytest.mark.tier(level=0)
 
@@ -85,6 +86,7 @@ test_configuration = configuration.load_configuration_template(config_path, test
 
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
+
 
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)

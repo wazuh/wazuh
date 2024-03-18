@@ -74,6 +74,7 @@ from wazuh_testing.utils.services import check_if_process_is_running
 
 from . import TEST_CASES_PATH, CONFIGURATIONS_PATH
 
+
 # Marks
 pytestmark = pytest.mark.tier(level=0)
 
@@ -117,6 +118,7 @@ if sys.platform == WINDOWS:
 
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
+
 
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
