@@ -61,7 +61,7 @@ on:
 jobs:
   Build-manager-packages:
     runs-on: ${{ inputs.runner-machine }} 
-    name: Build ${{ github.event.inputs.package }} wazuh-manager on ${{ github.event.inputs.arch }}
+    name: Build ${{ inputs.package-format }} wazuh-manager on ${{ inputs.arch }}
 
     steps:
       - name: Cancel previous runs
@@ -76,19 +76,20 @@ jobs:
       - name: Set tag and container name
         run: |
           VERSION=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
-          if [ "${{ github.event.inputs.branch }}" == "master" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
+          if [ "${{ inputs.branch }}" == "master" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
           else echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV; fi
-          echo "CONTAINER_NAME=${{ github.event.inputs.package-format }}_manager_builder_${{ github.event.inputs.arch }}" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=pkg_${{ inputs.package-format }}_manager_builder_${{ inputs.arch }}" >> $GITHUB_ENV
 
       - name: Download docker image for package building
         run: |
           bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} $CONTAINER_NAME ${{ env.TAG }}
 
-      - name: Build ${{ github.event.inputs.package }} wazuh-manager on ${{ github.event.inputs.arch }}
-        working-directory: /packages
+      - name: Build ${{ inputs.package-format }} wazuh-manager on ${{ inputs.arch }}
+        working-directory: packages
         run: |
           REVISION=$( echo ${{ github.head_ref }} | sed 's/-/./g; s/\//./g' )
-          bash generate_package.sh -b ${{ github.event.inputs.branch }} -j $(nproc)-t manager -s /tmp -a ${{ github.event.inputs.arch }} --dont-build-docker --tag ${{ env.TAG }} -r $REVISION --${{ github.event.inputs.release-package-format }} --package-format ${{ github.event.inputs.package-format }} 
+          if [ -z "$REVISION" ]; then REVISION=1; fi
+          bash generate_package.sh -b ${{ inputs.branch }} -j $(nproc) -t manager -s /tmp -a ${{ inputs.arch }} --dont-build-docker --tag ${{ env.TAG }} -r $REVISION --package-format ${{ inputs.package-format }} ${{ inputs.release-package-format }}
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v1

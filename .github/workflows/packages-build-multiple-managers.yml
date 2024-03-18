@@ -39,47 +39,49 @@ on:
         description: 'Build packages with release format'
         required: false
         options: 
-          - 'release-package'
-
-  workflow_call:
+          - '--release-package'
 
 jobs:
    Build-manager-amd64-deb: 
-    if: ${{ github.event.inputs.build-amd64-deb == 'yes' }}
+    if: ${{ inputs.build-amd64-deb == 'yes' }}
     uses: ./.github/workflows/packages-build-manager.yml
     with:
-        branch: ${{ github.event.inputs.branch }}
+        branch: ${{ inputs.branch }}
         arch: amd64
         package-format: deb
-        release-package-format: ${{ github.event.inputs.release-package-format }}
+        release-package-format: ${{ inputs.release-package-format }}
         runner-machine: ubuntu-latest
+    secrets: inherit
 
    Build-manager-amd64-rpm: 
-    if: ${{ github.event.inputs.build-amd64-rpm == 'yes' }}
+    if: ${{ inputs.build-amd64-rpm == 'yes' }}
     uses: ./.github/workflows/packages-build-manager.yml
     with:
-        branch: ${{ github.event.inputs.branch }}
+        branch: ${{ inputs.branch }}
         arch: amd64
         package-format: rpm
-        release-package-format: ${{ github.event.inputs.release-package-format }}
+        release-package-format: ${{ inputs.release-package-format }}
         runner-machine: ubuntu-latest
+    secrets: inherit
     
    Build-manager-arm64-deb: 
-    if: ${{ github.event.inputs.build-arm64-deb == 'yes' }}
+    if: ${{ inputs.build-arm64-deb == 'yes' }}
     uses: ./.github/workflows/packages-build-manager.yml
     with:
-        branch: ${{ github.event.inputs.branch }}
+        branch: ${{ inputs.branch }}
         arch: arm64
         package-format: deb
-        release-package-format: ${{ github.event.inputs.release-package-format }}
+        release-package-format: ${{ inputs.release-package-format }}
         runner-machine: self-hosted-arm
+    secrets: inherit
 
    Build-manager-arm64-rpm: 
-    if: ${{ github.event.inputs.build-arm64-rpm == 'yes' }}
+    if: ${{ inputs.build-arm64-rpm == 'yes' }}
     uses: ./.github/workflows/packages-build-manager.yml
     with:
-        branch: ${{ github.event.inputs.branch }}
+        branch: ${{ inputs.branch }}
         arch: arm64
         package-format: rpm
-        release-package-format: ${{ github.event.inputs.release-package-format }}
+        release-package-format: ${{ inputs.release-package-format }}
         runner-machine: self-hosted-arm
+    secrets: inherit
