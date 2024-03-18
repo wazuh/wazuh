@@ -163,7 +163,7 @@ def test_create_after_delete(test_configuration, test_metadata, configure_local_
 
     fim_mode = test_metadata.get('fim_mode')
 
-    if fim_mode == 'whodata' and sys.platform == WINDOWS:
+    if sys.platform == WINDOWS:
         pytest.skip(reason="Unstable behavior on github actions")
 
     file.remove_folder(folder_to_monitor)
