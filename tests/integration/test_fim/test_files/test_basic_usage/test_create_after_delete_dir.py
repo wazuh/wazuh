@@ -158,7 +158,7 @@ def test_create_after_delete(test_configuration, test_metadata, set_wazuh_config
     '''
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
-    wazuh_log_monitor.start(generate_callback(MONITORING_PATH))
+    wazuh_log_monitor.start(generate_callback(MONITORING_PATH), timeout=60)
     assert wazuh_log_monitor.callback_result
 
     fim_mode = test_metadata.get('fim_mode')
@@ -167,7 +167,7 @@ def test_create_after_delete(test_configuration, test_metadata, set_wazuh_config
         pytest.skip(reason="Unstable behavior on github actions")
 
     file.remove_folder(folder_to_monitor)
-    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED))
+    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED), timeout=60)
     assert wazuh_log_monitor.callback_result
     assert get_fim_event_data(wazuh_log_monitor.callback_result)['mode'] == fim_mode
 
