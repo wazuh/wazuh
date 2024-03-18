@@ -100,18 +100,21 @@ def test_configuration_out_format(test_configuration, test_metadata, set_wazuh_c
     tier: 0
 
     parameters:
-        - get_configuration:
-            type: fixture
-            brief: Get configurations from the module.
-        - configure_environment:
+        - test_configuration:
+            type: data
+            brief: Configuration used in the test.
+        - test_metadata:
+            type: data
+            brief: Configuration cases.
+        - set_wazuh_configuration:
             type: fixture
             brief: Configure a custom environment for testing.
-        - configure_local_internal_options_module:
+        - configure_local_internal_options:
             type: fixture
-            brief: Configure the Wazuh local internal options file.
-        - restart_logcollector:
+            brief: Configure the Wazuh local internal options.
+        - daemons_handler_module:
             type: fixture
-            brief: Clear the 'ossec.log' file and start a new monitor.
+            brief: Handler of Wazuh daemons.
 
     assertions:
         - Verify that the logcollector generates error events when using invalid values

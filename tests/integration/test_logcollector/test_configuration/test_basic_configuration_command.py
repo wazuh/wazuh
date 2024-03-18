@@ -103,21 +103,24 @@ def test_configuration_command(test_configuration, test_metadata, configure_loca
     tier: 0
 
     parameters:
-        - get_local_internal_options:
-            type: fixture
-            brief: Get local internal options from the module.
+        - test_configuration:
+            type: data
+            brief: Configuration used in the test.
+        - test_metadata:
+            type: data
+            brief: Configuration cases.
         - configure_local_internal_options:
             type: fixture
             brief: Configure the Wazuh local internal options.
-        - get_configuration:
+        - truncate_monitored_files:
             type: fixture
-            brief: Get configurations from the module.
-        - configure_environment:
+            brief: Reset the 'ossec.log' file and start a new monitor.
+        - set_wazuh_configuration:
             type: fixture
             brief: Configure a custom environment for testing.
-        - restart_logcollector:
+        - daemons_handler:
             type: fixture
-            brief: Clear the 'ossec.log' file and start a new monitor.
+            brief: Handler of Wazuh daemons.
 
     assertions:
         - Verify that the logcollector monitors the command specified in the 'command' tag.

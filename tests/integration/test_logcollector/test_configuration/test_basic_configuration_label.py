@@ -111,15 +111,18 @@ def test_configuration_label(test_configuration, test_metadata, set_wazuh_config
     tier: 0
 
     parameters:
-        - get_configuration:
-            type: fixture
-            brief: Get configurations from the module.
-        - configure_environment:
+        - test_configuration:
+            type: data
+            brief: Configuration used in the test.
+        - test_metadata:
+            type: data
+            brief: Configuration cases.
+        - set_wazuh_configuration:
             type: fixture
             brief: Configure a custom environment for testing.
-        - restart_logcollector:
+        - daemons_handler_module:
             type: fixture
-            brief: Clear the 'ossec.log' file and start a new monitor.
+            brief: Handler of Wazuh daemons.
 
     assertions:
         - Verify that the logcollector monitors files when using the 'label' tag.

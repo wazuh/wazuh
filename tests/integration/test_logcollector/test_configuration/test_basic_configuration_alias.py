@@ -119,21 +119,24 @@ def test_configuration_alias(test_configuration, test_metadata, configure_local_
     tier: 0
 
     parameters:
-        - configure_local_internal_options_module:
+        - test_configuration:
+            type: data
+            brief: Configuration used in the test.
+        - test_metadata:
+            type: data
+            brief: Configuration cases.
+        - configure_local_internal_options:
             type: fixture
             brief: Configure the Wazuh local internal options.
-        - get_configuration:
+        - truncate_monitored_files:
             type: fixture
-            brief: Get configurations from the module.
-        - configure_environment:
+            brief: Reset the 'ossec.log' file and start a new monitor.
+        - set_wazuh_configuration:
             type: fixture
             brief: Configure a custom environment for testing.
-        - file_monitoring:
+        - daemons_handler:
             type: fixture
-            brief: Handle the monitoring of a specified file.
-        - restart_logcollector:
-            type: fixture
-            brief: Clear the 'ossec.log' file and start a new monitor.
+            brief: Handler of Wazuh daemons.
 
     assertions:
         - Verify that the logcollector monitors a command with an assigned alias.

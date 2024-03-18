@@ -132,15 +132,21 @@ def test_configuration_location(test_configuration, test_metadata, truncate_moni
     wazuh_min_version: 4.2.0
 
     parameters:
-        - get_configuration:
+        - test_configuration:
+            type: data
+            brief: Configuration used in the test.
+        - test_metadata:
+            type: data
+            brief: Configuration cases.
+        - truncate_monitored_files:
             type: fixture
-            brief: Get configurations from the module.
-        - configure_environment:
+            brief: Reset the 'ossec.log' file and start a new monitor.
+        - set_wazuh_configuration:
             type: fixture
             brief: Configure a custom environment for testing.
-        - restart_logcollector:
+        - daemons_handler:
             type: fixture
-            brief: Clear the 'ossec.log' file and start a new monitor.
+            brief: Handler of Wazuh daemons.
 
     assertions:
         - Verify that the Wazuh component (agent or manager) can start when the 'location' tag is used.

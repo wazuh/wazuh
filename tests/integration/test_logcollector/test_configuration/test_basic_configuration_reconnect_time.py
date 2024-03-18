@@ -93,12 +93,21 @@ def test_configuration_reconnect_time(test_configuration, test_metadata, truncat
     tier: 0
 
     parameters:
-        - get_configuration:
+        - test_configuration:
+            type: data
+            brief: Configuration used in the test.
+        - test_metadata:
+            type: data
+            brief: Configuration cases.
+        - truncate_monitored_files:
             type: fixture
-            brief: Get configurations from the module.
-        - configure_environment:
+            brief: Reset the 'ossec.log' file and start a new monitor.
+        - set_wazuh_configuration:
             type: fixture
             brief: Configure a custom environment for testing.
+        - daemons_handler_module:
+            type: fixture
+            brief: Handler of Wazuh daemons.
 
     assertions:
         - Verify that the logcollector generates 'invalid' events when using invalid values

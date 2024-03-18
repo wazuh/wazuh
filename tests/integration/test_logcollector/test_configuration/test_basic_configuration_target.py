@@ -105,12 +105,21 @@ def test_configuration_target(test_configuration, test_metadata, set_wazuh_confi
     tier: 0
 
     parameters:
+        - test_configuration:
+            type: data
+            brief: Configuration used in the test.
+        - test_metadata:
+            type: data
+            brief: Configuration cases.
         - set_wazuh_configuration:
             type: fixture
             brief: Configure a custom environment for testing.
-        - configure_local_internal_options_module:
+        - configure_local_internal_options:
             type: fixture
-            brief: Configure the Wazuh local internal options file.
+            brief: Configure the Wazuh local internal options.
+        - daemons_handler_module:
+            type: fixture
+            brief: Handler of Wazuh daemons.
 
     assertions:
         - Verify that the logcollector detects undefined sockets when using invalid values for the 'target' attribute.
