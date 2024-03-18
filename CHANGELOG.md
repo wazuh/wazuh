@@ -68,6 +68,7 @@ All notable changes to this project will be documented in this file.
 - Removed `PUT /vulnerability`, `GET /vulnerability/{agent_id}`, `GET /vulnerability/{agent_id}/last_scan` and `GET /vulnerability/{agent_id}/summary/{field}` API endpoints as they were deprecated in version 4.7.0. Use the Wazuh indexer REST API instead. ([#20119](https://github.com/wazuh/wazuh/pull/20119))
 - Removed the `compilation_date` field from `GET /cluster/{node_id}/info` and `GET /manager/info` endpoints. ([#21572](https://github.com/wazuh/wazuh/pull/21572))
 - Deprecated the `cache` configuration option. ([#22387](https://github.com/wazuh/wazuh/pull/22387))
+- Removed `custom` parameter from `PUT /active-response` endpoint. ([#17048](https://github.com/wazuh/wazuh/pull/17048))
 
 ### Ruleset
 
@@ -108,7 +109,7 @@ All notable changes to this project will be documented in this file.
 - Upgraded external cryptography library dependency version to 42.0.4. ([#22221](https://github.com/wazuh/wazuh/pull/22221))
 - Upgraded external numpy library dependency version to 1.26.0. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
 - Upgraded external grpcio library dependency version to 1.58.0. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
-- Upgraded external pyarrow library dependency version to 14.0.1. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
+- Upgraded external pyarrow library dependency version to 14.0.1. ([#20493](https://github.com/wazuh/wazuh/pull/20493))
 - Upgraded external urllib3 library dependency version to 1.26.18. ([#20630](https://github.com/wazuh/wazuh/pull/20630))
 - Upgraded external SQLAlchemy library dependency version to 2.0.23. ([#20741](https://github.com/wazuh/wazuh/pull/20741))
 - Upgraded external Jinja2 library dependency version to 3.1.3. ([#21684](https://github.com/wazuh/wazuh/pull/21684))
