@@ -25,7 +25,7 @@ setup_build(){
     cd ${build_dir}/${BUILD_TARGET} && tar -czf ${package_name}.orig.tar.gz "${package_name}"
 
     # Configure the package with the different parameters
-    sed -i "s:RELEASE:${PACKAGE_RELEASE}:g" ${sources_dir}/debian/changelog
+    sed -i "s:RELEASE:${REVISION}:g" ${sources_dir}/debian/changelog
     sed -i "s:export JOBS=.*:export JOBS=${JOBS}:g" ${sources_dir}/debian/rules
     sed -i "s:export DEBUG_ENABLED=.*:export DEBUG_ENABLED=${debug}:g" ${sources_dir}/debian/rules
     sed -i "s#export PATH=.*#export PATH=/usr/local/gcc-5.5.0/bin:${PATH}#g" ${sources_dir}/debian/rules
@@ -61,7 +61,7 @@ build_package(){
 get_checksum(){
     wazuh_version="$1"
     short_commit_hash="$2"
-    base_name="wazuh-${BUILD_TARGET}_${wazuh_version}-${PACKAGE_RELEASE}"
+    base_name="wazuh-${BUILD_TARGET}_${wazuh_version}-${REVISION}"
 
     if [[ "${ARCHITECTURE_TARGET}" == "ppc64le" ]]; then
         deb_file="${base_name}_ppc64el.deb"
@@ -69,7 +69,7 @@ get_checksum(){
         deb_file="${base_name}_${ARCHITECTURE_TARGET}.deb"
     fi
 
-    if [[ "${RELEASE_PACKAGE}" != "yes" ]]; then
+    if [[ "${REVISION}" != "1" ]]; then
         deb_file="$(sed "s/\.deb/_${short_commit_hash}&/" <<< "$deb_file")"
     fi
 
