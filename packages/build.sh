@@ -89,6 +89,8 @@ if [ ! -d "/wazuh-local-src" ] ; then
     curl -sL https://github.com/wazuh/wazuh/tarball/${wazuh_branch} | tar zx
     short_commit_hash="$(curl -s https://api.github.com/repos/wazuh/wazuh/commits/${wazuh_branch} \
                           | grep '"sha"' | head -n 1| cut -d '"' -f 4 | cut -c 1-7)"
+else
+    short_commit_hash="local"
 fi
 
 # Build directories
@@ -101,14 +103,14 @@ wazuh_version="$(cat $source_dir/src/VERSION| cut -d 'v' -f 2)"
 package_name="wazuh-${BUILD_TARGET}-${wazuh_version}"
 specs_path="$(find $source_dir -name SPECS|grep $PACKAGE_FORMAT)"
 
-setup_build "$source_dir" "$specs_path" "$build_dir" "$package_name" "$debug" "$short_commit_hash"
+setup_build "$source_dir" "$specs_path" "$build_dir" "$package_name" "$debug"
 
 set_debug $debug $sources_dir
 
 # Installing build dependencies
 cd $sources_dir
 build_deps $legacy
-build_package $package_name $debug
+build_package $package_name $debug "$short_commit_hash"
 
 # Post-processing
-get_checksum $wazuh_version $short_commit_hash
+get_checksum $wazuh_version $short_commit_hash $src

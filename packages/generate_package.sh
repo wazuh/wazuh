@@ -18,6 +18,7 @@ REVISION="1"
 TARGET="agent"
 JOBS="2"
 DEBUG="no"
+SRC="no"
 BUILD_DOCKER="yes"
 DOCKER_TAG="latest"
 INSTALLATION_PATH="/var/ossec"
@@ -25,7 +26,6 @@ CHECKSUMDIR=""
 CHECKSUM="no"
 FUTURE="no"
 LEGACY="no"
-RELEASE_PACKAGE="no"
 
 
 trap ctrl_c INT
@@ -62,13 +62,14 @@ build_pkg() {
             download_file ${TAR_URL} "${CURRENT_PATH}/${PACKAGE_FORMAT}s/${ARCHITECTURE}/legacy"
         fi
         DOCKERFILE_PATH="${CURRENT_PATH}/${PACKAGE_FORMAT}s/${ARCHITECTURE}/legacy"
-    # Same Dockerfile for manager and agent in this archs 
-    elif [[ "$ARCHITECTURE" == "arm64" ]] || [[ "$ARCHITECTURE" == "ppc64le" ]]; then
-        DOCKERFILE_PATH="${CURRENT_PATH}/${PACKAGE_FORMAT}s/${ARCHITECTURE}"
     else
         DOCKERFILE_PATH="${CURRENT_PATH}/${PACKAGE_FORMAT}s/${ARCHITECTURE}/${TARGET}"
     fi
-    CONTAINER_NAME="${PACKAGE_FORMAT}_${TARGET}_builder_${ARCHITECTURE}"
+    if [ "$BUILD_DOCKER" = "no" ]; then
+        CONTAINER_NAME="pkg_${PACKAGE_FORMAT}_${TARGET}_builder_${ARCHITECTURE}"
+    else
+        CONTAINER_NAME="${PACKAGE_FORMAT}_${TARGET}_builder_${ARCHITECTURE}"
+    fi
     LOCAL_SPECS="${CURRENT_PATH}/${PACKAGE_FORMAT}s"
 
     # Copy the necessary files
@@ -88,7 +89,7 @@ build_pkg() {
         -e BUILD_TARGET="${TARGET}" \
         -e ARCHITECTURE_TARGET="${ARCHITECTURE}" \
         -e INSTALLATION_PATH="${INSTALLATION_PATH}" \
-        -e RELEASE_PACKAGE="${RELEASE_PACKAGE}"\
+        -e RELEASE_PACKAGE="${RELEASE_PACKAGE}" \
         ${CUSTOM_CODE_VOL} \
         ${CONTAINER_NAME}:${DOCKER_TAG} ${BRANCH} \
         ${REVISION} ${JOBS} ${DEBUG} \
@@ -116,13 +117,14 @@ help() {
     echo "    -s, --store <path>         [Optional] Set the destination path of package. By default, an output folder will be created."
     echo "    -p, --path <path>          [Optional] Installation path for the package. By default: /var/ossec."
     echo "    -d, --debug                [Optional] Build the binaries with debug symbols. By default: no."
-    echo "    -c, --checksum <path>      [Optional] Generate checksum on the desired path (by default, if no path is specified it will be generated on the same directory than the package)."
+    echo "    -c, --checksum             [Optional] Generate checksum on the same directory than the package."
     echo "    -l, --legacy               [Optional only for RPM] Build package for CentOS 5."
     echo "    --dont-build-docker        [Optional] Locally built docker image will be used instead of generating a new one."
     echo "    --tag                      [Optional] Tag to use with the docker image."
     echo "    --sources <path>           [Optional] Absolute path containing wazuh source code. This option will use local source code instead of downloading it from GitHub."
-    echo "    --release-package          [Optional] Use release name in package"
-    echo "    --dev                      [Optional] Use the SPECS files stored in the host instead of downloading them from GitHub."
+    echo "    --release-package          [Optional] Use release name in package."
+    echo "    --package-format           [Optional] Set the package format [deb/rpm]. By default rpm."
+    echo "    --src                      [Optional] Generate the source package in the destination directory."
     echo "    --future                   [Optional] Build test future package x.30.0 Used for development purposes."
     echo "    -h, --help                 Show this help."
     echo
@@ -196,14 +198,8 @@ main() {
             shift 1
             ;;
         "-c"|"--checksum")
-            if [ -n "$2" ]; then
-                CHECKSUMDIR="$2"
-                CHECKSUM="yes"
-                shift 2
-            else
-                CHECKSUM="yes"
-                shift 1
-            fi
+            CHECKSUM="yes"
+            shift 1
             ;;
         "--dont-build-docker")
             BUILD_DOCKER="no"
@@ -239,6 +235,10 @@ main() {
             ;;
         "--release-package")
             RELEASE_PACKAGE="yes"
+            shift 1
+            ;;
+        "--src")
+            SRC="yes"
             shift 1
             ;;
         "--package-format")
