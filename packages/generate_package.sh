@@ -14,7 +14,7 @@ ARCHITECTURE="amd64"
 PACKAGE_FORMAT="rpm"
 OUTDIR="${CURRENT_PATH}/output/"
 BRANCH=""
-REVISION="1"
+REVISION="0"
 TARGET="agent"
 JOBS="2"
 DEBUG="no"
@@ -22,10 +22,10 @@ SRC="no"
 BUILD_DOCKER="yes"
 DOCKER_TAG="latest"
 INSTALLATION_PATH="/var/ossec"
-CHECKSUMDIR=""
 CHECKSUM="no"
 FUTURE="no"
 LEGACY="no"
+IS_PACKAGE_RELEASE="no"
 
 
 trap ctrl_c INT
@@ -83,13 +83,12 @@ build_pkg() {
 
     # Build the Debian package with a Docker container
     docker run -t --rm -v ${OUTDIR}:/var/local/wazuh:Z \
-        -v ${CHECKSUMDIR}:/var/local/checksum:Z \
         -v ${LOCAL_SPECS}:/specs:Z \
         -e PACKAGE_FORMAT="$PACKAGE_FORMAT" \
         -e BUILD_TARGET="${TARGET}" \
         -e ARCHITECTURE_TARGET="${ARCHITECTURE}" \
         -e INSTALLATION_PATH="${INSTALLATION_PATH}" \
-        -e RELEASE_PACKAGE="${RELEASE_PACKAGE}" \
+        -e IS_PACKAGE_RELEASE="${IS_PACKAGE_RELEASE}" \
         ${CUSTOM_CODE_VOL} \
         ${CONTAINER_NAME}:${DOCKER_TAG} ${BRANCH} \
         ${REVISION} ${JOBS} ${DEBUG} \
@@ -113,7 +112,7 @@ help() {
     echo "    -t, --target <target>      [Required] Target package to build: manager or agent."
     echo "    -a, --architecture <arch>  [Optional] Target architecture of the package [amd64/i386/ppc64le/arm64/armhf]."
     echo "    -j, --jobs <number>        [Optional] Change number of parallel jobs when compiling the manager or agent. By default: 2."
-    echo "    -r, --revision <rev>       [Optional] Package revision. By default: 1."
+    echo "    -r, --revision <rev>       [Optional] Package revision. By default: 0."
     echo "    -s, --store <path>         [Optional] Set the destination path of package. By default, an output folder will be created."
     echo "    -p, --path <path>          [Optional] Installation path for the package. By default: /var/ossec."
     echo "    -d, --debug                [Optional] Build the binaries with debug symbols. By default: no."
@@ -122,8 +121,7 @@ help() {
     echo "    --dont-build-docker        [Optional] Locally built docker image will be used instead of generating a new one."
     echo "    --tag                      [Optional] Tag to use with the docker image."
     echo "    --sources <path>           [Optional] Absolute path containing wazuh source code. This option will use local source code instead of downloading it from GitHub."
-    echo "    --release-package          [Optional] Use release name in package."
-    echo "    --package-format           [Optional] Set the package format [deb/rpm]. By default rpm."
+    echo "    --release-package          [Optional] Use release name in package"
     echo "    --src                      [Optional] Generate the source package in the destination directory."
     echo "    --future                   [Optional] Build test future package x.30.0 Used for development purposes."
     echo "    -h, --help                 Show this help."
@@ -234,7 +232,7 @@ main() {
             shift 1
             ;;
         "--release-package")
-            RELEASE_PACKAGE="yes"
+            IS_PACKAGE_RELEASE="yes"
             shift 1
             ;;
         "--src")
@@ -249,10 +247,6 @@ main() {
             help 1
         esac
     done
-
-    if [ -z "${CHECKSUMDIR}" ]; then
-        CHECKSUMDIR="${OUTDIR}"
-    fi
 
     if [[ "$BUILD" != "no" ]]; then
         build || clean 1

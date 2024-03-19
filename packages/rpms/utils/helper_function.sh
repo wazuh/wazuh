@@ -20,7 +20,7 @@ setup_build(){
     package_name="$4"
 
     rpm_build_dir=${build_dir}/rpmbuild
-    file_name="$package_name-${PACKAGE_RELEASE}"
+    file_name="$package_name-${REVISION}"
     src_file="${file_name}.src.rpm"
 
     mkdir -p ${rpm_build_dir}/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
@@ -76,7 +76,7 @@ build_package(){
         return 1
     fi
 
-    if [[ "${RELEASE_PACKAGE}" == "yes" ]]; then
+    if [[ "${IS_PACKAGE_RELEASE}" == "yes" ]]; then
         rpm_file="${file_name}.${ARCH}.rpm"
     else
         # Replace "-" with "_" between BUILD_TARGET and Version
@@ -85,7 +85,7 @@ build_package(){
     fi
 
     $linux $rpmbuild --define "_sysconfdir /etc" --define "_topdir ${rpm_build_dir}" \
-        --define "_threads ${JOBS}" --define "_release ${PACKAGE_RELEASE}" \
+        --define "_threads ${JOBS}" --define "_release ${REVISION}" \
         --define "_localstatedir ${INSTALLATION_PATH}" --define "_debugenabled ${debug}" \
         --define "_rpmfilename ${rpm_file}" \
         --target $ARCH -ba ${rpm_build_dir}/SPECS/${package_name}.spec
