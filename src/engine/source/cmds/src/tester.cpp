@@ -1,6 +1,7 @@
 #include "cmds/tester.hpp"
 
 #include <iostream>
+#include <unistd.h>
 
 #include <google/protobuf/util/json_util.h>
 

@@ -12,116 +12,208 @@
 namespace logging
 {
 
-constexpr char DEFAULT_LOG_PATH[] {"/dev/stderr"};
-constexpr char DEFAULT_LOG_HEADER[] {"%Y-%m-%d %T.%e %P:%t %l: %v"};
-constexpr char DEFAULT_LOG_LEVEL[] {"info"}; ///< "trace", "debug", "info", "warning", "error", "critical", "off"
-constexpr uint32_t DEFAULT_LOG_THREADS {0};  ///< Quantity of dedicated threads, 0 means no dedicated threads
-constexpr uint32_t DEFAULT_LOG_THREADS_QUEUE_SIZE {8192}; ///< Size in bytes
-constexpr uint32_t DEFAULT_LOG_FLUSH_INTERVAL {1};        ///< Value in ms
+/**
+ * @brief Default path for the error log file.
+ * The default path where error logs should be saved.
+ */
+constexpr char DEFAULT_LOG_ERROR_PATH[] {"/dev/stderr"};
 
 /**
- * @brief Used to convert the name of the log level to its corresponding value.
+ * @brief Default path for the info log file.
+ * The default path where info logs should be saved.
  */
-const std::map<std::string, spdlog::level::level_enum> SEVERITY_LEVEL {{"trace", spdlog::level::trace},
-                                                                       {"debug", spdlog::level::debug},
-                                                                       {"info", spdlog::level::info},
-                                                                       {"warning", spdlog::level::warn},
-                                                                       {"error", spdlog::level::err},
-                                                                       {"critical", spdlog::level::critical},
-                                                                       {"off", spdlog::level::off}};
+constexpr char DEFAULT_LOG_INFO_PATH[] {"/dev/stdout"};
 
+/**
+ * @brief Default log header format.
+ * The default format used for log messages.
+ */
+constexpr char DEFAULT_LOG_HEADER[] {"%Y-%m-%d %T.%e %P:%t %l: %v"};
+
+/**
+ * @brief Log header format for debug messages.
+ * The format used for log messages with debug level.
+ * It includes additional information such as source file, function, and line number.
+ */
+constexpr char LOG_DEBUG_HEADER[] {"%Y-%m-%d %T.%e %P:%t %l [%s %! %#]: %v"};
+
+/**
+ * @brief Default log level.
+ * Possible values: "trace", "debug", "info", "warning", "error", "critical", "off".
+ */
+constexpr char DEFAULT_LOG_LEVEL[] {"info"};
+
+/**
+ * @brief Default number of dedicated threads.
+ * 0 means no dedicated threads.
+ */
+constexpr uint32_t DEFAULT_LOG_THREADS {0};
+
+/**
+ * @brief Default size of the log threads' queue.
+ */
+constexpr uint32_t DEFAULT_LOG_THREADS_QUEUE_SIZE {8192};
+
+/**
+ * @brief Default flush interval for logs.
+ * Value in milliseconds.
+ */
+constexpr uint32_t DEFAULT_LOG_FLUSH_INTERVAL {1};
+
+/**
+ * @brief Type alias for mapping log level strings to their corresponding enum values.
+ */
+using LogLevelMap = std::map<std::string, spdlog::level::level_enum>;
+
+/**
+ * @brief Map of log level strings to their corresponding enum values.
+ */
+const LogLevelMap SEVERITY_LEVEL {{"trace", spdlog::level::trace},
+                                  {"debug", spdlog::level::debug},
+                                  {"info", spdlog::level::info},
+                                  {"warning", spdlog::level::warn},
+                                  {"error", spdlog::level::err},
+                                  {"critical", spdlog::level::critical},
+                                  {"off", spdlog::level::off}};
+
+/**
+ * @brief Structure holding logging configuration parameters.
+ */
 struct LoggingConfig
 {
-    std::string filePath {DEFAULT_LOG_PATH};
-    // To know more about the format parameters, please see: https://github.com/gabime/spdlog/wiki/3.-Custom-formatting
-    std::string headerFormat {DEFAULT_LOG_HEADER};
-    std::string logLevel {DEFAULT_LOG_LEVEL};
-    const uint32_t flushInterval {DEFAULT_LOG_FLUSH_INTERVAL};     ///< Value in ms
-    const uint32_t dedicatedThreads {DEFAULT_LOG_THREADS};         ///< 0 means no dedicated threads,
-                                                                   ///< if one or more then logsQueueSize takes effect
-    const uint32_t logsQueueSize {DEFAULT_LOG_THREADS_QUEUE_SIZE}; ///< Logs queue size to be processed by the dedicated
-                                                                   ///< threads (has to be 1 or more)
+    std::string filePath {DEFAULT_LOG_INFO_PATH};              ///< Path to the log file.
+    std::string level {DEFAULT_LOG_LEVEL};                     ///< Log level.
+    const uint32_t flushInterval {DEFAULT_LOG_FLUSH_INTERVAL}; ///< Flush interval in milliseconds.
+    const uint32_t dedicatedThreads {DEFAULT_LOG_THREADS};     ///< Number of dedicated threads.
+    const uint32_t queueSize {DEFAULT_LOG_THREADS_QUEUE_SIZE}; ///< Size of the log queue for dedicated threads.
+    bool truncate; ///< If true, the log file will be deleted for each start of the engine.
 };
 
-// TODO: This emulates a global variable to fasten the access to the "default" logger, it can be improved
-inline auto getDefaultLogger(void)
+/**
+ * @brief Retrieves the default logger.
+ * @return Shared pointer to the default logger.
+ */
+inline std::shared_ptr<spdlog::logger> getDefaultLogger()
 {
-    static auto defaultLogger = spdlog::get("default").get();
-    return defaultLogger;
+    auto logger = spdlog::get("default");
+    if (!logger)
+    {
+        throw std::runtime_error("The 'default' logger is not initialized.");
+    }
+
+    return logger;
 }
 
-static inline void loggingInit(LoggingConfig& cfg)
+/**
+ * @brief Sets the log level.
+ * @param levelStr The log level as a string.
+ */
+inline void setLevel(const std::string& levelStr)
 {
-    const bool doTruncateFile {false};
+    auto levelIter = SEVERITY_LEVEL.find(levelStr);
+    if (levelIter == SEVERITY_LEVEL.end())
+    {
+        throw std::runtime_error(
+            fmt::format("An error occurred while setting the log level: '{}' is not defined", levelStr));
+    }
+
+    getDefaultLogger()->set_level(levelIter->second);
+
+    if (levelIter->second == spdlog::level::debug)
+    {
+        getDefaultLogger()->set_pattern(LOG_DEBUG_HEADER);
+    }
+    else
+    {
+        getDefaultLogger()->set_pattern(DEFAULT_LOG_HEADER);
+    }
+}
+
+/**
+ * @brief Starts logging with the given configuration.
+ * @param cfg Logging configuration parameters.
+ */
+inline void start(const LoggingConfig& cfg)
+{
     try
     {
         if (0 < cfg.dedicatedThreads)
         {
             // Here we set the amount of DEDICATED threads
-            spdlog::init_thread_pool(cfg.logsQueueSize, cfg.dedicatedThreads);
+            spdlog::init_thread_pool(cfg.queueSize, cfg.dedicatedThreads);
         }
-        spdlog::flush_every(std::chrono::milliseconds(cfg.flushInterval));
 
-        // Logger initialization ("default" is the logger name, it can be any custom name)
         if (!cfg.filePath.empty())
         {
-            spdlog::basic_logger_mt("default", cfg.filePath, doTruncateFile);
+            if (cfg.filePath == DEFAULT_LOG_ERROR_PATH)
+            {
+                auto logger = spdlog::stderr_color_mt("default");
+                logger->flush_on(spdlog::level::err);
+            }
+            else if (cfg.filePath == DEFAULT_LOG_INFO_PATH)
+            {
+                auto logger = spdlog::stdout_color_mt("default");
+                logger->flush_on(spdlog::level::info);
+            }
+            else
+            {
+                spdlog::basic_logger_mt("default", cfg.filePath, cfg.truncate);
+                spdlog::flush_every(std::chrono::milliseconds(cfg.flushInterval));
+                setLevel(cfg.level);
+            }
         }
         else
         {
-            auto logger = spdlog::stdout_color_mt("default");
+            spdlog::stdout_color_mt("default");
+            spdlog::flush_every(std::chrono::milliseconds(cfg.flushInterval));
+            setLevel(cfg.level);
         }
     }
-    catch (const spdlog::spdlog_ex& ex)
+    catch (const std::exception& e)
     {
-        throw std::runtime_error(fmt::format("Log initialization failed: {}", ex.what()));
+        throw std::runtime_error(fmt::format("Log initialization failed: {}", e.what()));
     }
-
-    spdlog::level::level_enum level {SEVERITY_LEVEL.at(DEFAULT_LOG_LEVEL)};
-    try
-    {
-        level = SEVERITY_LEVEL.at(cfg.logLevel);
-    }
-    catch (const std::out_of_range& e)
-    {
-        std::cerr << "An error ocurred while setting the log level '" << cfg.logLevel << "': " << e.what()
-                  << ". Default logging level '" << DEFAULT_LOG_LEVEL << "' will be used instead." << std::endl;
-    }
-
-    getDefaultLogger()->set_level(level);
-    getDefaultLogger()->flush_on(spdlog::level::err);
-    getDefaultLogger()->set_pattern(cfg.headerFormat);
 }
 
 /**
- * @brief Used to initialize the logging system in a test environment.
- *
+ * @brief Stops logging.
  */
+inline void stop()
+{
+    spdlog::shutdown();
+}
+
 inline void testInit()
 {
     static bool initialized = false;
 
     if (!initialized)
     {
-        // Logging setup
         LoggingConfig logConfig;
-        logConfig.logLevel = "off";
+        logConfig.level = "off";
         logConfig.filePath = "";
-        loggingInit(logConfig);
+        start(logConfig);
         initialized = true;
     }
 }
 
 } // namespace logging
 
-/**
- * @brief Used for logging at different levels.
- */
-#define LOG_TRACE(msg, ...)    logging::getDefaultLogger()->trace(msg, ##__VA_ARGS__)
-#define LOG_DEBUG(msg, ...)    logging::getDefaultLogger()->debug(msg, ##__VA_ARGS__)
-#define LOG_INFO(msg, ...)     logging::getDefaultLogger()->info(msg, ##__VA_ARGS__)
-#define LOG_WARNING(msg, ...)  logging::getDefaultLogger()->warn(msg, ##__VA_ARGS__)
-#define LOG_ERROR(msg, ...)    logging::getDefaultLogger()->error(msg, ##__VA_ARGS__)
-#define LOG_CRITICAL(msg, ...) logging::getDefaultLogger()->critical(msg, ##__VA_ARGS__)
+#define LOG_TRACE(msg, ...) logging::getDefaultLogger()->trace(msg, ##__VA_ARGS__)
+#define LOG_DEBUG(msg, ...)                                                                                            \
+    logging::getDefaultLogger()->log(                                                                                  \
+        spdlog::source_loc {__FILE__, __LINE__, SPDLOG_FUNCTION}, spdlog::level::debug, msg, ##__VA_ARGS__)
+#define LOG_INFO(msg, ...)                                                                                             \
+    logging::getDefaultLogger()->log(                                                                                  \
+        spdlog::source_loc {__FILE__, __LINE__, SPDLOG_FUNCTION}, spdlog::level::info, msg, ##__VA_ARGS__)
+#define LOG_WARNING(msg, ...)                                                                                          \
+    logging::getDefaultLogger()->log(                                                                                  \
+        spdlog::source_loc {__FILE__, __LINE__, SPDLOG_FUNCTION}, spdlog::level::warn, msg, ##__VA_ARGS__)
+#define LOG_ERROR(msg, ...)                                                                                            \
+    logging::getDefaultLogger()->log(                                                                                  \
+        spdlog::source_loc {__FILE__, __LINE__, SPDLOG_FUNCTION}, spdlog::level::err, msg, ##__VA_ARGS__)
+#define LOG_CRITICAL(msg, ...)                                                                                         \
+    logging::getDefaultLogger()->log(                                                                                  \
+        spdlog::source_loc {__FILE__, __LINE__, SPDLOG_FUNCTION}, spdlog::level::critical, msg, ##__VA_ARGS__)
 
 #endif
