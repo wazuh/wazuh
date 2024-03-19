@@ -242,7 +242,7 @@ def check_log_file_duplicated():
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_log_format(test_configuration, test_metadata, configure_local_internal_options, truncate_monitored_files,
-                    set_wazuh_configuration, daemons_handler_module):
+                    set_wazuh_configuration, daemons_handler_module, stop_logcollector):
     '''
     description: Check if the 'wazuh-logcollector' daemon detects invalid configurations for the 'log_format' tag.
                  It also checks some special aspects when using macOS. For this purpose, the test will set a
@@ -275,6 +275,9 @@ def test_log_format(test_configuration, test_metadata, configure_local_internal_
         - daemons_handler_module:
             type: fixture
             brief: Handler of Wazuh daemons.
+        - stop_logcollector:
+            type: fixture
+            brief: Stop logcollector daemon.
 
     assertions:
         - Verify that the logcollector generates error events when using invalid values for the 'log_format' tag.
@@ -305,8 +308,6 @@ def test_log_format(test_configuration, test_metadata, configure_local_internal_
         - invalid_settings
         - logs
     '''
-    control_service('stop', daemon=LOGCOLLECTOR_DAEMON)
-    truncate_file(WAZUH_LOG_PATH)
 
     if test_metadata['valid_value']:
         control_service('start', daemon=LOGCOLLECTOR_DAEMON)

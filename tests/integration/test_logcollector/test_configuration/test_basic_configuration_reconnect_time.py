@@ -81,7 +81,7 @@ daemons_handler_configuration = {'all_daemons': True}
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_configuration_reconnect_time(test_configuration, test_metadata, truncate_monitored_files,
-                                      set_wazuh_configuration, daemons_handler_module):
+                                      set_wazuh_configuration, daemons_handler_module, stop_logcollector):
     '''
     description: Check if the 'wazuh-logcollector' daemon detects invalid settings for the 'reconnect_time' tag.
                  For this purpose, the test will set a 'localfile' section using both valid and invalid values
@@ -108,6 +108,9 @@ def test_configuration_reconnect_time(test_configuration, test_metadata, truncat
         - daemons_handler_module:
             type: fixture
             brief: Handler of Wazuh daemons.
+        - stop_logcollector:
+            type: fixture
+            brief: Stop logcollector daemon.
 
     assertions:
         - Verify that the logcollector generates 'invalid' events when using invalid values
@@ -127,9 +130,6 @@ def test_configuration_reconnect_time(test_configuration, test_metadata, truncat
         - invalid_settings
         - logs
     '''
-
-    control_service('stop', daemon=LOGCOLLECTOR_DAEMON)
-    truncate_file(WAZUH_LOG_PATH)
 
     wazuh_log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 

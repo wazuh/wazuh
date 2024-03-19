@@ -97,7 +97,7 @@ daemons_handler_configuration = {'all_daemons': True}
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_configuration_label(test_configuration, test_metadata, set_wazuh_configuration, daemons_handler_module):
+def test_configuration_label(test_configuration, test_metadata, set_wazuh_configuration, daemons_handler_module, stop_logcollector):
     '''
     description: Check if the 'wazuh-logcollector' daemon can monitor log files configured to use labels.
                  For this purpose, the test will configure the logcollector to use labels, setting them
@@ -123,6 +123,9 @@ def test_configuration_label(test_configuration, test_metadata, set_wazuh_config
         - daemons_handler_module:
             type: fixture
             brief: Handler of Wazuh daemons.
+        - stop_logcollector:
+            type: fixture
+            brief: Stop logcollector daemon.
 
     assertions:
         - Verify that the logcollector monitors files when using the 'label' tag.
@@ -141,8 +144,6 @@ def test_configuration_label(test_configuration, test_metadata, set_wazuh_config
         - logs
     '''
 
-    control_service('stop', daemon=LOGCOLLECTOR_DAEMON)
-    truncate_file(WAZUH_LOG_PATH)
     control_service('start', daemon=LOGCOLLECTOR_DAEMON)
 
     # Wait for command

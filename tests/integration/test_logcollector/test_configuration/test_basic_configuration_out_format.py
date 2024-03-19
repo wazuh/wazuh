@@ -88,7 +88,7 @@ daemons_handler_configuration = {'all_daemons': True}
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_configuration_out_format(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options, daemons_handler_module):
+def test_configuration_out_format(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options, daemons_handler_module, stop_logcollector):
     '''
     description: Check if the 'wazuh-logcollector' daemon detects invalid settings for the 'out_format' tag.
                  For this purpose, the test will set a 'localfile' section using both valid and invalid values
@@ -116,6 +116,9 @@ def test_configuration_out_format(test_configuration, test_metadata, set_wazuh_c
         - daemons_handler_module:
             type: fixture
             brief: Handler of Wazuh daemons.
+        - stop_logcollector:
+            type: fixture
+            brief: Stop logcollector daemon.
 
     assertions:
         - Verify that the logcollector generates error events when using invalid values
@@ -138,8 +141,6 @@ def test_configuration_out_format(test_configuration, test_metadata, set_wazuh_c
         - logs
     '''
 
-    control_service('stop', daemon=LOGCOLLECTOR_DAEMON)
-    truncate_file(WAZUH_LOG_PATH)
     control_service('start', daemon=LOGCOLLECTOR_DAEMON)
 
     callback = None

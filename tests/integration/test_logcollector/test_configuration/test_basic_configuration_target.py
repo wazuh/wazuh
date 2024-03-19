@@ -91,7 +91,7 @@ daemons_handler_configuration = {'all_daemons': True}
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_configuration_target(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options, daemons_handler_module):
+def test_configuration_target(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options, daemons_handler_module, stop_logcollector):
     '''
     description: Check if the 'wazuh-logcollector' daemon detects invalid configurations for the 'target' attribute
                  of the 'out_format' tag. For this purpose, the test will set a 'socket' section to specify a custom
@@ -120,6 +120,9 @@ def test_configuration_target(test_configuration, test_metadata, set_wazuh_confi
         - daemons_handler_module:
             type: fixture
             brief: Handler of Wazuh daemons.
+        - stop_logcollector:
+            type: fixture
+            brief: Stop logcollector daemon.
 
     assertions:
         - Verify that the logcollector detects undefined sockets when using invalid values for the 'target' attribute.
@@ -139,8 +142,6 @@ def test_configuration_target(test_configuration, test_metadata, set_wazuh_confi
         - invalid_settings
     '''
 
-    control_service('stop', daemon=LOGCOLLECTOR_DAEMON)
-    truncate_file(WAZUH_LOG_PATH)
     control_service('start', daemon=LOGCOLLECTOR_DAEMON)
 
     callback = None
