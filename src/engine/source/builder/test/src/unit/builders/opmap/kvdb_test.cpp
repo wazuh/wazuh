@@ -347,14 +347,21 @@ INSTANTIATE_TEST_SUITE_P(
         TransformDepsT({makeRef("ref"), makeValue(R"("key")")}, getTrBuilder(getOpBuilderKVDBGet), FAILURE()),
         TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
                        getTrBuilderExpectHandler(getOpBuilderKVDBGet, "dbname"),
-                       SUCCESS(customRefExpected("ref"))),
+                       SUCCESS(customRefExpected("ref", "targetField"))),
         TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"("other")")},
                        getTrBuilder(getOpBuilderKVDBGet),
                        FAILURE()),
         TransformDepsT({makeValue(R"("dbname")"), makeValue(R"(1)")}, getTrBuilder(getOpBuilderKVDBGet), FAILURE()),
         TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
                        getTrBuilderExpectHandler(getOpBuilderKVDBGet, "dbname"),
-                       SUCCESS(jTypeRefExpected("ref", json::Json::Type::String))),
+                       SUCCESS(
+                           [](const auto& mocks)
+                           {
+                               jTypeRefExpected("ref", json::Json::Type::String)(mocks);
+                               EXPECT_CALL(*mocks.validator, hasField(DotPath("targetField")))
+                                   .WillOnce(testing::Return(false));
+                               return None {};
+                           })),
         TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
                        getTrBuilder(getOpBuilderKVDBGet),
                        FAILURE(jTypeRefExpected("ref", json::Json::Type::Number))),
@@ -370,7 +377,7 @@ INSTANTIATE_TEST_SUITE_P(
         TransformDepsT({makeRef("ref"), makeValue(R"("key")")}, getTrBuilder(getOpBuilderKVDBGetMerge), FAILURE()),
         TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
                        getTrBuilderExpectHandler(getOpBuilderKVDBGetMerge, "dbname"),
-                       SUCCESS(customRefExpected("ref"))),
+                       SUCCESS(customRefExpected("ref", "targetField"))),
         TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"("other")")},
                        getTrBuilder(getOpBuilderKVDBGetMerge),
                        FAILURE()),
@@ -379,7 +386,14 @@ INSTANTIATE_TEST_SUITE_P(
                        FAILURE()),
         TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
                        getTrBuilderExpectHandler(getOpBuilderKVDBGetMerge, "dbname"),
-                       SUCCESS(jTypeRefExpected("ref", json::Json::Type::String))),
+                       SUCCESS(
+                           [](const auto& mocks)
+                           {
+                               jTypeRefExpected("ref", json::Json::Type::String)(mocks);
+                               EXPECT_CALL(*mocks.validator, hasField(DotPath("targetField")))
+                                   .WillOnce(testing::Return(false));
+                               return None {};
+                           })),
         TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
                        getTrBuilder(getOpBuilderKVDBGetMerge),
                        FAILURE(jTypeRefExpected("ref", json::Json::Type::Number))),
@@ -408,10 +422,17 @@ INSTANTIATE_TEST_SUITE_P(
                        FAILURE()),
         TransformDepsT({makeValue(R"("dbname")"), makeRef("keyRef"), makeRef("valueRef")},
                        getTrBuilderExpectHandler(getOpBuilderKVDBSet, "dbname"),
-                       SUCCESS(customRefExpected("keyRef"))),
+                       SUCCESS(customRefExpected("keyRef", "targetField"))),
         TransformDepsT({makeValue(R"("dbname")"), makeRef("keyRef"), makeRef("valueRef")},
                        getTrBuilderExpectHandler(getOpBuilderKVDBSet, "dbname"),
-                       SUCCESS(jTypeRefExpected("keyRef", json::Json::Type::String))),
+                       SUCCESS(
+                           [](const auto& mocks)
+                           {
+                               jTypeRefExpected("keyRef", json::Json::Type::String)(mocks);
+                               EXPECT_CALL(*mocks.validator, hasField(DotPath("targetField")))
+                                   .WillOnce(testing::Return(false));
+                               return None {};
+                           })),
         TransformDepsT({makeValue(R"("dbname")"), makeRef("keyRef"), makeRef("valueRef")},
                        getTrBuilder(getOpBuilderKVDBSet),
                        FAILURE(jTypeRefExpected("keyRef", json::Json::Type::Number))),
@@ -426,10 +447,17 @@ INSTANTIATE_TEST_SUITE_P(
                        SUCCESS()),
         TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
                        getTrBuilderExpectHandler(getOpBuilderKVDBDelete, "dbname"),
-                       SUCCESS(customRefExpected("ref"))),
+                       SUCCESS(customRefExpected("ref", "targetField"))),
         TransformDepsT({makeValue(R"("dbname")"), makeRef("ref")},
                        getTrBuilderExpectHandler(getOpBuilderKVDBDelete, "dbname"),
-                       SUCCESS(jTypeRefExpected("ref", json::Json::Type::String))),
+                       SUCCESS(
+                           [](const auto& mocks)
+                           {
+                               jTypeRefExpected("ref", json::Json::Type::String)(mocks);
+                               EXPECT_CALL(*mocks.validator, hasField(DotPath("targetField")))
+                                   .WillOnce(testing::Return(false));
+                               return None {};
+                           })),
         TransformDepsT({makeValue(R"("dbname")"), makeValue(R"("key")"), makeValue(R"("other")")},
                        getTrBuilder(getOpBuilderKVDBDelete),
                        FAILURE()),
@@ -659,30 +687,30 @@ INSTANTIATE_TEST_SUITE_P(
             SUCCESS(
                 [](const BuildersMocks& mocks)
                 {
-                    customRefExpected("ref")(mocks);
+                    customRefExpected("ref", "target")(mocks);
                     return makeEvent(R"({"ref": "key", "target": "value"})");
                 })),
         TransformDepsT(R"({})",
                        getTrBuilderExpectHandler(getOpBuilderKVDBGet, "dbname"),
                        "target",
                        {makeValue(R"("dbname")"), makeRef("ref")},
-                       FAILURE(customRefExpected("ref"))),
+                       FAILURE(customRefExpected("ref", "target"))),
         TransformDepsT(R"({"ref": 1})",
                        getTrBuilderExpectHandler(getOpBuilderKVDBGet, "dbname"),
                        "target",
                        {makeValue(R"("dbname")"), makeRef("ref")},
-                       FAILURE(customRefExpected("ref"))),
+                       FAILURE(customRefExpected("ref", "target"))),
         TransformDepsT(R"({"ref": "key"})",
                        getTrBuilderExpectHandler(getOpBuilderKVDBGet, "dbname", expectKvdbGetError("key")),
                        "target",
                        {makeValue(R"("dbname")"), makeRef("ref")},
-                       FAILURE(customRefExpected("ref"))),
+                       FAILURE(customRefExpected("ref", "target"))),
         TransformDepsT(
             R"({"ref": "key"})",
             getTrBuilderExpectHandler(getOpBuilderKVDBGet, "dbname", expectKvdbGetValue("key", "malformedJsonValue")),
             "target",
             {makeValue(R"("dbname")"), makeRef("ref")},
-            FAILURE(customRefExpected("ref"))),
+            FAILURE(customRefExpected("target", "ref"))),
         /*** GET MERGE ***/
         TransformDepsT(
             R"({"target": [0, 2]})",
@@ -698,7 +726,7 @@ INSTANTIATE_TEST_SUITE_P(
                        SUCCESS(
                            [](const BuildersMocks& mocks)
                            {
-                               customRefExpected("ref")(mocks);
+                               customRefExpected("ref", "target")(mocks);
                                return makeEvent(R"({"target": {"a": 0, "b": 3, "c": 4}, "ref": "key"})");
                            })),
         TransformDepsT(
@@ -732,7 +760,7 @@ INSTANTIATE_TEST_SUITE_P(
                        SUCCESS(
                            [](const BuildersMocks& mocks)
                            {
-                               customRefExpected("ref")(mocks);
+                               customRefExpected("ref", "target")(mocks);
                                return makeEvent(R"({"ref": "key", "target": true})");
                            })),
         TransformDepsT(R"({"ref": "value"})",
@@ -747,19 +775,19 @@ INSTANTIATE_TEST_SUITE_P(
                        SUCCESS(
                            [](const BuildersMocks& mocks)
                            {
-                               customRefExpected("keyRef")(mocks);
+                               customRefExpected("keyRef", "target")(mocks);
                                return makeEvent(R"({"keyRef": "key", "valueRef": "value", "target": true})");
                            })),
         TransformDepsT(R"({})",
                        getTrBuilderExpectHandler(getOpBuilderKVDBSet, "dbname"),
                        "target",
                        {makeValue(R"("dbname")"), makeRef("keyRef"), makeValue(R"("value")")},
-                       FAILURE(customRefExpected("keyRef"))),
+                       FAILURE(customRefExpected("keyRef", "target"))),
         TransformDepsT(R"({"ref": 1})",
                        getTrBuilderExpectHandler(getOpBuilderKVDBSet, "dbname"),
                        "target",
                        {makeValue(R"("dbname")"), makeRef("ref"), makeValue(R"("value")")},
-                       FAILURE(customRefExpected("ref"))),
+                       FAILURE(customRefExpected("ref", "target"))),
         TransformDepsT(R"({})",
                        getTrBuilderExpectHandler(getOpBuilderKVDBSet, "dbname"),
                        "target",
@@ -790,24 +818,24 @@ INSTANTIATE_TEST_SUITE_P(
                        SUCCESS(
                            [](const BuildersMocks& mocks)
                            {
-                               customRefExpected("ref")(mocks);
+                               customRefExpected("ref", "target")(mocks);
                                return makeEvent(R"({"ref": "key", "target": true})");
                            })),
         TransformDepsT(R"({})",
                        getTrBuilderExpectHandler(getOpBuilderKVDBDelete, "dbname"),
                        "target",
                        {makeValue(R"("dbname")"), makeRef("ref")},
-                       FAILURE(customRefExpected("ref"))),
+                       FAILURE(customRefExpected("ref", "target"))),
         TransformDepsT(R"({"ref": 1})",
                        getTrBuilderExpectHandler(getOpBuilderKVDBDelete, "dbname"),
                        "target",
                        {makeValue(R"("dbname")"), makeRef("ref")},
-                       FAILURE(customRefExpected("ref"))),
+                       FAILURE(customRefExpected("ref", "target"))),
         TransformDepsT(R"({"ref": "key"})",
                        getTrBuilderExpectHandler(getOpBuilderKVDBDelete, "dbname", expectKvdbDeleteError("key")),
                        "target",
                        {makeValue(R"("dbname")"), makeRef("ref")},
-                       FAILURE(customRefExpected("ref"))),
+                       FAILURE(customRefExpected("ref", "target"))),
         /*** GET ARRAY ***/
         TransformDepsT(R"({})",
                        getTrBuilderExpectHandler(getOpBuilderKVDBGetArray,
@@ -819,7 +847,13 @@ INSTANTIATE_TEST_SUITE_P(
                                                  }),
                        "target",
                        {makeValue(R"("dbname")"), makeValue(R"(["k0", "k1"])")},
-                       SUCCESS(makeEvent(R"({"target": ["v0", "v1"]})"))),
+                       SUCCESS(
+                           [](const auto& mocks)
+                           {
+                               EXPECT_CALL(*mocks.validator, validate(DotPath("target"), testing::_))
+                                   .WillOnce(testing::Return(schemf::ValidationResult()));
+                               return makeEvent(R"({"target": ["v0", "v1"]})");
+                           })),
         TransformDepsT(R"({"target": ["v2"]})",
                        getTrBuilderExpectHandler(getOpBuilderKVDBGetArray,
                                                  "dbname",
@@ -830,7 +864,13 @@ INSTANTIATE_TEST_SUITE_P(
                                                  }),
                        "target",
                        {makeValue(R"("dbname")"), makeValue(R"(["k0", "k1"])")},
-                       SUCCESS(makeEvent(R"({"target": ["v2", "v0", "v1"]})"))),
+                       SUCCESS(
+                           [](const auto& mocks)
+                           {
+                               EXPECT_CALL(*mocks.validator, validate(DotPath("target"), testing::_))
+                                   .WillOnce(testing::Return(schemf::ValidationResult()));
+                               return makeEvent(R"({"target": ["v2", "v0", "v1"]})");
+                           })),
         TransformDepsT(R"({"ref": ["k0", "k1"]})",
                        getTrBuilderExpectHandler(getOpBuilderKVDBGetArray,
                                                  "dbname",
@@ -845,6 +885,8 @@ INSTANTIATE_TEST_SUITE_P(
                            [](const BuildersMocks& mocks)
                            {
                                customRefExpected("ref")(mocks);
+                               EXPECT_CALL(*mocks.validator, validate(DotPath("target"), testing::_))
+                                   .WillOnce(testing::Return(schemf::ValidationResult()));
                                return makeEvent(R"({"ref": ["k0", "k1"], "target": ["v0", "v1"]})");
                            })),
         TransformDepsT(R"({"target": ["v2"], "ref": ["k0", "k1"]})",
@@ -861,6 +903,8 @@ INSTANTIATE_TEST_SUITE_P(
                            [](const BuildersMocks& mocks)
                            {
                                customRefExpected("ref")(mocks);
+                               EXPECT_CALL(*mocks.validator, validate(DotPath("target"), testing::_))
+                                   .WillOnce(testing::Return(schemf::ValidationResult()));
                                return makeEvent(R"({"ref": ["k0", "k1"], "target": ["v2", "v0", "v1"]})");
                            })),
         TransformDepsT(R"({})",
