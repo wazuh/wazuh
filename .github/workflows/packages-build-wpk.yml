@@ -3,24 +3,41 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag name of the Docker image to be downloaded (Use developer to set branch name. Use auto to set src/VERSION content)'
+        description: |
+          Tag name of the Docker image to be downloaded.
+          Use 'developer' to set branch name as tag.
+          Use 'auto' to set branch version as tag.
+          Default is 'auto'.
         required: false
-        default: auto
+        default: 'auto'
       linux_branch:
-        description: 'Branch name for compiling the Linux package'
+        description: |
+          Branch name for compiling the Linux WPK.
+          If empty, it will not be generated.
         required: false
       windows_package:
-        description: 'Link to download package or package name in S3'
+        description: |
+          Windows WPK name in S3 or link to download.
+          If empty, it will not be generated.
         required: false
       macos_package:
-        description: 'Link to download package or package name in S3'
+        description: |
+          MacOS WPK name in S3 or link to download.
+          If empty, it will not be generated.
         required: false
       revision:
-        description: 'Revision used to naming WPK package'
+        description: |
+          Revision used to naming WPK package.
+          Default is '0'.
         required: false
-        default: 1
-
-  workflow_call:
+        default: '0'
+      naming_format:
+        description: |
+          Use 'release' if WPK name should have release format.
+          Use 'developer' if WPK name should have developer format.
+          Default is 'developer'.
+        required: false
+        default: 'developer'
 
 jobs:
   WPK-generation:
@@ -28,7 +45,7 @@ jobs:
     strategy:
       matrix:
         os: [linux, windows, macos]
-        arch: [amd64]
+        arch: [x86_64]
       fail-fast: false
 
     steps:      
@@ -40,29 +57,55 @@ jobs:
           skip_after_successful_duplicate: 'false'
 
       - uses: actions/checkout@v4
-
-      - name: Set WPK name, CONTAINER_NAME and TAG
+      
+      - name: Set VERSION, CONTAINER_NAME, RELEASE_FLAGS and UPLOAD_READY
+        if: (matrix.os == 'linux' && github.event.inputs.linux_branch != '') || (matrix.os == 'windows' && github.event.inputs.windows_package != '') || (matrix.os == 'macos' && github.event.inputs.macos_package != '')
         run: |
-          VERSION=$(sed 's/v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
-          if [ "${{ github.event.inputs.tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
+          if [ "${{ matrix.os }}" == "linux" ]; then curl -O https://raw.githubusercontent.com/wazuh/wazuh/${{ github.event.inputs.linux_branch }}/src/VERSION; echo "VERSION=$(sed 's/.*\([0-9]\.[0-9]*\.[0-9]*\).*/\1/' $GITHUB_WORKSPACE/VERSION)" >> $GITHUB_ENV;
+          elif [ "${{ matrix.os }}" == "macos" ]; then echo "VERSION=$(echo "${{ github.event.inputs.macos_package }}" | sed 's/.*\([0-9]\.[0-9]*\.[0-9]*\).*/\1/')" >> $GITHUB_ENV;
+          else echo "VERSION=$(echo "${{ github.event.inputs.windows_package }}" | sed 's/.*\([0-9]\.[0-9]*\.[0-9]*\).*/\1/')" >> $GITHUB_ENV; fi
+          if [ "${{ matrix.os }}" == "linux" ]; then echo "CONTAINER_NAME=linux_wpk_builder_x86_64" >> $GITHUB_ENV; else echo "CONTAINER_NAME=common_wpk_builder" >> $GITHUB_ENV; fi
+          if [ "${{ github.event.inputs.naming_format }}" == "release" ]; then echo "RELEASE_FLAGS=-c" >> $GITHUB_ENV; fi
+          echo "UPLOAD_READY=no" >> $GITHUB_ENV
+          echo "ABORT_JOB=no" >> $GITHUB_ENV
+
+      - name: Set TAG
+        if: (matrix.os == 'linux' && github.event.inputs.linux_branch != '') || (matrix.os == 'windows' && github.event.inputs.windows_package != '') || (matrix.os == 'macos' && github.event.inputs.macos_package != '')
+        run: |
+          if [ "${{ github.event.inputs.tag }}" == "auto" ]; then echo "TAG=${{ env.VERSION }}" >> $GITHUB_ENV;
           elif [ "${{ github.event.inputs.tag }}" == "developer" ]; then echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV;
           else echo "TAG=${{ github.event.inputs.tag }}" >> $GITHUB_ENV; fi
-          COMMIT_HASH="$(curl -s https://api.github.com/repos/wazuh/wazuh/commits/${{ github.ref_name }} | grep '"sha"' | head -n 1| cut -d '"' -f 4 | cut -c 1-7)"
-          echo "WPK_NAME=wazuh-wpk_${VERSION}-${{ github.event.inputs.revision }}_${{ matrix.os }}_${{ matrix.arch }}_${COMMIT_HASH}.wpk" >> $GITHUB_ENV
-          if [ "${{ matrix.os }}" == "linux" ]; then echo "CONTAINER_NAME=linux_wpk_builder_x86_64" >> $GITHUB_ENV; else echo "CONTAINER_NAME=common_wpk_builder" >> $GITHUB_ENV; fi
 
-      - name: Download docker image for WPK building
+      - name: Set WPK_NAME
+        if: (matrix.os == 'linux' && github.event.inputs.linux_branch != '') || (matrix.os == 'windows' && github.event.inputs.windows_package != '') || (matrix.os == 'macos' && github.event.inputs.macos_package != '')
         run: |
-          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} $CONTAINER_NAME ${{ env.TAG }}
+          COMMIT_HASH="$(curl -s https://api.github.com/repos/wazuh/wazuh/commits/${{ github.ref_name }} | grep '"sha"' | head -n 1| cut -d '"' -f 4 | cut -c 1-7)"
+          if [ "${{ matrix.os }}" != "windows" ]; then WPK_ARCH=_${{ matrix.arch }}; fi
+          if [ "${{ github.event.inputs.naming_format }}" == "release" ]; then echo "WPK_NAME=wazuh_agent_v${{ env.VERSION }}_${{ matrix.os }}${WPK_ARCH}.wpk" >> $GITHUB_ENV;
+          else echo "WPK_NAME=wazuh-wpk_${{ env.VERSION }}-${{ github.event.inputs.revision }}_${{ matrix.os }}${WPK_ARCH}_${COMMIT_HASH}.wpk" >> $GITHUB_ENV; fi
 
       - name: Set up AWS CLI
-        uses: aws-actions/configure-aws-credentials@v1
+        if: (matrix.os == 'linux' && github.event.inputs.linux_branch != '') || (matrix.os == 'windows' && github.event.inputs.windows_package != '') || (matrix.os == 'macos' && github.event.inputs.macos_package != '')
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
           aws-region: us-east-1
 
+      - name: Check if WPK already exists in AWS
+        if: (matrix.os == 'linux' && github.event.inputs.linux_branch != '') || (matrix.os == 'windows' && github.event.inputs.windows_package != '') || (matrix.os == 'macos' && github.event.inputs.macos_package != '')
+        run: |
+          if [[ $(aws s3api head-object --bucket packages-dev.internal.wazuh.com --key development/wazuh/4.x/main/packages/${{ env.WPK_NAME }}) ]]; then echo "::notice:: Package already exists in s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${{ env.WPK_NAME }}"; echo "ABORT_JOB=yes" >> $GITHUB_ENV; fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download docker image for WPK building
+        if: ((matrix.os == 'linux' && github.event.inputs.linux_branch != '') || (matrix.os == 'windows' && github.event.inputs.windows_package != '') || (matrix.os == 'macos' && github.event.inputs.macos_package != '')) && env.ABORT_JOB == 'no'
+        run: |
+          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} ${{ env.CONTAINER_NAME }} ${{ env.TAG }}
+
       - name: Get secrets by name
+        if: ((matrix.os == 'linux' && github.event.inputs.linux_branch != '') || (matrix.os == 'windows' && github.event.inputs.windows_package != '') || (matrix.os == 'macos' && github.event.inputs.macos_package != '')) && env.ABORT_JOB == 'no'
         uses: aws-actions/aws-secretsmanager-get-secrets@v1
         with:
           secret-ids: |
@@ -70,29 +113,30 @@ jobs:
             WPK_CERT,${{ secrets.CI_AWS_WPK_CERT_SECRET_NAME }}
 
       - name: Build Linux WPK
-        if: matrix.os == 'linux' && github.event.inputs.linux_branch != ''
+        if: matrix.os == 'linux' && github.event.inputs.linux_branch != '' && env.ABORT_JOB == 'no'
         working-directory: packages/wpk
         run: |
-          bash generate_wpk_package.sh -t linux --dont-build-docker --tag ${{ env.TAG }} -b ${{ github.event.inputs.linux_branch }} -d /tmp --aws-wpk-key WPK_PRIVATE_KEY --aws-wpk-cert WPK_CERT -o ${{ env.WPK_NAME }}
+          bash generate_wpk_package.sh -t linux --dont-build-docker --tag ${{ env.TAG }} -b ${{ github.event.inputs.linux_branch }} -d /tmp --aws-wpk-key WPK_PRIVATE_KEY --aws-wpk-cert WPK_CERT -o ${{ env.WPK_NAME }} -j $(nproc) ${{ env.RELEASE_FLAGS }}
           echo "UPLOAD_READY=yes" >> $GITHUB_ENV
 
       - name: Build Windows WPK
-        if: matrix.os == 'windows' && github.event.inputs.windows_package != ''
+        if: matrix.os == 'windows' && github.event.inputs.windows_package != '' && env.ABORT_JOB == 'no'
         working-directory: packages/wpk
         run: |
           if [[ "${{ github.event.inputs.windows_package }}" =~ ^http.* ]]; then curl -o wazuh-agent.msi ${{ github.event.inputs.windows_package }}; else aws s3 cp s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${{ github.event.inputs.windows_package }} ./wazuh-agent.msi; fi
-          bash generate_wpk_package.sh -t windows --dont-build-docker --tag ${{ env.TAG }} -b ${{ github.ref_name }} -d /tmp --aws-wpk-key WPK_PRIVATE_KEY --aws-wpk-cert WPK_CERT -o ${{ env.WPK_NAME }} -pn ./wazuh-agent.msi
+          bash generate_wpk_package.sh -t windows --dont-build-docker --tag ${{ env.TAG }} -b ${{ github.ref_name }} -d /tmp --aws-wpk-key WPK_PRIVATE_KEY --aws-wpk-cert WPK_CERT -o ${{ env.WPK_NAME }} -pn ./wazuh-agent.msi -j $(nproc) ${{ env.RELEASE_FLAGS }}
           echo "UPLOAD_READY=yes" >> $GITHUB_ENV
 
       - name: Build MacOS WPK
-        if: matrix.os == 'macos' && github.event.inputs.macos_package != ''
+        if: matrix.os == 'macos' && github.event.inputs.macos_package != '' && env.ABORT_JOB == 'no'
         working-directory: packages/wpk
         run: |
           if [[ "${{ github.event.inputs.macos_package }}" =~ ^http.* ]]; then curl -o wazuh-agent.pkg ${{ github.event.inputs.macos_package }}; else aws s3 cp s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${{ github.event.inputs.macos_package }} ./wazuh-agent.pkg; fi
-          bash generate_wpk_package.sh -t macos --dont-build-docker --tag ${{ env.TAG }} -b ${{ github.ref_name }} -d /tmp --aws-wpk-key WPK_PRIVATE_KEY --aws-wpk-cert WPK_CERT -o ${{ env.WPK_NAME }} -pn ./wazuh-agent.pkg
+          bash generate_wpk_package.sh -t macos --dont-build-docker --tag ${{ env.TAG }} -b ${{ github.ref_name }} -d /tmp --aws-wpk-key WPK_PRIVATE_KEY --aws-wpk-cert WPK_CERT -o ${{ env.WPK_NAME }} -pn ./wazuh-agent.pkg -j $(nproc) ${{ env.RELEASE_FLAGS }}
           echo "UPLOAD_READY=yes" >> $GITHUB_ENV
 
       - name: Upload WPK package to S3
-        if: env.UPLOAD_READY == 'yes'
+        if: env.UPLOAD_READY == 'yes' && env.ABORT_JOB == 'no'
         run: |
           aws s3 cp /tmp/${{ env.WPK_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
+          if [[ "${{ env.RELEASE_FLAGS }}" =~ .*-c.* ]]; then aws s3 cp /tmp/${{ env.WPK_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/; fi

@@ -32,41 +32,6 @@ function pack_wpk() {
     local PACKAGE_NAME="${5}"
     local OUT_NAME="${6}"
     local CHECKSUM="${7}"
-    local CHECKSUMDIR="${8}"
-    local INSTALLATION_PATH="${9}"
-    local AWS_REGION="${10}"
-    local WPK_KEY="${11}"
-    local WPK_CERT="${12}"
-
-    if [ -n "${CHECKSUM}" ]; then
-        CHECKSUM_FLAG="-c"
-    fi
-    if [ -n "${KEYDIR}" ]; then
-        MOUNT_KEYDIR_FLAG="-v ${KEYDIR}:/etc/wazuh:Z"
-    fi
-    if [ -n "${WPK_KEY}" ]; then
-        WPK_KEY_FLAG="--aws-wpk-key ${WPK_KEY}"
-    fi
-    if [ -n "${WPK_CERT}" ]; then
-        WPK_CERT_FLAG="--aws-wpk-cert ${WPK_CERT}"
-    fi
-
-    docker run -t --rm ${MOUNT_KEYDIR_FLAG} -v ${DESTINATION}:/var/local/wazuh:Z -v ${PKG_PATH}:/var/pkg:Z -v ${CHECKSUMDIR}:/var/local/checksum:Z \
-        -e AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" -e AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
-        ${CONTAINER_NAME}:${DOCKER_TAG} -b ${BRANCH} -j ${JOBS} -o ${OUT_NAME} -p ${INSTALLATION_PATH} --aws-wpk-key-region ${AWS_REGION} ${WPK_KEY_FLAG} ${WPK_CERT_FLAG} -pn ${PACKAGE_NAME} ${CHECKSUM_FLAG}
-
-    return $?
-}
-
-
-function build_wpk_linux() {
-    local BRANCH="${1}"
-    local DESTINATION="${2}"
-    local CONTAINER_NAME="${3}"
-    local JOBS="${4}"
-    local OUT_NAME="${5}"
-    local CHECKSUM="${6}"
-    local CHECKSUMDIR="${7}"
     local INSTALLATION_PATH="${8}"
     local AWS_REGION="${9}"
     local WPK_KEY="${10}"
@@ -85,7 +50,40 @@ function build_wpk_linux() {
         WPK_CERT_FLAG="--aws-wpk-cert ${WPK_CERT}"
     fi
 
-    docker run -t --rm ${MOUNT_KEYDIR_FLAG} -v ${DESTINATION}:/var/local/wazuh:Z -v ${CHECKSUMDIR}:/var/local/checksum:Z \
+    docker run -t --rm ${MOUNT_KEYDIR_FLAG} -v ${DESTINATION}:/var/local/wazuh:Z -v ${PKG_PATH}:/var/pkg:Z -v ${DESTINATION}:/var/local/checksum:Z \
+        -e AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" -e AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
+        ${CONTAINER_NAME}:${DOCKER_TAG} -b ${BRANCH} -j ${JOBS} -o ${OUT_NAME} -p ${INSTALLATION_PATH} --aws-wpk-key-region ${AWS_REGION} ${WPK_KEY_FLAG} ${WPK_CERT_FLAG} -pn ${PACKAGE_NAME} ${CHECKSUM_FLAG}
+
+    return $?
+}
+
+
+function build_wpk_linux() {
+    local BRANCH="${1}"
+    local DESTINATION="${2}"
+    local CONTAINER_NAME="${3}"
+    local JOBS="${4}"
+    local OUT_NAME="${5}"
+    local CHECKSUM="${6}"
+    local INSTALLATION_PATH="${7}"
+    local AWS_REGION="${8}"
+    local WPK_KEY="${9}"
+    local WPK_CERT="${10}"
+
+    if [ -n "${CHECKSUM}" ]; then
+        CHECKSUM_FLAG="-c"
+    fi
+    if [ -n "${KEYDIR}" ]; then
+        MOUNT_KEYDIR_FLAG="-v ${KEYDIR}:/etc/wazuh:Z"
+    fi
+    if [ -n "${WPK_KEY}" ]; then
+        WPK_KEY_FLAG="--aws-wpk-key ${WPK_KEY}"
+    fi
+    if [ -n "${WPK_CERT}" ]; then
+        WPK_CERT_FLAG="--aws-wpk-cert ${WPK_CERT}"
+    fi
+
+    docker run -t --rm ${MOUNT_KEYDIR_FLAG} -v ${DESTINATION}:/var/local/wazuh:Z -v ${DESTINATION}:/var/local/checksum:Z \
         -e AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" -e AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
         ${CONTAINER_NAME}:${DOCKER_TAG} -b ${BRANCH} -j ${JOBS} -o ${OUT_NAME} -p ${INSTALLATION_PATH} --aws-wpk-key-region ${AWS_REGION} ${WPK_KEY_FLAG} ${WPK_CERT_FLAG} ${CHECKSUM_FLAG}
 
@@ -119,9 +117,9 @@ function help() {
     echo "    -a,   --architecture <arch>    [Optional] Target architecture of the package [x86_64]."
     echo "    -j,   --jobs <number>          [Optional] Number of parallel jobs when compiling."
     echo "    -p,   --path <path>            [Optional] Installation path for the package. By default: /var/ossec."
-    echo "    -c,   --checksum <path>        [Optional] Generate checksum on the desired path."
-    echo "    --dont-build-docker            [Optional] Locally built docker image will be used instead of generating a new one."
-    echo "    --tag                          [Optional] Tag to use with the docker image."
+    echo "    -c,   --checksum               [Optional] Generate checksum on destination folder. By default: no"
+    echo "    --dont-build-docker            [Optional] Locally built docker image will be used instead of generating a new one. By default: yes"
+    echo "    --tag <name>                   [Optional] Tag to use with the docker image."
     echo "    -h,   --help                   Show this help."
     echo
     exit ${1}
@@ -153,7 +151,6 @@ function main() {
     local PKG_NAME=""
     local OUT_NAME=""
     local NO_COMPILE=false
-    local CHECKSUMDIR=""
     local WPK_KEY=""
     local WPK_CERT=""
     local AWS_REGION="us-east-1"
@@ -311,14 +308,8 @@ function main() {
             fi
             ;;
         "-c"|"--checksum")
-            if [ -n "${2}" ]; then
-                local CHECKSUMDIR="${2}"
-                local CHECKSUM="yes"
-                shift 2
-            else
-                local CHECKSUM="yes"
-                shift 1
-            fi
+            local CHECKSUM="yes"
+            shift 1
             ;;
         "--dont-build-docker")
             BUILD_DOCKER="no"
@@ -345,10 +336,6 @@ function main() {
         help 1
     fi
 
-    if [ -z "${CHECKSUMDIR}" ]; then
-        local CHECKSUMDIR="${DESTINATION}"
-    fi
-
     if [[ "${HAVE_TARGET}" == true ]] && [[ "${HAVE_BRANCH}" == true ]] && [[ "${HAVE_DESTINATION}" == true ]] && [[ "${HAVE_OUT_NAME}" == true ]]; then
         if [[ "${TARGET}" == "windows" || "${TARGET}" == "macos" ]]; then
             if [[ "${HAVE_PKG_NAME}" == true ]]; then
@@ -356,7 +343,7 @@ function main() {
                     build_container ${COMMON_BUILDER} ${COMMON_BUILDER_DOCKERFILE} || clean ${COMMON_BUILDER_DOCKERFILE} 1
                 fi
                 local CONTAINER_NAME="${COMMON_BUILDER}"
-                pack_wpk ${BRANCH} ${DESTINATION} ${CONTAINER_NAME} ${JOBS} ${PKG_NAME} ${OUT_NAME} ${CHECKSUM} ${CHECKSUMDIR} ${INSTALLATION_PATH} ${AWS_REGION} ${WPK_KEY} ${WPK_CERT} || clean ${COMMON_BUILDER_DOCKERFILE} 1
+                pack_wpk ${BRANCH} ${DESTINATION} ${CONTAINER_NAME} ${JOBS} ${PKG_NAME} ${OUT_NAME} ${CHECKSUM} ${INSTALLATION_PATH} ${AWS_REGION} ${WPK_KEY} ${WPK_CERT} || clean ${COMMON_BUILDER_DOCKERFILE} 1
                 clean ${COMMON_BUILDER_DOCKERFILE} 0
             else
                 echo "ERROR: No MSI/PKG package name specified for Windows or macOS WPK"
@@ -367,7 +354,7 @@ function main() {
                 build_container ${LINUX_BUILDER} ${LINUX_BUILDER_DOCKERFILE} || clean ${LINUX_BUILDER_DOCKERFILE} 1
             fi
             local CONTAINER_NAME="${LINUX_BUILDER}"
-            build_wpk_linux ${BRANCH} ${DESTINATION} ${CONTAINER_NAME} ${JOBS} ${OUT_NAME} ${CHECKSUM} ${CHECKSUMDIR} ${INSTALLATION_PATH} ${AWS_REGION} ${WPK_KEY} ${WPK_CERT} || clean ${LINUX_BUILDER_DOCKERFILE} 1
+            build_wpk_linux ${BRANCH} ${DESTINATION} ${CONTAINER_NAME} ${JOBS} ${OUT_NAME} ${CHECKSUM} ${INSTALLATION_PATH} ${AWS_REGION} ${WPK_KEY} ${WPK_CERT} || clean ${LINUX_BUILDER_DOCKERFILE} 1
             clean ${LINUX_BUILDER_DOCKERFILE} 0
         fi
     else
