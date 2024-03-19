@@ -46,12 +46,10 @@ tags:
     - logcollector_configuration
 '''
 import pytest
-import sys
 
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.constants.daemons import LOGCOLLECTOR_DAEMON
 from wazuh_testing.modules.logcollector import patterns
 from wazuh_testing.tools.monitors import file_monitor
@@ -66,10 +64,7 @@ LOG_COLLECTOR_GLOBAL_TIMEOUT = 40
 
 
 # Marks
-if sys.platform == WINDOWS:
-    pytestmark = pytest.mark.tier(level=0)
-else:
-    pytestmark = [pytest.mark.skip, pytest.mark.tier(level=0)]
+pytestmark = [pytest.mark.agent, pytest.mark.win32, pytest.mark.tier(level=0)]
 
 # Test metadata, configuration and ids.
 cases_path = Path(TEST_CASES_PATH, 'cases_basic_configuration_reconnect_time.yaml')
