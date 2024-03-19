@@ -1201,7 +1201,7 @@ bool journald_add_condition_to_filter(xml_node * node, w_journal_filter_t ** fil
  * The unit pointer is invalid after the call.
  * @param unit Journal filter unit
  */
-static void free_unit_filter(_w_journal_filter_unit_t * unit) {
+STATIC void free_unit_filter(_w_journal_filter_unit_t * unit) {
     if (unit == NULL) {
         return;
     }
@@ -1220,7 +1220,7 @@ static void free_unit_filter(_w_journal_filter_unit_t * unit) {
  * @param ignore_if_missing Ignore if the field is missing
  * @return The filter unit or NULL if an error occurred (compiling the expression)
  */
-static _w_journal_filter_unit_t * create_unit_filter(const char * field, char * expression, bool ignore_if_missing) {
+STATIC _w_journal_filter_unit_t * create_unit_filter(const char * field, char * expression, bool ignore_if_missing) {
     if (field == NULL || expression == NULL) {
         return NULL;
     }
@@ -1312,6 +1312,85 @@ bool w_journal_add_filter_to_list(w_journal_filters_list_t * list, w_journal_fil
     return true;
 }
 
+/**
+ * @brief Get the unit filter as JSON object
+ *
+ * @param unit Unit filter
+ * @return STATIC*
+ */
+STATIC cJSON * unit_filter_as_json(_w_journal_filter_unit_t * unit) {
+
+    if (unit == NULL || unit->field == NULL || unit->exp == NULL || unit->exp->exp_type != EXP_TYPE_PCRE2) {
+        return NULL;
+    }
+
+    cJSON * json = cJSON_CreateObject();
+    cJSON_AddStringToObject(json, "field", unit->field);
+    cJSON_AddStringToObject(json, "expression", unit->exp->pcre2->raw_pattern);
+    cJSON_AddBoolToObject(json, "ignore_if_missing", unit->ignore_if_missing);
+
+    return json;
+}
+
+/**
+ * @brief Get the filter as a JSON Object
+ *
+ * @param filter Filter
+ * @return cJSON* JSON Object with the filter
+ */
+STATIC cJSON * filter_as_json(w_journal_filter_t * filter) {
+    if (filter == NULL || filter->units == NULL) {
+        return NULL;
+    }
+
+    cJSON * json = cJSON_CreateArray();
+    if (json == NULL) {
+        return NULL;
+    }
+
+    for (size_t i = 0; filter->units[i] != NULL; i++) {
+        cJSON * unit = unit_filter_as_json(filter->units[i]);
+        if (unit == NULL) {
+            cJSON_Delete(json);
+            return NULL;
+        }
+
+        cJSON_AddItemToArray(json, unit);
+    }
+
+    return json;
+}
+
+/**
+ * @brief Get the filter as a JSON Array
+ * 
+ * @param filter_lst Filters list
+ * @return cJSON* JSON Array with the filters
+ */
+cJSON * w_journal_filter_list_as_json(w_journal_filters_list_t filter_lst) {
+    if (filter_lst == NULL) {
+        return NULL;
+    }
+
+    cJSON * json = cJSON_CreateArray();
+    if (json == NULL) {
+        return NULL;
+    }
+
+    for (size_t i = 0; filter_lst[i] != NULL; i++) {
+        cJSON * filter = filter_as_json(filter_lst[i]);
+        if (filter == NULL) {
+            cJSON_Delete(json);
+            return NULL;
+        }
+
+        cJSON_AddItemToArray(json, filter);
+    }
+
+    return json;
+
+}
+
 void w_journal_free_filters_list(w_journal_filters_list_t list) {
     if (list == NULL) {
         return;
@@ -1375,8 +1454,21 @@ bool w_logreader_journald_merge(logreader ** logf_ptr, size_t src_index) {
         logr[src_index].journal_log->filters[0] = NULL; // Prevent the filter from being freed
     }
 
+    // Replace the only future event with last configuration
+    logr[dst_index].future = logr[src_index].future;
+
+    // Move the target with the last configuration
+    if (logr[dst_index].target) {
+        for (i = 0; logr[dst_index].target[i]; i++) {
+            os_free(logr[dst_index].target[i]);
+        }
+        os_free(logr[dst_index].target);
+    }
+    logr[dst_index].target = logr[src_index].target;
+    logr[src_index].target = NULL;
+
     /* Remove the src_index log reader */
-    Remove_Localfile(logf_ptr, src_index, 0, true, NULL);
+    Remove_Localfile(logf_ptr, (int) src_index, 0, true, NULL);
 
     return true;
 }

@@ -368,7 +368,7 @@ bool journald_add_condition_to_filter(xml_node * node, w_journal_filter_t ** fil
  * The filter pointer is invalid after the call.
  */
 void w_journal_filter_free(w_journal_filter_t * filter);
-
+ 
 /**
  * @brief Add a condition to the filter, creating the filter if it does not exist
  *
@@ -394,6 +394,15 @@ int w_journal_filter_add_condition(w_journal_filter_t ** filter,
  * @return return false if filter is NULL or list is NULL
  */
 bool w_journal_add_filter_to_list(w_journal_filters_list_t * list, w_journal_filter_t * filter);
+
+
+/**
+ * @brief Get the filter as a JSON Array
+ * 
+ * @param filter_lst Filters list
+ * @return cJSON* JSON Array with the filters
+ */
+cJSON * w_journal_filter_list_as_json(w_journal_filters_list_t filter_lst);
 
 /**
  * @brief Free the filter list and all its resources
