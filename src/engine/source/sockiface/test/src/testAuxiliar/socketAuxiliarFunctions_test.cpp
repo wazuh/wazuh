@@ -34,7 +34,7 @@ protected:
         m_testPath = uniquePath().string();
     }
 
-    void TearDown() override {}
+    void TearDown() override { logging::stop(); }
 };
 
 class unixDatagramSocket : public ::testing::Test

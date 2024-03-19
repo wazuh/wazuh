@@ -48,6 +48,7 @@ protected:
 
     void TearDown() override
     {
+        logging::stop();
         loop->close();
         unlink(socketPath.c_str());
     }
