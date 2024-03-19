@@ -1,5 +1,5 @@
-#include <iostream>
 #include <filesystem>
+#include <iostream>
 #include <unistd.h>
 
 #include <gtest/gtest.h>
@@ -32,7 +32,7 @@ protected:
         m_streamSockPath = uniquePath().string();
     }
 
-    void TearDown() override {}
+    void TearDown() override { logging::stop(); }
 };
 
 TEST_F(unixSecureStreamSocket, build)
