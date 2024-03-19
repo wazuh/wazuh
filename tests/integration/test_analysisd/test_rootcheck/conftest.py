@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2023, Wazuh Inc.
+# Copyright (C) 2015-2024, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -23,7 +23,7 @@ def wait_for_rootcheck_start():
     assert (wazuh_log_monitor.callback_result == None), f'Error invalid configuration event not detected'
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture()
 def simulate_agents(request):
     agents = []
     for _ in range(request.getfixturevalue("test_metadata")["agents_number"]):

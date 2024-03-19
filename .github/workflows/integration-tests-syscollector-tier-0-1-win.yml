@@ -10,8 +10,8 @@ on:
   pull_request:
     paths:
         - ".github/workflows/integration-tests-syscollector-tier-0-1-win.yml"
-        - "src/wazuh_modules/syscollector/**"
         - "src/config/wmodules-syscollector.c"
+        - "src/wazuh_modules/syscollector/**"
         - "src/win32/**"
         - "src/Makefile"
         - "tests/integration/conftest.py"

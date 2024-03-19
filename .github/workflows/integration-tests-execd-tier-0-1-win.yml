@@ -10,6 +10,8 @@ on:
   pull_request:
     paths:
         - ".github/workflows/integration-tests-execd-tier-0-1-win.yml"
+        - "src/config/active-response.c"
+        - "src/config/active-response.h"
         - "src/execd/**"
         - "src/win32/**"
         - "src/Makefile"
