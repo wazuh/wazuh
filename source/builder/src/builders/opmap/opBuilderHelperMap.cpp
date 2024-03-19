@@ -1332,11 +1332,27 @@ TransformOp opBuilderHelperRenameField(const Reference& targetField,
     // Format name for the tracer
     const auto name = buildCtx->context().opName;
 
+    schemf::ValueValidator runValidator;
+    if (buildCtx->validator().hasField(targetField.dotPath()))
+    {
+        auto res = buildCtx->validator().validate(
+            srcField.dotPath(), schemf::tokenFromReference(srcField.dotPath(), buildCtx->validator()));
+        if (base::isError(res))
+        {
+            throw std::runtime_error(
+                fmt::format("Reference '{}' is not valid: {}", srcField.dotPath(), base::getError(res).message));
+        }
+
+        auto validationRes = base::getResponse<schemf::ValidationResult>(res);
+        runValidator = validationRes.getValidator();
+    }
+
     // Tracing messages
     const auto successTrace = fmt::format("{} -> Success", name);
     const auto failureTrace1 = fmt::format("{} -> Target field '{}' already exists", name, targetField.dotPath());
     const auto failureTrace2 = fmt::format("{} -> Source field '{}' does not exists", name, srcField.dotPath());
     const auto failureTrace3 = fmt::format("{} -> Source field '{}' could not be erased", name, targetField.dotPath());
+    const auto failureTrace4 = fmt::format("{} -> Source field '{}' is not valid: ", name, srcField.dotPath());
 
     return
         [=, runState = buildCtx->runState(), targetField = targetField.jsonPath(), sourceField = srcField.jsonPath()](
@@ -1353,6 +1369,14 @@ TransformOp opBuilderHelperRenameField(const Reference& targetField,
         }
 
         auto refValue = event->getJson(sourceField).value();
+        if (runValidator != nullptr)
+        {
+            auto res = runValidator(refValue);
+            if (base::isError(res))
+            {
+                RETURN_FAILURE(runState, event, failureTrace4 + base::getError(res).message);
+            }
+        }
 
         if (!event->erase(sourceField))
         {
@@ -1633,6 +1657,27 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
         }
     }
 
+    if (isMerge && buildCtx->validator().hasField(targetField.dotPath()))
+    {
+        auto type = buildCtx->validator().getType(targetField.dotPath());
+        if (type != schemf::Type::OBJECT && !buildCtx->validator().isArray(targetField.dotPath()))
+        {
+            throw std::runtime_error(fmt::format("Expected 'object' or 'array' target field but got field '{}' of type '{}'",
+                                                 targetField.dotPath(),
+                                                 schemf::typeToStr(type)));
+        }
+    }
+
+    // Runtime validation function
+    auto validationRes = buildCtx->validator().validate(targetField.dotPath(), schemf::runtimeValidation());
+    if (base::isError(validationRes))
+    {
+        throw std::runtime_error(fmt::format(
+            "Target field '{}' is not valid: {}", targetField.dotPath(), base::getError(validationRes).message));
+    }
+
+    auto runValidator = base::getResponse<schemf::ValidationResult>(validationRes).getValidator();
+
     // Tracing
     const auto name = buildCtx->context().opName;
     const auto successTrace = fmt::format("{} -> Success", name);
@@ -1643,6 +1688,7 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
     const auto failureTrace5 = fmt::format("{} -> Error retreiving key: ", name);
     const auto failureTrace6 = fmt::format("{} -> Key not found", name);
     const auto failureTrace7 = fmt::format("{} -> Merge error: ", name);
+    const auto failureTrace8 = fmt::format("{} -> Validator error: ", name);
 
     // Return Op
     return [=,
@@ -1704,6 +1750,15 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
         if (!resolvedValue.has_value())
         {
             RETURN_FAILURE(runState, event, failureTrace6);
+        }
+
+        if (runValidator != nullptr)
+        {
+            auto res = runValidator(resolvedValue.value());
+            if (base::isError(res))
+            {
+                RETURN_FAILURE(runState, event, failureTrace8 + base::getError(res).message);
+            }
         }
 
         if (!isMerge)
