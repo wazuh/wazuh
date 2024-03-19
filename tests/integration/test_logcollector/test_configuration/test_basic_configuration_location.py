@@ -64,12 +64,12 @@ from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS, MACOS
-from wazuh_testing.constants.daemons import LOGCOLLECTOR_DAEMON, WAZUH_AGENT_WIN
+from wazuh_testing.modules.agentd import configuration as agentd_configuration
 from wazuh_testing.modules.logcollector import patterns
 from wazuh_testing.modules.logcollector import utils
+from wazuh_testing.modules.logcollector import configuration as logcollector_configuration
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils import callbacks, configuration
-from wazuh_testing.utils.services import check_if_process_is_running
 
 from . import TEST_CASES_PATH, CONFIGURATIONS_PATH
 
@@ -109,6 +109,8 @@ test_win_configuration, test_win_metadata, test_win_cases_ids = configuration.ge
 test_win_configuration = configuration.load_configuration_template(default_config_path, test_win_configuration, test_win_metadata)
 
 
+daemon_debug = logcollector_configuration.LOGCOLLECTOR_DEBUG
+
 if sys.platform == MACOS:
     test_configuration += test_macos_dup_configuration
     test_metadata += test_macos_metadata
@@ -117,15 +119,18 @@ if sys.platform == WINDOWS:
     test_configuration += test_win_configuration
     test_metadata += test_win_metadata
     test_cases_ids += test_win_cases_ids
+    daemon_debug = agentd_configuration.AGENTD_WINDOWS_DEBUG
 
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
 
+local_internal_options = {daemon_debug: '1'}
+
 
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_configuration_location(test_configuration, test_metadata, truncate_monitored_files,
-                                set_wazuh_configuration, daemons_handler):
+def test_configuration_location(test_configuration, test_metadata, truncate_monitored_files, configure_local_internal_options,
+                                set_wazuh_configuration, daemons_handler, wait_for_logcollector_start):
     '''
     description: Check if the 'wazuh-logcollector' daemon starts properly when the 'location' tag is used.
                  For this purpose, the test will configure the logcollector to monitor a 'syslog' directory
@@ -151,6 +156,9 @@ def test_configuration_location(test_configuration, test_metadata, truncate_moni
         - daemons_handler:
             type: fixture
             brief: Handler of Wazuh daemons.
+        - wait_for_logcollector_start:
+            type: fixture
+            brief: Wait for the logcollector startup log.
 
     assertions:
         - Verify that the Wazuh component (agent or manager) can start when the 'location' tag is used.
@@ -171,7 +179,6 @@ def test_configuration_location(test_configuration, test_metadata, truncate_moni
     '''
 
     if sys.platform == WINDOWS:
-        assert check_if_process_is_running(WAZUH_AGENT_WIN) == True
         if test_metadata['location'] == 'invalidchannel':
             wazuh_log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
             callback = callbacks.generate_callback(patterns.LOGCOLLECTOR_EVENTCHANNEL_BAD_FORMAT,
@@ -179,8 +186,6 @@ def test_configuration_location(test_configuration, test_metadata, truncate_moni
             wazuh_log_monitor.start(timeout=LOG_COLLECTOR_GLOBAL_TIMEOUT, callback=callback)
             assert (wazuh_log_monitor.callback_result != None), patterns.ERROR_EVENTCHANNEL
     else:
-        # Wait until the logcollector socket is available.
-        check_if_process_is_running(LOGCOLLECTOR_DAEMON)
         if test_metadata['validate_config']:
             utils.check_logcollector_socket()
             utils.validate_test_config_with_module_config(test_configuration=test_configuration)
