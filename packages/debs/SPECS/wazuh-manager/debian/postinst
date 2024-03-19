@@ -15,7 +15,6 @@ case "$1" in
     OSMYSHELL="/sbin/nologin"
     SCRIPTS_DIR="${WAZUH_GLOBAL_TMP_DIR}/manager_installation_scripts"
     SCA_BASE_DIR="${SCRIPTS_DIR}/sca"
-    VD_FILENAME='vd_1.0.0_vd_4.8.0.tar.xz'
 
     if [ -d /run/systemd/system ]; then
         rm -f /etc/init.d/wazuh-manager
@@ -70,13 +69,6 @@ case "$1" in
     if [ -f ${DIR}/queue/db/global.db ]; then
         chmod 640 ${DIR}/queue/db/global.db*
         chown ${USER}:${GROUP} ${DIR}/queue/db/global.db*
-    fi
-
-    if [ -f "${DIR}/${VD_FILENAME}" ]; then
-        tar -xf ${DIR}/${VD_FILENAME} -C ${DIR}
-        chown ${USER}:${GROUP} ${DIR}/queue/vd
-        chown ${USER}:${GROUP} ${DIR}/queue/vd_updater
-        rm -rf ${DIR}/${VD_FILENAME}
     fi
 
     # Delete uncompatible DBs versions
@@ -274,7 +266,7 @@ case "$1" in
             find ${DIR}/ -group ossec -user ossecr -print0 | xargs -0 chown ${USER}:${GROUP} > /dev/null 2>&1 || true
             deluser ossecr > /dev/null 2>&1
         fi
-        if getent group ossec > /dev/null 2>&1; then 
+        if getent group ossec > /dev/null 2>&1; then
             delgroup ossec > /dev/null 2>&1
         fi
     fi
@@ -311,7 +303,7 @@ case "$1" in
     if [ -z "$(ls -A ${WAZUH_GLOBAL_TMP_DIR})" ]; then
         rm -rf ${WAZUH_GLOBAL_TMP_DIR}
     fi
-   
+
     ;;
 
 

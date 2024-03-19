@@ -22,7 +22,7 @@ Conflicts:   ossec-hids ossec-hids-agent wazuh-agent wazuh-local
 Obsoletes: wazuh-api < 4.0.0
 AutoReqProv: no
 
-Requires: coreutils xz
+Requires: coreutils
 BuildRequires: coreutils glibc-devel automake autoconf libtool policycoreutils-python curl perl
 
 ExclusiveOS: linux
@@ -80,7 +80,7 @@ echo 'USER_CA_STORE="/path/to/my_cert.pem"' >> ./etc/preloaded-vars.conf
 echo 'USER_GENERATE_AUTHD_CERT="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_AUTO_START="n"' >> ./etc/preloaded-vars.conf
 echo 'USER_CREATE_SSL_CERT="n"' >> ./etc/preloaded-vars.conf
-echo 'DOWNLOAD_CONTENT="yes"' >> ./etc/preloaded-vars.conf
+echo 'DOWNLOAD_CONTENT="y"' >> ./etc/preloaded-vars.conf
 ./install.sh
 
 # Create directories
@@ -168,12 +168,11 @@ cp etc/templates/config/fedora/32/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/t
 cp etc/templates/config/fedora/33/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/33
 cp etc/templates/config/fedora/34/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/34
 
+cp etc/templates/config/almalinux/8/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/almalinux/8
 cp etc/templates/config/almalinux/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/almalinux/9
 
-cp etc/templates/config/rocky/8/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/8
 cp etc/templates/config/rocky/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/9
-
-cp etc/templates/config/almalinux/8/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/almalinux/8
+cp etc/templates/config/rocky/8/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/8
 
 # Add SUSE initscript
 sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/ossec-hids-suse.init
@@ -318,12 +317,6 @@ if [ $1 = 2 ]; then
 fi
 
 %define _vdfilename vd_1.0.0_vd_4.8.0.tar.xz
-if [ -f "%{_localstatedir}/%{_vdfilename}" ]; then
-    tar -xf %{_localstatedir}/%{_vdfilename} -C %{_localstatedir}
-    chown wazuh:wazuh %{_localstatedir}/queue/vd
-    chown wazuh:wazuh %{_localstatedir}/queue/vd_updater
-    rm -rf %{_localstatedir}/%{_vdfilename}
-fi
 
 # Fresh install code block
 if [ $1 = 1 ]; then
@@ -726,7 +719,8 @@ rm -fr %{buildroot}
 %attr(640, wazuh, wazuh) %ghost %{_localstatedir}/logs/integrations.log
 %attr(660, wazuh, wazuh) %ghost %{_localstatedir}/logs/ossec.log
 %attr(660, wazuh, wazuh) %ghost %{_localstatedir}/logs/ossec.json
-%attr(0440, root, wazuh) %{_localstatedir}/queue/indexer/vd_states_template.json
+%dir %attr(750, wazuh, wazuh) %{_localstatedir}/templates
+%attr(0440, root, wazuh) %{_localstatedir}/templates/vd_states_template.json
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/api
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/archives
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/alerts
@@ -750,7 +744,7 @@ rm -fr %{buildroot}
 %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/centos/*
 %dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/rhel
 %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/rhel/*
-%attr(750, wazuh, wazuh) %{_localstatedir}/%{_vdfilename}
+%attr(750, wazuh, wazuh) %{_localstatedir}/tmp/%{_vdfilename}
 %dir %attr(750, root, wazuh) %{_localstatedir}/queue
 %attr(600, root, wazuh) %ghost %{_localstatedir}/queue/agents-timestamp
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/agentless
@@ -871,8 +865,6 @@ rm -fr %{buildroot}
 %attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/almalinux/*
 %dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky
 %attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/*
-%dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/almalinux
-%attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/almalinux/*
 %dir %attr(750, root, wazuh) %{_localstatedir}/var
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/db
 %attr(660, root, wazuh) %{_localstatedir}/var/db/mitre.db
@@ -897,12 +889,14 @@ rm -fr %{buildroot}
 %changelog
 * Tue May 14 2024 support <info@wazuh.com> - 4.9.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-9-0.html
-* Tue Mar 26 2024 support <info@wazuh.com> - 4.8.2
+* Wed Apr 17 2024 support <info@wazuh.com> - 4.8.2
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-8-2.html
-* Wed Feb 28 2024 support <info@wazuh.com> - 4.8.1
+* Wed Apr 03 2024 support <info@wazuh.com> - 4.8.1
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-8-1.html
-* Wed Feb 21 2024 support <info@wazuh.com> - 4.8.0
+* Wed Mar 20 2024 support <info@wazuh.com> - 4.8.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-8-0.html
+* Tue Feb 27 2024 support <info@wazuh.com> - 4.7.3
+- More info: https://documentation.wazuh.com/current/release-notes/release-4-7-3.html
 * Tue Jan 09 2024 support <info@wazuh.com> - 4.7.2
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-7-2.html
 * Wed Dec 13 2023 support <info@wazuh.com> - 4.7.1
