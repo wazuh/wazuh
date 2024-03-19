@@ -76,7 +76,7 @@ build_package(){
         return 1
     fi
 
-    if [[ "${REVISION}" == "1" ]]; then
+    if [[ "${IS_PACKAGE_RELEASE}" == "yes" ]]; then
         rpm_file="${file_name}.${ARCH}.rpm"
     else
         # Replace "-" with "_" between BUILD_TARGET and Version
