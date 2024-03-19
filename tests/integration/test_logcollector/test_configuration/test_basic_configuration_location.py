@@ -61,7 +61,6 @@ import pytest, sys, os
 import tempfile
 
 from pathlib import Path
-from time import sleep
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS, MACOS
@@ -73,6 +72,9 @@ from wazuh_testing.utils import callbacks, configuration
 from wazuh_testing.utils.services import check_if_process_is_running
 
 from . import TEST_CASES_PATH, CONFIGURATIONS_PATH
+
+
+LOG_COLLECTOR_GLOBAL_TIMEOUT = 40
 
 
 # Marks
@@ -174,11 +176,11 @@ def test_configuration_location(test_configuration, test_metadata, truncate_moni
             wazuh_log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
             callback = callbacks.generate_callback(patterns.LOGCOLLECTOR_EVENTCHANNEL_BAD_FORMAT,
                                                             {'event_location': test_metadata['location']})
-            wazuh_log_monitor.start(timeout=patterns.LOG_COLLECTOR_GLOBAL_TIMEOUT, callback=callback)
+            wazuh_log_monitor.start(timeout=LOG_COLLECTOR_GLOBAL_TIMEOUT, callback=callback)
             assert (wazuh_log_monitor.callback_result != None), patterns.ERROR_EVENTCHANNEL
     else:
         # Wait until the logcollector socket is available.
         check_if_process_is_running(LOGCOLLECTOR_DAEMON)
         if test_metadata['validate_config']:
-            sleep(10)
+            utils.check_logcollector_socket()
             utils.validate_test_config_with_module_config(test_configuration=test_configuration)

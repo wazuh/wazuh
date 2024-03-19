@@ -58,7 +58,6 @@ tags:
 import pytest, sys, tempfile, re, os
 
 from pathlib import Path
-from time import sleep
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
@@ -154,6 +153,5 @@ def test_configuration_label(test_configuration, test_metadata, set_wazuh_config
     assert (wazuh_log_monitor.callback_result != None), patterns.ERROR_ANALYZING_FILE
 
     if sys.platform != WINDOWS:
-        # Wait until the logcollector socket is available.
-        sleep(10)
+        utils.check_logcollector_socket()
         utils.validate_test_config_with_module_config(test_configuration=test_configuration)

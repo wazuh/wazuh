@@ -62,6 +62,9 @@ from wazuh_testing.utils.file import truncate_file
 from . import TEST_CASES_PATH, CONFIGURATIONS_PATH
 
 
+LOG_COLLECTOR_GLOBAL_TIMEOUT = 40
+
+
 # Marks
 if sys.platform == WINDOWS:
     pytestmark = pytest.mark.tier(level=0)
@@ -139,7 +142,7 @@ def test_configuration_reconnect_time(test_configuration, test_metadata, truncat
         control_service('start', daemon=LOGCOLLECTOR_DAEMON)
         callback = callbacks.generate_callback(patterns.LOGCOLLECTOR_ANALYZING_EVENT_LOG,
                                                             {'event_location': test_metadata['location']})
-        wazuh_log_monitor.start(timeout=patterns.LOG_COLLECTOR_GLOBAL_TIMEOUT, callback=callback)
+        wazuh_log_monitor.start(timeout=LOG_COLLECTOR_GLOBAL_TIMEOUT, callback=callback)
         assert (wazuh_log_monitor.callback_result != None), patterns.ERROR_GENERIC_MESSAGE
     else:
         if test_metadata['reconnect_time'] in problematic_values:

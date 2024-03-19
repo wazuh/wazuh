@@ -63,21 +63,21 @@ import pytest, sys, os, tempfile, re
 import subprocess as sb
 
 from pathlib import Path
-from time import sleep
 
-from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.constants.paths.configurations import WAZUH_CONF_PATH
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, MACOS_LOG_COMMAND_PATH
 from wazuh_testing.constants.platforms import WINDOWS, MACOS
 from wazuh_testing.constants.daemons import LOGCOLLECTOR_DAEMON
 from wazuh_testing.modules.logcollector import configuration as logcollector_configuration
 from wazuh_testing.modules.logcollector import patterns, PREFIX
-from wazuh_testing.modules.logcollector import utils
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils import callbacks, configuration
 from wazuh_testing.utils.services import control_service
 from wazuh_testing.utils.file import truncate_file
 
 from . import TEST_CASES_PATH, CONFIGURATIONS_PATH
+
+
+LOG_COLLECTOR_GLOBAL_TIMEOUT = 40
 
 
 # Marks
@@ -185,7 +185,7 @@ def check_log_format_valid(test_configuration, test_metadata):
 
         wazuh_log_monitor.start(timeout=5,
                                 callback=callbacks.generate_callback(patterns.LOGCOLLECTOR_MACOS_MONITORING_OLD_LOGS,
-                                                   {'command_path': patterns.MACOS_LOG_COMMAND_PATH}))
+                                                   {'command_path': MACOS_LOG_COMMAND_PATH}))
         assert (wazuh_log_monitor.callback_result != None), patterns.ERROR_MACOS_LOG_NOT_PRODUCED
 
 
@@ -230,12 +230,12 @@ def check_log_format_invalid(test_metadata):
 def check_log_file_duplicated():
     """Check if Wazuh shows a warning message when the configuration is duplicated."""
     wazuh_log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(timeout=patterns.LOG_COLLECTOR_GLOBAL_TIMEOUT,
+    wazuh_log_monitor.start(timeout=LOG_COLLECTOR_GLOBAL_TIMEOUT,
                             callback=callbacks.generate_callback(patterns.LOGCOLLECTOR_LOG_FILE_DUPLICATED))
     assert (wazuh_log_monitor.callback_result != None), patterns.ERROR_LOG_FILE_DUPLICATED
-    wazuh_log_monitor.start(timeout=patterns.LOG_COLLECTOR_GLOBAL_TIMEOUT,
+    wazuh_log_monitor.start(timeout=LOG_COLLECTOR_GLOBAL_TIMEOUT,
                             callback=callbacks.generate_callback(patterns.LOGCOLLECTOR_MACOS_MONITORING_OLD_LOGS,
-                                                                 {'command_path': patterns.MACOS_LOG_COMMAND_PATH}))
+                                                                 {'command_path': MACOS_LOG_COMMAND_PATH}))
     assert (wazuh_log_monitor.callback_result != None), patterns.ERROR_ANALYZING_MACOS
 
 
