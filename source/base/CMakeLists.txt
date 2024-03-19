@@ -43,18 +43,20 @@ endif()
 ####################################################################################################
 # TODO: spdlog includes fmt, but its headers cannot be included as, for example, "fmt/xxx.h" but "fmt/bundled/xxx.h"
 CPMAddPackage(
-    NAME fmt
-    GITHUB_REPOSITORY fmtlib/fmt
-    GIT_TAG "8.1.1"
-    OPTIONS "FMT_HEADER_ONLY ON"
+  NAME fmt
+  GITHUB_REPOSITORY fmtlib/fmt
+  GIT_TAG "8.1.1"
+  OPTIONS "FMT_HEADER_ONLY ON"
 )
 
 CPMAddPackage(
-    NAME spdlog
-    GITHUB_REPOSITORY gabime/spdlog
-    GIT_TAG "v1.11.0"
-    OPTIONS "SPDLOG_FMT_EXTERNAL_HO ON"
+  NAME spdlog
+  GITHUB_REPOSITORY gabime/spdlog
+  GIT_TAG "v1.11.0"
+  OPTIONS "SPDLOG_FMT_EXTERNAL_HO ON"
 )
+
+add_dependencies(spdlog fmt)
 
 ####################################################################################################
 # json
@@ -101,6 +103,7 @@ target_link_libraries(base
     PUBLIC
     dl
     fmt
+    spdlog
     json
     )
 

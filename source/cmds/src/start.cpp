@@ -87,8 +87,9 @@ struct Options
     int queueFloodSleep;
     bool queueDropFlood;
     // Loggin
-    std::string logLevel;
+    std::string level;
     std::string logOutput;
+    bool logTruncate;
     // TZ_DB
     std::string tzdbPath;
 };
@@ -106,16 +107,9 @@ void runStart(ConfHandler confManager)
     const auto confPath = confManager->get<std::string>("config");
 
     // Log config
-    const auto logLevel = confManager->get<std::string>("server.log_level");
-    std::string logOutput {};
-    try
-    {
-        logOutput = confManager->get<std::string>("server.log_output");
-    }
-    catch (const std::exception& e)
-    {
-        LOG_DEBUG("Log output configured to stdout");
-    }
+    const auto level = confManager->get<std::string>("server.log_level");
+    const auto logOutput = confManager->get<std::string>("server.log_output");
+    const auto logTruncate = confManager->get<bool>("server.log_truncate");
 
     // Server config
     const auto serverThreads = confManager->get<int>("server.server_threads");
@@ -130,19 +124,26 @@ void runStart(ConfHandler confManager)
 
     // Logging init
     logging::LoggingConfig logConfig;
-    logConfig.logLevel = logLevel;
+    logConfig.level = level;
+    logConfig.truncate = logTruncate;
+    logConfig.filePath = logOutput;
 
-    if (!logOutput.empty())
+    exitHandler.add([]() { logging::stop(); });
+
+    try
     {
-        logConfig.filePath = logOutput;
+        logging::start(logConfig);
+    }
+    catch (const std::exception& e)
+    {
+        exitHandler.execute();
+        std::cerr << e.what() << '\n';
+        return;
     }
 
-    logging::loggingInit(logConfig);
-
-    LOG_DEBUG("Logging configuration: filePath='{}', logLevel='{}', header='{}', flushInterval={}ms.",
+    LOG_DEBUG("Logging configuration: filePath='{}', level='{}', flushInterval={}ms.",
               logConfig.filePath,
-              logConfig.logLevel,
-              logConfig.headerFormat,
+              logConfig.level,
               logConfig.flushInterval);
     LOG_INFO("Logging initialized.");
 
@@ -447,13 +448,19 @@ void configure(CLI::App_p app)
     auto options = std::make_shared<Options>();
 
     // Loggin module
-    serverApp->add_option("-l, --log_level", options->logLevel, "Sets the logging level.")
+    serverApp->add_option("-l, --log_level", options->level, "Sets the logging level.")
         ->check(CLI::IsMember({"trace", "debug", "info", "warning", "error", "critical", "off"}))
         ->default_val(ENGINE_LOG_LEVEL)
         ->envname(ENGINE_LOG_LEVEL_ENV);
 
-    serverApp->add_option("--log_output", options->logOutput, "Sets the logging output. Default: stdout.")
+    serverApp->add_option("--log_output", options->logOutput, "Sets the logging output.")
+        ->default_val(ENGINE_LOG_OUTPUT)
         ->envname(ENGINE_LOG_OUTPUT_ENV);
+
+    serverApp->add_option("--log_truncate", options->logTruncate, "Allows whether or not to delete the log file at each start of the engine")
+        ->default_val(ENGINE_LOG_TRUNCATE)
+        ->envname(ENGINE_LOG_TRUNCATE_ENV);
+
 
     // Server module
     serverApp

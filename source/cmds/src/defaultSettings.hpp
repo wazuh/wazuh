@@ -13,6 +13,9 @@ constexpr auto ENGINE_LOG_LEVEL_ENV = "WZE_LOG_LEVEL";
 constexpr auto ENGINE_LOG_OUTPUT = "";
 constexpr auto ENGINE_LOG_OUTPUT_ENV = "WZE_LOG_OUTPUT";
 
+constexpr auto ENGINE_LOG_TRUNCATE = false;
+constexpr auto ENGINE_LOG_TRUNCATE_ENV = "WZE_LOG_TRUNCATE";
+
 // Server module
 constexpr auto ENGINE_SRV_PULL_THREADS = 1;
 constexpr auto ENGINE_SRV_PULL_THREADS_ENV = "WZE_PULL_THREADS";
