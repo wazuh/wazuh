@@ -70,7 +70,7 @@ post_process() {
 
 # Script parameters
 wazuh_branch="$1"
-export REVISION="${2}"
+export REVISION="$2"
 export JOBS="$3"
 debug="$4"
 checksum="$5"
