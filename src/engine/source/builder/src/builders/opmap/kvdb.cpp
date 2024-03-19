@@ -65,6 +65,24 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
         throw std::runtime_error(fmt::format("Engine KVDB builder: {}.", std::get<base::Error>(resultHandler).message));
     }
 
+    // Validate the target field
+    schemf::ValueValidator validator = nullptr;
+    if (buildCtx->validator().hasField(targetField.dotPath()))
+    {
+        if (doMerge
+            && (buildCtx->validator().getType(targetField.dotPath()) != schemf::Type::OBJECT
+                && buildCtx->validator().isArray(targetField.dotPath())))
+        {
+            throw std::runtime_error(
+                fmt::format("Expected target field '{}' to be an object or array but got '{}'",
+                            targetField.dotPath(),
+                            schemf::typeToStr(buildCtx->validator().getType(targetField.dotPath()))));
+        }
+
+        auto res = buildCtx->validator().validate(targetField.dotPath(), schemf::runtimeValidation());
+        validator = base::getResponse<schemf::ValidationResult>(res).getValidator();
+    }
+
     // Format name for the tracer
     const auto name = buildCtx->context().opName;
 
@@ -96,6 +114,8 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
     const auto failureTrace4 = fmt::format("{} -> Key not found in DB", name);
     const auto failureTrace5 = fmt::format("{} -> Type mismatch between target field and value when merging", name);
     const auto failureTrace6 = fmt::format("{} -> Malformed JSON for value in DB", name);
+    const auto failureTrace7 =
+        fmt::format("{} -> Value from DB failed validation for '{}': ", name, targetField.dotPath());
 
     // Return Op
     return [=,
@@ -138,6 +158,14 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
         try
         {
             json::Json value {base::getResponse<std::string>(resultValue).c_str()};
+            if (validator != nullptr)
+            {
+                auto res = validator(value);
+                if (base::isError(res))
+                {
+                    RETURN_FAILURE(runState, event, failureTrace7 + res.value().message);
+                }
+            }
             if (doMerge)
             {
                 if (!event->exists(targetField))
@@ -341,6 +369,15 @@ TransformOp KVDBSet(std::shared_ptr<IKVDBManager> kvdbManager,
         throw std::runtime_error(fmt::format("Error getting KVDB handler: {}", base::getError(resultHandler).message));
     }
 
+    // Validate target field
+    if (buildCtx->validator().hasField(targetField.dotPath()))
+    {
+        if (buildCtx->validator().getType(targetField.dotPath()) != schemf::Type::BOOLEAN)
+        {
+            throw std::runtime_error(fmt::format("Expected target field '{}' to be a boolean", targetField.dotPath()));
+        }
+    }
+
     // Trace messages
     const auto name = buildCtx->context().opName;
     const auto successTrace = fmt::format("{} -> Success", name);
@@ -503,6 +540,15 @@ TransformOp KVDBDelete(std::shared_ptr<IKVDBManager> kvdbManager,
             fmt::format("Database is not available for usage: {}.", std::get<base::Error>(resultHandler).message));
     }
 
+    // Validate target field
+    if (buildCtx->validator().hasField(targetField.dotPath()))
+    {
+        if (buildCtx->validator().getType(targetField.dotPath()) != schemf::Type::BOOLEAN)
+        {
+            throw std::runtime_error(fmt::format("Expected target field '{}' to be a boolean", targetField.dotPath()));
+        }
+    }
+
     // Trace messages
     const auto name = buildCtx->context().opName;
     const auto successTrace = fmt::format("{} -> Success", name);
@@ -651,6 +697,16 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
                 fmt::format("Engine KVDB builder: {}.", std::get<base::Error>(resultHandler).message));
         }
 
+        // Validate target field
+        auto valRes = buildCtx->validator().validate(targetField.dotPath(), schemf::isArrayToken());
+        if (base::isError(valRes))
+        {
+            throw std::runtime_error(fmt::format("Error validating target field '{}': {}",
+                                                 targetField.dotPath(),
+                                                 std::get<base::Error>(valRes).message));
+        }
+        auto validator = base::getResponse<schemf::ValidationResult>(valRes).getValidator();
+
         // Trace messages
         const auto name = buildCtx->context().opName;
         const auto successTrace = fmt::format("{} -> Success", name);
@@ -682,6 +738,8 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
         const auto failureTrace3 = fmt::format("{} -> Could not get value from DB: ", name);
         const auto failureTrace4 = fmt::format("{} -> Malformed JSON for value in DB: ", name);
         const auto failureTrace5 = fmt::format("{} -> Array of values from DB is not homogeneous", name);
+        const auto failureTrace6 =
+            fmt::format("{} -> Final array failed validation for '{}': ", name, targetField.dotPath());
 
         // Return Op
         return [=,
@@ -756,11 +814,33 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
                 values.emplace_back(std::move(jValue));
             }
 
+            // Get target array
+            auto targetArray = event->getJson(targetField)
+                                   .value_or(
+                                       []()
+                                       {
+                                           json::Json jArray;
+                                           jArray.setArray();
+                                           return std::move(jArray);
+                                       }());
+
             // Append values to target field
             for (auto& value : values)
             {
-                event->appendJson(value, targetField);
+                targetArray.appendJson(value);
             }
+
+            // Validate target array
+            if (validator != nullptr)
+            {
+                auto res = validator(targetArray);
+                if (base::isError(res))
+                {
+                    RETURN_FAILURE(runState, event, failureTrace6 + res.value().message);
+                }
+            }
+
+            event->set(targetField, targetArray);
 
             RETURN_SUCCESS(runState, event, successTrace);
         };

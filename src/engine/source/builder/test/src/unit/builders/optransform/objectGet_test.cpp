@@ -60,10 +60,24 @@ INSTANTIATE_TEST_SUITE_P(
         TransformT({makeRef("ref"), makeValue(R"({})")}, opBuilderHelperMergeValue, FAILURE()),
         TransformT({makeRef("obj"), makeRef("key")},
                    opBuilderHelperMergeValue,
-                   SUCCESS(customRefExpected("obj", "key"))),
+                   SUCCESS(
+                       [](const auto& mocks)
+                       {
+                           customRefExpected("obj", "key")(mocks);
+                           EXPECT_CALL(*mocks.validator, hasField(DotPath("targetField")))
+                               .WillOnce(testing::Return(false));
+                           return None {};
+                       })),
         TransformT({makeValue(R"({"key": "value"})"), makeRef("ref")},
                    opBuilderHelperMergeValue,
-                   SUCCESS(customRefExpected("ref")))),
+                   SUCCESS(
+                       [](const auto& mocks)
+                       {
+                           customRefExpected("ref")(mocks);
+                           EXPECT_CALL(*mocks.validator, hasField(DotPath("targetField")))
+                               .WillOnce(testing::Return(false));
+                           return None {};
+                       }))),
     testNameFormatter<TransformBuilderTest>("ObjectGet"));
 } // namespace transformbuildtest
 
@@ -115,8 +129,8 @@ INSTANTIATE_TEST_SUITE_P(
                    opBuilderHelperMergeValue,
                    "target",
                    {makeValue(R"({"key": {"k1": "v1"}})"), makeRef("ref")},
-                   SUCCESS(customRefExpected(makeEvent(R"({"ref": "key", "target": {"k0": "v0", "k1": "v1"}})"),
-                                             "ref"))),
+                   SUCCESS(customRefExpected(
+                       makeEvent(R"({"ref": "key", "target": {"k0": "v0", "k1": "v1"}})"), "ref", "target"))),
         TransformT(
             R"({"ref1": "key", "ref2": {"key": {"k0": "v0"}}, "target": {"k1": "v1"}})",
             opBuilderHelperMergeValue,
@@ -125,63 +139,66 @@ INSTANTIATE_TEST_SUITE_P(
             SUCCESS(customRefExpected(
                 makeEvent(R"({"ref1": "key", "ref2": {"key": {"k0": "v0"}}, "target": {"k1": "v1", "k0": "v0"}})"),
                 "ref1",
-                "ref2"))),
+                "ref2",
+                "target"))),
         TransformT(R"({"ref": "key", "target": ["v0"]})",
                    opBuilderHelperMergeValue,
                    "target",
                    {makeValue(R"({"key": ["v1"]})"), makeRef("ref")},
-                   SUCCESS(customRefExpected(makeEvent(R"({"ref": "key", "target": ["v0", "v1"]})"), "ref"))),
+                   SUCCESS(customRefExpected(makeEvent(R"({"ref": "key", "target": ["v0", "v1"]})"), "ref", "target"))),
         TransformT(
             R"({"ref1": "key", "ref2": {"key": ["v0"]}, "target": ["v1"]})",
             opBuilderHelperMergeValue,
             "target",
             {makeRef("ref2"), makeRef("ref1")},
-            SUCCESS(customRefExpected(
-                makeEvent(R"({"ref1": "key", "ref2": {"key": ["v0"]}, "target": ["v1", "v0"]})"), "ref1", "ref2"))),
+            SUCCESS(customRefExpected(makeEvent(R"({"ref1": "key", "ref2": {"key": ["v0"]}, "target": ["v1", "v0"]})"),
+                                      "ref1",
+                                      "ref2",
+                                      "target"))),
         TransformT(R"({"ref": "key", "target": {"k0": "v0"}})",
                    opBuilderHelperMergeValue,
                    "target",
                    {makeValue(R"({"key": ["v1"]})"), makeRef("ref")},
-                   FAILURE(customRefExpected("ref"))),
+                   FAILURE(customRefExpected("ref", "target"))),
         TransformT(R"({"ref": "key", "target": ["v0"]})",
                    opBuilderHelperMergeValue,
                    "target",
                    {makeValue(R"({"key": {"k0": "v0"}})"), makeRef("ref")},
-                   FAILURE(customRefExpected("ref"))),
+                   FAILURE(customRefExpected("ref", "target"))),
         TransformT(R"({"ref1": "key", "ref2": {"key": ["v1"]}, "target": {"k0": "v0"}})",
                    opBuilderHelperMergeValue,
                    "target",
                    {makeRef("ref2"), makeRef("ref1")},
-                   FAILURE(customRefExpected("ref1", "ref2"))),
+                   FAILURE(customRefExpected("ref1", "ref2", "target"))),
         TransformT(R"({"ref1": "key", "ref2": {"key": {"k0": "v0"}}, "target": ["v1"]})",
                    opBuilderHelperMergeValue,
                    "target",
                    {makeRef("ref2"), makeRef("ref1")},
-                   FAILURE(customRefExpected("ref1", "ref2"))),
+                   FAILURE(customRefExpected("ref1", "ref2", "target"))),
         TransformT(R"({"notRef": "key", "target": {"k0": "v0"}})",
                    opBuilderHelperMergeValue,
                    "target",
                    {makeValue(R"({"key": {"k1": "v1"}})"), makeRef("ref")},
-                   FAILURE(customRefExpected("ref"))),
+                   FAILURE(customRefExpected("ref", "target"))),
         TransformT(R"({"notRef": "key", "ref2": {"key": {"k0": "v0"}}, "target": {"k1": "v1"}})",
                    opBuilderHelperMergeValue,
                    "target",
                    {makeRef("ref2"), makeRef("ref1")},
-                   FAILURE(customRefExpected("ref1", "ref2"))),
+                   FAILURE(customRefExpected("ref1", "ref2", "target"))),
         TransformT(R"({"ref1": "key", "notRef2": {"key": {"k0": "v0"}}, "target": {"k1": "v1"}})",
                    opBuilderHelperMergeValue,
                    "target",
                    {makeRef("ref2"), makeRef("ref1")},
-                   FAILURE(customRefExpected("ref1", "ref2"))),
+                   FAILURE(customRefExpected("ref1", "ref2", "target"))),
         TransformT(R"({"ref": "key"})",
                    opBuilderHelperMergeValue,
                    "target",
                    {makeValue(R"({"key": {"k1": "v1"}})"), makeRef("ref")},
-                   FAILURE(customRefExpected("ref"))),
+                   FAILURE(customRefExpected("ref", "target"))),
         TransformT(R"({"ref1": "key", "ref2": {"key": {"k0": "v0"}}})",
                    opBuilderHelperMergeValue,
                    "target",
                    {makeRef("ref2"), makeRef("ref1")},
-                   FAILURE(customRefExpected("ref1", "ref2")))),
+                   FAILURE(customRefExpected("ref1", "ref2", "target")))),
     testNameFormatter<TransformOperationTest>("ObjectGet"));
 } // namespace transformoperatestest
