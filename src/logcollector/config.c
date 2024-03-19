@@ -196,6 +196,15 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
             cJSON_AddNumberToObject(multiline, "timeout", list[i].multiline->timeout);
             cJSON_AddItemToObject(file, "multiline_regex", multiline);
         }
+        if (list[i].journal_log != NULL && list[i].journal_log->filters != NULL) {
+
+            cJSON * filters = w_journal_filter_list_as_json(list[i].journal_log->filters);
+            if (filters != NULL) {
+                cJSON_AddItemToObject(file, "filters", filters);
+            }
+
+            cJSON_AddBoolToObject(file, "filters_disabled", list[i].journal_log->disable_filters);
+        }
         if (list[i].regex_ignore != NULL) {
             OSListNode *node_it;
             w_expression_t *exp_it;
