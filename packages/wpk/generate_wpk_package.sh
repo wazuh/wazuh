@@ -37,7 +37,7 @@ function pack_wpk() {
     local WPK_KEY="${10}"
     local WPK_CERT="${11}"
 
-    if [ -n "${CHECKSUM}" ]; then
+    if [[ "${CHECKSUM}" == "yes" ]]; then
         CHECKSUM_FLAG="-c"
     fi
     if [ -n "${KEYDIR}" ]; then
@@ -70,7 +70,7 @@ function build_wpk_linux() {
     local WPK_KEY="${9}"
     local WPK_CERT="${10}"
 
-    if [ -n "${CHECKSUM}" ]; then
+    if [[ "${CHECKSUM}" == "yes" ]]; then
         CHECKSUM_FLAG="-c"
     fi
     if [ -n "${KEYDIR}" ]; then

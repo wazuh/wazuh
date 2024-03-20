@@ -3,9 +3,12 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag name of the Docker image to be uploaded (Use developer to set branch name. Use auto to set src/VERSION content)'
-        required: false
-        default: auto
+        description: |
+          Tag name of the Docker image to be uploaded.
+          Use 'developer' to set branch name as tag.
+          Use 'auto' to set branch version as tag.
+          Default is 'auto'.
+
 jobs:
   Upload-WPK-images:
     runs-on: ubuntu-latest
@@ -34,7 +37,7 @@ jobs:
 
       - name: Set tag
         run: |
-          VERSION=$(sed 's/v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
+          VERSION=$(sed 's/.*\([0-9]\.[0-9]*\.[0-9]*\).*/\1/' $GITHUB_WORKSPACE/src/VERSION)
           if [ "${{ github.event.inputs.tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
           elif [ "${{ github.event.inputs.tag }}" == "developer" ]; then echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV;
           else echo "TAG=${{ github.event.inputs.tag }}" >> $GITHUB_ENV; fi

@@ -79,7 +79,7 @@ jobs:
       - name: Set WPK_NAME
         if: (matrix.os == 'linux' && github.event.inputs.linux_branch != '') || (matrix.os == 'windows' && github.event.inputs.windows_package != '') || (matrix.os == 'macos' && github.event.inputs.macos_package != '')
         run: |
-          COMMIT_HASH="$(curl -s https://api.github.com/repos/wazuh/wazuh/commits/${{ github.ref_name }} | grep '"sha"' | head -n 1| cut -d '"' -f 4 | cut -c 1-7)"
+          COMMIT_HASH="$(git rev-parse --short HEAD)"
           if [ "${{ matrix.os }}" != "windows" ]; then WPK_ARCH=_${{ matrix.arch }}; fi
           if [ "${{ github.event.inputs.naming_format }}" == "release" ]; then echo "WPK_NAME=wazuh_agent_v${{ env.VERSION }}_${{ matrix.os }}${WPK_ARCH}.wpk" >> $GITHUB_ENV;
           else echo "WPK_NAME=wazuh-wpk_${{ env.VERSION }}-${{ github.event.inputs.revision }}_${{ matrix.os }}${WPK_ARCH}_${COMMIT_HASH}.wpk" >> $GITHUB_ENV; fi
