@@ -18,14 +18,78 @@ from operator import setitem
 
 from wazuh.core import common, pyDaemonModule
 from wazuh.core.configuration import get_ossec_conf
-from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError
+from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core.results import WazuhResult
 from wazuh.core.utils import temporary_cache
 from wazuh.core.wazuh_socket import create_wazuh_socket_message
 from wazuh.core.wlogging import WazuhLogger
 
+NO = 'no'
+YES = 'yes'
+DISABLED = 'disabled'
+HAPROXY_HELPER = 'haproxy_helper'
+FREQUENCY = 'frequency'
+HAPROXY_ADDRESS = 'haproxy_address'
+HAPROXY_PORT = 'haproxy_port'
+HAPROXY_PROTOCOL = 'haproxy_protocol'
+HAPROXY_USER = 'haproxy_user'
+HAPROXY_PASSWORD = 'haproxy_password'
+HAPROXY_BACKEND = 'haproxy_backend'
+HAPROXY_RESOLVER = 'haproxy_resolver'
+EXCLUDED_NODES = 'excluded_nodes'
+AGENT_CHUNK_SIZE = 'agent_chunk_size'
+AGENT_RECONNECTION_TIME = 'agent_reconnection_time'
+AGENT_RECONNECTION_STABILITY_TIME = 'agent_reconnection_stability_time'
+IMBALANCE_TOLERANCE = 'imbalance_tolerance'
+REMOVE_DISCONNECTED_NODE_AFTER = 'remove_disconnected_node_after'
+
 logger = logging.getLogger('wazuh')
 execq_lockfile = os.path.join(common.WAZUH_PATH, "var", "run", ".api_execq_lock")
+
+def validate_haproxy_helper_config(helper_config: dict) -> dict:
+    """Validate HAProxy helper configuration section.
+
+    Parameters
+    ----------
+    helper_config : dict
+        Configuration to validate.
+
+    Returns
+    -------
+    dict
+        Validated configuration for HAProxy Helper.
+
+    Raises
+    ------
+    WazuhError (3004)
+        If some value have an invalid type.
+    """
+    if helper_config[DISABLED] == NO:
+        helper_config[DISABLED] = False
+    elif helper_config[DISABLED] == YES:
+        helper_config[DISABLED] = True
+
+    for field in [
+        FREQUENCY,
+        AGENT_RECONNECTION_STABILITY_TIME,
+        AGENT_RECONNECTION_TIME,
+        AGENT_CHUNK_SIZE,
+        REMOVE_DISCONNECTED_NODE_AFTER
+    ]:
+        if helper_config.get(field):
+            try:
+                helper_config[field] = int(helper_config[field])
+            except ValueError:
+                raise WazuhError(3004, extra_message=f"HAProxy Helper {field} must be an integer.")
+
+    for field in [IMBALANCE_TOLERANCE]:
+        if helper_config.get(field):
+            try:
+                helper_config[field] = float(helper_config[field])
+            except ValueError:
+                raise WazuhError(3004, extra_message=f"HAProxy Helper {field} must be a float.")
+
+    return helper_config
 
 
 def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typing.Dict:
@@ -79,11 +143,11 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
         raise WazuhError(3004, extra_message="Cluster port must be an integer.")
 
     config_cluster['port'] = int(config_cluster['port'])
-    if config_cluster['disabled'] == 'no':
-        config_cluster['disabled'] = False
-    elif config_cluster['disabled'] == 'yes':
-        config_cluster['disabled'] = True
-    elif not isinstance(config_cluster['disabled'], bool):
+    if config_cluster[DISABLED] == 'no':
+        config_cluster[DISABLED] = False
+    elif config_cluster[DISABLED] == 'yes':
+        config_cluster[DISABLED] = True
+    elif not isinstance(config_cluster[DISABLED], bool):
         raise WazuhError(3004,
                          extra_message=f"Allowed values for 'disabled' field are 'yes' and 'no'. "
                                        f"Found: '{config_cluster['disabled']}'")
@@ -91,6 +155,9 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
     if config_cluster['node_type'] == 'client':
         logger.info("Deprecated node type 'client'. Using 'worker' instead.")
         config_cluster['node_type'] = 'worker'
+
+    if config_cluster.get(HAPROXY_HELPER):
+        config_cluster[HAPROXY_HELPER] = validate_haproxy_helper_config(config_cluster[HAPROXY_HELPER])
 
     return config_cluster
 
@@ -125,7 +192,7 @@ def get_manager_status(cache=False) -> typing.Dict:
         pidfile = glob(os.path.join(run_dir, f"{process}-*.pid"))
         if os.path.exists(os.path.join(run_dir, f"{process}.failed")):
             data[process] = 'failed'
-        elif os.path.exists(os.path.join(run_dir, f".restart")):
+        elif os.path.exists(os.path.join(run_dir, ".restart")):
             data[process] = 'restarting'
         elif os.path.exists(os.path.join(run_dir, f"{process}.start")):
             data[process] = 'starting'
@@ -372,6 +439,7 @@ async def forward_function(func: callable, f_kwargs: dict = None, request_type: 
 
     import concurrent
     from asyncio import run
+
     from wazuh.core.cluster.dapi.dapi import DistributedAPI
     dapi = DistributedAPI(f=func, f_kwargs=f_kwargs, request_type=request_type,
                           is_async=False, wait_for_complete=True, logger=logger, nodes=nodes,
