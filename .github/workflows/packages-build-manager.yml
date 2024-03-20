@@ -20,12 +20,25 @@ on:
         options: 
           - deb
           - rpm
+      revision:
+        description: |
+          'Set the value to "1" for packages in release format.
+          You can also add other values, such as issue numbers.
+          By default, it is set to "0" for development.'
+        required: false
       release-package:
+        type: boolean
+        description: |
+          'Build package with release format.
+           Checksum will be also generated.'
+        required: false
+      debuggable-package:
         type: choice
-        description: 'Build packages with release format'
+        description: 'Build package with debug symbols.'
         required: false
         options: 
-          - release-package
+          - 'yes'
+          - 'no'
       runner-machine:
         type: choice
         description: 'Required runner type to build the package'
@@ -49,9 +62,23 @@ on:
         type: string
         description: 'Package format [deb, rpm]'
         required: true
+      revision:
+        type: string
+        description: |
+          'Set the value to "1" for packages in release format.
+          You can also add other values, such as issue numbers.
+          By default, it is set to "0" for development.'
+        required: false
       release-package:
         type: string
-        description: 'Build packages with release format'
+        description: |
+          'Build package with release format.
+           Checksum will be also generated.'
+        required: false
+      debuggable-package:
+        type: string
+        description: 'Build package with debug symbols.'
+        default: 'no'
         required: false
       runner-machine:
         type: string
@@ -90,9 +117,11 @@ jobs:
       - name: Build ${{ inputs.package-format }} wazuh-manager on ${{ inputs.arch }}
         working-directory: packages
         run: |
-          REVISION=$( echo ${{ github.head_ref }} | sed 's/-/./g; s/\//./g' )
-          if [ -z "$REVISION" ]; then REVISION=1; fi
-          bash generate_package.sh -b ${{ inputs.branch }} -j $(nproc) -t manager -s /tmp -a ${{ inputs.arch }} --dont-build-docker --tag ${{ env.TAG }} -r $REVISION --package-format ${{ inputs.package-format }} ${{ inputs.release-package }}
+          REVISION=${{ inputs.revision }}
+          if [ -z "$REVISION" ]; then REVISION=0; fi
+          FLAGS="$(if [ ${{ inputs.release-package }} == 'yes' ]; then echo " --checksum --release-package" ; fi)"
+          if [ ${{ inputs.debuggable-package }} == 'yes' ]; then FLAGS+=" --debug" ; fi
+          bash generate_package.sh -b ${{ inputs.branch }} -j $(nproc) -t manager -s /tmp -a ${{ inputs.arch }} --dont-build-docker --tag ${{ env.TAG }} -r $REVISION --package-format ${{ inputs.package-format }} $FLAGS
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v1
@@ -103,4 +132,6 @@ jobs:
 
       - name: Upload package to S3
         run: |
-          aws s3 cp /tmp/*manager* s3://packages-dev.internal.wazuh.com/development/wazuh/
+          for file in /tmp/*manager*; do
+            aws s3 cp $file s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
+          done

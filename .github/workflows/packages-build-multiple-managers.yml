@@ -34,12 +34,27 @@ on:
         options: 
           - 'yes'
           - 'no'
+      revision:
+        type: string
+        description: |
+          'Set the value to "1" for packages in release format.
+          You can also add other values, such as issue numbers.
+          By default, it is set to "0" for development.'
+        required: false
       release-package:
         type: choice
-        description: 'Build packages with release format'
+        description: |
+          'Build packages with release format.
+           Checksum will be also generated.'
         required: false
         options: 
-          - '--release-package'
+          - 'yes'
+          - 'no'
+      debuggable-package:
+        type: string
+        description: 'Build packages with debug symbols.'
+        default: 'no'
+        required: false
 
 jobs:
    Build-manager-amd64-deb: 
@@ -49,7 +64,9 @@ jobs:
         branch: ${{ inputs.branch }}
         arch: amd64
         package-format: deb
+        revision: ${{ inputs.revision}}
         release-package: ${{ inputs.release-package }}
+        debuggable-package: ${{ inputs.debuggable-package }}
         runner-machine: ubuntu-latest
     secrets: inherit
 
@@ -60,7 +77,9 @@ jobs:
         branch: ${{ inputs.branch }}
         arch: amd64
         package-format: rpm
+        revision: ${{ inputs.revision}}
         release-package: ${{ inputs.release-package }}
+        debuggable-package: ${{ inputs.debuggable-package }}
         runner-machine: ubuntu-latest
     secrets: inherit
     
@@ -71,7 +90,9 @@ jobs:
         branch: ${{ inputs.branch }}
         arch: arm64
         package-format: deb
+        revision: ${{ inputs.revision}}
         release-package: ${{ inputs.release-package }}
+        debuggable-package: ${{ inputs.debuggable-package }}
         runner-machine: self-hosted-arm
     secrets: inherit
 
@@ -82,6 +103,8 @@ jobs:
         branch: ${{ inputs.branch }}
         arch: arm64
         package-format: rpm
+        revision: ${{ inputs.revision}}
         release-package: ${{ inputs.release-package }}
+        debuggable-package: ${{ inputs.debuggable-package }}
         runner-machine: self-hosted-arm
     secrets: inherit
