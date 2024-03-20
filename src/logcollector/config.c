@@ -280,28 +280,28 @@ cJSON *getSocketConfig(void) {
     }
 
     cJSON *root = cJSON_CreateObject();
-    cJSON *targets = cJSON_CreateArray();
+    cJSON *sockets = cJSON_CreateArray();
     int i;
 
     for (i=0;logsk[i].name;i++) {
-        cJSON *target = cJSON_CreateObject();
+        cJSON *socket = cJSON_CreateObject();
 
-        cJSON_AddStringToObject(target,"name",logsk[i].name);
-        cJSON_AddStringToObject(target,"location",logsk[i].location);
+        cJSON_AddStringToObject(socket,"name",logsk[i].name);
+        cJSON_AddStringToObject(socket,"location",logsk[i].location);
         if (logsk[i].mode == IPPROTO_UDP) {
-            cJSON_AddStringToObject(target,"mode","udp");
+            cJSON_AddStringToObject(socket,"mode","udp");
         } else {
-            cJSON_AddStringToObject(target,"mode","tcp");
+            cJSON_AddStringToObject(socket,"mode","tcp");
         }
-        if (logsk[i].prefix) cJSON_AddStringToObject(target,"prefix",logsk[i].prefix);
+        if (logsk[i].prefix) cJSON_AddStringToObject(socket,"prefix",logsk[i].prefix);
 
-        cJSON_AddItemToArray(targets, target);
+        cJSON_AddItemToArray(sockets, socket);
     }
 
-    if (cJSON_GetArraySize(targets) > 0) {
-        cJSON_AddItemToObject(root,"target",targets);
+    if (cJSON_GetArraySize(sockets) > 0) {
+        cJSON_AddItemToObject(root,"socket",sockets);
     } else {
-        cJSON_free(targets);
+        cJSON_free(sockets);
     }
 
     return root;
