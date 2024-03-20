@@ -532,7 +532,7 @@ class Proxy:
             raise WazuhHAPHelperError(3048)
 
     async def get_hard_stop_after_value(self) -> Optional[str]:
-        """Get the `hard-stop-after` value from the global configurations.
+        """Get the `hard-stop-after` value from the global configuration.
 
         Returns
         -------
@@ -542,7 +542,7 @@ class Proxy:
         return (await self.api.get_global_configuration()).get('hard_stop_after', None)
 
     async def set_hard_stop_after_value(self, active_agents: int, chunk_size: int, agent_reconnection_time: int):
-        """Calculate a dinamic value for `hard-stop-after` and set it.
+        """Calculate a dynamic value for `hard-stop-after` and set it.
 
         Parameters
         ----------
@@ -561,7 +561,7 @@ class Proxy:
 
         await self.api.update_global_configuration(new_configuration=configuration)
         self.hard_stop_after = hard_stop_after
-        self.logger.info(f'Setted `hard-stop-after` with {hard_stop_after} seconds.')
+        self.logger.info(f'Set `hard-stop-after` with {hard_stop_after} seconds.')
 
     async def get_current_pid(self) -> int:
         """Get the current HAProxy PID.
