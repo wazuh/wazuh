@@ -9,11 +9,12 @@ from copy import copy
 import pytest
 
 from freezegun import freeze_time
+from content_size_limit_asgi.errors import ContentSizeExceeded
 
 from connexion.exceptions import HTTPException, ProblemException, BadRequestProblem, Unauthorized
 from api.error_handler import _cleanup_detail_field, prevent_bruteforce_attack, jwt_error_handler, \
     http_error_handler, problem_error_handler, bad_request_error_handler, unauthorized_error_handler, \
-    ERROR_CONTENT_TYPE
+    handle_expect_header, ERROR_CONTENT_TYPE
 from api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT
 
 
@@ -184,6 +185,22 @@ async def test_problem_error_handler(title, detail, ext, error_type, mock_reques
     assert response.status_code == 400
     assert response.content_type == ERROR_CONTENT_TYPE
     assert body == problem
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('expect_header, exc, expected_status_code, expected_response', [
+    ('100-continue', None, 200, '"100-continue"'),
+    ('expect_value', ContentSizeExceeded(), 417, {"title": "Expectation failed", "detail": "Unknown Expect","error": 417}),
+    ('different_expect_value', None, 417, {"title": "Expectation failed", "detail": "Unknown Expect","error": 417}),
+])
+async def test_handle_expect_header(expect_header, exc, expected_status_code, expected_response, mock_request):
+    """Test handle_expect_header function."""
+    mock_request.headers = {'Expect': expect_header}
+    response = await handle_expect_header(mock_request, exc)
+    assert response.status_code == expected_status_code
+    if isinstance(expected_response, str):
+        assert response.body == expected_response
+    else:
+        assert json.loads(response.body) == expected_response
 
 
 @pytest.mark.asyncio

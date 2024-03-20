@@ -216,7 +216,8 @@ def start(params: dict):
     app.add_error_handler(HTTPException, error_handler.http_error_handler)
     app.add_error_handler(ProblemException, error_handler.problem_error_handler)
     app.add_error_handler(403, error_handler.problem_error_handler)
-
+    app.add_error_handler(417, error_handler.expect_header_error_handler)
+    
     # API configuration logging
     logger.debug(f'Loaded API configuration: {api_conf}')
     logger.debug(f'Loaded security API configuration: {security_conf}')

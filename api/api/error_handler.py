@@ -55,6 +55,43 @@ def _cleanup_detail_field(detail: str) -> str:
     return ' '.join(str(detail).replace("\n\n", ". ").replace("\n", "").split())
 
 
+async def handle_expect_header(request: ConnexionRequest, exc: ContentSizeExceeded = None) -> ConnexionResponse:
+    """Handler for the 'Expect' HTTP header.
+    
+    Parameters
+    ----------
+    request : ConnexionRequest
+        Incoming request.
+    exc : ContentSizeExceeded
+        Raised exception if content size exceeds the limit.
+
+    Returns
+    -------
+    Response
+        HTTP Response returned to the client.
+    """
+
+    if 'Expect' in request.headers:
+        expect_value = request.headers["Expect"].lower()
+
+        continue_msg = '100-continue'
+        data = continue_msg
+        status_code = 200
+        content_type = None
+
+        if expect_value != continue_msg or (exc and expect_value == continue_msg):
+            problem = {
+                "title": "Expectation failed",
+                "detail": "Unknown Expect",
+                "error": 417
+                }
+            return json_response(data=problem, pretty=request.query_params.get('pretty', 'false') == 'true',
+                                status_code=417, content_type=ERROR_CONTENT_TYPE)
+                                
+        return json_response(data=data, pretty=request.query_params.get('pretty', 'false') == 'true',
+                            status_code=status_code, content_type=content_type)
+
+
 async def unauthorized_error_handler(request: ConnexionRequest,
                                      exc: exceptions.Unauthorized) -> ConnexionResponse:
     """Unauthorized Exception Error handler.
