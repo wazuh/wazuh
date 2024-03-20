@@ -220,7 +220,7 @@ PROTOBUF_CONSTEXPR EpsGet_Response::EpsGet_Response(
   , /*decltype(_impl_.status_)*/0
   , /*decltype(_impl_.eps_)*/0u
   , /*decltype(_impl_.refresh_interval_)*/0u
-  , /*decltype(_impl_.active_)*/false} {}
+  , /*decltype(_impl_.enabled_)*/false} {}
 struct EpsGet_ResponseDefaultTypeInternal {
   PROTOBUF_CONSTEXPR EpsGet_ResponseDefaultTypeInternal()
       : _instance(::_pbi::ConstantInitialized{}) {}
@@ -230,28 +230,28 @@ struct EpsGet_ResponseDefaultTypeInternal {
   };
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 EpsGet_ResponseDefaultTypeInternal _EpsGet_Response_default_instance_;
-PROTOBUF_CONSTEXPR EpsActivate_Request::EpsActivate_Request(
+PROTOBUF_CONSTEXPR EpsEnable_Request::EpsEnable_Request(
     ::_pbi::ConstantInitialized) {}
-struct EpsActivate_RequestDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR EpsActivate_RequestDefaultTypeInternal()
+struct EpsEnable_RequestDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR EpsEnable_RequestDefaultTypeInternal()
       : _instance(::_pbi::ConstantInitialized{}) {}
-  ~EpsActivate_RequestDefaultTypeInternal() {}
+  ~EpsEnable_RequestDefaultTypeInternal() {}
   union {
-    EpsActivate_Request _instance;
+    EpsEnable_Request _instance;
   };
 };
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 EpsActivate_RequestDefaultTypeInternal _EpsActivate_Request_default_instance_;
-PROTOBUF_CONSTEXPR EpsDeactivate_Request::EpsDeactivate_Request(
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 EpsEnable_RequestDefaultTypeInternal _EpsEnable_Request_default_instance_;
+PROTOBUF_CONSTEXPR EpsDisable_Request::EpsDisable_Request(
     ::_pbi::ConstantInitialized) {}
-struct EpsDeactivate_RequestDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR EpsDeactivate_RequestDefaultTypeInternal()
+struct EpsDisable_RequestDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR EpsDisable_RequestDefaultTypeInternal()
       : _instance(::_pbi::ConstantInitialized{}) {}
-  ~EpsDeactivate_RequestDefaultTypeInternal() {}
+  ~EpsDisable_RequestDefaultTypeInternal() {}
   union {
-    EpsDeactivate_Request _instance;
+    EpsDisable_Request _instance;
   };
 };
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 EpsDeactivate_RequestDefaultTypeInternal _EpsDeactivate_Request_default_instance_;
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 EpsDisable_RequestDefaultTypeInternal _EpsDisable_Request_default_instance_;
 }  // namespace router
 }  // namespace engine
 }  // namespace api
@@ -398,20 +398,20 @@ const uint32_t TableStruct_router_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::EpsGet_Response, _impl_.error_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::EpsGet_Response, _impl_.eps_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::EpsGet_Response, _impl_.refresh_interval_),
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::EpsGet_Response, _impl_.active_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::EpsGet_Response, _impl_.enabled_),
   ~0u,
   0,
   ~0u,
   ~0u,
   ~0u,
   ~0u,  // no _has_bits_
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::EpsActivate_Request, _internal_metadata_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::EpsEnable_Request, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
   ~0u,  // no _has_bits_
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::EpsDeactivate_Request, _internal_metadata_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::router::EpsDisable_Request, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
@@ -432,8 +432,8 @@ static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protode
   { 112, -1, -1, sizeof(::com::wazuh::api::engine::router::EpsUpdate_Request)},
   { 120, -1, -1, sizeof(::com::wazuh::api::engine::router::EpsGet_Request)},
   { 126, 137, -1, sizeof(::com::wazuh::api::engine::router::EpsGet_Response)},
-  { 142, -1, -1, sizeof(::com::wazuh::api::engine::router::EpsActivate_Request)},
-  { 148, -1, -1, sizeof(::com::wazuh::api::engine::router::EpsDeactivate_Request)},
+  { 142, -1, -1, sizeof(::com::wazuh::api::engine::router::EpsEnable_Request)},
+  { 148, -1, -1, sizeof(::com::wazuh::api::engine::router::EpsDisable_Request)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -451,8 +451,8 @@ static const ::_pb::Message* const file_default_instances[] = {
   &::com::wazuh::api::engine::router::_EpsUpdate_Request_default_instance_._instance,
   &::com::wazuh::api::engine::router::_EpsGet_Request_default_instance_._instance,
   &::com::wazuh::api::engine::router::_EpsGet_Response_default_instance_._instance,
-  &::com::wazuh::api::engine::router::_EpsActivate_Request_default_instance_._instance,
-  &::com::wazuh::api::engine::router::_EpsDeactivate_Request_default_instance_._instance,
+  &::com::wazuh::api::engine::router::_EpsEnable_Request_default_instance_._instance,
+  &::com::wazuh::api::engine::router::_EpsDisable_Request_default_instance_._instance,
 };
 
 const char descriptor_table_protodef_router_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
@@ -485,22 +485,22 @@ const char descriptor_table_protodef_router_2eproto[] PROTOBUF_SECTION_VARIABLE(
   "t_Request\022\023\n\013wazuh_event\030\001 \001(\tJ\004\010\002\020\003R\005ev"
   "ent\":\n\021EpsUpdate_Request\022\013\n\003eps\030\001 \001(\r\022\030\n"
   "\020refresh_interval\030\002 \001(\r\"\020\n\016EpsGet_Reques"
-  "t\"\232\001\n\017EpsGet_Response\0222\n\006status\030\001 \001(\0162\"."
+  "t\"\233\001\n\017EpsGet_Response\0222\n\006status\030\001 \001(\0162\"."
   "com.wazuh.api.engine.ReturnStatus\022\022\n\005err"
   "or\030\002 \001(\tH\000\210\001\001\022\013\n\003eps\030\003 \001(\r\022\030\n\020refresh_in"
-  "terval\030\004 \001(\r\022\016\n\006active\030\005 \001(\010B\010\n\006_error\"\025"
-  "\n\023EpsActivate_Request\"\027\n\025EpsDeactivate_R"
-  "equest*5\n\005State\022\021\n\rSTATE_UNKNOWN\020\000\022\014\n\010DI"
-  "SABLED\020\001\022\013\n\007ENABLED\020\002*>\n\004Sync\022\020\n\014SYNC_UN"
-  "KNOWN\020\000\022\013\n\007UPDATED\020\001\022\014\n\010OUTDATED\020\002\022\t\n\005ER"
-  "ROR\020\003b\006proto3"
+  "terval\030\004 \001(\r\022\017\n\007enabled\030\005 \001(\010B\010\n\006_error\""
+  "\023\n\021EpsEnable_Request\"\024\n\022EpsDisable_Reque"
+  "st*5\n\005State\022\021\n\rSTATE_UNKNOWN\020\000\022\014\n\010DISABL"
+  "ED\020\001\022\013\n\007ENABLED\020\002*>\n\004Sync\022\020\n\014SYNC_UNKNOW"
+  "N\020\000\022\013\n\007UPDATED\020\001\022\014\n\010OUTDATED\020\002\022\t\n\005ERROR\020"
+  "\003b\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_router_2eproto_deps[1] = {
   &::descriptor_table_engine_2eproto,
 };
 static ::_pbi::once_flag descriptor_table_router_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_router_2eproto = {
-    false, false, 1493, descriptor_table_protodef_router_2eproto,
+    false, false, 1489, descriptor_table_protodef_router_2eproto,
     "router.proto",
     &descriptor_table_router_2eproto_once, descriptor_table_router_2eproto_deps, 1, 16,
     schemas, file_default_instances, TableStruct_router_2eproto::offsets,
@@ -3573,7 +3573,7 @@ EpsGet_Response::EpsGet_Response(const EpsGet_Response& from)
     , decltype(_impl_.status_){}
     , decltype(_impl_.eps_){}
     , decltype(_impl_.refresh_interval_){}
-    , decltype(_impl_.active_){}};
+    , decltype(_impl_.enabled_){}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   _impl_.error_.InitDefault();
@@ -3585,8 +3585,8 @@ EpsGet_Response::EpsGet_Response(const EpsGet_Response& from)
       _this->GetArenaForAllocation());
   }
   ::memcpy(&_impl_.status_, &from._impl_.status_,
-    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.active_) -
-    reinterpret_cast<char*>(&_impl_.status_)) + sizeof(_impl_.active_));
+    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.enabled_) -
+    reinterpret_cast<char*>(&_impl_.status_)) + sizeof(_impl_.enabled_));
   // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.router.EpsGet_Response)
 }
 
@@ -3601,7 +3601,7 @@ inline void EpsGet_Response::SharedCtor(
     , decltype(_impl_.status_){0}
     , decltype(_impl_.eps_){0u}
     , decltype(_impl_.refresh_interval_){0u}
-    , decltype(_impl_.active_){false}
+    , decltype(_impl_.enabled_){false}
   };
   _impl_.error_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -3638,8 +3638,8 @@ void EpsGet_Response::Clear() {
     _impl_.error_.ClearNonDefaultToEmpty();
   }
   ::memset(&_impl_.status_, 0, static_cast<size_t>(
-      reinterpret_cast<char*>(&_impl_.active_) -
-      reinterpret_cast<char*>(&_impl_.status_)) + sizeof(_impl_.active_));
+      reinterpret_cast<char*>(&_impl_.enabled_) -
+      reinterpret_cast<char*>(&_impl_.status_)) + sizeof(_impl_.enabled_));
   _impl_._has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
@@ -3686,10 +3686,10 @@ const char* EpsGet_Response::_InternalParse(const char* ptr, ::_pbi::ParseContex
         } else
           goto handle_unusual;
         continue;
-      // bool active = 5;
+      // bool enabled = 5;
       case 5:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 40)) {
-          _impl_.active_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          _impl_.enabled_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
         } else
           goto handle_unusual;
@@ -3753,10 +3753,10 @@ uint8_t* EpsGet_Response::_InternalSerialize(
     target = ::_pbi::WireFormatLite::WriteUInt32ToArray(4, this->_internal_refresh_interval(), target);
   }
 
-  // bool active = 5;
-  if (this->_internal_active() != 0) {
+  // bool enabled = 5;
+  if (this->_internal_enabled() != 0) {
     target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteBoolToArray(5, this->_internal_active(), target);
+    target = ::_pbi::WireFormatLite::WriteBoolToArray(5, this->_internal_enabled(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -3799,8 +3799,8 @@ size_t EpsGet_Response::ByteSizeLong() const {
     total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_refresh_interval());
   }
 
-  // bool active = 5;
-  if (this->_internal_active() != 0) {
+  // bool enabled = 5;
+  if (this->_internal_enabled() != 0) {
     total_size += 1 + 1;
   }
 
@@ -3834,8 +3834,8 @@ void EpsGet_Response::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const 
   if (from._internal_refresh_interval() != 0) {
     _this->_internal_set_refresh_interval(from._internal_refresh_interval());
   }
-  if (from._internal_active() != 0) {
-    _this->_internal_set_active(from._internal_active());
+  if (from._internal_enabled() != 0) {
+    _this->_internal_set_enabled(from._internal_enabled());
   }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
@@ -3862,8 +3862,8 @@ void EpsGet_Response::InternalSwap(EpsGet_Response* other) {
       &other->_impl_.error_, rhs_arena
   );
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
-      PROTOBUF_FIELD_OFFSET(EpsGet_Response, _impl_.active_)
-      + sizeof(EpsGet_Response::_impl_.active_)
+      PROTOBUF_FIELD_OFFSET(EpsGet_Response, _impl_.enabled_)
+      + sizeof(EpsGet_Response::_impl_.enabled_)
       - PROTOBUF_FIELD_OFFSET(EpsGet_Response, _impl_.status_)>(
           reinterpret_cast<char*>(&_impl_.status_),
           reinterpret_cast<char*>(&other->_impl_.status_));
@@ -3877,31 +3877,31 @@ void EpsGet_Response::InternalSwap(EpsGet_Response* other) {
 
 // ===================================================================
 
-class EpsActivate_Request::_Internal {
+class EpsEnable_Request::_Internal {
  public:
 };
 
-EpsActivate_Request::EpsActivate_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+EpsEnable_Request::EpsEnable_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
                          bool is_message_owned)
   : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase(arena, is_message_owned) {
-  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.router.EpsActivate_Request)
+  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.router.EpsEnable_Request)
 }
-EpsActivate_Request::EpsActivate_Request(const EpsActivate_Request& from)
+EpsEnable_Request::EpsEnable_Request(const EpsEnable_Request& from)
   : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase() {
-  EpsActivate_Request* const _this = this; (void)_this;
+  EpsEnable_Request* const _this = this; (void)_this;
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.router.EpsActivate_Request)
+  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.router.EpsEnable_Request)
 }
 
 
 
 
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData EpsActivate_Request::_class_data_ = {
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData EpsEnable_Request::_class_data_ = {
     ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl,
     ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl,
 };
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*EpsActivate_Request::GetClassData() const { return &_class_data_; }
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*EpsEnable_Request::GetClassData() const { return &_class_data_; }
 
 
 
@@ -3909,7 +3909,7 @@ const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*EpsActivate_Request::GetClassD
 
 
 
-::PROTOBUF_NAMESPACE_ID::Metadata EpsActivate_Request::GetMetadata() const {
+::PROTOBUF_NAMESPACE_ID::Metadata EpsEnable_Request::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_router_2eproto_getter, &descriptor_table_router_2eproto_once,
       file_level_metadata_router_2eproto[14]);
@@ -3917,31 +3917,31 @@ const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*EpsActivate_Request::GetClassD
 
 // ===================================================================
 
-class EpsDeactivate_Request::_Internal {
+class EpsDisable_Request::_Internal {
  public:
 };
 
-EpsDeactivate_Request::EpsDeactivate_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+EpsDisable_Request::EpsDisable_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
                          bool is_message_owned)
   : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase(arena, is_message_owned) {
-  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.router.EpsDeactivate_Request)
+  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.router.EpsDisable_Request)
 }
-EpsDeactivate_Request::EpsDeactivate_Request(const EpsDeactivate_Request& from)
+EpsDisable_Request::EpsDisable_Request(const EpsDisable_Request& from)
   : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase() {
-  EpsDeactivate_Request* const _this = this; (void)_this;
+  EpsDisable_Request* const _this = this; (void)_this;
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.router.EpsDeactivate_Request)
+  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.router.EpsDisable_Request)
 }
 
 
 
 
 
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData EpsDeactivate_Request::_class_data_ = {
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData EpsDisable_Request::_class_data_ = {
     ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl,
     ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl,
 };
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*EpsDeactivate_Request::GetClassData() const { return &_class_data_; }
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*EpsDisable_Request::GetClassData() const { return &_class_data_; }
 
 
 
@@ -3949,7 +3949,7 @@ const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*EpsDeactivate_Request::GetClas
 
 
 
-::PROTOBUF_NAMESPACE_ID::Metadata EpsDeactivate_Request::GetMetadata() const {
+::PROTOBUF_NAMESPACE_ID::Metadata EpsDisable_Request::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_router_2eproto_getter, &descriptor_table_router_2eproto_once,
       file_level_metadata_router_2eproto[15]);
@@ -4018,13 +4018,13 @@ template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::router::EpsGet_Response*
 Arena::CreateMaybeMessage< ::com::wazuh::api::engine::router::EpsGet_Response >(Arena* arena) {
   return Arena::CreateMessageInternal< ::com::wazuh::api::engine::router::EpsGet_Response >(arena);
 }
-template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::router::EpsActivate_Request*
-Arena::CreateMaybeMessage< ::com::wazuh::api::engine::router::EpsActivate_Request >(Arena* arena) {
-  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::router::EpsActivate_Request >(arena);
+template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::router::EpsEnable_Request*
+Arena::CreateMaybeMessage< ::com::wazuh::api::engine::router::EpsEnable_Request >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::router::EpsEnable_Request >(arena);
 }
-template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::router::EpsDeactivate_Request*
-Arena::CreateMaybeMessage< ::com::wazuh::api::engine::router::EpsDeactivate_Request >(Arena* arena) {
-  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::router::EpsDeactivate_Request >(arena);
+template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::router::EpsDisable_Request*
+Arena::CreateMaybeMessage< ::com::wazuh::api::engine::router::EpsDisable_Request >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::router::EpsDisable_Request >(arena);
 }
 PROTOBUF_NAMESPACE_CLOSE
 

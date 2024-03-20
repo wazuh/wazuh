@@ -58,12 +58,12 @@ extern EntryDefaultTypeInternal _Entry_default_instance_;
 class EntryPost;
 struct EntryPostDefaultTypeInternal;
 extern EntryPostDefaultTypeInternal _EntryPost_default_instance_;
-class EpsActivate_Request;
-struct EpsActivate_RequestDefaultTypeInternal;
-extern EpsActivate_RequestDefaultTypeInternal _EpsActivate_Request_default_instance_;
-class EpsDeactivate_Request;
-struct EpsDeactivate_RequestDefaultTypeInternal;
-extern EpsDeactivate_RequestDefaultTypeInternal _EpsDeactivate_Request_default_instance_;
+class EpsDisable_Request;
+struct EpsDisable_RequestDefaultTypeInternal;
+extern EpsDisable_RequestDefaultTypeInternal _EpsDisable_Request_default_instance_;
+class EpsEnable_Request;
+struct EpsEnable_RequestDefaultTypeInternal;
+extern EpsEnable_RequestDefaultTypeInternal _EpsEnable_Request_default_instance_;
 class EpsGet_Request;
 struct EpsGet_RequestDefaultTypeInternal;
 extern EpsGet_RequestDefaultTypeInternal _EpsGet_Request_default_instance_;
@@ -108,8 +108,8 @@ extern TableGet_ResponseDefaultTypeInternal _TableGet_Response_default_instance_
 PROTOBUF_NAMESPACE_OPEN
 template<> ::com::wazuh::api::engine::router::Entry* Arena::CreateMaybeMessage<::com::wazuh::api::engine::router::Entry>(Arena*);
 template<> ::com::wazuh::api::engine::router::EntryPost* Arena::CreateMaybeMessage<::com::wazuh::api::engine::router::EntryPost>(Arena*);
-template<> ::com::wazuh::api::engine::router::EpsActivate_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::router::EpsActivate_Request>(Arena*);
-template<> ::com::wazuh::api::engine::router::EpsDeactivate_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::router::EpsDeactivate_Request>(Arena*);
+template<> ::com::wazuh::api::engine::router::EpsDisable_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::router::EpsDisable_Request>(Arena*);
+template<> ::com::wazuh::api::engine::router::EpsEnable_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::router::EpsEnable_Request>(Arena*);
 template<> ::com::wazuh::api::engine::router::EpsGet_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::router::EpsGet_Request>(Arena*);
 template<> ::com::wazuh::api::engine::router::EpsGet_Response* Arena::CreateMaybeMessage<::com::wazuh::api::engine::router::EpsGet_Response>(Arena*);
 template<> ::com::wazuh::api::engine::router::EpsUpdate_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::router::EpsUpdate_Request>(Arena*);
@@ -2483,7 +2483,7 @@ class EpsGet_Response final :
     kStatusFieldNumber = 1,
     kEpsFieldNumber = 3,
     kRefreshIntervalFieldNumber = 4,
-    kActiveFieldNumber = 5,
+    kEnabledFieldNumber = 5,
   };
   // optional string error = 2;
   bool has_error() const;
@@ -2530,13 +2530,13 @@ class EpsGet_Response final :
   void _internal_set_refresh_interval(uint32_t value);
   public:
 
-  // bool active = 5;
-  void clear_active();
-  bool active() const;
-  void set_active(bool value);
+  // bool enabled = 5;
+  void clear_enabled();
+  bool enabled() const;
+  void set_enabled(bool value);
   private:
-  bool _internal_active() const;
-  void _internal_set_active(bool value);
+  bool _internal_enabled() const;
+  void _internal_set_enabled(bool value);
   public:
 
   // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.router.EpsGet_Response)
@@ -2553,30 +2553,30 @@ class EpsGet_Response final :
     int status_;
     uint32_t eps_;
     uint32_t refresh_interval_;
-    bool active_;
+    bool enabled_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_router_2eproto;
 };
 // -------------------------------------------------------------------
 
-class EpsActivate_Request final :
-    public ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.router.EpsActivate_Request) */ {
+class EpsEnable_Request final :
+    public ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.router.EpsEnable_Request) */ {
  public:
-  inline EpsActivate_Request() : EpsActivate_Request(nullptr) {}
-  explicit PROTOBUF_CONSTEXPR EpsActivate_Request(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+  inline EpsEnable_Request() : EpsEnable_Request(nullptr) {}
+  explicit PROTOBUF_CONSTEXPR EpsEnable_Request(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
 
-  EpsActivate_Request(const EpsActivate_Request& from);
-  EpsActivate_Request(EpsActivate_Request&& from) noexcept
-    : EpsActivate_Request() {
+  EpsEnable_Request(const EpsEnable_Request& from);
+  EpsEnable_Request(EpsEnable_Request&& from) noexcept
+    : EpsEnable_Request() {
     *this = ::std::move(from);
   }
 
-  inline EpsActivate_Request& operator=(const EpsActivate_Request& from) {
+  inline EpsEnable_Request& operator=(const EpsEnable_Request& from) {
     CopyFrom(from);
     return *this;
   }
-  inline EpsActivate_Request& operator=(EpsActivate_Request&& from) noexcept {
+  inline EpsEnable_Request& operator=(EpsEnable_Request&& from) noexcept {
     if (this == &from) return *this;
     if (GetOwningArena() == from.GetOwningArena()
   #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
@@ -2599,20 +2599,20 @@ class EpsActivate_Request final :
   static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
     return default_instance().GetMetadata().reflection;
   }
-  static const EpsActivate_Request& default_instance() {
+  static const EpsEnable_Request& default_instance() {
     return *internal_default_instance();
   }
-  static inline const EpsActivate_Request* internal_default_instance() {
-    return reinterpret_cast<const EpsActivate_Request*>(
-               &_EpsActivate_Request_default_instance_);
+  static inline const EpsEnable_Request* internal_default_instance() {
+    return reinterpret_cast<const EpsEnable_Request*>(
+               &_EpsEnable_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
     14;
 
-  friend void swap(EpsActivate_Request& a, EpsActivate_Request& b) {
+  friend void swap(EpsEnable_Request& a, EpsEnable_Request& b) {
     a.Swap(&b);
   }
-  inline void Swap(EpsActivate_Request* other) {
+  inline void Swap(EpsEnable_Request* other) {
     if (other == this) return;
   #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
     if (GetOwningArena() != nullptr &&
@@ -2625,7 +2625,7 @@ class EpsActivate_Request final :
       ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
     }
   }
-  void UnsafeArenaSwap(EpsActivate_Request* other) {
+  void UnsafeArenaSwap(EpsEnable_Request* other) {
     if (other == this) return;
     GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
     InternalSwap(other);
@@ -2633,15 +2633,15 @@ class EpsActivate_Request final :
 
   // implements Message ----------------------------------------------
 
-  EpsActivate_Request* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
-    return CreateMaybeMessage<EpsActivate_Request>(arena);
+  EpsEnable_Request* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<EpsEnable_Request>(arena);
   }
   using ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyFrom;
-  inline void CopyFrom(const EpsActivate_Request& from) {
+  inline void CopyFrom(const EpsEnable_Request& from) {
     ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl(*this, from);
   }
   using ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeFrom;
-  void MergeFrom(const EpsActivate_Request& from) {
+  void MergeFrom(const EpsEnable_Request& from) {
     ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl(*this, from);
   }
   public:
@@ -2649,10 +2649,10 @@ class EpsActivate_Request final :
   private:
   friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
   static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
-    return "com.wazuh.api.engine.router.EpsActivate_Request";
+    return "com.wazuh.api.engine.router.EpsEnable_Request";
   }
   protected:
-  explicit EpsActivate_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+  explicit EpsEnable_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
                        bool is_message_owned = false);
   public:
 
@@ -2665,7 +2665,7 @@ class EpsActivate_Request final :
 
   // accessors -------------------------------------------------------
 
-  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.router.EpsActivate_Request)
+  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.router.EpsEnable_Request)
  private:
   class _Internal;
 
@@ -2678,23 +2678,23 @@ class EpsActivate_Request final :
 };
 // -------------------------------------------------------------------
 
-class EpsDeactivate_Request final :
-    public ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.router.EpsDeactivate_Request) */ {
+class EpsDisable_Request final :
+    public ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.router.EpsDisable_Request) */ {
  public:
-  inline EpsDeactivate_Request() : EpsDeactivate_Request(nullptr) {}
-  explicit PROTOBUF_CONSTEXPR EpsDeactivate_Request(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+  inline EpsDisable_Request() : EpsDisable_Request(nullptr) {}
+  explicit PROTOBUF_CONSTEXPR EpsDisable_Request(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
 
-  EpsDeactivate_Request(const EpsDeactivate_Request& from);
-  EpsDeactivate_Request(EpsDeactivate_Request&& from) noexcept
-    : EpsDeactivate_Request() {
+  EpsDisable_Request(const EpsDisable_Request& from);
+  EpsDisable_Request(EpsDisable_Request&& from) noexcept
+    : EpsDisable_Request() {
     *this = ::std::move(from);
   }
 
-  inline EpsDeactivate_Request& operator=(const EpsDeactivate_Request& from) {
+  inline EpsDisable_Request& operator=(const EpsDisable_Request& from) {
     CopyFrom(from);
     return *this;
   }
-  inline EpsDeactivate_Request& operator=(EpsDeactivate_Request&& from) noexcept {
+  inline EpsDisable_Request& operator=(EpsDisable_Request&& from) noexcept {
     if (this == &from) return *this;
     if (GetOwningArena() == from.GetOwningArena()
   #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
@@ -2717,20 +2717,20 @@ class EpsDeactivate_Request final :
   static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
     return default_instance().GetMetadata().reflection;
   }
-  static const EpsDeactivate_Request& default_instance() {
+  static const EpsDisable_Request& default_instance() {
     return *internal_default_instance();
   }
-  static inline const EpsDeactivate_Request* internal_default_instance() {
-    return reinterpret_cast<const EpsDeactivate_Request*>(
-               &_EpsDeactivate_Request_default_instance_);
+  static inline const EpsDisable_Request* internal_default_instance() {
+    return reinterpret_cast<const EpsDisable_Request*>(
+               &_EpsDisable_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
     15;
 
-  friend void swap(EpsDeactivate_Request& a, EpsDeactivate_Request& b) {
+  friend void swap(EpsDisable_Request& a, EpsDisable_Request& b) {
     a.Swap(&b);
   }
-  inline void Swap(EpsDeactivate_Request* other) {
+  inline void Swap(EpsDisable_Request* other) {
     if (other == this) return;
   #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
     if (GetOwningArena() != nullptr &&
@@ -2743,7 +2743,7 @@ class EpsDeactivate_Request final :
       ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
     }
   }
-  void UnsafeArenaSwap(EpsDeactivate_Request* other) {
+  void UnsafeArenaSwap(EpsDisable_Request* other) {
     if (other == this) return;
     GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
     InternalSwap(other);
@@ -2751,15 +2751,15 @@ class EpsDeactivate_Request final :
 
   // implements Message ----------------------------------------------
 
-  EpsDeactivate_Request* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
-    return CreateMaybeMessage<EpsDeactivate_Request>(arena);
+  EpsDisable_Request* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<EpsDisable_Request>(arena);
   }
   using ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyFrom;
-  inline void CopyFrom(const EpsDeactivate_Request& from) {
+  inline void CopyFrom(const EpsDisable_Request& from) {
     ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl(*this, from);
   }
   using ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeFrom;
-  void MergeFrom(const EpsDeactivate_Request& from) {
+  void MergeFrom(const EpsDisable_Request& from) {
     ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl(*this, from);
   }
   public:
@@ -2767,10 +2767,10 @@ class EpsDeactivate_Request final :
   private:
   friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
   static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
-    return "com.wazuh.api.engine.router.EpsDeactivate_Request";
+    return "com.wazuh.api.engine.router.EpsDisable_Request";
   }
   protected:
-  explicit EpsDeactivate_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+  explicit EpsDisable_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
                        bool is_message_owned = false);
   public:
 
@@ -2783,7 +2783,7 @@ class EpsDeactivate_Request final :
 
   // accessors -------------------------------------------------------
 
-  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.router.EpsDeactivate_Request)
+  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.router.EpsDisable_Request)
  private:
   class _Internal;
 
@@ -4227,33 +4227,33 @@ inline void EpsGet_Response::set_refresh_interval(uint32_t value) {
   // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.EpsGet_Response.refresh_interval)
 }
 
-// bool active = 5;
-inline void EpsGet_Response::clear_active() {
-  _impl_.active_ = false;
+// bool enabled = 5;
+inline void EpsGet_Response::clear_enabled() {
+  _impl_.enabled_ = false;
 }
-inline bool EpsGet_Response::_internal_active() const {
-  return _impl_.active_;
+inline bool EpsGet_Response::_internal_enabled() const {
+  return _impl_.enabled_;
 }
-inline bool EpsGet_Response::active() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.router.EpsGet_Response.active)
-  return _internal_active();
+inline bool EpsGet_Response::enabled() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.router.EpsGet_Response.enabled)
+  return _internal_enabled();
 }
-inline void EpsGet_Response::_internal_set_active(bool value) {
+inline void EpsGet_Response::_internal_set_enabled(bool value) {
   
-  _impl_.active_ = value;
+  _impl_.enabled_ = value;
 }
-inline void EpsGet_Response::set_active(bool value) {
-  _internal_set_active(value);
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.EpsGet_Response.active)
+inline void EpsGet_Response::set_enabled(bool value) {
+  _internal_set_enabled(value);
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.router.EpsGet_Response.enabled)
 }
 
 // -------------------------------------------------------------------
 
-// EpsActivate_Request
+// EpsEnable_Request
 
 // -------------------------------------------------------------------
 
-// EpsDeactivate_Request
+// EpsDisable_Request
 
 #ifdef __GNUC__
   #pragma GCC diagnostic pop

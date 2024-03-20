@@ -419,7 +419,7 @@ api::HandlerSync getEpsSettings(const std::weak_ptr<::router::IRouterAPI>& route
         auto [eps, refreshInterval, active] = base::getResponse(getRes);
         eResponse.set_eps(eps);
         eResponse.set_refresh_interval(refreshInterval);
-        eResponse.set_active(active);
+        eResponse.set_enabled(active);
         eResponse.set_status(eEngine::ReturnStatus::OK);
 
         return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
@@ -430,7 +430,7 @@ api::HandlerSync activateEpsLimiter(const std::weak_ptr<::router::IRouterAPI>& r
 {
     return [wRouter = router](const api::wpRequest& wRequest) -> api::wpResponse
     {
-        using RequestType = eRouter::EpsActivate_Request;
+        using RequestType = eRouter::EpsEnable_Request;
         using ResponseType = eEngine::GenericStatus_Response;
         auto res = getRequest<RequestType, ResponseType>(wRequest, wRouter);
 
@@ -455,7 +455,7 @@ api::HandlerSync deactivateEpsLimiter(const std::weak_ptr<::router::IRouterAPI>&
 {
     return [wRouter = router](const api::wpRequest& wRequest) -> api::wpResponse
     {
-        using RequestType = eRouter::EpsDeactivate_Request;
+        using RequestType = eRouter::EpsDisable_Request;
         using ResponseType = eEngine::GenericStatus_Response;
         auto res = getRequest<RequestType, ResponseType>(wRequest, wRouter);
 
