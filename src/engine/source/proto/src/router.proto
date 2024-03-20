@@ -166,7 +166,7 @@ message EpsGet_Response
     optional string error = 2;   // Error message if status is ERROR
     uint32 eps = 3;              // EPS limit
     uint32 refresh_interval = 4; // Refresh interval
-    bool active = 5;             // EPS limiter status
+    bool enabled = 5;            // EPS limiter status
 }
 
 /***************************************************
@@ -174,7 +174,7 @@ message EpsGet_Response
  *
  * command: router.eps/activate (<resource>/<action>)
  **************************************************/
-message EpsActivate_Request
+message EpsEnable_Request
 {
     // Nothing
 }
@@ -185,7 +185,7 @@ message EpsActivate_Request
  *
  * command: router.eps/deactivate (<resource>/<action>)
  **************************************************/
-message EpsDeactivate_Request
+message EpsDisable_Request
 {
     // Nothing
 }
