@@ -101,5 +101,9 @@ get_checksum(){
         fi
     fi
 
-    find ${rpm_build_dir} -maxdepth 2 -type f -name "wazuh-${BUILD_TARGET}*rpm" -exec mv {} /var/local/wazuh \;
+    if [[ "${src}" == "yes" ]]; then
+        mv ${rpm_build_dir}/SRPMS/${src_file} /var/local/wazuh
+    else
+        mv ${rpm_build_dir}/RPMS/${rpm_file} /var/local/wazuh
+    fi
 }

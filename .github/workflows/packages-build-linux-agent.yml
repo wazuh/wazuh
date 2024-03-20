@@ -3,12 +3,12 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: 'Wazuh branch used while building a package'
+        description: Wazuh branch used while building a package
         required: false
         default: master
       arch:
         type: choice
-        description: 'Architecture of the package [amd64, i386, arm64, armhf]'
+        description: Architecture of the package [amd64, i386, arm64, armhf]
         required: true
         options:
           - amd64
@@ -17,28 +17,32 @@ on:
           - armhf
       package-format:
         type: choice
-        description: 'Package format [deb, rpm]'
+        description: Package format [deb, rpm]
         required: true
         options:
           - deb
           - rpm
       revision:
         description: |
-          'Set the value to "1" for packages in release format.
+          Set the value to "1" for packages in release format.
           You can also add other values, such as issue numbers.
-          By default, it is set to "0" for development.'
+          By default, it is set to "0" for development.
         required: false
       release-package:
         type: boolean
-        description: 'Build packages with release format'
+        description: Build packages with release format
         required: false
       legacy:
         type: boolean
-        description: '[Only for RPM] Build package for CentOS 5.'
+        description: Only for RPM - Build package for CentOS 5.
+        required: false
+      checksum:
+        type: boolean
+        description: Generate checksum on the same directory than the package.
         required: false
       runner-machine:
         type: choice
-        description: 'Required runner type to build the package'
+        description: Required runner type to build the package
         required: true
         options:
           - ubuntu-latest
@@ -47,33 +51,37 @@ on:
   workflow_call:
     inputs:
       branch:
-        description: 'Wazuh branch used while building a package'
+        description: Wazuh branch used while building a package
         required: false
         default: master
         type: string
       arch:
         type: string
-        description: 'Architecture of the package [amd64, i386, arm6, armhf]'
+        description: Architecture of the package [amd64, i386, arm6, armhf]
         required: true
       package-format:
         type: string
-        description: 'Package format [deb, rpm]'
+        description: Package format [deb, rpm]
         required: true
       revision:
         type: string
-        description: 'Package revision. By default: 0'
+        description: "Package revision. By default: 0"
         required: false
       release-package:
         type: boolean
-        description: 'Build packages with release format'
+        description: Build packages with release format
         required: false
       legacy:
         type: boolean
-        description: '[Only for RPM] Build package for CentOS 5.'
+        description: Only for RPM - Build package for CentOS 5.
+        required: false
+      checksum:
+        type: boolean
+        description: Generate checksum on the same directory than the package.
         required: false
       runner-machine:
         type: string
-        description: 'Required runner type to build the package'
+        description: Required runner type to build the package
         required: true
 
 jobs:
@@ -109,12 +117,13 @@ jobs:
         working-directory: packages
         run: |
           REVISION=${{ inputs.revision }}
-          if [ -z "$REVISION" ]; then REVISION=0; fi
-          FLAGS=""
-          if [ ${{ inputs.release-package }} == "true" ]; then FLAGS+="--release-package " ; fi
-          if [ ${{ inputs.legacy }} == "true" ]; then FLAGS+="--legacy " ; fi
+          FLAGS="-t agent -s /tmp --dont-build-docker -j $(nproc) "
+          if [ -z "$REVISION" ]; then FLAGS+="-r 0 "; else FLAGS+="-r $REVISION "; fi
+          if [ "${{ inputs.release-package }}" == "true" ]; then FLAGS+="--release-package "; fi
+          if [ "${{ inputs.legacy }}" == "true" ]; then FLAGS+="--legacy "; fi
+          if [ "${{ inputs.checksum }}" == "true" ] || [ ${{ inputs.release-package}} == "true" ]; then FLAGS+="--checksum "; fi
           echo $FLAGS
-          bash generate_package.sh -b ${{ inputs.branch }} -j $(nproc) -t agent -s /tmp -a ${{ inputs.arch }} --dont-build-docker --tag ${{ env.TAG }} -r $REVISION --package-format ${{ inputs.package-format }} $FLAGS
+          bash generate_package.sh -b ${{ inputs.branch }} -a ${{ inputs.arch }} --tag ${{ env.TAG }} --package-format ${{ inputs.package-format }} $FLAGS
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v1

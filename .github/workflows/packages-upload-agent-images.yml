@@ -3,7 +3,10 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag name of the Docker image to be uploaded (Use developer to set branch name. Use auto to set src/VERSION content)'
+        description: |
+          Tag name of the Docker image to be uploaded
+          Use developer to set branch name.
+          Use auto to set src/VERSION content
         required: false
         default: auto
 
