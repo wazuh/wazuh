@@ -32,6 +32,10 @@ on:
         type: boolean
         description: 'Build packages with release format'
         required: false
+      legacy:
+        type: boolean
+        description: '[Only for RPM] Build package for CentOS 5.'
+        required: false
       runner-machine:
         type: choice
         description: 'Required runner type to build the package'
@@ -57,11 +61,15 @@ on:
         required: true
       revision:
         type: string
-        description: 'Build packages with release format'
+        description: 'Package revision. By default: 0'
         required: false
       release-package:
         type: boolean
         description: 'Build packages with release format'
+        required: false
+      legacy:
+        type: boolean
+        description: '[Only for RPM] Build package for CentOS 5.'
         required: false
       runner-machine:
         type: string
@@ -102,7 +110,10 @@ jobs:
         run: |
           REVISION=${{ inputs.revision }}
           if [ -z "$REVISION" ]; then REVISION=0; fi
-          FLAGS="$(if [ ${{ inputs.release-package }} ]; then echo "--release-package" ; fi)"
+          FLAGS=""
+          if [ ${{ inputs.release-package }} == "true" ]; then FLAGS+="--release-package " ; fi
+          if [ ${{ inputs.legacy }} == "true" ]; then FLAGS+="--legacy " ; fi
+          echo $FLAGS
           bash generate_package.sh -b ${{ inputs.branch }} -j $(nproc) -t agent -s /tmp -a ${{ inputs.arch }} --dont-build-docker --tag ${{ env.TAG }} -r $REVISION --package-format ${{ inputs.package-format }} $FLAGS
 
       - name: Set up AWS CLI
@@ -115,6 +126,6 @@ jobs:
       - name: Upload package to S3
         run: |
           for file in /tmp/*agent*; do
-            aws s3 cp $file s3://packages-dev.internal.wazuh.com/development/wazuh/
+            aws s3 cp $file s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
           done
 
