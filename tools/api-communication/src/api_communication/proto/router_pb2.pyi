@@ -48,11 +48,11 @@ class EntryPost(_message.Message):
     priority: int
     def __init__(self, name: _Optional[str] = ..., policy: _Optional[str] = ..., filter: _Optional[str] = ..., priority: _Optional[int] = ..., description: _Optional[str] = ...) -> None: ...
 
-class EpsActivate_Request(_message.Message):
+class EpsDisable_Request(_message.Message):
     __slots__ = []
     def __init__(self) -> None: ...
 
-class EpsDeactivate_Request(_message.Message):
+class EpsEnable_Request(_message.Message):
     __slots__ = []
     def __init__(self) -> None: ...
 
@@ -61,18 +61,18 @@ class EpsGet_Request(_message.Message):
     def __init__(self) -> None: ...
 
 class EpsGet_Response(_message.Message):
-    __slots__ = ["active", "eps", "error", "refresh_interval", "status"]
-    ACTIVE_FIELD_NUMBER: _ClassVar[int]
+    __slots__ = ["enabled", "eps", "error", "refresh_interval", "status"]
+    ENABLED_FIELD_NUMBER: _ClassVar[int]
     EPS_FIELD_NUMBER: _ClassVar[int]
     ERROR_FIELD_NUMBER: _ClassVar[int]
     REFRESH_INTERVAL_FIELD_NUMBER: _ClassVar[int]
     STATUS_FIELD_NUMBER: _ClassVar[int]
-    active: bool
+    enabled: bool
     eps: int
     error: str
     refresh_interval: int
     status: _engine_pb2.ReturnStatus
-    def __init__(self, status: _Optional[_Union[_engine_pb2.ReturnStatus, str]] = ..., error: _Optional[str] = ..., eps: _Optional[int] = ..., refresh_interval: _Optional[int] = ..., active: bool = ...) -> None: ...
+    def __init__(self, status: _Optional[_Union[_engine_pb2.ReturnStatus, str]] = ..., error: _Optional[str] = ..., eps: _Optional[int] = ..., refresh_interval: _Optional[int] = ..., enabled: bool = ...) -> None: ...
 
 class EpsUpdate_Request(_message.Message):
     __slots__ = ["eps", "refresh_interval"]
