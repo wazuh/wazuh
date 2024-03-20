@@ -71,7 +71,7 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
     {
         if (doMerge
             && (buildCtx->validator().getType(targetField.dotPath()) != schemf::Type::OBJECT
-                && buildCtx->validator().isArray(targetField.dotPath())))
+                && !buildCtx->validator().isArray(targetField.dotPath())))
         {
             throw std::runtime_error(
                 fmt::format("Expected target field '{}' to be an object or array but got '{}'",
