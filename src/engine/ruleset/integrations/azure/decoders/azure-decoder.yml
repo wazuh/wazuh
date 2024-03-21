@@ -1,0 +1,32 @@
+
+name: decoder/azure-decoder/0
+
+sources:
+  - decoder/core-localfile/0
+
+metadata:
+  description: Parent decoder for Azure events
+  module: Azure
+  compatibility: >
+    This decoder has been tested on Wazuh version 4.3
+  author:
+    name: Wazuh, Inc.
+    date: 2023/02/01
+  title: This decoder normalizes basic field from Azure
+  references:
+    - https://learn.microsoft.com/en-us/azure/azure-monitor/essentials/platform-logs-overview
+
+check:
+   - event.module: Azure
+
+parse:
+  logpar:
+    - event.original: <~json/json>
+
+normalize:
+  - map:
+     - cloud.provider: azure
+     - event.outcome: $~json.result
+
+  - logpar:
+    - ~json.ResourceId: /tenants/<cloud.account.id>/

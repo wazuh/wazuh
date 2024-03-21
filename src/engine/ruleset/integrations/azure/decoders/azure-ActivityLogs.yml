@@ -1,0 +1,54 @@
+name: decoder/azure-ActivityLogs/0
+
+sources:
+  - decoder/azure-decoder/0
+
+metadata:
+  description: ActivityLog decoder for Azure events
+  module: Azure
+  compatibility: >
+    This decoder has been tested on Wazuh version 4.3
+  author:
+    name: Wazuh, Inc.
+    date: 2023/02/14
+  title: This decoder normalizes basic field from Azure ActivityLogs
+  references:
+    - https://learn.microsoft.com/en-us/azure/azure-monitor/essentials/platform-logs-overview
+
+check:
+   - ~json.Type: AzureActivity
+
+normalize:
+  - map:
+    - log.level: $~json.Level
+    - ~azure.activitylogs.properties: +parse_json/$~json.Properties
+    - event.duration: $~json.DurationMs
+    - event.outcome: $~json.ResultType
+    - event.outcome: $azure.activitylogs.properties.result
+    - event.action: $azure.activitylogs.operation_name
+
+  - logpar:
+    - ~json.CallerIpAddress: <source.ip>:<source.port>
+    - ~json.CallerIpAddress: "[<source.ip>]:<source.port>"
+    - ~json.CallerIpAddress: <source.ip>
+
+  - map:
+    - client.ip: $source.ip
+    - related.ip: +array_append/$source.ip
+
+
+  - check: $~azure.activitylogs.properties.EventCategory
+    map:
+     - event.category: +array_append/$~azure.activitylogs.properties.eventCategory
+
+  - check: NOT $~azure.activitylogs.properties.EventCategory AND $~azure.activitylogs.Policies
+    map:
+     - event.category: +array_append/"Policy"
+
+  - check: NOT $azure.activitylogs.properties.EventCategory AND NOT $azure.activitylogs.Policies
+    map:
+     - event.category: +array_append/"Administrative"
+
+# Cleanup
+  - map:
+    - ~json: +delete
