@@ -1,8 +1,8 @@
 ---
-name: Release Candidate - System tests 
+name: Release Candidate - System tests
 about: Report the results after running system tests.
-title: 'Release [WAZUH VERSION] - Release Candidate [RC VERSION] - System tests'
-labels: 'module/cluster, module/rbac'
+title: 'Release [WAZUH VERSION] - [STAGE] - System tests'
+labels: 'type/test, level/task'
 assignees: ''
 
 ---
@@ -46,7 +46,7 @@ All individual test checks must be marked as:
 | Skip | The test was not run. It must be properly justified and reported in an issue.  |
 | Fail | The test failed. A new issue must be opened to evaluate and address the problem. |
 
-All test results must have one the following statuses: 
+All test results must have one the following statuses:
 |                                  |                                            |
 |---------------------------------|--------------------------------------------|
 | :green_circle:  | All checks passed. |
@@ -77,4 +77,4 @@ The definition of done for this one is the validation of the conclusions and the
 
 All checks from below must be accepted in order to close this issue.
 
-- [ ] 
+- [ ] @wazuh/devel-qa-release
