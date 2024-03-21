@@ -211,8 +211,10 @@ def request_virustotal_info(alert: any, apikey: str):
         return None
 
     # If the md5_after field is not a md5 hash checksum. Exit
-    md5_checksum = alert['syscheck']['md5_after']
-    if not re.match(r'\b([a-f\d]{32}|[A-F\d]{32})\b', md5_checksum):
+    if not (
+        isinstance(alert['syscheck']['md5_after'], str) is True
+        and len(re.findall(r'\b([a-f\d]{32}|[A-F\d]{32})\b', alert['syscheck']['md5_after'])) == 1
+    ):
         debug('# md5_after field in the alert is not a md5 hash checksum')
         return None
 
@@ -224,12 +226,12 @@ def request_virustotal_info(alert: any, apikey: str):
     alert_output['virustotal']['source'] = {
         'alert_id': alert['id'],
         'file': alert['syscheck']['path'],
-        'md5': md5_checksum,
+        'md5': alert['syscheck']['md5_after'],
         'sha1': alert['syscheck']['sha1_after'],
     }
 
     # Check if VirusTotal has any info about the hash
-    if in_database(vt_response_data, md5_checksum):
+    if in_database(vt_response_data, hash):
         alert_output['virustotal']['found'] = 1
 
     # Info about the file found in VirusTotal
