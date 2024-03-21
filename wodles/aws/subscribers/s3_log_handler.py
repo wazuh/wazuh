@@ -13,8 +13,6 @@ from typing import List
 
 try:
     import pyarrow.parquet as pq
-    if sys.version_info < (3, 8):
-        import pyarrow_hotfix  # noqa: F401
 except ImportError:
     print('ERROR: pyarrow module is required.')
     sys.exit(10)
