@@ -1,5 +1,6 @@
 name: Package - Upload Docker images for linux agent - DEB|RPM - amd64 and i386
 on:
+  pull_request:
   workflow_dispatch:
     inputs:
       tag:
