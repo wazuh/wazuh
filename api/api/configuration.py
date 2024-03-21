@@ -289,7 +289,6 @@ def read_yaml_config(config_file: str = CONFIG_FILE_PATH, default_conf: dict = N
                         conf[k] = True
                     elif conf[k].lower() == 'no':
                         conf[k] = False
-    logger = logging.getLogger('wazuh-api')
 
     if default_conf is None:
         default_conf = default_api_configuration
@@ -313,6 +312,7 @@ def read_yaml_config(config_file: str = CONFIG_FILE_PATH, default_conf: dict = N
 
         # Check if cache is enabled
         if configuration.get('cache', {}).get('enabled', {}):
+            logger = logging.getLogger('wazuh-api')
             logger.warning(CACHE_DEPRECATED_MESSAGE.format(release="4.8.0"))
 
         schema = security_config_schema if config_file == SECURITY_CONFIG_PATH else api_config_schema
