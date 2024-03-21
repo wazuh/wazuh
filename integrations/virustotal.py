@@ -2,7 +2,7 @@
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
-# License (version 2) as published by the FSF - Free Software
+# License (version 3) as published by the FSF - Free Software
 # Foundation.
 
 
@@ -236,17 +236,17 @@ def request_virustotal_info(alert: any, apikey: str):
 
     # Info about the file found in VirusTotal
     if alert_output['virustotal']['found'] == 1:
-        if vt_response_data['positives'] > 0:
+        if vt_response_data['data']['attributes']['last_analysis_stats']['malicious'] > 0:
             alert_output['virustotal']['malicious'] = 1
 
         # Populate JSON Output object with VirusTotal request
         alert_output['virustotal'].update(
             {
-                'sha1': vt_response_data['sha1'],
-                'scan_date': vt_response_data['scan_date'],
-                'positives': vt_response_data['positives'],
-                'total': vt_response_data['total'],
-                'permalink': vt_response_data['permalink'],
+                'sha1': vt_response_data['data']['attributes']['sha1'],
+                'scan_date': vt_response_data['data']['attributes']['last_analysis_date'],
+                'positives': vt_response_data['data']['attributes']['last_analysis_stats']['malicious'],
+                'total': vt_response_data['data']['attributes']['last_analysis_stats']['malicious'] + vt_response_data['data']['attributes']['last_analysis_stats']['harmless'],
+                'permalink': vt_response_data['data']['links']['self'],
             }
         )
 
@@ -280,12 +280,12 @@ def query_api(hash: str, apikey: str) -> any:
     Exception
         If the status code is different than 200.
     """
-    params = {'apikey': apikey, 'resource': hash}
-    headers = {'Accept-Encoding': 'gzip, deflate', 'User-Agent': 'gzip,  Python library-client-VirusTotal'}
+    params = {'apikey': apikey}
+    headers = {'x-apikey': apikey}
 
     debug('# Querying VirusTotal API')
     response = requests.get(
-        'https://www.virustotal.com/vtapi/v2/file/report', params=params, headers=headers, timeout=timeout
+        f'https://www.virustotal.com/api/v3/files/{hash}', params=params, headers=headers, timeout=timeout
     )
 
     if response.status_code == 200:
@@ -297,12 +297,12 @@ def query_api(hash: str, apikey: str) -> any:
         alert_output['virustotal'] = {}
         alert_output['integration'] = 'virustotal'
 
-        if response.status_code == 204:
+        if response.status_code == 429:
             alert_output['virustotal']['error'] = response.status_code
             alert_output['virustotal']['description'] = 'Error: Public API request rate limit reached'
             send_msg(alert_output)
             raise Exception('# Error: VirusTotal Public API request rate limit reached')
-        elif response.status_code == 403:
+        elif response.status_code == 401:
             alert_output['virustotal']['error'] = response.status_code
             alert_output['virustotal']['description'] = 'Error: Check credentials'
             send_msg(alert_output)
