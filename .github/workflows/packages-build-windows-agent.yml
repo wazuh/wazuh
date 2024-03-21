@@ -1,0 +1,115 @@
+name: Build Wazuh Agent Packages - Windows
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: |
+          Tag name of the Docker image to be downloaded.
+          Use 'developer' to set branch name as tag.
+          Use 'auto' to set branch version as tag.
+          Default is 'auto'.
+        required: false
+        default: 'auto'
+      revision:
+        description: |
+          Revision used to naming Windows package.
+          Default is '0'.
+        required: false
+        default: '0'
+      naming_format:
+        description: |
+          Use 'release' if package name should have release format.
+          Use 'developer' if package name should have developer format.
+          Default is 'developer'.
+        required: false
+        default: 'developer'
+      debug_mode:
+        description: |
+          Activate debug mode in the compilation, 'yes' to activate, 'no' to compile normally.
+          Default is 'no'.
+        required: false
+        default: 'no'
+      trust_verification:
+        description: |
+          This flag controls the dll and exe files signature verification mechanism.
+          Use '0' to disable mechanism.
+          Use '1' to warning only.
+          Use '2' to full enforce.
+          Default is '1'.
+        required: false
+        default: '1'
+      ca_name:
+        description: |
+          CA name to be used to verify the trust of the agent."
+          Default is 'DigiCert Assured ID Root CA'.
+        required: false
+        default: 'DigiCert Assured ID Root CA'
+
+jobs:
+  Build-agent-windows-exe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - uses: actions/checkout@v4
+
+      - name: Set VERSION and CONTAINER_NAME
+        run: |
+          echo "VERSION=$(sed 's/.*\([0-9]\.[0-9]*\.[0-9]*\).*/\1/' $GITHUB_WORKSPACE/src/VERSION)" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=compile_windows_agent" >> $GITHUB_ENV
+          echo "UPLOAD_READY=no" >> $GITHUB_ENV
+          echo "ABORT_JOB=no" >> $GITHUB_ENV
+
+      - name: Set TAG
+        run: |
+          if [ "${{ github.event.inputs.tag }}" == "auto" ]; then echo "TAG=${{ env.VERSION }}" >> $GITHUB_ENV;
+          elif [ "${{ github.event.inputs.tag }}" == "developer" ]; then echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV;
+          else echo "TAG=${{ github.event.inputs.tag }}" >> $GITHUB_ENV; fi
+      
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
+          aws-region: us-east-1
+
+      - name: Set ZIP_NAME
+        run: |
+          COMMIT_HASH="$(git rev-parse --short HEAD)"
+          if [ "${{ github.event.inputs.naming_format }}" == "release" ]; then echo "ZIP_NAME=wazuh-agent-${{ env.VERSION }}-${{ github.event.inputs.revision }}" >> $GITHUB_ENV;
+          else echo "ZIP_NAME=wazuh-agent_${{ env.VERSION }}-${{ github.event.inputs.revision }}_windows_${COMMIT_HASH}" >> $GITHUB_ENV; fi
+
+      - name: Check if package already exists in AWS
+        run: |
+          if [[ $(aws s3api head-object --bucket packages-dev.internal.wazuh.com --key development/wazuh/4.x/main/packages/${{ env.ZIP_NAME }}.zip) ]]; then echo "::notice:: Package already exists in s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${{ env.ZIP_NAME }}.zip"; echo "ABORT_JOB=yes" >> $GITHUB_ENV; fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  
+      - name: Download docker image for package building
+        if: env.ABORT_JOB == 'no'
+        run: |
+          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} $CONTAINER_NAME ${{ env.TAG }}
+
+      - name: Build Windows wazuh-agent
+        if: env.ABORT_JOB == 'no'
+        working-directory: packages/windows
+        run: |
+          bash generate_compiled_windows_agent.sh -j $(nproc) -t ${{ github.event.inputs.trust_verification }} -s /tmp --dont-build-docker --tag ${{ env.TAG }} -o ${{ env.ZIP_NAME }} -d ${{ github.event.inputs.debug_mode }} -c "${{ github.event.inputs.ca_name }}"
+          echo "UPLOAD_READY=yes" >> $GITHUB_ENV
+
+# todo Modify ZIP_NAME to MSI_NAME
+      - name: Upload checksum
+        if: env.UPLOAD_READY == 'yes' && env.ABORT_JOB == 'no' && github.event.inputs.naming_format == 'release'
+        run: |
+          sha512sum "/tmp/${{ env.ZIP_NAME }}.zip" > "/tmp/${{ env.ZIP_NAME }}.sha512"
+          aws s3 cp /tmp/${{ env.ZIP_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
+
+      - name: Upload package to S3
+        if: env.UPLOAD_READY == 'yes' && env.ABORT_JOB == 'no'
+        run: |
+          aws s3 cp /tmp/${{ env.ZIP_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/

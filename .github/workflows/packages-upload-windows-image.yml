@@ -1,0 +1,37 @@
+name: Package - Upload Docker images for Windows agent
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: |
+          Tag name of the Docker image to be uploaded
+          Use developer to set branch name.
+          Use auto to set src/VERSION content
+        required: false
+        default: auto
+
+jobs:
+  Upload-package-windows-image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - uses: actions/checkout@v4
+
+      - name: Set TAG, CONTAINER_NAME and DOCKERFILE_PATH
+        run: |
+          VERSION=$(sed 's/.*\([0-9]\.[0-9]*\.[0-9]*\).*/\1/' $GITHUB_WORKSPACE/src/VERSION)
+          if [ "${{ github.event.inputs.tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
+          elif [ "${{ github.event.inputs.tag }}" == "developer" ]; then echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV;
+          else echo "TAG=${{ github.event.inputs.tag }}" >> $GITHUB_ENV; fi
+          echo "CONTAINER_NAME=compile_windows_agent" >> $GITHUB_ENV
+          echo "DOCKERFILE_PATH=packages/windows" >> $GITHUB_ENV
+
+      - name: Build and push image ${{ matrix.CONTAINER_NAME }} with tag ${{ env.TAG }} to Github Container Registry
+        run: |
+          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/build_and_push_image_to_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} ${{env.CONTAINER_NAME}} ${{ env.DOCKERFILE_PATH }} ${{ env.TAG }}
