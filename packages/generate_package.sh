@@ -11,7 +11,7 @@
 set -x
 CURRENT_PATH="$( cd $(dirname $0) ; pwd -P )"
 ARCHITECTURE="amd64"
-PACKAGE_FORMAT="rpm"
+PACKAGE_FORMAT="deb"
 OUTDIR="${CURRENT_PATH}/output/"
 BRANCH=""
 REVISION="0"
