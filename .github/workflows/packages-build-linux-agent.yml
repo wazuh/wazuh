@@ -107,7 +107,12 @@ jobs:
           VERSION=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
           if [ "${{ inputs.branch }}" == "master" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
           else echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV; fi
-          echo "CONTAINER_NAME=pkg_${{ inputs.package-format }}_agent_builder_${{ inputs.arch }}" >> $GITHUB_ENV
+          if [ "${{ inputs.legacy }}" == "true" ]; then
+            echo "CONTAINER_NAME=pkg_${{ inputs.package-format }}_legacy_builder_${{ inputs.arch }}" >> $GITHUB_ENV
+          else
+            echo "CONTAINER_NAME=pkg_${{ inputs.package-format }}_agent_builder_${{ inputs.arch }}" >> $GITHUB_ENV
+          fi
+
 
       - name: Download docker image for package building
         run: |
