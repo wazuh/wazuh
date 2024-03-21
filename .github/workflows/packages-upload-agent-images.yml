@@ -65,6 +65,16 @@ jobs:
               - 'packages/build.sh'
               - 'packages/generate_package.sh'
               - 'packages/rpms/utils/**'
+            rpm_legacy_i386:
+              - 'packages/debs/i386/legacy/**'
+              - 'packages/build.sh'
+              - 'packages/generate_package.sh'
+              - 'packages/rpms/utils/**'
+            rpm_legacy_amd64:
+              - 'packages/debs/amd64/legacy/**'
+              - 'packages/build.sh'
+              - 'packages/generate_package.sh'
+              - 'packages/rpms/utils/**'
       - name: Copy build.sh and utils to Dockerfile path
         run: |
           cp $GITHUB_WORKSPACE/packages/build.sh $GITHUB_WORKSPACE/${{ matrix.DOCKERFILE_PATH }}
@@ -83,6 +93,8 @@ jobs:
           ( steps.changes.outputs.deb_agent_amd64 == 'true' && matrix.CONTAINER_NAME == 'pkg_deb_agent_builder_amd64') ||
           ( steps.changes.outputs.deb_agent_i386 == 'true' && matrix.CONTAINER_NAME == 'pkg_deb_agent_builder_i386' ) ||
           ( steps.changes.outputs.rpm_agent_amd64 == 'true' && matrix.CONTAINER_NAME == 'pkg_rpm_agent_builder_amd64' ) ||
-          ( steps.changes.outputs.rpm_agent_i386 == 'true' && matrix.CONTAINER_NAME == 'pkg_rpm_agent_builder_i386' )
+          ( steps.changes.outputs.rpm_agent_i386 == 'true' && matrix.CONTAINER_NAME == 'pkg_rpm_agent_builder_i386' ) ||
+          ( steps.changes.outputs.rpm_legacy_i386 == 'true' && matrix.CONTAINER_NAME == 'pkg_rpm_legacy_builder_i386' ) ||
+          ( steps.changes.outputs.rpm_legacy_amd64 == 'true' && matrix.CONTAINER_NAME == 'pkg_rpm_legacy_builder_amd64' )
         run: |
           bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/build_and_push_image_to_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} ${{matrix.CONTAINER_NAME}} ${{ matrix.DOCKERFILE_PATH }} ${{ env.TAG }}
