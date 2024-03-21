@@ -1,5 +1,12 @@
 name: Package - Upload Docker images for linux agent - DEB|RPM - amd64 and i386
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/packages-upload-agent-images.yml'
+      - 'packages/build.sh'
+      - 'packages/generate_package.sh'
+      - 'packages/rpms/utils/**'
+      - 'packages/debs/utils/**'
   workflow_dispatch:
     inputs:
       tag:
@@ -27,6 +34,12 @@ jobs:
             DISTRO: rpm
           - CONTAINER_NAME: pkg_rpm_agent_builder_i386
             DOCKERFILE_PATH: packages/rpms/i386/agent
+            DISTRO: rpm
+          - CONTAINER_NAME: pkg_rpm_legacy_builder_i386
+            DOCKERFILE_PATH: packages/rpms/i386/legacy
+            DISTRO: rpm
+          - CONTAINER_NAME: pkg_rpm_legacy_builder_amd64
+            DOCKERFILE_PATH: packages/rpms/i386/legacy
             DISTRO: rpm
       fail-fast: false
 
