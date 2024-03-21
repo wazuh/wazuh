@@ -16,8 +16,20 @@ fi
 # Installing upgrade
 touch ./var/upgrade/upgrade_in_progress
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade started." >> ./logs/upgrade.log
-chmod +x ./var/upgrade/install.sh
-./var/upgrade/install.sh >> ./logs/upgrade.log 2>&1
+
+OS=$(uname)
+
+if [[ "$OS" == "Darwin" ]]; then
+    installer -pkg ./var/upgrade/wazuh-agent* -target / >> ./logs/upgrade.log 2>&1
+elif [[ "$OS" == "Linux" ]]; then
+    chmod +x ./var/upgrade/install.sh
+    ./var/upgrade/install.sh >> ./logs/upgrade.log 2>&1
+else
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. Unsupported OS." >> ./logs/upgrade.log
+    rm -f ./var/upgrade/upgrade_in_progress
+    exit 1
+fi
+
 
 # Check installation result
 RESULT=$?
