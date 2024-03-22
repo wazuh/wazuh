@@ -1,0 +1,58 @@
+name: Packages - Build filebeat package
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version used to naming Filebeat package wazuh-filebeat-X.X.tar.gz'
+        required: true
+
+jobs:
+  Filebeat-module-generation:
+    runs-on: ubuntu-latest
+
+    steps:      
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - uses: actions/checkout@v4
+
+      - name: Set package name
+        run: |
+          echo "FILEBEAT_TAR_NAME=wazuh-filebeat-${{ github.event.inputs.version }}.tar.gz" >> $GITHUB_ENV
+
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
+          aws-region: us-east-1
+
+      - name: Package files, change permissions, create tar and upload to S3
+        working-directory: extensions/filebeat/7.x/wazuh-module
+        run: |
+          mkdir wazuh
+          cp -r _meta wazuh/; cp -r alerts wazuh/; cp -r archives wazuh/; cp -r module.yml wazuh/
+          sudo chown -R root:root wazuh
+          sudo chmod 755 wazuh
+          sudo chmod 755 wazuh/alerts
+          sudo chmod 755 wazuh/alerts/config
+          sudo chmod 755 wazuh/alerts/ingest
+          sudo chmod 755 wazuh/archives
+          sudo chmod 755 wazuh/archives/config
+          sudo chmod 755 wazuh/archives/ingest
+          sudo chmod 644 wazuh/module.yml
+          sudo chmod 644 wazuh/_meta/config.yml
+          sudo chmod 644 wazuh/_meta/docs.asciidoc
+          sudo chmod 644 wazuh/_meta/fields.yml
+          sudo chmod 644 wazuh/alerts/manifest.yml
+          sudo chmod 644 wazuh/alerts/config/alerts.yml
+          sudo chmod 644 wazuh/alerts/ingest/pipeline.json
+          sudo chmod 644 wazuh/archives/manifest.yml
+          sudo chmod 644 wazuh/archives/config/archives.yml
+          sudo chmod 644 wazuh/archives/ingest/pipeline.json
+          tar -czvf wazuh-filebeat-0.4.tar.gz wazuh
+          aws s3 cp ${{ env.FILEBEAT_TAR_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/secondary/filebeat/modules/
