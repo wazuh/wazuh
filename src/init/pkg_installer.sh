@@ -22,10 +22,38 @@ OS=$(uname)
 if [[ "$OS" == "Darwin" ]]; then
     installer -pkg ./var/upgrade/wazuh-agent* -target / >> ./logs/upgrade.log 2>&1
 elif [[ "$OS" == "Linux" ]]; then
-    chmod +x ./var/upgrade/install.sh
-    ./var/upgrade/install.sh >> ./logs/upgrade.log 2>&1
+    if find ./var/upgrade/ -mindepth 1 -maxdepth 1 -type f -name "*.rpm" | read; then
+        if command -v rpm >/dev/null 2>&1; then
+            rpm -Uvh ./var/upgrade/wazuh-agent* >> ./logs/upgrade.log 2>&1
+        else
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. RPM package found but rpm command not found." >> ./logs/upgrade.log
+            echo -ne "2" > ./var/upgrade/upgrade_result
+            rm -f ./var/upgrade/upgrade_in_progress
+            exit 1
+        fi
+    elif find ./var/upgrade/ -mindepth 1 -maxdepth 1 -type f -name "*.deb" | read; then
+        if command -v dpkg >/dev/null 2>&1; then
+            dpkg -i ./var/upgrade/wazuh-agent* >> ./logs/upgrade.log 2>&1
+        else
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. DEB package found but dpkg command not found." >> ./logs/upgrade.log
+            echo -ne "2" > ./var/upgrade/upgrade_result
+            rm -f ./var/upgrade/upgrade_in_progress
+            exit 1
+        fi
+    else
+        if [ -e ./var/upgrade/install.sh ]; then
+            chmod +x ./var/upgrade/install.sh
+            ./var/upgrade/install.sh >> ./logs/upgrade.log 2>&1
+        else
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. No package or sources found." >> ./logs/upgrade.log
+            echo -ne "2" > ./var/upgrade/upgrade_result
+            rm -f ./var/upgrade/upgrade_in_progress
+            exit 1
+        fi
+    fi
 else
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. Unsupported OS." >> ./logs/upgrade.log
+    echo -ne "2" > ./var/upgrade/upgrade_result
     rm -f ./var/upgrade/upgrade_in_progress
     exit 1
 fi
