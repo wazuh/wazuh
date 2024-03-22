@@ -9,103 +9,90 @@ on:
           Use auto to set src/VERSION content
         required: false
         default: auto
-
+      deb_amd64:
+        type: boolean
+        description: Generate checksum on the same directory than the package.
+        required: false
+      deb_i386:
+        type: boolean
+        description: Generate checksum on the same directory than the package.
+        required: false
+      rpm_i386:
+        type: boolean
+        description: Generate checksum on the same directory than the package.
+        required: false
+      rpm_amd64:
+        type: boolean
+        description: Generate checksum on the same directory than the package.
+        required: false
 jobs:
   Upload-package-building-images:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - CONTAINER_NAME: pkg_deb_agent_builder_amd64
-            DOCKERFILE_PATH: packages/debs/amd64/agent
-            DISTRO: deb
-          - CONTAINER_NAME: pkg_deb_agent_builder_i386
-            DOCKERFILE_PATH: packages/debs/i386/agent
-            DISTRO: deb
-          - CONTAINER_NAME: pkg_rpm_agent_builder_amd64
-            DOCKERFILE_PATH: packages/rpms/amd64/agent
-            DISTRO: rpm
-          - CONTAINER_NAME: pkg_rpm_agent_builder_i386
-            DOCKERFILE_PATH: packages/rpms/i386/agent
-            DISTRO: rpm
-          - CONTAINER_NAME: pkg_rpm_legacy_builder_i386
-            DOCKERFILE_PATH: packages/rpms/i386/legacy
-            DISTRO: rpm
-          - CONTAINER_NAME: pkg_rpm_legacy_builder_amd64
-            DOCKERFILE_PATH: packages/rpms/amd64/legacy
-            DISTRO: rpm
-      fail-fast: false
+    # strategy:
+    #   matrix:
+    #     include:
+    #       - CONTAINER_NAME: pkg_deb_agent_builder_amd64
+    #         DOCKERFILE_PATH: packages/debs/amd64/agent
+    #         DISTRO: deb
+    #       - CONTAINER_NAME: pkg_deb_agent_builder_i386
+    #         DOCKERFILE_PATH: packages/debs/i386/agent
+    #         DISTRO: deb
+    #       - CONTAINER_NAME: pkg_rpm_agent_builder_amd64
+    #         DOCKERFILE_PATH: packages/rpms/amd64/agent
+    #         DISTRO: rpm
+    #       - CONTAINER_NAME: pkg_rpm_agent_builder_i386
+    #         DOCKERFILE_PATH: packages/rpms/i386/agent
+    #         DISTRO: rpm
+    #       - CONTAINER_NAME: pkg_rpm_legacy_builder_i386
+    #         DOCKERFILE_PATH: packages/rpms/i386/legacy
+    #         DISTRO: rpm
+    #       - CONTAINER_NAME: pkg_rpm_legacy_builder_amd64
+    #         DOCKERFILE_PATH: packages/rpms/amd64/legacy
+    #         DISTRO: rpm
+    #   fail-fast: false
 
     steps:
-      - name: Cancel previous runs
-        uses: fkirc/skip-duplicate-actions@master
-        with:
-          cancel_others: 'true'
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          skip_after_successful_duplicate: 'false'
-
-      - uses: actions/checkout@v4
-
-      - name: Get changed files
-        uses: dorny/paths-filter@v2
-        id: changes
-        with:
-          filters: |
-            deb_agent_amd64:
-              - 'packages/debs/amd64/agent/**'
-              - 'packages/build.sh'
-              - 'packages/generate_package.sh'
-              - 'packages/debs/utils/**'
-            deb_agent_i386:
-              - 'packages/debs/i386/agent/**'
-              - 'packages/build.sh'
-              - 'packages/generate_package.sh'
-              - 'packages/debs/utils/**'
-            rpm_agent_amd64:
-              - 'packages/debs/amd64/agent/**'
-              - 'packages/build.sh'
-              - 'packages/generate_package.sh'
-              - 'packages/rpms/utils/**'
-            rpm_agent_i386:
-              - 'packages/debs/i386/agent/**'
-              - 'packages/build.sh'
-              - 'packages/generate_package.sh'
-              - 'packages/rpms/utils/**'
-            rpm_legacy_i386:
-              - 'packages/debs/i386/legacy/**'
-              - 'packages/build.sh'
-              - 'packages/generate_package.sh'
-              - 'packages/rpms/utils/**'
-            rpm_legacy_amd64:
-              - 'packages/debs/amd64/legacy/**'
-              - 'packages/build.sh'
-              - 'packages/generate_package.sh'
-              - 'packages/rpms/utils/**'
-      - name: Copy build.sh and utils to Dockerfile path
+      - name: Iterate over inputs
         run: |
-          cp $GITHUB_WORKSPACE/packages/build.sh $GITHUB_WORKSPACE/${{ matrix.DOCKERFILE_PATH }}
-          cp $GITHUB_WORKSPACE/packages/${{ matrix.DISTRO }}s/utils/* $GITHUB_WORKSPACE/${{ matrix.DOCKERFILE_PATH }}
-      - name: Copy centos-5-i386.tar.gz to Dockerfile legacy path
-        if: |
-          ( steps.changes.outputs.rpm_legacy_i386 == 'true' && matrix.CONTAINER_NAME == 'pkg_rpm_legacy_builder_i386' ) ||
-          ( steps.changes.outputs.rpm_legacy_amd64 == 'true' && matrix.CONTAINER_NAME == 'pkg_rpm_legacy_builder_amd64' )
-        run:
-          cd $GITHUB_WORKSPACE/${{ matrix.DOCKERFILE_PATH }} && curl -sO "https://packages-dev.wazuh.com/utils/centos-5-i386-build/centos-5-i386.tar.gz"
-      - name: Set tag
-        run: |
-          VERSION=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
-          if [ "${{ inputs.tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
-          elif [ "${{ inputs.tag }}" == "developer" ]; then echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV;
-          else echo "TAG=${{ inputs.tag }}" >> $GITHUB_ENV; fi
+          echo '{
+            "deb_amd64": ${{ inputs.deb_amd64 }},
+            "deb_i386": ${{ inputs.deb_i386 }},
+            "rpm_amd64": ${{ inputs.rpm_amd64 }},
+            "rpm_i386": ${{ inputs.rpm_i386 }}
+          }'| echo "docker_json=$( jq -c 'map_values(. // empty)'|jq -r 'keys[]' |tr '\n' ' ')" >> $GITHUB_ENV
 
-
-      - name: Build and push image ${{ matrix.CONTAINER_NAME }} with tag ${{ env.TAG }} to Github Container Registry
-        if: |
-          ( steps.changes.outputs.deb_agent_amd64 == 'true' && matrix.CONTAINER_NAME == 'pkg_deb_agent_builder_amd64') ||
-          ( steps.changes.outputs.deb_agent_i386 == 'true' && matrix.CONTAINER_NAME == 'pkg_deb_agent_builder_i386' ) ||
-          ( steps.changes.outputs.rpm_agent_amd64 == 'true' && matrix.CONTAINER_NAME == 'pkg_rpm_agent_builder_amd64' ) ||
-          ( steps.changes.outputs.rpm_agent_i386 == 'true' && matrix.CONTAINER_NAME == 'pkg_rpm_agent_builder_i386' ) ||
-          ( steps.changes.outputs.rpm_legacy_i386 == 'true' && matrix.CONTAINER_NAME == 'pkg_rpm_legacy_builder_i386' ) ||
-          ( steps.changes.outputs.rpm_legacy_amd64 == 'true' && matrix.CONTAINER_NAME == 'pkg_rpm_legacy_builder_amd64' )
+      - name: Testing
         run: |
-          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/build_and_push_image_to_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} ${{matrix.CONTAINER_NAME}} ${{ matrix.DOCKERFILE_PATH }} ${{ env.TAG }}
+          for image in ${{ env.docker_json }}; do
+            echo $image
+          done
+      # - name: Cancel previous runs
+      #   uses: fkirc/skip-duplicate-actions@master
+      #   with:
+      #     cancel_others: 'true'
+      #     github_token: ${{ secrets.GITHUB_TOKEN }}
+      #     skip_after_successful_duplicate: 'false'
+
+      # - uses: actions/checkout@v4
+
+      # - name: Copy build.sh and utils to Dockerfile path
+      #   run: |
+      #     cp $GITHUB_WORKSPACE/packages/build.sh $GITHUB_WORKSPACE/${{ matrix.DOCKERFILE_PATH }}
+      #     cp $GITHUB_WORKSPACE/packages/${{ matrix.DISTRO }}s/utils/* $GITHUB_WORKSPACE/${{ matrix.DOCKERFILE_PATH }}
+      # - name: Copy centos-5-i386.tar.gz to Dockerfile legacy path
+      #   if: |
+      #     ( matrix.CONTAINER_NAME == 'pkg_rpm_legacy_builder_i386' ) ||
+      #     ( matrix.CONTAINER_NAME == 'pkg_rpm_legacy_builder_amd64' )
+      #   run:
+      #     cd $GITHUB_WORKSPACE/${{ matrix.DOCKERFILE_PATH }} && curl -sO "https://packages-dev.wazuh.com/utils/centos-5-i386-build/centos-5-i386.tar.gz"
+
+      # - name: Set tag
+      #   run: |
+      #     VERSION=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
+      #     if [ "${{ inputs.tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
+      #     elif [ "${{ inputs.tag }}" == "developer" ]; then echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV;
+      #     else echo "TAG=${{ inputs.tag }}" >> $GITHUB_ENV; fi
+
+      # - name: Build and push image ${{ matrix.CONTAINER_NAME }} with tag ${{ env.TAG }} to Github Container Registry
+      #   run: |
+      #     bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/build_and_push_image_to_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} ${{matrix.CONTAINER_NAME}} ${{ matrix.DOCKERFILE_PATH }} ${{ env.TAG }}
