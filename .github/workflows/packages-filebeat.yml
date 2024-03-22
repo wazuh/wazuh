@@ -38,6 +38,7 @@ jobs:
           cp -r _meta wazuh/; cp -r alerts wazuh/; cp -r archives wazuh/; cp -r module.yml wazuh/
           sudo chown -R root:root wazuh
           sudo chmod 755 wazuh
+          sudo chmod 755 wazuh/_meta
           sudo chmod 755 wazuh/alerts
           sudo chmod 755 wazuh/alerts/config
           sudo chmod 755 wazuh/alerts/ingest
@@ -54,5 +55,28 @@ jobs:
           sudo chmod 644 wazuh/archives/manifest.yml
           sudo chmod 644 wazuh/archives/config/archives.yml
           sudo chmod 644 wazuh/archives/ingest/pipeline.json
-          tar -czvf wazuh-filebeat-0.4.tar.gz wazuh
+          tar -czvf ${{ env.FILEBEAT_TAR_NAME }} wazuh
+
+      - name: Testing Filebeat module
+        working-directory: extensions/filebeat/7.x/wazuh-module
+        run: |
+          echo "MODULE_CHECKED=no" >> $GITHUB_ENV
+          DIR_PERMS="755 root root"
+          FILE_PERMS="644 root root"
+          sudo mv ./wazuh ./wazuh2
+          sudo tar -xzvf ${{ env.FILEBEAT_TAR_NAME }}
+          for file in ./wazuh/*; do
+            if [ -d "$file" ]; then
+              if [ "$(stat -L -c "%a %G %U" "$file")" != "$DIR_PERMS" ]; then echo "Wrong permissions for $file. Expected: $DIR_PERMS. Currently: "$(stat -L -c "%a %G %U" "$file")"."; exit 1; fi
+            elif [ -f "$file" ]; then
+              if [ "$(stat -L -c "%a %G %U" "$file")" != "$FILE_PERMS" ]; then echo "Wrong permissions for $file. Expected: $FILE_PERMS. Currently: "$(stat -L -c "%a %G %U" "$file")"."; exit 1; fi
+            fi
+          done
+          if [ $(diff -r wazuh wazuh2) ]; then exit 1; fi
+          echo "MODULE_CHECKED=yes" >> $GITHUB_ENV
+
+      - name: Upload Filebeat module to S3
+        if: env.MODULE_CHECKED == 'yes'
+        working-directory: extensions/filebeat/7.x/wazuh-module
+        run: |
           aws s3 cp ${{ env.FILEBEAT_TAR_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/secondary/filebeat/modules/
