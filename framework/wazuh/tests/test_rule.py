@@ -37,7 +37,6 @@ rule_ossec_conf = {
 
 other_rule_ossec_conf = {
     'ruleset': {
-        'decoder_dir': ['ruleset/decoders', 'etc/decoders'],
         'rule_dir': [data_path],
         'rule_exclude': ['0010-rules_config.xml'],
         'list': ['etc/lists/audit-keys', 'etc/lists/amazon/aws-eventnames', 'etc/lists/security-eventchannel']

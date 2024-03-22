@@ -43,7 +43,7 @@ def init_argparse() -> argparse.Namespace:
     )
     parser.add_argument(
         "-U", help='Unit test. Refer to ruleset/testing/runtests.py',
-        metavar='rule:alert:decoder',
+        metavar='rule:alert',
         dest='ut'
     )
     parser.add_argument(
@@ -338,8 +338,6 @@ class WazuhLogtest:
         if 'rule' in reply['output']:
             self.ut[0] = reply['output']['rule']['id']
             self.ut[1] = str(reply['output']['rule']['level'])
-        if 'decoder' in reply['output'] and reply['output']['decoder']:
-            self.ut[2] = reply['output']['decoder']['name']
         # Return logtest payload
         return reply
 
@@ -389,12 +387,12 @@ class WazuhLogtest:
             self.remove_session(self.last_token)
 
     def get_last_ut(self) -> list[str]:
-        """Get last known UT info (rule, alert, decoder).
+        """Get last known UT info (rule and alert).
 
         Returns
         -------
         list[str]
-            List containing the last rule, alert, and decoder.
+            List containing the last rule and alert.
         """
         return self.ut
 
@@ -418,23 +416,6 @@ class WazuhLogtest:
             Wazuh-logtest outcome.
         """
         output_data = output['output']
-        # Pre-decoding phase
-        logging.info('**Phase 1: Completed pre-decoding.')
-        # Check in case rule has no_full_log attribute
-        if 'full_log' in output_data:
-            logging.info("\tfull event: '%s'", output_data.pop('full_log'))
-        if 'predecoder' in output_data:
-            WazuhLogtest.show_phase_info(output_data['predecoder'], ['timestamp', 'hostname', 'program_name'])
-        # Decoding phase
-        logging.info('')
-        logging.info('**Phase 2: Completed decoding.')
-        if 'decoder' in output_data and output_data['decoder']:
-            WazuhLogtest.show_phase_info(output_data['decoder'], ['name', 'parent'])
-            if 'data' in output_data:
-                WazuhLogtest.show_phase_info(output_data['data'])
-        else:
-            logging.info('\tNo decoder matched.')
-
         # Rule phase
 
         ## Rules Debugging
@@ -481,7 +462,7 @@ class WazuhLogtest:
         Parameters
         ----------
         ut : list[str]
-            Expected rule,alert,decoder
+            Expected rule,alert
         """
         result = self.get_last_ut() == ut
         logging.info('')

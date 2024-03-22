@@ -200,7 +200,6 @@ def test_is_safe_path():
     assert is_safe_path('c:\\api\\configuration\\api.yaml')
     assert is_safe_path('etc/rules/local_rules.xml', relative=False)
     assert is_safe_path('etc/ossec.conf', relative=True)
-    assert is_safe_path('ruleset/decoders/decoder.xml', relative=False)
     assert not is_safe_path('/api/configuration/api.yaml', basedir='non-existent', relative=False)
     assert not is_safe_path('etc/lists/../../../../../../var/ossec/api/scripts/wazuh-apid.py', relative=True)
     assert not is_safe_path('../etc/rules/rule.xml', relative=False)
@@ -208,16 +207,12 @@ def test_is_safe_path():
     assert not is_safe_path('/..')
     assert not is_safe_path('\\..')
     assert not is_safe_path('..\\etc\\rules\\rule.xml')
-    assert not is_safe_path('../ruleset/decoders/decoder.xml./', relative=False)
 
 
 @pytest.mark.parametrize('value, format', [
     ("test.33alphanumeric:", "alphanumeric"),
     ("cGVwZQ==", "base64"),
     ("etc/lists/list_me", "delete_files_path"),
-    ("etc/decoders/dec35.xml", "edit_files_path"),
-    ("etc/decoders/test/dec35.xml", "edit_files_path"),
-    ("etc/decoders", "get_dirnames_path"),
     ("AB0264EA00FD9BCDCF1A5B88BC1BDEA4", "hash"),
     ("file_test-33.xml", "names"),
     ("651403650840", "numbers"),

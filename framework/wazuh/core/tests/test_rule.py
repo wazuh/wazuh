@@ -28,7 +28,6 @@ parent_directory = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 data_path = 'core/tests/data/rules'
 
 ruleset_conf = {
-    'decoder_dir': ['ruleset/decoders', 'etc/decoders'],
     'rule_dir': ['ruleset/rules', 'etc/rules'], 'rule_exclude': ['0215-policy_rules.xml'],
     'list': ['etc/lists/audit-keys', 'etc/lists/amazon/aws-eventnames', 'etc/lists/security-eventchannel']
 }
@@ -157,9 +156,9 @@ def test_remove_files(tmp_data, parameters, expected_result):
     ('0015-ossec_rules.xml', 'ruleset/rules', 'enabled'),
     ('0350-amazon_rules.xml', 'ruleset/rules', 'enabled'),
 ])
-def test_format_rule_decoder_file(rule_file, rule_path, rule_status):
-    """Test format_rule_decoder_file rule core function."""
-    result = rule.format_rule_decoder_file(
+def test_format_rule_file(rule_file, rule_path, rule_status):
+    """Test format_rule_file rule core function."""
+    result = rule.format_rule_file(
         ruleset_conf, {'status': rule_status, 'relative_dirname': rule_path, 'filename': rule_file},
         ['rule_include', 'rule_exclude', 'rule_dir'])
 

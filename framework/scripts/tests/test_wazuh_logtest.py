@@ -38,7 +38,7 @@ class WazuhDeamonProtocolMock:
         self.data = None
         self.recv_package = None
         self.reply = {'codemsg': 0, 'token': 'last token',
-                      'output': {'rule': {'id': 1, 'level': 1}, 'decoder': {'name': 'name'}}}
+                      'output': {'rule': {'id': 1, 'level': 1}}}
 
     def wrap(self, msg, data):
         self.msg = msg
@@ -84,7 +84,7 @@ def test_init_argparse(argument_parser_mock):
                                                       'Quiet execution', 'Verbose (full) output/rule debugging']
     assert argument_parser_mock.return_value.action == ['store_true', 'store_true', '', '', 'store_true', 'store_true']
     assert argument_parser_mock.return_value.dest == ['version', 'debug', 'ut', 'location', 'quiet', 'verbose']
-    assert argument_parser_mock.return_value.metavar == ['', '', 'rule:alert:decoder', 'location', '', '']
+    assert argument_parser_mock.return_value.metavar == ['', '', 'rule:alert', 'location', '', '']
     assert argument_parser_mock.return_value.default == ['', '', '', 'stdin', '', '']
 
 
@@ -462,28 +462,24 @@ def test_wl_show_output(show_ossec_logtest_like_mock, json_dumps_mock, debug_moc
 @patch('scripts.wazuh_logtest.WazuhLogtest.show_phase_info')
 def test_wl_show_ossec_logtest_like(show_phase_info_mock, info_mock):
     """Test if wazuh-logtest output is being shown as ossec-logtest output."""
-    output = {'output': {'full_log': '', 'predecoder': 'predecoder_value', 'decoder': 'decoder_value', 'data': '',
+    output = {'output': {'full_log': '', 'data': '',
                          'rule': 'rule_value'}, 'alert': 'alert_value', 'rules_debug': ['mock']}
 
     # Test the third 'if'
     wazuh_logtest.WazuhLogtest.show_ossec_logtest_like(output)
-    info_mock.assert_has_calls([call('**Phase 1: Completed pre-decoding.'), call("\tfull event: '%s'", ''), call(''),
-                                call('**Phase 2: Completed decoding.'), call(''), call('**Rule debugging:'),
+    info_mock.assert_has_calls([call(''), call('**Rule debugging:'),
                                 call('\tmock'), call(''), call('**Phase 3: Completed filtering (rules).'),
                                 call('**Alert to be generated.')])
-    assert show_phase_info_mock.call_count == 4
+    assert show_phase_info_mock.call_count == 1
 
     # Test the 'else'
-    output['output'].pop('decoder')
     output.pop('rules_debug')
     output['output'].pop('rule')
     output['alert'] = ''
     info_mock.reset_mock()
 
     wazuh_logtest.WazuhLogtest.show_ossec_logtest_like(output)
-    info_mock.assert_has_calls([call('**Phase 1: Completed pre-decoding.'), call(''),
-                                call('**Phase 2: Completed decoding.'), call('\tNo decoder matched.')])
-    assert show_phase_info_mock.call_count == 5
+    assert show_phase_info_mock.call_count == 1
 
 
 @patch('logging.info')

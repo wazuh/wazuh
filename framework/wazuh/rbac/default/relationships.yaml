@@ -18,7 +18,6 @@ relationships:
         - security_all
         - cluster_all
         - ciscat_read
-        - decoders_all
         - lists_all
         - rootcheck_all
         - rules_all
@@ -39,7 +38,6 @@ relationships:
         - agents_read
         - ciscat_read
         - cluster_read
-        - decoders_read
         - lists_read
         - rootcheck_read
         - rules_read

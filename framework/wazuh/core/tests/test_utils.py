@@ -1819,14 +1819,6 @@ def test_expand_rules():
                                                                      f'*{utils.common.RULES_EXTENSION}'))))
 
 
-@patch('wazuh.core.utils.common.DECODERS_PATH', new=test_files_path)
-@patch('wazuh.core.utils.common.USER_DECODERS_PATH', new=test_files_path)
-def test_expand_decoders():
-    decoders = utils.expand_decoders()
-    assert decoders == set(map(os.path.basename, glob.glob(os.path.join(test_files_path,
-                                                                        f'*{utils.common.DECODERS_EXTENSION}'))))
-
-
 @patch('wazuh.core.utils.common.LISTS_PATH', new=test_files_path)
 @patch('wazuh.core.utils.common.USER_LISTS_PATH', new=test_files_path)
 def test_expand_lists():

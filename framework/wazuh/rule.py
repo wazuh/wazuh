@@ -15,7 +15,7 @@ from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.rule import check_status, load_rules_from_file, format_rule_decoder_file, REQUIRED_FIELDS, \
+from wazuh.core.rule import check_status, load_rules_from_file, format_rule_file, REQUIRED_FIELDS, \
     RULE_REQUIREMENTS, SORT_FIELDS, RULE_FIELDS
 from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml, upload_file, delete_file_with_backup, \
     to_relative_path
@@ -195,11 +195,11 @@ def get_rules_files(status: str = None, relative_dirname: str = None, filename: 
     if isinstance(filename, list):
         for f in filename:
             rules_files.extend(
-                format_rule_decoder_file(ruleset_conf['ruleset'],
+                format_rule_file(ruleset_conf['ruleset'],
                                          {'status': status, 'relative_dirname': relative_dirname, 'filename': f},
                                          tags))
     else:
-        rules_files = format_rule_decoder_file(ruleset_conf['ruleset'],
+        rules_files = format_rule_file(ruleset_conf['ruleset'],
                                                {'status': status, 'relative_dirname': relative_dirname,
                                                 'filename': filename},
                                                tags)

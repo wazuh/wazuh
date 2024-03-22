@@ -42,9 +42,6 @@ class InitManager:
         # rules
         self.input_rules_file = 'test_rules.xml'
         self.output_rules_file = 'uploaded_test_rules.xml'
-        # decoders
-        self.input_decoders_file = 'test_decoders.xml'
-        self.output_decoders_file = 'uploaded_test_decoders.xml'
         # CDB lists
         self.input_lists_file = 'test_lists'
         self.output_lists_file = 'uploaded_test_lists'
