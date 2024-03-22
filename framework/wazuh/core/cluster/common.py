@@ -26,7 +26,7 @@ from wazuh import Wazuh
 from wazuh.core import common, exception
 from wazuh.core import utils
 from wazuh.core.cluster import cluster, utils as cluster_utils
-from wazuh.core.wdb import WazuhDBConnection
+from wazuh.core.wdb import AsyncWazuhDBConnection
 
 class Response:
     """
@@ -593,13 +593,12 @@ class Handler(asyncio.Protocol):
             Dict containing number of updated chunks, error messages (if any) and time spent.
         """
         try:
-            result = await cluster.run_in_pool(self.loop, self.server.task_pool, send_data_to_wdb, data,
-                                               timeout, info_type=info_type)
+            result = await send_data_to_wdb(data, timeout, info_type)
         except Exception as e:
-            print(f'error processing {info_type} chunks in process pool: {str(e)}'.encode())
+            logger.error(f'error processing {info_type} chunks: {str(e)}'.encode())
             with contextlib.suppress(Exception):
                 await self.send_request(command=error_command,
-                                        data=f'error processing {info_type} chunks in process pool: {str(e)}'.encode())
+                                        data=f'error processing {info_type} chunks: {str(e)}'.encode())
             raise exception.WazuhClusterError(3037, extra_message=str(e))
 
         # Log information about the results
@@ -1669,7 +1668,7 @@ def error_receiving_agent_information(logger, response, info_type):
     return b'ok', b'Thanks'
 
 
-def send_data_to_wdb(data, timeout, info_type='agent-info'):
+async def send_data_to_wdb(data, timeout, info_type='agent-info') -> dict[str, Any]:
     """Send chunks of data to Wazuh-db socket.
 
     Parameters
@@ -1687,7 +1686,7 @@ def send_data_to_wdb(data, timeout, info_type='agent-info'):
         Dict containing number of updated chunks, error messages (if any) and time spent.
     """
     result = {'updated_chunks': 0, 'error_messages': {'chunks': [], 'others': []}, 'time_spent': 0}
-    wdb_conn = WazuhDBConnection()
+    wdb_conn = AsyncWazuhDBConnection()
     before = time.perf_counter()
 
     try:
@@ -1695,12 +1694,11 @@ def send_data_to_wdb(data, timeout, info_type='agent-info'):
             for i, chunk in enumerate(data['chunks']):
                 try:
                     if info_type == 'agent-info':
-                        wdb_conn.send(f"{data['set_data_command']} {chunk}", raw=True)
+                        await wdb_conn.run_wdb_command(f"{data['set_data_command']} {chunk}")
                     elif info_type == 'agent-groups':
                         data['payload']['data'] = json.loads(chunk)[0]['data']
-                        wdb_conn.send(
-                            f"{data['set_data_command']} {json.dumps(data['payload'], separators=(',', ':'))}",
-                            raw=True
+                        await wdb_conn.run_wdb_command(
+                            f"{data['set_data_command']} {json.dumps(data['payload'], separators=(',', ':'))}"
                         )
                     result['updated_chunks'] += 1
                 except TimeoutError as e:
