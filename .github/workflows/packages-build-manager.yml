@@ -2,6 +2,14 @@ name: Build Wazuh Manager Packages - DEB|RPM - amd64|arm64
 on:
   workflow_dispatch:
     inputs:
+      tag:
+        description: |
+          Tag name of the Docker image to be downloaded.
+          Use 'developer' to set branch name as tag.
+          Use 'auto' to set branch version as tag.
+          Default is 'auto'.
+        required: false
+        default: 'auto'
       branch:
         description: 'Wazuh branch used while building a package'
         required: false
@@ -49,40 +57,32 @@ on:
 
   workflow_call:
     inputs:
+      tag:
+        required: false
+        default: 'auto'
+        type: string
       branch:
-        description: 'Wazuh branch used while building a package'
         required: false
         default: master
         type: string
       arch:
         type: string
-        description: 'Architecture of the package [amd64, arm64]'
         required: true
       package-format:
         type: string
-        description: 'Package format [deb, rpm]'
         required: true
       revision:
         type: string
-        description: |
-          'Set the value to "1" for packages in release format.
-          You can also add other values, such as issue numbers.
-          By default, it is set to "0" for development.'
         required: false
       release-package:
         type: string
-        description: |
-          'Build package with release format.
-           Checksum will be also generated.'
         required: false
       debuggable-package:
         type: string
-        description: 'Build package with debug symbols.'
         default: 'no'
         required: false
       runner-machine:
         type: string
-        description: 'Required runner type to build the package'
         required: true
 
 jobs:
@@ -104,7 +104,7 @@ jobs:
       - uses: actions/checkout@v4
         
       - name: Set up AWS CLI
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
@@ -132,8 +132,9 @@ jobs:
         if: env.ABORT_JOB != 'yes'
         run: |
           VERSION=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
-          if [ "${{ inputs.branch }}" == "master" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
-          else echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV; fi
+          if [ "${{ inputs.tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
+          elif [ "${{ inputs.tag }}" == "developer" ]; then echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV;
+          else echo "TAG=${{ inputs.tag }}" >> $GITHUB_ENV; fi
           echo "CONTAINER_NAME=pkg_${{ inputs.package-format }}_manager_builder_${{ inputs.arch }}" >> $GITHUB_ENV
 
       - name: Download docker image for package building

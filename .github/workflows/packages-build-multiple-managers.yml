@@ -61,6 +61,7 @@ jobs:
     if: ${{ inputs.build-amd64-deb == 'yes' }}
     uses: ./.github/workflows/packages-build-manager.yml
     with:
+        tag: auto
         branch: ${{ inputs.branch }}
         arch: amd64
         package-format: deb
@@ -74,6 +75,7 @@ jobs:
     if: ${{ inputs.build-amd64-rpm == 'yes' }}
     uses: ./.github/workflows/packages-build-manager.yml
     with:
+        tag: auto
         branch: ${{ inputs.branch }}
         arch: amd64
         package-format: rpm
@@ -87,6 +89,7 @@ jobs:
     if: ${{ inputs.build-arm64-deb == 'yes' }}
     uses: ./.github/workflows/packages-build-manager.yml
     with:
+        tag: auto
         branch: ${{ inputs.branch }}
         arch: arm64
         package-format: deb
@@ -100,6 +103,7 @@ jobs:
     if: ${{ inputs.build-arm64-rpm == 'yes' }}
     uses: ./.github/workflows/packages-build-manager.yml
     with:
+        tag: auto
         branch: ${{ inputs.branch }}
         arch: arm64
         package-format: rpm
