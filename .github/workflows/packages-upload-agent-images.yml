@@ -27,6 +27,12 @@ on:
         description: |
           'Only for RPM - Build package for CentOS 5.'
         required: false
+      overwrite:
+          type: boolean
+          description: |
+            If you want to overwrite the current image.
+            By default, it is set to false.
+          required: false
 
 jobs:
   Upload-package-building-images:
@@ -51,17 +57,6 @@ jobs:
             echo "DOCKERFILE_PATH=packages/${{ inputs.package-format }}s/${{ inputs.arch}}/agent" >> $GITHUB_ENV
           fi
 
-      - name: Copy build.sh and utils to Dockerfile path
-        run: |
-          cp $GITHUB_WORKSPACE/packages/build.sh $GITHUB_WORKSPACE/${{ env.DOCKERFILE_PATH }}
-          cp $GITHUB_WORKSPACE/packages/${{ inputs.package-format }}s/utils/* $GITHUB_WORKSPACE/${{ env.DOCKERFILE_PATH }}
-
-      - name: Copy centos-5-i386.tar.gz to Dockerfile legacy path
-        if: inputs.legacy == 'true' || inputs.legacy == true
-        run: |
-          cd $GITHUB_WORKSPACE/${{ env.DOCKERFILE_PATH }}
-          curl -sO "https://packages-dev.wazuh.com/utils/centos-5-i386-build/centos-5-i386.tar.gz"
-
       - name: Set tag
         run: |
           VERSION=$(sed 's/.*\([0-9]\.[0-9]*\.[0-9]*\).*/\1/' $GITHUB_WORKSPACE/src/VERSION)
@@ -69,6 +64,38 @@ jobs:
           elif [ "${{ inputs.tag }}" == "developer" ]; then echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV;
           else echo "TAG=${{ inputs.tag }}" >> $GITHUB_ENV; fi
 
+      - name: Check if docker image already exists
+        if: (inputs.overwrite == 'false' || inputs.overwrite == false)
+        env:
+          IMAGE_TAG:
+        run: |
+          GHCR_TOKEN=$(echo ${{ secrets.GITHUB_TOKEN }} | base64)
+          response=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${GHCR_TOKEN}" https://ghcr.io/v2/wazuh/${{ env.CONTAINER_NAME }}/manifests/${{ env.TAG }})
+
+          if [ $response -eq 200  ]; then
+            echo "Image $IMAGE_NAME:$IMAGE_TAG exists on ghcr.io"
+            echo "ABORT_JOB=yes" >> $GITHUB_ENV
+          elif [ $response -eq 404 ]; then
+            echo "Image $IMAGE_NAME:$IMAGE_TAG does not exist on ghcr.io"
+            echo "ABORT_JOB=no" >> $GITHUB_ENV
+          else
+            echo "Failed to check the existence of the image. HTTP response code: $response"
+            exit 1
+          fi
+
+      - name: Copy build.sh and utils to Dockerfile path
+        if: env.ABORT_JOB != 'yes'
+        run: |
+          cp $GITHUB_WORKSPACE/packages/build.sh $GITHUB_WORKSPACE/${{ env.DOCKERFILE_PATH }}
+          cp $GITHUB_WORKSPACE/packages/${{ inputs.package-format }}s/utils/* $GITHUB_WORKSPACE/${{ env.DOCKERFILE_PATH }}
+
+      - name: Copy centos-5-i386.tar.gz to Dockerfile legacy path
+        if: (inputs.legacy == 'true' || inputs.legacy == true) && env.ABORT_JOB != 'yes'
+        run: |
+          cd $GITHUB_WORKSPACE/${{ env.DOCKERFILE_PATH }}
+          curl -sO "https://packages-dev.wazuh.com/utils/centos-5-i386-build/centos-5-i386.tar.gz"
+
       - name: Build and push image ${{ env.CONTAINER_NAME }} with tag ${{ env.TAG }} to Github Container Registry
+        if: env.ABORT_JOB != 'yes'
         run: |
           bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/build_and_push_image_to_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} ${{env.CONTAINER_NAME}} ${{ env.DOCKERFILE_PATH }} ${{ env.TAG }}
