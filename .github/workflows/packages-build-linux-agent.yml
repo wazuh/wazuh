@@ -124,10 +124,14 @@ jobs:
         run: |
           echo "ABORT_JOB=no" >> $GITHUB_ENV
           if [ ${{ inputs.package-format }} == 'rpm' ]; then
-            if [ ${{ inputs.arch }} == 'amd64' ]; then
-              arch_name=x86_64;
+            if [ ${{ inputs.arch }} = 'armhf' ]; then
+              arch_name="armv7hl"
+            elif [ ${{ inputs.arch }} = 'arm64' ]; then
+              arch_name="aarch64"
+            elif [ ${{ inputs.arch }} = 'amd64' ]; then
+              arch_name="x86_64"
             else
-              arch_name=aarch64;
+              arch_name=${{ inputs.arch }};
             fi
           else
             arch_name=${{ inputs.arch }};
@@ -150,16 +154,19 @@ jobs:
           else
             pkg_name="wazuh-agent.$version.$revision.$arch_name.$short_commit_hash.${{ inputs.package-format }}"
           fi
-
+          echo "$pkg_name"
+          echo "$(aws s3 ls s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/ --recursive | grep -c $pkg_name)"
           if [ $(aws s3 ls s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/ --recursive | grep -c $pkg_name) -ge 1 ]; then
             echo "::notice:: Package already exists in s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/$pkg_name";
             echo "ABORT_JOB=yes" >> $GITHUB_ENV
           fi
-
+          echo "$GITHUB_ENV"
 
       - name: Set tag and container name
         if: env.ABORT_JOB != 'yes'
         run: |
+          echo "$GITHUB_ENV"
+          echo "${{ env.ABORT_JOB }}"
           VERSION=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
           if [ "${{ inputs.tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
           elif [ "${{ inputs.tag }}" == "developer" ]; then echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV;
