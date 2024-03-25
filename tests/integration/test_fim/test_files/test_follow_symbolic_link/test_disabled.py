@@ -20,7 +20,6 @@ suite: basic_usage
 
 targets:
     - agent
-    - manager
 
 daemons:
     - wazuh-syscheckd
@@ -80,7 +79,7 @@ from . import TEST_CASES_PATH, CONFIGS_PATH
 
 
 # Pytest marks to run on any service type on linux or windows.
-pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0)]
+pytestmark = [pytest.mark.linux, pytest.mark.agent, pytest.mark.tier(level=0)]
 
 # Test metadata, configuration and ids.
 cases_path = Path(TEST_CASES_PATH, 'cases_disabled.yaml')
