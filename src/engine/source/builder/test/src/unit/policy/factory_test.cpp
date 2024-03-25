@@ -119,13 +119,21 @@ INSTANTIATE_TEST_SUITE_P(
                           .WillOnce(testing::Return(storeReadError<store::Doc>()));
                       return None {};
                   })),
+        // Namespace repeated
+        ReadT(
+            R"({"name": "test", "hash": "test", "default_parents": {"rules": {"ns": "rule/asset-0", "ns": "rule/asset-0"}}, "assets": ["rule/asset-0", "rule/asset-1"]})",
+            FAILURE(
+                [](const std::shared_ptr<MockStoreRead>& store)
+                {
+                    return None {};
+                })),
         // SUCCESS cases
         ReadT(R"({"name": "test", "hash": "test"})",
               SUCCESS([](const std::shared_ptr<MockStoreRead>& store) { return D {.name = "test", .hash = "test"}; })),
         ReadT(R"({"name": "test", "hash": "test", "assets": []})",
               SUCCESS([](const std::shared_ptr<MockStoreRead>& store) { return D {.name = "test", .hash = "test"}; })),
         ReadT(
-            R"({"name": "test", "hash": "test", "default_parents": {"ns": "decoder/asset"}, "assets": ["decoder/asset"]})",
+            R"({"name": "test", "hash": "test", "default_parents": {"decoders": {"ns": "decoder/asset"}}, "assets": ["decoder/asset"]})",
             SUCCESS(
                 [](const std::shared_ptr<MockStoreRead>& store)
                 {
@@ -172,7 +180,7 @@ INSTANTIATE_TEST_SUITE_P(
                               .assets = {{factory::PolicyData::AssetType::DECODER, {{"ns", {{"decoder/asset"}}}}}}};
                 })),
         ReadT(
-            R"({"name": "test", "hash": "test", "default_parents": {"ns": "decoder/asset"}, "assets": ["decoder/asset", "output/asset", "rule/asset", "filter/asset"]})",
+            R"({"name": "test", "hash": "test", "default_parents": {"decoders": {"ns": "decoder/asset"}}, "assets": ["decoder/asset", "output/asset", "rule/asset", "filter/asset"]})",
             SUCCESS(
                 [](const std::shared_ptr<MockStoreRead>& store)
                 {
@@ -192,8 +200,20 @@ INSTANTIATE_TEST_SUITE_P(
                                          {factory::PolicyData::AssetType::OUTPUT, {{"ns", {{"output/asset"}}}}},
                                          {factory::PolicyData::AssetType::RULE, {{"ns", {{"rule/asset"}}}}},
                                          {factory::PolicyData::AssetType::FILTER, {{"ns", {{"filter/asset"}}}}}}};
-                }))
+                })),
+        ReadT(
+            R"({"name": "test", "hash": "test", "default_parents": {"rules": {"ns": "rule/asset"}}, "assets": ["rule/asset"]})",
+            SUCCESS(
+                [](const std::shared_ptr<MockStoreRead>& store)
+                {
+                    EXPECT_CALL(*store, getNamespace(base::Name("rule/asset")))
+                        .WillOnce(testing::Return(storeGetNamespaceResp("ns")));
 
+                    return D {.name = "test",
+                              .hash = "test",
+                              .defaultParents = {{"ns", "rule/asset"}},
+                              .assets = {{factory::PolicyData::AssetType::RULE, {{"ns", {{"rule/asset"}}}}}}};
+                }))
             ));
 } // namespace readtest
 
