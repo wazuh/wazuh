@@ -2,7 +2,6 @@
     "id": "worker1_000_pkghash_CVE-2022-1234",
     "operation": "INSERT",
     "data":{
-      "@timestamp": "2023-09-18T12:00:00Z",
       "agent": {
         "build": {
           "original": "sample_build_1"
@@ -62,6 +61,8 @@
       },
       "tags": ["sample", "tag1"],
       "vulnerability": {
+        "detected_at": "2023-09-18T12:00:00Z",
+        "published_at": "2023-01-18T12:00:00Z",
         "category": "sample_category",
         "classification": "sample_classification",
         "description": "Sample vulnerability description",
