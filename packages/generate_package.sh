@@ -124,7 +124,7 @@ help() {
     echo "    -l, --legacy               [Optional only for RPM] Build package for CentOS 5."
     echo "    --dont-build-docker        [Optional] Locally built docker image will be used instead of generating a new one."
     echo "    --tag                      [Optional] Tag to use with the docker image."
-    echo "    --sources <path>           [Optional] Absolute path containing wazuh source code. This option will use local source code instead of downloading it from GitHub."
+    echo "    --sources <path>           [Optional] Absolute path containing wazuh source code. This option will use local source code instead of downloading it from GitHub. By default use the script path."
     echo "    --release-package          [Optional] Use release name in package"
     echo "    --src                      [Optional] Generate the source package in the destination directory."
     echo "    --future                   [Optional] Build test future package x.30.0 Used for development purposes."

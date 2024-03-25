@@ -10,9 +10,6 @@ on:
           Default is 'auto'.
         required: false
         default: 'auto'
-      branch:
-        description: Wazuh branch used while building a package
-        required: false
       arch:
         type: choice
         description: Architecture of the package [amd64, i386, arm64, armhf]
@@ -67,9 +64,6 @@ on:
         type: string
         required: false
         default: 'auto'
-      branch:
-        required: false
-        type: string
       arch:
         type: string
         required: true
@@ -137,14 +131,8 @@ jobs:
             arch_name=${{ inputs.arch }};
           fi
 
-          if [ ! -z "${{ inputs.branch}}" ]; then
-            curl -O https://raw.githubusercontent.com/wazuh/wazuh/${{ inputs.branch }}/src/VERSION;
-            version="$(sed 's/.*\([0-9]\.[0-9]*\.[0-9]*\).*/\1/' $GITHUB_WORKSPACE/VERSION)"
-            short_commit_hash="$(curl -s https://api.github.com/repos/wazuh/wazuh/commits/${{ inputs.branch }} | grep '"sha"' | head -n 1| cut -d '"' -f 4 | cut -c 1-11)"
-          else
-            version="$(sed 's/.*\([0-9]\.[0-9]*\.[0-9]*\).*/\1/' $GITHUB_WORKSPACE/src/VERSION)"
-            short_commit_hash="$(git -C $GITHUB_WORKSPACE rev-parse --short HEAD)"
-          fi
+          version="$(sed 's/.*\([0-9]\.[0-9]*\.[0-9]*\).*/\1/' $GITHUB_WORKSPACE/src/VERSION)"
+          short_commit_hash="$(git -C $GITHUB_WORKSPACE rev-parse --short HEAD)"
 
           if [ "${{ inputs.legacy }}" == "true" ]; then revision=${{ inputs.revision }}.el5;
           else  revision=${{ inputs.revision }} ; fi
@@ -154,19 +142,15 @@ jobs:
           else
             pkg_name="wazuh-agent.$version.$revision.$arch_name.$short_commit_hash.${{ inputs.package-format }}"
           fi
-          echo "$pkg_name"
-          echo "$(aws s3 ls s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/ --recursive | grep -c $pkg_name)"
+
           if [ $(aws s3 ls s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/ --recursive | grep -c $pkg_name) -ge 1 ]; then
             echo "::notice:: Package already exists in s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/$pkg_name";
             echo "ABORT_JOB=yes" >> $GITHUB_ENV
           fi
-          echo "$GITHUB_ENV"
 
       - name: Set tag and container name
         if: env.ABORT_JOB != 'yes'
         run: |
-          echo "$GITHUB_ENV"
-          echo "${{ env.ABORT_JOB }}"
           VERSION=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
           if [ "${{ inputs.tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
           elif [ "${{ inputs.tag }}" == "developer" ]; then echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV;
@@ -188,7 +172,6 @@ jobs:
         run: |
           REVISION=${{ inputs.revision }}
           FLAGS="-t agent -s /tmp --dont-build-docker -j $(nproc) "
-          if [ ! -z "${{ inputs.branch}}" ]; then FLAGS+="-b ${{ inputs.branch }} "; fi
           if [ -z "$REVISION" ]; then FLAGS+="-r 0 "; else FLAGS+="-r $REVISION "; fi
           if [ "${{ inputs.release-package }}" == "true" ]; then FLAGS+="--release-package "; fi
           if [ "${{ inputs.legacy }}" == "true" ]; then FLAGS+="--legacy "; fi
