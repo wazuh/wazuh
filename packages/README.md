@@ -89,8 +89,7 @@ Where the JSON looks like this:
          "package-format":"rpm",
          "revision":"test",
          "release-package":"false",
-         "legacy":"false",
-         "overwrite":"false",
+         "legacy":"false"
         }
 }
 ```
