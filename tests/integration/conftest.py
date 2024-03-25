@@ -149,7 +149,7 @@ def backup_wazuh_configuration() -> None:
 
 
 @pytest.fixture()
-def set_wazuh_configuration(test_configuration: dict) -> None:
+def set_wazuh_configuration(configuration: dict) -> None:
     """Set wazuh configuration
 
     Args:
