@@ -394,7 +394,7 @@ class HAPHelper:
                 await sleep(self.sleep_time)
 
     async def set_hard_stop_after(self):
-        """Check if HAProxy has the hard-stop-after configuration. If not, it will be set."""
+        """Calculate and set hard-stop-after configuration in HAProxy."""
 
         cluster_items = get_cluster_items()
         connection_retry = cluster_items['intervals']['worker']['connection_retry'] + 2
